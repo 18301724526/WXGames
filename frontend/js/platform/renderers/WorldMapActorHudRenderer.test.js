@@ -109,7 +109,9 @@ test('WorldMapActorHudRenderer maps nearest world tile through march system', ()
     { originX: 100, originY: 100, scale: 1, geometry: tileMapView.geometry },
   );
 
-  assert.equal(tile.id, 'tile-0');
+  assert.equal(tile.id, 'tile_0_0');
+  assert.equal(tile.tileId, 'tile_0_0');
+  assert.equal(tile.tile.id, 'tile-0');
 });
 
 test('WorldMapActorHudRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {

@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -22,7 +33,27 @@
   }
 
   function tileId(q, r) {
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
+    return TileCoord?.tileId ? TileCoord.tileId(q, r) : `tile_${toInteger(q)}_${toInteger(r)}`;
+  }
+
+  function normalizeCoord(source = {}, fallback = {}) {
+    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
+    const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
+    const y = toInteger(source.y ?? source.r, fallback.y ?? fallback.r ?? 0);
+    return {
+      x,
+      y,
+      q: x,
+      r: y,
+      tileId: tileId(x, y),
+    };
+  }
+
+  function hasFractionalAxis(coord = {}) {
+    const x = coord?.x !== undefined ? Number(coord.x) : Number(coord?.q);
+    const y = coord?.y !== undefined ? Number(coord.y) : Number(coord?.r);
+    return (Number.isFinite(x) && !Number.isInteger(x))
+      || (Number.isFinite(y) && !Number.isInteger(y));
   }
 
   function getContinuousTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
@@ -37,10 +68,7 @@
   }
 
   function getTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
-    if (Number.isFinite(Number(coord?.q)) && !Number.isInteger(Number(coord.q))) {
-      return getContinuousTileScreenCenter(coord, viewport, geometry);
-    }
-    if (Number.isFinite(Number(coord?.r)) && !Number.isInteger(Number(coord.r))) {
+    if (hasFractionalAxis(coord)) {
       return getContinuousTileScreenCenter(coord, viewport, geometry);
     }
     const helper = TileMapGeometry?.getTileScreenCenter;
@@ -57,11 +85,12 @@
       const dy = toNumber(point.y) - center.y;
       const distance = dx * dx + dy * dy;
       if (!best || distance < best.distance) {
+        const coord = normalizeCoord(tile);
         best = {
-          id: tile.id || tileId(tile.q, tile.r),
-          q: toInteger(tile.q),
-          r: toInteger(tile.r),
-          tileId: tile.id || tileId(tile.q, tile.r),
+          id: coord.tileId,
+          q: coord.q,
+          r: coord.r,
+          tileId: coord.tileId,
           center,
           distance,
           tile,
@@ -95,13 +124,12 @@
   function getMarchTargetUiState(uiState = {}) {
     const target = uiState.worldMarchTarget || null;
     if (!target || typeof target !== 'object') return null;
-    const q = toInteger(target.q, NaN);
-    const r = toInteger(target.r, NaN);
-    if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+    if (!Number.isFinite(Number(target.x ?? target.q)) || !Number.isFinite(Number(target.y ?? target.r))) return null;
+    const coord = normalizeCoord(target);
     return {
-      q,
-      r,
-      tileId: target.tileId || tileId(q, r),
+      q: coord.q,
+      r: coord.r,
+      tileId: coord.tileId,
       pickerOpen: Boolean(target.pickerOpen),
       known: target.known === undefined ? undefined : Boolean(target.known),
       terrain: target.terrain || '',

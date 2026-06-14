@@ -154,7 +154,7 @@
 
 ### 4.2 先改名或补契约再晋升
 
-- `WorldMarchGeometry`: 先把 stable contract 从 `q/r` 语义改为 `x/y` 或 `col/row`，保留 `q/r` alias。
+- `WorldMarchGeometry`: 已把 screen projection / nearest tile / march target UI state 的坐标输入收口到 `TileCoord` stable `x/y` contract，并保留 `q/r` alias；晋升前仍需补 full wrapping / AOI window 与 `WorldTopology` 的组合验收。
 - `TileMapGeometry`: 先明确 diamond isometric square-tile contract，并加入 full wrapping 入口或与 `WorldTopology` 组合。
 - `WorldMapRuntimeCameraPolicy`: 先补 full wrapping camera/drag contract，避免封死无限平面假设。
 - `WorldMapInputActionMap`: 先补 AOI/window 和 server-authoritative command semantics。

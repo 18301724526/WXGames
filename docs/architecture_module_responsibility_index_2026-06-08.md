@@ -1098,12 +1098,14 @@ P0 新增公开 API / Public API Added During P0:
 - nearest rendered world-tile lookup from screen points
 - axial tile inference from screen points and viewport geometry
 - march target UI-state normalization for HUD/render helpers
+- `TileCoord`-normalized stable coordinate contract: stable `x/y` and legacy `q/r` inputs produce the same tile identity for nearest-tile lookup and march target UI state, while fractional march actor coordinates keep continuous projection for smooth movement
 
 公开 API / Public API:
 
 - `WorldMarchGeometry.toNumber(value, fallback)`
 - `WorldMarchGeometry.toInteger(value, fallback)`
 - `WorldMarchGeometry.tileId(q, r)`
+- internal `TileCoord`-backed coordinate normalization for geometry-facing inputs
 - `WorldMarchGeometry.getTileScreenCenter(coord, viewport, geometry)`
 - `WorldMarchGeometry.screenPointToNearestTile(point, tileMapView, viewport)`
 - `WorldMarchGeometry.screenPointToAxialTile(point, viewport, geometry)`
@@ -1114,6 +1116,7 @@ P0 新增公开 API / Public API Added During P0:
 - 新 world-march screen/input geometry first extends this module with focused tests。
 - New gameplay march progress or arrival rules stay in `WorldMarchProgressSnapshot` or later systems modules.
 - `WorldMarchSystem` keeps compatibility methods only; do not add new geometry bodies back there.
+- 新坐标语义先扩展 `TileCoord`/`WorldTopology`，本模块只消费稳定坐标契约，不再手写第二套 tile identity 规则。
 
 回归 / Regression:
 
