@@ -23,6 +23,18 @@
     return null;
   })();
 
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -80,13 +92,16 @@
 
   function normalizeMarchTarget(target = null) {
     if (!target || typeof target !== 'object') return null;
-    const q = toInteger(target.q ?? target.x, Number.NaN);
-    const r = toInteger(target.r ?? target.y, Number.NaN);
+    const coord = TileCoord?.normalizeCoord
+      ? TileCoord.normalizeCoord(target)
+      : null;
+    const q = coord ? coord.x : toInteger(target.x ?? target.q, Number.NaN);
+    const r = coord ? coord.y : toInteger(target.y ?? target.r, Number.NaN);
     if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
     return {
       q,
       r,
-      tileId: target.tileId || `tile_${q}_${r}`,
+      tileId: coord?.tileId || `tile_${q}_${r}`,
       pickerOpen: Boolean(target.pickerOpen),
       known: target.known === undefined ? undefined : Boolean(target.known),
       terrain: target.terrain || '',

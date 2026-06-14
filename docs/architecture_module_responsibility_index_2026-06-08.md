@@ -1007,6 +1007,7 @@ P0 新增公开 API / Public API Added During P0:
 - 统一手动行军抵达 `idle` 和随机探索抵达 `ready` 的结果语义
 - 为 `WorldActorProjection`、HUD、action adapter、debug overlay 提供可测试、可序列化的行军输入
 - 保留 `remainingSeconds` 与 `travelRemainingSeconds` 的区别：前者兼容下一步/旧 HUD 倒计时，后者表示到终点的剩余总行程
+- Consumes `TileCoord` for mission `origin` / `homeOrigin` / `target` / `position` / route step identity so stale caller-supplied `id/tileId` cannot override stable `x/y` coordinates.
 
 公开 API / Public API:
 
@@ -1038,6 +1039,7 @@ P0 新增公开 API / Public API Added During P0:
 - Large-mission regression covers 2000 missions without nested `missionsById` or `entitiesById` maps.
 - Renderable world actor collections are projected by `WorldActorProjection`; this snapshot preserves progress facts and compatibility rows.
 - No renderer objects, DOM objects, canvas contexts, WebGL resources, or backend service imports.
+- Tile identity normalization is O(1) per coordinate and keeps output rows compact as `{ q, r, tileId }` for compatibility.
 
 扩展方式 / Extension Path:
 
@@ -1048,10 +1050,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldActorProjection.js` - 81 lines
+### `frontend/js/domain/WorldActorProjection.js` - 82 lines
 
 状态 / Status: candidate
 
@@ -1061,6 +1063,7 @@ P0 新增公开 API / Public API Added During P0:
 - Applies world actor visibility semantics outside progress facts and outside renderers.
 - Classifies progress rows as `worldRoute`, `parkedAwayFromHome`, or `garrisonedAtHome`.
 - Keeps returned-home idle missions in explorer/progress state while excluding them from visible world actors.
+- Consumes `TileCoord` for `coordKey()` and home/current comparisons so stale caller-supplied `tileId` cannot make a returned-home idle mission look parked away from home.
 
 公开 API / Public API:
 
@@ -1076,16 +1079,18 @@ P0 新增公开 API / Public API Added During P0:
 - Reuses `WorldMarchProgressSnapshot` rows and keeps projection linear over missions.
 - Does not mutate explorer state, progress snapshots, renderer state, DOM, canvas, or WebGL objects.
 - Projection metadata is compact: `{ kind, source }` on rendered actor DTOs.
+- Coordinate comparison is canonical and allocation-light: stable `x/y` and legacy `q/r` shapes collapse to the same deterministic `tileId`.
 
 扩展方式 / Extension Path:
 
 - New world actor visibility/projection semantics start here with red tests before renderer changes.
 - `WorldMarchProgressSnapshot` should preserve source facts such as `homeOrigin`; this module decides which facts become visible map actors.
 - Renderers consume projected actors only and must not infer mission home/away business semantics.
+- New projection rules must not trust raw `tileId` identity from renderer, caller, or persisted legacy rows; normalize through `TileCoord` first.
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMarchGeometry.js`
@@ -1171,6 +1176,7 @@ P0 新增公开 API / Public API Added During P0:
 - 将 `tileMapView`、`frame`、`viewport`、`uiState`、render flags、march actors、arrival rows 收束为一个 snapshot
 - 为 `WorldMapCanvasRenderer`、fog rebuild、hit target builder、debug overlay 后续拆分提供共同上下文
 - 保留大数组引用而不是深拷贝 tiles，避免每帧制造大 payload
+- Normalizes `worldMarchTarget` through `TileCoord` so stale UI/caller `tileId` values cannot override stable target coordinates.
 
 公开 API / Public API:
 
@@ -1194,16 +1200,18 @@ P0 新增公开 API / Public API Added During P0:
 - Signature uses incremental FNV-style hashing over compact identity/layout fields.
 - Serializable output excludes renderer payloads such as raw `tileMapView`, canvas contexts, DOM nodes, and cache objects.
 - March actors come from `WorldActorProjection` over `WorldMarchProgressSnapshot` facts, keeping gameplay status and visibility projection outside renderers.
+- `worldMarchTarget` identity remains compact and canonical; signatures hash the normalized target `tileId` rather than caller-supplied legacy identity.
 
 扩展方式 / Extension Path:
 
 - 新 renderer 拆分模块应优先接收 `renderSnapshot`，而不是各自重新组合 `tileMapView + viewport + uiState`。
 - 新 debug overlay 可以消费 `toSerializable()`，不要读取 canvas/runtime object。
 - 新 render flag 先加到 `normalizeFlags()`，同步测试与本索引。
+- New render-facing target state must preserve this boundary: UI flags may pass through, but tile identity is derived by `TileCoord`.
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
+- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/WorldMapLayoutModel.js`
@@ -6982,3 +6990,4 @@ Recommended first split sequence:
 | 2026-06-14 | Hardened `WorldMapInputIntent.toSerializable()` as a whitelist boundary: externally supplied intent-like objects are re-summarized before export so renderer, native event, tileMapView, and thenable payloads cannot enter input evidence. |
 | 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |
 | 2026-06-14 | Hardened runtime map-bake fallback signatures: `WorldMapRuntimeBakePolicy` now consumes `TileCoord` for fallback compact summaries when the presenter is unavailable, so stable `x/y` and legacy `q/r` shapes produce the same bake signature. |
+| 2026-06-14 | Hardened march actor identity: `WorldMarchProgressSnapshot`, `WorldActorProjection`, and `WorldMapRenderSnapshot.normalizeMarchTarget()` now consume `TileCoord`, so stale caller-supplied `id/tileId` cannot override stable `x/y` in mission rows, returned-home actor projection, or march target UI state. |

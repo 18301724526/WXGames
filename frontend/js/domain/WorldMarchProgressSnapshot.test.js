@@ -80,6 +80,51 @@ test('WorldMarchProgressSnapshot keeps rebased missions moving between confirmed
   assert.equal(actor.current.q < 2, true);
 });
 
+test('WorldMarchProgressSnapshot canonicalizes stale tile ids through stable axes', () => {
+  const coord = WorldMarchProgressSnapshot.normalizeCoord({
+    x: 4,
+    y: -2,
+    q: 99,
+    r: 99,
+    tileId: 'legacy-away',
+    id: 'legacy-id',
+  });
+
+  assert.deepEqual(coord, {
+    q: 4,
+    r: -2,
+    tileId: 'tile_4_-2',
+  });
+});
+
+test('WorldMarchProgressSnapshot normalizes mission rows without preserving stale tile ids', () => {
+  const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    idleMissions: [createMission({
+      status: 'idle',
+      origin: { x: 0, y: 0, q: 88, r: 88, tileId: 'legacy-origin' },
+      homeOrigin: { x: 0, y: 0, q: 77, r: 77, tileId: 'legacy-home' },
+      target: { x: 0, y: 0, q: 66, r: 66, tileId: 'legacy-target' },
+      position: { x: 0, y: 0, q: 55, r: 55, tileId: 'legacy-position' },
+      route: [
+        { x: 1, y: 0, q: 44, r: 44, tileId: 'legacy-route-1', step: 1, revealed: true },
+        { x: 0, y: 0, q: 33, r: 33, tileId: 'legacy-route-2', step: 2, revealed: true },
+      ],
+      nextStepAt: null,
+      completedAt: '2026-06-06T00:00:21.000Z',
+    })],
+  }, { nowMs });
+  const mission = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
+  const actor = WorldMarchProgressSnapshot.getActor(snapshot, 'explore-1');
+
+  assert.equal(mission.origin.tileId, 'tile_0_0');
+  assert.equal(mission.homeOrigin.tileId, 'tile_0_0');
+  assert.equal(mission.target.tileId, 'tile_0_0');
+  assert.equal(mission.position.tileId, 'tile_0_0');
+  assert.deepEqual(mission.route.map((step) => step.tileId), ['tile_1_0', 'tile_0_0']);
+  assert.equal(actor.current.tileId, 'tile_0_0');
+});
+
 test('WorldMarchProgressSnapshot exposes manual arrival as idle parked actor', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({

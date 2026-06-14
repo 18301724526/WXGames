@@ -11,11 +11,23 @@
     return null;
   })();
 
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function coordKey(coord = {}) {
     if (!coord || typeof coord !== 'object') return '0:0';
-    if (coord.tileId) return String(coord.tileId);
-    const q = Number.isFinite(Number(coord.q ?? coord.x)) ? Math.floor(Number(coord.q ?? coord.x)) : 0;
-    const r = Number.isFinite(Number(coord.r ?? coord.y)) ? Math.floor(Number(coord.r ?? coord.y)) : 0;
+    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(coord).tileId;
+    const q = Number.isFinite(Number(coord.x ?? coord.q)) ? Math.floor(Number(coord.x ?? coord.q)) : 0;
+    const r = Number.isFinite(Number(coord.y ?? coord.r)) ? Math.floor(Number(coord.y ?? coord.r)) : 0;
     return `tile_${q}_${r}`;
   }
 

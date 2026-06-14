@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const STATUS_ACTIVE = 'active';
   const STATUS_IDLE = 'idle';
   const ARRIVAL_NONE = 'none';
@@ -39,14 +51,17 @@
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    const source = coord && typeof coord === 'object' ? coord : {};
+    const normalized = TileCoord?.normalizeCoord
+      ? TileCoord.normalizeCoord(coord, fallback)
+      : null;
+    const source = normalized || (coord && typeof coord === 'object' ? coord : {});
     const base = fallback && typeof fallback === 'object' ? fallback : {};
-    const q = toInteger(source.q ?? source.x, base.q ?? 0);
-    const r = toInteger(source.r ?? source.y, base.r ?? 0);
+    const q = normalized ? normalized.x : toInteger(source.x ?? source.q, base.x ?? base.q ?? 0);
+    const r = normalized ? normalized.y : toInteger(source.y ?? source.r, base.y ?? base.r ?? 0);
     return {
       q,
       r,
-      tileId: source.tileId || source.id || tileId(q, r),
+      tileId: tileId(q, r),
     };
   }
 

@@ -81,6 +81,27 @@ test('WorldMapRenderSnapshot uses epochNowMs for continuous march actors', () =>
   assert.equal(actor.current.q < 1, true);
 });
 
+test('WorldMapRenderSnapshot canonicalizes march target identity through stable axes', () => {
+  const target = WorldMapRenderSnapshot.normalizeMarchTarget({
+    x: 3,
+    y: -2,
+    q: 90,
+    r: 90,
+    tileId: 'legacy-target',
+    pickerOpen: true,
+  });
+
+  assert.deepEqual(target, {
+    q: 3,
+    r: -2,
+    tileId: 'tile_3_-2',
+    pickerOpen: true,
+    known: undefined,
+    terrain: '',
+    terrainLabel: '',
+  });
+});
+
 test('WorldMapRenderSnapshot prefers epochNowMs when nowMs is absent', () => {
   const snapshot = WorldMapRenderSnapshot.createSnapshot({
     tileMapView: createTileMapView(),

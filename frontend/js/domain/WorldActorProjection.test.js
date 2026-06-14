@@ -42,6 +42,29 @@ test('WorldActorProjection keeps returned-home idle missions out of world actors
   assert.deepEqual(actors, []);
 });
 
+test('WorldActorProjection canonicalizes coord keys through stable axes', () => {
+  assert.equal(
+    WorldActorProjection.coordKey({ x: 2, y: -1, q: 99, r: 99, tileId: 'legacy-away' }),
+    'tile_2_-1',
+  );
+});
+
+test('WorldActorProjection treats returned-home idle rows with stale tile ids as garrisoned', () => {
+  const row = {
+    id: 'returned-with-stale-id',
+    status: 'idle',
+    current: { x: 0, y: 0, tileId: 'legacy-away' },
+    position: { x: 0, y: 0, tileId: 'legacy-away' },
+    target: { x: 0, y: 0, tileId: 'legacy-away' },
+    homeOrigin: { x: 0, y: 0, tileId: 'legacy-home' },
+    routeLength: 0,
+  };
+
+  assert.equal(WorldActorProjection.getProjectionKind(row), 'garrisonedAtHome');
+  assert.equal(WorldActorProjection.shouldRenderWorldActor(row), false);
+  assert.equal(WorldActorProjection.projectActorFromProgress(row), null);
+});
+
 test('WorldActorProjection keeps away-from-home idle missions as parked world actors', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({
