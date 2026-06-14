@@ -102,6 +102,7 @@
     if (type === 'boolean') return value;
     if (type === 'function') return '[function]';
     if (type !== 'object') return String(value).slice(0, MAX_STRING_LENGTH);
+    if (typeof value.then === 'function') return 'promise';
     if (seen.has(value)) return '[circular]';
     if (depth >= MAX_DEPTH) return '[max-depth]';
     seen.add(value);

@@ -1631,6 +1631,47 @@ test('CanvasGameShell records tap hit and action result into local operation log
   assert.equal(events.some((event) => event[0] === 'action:end'), true);
 });
 
+test('CanvasGameShell records async tap actions as compact promise state', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, siteId: action.siteId || '' } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    summarizeUiState() {
+      return {};
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'externalWorldCommand', siteId: 'capital' };
+      },
+    },
+    onAction() {
+      return Promise.resolve(true);
+    },
+  });
+
+  try {
+    assert.equal(await shell.handleTap({ x: 60, y: 60 }, {}), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const actionEvent = events.find((event) => event[0] === 'input:tapAction')?.[1];
+  assert.equal(actionEvent.action.type, 'externalWorldCommand');
+  assert.equal(actionEvent.handled, 'promise');
+});
+
 test('CanvasGameShell records async forwarded action failures instead of false success', async () => {
   const previous = global.ClientOperationLog;
   const events = [];

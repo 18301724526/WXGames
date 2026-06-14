@@ -4855,7 +4855,8 @@ Regression:
 - Snapshot drag and refresh frames must pass the renderer's freshly published `lastWorldTileMapContext` into actor rendering before falling back to runtime cache.
 - Runtime tap Promise failures must stay rejected to callers and be observed by `CanvasGameAppInputRouter.observeAsyncActionResult()` for diagnostics.
 - `CanvasGameAppInputRouter` operation-log breadcrumbs must remain compact and serializable; Promise handled values are recorded as `'promise'`, not as runtime objects.
-- `CanvasGameShellInputRouter` follows the same compact handled-value rule for runtime routing and tap-miss logs.
+- `CanvasGameShellInputRouter` follows the same compact handled-value rule for runtime routing, tap-miss logs, and forwarded tap-action logs.
+- `ClientOperationLog.sanitize()` is the final operation-log boundary: thenable values collapse to `'promise'` before persistence/export, preventing renderer, native event, or runtime payload leaks if a call site misses its own compact summary.
 - Do not add world-map runtime compatibility methods back into `CanvasGameAppRenderingRuntime`.
 
 回归 / Regression:

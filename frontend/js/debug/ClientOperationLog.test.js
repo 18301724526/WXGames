@@ -56,6 +56,42 @@ test('ClientOperationLog records local entries without any network transport', (
   assert.deepEqual(persisted.entries.map((entry) => entry.type), ['action:begin', 'api:request']);
 });
 
+test('ClientOperationLog collapses promise-like values before persistence and export', () => {
+  const storage = createStorage();
+  const logger = new ClientOperationLog({
+    runtime: {
+      location: { search: '' },
+      localStorage: { getItem: () => null },
+      sessionStorage: storage,
+      performance: { now: () => 10 },
+      Date: { now: () => Date.parse('2026-06-14T00:00:00.000Z') },
+    },
+    storage,
+    maxEntries: 10,
+    persistLimit: 10,
+    flushIntervalMs: 0,
+  });
+  const thenable = {
+    then() {},
+    runtime: { rendererPayload: 'must-not-leak' },
+    nativeEvent: { type: 'pointerup' },
+  };
+
+  const entry = logger.record('input:tapAction', {
+    handled: thenable,
+    nested: { runtimeHandled: thenable },
+  }, { flush: true });
+
+  assert.equal(entry.detail.handled, 'promise');
+  assert.equal(entry.detail.nested.runtimeHandled, 'promise');
+  const persistedText = storage.dump().clientOperationLog;
+  assert.equal(persistedText.includes('must-not-leak'), false);
+  assert.equal(persistedText.includes('nativeEvent'), false);
+  const exportedText = logger.exportText();
+  assert.equal(exportedText.includes('must-not-leak'), false);
+  assert.equal(exportedText.includes('nativeEvent'), false);
+});
+
 test('ClientOperationLog uploads an explicit diagnostic snapshot through a configured uploader', async () => {
   const uploaded = [];
   const logger = new ClientOperationLog({
