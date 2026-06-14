@@ -54,7 +54,7 @@ function createTerritoryCombatTargets(dependencies = {}) {
     const raw = rawTarget && typeof rawTarget === 'object' ? rawTarget : {};
     const x = toInteger(raw.tile?.q ?? raw.q ?? territory.x, 0);
     const y = toInteger(raw.tile?.r ?? raw.r ?? territory.y, 0);
-    const tileId = raw.tile?.id || raw.tileId || getTileId(x, y);
+    const tileId = getTileId(x, y);
     const mapTerrain = normalizeMapTerrainId(raw.tile?.terrain || raw.mapTerrain || territory.mapTerrain || territory.tileTerrain || territory.worldTerrain)
       || normalizeMapTerrainId(territory.terrain);
     const terrain = getPlanningTerrainForMapTerrain(raw.terrain || territory.terrain || mapTerrain);

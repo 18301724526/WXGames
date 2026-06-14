@@ -157,6 +157,14 @@ test('territory combat targets module owns garrison and battle target contracts'
     knownLeader: true,
     knownSkill: true,
   });
+
+  const staleTileTarget = CombatTargets.normalizeBattleTarget({
+    q: 3,
+    r: -1,
+    tileId: 'stale-raw-tile-id',
+    tile: { id: 'stale-nested-tile-id', q: 3, r: -1, terrain: 'forest' },
+  }, territory, '2026-06-06T00:02:00.000Z');
+  assert.equal(staleTileTarget.tile.id, 'tile_3_-1');
 });
 
 test('server random authority contract owns backend random roll envelopes', () => {

@@ -3204,6 +3204,33 @@ Regression:
 - `node --test backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
 - `npm run test:architecture`
 
+### `backend/services/territory/TerritoryCombatTargets.js`
+
+Status: candidate
+
+Owns:
+
+- battle target and garrison normalization for territory combat/conquest callers
+- coordinate-authoritative battle target tile identity: coordinate-bearing raw targets derive `tile.id` from `q/r`; stale `raw.tile.id` or `raw.tileId` cannot override target coordinates
+- defender leader/garrison snapshot assembly for non-player, non-neutral sites
+
+Public API:
+
+- `createTerritoryCombatTargets(dependencies)`
+- `normalizeBattleTarget(rawTarget, territory, now)`
+- `normalizeGarrison(rawGarrison, territory, now)`
+
+Extension Path:
+
+- New battle-target facts add focused `TerritoryArchitecture` tests first.
+- Map terrain choice stays in `WorldMapService`; conquest resolution stays in `TerritoryConquestMissions`.
+- Do not let caller-supplied tile ids become combat target identity when coordinates are present.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js --test-name-pattern "territory combat targets module"`
+- `npm run test:architecture`
+
 ### `backend/services/territory/TerritoryMilitaryMissions.js`
 
 Status: candidate
