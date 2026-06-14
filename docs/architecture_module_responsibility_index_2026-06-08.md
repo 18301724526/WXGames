@@ -581,6 +581,11 @@ P0 新增公开 API / Public API Added During P0:
 - `renderWorldFog(tileMapContext)`
 - static shader sources: `VERTEX_SHADER_SOURCE`, `FRAGMENT_SHADER_SOURCE`
 
+性能约束 / Performance Constraints:
+
+- Fog render/cache identity must derive tile keys, projection centers, and mask cache signatures through `TileCoord` stable `x/y` semantics; raw `tile.id` / `tileId` values are never accepted as fog cache authority.
+- Mask caching remains compact and frame-local: signatures summarize visible entries, dimensions, frame, viewport, and geometry rather than storing renderer objects or full tile payloads.
+
 扩展方式 / Extension Path:
 
 - 当 `FOG_OF_WAR_ENABLED` 为 false 时默认不使用。

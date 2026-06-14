@@ -327,6 +327,44 @@ test('WorldFogCanvasRenderer reuses mask texture during small camera pans', () =
   assert.equal(calls.some((call) => call[0] === 'uniform2f' && call[1] === 'uMaskOffset' && call[2] === panDelta.x && call[3] === panDelta.y), true);
 });
 
+test('WorldFogCanvasRenderer derives fog cache identity from stable coordinates', () => {
+  const renderer = new WorldFogCanvasRenderer({ width: 390, height: 844, maskSize: 128 });
+  const viewport = { originX: 130, originY: 120, panX: 0, panY: 0, scale: 0.5 };
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const frame = { x: 10, y: 20, width: 300, height: 240 };
+  const dimensions = { width: 128, height: 128 };
+  const stableTile = {
+    id: 'legacy-a',
+    tileId: 'legacy-tile-a',
+    x: 4,
+    y: -2,
+    q: 99,
+    r: 99,
+    discovered: true,
+    visible: true,
+    visibility: 'scouted',
+  };
+  const legacyShapeTile = {
+    id: 'legacy-b',
+    tileId: 'legacy-tile-b',
+    q: 4,
+    r: -2,
+    discovered: true,
+    visible: true,
+    visibility: 'scouted',
+  };
+  const stableEntry = renderer.normalizeEntry(stableTile, viewport, geometry);
+  const legacyEntry = renderer.normalizeEntry(legacyShapeTile, viewport, geometry);
+
+  assert.equal(renderer.getTileKey(stableTile), renderer.getTileKey(legacyShapeTile));
+  assert.deepEqual(stableEntry.center, legacyEntry.center);
+  assert.deepEqual(stableEntry.drawRect, legacyEntry.drawRect);
+  assert.equal(
+    renderer.getMaskCacheKey({}, [stableEntry], viewport, frame, geometry, dimensions),
+    renderer.getMaskCacheKey({}, [legacyEntry], viewport, frame, geometry, dimensions),
+  );
+});
+
 test('WorldFogCanvasRenderer builds a continuous visible-region mask across neighboring tiles', () => {
   const calls = [];
   const gl = createFakeGl(calls);

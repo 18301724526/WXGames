@@ -72,6 +72,36 @@
     }
   `;
 
+  const SharedTileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function toInteger(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.floor(number) : fallback;
+  }
+
+  function normalizeTileCoord(tile = {}) {
+    if (SharedTileCoord?.normalizeCoord) return SharedTileCoord.normalizeCoord(tile);
+    const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+    const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+    return {
+      x: q,
+      y: r,
+      q,
+      r,
+      tileId: `tile_${q}_${r}`,
+    };
+  }
+
   class WorldFogCanvasRenderer {
     constructor(options = {}) {
       this.canvas = options.canvas || null;
@@ -260,17 +290,17 @@
     }
 
     getTileKey(tile = {}) {
-      const q = Math.floor(Number(tile.q ?? tile.x) || 0);
-      const r = Math.floor(Number(tile.r ?? tile.y) || 0);
-      return `${q},${r}`;
+      const coord = normalizeTileCoord(tile);
+      return `${coord.q},${coord.r}`;
     }
 
     getTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
       const scale = Math.max(0.05, Number(viewport.scale) || 1);
       const stepX = Number(geometry.stepX) || (Number(geometry.tileWidth) || 192) * 0.5;
       const stepY = Number(geometry.stepY) || (Number(geometry.tileHeight) || 96) * 0.5;
-      const q = Number(tile.q ?? tile.x) || 0;
-      const r = Number(tile.r ?? tile.y) || 0;
+      const coord = normalizeTileCoord(tile);
+      const q = Number(coord.q) || 0;
+      const r = Number(coord.r) || 0;
       return {
         x: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (q - r) * stepX * scale,
         y: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (q + r) * stepY * scale,
@@ -434,10 +464,11 @@
       const round = (value, precision = 10) => Math.round((Number(value) || 0) * precision) / precision;
       const tileSignatureText = (Array.isArray(entries) ? entries : []).map((entry) => {
         const tile = entry?.tile || {};
+        const coord = normalizeTileCoord(tile);
         return [
-          tile.id || this.getTileKey(tile),
-          tile.q ?? tile.x ?? 0,
-          tile.r ?? tile.y ?? 0,
+          coord.tileId,
+          coord.q,
+          coord.r,
           tile.visibility || '',
           tile.discovered === false ? 0 : 1,
           tile.visible === false ? 0 : 1,
