@@ -15,10 +15,7 @@
     if (WorldMapInputActionMap?.shouldRouteTapThroughWorldMapRuntime) {
       return WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime(action);
     }
-    if (!action) return true;
-    if (action.disabled || action.type === 'blockCanvasModal') return false;
-    return action.type === 'worldMapDrag'
-      || (action.type === 'selectWorldMarchTarget' && action.background);
+    return !action;
   }
 
   function summarizeHandledForOperationLog(handled) {

@@ -2487,6 +2487,7 @@ P0 新增公开 API / Public API Added During P0:
 - 世界地图输入到动作的纯映射 / input-to-action mapping
 - hit target 反向命中优先级：foreground action 优先，background action 只做兜底
 - 过滤 world-map runtime 允许处理的 action types
+- single authority for H5 Shell and minigame/compat App world-map tap routing; Shell/App routers must not duplicate these routing rules
 - 将地图背景点击通过 `screenPointToAxialTile` 推断为 `selectWorldMarchTarget`
 - 生成稳定 action payload，不直接修改游戏状态、不调 renderer、不调 backend
 
@@ -2521,7 +2522,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `node --test frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapInputAuthority.contract.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/config/ConfigRegistryContract.js`
@@ -6693,7 +6694,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Register compatibility static delegates in `UIStatePresenterDelegates`.
 - Do not add method bodies back into this facade.
 
-### `frontend/js/platform/WorldMapRuntime.js` - 561 lines
+### `frontend/js/platform/WorldMapRuntime.js` - 605 lines
 
 状态 / Status: candidate facade
 
@@ -6705,6 +6706,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - hit target sync
 - render requests
 - world-map input action map integration
+- fail-closed tap resolution when `WorldMapInputActionMap` is unavailable; renderer hit targets remain input evidence, not dispatch fallback authority
 - `dispatchAction()` result preservation for routed tap actions, including Promise rejection from shell/app action dispatch
 - monotonic world-map input sequence assignment before delegating compact intent creation to `WorldMapInputIntent`
 - HUD-to-world-layer point conversion for background/fog march target inference; this adds physical layer padding and removes temporary drag-layer transform before calling `WorldMapInputActionMap`

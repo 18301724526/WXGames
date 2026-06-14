@@ -477,7 +477,7 @@
         });
         if (action) return action;
       }
-      return this.getHitTarget(point);
+      return null;
     }
 
     createTapIntent(point = {}, action = null, options = {}) {
