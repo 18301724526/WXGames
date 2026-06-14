@@ -64,6 +64,93 @@ test('WorldMapRuntimeBakePolicy fallback signature includes world explorer state
   assert.equal(readySignature.includes('site_1_0'), true);
 });
 
+test('WorldMapRuntimeBakePolicy fallback signature canonicalizes stable x/y and legacy q/r map shapes', () => {
+  const stableShape = {
+    territoryState: {
+      worldMap: {
+        version: 1,
+        seed: 'fallback-signature-seed',
+        tiles: [
+          { id: 'legacy-renderer-id', x: 2, y: -1, q: 99, r: 99, terrain: 'forest', siteId: 'site_2_-1' },
+        ],
+      },
+      territories: [
+        { id: 'site_2_-1', x: 2, y: -1, type: 'town', owner: 'neutral', status: 'discovered', cityName: 'Stable City' },
+      ],
+      scoutMissions: [{
+        id: 'scout-stable',
+        status: 'active',
+        position: { x: 2, y: -1, tileId: 'legacy-position' },
+        route: [{ x: 2, y: -1, step: 1, tileId: 'legacy-route', revealed: true }],
+        revealArea: [{ x: 3, y: -1, step: 2, tileId: 'legacy-reveal', revealed: false }],
+        revealedTileIds: ['tile_2_-1'],
+        actionPointsRemaining: 1,
+      }],
+    },
+    worldExplorerState: {
+      activeMission: {
+        id: 'explore-stable',
+        status: 'active',
+        position: { x: 4, y: -2, tileId: 'legacy-position' },
+        route: [{ x: 4, y: -2, step: 1, tileId: 'legacy-route', revealed: true }],
+        plannedTiles: [{ id: 'legacy-planned-id', x: 4, y: -2, terrain: 'hills' }],
+        plannedSites: [{
+          tileId: 'legacy-site-tile',
+          siteId: 'site_4_-2',
+          materialized: true,
+          site: { id: 'site_4_-2', x: 4, y: -2, type: 'town', owner: 'neutral', status: 'discovered' },
+        }],
+        revealedTileIds: ['tile_4_-2'],
+      },
+      idleMissions: [],
+    },
+  };
+  const legacyShape = {
+    territoryState: {
+      worldMap: {
+        version: 1,
+        seed: 'fallback-signature-seed',
+        tiles: [
+          { q: 2, r: -1, terrain: 'forest', siteId: 'site_2_-1' },
+        ],
+      },
+      territories: [
+        { id: 'site_2_-1', q: 2, r: -1, type: 'town', owner: 'neutral', status: 'discovered', cityName: 'Stable City' },
+      ],
+      scoutMissions: [{
+        id: 'scout-stable',
+        status: 'active',
+        position: { q: 2, r: -1 },
+        route: [{ q: 2, r: -1, step: 1, revealed: true }],
+        revealArea: [{ q: 3, r: -1, step: 2, revealed: false }],
+        revealedTileIds: ['tile_2_-1'],
+        actionPointsRemaining: 1,
+      }],
+    },
+    worldExplorerState: {
+      activeMission: {
+        id: 'explore-stable',
+        status: 'active',
+        position: { q: 4, r: -2 },
+        route: [{ q: 4, r: -2, step: 1, revealed: true }],
+        plannedTiles: [{ q: 4, r: -2, terrain: 'hills' }],
+        plannedSites: [{
+          siteId: 'site_4_-2',
+          materialized: true,
+          site: { id: 'site_4_-2', q: 4, r: -2, type: 'town', owner: 'neutral', status: 'discovered' },
+        }],
+        revealedTileIds: ['tile_4_-2'],
+      },
+      idleMissions: [],
+    },
+  };
+
+  assert.equal(
+    WorldMapRuntimeBakePolicy.getMapDataSignature(stableShape),
+    WorldMapRuntimeBakePolicy.getMapDataSignature(legacyShape),
+  );
+});
+
 test('WorldMapRuntimeBakePolicy reports sync and dirty states without mutating runtime', () => {
   assert.deepEqual(WorldMapRuntimeBakePolicy.getSignatureSyncResult('', 'abc'), {
     signature: 'abc',

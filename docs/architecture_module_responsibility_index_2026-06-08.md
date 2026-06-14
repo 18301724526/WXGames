@@ -4995,6 +4995,7 @@ Regression:
 
 - pure world-map data signature generation for runtime bake decisions
 - presenter-backed signature delegation with fallback compact serialization
+- `TileCoord`-backed fallback signature summaries for tiles, sites, scout routes, planned tiles/sites, and explorer missions when the presenter is unavailable
 - signature sync result derivation without mutating runtime state
 - pure bake-dirty checks from runtime state plus current map data
 
@@ -5003,10 +5004,16 @@ Regression:
 - `WorldMapRuntimeBakePolicy.getMapDataSignature(state, options)`
 - `WorldMapRuntimeBakePolicy.getSignatureSyncResult(previousSignature, nextSignature)`
 - `WorldMapRuntimeBakePolicy.isMapBakeDirty(runtimeState, state, options)`
+- `WorldMapRuntimeBakePolicy.normalizeCoord(coord, fallback)`
+- `WorldMapRuntimeBakePolicy.summarizeTile(tile)`
+- `WorldMapRuntimeBakePolicy.summarizeSite(site)`
+- `WorldMapRuntimeBakePolicy.summarizeMission(mission)`
+- `WorldMapRuntimeBakePolicy.summarizeExplorerMission(mission)`
 
 扩展方式 / Extension Path:
 
 - 新 map-bake signature fields or bake-dirty policy first extend this module with focused tests。
+- Fallback signatures must consume `TileCoord`; do not reintroduce raw `id/q/r/x/y/tileId` JSON serialization here.
 - Runtime side effects such as logging, renderer cache invalidation, and camera/baked-layer state stay in `WorldMapRuntime`.
 - Renderer cache key policy stays in renderer/cache modules, not this runtime policy.
 
@@ -6974,3 +6981,4 @@ Recommended first split sequence:
 | 2026-06-14 | Tightened `CommandReplayCorrelation` request-id matching: when an API request id exists, local client operation-log entries must match that exact id and may not fall back to the latest input entry, preventing high-frequency or multiplayer replay audits from guessing by time. |
 | 2026-06-14 | Hardened `WorldMapInputIntent.toSerializable()` as a whitelist boundary: externally supplied intent-like objects are re-summarized before export so renderer, native event, tileMapView, and thenable payloads cannot enter input evidence. |
 | 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |
+| 2026-06-14 | Hardened runtime map-bake fallback signatures: `WorldMapRuntimeBakePolicy` now consumes `TileCoord` for fallback compact summaries when the presenter is unavailable, so stable `x/y` and legacy `q/r` shapes produce the same bake signature. |
