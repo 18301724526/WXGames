@@ -148,8 +148,8 @@ function createTerritoryMilitaryMissions(dependencies = {}) {
       const stepArea = revealArea.filter((coord) => coord.step === step.step && !coord.revealed);
       const revealTargets = stepArea.length || !strictRevealArea ? (stepArea.length ? stepArea : [step]) : [];
       const revealedTiles = WorldMapService.revealScoutArea(gameState, revealTargets, now);
-      const tile = revealedTiles.find((item) => item.q === step.q && item.r === step.r) || revealedTiles[0] || null;
-      step.tileId = tile?.id || step.tileId || WorldMapService.getTileId(step.q, step.r);
+      const revealedTileIds = revealedTiles.map((item) => WorldMapService.getTileId(item.q, item.r));
+      step.tileId = WorldMapService.getTileId(step.q, step.r);
       step.revealed = true;
       for (const coord of stepArea) {
         coord.revealed = true;
@@ -157,7 +157,7 @@ function createTerritoryMilitaryMissions(dependencies = {}) {
       }
       mission.revealedTileIds = Array.from(new Set([
         ...mission.revealedTileIds,
-        ...revealedTiles.map((item) => item.id),
+        ...revealedTileIds,
       ]));
       mission.actionPointsRemaining = Math.max(0, mission.actionPointsRemaining - 1);
       nextStepAt += SCOUT_STEP_DURATION_MS;

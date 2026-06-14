@@ -3204,6 +3204,48 @@ Regression:
 - `node --test backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
 - `npm run test:architecture`
 
+### `backend/services/territory/TerritoryMilitaryMissions.js`
+
+Status: candidate
+
+Owns:
+
+- territory military/scout mission selectors, soldier availability calculation, and expedition allocation
+- scout mission advancement, readiness updates, and active scout mission limit enforcement
+- coordinate-authoritative legacy scout advancement writes: newly revealed route step `tileId`, reveal-area `tileId`, appended `revealedTileIds`, and `recordScoutTrail()` tile ids derive from `q/r`; stale stored route `tileId` or `WorldMapService.revealScoutArea()` tile `id` cannot override coordinates during advancement
+
+Public API:
+
+- `createTerritoryMilitaryMissions(dependencies)`
+- `advanceScoutMission(gameState, mission, now, randomSource)`
+- `allocateSoldiersForMission(gameState, requiredSoldiers)`
+- `countActiveScoutMissions(gameState)`
+- `countSoldiersOnMission(gameState, cityId)`
+- `countTotalSoldiersOnMission(gameState)`
+- `enforceScoutMissionLimit(gameState)`
+- `getActiveMissionForTerritory(gameState, territoryId)`
+- `getActiveScoutMission(gameState)`
+- `getAvailableSoldiers(gameState)`
+- `getAvailableSoldiersForCity(gameState, cityId)`
+- `getCitySoldierEntries(gameState)`
+- `getMissionKind(mission)`
+- `getMissionSoldierAllocations(mission)`
+- `getScoutMissions(gameState)`
+- `getTotalSoldiers(gameState)`
+- `updateMissionReadiness(gameState, now, randomSource)`
+
+Extension Path:
+
+- Keep scout route/reveal-area construction in `TerritoryScoutAreas`.
+- Keep persisted mission-row shape normalization in `TerritoryStateNormalizer`.
+- Keep scout outcome rolls and generated site/report payloads in `TerritoryScoutResults`.
+- New scout advancement writes must add focused tests proving coordinate-derived tile identity before changing mission mutation or scout trail recording.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/territory/TerritoryStateNormalizer.js`
 
 Status: candidate

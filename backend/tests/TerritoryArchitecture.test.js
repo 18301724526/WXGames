@@ -563,6 +563,57 @@ test('territory military missions module advances scout reveal steps and enforce
   assert.deepEqual(limitState.warMissions.map((item) => item.id), ['old', 'middle', 'ready']);
 });
 
+test('territory military scout advancement derives revealed tile identity from coordinates', () => {
+  const trails = [];
+  const MilitaryMissions = createTerritoryMilitaryMissions({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      revealScoutArea: (_gameState, targets) => targets.map((coord) => ({
+        id: `stale-revealed-${coord.q}-${coord.r}`,
+        q: coord.q,
+        r: coord.r,
+        terrain: 'plains',
+      })),
+      recordScoutTrail: (_gameState, mission, tileIds, completed) => {
+        trails.push({ missionId: mission.id, tileIds: [...tileIds], completed });
+      },
+    },
+    ensureMissionRevealArea: (_gameState, mission) => mission.revealArea || [],
+    isDirectionalScoutAreaMission: (mission) => mission.revealAreaSource === 'directional-route-v1',
+  });
+  const mission = {
+    id: 'scout-stale-advance',
+    kind: 'scout',
+    status: 'active',
+    startedAt: '2026-06-06T00:00:00.000Z',
+    nextStepAt: '2026-06-06T00:00:00.000Z',
+    completesAt: '2026-06-06T00:02:00.000Z',
+    actionPoints: 1,
+    actionPointsRemaining: 1,
+    route: [
+      { q: 2, r: -1, step: 1, tileId: 'stale-route-tile', revealed: false },
+    ],
+    revealAreaSource: 'directional-route-v1',
+    revealArea: [
+      { q: 2, r: -1, step: 1, kind: 'main', tileId: 'stale-area-main', revealed: false },
+      { q: 3, r: -1, step: 1, kind: 'branch', tileId: 'stale-area-branch', revealed: false },
+    ],
+    revealedTileIds: ['legacy-revealed'],
+  };
+  const gameState = { warMissions: [mission] };
+
+  MilitaryMissions.updateMissionReadiness(gameState, new Date('2026-06-06T00:00:01.000Z'));
+
+  assert.equal(mission.route[0].tileId, 'tile_2_-1');
+  assert.deepEqual(mission.revealArea.map((coord) => coord.tileId), ['tile_2_-1', 'tile_3_-1']);
+  assert.deepEqual(mission.revealedTileIds, ['legacy-revealed', 'tile_2_-1', 'tile_3_-1']);
+  assert.deepEqual(trails.at(-1), {
+    missionId: 'scout-stale-advance',
+    tileIds: ['legacy-revealed', 'tile_2_-1', 'tile_3_-1'],
+    completed: true,
+  });
+});
+
 test('territory scout planner module owns scout origins and frontier target scoring', () => {
   const Planner = createTerritoryScoutPlanner({
     WorldMapService: {
