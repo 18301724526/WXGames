@@ -1,4 +1,26 @@
 (function (global) {
+  const WorldMapInputActionMap = (() => {
+    if (global.WorldMapInputActionMap) return global.WorldMapInputActionMap;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldMapInputActionMap');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function shouldRouteTapThroughWorldMapRuntime(action = null) {
+    if (WorldMapInputActionMap?.shouldRouteTapThroughWorldMapRuntime) {
+      return WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime(action);
+    }
+    if (!action) return true;
+    if (action.disabled || action.type === 'blockCanvasModal') return false;
+    return action.type === 'worldMapDrag'
+      || (action.type === 'selectWorldMarchTarget' && action.background);
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -369,15 +391,17 @@ handleTap(point, event) {
         if (handled) this.stopCanvasEvent(event);
         return handled;
       }
-      if (action?.type === 'worldMapDrag') {
+      if (shouldRouteTapThroughWorldMapRuntime(action)) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-        global.ClientOperationLog?.record?.('input:tapRuntime', {
+        global.ClientOperationLog?.record?.(action ? 'input:tapRuntime' : 'input:tapMiss', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
-          actionType: action.type,
+          actionType: action?.type || '',
+          action: global.ClientOperationLog?.summarizeAction?.(action),
           runtimeHandled,
         }, { flush: true });
         if (runtimeHandled) return runtimeHandled;
+        if (action?.type === 'selectWorldMarchTarget' && action.background) return false;
         const closed = this.closeWorldSiteHud({ direct: true });
         if (closed) {
           if (event?.preventDefault) event.preventDefault();
@@ -385,16 +409,6 @@ handleTap(point, event) {
           return true;
         }
         return false;
-      }
-      if (action?.type === 'selectWorldMarchTarget' && action.background) {
-        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
-        this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-        global.ClientOperationLog?.record?.('input:tapRuntime', {
-          point: global.ClientOperationLog?.summarizePoint?.(point),
-          action: global.ClientOperationLog?.summarizeAction?.(action),
-          runtimeHandled,
-        }, { flush: true });
-        if (runtimeHandled) return runtimeHandled;
       }
       if (action?.disabled) {
         global.ClientOperationLog?.record?.('input:tapDisabled', {

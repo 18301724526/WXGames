@@ -97,6 +97,13 @@
       || (action.type === 'selectWorldMarchTarget' && action.background);
   }
 
+  function shouldRouteTapThroughWorldMapRuntime(action = null) {
+    if (!action) return true;
+    if (action.disabled || action.type === 'blockCanvasModal') return false;
+    return action.type === 'worldMapDrag'
+      || (action.type === 'selectWorldMarchTarget' && action.background);
+  }
+
   function getTopmostForegroundAction(point = {}, targets = [], predicate = null) {
     for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
       const target = targets[index];
@@ -240,6 +247,7 @@
     normalizeHitTarget,
     normalizeHitTargets,
     resolveTapAction,
+    shouldRouteTapThroughWorldMapRuntime,
   };
 
   global.WorldMapInputActionMap = api;

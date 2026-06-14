@@ -1,4 +1,26 @@
 (function (global) {
+  const WorldMapInputActionMap = (() => {
+    if (global.WorldMapInputActionMap) return global.WorldMapInputActionMap;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldMapInputActionMap');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function shouldRouteTapThroughWorldMapRuntime(action = null) {
+    if (WorldMapInputActionMap?.shouldRouteTapThroughWorldMapRuntime) {
+      return WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime(action);
+    }
+    if (!action) return true;
+    if (action.disabled || action.type === 'blockCanvasModal') return false;
+    return action.type === 'worldMapDrag'
+      || (action.type === 'selectWorldMarchTarget' && action.background);
+  }
+
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -87,9 +109,10 @@
               return this.actionController?.handle?.(action);
             }
             if (action?.disabled) return true;
-            if (!action) {
+            if (shouldRouteTapThroughWorldMapRuntime(action)) {
               const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
               this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+              if (handled) return handled;
               return handled;
             }
             if (action.type === 'showFamousSkillTooltip') {

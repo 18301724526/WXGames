@@ -699,6 +699,52 @@ test('CanvasGameShell routes background march tile hit targets through runtime f
   ]);
 });
 
+test('CanvasGameShell does not dispatch renderer background march targets when runtime misses', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        calls.push(['rendererHit', point.x, point.y]);
+        return { type: 'selectWorldMarchTarget', targetQ: 2, targetR: 2, background: true };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.targetQ, action.targetR]);
+        return true;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_2_2', q: 2, r: 2 }] } },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point, event) {
+      calls.push(['runtimeTap', point.x, point.y, Boolean(event)]);
+      return false;
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(shell.handleTap({ x: 195, y: 498.58 }, {}), false);
+  assert.deepEqual(calls, [
+    ['rendererHit', 195, 498.58],
+    ['runtimeTap', 195, 498.58, true],
+  ]);
+});
+
 test('CanvasGameShell routes world map HUD taps before closing existing map HUD state', () => {
   const calls = [];
   const shell = new CanvasGameShell({

@@ -213,3 +213,147 @@ test('CanvasGameApp renders territory site selection through map-home city HUD',
   assert.equal(app.mapHomeActive, true);
   assert.equal(shell.mapHomeActive, true);
 });
+
+test('CanvasGameApp routes world map drag taps through runtime before action dispatch', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_1_1', q: 1, r: 1 }] } },
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.renderer = {
+    getHitTarget(point) {
+      calls.push(['rendererHit', point.x, point.y]);
+      return { type: 'worldMapDrag', background: true };
+    },
+  };
+  app.actionController = {
+    handle(action) {
+      calls.push(['handle', action.type, action.targetQ, action.targetR]);
+      return true;
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point) {
+      calls.push(['runtimeTap', point.x, point.y]);
+      return app.actionController.handle({ type: 'selectWorldMarchTarget', targetQ: 1, targetR: 1 });
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(await app.handleTap({ x: 200, y: 360 }), true);
+  assert.deepEqual(calls, [
+    ['rendererHit', 200, 360],
+    ['runtimeTap', 200, 360],
+    ['handle', 'selectWorldMarchTarget', 1, 1],
+  ]);
+});
+
+test('CanvasGameApp recomputes renderer background march targets through runtime', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_2_2', q: 2, r: 2 }] } },
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.renderer = {
+    getHitTarget(point) {
+      calls.push(['rendererHit', point.x, point.y]);
+      return {
+        type: 'selectWorldMarchTarget',
+        targetQ: 2,
+        targetR: 2,
+        background: true,
+      };
+    },
+  };
+  app.actionController = {
+    handle(action) {
+      calls.push(['handle', action.type, action.targetQ, action.targetR]);
+      return true;
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point) {
+      calls.push(['runtimeTap', point.x, point.y]);
+      return app.actionController.handle({ type: 'selectWorldMarchTarget', targetQ: 3, targetR: 3 });
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(await app.handleTap({ x: 195, y: 498.58 }), true);
+  assert.deepEqual(calls, [
+    ['rendererHit', 195, 498.58],
+    ['runtimeTap', 195, 498.58],
+    ['handle', 'selectWorldMarchTarget', 3, 3],
+  ]);
+});
+
+test('CanvasGameApp does not dispatch renderer background world-map taps when runtime misses', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_2_2', q: 2, r: 2 }] } },
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.renderer = {
+    getHitTarget(point) {
+      calls.push(['rendererHit', point.x, point.y]);
+      return {
+        type: 'selectWorldMarchTarget',
+        targetQ: 2,
+        targetR: 2,
+        background: true,
+      };
+    },
+  };
+  app.actionController = {
+    handle(action) {
+      calls.push(['handle', action.type, action.targetQ, action.targetR]);
+      return true;
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point) {
+      calls.push(['runtimeTap', point.x, point.y]);
+      return false;
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(await app.handleTap({ x: 195, y: 498.58 }), false);
+  assert.deepEqual(calls, [
+    ['rendererHit', 195, 498.58],
+    ['runtimeTap', 195, 498.58],
+  ]);
+});

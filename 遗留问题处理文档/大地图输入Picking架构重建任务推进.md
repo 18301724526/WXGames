@@ -88,12 +88,19 @@
 - 删除旧雷达 fallback 链路：`WorldRadarPresenter` 文件、UIStatePresenter delegate、`worldRadarDrag` 输入动作、map-home 缺 tileMap 时回退 `renderMilitaryWorldView()` 的分支。缺 tileMap 只渲染空/加载态，不再复活第二套世界 UI。
 - 新增 `scripts/check-retired-legacy-code.js`，并接入 `scripts/run-architecture-smoke.js`。它只扫描活动生产源码，拦截 `HomeCanvasRenderer`、`openTalentPolicy`、退役 scout-report action、旧 world-map renderer API、`WorldRadarPresenter` 和 `worldRadarDrag`；测试与文档中的退役说明不作为运行入口。
 
-### 第八阶段：门禁
+### 第九阶段：H5 / 小程序输入入口统一
+
+- `WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime()` 是 H5 Shell 与 minigame/compat App 共用的 world-map tap 路由判定。
+- `CanvasGameShellInputRouter` 与 `CanvasGameAppInputRouter` 都必须把空命中、`worldMapDrag`、renderer 背景 `selectWorldMarchTarget` 交给 `WorldMapRuntime`，由当前 camera/context/picking snapshot 重算。
+- 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。
+- `CanvasGameApp.test.js` 已纳入 `scripts/run-architecture-smoke.js`，小程序/兼容入口不再游离在 H5 Shell 门禁之外。
+
+### 第十阶段：门禁
 
 必须通过：
 
 - `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapPerformanceBudget.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
-- `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js`
+- `node --test frontend/js/platform/CanvasGameApp.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js`
 - `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/GameActionRegistry.test.js backend/tests/WorldExplorerService.test.js backend/tests/LogService.test.js backend/tests/CommandReplayCorrelation.test.js backend/tests/PerformanceCapacityBudget.test.js`
 - `node scripts/check-frontend-script-manifest.js`
 - `node scripts/run-architecture-smoke.js`

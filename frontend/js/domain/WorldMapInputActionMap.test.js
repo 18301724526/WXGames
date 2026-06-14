@@ -130,3 +130,19 @@ test('WorldMapInputActionMap resolves tap action through action map contract', (
   assert.equal(action.targetQ, 1);
   assert.equal(action.targetR, 0);
 });
+
+test('WorldMapInputActionMap shares the runtime-routing predicate for app and shell input', () => {
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime(null), true);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'worldMapDrag', background: true }), true);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({
+    type: 'selectWorldMarchTarget',
+    background: true,
+  }), true);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({
+    type: 'selectWorldMarchTarget',
+    background: false,
+  }), false);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'openWorldSite' }), false);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'blockCanvasModal' }), false);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'worldMapDrag', disabled: true }), false);
+});
