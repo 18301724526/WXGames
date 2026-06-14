@@ -43,7 +43,7 @@ function createTerritoryScoutResults(dependencies = {}) {
           r,
           step: Math.max(0, toInteger(coord.step, 0)),
           kind: coord.kind === 'branch' ? 'branch' : 'main',
-          tileId: coord.tileId || WorldMapService.getTileId(q, r),
+          tileId: WorldMapService.getTileId(q, r),
           revealed: coord.revealed !== false,
         };
       });

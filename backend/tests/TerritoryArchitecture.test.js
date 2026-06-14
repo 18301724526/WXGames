@@ -765,8 +765,8 @@ test('territory scout results module owns scout outcomes reports and generated s
     scoutDistance: 2,
     revealAreaSource: 'directional-route-v1',
     revealArea: [
-      { q: 2, r: 0, step: 1, kind: 'main', revealed: true },
-      { q: 3, r: 0, step: 2, kind: 'branch', revealed: false },
+      { q: 2, r: 0, step: 1, kind: 'main', tileId: 'stale-result-main', revealed: true },
+      { q: 3, r: 0, step: 2, kind: 'branch', tileId: 'stale-result-branch', revealed: false },
     ],
     revealedTileIds: ['tile_3_0'],
   };
@@ -795,6 +795,7 @@ test('territory scout results module owns scout outcomes reports and generated s
   assert.equal(emptyReport.tileId, 'tile_2_0');
   assert.equal(emptyReport.revealArea.length, 2);
   assert.equal(emptyReport.revealArea[0].tileId, 'tile_2_0');
+  assert.deepEqual(emptyReport.revealArea.map((coord) => coord.tileId), ['tile_2_0', 'tile_3_0']);
 
   const created = Results.createSiteFromScout({
     scoutState: { neutralSiteStreak: 3 },
