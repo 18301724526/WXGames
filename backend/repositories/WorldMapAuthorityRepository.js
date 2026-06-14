@@ -64,7 +64,7 @@ function createGlobalTilePayload(tile = {}) {
   const canonicalId = getCanonicalId(tile);
   const payload = {
     ...tile,
-    id: tile.id || WorldMapService.getTileId(q, r),
+    id: WorldMapService.getTileId(q, r),
     q,
     r,
     x: tile.x ?? q,

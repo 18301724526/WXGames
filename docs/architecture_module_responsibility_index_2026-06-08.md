@@ -4125,6 +4125,7 @@ Owns:
 
 - authoritative global world-map persistence for materialized terrain
 - `global_world_chunks` and `global_world_tiles` schema, indexed by canonical tile/chunk identity
+- coordinate-authoritative global tile payload identity: stored tile JSON `id` derives from display `q/r`; `canonicalId` remains the wrapped global key
 - `player_world_visibility` schema for per-player visibility, discovered/scouted timestamps, and intel
 - first-writer-wins terrain commits for real explored/revealed tiles
 - hydration of player-visible `worldMap.tiles` from global authority plus visibility rows
@@ -4150,6 +4151,7 @@ Performance Constraints:
 Extension Path:
 
 - New world persistence semantics extend this repository with focused repository tests.
+- New global tile payload fields must not preserve caller-supplied `tile.id` when coordinates exist; public display identity is derived from `q/r`.
 - Future distributed/chunk services may replace these tables behind the same authority/visibility contract.
 - Do not put terrain generation rules here; generation belongs in `WorldMapTiles` / `WorldMapGenerationAuthority` and the first-explorer context comes from explorer services.
 

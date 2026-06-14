@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const Database = require('better-sqlite3');
 
 const GameStateRepository = require('../repositories/GameStateRepository');
+const { createGlobalTilePayload } = require('../repositories/WorldMapAuthorityRepository');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 const WorldMapService = require('../services/WorldMapService');
@@ -218,6 +219,50 @@ test('GameStateRepository commits first explored terrain globally and later expl
     assert.equal(JSON.parse(globalRows[0].generationContext).direction, 'east');
     assert.equal(firstReloadedTile.terrain, 'forest');
     assert.equal(secondReloadedTile.terrain, 'forest');
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository derives global world tile payload identity from coordinates', () => {
+  const payload = createGlobalTilePayload({
+    id: 'legacy-global-tile-id',
+    q: 6,
+    r: -4,
+    terrain: 'forest',
+    visibility: 'scouted',
+  });
+
+  assert.equal(payload.id, 'tile_6_-4');
+  assert.equal(payload.q, 6);
+  assert.equal(payload.r, -4);
+
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const state = GameStateNormalizer.createInitialGameState('global-payload-coordinate-id');
+    state.worldMap.tiles = [{
+      id: 'legacy-global-tile-id',
+      q: 6,
+      r: -4,
+      terrain: 'forest',
+      visibility: 'scouted',
+    }];
+
+    repository.save(state);
+
+    const row = db.prepare('SELECT tile FROM global_world_tiles WHERE canonicalId = ?')
+      .get(WorldMapService.getCanonicalTileId(6, -4));
+    const storedTile = JSON.parse(row.tile);
+    const reloaded = repository.findByPlayerId(state.playerId);
+
+    assert.equal(storedTile.id, 'tile_6_-4');
+    assert.equal(storedTile.q, 6);
+    assert.equal(storedTile.r, -4);
+    assert.equal(reloaded.worldMap.tiles.some((tile) => tile.id === 'legacy-global-tile-id'), false);
+    assert.equal(reloaded.worldMap.tiles.some((tile) => tile.id === 'tile_6_-4'), true);
   } finally {
     db.close();
   }
