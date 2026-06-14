@@ -38,6 +38,24 @@
       return this.host?.constructor?.getTileMapAssetManifest?.() || {};
     }
 
+    normalizeTileCoord(tile = {}) {
+      const helper = this.getTileMapGeometry();
+      if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
+      const toInteger = (value, fallback = 0) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? Math.floor(number) : fallback;
+      };
+      const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+      const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+      return {
+        x: q,
+        y: r,
+        q,
+        r,
+        tileId: `tile_${q}_${r}`,
+      };
+    }
+
     getWorldTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
       const layoutModel = this.getWorldMapLayoutModel();
       if (layoutModel?.getWorldTileScreenCenter) {
@@ -147,7 +165,8 @@
       };
       for (let index = 0; index < tiles.length; index += 1) {
         const tile = tiles[index] || {};
-        push(tile.id || '');
+        const coord = this.normalizeTileCoord(tile);
+        push(coord.tileId);
         push(tile.terrain || '');
         push(tile.terrainAsset || '');
         push(tile.water?.kind || '');

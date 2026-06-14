@@ -150,6 +150,66 @@ test('WorldMapLayoutModel exposes stable cache keys without serializing tile pay
   assert.equal(renderKey.length < 120, true);
 });
 
+test('WorldMapLayoutModel derives cache identity from stable tile coordinates', () => {
+  const viewport = { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 };
+  const frame = { x: 0, y: 0, width: 300, height: 300 };
+  const stableTileMapView = {
+    signature: 'same-signature',
+    version: '1',
+    seed: 'layout-test',
+    tiles: [{
+      id: 'legacy-a',
+      tileId: 'legacy-tile-a',
+      x: 4,
+      y: -2,
+      q: 99,
+      r: 99,
+      terrain: 'plains',
+      discovered: true,
+    }],
+  };
+  const legacyShapeTileMapView = {
+    ...stableTileMapView,
+    tiles: [{
+      ...stableTileMapView.tiles[0],
+      id: 'legacy-b',
+      tileId: 'legacy-tile-b',
+      q: 4,
+      r: -2,
+    }],
+  };
+  delete legacyShapeTileMapView.tiles[0].x;
+  delete legacyShapeTileMapView.tiles[0].y;
+  const movedTileMapView = {
+    ...stableTileMapView,
+    tiles: [{
+      ...stableTileMapView.tiles[0],
+      id: 'legacy-a',
+      x: 5,
+      y: -2,
+      q: 99,
+      r: 99,
+    }],
+  };
+
+  assert.equal(
+    WorldMapLayoutModel.getWorldTileEntitySignature(stableTileMapView),
+    WorldMapLayoutModel.getWorldTileEntitySignature(legacyShapeTileMapView),
+  );
+  assert.equal(
+    WorldMapLayoutModel.getWorldTileLocalEntriesCacheKey(stableTileMapView, viewport, geometry),
+    WorldMapLayoutModel.getWorldTileLocalEntriesCacheKey(legacyShapeTileMapView, viewport, geometry),
+  );
+  assert.equal(
+    WorldMapLayoutModel.getWorldTileRenderEntriesCacheKey(stableTileMapView, viewport, frame),
+    WorldMapLayoutModel.getWorldTileRenderEntriesCacheKey(legacyShapeTileMapView, viewport, frame),
+  );
+  assert.notEqual(
+    WorldMapLayoutModel.getWorldTileEntitySignature(stableTileMapView),
+    WorldMapLayoutModel.getWorldTileEntitySignature(movedTileMapView),
+  );
+});
+
 test('WorldMapLayoutModel cache keys change when tile site ownership changes without tile count changes', () => {
   const viewport = { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 };
   const frame = { x: 0, y: 0, width: 300, height: 300 };

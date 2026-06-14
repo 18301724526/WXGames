@@ -121,6 +121,55 @@ test('WorldMapLayoutFacade caches local and visible render entries by layout mod
   assert.equal(visibleA.every((entry) => entry.inView), true);
 });
 
+test('WorldMapLayoutFacade fallback derives cache identity from stable tile coordinates', () => {
+  const host = createHost({
+    constructor: {
+      getWorldMapLayoutModel() {
+        return null;
+      },
+      getTileMapGeometry() {
+        return global.TileMapGeometry;
+      },
+      getTileMapAssetManifest() {
+        return {};
+      },
+    },
+  });
+  const renderer = new WorldMapLayoutFacade({ host });
+  const stableTileMapView = {
+    signature: 'same-signature',
+    version: '1',
+    seed: 'layout-facade-test',
+    tiles: [{
+      id: 'legacy-a',
+      tileId: 'legacy-tile-a',
+      x: 4,
+      y: -2,
+      q: 99,
+      r: 99,
+      terrain: 'forest',
+      discovered: true,
+    }],
+  };
+  const legacyShapeTileMapView = {
+    ...stableTileMapView,
+    tiles: [{
+      ...stableTileMapView.tiles[0],
+      id: 'legacy-b',
+      tileId: 'legacy-tile-b',
+      q: 4,
+      r: -2,
+    }],
+  };
+  delete legacyShapeTileMapView.tiles[0].x;
+  delete legacyShapeTileMapView.tiles[0].y;
+
+  assert.equal(
+    renderer.getWorldTileEntitySignature(stableTileMapView),
+    renderer.getWorldTileEntitySignature(legacyShapeTileMapView),
+  );
+});
+
 test('WorldMapLayoutFacade creates static cache, chunk, and drag layouts', () => {
   const renderer = new WorldMapLayoutFacade({ host: createHost() });
   const tileMapView = createTileMapView(40);

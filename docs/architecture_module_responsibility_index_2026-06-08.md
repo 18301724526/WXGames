@@ -1260,6 +1260,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - No canvas, DOM, WebGL, renderer instance, runtime object, or gameplay mutation.
 - Cache keys use map signature/version/seed/count/rounded viewport fields; they do not serialize tile payloads.
+- Layout entity signatures derive tile identity through stable `x/y` semantics, accepting legacy `q/r` as input while never using raw `tile.id` / `tileId` as cache authority.
 - Entry generation uses indexed loops and can receive precomputed `localEntries` to avoid duplicate projection work.
 - Static/chunk/drag cache layout receives renderer policy values (`chunkSize`, `pixelBudget`, `cacheScale`, `panRange`) as inputs instead of reading globals.
 - Site image metrics are injected through `analyzeAssetAlphaBounds`; the model never loads assets directly.
@@ -1310,6 +1311,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - Uses `WorldMapLayoutModel` cache keys when available.
 - Local and visible entries are cached by compact signatures.
+- Fallback entity signatures use the same stable coordinate identity as `WorldMapLayoutModel`; raw `tile.id` / `tileId` values are not layout cache authority.
 - Fallback layout loops are linear over provided tile/entry arrays.
 - Cache keys do not serialize tile payloads.
 - No canvas drawing, no asset loading, no gameplay mutation.

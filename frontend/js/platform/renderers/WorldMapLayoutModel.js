@@ -16,6 +16,20 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
+  function normalizeTileCoord(tile = {}) {
+    const helper = getTileMapGeometry();
+    if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
+    const q = Math.floor(toNumber(tile.x !== undefined ? tile.x : tile.q, 0));
+    const r = Math.floor(toNumber(tile.y !== undefined ? tile.y : tile.r, 0));
+    return {
+      x: q,
+      y: r,
+      q,
+      r,
+      tileId: `tile_${q}_${r}`,
+    };
+  }
+
   function getTileMapGeometry(options = {}) {
     return options.tileMapGeometry || sharedTileMapGeometry || null;
   }
@@ -118,8 +132,9 @@
     const parts = [];
     for (let index = 0; index < tiles.length; index += 1) {
       const tile = tiles[index] || {};
+      const coord = normalizeTileCoord(tile);
       parts.push(
-        tile.id || '',
+        coord.tileId,
         tile.terrain || '',
         tile.terrainAsset || '',
         tile.water?.kind || '',
