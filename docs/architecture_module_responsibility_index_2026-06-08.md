@@ -4158,6 +4158,43 @@ Regression:
 - `node --test backend/tests/GameStateRepository.test.js backend/tests/WorldMapArchitecture.test.js`
 - `npm run test:architecture`
 
+### `backend/services/WorldAiExplorerService.js`
+
+Status: candidate
+
+Owns:
+
+- AI frontier explorer state normalization and bounded runtime advancement
+- hidden AI reveal writes into the server world map
+- AI-to-player frontier sync once player-visible tiles meet AI-discovered canonical tiles
+- coordinate-authoritative AI reveal identity: `explorer.revealedTileIds` derives from revealed tile `q/r`, while `revealedCanonicalIds` derives from canonical coordinates
+
+Public API:
+
+- `normalizeExplorer(rawExplorer, now)`
+- `normalizeWorldAi(rawWorldAi, now)`
+- `normalizeWorldAiState(gameState, now)`
+- `pickNextStep(gameState, explorer)`
+- `revealAiArea(gameState, explorer, q, r, now)`
+- `syncAiRevealToPlayer(gameState, now, options)`
+- `advanceAiExploration(gameState, now, options)`
+
+Performance Constraints:
+
+- AI advancement stays bounded by `MAX_ADVANCE_STEPS` and AI-to-player sync stays bounded by `MAX_SYNC_TILES_PER_PASS`.
+- AI reveal writes hidden map facts only; normal client projection and player march planning must not scan hidden AI-only tiles.
+
+Extension Path:
+
+- New AI explorer behaviors extend this service or a focused `worldAi/*` module, not DTO/projection helpers.
+- Any coordinate-bearing AI reveal state must recompute tile identity from `q/r`; `WorldMapService.revealTiles()` return `tile.id` is not an authority boundary.
+- Keep global/persistent world-map storage in `WorldMapAuthorityRepository`; this service owns runtime AI reveal decisions and sync orchestration.
+
+Regression:
+
+- `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldMapArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/VersionService.js`
 
 Status: candidate

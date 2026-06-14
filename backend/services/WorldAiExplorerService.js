@@ -156,7 +156,7 @@ function revealAiArea(gameState, explorer, q, r, now = new Date()) {
   });
   explorer.revealedTileIds = Array.from(new Set([
     ...(explorer.revealedTileIds || []),
-    ...revealed.map((tile) => tile.id).filter(Boolean),
+    ...revealed.map((tile) => WorldMapService.getTileId(tile.q, tile.r)).filter(Boolean),
   ]));
   explorer.revealedCanonicalIds = Array.from(new Set([
     ...(explorer.revealedCanonicalIds || []),

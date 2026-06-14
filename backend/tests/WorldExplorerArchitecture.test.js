@@ -441,6 +441,41 @@ test('world explorer progression stores revealed mission ids from coordinates', 
   assert.deepEqual(mission.position, { q: 4, r: -2, tileId: 'tile_4_-2' });
 });
 
+test('world AI reveal stores revealed ids from coordinates', (t) => {
+  const originalRevealTiles = WorldMapService.revealTiles;
+  t.after(() => {
+    WorldMapService.revealTiles = originalRevealTiles;
+  });
+  WorldMapService.revealTiles = (_gameState, coords) => coords.map((coord) => ({
+    id: 'legacy-ai-revealed-id',
+    q: coord.q,
+    r: coord.r,
+    canonicalId: WorldMapService.getCanonicalTileId(coord.q, coord.r),
+    visibility: 'hidden',
+  }));
+
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'ai-coordinate-revealed-ids',
+    worldMap: WorldMapService.createInitialWorldMap('ai-coordinate-seed', now),
+    worldAi: WorldAiExplorerService.normalizeWorldAi({
+      explorers: [{
+        id: 'ai-frontier-coordinate',
+        factionId: 'ai-frontier',
+        position: { q: 7, r: -3 },
+        revealedTileIds: [],
+        revealedCanonicalIds: [],
+      }],
+    }, now),
+  };
+  const explorer = gameState.worldAi.explorers[0];
+
+  WorldAiExplorerService.revealAiArea(gameState, explorer, 7, -3, now);
+
+  assert.deepEqual(explorer.revealedTileIds, ['tile_7_-3']);
+  assert.deepEqual(explorer.revealedCanonicalIds, ['tile_7_1021']);
+});
+
 test('realtime authority contracts expose the P11 backend-authoritative baselines', () => {
   assert.equal(typeof Realtime.CommandAuthorityContract.accept, 'function');
   assert.equal(typeof Realtime.ServerTimelineSnapshot.createMissionSnapshot, 'function');
