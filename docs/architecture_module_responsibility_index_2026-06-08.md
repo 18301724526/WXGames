@@ -4703,6 +4703,7 @@ Regression:
 - normalized route/path/progress calculation from server timestamps
 - confirmed position, interpolated current coordinate, and server-derived `stopTile`
 - frontend interpolation metadata that keeps final coordinates server-authoritative
+- coordinate-authoritative realtime timeline identity: mission origin/position/route, confirmed position, stop tile, and interpolation endpoints derive `tileId` from `q/r`; stale mission `tileId` cannot enter synchronized movement facts
 
 公开 API / Public API:
 
@@ -4797,6 +4798,7 @@ Regression:
 - AOI center/radius normalization
 - nearby mission, terrain tile, and territory slices without full-world payload assumptions
 - count metadata for transport/render consumers
+- coordinate-authoritative AOI sync identity: center, nearby mission positions, and terrain tile slices derive ids from `q/r`; stale center `tileId` or world-map tile `id` cannot enter synchronized AOI facts
 
 公开 API / Public API:
 

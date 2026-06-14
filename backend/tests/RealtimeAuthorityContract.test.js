@@ -63,6 +63,23 @@ test('ServerTimelineSnapshot derives server-owned movement interpolation and sto
   assert.equal(snapshot.interpolation.clientMayInterpolate, true);
 });
 
+test('ServerTimelineSnapshot derives coordinate-bearing tile identity from coordinates', () => {
+  const now = new Date('2026-06-06T00:00:06.000Z');
+  const snapshot = ServerTimelineSnapshot.createMissionSnapshot(createMission({
+    origin: { q: 0, r: 0, tileId: 'stale-origin' },
+    position: { q: 0, r: 0, tileId: 'stale-position' },
+    route: [
+      { q: 1, r: 0, tileId: 'stale-route-1', step: 1, revealed: true },
+      { q: 2, r: 0, tileId: 'stale-route-2', step: 2 },
+    ],
+  }), { now });
+
+  assert.equal(snapshot.confirmedPosition.tileId, 'tile_0_0');
+  assert.equal(snapshot.stopTile.tileId, 'tile_1_0');
+  assert.equal(snapshot.interpolation.fromTileId, 'tile_0_0');
+  assert.equal(snapshot.interpolation.toTileId, 'tile_1_0');
+});
+
 test('AoiSyncSnapshot returns bounded area data instead of full world payloads', () => {
   const gameState = createGameState();
   const snapshot = AoiSyncSnapshot.createSnapshot(gameState, {
@@ -82,6 +99,32 @@ test('AoiSyncSnapshot returns bounded area data instead of full world payloads',
     territories: snapshot.territories.length,
     missions: snapshot.missions.length,
   });
+});
+
+test('AoiSyncSnapshot derives coordinate-bearing tile identity from coordinates', () => {
+  const gameState = createGameState();
+  gameState.worldMap.tiles[0].id = 'stale-world-origin';
+  gameState.worldMap.tiles[1].id = 'stale-world-route';
+  gameState.exploreMissions = [createMission({
+    origin: { q: 0, r: 0, tileId: 'stale-origin' },
+    position: { q: 0, r: 0, tileId: 'stale-position' },
+    route: [
+      { q: 1, r: 0, tileId: 'stale-route-1', step: 1, revealed: true },
+      { q: 2, r: 0, tileId: 'stale-route-2', step: 2 },
+    ],
+  })];
+  const snapshot = AoiSyncSnapshot.createSnapshot(gameState, {
+    now: new Date('2026-06-06T00:00:06.000Z'),
+    center: { q: 0, r: 0, tileId: 'stale-center' },
+    radius: 2,
+  });
+
+  assert.equal(snapshot.center.tileId, 'tile_0_0');
+  assert.equal(snapshot.tiles.some((tile) => tile.id === 'tile_0_0'), true);
+  assert.equal(snapshot.tiles.some((tile) => tile.id === 'tile_1_0'), true);
+  assert.equal(snapshot.tiles.some((tile) => tile.id === 'stale-world-origin'), false);
+  assert.equal(snapshot.tiles.some((tile) => tile.id === 'stale-world-route'), false);
+  assert.equal(snapshot.missions[0].position.tileId, 'tile_0_0');
 });
 
 test('AoiSyncSnapshot treats wrapped edge tiles and territories as inside the radius', () => {

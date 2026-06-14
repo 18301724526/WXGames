@@ -26,7 +26,7 @@ function normalizeCenter(options = {}) {
 }
 
 function getTileId(coord = {}) {
-  return coord.tileId || WorldMapService.getTileId(coord.q, coord.r);
+  return WorldMapService.getTileId(coord.q, coord.r);
 }
 
 function isInRadius(coord = {}, center = {}, radius = 0) {
@@ -63,7 +63,7 @@ function getAoiTiles(gameState = {}, center = {}, radius = 0) {
   return (Array.isArray(worldMap.tiles) ? worldMap.tiles : [])
     .filter((tile) => tile && tile.visible !== false && tile.visibility !== 'hidden' && isInRadius(tile, center, radius))
     .map((tile) => ({
-      id: tile.id || WorldMapService.getTileId(tile.q, tile.r),
+      id: WorldMapService.getTileId(tile.q, tile.r),
       q: toInteger(tile.q, 0),
       r: toInteger(tile.r, 0),
       terrain: tile.terrain || '',

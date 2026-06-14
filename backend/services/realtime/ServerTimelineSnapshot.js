@@ -38,7 +38,7 @@ function normalizeCoord(coord = {}, fallback = {}) {
   return {
     q,
     r,
-    tileId: source.tileId || WorldMapService.getTileId(q, r),
+    tileId: WorldMapService.getTileId(q, r),
   };
 }
 
