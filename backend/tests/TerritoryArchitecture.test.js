@@ -1113,6 +1113,42 @@ test('territory state normalizer owns territory, mission, and world sync contrac
   assert.equal(calls.limited, 1);
 });
 
+test('territory scout mission normalizer derives tile identity from scout coordinates', () => {
+  const Normalizer = createTerritoryStateNormalizer({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      buildScoutRoute: () => [],
+    },
+    getMissionSoldierAllocations: () => [],
+    normalizeBattleTarget: (target) => target,
+    normalizeDirection: (direction) => direction,
+    normalizeScoutReport: (report) => report || null,
+  });
+
+  const [mission] = Normalizer.normalizeWarMissions([{
+    id: 'scout-stale-tile',
+    kind: 'scout',
+    direction: 'e',
+    originX: 0,
+    originY: 0,
+    targetX: 2,
+    targetY: -1,
+    actionPoints: 2,
+    status: 'active',
+    route: [
+      { q: 1, r: -1, step: 1, tileId: 'stale-route-1', revealed: true },
+      { q: 2, r: -1, step: 2, tileId: 'stale-route-2', revealed: false },
+    ],
+    revealArea: [
+      { q: 2, r: -1, step: 2, kind: 'main', tileId: 'stale-area-main', revealed: false },
+      { q: 3, r: -1, step: 2, kind: 'branch', tileId: 'stale-area-branch', revealed: true },
+    ],
+  }]);
+
+  assert.deepEqual(mission.route.map((step) => step.tileId), ['tile_1_-1', 'tile_2_-1']);
+  assert.deepEqual(mission.revealArea.map((coord) => coord.tileId), ['tile_2_-1', 'tile_3_-1']);
+});
+
 test('territory known-world bridging reveals gaps through the world-map batch API', () => {
   const calls = {
     ensureWorldMap: 0,

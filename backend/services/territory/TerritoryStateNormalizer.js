@@ -162,7 +162,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
                 q,
                 r,
                 step: Math.max(1, toInteger(step.step, index + 1)),
-                tileId: step.tileId || WorldMapService.getTileId(q, r),
+                tileId: WorldMapService.getTileId(q, r),
                 revealed: Boolean(step.revealed),
               };
             })
@@ -185,7 +185,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
                 r,
                 step: Math.max(1, toInteger(coord.step, index + 1)),
                 kind: coord.kind === 'branch' ? 'branch' : 'main',
-                tileId: coord.tileId || WorldMapService.getTileId(q, r),
+                tileId: WorldMapService.getTileId(q, r),
                 revealed: Boolean(coord.revealed),
               };
             })

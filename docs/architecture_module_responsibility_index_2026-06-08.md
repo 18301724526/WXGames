@@ -3204,6 +3204,37 @@ Regression:
 - `node --test backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
 - `npm run test:architecture`
 
+### `backend/services/territory/TerritoryStateNormalizer.js`
+
+Status: candidate
+
+Owns:
+
+- territory state normalization before territory runtime progression, client assembly, and persistence reuse
+- territory/site migration normalization, polity normalization, scout reports, scout coordinates, scout state, and war mission normalization orchestration
+- canonical tile identity for coordinate-bearing legacy territory scout mission fields: scout `route` steps and `revealArea` entries derive `tileId` from `q/r`, so stale stored `tileId` cannot override coordinates
+- known-world bridge reveal batching and territory-to-world-map site binding coordination
+
+Public API:
+
+- `createTerritoryStateNormalizer(dependencies)`
+- `normalizeTerritory(rawTerritory, now)`
+- `normalizeTerritoryState(gameState, now, options)`
+- `normalizeWarMissions(rawMissions)`
+- `revealSolidKnownWorldTiles(gameState, now)`
+- `syncScoutCoordinatesWithTerritories(gameState, now)`
+
+Extension Path:
+
+- New coordinate-bearing territory scout mission fields must be normalized here before progression or client projection consumes them.
+- Do not clone or preserve raw `tileId` / `id` as authority when `q/r` or `x/y` coordinates are present.
+- Keep scout result rolls and generated site payloads in `TerritoryScoutResults`; keep mission advancement in `TerritoryMilitaryMissions`.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/territory/TerritoryScoutResults.js`
 
 状态 / Status: candidate

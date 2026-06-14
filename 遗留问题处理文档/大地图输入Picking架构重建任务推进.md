@@ -108,6 +108,7 @@
 - 2026-06-14：`CanvasTerritoryActionHandlers` 的 `selectWorldMarchTarget` / `openWorldMarchFormationPicker` / `startWorldMarch` 统一消费 `TileCoord` 行军目标规范化；HUD 目标 tile identity 从坐标生成，旧 `action.tileId` 不能污染 UI 状态或 API 顶层 payload。
 - 2026-06-14：`WorldExplorerMissionNormalizer` 的服务端 mission row 也完成坐标身份收口；route/origin/homeOrigin/target/position/planned tile/planned site 中的旧 `tileId` / `id` 不能覆盖 `q/r` 坐标，后续 progression、timeline、AOI 都只消费归一化后的 canonical mission facts。
 - 2026-06-14：`WorldExplorerDtoMapper` 的 public API 输出也完成坐标身份收口；即使内部 mission row 被旧字段污染，客户端 DTO 仍按坐标生成 canonical tile identity，不把旧 `tileId` / `id` 当公开事实。
+- 2026-06-14：`TerritoryStateNormalizer` 的 legacy territory scout mission 归一化边界完成第一段收口；scout `route` / `revealArea` 带坐标字段统一由 `q/r` 生成 `tileId`，旧存档里的 scout `tileId` 不能重新进入推进或投影链路。
 - 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。2026-06-14 已补 `WorldMapInputActionMap` 回归：renderer `openWorldSite` / `selectWorldActor` 只能证明点在 world surface 上，最终目标身份必须来自当前 picking snapshot 或 context 重算。
 - `CanvasGameAppInputRouter.observeAsyncActionResult()` 与 H5 Shell 的同名边界保持一致：runtime tap 返回 Promise 时，拒绝必须继续传给调用方，同时被记录到诊断日志，不能静默变成成功或未观察拒绝。
 - `CanvasGameAppInputRouter` 与 H5 Shell 一样记录本地入口级 `input:tapHit`、`input:tapRuntime`、`input:tapMiss`、`input:tapDisabled`、`input:tapAction`；Shell/App 的 Promise handled 都只记录为 `'promise'`，不能把 Promise/runtime 对象塞进日志。`ClientOperationLog.sanitize()` 也必须把遗漏进来的 thenable 兜底压缩为 `'promise'`，禁止 renderer/native event/runtime payload 进入本地持久化或导出日志。
