@@ -134,3 +134,82 @@ test('WorldMapInputIntent represents tap misses without renderer objects', () =>
   assert.deepEqual(serializable.target, { kind: 'none' });
   assert.equal(JSON.stringify(serializable).includes('[function]'), false);
 });
+
+test('WorldMapInputIntent toSerializable sanitizes externally supplied intent objects', () => {
+  const thenable = {
+    then() {},
+    rendererPayload: 'must-not-leak',
+  };
+  const serializable = WorldMapInputIntent.toSerializable({
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    source: 'worldMapRuntime',
+    inputId: 'wmi unsafe/id!',
+    clientSequence: 12,
+    points: {
+      physical: { x: 1.2345, y: 9.8765, pointerId: 3, nativeEvent: { type: 'pointerup' } },
+      layer: { x: 101.2345, y: 209.8765, rendererPayload: 'must-not-leak' },
+      raw: { tileMapView: { tiles: [{ id: 'must-not-leak' }] } },
+    },
+    action: {
+      type: 'selectWorldMarchTarget',
+      targetQ: 3,
+      targetR: -2,
+      rendererPayload: 'must-not-leak',
+      callback() {},
+      promise: thenable,
+    },
+    target: {
+      kind: 'tile',
+      tileId: 'tile_3_-2',
+      targetQ: 3,
+      targetR: -2,
+      route: [{ id: 'must-not-leak' }],
+      nativeEvent: { type: 'pointerup' },
+    },
+    picking: {
+      schema: 'world-map-picking-snapshot-v1',
+      inputEpoch: 12,
+      signature: 'sig-12',
+      counts: { sites: 1, actors: 2, targets: 3 },
+      targets: [{ action: { type: 'openWorldSite' } }],
+    },
+    view: {
+      frame: { x: 0, y: 84, width: 390, height: 640, renderer: { secret: 'must-not-leak' } },
+      viewport: { originX: 180, originY: 220, panX: 1, panY: -1, scale: 1.25, tileMapView: {} },
+      camera: { x: 1, y: -1, nativeEvent: { type: 'wheel' } },
+      renderer: { secret: 'must-not-leak' },
+    },
+    diagnostics: {
+      hitTargetCount: 3,
+      dragLayerOffset: { x: 1, y: -1 },
+      rendererPayload: 'must-not-leak',
+    },
+    tileMapView: { tiles: [{ id: 'must-not-leak' }] },
+    renderer: { secret: 'must-not-leak' },
+  });
+  const json = JSON.stringify(serializable);
+
+  assert.equal(serializable.inputId, 'wmiunsafeid');
+  assert.deepEqual(serializable.points.physical, { x: 1.235, y: 9.877, pointerId: 3 });
+  assert.deepEqual(serializable.points.layer, { x: 101.235, y: 209.877 });
+  assert.deepEqual(serializable.action, { type: 'selectWorldMarchTarget', targetQ: 3, targetR: -2 });
+  assert.deepEqual(serializable.target, { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 });
+  assert.deepEqual(serializable.picking, {
+    schema: 'world-map-picking-snapshot-v1',
+    inputEpoch: 12,
+    signature: 'sig-12',
+    counts: { sites: 1, actors: 2, targets: 3 },
+  });
+  assert.deepEqual(serializable.view.camera, { x: 1, y: -1 });
+  assert.deepEqual(serializable.diagnostics, {
+    hitTargetCount: 3,
+    dragLayerOffset: { x: 1, y: -1 },
+  });
+  assert.equal(json.includes('must-not-leak'), false);
+  assert.equal(json.includes('nativeEvent'), false);
+  assert.equal(json.includes('tileMapView'), false);
+  assert.equal(json.includes('[function]'), false);
+  assert.equal(json.includes('then'), false);
+  assert.equal(WorldMapPerformanceBudget.checkInputIntent(serializable).ok, true);
+});

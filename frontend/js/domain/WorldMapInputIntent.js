@@ -197,6 +197,42 @@
     return output;
   }
 
+  function summarizePoints(points = {}) {
+    const output = {};
+    const physical = summarizePoint(points.physical || null);
+    const layer = summarizePoint(points.layer || null);
+    if (physical) output.physical = physical;
+    if (layer) output.layer = layer;
+    return output;
+  }
+
+  function summarizeTargetInput(target = {}) {
+    if (!target || typeof target !== 'object') return { kind: 'none' };
+    const summary = {
+      kind: copyString(target.kind, 32) || 'none',
+    };
+    const tileId = copyString(target.tileId);
+    const siteId = copyString(target.siteId);
+    const actorId = copyString(target.actorId);
+    const missionId = copyString(target.missionId);
+    if (tileId !== undefined) summary.tileId = tileId;
+    if (siteId !== undefined) summary.siteId = siteId;
+    if (actorId !== undefined) summary.actorId = actorId;
+    if (missionId !== undefined) summary.missionId = missionId;
+    if (target.targetQ !== undefined || target.q !== undefined) summary.targetQ = toInteger(target.targetQ ?? target.q);
+    if (target.targetR !== undefined || target.r !== undefined) summary.targetR = toInteger(target.targetR ?? target.r);
+    return summary;
+  }
+
+  function summarizeView(view = {}) {
+    if (!view || typeof view !== 'object') return {};
+    return {
+      frame: summarizeFrame(view.frame || null),
+      viewport: summarizeViewport(view.viewport || null),
+      camera: summarizeCamera(view.camera || null),
+    };
+  }
+
   function createTapIntent(options = {}) {
     const action = summarizeAction(options.action || null);
     const context = options.context || {};
@@ -250,12 +286,12 @@
       source: copyString(intent.source, 80) || 'worldMapRuntime',
       inputId: sanitizeInputId(intent.inputId),
       clientSequence: normalizeClientSequence(intent.clientSequence, 0),
-      points: intent.points || {},
-      action: intent.action || null,
-      target: intent.target || { kind: 'none' },
-      picking: intent.picking || null,
-      view: intent.view || {},
-      diagnostics: intent.diagnostics || {},
+      points: summarizePoints(intent.points || {}),
+      action: summarizeAction(intent.action || null),
+      target: summarizeTargetInput(intent.target || { kind: 'none' }),
+      picking: summarizePicking(intent.picking || null),
+      view: summarizeView(intent.view || {}),
+      diagnostics: summarizeDiagnostics(intent.diagnostics || {}),
     });
   }
 

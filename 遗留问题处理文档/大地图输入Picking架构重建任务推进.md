@@ -54,6 +54,7 @@
 ### 第四阶段：输入意图契约
 
 - 新增纯 domain 模块 `WorldMapInputIntent`，产出 `world-map-input-intent-v1`。
+- `WorldMapInputIntent.toSerializable()` is a whitelist boundary for externally supplied intent-like objects: it re-summarizes points/action/target/picking/view/diagnostics and must not trust caller payloads or allow renderer/native event/tileMapView/thenable data into input evidence.
 - 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录稳定 `inputId`、单调 `clientSequence`、HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
 - input intent 只允许保存可序列化小对象；不得包含 renderer/context 原对象、浏览器 event、完整 tiles、完整 targets 或大 payload。
 - `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`；H5 shell 的 `CanvasGameShellCommands.forwardCanvasAction()` 继续把同一份 `meta` 传给外部 `onAction`，不能在转发边界吞掉 `inputIntent`，也不能把外部 Promise action 失败压成同步成功。
