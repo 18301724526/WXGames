@@ -96,7 +96,7 @@
 - `CanvasGameShellInputRouter` 与 `CanvasGameAppInputRouter` 都必须把空命中、`worldMapDrag`、renderer 背景 `selectWorldMarchTarget` 交给 `WorldMapRuntime`，由当前 camera/context/picking snapshot 重算。
 - 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。
 - `CanvasGameAppInputRouter.observeAsyncActionResult()` 与 H5 Shell 的同名边界保持一致：runtime tap 返回 Promise 时，拒绝必须继续传给调用方，同时被记录到诊断日志，不能静默变成成功或未观察拒绝。
-- `CanvasGameAppInputRouter` 与 H5 Shell 一样记录本地入口级 `input:tapHit`、`input:tapRuntime`、`input:tapMiss`、`input:tapDisabled`、`input:tapAction`；Promise handled 只记录为 `'promise'`，不能把 Promise/runtime 对象塞进日志。
+- `CanvasGameAppInputRouter` 与 H5 Shell 一样记录本地入口级 `input:tapHit`、`input:tapRuntime`、`input:tapMiss`、`input:tapDisabled`、`input:tapAction`；Shell/App 的 Promise handled 都只记录为 `'promise'`，不能把 Promise/runtime 对象塞进日志。
 - `CanvasGameApp.test.js` 已纳入 `scripts/run-architecture-smoke.js`，小程序/兼容入口不再游离在 H5 Shell 门禁之外。
 
 ### 第十阶段：门禁

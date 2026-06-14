@@ -21,6 +21,10 @@
       || (action.type === 'selectWorldMarchTarget' && action.background);
   }
 
+  function summarizeHandledForOperationLog(handled) {
+    return handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled);
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -406,7 +410,7 @@ handleTap(point, event) {
           point: global.ClientOperationLog?.summarizePoint?.(point),
           actionType: action?.type || '',
           action: global.ClientOperationLog?.summarizeAction?.(action),
-          runtimeHandled,
+          runtimeHandled: summarizeHandledForOperationLog(runtimeHandled),
         }, { flush: true });
         if (runtimeHandled) return runtimeHandled;
         if (action?.type === 'selectWorldMarchTarget' && action.background) return false;
@@ -433,7 +437,7 @@ handleTap(point, event) {
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
         global.ClientOperationLog?.record?.('input:tapMiss', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
-          runtimeHandled,
+          runtimeHandled: summarizeHandledForOperationLog(runtimeHandled),
         }, { flush: true });
         if (runtimeHandled) return runtimeHandled;
         const closed = this.closeWorldSiteHud({ direct: true });

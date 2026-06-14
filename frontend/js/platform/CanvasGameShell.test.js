@@ -1709,6 +1709,95 @@ test('CanvasGameShell observes async world-map runtime tap failures for diagnost
   assert.deepEqual(errors, ['runtime tap failed']);
 });
 
+test('CanvasGameShell records async runtime tap routing as compact promise state', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, background: Boolean(action.background) } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'worldMapDrag', background: true };
+      },
+    },
+  });
+  shell.isTutorialInputActive = () => false;
+  shell.hasBlockingOverlayOpen = () => false;
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap() {
+      return Promise.resolve(true);
+    },
+    getMapRuntime() {
+      return null;
+    },
+  });
+
+  try {
+    assert.equal(await shell.handleTap({ x: 60, y: 60 }, {}), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const runtimeEvent = events.find((event) => event[0] === 'input:tapRuntime')?.[1];
+  assert.equal(runtimeEvent.runtimeHandled, 'promise');
+});
+
+test('CanvasGameShell records async runtime tap misses as compact promise state', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return null;
+      },
+    },
+  });
+  shell.isTutorialInputActive = () => false;
+  shell.hasBlockingOverlayOpen = () => false;
+  shell.closeWorldSiteHud = () => false;
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap() {
+      return Promise.resolve(true);
+    },
+    getMapRuntime() {
+      return null;
+    },
+  });
+
+  try {
+    assert.equal(await shell.handleTap({ x: 60, y: 60 }, {}), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const missEvent = events.find((event) => event[0] === 'input:tapMiss')?.[1];
+  assert.equal(missEvent.runtimeHandled, 'promise');
+});
+
 test('CanvasGameShell keeps map-home HUD rendering after an open world site action', () => {
   const renders = [];
   const state = {

@@ -4828,6 +4828,7 @@ Regression:
 - H5/minigame load-order contract before `CanvasGameAppRenderingRuntime`
 - compat app runtime-tap async failure observation through `CanvasGameAppInputRouter.observeAsyncActionResult()`
 - compat app tap-entry operation-log parity for hit, runtime route, disabled, miss, and action dispatch breadcrumbs
+- shell/app input-router runtime handled breadcrumbs summarize async results as compact state
 
 公开 API / Public API:
 
@@ -4854,6 +4855,7 @@ Regression:
 - Snapshot drag and refresh frames must pass the renderer's freshly published `lastWorldTileMapContext` into actor rendering before falling back to runtime cache.
 - Runtime tap Promise failures must stay rejected to callers and be observed by `CanvasGameAppInputRouter.observeAsyncActionResult()` for diagnostics.
 - `CanvasGameAppInputRouter` operation-log breadcrumbs must remain compact and serializable; Promise handled values are recorded as `'promise'`, not as runtime objects.
+- `CanvasGameShellInputRouter` follows the same compact handled-value rule for runtime routing and tap-miss logs.
 - Do not add world-map runtime compatibility methods back into `CanvasGameAppRenderingRuntime`.
 
 回归 / Regression:
