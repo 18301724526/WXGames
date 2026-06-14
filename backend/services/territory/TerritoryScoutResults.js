@@ -102,15 +102,15 @@ function createTerritoryScoutResults(dependencies = {}) {
     };
 
     for (const tile of worldMap.tiles || []) {
-      if (revealedIds.has(tile.id)) {
-        addCoord(toInteger(tile.q, 0), toInteger(tile.r, 0));
+      const q = toInteger(tile.q, 0);
+      const r = toInteger(tile.r, 0);
+      if (revealedIds.has(WorldMapService.getTileId(q, r))) {
+        addCoord(q, r);
         continue;
       }
       if (strictRevealArea) continue;
-      const q = toInteger(tile.q, 0);
-      const r = toInteger(tile.r, 0);
       if (getRelativeDistance(targetX, targetY, q, r) > 1) continue;
-      addCoord(toInteger(tile.q, 0), toInteger(tile.r, 0));
+      addCoord(q, r);
     }
     for (const coord of revealArea) {
       if (coord.revealed || revealedIds.has(WorldMapService.getTileId(coord.q, coord.r))) {

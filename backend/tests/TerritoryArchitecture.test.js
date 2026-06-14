@@ -870,6 +870,37 @@ test('territory scout results module owns scout outcomes reports and generated s
   assert.equal(created.report.tileId, 'tile_3_0');
 });
 
+test('territory scout results derive revealed world-map candidates from coordinates', () => {
+  const Results = createTerritoryScoutResults({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      ensureWorldMap: () => ({
+        seed: 'seed',
+        tiles: [
+          { id: 'tile_2_0', q: 99, r: 99, terrain: 'forest' },
+          { id: 'legacy-visible-2-0', q: 2, r: 0, terrain: 'plains' },
+        ],
+      }),
+    },
+    ensureMissionRevealArea: (_gameState, mission) => mission.revealArea || [],
+  });
+  const mission = {
+    id: 'scout-result-stale-candidate',
+    direction: 'e',
+    originX: 0,
+    originY: 0,
+    targetX: 2,
+    targetY: 0,
+    revealAreaSource: 'directional-route-v1',
+    revealArea: [],
+    revealedTileIds: ['tile_2_0'],
+  };
+
+  assert.deepEqual(Results.getScoutCandidateCoordinates({}, mission, new Date('2026-06-06T00:00:00.000Z')), [
+    { q: 2, r: 0 },
+  ]);
+});
+
 test('territory site migration module owns current-rule retargeting contracts', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const battleTargets = [];

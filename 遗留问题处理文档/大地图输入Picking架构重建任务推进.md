@@ -84,7 +84,7 @@
 - `TerritoryScoutPlanner` 是侦察出发点/目标规划边界；controlled tile 没有 territory/site id 时，fallback `cityId` / `territoryId` 必须由 `q/r` 生成，旧 world-map `tile.id` 不能进入侦察出发点事实。
 - `TerritoryScoutRecords` 是 legacy scout report 归一化边界；report 自身、nested tile snapshot、report revealArea 只要带 `q/r`，就必须由坐标生成 `tileId` / `tile.id`，旧 report/revealArea `tileId` 只能在无坐标摘要里兜底，不能覆盖坐标事实。
 - `TerritoryScoutResults` 是 legacy scout report 生成边界；generated report revealArea snapshot 只要带 `q/r`，就必须由坐标生成 `tileId`，旧 mission revealArea `tileId` 不能输出为报告事实。
-- `TerritoryScoutResults.getScoutReportTileSnapshot()` 是报告 tile snapshot 地形读取边界；world-map tile lookup 必须按 `q/r`，旧或撞名 tile `id` 不能改变生成报告的 mapTerrain。
+- `TerritoryScoutResults` 是 legacy scout result 坐标选择/报告生成边界；world-map revealed candidate membership、generated report revealArea snapshot、report tile terrain lookup 都必须按 `q/r` 生成/匹配 tile identity，旧 mission revealArea `tileId` 或旧/撞名 world-map `tile.id` 不能改变生成地点坐标或报告地形。
 - `LogService` 的 `operationLog.clientInput` 记录同一份 compact evidence，便于与本地导出的 `ClientOperationLog` 和 `/api/game/action` request id 对账。
 
 ### 第六阶段：可回放诊断对账
@@ -138,6 +138,7 @@
 - 2026-06-14：`WorldMapEntitySnapshot.normalizeActor()` 的 world actor entity identity 改为以 `missionId` 作为 snapshot/index 主键；renderer 传入的旧 `actor.id` 只能在没有 mission id 时作为兼容输入，不能把同一个行军任务拆成另一个 actor 选择/HUD/picking 身份。
 - 2026-06-14：`TerritoryScoutPlanner.getControlledScoutOrigins()` 的 controlled tile fallback origin identity 完成坐标身份收口；新增红测证明脏 world-map `tile.id` 不会进入 scout origin `cityId` / `territoryId`。
 - 2026-06-14：`TerritoryScoutResults.getScoutReportTileSnapshot()` 的报告 tile snapshot terrain lookup 完成坐标身份收口；新增红测证明撞名 world-map tile `id` 不会污染生成报告 mapTerrain。
+- 2026-06-15：`TerritoryScoutResults.getScoutCandidateCoordinates()` 的 revealed world-map candidate membership 完成坐标身份收口；新增红测证明 world-map tile 携带撞名/脏 `id` 时，候选坐标仍按 tile 自身 `q/r` 与 mission `revealedTileIds` 生成的 canonical id 匹配，不会把错误坐标放进生成地点候选。
 - 2026-06-14：`TerritoryService.getTerritoryBattleTileSnapshot()` 的征服/战斗 tile snapshot terrain lookup 完成坐标身份收口；新增红测证明撞名 world-map tile `id` 不会污染 `lastBattle.mapTerrain` 和 nested battle tile。
 - 2026-06-14：`WorldFogCanvasRenderer` 的 fog mask render/cache identity 完成坐标身份收口；新增红测证明同一 stable `x/y` 即使携带脏 `id/tileId/q/r`，也不会改变 fog tile key、投影中心、draw rect 或 mask cache signature。
 - 2026-06-14：`WorldMapLayoutModel` / `WorldMapLayoutFacade` 的 layout cache identity 完成坐标身份收口；新增红测证明同一 stable `x/y` 即使携带脏 `id/tileId/q/r`，也不会改变 entity signature、local entries cache key 或 visible entries cache key，model 缺失时的 facade fallback 也不得退回旧 `tile.id` 权威。
