@@ -4372,6 +4372,42 @@ Regression:
 - `node --test backend/tests/VersionRoutes.test.js`
 - `npm run test:architecture`
 
+### `backend/services/worldExplorer/WorldExplorerRoutePlanner.js`
+
+Status: candidate
+
+Owns:
+
+- world explorer route planning for accepted manual world-march targets
+- route generation, generation-context hashing, planned tile creation, and tutorial first empty-city planned site creation
+- canonical tile identity for route-planner outputs: route steps and tutorial planned sites derive tile ids from `q/r`; planned tile lookup for tutorial site selection also keys by coordinates, so stale route `tileId` or planned tile `id` cannot change tutorial site terrain or tile identity
+
+Public API:
+
+- `getExploreOrigin(gameState)`
+- `buildManualRoute(origin, target, seed)`
+- `getEventEpoch(gameState)`
+- `getNearbyGenerationState(gameState, center, radius)`
+- `getStepDirection(from, to)`
+- `createGenerationContext(gameState, step, options)`
+- `createPlannedTiles(gameState, route, now, options)`
+- `shouldGuaranteeTutorialEmptyCity(gameState)`
+- `pickTutorialCityName(gameState, q, r)`
+- `getPlanningTerrainForMapTerrain(mapTerrain)`
+- `createTutorialEmptyCitySite(gameState, step, plannedTile, now)`
+- `createTutorialPlannedSites(gameState, route, plannedTiles, now)`
+
+Extension Path:
+
+- New route-planning modes must add focused tests before changing action modules or progression consumers.
+- Coordinate-bearing route/planned-tile/planned-site data must recompute tile identity here before mission creation.
+- Keep mission row normalization in `WorldExplorerMissionNormalizer`, runtime side effects in `WorldExplorerProgression`, and DTO shape in `WorldExplorerDtoMapper`.
+
+Regression:
+
+- `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/worldExplorer/WorldExplorerMissionNormalizer.js`
 
 Status: candidate

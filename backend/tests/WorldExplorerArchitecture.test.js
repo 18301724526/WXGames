@@ -13,6 +13,7 @@ const ClientState = require('../services/worldExplorer/WorldExplorerClientState'
   const Shared = require('../services/worldExplorer/WorldExplorerShared');
 const Actions = require('../services/worldExplorer/WorldExplorerActions');
 const Realtime = require('../services/realtime');
+const { TutorialFlowConfig } = require('../services/config/GameplayConfigRuntime');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const explorerRoot = path.join(serviceRoot, 'worldExplorer');
@@ -227,6 +228,43 @@ test('world explorer generation context hashes nearby state instead of the full 
   assert.equal(baseContext.direction, 'e');
   assert.equal(distantContext.nearbyStateHash, baseContext.nearbyStateHash);
   assert.notEqual(nearbyContext.nearbyStateHash, baseContext.nearbyStateHash);
+});
+
+test('world explorer route planner creates tutorial planned sites by route coordinates', (t) => {
+  const originalChooseTerrain = WorldMapService.chooseTerrain;
+  t.after(() => {
+    WorldMapService.chooseTerrain = originalChooseTerrain;
+  });
+  WorldMapService.chooseTerrain = () => 'ocean';
+
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'tutorial-planned-site-coordinate-test',
+    worldMap: { seed: 'tutorial-planned-site-seed', tiles: [] },
+    territories: [],
+    tutorial: {
+      completed: false,
+      currentStep: TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved,
+      grants: {},
+    },
+  };
+  const route = [
+    { q: 2, r: -1, step: 1, tileId: 'stale-route-tile' },
+  ];
+  const plannedTiles = [{
+    id: 'tile_2_-1',
+    q: 2,
+    r: -1,
+    terrain: 'forest',
+    visibility: 'scouted',
+  }];
+
+  const plannedSites = RoutePlanner.createTutorialPlannedSites(gameState, route, plannedTiles, now);
+
+  assert.equal(plannedSites.length, 1);
+  assert.equal(plannedSites[0].tileId, 'tile_2_-1');
+  assert.equal(plannedSites[0].site.mapTerrain, 'forest');
+  assert.equal(plannedSites[0].site.terrain, 'forest');
 });
 
 test('world explorer progression reveals a step through the world-map batch API', (t) => {

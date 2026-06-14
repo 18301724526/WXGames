@@ -231,16 +231,16 @@ function createTutorialEmptyCitySite(gameState = {}, step = {}, plannedTile = {}
 function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], now = new Date()) {
   if (!shouldGuaranteeTutorialEmptyCity(gameState)) return [];
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
-  const plannedById = new Map(plannedTiles.map((tile) => [tile.id || WorldMapService.getTileId(tile.q, tile.r), tile]));
+  const plannedById = new Map(plannedTiles.map((tile) => [WorldMapService.getTileId(tile.q, tile.r), tile]));
   const existingCoords = new Set((gameState.territories || []).map((site) => getCoordinateKey(site.x, site.y)));
   const chosen = [...route].reverse().find((step) => {
     if (existingCoords.has(getCoordinateKey(step.q, step.r))) return false;
-    const planned = plannedById.get(step.tileId) || {};
+    const planned = plannedById.get(WorldMapService.getTileId(step.q, step.r)) || {};
     const terrain = planned.terrain || WorldMapService.chooseTerrain(worldMap.seed, step.q, step.r);
     return !['ocean', 'river'].includes(terrain);
   }) || route.at(-1);
   if (!chosen) return [];
-  const tileId = chosen.tileId || WorldMapService.getTileId(chosen.q, chosen.r);
+  const tileId = WorldMapService.getTileId(chosen.q, chosen.r);
   let plannedTile = plannedById.get(tileId);
   if (!plannedTile) {
     plannedTile = WorldMapService.createTile(worldMap.seed, chosen.q, chosen.r, now, {
