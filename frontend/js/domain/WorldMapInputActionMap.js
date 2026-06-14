@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const WorldMapPickingModel = (() => {
     if (global.WorldMapPickingModel) return global.WorldMapPickingModel;
     if (typeof module !== 'undefined' && module.exports) {
@@ -45,6 +56,19 @@
 
   function toInteger(value, fallback = 0) {
     return Math.floor(toNumber(value, fallback));
+  }
+
+  function normalizeCoord(source = {}, fallback = {}) {
+    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
+    const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
+    const y = toInteger(source.y ?? source.r, fallback.y ?? fallback.r ?? 0);
+    return {
+      x,
+      y,
+      q: x,
+      r: y,
+      tileId: `tile_${x}_${y}`,
+    };
   }
 
   function containsPoint(target = {}, point = {}) {
@@ -151,10 +175,11 @@
   }
 
   function findKnownTile(tileMapView = {}, inferred = {}) {
-    if (!Number.isFinite(Number(inferred?.q)) || !Number.isFinite(Number(inferred?.r))) return null;
+    const coord = normalizeCoord(inferred);
+    if (!Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r))) return null;
     return (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).find((tile) => (
-      (tile.id && tile.id === inferred.tileId)
-      || (toInteger(tile.q) === inferred.q && toInteger(tile.r) === inferred.r)
+      (tile.id && tile.id === coord.tileId)
+      || normalizeCoord(tile).tileId === coord.tileId
     )) || null;
   }
 
@@ -170,16 +195,15 @@
       || WorldMarchSystem?.screenPointToAxialTile;
     if (!tileMapView || !viewport || !geometry || typeof axialMapper !== 'function') return null;
     const inferred = axialMapper(point, viewport, geometry);
-    if (!Number.isFinite(Number(inferred?.q)) || !Number.isFinite(Number(inferred?.r))) return null;
-    const q = toInteger(inferred.q);
-    const r = toInteger(inferred.r);
-    const fallbackTileId = inferred.tileId || `tile_${q}_${r}`;
-    const knownTile = findKnownTile(tileMapView, { ...inferred, q, r, tileId: fallbackTileId });
+    const coord = normalizeCoord(inferred);
+    if (!Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r))) return null;
+    const knownTile = findKnownTile(tileMapView, coord);
     const known = isKnownTile(knownTile);
+    const displayCoord = knownTile ? normalizeCoord(knownTile, coord) : coord;
     return {
-      q,
-      r,
-      tileId: knownTile?.id || fallbackTileId,
+      q: displayCoord.q,
+      r: displayCoord.r,
+      tileId: knownTile?.id || displayCoord.tileId,
       known,
       terrain: known ? (knownTile.terrain || '') : '',
       terrainLabel: known ? (knownTile.terrainLabel || knownTile.terrain || '') : '未知',
@@ -188,12 +212,13 @@
   }
 
   function buildSelectWorldMarchTargetAction(tile = {}, options = {}) {
-    if (!tile || !Number.isFinite(Number(tile.q)) || !Number.isFinite(Number(tile.r))) return null;
+    const coord = normalizeCoord(tile);
+    if (!tile || !Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r))) return null;
     return {
       type: 'selectWorldMarchTarget',
-      tileId: tile.tileId || `tile_${toInteger(tile.q)}_${toInteger(tile.r)}`,
-      targetQ: toInteger(tile.q),
-      targetR: toInteger(tile.r),
+      tileId: tile.tileId || coord.tileId,
+      targetQ: coord.q,
+      targetR: coord.r,
       known: Boolean(tile.known),
       terrain: tile.terrain || '',
       terrainLabel: tile.terrainLabel || (tile.known ? tile.terrain || '' : '未知'),

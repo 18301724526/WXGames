@@ -68,6 +68,19 @@ test('WorldMapInputActionMap infers known and unknown march target actions from 
   assert.equal(unknownAction.known, false);
 });
 
+test('WorldMapInputActionMap accepts stable x/y tile mapper output for input actions', () => {
+  const action = WorldMapInputActionMap.getBackgroundMarchTargetAction({ x: 1, y: 1 }, createContext(), {
+    screenPointToAxialTile() {
+      return { x: '2', y: '-1' };
+    },
+  });
+
+  assert.equal(action.type, 'selectWorldMarchTarget');
+  assert.equal(action.tileId, 'tile_2_-1');
+  assert.equal(action.targetQ, 2);
+  assert.equal(action.targetR, -1);
+});
+
 test('WorldMapInputActionMap resolves background tiles from context without renderer background targets', () => {
   const action = WorldMapInputActionMap.resolveTapAction({ x: 148, y: 124 }, {
     hitTargets: [],

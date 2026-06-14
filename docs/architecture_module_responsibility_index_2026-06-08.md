@@ -2488,6 +2488,7 @@ P0 新增公开 API / Public API Added During P0:
 - hit target 反向命中优先级：foreground action 优先，background action 只做兜底
 - 过滤 world-map runtime 允许处理的 action types
 - single authority for H5 Shell and minigame/compat App world-map tap routing; Shell/App routers must not duplicate these routing rules
+- `TileCoord`-normalized background input coordinates: stable `x/y` and legacy `q/r` mapper output both produce deterministic compact action payloads
 - 将地图背景点击通过 `screenPointToAxialTile` 推断为 `selectWorldMarchTarget`
 - 生成稳定 action payload，不直接修改游戏状态、不调 renderer、不调 backend
 
