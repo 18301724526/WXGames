@@ -102,6 +102,43 @@ test('WorldMapInputActionMap resolves world entities from picking snapshot befor
   assert.equal(action.actorId, 'actor-1');
 });
 
+test('WorldMapInputActionMap does not dispatch stale renderer world entity targets when stable picking misses', () => {
+  const context = {
+    ...createContext(),
+    frame: { x: 0, y: 0, width: 300, height: 300 },
+  };
+  const pickingSnapshot = {
+    schema: 'world-map-picking-snapshot-v1',
+    inputEpoch: 1,
+    signature: 'empty-current-world',
+    targets: [],
+    counts: { sites: 0, actors: 0, targets: 0 },
+  };
+  const siteAction = WorldMapInputActionMap.resolveTapAction({ x: 60, y: 60 }, {
+    hitTargets: [
+      { x: 40, y: 40, width: 80, height: 60, action: { type: 'openWorldSite', siteId: 'stale-site' } },
+    ],
+    backgroundPoint: { x: 148, y: 124 },
+    context,
+    pickingSnapshot,
+  });
+  const actorAction = WorldMapInputActionMap.resolveTapAction({ x: 60, y: 60 }, {
+    hitTargets: [
+      { x: 40, y: 40, width: 80, height: 60, action: { type: 'selectWorldActor', actorId: 'stale-actor' } },
+    ],
+    backgroundPoint: { x: 148, y: 124 },
+    context,
+    pickingSnapshot,
+  });
+
+  assert.equal(siteAction.type, 'selectWorldMarchTarget');
+  assert.notEqual(siteAction.siteId, 'stale-site');
+  assert.equal(siteAction.targetQ, 1);
+  assert.equal(actorAction.type, 'selectWorldMarchTarget');
+  assert.notEqual(actorAction.actorId, 'stale-actor');
+  assert.equal(actorAction.targetQ, 1);
+});
+
 test('WorldMapInputActionMap normalizes allowed hit targets with offsets', () => {
   const targets = WorldMapInputActionMap.normalizeHitTargets([
     { x: 10, y: 20, width: 30, height: 40, action: { type: 'worldMapDrag', background: true } },

@@ -2497,6 +2497,7 @@ P0 新增公开 API / Public API Added During P0:
 - `WorldMapInputActionMap.normalizeHitTarget(target, options)`
 - `WorldMapInputActionMap.getHitTarget(point, targets)`
 - `WorldMapInputActionMap.resolveTapAction(point, input, options)`
+- renderer world-surface targets (`openWorldSite`, `selectWorldActor`, `worldMapDrag`, background `selectWorldMarchTarget`) as non-authoritative surface evidence only; stable picking/context recomputation owns target identity
 - `WorldMapInputActionMap.getBackgroundMarchTargetAction(point, context, options)`
 - `WorldMapInputActionMap.inferTileFromPoint(point, context, options)`
 - `WorldMapInputActionMap.buildSelectWorldMarchTargetAction(tile, options)`

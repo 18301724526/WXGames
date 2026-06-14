@@ -41,7 +41,7 @@
 
 - 新增 `WorldMapPickingModel`，由 `lastWorldTileMapContext` 的 frame / viewport / geometry / sites / actors 生成 `world-map-picking-snapshot-v1`，世界城池与部队命中不再依赖 renderer hitTargets。
 - `WorldMapRuntime` 增加 picking snapshot 缓存和 `inputEpoch`：同一份 context 重复读取不推进 epoch，camera/view/entity context 变化时推进 epoch 并重建 picking snapshot。
-- `WorldMapInputActionMap.resolveTapAction()` 先处理显式非 world UI/HUD hit target，再处理稳定 picking snapshot，最后才用 context 推导背景 tile；renderer 产出的 world-surface hitTargets 不再压过稳定 picking。
+- `WorldMapInputActionMap.resolveTapAction()` 先处理显式非 world UI/HUD hit target，再处理稳定 picking snapshot，最后才用 context 推导背景 tile；renderer 产出的 world-surface hitTargets 不再压过稳定 picking，也不能在 picking miss 时携带旧的 `openWorldSite` / `selectWorldActor` 身份继续派发。
 - `WorldMapRuntime.handleTap()` 使用稳定 picking 与独立背景 picking 推导 action，不能因为 runtime hitTargets 缺少 `worldMapDrag` 就直接失败。
 - `WorldMapRuntimeHitTargetPolicy` 在 snapshot / preserve 模式中识别 partial map target，同步时保留旧地图目标，只替换 actor layer 目标。
 
@@ -95,7 +95,7 @@
 
 - `WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime()` 是 H5 Shell 与 minigame/compat App 共用的 world-map tap 路由判定。
 - `CanvasGameShellInputRouter` 与 `CanvasGameAppInputRouter` 都必须把空命中、`worldMapDrag`、renderer 背景 `selectWorldMarchTarget` 交给 `WorldMapRuntime`，由当前 camera/context/picking snapshot 重算。
-- 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。
+- 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。2026-06-14 已补 `WorldMapInputActionMap` 回归：renderer `openWorldSite` / `selectWorldActor` 只能证明点在 world surface 上，最终目标身份必须来自当前 picking snapshot 或 context 重算。
 - `CanvasGameAppInputRouter.observeAsyncActionResult()` 与 H5 Shell 的同名边界保持一致：runtime tap 返回 Promise 时，拒绝必须继续传给调用方，同时被记录到诊断日志，不能静默变成成功或未观察拒绝。
 - `CanvasGameAppInputRouter` 与 H5 Shell 一样记录本地入口级 `input:tapHit`、`input:tapRuntime`、`input:tapMiss`、`input:tapDisabled`、`input:tapAction`；Shell/App 的 Promise handled 都只记录为 `'promise'`，不能把 Promise/runtime 对象塞进日志。`ClientOperationLog.sanitize()` 也必须把遗漏进来的 thenable 兜底压缩为 `'promise'`，禁止 renderer/native event/runtime payload 进入本地持久化或导出日志。
 - `CanvasGameApp.test.js` 已纳入 `scripts/run-architecture-smoke.js`，小程序/兼容入口不再游离在 H5 Shell 门禁之外。

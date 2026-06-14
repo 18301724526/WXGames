@@ -220,11 +220,9 @@
       if (!isPointInContextFrame(backgroundPoint, context)) return null;
       return getBackgroundMarchTargetAction(backgroundPoint, context, options);
     }
-    if (action.type === 'worldMapDrag') {
+    if (isRendererWorldSurfaceAction(action)) {
+      if (options.allowContextBackground === false) return null;
       return getBackgroundMarchTargetAction(backgroundPoint, context, options);
-    }
-    if (action.type === 'selectWorldMarchTarget' && action.background) {
-      return getBackgroundMarchTargetAction(backgroundPoint, context, options) || action;
     }
     return action;
   }
