@@ -1,7 +1,36 @@
 (function (global) {
+  const SharedTileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function round(value, precision = 1) {
     const factor = Math.max(1, Number(precision) || 1);
     return Math.round((Number(value) || 0) * factor) / factor;
+  }
+
+  function normalizeTileCoord(tile = {}) {
+    if (SharedTileCoord?.normalizeCoord) return SharedTileCoord.normalizeCoord(tile);
+    const toInteger = (value, fallback = 0) => {
+      const number = Number(value);
+      return Number.isFinite(number) ? Math.floor(number) : fallback;
+    };
+    const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+    const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+    return {
+      x: q,
+      y: r,
+      q,
+      r,
+      tileId: `tile_${q}_${r}`,
+    };
   }
 
   function getFramePixels(layout = {}, cacheScale = 1) {
@@ -18,9 +47,10 @@
       ? entries.filter(({ tile }) => tile?.water?.kind && tile?.water?.asset)
       : entries;
     return filteredEntries.map(({ tile = {}, center = {}, drawRect = {} }) => {
+      const coord = normalizeTileCoord(tile);
       const templateAssets = Array.isArray(tile.templateAssets) ? tile.templateAssets : [];
       const common = [
-        tile.id,
+        coord.tileId,
         tile.terrain,
         tile.terrainAsset,
         templateAssets.map((asset) => `${asset.key}:${asset.asset}:${asset.waterKind || ''}`).join(','),
@@ -83,13 +113,16 @@
     const scoutSignature = (tileMapView.activeScouts || []).map((mission) => [
       mission.id || '',
       mission.status || '',
-      (mission.route || []).map((step) => [
-        step.tileId || '',
-        step.q ?? '',
-        step.r ?? '',
-        step.step ?? '',
-        step.revealed ? 1 : 0,
-      ].join(',')).join('|'),
+      (mission.route || []).map((step) => {
+        const coord = normalizeTileCoord(step);
+        return [
+          coord.tileId,
+          coord.q,
+          coord.r,
+          step.step ?? '',
+          step.revealed ? 1 : 0,
+        ].join(',');
+      }).join('|'),
     ].join(':')).join(';');
     return [
       options.kind || 'world',

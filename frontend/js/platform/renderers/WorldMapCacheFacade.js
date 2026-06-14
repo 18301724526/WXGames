@@ -34,6 +34,22 @@
       return this.host?.constructor?.getWorldMapLayerCacheStore?.() || null;
     }
 
+    normalizeTileCoord(tile = {}) {
+      const toInteger = (value, fallback = 0) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? Math.floor(number) : fallback;
+      };
+      const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+      const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+      return {
+        x: q,
+        y: r,
+        q,
+        r,
+        tileId: `tile_${q}_${r}`,
+      };
+    }
+
     getWorldTileStaticCacheKey(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}, options = {}) {
       const cachePolicy = this.getWorldMapCachePolicy();
       if (cachePolicy?.getWorldTileStaticCacheKey) {
@@ -41,25 +57,28 @@
       }
       const scale = Number(viewport.scale) || 1;
       const selectedSiteId = uiState.selectedSiteId || '';
-      const entrySignature = entries.map(({ tile = {}, center = {}, drawRect = {} }) => [
-        tile.id,
-        tile.terrain,
-        tile.terrainAsset,
-        (tile.templateAssets || []).map((asset) => `${asset.key}:${asset.asset}:${asset.waterKind || ''}`).join(','),
-        tile.feature?.asset || '',
-        tile.feature?.key || '',
-        tile.site?.id || '',
-        tile.site?.art || '',
-        tile.site?.owner || '',
-        tile.site?.name || tile.site?.title || '',
-        tile.site?.scale || '',
-        tile.site?.offset?.x || 0,
-        tile.site?.offset?.y || 0,
-        Math.round((Number(center.x) || 0) * 10) / 10,
-        Math.round((Number(center.y) || 0) * 10) / 10,
-        Math.round((Number(drawRect.x) || 0) * 10) / 10,
-        Math.round((Number(drawRect.y) || 0) * 10) / 10,
-      ].join('|')).join(';');
+      const entrySignature = entries.map(({ tile = {}, center = {}, drawRect = {} }) => {
+        const coord = this.normalizeTileCoord(tile);
+        return [
+          coord.tileId,
+          tile.terrain,
+          tile.terrainAsset,
+          (tile.templateAssets || []).map((asset) => `${asset.key}:${asset.asset}:${asset.waterKind || ''}`).join(','),
+          tile.feature?.asset || '',
+          tile.feature?.key || '',
+          tile.site?.id || '',
+          tile.site?.art || '',
+          tile.site?.owner || '',
+          tile.site?.name || tile.site?.title || '',
+          tile.site?.scale || '',
+          tile.site?.offset?.x || 0,
+          tile.site?.offset?.y || 0,
+          Math.round((Number(center.x) || 0) * 10) / 10,
+          Math.round((Number(center.y) || 0) * 10) / 10,
+          Math.round((Number(drawRect.x) || 0) * 10) / 10,
+          Math.round((Number(drawRect.y) || 0) * 10) / 10,
+        ].join('|');
+      }).join(';');
       return [
         options.kind || 'world',
         tileMapView.signature || '',
@@ -236,13 +255,16 @@
       const scoutSignature = (tileMapView.activeScouts || []).map((mission) => [
         mission.id || '',
         mission.status || '',
-        (mission.route || []).map((step) => [
-          step.tileId || '',
-          step.q ?? '',
-          step.r ?? '',
-          step.step ?? '',
-          step.revealed ? 1 : 0,
-        ].join(',')).join('|'),
+        (mission.route || []).map((step) => {
+          const coord = this.normalizeTileCoord(step);
+          return [
+            coord.tileId,
+            coord.q,
+            coord.r,
+            step.step ?? '',
+            step.revealed ? 1 : 0,
+          ].join(',');
+        }).join('|'),
       ].join(':')).join(';');
       return [
         options.kind || 'world',

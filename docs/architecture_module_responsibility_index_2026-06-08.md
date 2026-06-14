@@ -1648,6 +1648,7 @@ P0 新增公开 API / Public API Added During P0:
 
 - No canvas, DOM, WebGL, renderer instance mutation, offscreen work creation, or direct cache deletion.
 - Cache key generation uses compact identity fields and rounded layout numbers.
+- Static, water, and scout-route cache identity derives tile ids from stable `x/y` semantics, accepting legacy `q/r` while never using raw `tile.id` or route `tileId` as cache authority.
 - Pixel-budget layout choice is pure and deterministic.
 - Prune calculation preserves active keys and returns least-recent stale keys first.
 - Snapshot draw layout math can be tested without `drawImage()`.
@@ -1738,6 +1739,7 @@ P0 新增公开 API / Public API Added During P0:
 - Named cache work is reused and resized in place through `WorldMapLayerCacheStore`.
 - Temporary work creation uses injected `createTileWorkCanvas()` and does not scan assets or gameplay state.
 - Clipped blits are delegated to deterministic source/destination math.
+- Fallback cache key generation uses the same stable coordinate identity as `WorldMapCachePolicy`; raw `tile.id` / `tileId` values are not cache authority when policy helpers are unavailable.
 - Cache key/layout policy remains browser-free and testable without renderer drawing.
 
 扩展方式 / Extension Path:

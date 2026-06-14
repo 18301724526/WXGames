@@ -103,6 +103,75 @@ test('WorldMapCacheFacade delegates static and scout cache identity to cache pol
   assert.equal(scoutKey.includes('scout-1:active'), true);
 });
 
+test('WorldMapCacheFacade fallback derives cache identity from stable tile coordinates', () => {
+  const host = createHost({
+    constructor: {
+      getWorldMapCachePolicy() {
+        return null;
+      },
+      getWorldMapLayerCacheStore() {
+        return WorldMapLayerCacheStore;
+      },
+    },
+  });
+  const renderer = new WorldMapCacheFacade({ host });
+  const viewport = { originX: 100, originY: 80, panX: 2, panY: -1, scale: 0.5 };
+  const frame = { x: 1, y: 2, width: 300, height: 200 };
+  const stableEntry = {
+    tile: {
+      id: 'legacy-entry-a',
+      tileId: 'legacy-entry-tile-a',
+      x: 4,
+      y: -2,
+      q: 99,
+      r: 99,
+      terrain: 'plains',
+      terrainAsset: 'terrain-a',
+      feature: { asset: 'feature-a', key: 'tree' },
+    },
+    center: { x: 1, y: 2 },
+    drawRect: { x: 3, y: 4, width: 10, height: 5 },
+  };
+  const legacyShapeEntry = {
+    ...stableEntry,
+    tile: {
+      ...stableEntry.tile,
+      id: 'legacy-entry-b',
+      tileId: 'legacy-entry-tile-b',
+      q: 4,
+      r: -2,
+    },
+  };
+  delete legacyShapeEntry.tile.x;
+  delete legacyShapeEntry.tile.y;
+  const stableTileMapView = {
+    signature: 'same-signature',
+    version: '2',
+    seed: 'cache-seed',
+    activeScouts: [{
+      id: 'scout-1',
+      status: 'active',
+      route: [{ tileId: 'legacy-route-a', x: 4, y: -2, q: 99, r: 99, step: 1, revealed: false }],
+    }],
+  };
+  const legacyShapeTileMapView = {
+    ...stableTileMapView,
+    activeScouts: [{
+      ...stableTileMapView.activeScouts[0],
+      route: [{ tileId: 'legacy-route-b', q: 4, r: -2, step: 1, revealed: false }],
+    }],
+  };
+
+  assert.equal(
+    renderer.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [stableEntry], {}, { cacheScale: 2 }),
+    renderer.getWorldTileStaticCacheKey(legacyShapeTileMapView, viewport, frame, [legacyShapeEntry], {}, { cacheScale: 2 }),
+  );
+  assert.equal(
+    renderer.getWorldTileScoutRouteCacheKey(stableTileMapView, viewport, frame, { cacheScale: 2 }),
+    renderer.getWorldTileScoutRouteCacheKey(legacyShapeTileMapView, viewport, frame, { cacheScale: 2 }),
+  );
+});
+
 test('WorldMapCacheFacade reuses named layer cache work through cache store', () => {
   const host = createHost();
   const renderer = new WorldMapCacheFacade({ host });

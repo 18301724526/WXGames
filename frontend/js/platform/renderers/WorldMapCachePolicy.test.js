@@ -66,6 +66,95 @@ test('WorldMapCachePolicy builds static, scout, and water cache keys from compac
   assert.equal(waterKey.includes('feature-a'), false);
 });
 
+test('WorldMapCachePolicy derives cache identity from stable tile coordinates', () => {
+  const viewport = { originX: 100, originY: 80, panX: 2, panY: -1, scale: 0.5 };
+  const frame = { x: 1, y: 2, width: 300, height: 200 };
+  const baseEntry = {
+    tile: {
+      id: 'legacy-entry-a',
+      tileId: 'legacy-entry-tile-a',
+      x: 4,
+      y: -2,
+      q: 99,
+      r: 99,
+      terrain: 'river',
+      terrainAsset: 'terrain-a',
+      water: { kind: 'river', asset: 'water-a' },
+      templateAssets: [{ key: 'water', asset: 'water-base', waterKind: 'river' }],
+    },
+    center: { x: 12, y: 34 },
+    drawRect: { x: 1, y: 2, width: 20, height: 10 },
+  };
+  const stableEntry = baseEntry;
+  const legacyShapeEntry = {
+    ...baseEntry,
+    tile: {
+      ...baseEntry.tile,
+      id: 'legacy-entry-b',
+      tileId: 'legacy-entry-tile-b',
+      q: 4,
+      r: -2,
+    },
+  };
+  delete legacyShapeEntry.tile.x;
+  delete legacyShapeEntry.tile.y;
+  const movedEntry = {
+    ...baseEntry,
+    tile: {
+      ...baseEntry.tile,
+      x: 5,
+      y: -2,
+      q: 99,
+      r: 99,
+    },
+  };
+  const stableTileMapView = {
+    signature: 'same-signature',
+    version: '2',
+    seed: 'cache-seed',
+    activeScouts: [{
+      id: 'scout-1',
+      status: 'active',
+      route: [{ tileId: 'legacy-route-a', x: 4, y: -2, q: 99, r: 99, step: 1, revealed: false }],
+    }],
+  };
+  const legacyShapeTileMapView = {
+    ...stableTileMapView,
+    activeScouts: [{
+      ...stableTileMapView.activeScouts[0],
+      route: [{ tileId: 'legacy-route-b', q: 4, r: -2, step: 1, revealed: false }],
+    }],
+  };
+  const movedTileMapView = {
+    ...stableTileMapView,
+    activeScouts: [{
+      ...stableTileMapView.activeScouts[0],
+      route: [{ tileId: 'legacy-route-a', x: 5, y: -2, q: 99, r: 99, step: 1, revealed: false }],
+    }],
+  };
+
+  assert.equal(
+    WorldMapCachePolicy.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [stableEntry], {}, { cacheScale: 2 }),
+    WorldMapCachePolicy.getWorldTileStaticCacheKey(legacyShapeTileMapView, viewport, frame, [legacyShapeEntry], {}, { cacheScale: 2 }),
+  );
+  assert.equal(
+    WorldMapCachePolicy.getWorldTileWaterLayerCacheKey(stableTileMapView, viewport, frame, [stableEntry], { cacheScale: 2, frameIndex: 3 }),
+    WorldMapCachePolicy.getWorldTileWaterLayerCacheKey(legacyShapeTileMapView, viewport, frame, [legacyShapeEntry], { cacheScale: 2, frameIndex: 3 }),
+  );
+  assert.equal(
+    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(stableTileMapView, viewport, frame, { cacheScale: 2 }),
+    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(legacyShapeTileMapView, viewport, frame, { cacheScale: 2 }),
+  );
+  assert.notEqual(
+    WorldMapCachePolicy.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [stableEntry], {}, { cacheScale: 2 }),
+    WorldMapCachePolicy.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [movedEntry], {}, { cacheScale: 2 }),
+  );
+  assert.notEqual(
+    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(stableTileMapView, viewport, frame, { cacheScale: 2 }),
+    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(movedTileMapView, viewport, frame, { cacheScale: 2 }),
+  );
+});
+
 test('WorldMapCachePolicy resolves world, chunk, viewport, and fast-drag cache layout policy', () => {
   const worldLayout = { kind: 'world', frame: { width: 100, height: 100 } };
   const viewportLayout = { kind: 'viewport', frame: { width: 40, height: 40 } };
