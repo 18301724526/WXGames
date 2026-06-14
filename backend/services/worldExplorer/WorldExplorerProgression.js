@@ -21,10 +21,12 @@ function getTutorialSteps() {
 
 function summarizeStep(step = {}) {
   if (!step || typeof step !== 'object') return null;
+  const q = Number(step.q || 0);
+  const r = Number(step.r || 0);
   return {
-    q: Number(step.q || 0),
-    r: Number(step.r || 0),
-    tileId: step.tileId || WorldMapService.getTileId(step.q || 0, step.r || 0),
+    q,
+    r,
+    tileId: WorldMapService.getTileId(q, r),
     step: Number(step.step || 0),
     revealed: Boolean(step.revealed),
     revealedAt: step.revealedAt || null,
@@ -49,11 +51,11 @@ function summarizeMission(mission = {}) {
 }
 
 function getPlannedTileById(mission) {
-  return new Map((mission.plannedTiles || []).map((tile) => [tile.id || WorldMapService.getTileId(tile.q, tile.r), tile]));
+  return new Map((mission.plannedTiles || []).map((tile) => [WorldMapService.getTileId(tile.q, tile.r), tile]));
 }
 
 function materializePlannedSitesForStep(gameState, mission, step, now = new Date()) {
-  const tileId = step.tileId || WorldMapService.getTileId(step.q, step.r);
+  const tileId = WorldMapService.getTileId(step.q, step.r);
   const materialized = [];
   mission.plannedSites = (mission.plannedSites || []).map((plannedSite) => {
     if (!plannedSite || plannedSite.materialized || plannedSite.tileId !== tileId) return plannedSite;
@@ -189,7 +191,7 @@ function advanceExploreMissions(gameState, now = new Date()) {
       mission.position = {
         q: step.q,
         r: step.r,
-        tileId: step.tileId || WorldMapService.getTileId(step.q, step.r),
+        tileId: WorldMapService.getTileId(step.q, step.r),
       };
       newlyRevealedTiles.push(...revealedTiles);
       mission.revealedTileIds = Array.from(new Set([

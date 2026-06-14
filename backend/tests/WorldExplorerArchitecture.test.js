@@ -105,6 +105,61 @@ test('WorldExplorerMissionNormalizer derives tile identity from mission coordina
   assert.deepEqual(mission.revealedTileIds, ['tile_1_-1']);
 });
 
+test('world explorer progression materializes planned sites by step coordinates', (t) => {
+  const originalBindSiteToTile = WorldMapService.bindSiteToTile;
+  const calls = [];
+  t.after(() => {
+    WorldMapService.bindSiteToTile = originalBindSiteToTile;
+  });
+  WorldMapService.bindSiteToTile = (_gameState, x, y, siteId, _now, options) => {
+    calls.push({ x, y, siteId, options });
+    return {
+      id: WorldMapService.getTileId(x, y),
+      q: x,
+      r: y,
+      siteId,
+      visibility: options?.visibility || 'scouted',
+    };
+  };
+
+  const gameState = { territories: [], tutorial: { completed: true } };
+  const mission = {
+    id: 'stale-step-tile',
+    plannedSites: [{
+      tileId: 'tile_2_-1',
+      q: 2,
+      r: -1,
+      siteId: 'site_2_-1',
+      materialized: false,
+      site: {
+        id: 'site_2_-1',
+        x: 2,
+        y: -1,
+        owner: 'neutral',
+        status: 'discovered',
+      },
+    }],
+  };
+
+  const materialized = Progression.materializePlannedSitesForStep(
+    gameState,
+    mission,
+    { q: 2, r: -1, tileId: 'stale-step-tile' },
+    new Date('2026-06-06T00:00:00.000Z'),
+  );
+
+  assert.equal(materialized.length, 1);
+  assert.equal(materialized[0].site.id, 'site_2_-1');
+  assert.equal(materialized[0].tile.id, 'tile_2_-1');
+  assert.deepEqual(calls, [{
+    x: 2,
+    y: -1,
+    siteId: 'site_2_-1',
+    options: { visibility: 'scouted' },
+  }]);
+  assert.equal(mission.plannedSites[0].materialized, true);
+});
+
 test('WorldExplorerService facade exposes only the actor march API', () => {
   const expectedApi = [
     'EXPLORE_REVEAL_RADIUS',

@@ -4407,6 +4407,37 @@ Regression:
 - `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js backend/tests/RealtimeAuthorityContract.test.js`
 - `npm run test:architecture`
 
+### `backend/services/worldExplorer/WorldExplorerProgression.js`
+
+Status: candidate
+
+Owns:
+
+- world explorer runtime progression for already-accepted missions
+- step reveal batching through `WorldMapService.revealTiles()`
+- planned tile override lookup, planned site materialization, tutorial first-site grant, and mission position/status advancement
+- canonical runtime tile identity for coordinate-bearing progression inputs: step summaries, planned-tile lookup keys, planned-site materialization, and mission position writes derive tile ids from `q/r`; stale `step.tileId` / planned tile `id` cannot override coordinates
+
+Public API:
+
+- `getPlannedTileById(mission)`
+- `materializePlannedSitesForStep(gameState, mission, step, now)`
+- `revealCoordinate(gameState, mission, coord, now)`
+- `revealStep(gameState, mission, step, now)`
+- `advanceExploreMissions(gameState, now)`
+- `normalizeExploreState(gameState, now)`
+
+Extension Path:
+
+- New progression side effects must be added here or in action modules with focused tests before client-state projection reads them.
+- Coordinate-bearing progression data must recompute tile identity at this boundary instead of trusting raw `tileId` / `id`.
+- Keep route planning in `WorldExplorerRoutePlanner`, DTO shape in `WorldExplorerDtoMapper`, and API/action acceptance in `WorldExplorerActions`.
+
+Regression:
+
+- `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js backend/tests/GameStateProjectionArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/worldExplorer/WorldExplorerDtoMapper.js`
 
 状态 / Status: candidate

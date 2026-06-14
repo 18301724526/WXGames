@@ -72,6 +72,7 @@
 - `CommandAuthorityContract` 在 `authority.command.clientInput` 中保存 compact evidence，用于回放和审计。
 - `WorldExplorerService` 仍只用服务器 gameState、mission、targetQ/targetR、missionId 计算路线、停止点、timeline 和 AOI；`clientInputIntent` 不能覆盖坐标、路线、任务状态或多人同步权威。
 - `WorldExplorerMissionNormalizer` 是服务端 mission row 进入 progression / DTO / timeline / AOI 前的归一化边界；route、origin、homeOrigin、target、position、plannedTiles、plannedSites 只要带坐标，就必须由坐标生成 canonical tile identity，旧存档或旧客户端传入的 `tileId` / `id` 不能覆盖坐标事实。
+- `WorldExplorerProgression` 是世界探索运行时副作用边界；planned tile lookup、planned site materialize、step trace summary、mission position 写回都必须由 `q/r` 生成 tile identity，不能把旧 `step.tileId` / planned tile `id` 当运行时权威。
 - `WorldExplorerDtoMapper` 是 public API 输出边界；origin、homeOrigin、target、position、route、plannedTiles、plannedSites 这些带坐标的 DTO 字段也必须重新由坐标生成 public tile identity，不能把内部旧 `tileId` / `id` 泄漏回客户端。
 - `LogService` 的 `operationLog.clientInput` 记录同一份 compact evidence，便于与本地导出的 `ClientOperationLog` 和 `/api/game/action` request id 对账。
 
@@ -107,6 +108,7 @@
 - 2026-06-14：`WorldMapVisibilityModel`、`WorldMapEntitySnapshot`、`WorldFogVisualSnapshot` 的 visibility/entity/fog 身份也改为消费 `TileCoord`。visibility arrays、entity indexes、fog visual signature 均由 canonical tile identity 合并与索引，caller-supplied `id/tileId` 不再能覆盖 stable `x/y`。
 - 2026-06-14：`CanvasTerritoryActionHandlers` 的 `selectWorldMarchTarget` / `openWorldMarchFormationPicker` / `startWorldMarch` 统一消费 `TileCoord` 行军目标规范化；HUD 目标 tile identity 从坐标生成，旧 `action.tileId` 不能污染 UI 状态或 API 顶层 payload。
 - 2026-06-14：`WorldExplorerMissionNormalizer` 的服务端 mission row 也完成坐标身份收口；route/origin/homeOrigin/target/position/planned tile/planned site 中的旧 `tileId` / `id` 不能覆盖 `q/r` 坐标，后续 progression、timeline、AOI 都只消费归一化后的 canonical mission facts。
+- 2026-06-14：`WorldExplorerProgression` 的运行时副作用也完成坐标身份收口；planned site materialization、planned tile lookup、trace step summary、mission position 写回不再信旧 `step.tileId` / planned tile `id`，即使脏 mission 绕过上游也不能改变 materialize 或 position 事实。
 - 2026-06-14：`WorldExplorerDtoMapper` 的 public API 输出也完成坐标身份收口；即使内部 mission row 被旧字段污染，客户端 DTO 仍按坐标生成 canonical tile identity，不把旧 `tileId` / `id` 当公开事实。
 - 2026-06-14：`TerritoryStateNormalizer` 的 legacy territory scout mission 归一化边界完成第一段收口；scout `route` / `revealArea` 带坐标字段统一由 `q/r` 生成 `tileId`，旧存档里的 scout `tileId` 不能重新进入推进或投影链路。
 - 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。2026-06-14 已补 `WorldMapInputActionMap` 回归：renderer `openWorldSite` / `selectWorldActor` 只能证明点在 world surface 上，最终目标身份必须来自当前 picking snapshot 或 context 重算。
