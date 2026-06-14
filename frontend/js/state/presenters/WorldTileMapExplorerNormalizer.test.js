@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const WorldTileMapExplorerNormalizer = require('./WorldTileMapExplorerNormalizer');
 
@@ -114,6 +116,14 @@ test('WorldTileMapExplorerNormalizer reveals x/y planned tiles and sites using c
   ).map((site) => ({ id: site.id, x: site.x, y: site.y })), [
     { id: 'site_3_-1', x: 3, y: -1 },
   ]);
+});
+
+test('WorldTileMapExplorerNormalizer planned tile trace derives identity from normalized coordinates', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'WorldTileMapExplorerNormalizer.js'), 'utf8');
+  const forbiddenRawIdFallback = ['tile.id', ' || ', 'normalizeCoord(tile).tileId'].join('');
+
+  assert.equal(source.includes(forbiddenRawIdFallback), false);
+  assert.equal(source.includes('plannedTiles.map((tile) => normalizeCoord(tile).tileId)'), true);
 });
 
 test('WorldTileMapExplorerNormalizer derives planned site tile identity from raw site coordinates', () => {

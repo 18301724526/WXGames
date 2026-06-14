@@ -218,7 +218,7 @@
     const plannedTiles = [...byId.values()];
     global.WorldMarchTrace?.logDedup?.(
       'presenter:plannedTiles',
-      plannedTiles.map((tile) => tile.id || normalizeCoord(tile).tileId).join(',') || 'none',
+      plannedTiles.map((tile) => normalizeCoord(tile).tileId).join(',') || 'none',
       {
         plannedTiles: global.WorldMarchTrace?.summarizePlannedTiles?.(plannedTiles),
         source: global.WorldMarchTrace?.summarizeWorldExplorerState?.(worldExplorerState),

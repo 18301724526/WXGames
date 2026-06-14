@@ -5355,6 +5355,7 @@ Regression:
 - planned tile and planned site reveal filtering for presenter view-state composition
 - coordinate and world tile id normalization shared by explorer presenter helpers
 - `TileCoord`-backed route/planned tile/planned site identity: stable `x/y` wins over legacy `q/r`, and canonical `tileId` wins over raw/planned legacy ids
+- diagnostic `WorldMarchTrace` planned-tile summaries derive ids from `normalizeCoord()` output; trace strings must not prefer raw `tile.id`
 
 公开 API / Public API:
 
@@ -5375,6 +5376,7 @@ Regression:
 
 - 新 world-explorer presenter-only mission/planned-tile/planned-site normalization 先扩展本模块，并同步 focused tests。
 - 新坐标语义先扩展 `TileCoord`，本模块只消费 stable coordinate contract，不再手写第二套 tile identity 规则。
+- New trace or diagnostic summaries in this module must use normalized coordinate identity, not raw payload `id` fallback chains.
 - Map-level composition stays in `WorldTileMapPresenter`.
 - Gameplay progression, march timing rules, or persistence DTO mapping stay in domain/client-state modules, not this normalizer.
 
