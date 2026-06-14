@@ -14,6 +14,7 @@ const officialDocPaths = [
   'docs/architecture_module_responsibility_index_2026-06-08.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/6月11日重构与问题交接.md',
+  'docs/6月15日交接文档.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
 ];
@@ -90,6 +91,13 @@ const requiredText = {
     'scripts/verify-production-security-config.js',
     '08639bab086d5d87ebb7445a043ffb72cc88754c',
     '613/613',
+  ],
+  'docs/6月15日交接文档.md': [
+    'WorldMarchTrace',
+    'bc0be98ed26563493f771a9187597d4d420614bd',
+    'Harden world march frontend trace identity',
+    'node --test frontend/js/debug/WorldMarchTrace.test.js',
+    'git push private main',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',

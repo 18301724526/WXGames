@@ -73,14 +73,26 @@
     return values;
   }
 
+  function hasCoordinate(source = {}) {
+    return source && typeof source === 'object'
+      && (source.q !== undefined || source.x !== undefined || source.r !== undefined || source.y !== undefined);
+  }
+
+  function getTraceTileId(source = {}) {
+    const q = Number(source?.q ?? source?.x ?? 0);
+    const r = Number(source?.r ?? source?.y ?? 0);
+    if (hasCoordinate(source)) return `tile_${q}_${r}`;
+    return source?.tileId || source?.id || '';
+  }
+
   function summarizeCoord(coord = null) {
     if (!coord || typeof coord !== 'object') return null;
+    const q = Number(coord.q ?? coord.x ?? 0);
+    const r = Number(coord.r ?? coord.y ?? 0);
     return {
-      q: Number(coord.q ?? coord.x ?? 0),
-      r: Number(coord.r ?? coord.y ?? 0),
-      tileId: coord.tileId || (coord.q !== undefined || coord.x !== undefined
-        ? `tile_${Number(coord.q ?? coord.x ?? 0)}_${Number(coord.r ?? coord.y ?? 0)}`
-        : ''),
+      q,
+      r,
+      tileId: getTraceTileId(coord),
     };
   }
 
@@ -90,8 +102,8 @@
     return {
       count: steps.length,
       revealed: revealed.length,
-      ids: compactArray(steps, (step) => step?.tileId || `tile_${step?.q}_${step?.r}`),
-      revealedIds: compactArray(revealed, (step) => step?.tileId || `tile_${step?.q}_${step?.r}`),
+      ids: compactArray(steps, (step) => getTraceTileId(step)),
+      revealedIds: compactArray(revealed, (step) => getTraceTileId(step)),
       first: summarizeCoord(steps[0]),
       last: summarizeCoord(steps.at(-1)),
     };
@@ -101,8 +113,8 @@
     const tiles = Array.isArray(plannedTiles) ? plannedTiles : [];
     return {
       count: tiles.length,
-      ids: compactArray(tiles, (tile) => tile?.id || `tile_${tile?.q}_${tile?.r}`),
-      terrain: compactArray(tiles, (tile) => `${tile?.id || `tile_${tile?.q}_${tile?.r}`}:${tile?.terrain || ''}`),
+      ids: compactArray(tiles, (tile) => getTraceTileId(tile)),
+      terrain: compactArray(tiles, (tile) => `${getTraceTileId(tile)}:${tile?.terrain || ''}`),
     };
   }
 

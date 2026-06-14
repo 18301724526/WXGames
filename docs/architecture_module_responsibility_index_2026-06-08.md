@@ -6224,6 +6224,33 @@ Regression:
 - `node scripts/verify-refactor-plan-doc.js`
 - `npm run test:architecture`
 
+### `docs/6月15日交接文档.md`
+
+Status: authoritative daily handoff
+
+Owns:
+
+- 2026-06-15 world-map/world-march coordinate identity governance handoff
+- current commit, remote, server-deploy, and validation checklist for company Codex continuation
+- completed coordinate-authority progress summary across input, presenter/runtime, backend world explorer, realtime sync, map writes, and diagnostics
+- next-step guidance for one-red-test-at-a-time legacy identity cleanup
+
+Public Contract:
+
+- This document is a daily continuation handoff, not a product/gameplay/architecture source of truth.
+- It must point back to the current official architecture docs and responsibility index for durable contracts.
+- It must stay registered in `scripts/verify-refactor-plan-doc.js` while present in `docs/`.
+
+Extension Path:
+
+- Update this file only for corrections to the 2026-06-15 handoff facts before the next daily handoff replaces it.
+- New daily handoff documents must use dated Chinese titles and be registered in the official doc guard.
+
+Regression:
+
+- `node scripts/verify-refactor-plan-doc.js`
+- `npm run test:architecture`
+
 ### `frontend/js/platform/renderers/WorldMapCanvasRenderer.js` - 718 lines
 
 状态 / Status: candidate facade
@@ -6375,6 +6402,41 @@ Regression:
 回归 / Regression:
 
 - `node --test frontend/js/debug/H5LoadTrace.test.js`
+- `npm run test:architecture`
+
+### `frontend/js/debug/WorldMarchTrace.js`
+
+状态 / Status: candidate diagnostic boundary
+
+负责 / Owns:
+
+- optional console-facing world-march diagnostic summaries
+- compact mission, route, planned tile, planned site, API payload, action body, and authority summaries for debugging
+- coordinate-authoritative trace tile identity: mission origin/target/position, route ids, revealed route ids, and planned tile ids/terrain labels derive from `q/r` or `x/y` whenever coordinates exist
+
+公开 API / Public API:
+
+- `WorldMarchTrace.enabled()`
+- `WorldMarchTrace.setEnabled(value)`
+- `WorldMarchTrace.log(stage, payload)`
+- `WorldMarchTrace.logDedup(stage, key, payload)`
+- `WorldMarchTrace.warn(stage, payload)`
+- `WorldMarchTrace.error(stage, payload)`
+- `WorldMarchTrace.summarizeActionBody(body)`
+- `WorldMarchTrace.summarizeApiPayload(payload)`
+- `WorldMarchTrace.summarizeMission(mission)`
+- `WorldMarchTrace.summarizeRoute(route)`
+- `WorldMarchTrace.summarizePlannedTiles(plannedTiles)`
+
+扩展方式 / Extension Path:
+
+- New trace summaries must stay diagnostic-only and compact; they cannot become gameplay authority or alter routing, movement, AOI, or server acceptance.
+- Coordinate-bearing world/explorer records must use coordinate-derived tile identity instead of raw `tileId` / `id` fallback chains.
+- New exported summary helpers require focused tests before they are registered in `GameAPI` or operation-log flows.
+
+回归 / Regression:
+
+- `node --test frontend/js/debug/WorldMarchTrace.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/api/GameAPI.js`
