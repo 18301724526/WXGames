@@ -398,3 +398,213 @@ test('CanvasGameApp observes async world-map runtime tap failures for diagnostic
 
   assert.deepEqual(errors, ['app runtime tap failed']);
 });
+
+test('CanvasGameApp records compat tap hit and runtime routing into local operation log', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, background: Boolean(action.background) } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_1_1', q: 1, r: 1 }] } },
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.hasBlockingOverlayOpen = () => false;
+  app.renderer = {
+    getHitTarget() {
+      return { type: 'worldMapDrag', background: true };
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap() {
+      return true;
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  try {
+    assert.equal(await app.handleTap({ x: 200, y: 360 }), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  assert.equal(events.some((event) => event[0] === 'input:tapHit'), true);
+  assert.equal(events.some((event) => event[0] === 'input:tapRuntime'), true);
+  const runtimeEvent = events.find((event) => event[0] === 'input:tapRuntime')?.[1];
+  assert.equal(runtimeEvent.actionType, 'worldMapDrag');
+  assert.equal(runtimeEvent.runtimeHandled, true);
+});
+
+test('CanvasGameApp records compat async runtime routing as compact promise state', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, background: Boolean(action.background) } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_1_1', q: 1, r: 1 }] } },
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.hasBlockingOverlayOpen = () => false;
+  app.renderer = {
+    getHitTarget() {
+      return { type: 'worldMapDrag', background: true };
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap() {
+      return Promise.resolve(true);
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  try {
+    assert.equal(await app.handleTap({ x: 200, y: 360 }), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const runtimeEvent = events.find((event) => event[0] === 'input:tapRuntime')?.[1];
+  assert.equal(runtimeEvent.runtimeHandled, 'promise');
+});
+
+test('CanvasGameApp records compat non-runtime tap actions into local operation log', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, siteId: action.siteId || '' } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.hasBlockingOverlayOpen = () => false;
+  app.renderer = {
+    getHitTarget() {
+      return { type: 'openWorldSite', siteId: 'capital' };
+    },
+  };
+  app.actionController = {
+    handle() {
+      return true;
+    },
+  };
+
+  try {
+    assert.equal(await app.handleTap({ x: 60, y: 60 }), true);
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  assert.equal(events.some((event) => event[0] === 'input:tapHit'), true);
+  assert.equal(events.some((event) => event[0] === 'input:tapAction'), true);
+  const actionEvent = events.find((event) => event[0] === 'input:tapAction')?.[1];
+  assert.equal(actionEvent.action.type, 'openWorldSite');
+  assert.equal(actionEvent.handled, true);
+});
+
+test('CanvasGameApp records compat async action dispatch before rejection', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, siteId: action.siteId || '' } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.hasBlockingOverlayOpen = () => false;
+  app.renderer = {
+    getHitTarget() {
+      return { type: 'externalWorldCommand', siteId: 'capital' };
+    },
+  };
+  app.actionController = {
+    handle() {
+      return Promise.reject(new Error('compat action failed'));
+    },
+  };
+
+  try {
+    await assert.rejects(
+      () => app.handleTap({ x: 60, y: 60 }),
+      /compat action failed/,
+    );
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const actionEvent = events.find((event) => event[0] === 'input:tapAction')?.[1];
+  assert.equal(actionEvent.action.type, 'externalWorldCommand');
+  assert.equal(actionEvent.handled, 'promise');
+});

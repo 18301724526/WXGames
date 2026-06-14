@@ -21,6 +21,10 @@
       || (action.type === 'selectWorldMarchTarget' && action.background);
   }
 
+  function summarizeHandledForOperationLog(handled) {
+    return handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled);
+  }
+
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -112,14 +116,34 @@
 
       async handleTap(point) {
             const action = this.renderer.getHitTarget(point);
+            global.ClientOperationLog?.record?.('input:tapHit', {
+              point: global.ClientOperationLog?.summarizePoint?.(point),
+              action: global.ClientOperationLog?.summarizeAction?.(action),
+              blockingOverlay: this.hasBlockingOverlayOpen?.(),
+              mapHomeActive: Boolean(this.mapHomeActive),
+              currentTab: this.state?.currentTab || this.activeTab || '',
+              militaryView: this.state?.militaryView || this.militaryView || '',
+            });
             if (action?.type === 'blockCanvasModal') {
               return this.actionController?.handle?.(action);
             }
-            if (action?.disabled) return true;
+            if (action?.disabled) {
+              global.ClientOperationLog?.record?.('input:tapDisabled', {
+                point: global.ClientOperationLog?.summarizePoint?.(point),
+                action: global.ClientOperationLog?.summarizeAction?.(action),
+              }, { flush: true });
+              return true;
+            }
             if (shouldRouteTapThroughWorldMapRuntime(action)) {
               const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
               this.observeAsyncActionResult(handled);
               this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+              global.ClientOperationLog?.record?.(action ? 'input:tapRuntime' : 'input:tapMiss', {
+                point: global.ClientOperationLog?.summarizePoint?.(point),
+                actionType: action?.type || '',
+                action: global.ClientOperationLog?.summarizeAction?.(action),
+                runtimeHandled: summarizeHandledForOperationLog(handled),
+              }, { flush: true });
               if (handled) return handled;
               return handled;
             }
@@ -133,7 +157,12 @@
               this.render();
               return;
             }
-            const handled = await this.actionController?.handle?.(action);
+            const handledResult = this.actionController?.handle?.(action);
+            global.ClientOperationLog?.record?.('input:tapAction', {
+              action: global.ClientOperationLog?.summarizeAction?.(action),
+              handled: summarizeHandledForOperationLog(handledResult),
+            }, { flush: true });
+            const handled = await handledResult;
             this.advanceTutorialIntroAfterHandled(handled, action);
             return handled;
           },
