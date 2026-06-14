@@ -880,6 +880,7 @@ P0 新增公开 API / Public API Added During P0:
 - 将 tile、mission reveal、active mission position 合并为可序列化 visibility arrays
 - 为后续 fog renderer、world map renderer、debug overlay 提供统一输入
 - 性能友好的紧凑数据结构 / compact arrays for large maps
+- Consumes `TileCoord` for tile, mission route, planned tile, and active-position identity so caller-supplied `id/tileId` cannot override stable `x/y`.
 
 公开 API / Public API:
 
@@ -900,6 +901,7 @@ P0 新增公开 API / Public API Added During P0:
 - No renderer objects, DOM objects, canvas context, or WebGL resources.
 - Signature uses incremental FNV-style hashing, not `JSON.stringify`.
 - Avoid per-frame use until the caller can cache by `signature`.
+- Stable `x/y` and legacy `q/r` shapes merge into one canonical visibility entry.
 
 扩展方式 / Extension Path:
 
@@ -909,7 +911,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapVisibilityModel.test.js`
+- `node --test frontend/js/domain/WorldMapVisibilityModel.test.js frontend/js/domain/WorldMapEntitySnapshot.test.js frontend/js/domain/WorldFogVisualSnapshot.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapEntitySnapshot.js`
@@ -922,6 +924,7 @@ P0 新增公开 API / Public API Added During P0:
 - 将 tiles、sites、missions、actors 归一化成稳定实体集合
 - 复用 `WorldMapVisibilityModel` 的 visibility snapshot
 - 为 renderer、action adapter、debug overlay、fog rebuild 提供共同输入
+- Consumes `TileCoord` through visibility/entity local normalization for tiles, sites, missions, and actors.
 
 公开 API / Public API:
 
@@ -941,6 +944,7 @@ P0 新增公开 API / Public API Added During P0:
 - Does not deep-copy backend payloads or renderer objects.
 - Signature uses incremental hashing over compact identity/status fields.
 - Large map tests cover 4000 tiles without nested `entitiesById` maps.
+- Entity ids and indexes use canonical tile identity; stale raw tile/site/actor `id/tileId` values are not accepted as authority.
 
 扩展方式 / Extension Path:
 
@@ -950,7 +954,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapEntitySnapshot.test.js`
+- `node --test frontend/js/domain/WorldMapVisibilityModel.test.js frontend/js/domain/WorldMapEntitySnapshot.test.js frontend/js/domain/WorldFogVisualSnapshot.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/domain/WorldMapPerformanceBudget.js`
@@ -2325,6 +2329,7 @@ P0 新增公开 API / Public API Added During P0:
 - 消费 `WorldMapRenderSnapshot` 的 frame、viewport、geometry，不让 fog renderer 自己推导地图语义
 - 为旧 `WorldFogCanvasRenderer` 或后续替代 visual plugin 输出稳定 renderer context
 - 保持 fog 玩法权威来自 visibility snapshot，本文件只做视觉输入适配
+- Consumes `TileCoord` through visibility/fallback normalization so fog visual ids and signatures cannot be polluted by stale raw `id/tileId`.
 
 公开 API / Public API:
 
@@ -2350,6 +2355,7 @@ P0 新增公开 API / Public API Added During P0:
 - Signature uses incremental FNV-style hashing over compact visual identity/layout fields.
 - Large-map regression covers 5000 tiles and asserts no `entries`, `tileMapView`, or `renderSnapshot` payload is stored on the snapshot.
 - No canvas, WebGL, DOM, renderer instance, or gameplay mutation.
+- Stable `x/y` and legacy `q/r` shapes produce the same fog visual tile id and signature.
 
 扩展方式 / Extension Path:
 
@@ -2359,7 +2365,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldFogVisualSnapshot.test.js`
+- `node --test frontend/js/domain/WorldMapVisibilityModel.test.js frontend/js/domain/WorldMapEntitySnapshot.test.js frontend/js/domain/WorldFogVisualSnapshot.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/WorldMapVisualPluginRegistry.js`
@@ -6991,3 +6997,4 @@ Recommended first split sequence:
 | 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |
 | 2026-06-14 | Hardened runtime map-bake fallback signatures: `WorldMapRuntimeBakePolicy` now consumes `TileCoord` for fallback compact summaries when the presenter is unavailable, so stable `x/y` and legacy `q/r` shapes produce the same bake signature. |
 | 2026-06-14 | Hardened march actor identity: `WorldMarchProgressSnapshot`, `WorldActorProjection`, and `WorldMapRenderSnapshot.normalizeMarchTarget()` now consume `TileCoord`, so stale caller-supplied `id/tileId` cannot override stable `x/y` in mission rows, returned-home actor projection, or march target UI state. |
+| 2026-06-14 | Hardened visibility/entity/fog identity: `WorldMapVisibilityModel`, `WorldMapEntitySnapshot`, and `WorldFogVisualSnapshot` now consume `TileCoord`, so stale caller-supplied `id/tileId` cannot override stable `x/y` in visibility arrays, entity indexes, or fog visual signatures. |

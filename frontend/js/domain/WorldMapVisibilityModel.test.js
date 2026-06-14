@@ -27,6 +27,39 @@ test('WorldMapVisibilityModel normalizes tile visibility into serializable array
   assert.equal(JSON.parse(JSON.stringify(snapshot)).tileIds.length, 3);
 });
 
+test('WorldMapVisibilityModel canonicalizes tile identity through stable axes', () => {
+  assert.deepEqual(WorldMapVisibilityModel.normalizeCoord({
+    x: 4,
+    y: -2,
+    q: 99,
+    r: 99,
+    tileId: 'legacy-visibility',
+    id: 'legacy-id',
+  }), {
+    q: 4,
+    r: -2,
+    tileId: 'tile_4_-2',
+  });
+});
+
+test('WorldMapVisibilityModel merges x/y and legacy q/r shapes into one visibility entry', () => {
+  const snapshot = WorldMapVisibilityModel.createSnapshot({
+    worldMap: {
+      version: 8,
+      tiles: [
+        { x: 4, y: -2, q: 99, r: 99, tileId: 'legacy-visible', visibility: 'visible' },
+        { x: 4, y: -2, q: 88, r: 88, id: 'legacy-controlled', visibility: 'controlled' },
+      ],
+    },
+  });
+
+  assert.deepEqual(snapshot.tileIds, ['tile_4_-2']);
+  assert.deepEqual(snapshot.q, [4]);
+  assert.deepEqual(snapshot.r, [-2]);
+  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_4_-2'), WorldMapVisibilityModel.LEVEL_CONTROLLED);
+  assert.deepEqual(snapshot.counts, { unknown: 0, explored: 0, visible: 0, controlled: 1 });
+});
+
 test('WorldMapVisibilityModel applies mission reveals without downgrading stronger tile visibility', () => {
   const snapshot = WorldMapVisibilityModel.createSnapshot({
     worldMap: {

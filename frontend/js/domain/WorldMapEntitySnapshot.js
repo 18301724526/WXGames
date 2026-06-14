@@ -23,6 +23,18 @@
     return null;
   })();
 
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -38,12 +50,17 @@
 
   function normalizeCoord(source = {}, fallback = {}) {
     if (VisibilityModel?.normalizeCoord) return VisibilityModel.normalizeCoord(source, fallback);
-    const q = toInteger(source.q ?? source.x, fallback.q ?? 0);
-    const r = toInteger(source.r ?? source.y, fallback.r ?? 0);
+    const normalized = TileCoord?.normalizeCoord
+      ? TileCoord.normalizeCoord(source, fallback)
+      : null;
+    const coord = normalized || (source && typeof source === 'object' ? source : {});
+    const base = fallback && typeof fallback === 'object' ? fallback : {};
+    const q = normalized ? normalized.x : toInteger(coord.x ?? coord.q, base.x ?? base.q ?? 0);
+    const r = normalized ? normalized.y : toInteger(coord.y ?? coord.r, base.y ?? base.r ?? 0);
     return {
       q,
       r,
-      tileId: source.tileId || source.id || tileId(q, r),
+      tileId: tileId(q, r),
     };
   }
 
@@ -82,13 +99,12 @@
   }
 
   function normalizeSite(site = {}) {
-    const q = toInteger(site.x ?? site.q, 0);
-    const r = toInteger(site.y ?? site.r, 0);
+    const coord = normalizeCoord(site);
     return {
-      id: site.id || site.siteId || `site_${q}_${r}`,
-      q,
-      r,
-      tileId: site.tileId || tileId(q, r),
+      id: site.id || site.siteId || `site_${coord.q}_${coord.r}`,
+      q: coord.q,
+      r: coord.r,
+      tileId: coord.tileId,
       type: site.type || 'town',
       status: site.status || '',
       owner: site.owner || '',

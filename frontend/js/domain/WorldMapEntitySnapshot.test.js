@@ -70,6 +70,37 @@ test('WorldMapEntitySnapshot uses compact indexes and stable signatures', () => 
   assert.equal(Object.prototype.hasOwnProperty.call(first, 'entitiesById'), false);
 });
 
+test('WorldMapEntitySnapshot canonicalizes tile, site, mission, and actor identity through stable axes', () => {
+  const snapshot = WorldMapEntitySnapshot.createSnapshot({
+    worldMap: {
+      version: 10,
+      tiles: [
+        { x: 2, y: -1, q: 90, r: 90, tileId: 'legacy-tile', terrain: 'forest', visibility: 'visible' },
+      ],
+    },
+    sites: [
+      { id: 'site-1', x: 2, y: -1, q: 80, r: 80, tileId: 'legacy-site', type: 'town' },
+    ],
+    worldExplorerState: {
+      activeMission: {
+        id: 'mission-stale',
+        status: 'active',
+        origin: { x: 0, y: 0, q: 70, r: 70, tileId: 'legacy-origin' },
+        target: { x: 2, y: -1, q: 60, r: 60, tileId: 'legacy-target' },
+        position: { x: 2, y: -1, q: 50, r: 50, tileId: 'legacy-position' },
+      },
+    },
+  }, {
+    actors: [{ id: 'actor-stale', current: { x: 2, y: -1, q: 40, r: 40, tileId: 'legacy-actor' } }],
+  });
+
+  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'tiles', 'tile_2_-1').id, 'tile_2_-1');
+  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'sites', 'site-1').tileId, 'tile_2_-1');
+  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'missions', 'mission-stale').position.tileId, 'tile_2_-1');
+  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'actor-stale').tileId, 'tile_2_-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.indexById.tiles, 'legacy-tile'), false);
+});
+
 test('WorldMapEntitySnapshot handles large tile sets without nested entity maps', () => {
   const tiles = [];
   for (let i = 0; i < 4000; i += 1) {

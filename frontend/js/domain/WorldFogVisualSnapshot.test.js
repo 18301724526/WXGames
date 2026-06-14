@@ -98,6 +98,35 @@ test('WorldFogVisualSnapshot produces a renderer context that does not trust raw
   assert.equal(context.fogVisualSnapshot, snapshot);
 });
 
+test('WorldFogVisualSnapshot canonicalizes fog identity and signatures through stable axes', () => {
+  const xShape = {
+    version: 13,
+    seed: 'fog-canonical',
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+    tiles: [
+      { x: 3, y: -2, q: 90, r: 90, tileId: 'legacy-x', visibility: 'visible' },
+    ],
+  };
+  const legacyShape = {
+    ...xShape,
+    tiles: [
+      { q: 3, r: -2, tileId: 'legacy-q', visibility: 'visible' },
+    ],
+  };
+  const xSnapshot = WorldFogVisualSnapshot.createSnapshot({
+    renderSnapshot: WorldMapRenderSnapshot.createSnapshot({ tileMapView: xShape, width: 520, height: 420 }),
+  });
+  const legacySnapshot = WorldFogVisualSnapshot.createSnapshot({
+    renderSnapshot: WorldMapRenderSnapshot.createSnapshot({ tileMapView: legacyShape, width: 520, height: 420 }),
+  });
+
+  assert.deepEqual(xSnapshot.tileIds, ['tile_3_-2']);
+  assert.deepEqual(xSnapshot.q, [3]);
+  assert.deepEqual(xSnapshot.r, [-2]);
+  assert.equal(xSnapshot.signature, legacySnapshot.signature);
+  assert.equal(Object.prototype.hasOwnProperty.call(xSnapshot.indexById, 'legacy-x'), false);
+});
+
 test('WorldFogVisualSnapshot keeps large-map data compact and signatures stable', () => {
   const tiles = [];
   for (let i = 0; i < 5000; i += 1) {
