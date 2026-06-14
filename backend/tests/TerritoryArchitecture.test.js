@@ -1054,6 +1054,63 @@ test('territory conquest missions module owns settlement and battle resolution c
   assert.deepEqual(experienceGrants[0], { leader: 'leader-1', experience: { leader: 12 } });
 });
 
+test('TerritoryService battle tile snapshot terrain lookup uses coordinates over colliding tile ids', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'territory-battle-tile-lookup-test',
+    activeCityId: 'capital',
+    military: { soldiers: 300 },
+    warMissions: [],
+    worldMap: {
+      version: 7,
+      seed: 'territory-battle-tile-lookup-seed',
+      tiles: [
+        {
+          id: 'tile_8_0',
+          q: 1,
+          r: 0,
+          terrain: 'mountain',
+          discovered: true,
+          visible: true,
+          visibility: 'scouted',
+        },
+        {
+          id: 'tile_8_0_current',
+          q: 8,
+          r: 0,
+          terrain: 'forest',
+          discovered: true,
+          visible: true,
+          visibility: 'scouted',
+        },
+      ],
+    },
+    territories: [{
+      id: 'site-8-0',
+      x: 8,
+      y: 0,
+      naturalName: 'Coordinate Site',
+      type: 'outpost',
+      owner: 'neutral',
+      status: 'discovered',
+      defense: TerritoryConstants.MIN_EXPEDITION_SOLDIERS,
+    }],
+  };
+
+  const started = TerritoryService.startConquest(gameState, 'site-8-0', {}, now);
+  assert.equal(started.success, true);
+  gameState.warMissions[0].status = 'ready';
+
+  const claimed = TerritoryService.claimConquest(gameState, 'site-8-0', now);
+  assert.equal(claimed.success, true);
+  const territory = gameState.territories.find((item) => item.id === 'site-8-0');
+  assert.equal(territory.lastBattle.tileId, 'tile_8_0');
+  assert.equal(territory.lastBattle.q, 8);
+  assert.equal(territory.lastBattle.r, 0);
+  assert.equal(territory.lastBattle.mapTerrain, 'forest');
+  assert.equal(territory.lastBattle.tile.terrain, 'forest');
+});
+
 test('territory state normalizer owns territory, mission, and world sync contracts', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const calls = {

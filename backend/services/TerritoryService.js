@@ -179,7 +179,7 @@ function getTerritoryBattleTileSnapshot(gameState, territory, now = new Date()) 
   const y = toInteger(territory?.y, 0);
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const tileId = WorldMapService.getTileId(x, y);
-  const tile = (worldMap.tiles || []).find((item) => item.id === tileId || (item.q === x && item.r === y)) || null;
+  const tile = (worldMap.tiles || []).find((item) => item.q === x && item.r === y) || null;
   const mapTerrain = normalizeMapTerrainId(territory?.mapTerrain || territory?.tileTerrain || territory?.worldTerrain)
     || normalizeMapTerrainId(tile?.terrain)
     || normalizeMapTerrainId(territory?.terrain)

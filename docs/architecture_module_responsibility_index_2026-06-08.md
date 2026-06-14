@@ -3204,6 +3204,37 @@ Regression:
 - `node --test backend/tests/SkillGeneratorArchitecture.test.js backend/tests/ServerRandomAuthorityContract.test.js`
 - `npm run test:architecture`
 
+### `backend/services/TerritoryService.js`
+
+Status: candidate
+
+Owns:
+
+- legacy facade exports for territory modules while responsibilities continue moving into `backend/services/territory/*`
+- cross-module wiring for conquest, scout, naming, state normalization, and client projection dependencies
+- coordinate-authoritative conquest/battle tile snapshots: `getTerritoryBattleTileSnapshot()` derives output `tileId` from territory `x/y` and reads world-map terrain by `q/r`; stale or colliding world-map `tile.id` cannot override battle terrain facts
+
+Public API:
+
+- `TerritoryService.startConquest(gameState, territoryId, expeditionInput, now)`
+- `TerritoryService.claimConquest(gameState, territoryId, now)`
+- `TerritoryService.startScout(gameState, direction, now)`
+- `TerritoryService.claimScout(gameState, missionId, now, randomSource)`
+- `TerritoryService.getClientTerritoryState(gameState, now, projection)`
+- legacy facade helpers listed in `TerritoryArchitecture.test.js`
+
+Extension Path:
+
+- New territory behavior should move into a focused `backend/services/territory/*` module with a TDD contract first.
+- Keep facade-only helpers narrow and covered when they bridge two modules; do not reintroduce world-map lookup by raw `tile.id` when `q/r` coordinates exist.
+- Do not put renderer visuals, frontend hit targets, or territory battle/conquest rules into this facade.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js --test-name-pattern "battle tile snapshot terrain lookup"`
+- `node --test backend/tests/TerritoryArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/territory/TerritoryCombatTargets.js`
 
 Status: candidate

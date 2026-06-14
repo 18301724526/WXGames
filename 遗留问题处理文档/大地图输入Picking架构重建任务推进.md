@@ -79,6 +79,7 @@
 - `WorldExplorerDtoMapper` 是 public API 输出边界；origin、homeOrigin、target、position、route、plannedTiles、plannedSites 这些带坐标的 DTO 字段也必须重新由坐标生成 public tile identity，不能把内部旧 `tileId` / `id` 泄漏回客户端。
 - `TerritoryMilitaryMissions` 是 legacy scout mission 运行时推进写回边界；advanceScoutMission 新揭示的 route step、revealArea、revealedTileIds、recordScoutTrail tile ids 都必须由 `q/r` 生成，旧 route `tileId` 或 `revealScoutArea()` 返回 tile `id` 不能覆盖坐标事实。
 - `TerritoryCombatTargets` 是战斗目标归一化边界；battle target `tile.id` 只要带 `q/r`，就必须由坐标生成，旧 `raw.tile.id` / `raw.tileId` 不能进入征服/战斗目标事实。
+- `TerritoryService.getTerritoryBattleTileSnapshot()` 是征服/战斗 tile snapshot 地形读取边界；world-map tile lookup 必须按 territory `x/y` 对应的 `q/r`，旧或撞名 world-map `tile.id` 不能改变 `lastBattle.mapTerrain` 或 nested battle tile。
 - `TerritoryScoutPlanner` 是侦察出发点/目标规划边界；controlled tile 没有 territory/site id 时，fallback `cityId` / `territoryId` 必须由 `q/r` 生成，旧 world-map `tile.id` 不能进入侦察出发点事实。
 - `TerritoryScoutRecords` 是 legacy scout report 归一化边界；report 自身、nested tile snapshot、report revealArea 只要带 `q/r`，就必须由坐标生成 `tileId` / `tile.id`，旧 report/revealArea `tileId` 只能在无坐标摘要里兜底，不能覆盖坐标事实。
 - `TerritoryScoutResults` 是 legacy scout report 生成边界；generated report revealArea snapshot 只要带 `q/r`，就必须由坐标生成 `tileId`，旧 mission revealArea `tileId` 不能输出为报告事实。
@@ -129,6 +130,7 @@
 - 2026-06-14：`TerritoryCombatTargets.normalizeBattleTarget()` 的 battle target tile identity 完成坐标身份收口；新增红测证明脏 `raw.tile.id` / `raw.tileId` 不会进入战斗目标事实。
 - 2026-06-14：`TerritoryScoutPlanner.getControlledScoutOrigins()` 的 controlled tile fallback origin identity 完成坐标身份收口；新增红测证明脏 world-map `tile.id` 不会进入 scout origin `cityId` / `territoryId`。
 - 2026-06-14：`TerritoryScoutResults.getScoutReportTileSnapshot()` 的报告 tile snapshot terrain lookup 完成坐标身份收口；新增红测证明撞名 world-map tile `id` 不会污染生成报告 mapTerrain。
+- 2026-06-14：`TerritoryService.getTerritoryBattleTileSnapshot()` 的征服/战斗 tile snapshot terrain lookup 完成坐标身份收口；新增红测证明撞名 world-map tile `id` 不会污染 `lastBattle.mapTerrain` 和 nested battle tile。
 - 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。2026-06-14 已补 `WorldMapInputActionMap` 回归：renderer `openWorldSite` / `selectWorldActor` 只能证明点在 world surface 上，最终目标身份必须来自当前 picking snapshot 或 context 重算。
 - `CanvasGameAppInputRouter.observeAsyncActionResult()` 与 H5 Shell 的同名边界保持一致：runtime tap 返回 Promise 时，拒绝必须继续传给调用方，同时被记录到诊断日志，不能静默变成成功或未观察拒绝。
 - `CanvasGameAppInputRouter` 与 H5 Shell 一样记录本地入口级 `input:tapHit`、`input:tapRuntime`、`input:tapMiss`、`input:tapDisabled`、`input:tapAction`；Shell/App 的 Promise handled 都只记录为 `'promise'`，不能把 Promise/runtime 对象塞进日志。`ClientOperationLog.sanitize()` 也必须把遗漏进来的 thenable 兜底压缩为 `'promise'`，禁止 renderer/native event/runtime payload 进入本地持久化或导出日志。
