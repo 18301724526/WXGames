@@ -2,6 +2,7 @@ const WorldMapService = require('../WorldMapService');
 const {
   EXPLORE_REVEAL_RADIUS,
   TUTORIAL_FIRST_SITE_GRANT_KEY,
+  toInteger,
   toTimestamp,
 } = require('./WorldExplorerShared');
 const {
@@ -17,6 +18,20 @@ const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 
 function getTutorialSteps() {
   return TutorialFlowConfig.TUTORIAL_STEPS;
+}
+
+function getTileIdentity(tile = {}) {
+  if (!tile || typeof tile !== 'object') return '';
+  const rawQ = tile.q ?? tile.x;
+  const rawR = tile.r ?? tile.y;
+  if (rawQ === undefined || rawR === undefined) return '';
+  return WorldMapService.getTileId(toInteger(rawQ, 0), toInteger(rawR, 0));
+}
+
+function getTileIdentities(tiles = []) {
+  return (Array.isArray(tiles) ? tiles : [])
+    .map(getTileIdentity)
+    .filter(Boolean);
 }
 
 function summarizeStep(step = {}) {
@@ -157,13 +172,14 @@ function revealStep(gameState, mission, step, now = new Date()) {
     step: summarizeStep(step),
     revealRadius: EXPLORE_REVEAL_RADIUS,
     coordCount: coords.length,
-    revealedTileIds: revealedTiles.map((tile) => tile?.id).filter(Boolean).slice(0, 12),
+    revealedTileIds: getTileIdentities(revealedTiles).slice(0, 12),
     materializedCount: materialized.length,
   });
   if (!materialized.length) return revealedTiles;
-  const byId = new Map(revealedTiles.map((tile) => [tile.id, tile]));
+  const byId = new Map(revealedTiles.map((tile) => [getTileIdentity(tile), tile]).filter(([id]) => id));
   materialized.forEach(({ tile }) => {
-    if (tile?.id) byId.set(tile.id, tile);
+    const tileId = getTileIdentity(tile);
+    if (tileId) byId.set(tileId, tile);
   });
   return [...byId.values()];
 }
@@ -196,7 +212,7 @@ function advanceExploreMissions(gameState, now = new Date()) {
       newlyRevealedTiles.push(...revealedTiles);
       mission.revealedTileIds = Array.from(new Set([
         ...(mission.revealedTileIds || []),
-        ...revealedTiles.map((tile) => tile.id),
+        ...getTileIdentities(revealedTiles),
       ]));
       nextStepAtMs += mission.stepDurationMs;
     }
@@ -213,7 +229,7 @@ function advanceExploreMissions(gameState, now = new Date()) {
     WorldExplorerTrace.log('progression:advanceMission:after', {
       mission: summarizeMission(mission),
       newlyRevealedCount: newlyRevealedTiles.length,
-      newlyRevealedIds: newlyRevealedTiles.map((tile) => tile.id).slice(0, 12),
+      newlyRevealedIds: getTileIdentities(newlyRevealedTiles).slice(0, 12),
     });
   }
   return newlyRevealedTiles;

@@ -351,6 +351,96 @@ test('world explorer progression reveals a step through the world-map batch API'
   assert.equal(revealed[0].generationContext.direction, 'e');
 });
 
+test('world explorer progression merges materialized reveal tiles by coordinates', (t) => {
+  const originalRevealTiles = WorldMapService.revealTiles;
+  const originalBindSiteToTile = WorldMapService.bindSiteToTile;
+  t.after(() => {
+    WorldMapService.revealTiles = originalRevealTiles;
+    WorldMapService.bindSiteToTile = originalBindSiteToTile;
+  });
+  WorldMapService.revealTiles = (_gameState, coords) => coords.map((coord) => ({
+    id: 'legacy-revealed-id',
+    q: coord.q,
+    r: coord.r,
+    terrain: 'plains',
+    visibility: 'scouted',
+  }));
+  WorldMapService.bindSiteToTile = (_gameState, x, y, siteId, _now, options) => ({
+    id: WorldMapService.getTileId(x, y),
+    q: x,
+    r: y,
+    siteId,
+    visibility: options?.visibility || 'scouted',
+  });
+
+  const gameState = { territories: [], tutorial: { completed: true } };
+  const mission = {
+    id: 'merge-materialized-step',
+    plannedTiles: [],
+    plannedSites: [{
+      tileId: 'tile_2_-1',
+      q: 2,
+      r: -1,
+      siteId: 'site_2_-1',
+      materialized: false,
+      site: {
+        id: 'site_2_-1',
+        x: 2,
+        y: -1,
+        owner: 'neutral',
+        status: 'discovered',
+      },
+    }],
+  };
+
+  const revealed = Progression.revealStep(gameState, mission, { q: 2, r: -1 }, new Date('2026-06-06T00:00:00.000Z'));
+
+  assert.equal(revealed.length, 1);
+  assert.equal(revealed[0].siteId, 'site_2_-1');
+  assert.equal(mission.plannedSites[0].materialized, true);
+});
+
+test('world explorer progression stores revealed mission ids from coordinates', (t) => {
+  const originalRevealTiles = WorldMapService.revealTiles;
+  t.after(() => {
+    WorldMapService.revealTiles = originalRevealTiles;
+  });
+  WorldMapService.revealTiles = (_gameState, coords, _now, options = {}) => coords.map((coord) => ({
+    id: 'legacy-revealed-id',
+    q: coord.q,
+    r: coord.r,
+    terrain: options.overrides?.(coord)?.terrain || 'plains',
+    visibility: 'scouted',
+  }));
+
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    territories: [],
+    tutorial: { completed: true },
+    exploreMissions: [{
+      id: 'coordinate-revealed-ids',
+      mode: 'manual',
+      status: 'active',
+      origin: { q: 0, r: 0, cityId: 'capital', territoryId: 'capital' },
+      target: { q: 4, r: -2 },
+      position: { q: 0, r: 0 },
+      route: [{ q: 4, r: -2, step: 1, revealed: false }],
+      plannedTiles: [],
+      plannedSites: [],
+      revealedTileIds: [],
+      nextStepAt: now.toISOString(),
+      stepDurationMs: 1000,
+    }],
+  };
+
+  Progression.advanceExploreMissions(gameState, now);
+
+  const mission = gameState.exploreMissions[0];
+  assert.equal(mission.status, 'idle');
+  assert.deepEqual(mission.revealedTileIds, ['tile_4_-2']);
+  assert.deepEqual(mission.position, { q: 4, r: -2, tileId: 'tile_4_-2' });
+});
+
 test('realtime authority contracts expose the P11 backend-authoritative baselines', () => {
   assert.equal(typeof Realtime.CommandAuthorityContract.accept, 'function');
   assert.equal(typeof Realtime.ServerTimelineSnapshot.createMissionSnapshot, 'function');
