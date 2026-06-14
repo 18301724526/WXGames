@@ -3277,6 +3277,42 @@ Regression:
 - `node --test backend/tests/TerritoryArchitecture.test.js`
 - `npm run test:architecture`
 
+### `backend/services/territory/TerritoryScoutRecords.js`
+
+Status: candidate
+
+Owns:
+
+- territory scout report normalization, scout coordinate records, and scout-area record normalization
+- scout report tile snapshots and report reveal-area snapshots before client/state reuse
+- coordinate-authoritative report identity: scout reports and reveal-area entries with `q/r` derive `tileId` and nested `tile.id` from coordinates; stale report `tileId`, nested tile `id`, or reveal-area `tileId` cannot override coordinate-bearing report facts
+
+Public API:
+
+- `createTerritoryScoutRecords(dependencies)`
+- `getScoutAreaTileIds(mission)`
+- `getScoutCoordinateRecord(gameState, x, y)`
+- `normalizeScoutAreaRecords(rawAreas)`
+- `normalizeScoutCoordinates(rawCoordinates)`
+- `normalizeScoutReport(rawReport)`
+- `normalizeScoutReportRevealArea(report)`
+- `normalizeScoutReportTileSnapshot(report)`
+- `normalizeScoutReports(rawReports)`
+- `normalizeScoutState(rawState)`
+- `upsertScoutAreaRecord(gameState, mission, result, options)`
+- `upsertScoutCoordinateRecord(gameState, record)`
+
+Extension Path:
+
+- Keep scout mission advancement in `TerritoryMilitaryMissions`.
+- Keep generated site/report text and outcome rolls in `TerritoryScoutResults`.
+- New report fields that carry coordinates must normalize identity here before client assembly or persistence reuse.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/territory/TerritoryScoutResults.js`
 
 状态 / Status: candidate

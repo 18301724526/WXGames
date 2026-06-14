@@ -35,10 +35,10 @@ function createTerritoryScoutRecords(dependencies = {}) {
   function normalizeScoutReportTileSnapshot(report) {
     const q = hasFiniteValue(report?.q) ? toInteger(report.q, 0) : null;
     const r = hasFiniteValue(report?.r) ? toInteger(report.r, 0) : null;
-    const tileId = typeof report?.tileId === 'string' && report.tileId
-      ? report.tileId
-      : q !== null && r !== null
-        ? getTileId(q, r)
+    const tileId = q !== null && r !== null
+      ? getTileId(q, r)
+      : typeof report?.tileId === 'string' && report.tileId
+        ? report.tileId
         : null;
     if (!tileId) return {};
     const mapTerrain = normalizeMapTerrainId(report.mapTerrain || report.tile?.terrain) || null;
@@ -73,7 +73,7 @@ function createTerritoryScoutRecords(dependencies = {}) {
           r,
           step: Math.max(0, toInteger(coord.step, 0)),
           kind: coord.kind === 'branch' ? 'branch' : 'main',
-          tileId: coord.tileId || getTileId(q, r),
+          tileId: getTileId(q, r),
           revealed: coord.revealed !== false,
         };
       });

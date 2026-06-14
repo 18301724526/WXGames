@@ -326,6 +326,22 @@ test('territory scout records module owns report and area normalization contract
     revealArea: [{ q: 2, r: 1, step: 0, kind: 'main', tileId: 'tile_2_1', revealed: false }],
   });
 
+  const staleReport = ScoutRecords.normalizeScoutReport({
+    id: 'report-stale-tile',
+    q: 3,
+    r: -1,
+    tileId: 'stale-report-tile',
+    tile: { id: 'stale-nested-tile', q: 99, r: 99, terrain: 'forest' },
+    revealArea: [
+      { q: 3, r: -1, tileId: 'stale-area-main', revealed: true },
+      { q: 4, r: -1, kind: 'branch', tileId: 'stale-area-branch', revealed: false },
+    ],
+  });
+
+  assert.equal(staleReport.tileId, 'tile_3_-1');
+  assert.equal(staleReport.tile.id, 'tile_3_-1');
+  assert.deepEqual(staleReport.revealArea.map((coord) => coord.tileId), ['tile_3_-1', 'tile_4_-1']);
+
   const coordinates = ScoutRecords.normalizeScoutCoordinates([
     { x: 4, y: 1, result: 'empty', scoutedAt: '2026-06-06T00:00:00.000Z' },
     { x: 4, y: 1, result: 'site', siteId: 'site-1', scoutedAt: '2026-06-06T00:01:00.000Z' },
