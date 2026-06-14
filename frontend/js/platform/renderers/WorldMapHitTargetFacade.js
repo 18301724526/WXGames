@@ -42,6 +42,24 @@
       return this.host?.constructor?.getTileMapAssetManifest?.() || {};
     }
 
+    normalizeTileCoord(tile = {}) {
+      const helper = this.getTileMapGeometry();
+      if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
+      const toInteger = (value, fallback = 0) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? Math.floor(number) : fallback;
+      };
+      const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+      const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+      return {
+        x: q,
+        y: r,
+        q,
+        r,
+        tileId: `tile_${q}_${r}`,
+      };
+    }
+
     registerHitTargets(targets = []) {
       if (!Array.isArray(targets) || !targets.length) return false;
       targets.forEach((target) => this.addHitTarget(target.rect, target.action));
@@ -68,12 +86,13 @@
       entries.filter(({ tile }) => tile?.site).forEach(({ tile, center }) => {
         const layout = this.getWorldTileSiteLayout(tile, viewport, geometry, tileWidth, tileHeight, center);
         if (!layout) return;
+        const coord = this.normalizeTileCoord(tile);
         targets.push({
           rect: layout.hitRect,
           action: {
             type: 'openWorldSite',
             siteId: layout.site.id,
-            tileId: tile.id,
+            tileId: coord.tileId,
             inputSurface: 'worldMap',
           },
         });
@@ -94,6 +113,7 @@
       const geometry = tileMapView.geometry || {};
       const targets = [];
       (tileMapView.tiles || []).forEach((tile) => {
+        const coord = this.normalizeTileCoord(tile);
         const center = this.getWorldTileScreenCenter(tile, viewport, geometry);
         if (
           center.x < frame.x - 48
@@ -112,9 +132,9 @@
           },
           action: {
             type: 'selectWorldMarchTarget',
-            tileId: tile.id,
-            targetQ: tile.q,
-            targetR: tile.r,
+            tileId: coord.tileId,
+            targetQ: coord.q,
+            targetR: coord.r,
             known: tile.visibility !== 'unknown' && tile.discovered !== false,
             terrain: tile.terrain || '',
             terrainLabel: tile.terrainLabel || tile.terrain || '',

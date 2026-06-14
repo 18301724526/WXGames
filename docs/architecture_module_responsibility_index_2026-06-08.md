@@ -1551,6 +1551,7 @@ P0 新增公开 API / Public API Added During P0:
 公开 API / Public API:
 
 - `WorldMapHitTargetModel.getWorldMapDragHitTarget(frame)`
+- `WorldMapHitTargetModel.normalizeTileCoord(tile, options)`
 - `WorldMapHitTargetModel.createWorldTileSiteHitTargets(tileMapView, viewport, entries, options)`
 - `WorldMapHitTargetModel.createWorldMarchTileHitTargets(tileMapView, viewport, frame, options)`
 
@@ -1560,6 +1561,7 @@ P0 新增公开 API / Public API Added During P0:
 - Target creation is linear over visible entries or tiles.
 - Site targets reuse injected layout calculations and injected image metrics.
 - March targets use frame margin culling before returning target data.
+- Site and march action payload identity uses stable `x/y` semantics, accepting legacy `q/r` while never using raw renderer `tile.id` / `tileId` as action authority.
 
 扩展方式 / Extension Path:
 
@@ -1592,6 +1594,7 @@ P0 新增公开 API / Public API Added During P0:
 - `getWorldMapLayoutModel()`
 - `getTileMapGeometry()`
 - `getTileMapAssetManifest()`
+- `normalizeTileCoord(tile)`
 - `registerHitTargets(targets)`
 - `addWorldTileSiteHitTargets(tileMapView, viewport, entries, uiState)`
 - `addWorldMarchTileHitTargets(tileMapView, viewport, frame)`
@@ -1601,6 +1604,7 @@ P0 新增公开 API / Public API Added During P0:
 - Pure target geometry/action payloads remain in `WorldMapHitTargetModel`.
 - Registration is linear over returned target rows and does not inspect unrelated hit targets.
 - Fallback site registration is linear over visible entries; fallback march registration is linear over tiles with frame-margin culling.
+- Fallback action payload identity uses stable `x/y` semantics, accepting legacy `q/r` while never using raw renderer `tile.id` / `tileId` as action authority.
 - No canvas drawing, cache lifecycle, gameplay simulation, or input interpretation.
 
 扩展方式 / Extension Path:

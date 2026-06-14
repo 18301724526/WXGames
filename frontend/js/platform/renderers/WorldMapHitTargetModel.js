@@ -15,6 +15,24 @@
     return options.layoutModel || sharedWorldMapLayoutModel || null;
   }
 
+  function normalizeTileCoord(tile = {}, options = {}) {
+    const helper = options.tileMapGeometry || null;
+    if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
+    const toInteger = (value, fallback = 0) => {
+      const number = Number(value);
+      return Number.isFinite(number) ? Math.floor(number) : fallback;
+    };
+    const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
+    const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
+    return {
+      x: q,
+      y: r,
+      q,
+      r,
+      tileId: `tile_${q}_${r}`,
+    };
+  }
+
   function toTarget(rect = {}, action = {}) {
     return { rect, action };
   }
@@ -45,10 +63,11 @@
       if (!tile?.site) continue;
       const layout = layoutModel.getWorldTileSiteLayout(tile, viewport, geometry, tileWidth, tileHeight, center, options);
       if (!layout) continue;
+      const coord = normalizeTileCoord(tile, options);
       hitTargets.push(toTarget(layout.hitRect, {
         type: 'openWorldSite',
         siteId: layout.site.id,
-        tileId: tile.id,
+        tileId: coord.tileId,
         inputSurface: 'worldMap',
       }));
     }
@@ -73,6 +92,7 @@
     const hitTargets = [];
     for (let index = 0; index < tiles.length; index += 1) {
       const tile = tiles[index];
+      const coord = normalizeTileCoord(tile, options);
       const center = layoutModel.getWorldTileScreenCenter(tile, viewport, geometry, options);
       if (
         center.x < frameX - marginX
@@ -87,9 +107,9 @@
         height: tileHeight,
       }, {
         type: 'selectWorldMarchTarget',
-        tileId: tile.id,
-        targetQ: tile.q,
-        targetR: tile.r,
+        tileId: coord.tileId,
+        targetQ: coord.q,
+        targetR: coord.r,
         known: tile.visibility !== 'unknown' && tile.discovered !== false,
         terrain: tile.terrain || '',
         terrainLabel: tile.terrainLabel || tile.terrain || '',
@@ -102,6 +122,7 @@
 
   const api = {
     getWorldMapDragHitTarget,
+    normalizeTileCoord,
     createWorldTileSiteHitTargets,
     createWorldMarchTileHitTargets,
   };

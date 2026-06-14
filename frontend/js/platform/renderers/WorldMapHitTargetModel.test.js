@@ -21,6 +21,7 @@ function createTileMapView() {
     tiles: [
       {
         id: 'capital-tile',
+        tileId: 'legacy-capital-tile',
         q: 0,
         r: 0,
         terrain: 'plains',
@@ -34,6 +35,7 @@ function createTileMapView() {
       },
       {
         id: 'unknown-tile',
+        tileId: 'legacy-unknown-tile',
         q: 1,
         r: 0,
         terrain: 'forest',
@@ -93,7 +95,7 @@ test('WorldMapHitTargetModel creates site hit targets from layout entries', () =
   assert.equal(targets.length, 1);
   assert.equal(targets[0].action.type, 'openWorldSite');
   assert.equal(targets[0].action.siteId, 'capital');
-  assert.equal(targets[0].action.tileId, 'capital-tile');
+  assert.equal(targets[0].action.tileId, 'tile_0_0');
   assert.equal(targets[0].action.inputSurface, 'worldMap');
   assert.equal(targets[0].rect.width > 0, true);
 });
@@ -151,11 +153,64 @@ test('WorldMapHitTargetModel creates march targets for in-frame tiles only', () 
     createOptions(),
   );
 
-  assert.equal(targets.some((target) => target.action.tileId === 'capital-tile'), true);
-  assert.equal(targets.some((target) => target.action.tileId === 'unknown-tile'), true);
-  assert.equal(targets.some((target) => target.action.tileId === 'far-tile'), false);
-  assert.equal(targets.find((target) => target.action.tileId === 'unknown-tile').action.known, false);
-  assert.equal(targets.find((target) => target.action.tileId === 'unknown-tile').action.inputSurface, 'worldMap');
+  assert.equal(targets.some((target) => target.action.tileId === 'tile_0_0'), true);
+  assert.equal(targets.some((target) => target.action.tileId === 'tile_1_0'), true);
+  assert.equal(targets.some((target) => target.action.tileId === 'tile_20_20'), false);
+  assert.equal(targets.find((target) => target.action.tileId === 'tile_1_0').action.known, false);
+  assert.equal(targets.find((target) => target.action.tileId === 'tile_1_0').action.inputSurface, 'worldMap');
+});
+
+test('WorldMapHitTargetModel derives action identity from stable x/y coordinates', () => {
+  const tileMapView = {
+    geometry,
+    tiles: [
+      {
+        id: 'legacy-march-id',
+        tileId: 'legacy-march-tile-id',
+        x: 4,
+        y: -2,
+        q: 99,
+        r: 99,
+        terrain: 'forest',
+        terrainLabel: 'Forest',
+        discovered: true,
+      },
+      {
+        id: 'legacy-site-id',
+        tileId: 'legacy-site-tile-id',
+        x: 5,
+        y: -2,
+        q: 88,
+        r: 88,
+        terrain: 'plains',
+        discovered: true,
+        site: {
+          id: 'site_5_-2',
+          type: 'town',
+          art: 'assets/art/world-site-town-cutout.png',
+          scale: 0.5,
+        },
+      },
+    ],
+  };
+  const viewport = { originX: 160, originY: 120, panX: 0, panY: 0, scale: 0.5 };
+  const entries = WorldMapLayoutModel.getWorldTileRenderEntries(
+    tileMapView,
+    viewport,
+    { x: -400, y: -400, width: 1200, height: 1200 },
+    geometry,
+  );
+
+  const siteTargets = WorldMapHitTargetModel.createWorldTileSiteHitTargets(tileMapView, viewport, entries, createOptions());
+  const marchTargets = WorldMapHitTargetModel.createWorldMarchTileHitTargets(
+    tileMapView,
+    viewport,
+    { x: -400, y: -400, width: 1200, height: 1200 },
+    createOptions(),
+  );
+
+  assert.equal(siteTargets.find((target) => target.action.siteId === 'site_5_-2').action.tileId, 'tile_5_-2');
+  assert.equal(marchTargets.find((target) => target.action.targetQ === 4 && target.action.targetR === -2).action.tileId, 'tile_4_-2');
 });
 
 test('WorldMapHitTargetModel loads before WorldMapCanvasRenderer in browser entrypoints', () => {
