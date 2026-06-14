@@ -133,8 +133,7 @@
         this.host.activeEventId = null;
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
-          if (forwarded !== false) this.afterHandled(action);
-          return forwarded !== false;
+          return this.finalizeForwarded(forwarded, () => this.afterHandled(action));
         }
         return this.finalize(this.selectCity(action));
       },
@@ -161,8 +160,7 @@
         const selectAction = { ...action, type: 'selectCity', cityId };
         const forwarded = this.forward(selectAction);
         if (forwarded !== undefined) {
-          if (forwarded !== false) this.afterHandled(action);
-          return forwarded !== false;
+          return this.finalizeForwarded(forwarded, () => this.afterHandled(action));
         }
         return this.finalize(Promise.resolve(this.selectCity(selectAction)).then((allowed) => {
           if (allowed !== false) this.afterHandled(action);
@@ -234,7 +232,7 @@
 
       handle_assignJob(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.assignJob === 'function') {
           return this.finalize(Promise.resolve(game.assignJob(action.job, action.delta)).then((result) => {
@@ -258,7 +256,7 @@
 
       async handleBuilding(action, buildingAction) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         const method = buildingAction === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding';
         if (game?.tutorialController?.onBuildingAction?.(action.buildingId, buildingAction) === false) {
@@ -302,7 +300,7 @@
 
       handle_advanceEra(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.advanceEra === 'function') {
           return this.finalize(game.advanceEra());
@@ -312,7 +310,7 @@
 
       handle_research(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.research === 'function') {
           return this.finalize(game.research(action.techId));
@@ -370,13 +368,12 @@
         controller?.close?.();
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
-          if (forwarded !== false) {
+          return this.finalizeForwarded(forwarded, () => {
             const game = this.getGameHost();
             game?.tutorialController?.sync?.(game?.tutorial || game?.state?.tutorial || {});
             game?.tutorialController?.refreshCurrentHighlight?.();
             this.afterHandled(action);
-          }
-          return forwarded !== false;
+          });
         }
         if (controller?.claim || controller?.claimActive) {
           controller.open?.(action.eventId);
@@ -425,8 +422,7 @@
         this.host.showTaskCenter = false;
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
-          if (forwarded !== false) this.afterHandled(action);
-          return forwarded !== false;
+          return this.finalizeForwarded(forwarded, () => this.afterHandled(action));
         }
         const game = this.getGameHost();
         if (typeof game?.claimTaskReward === 'function') {

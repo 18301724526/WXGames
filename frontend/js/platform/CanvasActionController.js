@@ -194,6 +194,17 @@
       return true;
     }
 
+    finalizeForwarded(result, afterAllowed = null) {
+      if (result === undefined) return undefined;
+      const normalize = (value) => {
+        const allowed = value !== false;
+        if (allowed && typeof afterAllowed === 'function') afterAllowed(value);
+        return allowed;
+      };
+      if (!result || typeof result.then !== 'function') return normalize(result);
+      return this.finalize(result.then(normalize));
+    }
+
     forward(action, meta = {}) {
       if (typeof this.host?.forwardCanvasAction !== 'function') return undefined;
       return this.host.forwardCanvasAction(action, meta);
@@ -270,7 +281,7 @@
 
     handleUnknown(action, meta = {}) {
       const forwarded = this.forward(action, meta);
-      return forwarded === undefined ? false : forwarded !== false;
+      return this.finalizeForwarded(forwarded) ?? false;
     }
 
     canUseLocalRuntime() {
@@ -279,7 +290,7 @@
 
     handle_techTreeDrag(action) {
       const forwarded = this.forward(action);
-      if (forwarded !== undefined) return forwarded !== false;
+      if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
       if (!this.techTreeInteraction?.handleDrag?.(action)) return false;
       this.render(action);
       return true;
@@ -287,7 +298,7 @@
 
     handle_techTreeZoom(action) {
       const forwarded = this.forward(action);
-      if (forwarded !== undefined) return forwarded !== false;
+      if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
       if (!this.techTreeInteraction?.handleZoom?.(action)) return false;
       this.render(action);
       return true;

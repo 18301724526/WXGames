@@ -95,6 +95,7 @@ constructor(options = {}) {
       const ActionControllerCtor = global.CanvasActionController || (typeof require === 'function' ? require('./CanvasActionController') : null);
       this.actionController = options.actionController || (ActionControllerCtor ? new ActionControllerCtor({
         host: this,
+        awaitAsync: true,
         log: options.log,
       }) : this.actionController);
       this.mounted = false;

@@ -56,9 +56,9 @@
 - 新增纯 domain 模块 `WorldMapInputIntent`，产出 `world-map-input-intent-v1`。
 - 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录稳定 `inputId`、单调 `clientSequence`、HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
 - input intent 只允许保存可序列化小对象；不得包含 renderer/context 原对象、浏览器 event、完整 tiles、完整 targets 或大 payload。
-- `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`；H5 shell 的 `CanvasGameShellCommands.forwardCanvasAction()` 继续把同一份 `meta` 传给外部 `onAction`，不能在转发边界吞掉 `inputIntent`。
+- `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`；H5 shell 的 `CanvasGameShellCommands.forwardCanvasAction()` 继续把同一份 `meta` 传给外部 `onAction`，不能在转发边界吞掉 `inputIntent`，也不能把外部 Promise action 失败压成同步成功。
 - `ClientOperationLog` 在 `worldMap:tapHit`、`worldMap:backgroundTarget`、`action:begin`、`action:end`、`action:error`、`api:request`、`api:response`、`api:error` 记录 compact input intent / clientInput 摘要，用于本地导出日志与后端请求日志对账；失败路径不能丢 `inputId` / `clientSequence`。
-- `CanvasActionController` -> `CanvasTerritoryActionHandlers` -> `GameAPI` 的失败世界行军链路已用端到端测试锁定：同一个 `inputId` 必须同时出现在 `action:error` 与 `api:error`，且 `api:error.clientInput` 不得包含 renderer payload。
+- `CanvasActionController` -> `CanvasTerritoryActionHandlers` -> `GameAPI` 的失败世界行军链路已用端到端测试锁定：同一个 `inputId` 必须同时出现在 `action:error` 与 `api:error`，且 `api:error.clientInput` 不得包含 renderer payload。`CanvasActionController.finalizeForwarded()`、`WorldMapRuntime.dispatchAction()` 和 `CanvasGameShellInputRouter.observeAsyncActionResult()` 共同保证异步 forwarded action / runtime tap 失败不会被记录成 `action:end true` 或浏览器未观察拒绝。
 - 当前阶段仍不把 input intent 直接发给服务器；它是后续多人同步、服务端权威校验、回放诊断和反作弊审计的输入事实边界。
 
 ### 第五阶段：服务端权威命令证据

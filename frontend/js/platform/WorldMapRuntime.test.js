@@ -300,6 +300,36 @@ test('WorldMapRuntime emits a serializable input intent for routed taps', () => 
   }
 });
 
+test('WorldMapRuntime preserves async action failures from routed taps', async () => {
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const context = {
+    frame: { x: 0, y: 84, width: 390, height: 640 },
+    geometry,
+    viewport: { originX: 180, originY: 220, panX: 0, panY: 0, scale: 1 },
+    tileMapView: {
+      version: 1,
+      seed: 'seed',
+      geometry,
+      tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' }],
+    },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: { renderWorldMapLayer() {}, lastWorldTileMapContext: context },
+    presenter: {},
+    onAction(action) {
+      return Promise.reject(new Error(`tap rejected: ${action.type}`));
+    },
+  });
+  runtime.lastTileMapContext = context;
+
+  const handled = runtime.handleTap({ x: 180, y: 220 });
+  assert.equal(Boolean(handled && typeof handled.then === 'function'), true);
+  await assert.rejects(
+    () => handled,
+    /tap rejected: selectWorldMarchTarget/,
+  );
+});
+
 test('WorldMapRuntime assigns monotonic input ids across routed taps', () => {
   const calls = [];
   const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };

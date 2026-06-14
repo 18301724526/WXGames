@@ -369,6 +369,13 @@
       return null;
     }
 
+    dispatchAction(action, event = null, meta = {}) {
+      if (!this.onAction) return false;
+      const result = this.onAction(action, event, meta);
+      if (result && typeof result.then === 'function') return result.then((value) => value !== false);
+      return result !== false;
+    }
+
     handleTap(point = {}, event = null) {
       const context = this.getLastTileMapContext();
       const layerPoint = this.getLayerPointFromHudPoint(point);
@@ -401,14 +408,12 @@
           action: global.ClientOperationLog?.summarizeAction?.(action),
           inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(inputIntent) || inputIntent,
         }, { flush: true });
-        if (this.onAction) return this.onAction(action, event, actionMeta) !== false;
-        return false;
+        return this.dispatchAction(action, event, actionMeta);
       }
       if (action.type === 'resetWorldPan') {
         this.resetCamera({ source: 'resetWorldPan', render: !this.onAction });
       }
-      if (this.onAction) return this.onAction(action, event, actionMeta) !== false;
-      return false;
+      return this.dispatchAction(action, event, actionMeta);
     }
 
     requestRender(options = {}) {

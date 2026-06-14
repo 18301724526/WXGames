@@ -170,6 +170,55 @@ test('CanvasActionController records input intent on action errors', async () =>
   ]);
 });
 
+test('CanvasActionController preserves async forwarded action failures and input intent', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  const inputIntent = {
+    schema: 'world-map-input-intent-v1',
+    inputId: 'wmi-forward-reject-22',
+    clientSequence: 22,
+  };
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type } : null;
+    },
+    summarizeInputIntent(intent) {
+      return intent ? { inputId: intent.inputId, clientSequence: intent.clientSequence } : null;
+    },
+    summarizeUiState() {
+      return {};
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+
+  try {
+    const controller = new CanvasActionController({
+      awaitAsync: true,
+      host: {
+        forwardCanvasAction(action, meta) {
+          assert.equal(meta.inputIntent, inputIntent);
+          return Promise.reject(new Error(`forward rejected: ${action.type}`));
+        },
+      },
+    });
+
+    await assert.rejects(
+      () => controller.handle({ type: 'externalWorldCommand' }, { inputIntent }),
+      /forward rejected: externalWorldCommand/,
+    );
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  const actionError = events.find((event) => event[0] === 'action:error')?.[1];
+  assert.deepEqual(actionError.inputIntent, {
+    inputId: 'wmi-forward-reject-22',
+    clientSequence: 22,
+  });
+});
+
 test('CanvasActionController and GameAPI keep the same input id on failed world march', async () => {
   const previous = global.ClientOperationLog;
   const events = [];

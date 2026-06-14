@@ -352,9 +352,14 @@ resetLocalViewToResources(options = {}) {
 
 forwardCanvasAction(action, meta = {}) {
       if (!this.onAction) return undefined;
-      const forwarded = this.onAction(action, meta.event, meta) !== false;
-      if (forwarded) this.syncForwardedLocalAction(action);
-      return forwarded;
+      const result = this.onAction(action, meta.event, meta);
+      const syncAfterAllowed = (value) => {
+        const forwarded = value !== false;
+        if (forwarded) this.syncForwardedLocalAction(action);
+        return forwarded;
+      };
+      if (result && typeof result.then === 'function') return result.then(syncAfterAllowed);
+      return syncAfterAllowed(result);
     },
 
 syncForwardedLocalAction(action = {}) {

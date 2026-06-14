@@ -142,6 +142,13 @@ stopCanvasEvent(event) {
       return true;
     },
 
+observeAsyncActionResult(result) {
+      if (result && typeof result.then === 'function') {
+        result.catch((error) => this.actionController?.log?.(error));
+      }
+      return result;
+    },
+
 getTutorialControlAction(point = {}) {
       if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return null;
       const action = this.renderer.getHitTarget(point);
@@ -393,6 +400,7 @@ handleTap(point, event) {
       }
       if (shouldRouteTapThroughWorldMapRuntime(action)) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+        this.observeAsyncActionResult(runtimeHandled);
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
         global.ClientOperationLog?.record?.(action ? 'input:tapRuntime' : 'input:tapMiss', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
@@ -421,6 +429,7 @@ handleTap(point, event) {
       }
       if (!action) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+        this.observeAsyncActionResult(runtimeHandled);
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
         global.ClientOperationLog?.record?.('input:tapMiss', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
@@ -492,7 +501,7 @@ advanceTutorialIntroAfterHandled(handled, action = {}) {
       if (handled && typeof handled.then === 'function') {
         handled.then((value) => {
           if (value !== false) this.advanceTutorialIntro(action);
-        });
+        }).catch((error) => this.actionController?.log?.(error));
         return true;
       }
       return handled ? this.advanceTutorialIntro(action) : false;

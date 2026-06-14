@@ -48,6 +48,17 @@ class HostController {
     return result.then((value) => value !== false);
   }
 
+  finalizeForwarded(result, afterAllowed = null) {
+    if (result === undefined) return undefined;
+    const normalize = (value) => {
+      const allowed = value !== false;
+      if (allowed && typeof afterAllowed === 'function') afterAllowed(value);
+      return allowed;
+    };
+    if (!result || typeof result.then !== 'function') return normalize(result);
+    return this.finalize(result.then(normalize));
+  }
+
   afterHandled(action) {
     this.host.renderCanvasAction?.(action);
     return true;

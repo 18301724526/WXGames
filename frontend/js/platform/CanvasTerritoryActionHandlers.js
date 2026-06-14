@@ -154,7 +154,7 @@
 
       handle_scoutTerritory(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleScoutAction) {
           territory.handleScoutAction({ direction: action.direction || action.value });
@@ -165,7 +165,7 @@
 
       handle_claimScout(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleScoutAction) {
           territory.handleScoutAction({ missionId: action.missionId || action.value });
@@ -317,7 +317,7 @@
 
       handle_switchMilitaryView(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.switchMilitaryView === 'function') {
           const switched = game.switchMilitaryView(action.view) !== false;
@@ -346,11 +346,10 @@
         const forwarded = this.forward(action);
         const siteId = action.siteId || action.territoryId || action.cityId || '';
         if (forwarded !== undefined) {
-          if (forwarded !== false) {
+          return this.finalizeForwarded(forwarded, () => {
             this.openWorldSiteLocally(siteId);
             this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
-          }
-          return forwarded !== false;
+          });
         }
         const territory = this.getTerritoryController();
         if (territory?.openSiteDialog) {
@@ -367,7 +366,7 @@
 
       handle_closeWorldSite(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.closeSiteDialog) {
           territory.closeSiteDialog();
@@ -383,11 +382,10 @@
       handle_resetWorldPan(action) {
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
-          if (forwarded !== false) {
+          return this.finalizeForwarded(forwarded, () => {
             this.resetWorldMapCamera({ source: 'resetWorldPan' });
             this.afterHandled(action);
-          }
-          return forwarded !== false;
+          });
         }
         this.resetWorldMapCamera({ source: 'resetWorldPan' });
         return this.afterHandled(action);
@@ -395,7 +393,7 @@
 
       handle_worldMapDrag(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         const pointer = action.pointer || {};
         if (territory) {
@@ -441,7 +439,7 @@
 
       handle_changeExpeditionSoldiers(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleDraftInput) {
           territory.handleDraftInput({ field: 'soldiers', value: action.value });
@@ -455,7 +453,7 @@
 
       handle_changeExpeditionLeader(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleDraftInput) {
           territory.handleDraftInput({ field: 'leader', value: action.value || action.leaderId });
@@ -469,7 +467,7 @@
 
       handle_territoryAction(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (!territory?.handleAction) return false;
         territory.handleAction({ territoryId: action.territoryId, action: action.action });
@@ -478,7 +476,7 @@
 
       handle_openExpedition(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleAction) {
           territory.handleAction({ territoryId: action.territoryId, action: 'open-expedition' });
@@ -492,7 +490,7 @@
 
       handle_closeExpedition(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleAction) {
           territory.handleAction({ territoryId: action.territoryId, action: 'close-expedition' });
@@ -505,7 +503,7 @@
 
       handle_conquer(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleAction) {
           territory.handleAction({ territoryId: action.territoryId, action: 'conquer' });
@@ -516,7 +514,7 @@
 
       handle_launchExpedition(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleAction) {
           territory.handleAction({ territoryId: action.territoryId, action: 'launch-expedition' });
@@ -531,7 +529,7 @@
 
       handle_claimConquest(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleAction) {
           territory.handleAction({ territoryId: action.territoryId, action: 'claim' });
@@ -542,7 +540,7 @@
 
       handle_enterBattleScene(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleAction) {
           territory.handleAction({ territoryId: action.territoryId, action: 'enter-battle' });
@@ -590,7 +588,7 @@
 
       handle_renameCity(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const territory = this.getTerritoryController();
         if (territory?.handleAction) {
           territory.handleAction({ territoryId: action.territoryId, action: 'rename-city' });

@@ -314,7 +314,14 @@
         const result = typeof game?.goToAdvisorTarget === 'function'
           ? game.goToAdvisorTarget()
           : this.forward(action, meta);
-        if (result !== false) this.afterHandled(action);
+        const afterAllowed = () => this.afterHandled(action);
+        if (result && typeof result.then === 'function') {
+          return this.finalize(result.then((allowed) => {
+            if (allowed !== false) afterAllowed();
+            return allowed !== false;
+          }));
+        }
+        if (result !== false) afterAllowed();
         return result !== false;
       },
 
@@ -355,7 +362,7 @@
 
       handle_submitLogin(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const result = this.getGameHost()?.handleLogin?.();
         return result === undefined ? true : result !== false;
       },

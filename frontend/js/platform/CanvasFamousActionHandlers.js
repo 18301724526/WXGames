@@ -69,7 +69,7 @@
 
       handle_seekFamousPerson(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.seekFamousPerson === 'function') {
           return this.finalize(Promise.resolve(game.seekFamousPerson(action.source || 'seek')).then((result) => {
@@ -85,7 +85,7 @@
 
       handle_acceptFamousPerson(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.acceptFamousPerson === 'function') {
           return this.finalize(game.acceptFamousPerson(action.candidateId));
@@ -95,7 +95,7 @@
 
       handle_dismissFamousPersonCandidate(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.dismissFamousPersonCandidate === 'function') {
           return this.finalize(game.dismissFamousPersonCandidate(action.candidateId));
@@ -105,7 +105,7 @@
 
       handle_assignFamousAttributePoint(action) {
         const forwarded = this.forward(action);
-        if (forwarded !== undefined) return forwarded !== false;
+        if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
         if (typeof game?.assignFamousAttributePoint === 'function') {
           return this.finalize(game.assignFamousAttributePoint(action.personId, action.attribute));

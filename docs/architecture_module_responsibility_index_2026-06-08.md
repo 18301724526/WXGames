@@ -243,6 +243,7 @@ Stable 晋升约定 / Stable Promotion Convention:
 - 注入 runtime/config/layer registry 依赖
 - shell 层级 canvas layer helper
 - `mainHud` layer requests are routed to the primary input canvas through `runtime.ensureCanvas()`
+- default action controller construction uses `awaitAsync: true` so H5 shell action logs preserve async failures instead of recording false success
 - H5 shell 静态挂载入口 / static mount entry
 
 P0 新增公开 API / Public API Added During P0:
@@ -275,7 +276,7 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasLayerRegistry.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/platform/CanvasGameShellCommands.js` - 433 lines
+### `frontend/js/platform/CanvasGameShellCommands.js` - 407 lines
 
 状态 / Status: candidate
 
@@ -285,6 +286,7 @@ P0 新增公开 API / Public API Added During P0:
 - local shell state transitions for city, tech, famous, resource, and map-home commands
 - `forwardCanvasAction(action, meta)` external action forwarding
 - forwarded action local selection sync through `syncForwardedLocalAction()`
+- forwarded action Promise preservation; local sync runs only after the forwarded action resolves allowed
 - causality metadata preservation when forwarding action meta, including `WorldMapInputIntent.inputId` and `clientSequence`
 
 公开 API / Public API:
@@ -297,6 +299,7 @@ P0 新增公开 API / Public API Added During P0:
 - New shell-local command state transitions extend this module with focused tests.
 - Action dispatch policy and handler-specific gameplay commands stay in `CanvasActionController` and focused action handler modules.
 - Forwarded action metadata must keep the original `meta` object through the external `onAction(action, event, meta)` boundary; do not drop diagnostic input evidence at the shell edge.
+- Forwarded async action results must not be collapsed to boolean; Promise rejection must remain observable by the input/action log chain.
 
 回归 / Regression:
 
@@ -4488,6 +4491,7 @@ Regression:
 - world map drag target selection and expedition launch/cancel orchestration
 - battle scene close/skip action compatibility
 - installed legacy `handle_*` method names for the territory action domain
+- forwarded territory/world-map action Promise normalization through `CanvasActionController.finalizeForwarded()`
 
 公开 API / Public API:
 
@@ -4498,6 +4502,7 @@ Regression:
 - 新 territory/world-site/world-march action 先扩展本模块，再让 `CanvasActionController` 只保留 facade/dispatch 行为。
 - 新 gameplay simulation 不进入本模块；本模块只负责 action-to-controller/API/UI-state orchestration。
 - 如果 action 属于 building/event/tech/famous/talent policy/shell domain，扩展对应 domain handler module。
+- 转发到 shell/app bridge 的 action 不能用同步布尔表达式判定 Promise；必须保留异步拒绝给 `action:error` 证据链。
 
 回归 / Regression:
 
@@ -4514,6 +4519,7 @@ Regression:
 - building and tech action forwarding plus local pending state sync
 - city enter/selection and task reward orchestration
 - installed legacy `handle_*` method names for the city action domain
+- forwarded city/building/event/task action Promise normalization through `CanvasActionController.finalizeForwarded()`
 
 公开 API / Public API:
 
@@ -4524,6 +4530,7 @@ Regression:
 - 新 city-management/event/task-center/building/tech action 先扩展本模块。
 - 新 territory/world-map actions stay in `CanvasTerritoryActionHandlers`.
 - 新 famous-person/talent-policy/shell actions stay in their focused handler modules.
+- 转发 action 的本地收尾必须放到 `finalizeForwarded(..., afterAllowed)`，不能在 Promise resolve 前提前刷新 UI。
 
 回归 / Regression:
 
@@ -4540,6 +4547,7 @@ Regression:
 - famous-person accept/dismiss/attribute/page action forwarding
 - tutorial refresh hooks for famous-person UI actions
 - installed legacy `handle_*` method names for the famous-person action domain
+- forwarded famous-person action Promise normalization through `CanvasActionController.finalizeForwarded()`
 
 公开 API / Public API:
 
@@ -4550,6 +4558,7 @@ Regression:
 - 新 famous-person canvas action 先扩展本模块。
 - Famous-person view-state shape stays in presenter modules; gameplay/service changes stay outside this handler.
 - Do not add famous-person handlers directly to `CanvasActionController`.
+- Forwarded famous-person action results must preserve async rejection; do not collapse Promise results to synchronous success.
 
 回归 / Regression:
 
@@ -4592,6 +4601,7 @@ Regression:
 - tab switching, command panel, reward reveal, settings/logs/auth/reset/logout action orchestration
 - naming finalization helper behavior previously embedded in `CanvasActionController`
 - installed legacy `handle_*` method names for shell/system action domains
+- forwarded shell/system action Promise normalization when delegating to the shell/app bridge
 
 公开 API / Public API:
 
@@ -4602,6 +4612,7 @@ Regression:
 - 新 shell/system/account/naming/advisor/guidebook action 先扩展本模块。
 - Domain gameplay actions stay in territory/city/famous/talent-policy handlers.
 - Do not add shell/system handlers directly to `CanvasActionController`.
+- If a shell/system action may return a Promise, success side effects must wait for resolution and rejection must remain observable by `CanvasActionController.handle()`.
 
 回归 / Regression:
 
@@ -5108,7 +5119,7 @@ Regression:
 - `node --test frontend/js/state/UIStatePresenterDelegates.test.js frontend/js/state/UIStatePresenter.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/platform/CanvasActionController.js` - 305 lines
+### `frontend/js/platform/CanvasActionController.js` - 284 lines
 
 状态 / Status: candidate facade
 
@@ -5117,6 +5128,7 @@ Regression:
 - compatibility dispatch facade for historical `handle_*` action methods
 - shared host/state/controller lookup helpers used by installed action modules
 - shared panel closing, render routing, async finalization, action forwarding, and world-map refresh helpers
+- forwarded action result normalization through `finalizeForwarded()`, preserving Promise rejection and running local after-allowed side effects only after async approval
 - action begin/end/error operation-log evidence, including compact `WorldMapInputIntent` metadata when supplied
 - failed world-march action evidence continuity from action error logs to `GameAPI` error logs, keyed by the same `inputId` / `clientSequence`
 - tech-tree drag/zoom delegation to `TechTreeInteractionModel`
@@ -5144,6 +5156,7 @@ Regression:
 - City people/talent UI actions extend `CanvasCityActionHandlers` and `CityPeopleCanvasRenderer`.
 - Shell/system/account/naming/advisor/guidebook/army-formation actions extend `CanvasShellActionHandlers`.
 - Avoid adding direct `handle_*` implementations here; add or extend a focused handler module instead.
+- Forwarded actions in focused handler modules must use `finalizeForwarded()` when they can receive a Promise from the shell/app bridge; do not use `forwarded !== false` on possibly async results.
 
 回归 / Regression:
 
@@ -6672,7 +6685,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Register compatibility static delegates in `UIStatePresenterDelegates`.
 - Do not add method bodies back into this facade.
 
-### `frontend/js/platform/WorldMapRuntime.js` - 557 lines
+### `frontend/js/platform/WorldMapRuntime.js` - 561 lines
 
 状态 / Status: candidate facade
 
@@ -6684,6 +6697,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - hit target sync
 - render requests
 - world-map input action map integration
+- `dispatchAction()` result preservation for routed tap actions, including Promise rejection from shell/app action dispatch
 - monotonic world-map input sequence assignment before delegating compact intent creation to `WorldMapInputIntent`
 - HUD-to-world-layer point conversion for background/fog march target inference; this adds physical layer padding and removes temporary drag-layer transform before calling `WorldMapInputActionMap`
 - bake policy delegation through `WorldMapRuntimeBakePolicy`
@@ -6702,6 +6716,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - `setCamera(x, y, options)`
 - `handleDrag(phase, point)`
 - `handleTap(point, event)`
+- `dispatchAction(action, event, meta)`
 - `requestRender(options)`
 - `render(options)`
 - `getLayerPointFromHudPoint(point)`
@@ -6722,6 +6737,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - Add render-flow side effects through `WorldMapRuntimeRenderPipeline`.
 - Add new world-map input mapping through `WorldMapInputActionMap`.
 - Add compact input evidence shape and id derivation through `WorldMapInputIntent`; runtime should only hold the per-runtime monotonic input sequence.
+- Runtime tap dispatch must preserve async action results; do not convert `onAction(...Promise...)` to immediate `true`.
 - Add pure world-map input geometry through `WorldMapRuntimeInputPolicy`.
 - Add pure hit-target collection and snapshot replacement rules through `WorldMapRuntimeHitTargetPolicy`.
 - Add map-bake signature or dirty-check changes through `WorldMapRuntimeBakePolicy`.

@@ -1631,6 +1631,84 @@ test('CanvasGameShell records tap hit and action result into local operation log
   assert.equal(events.some((event) => event[0] === 'action:end'), true);
 });
 
+test('CanvasGameShell records async forwarded action failures instead of false success', async () => {
+  const previous = global.ClientOperationLog;
+  const events = [];
+  global.ClientOperationLog = {
+    summarizeAction(action) {
+      return action ? { type: action.type, siteId: action.siteId || '' } : null;
+    },
+    summarizePoint(point) {
+      return { x: point.x, y: point.y };
+    },
+    summarizeInputIntent(intent) {
+      return intent ? { inputId: intent.inputId, clientSequence: intent.clientSequence } : null;
+    },
+    summarizeUiState() {
+      return {};
+    },
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'externalWorldCommand', siteId: 'capital' };
+      },
+    },
+    onAction(action) {
+      return Promise.reject(new Error(`forward failed: ${action.type}`));
+    },
+  });
+
+  try {
+    await assert.rejects(
+      () => shell.handleTap({ x: 60, y: 60 }, {}),
+      /forward failed: externalWorldCommand/,
+    );
+  } finally {
+    global.ClientOperationLog = previous;
+  }
+
+  assert.equal(events.some((event) => event[0] === 'action:error'), true);
+  assert.equal(events.some((event) => event[0] === 'action:end' && event[1].result === true), false);
+});
+
+test('CanvasGameShell observes async world-map runtime tap failures for diagnostics', async () => {
+  const errors = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'worldMapDrag', background: true };
+      },
+    },
+    log(error) {
+      errors.push(error?.message || String(error || ''));
+    },
+  });
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap() {
+      return Promise.reject(new Error('runtime tap failed'));
+    },
+    getMapRuntime() {
+      return null;
+    },
+  });
+
+  const handled = shell.handleTap({ x: 60, y: 60 }, {});
+  await assert.rejects(
+    () => handled,
+    /runtime tap failed/,
+  );
+
+  assert.deepEqual(errors, ['runtime tap failed']);
+});
+
 test('CanvasGameShell keeps map-home HUD rendering after an open world site action', () => {
   const renders = [];
   const state = {
