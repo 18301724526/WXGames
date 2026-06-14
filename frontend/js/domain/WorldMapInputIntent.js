@@ -1,4 +1,16 @@
 (function (global) {
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TileCoord');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SCHEMA = 'world-map-input-intent-v1';
 
   function toNumber(value, fallback = 0) {
@@ -13,6 +25,31 @@
 
   function toInteger(value, fallback = 0) {
     return Math.floor(toNumber(value, fallback));
+  }
+
+  function tileId(q, r) {
+    if (TileCoord?.tileId) return TileCoord.tileId(q, r);
+    return `tile_${toInteger(q)}_${toInteger(r)}`;
+  }
+
+  function normalizeTileEvidence(source = {}) {
+    if (!source || typeof source !== 'object') return null;
+    const qValue = source.targetQ ?? source.q ?? source.x;
+    const rValue = source.targetR ?? source.r ?? source.y;
+    if (qValue === undefined || rValue === undefined) return null;
+    const coord = TileCoord?.normalizeCoord
+      ? TileCoord.normalizeCoord({
+        x: source.x ?? source.targetQ ?? source.q,
+        y: source.y ?? source.targetR ?? source.r,
+      })
+      : null;
+    const q = coord ? coord.x : toInteger(qValue);
+    const r = coord ? coord.y : toInteger(rValue);
+    return {
+      tileId: coord?.tileId || tileId(q, r),
+      targetQ: q,
+      targetR: r,
+    };
   }
 
   function summarizePoint(point = {}) {
@@ -91,6 +128,12 @@
     });
     if (action.targetQ !== undefined || action.q !== undefined) summary.targetQ = toInteger(action.targetQ ?? action.q);
     if (action.targetR !== undefined || action.r !== undefined) summary.targetR = toInteger(action.targetR ?? action.r);
+    const tile = normalizeTileEvidence(summary);
+    if (tile) {
+      summary.tileId = tile.tileId;
+      summary.targetQ = tile.targetQ;
+      summary.targetR = tile.targetR;
+    }
     if (action.background !== undefined) summary.background = Boolean(action.background);
     if (action.known !== undefined) summary.known = Boolean(action.known);
     if (action.disabled !== undefined) summary.disabled = Boolean(action.disabled);
@@ -222,6 +265,12 @@
     if (missionId !== undefined) summary.missionId = missionId;
     if (target.targetQ !== undefined || target.q !== undefined) summary.targetQ = toInteger(target.targetQ ?? target.q);
     if (target.targetR !== undefined || target.r !== undefined) summary.targetR = toInteger(target.targetR ?? target.r);
+    const tile = normalizeTileEvidence(summary);
+    if (tile) {
+      summary.tileId = tile.tileId;
+      summary.targetQ = tile.targetQ;
+      summary.targetR = tile.targetR;
+    }
     return summary;
   }
 

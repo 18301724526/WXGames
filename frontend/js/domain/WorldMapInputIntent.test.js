@@ -113,6 +113,36 @@ test('WorldMapInputIntent derives stable compact input ids when none is provided
   assert.equal(JSON.stringify(intent).includes('pick-sig-abc'), true);
 });
 
+test('WorldMapInputIntent canonicalizes action tile evidence through target coordinates', () => {
+  const intent = WorldMapInputIntent.createTapIntent({
+    source: 'worldMapRuntime',
+    clientSequence: 8,
+    physicalPoint: { x: 10, y: 20 },
+    layerPoint: { x: 110, y: 220 },
+    action: {
+      type: 'selectWorldMarchTarget',
+      tileId: 'legacy-action-tile',
+      targetQ: 3,
+      targetR: -2,
+      background: true,
+    },
+  });
+
+  assert.deepEqual(intent.action, {
+    type: 'selectWorldMarchTarget',
+    tileId: 'tile_3_-2',
+    targetQ: 3,
+    targetR: -2,
+    background: true,
+  });
+  assert.deepEqual(intent.target, {
+    kind: 'tile',
+    tileId: 'tile_3_-2',
+    targetQ: 3,
+    targetR: -2,
+  });
+});
+
 test('WorldMapInputIntent represents tap misses without renderer objects', () => {
   const intent = WorldMapInputIntent.createTapIntent({
     physicalPoint: { x: 10, y: 20 },
@@ -133,6 +163,41 @@ test('WorldMapInputIntent represents tap misses without renderer objects', () =>
   assert.equal(serializable.action, null);
   assert.deepEqual(serializable.target, { kind: 'none' });
   assert.equal(JSON.stringify(serializable).includes('[function]'), false);
+});
+
+test('WorldMapInputIntent toSerializable canonicalizes externally supplied tile evidence', () => {
+  const serializable = WorldMapInputIntent.toSerializable({
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    source: 'worldMapRuntime',
+    inputId: 'wmi-stale-tile',
+    clientSequence: 9,
+    action: {
+      type: 'selectWorldMarchTarget',
+      tileId: 'legacy-action',
+      targetQ: 5,
+      targetR: -3,
+    },
+    target: {
+      kind: 'tile',
+      tileId: 'legacy-target',
+      targetQ: 5,
+      targetR: -3,
+    },
+  });
+
+  assert.deepEqual(serializable.action, {
+    type: 'selectWorldMarchTarget',
+    tileId: 'tile_5_-3',
+    targetQ: 5,
+    targetR: -3,
+  });
+  assert.deepEqual(serializable.target, {
+    kind: 'tile',
+    tileId: 'tile_5_-3',
+    targetQ: 5,
+    targetR: -3,
+  });
 });
 
 test('WorldMapInputIntent preserves compact world-map input surface action evidence', () => {
@@ -215,7 +280,12 @@ test('WorldMapInputIntent toSerializable sanitizes externally supplied intent ob
   assert.equal(serializable.inputId, 'wmiunsafeid');
   assert.deepEqual(serializable.points.physical, { x: 1.235, y: 9.877, pointerId: 3 });
   assert.deepEqual(serializable.points.layer, { x: 101.235, y: 209.877 });
-  assert.deepEqual(serializable.action, { type: 'selectWorldMarchTarget', targetQ: 3, targetR: -2 });
+  assert.deepEqual(serializable.action, {
+    type: 'selectWorldMarchTarget',
+    tileId: 'tile_3_-2',
+    targetQ: 3,
+    targetR: -2,
+  });
   assert.deepEqual(serializable.target, { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 });
   assert.deepEqual(serializable.picking, {
     schema: 'world-map-picking-snapshot-v1',

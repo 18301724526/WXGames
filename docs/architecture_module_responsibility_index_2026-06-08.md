@@ -2533,6 +2533,47 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/domain/WorldMapInputIntent.js` - 337 lines
+
+状态 / Status: candidate
+
+负责 / Owns:
+
+- auditable world-map input fact contract `world-map-input-intent-v1`
+- compact tap evidence: `inputId`, `clientSequence`, points, action summary, target identity, picking epoch/signature/counts, view/camera, and small diagnostics
+- whitelist serialization for externally supplied intent-like objects
+- `TileCoord`-canonicalized tile evidence inside action and target summaries when coordinate evidence is present
+- local replay/client-log evidence shape only; no gameplay authority, route decision, server validation, renderer access, or network IO
+
+公开 API / Public API:
+
+- `WorldMapInputIntent.createTapIntent(options)`
+- `WorldMapInputIntent.toSerializable(intent)`
+- `WorldMapInputIntent.getSerializableSizeBytes(intent)`
+- `WorldMapInputIntent.summarizeAction(action)`
+- `WorldMapInputIntent.summarizePoint(point)`
+- `WorldMapInputIntent.summarizePicking(snapshot)`
+- `WorldMapInputIntent.summarizeTarget(action)`
+- constants: `SCHEMA`
+
+性能约束 / Performance Constraints:
+
+- Serializable evidence must stay compact and pass `WorldMapPerformanceBudget.checkInputIntent()`.
+- Serialization is whitelist-based and must reject renderer objects, native/browser events, full tile arrays, hit target arrays, Promise/thenable payloads, and raw context objects.
+- Tile target evidence uses canonical `tileId` derived from `targetQ/targetR` or `q/r`; stale caller-supplied `tileId` is not authority when coordinates exist.
+- No backend service imports, renderer imports, DOM/canvas/WebGL objects, or gameplay mutation.
+
+扩展方式 / Extension Path:
+
+- New input evidence fields start here with focused tests and a performance-budget assertion.
+- New server-authority fields do not belong here; this module records client-side input facts only.
+- If target identity rules change, first extend `TileCoord` / input action mapping, then update this serializer and replay-correlation tests.
+
+回归 / Regression:
+
+- `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapPerformanceBudget.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js backend/tests/CommandReplayCorrelation.test.js backend/tests/PerformanceCapacityBudget.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/domain/WorldMapInputActionMap.js`
 
 状态 / Status: candidate
@@ -6994,6 +7035,7 @@ Recommended first split sequence:
 | 2026-06-14 | Added stable world-map input correlation identity: `WorldMapInputIntent` now preserves or derives compact `inputId`, `WorldMapRuntime` assigns monotonic `clientSequence`, `GameAPI` and `CommandAuthorityContract` keep those fields in compact evidence, and `CommandReplayCorrelation` matches request id, input id, compact client input, and authority command id. |
 | 2026-06-14 | Tightened `CommandReplayCorrelation` request-id matching: when an API request id exists, local client operation-log entries must match that exact id and may not fall back to the latest input entry, preventing high-frequency or multiplayer replay audits from guessing by time. |
 | 2026-06-14 | Hardened `WorldMapInputIntent.toSerializable()` as a whitelist boundary: externally supplied intent-like objects are re-summarized before export so renderer, native event, tileMapView, and thenable payloads cannot enter input evidence. |
+| 2026-06-14 | Hardened `WorldMapInputIntent` tile evidence: action and target summaries now consume `TileCoord` when target coordinates are present, so stale caller-supplied `tileId` cannot pollute local replay or backend command evidence. |
 | 2026-06-14 | Hardened world tile-map presenter coordinate identity: `WorldTileMapTileNormalizer`, `WorldTileMapExplorerNormalizer`, and `WorldTileMapPresenter` now consume `TileCoord` for raw tiles, planned tiles/sites, route/reveal entries, and scout-area coords; canonical tile ids override renderer/raw legacy ids in presenter view-state composition. |
 | 2026-06-14 | Hardened runtime map-bake fallback signatures: `WorldMapRuntimeBakePolicy` now consumes `TileCoord` for fallback compact summaries when the presenter is unavailable, so stable `x/y` and legacy `q/r` shapes produce the same bake signature. |
 | 2026-06-14 | Hardened march actor identity: `WorldMarchProgressSnapshot`, `WorldActorProjection`, and `WorldMapRenderSnapshot.normalizeMarchTarget()` now consume `TileCoord`, so stale caller-supplied `id/tileId` cannot override stable `x/y` in mission rows, returned-home actor projection, or march target UI state. |
