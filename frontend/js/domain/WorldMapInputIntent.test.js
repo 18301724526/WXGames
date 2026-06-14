@@ -135,6 +135,28 @@ test('WorldMapInputIntent represents tap misses without renderer objects', () =>
   assert.equal(JSON.stringify(serializable).includes('[function]'), false);
 });
 
+test('WorldMapInputIntent preserves compact world-map input surface action evidence', () => {
+  const intent = WorldMapInputIntent.createTapIntent({
+    source: 'worldMapRuntime',
+    clientSequence: 4,
+    physicalPoint: { x: 10, y: 20 },
+    layerPoint: { x: 10, y: 20 },
+    action: {
+      type: 'selectWorldActor',
+      actorId: 'actor-1',
+      inputSurface: 'worldMap',
+      renderer: { heavy: true },
+    },
+  });
+
+  assert.deepEqual(intent.action, {
+    type: 'selectWorldActor',
+    actorId: 'actor-1',
+    inputSurface: 'worldMap',
+  });
+  assert.equal(JSON.stringify(intent).includes('heavy'), false);
+});
+
 test('WorldMapInputIntent toSerializable sanitizes externally supplied intent objects', () => {
   const thenable = {
     then() {},

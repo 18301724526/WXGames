@@ -92,6 +92,32 @@ test('ClientOperationLog collapses promise-like values before persistence and ex
   assert.equal(exportedText.includes('nativeEvent'), false);
 });
 
+test('ClientOperationLog preserves compact world-map input surface action evidence', () => {
+  const logger = new ClientOperationLog({
+    runtime: {
+      location: { search: '' },
+      localStorage: { getItem: () => null },
+      sessionStorage: createStorage(),
+      performance: { now: () => 10 },
+      Date: { now: () => Date.parse('2026-06-14T00:00:00.000Z') },
+    },
+    maxEntries: 10,
+    persistLimit: 0,
+  });
+  const summary = global.ClientOperationLog.summarizeAction({
+    type: 'openWorldSite',
+    siteId: 'capital',
+    inputSurface: 'worldMap',
+    renderer: { heavy: true },
+  });
+
+  assert.deepEqual(summary, {
+    type: 'openWorldSite',
+    siteId: 'capital',
+    inputSurface: 'worldMap',
+  });
+});
+
 test('ClientOperationLog uploads an explicit diagnostic snapshot through a configured uploader', async () => {
   const uploaded = [];
   const logger = new ClientOperationLog({

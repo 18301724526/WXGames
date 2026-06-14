@@ -309,6 +309,57 @@ test('CanvasGameApp recomputes renderer background march targets through runtime
   ]);
 });
 
+test('CanvasGameApp routes tagged world-map entity hits through runtime before action dispatch', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0 }] } },
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.hasBlockingOverlayOpen = () => false;
+  app.renderer = {
+    getHitTarget(point) {
+      calls.push(['rendererHit', point.x, point.y]);
+      return {
+        type: 'selectWorldActor',
+        actorId: 'stale-renderer-actor',
+        inputSurface: 'worldMap',
+      };
+    },
+  };
+  app.actionController = {
+    handle(action) {
+      calls.push(['handle', action.type, action.actorId || action.siteId || '']);
+      return true;
+    },
+  };
+  app.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point) {
+      calls.push(['runtimeTap', point.x, point.y]);
+      return app.actionController.handle({ type: 'selectWorldActor', actorId: 'stable-actor' });
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(await app.handleTap({ x: 60, y: 60 }), true);
+
+  assert.deepEqual(calls, [
+    ['rendererHit', 60, 60],
+    ['runtimeTap', 60, 60],
+    ['handle', 'selectWorldActor', 'stable-actor'],
+  ]);
+});
+
 test('CanvasGameApp does not dispatch renderer background world-map taps when runtime misses', async () => {
   const calls = [];
   const app = new CanvasGameApp({

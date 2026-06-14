@@ -131,6 +131,7 @@
         type: 'selectWorldActor',
         actorId: actor.id,
         missionId: actor.missionId,
+        inputSurface: 'worldMap',
       });
       return true;
     }

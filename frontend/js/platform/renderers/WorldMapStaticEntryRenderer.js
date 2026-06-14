@@ -234,6 +234,7 @@
           type: 'openWorldSite',
           siteId: site.id,
           tileId: tile.id,
+          inputSurface: 'worldMap',
         });
       }
       return true;

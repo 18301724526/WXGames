@@ -97,9 +97,14 @@
       || (action.type === 'selectWorldMarchTarget' && action.background);
   }
 
+  function isWorldMapSurfaceAction(action = {}) {
+    return action?.inputSurface === 'worldMap';
+  }
+
   function shouldRouteTapThroughWorldMapRuntime(action = null) {
     if (!action) return true;
     if (action.disabled || action.type === 'blockCanvasModal') return false;
+    if (isWorldMapSurfaceAction(action)) return isRendererWorldSurfaceAction(action);
     return action.type === 'worldMapDrag'
       || (action.type === 'selectWorldMarchTarget' && action.background);
   }
@@ -241,6 +246,7 @@
     isPointInContextFrame,
     isKnownTile,
     isRendererWorldSurfaceAction,
+    isWorldMapSurfaceAction,
     isWorldSiteAction,
     normalizeHitTarget,
     normalizeHitTargets,

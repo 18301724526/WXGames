@@ -61,6 +61,7 @@ test('WorldActorCanvasRenderer draws scout actor and exposes selection hit targe
   assert.equal(host.calls.some((call) => call[0] === 'stroke'), true);
   assert.equal(host.calls.some((call) => call[0] === 'getAsset' && call[1].includes('assets/art/units/spearman/move/')), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor' && target.action.missionId === 'explore-1'), true);
+  assert.equal(host.hitTargets.find((target) => target.action.type === 'selectWorldActor')?.action.inputSurface, 'worldMap');
 });
 
 test('WorldActorCanvasRenderer renders active actors between tile centers', () => {

@@ -1586,6 +1586,59 @@ test('CanvasGameShell routes a city tap to openWorldSite when an actor overlaps 
   assert.equal(shell.territoryUiState.selectedSiteId, 'capital');
 });
 
+test('CanvasGameShell routes tagged world-map entity hits through runtime before action dispatch', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        calls.push(['rendererHit', point.x, point.y]);
+        return {
+          type: 'openWorldSite',
+          siteId: 'stale-renderer-site',
+          inputSurface: 'worldMap',
+        };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.siteId || action.actorId || '']);
+        return true;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0 }] } },
+    },
+    mapHomeActive: true,
+    getActiveTab() {
+      return 'military';
+    },
+  };
+  shell.ensureWorldMapRuntimeCoordinator = () => ({
+    handleTap(point, event) {
+      calls.push(['runtimeTap', point.x, point.y, Boolean(event)]);
+      return shell.handleAction({ type: 'openWorldSite', siteId: 'stable-site' }, event);
+    },
+    getMapRuntime() {
+      return { hitTargets: [] };
+    },
+  });
+
+  assert.equal(shell.handleTap({ x: 60, y: 60 }, {}), true);
+
+  assert.deepEqual(calls, [
+    ['rendererHit', 60, 60],
+    ['runtimeTap', 60, 60, true],
+    ['handle', 'openWorldSite', 'stable-site'],
+  ]);
+  assert.equal(shell.territoryUiState.selectedSiteId, 'stable-site');
+});
+
 test('CanvasGameShell records tap hit and action result into local operation log', () => {
   const previous = global.ClientOperationLog;
   const events = [];

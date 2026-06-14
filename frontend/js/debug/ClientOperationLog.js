@@ -152,6 +152,7 @@
       'tab',
       'view',
       'source',
+      'inputSurface',
       'action',
     ].forEach((key) => {
       if (action[key] !== undefined && action[key] !== '') summary[key] = action[key];

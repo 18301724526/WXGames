@@ -153,7 +153,7 @@
     addWorldMapDragHitTarget(x = 0, y = 0, width = 0, height = 0) {
       const dragTarget = this.getWorldMapHitTargetModel()?.getWorldMapDragHitTarget?.({ x, y, width, height });
       if (dragTarget) this.addHitTarget(dragTarget.rect, dragTarget.action);
-      else this.addHitTarget({ x, y, width, height }, { type: 'worldMapDrag', background: true });
+      else this.addHitTarget({ x, y, width, height }, { type: 'worldMapDrag', background: true, inputSurface: 'worldMap' });
       return true;
     }
 

@@ -84,6 +84,7 @@
       'tab',
       'view',
       'source',
+      'inputSurface',
     ].forEach((key) => {
       const value = copyString(action[key]);
       if (value !== undefined) summary[key] = value;

@@ -180,6 +180,14 @@ test('WorldMapInputActionMap shares the runtime-routing predicate for app and sh
     background: false,
   }), false);
   assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'openWorldSite' }), false);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({
+    type: 'openWorldSite',
+    inputSurface: 'worldMap',
+  }), true);
+  assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({
+    type: 'selectWorldActor',
+    inputSurface: 'worldMap',
+  }), true);
   assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'blockCanvasModal' }), false);
   assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'worldMapDrag', disabled: true }), false);
 });

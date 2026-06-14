@@ -74,6 +74,7 @@
             type: 'openWorldSite',
             siteId: layout.site.id,
             tileId: tile.id,
+            inputSurface: 'worldMap',
           },
         });
       });
@@ -118,6 +119,7 @@
             terrain: tile.terrain || '',
             terrainLabel: tile.terrainLabel || tile.terrain || '',
             background: true,
+            inputSurface: 'worldMap',
           },
         });
       });

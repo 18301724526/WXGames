@@ -74,7 +74,7 @@ test('WorldMapHitTargetModel creates a background world-map drag target', () => 
     WorldMapHitTargetModel.getWorldMapDragHitTarget({ x: 10, y: 20, width: 300, height: 200 }),
     {
       rect: { x: 10, y: 20, width: 300, height: 200 },
-      action: { type: 'worldMapDrag', background: true },
+      action: { type: 'worldMapDrag', background: true, inputSurface: 'worldMap' },
     },
   );
 });
@@ -94,6 +94,7 @@ test('WorldMapHitTargetModel creates site hit targets from layout entries', () =
   assert.equal(targets[0].action.type, 'openWorldSite');
   assert.equal(targets[0].action.siteId, 'capital');
   assert.equal(targets[0].action.tileId, 'capital-tile');
+  assert.equal(targets[0].action.inputSurface, 'worldMap');
   assert.equal(targets[0].rect.width > 0, true);
 });
 
@@ -154,6 +155,7 @@ test('WorldMapHitTargetModel creates march targets for in-frame tiles only', () 
   assert.equal(targets.some((target) => target.action.tileId === 'unknown-tile'), true);
   assert.equal(targets.some((target) => target.action.tileId === 'far-tile'), false);
   assert.equal(targets.find((target) => target.action.tileId === 'unknown-tile').action.known, false);
+  assert.equal(targets.find((target) => target.action.tileId === 'unknown-tile').action.inputSurface, 'worldMap');
 });
 
 test('WorldMapHitTargetModel loads before WorldMapCanvasRenderer in browser entrypoints', () => {

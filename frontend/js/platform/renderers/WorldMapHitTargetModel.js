@@ -28,6 +28,7 @@
     }, {
       type: 'worldMapDrag',
       background: true,
+      inputSurface: 'worldMap',
     });
   }
 
@@ -48,6 +49,7 @@
         type: 'openWorldSite',
         siteId: layout.site.id,
         tileId: tile.id,
+        inputSurface: 'worldMap',
       }));
     }
     return hitTargets;
@@ -92,6 +94,7 @@
         terrain: tile.terrain || '',
         terrainLabel: tile.terrainLabel || tile.terrain || '',
         background: true,
+        inputSurface: 'worldMap',
       }));
     }
     return hitTargets;
