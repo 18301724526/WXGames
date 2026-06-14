@@ -3360,6 +3360,36 @@ Regression:
 - `node --test backend/tests/TerritoryArchitecture.test.js`
 - `npm run test:architecture`
 
+### `backend/services/territory/TerritoryScoutAreas.js`
+
+Status: candidate
+
+Owns:
+
+- legacy scout route reveal-area construction and resolved scout coordinate lookup
+- existing-site selection inside a scout reveal area
+- coordinate-authoritative scout reveal-area writes: newly revealed area entries, appended `revealedTileIds`, and `recordScoutTrail()` tile ids derive from pending reveal coordinates; stale `WorldMapService.revealScoutArea()` tile `id` cannot override coordinates
+
+Public API:
+
+- `createTerritoryScoutAreas(dependencies)`
+- `ensureMissionRevealArea(gameState, mission, now)`
+- `ensureScoutMissionAreaRevealed(gameState, mission, now)`
+- `getExistingScoutAreaSite(gameState, mission, now)`
+- `getScoutResolvedCoordinate(mission)`
+- `isDirectionalScoutAreaMission(mission)`
+
+Extension Path:
+
+- Keep scout mission advancement timing and soldier state in `TerritoryMilitaryMissions`.
+- Keep persisted mission-row normalization in `TerritoryStateNormalizer`.
+- New reveal-area writes must add focused tests proving coordinate-derived tile identity before mutating mission state or scout trails.
+
+Regression:
+
+- `node --test backend/tests/TerritoryArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/territory/TerritoryScoutRecords.js`
 
 Status: candidate

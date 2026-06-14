@@ -77,6 +77,7 @@
 - `ServerTimelineSnapshot` / `AoiSyncSnapshot` 是多人同步事实出口；timeline 坐标、插值端点、AOI center、AOI mission position、AOI tile slice 只要带 `q/r`，就必须由坐标生成 identity，旧 mission `tileId` 或 world-map tile `id` 不能进入同步事实。
 - `WorldExplorerProgression` 是世界探索运行时副作用边界；planned tile lookup、planned site materialize、step/reveal trace summary、mission position 写回、mission `revealedTileIds` 都必须由 `q/r` 生成 tile identity，不能把旧 `step.tileId`、planned tile `id` 或 `revealTiles()` 返回的 `tile.id` 当运行时权威。
 - `WorldExplorerDtoMapper` 是 public API 输出边界；origin、homeOrigin、target、position、route、plannedTiles、plannedSites 这些带坐标的 DTO 字段也必须重新由坐标生成 public tile identity，不能把内部旧 `tileId` / `id` 泄漏回客户端。
+- `TerritoryScoutAreas` 是 legacy scout reveal-area 写回边界；新揭示的 revealArea entries、mission `revealedTileIds`、recordScoutTrail tile ids 都必须由 pending reveal coordinates 生成，`revealScoutArea()` 返回的旧 `tile.id` 不能进入 mission 事实。
 - `TerritoryMilitaryMissions` 是 legacy scout mission 运行时推进写回边界；advanceScoutMission 新揭示的 route step、revealArea、revealedTileIds、recordScoutTrail tile ids 都必须由 `q/r` 生成，旧 route `tileId` 或 `revealScoutArea()` 返回 tile `id` 不能覆盖坐标事实。
 - `TerritoryCombatTargets` 是战斗目标归一化边界；battle target `tile.id` 只要带 `q/r`，就必须由坐标生成，旧 `raw.tile.id` / `raw.tileId` 不能进入征服/战斗目标事实。
 - `TerritoryService.getTerritoryBattleTileSnapshot()` 是征服/战斗 tile snapshot 地形读取边界；world-map tile lookup 必须按 territory `x/y` 对应的 `q/r`，旧或撞名 world-map `tile.id` 不能改变 `lastBattle.mapTerrain` 或 nested battle tile。
@@ -126,6 +127,7 @@
 - 2026-06-15：`WorldExplorerProgression` 的 reveal result 写回继续补齐坐标身份收口；新增红测证明 `WorldMapService.revealTiles()` 返回脏 `tile.id` 时，mission `revealedTileIds`、reveal trace summary、materialized tile merge key 仍必须由返回 tile 的 `q/r` 生成，旧 reveal result id 不得进入运行时 mission 事实。
 - 2026-06-14：`WorldExplorerDtoMapper` 的 public API 输出也完成坐标身份收口；即使内部 mission row 被旧字段污染，客户端 DTO 仍按坐标生成 canonical tile identity，不把旧 `tileId` / `id` 当公开事实。
 - 2026-06-14：`TerritoryStateNormalizer` 的 legacy territory scout mission 归一化边界完成第一段收口；scout `route` / `revealArea` 带坐标字段统一由 `q/r` 生成 `tileId`，旧存档里的 scout `tileId` 不能重新进入推进或投影链路。
+- 2026-06-15：`TerritoryScoutAreas.ensureScoutMissionAreaRevealed()` 的 reveal-area 写回完成坐标身份收口；新增红测证明 `WorldMapService.revealScoutArea()` 返回脏 `tile.id` 时，mission `revealedTileIds` 和 `recordScoutTrail()` 仍由 pending 坐标生成，底层 reveal-area 模块本身不再依赖上层推进模块兜底。
 - 2026-06-14：`TerritoryMilitaryMissions.advanceScoutMission()` 的 scout 推进写回完成坐标身份收口；新增红测证明脏 route `tileId` 和脏 revealed tile `id` 不会进入 route / revealArea / revealedTileIds / scout trail。
 - 2026-06-14：`TerritoryScoutRecords.normalizeScoutReport*()` 的报告 tile identity 完成坐标身份收口；新增红测证明脏 report `tileId`、nested tile `id`、revealArea `tileId` 不会进入客户端报告事实。
 - 2026-06-14：`TerritoryScoutResults.getScoutReportRevealAreaSnapshot()` 的报告生成 revealArea tile identity 完成坐标身份收口；新增红测证明脏 mission revealArea `tileId` 不会进入生成报告。

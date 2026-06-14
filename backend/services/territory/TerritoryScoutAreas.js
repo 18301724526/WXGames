@@ -113,13 +113,14 @@ function createTerritoryScoutAreas(dependencies = {}) {
       coord.revealed = true;
       coord.tileId = WorldMapService.getTileId(coord.q, coord.r);
     }
+    const revealedTileIds = pending.map((coord) => WorldMapService.getTileId(coord.q, coord.r));
     mission.route = (Array.isArray(mission.route) ? mission.route : []).map((step) => ({
       ...step,
       revealed: revealArea.some((coord) => coord.kind === 'main' && coord.q === step.q && coord.r === step.r && coord.revealed),
     }));
     mission.revealedTileIds = Array.from(new Set([
       ...mission.revealedTileIds,
-      ...revealedTiles.map((tile) => tile.id),
+      ...revealedTileIds,
     ]));
     WorldMapService.recordScoutTrail(gameState, mission, mission.revealedTileIds, mission.status === 'ready');
     return revealedTiles;

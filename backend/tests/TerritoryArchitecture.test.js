@@ -459,6 +459,48 @@ test('territory scout areas module owns route reveal and existing site contracts
   });
 });
 
+test('territory scout areas derive revealed tile ids from coordinates', () => {
+  const trails = [];
+  const Areas = createTerritoryScoutAreas({
+    WorldMapService: {
+      getTileId: (q, r) => `tile_${q}_${r}`,
+      revealScoutArea: (_gameState, targets) => targets.map((coord) => ({
+        id: `legacy-revealed-${coord.q}-${coord.r}`,
+        q: coord.q,
+        r: coord.r,
+        terrain: 'plains',
+      })),
+      recordScoutTrail: (_gameState, mission, tileIds, completed) => {
+        trails.push({ missionId: mission.id, tileIds: [...tileIds], completed });
+      },
+    },
+  });
+  const mission = {
+    id: 'scout-area-stale-revealed',
+    direction: 'e',
+    status: 'ready',
+    route: [
+      { q: 2, r: -1, step: 1, tileId: 'stale-route-tile', revealed: false },
+    ],
+    revealAreaSource: 'directional-route-v1',
+    revealArea: [
+      { q: 2, r: -1, step: 1, kind: 'main', tileId: 'stale-area-main', revealed: false },
+      { q: 3, r: -1, step: 1, kind: 'branch', tileId: 'stale-area-branch', revealed: false },
+    ],
+    revealedTileIds: [],
+  };
+
+  Areas.ensureScoutMissionAreaRevealed({ territories: [] }, mission, new Date('2026-06-06T00:00:00.000Z'));
+
+  assert.deepEqual(mission.revealArea.map((coord) => coord.tileId), ['tile_2_-1', 'tile_3_-1']);
+  assert.deepEqual(mission.revealedTileIds, ['tile_2_-1', 'tile_3_-1']);
+  assert.deepEqual(trails.at(-1), {
+    missionId: 'scout-area-stale-revealed',
+    tileIds: ['tile_2_-1', 'tile_3_-1'],
+    completed: true,
+  });
+});
+
 test('territory military missions module owns selectors and soldier allocation contracts', () => {
   const MilitaryMissions = createTerritoryMilitaryMissions({
     WorldMapService: {
