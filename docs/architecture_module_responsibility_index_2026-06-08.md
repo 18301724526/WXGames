@@ -4341,6 +4341,41 @@ Regression:
 - `node --test backend/tests/VersionRoutes.test.js`
 - `npm run test:architecture`
 
+### `backend/services/worldExplorer/WorldExplorerMissionNormalizer.js`
+
+Status: candidate
+
+Owns:
+
+- server-side world explorer mission row normalization before progression, DTO, timeline, and AOI consumers
+- route step, origin, home origin, target, position, planned tile, and planned site coordinate normalization
+- canonical tile identity for any mission sub-record with `q/r` or `x/y`; stale persisted or caller-supplied `tileId` / `id` cannot override coordinates
+- revealed tile id merge from already-normalized route steps plus legacy id-only history that has no coordinate payload
+
+Public API:
+
+- `normalizeRouteStep(rawStep, index)`
+- `normalizePlannedTile(rawTile)`
+- `normalizePlannedSite(rawSite)`
+- `normalizeMission(rawMission)`
+- `normalizeMissions(rawMissions)`
+
+Performance Constraints:
+
+- Linear over one mission's route/planned arrays.
+- No repository access, route planning, world-map materialization, API route dependency, renderer import, DOM, or frontend state.
+
+Extension Path:
+
+- New persisted mission fields extend this normalizer with focused tests before downstream DTO/progression consumers read them.
+- New coordinate semantics must be normalized here before `WorldExplorerProgression`, `ServerTimelineSnapshot`, or `AoiSyncSnapshot` consume mission rows.
+- Id-only legacy arrays may be preserved only when no coordinate payload exists; coordinate-bearing records must derive ids from coordinates.
+
+Regression:
+
+- `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js backend/tests/RealtimeAuthorityContract.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/worldExplorer/WorldExplorerDtoMapper.js`
 
 状态 / Status: candidate

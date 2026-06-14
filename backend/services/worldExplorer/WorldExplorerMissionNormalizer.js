@@ -13,7 +13,7 @@ function normalizeRouteStep(rawStep, index = 0) {
     q,
     r,
     step,
-    tileId: rawStep.tileId || WorldMapService.getTileId(q, r),
+    tileId: WorldMapService.getTileId(q, r),
     revealed: Boolean(rawStep.revealed),
     revealedAt: rawStep.revealedAt || null,
   };
@@ -25,7 +25,7 @@ function normalizePlannedTile(rawTile) {
   const r = toInteger(rawTile.r, 0);
   return {
     ...rawTile,
-    id: rawTile.id || WorldMapService.getTileId(q, r),
+    id: WorldMapService.getTileId(q, r),
     q,
     r,
   };
@@ -38,7 +38,7 @@ function normalizePlannedSite(rawSite) {
   const site = rawSite.site && typeof rawSite.site === 'object' ? rawSite.site : {};
   const siteId = String(rawSite.siteId || site.id || `site_${q}_${r}`).trim();
   if (!siteId) return null;
-  const tileId = rawSite.tileId || WorldMapService.getTileId(q, r);
+  const tileId = WorldMapService.getTileId(q, r);
   return {
     tileId,
     q,
@@ -98,7 +98,7 @@ function normalizeMission(rawMission) {
       cityId: origin.cityId || rawMission.sourceCityId || 'capital',
       territoryId: origin.territoryId || rawMission.originTerritoryId || 'capital',
       name: origin.name || rawMission.originName || '',
-      tileId: origin.tileId || WorldMapService.getTileId(originQ, originR),
+      tileId: WorldMapService.getTileId(originQ, originR),
     },
     homeOrigin: {
       q: homeOriginQ,
@@ -106,13 +106,13 @@ function normalizeMission(rawMission) {
       cityId: homeOrigin.cityId || origin.cityId || rawMission.sourceCityId || 'capital',
       territoryId: homeOrigin.territoryId || origin.territoryId || rawMission.originTerritoryId || 'capital',
       name: homeOrigin.name || origin.name || rawMission.originName || '',
-      tileId: homeOrigin.tileId || WorldMapService.getTileId(homeOriginQ, homeOriginR),
+      tileId: WorldMapService.getTileId(homeOriginQ, homeOriginR),
     },
     target: rawMission.target && typeof rawMission.target === 'object'
       ? {
         q: toInteger(rawMission.target.q ?? rawMission.target.x, route.at(-1)?.q || originQ),
         r: toInteger(rawMission.target.r ?? rawMission.target.y, route.at(-1)?.r || originR),
-        tileId: rawMission.target.tileId || WorldMapService.getTileId(
+        tileId: WorldMapService.getTileId(
           toInteger(rawMission.target.q ?? rawMission.target.x, route.at(-1)?.q || originQ),
           toInteger(rawMission.target.r ?? rawMission.target.y, route.at(-1)?.r || originR),
         ),
@@ -125,7 +125,7 @@ function normalizeMission(rawMission) {
     position: {
       q: positionQ,
       r: positionR,
-      tileId: rawPosition?.tileId || WorldMapService.getTileId(positionQ, positionR),
+      tileId: WorldMapService.getTileId(positionQ, positionR),
     },
     route,
     plannedTiles: (Array.isArray(rawMission.plannedTiles) ? rawMission.plannedTiles : [])

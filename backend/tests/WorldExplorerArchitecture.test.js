@@ -74,6 +74,37 @@ test('world explorer modules preserve the public exploration contract', () => {
   assert.equal(ClientState.getClientState(state, now).idleMissions.length, 1);
 });
 
+test('WorldExplorerMissionNormalizer derives tile identity from mission coordinates', () => {
+  const mission = MissionNormalizer.normalizeMission({
+    id: 'stale-tile-id-mission',
+    mode: 'manual',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'stale-origin-tile', cityId: 'capital' },
+    homeOrigin: { q: 0, r: 0, tileId: 'stale-home-tile', cityId: 'capital' },
+    target: { q: 2, r: -1, tileId: 'stale-target-tile' },
+    position: { q: 1, r: -1, tileId: 'stale-position-tile' },
+    route: [
+      { q: 1, r: -1, step: 1, tileId: 'stale-route-tile', revealed: true },
+      { q: 2, r: -1, step: 2, tileId: 'stale-route-target' },
+    ],
+    plannedTiles: [
+      { id: 'stale-planned-tile', q: 2, r: -1, terrain: 'plains' },
+    ],
+    plannedSites: [
+      { tileId: 'stale-planned-site-tile', q: 2, r: -1, siteId: 'site_2_-1', site: { id: 'site_2_-1' } },
+    ],
+  });
+
+  assert.equal(mission.origin.tileId, 'tile_0_0');
+  assert.equal(mission.homeOrigin.tileId, 'tile_0_0');
+  assert.equal(mission.target.tileId, 'tile_2_-1');
+  assert.equal(mission.position.tileId, 'tile_1_-1');
+  assert.deepEqual(mission.route.map((step) => step.tileId), ['tile_1_-1', 'tile_2_-1']);
+  assert.deepEqual(mission.plannedTiles.map((tile) => tile.id), ['tile_2_-1']);
+  assert.deepEqual(mission.plannedSites.map((site) => site.tileId), ['tile_2_-1']);
+  assert.deepEqual(mission.revealedTileIds, ['tile_1_-1']);
+});
+
 test('WorldExplorerService facade exposes only the actor march API', () => {
   const expectedApi = [
     'EXPLORE_REVEAL_RADIUS',
