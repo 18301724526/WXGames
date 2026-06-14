@@ -4588,6 +4588,7 @@ Regression:
 
 - `CanvasActionController` 的 territory/world-site/world-march/expedition/battle-scene action handlers
 - world map drag target selection and expedition launch/cancel orchestration
+- `TileCoord`-normalized world march target handoff: HUD `worldMarchTarget.tileId` is derived from `targetQ/targetR`, stale renderer/caller `action.tileId` cannot override it, and `startWorldMarch` forwards target coordinates without adding a top-level `tileId` authority field
 - battle scene close/skip action compatibility
 - installed legacy `handle_*` method names for the territory action domain
 - forwarded territory/world-map action Promise normalization through `CanvasActionController.finalizeForwarded()`

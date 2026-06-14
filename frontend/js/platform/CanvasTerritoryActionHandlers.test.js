@@ -326,6 +326,72 @@ test('CanvasTerritoryActionHandlers forwards runtime input intent evidence to wo
   assert.equal(calls[2][2].clientInputIntent, inputIntent);
 });
 
+test('CanvasTerritoryActionHandlers derives world march tile identity from target coordinates', async () => {
+  const calls = [];
+  const game = {
+    territoryUiState: {},
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+    tutorialController: {
+      onWorldMarchTargetSelected() {
+        return true;
+      },
+      refreshCurrentHighlight() {},
+    },
+  };
+  const host = {
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    renderCanvasAction() {},
+    requestWorldMapRenderAnimationFrame() {},
+  };
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_selectWorldMarchTarget({
+    type: 'selectWorldMarchTarget',
+    targetQ: 4,
+    targetR: -2,
+    tileId: 'stale-renderer-tile',
+  }), true);
+  assert.deepEqual(host.territoryUiState.worldMarchTarget, {
+    q: 4,
+    r: -2,
+    tileId: 'tile_4_-2',
+    pickerOpen: false,
+  });
+
+  assert.equal(controller.handle_openWorldMarchFormationPicker({
+    type: 'openWorldMarchFormationPicker',
+    targetQ: 5,
+    targetR: -3,
+    tileId: 'stale-picker-tile',
+  }), true);
+  assert.deepEqual(host.territoryUiState.worldMarchTarget, {
+    q: 5,
+    r: -3,
+    tileId: 'tile_5_-3',
+    pickerOpen: true,
+  });
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 5,
+    targetR: -3,
+    tileId: 'stale-start-tile',
+  }), true);
+  assert.deepEqual(calls[0][1], {
+    mode: 'manual',
+    targetQ: 5,
+    targetR: -3,
+    formationSlot: 1,
+    cityId: 'capital',
+  });
+  assert.equal(Object.hasOwn(calls[0][1], 'tileId'), false);
+});
+
 test('CanvasTerritoryActionHandlers resets local shell camera after forwarded return-home action', () => {
   const calls = [];
   const runtime = {

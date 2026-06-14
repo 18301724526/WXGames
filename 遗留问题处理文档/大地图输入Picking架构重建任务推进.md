@@ -66,6 +66,7 @@
 ### 第五阶段：服务端权威命令证据
 
 - `CanvasTerritoryActionHandlers` 将 `meta.inputIntent` 作为 `clientInputIntent` 传入 `startWorldMarch` / `returnWorldMarch` / `stopWorldMarch`。
+- `CanvasTerritoryActionHandlers` 的行军目标 HUD 状态必须通过 `TileCoord` 从 `targetQ/targetR` 生成 canonical `tileId`；旧 renderer/caller `action.tileId` 不能覆盖坐标事实，`startWorldMarch` 顶层 payload 也不新增 `tileId` 权威字段。
 - `GameAPI` 只发送 `clientInputIntent` 的白名单摘要，不发送 renderer/context 原对象、完整 tiles、完整 targets 或大 payload。
 - `GameActionRegistry` 保留 `clientInputIntent` 到 world-march payload；`TerritoryAction` 将 return/stop/start 的 payload 交给 `WorldExplorerService`。
 - `CommandAuthorityContract` 在 `authority.command.clientInput` 中保存 compact evidence，用于回放和审计。
@@ -102,6 +103,7 @@
 - 2026-06-14：`WorldMapRuntimeBakePolicy` 的 presenter-unavailable fallback signature 也改为消费 `TileCoord`，不再 raw serialize `id/q/r/x/y/tileId`。stable `x/y` 与 legacy `q/r` 形态必须得到同一份 bake signature，避免 fallback 路径在 H5/兼容运行时里重新引入缓存抖动。
 - 2026-06-14：`WorldMarchProgressSnapshot`、`WorldActorProjection`、`WorldMapRenderSnapshot.normalizeMarchTarget()` 的行军 actor / 目标格身份也改为消费 `TileCoord`。mission `origin/homeOrigin/target/position/route`、returned-home 判断、worldMarchTarget signature 均由 stable `x/y` 或 legacy `q/r` 生成 canonical `tileId`，caller-supplied `id/tileId` 不再能把回城 idle mission 伪装成停在外部地图的 actor。
 - 2026-06-14：`WorldMapVisibilityModel`、`WorldMapEntitySnapshot`、`WorldFogVisualSnapshot` 的 visibility/entity/fog 身份也改为消费 `TileCoord`。visibility arrays、entity indexes、fog visual signature 均由 canonical tile identity 合并与索引，caller-supplied `id/tileId` 不再能覆盖 stable `x/y`。
+- 2026-06-14：`CanvasTerritoryActionHandlers` 的 `selectWorldMarchTarget` / `openWorldMarchFormationPicker` / `startWorldMarch` 统一消费 `TileCoord` 行军目标规范化；HUD 目标 tile identity 从坐标生成，旧 `action.tileId` 不能污染 UI 状态或 API 顶层 payload。
 - 如果 `WorldMapRuntime` 没有接住这些背景 tap，不能再把 renderer 的背景 hitTarget 当 fallback 命令分发；renderer 背景目标只允许作为输入缓存/提示，不是玩法输入权威。2026-06-14 已补 `WorldMapInputActionMap` 回归：renderer `openWorldSite` / `selectWorldActor` 只能证明点在 world surface 上，最终目标身份必须来自当前 picking snapshot 或 context 重算。
 - `CanvasGameAppInputRouter.observeAsyncActionResult()` 与 H5 Shell 的同名边界保持一致：runtime tap 返回 Promise 时，拒绝必须继续传给调用方，同时被记录到诊断日志，不能静默变成成功或未观察拒绝。
 - `CanvasGameAppInputRouter` 与 H5 Shell 一样记录本地入口级 `input:tapHit`、`input:tapRuntime`、`input:tapMiss`、`input:tapDisabled`、`input:tapAction`；Shell/App 的 Promise handled 都只记录为 `'promise'`，不能把 Promise/runtime 对象塞进日志。`ClientOperationLog.sanitize()` 也必须把遗漏进来的 thenable 兜底压缩为 `'promise'`，禁止 renderer/native event/runtime payload 进入本地持久化或导出日志。

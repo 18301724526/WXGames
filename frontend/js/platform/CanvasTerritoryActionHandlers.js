@@ -1,4 +1,26 @@
 (function (global) {
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    try {
+      if (typeof require === 'function') return require('../domain/TileCoord');
+    } catch (error) {}
+    return null;
+  })();
+
+  function normalizeWorldMarchTarget(action = {}) {
+    const q = Math.floor(Number(action.targetQ ?? action.q));
+    const r = Math.floor(Number(action.targetR ?? action.r));
+    if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+    const coord = TileCoord?.normalizeCoord
+      ? TileCoord.normalizeCoord({ x: q, y: r })
+      : { q, r, tileId: `tile_${q}_${r}` };
+    return {
+      q: coord.q,
+      r: coord.r,
+      tileId: coord.tileId,
+    };
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
@@ -175,16 +197,15 @@
       },
 
       handle_selectWorldMarchTarget(action) {
-        const q = Math.floor(Number(action.targetQ ?? action.q));
-        const r = Math.floor(Number(action.targetR ?? action.r));
-        if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+        const target = normalizeWorldMarchTarget(action);
+        if (!target) return false;
         const game = this.getGameHost();
         game?.territoryController?.closeSiteDialog?.({ render: false });
         const uiState = this.getSharedTerritoryUiState();
         const nextTarget = {
-          q,
-          r,
-          tileId: action.tileId || `tile_${q}_${r}`,
+          q: target.q,
+          r: target.r,
+          tileId: target.tileId,
           pickerOpen: false,
         };
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
@@ -205,15 +226,14 @@
       },
 
       handle_openWorldMarchFormationPicker(action) {
-        const q = Math.floor(Number(action.targetQ ?? action.q));
-        const r = Math.floor(Number(action.targetR ?? action.r));
-        if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+        const target = normalizeWorldMarchTarget(action);
+        if (!target) return false;
         const uiState = this.getSharedTerritoryUiState();
         const previousTarget = uiState.worldMarchTarget || {};
         const nextTarget = {
-          q,
-          r,
-          tileId: action.tileId || `tile_${q}_${r}`,
+          q: target.q,
+          r: target.r,
+          tileId: target.tileId,
           pickerOpen: true,
         };
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
@@ -249,15 +269,14 @@
       },
 
       handle_startWorldMarch(action, meta = {}) {
-        const q = Math.floor(Number(action.targetQ ?? action.q));
-        const r = Math.floor(Number(action.targetR ?? action.r));
-        if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+        const target = normalizeWorldMarchTarget(action);
+        if (!target) return false;
         const run = () => {
           const game = this.getGameHost();
           const options = {
             mode: 'manual',
-            targetQ: q,
-            targetR: r,
+            targetQ: target.q,
+            targetR: target.r,
             formationSlot: action.formationSlot || action.slot || 1,
             cityId: action.cityId || game?.state?.activeCityId || 'capital',
           };
