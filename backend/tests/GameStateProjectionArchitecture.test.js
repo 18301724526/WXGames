@@ -410,6 +410,85 @@ test('game state read route is a read-only projection without runtime advance or
   ]);
 });
 
+test('game state route world-march trace derives mission tile ids from coordinates', () => {
+  const { app, routes } = createAppHarness();
+  const state = createNormalizedRouteState('projection-state-trace-coordinate-test');
+  state.exploreMissions = [{
+    id: 'trace-coordinate-mission',
+    mode: 'manual',
+    status: 'active',
+    origin: { q: 1, r: -1, tileId: 'legacy-origin-tile' },
+    target: { q: 3, r: -2, tileId: 'legacy-target-tile' },
+    position: { q: 2, r: -1, tileId: 'legacy-position-tile' },
+    route: [
+      { q: 2, r: -1, tileId: 'legacy-route-step', step: 1 },
+      { q: 3, r: -2, tileId: 'legacy-route-target', step: 2 },
+    ],
+    plannedTiles: [
+      { id: 'legacy-planned-tile', q: 3, r: -2, terrain: 'forest' },
+    ],
+    plannedSites: [],
+    revealedTileIds: [],
+  }];
+  const repository = {
+    findByPlayerId(playerId) {
+      assert.equal(playerId, state.playerId);
+      return state;
+    },
+    getClientProjectionForPlayer() {
+      return {};
+    },
+    save() {
+      throw new Error('GET /api/game/state must not persist state');
+    },
+  };
+  const gameStateService = {
+    normalizeState(rawState) {
+      return rawState;
+    },
+    getClientGameStateFromNormalized(normalized) {
+      return { playerId: normalized.playerId, worldExplorerState: { missions: [] } };
+    },
+    calculateEraProgressFromNormalized() {
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  registerGameRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    repository,
+    gameStateService,
+  });
+  const route = routes.find((item) => item.method === 'GET' && item.path === '/api/game/state');
+  const traceLogs = [];
+  const originalInfo = console.info;
+  console.info = (...args) => {
+    traceLogs.push(args);
+  };
+  try {
+    const res = invokeRoute(route, {
+      playerId: state.playerId,
+      body: {},
+      get(header) {
+        return header === 'X-World-March-Trace' ? '1' : '';
+      },
+    });
+    assert.equal(res.statusCode, 200);
+  } finally {
+    console.info = originalInfo;
+  }
+
+  const loadedTrace = traceLogs.find((entry) => entry[1] === 'route:state:loaded')?.[2];
+  const mission = loadedTrace?.missions?.find((item) => item.id === 'trace-coordinate-mission');
+
+  assert.ok(mission);
+  assert.equal(mission.origin.tileId, 'tile_1_-1');
+  assert.equal(mission.target.tileId, 'tile_3_-2');
+  assert.equal(mission.position.tileId, 'tile_2_-1');
+  assert.deepEqual(mission.routeIds, ['tile_2_-1', 'tile_3_-2']);
+  assert.deepEqual(mission.plannedTileIds, ['tile_3_-2']);
+  assert.equal(JSON.stringify(mission).includes('legacy-'), false);
+});
+
 test('game task read route is a read-only projection without runtime advance or persistence', () => {
   const { app, routes } = createAppHarness();
   const state = createNormalizedRouteState('projection-task-readonly-test');

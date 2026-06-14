@@ -4607,6 +4607,34 @@ Regression:
 - `node --test backend/tests/OpsRoutes.test.js backend/tests/OpsAuthService.test.js backend/tests/OpsControlService.test.js`
 - `npm run test:architecture`
 
+### `backend/routes/gameRoutes.js`
+
+状态 / Status: candidate route boundary
+
+负责 / Owns:
+
+- authenticated gameplay HTTP route registration and response/status mapping for game-state and action endpoints
+- read-only `GET /api/game/state` projection orchestration from repository state, explicit projection context, and normalized-only client DTO assembly
+- explicitly requested world-march route diagnostics through `X-World-March-Trace`
+- coordinate-authoritative `route:state:loaded` trace summaries: mission origin/target/position, route ids, and planned tile ids derive identity from `q/r` or `x/y` whenever coordinates exist; stale persisted `tileId` / `id` can only describe id-only legacy records with no coordinates
+
+公开 API / Public API:
+
+- `registerGameRoutes(app, dependencies)`
+- `GET /api/game/state`
+- `GET /api/game/tasks`
+
+扩展方式 / Extension Path:
+
+- New gameplay response shape belongs in service/DTO modules such as `ClientGameStateAssembler` or `WorldExplorerDtoMapper`; this route remains HTTP orchestration.
+- New query routes must stay read-only unless explicitly designed as commands/sync endpoints with persistence tests.
+- New diagnostics in this route must summarize normalized facts and use coordinate-derived tile identity for coordinate-bearing world/explorer records.
+
+回归 / Regression:
+
+- `node --test backend/tests/GameStateProjectionArchitecture.test.js`
+- `npm run test:architecture`
+
 ### `backend/routes/versionRoutes.js`
 
 状态 / Status: candidate

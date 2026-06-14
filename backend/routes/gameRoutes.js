@@ -60,6 +60,18 @@ function shouldTraceWorldMarchRequest(req) {
   return shouldTraceWorldMarch(req.body) || req.get?.('X-World-March-Trace') === '1';
 }
 
+function hasCoordinate(source = {}) {
+  return source && typeof source === 'object'
+    && (source.q !== undefined || source.x !== undefined || source.r !== undefined || source.y !== undefined);
+}
+
+function getTraceTileId(source = {}) {
+  const q = Number(source.q ?? source.x ?? 0);
+  const r = Number(source.r ?? source.y ?? 0);
+  if (hasCoordinate(source)) return `tile_${q}_${r}`;
+  return source.tileId || source.id || '';
+}
+
 function summarizeCoord(coord = {}) {
   if (!coord || typeof coord !== 'object') return null;
   const q = Number(coord.q ?? coord.x ?? 0);
@@ -67,7 +79,7 @@ function summarizeCoord(coord = {}) {
   return {
     q,
     r,
-    tileId: coord.tileId || `tile_${q}_${r}`,
+    tileId: getTraceTileId(coord),
   };
 }
 
@@ -85,9 +97,9 @@ function summarizeMission(mission = null) {
     target: summarizeCoord(mission.target),
     position: summarizeCoord(mission.position),
     routeCount: route.length,
-    routeIds: route.slice(0, 8).map((step) => step.tileId || `tile_${step.q}_${step.r}`),
+    routeIds: route.slice(0, 8).map((step) => getTraceTileId(step)),
     plannedTileCount: plannedTiles.length,
-    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => tile.id || `tile_${tile.q}_${tile.r}`),
+    plannedTileIds: plannedTiles.slice(0, 8).map((tile) => getTraceTileId(tile)),
     plannedSiteCount: plannedSites.length,
     plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
     revealedTileCount: revealedTileIds.length,
