@@ -77,9 +77,7 @@ function getDetail(entry = {}) {
 function findClientEntry(entries, type, requestId = '') {
   const candidates = entries.filter((entry) => entry?.type === type);
   if (!requestId) return candidates.at(-1) || null;
-  return candidates.find((entry) => cleanText(getDetail(entry).requestId, 120) === requestId)
-    || candidates.at(-1)
-    || null;
+  return candidates.find((entry) => cleanText(getDetail(entry).requestId, 120) === requestId) || null;
 }
 
 function findInputFromClientEntries(entries, requestId = '') {
@@ -87,6 +85,7 @@ function findInputFromClientEntries(entries, requestId = '') {
   const requestDetail = getDetail(requestEntry);
   if (requestDetail.clientInput) return requestDetail.clientInput;
   if (requestDetail.inputIntent) return requestDetail.inputIntent;
+  if (requestId) return null;
   const tapEntry = [...entries].reverse().find((entry) => {
     const detail = getDetail(entry);
     return detail.clientInput || detail.inputIntent;

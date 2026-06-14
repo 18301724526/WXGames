@@ -122,3 +122,64 @@ test('CommandReplayCorrelation reconstructs a world-map command evidence chain',
     replaySummary: summary,
   }).ok, true);
 });
+
+test('CommandReplayCorrelation does not guess client input from mismatched request entries', () => {
+  const expectedIntent = createClientInputIntent();
+  const otherIntent = {
+    ...createClientInputIntent(),
+    inputId: 'wmi-other-99',
+    clientSequence: 99,
+    picking: { inputEpoch: 99, signature: 'other-sig-99', counts: { targets: 1 } },
+    target: { kind: 'tile', tileId: 'tile_9_-9', targetQ: 9, targetR: -9 },
+  };
+  const authority = CommandAuthorityContract.accept({
+    type: 'startWorldMarch',
+    actorId: 'explore-1',
+    playerId: 'player-1',
+    clientInputIntent: expectedIntent,
+    serverTime: '2026-06-14T00:00:00.000Z',
+  });
+  const summary = CommandReplayCorrelation.createSummary({
+    clientSnapshot: {
+      schema: 'client-operation-log-v1',
+      runId: 'run-a',
+      entries: [
+        {
+          seq: 1,
+          type: 'api:request',
+          detail: {
+            requestId: 'api-other',
+            method: 'POST',
+            path: '/game/action',
+            action: 'startWorldMarch',
+            clientInput: CommandAuthorityContract.summarizeClientInput(otherIntent),
+          },
+        },
+      ],
+    },
+    apiLog: {
+      body: JSON.stringify({
+        action: 'startWorldMarch',
+        clientRequestId: 'api-expected',
+        operationLog: {
+          requestId: 'api-expected',
+          action: 'startWorldMarch',
+          authority: {
+            commandId: authority.commandId,
+            status: authority.status,
+          },
+        },
+      }),
+      response: JSON.stringify({ success: true, authority }),
+      statusCode: 200,
+      timestamp: '2026-06-14T00:00:01.000Z',
+    },
+  });
+
+  assert.equal(summary.requestId, 'api-expected');
+  assert.equal(summary.clientInput, undefined);
+  assert.equal(summary.matches.requestId, false);
+  assert.equal(summary.matches.clientInput, false);
+  assert.equal(summary.matches.inputId, false);
+  assert.equal(JSON.stringify(summary).includes('wmi-other-99'), false);
+});

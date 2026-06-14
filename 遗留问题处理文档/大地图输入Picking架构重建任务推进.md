@@ -73,7 +73,7 @@
 ### 第六阶段：可回放诊断对账
 
 - 新增 `CommandReplayCorrelation`，产出 `command-replay-correlation-v1`，只负责把前端导出的 `ClientOperationLog`、后端 `api_logs.operationLog`、`X-Client-Request-ID` 与 `CommandAuthorityContract` 的 `commandId/status` 串成可对账摘要。
-- 回放对账必须同时匹配 `requestId`、`WorldMapInputIntent.inputId`、compact `clientInput` 与 `authority.commandId`；不能在高频点击或多人同步排查里退化为按时间猜测。
+- 回放对账必须同时匹配 `requestId`、`WorldMapInputIntent.inputId`、compact `clientInput` 与 `authority.commandId`；不能在高频点击或多人同步排查里退化为按时间猜测。只要 API request id 存在，`CommandReplayCorrelation` 只能读取同 request id 的本地 `api:request` / `api:response`，不允许 fallback 到最后一条本地输入日志。
 - `GameAPI` 的本地 `api:request` 记录 compact `clientInput`，`api:response` 记录 compact authority command metadata；这不增加自动上传，也不改变业务请求权威。
 - `LogService` 的 `operationLog.authority` 只保存 compact commandId/status/command/clientInput/rejection，不保存 timeline/AOI/完整 response，避免日志膨胀和泄露 renderer payload。
 - 该阶段用于复盘一次 world-map tap -> action -> API request -> server authority result 的证据链；服务端路线、停止点、timeline、AOI 和接受/拒绝仍只由服务器当前状态计算。
