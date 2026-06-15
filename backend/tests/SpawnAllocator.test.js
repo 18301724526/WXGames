@@ -32,6 +32,27 @@ test('spawn scorer rejects candidates too close to existing capitals', () => {
   assert.ok(result.reasons.includes('TOO_CLOSE_TO_CAPITAL'));
 });
 
+test('spawn scorer default capital spacing requires more than twenty tiles', (t) => {
+  const originalChooseTerrain = WorldMapService.chooseTerrain;
+  t.after(() => {
+    WorldMapService.chooseTerrain = originalChooseTerrain;
+  });
+  WorldMapService.chooseTerrain = () => 'plains';
+
+  const tooClose = SpawnScoring.scoreSpawnCandidate({ q: 20, r: 0 }, {
+    seed: 'spawn-default-spacing-test',
+    occupiedCoordinates: [{ q: 0, r: 0 }],
+  });
+  const accepted = SpawnScoring.scoreSpawnCandidate({ q: 21, r: 0 }, {
+    seed: 'spawn-default-spacing-test',
+    occupiedCoordinates: [{ q: 0, r: 0 }],
+  });
+
+  assert.equal(tooClose.valid, false);
+  assert.ok(tooClose.reasons.includes('TOO_CLOSE_TO_CAPITAL'));
+  assert.equal(accepted.valid, true);
+});
+
 test('spawn allocator selects a valid uncrowded candidate with tutorial target', (t) => {
   const originalChooseTerrain = WorldMapService.chooseTerrain;
   t.after(() => {

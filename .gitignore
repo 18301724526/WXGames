@@ -54,5 +54,6 @@ backend/data/*.bak*
 
 # Local secrets
 password.txt
+DEV_SERVER_ACCESS.local.md
 *password*.txt
 *credentials*.txt

@@ -90,6 +90,7 @@ class SpawnLifecycleService {
     let releasedPreviousSpawn = false;
     const spawn = this.allocateAndReserveSpawn(normalizedPlayerId, {
       ...options,
+      includePlayerOccupiedCoordinates: true,
       avoidCoordinates: [
         ...(options.avoidCoordinates || []),
         ...(previousSpawn ? [{ ...previousSpawn, source: 'previous-spawn' }] : []),
@@ -114,8 +115,11 @@ class SpawnLifecycleService {
 
   getOccupiedCoordinates(playerId, options = {}) {
     const occupied = this.repository.getOccupiedSpawnCoordinates?.(options) || [];
+    const occupiedCoordinates = options.includePlayerOccupiedCoordinates
+      ? (Array.isArray(occupied) ? occupied : []).map(normalizeOccupiedCoordinate)
+      : filterPlayerCoordinates(occupied, playerId);
     return [
-      ...filterPlayerCoordinates(occupied, playerId),
+      ...occupiedCoordinates,
       ...normalizeAvoidCoordinates(options.avoidCoordinates),
     ];
   }

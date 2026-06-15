@@ -247,6 +247,33 @@ Manual test target:
 - Reset the account.
 - Only check old ownership release, new capital 5x5 visibility, and camera centered on the new capital.
 
+## Step 7 - Spawn Spacing And Reset Occupancy Avoidance
+
+Scope:
+
+- Spawn allocation and reset spawn lifecycle only.
+- Fix the root cause where reset can allocate the new capital onto or too near an existing owned/shared city such as `123`.
+- Do not hide another player's city by frontend or client-projection priority.
+
+Implementation rule:
+
+- New capitals must not be allocated onto any occupied city coordinate.
+- Reset allocation must still treat the current account's pre-reset capital and owned cities as occupied while selecting the new spawn; those lands are released only after the new spawn is chosen.
+- Default capital spacing must require more than 20 tiles from existing occupied coordinates. Distance 20 is still too close; distance 21 is the first acceptable boundary.
+- Shared occupied city projection remains authoritative for other players' cities. The correct fix is spawn avoidance, not making the local capital cover another city.
+
+Automated test target:
+
+```bash
+node --test backend/tests/SpawnAllocator.test.js backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js backend/tests/TerritoryClientAssembler.test.js
+```
+
+Manual test target:
+
+- Use the account that previously reset into/onto `123`.
+- Reset the account again.
+- Only check that the new capital is not on `123`, not on any old owned city coordinate, has clear spacing from existing capitals/cities, and still has the 5x5 starting visibility.
+
 ## Non-Goals
 
 - No frontend redesign.

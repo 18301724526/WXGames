@@ -114,6 +114,32 @@ test('SpawnLifecycleService reset releases old spawn and avoids the previous coo
   assert.equal(repository.getSpawnForPlayer('spawn-reset-a').spawnKey, '36,0');
 });
 
+test('SpawnLifecycleService reset avoids current player occupied city coordinates before releasing them', () => {
+  const repository = createRepositoryStub();
+  repository.reservations.set('spawn-reset-owned-city', {
+    playerId: 'spawn-reset-owned-city',
+    q: 10,
+    r: 0,
+    x: 10,
+    y: 0,
+    spawnKey: '10,0',
+    status: 'reserved',
+  });
+  repository.occupiedCoordinates = [
+    { playerId: 'spawn-reset-owned-city', q: 10, r: 0, spawnKey: '10,0', source: 'game-state-capital' },
+    { playerId: 'spawn-reset-owned-city', q: 18, r: -4, spawnKey: '18,-4', source: 'shared-world-territory', territoryId: '123' },
+  ];
+  const lifecycle = createLifecycle(repository, {
+    'spawn-reset-owned-city': [{ q: 18, r: -4 }, { q: 42, r: -4 }],
+  });
+
+  const resetState = lifecycle.resetInitialStateForPlayer('spawn-reset-owned-city');
+
+  assert.equal(resetState.territories[0].x, 42);
+  assert.equal(resetState.territories[0].y, -4);
+  assert.equal(repository.getSpawnForPlayer('spawn-reset-owned-city').spawnKey, '42,-4');
+});
+
 test('SpawnLifecycleService retries when a reservation races with another player', () => {
   const repository = createRepositoryStub();
   let firstReserve = true;
