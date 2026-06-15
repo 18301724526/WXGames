@@ -329,6 +329,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-retired-legacy-code.js',
   'scripts/check-retired-legacy-code.test.js',
   'scripts/check-frontend-script-manifest.js',
+  'scripts/rewrite-frontend-asset-version.js',
+  'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/profile-h5-performance.js',
@@ -484,6 +486,7 @@ const TEST_FILES = Object.freeze([
   'scripts/run-architecture-smoke.test.js',
   'scripts/check-repository-hygiene.test.js',
   'scripts/check-retired-legacy-code.test.js',
+  'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
 ]);

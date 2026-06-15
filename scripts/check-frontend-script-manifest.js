@@ -1,8 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const FRONTEND_DIR = path.resolve(__dirname, '..', 'frontend');
-const INDEX_HTML = path.join(FRONTEND_DIR, 'index.html');
+const DEFAULT_FRONTEND_DIR = path.resolve(__dirname, '..', 'frontend');
 const REQUIRED_SCRIPTS = [
   'js/config/GameConfig.js',
   'js/debug/H5LoadTrace.js',
@@ -28,6 +27,26 @@ const REQUIRED_ORDER_PAIRS = [
   ['app.js', 'auth.js'],
 ];
 
+function parseArgs(argv = process.argv.slice(2)) {
+  const options = {
+    frontendDir: DEFAULT_FRONTEND_DIR,
+    requireVersion: '',
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--frontend-dir') {
+      options.frontendDir = path.resolve(argv[index + 1] || '');
+      index += 1;
+    } else if (arg === '--require-version') {
+      options.requireVersion = argv[index + 1] || '';
+      index += 1;
+    } else {
+      fail(`unknown argument: ${arg}`);
+    }
+  }
+  return options;
+}
+
 function extractScripts(html) {
   const scripts = [];
   const regex = /<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*><\/script>/gi;
@@ -43,36 +62,68 @@ function stripQuery(src) {
   return String(src || '').split('?')[0];
 }
 
-function fail(message, detail = []) {
-  console.error(`[frontend-script-manifest] ${message}`);
-  detail.forEach((item) => console.error(`- ${item}`));
-  process.exit(1);
+function getQueryVersion(src) {
+  const query = String(src || '').split('#')[0].split('?')[1] || '';
+  return new URLSearchParams(query).get('v') || '';
 }
 
-const html = fs.readFileSync(INDEX_HTML, 'utf8');
-const scriptSources = extractScripts(html);
-const scriptPaths = scriptSources.map(stripQuery);
-const localScripts = scriptSources.filter((src) => !/^https?:\/\//i.test(src));
-const seen = new Set();
-const duplicates = [];
-const missingVersion = [];
-const missingFiles = [];
+function extractStylesheets(html) {
+  const links = [];
+  const regex = /<link\b[^>]*>/gi;
+  let match = regex.exec(html);
+  while (match) {
+    const tag = match[0];
+    const rel = /\brel\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] || '';
+    if (!rel.split(/\s+/).some((item) => item.toLowerCase() === 'stylesheet')) {
+      match = regex.exec(html);
+      continue;
+    }
+    const href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] || '';
+    if (href) links.push(href);
+    match = regex.exec(html);
+  }
+  return links;
+}
 
-for (const src of localScripts) {
+function fail(message, detail = []) {
+  const lines = [message, ...detail.map((item) => `- ${item}`)];
+  throw new Error(lines.join('\n'));
+}
+
+function checkManifest(options = {}) {
+  const frontendDir = options.frontendDir || DEFAULT_FRONTEND_DIR;
+  const indexHtml = path.join(frontendDir, 'index.html');
+  const html = fs.readFileSync(indexHtml, 'utf8');
+  const scriptSources = extractScripts(html);
+  const scriptPaths = scriptSources.map(stripQuery);
+  const localScripts = scriptSources.filter((src) => !/^https?:\/\//i.test(src));
+  const stylesheetSources = extractStylesheets(html).filter((src) => !/^https?:\/\//i.test(src));
+  const localAssets = [...stylesheetSources, ...localScripts];
+  const seen = new Set();
+  const duplicates = [];
+  const missingVersion = [];
+  const mismatchedVersion = [];
+  const missingFiles = [];
+
+for (const src of localAssets) {
   const scriptPath = stripQuery(src);
   if (seen.has(scriptPath)) duplicates.push(scriptPath);
   seen.add(scriptPath);
   if (!/\?v=[^&]+/.test(src)) missingVersion.push(src);
-  const resolved = path.resolve(FRONTEND_DIR, scriptPath);
-  if (!resolved.startsWith(FRONTEND_DIR + path.sep) && resolved !== FRONTEND_DIR) {
+  if (options.requireVersion && getQueryVersion(src) !== options.requireVersion) {
+    mismatchedVersion.push(`${src} (expected v=${options.requireVersion})`);
+  }
+  const resolved = path.resolve(frontendDir, scriptPath);
+  if (!resolved.startsWith(frontendDir + path.sep) && resolved !== frontendDir) {
     fail('script path escapes frontend directory', [src]);
   }
   if (!fs.existsSync(resolved)) missingFiles.push(scriptPath);
 }
 
-if (duplicates.length > 0) fail('duplicate script paths', duplicates);
-if (missingVersion.length > 0) fail('local scripts missing cache-busting ?v=', missingVersion);
-if (missingFiles.length > 0) fail('script files missing on disk', missingFiles);
+if (duplicates.length > 0) fail('duplicate local asset paths', duplicates);
+if (missingVersion.length > 0) fail('local assets missing cache-busting ?v=', missingVersion);
+if (mismatchedVersion.length > 0) fail('local assets do not use required cache-busting version', mismatchedVersion);
+if (missingFiles.length > 0) fail('local asset files missing on disk', missingFiles);
 
 const orderPositions = REQUIRED_SCRIPTS.map((scriptPath) => ({
   scriptPath,
@@ -91,4 +142,32 @@ for (const [before, after] of REQUIRED_ORDER_PAIRS) {
   }
 }
 
-console.log(`[frontend-script-manifest] passed: ${localScripts.length} local scripts`);
+  return {
+    localScriptCount: localScripts.length,
+    stylesheetCount: stylesheetSources.length,
+  };
+}
+
+function main() {
+  const options = parseArgs();
+  const result = checkManifest(options);
+  console.log(`[frontend-script-manifest] passed: ${result.localScriptCount} local scripts, ${result.stylesheetCount} stylesheets`);
+}
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(`[frontend-script-manifest] ${error.message}`);
+    process.exit(1);
+  }
+}
+
+module.exports = {
+  parseArgs,
+  extractScripts,
+  extractStylesheets,
+  stripQuery,
+  getQueryVersion,
+  checkManifest,
+};

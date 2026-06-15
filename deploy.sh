@@ -132,6 +132,12 @@ resolve_deploy_commit() {
     git_repo rev-parse --verify "$BRANCH^{commit}"
 }
 
+get_frontend_asset_version() {
+    local deployed_commit
+    deployed_commit="$(git_repo rev-parse HEAD)"
+    printf 'deploy-%s' "${deployed_commit:0:12}"
+}
+
 write_deploy_version() {
     local deployed_commit
     local deployed_at
@@ -400,6 +406,7 @@ publish_frontend_assets() {
     local resolved_source
     local resolved_public
     local resolved_work_tree
+    local asset_version
 
     if [ ! -d "$frontend_source" ]; then
         echo "[Deploy] 缺少前端目录: $frontend_source" >&2
@@ -427,6 +434,14 @@ publish_frontend_assets() {
             exit 1
         fi
     done
+
+    asset_version="$(get_frontend_asset_version)"
+    node "$WORK_TREE/scripts/rewrite-frontend-asset-version.js" \
+        --frontend-dir "$FRONTEND_PUBLIC_DIR" \
+        --version "$asset_version"
+    node "$WORK_TREE/scripts/check-frontend-script-manifest.js" \
+        --frontend-dir "$FRONTEND_PUBLIC_DIR" \
+        --require-version "$asset_version"
 }
 
 echo "[Deploy] 开始部署..."
