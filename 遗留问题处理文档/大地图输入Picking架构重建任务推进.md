@@ -126,6 +126,7 @@
 - 2026-06-15：`backend/routes/gameRoutes.js` 的 `/api/game/state` world-march route trace summary 完成坐标身份收口；新增红测证明脏 mission `origin/target/position.tileId`、route step `tileId`、planned tile `id` 不会进入 `route:state:loaded` 诊断摘要，复现日志必须按坐标事实输出。
 - 2026-06-15：`WorldMarchTrace` 的前端 world-march 诊断摘要完成坐标身份收口并接入 architecture smoke；新增红测证明脏 `origin/target/position.tileId`、route step `tileId`、planned tile `id` 不会进入 console trace / 导出日志摘要。
 - 2026-06-15：`ClientOperationLog` 的本地操作日志摘要完成坐标身份收口；新增红测证明带 `targetQ/targetR` 或 `q/r` 的 action、input intent target、UI `worldMarchTarget` 不再保留脏旧 `tileId`，导出/上传日志按坐标事实对账。
+- 2026-06-15：`cleanup-world-explorer-ready-state.js` 的部署期 ready->idle 清理写回完成坐标身份收口；新增红测证明脏 ready mission `origin/target/position/route.tileId` 不会被迁移脚本原样写回，带坐标记录统一按 `q/r` 生成 tile identity。
 - 2026-06-14：`WorldExplorerRoutePlanner.createTutorialPlannedSites()` 的首个空城规划改为按 route 坐标查 planned tile、按坐标判定 terrain、按坐标写 planned site `tileId`；旧 route `tileId` 或 planned tile `id` 即使是脏值，也不能把教程空城规划导向错误地块。
 - 2026-06-14：`WorldExplorerMissionNormalizer` 的服务端 mission row 也完成坐标身份收口；route/origin/homeOrigin/target/position/planned tile/planned site 中的旧 `tileId` / `id` 不能覆盖 `q/r` 坐标，后续 progression、timeline、AOI 都只消费归一化后的 canonical mission facts。
 - 2026-06-14：`WorldExplorerProgression` 的运行时副作用也完成坐标身份收口；planned site materialization、planned tile lookup、trace step summary、mission position 写回不再信旧 `step.tileId` / planned tile `id`，即使脏 mission 绕过上游也不能改变 materialize 或 position 事实。

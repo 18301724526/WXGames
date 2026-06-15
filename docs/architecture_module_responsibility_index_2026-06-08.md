@@ -4793,6 +4793,35 @@ Regression:
 - `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js backend/tests/GameStateProjectionArchitecture.test.js`
 - `npm run test:architecture`
 
+### `backend/scripts/cleanup-world-explorer-ready-state.js`
+
+状态 / Status: candidate deploy migration boundary
+
+负责 / Owns:
+
+- one-time deploy cleanup for retired world-explorer `ready` mission rows
+- conversion of persisted `ready` missions to parked `idle` missions without adding runtime compatibility branches
+- coordinate-authoritative migration writes for ready mission `origin`, `target`, `position`, and `route` records; tile ids derive from `q/r` or `x/y` whenever coordinates exist
+- SQLite `game_states.exploreMissions` mutation with dry-run and parse-error reporting
+
+公开 API / Public API:
+
+- `cleanupLegacyReadyMission(mission, nowIso)`
+- `cleanupExploreMissions(rawValue, nowIso)`
+- `cleanupDatabase(db, options)`
+- `runCli(argv, env)`
+
+扩展方式 / Extension Path:
+
+- New deploy cleanup behavior must stay idempotent and covered by `WorldExplorerReadyStateCleanup.test.js` before it can run from `deploy.sh`.
+- Coordinate-bearing mission sub-records must recompute tile identity during cleanup; raw `tileId` can only remain as no-coordinate compatibility evidence.
+- Do not move runtime world-explorer advancement or DTO projection logic into this script.
+
+回归 / Regression:
+
+- `node --test backend/tests/WorldExplorerReadyStateCleanup.test.js`
+- `npm run test:architecture`
+
 ### `backend/services/worldExplorer/WorldExplorerDtoMapper.js`
 
 状态 / Status: candidate

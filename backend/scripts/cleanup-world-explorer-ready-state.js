@@ -37,10 +37,43 @@ function getTileId(q, r) {
 function normalizePosition(source = {}, fallback = {}) {
   const q = normalizeInteger(source?.q ?? source?.x, fallback.q ?? 0);
   const r = normalizeInteger(source?.r ?? source?.y, fallback.r ?? 0);
+  const hasCoordinate = source
+    && typeof source === 'object'
+    && (source.q !== undefined || source.x !== undefined || source.r !== undefined || source.y !== undefined);
   return {
     q,
     r,
-    tileId: source?.tileId || getTileId(q, r),
+    tileId: hasCoordinate ? getTileId(q, r) : (source?.tileId || getTileId(q, r)),
+  };
+}
+
+function normalizeCoordinateRecord(source = null, fallback = {}) {
+  if (!source || typeof source !== 'object') return source;
+  return {
+    ...source,
+    ...normalizePosition(source, fallback),
+  };
+}
+
+function normalizeRoute(route = []) {
+  return (Array.isArray(route) ? route : [])
+    .map((step) => normalizeCoordinateRecord(step))
+    .filter((step) => step && typeof step === 'object');
+}
+
+function normalizeMissionCoordinates(mission = {}) {
+  const route = normalizeRoute(mission.route);
+  const origin = normalizeCoordinateRecord(mission.origin || null);
+  const targetFallback = route.length ? route[route.length - 1] : origin || {};
+  const target = normalizeCoordinateRecord(mission.target || null, targetFallback);
+  const positionFallback = target || targetFallback || origin || {};
+  const position = normalizeCoordinateRecord(mission.position || null, positionFallback);
+  return {
+    ...mission,
+    ...(origin ? { origin } : {}),
+    ...(target ? { target } : {}),
+    ...(position ? { position } : {}),
+    route,
   };
 }
 
@@ -55,12 +88,13 @@ function getLegacyReadyPosition(mission = {}) {
 function cleanupLegacyReadyMission(mission = {}, nowIso = new Date().toISOString()) {
   if (!mission || typeof mission !== 'object') return { changed: false, mission };
   if (mission.status !== 'ready') return { changed: false, mission };
+  const normalized = normalizeMissionCoordinates(mission);
   const cleaned = {
-    ...mission,
+    ...normalized,
     status: 'idle',
-    position: getLegacyReadyPosition(mission),
+    position: getLegacyReadyPosition(normalized),
     nextStepAt: null,
-    completedAt: mission.completedAt || mission.returnedAt || mission.completesAt || nowIso,
+    completedAt: normalized.completedAt || normalized.returnedAt || normalized.completesAt || nowIso,
   };
   delete cleaned.claimedAt;
   return {

@@ -41,6 +41,32 @@ test('world explorer ready cleanup converts retired ready missions to idle in SQ
   }
 });
 
+test('world explorer ready cleanup derives coordinate-bearing mission identity from coordinates', () => {
+  const dirtyMission = {
+    id: 'explore_dirty_ready',
+    mode: 'random',
+    status: 'ready',
+    origin: { q: 0, r: 0, tileId: 'legacy-origin' },
+    route: [
+      { q: 1, r: 0, tileId: 'legacy-hidden-step', step: 1, revealed: true },
+      { q: 2, r: -1, tileId: 'legacy-revealed-step', step: 2, revealed: true },
+    ],
+    target: { q: 2, r: -1, tileId: 'legacy-target' },
+    position: { q: 2, r: -1, tileId: 'legacy-position' },
+  };
+
+  const result = Cleanup.cleanupLegacyReadyMission(dirtyMission, '2026-06-06T00:01:00.000Z');
+
+  assert.equal(result.changed, true);
+  assert.equal(result.mission.origin.tileId, 'tile_0_0');
+  assert.deepEqual(result.mission.route.map((step) => step.tileId), ['tile_1_0', 'tile_2_-1']);
+  assert.equal(result.mission.target.tileId, 'tile_2_-1');
+  assert.equal(result.mission.position.q, 2);
+  assert.equal(result.mission.position.r, -1);
+  assert.equal(result.mission.position.tileId, 'tile_2_-1');
+  assert.equal(JSON.stringify(result.mission).includes('legacy-'), false);
+});
+
 test('world explorer ready cleanup can inspect without mutating in dry run', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
