@@ -245,8 +245,18 @@
       plannedTiles.forEach((tile) => {
         const coord = this.normalizeCoord(tile);
         const existing = rawTileById.get(coord.tileId);
+        if (existing) {
+          rawTileById.set(coord.tileId, {
+            ...existing,
+            id: coord.tileId,
+            q: coord.q,
+            r: coord.r,
+            renderReady: Boolean(existing.renderReady || tile.renderReady),
+            renderOnly: false,
+          });
+          return;
+        }
         rawTileById.set(coord.tileId, {
-          ...(existing || {}),
           ...tile,
           id: coord.tileId,
           q: coord.q,

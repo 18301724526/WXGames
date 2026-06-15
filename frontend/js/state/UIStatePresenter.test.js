@@ -292,6 +292,61 @@ test('UIStatePresenter renders the current march target tile ahead of confirmed 
   assert.deepEqual(view.activeScouts[0].route.map((step) => step.revealed), [false, false]);
 });
 
+test('UIStatePresenter keeps known world tile terrain when planned tiles overlap', () => {
+  const territoryState = {
+    worldMap: {
+      version: 1,
+      seed: 'seed',
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', visibility: 'controlled' },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', visibility: 'scouted', transitionKey: 'known-transition' },
+      ],
+    },
+    territories: [],
+  };
+  const worldExplorerState = {
+    activeMission: {
+      id: 'planned-over-known',
+      status: 'active',
+      mode: 'manual',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      position: { q: 0, r: 0, tileId: 'tile_0_0' },
+      target: { q: 1, r: 0, tileId: 'tile_1_0' },
+      startedAt: '2026-06-06T00:00:00.000Z',
+      nextStepAt: '2026-06-06T00:00:10.000Z',
+      completesAt: '2026-06-06T00:00:10.000Z',
+      stepDurationSeconds: 10,
+      route: [
+        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+      ],
+      plannedTiles: [
+        {
+          id: 'tile_1_0',
+          q: 1,
+          r: 0,
+          terrain: 'forest',
+          visibility: 'scouted',
+          transitionKey: 'planned-transition',
+          renderOnly: true,
+        },
+      ],
+      plannedSites: [],
+      revealedTileIds: [],
+    },
+  };
+
+  const view = UIStatePresenter.buildWorldTileMapViewState(territoryState, {
+    worldExplorerState,
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+  const knownTile = view.tiles.find((tile) => tile.id === 'tile_1_0');
+
+  assert.equal(knownTile?.terrain, 'plains');
+  assert.equal(knownTile.transitionKey, 'known-transition');
+  assert.equal(knownTile.renderReady, true);
+  assert.equal(knownTile.renderOnly, false);
+});
+
 test('UIStatePresenter reveals manual world march planned tiles by server-confirmed state', () => {
   const territoryState = {
     worldMap: {
