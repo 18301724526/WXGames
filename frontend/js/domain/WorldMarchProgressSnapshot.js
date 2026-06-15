@@ -80,6 +80,33 @@
       .sort((a, b) => a.step - b.step);
   }
 
+  function hasCoordPair(source = {}) {
+    if (!source || typeof source !== 'object') return false;
+    const hasX = source.x !== undefined || source.q !== undefined;
+    const hasY = source.y !== undefined || source.r !== undefined;
+    return hasX && hasY;
+  }
+
+  function addTileAlias(aliases, value, canonicalId) {
+    if (!value || !canonicalId) return;
+    const alias = String(value);
+    const ids = aliases.get(alias) || new Set();
+    ids.add(String(canonicalId));
+    aliases.set(alias, ids);
+  }
+
+  function createRouteTileAliasMap(route = []) {
+    const aliases = new Map();
+    (Array.isArray(route) ? route : []).forEach((step) => {
+      if (!hasCoordPair(step)) return;
+      const normalized = normalizeCoord(step);
+      addTileAlias(aliases, normalized.tileId, normalized.tileId);
+      addTileAlias(aliases, step.tileId, normalized.tileId);
+      addTileAlias(aliases, step.id, normalized.tileId);
+    });
+    return aliases;
+  }
+
   function getMissionPath(mission = {}) {
     const origin = normalizeCoord(mission.origin || {});
     const route = normalizeRoute(mission.route);
@@ -156,7 +183,19 @@
   }
 
   function createRevealedTileSet(mission = {}) {
-    return new Set((Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : []).map(String));
+    const routeAliases = createRouteTileAliasMap(mission.route);
+    const revealed = new Set();
+    (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [])
+      .filter(Boolean)
+      .forEach((id) => {
+        const aliases = routeAliases.get(String(id));
+        if (aliases) {
+          aliases.forEach((canonicalId) => revealed.add(canonicalId));
+          return;
+        }
+        revealed.add(String(id));
+      });
+    return revealed;
   }
 
   function isRouteStepRevealed(mission = {}, step = {}, nowMs = Date.now(), revealedTileIds = null) {
@@ -188,7 +227,7 @@
       };
     });
     const revealedTileIds = Array.from(new Set([
-      ...(Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : []),
+      ...revealedSet,
       ...revealedRoute.filter((step) => step.revealed).map((step) => step.tileId || tileId(step.q, step.r)),
     ]));
     const status = getEffectiveMissionStatus(mission, nowMs);

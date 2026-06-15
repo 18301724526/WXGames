@@ -125,6 +125,23 @@ test('WorldMarchProgressSnapshot normalizes mission rows without preserving stal
   assert.equal(actor.current.tileId, 'tile_0_0');
 });
 
+test('WorldMarchProgressSnapshot derives revealed route identity from coordinate-bearing route steps', () => {
+  const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const derived = WorldMarchProgressSnapshot.deriveMissionForTime(createMission({
+    revealedTileIds: ['legacy-route-1'],
+    route: [
+      { q: 1, r: 0, tileId: 'legacy-route-1', step: 1 },
+      { q: 2, r: 0, tileId: 'legacy-route-2', step: 2 },
+    ],
+    nextStepAt: '2026-06-06T00:00:10.000Z',
+    completesAt: '2026-06-06T00:00:20.000Z',
+  }), { nowMs });
+
+  assert.equal(derived.route[0].revealed, true);
+  assert.deepEqual(derived.revealedTileIds, ['tile_1_0']);
+  assert.equal(JSON.stringify(derived).includes('legacy-route'), false);
+});
+
 test('WorldMarchProgressSnapshot exposes manual arrival as idle parked actor', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({

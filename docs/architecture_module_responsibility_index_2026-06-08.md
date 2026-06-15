@@ -1021,6 +1021,7 @@ P0 新增公开 API / Public API Added During P0:
 - 为 `WorldActorProjection`、HUD、action adapter、debug overlay 提供可测试、可序列化的行军输入
 - 保留 `remainingSeconds` 与 `travelRemainingSeconds` 的区别：前者兼容下一步/旧 HUD 倒计时，后者表示到终点的剩余总行程
 - Consumes `TileCoord` for mission `origin` / `homeOrigin` / `target` / `position` / route step identity so stale caller-supplied `id/tileId` cannot override stable `x/y` coordinates.
+- `deriveMissionForTime()` owns route reveal identity: coordinate-bearing route step `tileId/id` aliases are resolved to canonical route tile ids before reveal checks or output `revealedTileIds`, so stale persisted route ids cannot leak through progress snapshots.
 
 公开 API / Public API:
 
@@ -1059,10 +1060,12 @@ P0 新增公开 API / Public API Added During P0:
 - 新的行军结果类型先扩展 `arrivalKind` / constants，再通过 `buildArrivalFromProgress()` 输出新行。
 - 新 UI/HUD 不要从 raw mission 自己推导抵达状态；消费 `createSnapshot()` 的 `missions` 与 `arrivals`。新的地图 actor 集合必须通过 `WorldActorProjection` 投影。
 - 新功能需要额外展示字段时，优先在 `normalizeMissionProgress()` 增加稳定 row 字段，并同步测试和本索引。
+- 新 reveal/progress 推导必须在本模块内先归一化 route coordinate identity；不得重新把 raw `revealedTileIds` 或 route `tileId/id` 作为输出权威。
 - 旧 `WorldMarchSystem` 继续作为兼容 facade；集合级 `buildActors()` 走 `WorldActorProjection`，不要把新的 gameplay/projection rule 加回旧文件。
 
 回归 / Regression:
 
+- `node --test frontend/js/domain/WorldMarchProgressSnapshot.test.js`
 - `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
