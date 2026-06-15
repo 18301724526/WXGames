@@ -888,6 +888,7 @@ P0 新增公开 API / Public API Added During P0:
 - 为后续 fog renderer、world map renderer、debug overlay 提供统一输入
 - 性能友好的紧凑数据结构 / compact arrays for large maps
 - Consumes `TileCoord` for tile, mission route, planned tile, and active-position identity so caller-supplied `id/tileId` cannot override stable `x/y`.
+- Mission reveal visibility resolves coordinate-bearing route/planned-tile `tileId/id` aliases before applying `revealedTileIds`; stale reveal ids cannot suppress canonical explored entries.
 
 公开 API / Public API:
 
@@ -898,6 +899,8 @@ P0 新增公开 API / Public API Added During P0:
 - `WorldMapVisibilityModel.levelName(level)`
 - `WorldMapVisibilityModel.normalizeLevel(value, options)`
 - `WorldMapVisibilityModel.readTileVisibility(tile, options)`
+- `WorldMapVisibilityModel.createMissionTileAliasMap(mission)`
+- `WorldMapVisibilityModel.createRevealedTileSet(mission)`
 - `WorldMapVisibilityModel.toSerializable(snapshot)`
 - constants: `LEVEL_UNKNOWN`, `LEVEL_EXPLORED`, `LEVEL_VISIBLE`, `LEVEL_CONTROLLED`, `LEVEL_NAMES`
 
@@ -915,6 +918,7 @@ P0 新增公开 API / Public API Added During P0:
 - 新的 visibility 来源要通过 `createSnapshot()` 的 input 合并，不直接写 renderer。
 - Fog of war P2 should consume this snapshot instead of reading raw tiles.
 - 新增等级时必须同步 constants、tests、docs。
+- 新 mission reveal source 必须先经 route/planned-tile alias normalization；不得直接用 raw `revealedTileIds` 作为 visibility authority。
 
 回归 / Regression:
 

@@ -88,6 +88,26 @@ test('WorldMapVisibilityModel applies mission reveals without downgrading strong
   assert.equal(WorldMapVisibilityModel.isVisible(snapshot, 'tile_2_0'), true);
 });
 
+test('WorldMapVisibilityModel derives revealed mission visibility from coordinate-bearing route aliases', () => {
+  const snapshot = WorldMapVisibilityModel.createSnapshot({
+    worldExplorerState: {
+      activeMission: {
+        id: 'mission-stale-reveal',
+        status: 'active',
+        revealedTileIds: ['legacy-route-1'],
+        route: [
+          { q: 1, r: 0, tileId: 'legacy-route-1', step: 1 },
+          { q: 2, r: 0, tileId: 'legacy-route-2', step: 2 },
+        ],
+      },
+    },
+  });
+
+  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_1_0'), WorldMapVisibilityModel.LEVEL_EXPLORED);
+  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_2_0'), WorldMapVisibilityModel.LEVEL_UNKNOWN);
+  assert.equal(JSON.stringify(snapshot).includes('legacy-route'), false);
+});
+
 test('WorldMapVisibilityModel keeps signatures stable and data compact for large maps', () => {
   const tiles = [];
   for (let i = 0; i < 5000; i += 1) {

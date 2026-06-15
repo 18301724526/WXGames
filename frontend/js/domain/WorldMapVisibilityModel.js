@@ -178,9 +178,55 @@
     return result;
   }
 
+  function hasCoordPair(source = {}) {
+    if (!source || typeof source !== 'object') return false;
+    const hasQ = source.x !== undefined || source.q !== undefined;
+    const hasR = source.y !== undefined || source.r !== undefined;
+    return hasQ && hasR;
+  }
+
+  function addTileAlias(aliases, value, canonicalId) {
+    if (!value || !canonicalId) return;
+    const alias = String(value);
+    const ids = aliases.get(alias) || new Set();
+    ids.add(String(canonicalId));
+    aliases.set(alias, ids);
+  }
+
+  function addCoordAliases(aliases, source = {}) {
+    if (!hasCoordPair(source)) return;
+    const normalized = normalizeCoord(source);
+    addTileAlias(aliases, normalized.tileId, normalized.tileId);
+    addTileAlias(aliases, source.tileId, normalized.tileId);
+    addTileAlias(aliases, source.id, normalized.tileId);
+  }
+
+  function createMissionTileAliasMap(mission = {}) {
+    const aliases = new Map();
+    (Array.isArray(mission.route) ? mission.route : []).forEach((step) => addCoordAliases(aliases, step));
+    (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => addCoordAliases(aliases, tile));
+    return aliases;
+  }
+
+  function createRevealedTileSet(mission = {}) {
+    const aliases = createMissionTileAliasMap(mission);
+    const revealed = new Set();
+    (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [])
+      .filter(Boolean)
+      .forEach((id) => {
+        const canonicalIds = aliases.get(String(id));
+        if (canonicalIds) {
+          canonicalIds.forEach((canonicalId) => revealed.add(canonicalId));
+          return;
+        }
+        revealed.add(String(id));
+      });
+    return revealed;
+  }
+
   function applyMissionVisibility(accumulator, mission = {}) {
     if (!mission || typeof mission !== 'object') return accumulator;
-    const revealedIds = new Set((Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : []).map(String));
+    const revealedIds = createRevealedTileSet(mission);
     const applyCoord = (coord, level = LEVEL_EXPLORED) => {
       if (!coord || typeof coord !== 'object') return;
       const normalized = normalizeCoord(coord);
@@ -275,6 +321,8 @@
     normalizeCoord,
     normalizeLevel,
     readTileVisibility,
+    createMissionTileAliasMap,
+    createRevealedTileSet,
     tileId,
     toSerializable,
   };
