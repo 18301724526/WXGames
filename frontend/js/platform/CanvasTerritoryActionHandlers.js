@@ -64,11 +64,17 @@
       },
 
       centerWorldMapOnSite(siteId, options = {}) {
+        const worldMap = this.getState()?.territoryState?.worldMap || {};
         const tile = this.getWorldTileForSite(siteId);
         const site = this.getTerritorySite(siteId) || {};
         const q = Number(tile?.q ?? site.q ?? site.x ?? site.relativeX);
         const r = Number(tile?.r ?? site.r ?? site.y ?? site.relativeY);
         if (!Number.isFinite(q) || !Number.isFinite(r)) return false;
+        const origin = worldMap.origin || worldMap.worldOrigin || {};
+        const originQ = Number(origin.q ?? origin.x);
+        const originR = Number(origin.r ?? origin.y);
+        const relativeQ = q - (Number.isFinite(originQ) ? originQ : 0);
+        const relativeR = r - (Number.isFinite(originR) ? originR : 0);
         const renderer = this.host?.renderer || this.getGameHost()?.renderer;
         const geometry = renderer?.constructor?.getTileMapGeometry?.()?.DEFAULT_GEOMETRY
           || renderer?.presenter?.getTileMapGeometry?.()?.DEFAULT_GEOMETRY
@@ -87,8 +93,8 @@
         const originY = visibleMapY + visibleMapH * 0.42;
         const targetX = frameWidth * 0.5;
         const targetY = visibleMapY + visibleMapH * 0.46;
-        const x = targetX - originX - ((q - r) * stepX * scale);
-        const y = targetY - originY - ((q + r) * stepY * scale);
+        const x = targetX - originX - ((relativeQ - relativeR) * stepX * scale);
+        const y = targetY - originY - ((relativeQ + relativeR) * stepY * scale);
         const runtime = this.host?.ensureWorldMapRuntimeCoordinator?.()?.getMapRuntime?.()
           || this.getGameHost()?.ensureWorldMapRuntimeCoordinator?.()?.getMapRuntime?.()
           || this.host?.worldMapRuntime

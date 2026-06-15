@@ -295,7 +295,10 @@ test('CanvasTerritoryActionHandlers resets world camera to the current capital s
     territoryUiState: { worldPanX: 12, worldPanY: -8 },
     state: {
       territoryState: {
-        worldMap: { tiles: [{ id: 'tile_18_-4', q: 18, r: -4, siteId: 'capital' }] },
+        worldMap: {
+          origin: { q: 18, r: -4 },
+          tiles: [{ id: 'tile_18_-4', q: 18, r: -4, siteId: 'capital' }],
+        },
         territories: [{ id: 'capital', x: 18, y: -4 }],
       },
       cityState: { capitalCityId: 'capital' },
@@ -331,13 +334,52 @@ test('CanvasTerritoryActionHandlers resets world camera to the current capital s
 
   assert.deepEqual(calls, [
     ['ensureRuntime'],
-    ['setCamera', -1309, -393, 'resetWorldPan', false],
+    ['setCamera', 0, 24, 'resetWorldPan', false],
     ['clearTransform'],
     ['requestRender', { force: true }],
     ['render', 'resetWorldPan'],
   ]);
-  assert.equal(Math.round(host.territoryUiState.worldPanX), -1309);
-  assert.equal(Math.round(host.territoryUiState.worldPanY), -393);
+  assert.equal(Math.round(host.territoryUiState.worldPanX), 0);
+  assert.equal(Math.round(host.territoryUiState.worldPanY), 24);
+});
+
+test('CanvasTerritoryActionHandlers centers a non-zero world-origin capital in render space', () => {
+  const calls = [];
+  const host = {
+    territoryUiState: { worldPanX: -1131, worldPanY: -1076 },
+    state: {
+      territoryState: {
+        worldMap: {
+          origin: { q: 28, r: 9, tileId: 'tile_28_9' },
+          tiles: [{ id: 'tile_28_9', q: 28, r: 9, siteId: 'capital' }],
+        },
+        territories: [{ id: 'capital', x: 28, y: 9 }],
+      },
+      cityState: { capitalCityId: 'capital' },
+    },
+    runtime: { width: 420, height: 747 },
+    renderer: {
+      getTopBarBottom() {
+        return 84;
+      },
+    },
+    worldMapRuntime: {
+      setCamera(x, y, options) {
+        calls.push(['setCamera', Math.round(x), Math.round(y), options.source, options.render]);
+        host.territoryUiState.worldPanX = x;
+        host.territoryUiState.worldPanY = y;
+      },
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.centerWorldMapOnCapital({ source: 'resumeWorldMap', render: false }), true);
+
+  assert.deepEqual(calls, [
+    ['setCamera', 0, 24, 'resumeWorldMap', false],
+  ]);
+  assert.equal(Math.round(host.territoryUiState.worldPanX), 0);
+  assert.equal(Math.round(host.territoryUiState.worldPanY), 24);
 });
 
 test('CanvasTerritoryActionHandlers resolves the capital site id from state when resetting camera', () => {
@@ -357,7 +399,10 @@ test('CanvasTerritoryActionHandlers resolves the capital site id from state when
     territoryUiState: { worldPanX: 0, worldPanY: 0 },
     state: {
       territoryState: {
-        worldMap: { tiles: [{ id: 'tile_7_2', q: 7, r: 2, siteId: 'capital_a' }] },
+        worldMap: {
+          origin: { q: 7, r: 2 },
+          tiles: [{ id: 'tile_7_2', q: 7, r: 2, siteId: 'capital_a' }],
+        },
         territories: [{ id: 'capital_a', x: 7, y: 2 }],
       },
       cityState: { capitalCityId: 'capital_a' },
@@ -390,7 +435,7 @@ test('CanvasTerritoryActionHandlers resolves the capital site id from state when
 
   assert.deepEqual(calls, [
     ['ensureRuntime'],
-    ['setCamera', -298, -244, 'accountReset', false],
+    ['setCamera', 0, 24, 'accountReset', false],
     ['clearTransform'],
     ['requestRender', { force: true }],
   ]);
@@ -411,7 +456,10 @@ test('CanvasActionController centers account reset camera from the updated game 
   const game = {
     state: {
       territoryState: {
-        worldMap: { tiles: [{ id: 'tile_18_-4', q: 18, r: -4, siteId: 'capital' }] },
+        worldMap: {
+          origin: { q: 18, r: -4 },
+          tiles: [{ id: 'tile_18_-4', q: 18, r: -4, siteId: 'capital' }],
+        },
         territories: [{ id: 'capital', x: 18, y: -4 }],
       },
       cityState: { capitalCityId: 'capital' },
@@ -472,7 +520,7 @@ test('CanvasActionController centers account reset camera from the updated game 
 
   assert.deepEqual(calls, [
     ['shellEnsureRuntime'],
-    ['setCamera', -1309, -393, 'accountReset', false],
+    ['setCamera', 0, 24, 'accountReset', false],
     ['clearTransform'],
     ['requestRender', { force: true }],
   ]);

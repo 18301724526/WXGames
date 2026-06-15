@@ -523,6 +523,41 @@ Manual/browser test target:
 - Only check the first tutorial city/capital target.
 - Pass condition: the current capital at `worldMap.origin` is visible inside the canvas and the tutorial city target is clickable; the canvas must not be black/empty and must not point to an old `123` city.
 
+## Step 16 - Camera Recenters With Render-Space Origin After Panels
+
+Evidence:
+
+- Real online browser playtest on deployed commit `cad6426576f315d96dd8e055448ed81d29f351c6` reached tutorial step `20` and then failed to reopen the capital for formation setup.
+- Evidence was saved under `tmp/verification/online-world-march-full-flow/2026-06-15T23-17-02-670Z/`.
+- Before closing the famous-person panel, the state had `worldPanX = 0`, `worldPanY = 0`, 48 tile hit targets, and two `openWorldSite` capital targets for `tile_28_9`.
+- Immediately after closing the famous-person panel, the same state had `worldPanX = -1130.88`, `worldPanY = -1075.84`, no tile/site hit targets, and the screenshot showed an empty/black world-map area.
+- The world tile view cache still had 25 tiles and the capital at `worldMap.origin = { q: 28, r: 9 }`, so this was a camera projection bug, not a backend visibility or tile-data loss.
+
+Scope:
+
+- Frontend world-map camera recentering only.
+- Do not change backend spawn, reset, world facts, tutorial flow, panel state, route planning, or march interpolation.
+- Keep manual drag pan behavior intact.
+
+Implementation rule:
+
+- Any camera recentering that projects a site coordinate must use the same render-space origin contract as tile rendering.
+- For a capital at `worldMap.origin`, recentering should calculate from relative coordinate `0,0`, not from the absolute world coordinate.
+- Closing panels, reset-world-pan, and account-reset camera recentering must not push the current capital outside the canvas when the world origin is non-zero.
+
+Automated test target:
+
+```bash
+node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasShellActionHandlers.test.js frontend/js/domain/TileMapGeometry.test.js frontend/js/platform/renderers/WorldMapLayoutModel.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Progress to the tutorial famous-person step and close the famous-person panel.
+- Only check the returned world-map view.
+- Pass condition: the 5x5 area and current capital remain visible/clickable after the panel closes; the canvas must not become empty/black and must not lose world tile hit targets.
+
 ## Non-Goals
 
 - No frontend redesign.
