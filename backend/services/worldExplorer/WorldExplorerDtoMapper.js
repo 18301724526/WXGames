@@ -52,6 +52,49 @@ function getRouteDto(route = []) {
   });
 }
 
+function hasCoordPair(source = {}) {
+  if (!source || typeof source !== 'object') return false;
+  const hasQ = source.q !== undefined || source.x !== undefined;
+  const hasR = source.r !== undefined || source.y !== undefined;
+  return hasQ && hasR;
+}
+
+function addTileAlias(aliases, value, canonicalId) {
+  if (!value || !canonicalId) return;
+  const alias = String(value);
+  const ids = aliases.get(alias) || new Set();
+  ids.add(String(canonicalId));
+  aliases.set(alias, ids);
+}
+
+function createRouteTileAliasMap(route = []) {
+  const aliases = new Map();
+  (Array.isArray(route) ? route : []).forEach((step) => {
+    if (!hasCoordPair(step)) return;
+    const coord = normalizeCoord(step);
+    addTileAlias(aliases, coord.tileId, coord.tileId);
+    addTileAlias(aliases, step.tileId, coord.tileId);
+    addTileAlias(aliases, step.id, coord.tileId);
+  });
+  return aliases;
+}
+
+function createRevealedTileSet(mission = {}) {
+  const routeAliases = createRouteTileAliasMap(mission.route);
+  const revealed = new Set();
+  (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [])
+    .filter(Boolean)
+    .forEach((id) => {
+      const aliases = routeAliases.get(String(id));
+      if (aliases) {
+        aliases.forEach((canonicalId) => revealed.add(canonicalId));
+        return;
+      }
+      revealed.add(String(id));
+    });
+  return revealed;
+}
+
 function getPlannedTileDto(tile = {}) {
   const coord = normalizeCoord(tile);
   const dto = {
@@ -91,9 +134,19 @@ function getRemainingSeconds(mission = {}, now = new Date()) {
 }
 
 function getMissionDto(mission = {}, now = new Date()) {
-  const route = getRouteDto(mission.route || []);
+  const revealedTileSet = createRevealedTileSet(mission);
+  const route = getRouteDto(mission.route || [])
+    .map((step) => (
+      revealedTileSet.has(step.tileId)
+        ? { ...step, revealed: true }
+        : step
+    ));
   const position = normalizeCoord(getPositionSource(mission, route));
   const stepDurationMs = Math.max(1000, toInteger(mission.stepDurationMs, EXPLORE_STEP_DURATION_MS));
+  const revealedTileIds = Array.from(new Set([
+    ...revealedTileSet,
+    ...route.filter((step) => step.revealed).map((step) => step.tileId),
+  ].filter(Boolean).map(String)));
   return {
     id: mission.id,
     kind: mission.kind || 'worldExplore',
@@ -107,7 +160,7 @@ function getMissionDto(mission = {}, now = new Date()) {
     plannedSites: (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).map(getPlannedSiteDto),
     formation: clone(mission.formation || {}),
     position,
-    revealedTileIds: [...(Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [])],
+    revealedTileIds,
     stepDurationSeconds: Math.floor(stepDurationMs / 1000),
     remainingSeconds: getRemainingSeconds(mission, now),
     startedAt: mission.startedAt,
@@ -146,6 +199,8 @@ function getClientStateDto(missions = [], options = {}) {
 }
 
 module.exports = {
+  createRevealedTileSet,
+  createRouteTileAliasMap,
   getBusyFormationDto,
   getClientStateDto,
   getCoordDto,

@@ -79,6 +79,20 @@ test('WorldExplorerDtoMapper derives public tile identity from coordinates', () 
   assert.deepEqual(dto.plannedSites.map((site) => site.tileId), ['tile_2_-1']);
 });
 
+test('WorldExplorerDtoMapper derives public revealed route identity from coordinate-bearing route aliases', () => {
+  const dto = DtoMapper.getMissionDto(createMission({
+    revealedTileIds: ['legacy-route-1'],
+    route: [
+      { q: 1, r: 0, tileId: 'legacy-route-1', step: 1 },
+      { q: 2, r: 0, tileId: 'legacy-route-2', step: 2 },
+    ],
+  }), new Date('2026-06-06T00:00:12.000Z'));
+
+  assert.deepEqual(dto.revealedTileIds, ['tile_1_0']);
+  assert.equal(dto.route[0].revealed, true);
+  assert.equal(JSON.stringify(dto).includes('legacy-route'), false);
+});
+
 test('WorldExplorerDtoMapper groups active and idle DTOs without retired ready reports', () => {
   const state = DtoMapper.getClientStateDto([
     createMission({ id: 'active-1', status: 'active' }),

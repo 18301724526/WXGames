@@ -135,6 +135,7 @@
 - 2026-06-15：`WorldExplorerProgression` 的 reveal result 写回继续补齐坐标身份收口；新增红测证明 `WorldMapService.revealTiles()` 返回脏 `tile.id` 时，mission `revealedTileIds`、reveal trace summary、materialized tile merge key 仍必须由返回 tile 的 `q/r` 生成，旧 reveal result id 不得进入运行时 mission 事实。
 - 2026-06-15：`WorldAiExplorerService.revealAiArea()` 的 AI hidden reveal 写回完成坐标身份收口；新增红测证明 `WorldMapService.revealTiles()` 返回脏 `tile.id` 时，explorer `revealedTileIds` 仍由返回 tile 的 `q/r` 生成，AI explorer 事实不再接收旧 reveal result id。
 - 2026-06-14：`WorldExplorerDtoMapper` 的 public API 输出也完成坐标身份收口；即使内部 mission row 被旧字段污染，客户端 DTO 仍按坐标生成 canonical tile identity，不把旧 `tileId` / `id` 当公开事实。
+- 2026-06-15：`WorldExplorerDtoMapper` 的 public `revealedTileIds` / route `revealed` 输出继续补齐坐标身份收口；新增红测证明脏 route step `tileId` 只作为 coordinate-bearing route alias 被折回 canonical `tile_q_r`，旧 route reveal id 不会泄漏到客户端 DTO。
 - 2026-06-14：`TerritoryStateNormalizer` 的 legacy territory scout mission 归一化边界完成第一段收口；scout `route` / `revealArea` 带坐标字段统一由 `q/r` 生成 `tileId`，旧存档里的 scout `tileId` 不能重新进入推进或投影链路。
 - 2026-06-15：`TerritoryScoutAreas.ensureScoutMissionAreaRevealed()` 的 reveal-area 写回完成坐标身份收口；新增红测证明 `WorldMapService.revealScoutArea()` 返回脏 `tile.id` 时，mission `revealedTileIds` 和 `recordScoutTrail()` 仍由 pending 坐标生成，底层 reveal-area 模块本身不再依赖上层推进模块兜底。
 - 2026-06-14：`TerritoryMilitaryMissions.advanceScoutMission()` 的 scout 推进写回完成坐标身份收口；新增红测证明脏 route `tileId` 和脏 revealed tile `id` 不会进入 route / revealArea / revealedTileIds / scout trail。

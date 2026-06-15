@@ -4838,12 +4838,15 @@ Regression:
 - 后端 world explorer API DTO 输出形状 / API response DTO shape
 - 将 normalized mission 转成 public mission DTO
 - canonical public tile identity for coordinate-bearing DTO fields: origin, home origin, target, position, route steps, planned tiles, and planned sites derive ids from `q/r` or `x/y`; stale mission `tileId` / `id` cannot leak back to clients
+- canonical public reveal identity: coordinate-bearing route step `tileId/id` aliases are resolved before public `revealedTileIds` and route `revealed` flags leave the API boundary
 - Groups mission DTOs as `activeMission`, `idleMissions`, and `busyFormations`; the old ready-report bucket is not emitted.
 - Keeps current world-march client fields: `maxActiveMissions`, `maxManualRouteLength`, and `stepDurationSeconds`; retired random-route fields are not emitted.
 - 不推进任务、不写存档、不依赖 routes
 
 公开 API / Public API:
 
+- `WorldExplorerDtoMapper.createRouteTileAliasMap(route)`
+- `WorldExplorerDtoMapper.createRevealedTileSet(mission)`
 - `WorldExplorerDtoMapper.getClientStateDto(missions, options)`
 - `WorldExplorerDtoMapper.getMissionDto(mission, now)`
 - `WorldExplorerDtoMapper.getCoordDto(source, fallback)`
@@ -4866,6 +4869,7 @@ Regression:
 
 - 新 API 字段先加到 mapper，并同步 mapper tests、client state tests、本索引。
 - Coordinate-bearing public fields must pass through `getCoordDto()` / `normalizeCoord()` instead of cloning raw mission objects.
+- Public reveal fields must normalize route aliases before output; raw `mission.revealedTileIds` may not be copied directly when route coordinates exist.
 - 新服务流程仍由 `WorldExplorerClientState` 或 service/action modules 调用；mapper 只做 shape。
 - 不要在 route 里手写 world explorer response shape。
 
