@@ -75,6 +75,13 @@ function createTileIdSet(coords = []) {
     .filter(Boolean));
 }
 
+function findTerritoryAtCoordinate(gameState = {}, q = 0, r = 0) {
+  const targetId = WorldMapService.getCanonicalTileId(q, r);
+  return (Array.isArray(gameState.territories) ? gameState.territories : []).find((territory) => (
+    WorldMapService.getCanonicalTileId(territory.x ?? territory.q, territory.y ?? territory.r) === targetId
+  )) || null;
+}
+
 function materializePlannedSitesForStep(gameState, mission, step, now = new Date(), options = {}) {
   const tileId = WorldMapService.getTileId(step.q, step.r);
   const revealTileIds = options.revealTileIds instanceof Set
@@ -87,6 +94,8 @@ function materializePlannedSitesForStep(gameState, mission, step, now = new Date
     const site = normalized?.site || null;
     if (!site) return plannedSite;
     const existing = (gameState.territories || []).find((territory) => territory.id === site.id) || null;
+    const occupiedCoordinate = findTerritoryAtCoordinate(gameState, site.x, site.y);
+    if (occupiedCoordinate && occupiedCoordinate.id !== site.id) return plannedSite;
     if (!existing) gameState.territories = [...(gameState.territories || []), site];
     const tile = WorldMapService.bindSiteToTile(gameState, site.x, site.y, site.id, now, { visibility: 'scouted' });
     materialized.push({ site, tile });

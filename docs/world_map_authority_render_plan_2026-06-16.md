@@ -274,6 +274,32 @@ Manual test target:
 - Reset the account again.
 - Only check that the new capital is not on `123`, not on any old owned city coordinate, has clear spacing from existing capitals/cities, and still has the 5x5 starting visibility.
 
+## Step 8 - Planned Tutorial Site Materialization Guard
+
+Scope:
+
+- World explorer progression only.
+- Prevent a planned tutorial empty-city site from being materialized over an already existing territory coordinate in the current authoritative player state.
+- Do not change route planning, marching interpolation, frontend rendering, or reset behavior in this step.
+
+Implementation rule:
+
+- Before `materializePlannedSitesForStep()` inserts a planned site and binds it to a tile, it must check whether another territory already owns that coordinate.
+- If the coordinate is already occupied by a different territory id, keep the planned site unmaterialized, do not overwrite the existing territory, do not bind the tile to the planned site, and do not grant `firstExploreEmptyCity`.
+- Cross-player projection-aware re-planning during online progression remains a separate step because progression currently runs from canonical player state, while route planning receives shared-world projection at action time.
+
+Automated test target:
+
+```bash
+node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/WorldExplorerService.test.js backend/tests/GameRoutesTutorial.test.js
+```
+
+Manual test target:
+
+- Start guided first-city exploration normally.
+- Before the planned site materializes, create or simulate an existing territory at that same coordinate in the authoritative state.
+- Only check that the existing territory is not overwritten and the tutorial first-city grant is not assigned to the stale planned site.
+
 ## Non-Goals
 
 - No frontend redesign.

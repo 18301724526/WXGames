@@ -180,6 +180,67 @@ test('world explorer progression materializes planned sites by step coordinates'
   assert.equal(mission.plannedSites[0].materialized, true);
 });
 
+test('world explorer progression does not materialize planned tutorial sites over existing coordinates', (t) => {
+  const originalBindSiteToTile = WorldMapService.bindSiteToTile;
+  const calls = [];
+  t.after(() => {
+    WorldMapService.bindSiteToTile = originalBindSiteToTile;
+  });
+  WorldMapService.bindSiteToTile = (_gameState, x, y, siteId, _now, options) => {
+    calls.push({ x, y, siteId, options });
+    return {
+      id: WorldMapService.getTileId(x, y),
+      q: x,
+      r: y,
+      siteId,
+      visibility: options?.visibility || 'scouted',
+    };
+  };
+
+  const gameState = {
+    territories: [{
+      id: 'other-existing-city',
+      x: 2,
+      y: -1,
+      owner: 'player',
+      ownerPlayerId: 'other-player',
+      status: 'occupied',
+    }],
+    tutorial: { grants: {} },
+  };
+  const mission = {
+    id: 'occupied-planned-site',
+    plannedSites: [{
+      tileId: 'tile_2_-1',
+      q: 2,
+      r: -1,
+      siteId: 'site_2_-1',
+      materialized: false,
+      site: {
+        id: 'site_2_-1',
+        x: 2,
+        y: -1,
+        owner: 'neutral',
+        status: 'discovered',
+      },
+    }],
+  };
+
+  const materialized = Progression.materializePlannedSitesForStep(
+    gameState,
+    mission,
+    { q: 2, r: -1 },
+    new Date('2026-06-06T00:00:00.000Z'),
+  );
+
+  assert.equal(materialized.length, 0);
+  assert.equal(gameState.territories.length, 1);
+  assert.equal(gameState.territories[0].id, 'other-existing-city');
+  assert.equal(mission.plannedSites[0].materialized, false);
+  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity, undefined);
+  assert.deepEqual(calls, []);
+});
+
 test('WorldExplorerService facade exposes only the actor march API', () => {
   const expectedApi = [
     'EXPLORE_REVEAL_RADIUS',
