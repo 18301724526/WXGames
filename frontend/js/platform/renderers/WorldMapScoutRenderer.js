@@ -34,26 +34,35 @@
     }
 
     getRemainingRouteSteps(actor = {}, mission = {}) {
+      const path = this.getRoutePath(actor, mission);
+      const standingIndex = this.getRouteStandingIndex(actor, path);
+      return standingIndex >= 0 ? path.slice(standingIndex + 1) : [];
+    }
+
+    getRoutePath(actor = {}, mission = {}) {
       const route = Array.isArray(actor.route) && actor.route.length
         ? actor.route
         : (Array.isArray(mission.route) ? mission.route : []);
-      if (!route.length) return [];
+      const origin = actor.origin || mission.origin || actor.position || actor.current || null;
+      if (!origin || !route.length) return [];
+      return [origin, ...route];
+    }
+
+    getRouteStandingIndex(actor = {}, path = []) {
+      if (!path.length) return -1;
       const progress = actor.progress || {};
       const segmentIndex = Math.max(0, Math.floor(Number(actor.current?.segmentIndex ?? progress.segmentIndex ?? 0) || 0));
       const segmentProgress = Math.max(0, Math.min(1, Number(actor.current?.segmentProgress ?? progress.segmentProgress ?? 0) || 0));
-      const startIndex = Math.min(route.length, segmentIndex + (segmentProgress >= 0.999 ? 1 : 0));
-      return route.slice(startIndex);
+      return Math.min(path.length - 1, segmentIndex + (segmentProgress >= 0.999 ? 1 : 0));
     }
 
     getWorldScoutRoutePoints(actor = {}, mission = {}, viewport = {}, geometry = {}) {
       if (actor.status !== 'active') return [];
-      const current = actor.current || actor.position || actor.origin || null;
-      if (!current) return [];
-      const routeSteps = this.getRemainingRouteSteps(actor, mission);
-      const points = [
-        this.getWorldTileScreenCenter(current, viewport, geometry),
-        ...routeSteps.map((step) => this.getWorldTileScreenCenter(step, viewport, geometry)),
-      ];
+      const path = this.getRoutePath(actor, mission);
+      const standingIndex = this.getRouteStandingIndex(actor, path);
+      const routeSteps = standingIndex >= 0 ? path.slice(standingIndex) : [];
+      if (routeSteps.length < 2) return [];
+      const points = routeSteps.map((step) => this.getWorldTileScreenCenter(step, viewport, geometry));
       return points.filter((point) => (
         point
         && Number.isFinite(Number(point.x))
@@ -69,7 +78,7 @@
       const previousCap = this.ctx.lineCap;
       const previousJoin = this.ctx.lineJoin;
       if (this.ctx.setLineDash) this.ctx.setLineDash(options.dash || [10, 8]);
-      this.ctx.lineDashOffset = Number(options.dashOffset) || 0;
+      this.ctx.lineDashOffset = 0;
       this.ctx.lineCap = 'round';
       this.ctx.lineJoin = 'round';
       this.ctx.strokeStyle = options.shadowColor || 'rgba(11, 18, 14, 0.66)';
@@ -98,9 +107,7 @@
       (Array.isArray(actors) ? actors : []).forEach((actor) => {
         const mission = this.getActorRouteMission(actor, tileMapView) || {};
         const points = this.getWorldScoutRoutePoints(actor, mission, viewport, geometry);
-        if (this.drawDashedScoutRoute(points, {
-          dashOffset: -((Number(this.getNow?.()) || Date.now()) / 90) % 18,
-        })) rendered = true;
+        if (this.drawDashedScoutRoute(points)) rendered = true;
       });
       return rendered;
     }

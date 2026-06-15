@@ -7,6 +7,30 @@ const WorldMapScoutRenderer = require('./WorldMapScoutRenderer');
 
 function createHost(overrides = {}) {
   const calls = [];
+  let lineDashOffset = 0;
+  const ctx = {
+    beginPath() { calls.push(['beginPath']); },
+    getLineDash() { calls.push(['getLineDash']); return []; },
+    lineTo(...args) { calls.push(['lineTo', ...args]); },
+    moveTo(...args) { calls.push(['moveTo', ...args]); },
+    restore() { calls.push(['restore']); },
+    save() { calls.push(['save']); },
+    setLineDash(...args) { calls.push(['setLineDash', ...args]); },
+    stroke() { calls.push(['stroke']); },
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    lineWidth: 1,
+    strokeStyle: '',
+  };
+  Object.defineProperty(ctx, 'lineDashOffset', {
+    get() {
+      return lineDashOffset;
+    },
+    set(value) {
+      lineDashOffset = value;
+      calls.push(['lineDashOffset', value]);
+    },
+  });
   return {
     calls,
     epochNowMs: new Date('2026-06-06T00:00:15.000Z').getTime(),
@@ -43,21 +67,7 @@ function createHost(overrides = {}) {
     drawPolyline(...args) {
       calls.push(['drawPolyline', ...args]);
     },
-    ctx: {
-      beginPath() { calls.push(['beginPath']); },
-      getLineDash() { calls.push(['getLineDash']); return []; },
-      lineTo(...args) { calls.push(['lineTo', ...args]); },
-      moveTo(...args) { calls.push(['moveTo', ...args]); },
-      restore() { calls.push(['restore']); },
-      save() { calls.push(['save']); },
-      setLineDash(...args) { calls.push(['setLineDash', ...args]); },
-      stroke() { calls.push(['stroke']); },
-      lineCap: 'butt',
-      lineDashOffset: 0,
-      lineJoin: 'miter',
-      lineWidth: 1,
-      strokeStyle: '',
-    },
+    ctx,
     getEpochNowMs() {
       return this.epochNowMs;
     },
@@ -93,7 +103,7 @@ function createMission(overrides = {}) {
   };
 }
 
-test('WorldMapScoutRenderer renders dynamic dashed routes from actor current position', () => {
+test('WorldMapScoutRenderer renders dashed route from actor standing tile without dash animation', () => {
   const host = createHost();
   const renderer = new WorldMapScoutRenderer({ host });
   const tileMapView = {
@@ -111,6 +121,7 @@ test('WorldMapScoutRenderer renders dynamic dashed routes from actor current pos
     id: 'scout-1',
     missionId: 'scout-1',
     status: 'active',
+    origin: { q: 0, r: 0 },
     current: { q: 1.5, r: 0, segmentIndex: 1, segmentProgress: 0.5 },
     progress: { segmentIndex: 1, segmentProgress: 0.5 },
   }];
@@ -118,10 +129,48 @@ test('WorldMapScoutRenderer renders dynamic dashed routes from actor current pos
   assert.equal(renderer.renderWorldScoutRoutes(tileMapView, { originX: 100, originY: 80, scale: 0.5 }, actors), true);
 
   assert.equal(host.calls.some((call) => call[0] === 'setLineDash' && call[1][0] === 10), true);
-  assert.equal(host.calls.some((call) => call[0] === 'getWorldTileScreenCenter' && call[1] === 1.5 && call[2] === 0), true);
-  assert.equal(host.calls.some((call) => call[0] === 'getWorldTileScreenCenter' && call[1] === 1 && call[2] === 0), false);
+  assert.equal(host.calls.some((call) => call[0] === 'getWorldTileScreenCenter' && call[1] === 1.5 && call[2] === 0), false);
+  assert.deepEqual(
+    host.calls.filter((call) => call[0] === 'getWorldTileScreenCenter').map((call) => [call[1], call[2]]),
+    [[1, 0], [2, 0], [3, 0]],
+  );
+  assert.deepEqual(
+    host.calls.filter((call) => call[0] === 'lineDashOffset').map((call) => call[1]),
+    [0, 0],
+  );
   assert.equal(host.calls.some((call) => call[0] === 'drawPanel'), false);
   assert.equal(host.calls.some((call) => call[0] === 'drawPolyline'), false);
+});
+
+test('WorldMapScoutRenderer advances dashed route start after reaching a tile', () => {
+  const host = createHost();
+  const renderer = new WorldMapScoutRenderer({ host });
+  const tileMapView = {
+    geometry: { stepX: 96, stepY: 48 },
+    activeScouts: [createMission({
+      id: 'scout-1',
+      route: [
+        { q: 1, r: 0, step: 1, revealed: false },
+        { q: 2, r: 0, step: 2, revealed: false },
+        { q: 3, r: 0, step: 3, revealed: false },
+      ],
+    })],
+  };
+  const actors = [{
+    id: 'scout-1',
+    missionId: 'scout-1',
+    status: 'active',
+    origin: { q: 0, r: 0 },
+    current: { q: 2, r: 0, segmentIndex: 1, segmentProgress: 1 },
+    progress: { segmentIndex: 1, segmentProgress: 1 },
+  }];
+
+  assert.equal(renderer.renderWorldScoutRoutes(tileMapView, { originX: 100, originY: 80, scale: 0.5 }, actors), true);
+
+  assert.deepEqual(
+    host.calls.filter((call) => call[0] === 'getWorldTileScreenCenter').map((call) => [call[1], call[2]]),
+    [[2, 0], [3, 0]],
+  );
 });
 
 test('WorldMapScoutRenderer skips idle actor routes', () => {
