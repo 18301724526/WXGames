@@ -114,6 +114,7 @@
         const rendered = this.worldMapRenderer.renderWorldMapActorLayer(state, {
           ...this.buildRenderOptions('military', territoryUiState),
           ...options,
+          epochNowMs: options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now(),
           activeTab: 'military',
           isMapHome: true,
           territoryUiState,
@@ -145,8 +146,10 @@
         const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
           ? this.renderer.getTopBarBottom(state, { isMapHome: true })
           : 84;
+        const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now();
         const rendered = this.worldMapRenderer.renderWorldMapSnapshotLayer(state, {
           ...this.buildRenderOptions('military', territoryUiState),
+          epochNowMs,
           activeTab: 'military',
           isMapHome: true,
           territoryUiState,
@@ -164,6 +167,7 @@
         this.renderWorldFogLayer(frameContext);
         this.renderWorldActorLayer({
           ...options,
+          epochNowMs,
           state,
           territoryUiState,
           preserveRuntimeHitTargetsOnEmpty: true,

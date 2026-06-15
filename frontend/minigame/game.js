@@ -8,6 +8,7 @@ require('../js/domain/WorldChunkAddress');
 require('../js/domain/WorldInterestWindow');
 require('../js/domain/WorldRevealStore');
 require('../js/domain/TileMapGeometry');
+require('../js/domain/WorldClock');
 require('../js/domain/WorldTime');
 require('../js/domain/WorldMarchProgressSnapshot');
 require('../js/domain/WorldActorProjection');

@@ -109,25 +109,26 @@ test('CanvasGameAppWorldMapRuntimeBridge refreshes snapshot layer and commits ca
   const app = new App();
   app.state = { id: 'state-2' };
   app.worldMapDragWaterTimeMs = 345;
+  app.getWorldEpochNowMs = () => 24680;
   app.worldMapRuntimeCoordinator = {
     getMapRuntime: () => runtime,
   };
   app.renderer = {
     getTopBarBottom: () => 91,
     renderWorldMapSnapshotLayer(state, options) {
-      calls.push(['renderWorldMapSnapshotLayer', state.id, options.topBarBottom, options.waterTimeMs]);
+      calls.push(['renderWorldMapSnapshotLayer', state.id, options.topBarBottom, options.waterTimeMs, options.epochNowMs]);
       return true;
     },
     renderWorldMapActorLayer(state, options) {
-      calls.push(['renderWorldMapActorLayer', state.id, options.territoryUiState.worldPanX]);
+      calls.push(['renderWorldMapActorLayer', state.id, options.territoryUiState.worldPanX, options.epochNowMs]);
       return true;
     },
   };
 
   assert.equal(app.refreshWorldMapLayerFromSnapshot(), true);
   assert.deepEqual(calls, [
-    ['renderWorldMapSnapshotLayer', 'state-2', 91, 345],
-    ['renderWorldMapActorLayer', 'state-2', 2],
+    ['renderWorldMapSnapshotLayer', 'state-2', 91, 345, 24680],
+    ['renderWorldMapActorLayer', 'state-2', 2, 24680],
     ['syncHitTargetsFromRenderer', { preserveOnEmpty: true }],
     ['markBakedCamera', runtime.camera],
   ]);

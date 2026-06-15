@@ -23,6 +23,22 @@ test('WorldTime ignores performance.now values when resolving epoch now', () => 
   }), epochMs);
 });
 
+test('WorldTime prefers shared world clock over stale host render options', () => {
+  const clockNowMs = new Date('2026-06-06T00:00:20.000Z').getTime();
+  const staleMs = new Date('2026-06-06T00:00:04.000Z').getTime();
+
+  assert.equal(WorldTime.getEpochNowMs({
+    host: {
+      lastRenderOptions: { epochNowMs: staleMs },
+    },
+    worldClock: {
+      getEpochNowMs() {
+        return clockNowMs;
+      },
+    },
+  }), clockNowMs);
+});
+
 test('WorldTime does not treat short performance timestamps as epoch now', () => {
   const fallbackMs = new Date('2026-06-06T00:00:04.000Z').getTime();
 

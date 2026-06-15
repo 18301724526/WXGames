@@ -1,4 +1,15 @@
 (function (global) {
+  const SharedWorldClock = (() => {
+    if (global.WorldClock) return global.WorldClock;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldClock');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const EPOCH_SECONDS_THRESHOLD = 1000000000;
   const EPOCH_MILLISECONDS_THRESHOLD = 1000000000000;
 
@@ -42,18 +53,13 @@
       source?.epochNowMs,
       source?.serverNowMs,
       source?.nowEpochMs,
-      source?.lastRenderOptions?.epochNowMs,
-      source?.lastRenderOptions?.serverNowMs,
-      source?.host?.epochNowMs,
-      source?.host?.serverNowMs,
-      source?.host?.nowEpochMs,
-      source?.host?.lastRenderOptions?.epochNowMs,
-      source?.host?.lastRenderOptions?.serverNowMs,
     ];
     for (const candidate of candidates) {
       const stamp = toEpochNowMs(candidate, Number.NaN);
       if (Number.isFinite(stamp)) return stamp;
     }
+    const clockNow = SharedWorldClock?.getEpochNowMs?.(source, Number.NaN);
+    if (Number.isFinite(clockNow)) return clockNow;
     const frameNowCandidates = [
       typeof source?.getNow === 'function' ? source.getNow() : undefined,
       typeof source?.host?.getNow === 'function' ? source.host.getNow() : undefined,

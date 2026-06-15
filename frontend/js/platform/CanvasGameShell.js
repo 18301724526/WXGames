@@ -67,6 +67,14 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellSystemUi) {
     CanvasGameShellSystemUi = require('./CanvasGameShellSystemUi');
   }
+  var SharedWorldClock = global.WorldClock;
+  if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
+    try {
+      SharedWorldClock = require('../domain/WorldClock');
+    } catch (error) {
+      SharedWorldClock = null;
+    }
+  }
 
   class CanvasGameShell extends (CanvasGameAppBase || class {}) {
 constructor(options = {}) {
@@ -80,6 +88,8 @@ constructor(options = {}) {
         rendererRequired: false,
       });
       this.runtime = options.runtime || null;
+      this.worldClock = options.worldClock || this.runtime?.worldClock || SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
+      if (this.runtime && typeof this.runtime === 'object' && this.worldClock) this.runtime.worldClock = this.worldClock;
       this.config = options.config || global.GameConfig || {};
       this.layerRegistry = options.layerRegistry || CanvasLayerRegistryBase || global.CanvasLayerRegistry || null;
       this.renderer = options.renderer || null;

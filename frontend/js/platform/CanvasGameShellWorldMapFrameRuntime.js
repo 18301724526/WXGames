@@ -42,7 +42,7 @@
         if (!this.previewEnabled || !this.worldMapRenderer || !this.lastGame?.state) return false;
         const frameOptionsBase = {
           ...options,
-          epochNowMs: options.epochNowMs ?? Date.now(),
+          epochNowMs: options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now(),
         };
         const coordinator = this.ensureWorldMapRuntimeCoordinator();
         const runtime = coordinator?.getMapRuntime?.();
@@ -154,8 +154,9 @@
             return;
           }
           if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
-          if (hasActiveWorldExplorerMission(this.lastGame?.state, { epochNowMs: Date.now() })) {
-            if (this.worldMapRenderer) this.renderWorldMapLayerFrame({ force: true, epochNowMs: Date.now() });
+          const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
+          if (hasActiveWorldExplorerMission(this.lastGame?.state, { epochNowMs })) {
+            if (this.worldMapRenderer) this.renderWorldMapLayerFrame({ force: true, epochNowMs });
             this.renderAnimationFrame();
             return;
           }

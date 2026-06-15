@@ -44,7 +44,9 @@
       const topBarBottom = typeof this.renderer.getTopBarBottom === 'function'
         ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
         : 84;
+      const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
       const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+        epochNowMs,
         activeTab: 'military',
         isMapHome: true,
         territoryUiState,
@@ -60,6 +62,7 @@
       const frameContext = this.renderer.lastWorldTileMapContext || null;
       if (frameContext) runtime.lastTileMapContext = frameContext;
       this.renderer.renderWorldMapActorLayer?.(this.state, {
+        epochNowMs,
         activeTab: 'military',
         isMapHome: true,
         territoryUiState,
@@ -184,7 +187,9 @@
       const runtime = coordinator?.getMapRuntime?.();
       if (!runtime || !this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function') return false;
       const territoryUiState = runtime.getCameraUiState?.() || this.territoryUiState;
+      const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now();
       const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+        epochNowMs,
         activeTab: 'military',
         isMapHome: true,
         territoryUiState,
@@ -202,6 +207,7 @@
       const frameContext = this.renderer.lastWorldTileMapContext || null;
       if (frameContext) runtime.lastTileMapContext = frameContext;
       this.renderer.renderWorldMapActorLayer?.(this.state, {
+        epochNowMs,
         activeTab: 'military',
         isMapHome: true,
         territoryUiState,

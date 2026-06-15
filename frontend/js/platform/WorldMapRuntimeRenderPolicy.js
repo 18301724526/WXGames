@@ -1,6 +1,20 @@
 (function (global) {
+  var SharedWorldClock = global.WorldClock;
+  if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
+    try {
+      SharedWorldClock = require('../domain/WorldClock');
+    } catch (error) {
+      SharedWorldClock = null;
+    }
+  }
+
   function resolveEpochNowMs(options = {}, fallbackNowMs = Date.now()) {
-    return options.epochNowMs || fallbackNowMs;
+    if (options.epochNowMs !== null && options.epochNowMs !== undefined) return options.epochNowMs;
+    if (options.serverNowMs !== null && options.serverNowMs !== undefined) return options.serverNowMs;
+    const clockNow = SharedWorldClock?.getEpochNowMs?.(options, Number.NaN);
+    if (Number.isFinite(Number(clockNow))) return clockNow;
+    const fallback = Number(fallbackNowMs);
+    return Number.isFinite(fallback) ? fallback : Date.now();
   }
 
   function isSnapshotOnly(options = {}, runtimeState = {}) {

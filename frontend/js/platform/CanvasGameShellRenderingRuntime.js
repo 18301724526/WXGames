@@ -28,6 +28,11 @@ now() {
       return this.runtime?.now?.() || Date.now();
     },
 
+getWorldEpochNowMs() {
+      const clock = this.worldClock || this.runtime?.worldClock || this.lastGame?.worldClock || global.__WorldClockShared;
+      return clock?.getEpochNowMs?.(Date.now()) ?? Date.now();
+    },
+
 getTabOrder() {
       return ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
     },
@@ -262,7 +267,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const resolvedTerritoryUiState = this.resolveTerritoryUiState(territoryUiState);
       return {
         now: this.now(),
-        epochNowMs: Date.now(),
+        epochNowMs: this.getWorldEpochNowMs?.() ?? Date.now(),
         activeTab: homeView.activeTab,
         mode: 'hud',
         isMapHome: homeView.isMapHome,
@@ -363,7 +368,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
            forceMapHome: homeView.isMapHome,
            allowDefaultMapHome: options.allowDefaultMapHome,
          }),
-         epochNowMs: Date.now(),
+         epochNowMs: this.getWorldEpochNowMs?.() ?? Date.now(),
          activeTab: homeView.activeTab,
          isMapHome: homeView.isMapHome,
        };

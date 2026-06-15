@@ -159,9 +159,11 @@
                 return;
               }
               if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
-              if (hasActiveWorldExplorerMission(this.state, { epochNowMs: Date.now() })) {
+              const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
+              if (hasActiveWorldExplorerMission(this.state, { epochNowMs })) {
                 this.renderRuntimeWorldMap({
                   ...this.buildRenderOptions('military', this.territoryUiState),
+                  epochNowMs,
                   force: true,
                 });
                 this.renderAnimationFrame('military');
@@ -240,6 +242,11 @@
 
       now() {
             return CanvasGameAppRenderScheduler.now(this);
+          },
+
+      getWorldEpochNowMs() {
+            const clock = this.worldClock || this.runtime?.worldClock || global.__WorldClockShared;
+            return clock?.getEpochNowMs?.(Date.now()) ?? Date.now();
           },
 
       wait(ms = 0) {

@@ -45,6 +45,20 @@ test('WorldMapRuntimeRenderPolicy resolves snapshot render context', () => {
   }), false);
 });
 
+test('WorldMapRuntimeRenderPolicy resolves epoch from world clock when option is absent', () => {
+  const context = Policy.createRenderContext({
+    worldClock: {
+      getEpochNowMs() {
+        return 24680;
+      },
+    },
+  }, {
+    dragging: false,
+  });
+
+  assert.equal(context.renderOptions.epochNowMs, 24680);
+});
+
 test('WorldMapRuntimeRenderPolicy preserves runtime throttling rules', () => {
   assert.equal(Policy.shouldThrottleRender({}, {
     nowMs: 110,

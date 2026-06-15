@@ -1,4 +1,12 @@
 (function (global) {
+  var SharedWorldClock = global.WorldClock;
+  if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
+    try {
+      SharedWorldClock = require('../domain/WorldClock');
+    } catch (error) {
+      SharedWorldClock = null;
+    }
+  }
   var TutorialGuideControllerBase = global.TutorialGuideController;
   if (typeof module !== 'undefined' && module.exports && !TutorialGuideControllerBase) {
     try {
@@ -11,6 +19,7 @@
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
       applyState(payload = {}) {
+            this.syncWorldClock?.(payload);
             const loadTrace = global.H5LoadTrace;
             loadTrace?.mark?.('state:apply:start', {
               payload: loadTrace.summarizePayload?.(payload) || null,
@@ -69,6 +78,7 @@
           },
 
       applyApiState(data = {}) {
+            this.syncWorldClock?.(data);
             global.WorldMarchTrace?.log?.('app:applyApiState:input', {
               payload: global.WorldMarchTrace?.summarizeApiPayload?.(data) || null,
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
@@ -86,6 +96,11 @@
           },
 
       syncFromServer(serverState, tutorial, eraProgress) {
+            this.syncWorldClock?.({
+              gameState: serverState,
+              tutorial,
+              eraProgress,
+            });
             const loadTrace = global.H5LoadTrace;
             loadTrace?.mark?.('state:syncFromServer:start', {
               payload: loadTrace.summarizePayload?.({ gameState: serverState }) || null,
@@ -164,6 +179,7 @@
           },
 
       applyHeartbeat(data = {}) {
+            this.syncWorldClock?.(data);
             if (!data || data.gameState) return data;
             const wasReconnecting = this.networkState?.status === 'reconnecting';
             this.networkState = {
@@ -176,6 +192,29 @@
             if (this.canvasShell?.setNetworkState) this.canvasShell.setNetworkState(this.networkState);
             else if (wasReconnecting) this.renderCanvasSurface(this.state?.currentTab);
             return data;
+          },
+
+      ensureWorldClock() {
+            if (this.worldClock) return this.worldClock;
+            this.worldClock = SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
+            if (this.runtime && typeof this.runtime === 'object' && this.worldClock) this.runtime.worldClock = this.worldClock;
+            if (this.canvasShell && typeof this.canvasShell === 'object' && this.worldClock) this.canvasShell.worldClock = this.worldClock;
+            return this.worldClock;
+          },
+
+      syncWorldClock(payload = {}) {
+            const clock = this.ensureWorldClock?.();
+            if (!clock || !payload || typeof payload !== 'object') return false;
+            const synced = clock.updateFromPayload?.(payload) || false;
+            if (synced && this.canvasShell && typeof this.canvasShell === 'object') {
+              this.canvasShell.worldClock = clock;
+            }
+            return synced;
+          },
+
+      getWorldEpochNowMs() {
+            const clock = this.ensureWorldClock?.();
+            return clock?.getEpochNowMs?.(Date.now()) ?? Date.now();
           },
 
       applyConnectionState(status = {}) {

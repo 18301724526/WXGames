@@ -282,7 +282,12 @@
     }
 
     getWorldMapActorNowMs(options = {}) {
-      return options.epochNowMs ?? options.nowMs ?? this.getEpochNowMs();
+      const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
+      if (optionNow !== null && optionNow !== undefined) return optionNow;
+      return SharedWorldTime?.getEpochNowMs?.({
+        ...options,
+        host: this.host || this,
+      }) ?? Date.now();
     }
 
     buildFreshWorldMapActors(state = {}, options = {}) {

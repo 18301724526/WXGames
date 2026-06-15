@@ -15,6 +15,9 @@ function createShell(overrides = {}) {
     getCanvasLayerMetrics() {
       return { width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 };
     },
+    getWorldEpochNowMs() {
+      return 24680;
+    },
     isFogOfWarEnabled() {
       return false;
     },
@@ -149,7 +152,7 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
       return true;
     },
     renderWorldActorLayer(options) {
-      calls.push(['renderActor', options.state.id, options.territoryUiState.worldPanX]);
+      calls.push(['renderActor', options.state.id, options.territoryUiState.worldPanX, options.epochNowMs]);
       if (this.worldMapRuntimeCoordinator?.getMapRuntime) {
         this.worldMapRuntimeCoordinator.getMapRuntime().syncHitTargetsFromRenderer?.({
           preserveOnEmpty: options.preserveRuntimeHitTargetsOnEmpty === true,
@@ -168,7 +171,7 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
     },
     worldMapRenderer: {
       renderWorldMapSnapshotLayer(state, options) {
-        calls.push(['renderSnapshot', state.id, options.topBarBottom, options.waterTimeMs]);
+        calls.push(['renderSnapshot', state.id, options.topBarBottom, options.waterTimeMs, options.epochNowMs]);
         return true;
       },
     },
@@ -177,9 +180,9 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
   assert.equal(shell.refreshWorldMapLayerFromSnapshot(), true);
   assert.deepEqual(calls, [
     ['syncMetrics'],
-    ['renderSnapshot', 'state-1', 91, 123],
+    ['renderSnapshot', 'state-1', 91, 123, 24680],
     ['renderFog'],
-    ['renderActor', 'state-1', 1],
+    ['renderActor', 'state-1', 1, 24680],
     ['syncHitTargetsFromRenderer', { preserveOnEmpty: true }],
     ['markBakedCamera', runtime.camera],
     ['clearTransform'],
