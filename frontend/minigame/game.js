@@ -28,6 +28,7 @@ require('../js/config/TileMapAssetManifest');
 require('../js/config/UnitSpriteManifest');
 require('../js/state/presenters/WorldTileMapTileNormalizer');
 require('../js/state/presenters/WorldTileMapExplorerNormalizer');
+require('../js/state/presenters/WorldTileMapRenderDiagnostics');
 require('../js/state/UIStatePresenterDelegates');
 require('../js/state/UIStatePresenter');
 require('../js/api/GameAPI');

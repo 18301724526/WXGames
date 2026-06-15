@@ -47,6 +47,18 @@
     return null;
   })();
 
+  const sharedRenderDiagnostics = (() => {
+    if (global.WorldTileMapRenderDiagnostics) return global.WorldTileMapRenderDiagnostics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldTileMapRenderDiagnostics');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldTileMapPresenter {
     static toNumber(value, fallback = 0) {
       const number = Number(value);
@@ -110,6 +122,25 @@
 
     static normalizeCoord(coord = {}, fallback = {}) {
       return sharedExplorerNormalizer.normalizeCoord(coord, fallback);
+    }
+
+    static getTileRenderLogState() {
+      if (!this.tileRenderLogState) this.tileRenderLogState = sharedRenderDiagnostics?.createState?.() || null;
+      return this.tileRenderLogState;
+    }
+
+    static resetTileRenderLogStateForTest() {
+      this.tileRenderLogState = null;
+    }
+
+    static recordTileRenderDiagnostics(drawTiles = [], context = {}) {
+      if (!sharedRenderDiagnostics?.record) return;
+      sharedRenderDiagnostics.record(drawTiles, {
+        context,
+        logger: global.ClientOperationLog,
+        normalizeCoord: (tile) => this.normalizeCoord(tile),
+        state: this.getTileRenderLogState(),
+      });
     }
 
     static summarizeCoordForSignature(coord = {}, fallback = {}) {
@@ -410,6 +441,14 @@
           activeScouts: explorerScouts.map((mission) => global.WorldMarchTrace?.summarizeMission?.(mission)),
         },
       );
+      this.recordTileRenderDiagnostics(drawTiles, {
+        version: worldMap.version || 0,
+        rawTileCount: rawTiles.length,
+        plannedTileCount: plannedTiles.length,
+        plannedSiteCount: plannedSites.length,
+        mergedTileCount: mergedTiles.length,
+        activeScouts: explorerScouts,
+      });
       return viewState;
     }
   }

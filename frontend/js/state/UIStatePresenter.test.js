@@ -347,6 +347,61 @@ test('UIStatePresenter keeps known world tile terrain when planned tiles overlap
   assert.equal(knownTile.renderOnly, false);
 });
 
+test('UIStatePresenter logs compact tile render diffs when a tile signature changes', () => {
+  const previousLogger = globalThis.ClientOperationLog;
+  const entries = [];
+  globalThis.ClientOperationLog = {
+    enabled: true,
+    record(type, detail) {
+      entries.push({ type, detail });
+      return entries.at(-1);
+    },
+    recordSampled(type, key, detail) {
+      entries.push({ type, key, detail });
+      return entries.at(-1);
+    },
+  };
+  WorldTileMapPresenter.resetTileRenderLogStateForTest();
+
+  try {
+    UIStatePresenter.buildWorldTileMapViewState({
+      worldMap: {
+        version: 1,
+        seed: 'seed',
+        tiles: [
+          { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', visibility: 'controlled' },
+          { id: 'tile_1_0', q: 1, r: 0, terrain: 'plains', visibility: 'scouted' },
+        ],
+      },
+      territories: [],
+    });
+    UIStatePresenter.buildWorldTileMapViewState({
+      worldMap: {
+        version: 2,
+        seed: 'seed',
+        tiles: [
+          { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', visibility: 'controlled' },
+          { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', visibility: 'scouted' },
+        ],
+      },
+      territories: [],
+    });
+  } finally {
+    WorldTileMapPresenter.resetTileRenderLogStateForTest();
+    globalThis.ClientOperationLog = previousLogger;
+  }
+
+  const diff = entries.find((entry) => entry.type === 'worldMap:tileRenderDiff');
+  assert.equal(Boolean(diff), true);
+  assert.equal(diff.detail.changedCount, 1);
+  assert.equal(diff.detail.addedCount, 0);
+  assert.equal(diff.detail.removedCount, 0);
+  assert.equal(diff.detail.changed[0].tileId, 'tile_1_0');
+  assert.equal(diff.detail.changed[0].before.includes('terrain=plains'), true);
+  assert.equal(diff.detail.changed[0].after.includes('terrain=forest'), true);
+  assert.equal(diff.detail.changed.length <= 16, true);
+});
+
 test('UIStatePresenter reveals manual world march planned tiles by server-confirmed state', () => {
   const territoryState = {
     worldMap: {
@@ -1304,6 +1359,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'BattleScenePresenter.js',
     'WorldTileMapTileNormalizer.js',
     'WorldTileMapExplorerNormalizer.js',
+    'WorldTileMapRenderDiagnostics.js',
     'WorldTileMapPresenter.js',
     'ShellPresenter.js',
     'TalentPolicyPresenter.js',
