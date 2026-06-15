@@ -8,8 +8,8 @@ function getBuildingLevel(buildings, buildingId) {
   return BuildingState.getLevel(buildings, buildingId);
 }
 
-function createInitialGameState(playerId) {
-  return GameStateNormalizer.createInitialGameState(playerId);
+function createInitialGameState(playerId, options = {}) {
+  return GameStateNormalizer.createInitialGameState(playerId, options);
 }
 
 function normalizeState(rawState) {

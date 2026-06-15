@@ -1,5 +1,24 @@
 function registerPlayerRoutes(app, deps) {
-  const { authMiddleware, authService, repository, gameStateService, logService } = deps;
+  const {
+    authMiddleware,
+    authService,
+    repository,
+    gameStateService,
+    logService,
+    spawnLifecycleService,
+  } = deps;
+
+  function createInitialStateForPlayer(playerId) {
+    return spawnLifecycleService?.createInitialStateForPlayer
+      ? spawnLifecycleService.createInitialStateForPlayer(playerId)
+      : gameStateService.createInitialGameState(playerId);
+  }
+
+  function createResetStateForPlayer(playerId) {
+    return spawnLifecycleService?.resetInitialStateForPlayer
+      ? spawnLifecycleService.resetInitialStateForPlayer(playerId)
+      : createInitialStateForPlayer(playerId);
+  }
 
   function loadProjection(playerId) {
     return repository.getClientProjectionForPlayer?.(playerId) || {};
@@ -23,7 +42,7 @@ function registerPlayerRoutes(app, deps) {
       (playerId) => repository.findByPlayerId(playerId),
       (gameState, offlineSeconds) => gameStateService.calculateOfflineIncome(gameState, offlineSeconds),
       (gameState) => repository.save(gameState),
-      (playerId) => gameStateService.createInitialGameState(playerId),
+      createInitialStateForPlayer,
     );
     if (result.error) {
       return res.status(403).json({ error: result.error, message: result.message || result.error });
@@ -52,7 +71,7 @@ function registerPlayerRoutes(app, deps) {
   app.post('/api/player/reset', authMiddleware, (req, res) => {
     const result = authService.resetPlayer(
       req.playerId,
-      (playerId) => gameStateService.createInitialGameState(playerId),
+      createResetStateForPlayer,
       (gameState) => repository.save(gameState),
       (playerId, gameState) => repository.resetPlayerState(playerId, gameState),
     );

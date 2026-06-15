@@ -140,6 +140,13 @@ Manual test target:
 
 Wire allocation into first login and reset.
 
+Status:
+
+- `SpawnLifecycleService` owns first-login and reset spawn allocation.
+- First login reuses an existing reservation when present, otherwise allocates and reserves a valid real-world spawn.
+- Reset allocates a fresh spawn, avoids the player's previous spawn and other occupied/reserved coordinates, then clears the player's old save/shared ownership through the existing reset path.
+- `AuthService` remains callback-driven; spawn/world rules stay outside auth.
+
 Reset semantics for this project:
 
 - release only territories owned by the resetting player
@@ -150,7 +157,7 @@ Reset semantics for this project:
 Test target:
 
 ```bash
-node --test backend/tests/GameStateRepository.test.js backend/tests/GameStateProjectionArchitecture.test.js backend/tests/SpawnAllocator.test.js
+node --test backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js backend/tests/GameStateProjectionArchitecture.test.js backend/tests/SpawnAllocator.test.js
 ```
 
 Manual test target:

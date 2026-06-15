@@ -20,6 +20,7 @@ const registerVersionRoutes = require('./routes/versionRoutes');
 const registerMetricsRoutes = require('./routes/metricsRoutes');
 const registerClientEventsRoutes = require('./routes/clientEventsRoutes');
 const gameStateService = require('./services/GameStateService');
+const { SpawnLifecycleService } = require('./services/spawn/SpawnLifecycleService');
 const PresenceService = require('./services/realtime/PresenceService');
 const { BuildingConfig, initializeRuntimeConfig, getRuntimeConfigStatus } = require('./services/config/GameplayConfigRuntime');
 const SecurityConfig = require('./config/SecurityConfig');
@@ -49,6 +50,10 @@ const presenceService = new PresenceService({
   maxEntries: process.env.PRESENCE_MAX_ENTRIES,
 });
 const authMiddleware = createAuthMiddleware(authService);
+const spawnLifecycleService = new SpawnLifecycleService({
+  repository,
+  gameStateService,
+});
 const adminMiddleware = createAdminMiddleware();
 const versionService = new VersionService();
 const observabilityService = new ObservabilityService();
@@ -129,7 +134,7 @@ registerOpsRoutes(app, { opsAuthService, opsControlService });
 
 app.use(createMaintenanceMiddleware({ opsControlService }));
 
-registerPlayerRoutes(app, { authMiddleware, authService, repository, gameStateService, logService });
+registerPlayerRoutes(app, { authMiddleware, authService, repository, gameStateService, logService, spawnLifecycleService });
 registerGameRoutes(app, { authMiddleware, repository, gameStateService, presenceService });
 registerBuildingRoutes(app, { authMiddleware, repository, gameStateService });
 

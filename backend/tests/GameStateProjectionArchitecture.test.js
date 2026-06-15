@@ -608,6 +608,81 @@ test('reset route returns the newly created state without reloading or re-normal
   ]);
 });
 
+test('reset route uses spawn lifecycle service when creating the new state', () => {
+  const { app, routes } = createAppHarness();
+  const resetState = createNormalizedRouteState('projection-reset-spawn-test');
+  resetState.territories = [{ id: 'capital', x: 18, y: -4, type: 'capital', owner: 'player', status: 'occupied' }];
+  resetState.worldMap = { ...resetState.worldMap, origin: { q: 18, r: -4 } };
+  const calls = [];
+  const authService = {
+    resetPlayer(playerId, getDefaultGameState, _saveGameState, resetGameState) {
+      calls.push(`reset:${playerId}`);
+      const gameState = getDefaultGameState(playerId);
+      resetGameState(playerId, gameState);
+      return { success: true, message: 'reset', gameState };
+    },
+  };
+  const repository = {
+    resetPlayerState(playerId, gameState) {
+      calls.push(`resetPlayerState:${playerId}:${gameState.worldMap.origin.q},${gameState.worldMap.origin.r}`);
+    },
+    getClientProjectionForPlayer(playerId) {
+      calls.push(`projection:${playerId}`);
+      return { sharedWorldTerritories: [] };
+    },
+  };
+  const gameStateService = {
+    createInitialGameState() {
+      throw new Error('reset route must use spawn lifecycle service when it is provided');
+    },
+    getClientGameState() {
+      throw new Error('reset route must not use raw client projection');
+    },
+    calculateEraProgress() {
+      throw new Error('reset route must not use raw era progress');
+    },
+    getClientGameStateFromNormalized(gameState) {
+      calls.push('getClientGameStateFromNormalized');
+      return { playerId: gameState.playerId, origin: gameState.worldMap.origin };
+    },
+    calculateEraProgressFromNormalized() {
+      calls.push('calculateEraProgressFromNormalized');
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  const spawnLifecycleService = {
+    resetInitialStateForPlayer(playerId) {
+      calls.push(`spawnReset:${playerId}`);
+      return { ...clone(resetState), playerId };
+    },
+  };
+  registerPlayerRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    authService,
+    repository,
+    gameStateService,
+    spawnLifecycleService,
+    logService: { getPlayerLogs: () => [] },
+  });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/player/reset');
+
+  const res = invokeRoute(route, {
+    playerId: 'projection-reset-spawn-test',
+    body: {},
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.payload.gameState.origin, { q: 18, r: -4 });
+  assert.deepEqual(calls, [
+    'reset:projection-reset-spawn-test',
+    'spawnReset:projection-reset-spawn-test',
+    'resetPlayerState:projection-reset-spawn-test:18,-4',
+    'projection:projection-reset-spawn-test',
+    'getClientGameStateFromNormalized',
+    'calculateEraProgressFromNormalized',
+  ]);
+});
+
 test('login route normalizes once and assembles the response from normalized-only projections', () => {
   const { app, routes } = createAppHarness();
   const rawState = createNormalizedRouteState('projection-login-test');
@@ -691,6 +766,95 @@ test('login route normalizes once and assembles the response from normalized-onl
     'save:projection-login-test',
     'normalizeState',
     'projection:projection-login-test',
+    'getClientGameStateFromNormalized',
+    'calculateEraProgressFromNormalized',
+  ]);
+});
+
+test('login route passes spawn lifecycle creation into auth service for missing states', () => {
+  const { app, routes } = createAppHarness();
+  const createdState = createNormalizedRouteState('projection-login-spawn-test');
+  createdState.territories = [{ id: 'capital', x: -18, y: 6, type: 'capital', owner: 'player', status: 'occupied' }];
+  createdState.worldMap = { ...createdState.worldMap, origin: { q: -18, r: 6 } };
+  const calls = [];
+  const authService = {
+    loginPlayer(username, password, _getGameState, _calculateOfflineIncome, _saveGameState, getDefaultGameState) {
+      calls.push(`login:${username}:${password}`);
+      const gameState = getDefaultGameState(username);
+      return {
+        playerId: username,
+        username,
+        token: 'login-token',
+        gameState,
+        offlineIncome: null,
+      };
+    },
+  };
+  const repository = {
+    findByPlayerId() {
+      throw new Error('login route test auth stub owns missing-state creation');
+    },
+    save() {
+      throw new Error('login route test auth stub owns missing-state persistence');
+    },
+    getClientProjectionForPlayer(playerId) {
+      calls.push(`projection:${playerId}`);
+      return { sharedWorldTerritories: [] };
+    },
+  };
+  const gameStateService = {
+    createInitialGameState() {
+      throw new Error('login route must use spawn lifecycle service when it is provided');
+    },
+    calculateOfflineIncome() {
+      throw new Error('offline income should not be needed in this test');
+    },
+    normalizeState(gameState) {
+      calls.push('normalizeState');
+      return gameState;
+    },
+    getClientGameState() {
+      throw new Error('login route must not use raw client projection');
+    },
+    calculateEraProgress() {
+      throw new Error('login route must not use raw era progress');
+    },
+    getClientGameStateFromNormalized(gameState) {
+      calls.push('getClientGameStateFromNormalized');
+      return { playerId: gameState.playerId, origin: gameState.worldMap.origin };
+    },
+    calculateEraProgressFromNormalized() {
+      calls.push('calculateEraProgressFromNormalized');
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  const spawnLifecycleService = {
+    createInitialStateForPlayer(playerId) {
+      calls.push(`spawnCreate:${playerId}`);
+      return { ...clone(createdState), playerId };
+    },
+  };
+  registerPlayerRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    authService,
+    repository,
+    gameStateService,
+    spawnLifecycleService,
+    logService: { getPlayerLogs: () => [] },
+  });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/player/login');
+
+  const res = invokeRoute(route, {
+    body: { username: 'projection-login-spawn-test', password: '123456' },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.payload.gameState.origin, { q: -18, r: 6 });
+  assert.deepEqual(calls, [
+    'login:projection-login-spawn-test:123456',
+    'spawnCreate:projection-login-spawn-test',
+    'normalizeState',
+    'projection:projection-login-spawn-test',
     'getClientGameStateFromNormalized',
     'calculateEraProgressFromNormalized',
   ]);
