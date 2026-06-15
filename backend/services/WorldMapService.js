@@ -17,6 +17,7 @@ const {
   WORLD_MAP_VERSION,
   WORLD_TOPOLOGY_VERSION,
 } = require('./worldMap/WorldMapConstants');
+const { getSpawnOrigin } = require('./spawn/SpawnAssignment');
 const {
   clone,
   getCanonicalTileId,
@@ -60,9 +61,10 @@ function normalizeScoutTrail(rawTrail) {
   };
 }
 
-function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date()) {
-  const tiles = getRevealArea(0, 0, START_REVEAL_RADIUS).map((coord) => {
-    const isCapital = coord.q === 0 && coord.r === 0;
+function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date(), options = {}) {
+  const origin = getSpawnOrigin(options.spawn || options.origin || {});
+  const tiles = getRevealArea(origin.q, origin.r, START_REVEAL_RADIUS).map((coord) => {
+    const isCapital = coord.q === origin.q && coord.r === origin.r;
     return createTile(seed, coord.q, coord.r, now, {
       terrain: isCapital ? 'capital' : undefined,
       siteId: isCapital ? 'capital' : null,
@@ -75,17 +77,18 @@ function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date()) {
     seed,
     generationAuthority: createWorldMapGenerationMetadata(seed),
     topology: WorldMapTopology.createWorldTopologyMetadata(),
-    origin: { q: 0, r: 0 },
+    origin: { q: origin.q, r: origin.r },
     tiles,
     scoutTrails: [],
   };
 }
 
-function ensureStartingArea(tileMap, seed, now = new Date()) {
-  for (const coord of getRevealArea(0, 0, START_REVEAL_RADIUS)) {
+function ensureStartingArea(tileMap, seed, now = new Date(), options = {}) {
+  const origin = getSpawnOrigin(options.spawn || options.origin || {});
+  for (const coord of getRevealArea(origin.q, origin.r, START_REVEAL_RADIUS)) {
     const canonicalId = getCanonicalTileId(coord.q, coord.r);
     const existing = tileMap.get(canonicalId);
-    const isCapital = coord.q === 0 && coord.r === 0;
+    const isCapital = coord.q === origin.q && coord.r === origin.r;
     if (existing) {
       if (isCapital) {
         tileMap.set(canonicalId, normalizeTile({
@@ -123,6 +126,7 @@ function getWorldMapVersion(rawWorldMap) {
 function normalizeWorldMap(rawWorldMap, options = {}) {
   const seed = options.seed || rawWorldMap?.seed || DEFAULT_WORLD_SEED;
   const now = options.now || new Date();
+  const origin = getSpawnOrigin(options.spawn || options.origin || rawWorldMap?.origin || {});
   const tileMap = new Map();
   for (const rawTile of Array.isArray(rawWorldMap?.tiles) ? rawWorldMap.tiles : []) {
     const tile = normalizeTile(rawTile, seed, now);
@@ -131,7 +135,7 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
       tileMap.set(canonicalKey, mergeTiles(tileMap.get(canonicalKey), tile, seed, now));
     }
   }
-  ensureStartingArea(tileMap, seed, now);
+  ensureStartingArea(tileMap, seed, now, { origin });
   const scoutTrails = (Array.isArray(rawWorldMap?.scoutTrails) ? rawWorldMap.scoutTrails : [])
     .map(normalizeScoutTrail)
     .filter(Boolean);
@@ -141,8 +145,8 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
     generationAuthority: createWorldMapGenerationMetadata(seed),
     topology: WorldMapTopology.createWorldTopologyMetadata(rawWorldMap?.topology),
     origin: {
-      q: toInteger(rawWorldMap?.origin?.q, 0),
-      r: toInteger(rawWorldMap?.origin?.r, 0),
+      q: origin.q,
+      r: origin.r,
     },
     tiles: [...tileMap.values()].sort(compareTiles),
     scoutTrails,
@@ -151,7 +155,7 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
 
 function ensureWorldMap(gameState, now = new Date()) {
   const seed = getSeed(gameState);
-  gameState.worldMap = normalizeWorldMap(gameState.worldMap, { seed, now });
+  gameState.worldMap = normalizeWorldMap(gameState.worldMap, { seed, now, origin: gameState.worldMap?.origin });
   return gameState.worldMap;
 }
 

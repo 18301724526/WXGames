@@ -1,4 +1,4 @@
-const SpawnScoring = require('../services/spawn/SpawnScoring');
+const { normalizeSpawnAssignment } = require('../services/spawn/SpawnAssignment');
 
 const DEFAULT_WORLD_ID = 'default';
 
@@ -13,21 +13,6 @@ function parseJson(value, fallback = null) {
 function toInteger(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
-
-function normalizeSpawnAssignment(assignment = {}) {
-  const raw = assignment && typeof assignment === 'object' ? assignment : {};
-  const q = toInteger(raw.q ?? raw.x, 0);
-  const r = toInteger(raw.r ?? raw.y, 0);
-  return {
-    ...raw,
-    q,
-    r,
-    x: q,
-    y: r,
-    spawnKey: raw.spawnKey || SpawnScoring.getCoordinateKey(q, r),
-    worldId: raw.worldId || DEFAULT_WORLD_ID,
-  };
 }
 
 function getTerritoryCoord(territory = {}) {
@@ -216,5 +201,4 @@ class SpawnAuthorityRepository {
 
 module.exports = {
   SpawnAuthorityRepository,
-  normalizeSpawnAssignment,
 };

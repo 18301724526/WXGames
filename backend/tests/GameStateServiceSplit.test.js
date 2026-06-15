@@ -101,6 +101,39 @@ test('new tutorial client state exposes the first house before era one unlocks b
   assert.equal(clientState.resources.food >= 110, true);
 });
 
+test('initial game state can be created around an assigned real-world spawn', () => {
+  const initial = GameStateNormalizer.createInitialGameState('spawn-aware-initial-state-test', {
+    now: new Date('2026-06-16T00:00:00.000Z'),
+    spawn: {
+      q: 48,
+      r: -12,
+      spawnKey: '48,-12',
+      tutorialTarget: { q: 49, r: -12 },
+    },
+  });
+  const capital = initial.territories.find((territory) => territory.id === 'capital');
+  const capitalTile = initial.worldMap.tiles.find((tile) => tile.q === 48 && tile.r === -12);
+
+  assert.equal(capital.x, 48);
+  assert.equal(capital.y, -12);
+  assert.deepEqual(initial.worldMap.origin, { q: 48, r: -12 });
+  assert.equal(capitalTile.siteId, 'capital');
+  assert.equal(capitalTile.visibility, 'controlled');
+  assert.equal(initial.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), false);
+});
+
+test('initial game state keeps the legacy origin when no spawn assignment is provided', () => {
+  const initial = GameStateNormalizer.createInitialGameState('legacy-origin-initial-state-test', {
+    now: new Date('2026-06-16T00:00:00.000Z'),
+  });
+  const capital = initial.territories.find((territory) => territory.id === 'capital');
+
+  assert.equal(capital.x, 0);
+  assert.equal(capital.y, 0);
+  assert.deepEqual(initial.worldMap.origin, { q: 0, r: 0 });
+  assert.equal(initial.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), true);
+});
+
 test('guided first city settlement soldiers survive state normalization', () => {
   const siteId = 'site_3_1';
   const rawState = {

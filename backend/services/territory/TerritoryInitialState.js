@@ -2,6 +2,7 @@ const {
   MAX_NAME_LENGTH,
   SITE_ART,
 } = require('./TerritoryConstants');
+const { getSpawnOrigin } = require('../spawn/SpawnAssignment');
 
 function createInitialPolity() {
   return {
@@ -12,11 +13,12 @@ function createInitialPolity() {
   };
 }
 
-function createCapital(now = new Date().toISOString()) {
+function createCapital(now = new Date().toISOString(), options = {}) {
+  const origin = getSpawnOrigin(options.spawn || options.origin || {});
   return {
     id: 'capital',
-    x: 0,
-    y: 0,
+    x: origin.q,
+    y: origin.r,
     naturalName: '起源之地',
     cityName: '首都',
     type: 'capital',
@@ -36,8 +38,8 @@ function createCapital(now = new Date().toISOString()) {
   };
 }
 
-function createInitialTerritories(now = new Date().toISOString()) {
-  return [createCapital(now)];
+function createInitialTerritories(now = new Date().toISOString(), options = {}) {
+  return [createCapital(now, options)];
 }
 
 function normalizePolity(rawPolity) {

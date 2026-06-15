@@ -14,9 +14,12 @@ const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateMigrationPipeline = require('./GameStateMigrationPipeline');
 
-function createInitialGameState(playerId) {
+function createInitialGameState(playerId, options = {}) {
+  const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+  const nowIso = now.toISOString();
   const buildings = BuildingState.createInitialBuildingState();
   const buildingEffects = BuildingEffectCalculator.calculate(buildings);
+  const spawn = options.spawn || options.spawnAssignment || null;
   return {
     playerId,
     saveMetadata: GameStateMigrationPipeline.createSaveMetadata(),
@@ -27,7 +30,7 @@ function createInitialGameState(playerId) {
     techs: TechTreeService.normalizeTechState({}),
     techEffects: {},
     currentEra: 0,
-    eraHistory: [{ era: 0, advancedAt: new Date().toISOString() }],
+    eraHistory: [{ era: 0, advancedAt: nowIso }],
     happiness: 100,
     gameDay: 1,
     eventQueue: [],
@@ -43,8 +46,8 @@ function createInitialGameState(playerId) {
     softGuideState: {},
     military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     polity: TerritoryService.createInitialPolity(),
-    territories: TerritoryService.createInitialTerritories(),
-    worldMap: WorldMapService.createInitialWorldMap(WorldMapService.DEFAULT_WORLD_SEED),
+    territories: TerritoryService.createInitialTerritories(nowIso, { spawn }),
+    worldMap: WorldMapService.createInitialWorldMap(WorldMapService.DEFAULT_WORLD_SEED, now, { spawn }),
     activeCityId: CityService.CAPITAL_CITY_ID,
     cities: {},
     talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
@@ -57,7 +60,7 @@ function createInitialGameState(playerId) {
     worldAi: WorldAiExplorerService.normalizeWorldAi(),
     warMissions: [],
     scoutReports: [],
-    updatedAt: new Date().toISOString(),
+    updatedAt: nowIso,
   };
 }
 

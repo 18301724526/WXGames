@@ -119,6 +119,12 @@ Allow initial state creation to receive a spawn assignment and place:
 - initial reveal tiles
 - capital tile binding
 
+Status:
+
+- `GameStateNormalizer.createInitialGameState()` accepts an optional `spawn` / `spawnAssignment`.
+- `TerritoryInitialState` and `WorldMapService` can create the capital, origin, and starting reveal area around that assignment.
+- Calling without a spawn assignment preserves the legacy `(0,0)` behavior until login/reset integration is wired.
+
 Test target:
 
 ```bash
