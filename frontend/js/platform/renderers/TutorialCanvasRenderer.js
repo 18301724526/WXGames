@@ -126,7 +126,14 @@
       if (hitTarget) return this.inflateRect(hitTarget, intro.step === 'march' ? 0 : 12);
       const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
       if (!anchor) return null;
-      return this.inflateRect(anchor.hitRect, intro.step === 'march' ? 0 : 12);
+      const target = this.inflateRect(anchor.hitRect, intro.step === 'march' ? 0 : 12);
+      target.action = target.action || {
+        type: 'openWorldSite',
+        siteId: anchor.site?.id || anchor.siteId || capitalCityId,
+        tileId: anchor.tile?.id || anchor.tileId || '',
+        inputSurface: 'worldMap',
+      };
+      return target;
     }
 
     resolveTutorialIntroUnitTarget(intro = {}, state = {}, options = {}) {
@@ -276,6 +283,12 @@
         { left: rect.x, top: rect.y, width: rect.width, height: rect.height },
         { allowedAction: target.action || null },
       );
+      if (target.action?.type) {
+        this.addHitTarget(
+          { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          target.action,
+        );
+      }
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
       this.ctx.fillRect(0, 0, this.width, rect.y);
       this.ctx.fillRect(0, rect.y + rect.height, this.width, Math.max(0, this.height - rect.y - rect.height));

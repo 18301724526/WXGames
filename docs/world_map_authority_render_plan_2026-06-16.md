@@ -453,6 +453,41 @@ Manual/browser test target:
 - Login `test1` and only check the starting tutorial/capital view.
 - Pass condition: API/client state has exactly one capital tile at `worldMap.origin`; the canvas highlights the current capital, not stale `tile_0_0` or an old `123` city.
 
+## Step 14 - Tutorial Capital Anchor Remains Clickable
+
+Evidence:
+
+- Real online playtest on deployed commit `3f487610d6ce600e22cf8d17ce6455f0265fa7c0` failed at `introStep = city`.
+- The API state for the test account had `worldMap.origin = { q: 28, r: -7 }`, 25 visible `worldMap.tiles`, and one `capital` tile at `tile_28_-7`.
+- The frontend world-tile view cache also had 25 tiles and a `capital` site, so this was not a backend 1-tile visibility failure.
+- The final main HUD hit target list had no `openWorldSite`; it only had drag/background/UI targets and the tutorial shield.
+- `TutorialCanvasRenderer.resolveTutorialIntroTarget()` could fall back to `getWorldSiteCanvasAnchor()` for the visual spotlight, but the anchor did not always carry an action. That produced a visible tutorial highlight without a click-through `openWorldSite` target.
+
+Scope:
+
+- Tutorial intro renderer hit target boundary only.
+- Do not change backend spawn, reset lifecycle, world-map projection, route planning, march interpolation, or tile rendering.
+- Do not create map facts. Only attach an input action to an already resolved current-capital canvas anchor.
+
+Implementation rule:
+
+- If the tutorial intro finds an existing `openWorldSite` target, keep using it.
+- If it falls back to a world-site canvas anchor for the current capital, synthesize the same `openWorldSite` input action from that anchor's `siteId`/`tileId`.
+- The spotlight focus rect itself must register that action so the tutorial shield can pass the intended tap through.
+
+Automated test target:
+
+```bash
+node --test frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/CanvasGameShell.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Use a fresh or reset tutorial account at the first city intro dialogue.
+- Only click the highlighted/visible capital area once.
+- Pass condition: the intro advances to the next tutorial step or opens the capital flow; it must not stay stuck on the `点一下首都看看` dialogue and must not open reset confirmation.
+
 ## Non-Goals
 
 - No frontend redesign.

@@ -115,6 +115,36 @@ test('TutorialCanvasRenderer resolves intro targets and keeps tutorial shield hi
   assert.equal(host.hitTargets.some((target) => target.action.allowedAction?.type === 'openWorldSite'), true);
 });
 
+test('TutorialCanvasRenderer makes anchor-resolved intro capital clickable', () => {
+  const host = createHost({
+    getWorldSiteCanvasAnchor(siteId) {
+      return {
+        siteId,
+        tile: { id: 'tile_28_-7' },
+        site: { id: siteId },
+        hitRect: { x: 80, y: 120, width: 64, height: 48 },
+      };
+    },
+  });
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  const rendered = renderer.renderTutorialIntro({}, {
+    tutorialIntro: {
+      active: true,
+      step: 'city',
+      capitalCityId: 'capital',
+      advisorName: 'Advisor',
+      messages: { city: 'Tap the city.' },
+    },
+  });
+
+  const capitalTarget = host.hitTargets.find((target) => target.action.type === 'openWorldSite');
+  assert.equal(rendered, true);
+  assert.equal(capitalTarget.action.siteId, 'capital');
+  assert.equal(capitalTarget.action.tileId, 'tile_28_-7');
+  assert.equal(host.hitTargets.some((target) => target.action.allowedAction?.type === 'openWorldSite'), true);
+});
+
 test('CanvasGameRenderer exposes tutorial helpers through the tutorial renderer facade', () => {
   const renderer = new CanvasGameRenderer({
     ctx: {},
