@@ -583,6 +583,102 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
 });
 
+test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time on the actor layer', () => {
+  const startedAt = new Date('2026-06-15T00:00:00.000Z').getTime();
+  const mission = {
+    id: 'return-repro-1',
+    status: 'active',
+    origin: { q: 1, r: 0, tileId: 'tile_1_0' },
+    homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [{ q: 0, r: 0, step: 1, tileId: 'tile_0_0', revealed: false }],
+    target: { q: 0, r: 0, tileId: 'tile_0_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    nextStepAt: new Date(startedAt + 10000).toISOString(),
+    completesAt: new Date(startedAt + 10000).toISOString(),
+    stepDurationMs: 10000,
+    stepDurationSeconds: 10,
+  };
+  const actorContext = {
+    actors: [{
+      id: mission.id,
+      missionId: mission.id,
+      current: { q: 1, r: 0, segmentProgress: 0, progress: 0 },
+    }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: { selectedWorldActorId: mission.id },
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: actorContext,
+    renderWorldActors(actors, viewport, geometry) {
+      host.calls.push(['renderWorldActors', actors, viewport, geometry]);
+      return true;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapActorLayer({
+    worldExplorerState: { activeMission: mission },
+  }, {
+    activeTab: 'military',
+    isMapHome: true,
+    territoryUiState: actorContext.uiState,
+    epochNowMs: startedAt + 5000,
+  });
+  const actorsCall = host.calls.find((call) => call[0] === 'renderWorldActors');
+
+  assert.equal(rendered, true);
+  assert.equal(actorsCall[1][0].current.q, 0.5);
+  assert.equal(actorsCall[1][0].current.segmentProgress, 0.5);
+  assert.equal(host.lastMapHomeWorldHudContext.actors[0].current.q, 0.5);
+});
+
+test('WorldMapLayerCanvasRenderer drops stale mission actors after they return home', () => {
+  const completedAt = new Date('2026-06-15T00:00:10.000Z').getTime();
+  const mission = {
+    id: 'return-home-1',
+    status: 'idle',
+    origin: { q: 1, r: 0, tileId: 'tile_1_0' },
+    homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [{ q: 0, r: 0, step: 1, tileId: 'tile_0_0', revealed: true }],
+    target: { q: 0, r: 0, tileId: 'tile_0_0' },
+    position: { q: 0, r: 0, tileId: 'tile_0_0' },
+    startedAt: new Date(completedAt - 10000).toISOString(),
+    nextStepAt: null,
+    completesAt: new Date(completedAt).toISOString(),
+    completedAt: new Date(completedAt).toISOString(),
+    stepDurationMs: 10000,
+    stepDurationSeconds: 10,
+  };
+  const actorContext = {
+    actors: [
+      {
+        id: mission.id,
+        missionId: mission.id,
+        current: { q: 0.2, r: 0, segmentProgress: 0.8, progress: 0.8 },
+      },
+      { id: 'non-mission-overlay', current: { q: 2, r: 0 } },
+    ],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({ lastWorldTileMapContext: actorContext });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const context = renderer.getWorldMapActorLayerContext({
+    worldExplorerState: { idleMissions: [mission] },
+  }, {
+    epochNowMs: completedAt + 1000,
+  });
+
+  assert.deepEqual(context.actors.map((actor) => actor.id), ['non-mission-overlay']);
+});
+
 test('WorldMapLayerCanvasRenderer keeps current layer untouched when preserved snapshot misses', () => {
   const host = createHost({
     renderWorldTileSnapshotCache(...args) {

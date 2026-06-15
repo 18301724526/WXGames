@@ -225,11 +225,7 @@
       const contextActors = Array.isArray(lastContext?.actors)
         ? lastContext.actors
         : (Array.isArray(lastContext?.renderSnapshot?.actors) ? lastContext.renderSnapshot.actors : []);
-      const actors = contextActors.length || !SharedWorldMarchSystem?.buildActors
-        ? contextActors
-        : SharedWorldMarchSystem.buildActors(state.worldExplorerState || {}, {
-          nowMs: options.epochNowMs ?? options.nowMs ?? this.getEpochNowMs(),
-        });
+      const actors = this.resolveWorldMapActors(state, contextActors, options);
       this.lastMapHomeWorldHudContext = {
         actors,
         frame,
@@ -257,11 +253,7 @@
       const contextActors = Array.isArray(context.actors)
         ? context.actors
         : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []);
-      const actors = contextActors.length || !SharedWorldMarchSystem?.buildActors
-        ? contextActors
-        : SharedWorldMarchSystem.buildActors(state.worldExplorerState || {}, {
-          nowMs: options.epochNowMs ?? options.nowMs ?? this.getEpochNowMs(),
-        });
+      const actors = this.resolveWorldMapActors(state, contextActors, options);
       return {
         actors,
         frame: context.frame || renderSnapshot?.frame || {},
@@ -271,6 +263,69 @@
         uiState,
         viewport: context.viewport || renderSnapshot?.viewport || {},
       };
+    }
+
+    hasWorldExplorerMissions(state = {}) {
+      return this.getWorldExplorerMissionIds(state).size > 0;
+    }
+
+    getWorldExplorerMissionIds(state = {}) {
+      const explorer = state.worldExplorerState || {};
+      const ids = new Set();
+      const append = (mission) => {
+        if (mission?.id) ids.add(String(mission.id));
+      };
+      (Array.isArray(explorer.missions) ? explorer.missions : []).forEach(append);
+      append(explorer.activeMission);
+      (Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []).forEach(append);
+      return ids;
+    }
+
+    getWorldMapActorNowMs(options = {}) {
+      return options.epochNowMs ?? options.nowMs ?? this.getEpochNowMs();
+    }
+
+    buildFreshWorldMapActors(state = {}, options = {}) {
+      if (!SharedWorldMarchSystem?.buildActors || !this.hasWorldExplorerMissions(state)) return [];
+      const actors = SharedWorldMarchSystem.buildActors(state.worldExplorerState || {}, {
+        nowMs: this.getWorldMapActorNowMs(options),
+      });
+      return Array.isArray(actors) ? actors : [];
+    }
+
+    getActorIdentityKeys(actor = {}) {
+      return [actor?.id, actor?.missionId]
+        .map((key) => String(key || ''))
+        .filter(Boolean);
+    }
+
+    resolveWorldMapActors(state = {}, contextActors = [], options = {}) {
+      const actors = Array.isArray(contextActors) ? contextActors : [];
+      const freshActors = this.buildFreshWorldMapActors(state, options);
+      const missionIds = this.getWorldExplorerMissionIds(state);
+      if (!freshActors.length) {
+        if (!missionIds.size) return actors;
+        return actors.filter((actor) => !this.getActorIdentityKeys(actor).some((key) => missionIds.has(key)));
+      }
+      if (!actors.length) return freshActors;
+
+      const freshByKey = new Map();
+      freshActors.forEach((actor) => {
+        this.getActorIdentityKeys(actor).forEach((key) => freshByKey.set(key, actor));
+      });
+      const usedFreshActors = new Set();
+      const mergedActors = actors.map((actor) => {
+        const freshActor = this.getActorIdentityKeys(actor)
+          .map((key) => freshByKey.get(key))
+          .find(Boolean);
+        if (!freshActor) return actor;
+        usedFreshActors.add(freshActor);
+        return freshActor;
+      });
+      freshActors.forEach((actor) => {
+        if (!usedFreshActors.has(actor)) mergedActors.push(actor);
+      });
+      return mergedActors;
     }
 
     publishWorldMapActorLayerContext(context = null) {
