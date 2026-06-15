@@ -83,6 +83,19 @@
       return this.renderWorldMarchHud(options.state || state, uiState, actors, viewport, geometry, frame);
     }
 
+    isCanvasDebugResetBlocked(options = {}) {
+      return Boolean(
+        options.tutorialAdvisorDialogue
+        || options.tutorialIntro?.active
+        || options.tutorialHighlight,
+      );
+    }
+
+    renderCanvasDebugResetIfAllowed(options = {}) {
+      if (this.isCanvasDebugResetBlocked(options)) return false;
+      return this.renderCanvasDebugResetButton?.(options) || false;
+    }
+
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.beginFrame(options);
@@ -124,7 +137,7 @@
         this.renderFloatingTexts(options.floatingTexts || []);
         this.renderRewardReveal(options.rewardReveal || null);
         this.renderNetworkOverlay(options.network || null);
-        this.renderCanvasDebugResetButton?.(options);
+        this.renderCanvasDebugResetIfAllowed(options);
         this.renderConfirmDialog?.(options.confirmDialog || null);
         this.endFrame(options);
         return;
@@ -186,7 +199,7 @@
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
-      this.renderCanvasDebugResetButton?.(options);
+      this.renderCanvasDebugResetIfAllowed(options);
       this.renderConfirmDialog?.(options.confirmDialog || null);
       this.endFrame(options);
     }

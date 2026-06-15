@@ -324,6 +324,27 @@ test('HudOverlayCanvasRenderer renders confirm dialog above debug reset', () => 
   assert.equal(names.at(-2), 'renderConfirmDialog');
 });
 
+test('HudOverlayCanvasRenderer hides debug reset while tutorial dialogue is visible', () => {
+  const host = createHost();
+  const renderer = new HudOverlayCanvasRenderer({ host });
+
+  renderer.renderHudOverlay({ militaryView: 'world' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    tutorialAdvisorDialogue: {
+      message: 'guide',
+      advisorName: 'advisor',
+      source: 'tutorial',
+    },
+    confirmDialog: { visible: true, kind: 'resetGame' },
+  });
+
+  const names = callNames(host);
+  assert.equal(names.includes('renderMapHomeOverlays'), true);
+  assert.equal(names.includes('renderCanvasDebugResetButton'), false);
+  assert.equal(names.includes('renderConfirmDialog'), true);
+});
+
 test('HudOverlayCanvasRenderer prioritizes tutorial spine advisor over generic advisor panel', () => {
   const host = createHost();
   const renderer = new HudOverlayCanvasRenderer({ host });

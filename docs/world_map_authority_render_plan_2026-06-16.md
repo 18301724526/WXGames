@@ -326,6 +326,37 @@ Manual/browser test target:
 - Confirm the deployed frontend asset version matches the deployed commit.
 - Start or continue the guided world exploration flow; only check that the game still loads and the world canvas is interactive after the projection-aware progression change.
 
+## Step 10 - Tutorial Shield Debug Reset Guard
+
+Evidence:
+
+- Real online browser verification on `http://47.116.32.216/wxgame/` showed that clicking the visible tutorial dialogue `continue` area could open the `reset game progress` confirmation dialog.
+- The old frontend contract intentionally let the debug reset action sit above tutorial shields, which conflicts with guided input safety.
+
+Scope:
+
+- Canvas tutorial/input guard only.
+- Do not change spawn allocation, route planning, march interpolation, tile rendering, or backend progression in this step.
+
+Implementation rule:
+
+- The canvas debug reset account button must not render or register a hit target while a tutorial intro, tutorial highlight, or tutorial advisor dialogue is active.
+- The shell input router must not allow `debugResetAccount` reset actions to bypass tutorial input blocking.
+- Reward reveal close and explicit tutorial target actions remain allowed.
+
+Automated test target:
+
+```bash
+node --test frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Confirm the deployed frontend asset version matches the deployed commit.
+- On the guided tutorial dialogue screen, click the visible `continue` area once.
+- Only check that the reset confirmation dialog does not appear and the tutorial/game canvas remains responsive.
+
 ## Non-Goals
 
 - No frontend redesign.

@@ -317,8 +317,17 @@
       return SharedWorldTime?.getRemainingSeconds?.(mission, nowMs) ?? Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
     }
 
+    isCanvasDebugResetBlocked(options = {}) {
+      return Boolean(
+        options.tutorialAdvisorDialogue
+        || options.tutorialIntro?.active
+        || options.tutorialHighlight,
+      );
+    }
+
     renderCanvasDebugResetButton(options = {}) {
       if (options.debugResetAccount === false) return false;
+      if (this.isCanvasDebugResetBlocked(options)) return false;
       const width = 76;
       const height = 28;
       const margin = 8;

@@ -411,7 +411,7 @@ test('CanvasFrameRenderer treats expired manual active mission as idle in explor
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '0s'), false);
 });
 
-test('CanvasFrameRenderer renders debug reset as canvas hit target above tutorial shields', () => {
+test('CanvasFrameRenderer hides debug reset while tutorial shields are active', () => {
   const host = createHost({
     renderTutorialHighlight(...args) {
       this.calls.push(['renderTutorialHighlight', args]);
@@ -430,9 +430,29 @@ test('CanvasFrameRenderer renders debug reset as canvas hit target above tutoria
 
   const resetIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'requestResetGame');
   const blockIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'blockCanvasModal');
-  assert.equal(resetIndex > -1, true);
   assert.equal(blockIndex > -1, true);
-  assert.equal(resetIndex > blockIndex, true);
+  assert.equal(resetIndex, -1);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1][2] === 76 && call[1][3] === 28), false);
+});
+
+test('CanvasFrameRenderer hides debug reset behind tutorial advisor dialogue', () => {
+  const host = createHost();
+  const renderer = new CanvasFrameRenderer({ host });
+
+  renderer.render({ resources: {} }, {
+    activeTab: 'resources',
+    tutorialAdvisorDialogue: {
+      message: 'guide',
+      advisorName: 'advisor',
+      source: 'tutorial',
+    },
+  });
+
+  assert.equal(
+    host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'requestResetGame'),
+    false,
+  );
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1][2] === 76 && call[1][3] === 28), false);
 });
 
 test('CanvasFrameRenderer prioritizes tutorial spine advisor over generic advisor panels', () => {

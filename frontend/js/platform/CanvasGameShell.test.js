@@ -1315,7 +1315,7 @@ test('CanvasGameShell lets reward reveal close above tutorial highlight', () => 
   ]);
 });
 
-test('CanvasGameShell lets debug reset bypass tutorial highlight blocking', () => {
+test('CanvasGameShell blocks debug reset during tutorial highlight input', () => {
   const calls = [];
   const event = {
     preventDefault() {
@@ -1349,7 +1349,6 @@ test('CanvasGameShell lets debug reset bypass tutorial highlight blocking', () =
   assert.equal(shell.handleTap({ x: 380, y: 690 }, event), true);
 
   assert.deepEqual(calls, [
-    ['handle', 'requestResetGame', 'debugResetAccount'],
     ['preventDefault'],
     ['stopPropagation'],
   ]);

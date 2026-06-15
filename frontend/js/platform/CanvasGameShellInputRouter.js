@@ -198,7 +198,6 @@ matchesTutorialAllowedAction(action = {}, allowedAction = null) {
 
 isTutorialHighlightActionAllowed(action = {}, highlight = this.tutorialHighlight) {
       if (!highlight || !action?.type) return false;
-      if ((action.type === 'resetGame' || action.type === 'requestResetGame') && action.source === 'debugResetAccount') return true;
       const targetAction = action.allowedAction || action;
       if (highlight.allowedAction) {
         return this.matchesTutorialAllowedAction(targetAction, highlight.allowedAction);
@@ -211,7 +210,6 @@ isTutorialHighlightActionAllowed(action = {}, highlight = this.tutorialHighlight
 
 isTutorialActionAllowed(action = {}) {
       if (!action?.type || action.type === 'blockCanvasModal') return false;
-      if ((action.type === 'resetGame' || action.type === 'requestResetGame') && action.source === 'debugResetAccount') return true;
       if (this.rewardReveal && action.type === 'closeRewardReveal') return true;
       const targetAction = action.allowedAction || action;
       if (this.tutorialHighlight?.allowedAction
