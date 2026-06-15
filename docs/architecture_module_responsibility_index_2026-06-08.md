@@ -4740,9 +4740,12 @@ Owns:
 - route step, origin, home origin, target, position, planned tile, and planned site coordinate normalization
 - canonical tile identity for any mission sub-record with `q/r` or `x/y`; stale persisted or caller-supplied `tileId` / `id` cannot override coordinates
 - revealed tile id merge from already-normalized route steps plus legacy id-only history that has no coordinate payload
+- route reveal alias resolution: coordinate-bearing route step `tileId/id` aliases are folded into canonical route tile ids before `revealedTileIds` output and route `revealed` flags are derived
 
 Public API:
 
+- `createRouteTileAliasMap(rawRoute)`
+- `createRevealedTileSet(rawMission)`
 - `normalizeRouteStep(rawStep, index)`
 - `normalizePlannedTile(rawTile)`
 - `normalizePlannedSite(rawSite)`
@@ -4759,6 +4762,7 @@ Extension Path:
 - New persisted mission fields extend this normalizer with focused tests before downstream DTO/progression consumers read them.
 - New coordinate semantics must be normalized here before `WorldExplorerProgression`, `ServerTimelineSnapshot`, or `AoiSyncSnapshot` consume mission rows.
 - Id-only legacy arrays may be preserved only when no coordinate payload exists; coordinate-bearing records must derive ids from coordinates.
+- New reveal-state normalization must update the route alias set and keep `revealedTileIds` canonical before route steps or DTO consumers read it.
 
 Regression:
 

@@ -19,6 +19,51 @@ function normalizeRouteStep(rawStep, index = 0) {
   };
 }
 
+function hasCoordPair(source = {}) {
+  if (!source || typeof source !== 'object') return false;
+  const hasQ = source.q !== undefined || source.x !== undefined;
+  const hasR = source.r !== undefined || source.y !== undefined;
+  return hasQ && hasR;
+}
+
+function addTileAlias(aliases, value, canonicalId) {
+  if (!value || !canonicalId) return;
+  const alias = String(value);
+  const ids = aliases.get(alias) || new Set();
+  ids.add(String(canonicalId));
+  aliases.set(alias, ids);
+}
+
+function createRouteTileAliasMap(rawRoute = []) {
+  const aliases = new Map();
+  (Array.isArray(rawRoute) ? rawRoute : []).forEach((step) => {
+    if (!hasCoordPair(step)) return;
+    const q = toInteger(step.q ?? step.x, 0);
+    const r = toInteger(step.r ?? step.y, 0);
+    const canonicalId = WorldMapService.getTileId(q, r);
+    addTileAlias(aliases, canonicalId, canonicalId);
+    addTileAlias(aliases, step.tileId, canonicalId);
+    addTileAlias(aliases, step.id, canonicalId);
+  });
+  return aliases;
+}
+
+function createRevealedTileSet(rawMission = {}) {
+  const routeAliases = createRouteTileAliasMap(rawMission.route);
+  const revealed = new Set();
+  (Array.isArray(rawMission.revealedTileIds) ? rawMission.revealedTileIds : [])
+    .filter(Boolean)
+    .forEach((id) => {
+      const aliases = routeAliases.get(String(id));
+      if (aliases) {
+        aliases.forEach((canonicalId) => revealed.add(canonicalId));
+        return;
+      }
+      revealed.add(String(id));
+    });
+  return revealed;
+}
+
 function normalizePlannedTile(rawTile) {
   if (!rawTile || typeof rawTile !== 'object') return null;
   const q = toInteger(rawTile.q, 0);
@@ -57,10 +102,17 @@ function normalizePlannedSite(rawSite) {
 
 function normalizeMission(rawMission) {
   if (!rawMission || typeof rawMission !== 'object') return null;
-  const route = (Array.isArray(rawMission.route) ? rawMission.route : [])
+  const rawRoute = Array.isArray(rawMission.route) ? rawMission.route : [];
+  const revealedSet = createRevealedTileSet(rawMission);
+  const route = rawRoute
     .map(normalizeRouteStep)
     .filter(Boolean)
-    .sort((a, b) => a.step - b.step);
+    .sort((a, b) => a.step - b.step)
+    .map((step) => (
+      revealedSet.has(step.tileId)
+        ? { ...step, revealed: true }
+        : step
+    ));
   const mode = rawMission.mode === 'manual' ? 'manual' : 'random';
   const status = ['active', 'idle', 'cancelled'].includes(rawMission.status)
     ? rawMission.status
@@ -79,7 +131,7 @@ function normalizeMission(rawMission) {
   const homeOriginR = toInteger(homeOrigin.r ?? originR, originR);
   const stepDurationMs = Math.max(1000, toInteger(rawMission.stepDurationMs, EXPLORE_STEP_DURATION_MS));
   const revealedTileIds = Array.from(new Set([
-    ...(Array.isArray(rawMission.revealedTileIds) ? rawMission.revealedTileIds : []),
+    ...revealedSet,
     ...route.filter((step) => step.revealed).map((step) => step.tileId),
   ].filter(Boolean).map(String)));
   const rawPosition = rawMission.position && typeof rawMission.position === 'object'
@@ -164,6 +216,8 @@ function normalizeMissions(rawMissions) {
 }
 
 module.exports = {
+  createRevealedTileSet,
+  createRouteTileAliasMap,
   normalizeRouteStep,
   normalizePlannedTile,
   normalizePlannedSite,

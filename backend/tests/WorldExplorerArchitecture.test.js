@@ -106,6 +106,25 @@ test('WorldExplorerMissionNormalizer derives tile identity from mission coordina
   assert.deepEqual(mission.revealedTileIds, ['tile_1_-1']);
 });
 
+test('WorldExplorerMissionNormalizer derives revealed route identity from coordinate-bearing route aliases', () => {
+  const mission = MissionNormalizer.normalizeMission({
+    id: 'stale-revealed-route-id-mission',
+    mode: 'manual',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+    target: { q: 2, r: 0, tileId: 'tile_2_0' },
+    route: [
+      { q: 1, r: 0, step: 1, tileId: 'legacy-route-1' },
+      { q: 2, r: 0, step: 2, tileId: 'legacy-route-2' },
+    ],
+    revealedTileIds: ['legacy-route-1'],
+  });
+
+  assert.equal(mission.route[0].revealed, true);
+  assert.deepEqual(mission.revealedTileIds, ['tile_1_0']);
+  assert.equal(JSON.stringify(mission).includes('legacy-route'), false);
+});
+
 test('world explorer progression materializes planned sites by step coordinates', (t) => {
   const originalBindSiteToTile = WorldMapService.bindSiteToTile;
   const calls = [];
