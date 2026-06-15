@@ -447,9 +447,6 @@
       this.worldTileStaticCacheLayout = null;
       this.worldTileStaticChunkCaches?.clear?.();
       this.worldTileStaticChunkCacheTick = 0;
-      this.worldTileScoutRouteCache = null;
-      this.worldTileScoutRouteCacheKey = '';
-      this.worldTileScoutRouteCacheLayout = null;
       this.worldTileWaterLayerCache = null;
       this.worldTileWaterLayerCacheKey = '';
       this.worldTileWaterFrameCaches?.clear?.();

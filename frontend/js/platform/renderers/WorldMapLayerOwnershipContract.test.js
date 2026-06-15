@@ -5,6 +5,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '../../../..');
+const PRODUCTION_FILES = [
+  'frontend/js/platform/CanvasGameRenderer.js',
+  'frontend/js/platform/renderers/CanvasAssetRenderer.js',
+  'frontend/js/platform/renderers/CanvasWorldMapFacade.js',
+  'frontend/js/platform/renderers/WorldMapCacheFacade.js',
+  'frontend/js/platform/renderers/WorldMapCachePolicy.js',
+  'frontend/js/platform/renderers/WorldMapCanvasRenderer.js',
+  'frontend/js/platform/renderers/WorldMapFastDragCompositeRenderer.js',
+  'frontend/js/platform/renderers/WorldMapSnapshotCacheRenderer.js',
+  'frontend/js/platform/renderers/WorldMapStaticLayerRenderer.js',
+  'frontend/js/platform/renderers/WorldMapTileMapRenderer.js',
+];
 
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
@@ -35,6 +47,22 @@ test('mainHud renderers own map-home march command HUD invocation', () => {
 
   assert.equal(frameSource.includes('renderMapHomeWorldMarchHud(state, options)'), true);
   assert.equal(hudSource.includes('renderMapHomeWorldMarchHud(state, options)'), true);
+});
+
+test('retired scout route cache API stays out of production renderers', () => {
+  const retiredSymbols = [
+    'worldTileScoutRouteCache',
+    'getWorldTileScoutRouteCache',
+    'renderWorldScoutRouteLayer',
+    'renderScoutRoutesIntoCache',
+  ];
+
+  PRODUCTION_FILES.forEach((file) => {
+    const source = readProjectFile(file);
+    retiredSymbols.forEach((symbol) => {
+      assert.equal(source.includes(symbol), false, `${symbol} should stay retired in ${file}`);
+    });
+  });
 });
 
 test('architecture smoke registers the world-map layer ownership contract', () => {

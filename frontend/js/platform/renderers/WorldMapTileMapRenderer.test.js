@@ -79,10 +79,6 @@ function createHost(overrides = {}) {
       calls.push(['getWorldTileRenderEntries']);
       return [{ tile: tileMapView.tiles[0], center: { x: 1, y: 2 }, drawRect: { x: 0, y: 0, width: 10, height: 5 } }];
     },
-    renderWorldScoutRouteLayer(...args) {
-      calls.push(['renderWorldScoutRouteLayer', ...args]);
-      return true;
-    },
     renderWorldScoutRoutes(...args) {
       calls.push(['renderWorldScoutRoutes', ...args]);
       return true;

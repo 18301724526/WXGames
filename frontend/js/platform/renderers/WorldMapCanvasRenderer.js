@@ -375,10 +375,6 @@
       return this.getWorldTileLayerCacheContext('worldTileStaticCache', width, height, cacheScale);
     }
 
-    getWorldTileScoutRouteCacheContext(width, height, cacheScale = 1) {
-      return this.getWorldTileLayerCacheContext('worldTileScoutRouteCache', width, height, cacheScale);
-    }
-
     getWorldTileWaterLayerCacheContext(width, height, cacheScale = 1) {
       return this.getWorldTileLayerCacheContext('worldTileWaterLayerCache', width, height, cacheScale);
     }
@@ -486,16 +482,6 @@
     renderWorldTileStaticLayer(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
       if (!this.worldMapStaticLayerRenderer?.renderWorldTileStaticLayer) return false;
       return this.worldMapStaticLayerRenderer.renderWorldTileStaticLayer(tileMapView, viewport, frame, entries, uiState);
-    }
-
-    getWorldTileScoutRouteCacheKey(tileMapView = {}, viewport = {}, frame = {}, options = {}) {
-      if (!this.worldMapCacheFacade?.getWorldTileScoutRouteCacheKey) return '';
-      return this.worldMapCacheFacade.getWorldTileScoutRouteCacheKey(tileMapView, viewport, frame, options);
-    }
-
-    renderWorldScoutRouteLayer(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
-      if (!this.worldMapStaticLayerRenderer?.renderWorldScoutRouteLayer) return false;
-      return this.worldMapStaticLayerRenderer.renderWorldScoutRouteLayer(tileMapView, viewport, frame, entries);
     }
 
     getWorldTileWaterAnimationFps() {

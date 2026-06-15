@@ -27,13 +27,6 @@ function createHost(overrides = {}) {
       drawX: 0,
       drawY: 0,
     },
-    worldTileScoutRouteCache: createWork('scout'),
-    worldTileScoutRouteCacheLayout: {
-      kind: 'world',
-      frame: { x: -10, y: -20, width: 100, height: 60 },
-      drawX: 0,
-      drawY: 0,
-    },
     worldTileStaticCacheLayoutKind: '',
     worldTileStaticChunkCaches: new Map(),
     worldTileWaterChunkCaches: new Map(),
@@ -72,7 +65,7 @@ test('WorldMapSnapshotCacheRenderer redraws layered snapshot caches and fog mask
   const renderer = new WorldMapSnapshotCacheRenderer({ host });
 
   assert.equal(renderer.renderWorldTileSnapshotCache({ geometry: {} }, { originX: 10, originY: 20, panX: 1, panY: 2 }, { x: 0, y: 0, width: 100, height: 100 }), true);
-  assert.equal(host.calls.filter((call) => call[0] === 'drawWorldTileLayerCache').length, 3);
+  assert.equal(host.calls.filter((call) => call[0] === 'drawWorldTileLayerCache').length, 2);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileFogMask'), true);
 });
 
@@ -83,8 +76,6 @@ test('WorldMapSnapshotCacheRenderer redraws current water and static chunk cache
   const host = createHost({
     worldTileStaticCache: null,
     worldTileStaticCacheLayout: null,
-    worldTileScoutRouteCache: null,
-    worldTileScoutRouteCacheLayout: null,
     worldTileStaticCacheLayoutKind: 'chunks',
     worldTileStaticChunkCaches: new Map([['0,0', staticChunk]]),
     worldTileWaterChunkCaches: new Map([

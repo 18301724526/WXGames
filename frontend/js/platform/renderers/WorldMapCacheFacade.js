@@ -137,10 +137,6 @@
       return this.getWorldTileLayerCacheContext('worldTileStaticCache', width, height, cacheScale);
     }
 
-    getWorldTileScoutRouteCacheContext(width, height, cacheScale = 1) {
-      return this.getWorldTileLayerCacheContext('worldTileScoutRouteCache', width, height, cacheScale);
-    }
-
     getWorldTileWaterLayerCacheContext(width, height, cacheScale = 1) {
       return this.getWorldTileLayerCacheContext('worldTileWaterLayerCache', width, height, cacheScale);
     }
@@ -246,44 +242,6 @@
       return viewportPixels <= pixelBudget ? viewportLayout : null;
     }
 
-    getWorldTileScoutRouteCacheKey(tileMapView = {}, viewport = {}, frame = {}, options = {}) {
-      const cachePolicy = this.getWorldMapCachePolicy();
-      if (cachePolicy?.getWorldTileScoutRouteCacheKey) {
-        return cachePolicy.getWorldTileScoutRouteCacheKey(tileMapView, viewport, frame, options);
-      }
-      const scale = Number(viewport.scale) || 1;
-      const scoutSignature = (tileMapView.activeScouts || []).map((mission) => [
-        mission.id || '',
-        mission.status || '',
-        (mission.route || []).map((step) => {
-          const coord = this.normalizeTileCoord(step);
-          return [
-            coord.tileId,
-            coord.q,
-            coord.r,
-            step.step ?? '',
-            step.revealed ? 1 : 0,
-          ].join(',');
-        }).join('|'),
-      ].join(':')).join(';');
-      return [
-        options.kind || 'world',
-        tileMapView.signature || '',
-        tileMapView.version || '',
-        tileMapView.seed || '',
-        Math.round(frame.x),
-        Math.round(frame.y),
-        Math.round(frame.width),
-        Math.round(frame.height),
-        Math.round(scale * 1000),
-        Math.round((Number(options.cacheScale) || 1) * 1000),
-        Math.round((Number(viewport.originX) || 0) * 10) / 10,
-        Math.round((Number(viewport.originY) || 0) * 10) / 10,
-        Math.round((Number(viewport.panX) || 0) * 10) / 10,
-        Math.round((Number(viewport.panY) || 0) * 10) / 10,
-        scoutSignature,
-      ].join('::');
-    }
   }
 
   global.WorldMapCacheFacade = WorldMapCacheFacade;

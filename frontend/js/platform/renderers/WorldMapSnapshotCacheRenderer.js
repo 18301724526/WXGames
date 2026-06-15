@@ -107,14 +107,6 @@
           viewport,
           frame,
         ) || rendered;
-        if (this.worldTileScoutRouteCache?.canvas && this.worldTileScoutRouteCacheLayout?.frame) {
-          rendered = this.renderWorldTileSnapshotLayerCache(
-            this.worldTileScoutRouteCache,
-            this.worldTileScoutRouteCacheLayout,
-            viewport,
-            frame,
-          ) || rendered;
-        }
         if (rendered) this.renderWorldTileSnapshotFogMask(tileMapView, viewport, frame);
         return rendered;
       }

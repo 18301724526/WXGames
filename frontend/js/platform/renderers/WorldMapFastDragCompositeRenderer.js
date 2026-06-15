@@ -29,7 +29,6 @@
     getWorldTileFastDragCompositeSignature() {
       return [
         this.worldTileStaticCacheKey || '',
-        this.worldTileScoutRouteCacheKey || '',
         this.worldTileWaterLayerCacheKey || '',
       ].join('::');
     }
@@ -85,7 +84,6 @@
           drawX: 0,
           drawY: 0,
         };
-        this.drawWorldTileLayerCache(this.worldTileScoutRouteCache, localLayout, localFrame);
         this.drawWorldTileLayerCache(this.worldTileWaterLayerCache, localLayout, localFrame);
         this.drawWorldTileLayerCache(this.worldTileStaticCache, localLayout, localFrame);
         return true;

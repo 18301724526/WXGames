@@ -44,9 +44,6 @@ function createHost(overrides = {}) {
     worldTileStaticCacheLayoutKind: '',
     worldTileStaticCacheLayout: null,
     worldTileStaticCache: work,
-    worldTileScoutRouteCache: work,
-    worldTileScoutRouteCacheKey: '',
-    worldTileScoutRouteCacheLayout: null,
     resolveWorldTileStaticCacheLayout() {
       calls.push(['resolveWorldTileStaticCacheLayout']);
       return layout;
@@ -63,17 +60,9 @@ function createHost(overrides = {}) {
       calls.push(['getWorldTileStaticCacheContext', width, height, scale]);
       return work;
     },
-    getWorldTileScoutRouteCacheContext(width, height, scale) {
-      calls.push(['getWorldTileScoutRouteCacheContext', width, height, scale]);
-      return work;
-    },
     getWorldTileStaticCacheKey() {
       calls.push(['getWorldTileStaticCacheKey']);
       return 'static-cache-v1';
-    },
-    getWorldTileScoutRouteCacheKey() {
-      calls.push(['getWorldTileScoutRouteCacheKey']);
-      return 'scout-cache-v1';
     },
     drawWorldTileLayerCache(...args) {
       calls.push(['drawWorldTileLayerCache', ...args]);
@@ -85,9 +74,6 @@ function createHost(overrides = {}) {
     },
     renderWorldTileStaticEntries(...args) {
       calls.push(['renderWorldTileStaticEntries', ...args]);
-    },
-    renderWorldScoutRoutes(...args) {
-      calls.push(['renderWorldScoutRoutes', ...args]);
     },
     ...overrides,
   };
@@ -120,12 +106,8 @@ test('WorldMapStaticLayerRenderer leaves scout routes to the dynamic actor layer
   const host = createHost();
   const renderer = new WorldMapStaticLayerRenderer({ host });
 
-  assert.equal(renderer.renderWorldScoutRouteLayer({ activeScouts: [] }, {}, {}, []), false);
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), false);
-
-  assert.equal(renderer.renderWorldScoutRouteLayer({ activeScouts: [{ id: 'scout-1' }] }, {}, {}, []), false);
-  assert.equal(host.worldTileScoutRouteCacheKey, '');
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), false);
+  assert.equal(typeof renderer.renderWorldScoutRouteLayer, 'undefined');
+  assert.equal(typeof renderer.renderScoutRoutesIntoCache, 'undefined');
 });
 
 test('WorldMapStaticLayerRenderer delegates chunk static layouts to host chunk renderer', () => {

@@ -57,15 +57,6 @@
       return Boolean(rendered);
     }
 
-    renderScoutRoutesIntoCache(tileMapView = {}, layout = {}) {
-      const rendered = this.withCacheContext(layout.work, () => {
-        layout.work.ctx.translate?.(-(Number(layout.frame.x) || 0), -(Number(layout.frame.y) || 0));
-        this.renderWorldScoutRoutes(tileMapView, layout.renderViewport);
-        return true;
-      });
-      return Boolean(rendered);
-    }
-
     renderWorldTileStaticLayer(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}) {
       const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
       if (!layout) return false;
@@ -89,9 +80,6 @@
       return this.drawWorldTileLayerCache(work, layout, frame);
     }
 
-    renderWorldScoutRouteLayer(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
-      return false;
-    }
   }
 
   global.WorldMapStaticLayerRenderer = WorldMapStaticLayerRenderer;

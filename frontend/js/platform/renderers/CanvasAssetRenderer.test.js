@@ -69,7 +69,6 @@ function createHost(overrides = {}) {
     worldTileStaticCacheLayout: { frame: {} },
     worldTileStaticCacheLayoutKind: '',
     worldTileStaticChunkCacheTick: 7,
-    worldTileScoutRouteCache: { canvas: {} },
     worldTileWaterLayerCache: { canvas: {} },
     worldTileWaterChunkCacheTick: 9,
     worldTileViewCache: { view: {} },

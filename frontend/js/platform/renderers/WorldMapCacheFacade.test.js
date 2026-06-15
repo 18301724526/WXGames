@@ -70,15 +70,10 @@ function createTileMapView() {
     version: '2',
     seed: 'cache-seed',
     geometry: { tileWidth: 192, tileHeight: 96 },
-    activeScouts: [{
-      id: 'scout-1',
-      status: 'active',
-      route: [{ tileId: 'tile-1', q: 1, r: 0, step: 1, revealed: false }],
-    }],
   };
 }
 
-test('WorldMapCacheFacade delegates static and scout cache identity to cache policy', () => {
+test('WorldMapCacheFacade delegates static cache identity to cache policy', () => {
   const renderer = new WorldMapCacheFacade({ host: createHost() });
   const tileMapView = createTileMapView();
   const viewport = { originX: 100, originY: 80, panX: 2, panY: -1, scale: 0.5 };
@@ -96,11 +91,9 @@ test('WorldMapCacheFacade delegates static and scout cache identity to cache pol
   }];
 
   const staticKey = renderer.getWorldTileStaticCacheKey(tileMapView, viewport, frame, entries, { selectedSiteId: 'capital' }, { cacheScale: 2 });
-  const scoutKey = renderer.getWorldTileScoutRouteCacheKey(tileMapView, viewport, frame, { cacheScale: 2 });
 
   assert.equal(staticKey.includes('capital'), true);
   assert.equal(staticKey.includes('feature-a'), true);
-  assert.equal(scoutKey.includes('scout-1:active'), true);
 });
 
 test('WorldMapCacheFacade fallback derives cache identity from stable tile coordinates', () => {
@@ -148,27 +141,12 @@ test('WorldMapCacheFacade fallback derives cache identity from stable tile coord
     signature: 'same-signature',
     version: '2',
     seed: 'cache-seed',
-    activeScouts: [{
-      id: 'scout-1',
-      status: 'active',
-      route: [{ tileId: 'legacy-route-a', x: 4, y: -2, q: 99, r: 99, step: 1, revealed: false }],
-    }],
   };
-  const legacyShapeTileMapView = {
-    ...stableTileMapView,
-    activeScouts: [{
-      ...stableTileMapView.activeScouts[0],
-      route: [{ tileId: 'legacy-route-b', q: 4, r: -2, step: 1, revealed: false }],
-    }],
-  };
+  const legacyShapeTileMapView = { ...stableTileMapView };
 
   assert.equal(
     renderer.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [stableEntry], {}, { cacheScale: 2 }),
     renderer.getWorldTileStaticCacheKey(legacyShapeTileMapView, viewport, frame, [legacyShapeEntry], {}, { cacheScale: 2 }),
-  );
-  assert.equal(
-    renderer.getWorldTileScoutRouteCacheKey(stableTileMapView, viewport, frame, { cacheScale: 2 }),
-    renderer.getWorldTileScoutRouteCacheKey(legacyShapeTileMapView, viewport, frame, { cacheScale: 2 }),
   );
 });
 

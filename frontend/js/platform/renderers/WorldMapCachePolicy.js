@@ -108,41 +108,6 @@
     });
   }
 
-  function getWorldTileScoutRouteCacheKey(tileMapView = {}, viewport = {}, frame = {}, options = {}) {
-    const scale = Number(viewport.scale) || 1;
-    const scoutSignature = (tileMapView.activeScouts || []).map((mission) => [
-      mission.id || '',
-      mission.status || '',
-      (mission.route || []).map((step) => {
-        const coord = normalizeTileCoord(step);
-        return [
-          coord.tileId,
-          coord.q,
-          coord.r,
-          step.step ?? '',
-          step.revealed ? 1 : 0,
-        ].join(',');
-      }).join('|'),
-    ].join(':')).join(';');
-    return [
-      options.kind || 'world',
-      tileMapView.signature || '',
-      tileMapView.version || '',
-      tileMapView.seed || '',
-      Math.round(frame.x),
-      Math.round(frame.y),
-      Math.round(frame.width),
-      Math.round(frame.height),
-      Math.round(scale * 1000),
-      Math.round((Number(options.cacheScale) || 1) * 1000),
-      round(viewport.originX, 10),
-      round(viewport.originY, 10),
-      round(viewport.panX, 10),
-      round(viewport.panY, 10),
-      scoutSignature,
-    ].join('::');
-  }
-
   function getWorldTileWaterLayerCacheKey(tileMapView = {}, viewport = {}, frame = {}, entries = [], options = {}) {
     const scale = Number(viewport.scale) || 1;
     return [
@@ -244,7 +209,6 @@
     getEntrySignature,
     getWorldTileStaticCacheKey,
     getWorldTileStaticChunkCacheKey,
-    getWorldTileScoutRouteCacheKey,
     getWorldTileWaterLayerCacheKey,
     getWorldTileWaterChunkCacheKey,
     getWorldTileWaterChunkFrameCacheId,

@@ -39,29 +39,21 @@ function createEntries() {
   ];
 }
 
-test('WorldMapCachePolicy builds static, scout, and water cache keys from compact render identity', () => {
+test('WorldMapCachePolicy builds static and water cache keys from compact render identity', () => {
   const tileMapView = {
     signature: 'map-v1',
     version: '2',
     seed: 'seed-a',
-    activeScouts: [{
-      id: 'scout-1',
-      status: 'active',
-      route: [{ tileId: 'tile-1', q: 0, r: 0, step: 1, revealed: false }],
-    }],
   };
   const viewport = { originX: 100.04, originY: 80.02, panX: 2.26, panY: -3.24, scale: 0.5 };
   const frame = { x: 1, y: 2, width: 300, height: 200 };
   const entries = createEntries();
 
   const staticKey = WorldMapCachePolicy.getWorldTileStaticCacheKey(tileMapView, viewport, frame, entries, { selectedSiteId: 'capital' }, { cacheScale: 2 });
-  const scoutKey = WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(tileMapView, viewport, frame, { cacheScale: 2 });
   const waterKey = WorldMapCachePolicy.getWorldTileWaterLayerCacheKey(tileMapView, viewport, frame, entries, { cacheScale: 2, frameIndex: 3 });
 
   assert.equal(staticKey.includes('capital'), true);
   assert.equal(staticKey.includes('feature-a'), true);
-  assert.equal(scoutKey.includes('scout-1:active'), true);
-  assert.equal(scoutKey.includes('100'), true);
   assert.equal(waterKey.includes('water-a'), true);
   assert.equal(waterKey.includes('feature-a'), false);
 });
@@ -112,26 +104,8 @@ test('WorldMapCachePolicy derives cache identity from stable tile coordinates', 
     signature: 'same-signature',
     version: '2',
     seed: 'cache-seed',
-    activeScouts: [{
-      id: 'scout-1',
-      status: 'active',
-      route: [{ tileId: 'legacy-route-a', x: 4, y: -2, q: 99, r: 99, step: 1, revealed: false }],
-    }],
   };
-  const legacyShapeTileMapView = {
-    ...stableTileMapView,
-    activeScouts: [{
-      ...stableTileMapView.activeScouts[0],
-      route: [{ tileId: 'legacy-route-b', q: 4, r: -2, step: 1, revealed: false }],
-    }],
-  };
-  const movedTileMapView = {
-    ...stableTileMapView,
-    activeScouts: [{
-      ...stableTileMapView.activeScouts[0],
-      route: [{ tileId: 'legacy-route-a', x: 5, y: -2, q: 99, r: 99, step: 1, revealed: false }],
-    }],
-  };
+  const legacyShapeTileMapView = { ...stableTileMapView };
 
   assert.equal(
     WorldMapCachePolicy.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [stableEntry], {}, { cacheScale: 2 }),
@@ -141,17 +115,9 @@ test('WorldMapCachePolicy derives cache identity from stable tile coordinates', 
     WorldMapCachePolicy.getWorldTileWaterLayerCacheKey(stableTileMapView, viewport, frame, [stableEntry], { cacheScale: 2, frameIndex: 3 }),
     WorldMapCachePolicy.getWorldTileWaterLayerCacheKey(legacyShapeTileMapView, viewport, frame, [legacyShapeEntry], { cacheScale: 2, frameIndex: 3 }),
   );
-  assert.equal(
-    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(stableTileMapView, viewport, frame, { cacheScale: 2 }),
-    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(legacyShapeTileMapView, viewport, frame, { cacheScale: 2 }),
-  );
   assert.notEqual(
     WorldMapCachePolicy.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [stableEntry], {}, { cacheScale: 2 }),
     WorldMapCachePolicy.getWorldTileStaticCacheKey(stableTileMapView, viewport, frame, [movedEntry], {}, { cacheScale: 2 }),
-  );
-  assert.notEqual(
-    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(stableTileMapView, viewport, frame, { cacheScale: 2 }),
-    WorldMapCachePolicy.getWorldTileScoutRouteCacheKey(movedTileMapView, viewport, frame, { cacheScale: 2 }),
   );
 });
 

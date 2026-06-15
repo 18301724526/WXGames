@@ -268,7 +268,7 @@ test('WorldMapCanvasRenderer computes world march actors from epoch time, not fr
   assert.equal(capturedActors[0].remainingSeconds, 15);
 });
 
-test('WorldMapCanvasRenderer delegates static and scout layers to split renderer', () => {
+test('WorldMapCanvasRenderer delegates static layer to split renderer', () => {
   const calls = [];
   const renderer = new WorldMapCanvasRenderer({
     host: createHost(),
@@ -276,10 +276,6 @@ test('WorldMapCanvasRenderer delegates static and scout layers to split renderer
       renderWorldTileStaticLayer(...args) {
         calls.push(['static', ...args]);
         return 'static-ok';
-      },
-      renderWorldScoutRouteLayer(...args) {
-        calls.push(['scout', ...args]);
-        return 'scout-ok';
       },
     },
   });
@@ -291,12 +287,10 @@ test('WorldMapCanvasRenderer delegates static and scout layers to split renderer
   const uiState = { selectedSiteId: 'capital' };
 
   assert.equal(renderer.renderWorldTileStaticLayer(tileMapView, viewport, frame, entries, uiState), 'static-ok');
-  assert.equal(renderer.renderWorldScoutRouteLayer(tileMapView, viewport, frame, entries), 'scout-ok');
+  assert.equal(typeof renderer.renderWorldScoutRouteLayer, 'undefined');
   assert.equal(calls[0][0], 'static');
   assert.equal(calls[0][1], tileMapView);
   assert.equal(calls[0][5], uiState);
-  assert.equal(calls[1][0], 'scout');
-  assert.equal(calls[1][4], entries);
 });
 
 test('WorldMapCanvasRenderer delegates static entry rendering to split renderer', () => {
@@ -889,10 +883,6 @@ test('WorldMapCanvasRenderer delegates cache helpers to split facade', () => {
         calls.push(['resolve-layout', ...args]);
         return { kind: 'viewport' };
       },
-      getWorldTileScoutRouteCacheKey(...args) {
-        calls.push(['scout-key', ...args]);
-        return 'scout-key-ok';
-      },
     },
   });
   const tileMapView = createTileMapView();
@@ -908,14 +898,13 @@ test('WorldMapCanvasRenderer delegates cache helpers to split facade', () => {
   assert.deepEqual(renderer.createWorldTileLayerWork(10, 20, 2), { id: 'layer-work-ok' });
   assert.equal(renderer.drawWorldTileLayerCache(work, layout, frame), 'layer-draw-ok');
   assert.deepEqual(renderer.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries), { kind: 'viewport' });
-  assert.equal(renderer.getWorldTileScoutRouteCacheKey(tileMapView, viewport, frame, { cacheScale: 2 }), 'scout-key-ok');
+  assert.equal(typeof renderer.getWorldTileScoutRouteCacheKey, 'undefined');
   assert.deepEqual(calls.map((call) => call[0]), [
     'static-key',
     'layer-context',
     'layer-work',
     'layer-draw',
     'resolve-layout',
-    'scout-key',
   ]);
   assert.equal(calls[0][1], tileMapView);
   assert.equal(calls[0][4], entries);
