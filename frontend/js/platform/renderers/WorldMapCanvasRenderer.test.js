@@ -549,12 +549,14 @@ test('WorldMapCanvasRenderer delegates scout route helpers to split renderer', (
 
   const tileMapView = createTileMapView();
   const viewport = { scale: 1 };
+  const actors = [{ id: 'actor-1' }];
 
-  assert.equal(renderer.renderWorldScoutRoutes(tileMapView, viewport), 'routes-ok');
+  assert.equal(renderer.renderWorldScoutRoutes(tileMapView, viewport, actors), 'routes-ok');
   assert.deepEqual(calls.map((call) => call[0]), [
     'scout-routes',
   ]);
   assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[0][3], actors);
 });
 
 test('WorldMapCanvasRenderer delegates world site overlay helpers to split renderer', () => {

@@ -149,7 +149,6 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
   assert.deepEqual(host.lastWorldTileMapContext.frame, { x: 11, y: 91, width: 358, height: 298 });
   assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.deepEqual(host.calls.filter((call) => call[0].startsWith('renderWorld') || call[0].startsWith('addWorld')).map((call) => call[0]), [
-    'renderWorldScoutRouteLayer',
     'renderWorldTileWaterLayer',
     'renderWorldTileStaticLayer',
     'renderWorldTileFogMask',

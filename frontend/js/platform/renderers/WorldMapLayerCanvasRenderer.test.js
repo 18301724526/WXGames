@@ -558,6 +558,10 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   };
   const host = createHost({
     lastWorldTileMapContext: actorContext,
+    renderWorldScoutRoutes(tileMapView, viewport, actors) {
+      host.calls.push(['renderWorldScoutRoutes', tileMapView, viewport, actors]);
+      return true;
+    },
     renderWorldActors(actors, viewport, geometry) {
       host.calls.push(['renderWorldActors', actors, viewport, geometry]);
       host.hitTargets.push({ rect: { x: 10, y: 20, width: 24, height: 24 }, action: { type: 'selectWorldActor', actorId: actors[0]?.id } });
@@ -575,8 +579,14 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   assert.equal(rendered, true);
   assert.equal(host.calls.some((call) => call[0] === 'beginFrame'), true);
   assert.equal(host.calls.some((call) => call[0] === 'clearAll'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
+  assert.equal(
+    host.calls.findIndex((call) => call[0] === 'renderWorldScoutRoutes')
+      < host.calls.findIndex((call) => call[0] === 'renderWorldActors'),
+    true,
+  );
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileSnapshotCache'), false);
   assert.equal(host.lastMapHomeWorldHudContext.actors[0].id, 'scout-1');
@@ -633,6 +643,45 @@ test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time 
   assert.equal(actorsCall[1][0].current.q, 0.5);
   assert.equal(actorsCall[1][0].current.segmentProgress, 0.5);
   assert.equal(host.lastMapHomeWorldHudContext.actors[0].current.q, 0.5);
+});
+
+test('WorldMapLayerCanvasRenderer does not paint route overlays for returned idle actors', () => {
+  const actorContext = {
+    actors: [{
+      id: 'return-home-visual-1',
+      missionId: 'return-home-visual-1',
+      status: 'idle',
+      current: { q: 0, r: 0 },
+    }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: actorContext,
+    renderWorldScoutRoutes(tileMapView, viewport, actors) {
+      const activeActors = actors.filter((actor) => actor.status === 'active');
+      if (activeActors.length) host.calls.push(['renderWorldScoutRoutes', tileMapView, viewport, activeActors]);
+      return Boolean(activeActors.length);
+    },
+    renderWorldActors(actors) {
+      host.calls.push(['renderWorldActors', actors]);
+      return true;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapActorLayer({ worldExplorerState: { idleMissions: [] } }, {
+    activeTab: 'military',
+    isMapHome: true,
+    territoryUiState: actorContext.uiState,
+  });
+
+  assert.equal(rendered, true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), true);
 });
 
 test('WorldMapLayerCanvasRenderer uses world clock instead of stale host epoch for actor refresh', () => {

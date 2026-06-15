@@ -116,16 +116,16 @@ test('WorldMapStaticLayerRenderer reuses fast-drag static cache without repainti
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileLayerCache'), true);
 });
 
-test('WorldMapStaticLayerRenderer renders scout route cache only when scouts exist', () => {
+test('WorldMapStaticLayerRenderer leaves scout routes to the dynamic actor layer', () => {
   const host = createHost();
   const renderer = new WorldMapStaticLayerRenderer({ host });
 
-  assert.equal(renderer.renderWorldScoutRouteLayer({ activeScouts: [] }, {}, {}, []), true);
+  assert.equal(renderer.renderWorldScoutRouteLayer({ activeScouts: [] }, {}, {}, []), false);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), false);
 
-  assert.equal(renderer.renderWorldScoutRouteLayer({ activeScouts: [{ id: 'scout-1' }] }, {}, {}, []), true);
-  assert.equal(host.worldTileScoutRouteCacheKey, 'scout-cache-v1');
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), true);
+  assert.equal(renderer.renderWorldScoutRouteLayer({ activeScouts: [{ id: 'scout-1' }] }, {}, {}, []), false);
+  assert.equal(host.worldTileScoutRouteCacheKey, '');
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), false);
 });
 
 test('WorldMapStaticLayerRenderer delegates chunk static layouts to host chunk renderer', () => {

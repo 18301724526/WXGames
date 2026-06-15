@@ -583,9 +583,9 @@
       return this.worldMapTileMapRenderer.addWorldMapDragHitTarget(x, y, width, height);
     }
 
-    renderWorldScoutRoutes(tileMapView = {}, viewport = {}) {
+    renderWorldScoutRoutes(tileMapView = {}, viewport = {}, actors = []) {
       if (!this.worldMapScoutRenderer?.renderWorldScoutRoutes) return false;
-      return this.worldMapScoutRenderer.renderWorldScoutRoutes(tileMapView, viewport);
+      return this.worldMapScoutRenderer.renderWorldScoutRoutes(tileMapView, viewport, actors);
     }
 
     renderWorldScoutUnits(tileMapView = {}, viewport = {}) {

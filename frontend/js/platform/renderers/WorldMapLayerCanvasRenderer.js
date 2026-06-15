@@ -374,6 +374,7 @@
         didClip = true;
       }
       try {
+        this.renderWorldScoutRoutes?.(context.tileMapView, viewport, actors);
         this.renderWorldActors?.(actors, viewport, geometry);
       } finally {
         if (didClip && this.ctx.restore) this.ctx.restore();

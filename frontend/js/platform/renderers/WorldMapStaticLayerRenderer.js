@@ -90,26 +90,7 @@
     }
 
     renderWorldScoutRouteLayer(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
-      if (!Array.isArray(tileMapView.activeScouts) || !tileMapView.activeScouts.length) return true;
-      const layout = this.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries);
-      if (!layout) return false;
-      if (layout.kind === 'chunks') return false;
-      if (this.worldTileFastDragActive && this.worldTileScoutRouteCacheKey && this.worldTileScoutRouteCache?.canvas) {
-        return this.drawWorldTileLayerCache(this.worldTileScoutRouteCache, layout, frame);
-      }
-      const cacheScale = this.getWorldTileStaticCacheScale();
-      const work = this.getWorldTileScoutRouteCacheContext(layout.frame.width, layout.frame.height, cacheScale);
-      if (!work) return false;
-      const cacheKey = this.getWorldTileScoutRouteCacheKey(tileMapView, layout.renderViewport, layout.frame, {
-        kind: layout.kind,
-        cacheScale,
-      });
-      if (cacheKey !== this.worldTileScoutRouteCacheKey) {
-        if (!this.renderScoutRoutesIntoCache(tileMapView, { ...layout, work })) return false;
-        this.worldTileScoutRouteCacheKey = cacheKey;
-        this.worldTileScoutRouteCacheLayout = { ...layout, frame: { ...layout.frame } };
-      }
-      return this.drawWorldTileLayerCache(work, layout, frame);
+      return false;
     }
   }
 

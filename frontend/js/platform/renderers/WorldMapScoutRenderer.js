@@ -26,26 +26,83 @@
       });
     }
 
-    renderWorldScoutRoutes(tileMapView = {}, viewport = {}) {
-      const geometry = tileMapView.geometry || {};
-      (tileMapView.activeScouts || []).forEach((mission) => {
-        const points = (mission.route || []).map((step) => this.getWorldTileScreenCenter(step, viewport, geometry));
-        if (points.length >= 2) {
-          this.drawPolyline(points, {
-            color: mission.status === 'ready' ? 'rgba(116, 211, 160, 0.72)' : 'rgba(240, 180, 91, 0.78)',
-            width: 2,
-          });
-        }
-        points.forEach((point, index) => {
-          const step = mission.route[index] || {};
-          const fill = step.revealed ? 'rgba(116, 211, 160, 0.84)' : 'rgba(240, 180, 91, 0.52)';
-          this.drawPanel(point.x - 4, point.y - 4, 8, 8, {
-            fill,
-            stroke: 'rgba(11, 18, 14, 0.54)',
-            radius: 4,
-          });
-        });
+    getActorRouteMission(actor = {}, tileMapView = {}) {
+      const actorKeys = [actor.missionId, actor.id].map((key) => String(key || '')).filter(Boolean);
+      if (!actorKeys.length) return null;
+      return (Array.isArray(tileMapView.activeScouts) ? tileMapView.activeScouts : [])
+        .find((mission) => actorKeys.includes(String(mission?.id || ''))) || null;
+    }
+
+    getRemainingRouteSteps(actor = {}, mission = {}) {
+      const route = Array.isArray(actor.route) && actor.route.length
+        ? actor.route
+        : (Array.isArray(mission.route) ? mission.route : []);
+      if (!route.length) return [];
+      const progress = actor.progress || {};
+      const segmentIndex = Math.max(0, Math.floor(Number(actor.current?.segmentIndex ?? progress.segmentIndex ?? 0) || 0));
+      const segmentProgress = Math.max(0, Math.min(1, Number(actor.current?.segmentProgress ?? progress.segmentProgress ?? 0) || 0));
+      const startIndex = Math.min(route.length, segmentIndex + (segmentProgress >= 0.999 ? 1 : 0));
+      return route.slice(startIndex);
+    }
+
+    getWorldScoutRoutePoints(actor = {}, mission = {}, viewport = {}, geometry = {}) {
+      if (actor.status !== 'active') return [];
+      const current = actor.current || actor.position || actor.origin || null;
+      if (!current) return [];
+      const routeSteps = this.getRemainingRouteSteps(actor, mission);
+      const points = [
+        this.getWorldTileScreenCenter(current, viewport, geometry),
+        ...routeSteps.map((step) => this.getWorldTileScreenCenter(step, viewport, geometry)),
+      ];
+      return points.filter((point) => (
+        point
+        && Number.isFinite(Number(point.x))
+        && Number.isFinite(Number(point.y))
+      ));
+    }
+
+    drawDashedScoutRoute(points = [], options = {}) {
+      if (!this.ctx || points.length < 2) return false;
+      this.ctx.save?.();
+      const previousDash = this.ctx.getLineDash?.() || [];
+      const previousOffset = this.ctx.lineDashOffset || 0;
+      const previousCap = this.ctx.lineCap;
+      const previousJoin = this.ctx.lineJoin;
+      if (this.ctx.setLineDash) this.ctx.setLineDash(options.dash || [10, 8]);
+      this.ctx.lineDashOffset = Number(options.dashOffset) || 0;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.strokeStyle = options.shadowColor || 'rgba(11, 18, 14, 0.66)';
+      this.ctx.lineWidth = Math.max(1, Number(options.width) || 3) + 2;
+      this.ctx.beginPath?.();
+      this.ctx.moveTo?.(points[0].x, points[0].y);
+      points.slice(1).forEach((point) => this.ctx.lineTo?.(point.x, point.y));
+      this.ctx.stroke?.();
+      this.ctx.strokeStyle = options.color || 'rgba(92, 236, 145, 0.86)';
+      this.ctx.lineWidth = Math.max(1, Number(options.width) || 3);
+      this.ctx.beginPath?.();
+      this.ctx.moveTo?.(points[0].x, points[0].y);
+      points.slice(1).forEach((point) => this.ctx.lineTo?.(point.x, point.y));
+      this.ctx.stroke?.();
+      if (this.ctx.setLineDash) this.ctx.setLineDash(previousDash);
+      this.ctx.lineDashOffset = previousOffset;
+      this.ctx.lineCap = previousCap;
+      this.ctx.lineJoin = previousJoin;
+      this.ctx.restore?.();
+      return true;
+    }
+
+    renderWorldScoutRoutes(tileMapView = {}, viewport = {}, actors = []) {
+      const geometry = tileMapView.geometry || viewport.geometry || {};
+      let rendered = false;
+      (Array.isArray(actors) ? actors : []).forEach((actor) => {
+        const mission = this.getActorRouteMission(actor, tileMapView) || {};
+        const points = this.getWorldScoutRoutePoints(actor, mission, viewport, geometry);
+        if (this.drawDashedScoutRoute(points, {
+          dashOffset: -((Number(this.getNow?.()) || Date.now()) / 90) % 18,
+        })) rendered = true;
       });
+      return rendered;
     }
 
   }

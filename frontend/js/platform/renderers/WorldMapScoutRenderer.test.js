@@ -43,6 +43,21 @@ function createHost(overrides = {}) {
     drawPolyline(...args) {
       calls.push(['drawPolyline', ...args]);
     },
+    ctx: {
+      beginPath() { calls.push(['beginPath']); },
+      getLineDash() { calls.push(['getLineDash']); return []; },
+      lineTo(...args) { calls.push(['lineTo', ...args]); },
+      moveTo(...args) { calls.push(['moveTo', ...args]); },
+      restore() { calls.push(['restore']); },
+      save() { calls.push(['save']); },
+      setLineDash(...args) { calls.push(['setLineDash', ...args]); },
+      stroke() { calls.push(['stroke']); },
+      lineCap: 'butt',
+      lineDashOffset: 0,
+      lineJoin: 'miter',
+      lineWidth: 1,
+      strokeStyle: '',
+    },
     getEpochNowMs() {
       return this.epochNowMs;
     },
@@ -78,18 +93,53 @@ function createMission(overrides = {}) {
   };
 }
 
-test('WorldMapScoutRenderer renders scout route lines and route markers', () => {
+test('WorldMapScoutRenderer renders dynamic dashed routes from actor current position', () => {
   const host = createHost();
   const renderer = new WorldMapScoutRenderer({ host });
   const tileMapView = {
     geometry: { stepX: 96, stepY: 48 },
-    activeScouts: [createMission({ status: 'ready' })],
+    activeScouts: [createMission({
+      id: 'scout-1',
+      route: [
+        { q: 1, r: 0, step: 1, revealed: false },
+        { q: 2, r: 0, step: 2, revealed: false },
+        { q: 3, r: 0, step: 3, revealed: false },
+      ],
+    })],
   };
+  const actors = [{
+    id: 'scout-1',
+    missionId: 'scout-1',
+    status: 'active',
+    current: { q: 1.5, r: 0, segmentIndex: 1, segmentProgress: 0.5 },
+    progress: { segmentIndex: 1, segmentProgress: 0.5 },
+  }];
 
-  renderer.renderWorldScoutRoutes(tileMapView, { originX: 100, originY: 80, scale: 0.5 });
+  assert.equal(renderer.renderWorldScoutRoutes(tileMapView, { originX: 100, originY: 80, scale: 0.5 }, actors), true);
 
-  assert.equal(host.calls.some((call) => call[0] === 'drawPolyline' && call[2].color === 'rgba(116, 211, 160, 0.72)'), true);
-  assert.equal(host.calls.filter((call) => call[0] === 'drawPanel').length, 2);
+  assert.equal(host.calls.some((call) => call[0] === 'setLineDash' && call[1][0] === 10), true);
+  assert.equal(host.calls.some((call) => call[0] === 'getWorldTileScreenCenter' && call[1] === 1.5 && call[2] === 0), true);
+  assert.equal(host.calls.some((call) => call[0] === 'getWorldTileScreenCenter' && call[1] === 1 && call[2] === 0), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawPolyline'), false);
+});
+
+test('WorldMapScoutRenderer skips idle actor routes', () => {
+  const host = createHost();
+  const renderer = new WorldMapScoutRenderer({ host });
+  const tileMapView = {
+    geometry: { stepX: 96, stepY: 48 },
+    activeScouts: [createMission({ status: 'idle' })],
+  };
+  const actors = [{
+    id: 'scout-1',
+    missionId: 'scout-1',
+    status: 'idle',
+    current: { q: 2, r: 0 },
+  }];
+
+  assert.equal(renderer.renderWorldScoutRoutes(tileMapView, { originX: 100, originY: 80, scale: 0.5 }, actors), false);
+  assert.equal(host.calls.some((call) => call[0] === 'stroke'), false);
 });
 
 test('WorldMapScoutRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {

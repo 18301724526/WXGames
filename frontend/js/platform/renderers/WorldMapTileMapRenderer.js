@@ -184,9 +184,6 @@
     }
 
     renderWorldTileMapLayers(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}) {
-      if (!this.renderWorldScoutRouteLayer(tileMapView, viewport, frame, visibleEntries)) {
-        this.renderWorldScoutRoutes(tileMapView, viewport);
-      }
       if (!this.renderWorldTileWaterLayer(tileMapView, viewport, frame, visibleEntries)) {
         this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries, this.getWorldTileWaterTimeMs());
       }
