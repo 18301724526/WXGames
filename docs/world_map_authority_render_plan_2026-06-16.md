@@ -488,6 +488,41 @@ Manual/browser test target:
 - Only click the highlighted/visible capital area once.
 - Pass condition: the intro advances to the next tutorial step or opens the capital flow; it must not stay stuck on the `点一下首都看看` dialogue and must not open reset confirmation.
 
+## Step 15 - Render-Space Origin Keeps Current Capital On Canvas
+
+Evidence:
+
+- Real online playtest against public H5 failed after resetting the QA account on deployed commit `57ef27d4c5463341c58cf6c0b69c6e27cac4aa4b`.
+- Failure evidence was saved under `tmp/verification/online-user-request-visual/2026-06-15T22-57-02-479Z/`.
+- The API/frontend state had `worldMap.origin = { q: 28, r: 9 }`, capital `tile_28_9`, and 25 world-map tiles.
+- The tutorial `openWorldSite` target existed, but its visible ratio was `0.000` and its fallback rect was `1x1` at the canvas edge. This proves the capital facts existed but were projected outside the playable canvas.
+
+Scope:
+
+- Frontend render-space projection only.
+- Do not change backend spawn scoring, reset lifecycle, world authority, tile facts, site ownership, march timing, or tutorial flow.
+- Absolute world coordinates such as `tile_28_9` remain authoritative in data, actions, logs, and server API payloads.
+
+Implementation rule:
+
+- Carry `worldMap.origin` into the tile-map presenter as a render viewport origin.
+- Render projection subtracts the viewport world origin from absolute tile coordinates before computing screen centers.
+- Screen-to-tile picking adds the same world origin back so clicks still dispatch absolute tile ids.
+- Fog, map cache keys, site anchors, march actors, and layout fallbacks must share the same render-origin contract so one layer cannot drift from another.
+
+Automated test target:
+
+```bash
+node --test frontend/js/domain/TileMapGeometry.test.js frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/platform/renderers/WorldMapLayoutModel.test.js frontend/js/platform/renderers/WorldMapLayoutFacade.test.js frontend/js/domain/WorldFogVisualSnapshot.test.js frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/renderers/WorldMapHitTargetModel.test.js frontend/js/platform/renderers/WorldMapHitTargetFacade.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapTileMapRenderer.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Reset or use a fresh tutorial QA account.
+- Only check the first tutorial city/capital target.
+- Pass condition: the current capital at `worldMap.origin` is visible inside the canvas and the tutorial city target is clickable; the canvas must not be black/empty and must not point to an old `123` city.
+
 ## Non-Goals
 
 - No frontend redesign.

@@ -49,6 +49,10 @@
     };
   }
 
+  function getViewportWorldOrigin(viewport = {}) {
+    return normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {});
+  }
+
   function hasFractionalAxis(coord = {}) {
     const x = coord?.x !== undefined ? Number(coord.x) : Number(coord?.q);
     const y = coord?.y !== undefined ? Number(coord.y) : Number(coord?.r);
@@ -59,11 +63,12 @@
   function getContinuousTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
     const stepX = toNumber(geometry.stepX, 96);
     const stepY = toNumber(geometry.stepY, 48);
+    const origin = getViewportWorldOrigin(viewport);
     const q = toNumber(coord.q ?? coord.x, 0);
     const r = toNumber(coord.r ?? coord.y, 0);
     return {
-      x: toNumber(viewport.originX) + toNumber(viewport.panX) + (q - r) * stepX * toNumber(viewport.scale, 1),
-      y: toNumber(viewport.originY) + toNumber(viewport.panY) + (q + r) * stepY * toNumber(viewport.scale, 1),
+      x: toNumber(viewport.originX) + toNumber(viewport.panX) + ((q - origin.q) - (r - origin.r)) * stepX * toNumber(viewport.scale, 1),
+      y: toNumber(viewport.originY) + toNumber(viewport.panY) + ((q - origin.q) + (r - origin.r)) * stepY * toNumber(viewport.scale, 1),
     };
   }
 
@@ -108,8 +113,9 @@
     const localY = (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
     const projectedQMinusR = localX / stepX;
     const projectedQPlusR = localY / stepY;
-    const q = Math.round((projectedQMinusR + projectedQPlusR) / 2);
-    const r = Math.round((projectedQPlusR - projectedQMinusR) / 2);
+    const origin = getViewportWorldOrigin(viewport);
+    const q = Math.round((projectedQMinusR + projectedQPlusR) / 2) + origin.q;
+    const r = Math.round((projectedQPlusR - projectedQMinusR) / 2) + origin.r;
     return {
       id: tileId(q, r),
       q,
@@ -142,6 +148,7 @@
     toInteger,
     tileId,
     getContinuousTileScreenCenter,
+    getViewportWorldOrigin,
     getTileScreenCenter,
     screenPointToNearestTile,
     screenPointToAxialTile,

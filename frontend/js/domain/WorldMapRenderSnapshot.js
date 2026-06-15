@@ -44,6 +44,19 @@
     return Math.floor(toNumber(value, fallback));
   }
 
+  function normalizeCoord(coord = {}, fallback = {}) {
+    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(coord, fallback);
+    const x = toInteger(coord.x ?? coord.q, fallback.x ?? fallback.q ?? 0);
+    const y = toInteger(coord.y ?? coord.r, fallback.y ?? fallback.r ?? 0);
+    return {
+      x,
+      y,
+      q: x,
+      r: y,
+      tileId: `tile_${x}_${y}`,
+    };
+  }
+
   function hashStep(hash, value) {
     const text = String(value ?? '');
     let next = hash >>> 0;
@@ -79,6 +92,7 @@
     const originY = options.originY !== undefined ? toNumber(options.originY, y + height * 0.42) : y + height * 0.42;
     const scale = Math.max(0.38, Math.min(0.78, Math.min(scaleBasisWidth / 520, scaleBasisHeight / 420)));
     const geometry = options.geometry || tileMapView.geometry || {};
+    const worldOrigin = normalizeCoord(options.worldOrigin || tileMapView.origin || tileMapView.worldOrigin || {});
     return {
       originX: Number.isFinite(originX) ? originX : x + width * 0.5,
       originY: Number.isFinite(originY) ? originY : y + height * 0.42,
@@ -87,6 +101,7 @@
       scale,
       seed: tileMapView.seed || 'scout-tile-v1',
       geometry,
+      worldOrigin,
     };
   }
 
@@ -258,6 +273,7 @@
     getViewport,
     normalizeFlags,
     normalizeFrame,
+    normalizeCoord,
     normalizeMarchTarget,
     normalizeUiState,
     normalizeViewport,

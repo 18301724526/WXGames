@@ -209,12 +209,14 @@
       }
       const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
       const scale = Number(viewport.scale) || 1;
+      const worldOrigin = this.normalizeTileCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || tileMapView.origin || tileMapView.worldOrigin || {});
       const cacheKey = [
         tileMapView.signature || '',
         tileMapView.version || '',
         tileMapView.seed || '',
         tiles.length,
         this.getWorldTileEntitySignature(tileMapView),
+        worldOrigin.tileId,
         Math.round((Number(viewport.originX) || 0) * 10) / 10,
         Math.round((Number(viewport.originY) || 0) * 10) / 10,
         Math.round((Number(viewport.panX) || 0) * 10) / 10,
@@ -266,12 +268,14 @@
       }
       const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
       const scale = Number(viewport.scale) || 1;
+      const worldOrigin = this.normalizeTileCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || tileMapView.origin || tileMapView.worldOrigin || {});
       const cacheKey = [
         tileMapView.signature || '',
         tileMapView.version || '',
         tileMapView.seed || '',
         tiles.length,
         this.getWorldTileEntitySignature(tileMapView),
+        worldOrigin.tileId,
         Math.round(scale * 1000),
         Number(geometry.tileWidth) || 192,
         Number(geometry.tileHeight) || 96,
@@ -282,6 +286,7 @@
       if (this.worldTileLocalEntriesCache?.key === cacheKey) return this.worldTileLocalEntriesCache.entries;
       const localViewport = {
         ...viewport,
+        worldOrigin: viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || tileMapView.origin || tileMapView.worldOrigin || undefined,
         originX: 0,
         originY: 0,
         panX: 0,

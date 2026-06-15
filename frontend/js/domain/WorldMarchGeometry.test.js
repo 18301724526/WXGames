@@ -24,6 +24,21 @@ test('WorldMarchGeometry preserves fractional march coordinates for smooth actor
   });
 });
 
+test('WorldMarchGeometry keeps render-space origin separate from absolute world coordinates', () => {
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const viewport = { originX: 216, originY: 337, panX: 0, panY: 0, scale: 0.78, worldOrigin: { q: 28, r: 9 } };
+  const capitalCenter = WorldMarchGeometry.getTileScreenCenter({ q: 28, r: 9 }, viewport, geometry);
+  const nextTileCenter = WorldMarchGeometry.getTileScreenCenter({ q: 29, r: 9 }, viewport, geometry);
+  const inferred = WorldMarchGeometry.screenPointToAxialTile(capitalCenter, viewport, geometry);
+
+  assert.deepEqual(capitalCenter, { x: 216, y: 337 });
+  assert.equal(nextTileCenter.x > capitalCenter.x, true);
+  assert.equal(nextTileCenter.y > capitalCenter.y, true);
+  assert.equal(inferred.tileId, 'tile_28_9');
+  assert.equal(inferred.q, 28);
+  assert.equal(inferred.r, 9);
+});
+
 test('WorldMarchGeometry maps screen points to nearest rendered tiles', () => {
   const tileMapView = {
     geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },

@@ -38,6 +38,23 @@
     };
   }
 
+  function getViewportWorldOrigin(viewport = {}) {
+    const source = viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {};
+    return normalizeCoord(source, { x: 0, y: 0 });
+  }
+
+  function getRelativeCoord(tile = {}, viewport = {}) {
+    const coord = normalizeCoord(tile);
+    const origin = getViewportWorldOrigin(viewport);
+    return {
+      x: coord.x - origin.x,
+      y: coord.y - origin.y,
+      q: coord.q - origin.q,
+      r: coord.r - origin.r,
+      tileId: coord.tileId,
+    };
+  }
+
   function normalizeGeometry(options = {}) {
     const tileWidth = Math.max(16, toNumber(options.tileWidth, DEFAULT_GEOMETRY.tileWidth));
     const tileHeight = Math.max(8, toNumber(options.tileHeight, DEFAULT_GEOMETRY.tileHeight));
@@ -111,7 +128,7 @@
 
   function getTileScreenCenter(tile = {}, viewport = {}, options = {}) {
     const geometry = normalizeGeometry(options);
-    const projected = projectTile(tile, geometry);
+    const projected = projectTile(getRelativeCoord(tile, viewport), geometry);
     return {
       x: toNumber(viewport.originX) + toNumber(viewport.panX) + projected.x * toNumber(viewport.scale, 1),
       y: toNumber(viewport.originY) + toNumber(viewport.panY) + projected.y * toNumber(viewport.scale, 1),
@@ -125,8 +142,9 @@
     const localY = (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
     const projectedXMinusY = localX / geometry.stepX;
     const projectedXPlusY = localY / geometry.stepY;
-    const x = Math.round((projectedXMinusY + projectedXPlusY) / 2);
-    const y = Math.round((projectedXPlusY - projectedXMinusY) / 2);
+    const origin = getViewportWorldOrigin(viewport);
+    const x = Math.round((projectedXMinusY + projectedXPlusY) / 2) + origin.x;
+    const y = Math.round((projectedXPlusY - projectedXMinusY) / 2) + origin.y;
     return normalizeCoord({ x, y });
   }
 
@@ -136,6 +154,8 @@
 
   const TileMapGeometry = {
     DEFAULT_GEOMETRY,
+    getRelativeCoord,
+    getViewportWorldOrigin,
     normalizeCoord,
     normalizeGeometry,
     projectTile,

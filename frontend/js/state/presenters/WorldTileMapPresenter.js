@@ -406,10 +406,12 @@
           scoutedAt: area.scoutedAt || '',
         }));
       const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };
+      const origin = this.summarizeCoordForSignature(worldMap.origin || {});
       const viewState = {
         signature: this.getWorldTileMapSignature(territoryState, worldExplorerState, options),
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
+        origin,
         pan: {
           x: this.toNumber(options.panX),
           y: this.toNumber(options.panY),

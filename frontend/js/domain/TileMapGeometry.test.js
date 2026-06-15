@@ -32,6 +32,22 @@ test('TileMapGeometry converts screen points back to stable tile coordinates', (
   });
 });
 
+test('TileMapGeometry projects non-zero world origins around the local viewport center', () => {
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const viewport = { originX: 216, originY: 337, panX: 0, panY: 0, scale: 0.78, worldOrigin: { q: 28, r: 9 } };
+  const center = TileMapGeometry.getTileScreenCenter({ q: 28, r: 9 }, viewport, geometry);
+  const coord = TileMapGeometry.screenPointToCoord(center, viewport, geometry);
+
+  assert.deepEqual(center, { x: 216, y: 337 });
+  assert.deepEqual(coord, {
+    x: 28,
+    y: 9,
+    q: 28,
+    r: 9,
+    tileId: 'tile_28_9',
+  });
+});
+
 test('TileMapGeometry sort order treats q/r as compatibility aliases', () => {
   const tiles = TileMapGeometry.sortTilesForIsoDraw([
     { id: 'b', x: 1, y: 0 },

@@ -91,6 +91,7 @@
   }
 
   function normalizeViewport(input = {}, geometry = {}) {
+    const worldOrigin = normalizeCoord(input.worldOrigin || input.originCoord || input.renderOrigin || {});
     return {
       originX: toNumber(input.originX, 0),
       originY: toNumber(input.originY, 0),
@@ -99,6 +100,7 @@
       scale: Math.max(0.05, toNumber(input.scale, 1)),
       seed: input.seed || 'scout-tile-v1',
       geometry,
+      worldOrigin,
     };
   }
 
@@ -112,12 +114,13 @@
   }
 
   function getTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
+    const origin = normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {});
     const q = toNumber(tile.q ?? tile.x, 0);
     const r = toNumber(tile.r ?? tile.y, 0);
     const scale = Math.max(0.05, toNumber(viewport.scale, 1));
     return {
-      x: toNumber(viewport.originX, 0) + toNumber(viewport.panX, 0) + (q - r) * toNumber(geometry.stepX, 96) * scale,
-      y: toNumber(viewport.originY, 0) + toNumber(viewport.panY, 0) + (q + r) * toNumber(geometry.stepY, 48) * scale,
+      x: toNumber(viewport.originX, 0) + toNumber(viewport.panX, 0) + ((q - origin.q) - (r - origin.r)) * toNumber(geometry.stepX, 96) * scale,
+      y: toNumber(viewport.originY, 0) + toNumber(viewport.panY, 0) + ((q - origin.q) + (r - origin.r)) * toNumber(geometry.stepY, 48) * scale,
     };
   }
 

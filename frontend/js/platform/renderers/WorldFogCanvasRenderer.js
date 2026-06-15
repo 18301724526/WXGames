@@ -299,11 +299,12 @@
       const stepX = Number(geometry.stepX) || (Number(geometry.tileWidth) || 192) * 0.5;
       const stepY = Number(geometry.stepY) || (Number(geometry.tileHeight) || 96) * 0.5;
       const coord = normalizeTileCoord(tile);
+      const origin = normalizeTileCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {});
       const q = Number(coord.q) || 0;
       const r = Number(coord.r) || 0;
       return {
-        x: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + (q - r) * stepX * scale,
-        y: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + (q + r) * stepY * scale,
+        x: (Number(viewport.originX) || 0) + (Number(viewport.panX) || 0) + ((q - origin.q) - (r - origin.r)) * stepX * scale,
+        y: (Number(viewport.originY) || 0) + (Number(viewport.panY) || 0) + ((q - origin.q) + (r - origin.r)) * stepY * scale,
       };
     }
 

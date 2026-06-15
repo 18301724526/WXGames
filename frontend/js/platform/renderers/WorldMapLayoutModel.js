@@ -167,12 +167,14 @@
   function getWorldTileLocalEntriesCacheKey(tileMapView = {}, viewport = {}, geometry = {}) {
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const scale = Number(viewport.scale) || 1;
+    const worldOrigin = normalizeTileCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || tileMapView.origin || tileMapView.worldOrigin || {});
     return [
       tileMapView.signature || '',
       tileMapView.version || '',
       tileMapView.seed || '',
       tiles.length,
       getWorldTileEntitySignature(tileMapView),
+      worldOrigin.tileId,
       Math.round(scale * 1000),
       Number(geometry.tileWidth) || 192,
       Number(geometry.tileHeight) || 96,
@@ -192,10 +194,16 @@
     };
   }
 
+  function getWorldTileViewport(tileMapView = {}, viewport = {}) {
+    if (viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin) return viewport;
+    const origin = tileMapView.origin || tileMapView.worldOrigin || null;
+    return origin ? { ...viewport, worldOrigin: origin } : viewport;
+  }
+
   function getWorldTileLocalEntries(tileMapView = {}, viewport = {}, geometry = {}, options = {}) {
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const scale = Number(viewport.scale) || 1;
-    const localViewport = getWorldTileLocalViewport(viewport);
+    const localViewport = getWorldTileLocalViewport(getWorldTileViewport(tileMapView, viewport));
     const entries = new Array(tiles.length);
     for (let index = 0; index < tiles.length; index += 1) {
       const tile = tiles[index];
@@ -209,12 +217,14 @@
   function getWorldTileRenderEntriesCacheKey(tileMapView = {}, viewport = {}, frame = {}) {
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const scale = Number(viewport.scale) || 1;
+    const worldOrigin = normalizeTileCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || tileMapView.origin || tileMapView.worldOrigin || {});
     return [
       tileMapView.signature || '',
       tileMapView.version || '',
       tileMapView.seed || '',
       tiles.length,
       getWorldTileEntitySignature(tileMapView),
+      worldOrigin.tileId,
       Math.round((Number(viewport.originX) || 0) * 10) / 10,
       Math.round((Number(viewport.originY) || 0) * 10) / 10,
       Math.round((Number(viewport.panX) || 0) * 10) / 10,
@@ -450,6 +460,7 @@
     getWorldTileEntitySignature,
     getWorldTileLocalEntriesCacheKey,
     getWorldTileRenderEntriesCacheKey,
+    getWorldTileViewport,
     getWorldTileLocalViewport,
     getWorldTileLocalEntries,
     getWorldTileRenderEntries,

@@ -65,6 +65,29 @@ test('WorldMapRenderSnapshot normalizes frame, viewport, ui, and march actors', 
   assert.equal(WorldMapRenderSnapshot.getActors(snapshot)[0].missionId, 'explore-1');
 });
 
+test('WorldMapRenderSnapshot carries world origin into render viewport', () => {
+  const tileMapView = {
+    ...createTileMapView(),
+    origin: { q: 28, r: 9 },
+    tiles: [{ id: 'tile_28_9', q: 28, r: 9, terrain: 'capital' }],
+  };
+  const snapshot = WorldMapRenderSnapshot.createSnapshot({
+    tileMapView,
+    x: 0,
+    y: 72,
+    width: 432,
+    height: 632,
+  });
+
+  assert.deepEqual(snapshot.viewport.worldOrigin, {
+    x: 28,
+    y: 9,
+    q: 28,
+    r: 9,
+    tileId: 'tile_28_9',
+  });
+});
+
 test('WorldMapRenderSnapshot uses epochNowMs for continuous march actors', () => {
   const snapshot = WorldMapRenderSnapshot.createSnapshot({
     tileMapView: createTileMapView(),

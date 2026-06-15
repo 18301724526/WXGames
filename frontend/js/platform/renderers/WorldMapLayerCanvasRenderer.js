@@ -207,6 +207,7 @@
         scale,
         seed: tileMapView.seed || 'scout-tile-v1',
         geometry,
+        worldOrigin: tileMapView.origin || tileMapView.worldOrigin || { q: 0, r: 0 },
       };
       const frame = {
         x: layout.map.x + 1,
@@ -566,6 +567,7 @@
         scale,
         seed: tileMapView.seed || 'scout-tile-v1',
         geometry,
+        worldOrigin: tileMapView.origin || tileMapView.worldOrigin || { q: 0, r: 0 },
       };
       const frame = { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
       const renderSnapshot = SharedWorldMapRenderSnapshot?.createSnapshot

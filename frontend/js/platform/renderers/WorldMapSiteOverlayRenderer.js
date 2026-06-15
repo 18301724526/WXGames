@@ -404,6 +404,7 @@
         scale,
         seed: tileMapView.seed || 'scout-tile-v1',
         geometry,
+        worldOrigin: tileMapView.origin || tileMapView.worldOrigin || { q: 0, r: 0 },
       };
       const projectedCenter = this.getWorldTileScreenCenter(selectedTile, viewport, geometry);
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
@@ -471,6 +472,7 @@
         scale,
         seed: tileMapView.seed || 'scout-tile-v1',
         geometry,
+        worldOrigin: tileMapView.origin || tileMapView.worldOrigin || { q: 0, r: 0 },
       };
       const projectedCenter = this.getWorldTileScreenCenter(selectedTile, viewport, geometry);
       const tileWidth = (Number(geometry.tileWidth) || 192) * scale;

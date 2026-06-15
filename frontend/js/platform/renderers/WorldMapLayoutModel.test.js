@@ -109,6 +109,36 @@ test('WorldMapLayoutModel filters visible render entries using local entries', (
   assert.equal(entries[0].center.x, localEntries[0].center.x + viewport.originX + viewport.panX);
 });
 
+test('WorldMapLayoutModel centers a non-zero world origin in render space', () => {
+  const tileMapView = {
+    signature: 'non-zero-origin-map',
+    version: '1',
+    seed: 'layout-origin-test',
+    origin: { q: 28, r: 9, tileId: 'tile_28_9' },
+    tiles: [{
+      id: 'tile_28_9',
+      q: 28,
+      r: 9,
+      terrain: 'capital',
+      site: { id: 'capital', type: 'city', art: 'assets/art/world-site-city-cutout.png', owner: 'player', scale: 0.5 },
+    }],
+  };
+  const viewport = { originX: 216, originY: 337, panX: 0, panY: 0, scale: 0.78 };
+  const localEntries = WorldMapLayoutModel.getWorldTileLocalEntries(tileMapView, viewport, geometry);
+  const entries = WorldMapLayoutModel.getWorldTileRenderEntries(
+    tileMapView,
+    viewport,
+    { x: 0, y: 72, width: 432, height: 632 },
+    geometry,
+    { localEntries },
+  );
+
+  assert.equal(localEntries[0].tile.id, 'tile_28_9');
+  assert.deepEqual(localEntries[0].center, { x: 0, y: 0 });
+  assert.equal(entries.length, 1);
+  assert.deepEqual(entries[0].center, { x: 216, y: 337 });
+});
+
 test('WorldMapLayoutModel creates cache, chunk, and drag layouts with bounded pure calculations', () => {
   const tileMapView = createTileMapView(40);
   const viewport = { originX: 180, originY: 220, panX: -24, panY: 12, scale: 0.65 };
@@ -207,6 +237,23 @@ test('WorldMapLayoutModel derives cache identity from stable tile coordinates', 
   assert.notEqual(
     WorldMapLayoutModel.getWorldTileEntitySignature(stableTileMapView),
     WorldMapLayoutModel.getWorldTileEntitySignature(movedTileMapView),
+  );
+});
+
+test('WorldMapLayoutModel cache keys include render-space world origin', () => {
+  const tileMapView = {
+    signature: 'same-signature',
+    version: '1',
+    seed: 'layout-origin-cache',
+    tiles: [{ id: 'tile_28_9', q: 28, r: 9, terrain: 'capital' }],
+  };
+  const viewport = { originX: 216, originY: 337, panX: 0, panY: 0, scale: 0.78 };
+  const withOrigin = { ...tileMapView, origin: { q: 28, r: 9 } };
+  const otherOrigin = { ...tileMapView, origin: { q: 0, r: 0 } };
+
+  assert.notEqual(
+    WorldMapLayoutModel.getWorldTileLocalEntriesCacheKey(withOrigin, viewport, geometry),
+    WorldMapLayoutModel.getWorldTileLocalEntriesCacheKey(otherOrigin, viewport, geometry),
   );
 });
 

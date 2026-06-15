@@ -84,6 +84,7 @@
         scale: Math.max(0.38, Math.min(0.78, Math.min(width / 520, height / 420))),
         seed: tileMapView.seed || 'scout-tile-v1',
         geometry,
+        worldOrigin: tileMapView.origin || tileMapView.worldOrigin || { q: 0, r: 0 },
       };
       const frame = renderSnapshot?.frame || { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
       return {
