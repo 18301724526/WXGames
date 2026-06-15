@@ -318,6 +318,58 @@ test('world march can be redirected home', () => {
   assert.equal(returned.authority.command.type, 'returnWorldMarch');
 });
 
+test('returned world march carries server-planned route footprint', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 3,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+  const returnAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * 2 + 1);
+
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    returnAt,
+  );
+
+  assert.equal(returned.success, true);
+  assert.equal(returned.mission.origin.tileId, 'tile_2_0');
+  assert.equal(returned.mission.target.tileId, 'tile_0_0');
+  assert.equal(returned.mission.route.length, 2);
+  assert.ok(returned.mission.plannedTiles.length > returned.mission.route.length);
+  assert.equal(returned.mission.plannedTiles.some((tile) => tile.id === 'tile_1_0'), true);
+  assert.equal(returned.mission.plannedTiles.some((tile) => tile.id === 'tile_0_0'), true);
+  assert.equal(gameState.exploreMissions[0].plannedTiles.length, returned.mission.plannedTiles.length);
+});
+
+test('stopped world march carries server-planned route footprint when stop tile is ahead', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 3,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+  const stopAt = new Date(now.getTime() + Math.floor(WorldExplorerService.EXPLORE_STEP_DURATION_MS * 0.75));
+
+  const stopped = WorldExplorerService.stopWorldMarch(
+    gameState,
+    started.mission.id,
+    {},
+    stopAt,
+  );
+
+  assert.equal(stopped.success, true);
+  assert.equal(stopped.mission.origin.tileId, 'tile_0_0');
+  assert.equal(stopped.mission.target.tileId, 'tile_1_0');
+  assert.equal(stopped.mission.route.length, 1);
+  assert.ok(stopped.mission.plannedTiles.length > stopped.mission.route.length);
+  assert.equal(stopped.mission.plannedTiles.some((tile) => tile.id === 'tile_1_0'), true);
+  assert.equal(gameState.exploreMissions[0].plannedTiles.length, stopped.mission.plannedTiles.length);
+});
+
 test('idle world march can return home from its parked tile', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();

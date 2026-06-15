@@ -333,6 +333,23 @@ function rebaseMissionRoute(mission, route, now = new Date(), options = {}) {
   return mission;
 }
 
+function createRebasedRoutePreview(gameState, route, now = new Date(), options = {}) {
+  if (!Array.isArray(route) || route.length === 0) {
+    return {
+      plannedTiles: [],
+      plannedSites: [],
+    };
+  }
+  return {
+    plannedTiles: createPlannedTiles(gameState, route, now, {
+      mode: options.mode || 'manual',
+      origin: options.origin,
+      target: options.target || route.at(-1),
+    }),
+    plannedSites: [],
+  };
+}
+
 function attachMarchAuthority(result = {}, gameState = {}, mission = null, action = '', now = new Date(), options = {}) {
   if (!mission) return result;
   const timeline = ServerTimelineSnapshot.createMissionSnapshot(mission, { now });
@@ -374,7 +391,14 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
   if (!routeResult.success) {
     rebaseMissionRoute(mission, [], resolvedNow, { origin: current });
   } else {
-    rebaseMissionRoute(mission, routeResult.route, resolvedNow, { origin: current });
+    rebaseMissionRoute(mission, routeResult.route, resolvedNow, {
+      origin: current,
+      ...createRebasedRoutePreview(gameState, routeResult.route, resolvedNow, {
+        mode: 'return',
+        origin: current,
+        target: routeResult.target || origin,
+      }),
+    });
   }
   const result = {
     success: true,
@@ -400,7 +424,14 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
   if (!routeResult.success) {
     rebaseMissionRoute(mission, [], now, { origin: current });
   } else {
-    rebaseMissionRoute(mission, routeResult.route, now, { origin: current });
+    rebaseMissionRoute(mission, routeResult.route, now, {
+      origin: current,
+      ...createRebasedRoutePreview(gameState, routeResult.route, now, {
+        mode: 'stop',
+        origin: current,
+        target: routeResult.target || target,
+      }),
+    });
   }
   const result = {
     success: true,
