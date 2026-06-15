@@ -243,6 +243,8 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
   assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter' }), true);
   assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter', disabled: true }), false);
   assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'closeRewardReveal' }), true);
+  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'closeAdvisor', source: 'houseBuilt' }), true);
+  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'closeAdvisor' }), false);
   assert.equal(CanvasSurfaceHitTargets.matchesTutorialShieldAllowedAction(
     { type: 'openWorldSite', cityId: 'capital' },
     { type: 'openWorldSite', cityId: 'capital' },
@@ -255,6 +257,10 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
     type: 'blockCanvasModal',
     allowedAction: { type: 'openWorldSite', cityId: 'capital' },
   });
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'closeAdvisor', source: 'houseBuilt' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'blockCanvasModal' }),
+  ], { x: 20, y: 20 }), { type: 'closeAdvisor', source: 'houseBuilt' });
   assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),

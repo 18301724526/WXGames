@@ -23,6 +23,7 @@
 
   function isAllowedUnderTutorialShield(action = {}) {
     if (action.type === 'closeRewardReveal') return true;
+    if (action.type === 'closeAdvisor' && action.source) return true;
     if (action.type === 'goToGuideTaskTarget') return true;
     if (action.type === 'openTaskCenter') return !action.disabled;
     if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {

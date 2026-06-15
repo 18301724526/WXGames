@@ -387,6 +387,38 @@ Manual/browser test target:
 - On the guided tutorial dialogue screen, click the visible `continue` area once.
 - Only check that the current tutorial advisor dialogue closes or advances, and that no reset confirmation appears.
 
+## Step 12 - Tutorial Advisor Hit Target Shield Priority
+
+Evidence:
+
+- Real online browser verification on deployed commit `c827cae0eb32` confirmed the frontend assets were current, and the tutorial advisor dialogue was visible.
+- A calibrated click inside the visible advisor dialogue panel did not advance the dialogue.
+- The map-home render order draws the tutorial advisor dialogue before the tutorial highlight; the later tutorial highlight adds a full-screen `blockCanvasModal` hit target above the dialogue hit target.
+
+Scope:
+
+- Canvas hit target priority only.
+- Do not change tutorial flow steps, backend tutorial state, spawn allocation, route planning, march interpolation, tile rendering, or reset behavior in this step.
+
+Implementation rule:
+
+- A `closeAdvisor` hit target with an explicit tutorial dialogue `source` may pass through the tutorial shield hit target layer.
+- A generic or stale `closeAdvisor` action without a source remains blocked by tutorial input routing.
+- Debug reset and unrelated actions remain blocked during tutorial overlays.
+
+Automated test target:
+
+```bash
+node --test frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasShellActionHandlers.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Confirm the deployed frontend asset version matches the deployed commit.
+- On the guided tutorial dialogue screen, click the visible `continue` area once.
+- Only check that the current tutorial advisor dialogue closes or advances, and that no reset confirmation appears.
+
 ## Non-Goals
 
 - No frontend redesign.
