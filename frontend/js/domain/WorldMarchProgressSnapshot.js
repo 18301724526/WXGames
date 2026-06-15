@@ -430,8 +430,11 @@
     const routeTarget = route.length ? route[route.length - 1] : null;
     const target = normalizeCoord(source.target || routeTarget || source.position || origin, routeTarget || source.position || origin);
     const isRouteBackedIdle = status === STATUS_IDLE && route.length > 0;
+    const idlePositionSource = source.status === STATUS_IDLE
+      ? (source.position || (isRouteBackedIdle ? target : source.origin) || target)
+      : target;
     const position = status === STATUS_IDLE
-      ? normalizeCoord(source.position || (isRouteBackedIdle ? target : source.origin) || target, target)
+      ? normalizeCoord(idlePositionSource, target)
       : normalizeCoord(source.position || source.origin || target, target);
     const progress = getMissionProgress(effectiveMission, nowMs);
     const current = status === STATUS_IDLE ? position : getCurrentCoord(effectiveMission, nowMs);
@@ -489,7 +492,7 @@
       animationId: row.status === STATUS_IDLE ? 'idle' : 'move',
       origin: row.origin,
       target: row.target,
-      current: row.status === STATUS_IDLE ? row.target : row.current,
+      current: row.status === STATUS_IDLE ? (row.current || row.position || row.target) : row.current,
       stopTile: row.stopTile,
       renderAheadTileId: row.renderAheadTileId || null,
       renderReadyTileIds: Array.isArray(row.renderReadyTileIds) ? row.renderReadyTileIds : [],

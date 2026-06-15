@@ -206,6 +206,31 @@ test('WorldMarchProgressSnapshot renders stopped idle missions without a route a
   assert.equal(actor.animationId, 'idle');
 });
 
+test('WorldMarchProgressSnapshot keeps idle actor on backend position when target differs', () => {
+  const nowMs = new Date('2026-06-06T00:01:05.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    idleMissions: [createMission({
+      status: 'idle',
+      origin: { q: 0, r: 5, tileId: 'tile_0_5' },
+      target: { q: 0, r: 6, tileId: 'tile_0_6' },
+      position: { q: 0, r: 5, tileId: 'tile_0_5' },
+      route: [
+        { q: 0, r: 6, tileId: 'tile_0_6', step: 1, revealed: true },
+      ],
+      nextStepAt: null,
+      completesAt: '2026-06-06T00:01:00.000Z',
+      completedAt: '2026-06-06T00:01:00.000Z',
+    })],
+  }, { nowMs });
+  const mission = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
+  const actor = WorldMarchProgressSnapshot.getActor(snapshot, 'explore-1');
+
+  assert.equal(mission.target.tileId, 'tile_0_6');
+  assert.equal(mission.position.tileId, 'tile_0_5');
+  assert.equal(mission.current.tileId, 'tile_0_5');
+  assert.equal(actor.current.tileId, 'tile_0_5');
+});
+
 test('WorldMarchProgressSnapshot exposes expired random arrival as idle parked actor', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({
