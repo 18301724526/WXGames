@@ -15,6 +15,7 @@ function normalizeRouteStep(rawStep, index = 0) {
     step,
     tileId: WorldMapService.getTileId(q, r),
     revealed: Boolean(rawStep.revealed),
+    routeRevealedExplicit: Object.prototype.hasOwnProperty.call(rawStep, 'revealed'),
     revealedAt: rawStep.revealedAt || null,
   };
 }
@@ -100,6 +101,12 @@ function normalizePlannedSite(rawSite) {
   };
 }
 
+function stripRouteRevealedExplicit(step = {}) {
+  const { routeRevealedExplicit, ...publicStep } = step;
+  void routeRevealedExplicit;
+  return publicStep;
+}
+
 function normalizeMission(rawMission) {
   if (!rawMission || typeof rawMission !== 'object') return null;
   const rawRoute = Array.isArray(rawMission.route) ? rawMission.route : [];
@@ -109,10 +116,11 @@ function normalizeMission(rawMission) {
     .filter(Boolean)
     .sort((a, b) => a.step - b.step)
     .map((step) => (
-      revealedSet.has(step.tileId)
+      !step.routeRevealedExplicit && revealedSet.has(step.tileId)
         ? { ...step, revealed: true }
         : step
-    ));
+    ))
+    .map(stripRouteRevealedExplicit);
   const mode = rawMission.mode === 'manual' ? 'manual' : 'random';
   const status = ['active', 'idle', 'cancelled'].includes(rawMission.status)
     ? rawMission.status

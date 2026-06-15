@@ -47,9 +47,22 @@ function getRouteDto(route = []) {
       step: Math.max(1, toInteger(step?.step, index + 1)),
       tileId: coord.tileId,
       revealed: Boolean(step?.revealed),
+      routeRevealedExplicit: Boolean(step?.routeRevealedExplicit)
+        || Object.prototype.hasOwnProperty.call(step || {}, 'revealed'),
       revealedAt: step?.revealedAt || null,
     };
   });
+}
+
+function getPublicRouteStepDto(step = {}) {
+  return {
+    q: step.q,
+    r: step.r,
+    step: step.step,
+    tileId: step.tileId,
+    revealed: Boolean(step.revealed),
+    revealedAt: step.revealedAt || null,
+  };
 }
 
 function hasCoordPair(source = {}) {
@@ -137,7 +150,7 @@ function getMissionDto(mission = {}, now = new Date()) {
   const revealedTileSet = createRevealedTileSet(mission);
   const route = getRouteDto(mission.route || [])
     .map((step) => (
-      revealedTileSet.has(step.tileId)
+      !step.routeRevealedExplicit && revealedTileSet.has(step.tileId)
         ? { ...step, revealed: true }
         : step
     ));
@@ -155,7 +168,7 @@ function getMissionDto(mission = {}, now = new Date()) {
     origin: getCoordDto(mission.origin || {}),
     homeOrigin: getCoordDto(mission.homeOrigin || mission.origin || {}, mission.origin || {}),
     target: getCoordDto(mission.target || {}, position),
-    route,
+    route: route.map(getPublicRouteStepDto),
     plannedTiles: (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).map(getPlannedTileDto),
     plannedSites: (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).map(getPlannedSiteDto),
     formation: clone(mission.formation || {}),

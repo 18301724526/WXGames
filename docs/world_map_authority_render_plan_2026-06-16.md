@@ -159,17 +159,26 @@ Scope:
 
 - Frontend planned tile normalization and render readiness.
 - Preserve server authority: planned footprint data may add missing render-ahead tiles but must not overwrite known world-map tiles.
+- Keep route-step progress separate from area visibility, especially on return-home routes where the capital can be inside the previous step's reveal radius.
 
 Implementation rule:
 
 - Before the actor steps into a route tile, that tile and its one-ring neighboring footprint should already be renderable.
 - Known `worldMap.tiles` remain authoritative over terrain, water, transition, visibility, sites, ownership, and intel.
 - Planned tiles only fill missing coordinates for preview/render-ahead.
+- `revealedTileIds` means explored/visible map area; it must not mark an explicitly unrevealed `route[]` step as arrived.
+- For legacy records that omitted `route[].revealed`, coordinate aliases may still canonicalize old revealed ids, but explicit `revealed: false` wins for route progress.
+
+Additional issue found while testing Step 4:
+
+- Return routes can reveal the home tile as part of the previous step's 3x3 area.
+- The DTO mapper and frontend march snapshot were treating that map visibility as route arrival, which could project the return actor to the capital one tile early.
+- The fix keeps the home tile visible/renderable while preserving the final route step as unreached until its own step time or backend route flag says it is reached.
 
 Automated test target:
 
 ```bash
-node --test frontend/js/state/presenters/WorldTileMapExplorerNormalizer.test.js frontend/js/state/UIStatePresenter.test.js backend/tests/WorldExplorerArchitecture.test.js
+node --test frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/state/presenters/WorldTileMapExplorerNormalizer.test.js frontend/js/state/UIStatePresenter.test.js backend/tests/WorldExplorerDtoMapper.test.js backend/tests/WorldExplorerArchitecture.test.js
 ```
 
 Manual test target:

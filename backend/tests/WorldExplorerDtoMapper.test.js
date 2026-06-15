@@ -93,6 +93,28 @@ test('WorldExplorerDtoMapper derives public revealed route identity from coordin
   assert.equal(JSON.stringify(dto).includes('legacy-route'), false);
 });
 
+test('WorldExplorerDtoMapper keeps area visibility separate from route arrival', () => {
+  const dto = DtoMapper.getMissionDto(createMission({
+    id: 'return-home',
+    origin: { q: 2, r: 0, tileId: 'tile_2_0', cityId: 'capital' },
+    homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+    target: { q: 0, r: 0, tileId: 'tile_0_0' },
+    position: { q: 1, r: 0, tileId: 'tile_1_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+      { q: 0, r: 0, tileId: 'tile_0_0', step: 2, revealed: false },
+    ],
+    revealedTileIds: ['tile_1_0', 'tile_0_0'],
+    startedAt: '2026-06-06T00:00:40.000Z',
+    nextStepAt: '2026-06-06T00:01:00.000Z',
+    completesAt: '2026-06-06T00:01:00.000Z',
+  }), new Date('2026-06-06T00:00:55.000Z'));
+
+  assert.deepEqual(dto.route.map((step) => step.revealed), [true, false]);
+  assert.equal(dto.position.tileId, 'tile_1_0');
+  assert.deepEqual(dto.revealedTileIds, ['tile_1_0', 'tile_0_0']);
+});
+
 test('WorldExplorerDtoMapper groups active and idle DTOs without retired ready reports', () => {
   const state = DtoMapper.getClientStateDto([
     createMission({ id: 'active-1', status: 'active' }),

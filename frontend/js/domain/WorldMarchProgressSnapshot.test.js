@@ -165,6 +165,34 @@ test('WorldMarchProgressSnapshot derives revealed route identity from coordinate
   assert.equal(JSON.stringify(derived).includes('legacy-route'), false);
 });
 
+test('WorldMarchProgressSnapshot does not treat area visibility as route arrival', () => {
+  const nowMs = new Date('2026-06-06T00:00:55.000Z').getTime();
+  const derived = WorldMarchProgressSnapshot.deriveMissionForTime(createMission({
+    id: 'return-home',
+    mode: 'manual',
+    status: 'active',
+    origin: { q: 2, r: 0, tileId: 'tile_2_0', cityId: 'capital' },
+    homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+    target: { q: 0, r: 0, tileId: 'tile_0_0' },
+    position: { q: 1, r: 0, tileId: 'tile_1_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+      { q: 0, r: 0, tileId: 'tile_0_0', step: 2, revealed: false },
+    ],
+    revealedTileIds: ['tile_1_0', 'tile_0_0'],
+    startedAt: '2026-06-06T00:00:40.000Z',
+    nextStepAt: '2026-06-06T00:01:00.000Z',
+    completesAt: '2026-06-06T00:01:00.000Z',
+  }), { nowMs });
+  const actor = WorldMarchProgressSnapshot.buildActorFromMission(derived, { nowMs });
+
+  assert.deepEqual(derived.route.map((step) => step.revealed), [true, false]);
+  assert.equal(derived.position.tileId, 'tile_1_0');
+  assert.equal(actor.status, 'active');
+  assert.equal(actor.current.q > 0, true);
+  assert.equal(actor.current.q < 1, true);
+});
+
 test('WorldMarchProgressSnapshot exposes manual arrival as idle parked actor', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
   const snapshot = WorldMarchProgressSnapshot.createSnapshot({

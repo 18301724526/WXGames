@@ -73,6 +73,7 @@
           ...normalizeCoord(step),
           step: Math.max(1, toInteger(step.step, index + 1)),
           revealed: Boolean(step.revealed),
+          routeRevealedExplicit: Object.prototype.hasOwnProperty.call(step, 'revealed'),
           revealedAt: step.revealedAt || null,
         };
       })
@@ -201,13 +202,15 @@
   function isRouteStepRevealed(mission = {}, step = {}, nowMs = Date.now(), revealedTileIds = null) {
     if (!step) return false;
     if (step.revealed) return true;
+    const status = getEffectiveMissionStatus(mission, nowMs);
+    if (status === STATUS_IDLE) return true;
+    if (mission.status === STATUS_ACTIVE && isRouteStepTimeRevealed(mission, step, nowMs)) return true;
+    if (step.routeRevealedExplicit) return false;
     const id = step.tileId || tileId(step.q, step.r);
     const revealedSet = revealedTileIds || createRevealedTileSet(mission);
     if (revealedSet.has(id)) return true;
-    const status = getEffectiveMissionStatus(mission, nowMs);
-    if (status === STATUS_IDLE) return true;
     if (mission.status !== STATUS_ACTIVE) return false;
-    return isRouteStepTimeRevealed(mission, step, nowMs);
+    return false;
   }
 
   function deriveMissionForTime(mission = {}, options = {}) {
