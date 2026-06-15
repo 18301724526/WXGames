@@ -207,18 +207,44 @@ hideLoading() {
       return hadLoading;
     },
 
-preloadAssets(onProgress = null, assetPaths = null) {
+async preloadAssets(onProgress = null, assetPaths = null) {
       if (!this.renderer || typeof this.renderer.preloadAssets !== 'function') {
         onProgress?.({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
         return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
       }
-      return this.renderer.preloadAssets(assetPaths || undefined, onProgress).then((result) => {
-        this.worldMapRenderer?.scheduleWorldTileCachePrewarm?.(
-          assetPaths || this.renderer.getPreloadAssetPaths?.(),
-          { deferPrewarm: true },
-        );
-        return result;
+      const report = typeof onProgress === 'function' ? onProgress : null;
+      const result = await this.renderer.preloadAssets(assetPaths || undefined, (progress = {}) => {
+        const percentage = Math.round(Math.max(0, Math.min(100, Number(progress.percentage) || 0)) * 0.65);
+        report?.({
+          ...progress,
+          phase: progress.phase || 'assets:download',
+          percentage,
+          message: progress.message || '\u6b63\u5728\u52a0\u8f7d\u6e38\u620f\u8d44\u6e90',
+        });
       });
+      const preloadPaths = assetPaths || this.renderer.getPreloadAssetPaths?.();
+      const prewarmRenderer = typeof this.worldMapRenderer?.prewarmWorldTileCachesForLoading === 'function'
+        ? this.worldMapRenderer
+        : this.renderer;
+      await prewarmRenderer?.prewarmWorldTileCachesForLoading?.(preloadPaths, (progress = {}) => {
+        const prewarmPercentage = Math.max(0, Math.min(100, Number(progress.percentage) || 0));
+        report?.({
+          ...progress,
+          percentage: Math.min(99, 65 + Math.round(prewarmPercentage * 0.34)),
+          message: progress.message || '\u6b63\u5728\u51c6\u5907\u5927\u5730\u56fe\u8d44\u6e90',
+        });
+      });
+      report?.({
+        total: result.total,
+        completed: result.completed,
+        loaded: result.loaded,
+        failed: result.failed,
+        percentage: 100,
+        phase: 'assets:ready',
+        status: 'complete',
+        message: '\u8d44\u6e90\u51c6\u5907\u5b8c\u6210',
+      });
+      return result;
     },
 
 toggleRememberPassword() {

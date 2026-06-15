@@ -43,7 +43,7 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
   });
 });
 
-test('CanvasGameShell schedules world tile cache prewarm after asset preload', async () => {
+test('CanvasGameShell awaits world tile cache prewarm during asset preload', async () => {
   const calls = [];
   const shell = new CanvasGameShell({
     renderer: {
@@ -58,13 +58,17 @@ test('CanvasGameShell schedules world tile cache prewarm after asset preload', a
       },
     },
     worldMapRenderer: {
-      scheduleWorldTileCachePrewarm(assetPaths, options) {
-        calls.push(['scheduleWorldTileCachePrewarm', assetPaths, options]);
-        return { total: 1, candidateTotal: 1, scheduled: true };
-      },
-      prewarmWorldTileCaches() {
-        calls.push(['prewarmWorldTileCaches']);
-        return {};
+      prewarmWorldTileCachesForLoading(assetPaths, onProgress) {
+        calls.push(['prewarmWorldTileCachesForLoading', assetPaths]);
+        onProgress?.({
+          phase: 'assets:prewarm',
+          total: 1,
+          candidateTotal: 1,
+          completed: 1,
+          percentage: 100,
+          message: '\u6b63\u5728\u51c6\u5907\u5927\u5730\u56fe\u8d44\u6e90',
+        });
+        return Promise.resolve({ total: 1, candidateTotal: 1, completed: 1, percentage: 100 });
       },
     },
   });
@@ -73,11 +77,16 @@ test('CanvasGameShell schedules world tile cache prewarm after asset preload', a
   const result = await shell.preloadAssets((event) => progress.push(event));
 
   assert.deepEqual(result, { total: 1, completed: 1, loaded: 1, failed: 0, percentage: 100 });
-  assert.deepEqual(progress, [{ total: 1, completed: 1, loaded: 1, failed: 0, percentage: 100 }]);
+  assert.deepEqual(progress.map((event) => event.percentage), [65, 99, 100]);
+  assert.deepEqual(progress.map((event) => event.message), [
+    '\u6b63\u5728\u52a0\u8f7d\u6e38\u620f\u8d44\u6e90',
+    '\u6b63\u5728\u51c6\u5907\u5927\u5730\u56fe\u8d44\u6e90',
+    '\u8d44\u6e90\u51c6\u5907\u5b8c\u6210',
+  ]);
   assert.deepEqual(calls, [
     ['preloadAssets', undefined],
     ['getPreloadAssetPaths'],
-    ['scheduleWorldTileCachePrewarm', ['assets/art/tile-map/tile-terrain-plains.png'], { deferPrewarm: true }],
+    ['prewarmWorldTileCachesForLoading', ['assets/art/tile-map/tile-terrain-plains.png']],
   ]);
 });
 

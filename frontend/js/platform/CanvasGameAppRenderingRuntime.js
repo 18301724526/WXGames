@@ -269,8 +269,9 @@
             this.showLoading(message);
             try {
               const result = await this.preloadAssets((progress) => {
-                trace?.progress?.('assets:preload', { ...progress, message });
-                this.updateLoading({ ...progress, message });
+                const progressMessage = progress?.message || message;
+                trace?.progress?.('assets:preload', { ...progress, message: progressMessage });
+                this.updateLoading({ ...progress, message: progressMessage });
               }, options.assetPaths || null);
               const elapsed = Math.max(0, this.now() - startedAt);
               const minimumWaitMs = Math.max(0, minimumDurationMs - elapsed);
@@ -290,7 +291,7 @@
               trace?.phaseFail?.('assets:preload', error);
               throw error;
             } finally {
-              this.updateLoading({ percentage: 100, message });
+              this.updateLoading({ percentage: 100, message: '\u8d44\u6e90\u51c6\u5907\u5b8c\u6210' });
               if (hideWhenDone) this.hideLoading();
             }
           },

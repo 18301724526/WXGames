@@ -34,10 +34,11 @@ window.mountAuthMethods = function(game, deps = {}) {
     game.canvasShell?.showLoading?.(message);
     try {
       const result = await (game.canvasShell?.preloadAssets?.((progress) => {
-        trace?.progress?.('assets:preload', { ...progress, message });
-        game.canvasShell?.updateLoading?.({ ...progress, message });
+        const progressMessage = progress?.message || message;
+        trace?.progress?.('assets:preload', { ...progress, message: progressMessage });
+        game.canvasShell?.updateLoading?.({ ...progress, message: progressMessage });
       }) || Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 }));
-      game.canvasShell?.updateLoading?.({ percentage: 100, message });
+      game.canvasShell?.updateLoading?.({ percentage: 100, message: '\u8d44\u6e90\u51c6\u5907\u5b8c\u6210' });
       trace?.phaseEnd?.('assets:preload', result || {});
     } catch (error) {
       trace?.phaseFail?.('assets:preload', error);

@@ -83,6 +83,13 @@
       return result === undefined ? { total: 0, metrics: 0, masks: 0, dryTemplates: 0 } : result;
     },
 
+    prewarmWorldTileCachesForLoading(...args) {
+      const result = this.delegateAssetRenderer('prewarmWorldTileCachesForLoading', args);
+      return result === undefined
+        ? Promise.resolve({ total: 0, candidateTotal: 0, completed: 0, percentage: 100, metrics: 0, masks: 0, dryTemplates: 0 })
+        : result;
+    },
+
     getAsset(...args) {
       const result = this.delegateAssetRenderer('getAsset', args);
       return result === undefined ? null : result;

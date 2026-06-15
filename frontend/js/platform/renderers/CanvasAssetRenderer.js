@@ -177,6 +177,107 @@
       return result;
     }
 
+    getWorldTileCachePrewarmLoadingMessage(assetPath = '') {
+      const path = String(assetPath || '');
+      if (path.includes('/river-template/') || path.includes('/ocean-template/')) return '\u6b63\u5728\u51c6\u5907\u6c34\u9762\u6a21\u677f';
+      if (path.includes('/transition-template/')) return '\u6b63\u5728\u751f\u6210\u5730\u5757\u8fc7\u6e21\u7f13\u5b58';
+      if (path.startsWith('assets/art/world-site-')) return '\u6b63\u5728\u51c6\u5907\u636e\u70b9\u8d44\u6e90';
+      if (path.startsWith('assets/art/tile-map/')) return '\u6b63\u5728\u51c6\u5907\u5927\u5730\u56fe\u8d44\u6e90';
+      return '\u6b63\u5728\u751f\u6210\u5730\u5757\u7f13\u5b58';
+    }
+
+    getWorldTileCachePrewarmLoadingChunkDelayMs() {
+      return 16;
+    }
+
+    waitForWorldTileCachePrewarmLoadingChunk(delayMs = 0) {
+      const host = this.getWorldTileCachePrewarmTimerHost();
+      const setDelay = typeof host?.setTimeout === 'function' ? host.setTimeout : global.setTimeout;
+      if (typeof setDelay !== 'function' || delayMs <= 0) return Promise.resolve();
+      return new Promise((resolve) => {
+        setDelay.call(host, resolve, delayMs);
+      });
+    }
+
+    async prewarmWorldTileCachesForLoading(assetPaths = this.getPreloadAssetPaths(), onProgress = null, options = {}) {
+      const paths = Array.from(new Set((assetPaths || []).filter(Boolean)));
+      const candidates = this.getWorldTileCachePrewarmCandidatePaths(paths);
+      const result = {
+        total: paths.length,
+        candidateTotal: candidates.length,
+        completed: 0,
+        percentage: candidates.length ? 0 : 100,
+        metrics: 0,
+        masks: 0,
+        dryTemplates: 0,
+      };
+      const report = typeof onProgress === 'function' ? onProgress : null;
+      const trace = global.H5LoadTrace;
+      const chunkSize = Math.max(1, Math.floor(Number(options.chunkSize ?? this.getWorldTileCachePrewarmChunkSize()) || 1));
+      const betweenChunksMs = Math.max(0, Number(options.betweenChunksMs ?? this.getWorldTileCachePrewarmLoadingChunkDelayMs()) || 0);
+      const notify = (assetPath = '', status = 'prewarm') => {
+        const percentage = candidates.length
+          ? Math.round((result.completed / candidates.length) * 100)
+          : 100;
+        result.percentage = percentage;
+        const event = {
+          phase: 'assets:prewarm',
+          status,
+          total: result.total,
+          candidateTotal: result.candidateTotal,
+          completed: result.completed,
+          percentage,
+          assetPath,
+          message: this.getWorldTileCachePrewarmLoadingMessage(assetPath),
+          metrics: result.metrics,
+          masks: result.masks,
+          dryTemplates: result.dryTemplates,
+        };
+        report?.(event);
+        trace?.progress?.('assets:prewarm', event);
+      };
+
+      this.cancelWorldTileCachePrewarmTask();
+      trace?.phaseStart?.('assets:prewarm', {
+        total: result.total,
+        candidateTotal: result.candidateTotal,
+        chunkSize,
+        betweenChunksMs,
+      });
+      notify(candidates[0] || '', 'start');
+
+      try {
+        for (let index = 0; index < candidates.length;) {
+          let processed = 0;
+          while (index < candidates.length && processed < chunkSize) {
+            const assetPath = candidates[index];
+            this.prewarmWorldTileCacheAsset(assetPath, result);
+            index += 1;
+            processed += 1;
+            result.completed = index;
+            notify(assetPath, 'prewarm');
+          }
+          if (index < candidates.length) {
+            await this.waitForWorldTileCachePrewarmLoadingChunk(betweenChunksMs);
+          }
+        }
+        trace?.phaseEnd?.('assets:prewarm', {
+          total: result.total,
+          candidateTotal: result.candidateTotal,
+          completed: result.completed,
+          metrics: result.metrics,
+          masks: result.masks,
+          dryTemplates: result.dryTemplates,
+          forceLog: true,
+        });
+        notify(candidates[candidates.length - 1] || '', 'complete');
+        return { ...result, percentage: 100 };
+      } catch (error) {
+        trace?.phaseFail?.('assets:prewarm', error);
+        throw error;
+      }
+    }
+
     getWorldTileCachePrewarmTimerHost() {
       return this.h5Runtime?.runtime
         || this.h5Runtime

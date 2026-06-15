@@ -98,6 +98,14 @@ function createHost(overrides = {}) {
       calls.push(['invalidateWorldTileViewCache']);
       host.worldTileViewCache = null;
     },
+    getWorldTileTemplateMask(assetPath) {
+      if (!this.worldTileMaskCache.has(assetPath)) this.worldTileMaskCache.set(assetPath, { assetPath });
+      return this.worldTileMaskCache.get(assetPath);
+    },
+    getWorldTileDryTemplateCanvas(assetPath) {
+      if (!this.worldTileDryCompositeCache.has(assetPath)) this.worldTileDryCompositeCache.set(assetPath, { assetPath });
+      return this.worldTileDryCompositeCache.get(assetPath);
+    },
     constructor: {
       getAssetRequestPath(assetPath) {
         return `${assetPath}?v=test`;
@@ -209,6 +217,47 @@ test('CanvasAssetRenderer leaves world tile prewarm to shell unless requested', 
 
   assert.equal(timers.length, 0);
   assert.equal(host.assetMetricsCache.has(tilePath), false);
+});
+
+test('CanvasAssetRenderer prewarms world tile caches during loading with stage progress', async () => {
+  const host = createHost({
+    h5Runtime: {
+      runtime: {
+        setTimeout(callback, delayMs) {
+          host.calls.push(['setTimeout', delayMs]);
+          callback();
+          return { callback, delayMs };
+        },
+        clearTimeout() {},
+        performance: { now: () => 1 },
+      },
+    },
+  });
+  const renderer = new CanvasAssetRenderer({ host });
+  const tilePath = 'assets/art/tile-map/tile-terrain-plains.png';
+  const waterPath = 'assets/art/tile-map/river-template/tile-river-n.png';
+  host.assetCache.set(tilePath, {
+    status: 'loaded',
+    image: { naturalWidth: 2, naturalHeight: 2, width: 2, height: 2 },
+  });
+  host.assetCache.set(waterPath, {
+    status: 'loaded',
+    image: { naturalWidth: 2, naturalHeight: 2, width: 2, height: 2 },
+  });
+  const progress = [];
+
+  const result = await renderer.prewarmWorldTileCachesForLoading([tilePath, waterPath], (event) => {
+    progress.push(event);
+  }, { chunkSize: 1, betweenChunksMs: 3 });
+
+  assert.equal(result.percentage, 100);
+  assert.equal(result.candidateTotal, 2);
+  assert.equal(host.assetMetricsCache.has(tilePath), true);
+  assert.equal(host.worldTileMaskCache.has(waterPath), true);
+  assert.equal(host.worldTileDryCompositeCache.has(waterPath), true);
+  assert.deepEqual(progress.map((event) => event.status), ['start', 'prewarm', 'prewarm', 'complete']);
+  assert.equal(progress.some((event) => event.message === '\u6b63\u5728\u51c6\u5907\u6c34\u9762\u6a21\u677f'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'setTimeout' && call[1] === 3), true);
 });
 
 test('CanvasAssetRenderer preserves getAsset lazy loading and failure fallback', () => {
