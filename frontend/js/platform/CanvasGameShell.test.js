@@ -1315,6 +1315,87 @@ test('CanvasGameShell lets reward reveal close above tutorial highlight', () => 
   ]);
 });
 
+test('CanvasGameShell lets current tutorial advisor dialogue continue during guided highlights', () => {
+  const calls = [];
+  const event = {
+    preventDefault() {
+      calls.push(['preventDefault']);
+    },
+    stopPropagation() {
+      calls.push(['stopPropagation']);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'closeAdvisor', source: 'houseBuilt' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.source]);
+        return true;
+      },
+    },
+  });
+  shell.tutorialAdvisorDialogue = { source: 'houseBuilt' };
+  shell.showTutorialHighlight(
+    { x: 100, y: 100, width: 100, height: 80 },
+    'locked guide',
+    { allowedAction: { type: 'assignJob' } },
+  );
+
+  assert.equal(shell.handleTap({ x: 380, y: 590 }, event), true);
+
+  assert.deepEqual(calls, [
+    ['handle', 'closeAdvisor', 'houseBuilt'],
+    ['preventDefault'],
+    ['stopPropagation'],
+  ]);
+});
+
+test('CanvasGameShell blocks stale tutorial advisor close actions during guided highlights', () => {
+  const calls = [];
+  const event = {
+    preventDefault() {
+      calls.push(['preventDefault']);
+    },
+    stopPropagation() {
+      calls.push(['stopPropagation']);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'closeAdvisor', source: 'staleDialogue' };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.source]);
+        return true;
+      },
+    },
+  });
+  shell.tutorialAdvisorDialogue = { source: 'houseBuilt' };
+  shell.showTutorialHighlight(
+    { x: 100, y: 100, width: 100, height: 80 },
+    'locked guide',
+    { allowedAction: { type: 'assignJob' } },
+  );
+
+  assert.equal(shell.handleTap({ x: 380, y: 590 }, event), true);
+
+  assert.deepEqual(calls, [
+    ['preventDefault'],
+    ['stopPropagation'],
+  ]);
+});
+
 test('CanvasGameShell blocks debug reset during tutorial highlight input', () => {
   const calls = [];
   const event = {

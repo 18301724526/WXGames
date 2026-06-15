@@ -357,6 +357,36 @@ Manual/browser test target:
 - On the guided tutorial dialogue screen, click the visible `continue` area once.
 - Only check that the reset confirmation dialog does not appear and the tutorial/game canvas remains responsive.
 
+## Step 11 - Tutorial Advisor Continue Hit Target Guard
+
+Evidence:
+
+- After Step 10, the same real online browser click no longer opened reset confirmation, but the visible tutorial `continue` area still did not advance because tutorial input blocking rejected the dialogue `closeAdvisor` action.
+
+Scope:
+
+- Canvas shell input routing only.
+- Do not change tutorial flow steps, backend tutorial state, spawn allocation, route planning, march interpolation, or tile rendering in this step.
+
+Implementation rule:
+
+- `closeAdvisor` may pass tutorial input blocking only when a tutorial advisor dialogue is currently active and the action source matches that dialogue, or uses the generic tutorial advisor dialogue source.
+- Stale `closeAdvisor` actions must remain blocked during guided highlights.
+- Debug reset remains blocked during tutorial overlays.
+
+Automated test target:
+
+```bash
+node --test frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasShellActionHandlers.test.js frontend/js/platform/renderers/TutorialCanvasRenderer.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Confirm the deployed frontend asset version matches the deployed commit.
+- On the guided tutorial dialogue screen, click the visible `continue` area once.
+- Only check that the current tutorial advisor dialogue closes or advances, and that no reset confirmation appears.
+
 ## Non-Goals
 
 - No frontend redesign.

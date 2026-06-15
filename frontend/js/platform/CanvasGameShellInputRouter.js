@@ -208,9 +208,22 @@ isTutorialHighlightActionAllowed(action = {}, highlight = this.tutorialHighlight
         && type !== 'techTreeDrag');
     },
 
+isTutorialAdvisorCloseActionAllowed(action = {}) {
+      if (action?.type !== 'closeAdvisor') return false;
+      const dialogue = this.tutorialAdvisorDialogue || this.lastGame?.tutorialAdvisorDialogue || null;
+      if (!dialogue) return false;
+      const actionSource = action.source || '';
+      const dialogueSource = dialogue.source || '';
+      return !actionSource
+        || actionSource === 'tutorialAdvisorDialogue'
+        || !dialogueSource
+        || actionSource === dialogueSource;
+    },
+
 isTutorialActionAllowed(action = {}) {
       if (!action?.type || action.type === 'blockCanvasModal') return false;
       if (this.rewardReveal && action.type === 'closeRewardReveal') return true;
+      if (this.isTutorialAdvisorCloseActionAllowed(action)) return true;
       const targetAction = action.allowedAction || action;
       if (this.tutorialHighlight?.allowedAction
         && this.isTutorialHighlightActionAllowed(targetAction, this.tutorialHighlight)) {
