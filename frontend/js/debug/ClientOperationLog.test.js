@@ -118,6 +118,51 @@ test('ClientOperationLog preserves compact world-map input surface action eviden
   });
 });
 
+test('ClientOperationLog derives coordinate-bearing world-map log evidence from coordinates', () => {
+  const actionSummary = global.ClientOperationLog.summarizeAction({
+    type: 'selectWorldMarchTarget',
+    tileId: 'legacy-action-tile',
+    targetQ: 4,
+    targetR: -2,
+    inputSurface: 'worldMap',
+  });
+  const uiSummary = global.ClientOperationLog.summarizeUiState({
+    worldMarchTarget: {
+      tileId: 'legacy-ui-target',
+      q: 5,
+      r: -3,
+      pickerOpen: true,
+      known: true,
+    },
+  });
+  const intentSummary = global.ClientOperationLog.summarizeInputIntent({
+    schema: 'world-map-input-intent-v1',
+    kind: 'tap',
+    source: 'worldMapRuntime',
+    inputId: 'intent-1',
+    clientSequence: 7,
+    action: {
+      type: 'selectWorldMarchTarget',
+      tileId: 'legacy-intent-action',
+      targetQ: 6,
+      targetR: -4,
+      inputSurface: 'worldMap',
+    },
+    target: {
+      kind: 'tile',
+      tileId: 'legacy-intent-target',
+      targetQ: 6,
+      targetR: -4,
+    },
+  });
+
+  assert.equal(actionSummary.tileId, 'tile_4_-2');
+  assert.equal(uiSummary.worldMarchTarget.tileId, 'tile_5_-3');
+  assert.equal(intentSummary.action.tileId, 'tile_6_-4');
+  assert.equal(intentSummary.target.tileId, 'tile_6_-4');
+  assert.equal(JSON.stringify({ actionSummary, uiSummary, intentSummary }).includes('legacy-'), false);
+});
+
 test('ClientOperationLog uploads an explicit diagnostic snapshot through a configured uploader', async () => {
   const uploaded = [];
   const logger = new ClientOperationLog({

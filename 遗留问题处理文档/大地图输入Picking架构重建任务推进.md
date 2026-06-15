@@ -59,7 +59,7 @@
 - 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录稳定 `inputId`、单调 `clientSequence`、HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
 - input intent 只允许保存可序列化小对象；不得包含 renderer/context 原对象、浏览器 event、完整 tiles、完整 targets 或大 payload。
 - `WorldMapRuntime` 保存 `lastInputIntent`，并通过第三参数 `meta.inputIntent` 传给 coordinator、shell/app bridge 和 `CanvasActionController`；H5 shell 的 `CanvasGameShellCommands.forwardCanvasAction()` 继续把同一份 `meta` 传给外部 `onAction`，不能在转发边界吞掉 `inputIntent`，也不能把外部 Promise action 失败压成同步成功。
-- `ClientOperationLog` 在 `worldMap:tapHit`、`worldMap:backgroundTarget`、`action:begin`、`action:end`、`action:error`、`api:request`、`api:response`、`api:error` 记录 compact input intent / clientInput 摘要，用于本地导出日志与后端请求日志对账；失败路径不能丢 `inputId` / `clientSequence`。
+- `ClientOperationLog` 在 `worldMap:tapHit`、`worldMap:backgroundTarget`、`action:begin`、`action:end`、`action:error`、`api:request`、`api:response`、`api:error` 记录 compact input intent / clientInput 摘要，用于本地导出日志与后端请求日志对账；失败路径不能丢 `inputId` / `clientSequence`。带坐标的 action、intent target、UI `worldMarchTarget` 摘要必须通过 `TileCoord` 生成 canonical `tileId`，旧 `tileId` 只能在无坐标摘要中兼容。
 - `CanvasActionController` -> `CanvasTerritoryActionHandlers` -> `GameAPI` 的失败世界行军链路已用端到端测试锁定：同一个 `inputId` 必须同时出现在 `action:error` 与 `api:error`，且 `api:error.clientInput` 不得包含 renderer payload。`CanvasActionController.finalizeForwarded()`、`WorldMapRuntime.dispatchAction()` 和 `CanvasGameShellInputRouter.observeAsyncActionResult()` 共同保证异步 forwarded action / runtime tap 失败不会被记录成 `action:end true` 或浏览器未观察拒绝。
 - 当前阶段仍不把 input intent 直接发给服务器；它是后续多人同步、服务端权威校验、回放诊断和反作弊审计的输入事实边界。
 
@@ -125,6 +125,7 @@
 - 2026-06-14：`WorldExplorerActions` 的 trace summary 与 `rebaseMissionRoute()` 删除旧 `tileId || getTileId()` / `id || getTileId()` 写法，并新增架构测试锁死；命令层不再给旧身份字段留下再次抢权的入口。
 - 2026-06-15：`backend/routes/gameRoutes.js` 的 `/api/game/state` world-march route trace summary 完成坐标身份收口；新增红测证明脏 mission `origin/target/position.tileId`、route step `tileId`、planned tile `id` 不会进入 `route:state:loaded` 诊断摘要，复现日志必须按坐标事实输出。
 - 2026-06-15：`WorldMarchTrace` 的前端 world-march 诊断摘要完成坐标身份收口并接入 architecture smoke；新增红测证明脏 `origin/target/position.tileId`、route step `tileId`、planned tile `id` 不会进入 console trace / 导出日志摘要。
+- 2026-06-15：`ClientOperationLog` 的本地操作日志摘要完成坐标身份收口；新增红测证明带 `targetQ/targetR` 或 `q/r` 的 action、input intent target、UI `worldMarchTarget` 不再保留脏旧 `tileId`，导出/上传日志按坐标事实对账。
 - 2026-06-14：`WorldExplorerRoutePlanner.createTutorialPlannedSites()` 的首个空城规划改为按 route 坐标查 planned tile、按坐标判定 terrain、按坐标写 planned site `tileId`；旧 route `tileId` 或 planned tile `id` 即使是脏值，也不能把教程空城规划导向错误地块。
 - 2026-06-14：`WorldExplorerMissionNormalizer` 的服务端 mission row 也完成坐标身份收口；route/origin/homeOrigin/target/position/planned tile/planned site 中的旧 `tileId` / `id` 不能覆盖 `q/r` 坐标，后续 progression、timeline、AOI 都只消费归一化后的 canonical mission facts。
 - 2026-06-14：`WorldExplorerProgression` 的运行时副作用也完成坐标身份收口；planned site materialization、planned tile lookup、trace step summary、mission position 写回不再信旧 `step.tileId` / planned tile `id`，即使脏 mission 绕过上游也不能改变 materialize 或 position 事实。

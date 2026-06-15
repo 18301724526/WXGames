@@ -6366,6 +6366,42 @@ Regression:
 - `node --test frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js frontend/js/platform/renderers/WorldMapRendererCompositionFactory.test.js frontend/js/platform/renderers/WorldMapRendererHostBridge.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/debug/ClientOperationLog.js`
+
+状态 / Status: candidate diagnostic boundary
+
+负责 / Owns:
+
+- local-first H5 operation breadcrumbs for input, action, API, and explicit diagnostic snapshot export/upload
+- bounded in-memory/sessionStorage log windows scoped by page-run `runId`
+- compact action, input intent, UI state, point, and camera summaries for frontend/backend replay correlation
+- coordinate-authoritative operation-log tile evidence: action summaries, intent targets, and `worldMarchTarget` UI summaries derive tile identity from `targetQ/targetR`, `q/r`, or `x/y` through `TileCoord` whenever coordinates exist
+- final operation-log sanitizer boundary for thenables, circular objects, oversized strings, arrays, objects, and depth
+
+公开 API / Public API:
+
+- `ClientOperationLog.record(type, detail, options)`
+- `ClientOperationLog.recordSampled(type, key, detail, intervalMs)`
+- `ClientOperationLog.getRecent(limit)`
+- `ClientOperationLog.buildSnapshot(options)`
+- `ClientOperationLog.upload(options)`
+- `ClientOperationLog.download(options)`
+- `ClientOperationLog.exportText(limit)`
+- `ClientOperationLog.summarizeAction(action)`
+- `ClientOperationLog.summarizeInputIntent(intent)`
+- `ClientOperationLog.summarizeUiState(uiState)`
+
+扩展方式 / Extension Path:
+
+- New operation-log evidence must stay compact and serializable; do not add renderer, native event, Promise, runtime object, full tile arrays, or full response payloads.
+- Coordinate-bearing world-map evidence must derive tile identity through `TileCoord`; raw `tileId` remains only a no-coordinate compatibility summary.
+- Any new summary helper that can enter local export/upload or backend replay correlation needs focused tests in `ClientOperationLog.test.js`.
+
+回归 / Regression:
+
+- `node --test frontend/js/debug/ClientOperationLog.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/debug/H5LoadTrace.js`
 
 状态 / Status: candidate
