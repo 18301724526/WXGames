@@ -151,6 +151,41 @@ test('WorldMapRuntimeBakePolicy fallback signature canonicalizes stable x/y and 
   );
 });
 
+test('WorldMapRuntimeBakePolicy fallback signature folds revealed route aliases to canonical tile ids', () => {
+  const createAliasState = (routeTileId, scoutRevealedTileIds, explorerRevealedTileIds) => ({
+    territoryState: {
+      worldMap: {
+        version: 1,
+        seed: 'route-alias-seed',
+        tiles: [{ q: 0, r: 0, terrain: 'plains' }],
+      },
+      territories: [],
+      scoutMissions: [{
+        id: 'scout-route-alias',
+        status: 'active',
+        route: [{ q: 2, r: -1, step: 1, tileId: routeTileId, revealed: true }],
+        revealedTileIds: scoutRevealedTileIds,
+      }],
+    },
+    worldExplorerState: {
+      activeMission: {
+        id: 'explore-route-alias',
+        status: 'active',
+        route: [{ q: 4, r: -2, step: 1, tileId: routeTileId, revealed: true }],
+        plannedTiles: [{ q: 4, r: -2, id: 'legacy-planned-id', terrain: 'hills' }],
+        revealedTileIds: explorerRevealedTileIds,
+      },
+      idleMissions: [],
+    },
+  });
+
+  const staleSignature = WorldMapRuntimeBakePolicy.getMapDataSignature(createAliasState('legacy-route-a', ['legacy-route-a'], ['legacy-route-a']));
+  const canonicalSignature = WorldMapRuntimeBakePolicy.getMapDataSignature(createAliasState('legacy-route-b', ['tile_2_-1'], ['tile_4_-2']));
+
+  assert.equal(staleSignature, canonicalSignature);
+  assert.equal(staleSignature.includes('legacy-route'), false);
+});
+
 test('WorldMapRuntimeBakePolicy reports sync and dirty states without mutating runtime', () => {
   assert.deepEqual(WorldMapRuntimeBakePolicy.getSignatureSyncResult('', 'abc'), {
     signature: 'abc',

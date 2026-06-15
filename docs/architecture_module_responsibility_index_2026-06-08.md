@@ -5555,6 +5555,7 @@ Regression:
 - pure world-map data signature generation for runtime bake decisions
 - presenter-backed signature delegation with fallback compact serialization
 - `TileCoord`-backed fallback signature summaries for tiles, sites, scout routes, planned tiles/sites, and explorer missions when the presenter is unavailable
+- revealed tile id alias normalization for fallback mission summaries; coordinate-bearing route/revealArea/planned-tile `tileId/id` aliases must fold to canonical tile ids before signature serialization
 - signature sync result derivation without mutating runtime state
 - pure bake-dirty checks from runtime state plus current map data
 
@@ -5573,6 +5574,7 @@ Regression:
 
 - 新 map-bake signature fields or bake-dirty policy first extend this module with focused tests。
 - Fallback signatures must consume `TileCoord`; do not reintroduce raw `id/q/r/x/y/tileId` JSON serialization here.
+- Fallback mission `revealedTileIds` must pass through alias normalization when route/revealArea/plannedTiles carry coordinates; stale reveal ids cannot become cache-key facts.
 - Runtime side effects such as logging, renderer cache invalidation, and camera/baked-layer state stay in `WorldMapRuntime`.
 - Renderer cache key policy stays in renderer/cache modules, not this runtime policy.
 
