@@ -750,6 +750,57 @@ test('GameStateRepository resetPlayerState clears previous player world visibili
   }
 });
 
+test('GameStateRepository resetPlayerState persists the new spawn starting visibility', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const playerId = 'world-visibility-reset-spawn-owner';
+    const now = new Date('2026-06-16T00:00:00.000Z');
+    const state = GameStateNormalizer.createInitialGameState(playerId, { now });
+    const exploredTile = WorldMapService.revealTile(state, 21, 5, now, {
+      terrain: 'forest',
+      visibility: 'scouted',
+    });
+
+    repository.save(state);
+
+    const freshState = GameStateNormalizer.createInitialGameState(playerId, {
+      now,
+      spawn: { q: 18, r: -4, spawnKey: '18,-4' },
+    });
+    const savedState = repository.resetPlayerState(playerId, freshState);
+    const reloaded = repository.findByPlayerId(playerId);
+    const expectedTileIds = new Set(WorldMapService.getRevealArea(18, -4, WorldMapService.START_REVEAL_RADIUS)
+      .map((coord) => WorldMapService.getCanonicalTileId(coord.q, coord.r)));
+    const reloadedTileIds = new Set(reloaded.worldMap.tiles.map((tile) => tile.canonicalId));
+    const capital = reloaded.territories.find((territory) => territory.id === 'capital');
+    const capitalTile = reloaded.worldMap.tiles.find((tile) => tile.q === 18 && tile.r === -4);
+
+    assert.deepEqual(savedState.worldMap.origin, { q: 18, r: -4 });
+    assert.deepEqual(reloaded.worldMap.origin, { q: 18, r: -4 });
+    assert.equal(savedState.worldMap.tiles.length, 25);
+    assert.equal(reloaded.worldMap.tiles.length, 25);
+    assert.deepEqual(reloadedTileIds, expectedTileIds);
+    assert.equal(capital.x, 18);
+    assert.equal(capital.y, -4);
+    assert.equal(capitalTile.siteId, 'capital');
+    assert.equal(capitalTile.visibility, 'controlled');
+    assert.equal(
+      reloaded.worldMap.tiles.some((tile) => tile.canonicalId === exploredTile.canonicalId),
+      false,
+    );
+    assert.equal(
+      db.prepare('SELECT COUNT(*) AS count FROM player_world_visibility WHERE playerId = ?')
+        .get(playerId).count,
+      25,
+    );
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository reserves player spawns with unique coordinates', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);

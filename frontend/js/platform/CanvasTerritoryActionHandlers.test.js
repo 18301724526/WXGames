@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasTerritoryActionHandlers = require('./CanvasTerritoryActionHandlers');
+const CanvasActionController = require('./CanvasActionController');
 
 class HostController {
   constructor(host) {
@@ -390,6 +391,88 @@ test('CanvasTerritoryActionHandlers resolves the capital site id from state when
   assert.deepEqual(calls, [
     ['ensureRuntime'],
     ['setCamera', -298, -244, 'accountReset', false],
+    ['clearTransform'],
+    ['requestRender', { force: true }],
+  ]);
+});
+
+test('CanvasActionController centers account reset camera from the updated game state behind the shell', () => {
+  const calls = [];
+  const runtime = {
+    setCamera(x, y, options) {
+      calls.push(['setCamera', Math.round(x), Math.round(y), options.source, options.render]);
+      return true;
+    },
+    requestRender(options) {
+      calls.push(['requestRender', options]);
+      return true;
+    },
+  };
+  const game = {
+    state: {
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_18_-4', q: 18, r: -4, siteId: 'capital' }] },
+        territories: [{ id: 'capital', x: 18, y: -4 }],
+      },
+      cityState: { capitalCityId: 'capital' },
+    },
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['gameEnsureRuntime']);
+          return runtime;
+        },
+        getMapRuntime() {
+          return runtime;
+        },
+      };
+    },
+  };
+  const shell = {
+    lastGame: game,
+    state: {
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0', q: 0, r: 0, siteId: 'capital' }] },
+        territories: [{ id: 'capital', x: 0, y: 0 }],
+      },
+      cityState: { capitalCityId: 'capital' },
+    },
+    getCanvasGameHost() {
+      return game;
+    },
+    getCanvasActionState() {
+      return game.state;
+    },
+    runtime: { width: 420, height: 747 },
+    renderer: {
+      getTopBarBottom() {
+        return 84;
+      },
+    },
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['shellEnsureRuntime']);
+          return runtime;
+        },
+        getMapRuntime() {
+          return runtime;
+        },
+      };
+    },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
+  };
+  game.canvasShell = shell;
+  const controller = new CanvasActionController({ host: shell });
+
+  assert.equal(controller.resetWorldMapCamera({ source: 'accountReset', render: true }), true);
+
+  assert.deepEqual(calls, [
+    ['shellEnsureRuntime'],
+    ['setCamera', -1309, -393, 'accountReset', false],
     ['clearTransform'],
     ['requestRender', { force: true }],
   ]);

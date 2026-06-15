@@ -235,6 +235,12 @@ Automated test target:
 node --test backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/auth.test.js frontend/js/state/UIStatePresenter.test.js
 ```
 
+Implementation record:
+
+- Added a repository reset contract test that resets an account to spawn `18,-4`, then verifies both the returned saved state and a fresh repository read keep `worldMap.origin = { q: 18, r: -4 }`, exactly 25 visible tiles, a controlled capital tile at the new spawn, and no previous player-only explored tile.
+- Added a frontend action-controller contract test where the shell still has stale `0,0` state but `lastGame.state` has the new capital at `18,-4`; account-reset camera centering must use the updated game state behind the shell.
+- Existing implementation already satisfies these contracts on this branch; this step protects the reset/camera behavior before changing later map systems.
+
 Manual test target:
 
 - Finish tutorial enough to own a city.
