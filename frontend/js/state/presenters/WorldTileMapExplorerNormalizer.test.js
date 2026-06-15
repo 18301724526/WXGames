@@ -242,7 +242,7 @@ test('WorldTileMapExplorerNormalizer render-readies the current route tile witho
     { epochNowMs: halfwayToSecondTile },
   );
 
-  assert.deepEqual(firstSegmentTiles.map((tile) => tile.id), ['tile_1_0']);
+  assert.deepEqual(firstSegmentTiles.map((tile) => tile.id), ['tile_1_0', 'tile_2_0']);
   assert.equal(firstSegmentTiles[0].renderOnly, true);
   assert.deepEqual(secondSegmentTiles.map((tile) => tile.id), ['tile_1_0', 'tile_2_0']);
   assert.equal(secondSegmentTiles.find((tile) => tile.id === 'tile_2_0').renderOnly, true);
@@ -254,4 +254,71 @@ test('WorldTileMapExplorerNormalizer render-readies the current route tile witho
     worldExplorerState,
     { epochNowMs: halfwayToFirstTile },
   ).map((site) => site.id), []);
+});
+
+test('WorldTileMapExplorerNormalizer render-readies the current route footprint', () => {
+  const worldExplorerState = {
+    activeMission: {
+      id: 'manual-footprint',
+      status: 'active',
+      mode: 'manual',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      target: { q: 2, r: 0, tileId: 'tile_2_0' },
+      startedAt: '2026-06-06T00:00:00.000Z',
+      completesAt: '2026-06-06T00:00:20.000Z',
+      stepDurationSeconds: 10,
+      route: [
+        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+        { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+      ],
+      plannedTiles: [
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
+        { id: 'tile_0_-1', q: 0, r: -1, terrain: 'plains' },
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains' },
+        { id: 'tile_0_1', q: 0, r: 1, terrain: 'plains' },
+        { id: 'tile_1_-1', q: 1, r: -1, terrain: 'plains' },
+        { id: 'tile_1_1', q: 1, r: 1, terrain: 'plains' },
+        { id: 'tile_2_-1', q: 2, r: -1, terrain: 'plains' },
+        { id: 'tile_2_0', q: 2, r: 0, terrain: 'hills' },
+        { id: 'tile_2_1', q: 2, r: 1, terrain: 'plains' },
+        { id: 'tile_3_0', q: 3, r: 0, terrain: 'waste' },
+      ],
+      revealedTileIds: [],
+    },
+  };
+  const halfwayToFirstTile = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const halfwayToSecondTile = new Date('2026-06-06T00:00:15.000Z').getTime();
+
+  const firstSegmentIds = WorldTileMapExplorerNormalizer.getWorldExplorerPlannedTiles(
+    worldExplorerState,
+    { epochNowMs: halfwayToFirstTile },
+  ).map((tile) => tile.id).sort();
+  const secondSegmentIds = WorldTileMapExplorerNormalizer.getWorldExplorerPlannedTiles(
+    worldExplorerState,
+    { epochNowMs: halfwayToSecondTile },
+  ).map((tile) => tile.id).sort();
+
+  assert.deepEqual(firstSegmentIds, [
+    'tile_0_-1',
+    'tile_0_0',
+    'tile_0_1',
+    'tile_1_-1',
+    'tile_1_0',
+    'tile_1_1',
+    'tile_2_-1',
+    'tile_2_0',
+    'tile_2_1',
+  ]);
+  assert.deepEqual(secondSegmentIds, [
+    'tile_0_-1',
+    'tile_0_0',
+    'tile_0_1',
+    'tile_1_-1',
+    'tile_1_0',
+    'tile_1_1',
+    'tile_2_-1',
+    'tile_2_0',
+    'tile_2_1',
+    'tile_3_0',
+  ]);
 });

@@ -166,6 +166,7 @@ Implementation rule:
 - Before the actor steps into a route tile, that tile and its one-ring neighboring footprint should already be renderable.
 - Known `worldMap.tiles` remain authoritative over terrain, water, transition, visibility, sites, ownership, and intel.
 - Planned tiles only fill missing coordinates for preview/render-ahead.
+- The render-ready footprint is derived from server-provided `plannedTiles`; the frontend may admit those planned tiles into the view, but must not synthesize terrain for coordinates the server did not provide.
 - `revealedTileIds` means explored/visible map area; it must not mark an explicitly unrevealed `route[]` step as arrived.
 - For legacy records that omitted `route[].revealed`, coordinate aliases may still canonicalize old revealed ids, but explicit `revealed: false` wins for route progress.
 

@@ -286,10 +286,66 @@ test('UIStatePresenter renders the current march target tile ahead of confirmed 
 
   assert.equal(renderAheadTile?.terrain, 'forest');
   assert.equal(renderAheadTile.renderOnly, true);
-  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0'), false);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0' && tile.renderOnly), true);
   assert.equal(view.sites.some((site) => site.id === 'site_1_0'), false);
   assert.deepEqual(view.activeScouts[0].revealedTileIds, []);
   assert.deepEqual(view.activeScouts[0].route.map((step) => step.revealed), [false, false]);
+});
+
+test('UIStatePresenter renders route footprint ahead without overwriting known tiles', () => {
+  const territoryState = {
+    worldMap: {
+      version: 1,
+      seed: 'seed',
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', visibility: 'controlled' },
+        { id: 'tile_0_-1', q: 0, r: -1, terrain: 'river', visibility: 'scouted', transitionKey: 'known-river-edge' },
+      ],
+    },
+    territories: [],
+  };
+  const worldExplorerState = {
+    activeMission: {
+      id: 'manual-footprint-view',
+      status: 'active',
+      mode: 'manual',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      target: { q: 1, r: 0, tileId: 'tile_1_0' },
+      startedAt: '2026-06-06T00:00:00.000Z',
+      nextStepAt: '2026-06-06T00:00:10.000Z',
+      completesAt: '2026-06-06T00:00:10.000Z',
+      stepDurationSeconds: 10,
+      route: [
+        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+      ],
+      plannedTiles: [
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', visibility: 'scouted' },
+        { id: 'tile_0_-1', q: 0, r: -1, terrain: 'plains', transitionKey: 'planned-edge' },
+        { id: 'tile_0_1', q: 0, r: 1, terrain: 'plains' },
+        { id: 'tile_1_-1', q: 1, r: -1, terrain: 'hills' },
+        { id: 'tile_1_1', q: 1, r: 1, terrain: 'plains' },
+        { id: 'tile_2_-1', q: 2, r: -1, terrain: 'plains' },
+        { id: 'tile_2_0', q: 2, r: 0, terrain: 'waste' },
+        { id: 'tile_2_1', q: 2, r: 1, terrain: 'plains' },
+      ],
+      plannedSites: [],
+      revealedTileIds: [],
+    },
+  };
+
+  const view = UIStatePresenter.buildWorldTileMapViewState(territoryState, {
+    worldExplorerState,
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+  const tileById = new Map(view.tiles.map((tile) => [tile.id, tile]));
+
+  assert.equal(tileById.get('tile_1_0')?.renderOnly, true);
+  assert.equal(tileById.get('tile_0_1')?.renderOnly, true);
+  assert.equal(tileById.get('tile_2_1')?.renderOnly, true);
+  assert.equal(tileById.get('tile_0_-1')?.terrain, 'river');
+  assert.equal(tileById.get('tile_0_-1')?.transitionKey, 'known-river-edge');
+  assert.equal(tileById.get('tile_0_-1')?.renderReady, true);
+  assert.equal(tileById.get('tile_0_-1')?.renderOnly, false);
 });
 
 test('UIStatePresenter keeps known world tile terrain when planned tiles overlap', () => {

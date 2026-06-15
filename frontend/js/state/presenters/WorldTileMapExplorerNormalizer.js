@@ -89,6 +89,18 @@
     return /^tile_-?\d+_-?\d+$/.test(String(id || ''));
   }
 
+  function getRevealAreaTileIds(center = {}, radius = 1) {
+    const coord = normalizeCoord(center);
+    const safeRadius = Math.max(0, toInteger(radius, 1));
+    const ids = [];
+    for (let dq = -safeRadius; dq <= safeRadius; dq += 1) {
+      for (let dr = -safeRadius; dr <= safeRadius; dr += 1) {
+        ids.push(getWorldTileId(coord.q + dq, coord.r + dr));
+      }
+    }
+    return ids;
+  }
+
   function normalizeRevealedTileIds(revealedTileIds = [], route = []) {
     const ids = new Set();
     (Array.isArray(revealedTileIds) ? revealedTileIds : [])
@@ -203,6 +215,15 @@
         .filter(isCanonicalWorldTileId)
         .forEach((id) => ids.add(id));
     }
+    const route = Array.isArray(mission.route) ? mission.route.map(normalizeRouteStep) : [];
+    const renderReadyRouteIds = new Set(ids);
+    route
+      .filter((step) => renderReadyRouteIds.has(step.tileId))
+      .forEach((step) => {
+        getRevealAreaTileIds(step, 1)
+          .filter(isCanonicalWorldTileId)
+          .forEach((id) => ids.add(id));
+      });
     return ids;
   }
 
@@ -303,6 +324,7 @@
     getEpochNowMs,
     normalizeCoord,
     isCanonicalWorldTileId,
+    getRevealAreaTileIds,
     normalizeRevealedTileIds,
     normalizeWorldExplorerMission,
     mergeWorldExplorerMissions,
