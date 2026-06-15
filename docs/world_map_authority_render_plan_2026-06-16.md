@@ -104,24 +104,27 @@ Scope:
 
 - Backend world-explorer return/stop route rebasing.
 - Rebuild or carry server-provided planned route footprint when a mission changes direction.
+- Return-home routing must respect materialized world-map authority, including a spawned capital whose natural seed terrain would otherwise be blocked.
 - Do not change actor interpolation or reset in this step.
 
 Implementation rule:
 
 - Return/stop responses should include planned route footprint data for the route the actor is about to traverse.
 - The footprint must be server-generated and must not require the frontend to invent terrain.
+- Route traversal checks use materialized `worldMap.tiles` before falling back to deterministic seed terrain, so authoritative capital/home tiles remain traversable.
 
 Automated test target:
 
 ```bash
 node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/GameStateRepository.test.js
+node --test backend/tests/WorldExplorerService.test.js
 ```
 
 Manual test target:
 
 - Start a medium-distance march.
 - Click return before the march finishes.
-- Only observe whether the return path has route preview/render-ahead tiles.
+- Only observe whether the return path reaches the capital/home tile and keeps route preview/render-ahead tiles.
 - Ignore final-step snapping and reset/camera issues in this round.
 
 ## Step 3 - Idle Actor Position Follows Backend Position

@@ -37,7 +37,7 @@ function getExploreOrigin(gameState) {
   };
 }
 
-function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_SEED) {
+function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_SEED, options = {}) {
   const targetQ = toInteger(target?.q ?? target?.x, origin.q);
   const targetR = toInteger(target?.r ?? target?.y, origin.r);
   const delta = WorldMapService.getWrappedDelta(origin, { q: targetQ, r: targetR });
@@ -60,7 +60,7 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     r += stepR;
     remainingQ -= stepQ;
     remainingR -= stepR;
-    if (WorldMapService.chooseTerrain(seed, q, r) === 'ocean') {
+    if (!canTraverseRouteTile(seed, q, r, options)) {
       return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
     }
     route.push({
@@ -74,6 +74,15 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
   }
   const routeTarget = route.at(-1) || { q: origin.q, r: origin.r };
   return { success: true, route, target: { q: routeTarget.q, r: routeTarget.r } };
+}
+
+function canTraverseRouteTile(seed, q, r, options = {}) {
+  const gameState = options.gameState || null;
+  if (gameState) {
+    const existing = getExistingWorldTileById(gameState, q, r, options.now || new Date());
+    if (existing) return existing.terrain !== 'ocean';
+  }
+  return WorldMapService.chooseTerrain(seed, q, r) !== 'ocean';
 }
 
 function getStepDirection(from = {}, to = {}) {
@@ -316,6 +325,7 @@ module.exports = {
   getEventEpoch,
   getNearbyGenerationState,
   getStepDirection,
+  canTraverseRouteTile,
   createGenerationContext,
   getPlanningTerritories,
   getRouteFootprint,

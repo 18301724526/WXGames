@@ -167,7 +167,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   const routeResult = buildManualRoute(marchOrigin, {
     q: options.targetQ ?? options.q ?? options.x,
     r: options.targetR ?? options.r ?? options.y,
-  }, worldMap.seed);
+  }, worldMap.seed, { gameState, now });
   traceWorldMarch('actions:startWorldMarch:routeResult', options, {
     origin: summarizeCoord(origin),
     marchOrigin: summarizeCoord(marchOrigin),
@@ -387,7 +387,10 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
   const current = getReturnRouteOrigin(mission);
   const origin = mission.homeOrigin || mission.origin || { q: 0, r: 0 };
   const worldMap = WorldMapService.ensureWorldMap(gameState, resolvedNow);
-  const routeResult = buildManualRoute(current, { q: origin.q, r: origin.r }, worldMap.seed);
+  const routeResult = buildManualRoute(current, { q: origin.q, r: origin.r }, worldMap.seed, {
+    gameState,
+    now: resolvedNow,
+  });
   if (!routeResult.success) {
     rebaseMissionRoute(mission, [], resolvedNow, { origin: current });
   } else {
@@ -420,7 +423,7 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
   const current = getLastRevealedOrOrigin(mission);
   const target = timeline.stopTile || current;
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
-  const routeResult = buildManualRoute(current, target, worldMap.seed);
+  const routeResult = buildManualRoute(current, target, worldMap.seed, { gameState, now });
   if (!routeResult.success) {
     rebaseMissionRoute(mission, [], now, { origin: current });
   } else {

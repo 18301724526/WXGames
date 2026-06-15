@@ -454,6 +454,47 @@ test('returned-home idle world march can start a new march from home', () => {
   assert.equal(next.mission.route.at(-1).tileId, 'tile_1_1');
 });
 
+test('returned world march respects materialized home terrain when natural terrain is blocked', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  gameState.territories[0] = {
+    ...gameState.territories[0],
+    x: -200,
+    y: -15,
+  };
+  gameState.worldMap = WorldMapService.createInitialWorldMap(
+    WorldMapService.DEFAULT_WORLD_SEED,
+    now,
+    { origin: { q: -200, r: -15 } },
+  );
+
+  assert.equal(WorldMapService.chooseTerrain(WorldMapService.DEFAULT_WORLD_SEED, -200, -15), 'ocean');
+  assert.equal(gameState.worldMap.tiles.find((tile) => tile.q === -200 && tile.r === -15)?.terrain, 'capital');
+
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: -200,
+    targetR: -16,
+    formationSlot: 1,
+  }, now);
+  const reachedTargetAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, reachedTargetAt);
+
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    new Date(reachedTargetAt.getTime() + 1),
+  );
+  const returnedAt = new Date(new Date(returned.mission.completesAt).getTime() + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, returnedAt);
+  const clientState = WorldExplorerService.getClientState(gameState, returnedAt);
+
+  assert.equal(started.success, true);
+  assert.equal(returned.success, true);
+  assert.equal(returned.mission.target.tileId, 'tile_-200_-15');
+  assert.equal(gameState.exploreMissions[0].position.tileId, 'tile_-200_-15');
+  assert.equal(clientState.idleMissions[0].position.tileId, 'tile_-200_-15');
+});
+
 test('world march client state does not expose retired ready reports', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
