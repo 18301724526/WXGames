@@ -300,6 +300,24 @@
     };
   }
 
+  function getRouteRenderAheadTileId(mission = {}, nowMs = Date.now()) {
+    if (!mission || mission.status !== STATUS_ACTIVE) return null;
+    const route = normalizeRoute(mission.route);
+    if (!route.length) return null;
+    const progress = getMissionProgress(mission, nowMs);
+    const step = route[Math.max(0, Math.min(route.length - 1, progress.segmentIndex))];
+    return step?.tileId || null;
+  }
+
+  function getRouteRenderReadyTileIds(mission = {}, nowMs = Date.now()) {
+    if (!mission || mission.status !== STATUS_ACTIVE) return [];
+    const route = normalizeRoute(mission.route);
+    if (!route.length) return [];
+    const progress = getMissionProgress(mission, nowMs);
+    const readyCount = Math.max(1, Math.min(route.length, progress.segmentIndex + 1));
+    return route.slice(0, readyCount).map((step) => step.tileId).filter(Boolean);
+  }
+
   function chooseStopTile(mission = {}, nowMs = Date.now()) {
     const path = getMissionPath(mission);
     if (path.length <= 1) return path[0] || normalizeCoord({});
@@ -367,6 +385,8 @@
       current,
       stopTile,
       route,
+      renderAheadTileId: getRouteRenderAheadTileId(mission, nowMs),
+      renderReadyTileIds: getRouteRenderReadyTileIds(mission, nowMs),
       formation: normalizeFormation(formation, origin),
       progress: getMissionProgress(effectiveMission, nowMs),
       remainingSeconds: getRemainingSeconds(effectiveMission, nowMs),
@@ -416,6 +436,8 @@
     const progress = getMissionProgress(effectiveMission, nowMs);
     const current = status === STATUS_IDLE ? position : getCurrentCoord(effectiveMission, nowMs);
     const stopTile = chooseStopTile(effectiveMission, nowMs);
+    const renderAheadTileId = getRouteRenderAheadTileId(source, nowMs);
+    const renderReadyTileIds = getRouteRenderReadyTileIds(source, nowMs);
     const remainingSeconds = getRemainingSeconds(effectiveMission, nowMs);
     const travelRemainingSeconds = getTravelRemainingSeconds(effectiveMission, nowMs);
     const arrivalKind = getArrivalKind(status);
@@ -432,6 +454,8 @@
       position,
       current,
       stopTile,
+      renderAheadTileId,
+      renderReadyTileIds,
       route,
       routeLength: route.length,
       revealedCount: Array.isArray(source.revealedTileIds) ? source.revealedTileIds.length : route.filter((step) => step.revealed).length,
@@ -467,6 +491,8 @@
       target: row.target,
       current: row.status === STATUS_IDLE ? row.target : row.current,
       stopTile: row.stopTile,
+      renderAheadTileId: row.renderAheadTileId || null,
+      renderReadyTileIds: Array.isArray(row.renderReadyTileIds) ? row.renderReadyTileIds : [],
       route: row.route,
       formation: row.formation,
       progress: row.progress,
@@ -620,6 +646,8 @@
     isRouteStepRevealed,
     deriveMissionForTime,
     getCurrentCoord,
+    getRouteRenderAheadTileId,
+    getRouteRenderReadyTileIds,
     chooseStopTile,
     getRemainingSeconds,
     getTravelRemainingSeconds,

@@ -198,30 +198,60 @@ test('WorldTileMapExplorerNormalizer reveals planned tiles and sites by server-c
   ).map((site) => site.id), ['site_2_0']);
 });
 
-test('WorldTileMapExplorerNormalizer does not reveal planned tiles from client time alone', () => {
+test('WorldTileMapExplorerNormalizer render-readies the current route tile without revealing sites', () => {
   const worldExplorerState = {
     activeMission: {
       id: 'manual-server-authority',
       status: 'active',
       mode: 'manual',
       origin: { q: 0, r: 0, tileId: 'tile_0_0' },
-      target: { q: 1, r: 0, tileId: 'tile_1_0' },
+      target: { q: 2, r: 0, tileId: 'tile_2_0' },
       startedAt: '2026-06-06T00:00:00.000Z',
-      completesAt: '2026-06-06T00:00:10.000Z',
+      completesAt: '2026-06-06T00:00:20.000Z',
       stepDurationSeconds: 10,
       route: [
         { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+        { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
       ],
       plannedTiles: [
         { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
+        { id: 'tile_2_0', q: 2, r: 0, terrain: 'hills' },
+      ],
+      plannedSites: [
+        {
+          tileId: 'tile_1_0',
+          q: 1,
+          r: 0,
+          siteId: 'site_1_0',
+          materialized: false,
+          site: { id: 'site_1_0', x: 1, y: 0, type: 'town', owner: 'neutral', status: 'discovered' },
+        },
       ],
       revealedTileIds: [],
     },
   };
-  const afterServerStepWouldHaveElapsed = new Date('2026-06-06T00:00:15.000Z').getTime();
+  const halfwayToFirstTile = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const halfwayToSecondTile = new Date('2026-06-06T00:00:15.000Z').getTime();
 
-  assert.deepEqual(WorldTileMapExplorerNormalizer.getWorldExplorerPlannedTiles(
+  const firstSegmentTiles = WorldTileMapExplorerNormalizer.getWorldExplorerPlannedTiles(
     worldExplorerState,
-    { epochNowMs: afterServerStepWouldHaveElapsed },
-  ).map((tile) => tile.id), []);
+    { epochNowMs: halfwayToFirstTile },
+  );
+  const secondSegmentTiles = WorldTileMapExplorerNormalizer.getWorldExplorerPlannedTiles(
+    worldExplorerState,
+    { epochNowMs: halfwayToSecondTile },
+  );
+
+  assert.deepEqual(firstSegmentTiles.map((tile) => tile.id), ['tile_1_0']);
+  assert.equal(firstSegmentTiles[0].renderOnly, true);
+  assert.deepEqual(secondSegmentTiles.map((tile) => tile.id), ['tile_1_0', 'tile_2_0']);
+  assert.equal(secondSegmentTiles.find((tile) => tile.id === 'tile_2_0').renderOnly, true);
+  assert.deepEqual(WorldTileMapExplorerNormalizer.getWorldExplorerMissions(
+    worldExplorerState,
+    { epochNowMs: halfwayToFirstTile },
+  )[0].revealedTileIds, []);
+  assert.deepEqual(WorldTileMapExplorerNormalizer.getWorldExplorerPlannedSites(
+    worldExplorerState,
+    { epochNowMs: halfwayToFirstTile },
+  ).map((site) => site.id), []);
 });

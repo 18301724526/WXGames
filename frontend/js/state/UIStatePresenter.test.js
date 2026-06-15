@@ -198,7 +198,7 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
 
   assert.deepEqual(view, direct);
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_0' && tile.terrain === 'plains'), true);
-  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0' && tile.terrain === 'forest'), false);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0' && tile.terrain === 'forest' && tile.renderOnly), true);
   assert.equal(view.pan.x, 12.5);
   assert.equal(view.pan.y, -4);
   assert.equal(view.sites[0].id, 'capital');
@@ -214,9 +214,64 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.equal(typeof UIStatePresenter.getTileMapGeometry().sortTilesForIsoDraw, 'function');
   assert.deepEqual(UIStatePresenter.normalizeWorldTile({ q: 3, r: -1, terrain: 'forest' }).feature.key, 'treeCluster');
   assert.deepEqual(UIStatePresenter.getWorldExplorerMissions(options.worldExplorerState).map((mission) => mission.id), ['explore-1']);
-  assert.equal(UIStatePresenter.getWorldExplorerPlannedTiles(options.worldExplorerState, options).length, 1);
+  assert.equal(UIStatePresenter.getWorldExplorerPlannedTiles(options.worldExplorerState, options).length, 2);
   assert.equal(UIStatePresenter.getWorldExplorerPlannedSites(options.worldExplorerState, options).length, 1);
   assert.equal(UIStatePresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options), WorldTileMapPresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options));
+});
+
+test('UIStatePresenter renders the current march target tile ahead of confirmed reveal', () => {
+  const territoryState = {
+    worldMap: {
+      version: 1,
+      seed: 'seed',
+      tiles: [{ id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', visibility: 'controlled' }],
+    },
+    territories: [],
+  };
+  const worldExplorerState = {
+    activeMission: {
+      id: 'manual-render-ahead',
+      status: 'active',
+      mode: 'manual',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      position: { q: 0, r: 0, tileId: 'tile_0_0' },
+      target: { q: 2, r: 0, tileId: 'tile_2_0' },
+      startedAt: '2026-06-06T00:00:00.000Z',
+      nextStepAt: '2026-06-06T00:00:10.000Z',
+      completesAt: '2026-06-06T00:00:20.000Z',
+      stepDurationSeconds: 10,
+      route: [
+        { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+        { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
+      ],
+      plannedTiles: [
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest', visibility: 'scouted' },
+        { id: 'tile_2_0', q: 2, r: 0, terrain: 'hills', visibility: 'scouted' },
+      ],
+      plannedSites: [{
+        tileId: 'tile_1_0',
+        q: 1,
+        r: 0,
+        siteId: 'site_1_0',
+        materialized: false,
+        site: { id: 'site_1_0', x: 1, y: 0, type: 'town', owner: 'neutral', status: 'discovered' },
+      }],
+      revealedTileIds: [],
+    },
+  };
+
+  const view = UIStatePresenter.buildWorldTileMapViewState(territoryState, {
+    worldExplorerState,
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+  const renderAheadTile = view.tiles.find((tile) => tile.id === 'tile_1_0');
+
+  assert.equal(renderAheadTile?.terrain, 'forest');
+  assert.equal(renderAheadTile.renderOnly, true);
+  assert.equal(view.tiles.some((tile) => tile.id === 'tile_2_0'), false);
+  assert.equal(view.sites.some((site) => site.id === 'site_1_0'), false);
+  assert.deepEqual(view.activeScouts[0].revealedTileIds, []);
+  assert.deepEqual(view.activeScouts[0].route.map((step) => step.revealed), [false, false]);
 });
 
 test('UIStatePresenter reveals manual world march planned tiles by server-confirmed state', () => {

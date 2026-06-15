@@ -83,6 +83,22 @@ test('WorldTileMapTileNormalizer normalizes terrain, water, feature, templates, 
   });
 });
 
+test('WorldTileMapTileNormalizer preserves render-only tile metadata', () => {
+  const normalized = WorldTileMapTileNormalizer.normalizeWorldTile({
+    q: 1,
+    r: 0,
+    terrain: 'forest',
+    renderReady: true,
+    renderOnly: true,
+  }, new Map(), {
+    manifest: createManifest(),
+  });
+
+  assert.equal(normalized.renderReady, true);
+  assert.equal(normalized.renderOnly, true);
+  assert.equal(normalized.discovered, true);
+});
+
 test('WorldTileMapTileNormalizer normalizes stable x/y tile coordinates through canonical tile identity', () => {
   const siteById = new Map();
   siteById.__tileTerrainById = new Map([

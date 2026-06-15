@@ -189,21 +189,40 @@
     return missions;
   }
 
+  function getMissionRenderReadyTileIds(mission = {}, options = {}) {
+    const worldMarchSystem = options.worldMarchSystem || sharedWorldMarchSystem;
+    const nowMs = getEpochNowMs(options);
+    const ids = new Set();
+    (Array.isArray(mission.renderReadyTileIds) ? mission.renderReadyTileIds : [])
+      .map(String)
+      .filter(isCanonicalWorldTileId)
+      .forEach((id) => ids.add(id));
+    if (typeof worldMarchSystem?.getRouteRenderReadyTileIds === 'function') {
+      worldMarchSystem.getRouteRenderReadyTileIds(mission, nowMs)
+        .map(String)
+        .filter(isCanonicalWorldTileId)
+        .forEach((id) => ids.add(id));
+    }
+    return ids;
+  }
+
   function getWorldExplorerPlannedTiles(worldExplorerState = {}, options = {}) {
     const byId = new Map();
-    void options;
     mergeWorldExplorerMissions(worldExplorerState).forEach((mission) => {
       const revealedTileIds = new Set((mission.revealedTileIds || []).map(String));
       const revealedRouteTileIds = new Set((Array.isArray(mission.route) ? mission.route : [])
         .filter((step) => step?.revealed)
         .map((step) => normalizeCoord(step).tileId));
+      const renderReadyTileIds = getMissionRenderReadyTileIds(mission, options);
       (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => {
         if (!tile || typeof tile !== 'object') return;
         const coord = normalizeCoord(tile);
         const q = coord.q;
         const r = coord.r;
         const id = coord.tileId;
-        if (!revealedTileIds.has(id) && !revealedRouteTileIds.has(id)) return;
+        const isServerRevealed = revealedTileIds.has(id) || revealedRouteTileIds.has(id);
+        const isRenderReady = renderReadyTileIds.has(id);
+        if (!isServerRevealed && !isRenderReady) return;
         byId.set(id, {
           ...tile,
           id,
@@ -212,6 +231,8 @@
           visibility: tile.visibility || 'scouted',
           discovered: tile.discovered !== false,
           visible: tile.visible !== false,
+          renderReady: isRenderReady,
+          renderOnly: !isServerRevealed && isRenderReady,
         });
       });
     });
@@ -286,6 +307,7 @@
     normalizeWorldExplorerMission,
     mergeWorldExplorerMissions,
     getWorldExplorerMissions,
+    getMissionRenderReadyTileIds,
     getWorldExplorerPlannedTiles,
     getWorldExplorerPlannedSites,
   });

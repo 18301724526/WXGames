@@ -80,6 +80,29 @@ test('WorldMarchProgressSnapshot keeps rebased missions moving between confirmed
   assert.equal(actor.current.q < 2, true);
 });
 
+test('WorldMarchProgressSnapshot exposes render-ready route tiles without revealing them', () => {
+  const halfwayMs = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const nextSegmentMs = new Date('2026-06-06T00:00:15.000Z').getTime();
+  const mission = createMission({
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false },
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: false },
+    ],
+    revealedTileIds: [],
+  });
+
+  const halfwayDerived = WorldMarchProgressSnapshot.deriveMissionForTime(mission, { nowMs: halfwayMs });
+  const halfwayActor = WorldMarchProgressSnapshot.buildActorFromMission(mission, { nowMs: halfwayMs });
+  const nextSegmentActor = WorldMarchProgressSnapshot.buildActorFromMission(mission, { nowMs: nextSegmentMs });
+
+  assert.deepEqual(halfwayDerived.revealedTileIds, []);
+  assert.deepEqual(halfwayDerived.route.map((step) => step.revealed), [false, false]);
+  assert.equal(halfwayActor.renderAheadTileId, 'tile_1_0');
+  assert.deepEqual(halfwayActor.renderReadyTileIds, ['tile_1_0']);
+  assert.equal(nextSegmentActor.renderAheadTileId, 'tile_2_0');
+  assert.deepEqual(nextSegmentActor.renderReadyTileIds, ['tile_1_0', 'tile_2_0']);
+});
+
 test('WorldMarchProgressSnapshot canonicalizes stale tile ids through stable axes', () => {
   const coord = WorldMarchProgressSnapshot.normalizeCoord({
     x: 4,

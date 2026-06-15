@@ -162,6 +162,8 @@
       discoveredAt: tile.discoveredAt || '',
       lastScoutedAt: tile.lastScoutedAt || '',
       intel: normalizeIntel(tile.intel),
+      renderReady: Boolean(tile.renderReady),
+      renderOnly: Boolean(tile.renderOnly),
       siteId: tile.siteId || null,
       site: normalizeSite(manifest, site),
     };
