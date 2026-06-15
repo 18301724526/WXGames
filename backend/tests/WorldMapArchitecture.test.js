@@ -134,6 +134,35 @@ test('world map tile normalization preserves server-materialized terrain authori
   assert.equal(normalized.terrain, 'forest');
 });
 
+test('world map tile transition authority preserves explicit empty keys', () => {
+  const seed = 'architecture-transition-seed';
+  const now = new Date('2026-06-12T00:00:00.000Z');
+  const expectedTransition = Tiles.getTerrainTransitionKey(seed, -10, -1, 'plains');
+
+  assert.equal(expectedTransition, 'se');
+
+  const generated = Tiles.createTile(seed, -10, -1, now, {
+    terrain: 'plains',
+    visibility: 'scouted',
+  });
+  const explicitEmpty = Tiles.createTile(seed, -10, -1, now, {
+    terrain: 'plains',
+    visibility: 'scouted',
+    transitionKey: '',
+  });
+  const normalizedEmpty = Tiles.normalizeTile({
+    q: -10,
+    r: -1,
+    terrain: 'plains',
+    visibility: 'scouted',
+    transitionKey: '',
+  }, seed, now);
+
+  assert.equal(generated.transitionKey, expectedTransition);
+  assert.equal(explicitEmpty.transitionKey, '');
+  assert.equal(normalizedEmpty.transitionKey, '');
+});
+
 test('world map tile authority derives tile identity from coordinates at write boundaries', () => {
   const now = new Date('2026-06-14T00:00:00.000Z');
   const created = Tiles.createTile('architecture-id-seed', 4, -2, now, {

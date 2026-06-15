@@ -7,6 +7,7 @@ const { createGlobalTilePayload } = require('../repositories/WorldMapAuthorityRe
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 const WorldMapService = require('../services/WorldMapService');
+const WorldMapTiles = require('../services/worldMap/WorldMapTiles');
 
 test('GameStateRepository persists task progress with the game state', () => {
   const db = new Database(':memory:');
@@ -263,6 +264,41 @@ test('GameStateRepository derives global world tile payload identity from coordi
     assert.equal(storedTile.r, -4);
     assert.equal(reloaded.worldMap.tiles.some((tile) => tile.id === 'legacy-global-tile-id'), false);
     assert.equal(reloaded.worldMap.tiles.some((tile) => tile.id === 'tile_6_-4'), true);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository preserves authoritative empty world tile transition keys', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const state = GameStateNormalizer.createInitialGameState('global-empty-transition-key');
+    const transitionTile = WorldMapService.createTile('architecture-transition-seed', -10, -1, now, {
+      terrain: 'plains',
+      visibility: 'scouted',
+      transitionKey: '',
+    });
+    state.worldMap = {
+      ...state.worldMap,
+      seed: 'architecture-transition-seed',
+      tiles: [transitionTile],
+    };
+
+    repository.save(state);
+
+    const row = db.prepare('SELECT tile FROM global_world_tiles WHERE canonicalId = ?')
+      .get(WorldMapService.getCanonicalTileId(-10, -1));
+    const storedTile = JSON.parse(row.tile);
+    const reloaded = repository.findByPlayerId(state.playerId);
+    const reloadedTile = reloaded.worldMap.tiles.find((tile) => tile.canonicalId === transitionTile.canonicalId);
+
+    assert.equal(WorldMapTiles.getTerrainTransitionKey('architecture-transition-seed', -10, -1, 'plains'), 'se');
+    assert.equal(storedTile.transitionKey, '');
+    assert.equal(reloadedTile.transitionKey, '');
   } finally {
     db.close();
   }

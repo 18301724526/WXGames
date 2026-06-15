@@ -56,6 +56,11 @@ function getTerrainTransitionKey(seed, q, r, terrain) {
   return getSortedSideKey(desertSides);
 }
 
+function resolveTransitionKey(tile, seed, q, r, terrain) {
+  if (typeof tile?.transitionKey === 'string') return tile.transitionKey;
+  return getTerrainTransitionKey(seed, q, r, terrain);
+}
+
 function chooseTerrain(seed, q, r) {
   const generation = WorldMapTopology.getGenerationCoord({ q, r });
   if (generation.q === 0 && generation.r === 0) return 'capital';
@@ -136,7 +141,7 @@ function decorateTile(tile, seed) {
       terrain: 'capital',
       riverPorts: [],
       oceanTemplates: [],
-      transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, 0, 0, 'capital'),
+      transitionKey: resolveTransitionKey(tile, seed, 0, 0, 'capital'),
       ...generationContext,
     };
   }
@@ -154,7 +159,7 @@ function decorateTile(tile, seed) {
       terrain,
       riverPorts: [],
       oceanTemplates: [],
-      transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, generation.q, generation.r, terrain),
+      transitionKey: resolveTransitionKey(tile, seed, generation.q, generation.r, terrain),
       ...generationContext,
     };
   }
@@ -175,7 +180,7 @@ function decorateTile(tile, seed) {
     terrain,
     riverPorts,
     oceanTemplates,
-    transitionKey: tile.transitionKey || getTerrainTransitionKey(seed, generation.q, generation.r, terrain),
+    transitionKey: resolveTransitionKey(tile, seed, generation.q, generation.r, terrain),
     ...generationContext,
   };
 }
@@ -208,7 +213,7 @@ function createTile(seed, q, r, now = new Date(), overrides = {}) {
     generatedAt: overrides.generatedAt || isoNow,
     riverPorts: Array.isArray(overrides.riverPorts) ? [...overrides.riverPorts] : [],
     oceanTemplates: Array.isArray(overrides.oceanTemplates) ? [...overrides.oceanTemplates] : [],
-    transitionKey: typeof overrides.transitionKey === 'string' ? overrides.transitionKey : '',
+    ...(typeof overrides.transitionKey === 'string' ? { transitionKey: overrides.transitionKey } : {}),
     siteId: typeof overrides.siteId === 'string' && overrides.siteId ? overrides.siteId : null,
     ...(overrides.generationContext && typeof overrides.generationContext === 'object'
       ? { generationContext: { ...overrides.generationContext } }
