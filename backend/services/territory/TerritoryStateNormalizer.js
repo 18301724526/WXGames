@@ -61,14 +61,49 @@ function createTerritoryStateNormalizer(dependencies = {}) {
     };
   }
 
-  function normalizeTerritory(rawTerritory, now = new Date().toISOString()) {
+  function getCapitalOrigin(rawTerritory = {}, options = {}) {
+    const configuredOrigin = options.capitalOrigin || options.origin || {};
+    const configuredQ = configuredOrigin.q ?? configuredOrigin.x;
+    const configuredR = configuredOrigin.r ?? configuredOrigin.y;
+    if (hasFiniteValue(configuredQ) && hasFiniteValue(configuredR)) {
+      return {
+        q: toInteger(configuredQ, 0),
+        r: toInteger(configuredR, 0),
+      };
+    }
+    const rawQ = rawTerritory.x ?? rawTerritory.q;
+    const rawR = rawTerritory.y ?? rawTerritory.r;
+    if (hasFiniteValue(rawQ) && hasFiniteValue(rawR)) {
+      return {
+        q: toInteger(rawQ, 0),
+        r: toInteger(rawR, 0),
+      };
+    }
+    return { q: 0, r: 0 };
+  }
+
+  function getWorldMapOrigin(worldMap = {}) {
+    const origin = worldMap?.origin && typeof worldMap.origin === 'object'
+      ? worldMap.origin
+      : {};
+    const q = origin.q ?? origin.x;
+    const r = origin.r ?? origin.y;
+    if (!hasFiniteValue(q) || !hasFiniteValue(r)) return null;
+    return {
+      q: toInteger(q, 0),
+      r: toInteger(r, 0),
+    };
+  }
+
+  function normalizeTerritory(rawTerritory, now = new Date().toISOString(), options = {}) {
     if (!rawTerritory || typeof rawTerritory !== 'object') return null;
     const migratedTerritory = migrateLegacyPresetTerritory(rawTerritory);
     if (!migratedTerritory) return null;
     rawTerritory = migratedTerritory;
     if (rawTerritory.id === 'capital') {
+      const origin = getCapitalOrigin(rawTerritory, options);
       return {
-        ...createCapital(now),
+        ...createCapital(now, { origin }),
         cityName: typeof rawTerritory.cityName === 'string' && rawTerritory.cityName.trim()
           ? rawTerritory.cityName.trim().slice(0, MAX_NAME_LENGTH)
           : '棣栭兘',
@@ -342,12 +377,13 @@ function createTerritoryStateNormalizer(dependencies = {}) {
   function normalizeTerritoryState(gameState, now = new Date(), options = {}) {
     const isoNow = now.toISOString();
     const previousWorldMapVersion = options.previousWorldMapVersion ?? WorldMapService.getWorldMapVersion(gameState.worldMap);
+    const capitalOrigin = getWorldMapOrigin(gameState.worldMap);
     const known = new Map();
     for (const item of Array.isArray(gameState.territories) ? gameState.territories : []) {
-      const normalized = normalizeTerritory(item, isoNow);
+      const normalized = normalizeTerritory(item, isoNow, { capitalOrigin });
       if (normalized) known.set(normalized.id, normalized);
     }
-    if (!known.has('capital')) known.set('capital', createCapital(isoNow));
+    if (!known.has('capital')) known.set('capital', createCapital(isoNow, { origin: capitalOrigin || {} }));
     gameState.territories = [...known.values()]
       .sort((a, b) => (a.id === 'capital' ? -1 : b.id === 'capital' ? 1 : getDistance(a.x, a.y) - getDistance(b.x, b.y)));
     gameState.polity = normalizePolity(gameState.polity);

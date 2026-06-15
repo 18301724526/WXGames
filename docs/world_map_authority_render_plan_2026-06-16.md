@@ -419,6 +419,40 @@ Manual/browser test target:
 - On the guided tutorial dialogue screen, click the visible `continue` area once.
 - Only check that the current tutorial advisor dialogue closes or advances, and that no reset confirmation appears.
 
+## Step 13 - Client Capital Projection Uses Current Origin
+
+Evidence:
+
+- Real online API verification on deployed commit `0b19d934c76f` for `test1` returned `worldMap.origin = { q: -6, r: 28 }`.
+- The same response also returned two client capital tiles: stale `tile_0_0` and current `tile_-6_28`.
+- The stale client capital can make camera targeting, tutorial highlight selection, and site hit targets prefer the wrong city after reset.
+
+Scope:
+
+- Backend client DTO/projection boundary only.
+- Do not delete global world terrain facts.
+- Do not hide or override another player's occupied non-capital city.
+- Do not change spawn scoring, march interpolation, route footprint, or frontend rendering.
+
+Implementation rule:
+
+- The player's own `capital` territory in client projection must use `worldMap.origin` as the authoritative coordinate.
+- A visible tile outside `worldMap.origin` must not be emitted as `siteId: "capital"` or `terrain: "capital"` to that player.
+- Historical/global terrain can remain in authority tables, but stale legacy capital markers must not leak into the per-player client map.
+
+Automated test target:
+
+```bash
+node --test backend/tests/TerritoryClientAssembler.test.js backend/tests/GameStateServiceSplit.test.js backend/tests/GameStateProjectionArchitecture.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Confirm the deployed frontend asset version matches the deployed commit.
+- Login `test1` and only check the starting tutorial/capital view.
+- Pass condition: API/client state has exactly one capital tile at `worldMap.origin`; the canvas highlights the current capital, not stale `tile_0_0` or an old `123` city.
+
 ## Non-Goals
 
 - No frontend redesign.

@@ -21,6 +21,28 @@ function getCoordinateKey(site = {}) {
   return `${Math.floor(x)},${Math.floor(y)}`;
 }
 
+function getWorldMapOrigin(worldMap = {}) {
+  const origin = worldMap?.origin && typeof worldMap.origin === 'object'
+    ? worldMap.origin
+    : {};
+  const q = Number(origin.q ?? origin.x);
+  const r = Number(origin.r ?? origin.y);
+  if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+  return {
+    x: Math.floor(q),
+    y: Math.floor(r),
+  };
+}
+
+function projectCapitalTerritoryToOrigin(territory = {}, origin = null) {
+  if (!origin || territory?.id !== 'capital') return territory;
+  return {
+    ...territory,
+    x: origin.x,
+    y: origin.y,
+  };
+}
+
 function isSharedOccupiedTerritory(site = {}) {
   return Boolean(site.ownerPlayerId && site.owner === 'player' && site.status === 'occupied');
 }
@@ -175,7 +197,9 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
     }]));
   const ownTerritories = Array.isArray(gameState.territories) ? gameState.territories : [];
   const sharedTerritories = Array.isArray(projection.sharedWorldTerritories) ? projection.sharedWorldTerritories : [];
+  const capitalOrigin = getWorldMapOrigin(gameState.worldMap);
   const territories = mergeProjectedTerritories(ownTerritories, sharedTerritories)
+    .map((territory) => projectCapitalTerritoryToOrigin(territory, capitalOrigin))
     .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps));
   const scoutMissions = (gameState.warMissions || []).filter((mission) => deps.getMissionKind(mission) === 'scout');
   const worldMap = typeof WorldMapService.getClientWorldMapFromNormalized === 'function'

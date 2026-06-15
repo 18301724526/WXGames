@@ -125,3 +125,24 @@ test('client territory projection lets shared occupied sites win coordinate conf
   assert.equal(clientState.territories.some((site) => site.id === sharedOccupiedSite.id), true);
   assert.equal(conflictTile.siteId, sharedOccupiedSite.id);
 });
+
+test('client world map projection omits stale legacy capital tiles outside current origin', () => {
+  const now = new Date('2026-06-16T00:00:00.000Z');
+  const state = GameStateNormalizer.createInitialGameState('territory-client-stale-capital', {
+    now,
+    spawn: { q: -6, r: 28, spawnKey: '-6,28' },
+  });
+  state.worldMap.tiles.push(WorldMapService.createTile(state.worldMap.seed, 0, 0, now, {
+    terrain: 'capital',
+    siteId: 'capital',
+    visibility: 'controlled',
+    controlled: true,
+  }));
+
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now);
+  const capitalTiles = clientState.worldMap.tiles.filter((tile) => tile.siteId === 'capital' || tile.terrain === 'capital');
+
+  assert.deepEqual(clientState.worldMap.origin, { q: -6, r: 28 });
+  assert.equal(clientState.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0), false);
+  assert.deepEqual(capitalTiles.map((tile) => `${tile.q},${tile.r}`), ['-6,28']);
+});

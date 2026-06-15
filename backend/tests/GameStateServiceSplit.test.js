@@ -122,6 +122,37 @@ test('initial game state can be created around an assigned real-world spawn', ()
   assert.equal(initial.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), false);
 });
 
+test('state normalization preserves an assigned real-world capital coordinate', () => {
+  const raw = GameStateNormalizer.createInitialGameState('spawn-normalize-capital-test', {
+    now: new Date('2026-06-16T00:00:00.000Z'),
+    spawn: {
+      q: -6,
+      r: 28,
+      spawnKey: '-6,28',
+    },
+  });
+  raw.territories = raw.territories.map((territory) => (
+    territory.id === 'capital'
+      ? { ...territory, x: 0, y: 0 }
+      : territory
+  ));
+
+  const normalized = GameStateService.normalizeState(clone(raw));
+  const clientState = GameStateService.getClientGameStateFromNormalized(normalized);
+  const capital = normalized.territories.find((territory) => territory.id === 'capital');
+  const clientCapital = clientState.territoryState.territories.find((territory) => territory.id === 'capital');
+  const capitalTile = clientState.territoryState.worldMap.tiles.find((tile) => tile.siteId === 'capital');
+
+  assert.equal(capital.x, 0);
+  assert.equal(capital.y, 0);
+  assert.deepEqual(normalized.worldMap.origin, { q: -6, r: 28 });
+  assert.equal(clientCapital.x, -6);
+  assert.equal(clientCapital.y, 28);
+  assert.equal(capitalTile.q, -6);
+  assert.equal(capitalTile.r, 28);
+  assert.equal(clientState.territoryState.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), false);
+});
+
 test('initial game state keeps the legacy origin when no spawn assignment is provided', () => {
   const initial = GameStateNormalizer.createInitialGameState('legacy-origin-initial-state-test', {
     now: new Date('2026-06-16T00:00:00.000Z'),

@@ -379,9 +379,26 @@ function getClientWorldMap(gameState, now = new Date()) {
   return getClientWorldMapFromNormalized(ensureWorldMap(gameState, now));
 }
 
+function isCapitalOriginTile(tile = {}, origin = {}) {
+  return toInteger(tile.q ?? tile.x, 0) === toInteger(origin.q ?? origin.x, 0)
+    && toInteger(tile.r ?? tile.y, 0) === toInteger(origin.r ?? origin.y, 0);
+}
+
+function isLegacyCapitalTileOutsideOrigin(tile = {}, origin = {}) {
+  const markedCapital = tile.id === CAPITAL_TILE_ID
+    || tile.siteId === 'capital'
+    || tile.terrain === 'capital';
+  return markedCapital && !isCapitalOriginTile(tile, origin);
+}
+
 function getClientWorldMapFromNormalized(worldMap) {
   const clientWorldMap = clone(worldMap || {});
-  clientWorldMap.tiles = (clientWorldMap.tiles || []).filter((tile) => tile.visibility !== 'hidden' && tile.visible !== false);
+  const origin = getSpawnOrigin(clientWorldMap.origin || {});
+  clientWorldMap.tiles = (clientWorldMap.tiles || []).filter((tile) => (
+    tile.visibility !== 'hidden'
+    && tile.visible !== false
+    && !isLegacyCapitalTileOutsideOrigin(tile, origin)
+  ));
   return clientWorldMap;
 }
 
