@@ -6494,7 +6494,7 @@ Regression:
 
 - optional console-facing world-march diagnostic summaries
 - compact mission, route, planned tile, planned site, API payload, action body, and authority summaries for debugging
-- coordinate-authoritative trace tile identity: mission origin/target/position, route ids, revealed route ids, and planned tile ids/terrain labels derive from `q/r` or `x/y` whenever coordinates exist
+- coordinate-authoritative trace tile identity: mission origin/target/position, route ids, revealed route ids, planned tile ids/terrain labels, and `revealedTileIds` derive from `q/r` or `x/y` whenever coordinates exist
 
 公开 API / Public API:
 
@@ -6514,6 +6514,7 @@ Regression:
 
 - New trace summaries must stay diagnostic-only and compact; they cannot become gameplay authority or alter routing, movement, AOI, or server acceptance.
 - Coordinate-bearing world/explorer records must use coordinate-derived tile identity instead of raw `tileId` / `id` fallback chains.
+- Mission `revealedTileIds` summaries must fold coordinate-bearing route/revealArea/planned-tile aliases before export; stale reveal ids cannot become diagnostic evidence.
 - New exported summary helpers require focused tests before they are registered in `GameAPI` or operation-log flows.
 
 回归 / Regression:

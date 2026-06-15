@@ -85,6 +85,62 @@
     return source?.tileId || source?.id || '';
   }
 
+  function addTileAlias(aliases, value, canonicalId) {
+    if (!value || !canonicalId) return;
+    const ids = aliases.get(String(value)) || new Set();
+    ids.add(String(canonicalId));
+    aliases.set(String(value), ids);
+  }
+
+  function addCoordAliases(aliases, source = {}, fallback = {}) {
+    if (!source || typeof source !== 'object') return;
+    const coordSource = hasCoordinate(source) ? source : fallback;
+    if (!hasCoordinate(coordSource)) return;
+    const canonicalId = getTraceTileId(coordSource);
+    addTileAlias(aliases, canonicalId, canonicalId);
+    addTileAlias(aliases, source.tileId, canonicalId);
+    addTileAlias(aliases, source.id, canonicalId);
+  }
+
+  function createMissionTileAliasMap(mission = {}) {
+    const aliases = new Map();
+    (Array.isArray(mission.route) ? mission.route : []).forEach((step) => addCoordAliases(aliases, step));
+    (Array.isArray(mission.revealArea) ? mission.revealArea : []).forEach((step) => addCoordAliases(aliases, step));
+    (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => addCoordAliases(aliases, tile));
+    (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).forEach((site) => {
+      const rawSite = site?.site && typeof site.site === 'object' ? site.site : {};
+      addCoordAliases(aliases, site, rawSite);
+    });
+    return aliases;
+  }
+
+  function summarizeRevealedTileIds(mission = {}) {
+    const aliases = createMissionTileAliasMap(mission);
+    const ids = [];
+    const seen = new Set();
+    const addId = (id) => {
+      if (!id) return;
+      const value = String(id);
+      if (seen.has(value)) return;
+      seen.add(value);
+      ids.push(value);
+    };
+    (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [])
+      .slice(0, 8)
+      .forEach((id) => {
+        const canonicalIds = aliases.get(String(id));
+        if (canonicalIds) {
+          canonicalIds.forEach(addId);
+          return;
+        }
+        addId(id);
+      });
+    if (Array.isArray(mission.revealedTileIds) && mission.revealedTileIds.length > 8) {
+      addId(`...+${mission.revealedTileIds.length - 8}`);
+    }
+    return ids;
+  }
+
   function summarizeCoord(coord = null) {
     if (!coord || typeof coord !== 'object') return null;
     const q = Number(coord.q ?? coord.x ?? 0);
@@ -148,7 +204,7 @@
       route: summarizeRoute(mission.route),
       plannedTiles: summarizePlannedTiles(mission.plannedTiles),
       plannedSites: summarizePlannedSites(mission.plannedSites),
-      revealedTileIds: compactArray(mission.revealedTileIds, toId),
+      revealedTileIds: summarizeRevealedTileIds(mission),
       revealedTileCount: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.length : 0,
       formation: summarizeFormation(mission.formation),
       stepDurationSeconds: Number(mission.stepDurationSeconds || 0),

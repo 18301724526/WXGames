@@ -19,7 +19,7 @@ test('WorldMarchTrace derives coordinate-bearing mission summaries from coordina
       { id: 'legacy-planned-tile', q: 3, r: -2, terrain: 'forest' },
     ],
     plannedSites: [],
-    revealedTileIds: [],
+    revealedTileIds: ['legacy-route-step', 'legacy-planned-tile'],
   };
 
   const summary = WorldMarchTrace.summarizeMission(mission);
@@ -29,6 +29,7 @@ test('WorldMarchTrace derives coordinate-bearing mission summaries from coordina
   assert.equal(summary.position.tileId, 'tile_2_-1');
   assert.deepEqual(summary.route.ids, ['tile_2_-1', 'tile_3_-2']);
   assert.deepEqual(summary.route.revealedIds, ['tile_2_-1']);
+  assert.deepEqual(summary.revealedTileIds, ['tile_2_-1', 'tile_3_-2']);
   assert.equal(summary.route.first.tileId, 'tile_2_-1');
   assert.equal(summary.route.last.tileId, 'tile_3_-2');
   assert.deepEqual(summary.plannedTiles.ids, ['tile_3_-2']);

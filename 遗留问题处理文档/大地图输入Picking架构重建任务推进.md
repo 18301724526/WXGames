@@ -126,7 +126,7 @@
 - 2026-06-14：`CanvasTerritoryActionHandlers` 的 `selectWorldMarchTarget` / `openWorldMarchFormationPicker` / `startWorldMarch` 统一消费 `TileCoord` 行军目标规范化；HUD 目标 tile identity 从坐标生成，旧 `action.tileId` 不能污染 UI 状态或 API 顶层 payload。
 - 2026-06-14：`WorldExplorerActions` 的 trace summary 与 `rebaseMissionRoute()` 删除旧 `tileId || getTileId()` / `id || getTileId()` 写法，并新增架构测试锁死；命令层不再给旧身份字段留下再次抢权的入口。
 - 2026-06-15：`backend/routes/gameRoutes.js` 的 `/api/game/state` world-march route trace summary 完成坐标身份收口；新增红测证明脏 mission `origin/target/position.tileId`、route step `tileId`、planned tile `id` 不会进入 `route:state:loaded` 诊断摘要，复现日志必须按坐标事实输出。
-- 2026-06-15：`WorldMarchTrace` 的前端 world-march 诊断摘要完成坐标身份收口并接入 architecture smoke；新增红测证明脏 `origin/target/position.tileId`、route step `tileId`、planned tile `id` 不会进入 console trace / 导出日志摘要。
+- 2026-06-15：`WorldMarchTrace` 的前端 world-march 诊断摘要完成坐标身份收口并接入 architecture smoke；新增红测证明脏 `origin/target/position.tileId`、route step `tileId`、planned tile `id` 与 `revealedTileIds` alias 不会进入 console trace / 导出日志摘要。
 - 2026-06-15：`ClientOperationLog` 的本地操作日志摘要完成坐标身份收口；新增红测证明带 `targetQ/targetR` 或 `q/r` 的 action、input intent target、UI `worldMarchTarget` 不再保留脏旧 `tileId`，导出/上传日志按坐标事实对账。
 - 2026-06-15：`cleanup-world-explorer-ready-state.js` 的部署期 ready->idle 清理写回完成坐标身份收口；新增红测证明脏 ready mission `origin/target/position/route.tileId` 不会被迁移脚本原样写回，带坐标记录统一按 `q/r` 生成 tile identity。
 - 2026-06-15：`WorldMarchProgressSnapshot.deriveMissionForTime()` 的 route reveal set / 输出 `revealedTileIds` 完成坐标身份收口；新增红测证明脏 route step `tileId` 只作为 coordinate-bearing route alias 被折回 canonical `tile_q_r`，旧 route id 不会继续透传到前端进度快照。
