@@ -92,6 +92,12 @@ Manual test target:
 
 Add the persistence boundary and atomic reservation API.
 
+Status:
+
+- Added `SpawnAuthorityRepository` as the focused SQLite authority for spawn reservations.
+- `GameStateRepository` only exposes thin delegation methods.
+- Existing login, reset, initial state, and tutorial behavior are not wired to the new table yet.
+
 Test target:
 
 ```bash

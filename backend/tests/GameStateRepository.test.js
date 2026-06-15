@@ -713,3 +713,91 @@ test('GameStateRepository resetPlayerState clears previous player world visibili
     db.close();
   }
 });
+
+test('GameStateRepository reserves player spawns with unique coordinates', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const first = repository.reserveSpawnForPlayer('spawn-owner-a', {
+      q: 24,
+      r: -8,
+      score: 120,
+      tutorialTarget: { q: 25, r: -8 },
+    }, { nowIso: '2026-06-16T00:00:00.000Z' });
+
+    assert.equal(first.playerId, 'spawn-owner-a');
+    assert.equal(first.q, 24);
+    assert.equal(first.r, -8);
+    assert.equal(first.spawnKey, '24,-8');
+    assert.equal(first.status, 'reserved');
+
+    const samePlayer = repository.reserveSpawnForPlayer('spawn-owner-a', {
+      q: 99,
+      r: 99,
+    }, { nowIso: '2026-06-16T00:01:00.000Z' });
+    assert.equal(samePlayer.q, 24);
+    assert.equal(samePlayer.r, -8);
+
+    assert.throws(
+      () => repository.reserveSpawnForPlayer('spawn-owner-b', { q: 24, r: -8 }),
+      (error) => error.code === 'SPAWN_ALREADY_RESERVED' && error.spawnKey === '24,-8',
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository releases spawn reservations so coordinates can be reused', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    repository.reserveSpawnForPlayer('spawn-release-a', { q: 32, r: 7 });
+    assert.equal(repository.releaseSpawnForPlayer('spawn-release-a'), 1);
+    assert.equal(repository.getSpawnForPlayer('spawn-release-a'), null);
+
+    const next = repository.reserveSpawnForPlayer('spawn-release-b', { q: 32, r: 7 });
+    assert.equal(next.playerId, 'spawn-release-b');
+    assert.equal(next.spawnKey, '32,7');
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository exposes occupied spawn coordinates from saves, shared world, and reservations', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const ownerState = GameStateNormalizer.createInitialGameState('spawn-occupied-owner');
+    ownerState.territories = ownerState.territories.map((territory) => (
+      territory.id === 'capital'
+        ? { ...territory, x: 12, y: 4 }
+        : territory
+    ));
+    ownerState.territories.push({
+      id: 'site_spawn_shared',
+      x: 19,
+      y: 6,
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: ownerState.playerId,
+      status: 'occupied',
+    });
+    repository.save(ownerState);
+    repository.reserveSpawnForPlayer('spawn-reserved-owner', { q: -14, r: 21 });
+
+    const occupied = repository.getOccupiedSpawnCoordinates();
+    const keys = new Set(occupied.map((coord) => `${coord.source}:${coord.q},${coord.r}`));
+
+    assert.ok(keys.has('game-state-capital:12,4'));
+    assert.ok(keys.has('shared-world-territory:19,6'));
+    assert.ok(keys.has('spawn-allocation:-14,21'));
+  } finally {
+    db.close();
+  }
+});

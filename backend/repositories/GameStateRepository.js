@@ -1,9 +1,11 @@
 const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget');
+const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
 
 class GameStateRepository {
   constructor(db) {
     this.db = db;
+    this.spawnAuthority = new SpawnAuthorityRepository(db);
     this.worldMapAuthority = new WorldMapAuthorityRepository(db);
   }
 
@@ -73,6 +75,7 @@ class GameStateRepository {
       CREATE INDEX IF NOT EXISTS idx_players_last_active_at ON players(lastActiveAt DESC);
       CREATE INDEX IF NOT EXISTS idx_shared_world_territories_owner ON shared_world_territories(ownerPlayerId);
     `);
+    this.spawnAuthority.init();
     this.worldMapAuthority.init();
 
     const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
@@ -146,6 +149,22 @@ class GameStateRepository {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutReports TEXT').run();
     }
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
+  }
+
+  getOccupiedSpawnCoordinates(options = {}) {
+    return this.spawnAuthority.getOccupiedSpawnCoordinates(options);
+  }
+
+  getSpawnForPlayer(playerId) {
+    return this.spawnAuthority.getSpawnForPlayer(playerId);
+  }
+
+  reserveSpawnForPlayer(playerId, assignment, options = {}) {
+    return this.spawnAuthority.reserveSpawn(playerId, assignment, options);
+  }
+
+  releaseSpawnForPlayer(playerId) {
+    return this.spawnAuthority.releaseSpawnForPlayer(playerId);
   }
 
   findByPlayerId(playerId) {
