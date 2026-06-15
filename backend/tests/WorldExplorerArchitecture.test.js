@@ -305,6 +305,45 @@ test('world explorer route planner creates tutorial planned sites by route coord
   assert.equal(plannedSites[0].site.terrain, 'forest');
 });
 
+test('world explorer route planner excludes shared occupied coordinates for tutorial planned sites', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'tutorial-planned-site-shared-occupied-test',
+    worldMap: { seed: 'tutorial-planned-site-shared-seed', tiles: [] },
+    territories: [],
+    tutorial: {
+      completed: false,
+      currentStep: TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved,
+      grants: {},
+    },
+  };
+  const route = [
+    { q: 1, r: 0, step: 1 },
+    { q: 2, r: 0, step: 2 },
+  ];
+  const plannedTiles = RoutePlanner.createPlannedTiles(gameState, route, now, {
+    origin: { q: 0, r: 0 },
+    target: { q: 2, r: 0 },
+  });
+
+  const plannedSites = RoutePlanner.createTutorialPlannedSites(gameState, route, plannedTiles, now, {
+    planningContext: {
+      sharedWorldTerritories: [{
+        id: 'shared-occupied-2-0',
+        x: 2,
+        y: 0,
+        owner: 'player',
+        ownerPlayerId: 'other-player',
+        status: 'occupied',
+      }],
+    },
+  });
+
+  assert.equal(plannedSites.length, 1);
+  assert.equal(plannedSites[0].tileId, 'tile_1_0');
+  assert.equal(plannedSites[0].site.id, 'site_1_0');
+});
+
 test('world explorer progression reveals a step through the world-map batch API', (t) => {
   const originalRevealTiles = WorldMapService.revealTiles;
   const originalRevealTile = WorldMapService.revealTile;
@@ -353,7 +392,18 @@ test('world explorer progression reveals a step through the world-map batch API'
 
   assert.equal(calls.revealTile, 0);
   assert.equal(calls.revealTiles.length, 1);
-  assert.deepEqual(calls.revealTiles[0], [{
+  assert.deepEqual(calls.revealTiles[0].map(({ q, r }) => `${q},${r}`), [
+    '1,0',
+    '0,-1',
+    '0,0',
+    '0,1',
+    '1,-1',
+    '1,1',
+    '2,-1',
+    '2,0',
+    '2,1',
+  ]);
+  assert.deepEqual(calls.revealTiles[0][0], {
     q: 1,
     r: 0,
     overrides: {
@@ -365,8 +415,8 @@ test('world explorer progression reveals a step through the world-map batch API'
       visibility: 'scouted',
       generationContext: { direction: 'e', eventEpoch: 'frontier' },
     },
-  }]);
-  assert.deepEqual(revealed.map((tile) => tile.terrain), ['forest']);
+  });
+  assert.deepEqual(revealed.map((tile) => tile.terrain)[0], 'forest');
   assert.equal(revealed[0].generationContext.direction, 'e');
 });
 
@@ -414,8 +464,8 @@ test('world explorer progression merges materialized reveal tiles by coordinates
 
   const revealed = Progression.revealStep(gameState, mission, { q: 2, r: -1 }, new Date('2026-06-06T00:00:00.000Z'));
 
-  assert.equal(revealed.length, 1);
-  assert.equal(revealed[0].siteId, 'site_2_-1');
+  assert.equal(revealed.length, 9);
+  assert.equal(revealed.some((tile) => tile.siteId === 'site_2_-1'), true);
   assert.equal(mission.plannedSites[0].materialized, true);
 });
 
@@ -456,7 +506,17 @@ test('world explorer progression stores revealed mission ids from coordinates', 
 
   const mission = gameState.exploreMissions[0];
   assert.equal(mission.status, 'idle');
-  assert.deepEqual(mission.revealedTileIds, ['tile_4_-2']);
+  assert.deepEqual(mission.revealedTileIds, [
+    'tile_4_-2',
+    'tile_3_-3',
+    'tile_3_-2',
+    'tile_3_-1',
+    'tile_4_-3',
+    'tile_4_-1',
+    'tile_5_-3',
+    'tile_5_-2',
+    'tile_5_-1',
+  ]);
   assert.deepEqual(mission.position, { q: 4, r: -2, tileId: 'tile_4_-2' });
 });
 

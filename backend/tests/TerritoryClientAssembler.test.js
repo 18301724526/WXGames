@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const TerritoryService = require('../services/TerritoryService');
 const TerritoryClientAssembler = require('../services/TerritoryClientAssembler');
+const WorldMapService = require('../services/WorldMapService');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -84,4 +85,43 @@ test('client territory projection includes shared sites without using them for l
   assert.equal(clientState.territories.some((site) => site.id === 'site_shared_1'), true);
   assert.equal(clientState.occupiedCount, 1);
   assert.equal(clientState.namingPrompt, null);
+});
+
+test('client territory projection lets shared occupied sites win coordinate conflicts', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-shared-conflict');
+  const now = new Date('2026-06-15T00:00:00.000Z');
+  const staleTutorialSite = {
+    id: 'site_2_0',
+    x: 2,
+    y: 0,
+    naturalName: 'Stale Tutorial City',
+    type: 'town',
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+  };
+  const sharedOccupiedSite = {
+    id: 'shared_city_2_0',
+    x: 2,
+    y: 0,
+    naturalName: 'Other Player City',
+    cityName: 'Other Player City',
+    type: 'town',
+    owner: 'player',
+    ownerPlayerId: 'other-player',
+    status: 'occupied',
+  };
+
+  TerritoryService.normalizeTerritoryState(state, now);
+  state.territories = [...state.territories, staleTutorialSite];
+  WorldMapService.bindSiteToTile(state, 2, 0, staleTutorialSite.id, now, { visibility: 'scouted' });
+
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
+    sharedWorldTerritories: [sharedOccupiedSite],
+  });
+  const conflictTile = clientState.worldMap.tiles.find((tile) => tile.q === 2 && tile.r === 0);
+
+  assert.equal(clientState.territories.some((site) => site.id === staleTutorialSite.id), false);
+  assert.equal(clientState.territories.some((site) => site.id === sharedOccupiedSite.id), true);
+  assert.equal(conflictTile.siteId, sharedOccupiedSite.id);
 });

@@ -72,6 +72,7 @@ function buildTerritoryPayload(body = {}, actionOverride = '') {
   if (body.aoiRadius !== undefined) payload.aoiRadius = body.aoiRadius;
   if (body.debugTrace !== undefined) payload.debugTrace = body.debugTrace;
   if (body.worldMarchTrace !== undefined) payload.worldMarchTrace = body.worldMarchTrace;
+  if (body.planningContext !== undefined) payload.planningContext = body.planningContext;
   return payload;
 }
 
@@ -164,7 +165,11 @@ function createGameActionRegistry(overrides = {}) {
       const action = context.action || context.body?.action || '';
       const handler = handlers.get(action);
       if (!handler) return { success: false, message: '鏈煡鎿嶄綔', error: 'UNKNOWN_ACTION' };
-      return handler({ ...context, action, body: context.body || {} });
+      const body = {
+        ...(context.body || {}),
+        ...(context.planningContext ? { planningContext: context.planningContext } : {}),
+      };
+      return handler({ ...context, action, body });
     },
     has(action) {
       return handlers.has(action);

@@ -129,6 +129,14 @@ function getNearbyGenerationState(gameState = {}, center = {}, radius = 8) {
   };
 }
 
+function getPlanningTerritories(gameState = {}, planningContext = {}) {
+  const own = Array.isArray(gameState.territories) ? gameState.territories : [];
+  const shared = Array.isArray(planningContext.sharedWorldTerritories)
+    ? planningContext.sharedWorldTerritories
+    : [];
+  return [...own, ...shared].filter((territory) => territory && typeof territory === 'object');
+}
+
 function createGenerationContext(gameState = {}, step = {}, options = {}) {
   const origin = options.origin || getExploreOrigin(gameState);
   const target = options.target || step;
@@ -155,18 +163,53 @@ function createGenerationContext(gameState = {}, step = {}, options = {}) {
   };
 }
 
+function getExistingWorldTileById(gameState = {}, q = 0, r = 0, now = new Date()) {
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const canonicalId = WorldMapService.getCanonicalTileId(q, r);
+  return (worldMap.tiles || []).find((tile) => (
+    (tile.canonicalId || WorldMapService.getCanonicalTileId(tile.q, tile.r)) === canonicalId
+  )) || null;
+}
+
+function getRouteFootprint(route = [], radius = 1) {
+  const byId = new Map();
+  (Array.isArray(route) ? route : []).forEach((step) => {
+    WorldMapService.getRevealArea(step.q, step.r, radius).forEach((coord) => {
+      const id = WorldMapService.getTileId(coord.q, coord.r);
+      if (!byId.has(id)) {
+        byId.set(id, {
+          q: coord.q,
+          r: coord.r,
+          tileId: id,
+          routeStep: step.step,
+          sourceStep: {
+            q: step.q,
+            r: step.r,
+            step: step.step,
+          },
+        });
+      }
+    });
+  });
+  return [...byId.values()];
+}
+
 function createPlannedTiles(gameState, route, now = new Date(), options = {}) {
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   let previous = options.origin || getExploreOrigin(gameState);
-  return route.map((step) => {
+  const footprint = getRouteFootprint(route, options.revealRadius ?? 1);
+  return footprint.map((step) => {
+    const existing = getExistingWorldTileById(gameState, step.q, step.r, now);
+    if (existing) return existing;
     const tile = WorldMapService.createTile(worldMap.seed, step.q, step.r, now, {
       visibility: 'scouted',
       generationContext: createGenerationContext(gameState, step, {
         ...options,
         previous,
+        target: options.target || step.sourceStep || step,
       }),
     });
-    previous = step;
+    if (route.some((routeStep) => routeStep.q === step.q && routeStep.r === step.r)) previous = step;
     return tile;
   });
 }
@@ -228,17 +271,18 @@ function createTutorialEmptyCitySite(gameState = {}, step = {}, plannedTile = {}
   };
 }
 
-function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], now = new Date()) {
+function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], now = new Date(), options = {}) {
   if (!shouldGuaranteeTutorialEmptyCity(gameState)) return [];
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const plannedById = new Map(plannedTiles.map((tile) => [WorldMapService.getTileId(tile.q, tile.r), tile]));
-  const existingCoords = new Set((gameState.territories || []).map((site) => getCoordinateKey(site.x, site.y)));
+  const existingCoords = new Set(getPlanningTerritories(gameState, options.planningContext)
+    .map((site) => getCoordinateKey(site.x ?? site.q, site.y ?? site.r)));
   const chosen = [...route].reverse().find((step) => {
     if (existingCoords.has(getCoordinateKey(step.q, step.r))) return false;
     const planned = plannedById.get(WorldMapService.getTileId(step.q, step.r)) || {};
     const terrain = planned.terrain || WorldMapService.chooseTerrain(worldMap.seed, step.q, step.r);
     return !['ocean', 'river'].includes(terrain);
-  }) || route.at(-1);
+  });
   if (!chosen) return [];
   const tileId = WorldMapService.getTileId(chosen.q, chosen.r);
   let plannedTile = plannedById.get(tileId);
@@ -273,6 +317,8 @@ module.exports = {
   getNearbyGenerationState,
   getStepDirection,
   createGenerationContext,
+  getPlanningTerritories,
+  getRouteFootprint,
   createPlannedTiles,
   shouldGuaranteeTutorialEmptyCity,
   pickTutorialCityName,

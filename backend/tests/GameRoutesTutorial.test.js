@@ -537,10 +537,103 @@ test('game action route starts guided world march with planned tiles in client s
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.success, true);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
-  assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedTiles.length, 2);
+  assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedTiles.length, 12);
   assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedSites.length, 1);
-  assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 2);
+  assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 12);
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedSites.length, 1);
+});
+
+test('game action route uses shared world projection when planning guided first city march', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-guided-world-shared-occupied-test';
+  const gameState = GameStateService.createInitialGameState(playerId);
+  const scoutPersonId = 'fp-route-shared-scout';
+  gameState.currentEra = 3;
+  gameState.tutorial = {
+    ...TutorialService.manualAdvance(
+      gameState.tutorial,
+      TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
+    ),
+    grants: {
+      scoutFamousPerson: { personId: scoutPersonId },
+    },
+  };
+  gameState.famousPeople = [{
+    id: scoutPersonId,
+    name: 'Scout',
+    archetype: 'scout',
+    abilityArchetype: 'scout',
+    quality: 'great',
+  }];
+  gameState.military = {
+    ...gameState.military,
+    formations: {
+      capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+    },
+  };
+  gameState.cities = {
+    capital: {
+      id: 'capital',
+      territoryId: 'capital',
+      isCapital: true,
+      resources: { ...gameState.resources },
+      buildings: { ...gameState.buildings },
+      population: { ...gameState.population },
+      military: {
+        ...gameState.military,
+        formations: {
+          capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+        },
+      },
+    },
+  };
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+    getClientProjectionForPlayer(id) {
+      assert.equal(id, playerId);
+      return {
+        sharedWorldTerritories: [{
+          id: 'shared-city-2-0',
+          x: 2,
+          y: 0,
+          owner: 'player',
+          ownerPlayerId: 'other-player',
+          status: 'occupied',
+        }],
+      };
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return GameStateService.normalizeState(state);
+    },
+    getClientGameState: GameStateService.getClientGameState,
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = {
+    playerId,
+    body: { action: 'startWorldMarch', targetQ: 2, targetR: 0, cityId: 'capital', formationSlot: 1 },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.success, true);
+  assert.equal(res.payload.mission.target.tileId, 'tile_1_0');
+  assert.equal(res.payload.mission.plannedSites[0].tileId, 'tile_1_0');
+  assert.equal(savedStates.at(-1).exploreMissions[0].target.tileId, 'tile_1_0');
 });
 
 test('game action route rejects unknown world exploration report actions without saving', () => {

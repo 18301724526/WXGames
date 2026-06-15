@@ -15,6 +15,56 @@ function getMapBounds(territories) {
   };
 }
 
+function getCoordinateKey(site = {}) {
+  const x = Number(site.x ?? site.q ?? 0);
+  const y = Number(site.y ?? site.r ?? 0);
+  return `${Math.floor(x)},${Math.floor(y)}`;
+}
+
+function isSharedOccupiedTerritory(site = {}) {
+  return Boolean(site.ownerPlayerId && site.owner === 'player' && site.status === 'occupied');
+}
+
+function getTerritoryProjectionPriority(site = {}) {
+  if (isSharedOccupiedTerritory(site)) return 4;
+  if (site.owner === 'player' && site.status === 'occupied') return 3;
+  if (site.status === 'contested') return 2;
+  if (site.status === 'discovered') return 1;
+  return 0;
+}
+
+function mergeProjectedTerritories(ownTerritories = [], sharedTerritories = []) {
+  const byCoord = new Map();
+  [...ownTerritories, ...sharedTerritories].forEach((territory) => {
+    if (!territory || typeof territory !== 'object') return;
+    const key = getCoordinateKey(territory);
+    const existing = byCoord.get(key);
+    if (!existing || getTerritoryProjectionPriority(territory) >= getTerritoryProjectionPriority(existing)) {
+      byCoord.set(key, territory);
+    }
+  });
+  return [...byCoord.values()];
+}
+
+function bindProjectedSitesToWorldMap(worldMap = {}, territories = []) {
+  const siteByCoord = new Map((territories || [])
+    .filter((site) => site && typeof site === 'object' && site.id)
+    .map((site) => [getCoordinateKey(site), site]));
+  if (!Array.isArray(worldMap.tiles) || !siteByCoord.size) return worldMap;
+  return {
+    ...worldMap,
+    tiles: worldMap.tiles.map((tile) => {
+      const site = siteByCoord.get(getCoordinateKey(tile));
+      if (!site) return tile;
+      return {
+        ...tile,
+        siteId: site.id,
+        visibility: site.owner === 'player' && !site.ownerPlayerId ? 'controlled' : tile.visibility,
+      };
+    }),
+  };
+}
+
 function getClientScoutAreas(gameState, deps = {}) {
   const scoutState = typeof deps.normalizeScoutState === 'function'
     ? deps.normalizeScoutState(gameState.scoutState)
@@ -125,15 +175,16 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
     }]));
   const ownTerritories = Array.isArray(gameState.territories) ? gameState.territories : [];
   const sharedTerritories = Array.isArray(projection.sharedWorldTerritories) ? projection.sharedWorldTerritories : [];
-  const territories = [...ownTerritories, ...sharedTerritories]
+  const territories = mergeProjectedTerritories(ownTerritories, sharedTerritories)
     .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps));
   const scoutMissions = (gameState.warMissions || []).filter((mission) => deps.getMissionKind(mission) === 'scout');
+  const worldMap = typeof WorldMapService.getClientWorldMapFromNormalized === 'function'
+    ? WorldMapService.getClientWorldMapFromNormalized(gameState.worldMap)
+    : WorldMapService.getClientWorldMap(gameState, now);
   return {
     polity: gameState.polity || deps.createInitialPolity(),
     territories,
-    worldMap: typeof WorldMapService.getClientWorldMapFromNormalized === 'function'
-      ? WorldMapService.getClientWorldMapFromNormalized(gameState.worldMap)
-      : WorldMapService.getClientWorldMap(gameState, now),
+    worldMap: bindProjectedSitesToWorldMap(worldMap, territories),
     warMissions: gameState.warMissions || [],
     scoutMissions: scoutMissions.map((mission) => ({
       ...mission,
@@ -168,4 +219,6 @@ module.exports = {
   getClientBattleTargetForIntel,
   getClientTerritoryView,
   getClientTerritoryState,
+  getCoordinateKey,
+  mergeProjectedTerritories,
 };

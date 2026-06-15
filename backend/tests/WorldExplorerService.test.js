@@ -63,7 +63,7 @@ test('guided world march returns server-planned tiles and the first empty city p
   assert.equal(result.success, true);
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
   assert.equal(result.mission.route.length, 2);
-  assert.equal(result.mission.plannedTiles.length, 2);
+  assert.equal(result.mission.plannedTiles.length, 12);
   assert.equal(result.mission.plannedSites.length, 1);
   assert.equal(result.mission.plannedSites[0].site.id, result.mission.plannedSites[0].siteId);
   assert.equal(result.mission.plannedSites[0].site.owner, 'neutral');
@@ -74,6 +74,34 @@ test('guided world march returns server-planned tiles and the first empty city p
   assert.deepEqual(result.mission.formation.memberIds, ['fp-tutorial-scout']);
   assert.equal(gameState.territories.length, 1);
   assert.equal(gameState.territories[0].id, 'capital');
+});
+
+test('guided world march avoids shared occupied cities when choosing the first empty city target', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+
+  const result = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+    planningContext: {
+      sharedWorldTerritories: [{
+        id: 'other-player-city',
+        x: 2,
+        y: 0,
+        owner: 'player',
+        ownerPlayerId: 'other-player',
+        status: 'occupied',
+      }],
+    },
+  }, now);
+
+  assert.equal(result.success, true);
+  assert.equal(result.mission.target.tileId, 'tile_1_0');
+  assert.equal(result.mission.route.length, 1);
+  assert.equal(result.mission.plannedSites.length, 1);
+  assert.equal(result.mission.plannedSites[0].tileId, 'tile_1_0');
+  assert.equal(result.mission.plannedSites[0].site.id, 'site_1_0');
 });
 
 test('guided world march materializes the first neutral empty city without claim report flow', () => {

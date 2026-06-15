@@ -312,8 +312,15 @@ function registerGameRoutes(app, deps) {
         beforeMissions: (gameState.exploreMissions || []).map(summarizeMission),
       });
     }
+    const planningProjection = loadProjection(repository, req.playerId);
     result = WorldExplorerTrace.run(traceEnabled, () => (
-      GameActionRegistry.execute({ action, body: req.body || {}, gameState, tutorial })
+      GameActionRegistry.execute({
+        action,
+        body: req.body || {},
+        gameState,
+        tutorial,
+        planningContext: planningProjection,
+      })
     ));
     if (traceEnabled) {
       traceWorldMarch('route:afterExecute', {

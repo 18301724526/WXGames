@@ -69,11 +69,20 @@ function getPlannedTileById(mission) {
   return new Map((mission.plannedTiles || []).map((tile) => [WorldMapService.getTileId(tile.q, tile.r), tile]));
 }
 
-function materializePlannedSitesForStep(gameState, mission, step, now = new Date()) {
+function createTileIdSet(coords = []) {
+  return new Set((Array.isArray(coords) ? coords : [])
+    .map((coord) => WorldMapService.getTileId(coord.q, coord.r))
+    .filter(Boolean));
+}
+
+function materializePlannedSitesForStep(gameState, mission, step, now = new Date(), options = {}) {
   const tileId = WorldMapService.getTileId(step.q, step.r);
+  const revealTileIds = options.revealTileIds instanceof Set
+    ? options.revealTileIds
+    : new Set([tileId]);
   const materialized = [];
   mission.plannedSites = (mission.plannedSites || []).map((plannedSite) => {
-    if (!plannedSite || plannedSite.materialized || plannedSite.tileId !== tileId) return plannedSite;
+    if (!plannedSite || plannedSite.materialized || !revealTileIds.has(plannedSite.tileId)) return plannedSite;
     const normalized = normalizePlannedSite(plannedSite);
     const site = normalized?.site || null;
     if (!site) return plannedSite;
@@ -103,6 +112,7 @@ function materializePlannedSitesForStep(gameState, mission, step, now = new Date
   WorldExplorerTrace.log('progression:materializePlannedSitesForStep', {
     missionId: mission.id || '',
     tileId,
+    revealTileCount: revealTileIds.size,
     materializedCount: materialized.length,
     siteIds: materialized.map(({ site }) => site?.id).filter(Boolean),
   });
@@ -166,7 +176,9 @@ function revealStep(gameState, mission, step, now = new Date()) {
         : { visibility: 'scouted' };
     },
   });
-  const materialized = materializePlannedSitesForStep(gameState, mission, step, now);
+  const materialized = materializePlannedSitesForStep(gameState, mission, step, now, {
+    revealTileIds: createTileIdSet(coords),
+  });
   WorldExplorerTrace.log('progression:revealStep', {
     missionId: mission.id || '',
     step: summarizeStep(step),

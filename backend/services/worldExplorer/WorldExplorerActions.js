@@ -12,6 +12,7 @@ const {
   buildManualRoute,
   createPlannedTiles,
   createTutorialPlannedSites,
+  shouldGuaranteeTutorialEmptyCity,
 } = require('./WorldExplorerRoutePlanner');
 const {
   advanceTutorialStep,
@@ -180,7 +181,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     routeIds: (routeResult.route || []).slice(0, 8).map((step) => WorldMapService.getTileId(step.q, step.r)),
   });
   if (!routeResult.success) return routeResult;
-  const route = routeResult.route || [];
+  let route = routeResult.route || [];
   if (!route.length) {
     traceWorldMarch('actions:startWorldMarch:emptyRoute', options, {
       origin: summarizeCoord(origin),
@@ -188,12 +189,36 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: 'No explorer route could be generated.' };
   }
-  const plannedTiles = createPlannedTiles(gameState, route, now, {
+  let plannedTiles = createPlannedTiles(gameState, route, now, {
     mode: 'manual',
     origin: marchOrigin,
     target: routeResult.target || route.at(-1),
   });
-  const plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now);
+  let plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now, {
+    planningContext: options.planningContext,
+  });
+  if (shouldGuaranteeTutorialEmptyCity(gameState)) {
+    if (!plannedSites.length) {
+      return {
+        success: false,
+        error: 'EXPLORE_TUTORIAL_TARGET_OCCUPIED',
+        message: 'No valid guided empty city target is available on this route.',
+      };
+    }
+    const tutorialTargetId = plannedSites[0].tileId;
+    const tutorialTargetIndex = route.findIndex((step) => WorldMapService.getTileId(step.q, step.r) === tutorialTargetId);
+    if (tutorialTargetIndex >= 0 && tutorialTargetIndex < route.length - 1) {
+      route = route.slice(0, tutorialTargetIndex + 1);
+      plannedTiles = createPlannedTiles(gameState, route, now, {
+        mode: 'manual',
+        origin: marchOrigin,
+        target: route.at(-1),
+      });
+      plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now, {
+        planningContext: options.planningContext,
+      });
+    }
+  }
   traceWorldMarch('actions:startWorldMarch:planned', options, {
     plannedTileCount: plannedTiles.length,
     plannedTileIds: plannedTiles.slice(0, 8).map((tile) => WorldMapService.getTileId(tile.q, tile.r)),
