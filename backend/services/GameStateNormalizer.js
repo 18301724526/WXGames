@@ -126,7 +126,9 @@ function normalizeStateStructure(rawState) {
 function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   const state = normalizeStateStructure(gameState);
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
-  WorldExplorerService.normalizeExploreState(state, now);
+  WorldExplorerService.normalizeExploreState(state, now, {
+    planningContext: options.planningContext,
+  });
   if (options.advanceWorldAi === true) {
     WorldAiExplorerService.advanceAiExploration(state, now);
   }

@@ -300,6 +300,32 @@ Manual test target:
 - Before the planned site materializes, create or simulate an existing territory at that same coordinate in the authoritative state.
 - Only check that the existing territory is not overwritten and the tutorial first-city grant is not assigned to the stale planned site.
 
+## Step 9 - Projection-Aware Online Progression Guard
+
+Scope:
+
+- Online/runtime progression context only.
+- Ensure planned tutorial site materialization sees shared-world occupied coordinates during real user requests and background worker ticks.
+- Do not change march interpolation, route generation, frontend rendering, or account reset behavior in this step.
+
+Implementation rule:
+
+- `applyOnlineProgress()` and `advanceRuntimeState()` must pass `planningContext` into world-explorer progression.
+- `/api/game/action`, `/api/game/tasks/claim`, `/api/buildings/build`, and `WorldWorkerService` must provide the current `getClientProjectionForPlayer()` projection when they advance runtime state.
+- `materializePlannedSitesForStep()` must reject a planned tutorial empty-city site when `planningContext.sharedWorldTerritories` already owns that coordinate.
+
+Automated test target:
+
+```bash
+node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/GameStateProjectionArchitecture.test.js backend/tests/WorldWorkerService.test.js backend/tests/GameRoutesTutorial.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Confirm the deployed frontend asset version matches the deployed commit.
+- Start or continue the guided world exploration flow; only check that the game still loads and the world canvas is interactive after the projection-aware progression change.
+
 ## Non-Goals
 
 - No frontend redesign.

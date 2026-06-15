@@ -32,11 +32,11 @@ function syncEra2Tutorial(gameState, gameStateService) {
   return nextTutorial;
 }
 
-function loadProgressedGameState(repository, gameStateService, playerId) {
+function loadProgressedGameState(repository, gameStateService, playerId, options = {}) {
   const rawState = repository.findByPlayerId(playerId);
   if (!rawState) return null;
   return gameStateService.applyOnlineProgress
-    ? gameStateService.applyOnlineProgress(rawState)
+    ? gameStateService.applyOnlineProgress(rawState, new Date(), options)
     : gameStateService.normalizeState(rawState);
 }
 
@@ -196,7 +196,10 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/tasks/claim', authMiddleware, (req, res) => {
-    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    const projection = loadProjection(repository, req.playerId);
+    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
+      planningContext: projection,
+    });
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
@@ -215,7 +218,6 @@ function registerGameRoutes(app, deps) {
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
-    const projection = loadProjection(repository, req.playerId);
 
     return res.status(result.success ? 200 : 400).json({
       ...result,
@@ -226,7 +228,10 @@ function registerGameRoutes(app, deps) {
   app.post('/api/game/action', authMiddleware, (req, res) => {
     const traceEnabled = shouldTraceWorldMarch(req.body);
     return WorldExplorerTrace.run(traceEnabled, () => {
-    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId);
+    const planningProjection = loadProjection(repository, req.playerId);
+    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
+      planningContext: planningProjection,
+    });
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
@@ -312,7 +317,6 @@ function registerGameRoutes(app, deps) {
         beforeMissions: (gameState.exploreMissions || []).map(summarizeMission),
       });
     }
-    const planningProjection = loadProjection(repository, req.playerId);
     result = WorldExplorerTrace.run(traceEnabled, () => (
       GameActionRegistry.execute({
         action,
@@ -343,10 +347,9 @@ function registerGameRoutes(app, deps) {
     EventService.maybeGenerateRegularEvent(gameState);
     EventService.maybeGenerateThreatEvent(gameState);
     repository.save(gameState);
-    const projection = loadProjection(repository, req.playerId);
     const responsePayload = {
       ...result,
-      ...buildGameView(gameState, syncedTutorial, gameStateService, projection),
+      ...buildGameView(gameState, syncedTutorial, gameStateService, planningProjection),
     };
     if (traceEnabled) {
       traceWorldMarch('route:response', {

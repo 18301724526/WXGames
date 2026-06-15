@@ -48,8 +48,12 @@ class WorldWorkerService {
   }
 
   advanceState(rawState, now) {
+    const projection = this.repository?.getClientProjectionForPlayer?.(rawState?.playerId) || {};
     const advanced = typeof this.gameStateService.advanceRuntimeState === 'function'
-      ? this.gameStateService.advanceRuntimeState(rawState, now, { advanceWorldAi: false })
+      ? this.gameStateService.advanceRuntimeState(rawState, now, {
+        advanceWorldAi: false,
+        planningContext: projection,
+      })
       : rawState;
     if (typeof this.cityService.advanceAllCities === 'function') {
       this.cityService.advanceAllCities(advanced, Math.floor(this.intervalMs / 1000));

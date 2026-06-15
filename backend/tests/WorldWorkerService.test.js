@@ -96,6 +96,10 @@ test('WorldWorkerService advances player runtime without background AI world exp
           },
         }];
       },
+      getClientProjectionForPlayer(playerId) {
+        calls.push(['getClientProjectionForPlayer', playerId]);
+        return { sharedWorldTerritories: [{ id: 'worker-shared-site' }] };
+      },
       save(state) {
         calls.push(['save', state.playerId]);
       },
@@ -118,7 +122,11 @@ test('WorldWorkerService advances player runtime without background AI world exp
 
   assert.equal(summary.processedCount, 1);
   assert.deepEqual(calls, [
-    ['advanceRuntimeState', 'test1', { advanceWorldAi: false }],
+    ['getClientProjectionForPlayer', 'test1'],
+    ['advanceRuntimeState', 'test1', {
+      advanceWorldAi: false,
+      planningContext: { sharedWorldTerritories: [{ id: 'worker-shared-site' }] },
+    }],
     ['save', 'test1'],
   ]);
 });

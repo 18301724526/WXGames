@@ -299,8 +299,9 @@ test('game action route advances canonical state once and uses read-only project
     },
   };
   const gameStateService = {
-    applyOnlineProgress(rawState) {
+    applyOnlineProgress(rawState, _now, options) {
       calls.push('applyOnlineProgress');
+      assert.equal(options.planningContext.sharedWorldTerritories[0].id, 'route-shared-site');
       return rawState;
     },
     normalizeState() {
@@ -340,6 +341,60 @@ test('game action route advances canonical state once and uses read-only project
   assert.equal(calls.includes('projection:projection-action-test'), true);
   assert.equal(calls.includes('getClientGameStateFromNormalized'), true);
   assert.equal(calls.includes('calculateEraProgressFromNormalized'), true);
+});
+
+test('game task claim route passes projection context into online progression', () => {
+  const { app, routes } = createAppHarness();
+  const state = createNormalizedRouteState('projection-task-claim-test');
+  state.taskProgress = { claimed: {} };
+  const calls = [];
+  const repository = {
+    findByPlayerId(playerId) {
+      calls.push(`find:${playerId}`);
+      return state;
+    },
+    save(savedState) {
+      calls.push(`save:${savedState.playerId}`);
+    },
+    getClientProjectionForPlayer(playerId) {
+      calls.push(`projection:${playerId}`);
+      return { sharedWorldTerritories: [{ id: 'task-shared-site' }] };
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(rawState, _now, options) {
+      calls.push('applyOnlineProgress');
+      assert.equal(options.planningContext.sharedWorldTerritories[0].id, 'task-shared-site');
+      return rawState;
+    },
+    normalizeState() {
+      throw new Error('task route must not normalize after applyOnlineProgress');
+    },
+    getClientGameStateFromNormalized(normalized, projection) {
+      calls.push('getClientGameStateFromNormalized');
+      assert.equal(projection.sharedWorldTerritories[0].id, 'task-shared-site');
+      return { playerId: normalized.playerId, activeCityId: normalized.activeCityId };
+    },
+    calculateEraProgressFromNormalized() {
+      calls.push('calculateEraProgressFromNormalized');
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  registerGameRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    repository,
+    gameStateService,
+  });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/tasks/claim');
+
+  const res = invokeRoute(route, {
+    playerId: 'projection-task-claim-test',
+    body: { taskId: 'missing-task' },
+  });
+
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(calls.filter((item) => item === 'applyOnlineProgress'), ['applyOnlineProgress']);
+  assert.equal(calls.includes('projection:projection-task-claim-test'), true);
 });
 
 test('game state read route is a read-only projection without runtime advance or persistence', () => {

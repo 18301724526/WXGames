@@ -82,6 +82,16 @@ function findTerritoryAtCoordinate(gameState = {}, q = 0, r = 0) {
   )) || null;
 }
 
+function findPlanningTerritoryAtCoordinate(planningContext = {}, q = 0, r = 0) {
+  const targetId = WorldMapService.getCanonicalTileId(q, r);
+  const shared = Array.isArray(planningContext.sharedWorldTerritories)
+    ? planningContext.sharedWorldTerritories
+    : [];
+  return shared.find((territory) => (
+    WorldMapService.getCanonicalTileId(territory.x ?? territory.q, territory.y ?? territory.r) === targetId
+  )) || null;
+}
+
 function materializePlannedSitesForStep(gameState, mission, step, now = new Date(), options = {}) {
   const tileId = WorldMapService.getTileId(step.q, step.r);
   const revealTileIds = options.revealTileIds instanceof Set
@@ -96,6 +106,8 @@ function materializePlannedSitesForStep(gameState, mission, step, now = new Date
     const existing = (gameState.territories || []).find((territory) => territory.id === site.id) || null;
     const occupiedCoordinate = findTerritoryAtCoordinate(gameState, site.x, site.y);
     if (occupiedCoordinate && occupiedCoordinate.id !== site.id) return plannedSite;
+    const occupiedProjection = findPlanningTerritoryAtCoordinate(options.planningContext, site.x, site.y);
+    if (occupiedProjection && occupiedProjection.id !== site.id) return plannedSite;
     if (!existing) gameState.territories = [...(gameState.territories || []), site];
     const tile = WorldMapService.bindSiteToTile(gameState, site.x, site.y, site.id, now, { visibility: 'scouted' });
     materialized.push({ site, tile });
@@ -164,7 +176,7 @@ function revealCoordinate(gameState, mission, coord, now = new Date()) {
   return tile;
 }
 
-function revealStep(gameState, mission, step, now = new Date()) {
+function revealStep(gameState, mission, step, now = new Date(), options = {}) {
   const coords = EXPLORE_REVEAL_RADIUS > 0
     ? WorldMapService.getRevealArea(step.q, step.r, EXPLORE_REVEAL_RADIUS)
     : [{ q: step.q, r: step.r }];
@@ -187,6 +199,7 @@ function revealStep(gameState, mission, step, now = new Date()) {
   });
   const materialized = materializePlannedSitesForStep(gameState, mission, step, now, {
     revealTileIds: createTileIdSet(coords),
+    planningContext: options.planningContext,
   });
   WorldExplorerTrace.log('progression:revealStep', {
     missionId: mission.id || '',
@@ -205,7 +218,7 @@ function revealStep(gameState, mission, step, now = new Date()) {
   return [...byId.values()];
 }
 
-function advanceExploreMissions(gameState, now = new Date()) {
+function advanceExploreMissions(gameState, now = new Date(), options = {}) {
   const TUTORIAL_STEPS = getTutorialSteps();
   gameState.exploreMissions = normalizeMissions(gameState.exploreMissions);
   const nowMs = now.getTime();
@@ -222,7 +235,9 @@ function advanceExploreMissions(gameState, now = new Date()) {
     while (nextStepAtMs <= nowMs) {
       const step = mission.route.find((item) => !item.revealed);
       if (!step) break;
-      const revealedTiles = revealStep(gameState, mission, step, now);
+      const revealedTiles = revealStep(gameState, mission, step, now, {
+        planningContext: options.planningContext,
+      });
       step.revealed = true;
       step.revealedAt = now.toISOString();
       mission.position = {
@@ -256,10 +271,12 @@ function advanceExploreMissions(gameState, now = new Date()) {
   return newlyRevealedTiles;
 }
 
-function normalizeExploreState(gameState, now = new Date()) {
+function normalizeExploreState(gameState, now = new Date(), options = {}) {
   WorldMapService.ensureWorldMap(gameState, now);
   gameState.exploreMissions = normalizeMissions(gameState.exploreMissions);
-  advanceExploreMissions(gameState, now);
+  advanceExploreMissions(gameState, now, {
+    planningContext: options.planningContext,
+  });
   return gameState.exploreMissions;
 }
 
