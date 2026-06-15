@@ -167,6 +167,28 @@ Manual test target:
 - Confirm A's old occupied shared territory is released.
 - Confirm A's new spawn and first tutorial target are not on another occupied coordinate.
 
+### Step 4.1 - Reset Camera Follows Spawn
+
+Status:
+
+- Account reset applies the server reset state before moving the world camera.
+- The world camera reset control returns to the current capital spawn, not raw pan `(0,0)`.
+- World tile-map and runtime bake signatures include `worldMap.origin`, so a changed spawn cannot reuse an old map cache.
+
+Test target:
+
+```bash
+node --test frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/auth.test.js frontend/js/state/UIStatePresenter.test.js frontend/js/platform/WorldMapRuntime.test.js
+npm run test -- frontend
+npm run test:architecture
+```
+
+Manual test target:
+
+- Reset Account A after it has a non-origin spawn.
+- Confirm the first rendered world map view is centered around A's new capital.
+- Tap the world-map reset camera control and confirm the view returns to A's new capital instead of `(0,0)`.
+
 ### Step 5 - Tutorial Replanning Hardening
 
 Make the guided first-city route re-plan when the chosen target becomes occupied before materialization.

@@ -219,6 +219,24 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.equal(UIStatePresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options), WorldTileMapPresenter.getWorldTileMapSignature(territoryState, options.worldExplorerState, options));
 });
 
+test('UIStatePresenter world tile map signature changes when world origin changes', () => {
+  const createTerritoryState = (origin) => ({
+    worldMap: {
+      version: 1,
+      seed: 'seed',
+      origin,
+      tiles: [{ id: `tile_${origin.q}_${origin.r}`, q: origin.q, r: origin.r, terrain: 'capital', siteId: 'capital' }],
+    },
+    territories: [{ id: 'capital', x: origin.q, y: origin.r, type: 'capital', owner: 'player' }],
+  });
+
+  const first = UIStatePresenter.getWorldTileMapSignature(createTerritoryState({ q: 0, r: 0 }), {}, {});
+  const second = UIStatePresenter.getWorldTileMapSignature(createTerritoryState({ q: 18, r: -4 }), {}, {});
+
+  assert.notEqual(first, second);
+  assert.ok(second.includes('"origin":{"q":18,"r":-4,"tileId":"tile_18_-4"}'));
+});
+
 test('UIStatePresenter renders the current march target tile ahead of confirmed reveal', () => {
   const territoryState = {
     worldMap: {

@@ -63,7 +63,7 @@
         return territories.find((site) => site?.id === siteId) || null;
       },
 
-      centerWorldMapOnSite(siteId) {
+      centerWorldMapOnSite(siteId, options = {}) {
         const tile = this.getWorldTileForSite(siteId);
         const site = this.getTerritorySite(siteId) || {};
         const q = Number(tile?.q ?? site.q ?? site.x ?? site.relativeX);
@@ -94,7 +94,10 @@
           || this.host?.worldMapRuntime
           || this.getGameHost()?.worldMapRuntime;
         if (runtime?.setCamera) {
-          runtime.setCamera(x, y, { source: 'subcityJump', render: true });
+          runtime.setCamera(x, y, {
+            source: options.source || 'subcityJump',
+            render: options.render !== false,
+          });
           return true;
         }
         const territory = this.getTerritoryController();
@@ -106,6 +109,13 @@
         this.host.territoryUiState.worldPanX = x;
         this.host.territoryUiState.worldPanY = y;
         return true;
+      },
+
+      centerWorldMapOnCapital(options = {}) {
+        const state = this.getState();
+        const activeCityId = state?.cityState?.capitalCityId || 'capital';
+        const siteId = options.siteId || activeCityId || 'capital';
+        return this.centerWorldMapOnSite(siteId, options);
       },
 
       resetWorldMapCamera(options = {}) {
@@ -152,6 +162,17 @@
           });
           return handled;
         };
+        if (runtime?.setCamera && this.centerWorldMapOnCapital({
+          siteId: options.siteId,
+          source: options.source || 'resetWorldPan',
+          render: false,
+        })) {
+          resetLayerHosts(game?.canvasShell, this.host, game);
+          if (render && typeof runtime.requestRender === 'function') {
+            runtime.requestRender({ force: true });
+          }
+          return true;
+        }
         if (runtime?.resetCamera) {
           runtime.resetCamera({ source: options.source || 'resetWorldPan', render: false });
           const uiState = this.getSharedTerritoryUiState();

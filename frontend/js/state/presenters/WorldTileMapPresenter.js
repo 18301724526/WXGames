@@ -74,6 +74,7 @@
       return JSON.stringify({
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
+        origin: this.summarizeCoordForSignature(worldMap.origin || {}),
         tiles: tiles.map((tile) => this.summarizeTileForSignature(tile)),
         sites: sites.map((site) => this.summarizeSiteForSignature(site)),
         missions: missions.map((mission) => this.summarizeScoutMissionForSignature(mission)),

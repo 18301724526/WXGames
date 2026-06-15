@@ -209,6 +209,7 @@
     return JSON.stringify({
       version: worldMap.version || 0,
       seed: worldMap.seed || '',
+      origin: summarizeCoord(worldMap.origin || {}),
       tiles: tiles.map(summarizeTile),
       sites: sites.map(summarizeSite),
       missions: missions.map(summarizeMission),

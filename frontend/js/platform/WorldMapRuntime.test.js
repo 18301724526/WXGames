@@ -56,6 +56,32 @@ test('WorldMapRuntime includes world explorer state in map bake signature', () =
   assert.equal(runtime.isMapBakeDirty(state), true);
 });
 
+test('WorldMapRuntime includes world origin in map bake signature', () => {
+  const createOriginState = (origin) => ({
+    territoryState: {
+      worldMap: {
+        version: 1,
+        seed: 'seed',
+        origin,
+        tiles: [{ id: `tile_${origin.q}_${origin.r}`, q: origin.q, r: origin.r, terrain: 'capital', siteId: 'capital' }],
+      },
+      territories: [{ id: 'capital', x: origin.q, y: origin.r, type: 'capital', owner: 'player' }],
+      scoutMissions: [],
+    },
+    worldExplorerState: {},
+  });
+  const runtime = new WorldMapRuntime({
+    renderer: { renderWorldMapLayer() {} },
+    presenter: {},
+  });
+
+  const first = runtime.getMapDataSignature(createOriginState({ q: 0, r: 0 }));
+  const second = runtime.getMapDataSignature(createOriginState({ q: 18, r: -4 }));
+
+  assert.notEqual(first, second);
+  assert.ok(second.includes('"origin":{"q":18,"r":-4,"tileId":"tile_18_-4"}'));
+});
+
 test('WorldMapRuntime keeps the topmost background tile action over map drag', () => {
   const runtime = new WorldMapRuntime({ renderer: { renderWorldMapLayer() {} } });
   runtime.hitTargets = [

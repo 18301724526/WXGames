@@ -35,6 +35,11 @@ test('resetGame closes the reset confirmation before showing success feedback', 
       applyApiState() {
         calls.push('applyApiState');
       },
+      actionController: {
+        resetWorldMapCamera(options) {
+          calls.push(['resetWorldMapCamera', options]);
+        },
+      },
       maybeStartTutorialIntro() {
         calls.push('maybeStartTutorialIntro');
       },
@@ -77,12 +82,20 @@ test('resetGame closes the reset confirmation before showing success feedback', 
     assert.equal(await game.resetGame({ confirmed: true }), true);
 
     const closeIndex = calls.indexOf('closeConfirmDialog');
-    const floatingIndex = calls.findIndex((call) => call.startsWith('showFloatingText:'));
-    const alertIndex = calls.findIndex((call) => call.startsWith('alertMessage:'));
+    const floatingIndex = calls.findIndex((call) => typeof call === 'string' && call.startsWith('showFloatingText:'));
+    const alertIndex = calls.findIndex((call) => typeof call === 'string' && call.startsWith('alertMessage:'));
 
     assert.ok(closeIndex > -1);
     assert.ok(floatingIndex > closeIndex);
     assert.ok(alertIndex > closeIndex);
+    assert.deepEqual(calls[calls.findIndex((call) => Array.isArray(call) && call[0] === 'resetWorldMapCamera')], [
+      'resetWorldMapCamera',
+      { source: 'accountReset', render: true },
+    ]);
+    assert.equal(
+      calls.findIndex((call) => Array.isArray(call) && call[0] === 'resetWorldMapCamera') > calls.indexOf('applyApiState'),
+      true,
+    );
   } finally {
     global.window = previousWindow;
   }

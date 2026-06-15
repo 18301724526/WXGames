@@ -274,6 +274,127 @@ test('CanvasTerritoryActionHandlers resets runtime world camera for return-home 
   ]);
 });
 
+test('CanvasTerritoryActionHandlers resets world camera to the current capital spawn', () => {
+  const calls = [];
+  const runtime = {
+    camera: { x: 12, y: -8 },
+    setCamera(x, y, options) {
+      calls.push(['setCamera', Math.round(x), Math.round(y), options.source, options.render]);
+      this.camera = { x, y };
+      host.territoryUiState.worldPanX = x;
+      host.territoryUiState.worldPanY = y;
+      return true;
+    },
+    requestRender(options) {
+      calls.push(['requestRender', options]);
+      return true;
+    },
+  };
+  const host = {
+    territoryUiState: { worldPanX: 12, worldPanY: -8 },
+    state: {
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_18_-4', q: 18, r: -4, siteId: 'capital' }] },
+        territories: [{ id: 'capital', x: 18, y: -4 }],
+      },
+      cityState: { capitalCityId: 'capital' },
+    },
+    runtime: { width: 420, height: 747 },
+    renderer: {
+      getTopBarBottom() {
+        return 84;
+      },
+    },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['ensureRuntime']);
+          return runtime;
+        },
+        getMapRuntime() {
+          return runtime;
+        },
+      };
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_resetWorldPan({ type: 'resetWorldPan' }), true);
+
+  assert.deepEqual(calls, [
+    ['ensureRuntime'],
+    ['setCamera', -1309, -393, 'resetWorldPan', false],
+    ['clearTransform'],
+    ['requestRender', { force: true }],
+    ['render', 'resetWorldPan'],
+  ]);
+  assert.equal(Math.round(host.territoryUiState.worldPanX), -1309);
+  assert.equal(Math.round(host.territoryUiState.worldPanY), -393);
+});
+
+test('CanvasTerritoryActionHandlers resolves the capital site id from state when resetting camera', () => {
+  const calls = [];
+  const runtime = {
+    camera: { x: 0, y: 0 },
+    setCamera(x, y, options) {
+      calls.push(['setCamera', Math.round(x), Math.round(y), options.source, options.render]);
+      return true;
+    },
+    requestRender(options) {
+      calls.push(['requestRender', options]);
+      return true;
+    },
+  };
+  const host = {
+    territoryUiState: { worldPanX: 0, worldPanY: 0 },
+    state: {
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_7_2', q: 7, r: 2, siteId: 'capital_a' }] },
+        territories: [{ id: 'capital_a', x: 7, y: 2 }],
+      },
+      cityState: { capitalCityId: 'capital_a' },
+    },
+    runtime: { width: 420, height: 747 },
+    renderer: {
+      getTopBarBottom() {
+        return 84;
+      },
+    },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['ensureRuntime']);
+          return runtime;
+        },
+        getMapRuntime() {
+          return runtime;
+        },
+      };
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.resetWorldMapCamera({ source: 'accountReset' }), true);
+
+  assert.deepEqual(calls, [
+    ['ensureRuntime'],
+    ['setCamera', -298, -244, 'accountReset', false],
+    ['clearTransform'],
+    ['requestRender', { force: true }],
+  ]);
+});
+
 test('CanvasTerritoryActionHandlers forwards runtime input intent evidence to world march commands', async () => {
   const calls = [];
   const inputIntent = {
