@@ -336,6 +336,9 @@
       const mergedTiles = [...rawTileById.values()];
       const siteById = new Map([...territories, ...plannedSites].map((site) => [site.id, site]));
       siteById.__tileTerrainById = new Map(mergedTiles.map((tile) => [this.normalizeCoord(tile).tileId, tile.terrain || 'plains']));
+      siteById.__nonRenderOnlyTileTerrainById = new Map(mergedTiles
+        .filter((tile) => !tile.renderOnly)
+        .map((tile) => [this.normalizeCoord(tile).tileId, tile.terrain || 'plains']));
       const geometry = this.getTileMapGeometry();
       const normalizedTiles = mergedTiles.map((tile) => this.normalizeWorldTile(tile, siteById));
       const sortedTiles = geometry?.sortTilesForIsoDraw

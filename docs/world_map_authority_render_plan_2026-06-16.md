@@ -201,6 +201,7 @@ Implementation rule:
 - `worldMap.tiles` are authoritative for already known coordinates in the frontend view state.
 - `plannedTiles` may add missing coordinates for render-ahead.
 - `plannedTiles` must not overwrite terrain, water, transition, visibility, site, ownership, or intel fields of an existing `worldMap.tiles` entry.
+- Derived render metadata for known tiles must also stay based on known/non-render-only map facts; render-only planned neighbors can draw themselves, but must not change a known tile's terrain-dependent render metadata such as mountain-neighbor counts.
 
 Automated test target:
 

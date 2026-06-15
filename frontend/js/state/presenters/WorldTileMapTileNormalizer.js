@@ -59,10 +59,13 @@
   function getMountainNeighborCount(tile = {}, siteById = new Map()) {
     if ((tile.terrain || 'plains') !== 'mountain') return 0;
     const coord = normalizeCoord(tile);
+    const terrainById = tile.renderOnly
+      ? siteById.__tileTerrainById
+      : (siteById.__nonRenderOnlyTileTerrainById || siteById.__tileTerrainById);
     return [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]
       .filter(([dq, dr]) => {
         const id = getWorldTileId(coord.x + dq, coord.y + dr);
-        return siteById.__tileTerrainById?.get(id) === 'mountain';
+        return terrainById?.get(id) === 'mountain';
       }).length;
   }
 
