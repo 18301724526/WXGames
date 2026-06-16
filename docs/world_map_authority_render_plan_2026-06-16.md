@@ -1104,6 +1104,79 @@ Next manual/browser test target:
   - return-home starts from the current actor tile and ends on the capital.
 - Ignore unrelated tutorial/spawn/camera issues during this specific pass unless they block the test.
 
+### Step 19 - Online Reset Spawn Visible Verification
+
+Evidence:
+
+- Added repeatable online browser playtest command:
+  `npm.cmd run playtest:online-reset-spawn`
+- Passing public-H5 evidence:
+  - output: `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
+  - account: `codexqa / 123456`
+  - before origin/capital: `tile_28_9`
+  - before owned territories: `capital`, `site_30_11`
+  - after origin/capital: `tile_-8_-25`
+  - after visible tile count: `25`
+  - after owned territories: `capital` only
+  - render context contains capital: `true`
+  - capital hit target visible: `true`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Calibration evidence:
+  - `tmp/verification/online-reset-spawn-visible-fixed/2026-06-16T03-11-23-935Z/`
+  - account `test3` had already been reset to tutorial step `0`
+  - tutorial shield correctly blocked non-highlighted settings input
+  - this is verifier/account-state evidence, not a reset-spawn product failure
+
+Result:
+
+- Step 19 passed on the deployed public H5 for the tested completed-tutorial account.
+- This proves the tested reset state placed the capital at a new spawn, preserved 5x5 starting visibility, released the old occupied city from that account, and kept the new capital visible/clickable.
+
+Next manual/browser test target:
+
+- Use an account that has completed tutorial and owns one outside city.
+- Reset it on `http://47.116.32.216/wxgame/`.
+- Only check that the new capital is visible/clickable, starts with 25 visible tiles, and the previous outside city is no longer owned by that account.
+
+### Step 20 - Post-Reset Tutorial Closure Smoke
+
+Evidence:
+
+- Ran the deployed public H5 tutorial playtest after Step 19 with reset disabled:
+  `PLAYTEST_RESET_ACCOUNT=0 npm.cmd run playtest:online-tutorial`
+- This means the verifier continued from the Step 19 post-reset state instead of resetting again at startup.
+- Passing public-H5 evidence:
+  - output: `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
+  - deployed commit: `141440eb2c37b2c9a206042e66bff36af3b53e63`
+  - starting tutorial step: `0`
+  - starting capital coordinate: `-8,-25`
+  - stop reason: `tutorial-completed`
+  - final step: `36`
+  - tutorial completed: `true`
+  - action count: `51`
+  - evidence count: `49`
+  - verification report count: `53`
+  - `visualFindings = 0`
+  - `verificationFailures = 0`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+- Key screenshots:
+  - `00-start-full.png`
+  - `highlight-selectWorldMarchTarget-35-before-full.png`
+  - `highlight-conquer-43-after-step-26-full.png`
+  - `highlight-claimConquest-44-after-step-27-full.png`
+  - `close-advisor-step-35-after-step-36-full.png`
+
+Result:
+
+- Step 20 passed on the deployed public H5.
+- This proves the tested post-reset spawn/camera state did not deadlock the guided tutorial chain and could reach first-city exploration, conquest, naming, and tutorial completion.
+
+Current manual/browser test target:
+
+- After resetting a completed account, follow only the guided tutorial path from the new capital.
+- Pass if the tutorial reaches first-city conquest and completion without the canvas pointing at an old city or losing the new capital.
+
 ## Non-Goals
 
 - No frontend redesign.
