@@ -193,11 +193,24 @@ Manual test target:
 
 Make the guided first-city route re-plan when the chosen target becomes occupied before materialization.
 
+Status:
+
+- Existing backend contracts already cover projection-aware tutorial replanning and materialization guards for the guided first-city path.
+- `GameRoutesTutorial.test.js` proves the guided first-city march uses shared world projection when planning: if the old guided coordinate is occupied, the mission target moves to another reachable coordinate.
+- `WorldExplorerArchitecture.test.js` proves the route planner excludes shared occupied coordinates for tutorial planned sites and progression does not materialize planned tutorial sites over shared projected coordinates.
+- No product code change was made in this evidence step.
+
 Test target:
 
 ```bash
 node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/GameRoutesTutorial.test.js
 ```
+
+Latest verification:
+
+- Command rerun on 2026-06-16:
+  `node --test backend/tests/WorldExplorerArchitecture.test.js backend/tests/GameRoutesTutorial.test.js`
+- Result: 33 tests passed.
 
 Manual test target:
 
