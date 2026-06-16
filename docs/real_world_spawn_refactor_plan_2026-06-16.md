@@ -30,9 +30,11 @@ Current branch state after Steps 1-5:
 - Reset allocation avoids the previous spawn and the current player's still-owned city coordinates before releasing them.
 - Tutorial first-city planning has backend contract coverage for avoiding shared occupied coordinates and not materializing over shared projected coordinates.
 
-Still not proven by this document alone:
+Current evidence limits:
 
-- A public-H5 manual reset walkthrough showing a real account reset, camera centering, 5x5 starting visibility, and old ownership release in the browser.
+- Public-H5 reset walkthrough evidence exists for one completed-tutorial account:
+  `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`.
+  That run proves camera/render context contains the new capital, starting visibility is 25 tiles, and `site_30_11` was released for `codexqa`.
 - Any migration/repair of already-existing live accounts that were born at the old `(0,0)` origin.
 - A broad guarantee that every possible live-world spawn edge case is fixed; current evidence is the focused contract test set listed below.
 
@@ -199,6 +201,12 @@ Latest verification:
 - Verdict: pass. The previous `site_30_11` ownership was released for `codexqa`.
 - Calibration note:
   - A `test3` run at `tmp/verification/online-reset-spawn-visible-fixed/2026-06-16T03-11-23-935Z/` did not reach the reset button because `test3` had already been reset to tutorial step `0`, and the tutorial shield correctly blocked non-highlighted settings input. That run is verifier/account-state evidence, not a spawn/reset product failure.
+- Post-reset tutorial closure proof:
+  - Command: `PLAYTEST_RESET_ACCOUNT=0 npm.cmd run playtest:online-tutorial`
+  - Evidence path: `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
+  - Starting state used the Step 19 post-reset capital at `-8,-25`.
+  - Result: `stopReason = tutorial-completed`, `finalStep = 36`, `tutorialCompleted = true`, `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`, `visualFindings = 0`.
+  - This proves the tested post-reset spawn/camera state did not deadlock the guided tutorial path.
 
 Manual test target:
 

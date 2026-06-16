@@ -60,13 +60,13 @@ The existing architecture documents already define the right direction:
 - frontend render caches and presenters must not become gameplay authority
 - simulation state is owned outside the renderer
 
-The live implementation still has several narrow authority leaks:
+The live implementation still has several narrow authority leaks and evidence limits:
 
 - persisted empty transition/template facts can be recomputed during normalization
 - route preview data can overwrite or mask known map facts
 - return/stop route previews are not rebuilt as first-class server data
 - idle actor projection can render from frontend target fields instead of backend position
-- reset and camera hydration are not yet proven against the 5x5/new-capital contract
+- reset and camera hydration now have one public-H5 proof for `codexqa` at `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`; migration/repair of older live accounts remains a separate unproven step
 
 ## Step 1 - Stable Transition/Template Authority
 
@@ -240,6 +240,21 @@ Implementation record:
 - Added a repository reset contract test that resets an account to spawn `18,-4`, then verifies both the returned saved state and a fresh repository read keep `worldMap.origin = { q: 18, r: -4 }`, exactly 25 visible tiles, a controlled capital tile at the new spawn, and no previous player-only explored tile.
 - Added a frontend action-controller contract test where the shell still has stale `0,0` state but `lastGame.state` has the new capital at `18,-4`; account-reset camera centering must use the updated game state behind the shell.
 - Existing implementation already satisfies these contracts on this branch; this step protects the reset/camera behavior before changing later map systems.
+- Public-H5 evidence added later in Step 19:
+  - evidence path: `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
+  - before origin/capital: `tile_28_9`
+  - before owned territories: `capital`, `site_30_11`
+  - after origin/capital: `tile_-8_-25`
+  - after visible tiles: `25`
+  - after owned territories: `capital` only
+  - capital was in render context and had a visible canvas hit target
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`, `verdict.pass = true`
+- Post-reset tutorial closure evidence added later in Step 20:
+  - evidence path: `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
+  - verifier continued from the Step 19 post-reset state with `PLAYTEST_RESET_ACCOUNT=0`
+  - starting capital: `-8,-25`
+  - `stopReason = tutorial-completed`, `finalStep = 36`, `tutorialCompleted = true`
+  - `visualFindings = 0`, `verificationFailures = 0`, `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
 
 Manual test target:
 
