@@ -181,6 +181,24 @@ Latest verification:
   `node --test backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js backend/tests/GameStateProjectionArchitecture.test.js backend/tests/SpawnAllocator.test.js`
 - Result: 49 tests passed.
 - Covered contracts include login route spawn-lifecycle creation, reset route spawn-lifecycle creation, reset player visibility replacement, persisted 25-tile starting visibility, occupied/reserved coordinate avoidance, and default capital spacing greater than 20 tiles.
+- Public-H5 visible reset proof was added on 2026-06-16:
+  `npm.cmd run playtest:online-reset-spawn`
+- Evidence directory:
+  `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
+- Account used: `codexqa / 123456`.
+- Before reset:
+  - origin/capital `tile_28_9`
+  - owned territories: `capital`, `site_30_11`
+- After reset:
+  - origin/capital `tile_-8_-25`
+  - visible starting tiles: `25`
+  - owned territories: `capital` only
+  - render context contains the new capital
+  - new capital has a visible canvas hit target
+  - bad HTTP responses, request failures, and page errors were all `0`
+- Verdict: pass. The previous `site_30_11` ownership was released for `codexqa`.
+- Calibration note:
+  - A `test3` run at `tmp/verification/online-reset-spawn-visible-fixed/2026-06-16T03-11-23-935Z/` did not reach the reset button because `test3` had already been reset to tutorial step `0`, and the tutorial shield correctly blocked non-highlighted settings input. That run is verifier/account-state evidence, not a spawn/reset product failure.
 
 Manual test target:
 
