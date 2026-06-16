@@ -131,23 +131,35 @@
           || game?.ensureWorldMapRuntimeCoordinator?.()?.ensureRuntime?.()
           || this.host?.worldMapRuntime
           || game?.worldMapRuntime;
-        const resetWorldRendererState = (target = null) => {
-          const renderer = target?.worldMapRenderer || target?.renderer || target;
-          if (!renderer || typeof renderer !== 'object') return false;
+        const resetRendererObject = (renderer = null, seen = new Set()) => {
+          if (!renderer || typeof renderer !== 'object' || seen.has(renderer)) return false;
+          seen.add(renderer);
           renderer.lastWorldTileMapContext = null;
           renderer.lastMapHomeWorldHudContext = null;
           renderer.lastWorldMapLayerRenderResult = null;
           renderer.invalidateWorldTileCaches?.();
           renderer.invalidateWorldTileViewCache?.();
-          if (renderer.worldMapRenderer && renderer.worldMapRenderer !== renderer) resetWorldRendererState(renderer.worldMapRenderer);
-          if (renderer.worldMapLayerRenderer && renderer.worldMapLayerRenderer !== renderer) resetWorldRendererState(renderer.worldMapLayerRenderer);
-          if (renderer.worldActorLayerRenderer && renderer.worldActorLayerRenderer !== renderer) {
-            renderer.worldActorLayerRenderer.lastWorldTileMapContext = null;
-            renderer.worldActorLayerRenderer.lastMapHomeWorldHudContext = null;
-            renderer.worldActorLayerRenderer.setHitTargets?.([]);
-            if (Array.isArray(renderer.worldActorLayerRenderer.hitTargets)) renderer.worldActorLayerRenderer.hitTargets = [];
-          }
+          renderer.setHitTargets?.([]);
+          if (Array.isArray(renderer.hitTargets)) renderer.hitTargets = [];
+          [
+            renderer.worldMapRenderer,
+            renderer.worldMapLayerRenderer,
+            renderer.worldActorLayerRenderer,
+          ].forEach((linkedRenderer) => {
+            if (linkedRenderer && linkedRenderer !== renderer) resetRendererObject(linkedRenderer, seen);
+          });
           return true;
+        };
+        const resetWorldRendererState = (target = null, seen = new Set()) => {
+          if (!target || typeof target !== 'object') return false;
+          const candidates = [
+            target.worldMapRenderer,
+            target.renderer,
+            target.worldMapLayerRenderer,
+            target.worldActorLayerRenderer,
+          ].filter((renderer) => renderer && typeof renderer === 'object');
+          const renderers = candidates.length ? candidates : [target];
+          return renderers.reduce((handled, renderer) => resetRendererObject(renderer, seen) || handled, false);
         };
         const resetLayerHost = (target = null, shouldRender = render, shouldClearTransform = true) => {
           if (!target || typeof target !== 'object') return false;
