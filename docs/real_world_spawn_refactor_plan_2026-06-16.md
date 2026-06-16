@@ -10,9 +10,9 @@ Move player birth logic to a production-style real world spawn flow:
 - Reset releases the player's owned world state and then uses the same spawn allocation contract.
 - Each implementation step has one narrow test target before the next step begins.
 
-## Current Violation
+## Original Violation And Current Branch State
 
-The current implementation is not acceptable for a shared SLG world:
+Original problem confirmed before this sequence:
 
 - `GameStateNormalizer.createInitialGameState(playerId)` does not use `playerId` to choose a world location.
 - `TerritoryInitialState.createCapital()` always creates `capital` at `(0,0)`.
@@ -20,6 +20,21 @@ The current implementation is not acceptable for a shared SLG world:
 - Production data confirms all current players share capital `(0,0)` and world origin `(0,0)`.
 
 This means tutorial exploration and first city conquest naturally collide across accounts.
+
+Current branch state after Steps 1-5:
+
+- Spawn allocation is now a focused backend domain under `backend/services/spawn/`.
+- `GameStateNormalizer.createInitialGameState()` accepts `spawn` / `spawnAssignment` and can place the capital, world origin, and starting reveal area around that assignment.
+- `SpawnAuthorityRepository` persists spawn reservations, and `GameStateRepository` exposes thin spawn delegation methods.
+- Login and reset routes can create states through `SpawnLifecycleService` when that service is provided by the server composition.
+- Reset allocation avoids the previous spawn and the current player's still-owned city coordinates before releasing them.
+- Tutorial first-city planning has backend contract coverage for avoiding shared occupied coordinates and not materializing over shared projected coordinates.
+
+Still not proven by this document alone:
+
+- A public-H5 manual reset walkthrough showing a real account reset, camera centering, 5x5 starting visibility, and old ownership release in the browser.
+- Any migration/repair of already-existing live accounts that were born at the old `(0,0)` origin.
+- A broad guarantee that every possible live-world spawn edge case is fixed; current evidence is the focused contract test set listed below.
 
 ## Target Architecture
 
@@ -96,7 +111,7 @@ Status:
 
 - Added `SpawnAuthorityRepository` as the focused SQLite authority for spawn reservations.
 - `GameStateRepository` only exposes thin delegation methods.
-- Existing login, reset, initial state, and tutorial behavior are not wired to the new table yet.
+- At this step, login, reset, initial state, and tutorial behavior were not wired to the new table yet. Later steps now cover the initial-state, login/reset, and tutorial-planning integration.
 
 Test target:
 
@@ -123,7 +138,7 @@ Status:
 
 - `GameStateNormalizer.createInitialGameState()` accepts an optional `spawn` / `spawnAssignment`.
 - `TerritoryInitialState` and `WorldMapService` can create the capital, origin, and starting reveal area around that assignment.
-- Calling without a spawn assignment preserves the legacy `(0,0)` behavior until login/reset integration is wired.
+- Calling without a spawn assignment still preserves the legacy `(0,0)` fallback for direct tests and defensive compatibility; login/reset integration is now wired through Step 4.
 
 Test target:
 
@@ -159,6 +174,13 @@ Test target:
 ```bash
 node --test backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js backend/tests/GameStateProjectionArchitecture.test.js backend/tests/SpawnAllocator.test.js
 ```
+
+Latest verification:
+
+- Command rerun on 2026-06-16:
+  `node --test backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js backend/tests/GameStateProjectionArchitecture.test.js backend/tests/SpawnAllocator.test.js`
+- Result: 49 tests passed.
+- Covered contracts include login route spawn-lifecycle creation, reset route spawn-lifecycle creation, reset player visibility replacement, persisted 25-tile starting visibility, occupied/reserved coordinate avoidance, and default capital spacing greater than 20 tiles.
 
 Manual test target:
 
