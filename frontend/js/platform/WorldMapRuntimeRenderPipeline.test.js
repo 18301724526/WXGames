@@ -54,6 +54,10 @@ function createHost(overrides = {}) {
     lastMapDataSignature: '',
     lastRenderAt: 0,
     mapBakeDirty: true,
+    markBakedLayerCommitted() {
+      this.bakedLayerCommitted = true;
+      return { epoch: 1, width: 100, height: 100, pixelRatio: 1 };
+    },
     markBakedCamera(camera) {
       this.bakedCamera = { ...camera };
       return this.bakedCamera;
@@ -287,6 +291,7 @@ test('WorldMapRuntimeRenderPipeline renders a full frame and commits bake state'
   assert.equal(host.syncedSignature.optionsArg.epochNowMs, 4321);
   assert.equal(host.hasBakedMapLayer, true);
   assert.equal(host.mapBakeDirty, false);
+  assert.equal(host.bakedLayerCommitted, true);
   assert.deepEqual(host.bakedCamera, { x: 1, y: 2 });
   assert.equal(host.hitTargets[0].action.type, 'resetWorldPan');
   assert.equal(actorOptions[0].worldMapRuntimeContext.tileMapView instanceof Object, true);

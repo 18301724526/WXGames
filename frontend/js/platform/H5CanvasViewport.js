@@ -127,8 +127,22 @@
     const pixelRatio = Math.max(1, Number(canvas._pixelRatioOverride) || state.pixelRatio || 1);
     const nextWidth = Math.floor(logicalWidth * pixelRatio);
     const nextHeight = Math.floor(logicalHeight * pixelRatio);
+    const previousWidth = Number(canvas.width) || 0;
+    const previousHeight = Number(canvas.height) || 0;
+    const previousPixelRatio = Number(canvas._backingStorePixelRatio) || 0;
+    const backingStoreChanged = previousWidth !== nextWidth
+      || previousHeight !== nextHeight
+      || previousPixelRatio !== pixelRatio;
     if (canvas.width !== nextWidth) canvas.width = nextWidth;
     if (canvas.height !== nextHeight) canvas.height = nextHeight;
+    canvas._backingStorePixelRatio = pixelRatio;
+    if (backingStoreChanged) {
+      canvas._backingStoreEpoch = (Number(canvas._backingStoreEpoch) || 0) + 1;
+      canvas._backingStoreReason = previousWidth || previousHeight ? 'resize' : 'init';
+    } else if (!canvas._backingStoreEpoch) {
+      canvas._backingStoreEpoch = 1;
+      canvas._backingStoreReason = 'init';
+    }
     if (canvas.style) {
       const frame = state.frameRect || { x: 0, y: 0 };
       const left = fixedRect ? Number(fixedRect.x) || 0 : -padding;
@@ -149,6 +163,17 @@
       else if (typeof ctx.scale === 'function') ctx.scale(pixelRatio, pixelRatio);
     }
     return canvas;
+  }
+
+  function getCanvasBackingStoreState(canvas = null) {
+    if (!canvas) return null;
+    return {
+      epoch: Number(canvas._backingStoreEpoch) || 0,
+      reason: canvas._backingStoreReason || '',
+      width: Number(canvas.width) || 0,
+      height: Number(canvas.height) || 0,
+      pixelRatio: Number(canvas._backingStorePixelRatio || canvas._pixelRatioOverride) || 1,
+    };
   }
 
   function toCanvasPoint(canvas = null, state = {}, event = {}) {
@@ -173,6 +198,7 @@
     applyLayerHostStyle,
     getLayerMetrics,
     resizeCanvas,
+    getCanvasBackingStoreState,
     toCanvasPoint,
   };
 

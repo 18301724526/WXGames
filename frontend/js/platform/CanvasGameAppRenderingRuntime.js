@@ -91,7 +91,7 @@
                   ...runtimeRenderOptions,
                   force: explorerAnimatedForRuntime || runtimeRenderOptions.force,
                 }) !== false
-                : Boolean(this.worldMapRuntime?.hasBakedMapLayer))
+                : (this.worldMapRuntime?.isBakedLayerStateValid?.() ?? Boolean(this.worldMapRuntime?.hasBakedMapLayer)))
               : false;
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,

@@ -20,6 +20,7 @@
           getRenderer: () => this.worldMapRenderer,
           getPresenter: () => this.presenter || this.renderer?.presenter,
           getState: () => this.lastGame?.state || {},
+          getLayerBackingStoreState: () => this.getWorldMapLayerBackingStoreState?.() || null,
           getBaseUiState: () => this.territoryUiState
             || this.lastGame?.territoryUiState
             || this.lastGame?.territoryController?.uiState
@@ -109,6 +110,7 @@
         const coordinator = this.ensureWorldMapRuntimeCoordinator();
         const runtime = coordinator?.getMapRuntime?.();
         if (!coordinator?.canRender?.(state)) return false;
+        if (typeof this.hasValidBakedWorldMapLayer === 'function' && !this.hasValidBakedWorldMapLayer()) return true;
         if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
         return Boolean(options.force || runtime.isMapBakeDirty(state, options));
       },

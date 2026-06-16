@@ -113,6 +113,7 @@
         || null;
       host.hasBakedMapLayer = true;
       host.mapBakeDirty = false;
+      host.markBakedLayerCommitted?.();
       if (typeof host.renderer.renderWorldMapActorLayer === 'function') {
         host.renderer.renderWorldMapActorLayer(state, RenderPolicy.createActorRenderOptions(options, {
           epochNowMs: context.epochNowMs,

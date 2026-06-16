@@ -167,6 +167,41 @@ test('H5CanvasRuntime aligns padded layer canvases to the same 9:16 frame', () =
     padding: 120,
     rect: null,
   });
+  assert.deepEqual(runtime.getLayerBackingStoreState('worldMap'), {
+    epoch: 2,
+    reason: 'init',
+    width: 746,
+    height: 1140,
+    pixelRatio: 1,
+  });
+});
+
+test('H5CanvasRuntime increments backing-store epoch only when physical canvas identity changes', () => {
+  const document = createDocument();
+  const viewport = {
+    innerWidth: 390,
+    innerHeight: 844,
+    devicePixelRatio: 1,
+    addEventListener() {},
+  };
+  const runtime = new H5CanvasRuntime({
+    document,
+    runtime: viewport,
+  });
+  const layerCanvas = runtime.ensureLayerCanvas('worldMap', { padding: 120 });
+  const first = runtime.getLayerBackingStoreState('worldMap');
+
+  runtime.resizeCanvas(layerCanvas);
+  const stable = runtime.getLayerBackingStoreState('worldMap');
+  viewport.devicePixelRatio = 2;
+  runtime.resize();
+  const changed = runtime.getLayerBackingStoreState('worldMap');
+
+  assert.equal(stable.epoch, first.epoch);
+  assert.equal(changed.epoch, first.epoch + 1);
+  assert.equal(changed.pixelRatio, 2);
+  assert.equal(changed.width, first.width * 2);
+  assert.equal(changed.reason, 'resize');
 });
 
 test('H5CanvasRuntime preserves the mature engine physical canvas stack styles', () => {

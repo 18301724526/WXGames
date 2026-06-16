@@ -93,6 +93,8 @@
       canvas._pixelRatioOverride = Number(options.pixelRatio) || 0;
       canvas._fixedRect = options.rect || null;
       canvas._clipToFrame = this.shouldClipLayerToFrame(options, canvas);
+      canvas._backingStoreEpoch = Number(canvas._backingStoreEpoch) || 1;
+      canvas._backingStoreReason = 'layerCreated';
       this.applyCanvasLayerStyle(canvas, {
         pointerEvents: 'none',
         zIndex: options.zIndex ?? 998,
@@ -156,6 +158,14 @@
 
     getLayerMetrics(name = 'worldMap') {
       return H5CanvasViewport.getLayerMetrics(this.getLayerCanvas(name), this);
+    }
+
+    getLayerBackingStoreState(name = 'worldMap') {
+      return H5CanvasViewport.getCanvasBackingStoreState(this.getLayerCanvas(name));
+    }
+
+    getCanvasBackingStoreState(canvas = this.canvas) {
+      return H5CanvasViewport.getCanvasBackingStoreState(canvas);
     }
 
     setLayerTransform(name = 'worldMap', transform = '') {

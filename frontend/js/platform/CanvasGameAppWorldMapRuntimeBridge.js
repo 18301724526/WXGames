@@ -110,6 +110,7 @@
         getRenderer: () => this.renderer,
         getPresenter: () => this.presenter,
         getState: () => this.state || {},
+        getLayerBackingStoreState: () => this.runtime?.getLayerBackingStoreState?.('worldMap') || null,
         getBaseUiState: () => this.territoryController?.uiState
           || this.territoryController?.getUiState?.()
           || this.territoryUiState
@@ -178,6 +179,7 @@
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       if (!coordinator?.canRender?.(state || this.state)) return false;
+      if (runtime?.isBakedLayerStateValid && !runtime.isBakedLayerStateValid()) return true;
       if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
       return Boolean(options.force || runtime.isMapBakeDirty(state || this.state, options));
     },

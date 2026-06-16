@@ -16,6 +16,11 @@
       this.getRenderer = options.getRenderer || (() => this.host?.renderer || null);
       this.getPresenter = options.getPresenter || (() => this.host?.presenter || this.getRenderer()?.presenter || null);
       this.getState = options.getState || (() => this.host?.state || {});
+      this.getLayerBackingStoreState = options.getLayerBackingStoreState || (() => (
+        this.host?.getWorldMapLayerBackingStoreState?.()
+        || this.host?.runtime?.getLayerBackingStoreState?.('worldMap')
+        || null
+      ));
       this.getBaseUiState = options.getBaseUiState || (() => this.host?.territoryUiState || {});
       this.getLocalUiState = options.getLocalUiState || (() => this.host?.territoryUiState || {});
       this.getTerritoryController = options.getTerritoryController || (() => this.host?.territoryController || null);
@@ -91,6 +96,7 @@
           initialPanX: this.getBaseUiState()?.worldPanX,
           initialPanY: this.getBaseUiState()?.worldPanY,
           getState: () => this.getState() || {},
+          getLayerBackingStoreState: () => this.getLayerBackingStoreState?.() || null,
           getBaseUiState: () => this.getBaseUiState() || {},
           getTopBarBottom: (state) => this.getTopBarBottom(state),
           onAction: (action, event, meta) => this.onAction?.(action, event, meta),

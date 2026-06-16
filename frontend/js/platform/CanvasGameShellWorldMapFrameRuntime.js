@@ -116,7 +116,10 @@
         this.mapHomeActive = homeView.isMapHome;
         if (homeView.militaryView && state.militaryView !== homeView.militaryView) state.militaryView = homeView.militaryView;
         if (homeView.activeTab !== 'military') {
-          if (typeof this.worldMapRenderer.clearAll === 'function') this.worldMapRenderer.clearAll();
+          if (typeof this.worldMapRenderer.clearAll === 'function') {
+            this.worldMapRenderer.clearAll();
+            this.worldMapRuntime?.invalidateBake?.();
+          }
           return false;
         }
         const territoryUiState = options?.territoryUiState

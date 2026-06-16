@@ -380,7 +380,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
              ...renderOptions,
              force: explorerAnimated || renderOptions.force,
            }) !== false
-           : Boolean(this.worldMapRuntime?.hasBakedMapLayer);
+           : this.hasValidBakedWorldMapLayer?.() !== false;
        } else {
          worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }
