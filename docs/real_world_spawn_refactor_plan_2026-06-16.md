@@ -316,6 +316,41 @@ Manual public-H5 canary target after the write step:
 - Requirement:
   - Every future spawn/capital/camera delivery step must include this readonly public-H5 proof or explain why a broader real-browser proof supersedes it.
 
+## Guarded Batch Repair Dry-Run Contract
+
+- Added:
+  - `scripts/repair-legacy-spawn-batch.js`
+  - `scripts/repair-legacy-spawn-batch.test.js`
+- Purpose:
+  - prepare a bounded repair path for the remaining legacy `(0,0)` accounts
+  - keep default execution readonly/dry-run
+  - require an exact batch confirmation before any write
+  - reuse the single-account reset-style repair path per account
+  - avoid any direct coordinate patching or unbounded migration
+- Verification:
+  ```bash
+  node --check scripts/repair-legacy-spawn-batch.js
+  node --test scripts/plan-legacy-spawn-repair.test.js scripts/repair-legacy-spawn-account.test.js scripts/repair-legacy-spawn-batch.test.js backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+  git diff --check
+  ```
+  - Result: `47` tests passed.
+- Development server dry-run:
+  - Command:
+    `node /tmp/repair-legacy-spawn-batch.js --db /opt/wxgame-workspace/backend/civilization.db --limit=2 --json`
+  - Evidence:
+    `tmp/verification/legacy-spawn-batch-dry-run/2026-06-16T04-38-11-954Z/summary.json`
+  - Result:
+    - `writesPerformed = false`
+    - selected players:
+      - `p_1779040192120_lj1uz2hji`
+      - `p_1779037160673_bkxrcf8gd`
+    - required confirmation: `repair-legacy-spawn-batch:2`
+    - remaining legacy origin/capital `(0,0)`: `33`
+    - eligible reset-style repairs: `33`
+- Requirement:
+  - Before any batch write, the operator must accept the dry-run target list and confirmation string.
+  - After any batch write, each repaired account must receive public-H5 readonly proof with `scripts/playtest-online-spawn-readonly.js`.
+
 ## Target Architecture
 
 ### Spawn Domain

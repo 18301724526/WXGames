@@ -1549,6 +1549,52 @@ Manual/browser test target:
 - Open the screenshot in the evidence path and confirm the public H5 world screen is visible around the `test2` capital area.
 - This step does not claim march, tutorial, reset, or batch-repair behavior.
 
+### Step 28 - Guarded Legacy Spawn Batch Repair Dry-Run
+
+Implementation:
+
+- Added:
+  - `scripts/repair-legacy-spawn-batch.js`
+  - `scripts/repair-legacy-spawn-batch.test.js`
+- Contract:
+  - default mode is dry-run
+  - `--limit` bounds the selected eligible accounts
+  - repeated `--player` can restrict the selection set
+  - each selected account uses the existing single-account reset-style repair path
+  - write mode requires `--confirm repair-legacy-spawn-batch:<limit>`
+  - no coordinate patch path is introduced
+
+Verification:
+
+```bash
+node --check scripts/repair-legacy-spawn-batch.js
+node --test scripts/plan-legacy-spawn-repair.test.js scripts/repair-legacy-spawn-account.test.js scripts/repair-legacy-spawn-batch.test.js backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+git diff --check
+```
+
+- Result: `47` tests passed.
+
+Development server dry-run:
+
+- Command:
+  `node /tmp/repair-legacy-spawn-batch.js --db /opt/wxgame-workspace/backend/civilization.db --limit=2 --json`
+- Evidence:
+  `tmp/verification/legacy-spawn-batch-dry-run/2026-06-16T04-38-11-954Z/summary.json`
+- Result:
+  - `writesPerformed = false`
+  - `requiredConfirm = repair-legacy-spawn-batch:2`
+  - selected players:
+    - `p_1779040192120_lj1uz2hji`
+    - `p_1779037160673_bkxrcf8gd`
+  - remaining legacy origin/capital `(0,0)`: `33`
+  - eligible reset-style repairs: `33`
+
+Manual/browser test target:
+
+- This step has no public-H5 browser behavior because it is dry-run only.
+- Review the dry-run summary and confirm it selected only two accounts and performed no writes.
+- The next write step must use a very small confirmed batch and then public-H5 readonly proof for each repaired account.
+
 ## Non-Goals
 
 - No frontend redesign.
