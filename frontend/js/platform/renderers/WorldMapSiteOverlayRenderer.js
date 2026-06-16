@@ -439,8 +439,105 @@
       };
     }
 
+    getWorldSiteTile(siteId = '', tileMapView = {}, territories = []) {
+      if (!siteId || !Array.isArray(tileMapView?.tiles)) return null;
+      const selectedSite = (Array.isArray(territories) ? territories : []).find((site) => site?.id === siteId) || {};
+      return tileMapView.tiles.find((tile) => (
+        tile?.site?.id === siteId
+        || tile?.siteId === siteId
+        || selectedSite.id && (tile?.siteId === selectedSite.id || tile?.site?.id === selectedSite.id)
+      )) || null;
+    }
+
+    isSameWorldSiteTile(first = null, second = null) {
+      if (!first || !second) return true;
+      if (first.id && second.id && first.id !== second.id) return false;
+      const firstQ = Number(first.q ?? first.x);
+      const firstR = Number(first.r ?? first.y);
+      const secondQ = Number(second.q ?? second.x);
+      const secondR = Number(second.r ?? second.y);
+      if (Number.isFinite(firstQ) && Number.isFinite(secondQ) && firstQ !== secondQ) return false;
+      if (Number.isFinite(firstR) && Number.isFinite(secondR) && firstR !== secondR) return false;
+      return true;
+    }
+
+    getWorldSiteLayerOffset(options = {}) {
+      const context = options.worldMapRuntimeContext || null;
+      const contextX = Number(context?.viewportOffsetX);
+      const contextY = Number(context?.viewportOffsetY);
+      if (Number.isFinite(contextX) || Number.isFinite(contextY)) {
+        return {
+          x: Number.isFinite(contextX) ? contextX : 0,
+          y: Number.isFinite(contextY) ? contextY : 0,
+        };
+      }
+      const candidates = [
+        options.worldMapRenderer,
+        this.host?.worldMapRenderer,
+        this.host?.host?.worldMapRenderer,
+        this.worldMapRenderer,
+        this.host,
+        this.host?.host,
+        this,
+      ];
+      for (let index = 0; index < candidates.length; index += 1) {
+        const source = candidates[index];
+        const x = Number(source?.viewportOffsetX);
+        const y = Number(source?.viewportOffsetY);
+        if (Number.isFinite(x) || Number.isFinite(y)) {
+          return {
+            x: Number.isFinite(x) ? x : 0,
+            y: Number.isFinite(y) ? y : 0,
+          };
+        }
+      }
+      return { x: 0, y: 0 };
+    }
+
+    resolveWorldSiteCanvasAnchorFromContext(siteId = '', state = {}, options = {}) {
+      const context = options.worldMapRuntimeContext || null;
+      const tileMapView = context?.tileMapView || context?.renderSnapshot?.tileMapView || null;
+      const viewport = context?.viewport || context?.renderSnapshot?.viewport || null;
+      if (!siteId || !tileMapView?.tiles?.length || !viewport) return null;
+      const territories = state.territoryState?.territories || [];
+      const selectedTile = this.getWorldSiteTile(siteId, tileMapView, territories);
+      if (!selectedTile) return null;
+      const stateTile = this.getWorldSiteTile(siteId, state.territoryState?.worldMap || {}, territories);
+      if (stateTile && !this.isSameWorldSiteTile(stateTile, selectedTile)) return null;
+      const geometry = context.geometry || context.renderSnapshot?.geometry || tileMapView.geometry || viewport.geometry || {};
+      const scale = Number(viewport.scale) || 1;
+      const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+      const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+      const projectedCenter = this.getWorldTileScreenCenter(selectedTile, viewport, geometry);
+      const siteLayout = this.getWorldTileSiteLayout(selectedTile, viewport, geometry, tileWidth, tileHeight, projectedCenter);
+      if (!siteLayout?.hitRect) return null;
+      const layerOffset = this.getWorldSiteLayerOffset(options);
+      const toHudRect = (rect = {}) => ({
+        x: (Number(rect.x ?? rect.left) || 0) - layerOffset.x,
+        y: (Number(rect.y ?? rect.top) || 0) - layerOffset.y,
+        width: Number(rect.width) || 0,
+        height: Number(rect.height) || 0,
+      });
+      return {
+        ...siteLayout,
+        hitRect: toHudRect(siteLayout.hitRect),
+        site: siteLayout.site || selectedTile.site || territories.find((site) => site?.id === siteId) || { id: siteId },
+        tile: selectedTile,
+        center: {
+          x: projectedCenter.x - layerOffset.x,
+          y: projectedCenter.y - layerOffset.y,
+        },
+        layerCenter: projectedCenter,
+        layerOffset,
+      };
+    }
+
     getWorldSiteCanvasAnchor(siteId = '', state = {}, options = {}) {
       if (!siteId) return null;
+      const hasRuntimeContext = Boolean(options.worldMapRuntimeContext);
+      const contextAnchor = this.resolveWorldSiteCanvasAnchorFromContext(siteId, state, options);
+      if (contextAnchor) return contextAnchor;
+      if (hasRuntimeContext) return null;
       const territoryState = state.territoryState || {};
       const territories = territoryState.territories || [];
       const tileMapView = this.resolveWorldTileMapView(territoryState, options.territoryUiState || {}, {
@@ -449,11 +546,7 @@
       });
       if (!tileMapView?.tiles?.length) return null;
       const selectedSite = territories.find((site) => site.id === siteId) || {};
-      const selectedTile = tileMapView.tiles.find((tile) => (
-        tile?.site?.id === siteId
-        || tile?.siteId === siteId
-        || selectedSite.id && (tile?.siteId === selectedSite.id || tile?.site?.id === selectedSite.id)
-      ));
+      const selectedTile = this.getWorldSiteTile(siteId, tileMapView, territories);
       if (!selectedTile) return null;
       const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state, { isMapHome: true });
       const geometry = tileMapView.geometry || {};

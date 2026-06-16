@@ -131,15 +131,36 @@
           || game?.ensureWorldMapRuntimeCoordinator?.()?.ensureRuntime?.()
           || this.host?.worldMapRuntime
           || game?.worldMapRuntime;
-        const resetLayerHost = (target = null) => {
+        const resetWorldRendererState = (target = null) => {
+          const renderer = target?.worldMapRenderer || target?.renderer || target;
+          if (!renderer || typeof renderer !== 'object') return false;
+          renderer.lastWorldTileMapContext = null;
+          renderer.lastMapHomeWorldHudContext = null;
+          renderer.lastWorldMapLayerRenderResult = null;
+          renderer.invalidateWorldTileCaches?.();
+          renderer.invalidateWorldTileViewCache?.();
+          if (renderer.worldMapRenderer && renderer.worldMapRenderer !== renderer) resetWorldRendererState(renderer.worldMapRenderer);
+          if (renderer.worldMapLayerRenderer && renderer.worldMapLayerRenderer !== renderer) resetWorldRendererState(renderer.worldMapLayerRenderer);
+          if (renderer.worldActorLayerRenderer && renderer.worldActorLayerRenderer !== renderer) {
+            renderer.worldActorLayerRenderer.lastWorldTileMapContext = null;
+            renderer.worldActorLayerRenderer.lastMapHomeWorldHudContext = null;
+            renderer.worldActorLayerRenderer.setHitTargets?.([]);
+            if (Array.isArray(renderer.worldActorLayerRenderer.hitTargets)) renderer.worldActorLayerRenderer.hitTargets = [];
+          }
+          return true;
+        };
+        const resetLayerHost = (target = null, shouldRender = render, shouldClearTransform = true) => {
           if (!target || typeof target !== 'object') return false;
           target.worldMapDragWaterTimeMs = null;
           target.worldMapDragFrameActive = false;
           target.worldMapPinchDragging = false;
           target.deferRenderUntilWorldMapDragEnd = false;
           if (target.worldMapRuntime) target.worldMapRuntime.waterTimeMs = null;
-          target.clearWorldMapLayerTransform?.();
-          if (!render) return true;
+          target.lastWorldTileMapContext = null;
+          target.lastMapHomeWorldHudContext = null;
+          resetWorldRendererState(target);
+          if (shouldClearTransform) target.clearWorldMapLayerTransform?.();
+          if (!shouldRender) return true;
           if (typeof target.renderWorldMapLayerFrame === 'function') {
             return target.renderWorldMapLayerFrame({
               force: true,
@@ -158,22 +179,26 @@
           }
           return true;
         };
-        const resetLayerHosts = (...targets) => {
+        const resetLayerHosts = (targets = [], shouldRender = render, shouldClearTransform = true) => {
           const seen = new Set();
           let handled = false;
           targets.forEach((target) => {
             if (!target || typeof target !== 'object' || seen.has(target)) return;
             seen.add(target);
-            handled = resetLayerHost(target) || handled;
+            handled = resetLayerHost(target, shouldRender, shouldClearTransform) || handled;
           });
           return handled;
         };
+        if (options.resetRuntimeState) {
+          runtime?.resetWorldState?.({ source: options.source || 'resetWorldPan' });
+          resetLayerHosts([game?.canvasShell, this.host, game], false, false);
+        }
         if (runtime?.setCamera && this.centerWorldMapOnCapital({
           siteId: options.siteId,
           source: options.source || 'resetWorldPan',
           render: false,
         })) {
-          resetLayerHosts(game?.canvasShell, this.host, game);
+          resetLayerHosts([game?.canvasShell, this.host, game]);
           if (render && typeof runtime.requestRender === 'function') {
             runtime.requestRender({ force: true });
           }
@@ -184,7 +209,7 @@
           const uiState = this.getSharedTerritoryUiState();
           uiState.worldPanX = 0;
           uiState.worldPanY = 0;
-          resetLayerHosts(game?.canvasShell, this.host, game);
+          resetLayerHosts([game?.canvasShell, this.host, game]);
           if (render && typeof runtime.requestRender === 'function') {
             runtime.requestRender({ force: true });
           }

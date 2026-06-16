@@ -230,6 +230,8 @@
       this.lastMapHomeWorldHudContext = {
         actors,
         frame,
+        viewportOffsetX: Number(this.viewportOffsetX) || 0,
+        viewportOffsetY: Number(this.viewportOffsetY) || 0,
         geometry,
         renderSnapshot: lastContext?.renderSnapshot || null,
         tileMapView,
@@ -258,6 +260,8 @@
       return {
         actors,
         frame: context.frame || renderSnapshot?.frame || {},
+        viewportOffsetX: Number(context.viewportOffsetX ?? this.viewportOffsetX) || 0,
+        viewportOffsetY: Number(context.viewportOffsetY ?? this.viewportOffsetY) || 0,
         geometry: context.geometry || renderSnapshot?.geometry || context.tileMapView?.geometry || {},
         renderSnapshot,
         tileMapView: context.tileMapView,

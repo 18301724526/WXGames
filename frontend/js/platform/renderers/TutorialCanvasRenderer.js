@@ -122,10 +122,8 @@
         if (target) return this.inflateRect(target, 10);
         return null;
       }
-      const hitTarget = this.findHitTarget('openWorldSite', (action) => action.siteId === capitalCityId);
-      if (hitTarget) return this.inflateRect(hitTarget, intro.step === 'march' ? 0 : 12);
       const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
-      if (!anchor) return null;
+      if (!anchor?.hitRect) return null;
       const target = this.inflateRect(anchor.hitRect, intro.step === 'march' ? 0 : 12);
       target.action = target.action || {
         type: 'openWorldSite',
@@ -138,8 +136,6 @@
 
     resolveTutorialIntroUnitTarget(intro = {}, state = {}, options = {}) {
       const capitalCityId = intro.capitalCityId || state.cityState?.capitalCityId || 'capital';
-      const hitTarget = this.findHitTarget('openWorldSite', (action) => action.siteId === capitalCityId);
-      if (hitTarget) return this.inflateRect(hitTarget, 0);
       const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
       return anchor?.hitRect ? this.inflateRect(anchor.hitRect, 0) : null;
     }

@@ -289,6 +289,36 @@
       return true;
     }
 
+    resetWorldState(options = {}) {
+      this.drag = null;
+      this.renderQueued = false;
+      this.queuedRenderOptions = null;
+      this.lastLayout = null;
+      this.hitTargets = [];
+      this.baseHitTargets = [];
+      this.hasBakedMapLayer = false;
+      this.mapBakeDirty = true;
+      this.bakedLayerState = null;
+      this.lastMapDataSignature = '';
+      this.lastTileMapContext = null;
+      this.inputEpoch = 0;
+      this.lastPickingSignature = '';
+      this.pickingSnapshot = null;
+      this.lastInputIntent = null;
+      this.waterTimeMs = null;
+      this.dragLayerOffset = { x: 0, y: 0 };
+      this.bakedCamera = { x: this.camera.x, y: this.camera.y };
+      if (options.resetInputSequence === true) this.inputSequence = 0;
+      if (options.invalidateRendererCaches !== false) {
+        if (typeof this.renderer?.invalidateWorldTileCaches === 'function') {
+          this.renderer.invalidateWorldTileCaches();
+        } else {
+          this.renderer?.invalidateWorldTileViewCache?.();
+        }
+      }
+      return true;
+    }
+
     getCurrentLayerBackingStoreState() {
       const direct = this.getLayerBackingStoreState?.();
       if (direct) return direct;

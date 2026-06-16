@@ -93,6 +93,8 @@
         renderSnapshot,
         tileMapView,
         viewport,
+        viewportOffsetX: Number(this.viewportOffsetX) || 0,
+        viewportOffsetY: Number(this.viewportOffsetY) || 0,
         geometry,
         frame,
       };

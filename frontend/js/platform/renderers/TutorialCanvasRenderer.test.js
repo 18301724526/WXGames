@@ -145,6 +145,56 @@ test('TutorialCanvasRenderer makes anchor-resolved intro capital clickable', () 
   assert.equal(host.hitTargets.some((target) => target.action.allowedAction?.type === 'openWorldSite'), true);
 });
 
+test('TutorialCanvasRenderer does not use stale world-site hit targets as intro anchor', () => {
+  const host = createHost({
+    getWorldSiteCanvasAnchor(siteId) {
+      return {
+        siteId,
+        tile: { id: 'tile_fresh' },
+        site: { id: siteId },
+        hitRect: { x: 80, y: 120, width: 64, height: 48 },
+      };
+    },
+  });
+  host.hitTargets.push({
+    x: 240,
+    y: 320,
+    width: 72,
+    height: 56,
+    action: { type: 'openWorldSite', siteId: 'capital', tileId: 'tile_stale' },
+  });
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  const target = renderer.resolveTutorialIntroTarget({
+    step: 'city',
+    capitalCityId: 'capital',
+  }, {}, {});
+  const unitTarget = renderer.resolveTutorialIntroUnitTarget({
+    step: 'city',
+    capitalCityId: 'capital',
+  }, {}, {});
+
+  assert.deepEqual(target, {
+    x: 68,
+    y: 108,
+    width: 88,
+    height: 72,
+    action: {
+      type: 'openWorldSite',
+      siteId: 'capital',
+      tileId: 'tile_fresh',
+      inputSurface: 'worldMap',
+    },
+  });
+  assert.deepEqual(unitTarget, {
+    x: 80,
+    y: 120,
+    width: 64,
+    height: 48,
+    action: null,
+  });
+});
+
 test('CanvasGameRenderer exposes tutorial helpers through the tutorial renderer facade', () => {
   const renderer = new CanvasGameRenderer({
     ctx: {},

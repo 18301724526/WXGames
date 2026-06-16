@@ -88,12 +88,27 @@ test('resetGame closes the reset confirmation before showing success feedback', 
     assert.ok(closeIndex > -1);
     assert.ok(floatingIndex > closeIndex);
     assert.ok(alertIndex > closeIndex);
+    const resetCalls = calls.filter((call) => Array.isArray(call) && call[0] === 'resetWorldMapCamera');
+    assert.deepEqual(resetCalls, [
+      [
+        'resetWorldMapCamera',
+        { source: 'accountReset', render: false, resetRuntimeState: true },
+      ],
+      [
+        'resetWorldMapCamera',
+        { source: 'accountReset', render: true },
+      ],
+    ]);
     assert.deepEqual(calls[calls.findIndex((call) => Array.isArray(call) && call[0] === 'resetWorldMapCamera')], [
       'resetWorldMapCamera',
-      { source: 'accountReset', render: true },
+      { source: 'accountReset', render: false, resetRuntimeState: true },
     ]);
     assert.equal(
-      calls.findIndex((call) => Array.isArray(call) && call[0] === 'resetWorldMapCamera') > calls.indexOf('applyApiState'),
+      calls.findIndex((call) => Array.isArray(call) && call[0] === 'resetWorldMapCamera') < calls.indexOf('applyApiState'),
+      true,
+    );
+    assert.equal(
+      calls.findLastIndex((call) => Array.isArray(call) && call[0] === 'resetWorldMapCamera') > calls.indexOf('applyApiState'),
       true,
     );
   } finally {
