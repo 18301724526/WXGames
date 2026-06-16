@@ -399,22 +399,29 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
         ? this.refreshTutorialHighlightTarget(this.tutorialHighlight)
         : this.tutorialHighlight;
       this.tutorialHighlight = refreshedTutorialHighlight || null;
+      const liveWorldMapRuntimeContext = this.worldMapRuntime?.getLastTileMapContext?.()
+        || this.worldMapRuntime?.lastTileMapContext
+        || this.worldMapRenderer?.lastWorldTileMapContext
+        || null;
+      const liveWorldMapAnchorSource = this.worldMapRenderer || null;
       this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
         ? {
           ...renderOptions,
           tutorialHighlight: this.tutorialHighlight,
+          worldMapRenderer: liveWorldMapAnchorSource,
+          worldMapAnchorSource: liveWorldMapAnchorSource,
           skipWorldMapLayer: true,
           worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
             ? this.worldMapRuntime.hitTargets
             : [],
-          worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
-            || this.worldMapRuntime?.lastTileMapContext
-            || this.worldMapRenderer?.lastWorldTileMapContext
-            || null,
+          worldMapRuntimeContext: liveWorldMapRuntimeContext,
         }
         : {
           ...renderOptions,
           tutorialHighlight: this.tutorialHighlight,
+          worldMapRenderer: liveWorldMapAnchorSource,
+          worldMapAnchorSource: liveWorldMapAnchorSource,
+          worldMapRuntimeContext: liveWorldMapRuntimeContext,
           mode: undefined,
           skipWorldMapLayer: false,
           preserveCanvas: false,

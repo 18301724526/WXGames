@@ -1425,6 +1425,57 @@ test('CanvasGameShell drops world-site guide highlight when live anchor is unava
   assert.equal(shell.tutorialHighlight, null);
 });
 
+test('CanvasGameShell passes world-map anchor source into tutorial intro HUD render options', () => {
+  const renderCalls = [];
+  const liveContext = { tileMapView: { tiles: [{ id: 'tile_live' }] }, viewport: {} };
+  const worldMapRenderer = {
+    lastWorldTileMapContext: liveContext,
+    getWorldSiteCanvasAnchor(siteId) {
+      return { hitRect: { x: 120, y: 80, width: 44, height: 40 }, site: { id: siteId }, tile: { id: 'tile_live' } };
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      render(state, options) {
+        renderCalls.push({
+          sameAnchorSource: options.worldMapAnchorSource === worldMapRenderer,
+          sameRenderer: options.worldMapRenderer === worldMapRenderer,
+          context: options.worldMapRuntimeContext,
+          intro: options.tutorialIntro,
+        });
+      },
+    },
+    worldMapRenderer,
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: {
+        territories: [{ id: 'capital' }],
+        worldMap: { tiles: [{ id: 'tile_live', q: 0, r: 0, siteId: 'capital' }] },
+      },
+    },
+    activeTab: 'military',
+    militaryView: 'world',
+    mapHomeActive: true,
+    tutorialIntro: { active: true, step: 'city', capitalCityId: 'capital' },
+  };
+  shell.getActiveTab = () => 'military';
+  shell.ensureWorldMapRuntimeCoordinator = () => ({ canRender: () => false });
+  shell.renderWorldMapLayer = () => true;
+  shell.setWorldMapLayerVisible = () => true;
+
+  assert.equal(shell.renderReadOnly(shell.lastGame.state, 'military', { forceMapHome: true }), true);
+
+  assert.equal(renderCalls.at(-1).sameAnchorSource, true);
+  assert.equal(renderCalls.at(-1).sameRenderer, true);
+  assert.equal(renderCalls.at(-1).context, liveContext);
+  assert.equal(renderCalls.at(-1).intro.capitalCityId, 'capital');
+});
+
 test('CanvasGameShell consumes tutorial drag outside the target without moving world map', () => {
   const calls = [];
   const event = {

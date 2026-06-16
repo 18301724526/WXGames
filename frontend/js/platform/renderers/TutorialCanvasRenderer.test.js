@@ -195,6 +195,72 @@ test('TutorialCanvasRenderer does not use stale world-site hit targets as intro 
   });
 });
 
+test('TutorialCanvasRenderer uses world-map layer anchor over HUD fallback for intro targets', () => {
+  const calls = [];
+  const host = createHost({
+    getWorldSiteCanvasAnchor(siteId, state, options) {
+      calls.push(['hudFallback', siteId, Boolean(options.worldMapRuntimeContext)]);
+      return {
+        siteId,
+        tile: { id: 'tile_hud_fallback' },
+        site: { id: siteId },
+        hitRect: { x: 360, y: 440, width: 72, height: 96 },
+      };
+    },
+  });
+  const worldMapAnchorSource = {
+    getWorldSiteCanvasAnchor(siteId, state, options) {
+      calls.push(['worldMapAnchor', siteId, Boolean(options.worldMapRuntimeContext)]);
+      return {
+        siteId,
+        tile: { id: 'tile_live' },
+        site: { id: siteId },
+        hitRect: { x: 172, y: 253, width: 85, height: 89 },
+      };
+    },
+  };
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  const target = renderer.resolveTutorialIntroTarget({
+    step: 'city',
+    capitalCityId: 'capital',
+  }, {}, {
+    worldMapAnchorSource,
+    worldMapRuntimeContext: { tileMapView: { tiles: [] }, viewport: {} },
+  });
+  const unitTarget = renderer.resolveTutorialIntroUnitTarget({
+    step: 'city',
+    capitalCityId: 'capital',
+  }, {}, {
+    worldMapAnchorSource,
+    worldMapRuntimeContext: { tileMapView: { tiles: [] }, viewport: {} },
+  });
+
+  assert.deepEqual(target, {
+    x: 160,
+    y: 241,
+    width: 109,
+    height: 113,
+    action: {
+      type: 'openWorldSite',
+      siteId: 'capital',
+      tileId: 'tile_live',
+      inputSurface: 'worldMap',
+    },
+  });
+  assert.deepEqual(unitTarget, {
+    x: 172,
+    y: 253,
+    width: 85,
+    height: 89,
+    action: null,
+  });
+  assert.deepEqual(calls, [
+    ['worldMapAnchor', 'capital', true],
+    ['worldMapAnchor', 'capital', true],
+  ]);
+});
+
 test('CanvasGameRenderer exposes tutorial helpers through the tutorial renderer facade', () => {
   const renderer = new CanvasGameRenderer({
     ctx: {},
