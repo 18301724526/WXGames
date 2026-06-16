@@ -117,3 +117,91 @@ test('TutorialGuideTargetResolver shows open-world-site highlight only for visib
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].options.allowedAction, { type: 'openWorldSite', siteId: 'city-1' });
 });
+
+test('TutorialGuideTargetResolver prefers live world-site anchors over stale hit targets', () => {
+  const calls = [];
+  const shell = {
+    runtime: { width: 320, height: 240 },
+    worldMapRuntime: {
+      getLastTileMapContext() {
+        return { fresh: true };
+      },
+    },
+    worldMapRenderer: {
+      getWorldSiteCanvasAnchor(siteId, state, options) {
+        calls.push(['anchor', siteId, Boolean(options.worldMapRuntimeContext)]);
+        return {
+          hitRect: { x: 140, y: 92, width: 48, height: 40 },
+          site: { id: siteId },
+          tile: { id: 'tile_live' },
+        };
+      },
+    },
+    getCanvasTarget(type, predicate) {
+      const action = { type: 'openWorldSite', siteId: 'city-1' };
+      if (type !== 'openWorldSite' || !predicate(action)) return null;
+      return { x: 12, y: 16, width: 40, height: 40, action };
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push({ target, message, options });
+      return true;
+    },
+  };
+  const resolver = new TutorialGuideTargetResolver({
+    host: {
+      game: {
+        state: { territoryState: { worldMap: { tiles: [] } } },
+        canvasShell: shell,
+      },
+    },
+  });
+
+  assert.equal(resolver.showOpenWorldSiteHighlight({
+    siteId: 'city-1',
+    message: 'open city',
+  }), true);
+
+  const highlightCall = calls.find((call) => call.target);
+  assert.deepEqual(highlightCall.target.getRect(), {
+    left: 140,
+    top: 92,
+    width: 48,
+    height: 40,
+    right: 188,
+    bottom: 132,
+  });
+  assert.deepEqual(highlightCall.options.locator, { type: 'worldSite', siteId: 'city-1' });
+  assert.equal(highlightCall.options.targetAction.tileId, 'tile_live');
+});
+
+test('TutorialGuideTargetResolver does not fall back to hit targets when live anchor context is unavailable', () => {
+  const calls = [];
+  const shell = {
+    runtime: { width: 320, height: 240 },
+    worldMapRenderer: {
+      getWorldSiteCanvasAnchor() {
+        calls.push(['anchor']);
+        return null;
+      },
+    },
+    getCanvasTarget(type, predicate) {
+      calls.push(['hitTarget', type]);
+      const action = { type: 'openWorldSite', siteId: 'city-1' };
+      if (type !== 'openWorldSite' || !predicate(action)) return null;
+      return { x: 12, y: 16, width: 40, height: 40, action };
+    },
+    hideTutorialHighlight() {
+      calls.push(['hideTutorialHighlight']);
+    },
+    showTutorialHighlight() {
+      calls.push(['showTutorialHighlight']);
+      return true;
+    },
+  };
+  const resolver = new TutorialGuideTargetResolver({
+    host: { game: { state: {}, canvasShell: shell } },
+  });
+
+  assert.equal(resolver.showOpenWorldSiteHighlight({ siteId: 'city-1' }), false);
+  assert.deepEqual(calls, [['hideTutorialHighlight']]);
+});

@@ -67,3 +67,13 @@ Implementation steps:
 - `WorldMapRuntime.resetWorldState()` clears runtime input, picking, bake, render queue, drag, and last-frame state.
 - `CanvasTerritoryActionHandlers.resetWorldMapCamera()` invokes runtime reset for `accountReset` before centering the camera, and clears renderer transient world-map contexts/caches.
 - Focused unit tests cover stale hit-target rejection, runtime-context anchor conversion, runtime reset invalidation, and account reset call ordering.
+
+## Strong Tutorial Highlight Regression Addendum
+
+The account-reset bug can also surface when `tutorialIntro` and the strong `tutorialHighlight` system render in adjacent frames. The intro spotlight may resolve the correct live capital anchor, while a cached strong-guide rectangle can immediately draw an old `openWorldSite` position over it.
+
+Additional rule:
+
+- World-site strong tutorial highlights must carry a lightweight locator and refresh their rectangle from the current world-map anchor before each HUD render.
+- If a world-site anchor source exists but the current frame context cannot resolve the site, the highlight is cleared for that frame instead of falling back to stale hit targets.
+- `openWorldSite` hit targets remain input compatibility only; they are not visual authority for either intro spotlight or strong tutorial highlight.

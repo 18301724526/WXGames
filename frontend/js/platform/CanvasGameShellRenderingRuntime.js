@@ -395,9 +395,14 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
          worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }
       this.setWorldMapLayerVisible(worldMapLayerRendered);
+      const refreshedTutorialHighlight = typeof this.refreshTutorialHighlightTarget === 'function'
+        ? this.refreshTutorialHighlightTarget(this.tutorialHighlight)
+        : this.tutorialHighlight;
+      this.tutorialHighlight = refreshedTutorialHighlight || null;
       this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
         ? {
           ...renderOptions,
+          tutorialHighlight: this.tutorialHighlight,
           skipWorldMapLayer: true,
           worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
             ? this.worldMapRuntime.hitTargets
@@ -409,6 +414,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
         }
         : {
           ...renderOptions,
+          tutorialHighlight: this.tutorialHighlight,
           mode: undefined,
           skipWorldMapLayer: false,
           preserveCanvas: false,

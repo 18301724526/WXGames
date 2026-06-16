@@ -1325,6 +1325,106 @@ test('CanvasGameShell stores original guide target action for highlight hit forw
   });
 });
 
+test('CanvasGameShell refreshes world-site guide highlight from live anchor before each render', () => {
+  const renderCalls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      render(state, options) {
+        renderCalls.push(options.tutorialHighlight?.rect || null);
+      },
+    },
+    worldMapRenderer: {
+      lastWorldTileMapContext: { fresh: true },
+      getWorldSiteCanvasAnchor(siteId) {
+        return {
+          hitRect: { x: 144, y: 96, width: 52, height: 44 },
+          site: { id: siteId },
+          tile: { id: 'tile_live' },
+        };
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: {
+        territories: [{ id: 'capital' }],
+        worldMap: { tiles: [{ id: 'tile_live', q: 0, r: 0, siteId: 'capital' }] },
+      },
+    },
+    activeTab: 'military',
+    militaryView: 'world',
+    mapHomeActive: true,
+  };
+  shell.getActiveTab = () => 'military';
+  shell.ensureWorldMapRuntimeCoordinator = () => ({ canRender: () => false });
+  shell.renderWorldMapLayer = () => true;
+  shell.setWorldMapLayerVisible = () => true;
+  shell.tutorialHighlight = {
+    rect: { left: 12, top: 18, width: 52, height: 44 },
+    message: 'open capital',
+    allowedAction: { type: 'openWorldSite', siteId: 'capital' },
+    targetAction: { type: 'openWorldSite', siteId: 'capital', tileId: 'tile_old' },
+    locator: { type: 'worldSite', siteId: 'capital' },
+  };
+
+  assert.equal(shell.renderReadOnly(shell.lastGame.state, 'military', { forceMapHome: true }), true);
+
+  assert.deepEqual(renderCalls.at(-1), { left: 144, top: 96, width: 52, height: 44, right: 196, bottom: 140 });
+  assert.equal(shell.tutorialHighlight.targetAction.tileId, 'tile_live');
+});
+
+test('CanvasGameShell drops world-site guide highlight when live anchor is unavailable', () => {
+  const renderCalls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      render(state, options) {
+        renderCalls.push(options.tutorialHighlight || null);
+      },
+    },
+    worldMapRenderer: {
+      lastWorldTileMapContext: { stale: true },
+      getWorldSiteCanvasAnchor() {
+        return null;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: {
+        territories: [{ id: 'capital' }],
+        worldMap: { tiles: [{ id: 'tile_live', q: 0, r: 0, siteId: 'capital' }] },
+      },
+    },
+    activeTab: 'military',
+    militaryView: 'world',
+    mapHomeActive: true,
+  };
+  shell.getActiveTab = () => 'military';
+  shell.ensureWorldMapRuntimeCoordinator = () => ({ canRender: () => false });
+  shell.renderWorldMapLayer = () => true;
+  shell.setWorldMapLayerVisible = () => true;
+  shell.tutorialHighlight = {
+    rect: { left: 12, top: 18, width: 52, height: 44 },
+    message: 'open capital',
+    allowedAction: { type: 'openWorldSite', siteId: 'capital' },
+    targetAction: { type: 'openWorldSite', siteId: 'capital', tileId: 'tile_old' },
+    locator: { type: 'worldSite', siteId: 'capital' },
+  };
+
+  assert.equal(shell.renderReadOnly(shell.lastGame.state, 'military', { forceMapHome: true }), true);
+
+  assert.equal(renderCalls.at(-1), null);
+  assert.equal(shell.tutorialHighlight, null);
+});
+
 test('CanvasGameShell consumes tutorial drag outside the target without moving world map', () => {
   const calls = [];
   const event = {
