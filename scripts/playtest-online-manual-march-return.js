@@ -209,6 +209,41 @@ function summarizeRenderAheadCoverage(state = {}, mission = null) {
   });
 }
 
+function summarizeBeforeEntryCoverage(snapshots = [], mission = null) {
+  const route = Array.isArray(mission?.route) ? mission.route : [];
+  const indexedSnapshots = (Array.isArray(snapshots) ? snapshots : [])
+    .filter((snapshot) => Number.isFinite(Number(snapshot?.routeIndex)))
+    .map((snapshot) => ({ ...snapshot, routeIndex: Number(snapshot.routeIndex) }));
+  return route.map((step, index) => {
+    const beforeEntry = indexedSnapshots
+      .filter((snapshot) => snapshot.routeIndex < index)
+      .sort((a, b) => b.routeIndex - a.routeIndex)[0]
+      || (index === 0 ? (snapshots[0] || null) : null);
+    const renderIds = new Set((beforeEntry?.renderTileSignatures || []).map((entry) => entry.tileId).filter(Boolean));
+    const tileId = coordsKey(step);
+    const oneRing = [
+      { q: Number(step.q) + 1, r: Number(step.r) },
+      { q: Number(step.q) + 1, r: Number(step.r) - 1 },
+      { q: Number(step.q), r: Number(step.r) - 1 },
+      { q: Number(step.q) - 1, r: Number(step.r) },
+      { q: Number(step.q) - 1, r: Number(step.r) + 1 },
+      { q: Number(step.q), r: Number(step.r) + 1 },
+    ].map(coordsKey);
+    const missingNeighbors = oneRing.filter((id) => !renderIds.has(id));
+    return {
+      index,
+      tileId,
+      beforeLabel: beforeEntry?.label || '',
+      beforeRouteIndex: beforeEntry?.routeIndex ?? null,
+      renderedBeforeEntry: renderIds.has(tileId),
+      neighborCount: oneRing.length,
+      renderedNeighborCount: oneRing.length - missingNeighbors.length,
+      missingNeighbors,
+      skipped: !beforeEntry,
+    };
+  });
+}
+
 function getRoutePreview(origin = {}, target = {}) {
   const startQ = Number(origin.q);
   const startR = Number(origin.r);
@@ -675,11 +710,22 @@ function buildPositionSample(state, tag, missionId = '') {
   };
 }
 
+function buildTemplateSnapshot(label, state = {}, missionId = '') {
+  const mission = missionId ? getMissionFromState(state, missionId) : getActiveMission(state);
+  return {
+    label,
+    routeIndex: getRouteIndex(mission),
+    renderTileContext: state.renderTileContext,
+    renderTileSignatures: state.renderTileSignatures,
+  };
+}
+
 async function waitForPositionIndex(page, missionId, desiredIndex, routeCount, options = {}) {
   const stepDurationSeconds = 10;
   const maxWait = Math.max(CONFIG.maxWaitMs, (Math.max(1, desiredIndex + 2) * stepDurationSeconds + 8) * 1000);
   let lastIndex = -1;
-  return waitForState(page, 'wait-for-mid-route-position', (state) => {
+  const routeSnapshots = [];
+  const result = await waitForState(page, 'wait-for-mid-route-position', async (state) => {
     const active = getActiveMission(state);
     const sample = buildPositionSample(state, 'outbound-monitor', missionId);
     samples.push(sample);
@@ -691,11 +737,19 @@ async function waitForPositionIndex(page, missionId, desiredIndex, routeCount, o
         path.join(outDir, `outbound-step-${String(routeIndex).padStart(2, '0')}.json`),
         JSON.stringify(sanitize(sample), null, 2),
       );
+      const snapshot = await writeSnapshot(page, `outbound-step-${String(routeIndex).padStart(2, '0')}-render`, {
+        missionId,
+        routeIndex,
+        routeCount,
+      });
+      routeSnapshots.push(buildTemplateSnapshot(`outbound-step-${String(routeIndex).padStart(2, '0')}-render`, snapshot.state, missionId));
     }
     const allowFinal = Boolean(options.allowFinal);
     if (routeIndex >= desiredIndex && (allowFinal || routeIndex < routeCount - 1)) return { routeIndex, active };
     return false;
   }, { timeoutMs: maxWait, intervalMs: CONFIG.sampleIntervalMs });
+  result.routeSnapshots = routeSnapshots;
+  return result;
 }
 
 async function waitForMissionComplete(page, missionId, routeCount) {
@@ -865,6 +919,14 @@ function evaluateTemplateStabilityResult({ snapshots = [], activeMission = null 
     failures.push(`missing render tile context for ${missingContexts.length} snapshots`);
   }
   const coverage = summarizeRenderAheadCoverage(snapshots[0] || {}, activeMission);
+  const beforeEntryCoverage = summarizeBeforeEntryCoverage(snapshots, activeMission);
+  const missingBeforeEntry = beforeEntryCoverage.filter((entry) => (
+    !entry.skipped
+    && (!entry.renderedBeforeEntry || entry.missingNeighbors.length > 0)
+  ));
+  if (missingBeforeEntry.length) {
+    failures.push(`route before-entry render coverage missing for ${missingBeforeEntry.length} route steps`);
+  }
   return {
     pass: failures.length === 0,
     failures,
@@ -875,10 +937,13 @@ function evaluateTemplateStabilityResult({ snapshots = [], activeMission = null 
     stateOnlyChangedKnownTiles: stateOnlyChanges.slice(0, 16),
     renderContextHashes: snapshots.map((snapshot) => ({
       label: snapshot.label,
+      routeIndex: snapshot.routeIndex ?? null,
       tileCount: snapshot.renderTileContext?.tileCount || 0,
       signatureHash: snapshot.renderTileContext?.signatureHash || '',
     })),
     routeRenderAheadCoverage: coverage,
+    routeBeforeEntryCoverage: beforeEntryCoverage,
+    missingBeforeEntryCoverage: missingBeforeEntry,
   };
 }
 
@@ -991,11 +1056,7 @@ async function main() {
   const minimumRouteCount = CONFIG.mode === 'templates' ? 1 : 4;
   if (routeCount < minimumRouteCount) throw new Error(`selected target route too short for ${CONFIG.mode} test: routeCount=${routeCount}`);
   await writeSnapshot(page, '04-active-mission-started', { activeMission });
-  const templateSnapshots = [{
-    label: '04-active-mission-started',
-    renderTileContext: activeReady.state.renderTileContext,
-    renderTileSignatures: activeReady.state.renderTileSignatures,
-  }];
+  const templateSnapshots = [buildTemplateSnapshot('04-active-mission-started', activeReady.state, activeMission.id)];
 
   if (CONFIG.mode === 'templates' && routeCount < 3) {
     const completed = await waitForMissionComplete(page, activeMission.id, routeCount);
@@ -1003,11 +1064,7 @@ async function main() {
       missionId: activeMission.id,
       finalResult: sanitize(completed.result),
     });
-    templateSnapshots.push({
-      label: '05-template-short-route-complete',
-      renderTileContext: finalSnapshot.state.renderTileContext,
-      renderTileSignatures: finalSnapshot.state.renderTileSignatures,
-    });
+    templateSnapshots.push(buildTemplateSnapshot('05-template-short-route-complete', finalSnapshot.state, activeMission.id));
     const completeVerdict = evaluateCompleteResult({
       activeMission,
       preFinalSnapshot: activeReady.state,
@@ -1143,11 +1200,8 @@ async function main() {
     safeReturnStep,
     reached: midRoute.result,
   });
-  templateSnapshots.push({
-    label: '05-before-return-click',
-    renderTileContext: beforeReturnSnapshot.state.renderTileContext,
-    renderTileSignatures: beforeReturnSnapshot.state.renderTileSignatures,
-  });
+  (midRoute.routeSnapshots || []).forEach((snapshot) => templateSnapshots.push(snapshot));
+  templateSnapshots.push(buildTemplateSnapshot('05-before-return-click', beforeReturnSnapshot.state, activeMission.id));
 
   const actorTarget = findTopHitTarget(beforeReturnSnapshot.state, (action) => (
     action.type === 'selectWorldActor' && (!action.missionId || action.missionId === activeMission.id)
@@ -1157,26 +1211,14 @@ async function main() {
     findTopHitTarget(state, (action) => action.type === 'returnWorldMarch' && action.missionId === activeMission.id)
   ), { timeoutMs: 12000 });
   const beforeReturnCommand = await writeSnapshot(page, '07-return-command-visible', { missionId: activeMission.id });
-  templateSnapshots.push({
-    label: '07-return-command-visible',
-    renderTileContext: beforeReturnCommand.state.renderTileContext,
-    renderTileSignatures: beforeReturnCommand.state.renderTileSignatures,
-  });
+  templateSnapshots.push(buildTemplateSnapshot('07-return-command-visible', beforeReturnCommand.state, activeMission.id));
   const returnStartedAtMs = Date.now();
   await clickTarget(page, '08-click-return-home', returnReady.result, { missionId: activeMission.id });
   const afterReturn = await writeSnapshot(page, '09-after-return-click', { missionId: activeMission.id });
-  templateSnapshots.push({
-    label: '09-after-return-click',
-    renderTileContext: afterReturn.state.renderTileContext,
-    renderTileSignatures: afterReturn.state.renderTileSignatures,
-  });
+  templateSnapshots.push(buildTemplateSnapshot('09-after-return-click', afterReturn.state, activeMission.id));
   await page.waitForTimeout(1500);
   const firstReturnFrame = await writeSnapshot(page, '10-first-return-frame', { missionId: activeMission.id });
-  templateSnapshots.push({
-    label: '10-first-return-frame',
-    renderTileContext: firstReturnFrame.state.renderTileContext,
-    renderTileSignatures: firstReturnFrame.state.renderTileSignatures,
-  });
+  templateSnapshots.push(buildTemplateSnapshot('10-first-return-frame', firstReturnFrame.state, activeMission.id));
 
   const homeOrigin = activeMission.homeOrigin || activeMission.origin;
   const finalReturn = await waitForReturnedHome(page, activeMission.id, homeOrigin, returnStartedAtMs);
@@ -1184,11 +1226,7 @@ async function main() {
     missionId: activeMission.id,
     finalResult: sanitize(finalReturn.result),
   });
-  templateSnapshots.push({
-    label: '11-final-return-home',
-    renderTileContext: finalSnapshot.state.renderTileContext,
-    renderTileSignatures: finalSnapshot.state.renderTileSignatures,
-  });
+  templateSnapshots.push(buildTemplateSnapshot('11-final-return-home', finalSnapshot.state, activeMission.id));
 
   const returnVerdict = evaluateReturnResult({
     beforeReturn: beforeReturnSnapshot.state,

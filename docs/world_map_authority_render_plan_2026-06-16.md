@@ -924,7 +924,7 @@ Result:
 
 - Step 17F passed on the deployed public H5 for the tested 4-step route.
 - This specifically proves: during a longer route with a real return-home action, known rendered tiles did not change visual identity, the return action started from the current backend tile, did not jump on the first return frame, and ended at the home/capital tile.
-- It also exposes the next separate risk: route render-ahead coverage is not fully proven for every route step. In this passing run, target `tile_28_7` was rendered, but one adjacent tile `tile_29_6` was missing from the target's six-neighbor coverage. That should be the next small fix target.
+- It also exposed a verifier sampling risk: route render-ahead coverage was not fully proven for every route step in that run. The suspected missing neighbor must not be treated as a product bug until the harness captures a render snapshot at each route-index transition.
 
 Next manual/browser test target:
 
@@ -934,7 +934,61 @@ Next manual/browser test target:
 - Watch only two things:
   - the same already-visible terrain/edge/transition/resource/city visuals do not change while leaving and returning;
   - the actor starts return from its current tile and ends on the capital.
-- Ignore route-ahead six-neighbor completeness in this pass; the missing neighbor is the next separate target.
+- Ignore route-ahead six-neighbor completeness in this pass; Step 17G is the separate verifier target for before-entry coverage.
+
+### Step 17G - Online Route Before-Entry Render Coverage Verification
+
+Evidence:
+
+- Improved `npm.cmd run playtest:online-manual-march-templates` to capture a full render snapshot whenever the active mission `routeIndex` changes:
+  - `outbound-step-00-render-full.png`
+  - `outbound-step-01-render-full.png`
+  - `outbound-step-02-render-full.png`
+- The verifier now reports `routeBeforeEntryCoverage` and `missingBeforeEntryCoverage`, so the pass/fail condition is tied to the frame before the actor enters each route step.
+- First calibration run before per-route snapshots:
+  - `tmp/verification/online-manual-march-templates-before-entry-coverage/2026-06-16T02-06-55-163Z/`
+  - reported missing neighbor coverage, but this still used sparse snapshots and was not definitive product evidence.
+- Passing online evidence after per-route-index snapshots:
+  - `tmp/verification/online-manual-march-templates-before-entry-route-snapshots/2026-06-16T02-11-40-255Z/`
+  - `routeCount = 4`
+  - selected target `tile_24_7`
+  - `knownTileChangeCount = 0`
+  - `missingBeforeEntryCoverage = []`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Fresh visible-browser retest on deployed public H5:
+  - `tmp/verification/online-manual-march-templates-before-entry-visible-retest/2026-06-16T02-16-15-396Z/`
+  - URL confirmed by in-app browser screenshot `iab-public-h5-after-retest.png`: `http://47.116.32.216/wxgame/`
+  - page title: `文明火种`
+  - `routeCount = 4`
+  - selected target `tile_24_7`
+  - final return position `tile_28_9` matched home/capital
+  - `knownTileChangeCount = 0`
+  - `missingBeforeEntryCoverage = []`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Fresh retest before-entry coverage:
+  - step 0 `tile_27_8`: before `04-active-mission-started`, self and all 6 neighbors rendered.
+  - step 1 `tile_26_7`: before `outbound-step-00-render`, self and all 6 neighbors rendered.
+  - step 2 `tile_25_7`: before `outbound-step-01-render`, self and all 6 neighbors rendered.
+  - step 3 `tile_24_7`: before `outbound-step-02-render`, self and all 6 neighbors rendered.
+
+Result:
+
+- Step 17G passed on the deployed public H5 for the tested 4-step route.
+- The previous suspected missing-neighbor issue is now classified as a verifier sampling flaw, not confirmed product behavior.
+- This step specifically proves the tested route's next tile and its adjacent ring were rendered before actor entry, while known tile visual identity stayed stable and return-home still ended on the capital.
+
+Next manual/browser test target:
+
+- Open `http://47.116.32.216/wxgame/`.
+- Start a free manual march with about 4 route steps.
+- Watch each next tile before the actor enters it.
+- Pass condition:
+  - the next tile is already visible before actor entry;
+  - the next tile's six adjacent tiles are already rendered before actor entry;
+  - visible terrain/edge/transition/resource/city identity does not change while the actor passes;
+  - return-home starts from the actor's current tile and ends on the capital.
 
 ## Non-Goals
 
