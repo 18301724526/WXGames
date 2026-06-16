@@ -58,6 +58,16 @@ renderAnimationFrame() {
       return this.renderActive();
     },
 
+render() {
+      return this.renderActive();
+    },
+
+renderCanvasSurface(activeTab = null, options = {}) {
+      const state = this.lastGame?.state || null;
+      if (!state) return false;
+      return this.renderReadOnly(state, activeTab || state.currentTab || this.getActiveTab(), options);
+    },
+
 requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
         this.updateWorldMapDragCompositor();

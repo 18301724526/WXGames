@@ -105,7 +105,14 @@
       waterTimeMs: host.waterTimeMs,
     }));
     host.lastLayout = host.getLayerLayout(state, { topBarBottom: context.topBarBottom });
-    if (rendered) {
+    const renderResult = host.renderer.lastWorldMapLayerRenderResult
+      || host.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult
+      || null;
+    const drewFrame = rendered && renderResult?.drewFrame !== false;
+    if (rendered && !drewFrame) {
+      host.syncWaterAnimationFlag(context.uiState);
+    }
+    if (drewFrame) {
       host.syncWaterAnimationFlag(context.uiState);
       host.lastTileMapContext = host.renderer.lastWorldTileMapContext
         || host.renderer.worldMapLayerRenderer?.lastWorldTileMapContext

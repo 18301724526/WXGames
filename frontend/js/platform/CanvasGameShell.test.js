@@ -836,6 +836,54 @@ test('CanvasGameShell can render resources without default map-home coercion', (
   assert.equal(shell.mapHomeActive, false);
 });
 
+test('CanvasGameShell renderCanvasSurface uses mounted game state instead of inherited shell state', () => {
+  const calls = [];
+  const gameState = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: {
+      worldMap: { version: 7, tiles: Array.from({ length: 25 }, (_, index) => ({ id: `tile_${index}` })) },
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push({
+          activeTab: options.activeTab,
+          tileCount: renderState.territoryState?.worldMap?.tiles?.length || 0,
+          version: renderState.territoryState?.worldMap?.version || 0,
+        });
+      },
+    },
+  });
+  shell.state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { version: 0, tiles: [] } },
+  };
+  shell.lastGame = {
+    state: gameState,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.setWorldMapLayerVisible = () => {};
+  shell.renderWorldMapLayer = (renderState) => {
+    calls.push({
+      layerTileCount: renderState.territoryState?.worldMap?.tiles?.length || 0,
+      layerVersion: renderState.territoryState?.worldMap?.version || 0,
+    });
+    return true;
+  };
+
+  assert.equal(shell.renderCanvasSurface('military'), true);
+
+  assert.deepEqual(calls, [
+    { layerTileCount: 25, layerVersion: 7 },
+    { activeTab: 'military', tileCount: 25, version: 7 },
+  ]);
+});
+
 test('CanvasGameShell renders HUD with the latest shared world actor selection', () => {
   const calls = [];
   const state = {
