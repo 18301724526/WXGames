@@ -243,6 +243,35 @@ function isRouteKnownPassable(state = {}, origin = {}, target = {}) {
   return route.every((step) => terrainById.has(step.tileId) && terrainById.get(step.tileId) !== 'ocean');
 }
 
+function getKnownSiteTileIds(state = {}) {
+  const ids = new Set();
+  (state.renderTileSignatures || []).forEach((entry) => {
+    if (!entry?.tileId) return;
+    if (entry.siteId || entry.terrain === 'capital') ids.add(entry.tileId);
+  });
+  (state.hitTargets || []).forEach((target) => {
+    const action = target?.action || {};
+    if (action.type === 'openWorldSite' && action.tileId) ids.add(action.tileId);
+  });
+  return ids;
+}
+
+function chooseSafeReturnRouteIndex(route = [], state = {}) {
+  const steps = Array.isArray(route) ? route : [];
+  if (steps.length < 3) return null;
+  const siteTileIds = getKnownSiteTileIds(state);
+  const maxIndex = Math.max(0, steps.length - 2);
+  const preferredIndex = Math.min(maxIndex, Math.max(0, Math.floor(steps.length / 2)));
+  const candidates = steps
+    .map((step, index) => ({ index, tileId: coordsKey(step), hasKnownSite: siteTileIds.has(coordsKey(step)) }))
+    .filter((entry) => entry.index <= maxIndex);
+  const nonSiteCandidates = candidates.filter((entry) => !entry.hasKnownSite);
+  const pool = nonSiteCandidates.length ? nonSiteCandidates : candidates;
+  return pool
+    .sort((a, b) => Math.abs(a.index - preferredIndex) - Math.abs(b.index - preferredIndex)
+      || b.index - a.index)[0] || null;
+}
+
 function getFormationMission(state, formationSlot = 1, cityId = 'capital') {
   const explorer = state.worldExplorerState || {};
   const all = [
@@ -594,12 +623,14 @@ function chooseLongMarchTarget(state) {
       || center.x > canvasWidth - 24
       || center.y < 64
       || center.y > canvasHeight - CONFIG.mapHudBottomInsetPx) return;
+    const routePreview = getRoutePreview(origin, { q, r });
     const item = {
       target,
       tileId,
       q,
       r,
       distance: hexDistance(origin, { q, r }),
+      routeStepCount: routePreview.length,
       center,
       startCoord: origin,
       startMissionId: formationMission?.id || '',
@@ -608,17 +639,20 @@ function chooseLongMarchTarget(state) {
     if (!existing || item.center.y < existing.center.y) unique.set(tileId, item);
   });
   const candidates = [...unique.values()]
-    .filter((item) => item.distance >= CONFIG.minTargetDistance)
+    .filter((item) => item.routeStepCount >= CONFIG.minTargetDistance)
+    .filter((item) => CONFIG.mode !== 'templates'
+      || item.routeStepCount < 3
+      || chooseSafeReturnRouteIndex(getRoutePreview(origin, { q: item.q, r: item.r }), state))
     .sort((a, b) => (
       CONFIG.mode === 'templates'
-        ? a.distance - b.distance || a.center.y - b.center.y
-        : b.distance - a.distance || b.center.y - a.center.y
+        ? a.routeStepCount - b.routeStepCount || a.distance - b.distance || a.center.y - b.center.y
+        : b.routeStepCount - a.routeStepCount || b.distance - a.distance || b.center.y - a.center.y
     ));
   if (candidates.length) return candidates[0];
   return [...unique.values()].sort((a, b) => (
     CONFIG.mode === 'templates'
-      ? a.distance - b.distance
-      : b.distance - a.distance
+      ? a.routeStepCount - b.routeStepCount || a.distance - b.distance
+      : b.routeStepCount - a.routeStepCount || b.distance - a.distance
   ))[0] || null;
 }
 
@@ -1021,7 +1055,7 @@ async function main() {
       outputDir: outDir,
       missionId: activeMission.id,
       routeCount,
-      chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance },
+      chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance, routeStepCount: chosen.routeStepCount },
       badResponses: badResponses.length,
       requestFailures: requestFailures.length,
       pageErrors: pageErrors.length,
@@ -1087,7 +1121,7 @@ async function main() {
       outputDir: outDir,
       missionId: activeMission.id,
       routeCount,
-      chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance },
+      chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance, routeStepCount: chosen.routeStepCount },
       badResponses: badResponses.length,
       requestFailures: requestFailures.length,
       pageErrors: pageErrors.length,
@@ -1097,12 +1131,16 @@ async function main() {
     return;
   }
 
+  const safeReturnStep = CONFIG.mode === 'templates'
+    ? chooseSafeReturnRouteIndex(activeMission.route, activeReady.state)
+    : null;
   const returnIndex = CONFIG.mode === 'templates'
-    ? Math.max(1, Math.min(routeCount - 3, Math.floor(routeCount / 2)))
+    ? (safeReturnStep?.index ?? Math.max(1, Math.min(routeCount - 3, Math.floor(routeCount / 2))))
     : Math.max(1, Math.min(routeCount - 2, routeCount - 2));
   const midRoute = await waitForPositionIndex(page, activeMission.id, returnIndex, routeCount);
   const beforeReturnSnapshot = await writeSnapshot(page, '05-before-return-click', {
     desiredRouteIndex: returnIndex,
+    safeReturnStep,
     reached: midRoute.result,
   });
   templateSnapshots.push({
@@ -1214,7 +1252,7 @@ async function main() {
     outputDir: outDir,
     missionId: activeMission.id,
     routeCount,
-    chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance },
+    chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance, routeStepCount: chosen.routeStepCount },
     finalReturnElapsedMs: finalReturn.elapsedMs,
     badResponses: badResponses.length,
     requestFailures: requestFailures.length,

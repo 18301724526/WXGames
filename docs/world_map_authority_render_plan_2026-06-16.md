@@ -886,6 +886,56 @@ Next manual/browser test target:
 - Pass condition: the same visible tile keeps the same terrain/edge/transition/resource or city appearance while the actor moves and after the movement completes.
 - Ignore long-route return-home behavior in this pass; Step 17C already covered that.
 
+### Step 17F - Online Long Route Return With Known Tile Visual Stability
+
+Evidence:
+
+- Improved `npm.cmd run playtest:online-manual-march-templates` so long-route target selection records and filters by estimated route step count, not only hex distance.
+- The harness now avoids clicking the moving actor while it overlaps a known site tile, because the public H5 can legitimately open the city/site panel instead of the marching troop command panel.
+- Calibration evidence before the harness fix:
+  - `tmp/verification/online-manual-march-templates-long-return/2026-06-16T01-47-34-484Z/`
+  - selected target had `distance = 4`, but backend route only had `routeCount = 2`; this proved hex distance was not a reliable long-route test gate.
+  - known tile visual signatures still had `knownTileChangeCount = 0`.
+- Calibration evidence for site-overlap click:
+  - `tmp/verification/online-manual-march-templates-long-return-routecount/2026-06-16T01-49-56-804Z/`
+  - selected target had `routeStepCount = 4`, but the chosen return click occurred while the actor overlapped capital tile `tile_28_9`.
+  - screenshot `06-select-active-actor-after-full.png` shows the capital/city command panel opened instead of the marching troop panel.
+  - this was a harness click-target issue, not a tile-template conclusion.
+- Passing online evidence after avoiding known site overlap:
+  - `tmp/verification/online-manual-march-templates-long-return-safe-step/2026-06-16T01-54-21-135Z/`
+  - `routeCount = 4`
+  - selected target `tile_28_7`
+  - `routeStepCount = 4`
+  - return clicked from `tile_28_8`
+  - first return frame stayed at `tile_28_8`
+  - final return position `tile_28_9` matched home/capital
+  - `knownTileChangeCount = 0`
+  - `stateOnlyChangeCount = 25`, all render lifecycle noise such as `renderReady`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Key screenshots:
+  - `05-before-return-click-full.png`
+  - `07-return-command-visible-full.png`
+  - `08-click-return-home-after-full.png`
+  - `10-first-return-frame-full.png`
+  - `11-final-return-home-full.png`
+
+Result:
+
+- Step 17F passed on the deployed public H5 for the tested 4-step route.
+- This specifically proves: during a longer route with a real return-home action, known rendered tiles did not change visual identity, the return action started from the current backend tile, did not jump on the first return frame, and ended at the home/capital tile.
+- It also exposes the next separate risk: route render-ahead coverage is not fully proven for every route step. In this passing run, target `tile_28_7` was rendered, but one adjacent tile `tile_29_6` was missing from the target's six-neighbor coverage. That should be the next small fix target.
+
+Next manual/browser test target:
+
+- Open `http://47.116.32.216/wxgame/`.
+- Start a visibly longer free manual march, ideally at least 4 route steps.
+- Click return-home while the actor is on a non-city/non-site tile.
+- Watch only two things:
+  - the same already-visible terrain/edge/transition/resource/city visuals do not change while leaving and returning;
+  - the actor starts return from its current tile and ends on the capital.
+- Ignore route-ahead six-neighbor completeness in this pass; the missing neighbor is the next separate target.
+
 ## Non-Goals
 
 - No frontend redesign.
