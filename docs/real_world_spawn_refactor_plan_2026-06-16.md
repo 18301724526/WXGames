@@ -21,6 +21,20 @@ Original problem confirmed before this sequence:
 
 This means tutorial exploration and first city conquest naturally collide across accounts.
 
+## Latest Evidence Snapshot
+
+- Latest reset-spawn public-H5 proof:
+  `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
+- Latest post-reset tutorial closure public-H5 proof:
+  `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
+- Current manual target:
+  - Reset a completed account.
+  - Follow the guided tutorial from the new capital.
+  - Pass if first-city conquest and tutorial completion work without the camera pointing at an old city.
+- Still outside current proof:
+  - migration/repair of older live accounts born at `(0,0)`
+  - broad all-edge-case spawn exhaustion or high-density load coverage
+
 Current branch state after Steps 1-5:
 
 - Spawn allocation is now a focused backend domain under `backend/services/spawn/`.

@@ -13,6 +13,24 @@ Bring the world-map implementation back in line with the shared-world SLG contra
 - render-ahead tiles support smooth marching without changing known terrain or edge templates
 - frontend planned data and animation snapshots never override authoritative world-map facts
 
+## Latest Evidence Snapshot
+
+- Latest pushed evidence target:
+  - Step 19 reset-spawn visible verification
+  - Step 20 post-reset tutorial closure
+  - Step 21 public-H5 reachability/documentation audit
+- Latest public-H5 evidence paths:
+  - `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
+  - `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
+  - `tmp/verification/public-h5-current-doc-audit/2026-06-16T03-29-58-463Z/`
+- Current manual/browser target:
+  - Reset a completed account.
+  - Follow only the guided tutorial path from the new capital.
+  - Pass if first-city conquest and tutorial completion work without the canvas pointing at an old city or losing the new capital.
+- Still outside current proof:
+  - migration/repair of legacy live accounts born at `(0,0)`
+  - broad all-edge-case spawn density/exhaustion coverage
+
 ## Confirmed Live Issues
 
 Evidence source:
