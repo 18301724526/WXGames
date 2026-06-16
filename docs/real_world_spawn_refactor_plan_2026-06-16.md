@@ -42,8 +42,8 @@ This means tutorial exploration and first city conquest naturally collide across
   `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
 - Current manual target:
   - Treat the repeated `codexqa` reset/tutorial path as sufficiently covered until spawn/reset product code changes.
-  - Next step should design the legacy-account repair contract from the read-only audit evidence.
-  - Do not rewrite live data until there is a separate migration/repair contract and test target.
+  - Legacy-account repair contract is now defined below.
+  - Next implementation step should add a read-only repair planner/dry-run command before any database write path.
 - Still outside current proof:
   - migration/repair of older live accounts born at `(0,0)`
   - broad all-edge-case spawn exhaustion or high-density load coverage
@@ -87,6 +87,96 @@ Current evidence limits:
   That run proves camera/render context contains the new capital, starting visibility is 25 tiles, and `site_30_11` was released for `codexqa`.
 - Any migration/repair of already-existing live accounts that were born at the old `(0,0)` origin.
 - A broad guarantee that every possible live-world spawn edge case is fixed; current evidence is the focused contract test set listed below.
+
+## Legacy Account Repair Contract
+
+This contract covers accounts confirmed by the read-only audit:
+
+- no row in `player_spawn_allocations`
+- `game_states.worldMap.origin = (0,0)`
+- capital territory coordinate `(0,0)`
+
+### Policy
+
+- Player-triggered reset remains the clean authoritative path:
+  - release the player's owned shared-world territories
+  - clear that player's world visibility
+  - allocate a new spawn through `SpawnLifecycleService.resetInitialStateForPlayer()`
+  - create a fresh state at the new capital with 5x5 starting visibility
+- Legacy repair is not allowed to run silently during login in the first implementation.
+- Legacy repair is an operator action with dry-run first, explicit confirmation for writes, and one-account canary before any batch repair.
+- Moving a progressed account without reset is out of scope for this sequence.
+  - A non-reset move would need to rewrite city coordinates, owned territories, active/idle march routes, visible tiles, tutorial target state, task state, and UI camera state as one audited migration.
+  - Until that larger migration exists, the only write-mode repair is "reset-style repair": the old invalid `(0,0)` account state is replaced by a fresh spawn state.
+- Completed/tutorial-progress accounts are not automatically moved.
+  - They can be repaired only by explicit operator canary/batch command, with the destructive reset-style boundary documented in the command output.
+  - Future production UX can expose this as "account reset / realm relocation" rather than silent migration.
+
+### First Implementation Step
+
+Add a read-only planner command, not a writer:
+
+```bash
+node scripts/plan-legacy-spawn-repair.js --db /opt/wxgame-workspace/backend/civilization.db --json
+```
+
+Required output:
+
+- total players and game states
+- count of legacy `(0,0)` accounts
+- count of accounts that already have spawn allocations
+- sample legacy accounts sorted by last activity
+- proposed repair mode per account:
+  - `eligible-reset-style-repair`
+  - `skip-already-spawned`
+  - `skip-non-legacy`
+  - `manual-review`
+- zero writes and no dependency on a local temporary web server
+
+Automated test target:
+
+```bash
+node --test backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+node --check scripts/plan-legacy-spawn-repair.js
+```
+
+Manual/operator test target:
+
+- Run the planner against the development server database in readonly mode.
+- Pass if it reports the known audit shape from Step 23:
+  - `37` players / `37` game states
+  - `34` legacy `(0,0)` accounts
+  - `3` existing spawn allocation rows
+  - no database writes
+
+### First Write Step After Planner
+
+Only after the planner is committed and pushed:
+
+- add a single-account repair command with explicit confirmation
+- default target account for canary: `test2`
+- write mode must require both:
+  - explicit player id
+  - explicit confirmation environment variable or flag
+- write mode must use the same spawn lifecycle/reset authority as player reset, not custom coordinate patching
+- write mode must record before/after origin, capital, spawn allocation, visible tile count, and released old owned territories
+
+Manual public-H5 canary target after the write step:
+
+- Open only `http://47.116.32.216/wxgame/`.
+- Login to the repaired canary account.
+- Pass only this slice:
+  - canvas opens around the new capital, not `(0,0)`
+  - starting visibility is 25 tiles
+  - account has exactly the expected fresh reset-style state
+  - no old `(0,0)` owned territory remains for that account
+
+### Non-Goals For Legacy Repair
+
+- No silent login-time rewrite.
+- No batch write before a single-account public-H5 canary passes.
+- No progressive coordinate relocation of completed accounts in this sequence.
+- No local temporary server as user-facing proof.
 
 ## Target Architecture
 

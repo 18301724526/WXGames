@@ -1309,6 +1309,58 @@ Next manual/browser test target:
   - handle completed tutorial accounts differently from early tutorial accounts;
   - name one public-H5 account and one narrow pass condition for the first repair proof.
 
+### Step 24 - Legacy Account Repair Contract
+
+Contract:
+
+- Player-triggered reset remains the clean authoritative path and continues to release owned shared-world territories, clear player visibility, allocate a new spawn, and create a fresh 5x5 starting view.
+- Legacy repair must not run silently during login in the first implementation.
+- Legacy repair is an operator action with:
+  - dry-run first
+  - explicit confirmation for writes
+  - one-account canary before any batch write
+- Moving a progressed account without reset is out of scope for this sequence because it would require one audited migration over city coordinates, owned territories, active/idle march routes, visible tiles, tutorial target state, task state, and camera state.
+- First write-mode repair, when implemented, is `reset-style repair`: replace the invalid old `(0,0)` account state with a fresh spawn state through the same authority as player reset.
+
+First implementation step:
+
+- Add a read-only planner command:
+  `node scripts/plan-legacy-spawn-repair.js --db /opt/wxgame-workspace/backend/civilization.db --json`
+- The planner must output:
+  - total players and game states
+  - legacy `(0,0)` account count
+  - existing spawn allocation count
+  - sample legacy accounts sorted by last activity
+  - proposed repair mode per account
+  - a clear readonly/no-writes marker
+
+Automated test target:
+
+```bash
+node --test backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+node --check scripts/plan-legacy-spawn-repair.js
+```
+
+Manual/operator test target:
+
+- Run the planner against the development server DB in readonly mode.
+- Pass if it reports:
+  - `37` players / `37` game states
+  - `34` legacy `(0,0)` accounts
+  - `3` spawn allocation rows
+  - no database writes
+
+First public-H5 canary after a future write step:
+
+- Account: `test2`
+- Open only `http://47.116.32.216/wxgame/`.
+- Pass if the repaired account opens around the new capital, has 25 starting visible tiles, has fresh reset-style state, and no old `(0,0)` owned territory remains.
+
+Current next target:
+
+- Implement only the read-only planner.
+- Do not write the development server database in the next step.
+
 ## Non-Goals
 
 - No frontend redesign.
