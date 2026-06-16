@@ -23,14 +23,20 @@ This means tutorial exploration and first city conquest naturally collide across
 
 ## Latest Evidence Snapshot
 
+- Latest in-app-browser public-H5 reachability proof:
+  `tmp/verification/iab-public-h5-user-demand/2026-06-16T03-37-58-389Z/`
+- Latest reset-spawn public-H5 proof after the user requested explicit test evidence:
+  `tmp/verification/user-demand-reset-spawn-visible/2026-06-16T03-38-18-163Z/`
+- Latest post-reset tutorial completion continuation proof:
+  `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/`
 - Latest reset-spawn public-H5 proof:
   `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
 - Latest post-reset tutorial closure public-H5 proof:
   `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
 - Current manual target:
-  - Reset a completed account.
-  - Follow the guided tutorial from the new capital.
-  - Pass if first-city conquest and tutorial completion work without the camera pointing at an old city.
+  - Treat the repeated `codexqa` reset/tutorial path as sufficiently covered until spawn/reset product code changes.
+  - Next step should be a read-only legacy-account audit for old `(0,0)` origin/capital accounts.
+  - Do not rewrite live data until there is a separate migration/repair contract and test target.
 - Still outside current proof:
   - migration/repair of older live accounts born at `(0,0)`
   - broad all-edge-case spawn exhaustion or high-density load coverage
@@ -46,6 +52,18 @@ Current branch state after Steps 1-5:
 
 Current evidence limits:
 
+- User-requested public browser retest on 2026-06-16:
+  - in-app browser screenshot:
+    `tmp/verification/iab-public-h5-user-demand/2026-06-16T03-37-58-389Z/public-h5-visible.png`
+  - reset-spawn retest:
+    `tmp/verification/user-demand-reset-spawn-visible/2026-06-16T03-38-18-163Z/`
+    proved `codexqa` moved from `tile_-8_-25` to `tile_23_18`, kept `25` starting visible tiles, retained only `capital`, and had no HTTP/page failures.
+  - post-reset tutorial retest:
+    `tmp/verification/user-demand-post-reset-tutorial/2026-06-16T03-39-18-835Z/`
+    intentionally stopped at `finalStep = 16` because of `PLAYTEST_MAX_ACTIONS=20`.
+  - continuation:
+    `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/`
+    reached `stopReason = tutorial-completed`, `finalStep = 36`, `tutorialCompleted = true`, with no visual, verification, request, response, or page failures.
 - Public-H5 reset walkthrough evidence exists for one completed-tutorial account:
   `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`.
   That run proves camera/render context contains the new capital, starting visibility is 25 tiles, and `site_30_11` was released for `codexqa`.

@@ -20,13 +20,16 @@ Bring the world-map implementation back in line with the shared-world SLG contra
   - Step 20 post-reset tutorial closure
   - Step 21 public-H5 reachability/documentation audit
 - Latest public-H5 evidence paths:
+  - `tmp/verification/iab-public-h5-user-demand/2026-06-16T03-37-58-389Z/`
+  - `tmp/verification/user-demand-reset-spawn-visible/2026-06-16T03-38-18-163Z/`
+  - `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/`
   - `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
   - `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
   - `tmp/verification/public-h5-current-doc-audit/2026-06-16T03-29-58-463Z/`
 - Current manual/browser target:
-  - Reset a completed account.
-  - Follow only the guided tutorial path from the new capital.
-  - Pass if first-city conquest and tutorial completion work without the canvas pointing at an old city or losing the new capital.
+  - Treat the repeated `codexqa` reset/tutorial proof as currently sufficient until related product code changes.
+  - Next target is a read-only legacy-account spawn audit for old `(0,0)` accounts and a migration/repair plan.
+  - If a browser check is needed, use the public H5, not a local temporary server.
 - Still outside current proof:
   - migration/repair of legacy live accounts born at `(0,0)`
   - broad all-edge-case spawn density/exhaustion coverage
@@ -1194,6 +1197,62 @@ Current manual/browser test target:
 
 - After resetting a completed account, follow only the guided tutorial path from the new capital.
 - Pass if the tutorial reaches first-city conquest and completion without the canvas pointing at an old city or losing the new capital.
+
+### Step 22 - User-Requested Real Browser Retest And Evidence Sync
+
+Evidence:
+
+- In-app browser public-H5 screenshot:
+  - URL: `http://47.116.32.216/wxgame/?codexEvidence=visible-browser-qa-20260616`
+  - output: `tmp/verification/iab-public-h5-user-demand/2026-06-16T03-37-58-389Z/`
+  - screenshot: `public-h5-visible.png`
+  - page title: `文明火种`
+  - console errors: `0`
+  - console warnings: `3` H5 load trace warnings
+- Reset-spawn retest:
+  - command: `npm.cmd run playtest:online-reset-spawn`
+  - output: `tmp/verification/user-demand-reset-spawn-visible/2026-06-16T03-38-18-163Z/`
+  - account: `codexqa / 123456`
+  - before origin/capital: `tile_-8_-25`
+  - before owned territories: `capital`, `site_-6_-23`
+  - after origin/capital: `tile_23_18`
+  - after visible tile count: `25`
+  - after owned territories: `capital` only
+  - render context contains capital: `true`
+  - capital hit target visible: `true`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Post-reset tutorial retest:
+  - short capped command reached `finalStep = 16` then stopped by `max-actions-reached`, with no visual or API failures:
+    `tmp/verification/user-demand-post-reset-tutorial/2026-06-16T03-39-18-835Z/`
+  - continuation command reached tutorial completion:
+    `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/`
+  - continuation result:
+    - `stopReason = tutorial-completed`
+    - `finalStep = 36`
+    - `tutorialCompleted = true`
+    - `visualFindings = 0`
+    - `verificationFailures = 0`
+    - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+- Reviewed screenshots:
+  - `tmp/verification/user-demand-reset-spawn-visible/2026-06-16T03-38-18-163Z/04-after-reset-complete-full.png`
+  - `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/highlight-selectWorldMarchTarget-14-before-full.png`
+  - `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/close-advisor-step-35-after-step-36-full.png`
+
+Result:
+
+- Step 22 satisfies the user's request for real public-H5/browser evidence and screenshots.
+- The tested reset/tutorial path still passes on public H5.
+- The split-session tutorial proof is evidence for the same QA account continuing from step `16`; it is not a single uninterrupted reset-to-completion command.
+- No product code change was made in this step.
+
+Next manual/browser test target:
+
+- Do not keep reusing `codexqa` reset/tutorial closure as the next unknown unless product code changes.
+- Perform a read-only legacy-account spawn audit next:
+  - identify accounts whose persisted capital/origin still show the old `(0,0)` pattern;
+  - document whether those accounts require repair or whether only future reset/new-account flows are in scope;
+  - do not rewrite live data without a separate migration step and test target.
 
 ## Non-Goals
 
