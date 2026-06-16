@@ -132,6 +132,175 @@ function traceWorldMarch(stage, payload = {}) {
   } catch (_) {}
 }
 
+function isGameStateRevisionConflict(error = {}) {
+  return error?.code === 'GAME_STATE_REVISION_CONFLICT';
+}
+
+function buildRevisionConflictPayload(error = {}) {
+  return {
+    success: false,
+    error: 'GAME_STATE_REVISION_CONFLICT',
+    message: 'Game state changed while processing this action. Please retry.',
+    retryable: true,
+    expectedRevision: error.expectedRevision ?? null,
+    actualRevision: error.actualRevision ?? null,
+  };
+}
+
+function executeGameActionRequest({
+  req,
+  repository,
+  gameStateService,
+  traceEnabled,
+  retryAttempt = 0,
+}) {
+  const planningProjection = loadProjection(repository, req.playerId);
+  const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
+    planningContext: planningProjection,
+  });
+  if (!gameState) {
+    return {
+      statusCode: 404,
+      payload: { error: 'GAME_STATE_NOT_FOUND', message: '\u6e38\u620f\u72b6\u6001\u4e0d\u5b58\u5728' },
+    };
+  }
+
+  const tutorial = syncEra2Tutorial(gameState, gameStateService);
+  const {
+    action,
+    target,
+    count,
+    step,
+    eventId,
+    optionId,
+    territoryId,
+    name,
+    cityId,
+    slot,
+    memberIds,
+    formationSlot,
+    mode,
+    targetQ,
+    targetR,
+    stopQ,
+    stopR,
+    routeLength,
+    q,
+    r,
+    x,
+    y,
+    missionId,
+    debugTrace,
+    worldMarchTrace,
+  } = req.body || {};
+  let result = { success: false, message: '\u672a\u77e5\u64cd\u4f5c', error: 'UNKNOWN_ACTION' };
+
+  EventService.maybeGenerateRegularEvent(gameState);
+  EventService.maybeGenerateThreatEvent(gameState);
+  if (!GameActionRegistry.has(action)) {
+    return { statusCode: 400, payload: result };
+  }
+  const tutorialCheck = TutorialService.validateAction(tutorial, action, {
+    target,
+    count,
+    step,
+    eventId,
+    optionId,
+    territoryId,
+    name,
+    cityId,
+    slot,
+    memberIds,
+    formationSlot,
+    mode,
+    targetQ,
+    targetR,
+    stopQ,
+    stopR,
+    routeLength,
+    q,
+    r,
+    x,
+    y,
+    missionId,
+    debugTrace,
+    worldMarchTrace,
+  }, gameState);
+  if (!tutorialCheck.allowed) {
+    return {
+      statusCode: 403,
+      payload: { success: false, error: tutorialCheck.code, message: tutorialCheck.message },
+    };
+  }
+
+  if (traceEnabled) {
+    traceWorldMarch('route:beforeExecute', {
+      playerId: req.playerId,
+      action,
+      retryAttempt,
+      body: {
+        mode,
+        targetQ: targetQ ?? q ?? x ?? null,
+        targetR: targetR ?? r ?? y ?? null,
+        stopQ: stopQ ?? null,
+        stopR: stopR ?? null,
+        formationSlot: formationSlot ?? slot ?? null,
+        missionId: missionId || '',
+      },
+      beforeMissions: (gameState.exploreMissions || []).map(summarizeMission),
+    });
+  }
+  result = WorldExplorerTrace.run(traceEnabled, () => (
+    GameActionRegistry.execute({
+      action,
+      body: req.body || {},
+      gameState,
+      tutorial,
+      planningContext: planningProjection,
+    })
+  ));
+  if (traceEnabled) {
+    traceWorldMarch('route:afterExecute', {
+      playerId: req.playerId,
+      action,
+      retryAttempt,
+      result: {
+        success: result.success,
+        error: result.error || '',
+        message: result.message || '',
+        mission: summarizeMission(result.mission),
+      },
+      afterMissions: (gameState.exploreMissions || []).map(summarizeMission),
+    });
+  }
+  const nextTutorial = result.tutorial
+    ? TutorialService.normalizeTutorialState(result.tutorial)
+    : tutorial;
+  gameState.tutorial = nextTutorial;
+  const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
+  EventService.maybeGenerateRegularEvent(gameState);
+  EventService.maybeGenerateThreatEvent(gameState);
+  repository.save(gameState);
+  const responsePayload = {
+    ...result,
+    ...buildGameView(gameState, syncedTutorial, gameStateService, planningProjection),
+  };
+  if (traceEnabled) {
+    traceWorldMarch('route:response', {
+      playerId: req.playerId,
+      action,
+      retryAttempt,
+      status: result.success ? 200 : 400,
+      mission: summarizeMission(responsePayload.mission),
+      worldExplorerState: summarizeWorldExplorerState(responsePayload.gameState?.worldExplorerState),
+    });
+  }
+  return {
+    statusCode: result.success ? 200 : 400,
+    payload: responsePayload,
+  };
+}
+
 function registerGameRoutes(app, deps) {
   const { authMiddleware, repository, gameStateService, presenceService } = deps;
 
@@ -228,141 +397,39 @@ function registerGameRoutes(app, deps) {
   app.post('/api/game/action', authMiddleware, (req, res) => {
     const traceEnabled = shouldTraceWorldMarch(req.body);
     return WorldExplorerTrace.run(traceEnabled, () => {
-    const planningProjection = loadProjection(repository, req.playerId);
-    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
-      planningContext: planningProjection,
-    });
-    if (!gameState) {
-      return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
-    }
-
-    const tutorial = syncEra2Tutorial(gameState, gameStateService);
-    const {
-      action,
-      target,
-      count,
-      step,
-      eventId,
-      optionId,
-      territoryId,
-      name,
-      cityId,
-      slot,
-      memberIds,
-      formationSlot,
-      mode,
-      targetQ,
-      targetR,
-      stopQ,
-      stopR,
-      routeLength,
-      q,
-      r,
-      x,
-      y,
-      missionId,
-      debugTrace,
-      worldMarchTrace,
-    } = req.body || {};
-    let result = { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
-
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-    if (!GameActionRegistry.has(action)) {
-      return res.status(400).json(result);
-    }
-    const tutorialCheck = TutorialService.validateAction(tutorial, action, {
-      target,
-      count,
-      step,
-      eventId,
-      optionId,
-      territoryId,
-      name,
-      cityId,
-      slot,
-      memberIds,
-      formationSlot,
-      mode,
-      targetQ,
-      targetR,
-      stopQ,
-      stopR,
-      routeLength,
-      q,
-      r,
-      x,
-      y,
-      missionId,
-      debugTrace,
-      worldMarchTrace,
-    }, gameState);
-    if (!tutorialCheck.allowed) {
-      return res.status(403).json({ success: false, error: tutorialCheck.code, message: tutorialCheck.message });
-    }
-
-    if (traceEnabled) {
-      traceWorldMarch('route:beforeExecute', {
-        playerId: req.playerId,
-        action,
-        body: {
-          mode,
-          targetQ: targetQ ?? q ?? x ?? null,
-          targetR: targetR ?? r ?? y ?? null,
-          stopQ: stopQ ?? null,
-          stopR: stopR ?? null,
-          formationSlot: formationSlot ?? slot ?? null,
-          missionId: missionId || '',
-        },
-        beforeMissions: (gameState.exploreMissions || []).map(summarizeMission),
-      });
-    }
-    result = WorldExplorerTrace.run(traceEnabled, () => (
-      GameActionRegistry.execute({
-        action,
-        body: req.body || {},
-        gameState,
-        tutorial,
-        planningContext: planningProjection,
-      })
-    ));
-    if (traceEnabled) {
-      traceWorldMarch('route:afterExecute', {
-        playerId: req.playerId,
-        action,
-        result: {
-          success: result.success,
-          error: result.error || '',
-          message: result.message || '',
-          mission: summarizeMission(result.mission),
-        },
-        afterMissions: (gameState.exploreMissions || []).map(summarizeMission),
-      });
-    }
-    const nextTutorial = result.tutorial
-      ? TutorialService.normalizeTutorialState(result.tutorial)
-      : tutorial;
-    gameState.tutorial = nextTutorial;
-    const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-    repository.save(gameState);
-    const responsePayload = {
-      ...result,
-      ...buildGameView(gameState, syncedTutorial, gameStateService, planningProjection),
-    };
-    if (traceEnabled) {
-      traceWorldMarch('route:response', {
-        playerId: req.playerId,
-        action,
-        status: result.success ? 200 : 400,
-        mission: summarizeMission(responsePayload.mission),
-        worldExplorerState: summarizeWorldExplorerState(responsePayload.gameState?.worldExplorerState),
-      });
-    }
-    return res.status(result.success ? 200 : 400).json({
-      ...responsePayload,
-    });
+      try {
+        const response = executeGameActionRequest({
+          req,
+          repository,
+          gameStateService,
+          traceEnabled,
+          retryAttempt: 0,
+        });
+        return res.status(response.statusCode).json(response.payload);
+      } catch (error) {
+        if (!isGameStateRevisionConflict(error)) throw error;
+        if (traceEnabled) {
+          traceWorldMarch('route:revisionConflictRetry', {
+            playerId: req.playerId,
+            action: req.body?.action || '',
+            expectedRevision: error.expectedRevision ?? null,
+            actualRevision: error.actualRevision ?? null,
+          });
+        }
+        try {
+          const response = executeGameActionRequest({
+            req,
+            repository,
+            gameStateService,
+            traceEnabled,
+            retryAttempt: 1,
+          });
+          return res.status(response.statusCode).json(response.payload);
+        } catch (retryError) {
+          if (!isGameStateRevisionConflict(retryError)) throw retryError;
+          return res.status(409).json(buildRevisionConflictPayload(retryError));
+        }
+      }
     });
   });
 }

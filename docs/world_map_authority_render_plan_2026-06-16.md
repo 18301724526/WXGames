@@ -558,6 +558,93 @@ Manual/browser test target:
 - Only check the returned world-map view.
 - Pass condition: the 5x5 area and current capital remain visible/clickable after the panel closes; the canvas must not become empty/black and must not lose world tile hit targets.
 
+Implementation and verification record:
+
+- Commit `8f623fe57a094a12bf85da83785ec6d532f4732d` is deployed on the development server.
+- Focused frontend/world-map tests passed: 124 pass.
+- Architecture smoke passed locally and during remote deployment: 925 pass.
+- Real online H5 verification on `http://47.116.32.216/wxgame/` with `codexqa / 123456` passed the Step 16 target.
+- Evidence path: `tmp/verification/online-camera-origin-fix/2026-06-15T23-27-07-837Z/`.
+- Key post-panel state: `worldPanX = 0`, `worldPanY = 25.28`, `openWorldSiteTargets = 5`, `pageErrors = 0`, `requestFailures = 0`, `badResponses = 0`.
+- Screenshot evidence:
+  - `highlight-closeFamousPersons-28-after-step-20-full.png`
+  - `highlight-openWorldSite-29-before-full.png`
+  - `highlight-openArmyFormation-32-after-step-21-full.png`
+- Extended real online tutorial verification also passed from reset to tutorial completion on the same deployed commit.
+- Extended evidence path: `tmp/verification/online-full-tutorial-after-camera-fix/2026-06-15T23-32-54-588Z/`.
+- Extended result: `stopReason = tutorial-completed`, `finalStep = 36`, `actionCount = 51`, `verificationFailures = 0`, `visualFindings = 0`, `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`.
+- This proves the Step 16 camera fix no longer blocks the guided tutorial chain, including formation setup, guided march start, first-city discovery, conquest, naming, and tutorial completion.
+- This does not prove free long-distance manual marching or active return-home behavior. Those remain separate verification targets.
+
+## Step 17 - Free Manual March And Return-Home Online Verification
+
+Scope:
+
+- Verification-first step for player-controlled free march after tutorial completion.
+- Use the deployed H5 and real browser/player flow only.
+- Do not change backend route planning, actor interpolation, render-ahead, camera, spawn, reset, or tutorial code until online evidence identifies the narrow failing boundary.
+
+Implementation rule:
+
+- The free manual route must be tested separately from the guided tutorial march because the tutorial only covers a short scripted exploration path.
+- Evidence must include screenshots and JSON state around: target selection, march start, mid-route movement, return-home click, first return frame, final arrival or failure.
+- If a failure is found, the next code change must choose only one owner: backend route authority, frontend actor projection, render-ahead normalization, or camera/hit target routing.
+
+Automated test target:
+
+```bash
+node --test frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/state/presenters/WorldTileMapExplorerNormalizer.test.js frontend/js/state/UIStatePresenter.test.js backend/tests/WorldExplorerService.test.js backend/tests/WorldExplorerDtoMapper.test.js backend/tests/WorldExplorerArchitecture.test.js
+```
+
+Manual/browser test target:
+
+- Open the deployed game in the real browser at `http://47.116.32.216/wxgame/`.
+- Use an account after tutorial completion with a saved formation.
+- Start a longer manual march from the capital, click return-home while the actor is still moving, and observe only this route.
+- Pass condition: the actor does not skip the final outbound tile, return starts from the current backend tile instead of flashing backward, the route preview stays visible, and the actor reaches the capital/home tile without stopping one tile early or snapping early.
+
+### Step 17A - Online Tutorial Precondition Blocker: Action Revision Conflict
+
+Evidence:
+
+- Before free manual march can be verified, the QA account must first complete the deployed tutorial again after account reset.
+- Real online H5 playtest against `http://47.116.32.216/wxgame/` with `codexqa / 123456` failed during tutorial step 25 on deployed commit `8f623fe57a094a12bf85da83785ec6d532f4732d`.
+- Evidence path: `tmp/verification/online-step17-rerun-tutorial/2026-06-15T23-53-52-487Z/`.
+- Screenshot evidence includes `highlight-conquer-44-before-full.png` and `highlight-conquer-44-after-step-25-full.png`.
+- Frontend clicked the correct conquest target: `territoryId = site_3_-25`.
+- API request body was `{ "action": "startConquest", "territoryId": "site_3_-25", "expedition": { "soldiers": 100 } }`.
+- The deployed backend returned HTTP 500.
+- Dev-server PM2 logs under user `www` showed the real cause: `Error: Game state revision conflict` from `GameStateRepository.save`.
+- This is a gateway/worker concurrent-save conflict, not a frontend hit-target, route-choice, or world-render bug.
+
+Scope:
+
+- Backend `/api/game/action` route resilience only.
+- Do not change map spawning, camera, world generation, marching interpolation, tutorial targets, or frontend render code in this step.
+- Treat a single save revision conflict as retryable because the world worker may save the same player state between the route load and route save.
+
+Implementation rule:
+
+- Execute the action once on the latest loaded state.
+- If `repository.save` throws `GAME_STATE_REVISION_CONFLICT`, reload the latest player state and retry the same action once.
+- If the retry also conflicts, return HTTP 409 with `retryable: true` instead of HTTP 500.
+- Keep the action validation and response view-building path identical between the first attempt and retry.
+
+Automated test target:
+
+```bash
+node --check backend/routes/gameRoutes.js
+node --test backend/tests/GameRoutesTutorial.test.js backend/tests/GameStateRepository.test.js backend/tests/WorldWorkerService.test.js
+```
+
+Manual/browser test target:
+
+- Deploy this narrow backend retry fix to the development server.
+- Open the deployed game in a real browser at `http://47.116.32.216/wxgame/`.
+- Reset/login `codexqa / 123456` and rerun the tutorial automation until at least the first-city conquest step.
+- Pass condition for this step only: the step-25 conquest action no longer returns HTTP 500; the browser evidence directory must contain screenshots and `summary.json`.
+- After this passes, continue Step 17 free manual march/return-home verification as a separate target.
+
 ## Non-Goals
 
 - No frontend redesign.

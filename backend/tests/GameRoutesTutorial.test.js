@@ -845,3 +845,99 @@ test('game action route enforces guided first empty city occupation target', () 
   assert.equal(savedStates.at(-1).warMissions[0].status, 'ready');
   assert.equal(savedStates.at(-1).cities.capital.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
 });
+
+test('game action route retries once when worker saves a newer revision first', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-action-revision-retry-test';
+  const siteId = 'site_3_1';
+  const createState = (revision) => ({
+    playerId,
+    revision,
+    activeCityId: 'capital',
+    currentEra: 3,
+    tutorial: {
+      ...TutorialService.manualAdvance(
+        TutorialService.createInitialTutorialState(),
+        TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
+      ),
+      grants: {
+        [WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]: { siteId },
+      },
+    },
+    resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    buildings: {},
+    population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+    military: { soldiers: 0, soldierCap: 0 },
+    polity: TerritoryService.createInitialPolity(),
+    territories: [
+      { id: 'capital', x: 0, y: 0, naturalName: 'Origin', cityName: 'Capital', type: 'capital', owner: 'player', status: 'occupied' },
+      { id: siteId, x: 3, y: 1, naturalName: 'River Bend', type: 'town', owner: 'neutral', status: 'discovered', scale: 2, defense: 100, recommendedSoldiers: 100 },
+    ],
+    cities: {
+      capital: {
+        id: 'capital',
+        territoryId: 'capital',
+        isCapital: true,
+        name: 'Capital',
+        resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+        buildings: {},
+        population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+        military: { soldiers: 0, soldierCap: 0 },
+      },
+    },
+    worldMap: WorldMapService.createInitialWorldMap('route-action-revision-retry-test'),
+    warMissions: [],
+    exploreMissions: [],
+  });
+  const savedStates = [];
+  let currentState = createState(1);
+  let findCount = 0;
+  let saveCount = 0;
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      findCount += 1;
+      return JSON.parse(JSON.stringify(currentState));
+    },
+    save(state) {
+      saveCount += 1;
+      if (saveCount === 1) {
+        currentState = { ...currentState, revision: 2 };
+        const error = new Error('Game state revision conflict');
+        error.code = 'GAME_STATE_REVISION_CONFLICT';
+        error.expectedRevision = state.revision;
+        error.actualRevision = 2;
+        throw error;
+      }
+      const saved = JSON.parse(JSON.stringify({ ...state, revision: 3 }));
+      currentState = saved;
+      savedStates.push(saved);
+    },
+    getClientProjectionForPlayer() {
+      return {};
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return state;
+    },
+    getClientGameState: GameStateService.getClientGameState,
+    calculateEraProgress: GameStateService.calculateEraProgress,
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = { playerId, body: { action: 'startConquest', territoryId: siteId } };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.success, true);
+  assert.equal(findCount, 2);
+  assert.equal(saveCount, 2);
+  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityConquestStarted);
+  assert.equal(savedStates[0].warMissions[0].status, 'ready');
+});
