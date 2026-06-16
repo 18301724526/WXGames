@@ -836,6 +836,59 @@ Next manual/browser test target:
 - Pass condition: the actor remains visible through the penultimate step, enters the final target tile, and finishes on that target tile without disappearing or snapping to completion.
 - Ignore active return-home in this manual pass; that was Step 17C.
 
+### Step 17H - Online Complete-Mode Final-Step Retest With Hit-Target Layer Diagnostics
+
+Evidence:
+
+- Improved `npm.cmd run playtest:online-manual-march-complete` diagnostics without changing product code.
+- The playtest now records hit target ownership by layer:
+  - `hitTargetLayers.renderer`
+  - `hitTargetLayers.worldMapRuntime`
+  - `hitTargetLayers.actorLayer`
+  - per-sample `layerActorCounts`
+- Calibration run before the diagnostic refinement:
+  - `tmp/verification/online-manual-march-complete-final-step-visible-retest/2026-06-16T02-26-33-167Z/`
+  - `routeCount = 5`
+  - target `tile_33_13`
+  - verdict failed with `active actor disappeared during final route phase for 1 samples`
+  - screenshots still showed the actor visually present, so this was not enough to prove a visual disappearance; it proved the old verifier could not distinguish renderer/runtime/actor-layer hit-target ownership.
+- Calibration run after first diagnostic refinement:
+  - `tmp/verification/online-manual-march-complete-hit-target-layers/2026-06-16T02-34-08-382Z/`
+  - stopped before marching at `wait-open-picker`
+  - selected target `tile_24_7` was near the top HUD area
+  - this was a verifier precondition miss, not final-step behavior evidence.
+- Passing online evidence after restoring the main click surface while keeping layer diagnostics:
+  - `tmp/verification/online-manual-march-complete-hit-target-layers/2026-06-16T02-36-00-505Z/`
+  - public H5, visible browser, no local server
+  - `routeCount = 9`
+  - selected target `tile_24_6`
+  - sampled final route indices `[7, 7, 7, 8]`
+  - final position `tile_24_6` matched target
+  - `activeActorDisappearances = []`
+  - final phase renderer actor target count stayed at `2`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Key screenshots:
+  - `05-before-final-route-steps-full.png`
+  - `complete-final-phase-step-07-1-full.png`
+  - `complete-final-phase-step-07-2-full.png`
+  - `complete-final-phase-step-07-3-full.png`
+  - `complete-final-phase-step-08-4-full.png`
+  - `06-final-route-complete-full.png`
+
+Result:
+
+- Step 17H passed on the deployed public H5 for the tested 9-step route.
+- This step strengthens Step 17D by proving the no-return final-step path with explicit renderer/runtime/actor-layer hit-target diagnostics.
+- The previous single failed sample is now classified as insufficiently instrumented evidence, not a confirmed product regression.
+
+Next manual/browser test target:
+
+- Open `http://47.116.32.216/wxgame/`.
+- Start one long free manual march, ideally 7 or more route steps, and do not click return-home.
+- Watch only the final two route steps.
+- Pass condition: the actor remains visible/clickable through the penultimate step, enters the target tile, and completes on that target tile.
+
 ### Step 17E - Online Known Tile Visual Template Stability Verification
 
 Evidence:

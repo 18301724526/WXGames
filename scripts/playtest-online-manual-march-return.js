@@ -386,8 +386,7 @@ async function getState(page) {
       || document.getElementById('h5CanvasLayer')
       || document.querySelector('canvas');
     const rect = canvas?.getBoundingClientRect?.();
-    const hitTargets = Array.isArray(renderer?.hitTargets) ? renderer.hitTargets : [];
-    const summarizedTargets = hitTargets.map((target, index) => {
+    const summarizeHitTargets = (targets = []) => (Array.isArray(targets) ? targets : []).map((target, index) => {
       const rectSource = target.rect || target;
       return {
         index,
@@ -398,6 +397,22 @@ async function getState(page) {
         action: target.action || {},
       };
     });
+    const countByAction = (targets = []) => {
+      const result = {};
+      targets.forEach((target) => {
+        const type = target.action?.type || 'unknown';
+        result[type] = (result[type] || 0) + 1;
+      });
+      return result;
+    };
+    const runtimeMap = shell?.worldMapRuntimeCoordinator?.getMapRuntime?.()
+      || shell?.worldMapRuntime
+      || game?.worldMapRuntime
+      || null;
+    const rendererHitTargets = summarizeHitTargets(renderer?.hitTargets);
+    const runtimeHitTargets = summarizeHitTargets(runtimeMap?.hitTargets);
+    const actorLayerHitTargets = summarizeHitTargets(renderer?.worldActorLayerRenderer?.hitTargets);
+    const summarizedTargets = rendererHitTargets;
     const counts = {};
     summarizedTargets.forEach((target) => {
       const type = target.action?.type || 'unknown';
@@ -508,6 +523,24 @@ async function getState(page) {
       },
       hitTargets: summarizedTargets,
       hitTargetCounts: counts,
+      hitTargetLayers: {
+        activeSource: 'renderer',
+        renderer: {
+          count: rendererHitTargets.length,
+          counts: countByAction(rendererHitTargets),
+          actorTargets: rendererHitTargets.filter((target) => target.action?.type === 'selectWorldActor'),
+        },
+        worldMapRuntime: {
+          count: runtimeHitTargets.length,
+          counts: countByAction(runtimeHitTargets),
+          actorTargets: runtimeHitTargets.filter((target) => target.action?.type === 'selectWorldActor'),
+        },
+        actorLayer: {
+          count: actorLayerHitTargets.length,
+          counts: countByAction(actorLayerHitTargets),
+          actorTargets: actorLayerHitTargets.filter((target) => target.action?.type === 'selectWorldActor'),
+        },
+      },
       renderTileContext: {
         present: Boolean(tileMapContext),
         tileCount: renderTileSignatures.length,
@@ -695,6 +728,13 @@ function buildPositionSample(state, tag, missionId = '') {
   const active = getActiveMission(state);
   const mission = missionId ? getMissionFromState(state, missionId) : active;
   const actorTargets = (state.hitTargets || []).filter((target) => target.action?.type === 'selectWorldActor');
+  const layers = state.hitTargetLayers || {};
+  const layerActorCounts = {
+    activeSource: layers.activeSource || '',
+    renderer: Array.isArray(layers.renderer?.actorTargets) ? layers.renderer.actorTargets.length : 0,
+    worldMapRuntime: Array.isArray(layers.worldMapRuntime?.actorTargets) ? layers.worldMapRuntime.actorTargets.length : 0,
+    actorLayer: Array.isArray(layers.actorLayer?.actorTargets) ? layers.actorLayer.actorTargets.length : 0,
+  };
   return {
     at: new Date().toISOString(),
     tag,
@@ -706,6 +746,7 @@ function buildPositionSample(state, tag, missionId = '') {
       center: targetCenter(target),
       rect: { x: target.x, y: target.y, width: target.width, height: target.height },
     })),
+    layerActorCounts,
     hitTargetCounts: state.hitTargetCounts,
   };
 }
