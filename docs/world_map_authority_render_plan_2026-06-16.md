@@ -695,6 +695,37 @@ Manual/browser test target:
 - Pass condition for this step only: login/reset/tutorial automation gets past `POST /api/player/login` without HTTP 500 and produces browser screenshots/`summary.json`.
 - After this passes, re-check Step 17A conquest and then continue the separate Step 17 free manual march/return-home target.
 
+Implementation and verification record:
+
+- Commit `e5e39b9d0c49cb5077cb29d390b74b8debb182b2` is deployed on the development server.
+- Local focused backend tests passed: 29 pass.
+- Local architecture smoke passed: 926 pass.
+- Remote pre-deploy architecture smoke passed: 926 pass.
+- Public `/api/version` confirmed `deployedCommit = e5e39b9d0c49cb5077cb29d390b74b8debb182b2`.
+- Real online H5 tutorial automation against `http://47.116.32.216/wxgame/` with `codexqa / 123456` passed from account reset to tutorial completion.
+- Evidence path: `tmp/verification/online-login-action-revision-retry/2026-06-16T00-17-51-677Z/`.
+- Result summary:
+  - `stopReason = tutorial-completed`
+  - `finalStep = 36`
+  - `actionCount = 51`
+  - `evidenceCount = 49`
+  - `verificationReportCount = 53`
+  - `badResponses = 0`
+  - `requestFailures = 0`
+  - `pageErrors = 0`
+  - `verificationFailures = 0`
+  - `visualFindings = 0`
+- Step 17A conquest was re-verified in the same run:
+  - `highlight-conquer-43-before-full.png`
+  - `highlight-conquer-43-after-step-26-full.png`
+  - `highlight-claimConquest-44-after-step-27-full.png`
+- Final completion screenshot:
+  - `close-advisor-step-35-after-step-36-full.png`
+- In-app browser public-H5 screenshot:
+  - `tmp/verification/in-app-public-e5e39b9d/public-h5-current.png`
+- This proves the deployed H5 can reset/login the QA account, complete the guided tutorial, and pass the formerly failing first-city conquest step without HTTP 500.
+- This still does not prove free long-distance manual marching or active return-home behavior. That remains the next Step 17 manual/browser test target.
+
 ## Non-Goals
 
 - No frontend redesign.
