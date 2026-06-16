@@ -43,7 +43,8 @@ This means tutorial exploration and first city conquest naturally collide across
 - Current manual target:
   - Treat the repeated `codexqa` reset/tutorial path as sufficiently covered until spawn/reset product code changes.
   - Legacy-account repair contract is now defined below.
-  - Next implementation step should add a read-only repair planner/dry-run command before any database write path.
+  - Read-only repair planner is now implemented.
+  - Next implementation step may add a single-account explicit canary writer for `test2`, still with confirmation and public-H5 proof.
 - Still outside current proof:
   - migration/repair of older live accounts born at `(0,0)`
   - broad all-edge-case spawn exhaustion or high-density load coverage
@@ -177,6 +178,42 @@ Manual public-H5 canary target after the write step:
 - No batch write before a single-account public-H5 canary passes.
 - No progressive coordinate relocation of completed accounts in this sequence.
 - No local temporary server as user-facing proof.
+
+## Read-Only Planner Implementation Evidence
+
+- Added:
+  - `scripts/plan-legacy-spawn-repair.js`
+  - `scripts/plan-legacy-spawn-repair.test.js`
+- Planner properties:
+  - readonly SQLite open
+  - no reset/save calls
+  - `readonly: true`
+  - `writesPerformed: false`
+  - account repair modes:
+    - `eligible-reset-style-repair`
+    - `skip-already-spawned`
+    - `skip-non-legacy`
+    - `manual-review`
+- Local verification:
+  ```bash
+  node --check scripts/plan-legacy-spawn-repair.js
+  node --test scripts/plan-legacy-spawn-repair.test.js backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+  git diff --check
+  ```
+  - Result: `35` tests passed.
+- Development server readonly verification:
+  - DB: `/opt/wxgame-workspace/backend/civilization.db`
+  - Result:
+    - `37` players
+    - `37` game states
+    - `3` spawn allocation rows
+    - `34` `eligible-reset-style-repair`
+    - `3` `skip-already-spawned`
+    - `0` `manual-review`
+    - `writesPerformed = false`
+- Boundary:
+  - This step has no player-visible browser behavior.
+  - The next player-visible proof belongs to the future single-account canary write step and must use public H5.
 
 ## Target Architecture
 

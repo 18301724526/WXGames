@@ -1361,6 +1361,54 @@ Current next target:
 - Implement only the read-only planner.
 - Do not write the development server database in the next step.
 
+### Step 25 - Read-Only Legacy Spawn Repair Planner
+
+Implementation:
+
+- Added `scripts/plan-legacy-spawn-repair.js`.
+- Added `scripts/plan-legacy-spawn-repair.test.js`.
+- The planner opens SQLite readonly and outputs `writesPerformed = false`.
+- Account modes:
+  - `eligible-reset-style-repair`
+  - `skip-already-spawned`
+  - `skip-non-legacy`
+  - `manual-review`
+
+Verification:
+
+```bash
+node --check scripts/plan-legacy-spawn-repair.js
+node --test scripts/plan-legacy-spawn-repair.test.js backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+git diff --check
+```
+
+- Result: `35` tests passed.
+
+Development server readonly run:
+
+- DB: `/opt/wxgame-workspace/backend/civilization.db`
+- Command shape:
+  `node /tmp/plan-legacy-spawn-repair.js --db /opt/wxgame-workspace/backend/civilization.db --json`
+- Result:
+  - `37` players
+  - `37` game states
+  - `3` spawn allocation rows
+  - `34` `eligible-reset-style-repair`
+  - `3` `skip-already-spawned`
+  - `0` `manual-review`
+  - `writesPerformed = false`
+
+Boundary:
+
+- No database writes.
+- No local temporary server.
+- No public-H5 browser check needed for this planner-only step.
+
+Next manual/browser test target:
+
+- Add a future single-account canary writer for `test2` only.
+- Then verify with public H5 that the repaired account opens at a new capital with 25 starting visible tiles and no old `(0,0)` ownership for that account.
+
 ## Non-Goals
 
 - No frontend redesign.
