@@ -726,6 +726,56 @@ Implementation and verification record:
 - This proves the deployed H5 can reset/login the QA account, complete the guided tutorial, and pass the formerly failing first-city conquest step without HTTP 500.
 - This still does not prove free long-distance manual marching or active return-home behavior. That remains the next Step 17 manual/browser test target.
 
+### Step 17C - Online Free Manual March Active Return Verification
+
+Evidence:
+
+- Added repeatable online browser playtest command:
+  `npm.cmd run playtest:online-manual-march`
+- The playtest opens the deployed public H5 at `http://47.116.32.216/wxgame/`, logs in through the public API, clicks real canvas hit targets, starts a free manual march with formation slot 1, waits for a mid-route backend tile, clicks active return-home, and captures screenshots plus JSON state before and after every important action.
+- First calibration run failed at `wait-open-picker` because canvas hit-target coordinates were being clicked as page coordinates while the canvas was centered in the browser viewport. Evidence path: `tmp/verification/online-manual-march-return/2026-06-16T00-34-02-581Z/`. This was a test harness coordinate-space issue, not product evidence.
+- Second calibration run reached `startWorldMarch` but selected a one-step route because formation slot 1 was already idle outside the capital from prior testing. Evidence path: `tmp/verification/online-manual-march-return/2026-06-16T00-35-54-702Z/`. This proved the harness could click the real canvas flow, but the route was too short for the active return target.
+- The harness now chooses a long target relative to the current formation position, not merely relative to the capital. This keeps the test valid when a saved formation is already parked away from home.
+- Passing online evidence path: `tmp/verification/online-manual-march-return/2026-06-16T00-38-20-015Z/`.
+- Public deployed version during the passing run:
+  - `deployedCommit = 556f3abe8d610c8f13e7468b16e86e09e4cbebcf`
+  - `deployedAt = 2026-06-16T00:24:21Z`
+- Passing run summary:
+  - `routeCount = 5`
+  - selected target `tile_26_7`, distance 10 from the current formation start coordinate
+  - active return clicked while the actor was at `tile_27_8`
+  - immediately after return click, position stayed `tile_27_8`
+  - first return frame position stayed `tile_27_8`
+  - final position reached home/capital `tile_28_9`
+  - `badResponses = 0`
+  - `requestFailures = 0`
+  - `pageErrors = 0`
+  - `verdict.pass = true`
+- Key screenshots:
+  - `00-loaded-full.png`
+  - `01-select-target-tile_26_7-after-full.png`
+  - `03-start-march-slot-1-after-full.png`
+  - `05-before-return-click-full.png`
+  - `07-return-command-visible-full.png`
+  - `08-click-return-home-after-full.png`
+  - `10-first-return-frame-full.png`
+  - `11-final-return-home-full.png`
+
+Result:
+
+- Step 17 active return-home behavior passed on the deployed H5 for the tested long manual route.
+- This specifically proves: active return starts from the current backend tile, does not flash backward on the first return frame, and reaches the capital/home tile without stopping one tile early or snapping home early.
+- This does not independently prove the no-return outbound final-step animation case. If the player still sees "walk from 1 to 6, then snap from 5 to 6" without clicking return, that should be the next separate target with its own screenshot/state evidence.
+
+Next manual/browser test target:
+
+- Open `http://47.116.32.216/wxgame/`.
+- Use `codexqa / 123456` or another tutorial-completed account with a saved formation.
+- Start a free manual march to a visibly long route relative to the formation's current parked position.
+- For this step only, click return-home while the actor is still moving.
+- Pass condition: the actor does not jump backward when return is clicked and ends on the capital/home tile.
+- Ignore no-return final outbound snapping unless this new separate target is being tested.
+
 ## Non-Goals
 
 - No frontend redesign.
