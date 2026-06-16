@@ -29,13 +29,20 @@ This means tutorial exploration and first city conquest naturally collide across
   `tmp/verification/user-demand-reset-spawn-visible/2026-06-16T03-38-18-163Z/`
 - Latest post-reset tutorial completion continuation proof:
   `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/`
+- Latest read-only legacy-account spawn audit:
+  - host DB: `/opt/wxgame-workspace/backend/civilization.db`
+  - checked at: `2026-06-16T03:49:39.259Z`
+  - players/game states: `37` / `37`
+  - spawn allocation rows: `3`
+  - origin/capital both `(0,0)`: `34`
+  - missing spawn allocation: `34`
 - Latest reset-spawn public-H5 proof:
   `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
 - Latest post-reset tutorial closure public-H5 proof:
   `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
 - Current manual target:
   - Treat the repeated `codexqa` reset/tutorial path as sufficiently covered until spawn/reset product code changes.
-  - Next step should be a read-only legacy-account audit for old `(0,0)` origin/capital accounts.
+  - Next step should design the legacy-account repair contract from the read-only audit evidence.
   - Do not rewrite live data until there is a separate migration/repair contract and test target.
 - Still outside current proof:
   - migration/repair of older live accounts born at `(0,0)`
@@ -64,6 +71,17 @@ Current evidence limits:
   - continuation:
     `tmp/verification/user-demand-post-reset-tutorial-complete/2026-06-16T03-40-21-226Z/`
     reached `stopReason = tutorial-completed`, `finalStep = 36`, `tutorialCompleted = true`, with no visual, verification, request, response, or page failures.
+- Read-only legacy-account audit on 2026-06-16:
+  - Host database: `/opt/wxgame-workspace/backend/civilization.db`.
+  - Access mode: readonly only; no data writes were performed.
+  - Result: of `37` saved players, `34` still have `worldMap.origin = (0,0)`, capital at `(0,0)`, and no row in `player_spawn_allocations`.
+  - New-flow examples:
+    - `test1` at `(-6,28)`
+    - `codexqa` at `(23,18)`
+    - `test3` at `(26,-13)`
+  - Legacy example:
+    - `test2` still at `(0,0)` and has no spawn allocation.
+  - Implication: future reset/new-account flow is proven for the tested QA path, but legacy account migration/repair remains open.
 - Public-H5 reset walkthrough evidence exists for one completed-tutorial account:
   `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`.
   That run proves camera/render context contains the new capital, starting visibility is 25 tiles, and `site_30_11` was released for `codexqa`.

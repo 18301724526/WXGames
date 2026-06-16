@@ -26,9 +26,15 @@ Bring the world-map implementation back in line with the shared-world SLG contra
   - `tmp/verification/online-reset-spawn-visible-fixed-codexqa/2026-06-16T03-15-12-038Z/`
   - `tmp/verification/online-post-reset-tutorial-smoke/2026-06-16T03-20-54-068Z/`
   - `tmp/verification/public-h5-current-doc-audit/2026-06-16T03-29-58-463Z/`
+- Latest read-only data audit:
+  - `/opt/wxgame-workspace/backend/civilization.db`
+  - checked at `2026-06-16T03:49:39.259Z`
+  - `37` players / `37` game states
+  - `3` spawn allocation rows
+  - `34` accounts still have origin/capital `(0,0)` and no spawn allocation
 - Current manual/browser target:
   - Treat the repeated `codexqa` reset/tutorial proof as currently sufficient until related product code changes.
-  - Next target is a read-only legacy-account spawn audit for old `(0,0)` accounts and a migration/repair plan.
+  - Next target is a legacy-account migration/repair contract based on the read-only audit.
   - If a browser check is needed, use the public H5, not a local temporary server.
 - Still outside current proof:
   - migration/repair of legacy live accounts born at `(0,0)`
@@ -1253,6 +1259,55 @@ Next manual/browser test target:
   - identify accounts whose persisted capital/origin still show the old `(0,0)` pattern;
   - document whether those accounts require repair or whether only future reset/new-account flows are in scope;
   - do not rewrite live data without a separate migration step and test target.
+
+### Step 23 - Read-Only Legacy Account Spawn Audit
+
+Evidence:
+
+- Host database:
+  `/opt/wxgame-workspace/backend/civilization.db`
+- Access mode:
+  readonly only
+- Checked at:
+  `2026-06-16T03:49:39.259Z`
+- Tables checked:
+  - `players`
+  - `game_states`
+  - `player_spawn_allocations`
+  - `shared_world_territories`
+- Fields checked:
+  - `game_states.worldMap.origin`
+  - capital coordinate in `game_states.territories`
+  - `player_spawn_allocations.q/r/spawnKey/status`
+- Result:
+  - players: `37`
+  - game states: `37`
+  - spawn allocation rows: `3`
+  - accounts with origin `(0,0)`: `34`
+  - accounts with capital `(0,0)`: `34`
+  - accounts with both origin and capital `(0,0)`: `34`
+  - accounts missing spawn allocation: `34`
+  - spawn allocation mismatches with origin: `0`
+- Examples:
+  - `test1`: origin/capital `(-6,28)`, spawn allocation `-6,28`
+  - `codexqa`: origin/capital `(23,18)`, spawn allocation `23,18`
+  - `test3`: origin/capital `(26,-13)`, spawn allocation `26,-13`
+  - `test2`: origin/capital `(0,0)`, no spawn allocation
+
+Result:
+
+- Legacy `(0,0)` saved-account state is confirmed on the development server data.
+- Step 22 remains valid for tested reset/new-spawn behavior, but it does not repair old accounts.
+- No database writes were performed in this audit.
+
+Next manual/browser test target:
+
+- Draft and review a migration/repair contract before changing data.
+- The contract must explicitly decide:
+  - repair all legacy accounts immediately or repair lazily on next login/reset;
+  - release, preserve, or reassign old `(0,0)` player-owned territories;
+  - handle completed tutorial accounts differently from early tutorial accounts;
+  - name one public-H5 account and one narrow pass condition for the first repair proof.
 
 ## Non-Goals
 
