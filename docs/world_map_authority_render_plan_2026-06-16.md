@@ -836,6 +836,56 @@ Next manual/browser test target:
 - Pass condition: the actor remains visible through the penultimate step, enters the final target tile, and finishes on that target tile without disappearing or snapping to completion.
 - Ignore active return-home in this manual pass; that was Step 17C.
 
+### Step 17E - Online Known Tile Visual Template Stability Verification
+
+Evidence:
+
+- Added repeatable online browser playtest command:
+  `npm.cmd run playtest:online-manual-march-templates`
+- The playtest uses the deployed public H5 at `http://47.116.32.216/wxgame/`, public API `http://47.116.32.216:3000/api`, QA account `codexqa / 123456`, real browser canvas clicks, screenshots, and JSON state snapshots. It does not use a local temporary server.
+- The test captures rendered tile signatures from the actual frontend render context and compares known tiles across the march flow.
+- First calibration run exposed a test-harness false positive:
+  - Evidence path: `tmp/verification/online-manual-march-templates-short/2026-06-16T01-39-11-670Z/`
+  - Failure was caused by including `renderReady` in the visual signature.
+  - The changed fields were state-only render lifecycle fields; `terrain`, `asset`, `water`, `templates`, `river`, `ocean`, `transition`, and `site` did not change.
+- The harness was corrected so visual stability only compares fields that can change the tile's displayed appearance:
+  - `terrain`
+  - `asset`
+  - `water`
+  - `templates`
+  - `river`
+  - `ocean`
+  - `transition`
+  - `site`
+- Passing online evidence:
+  - `tmp/verification/online-manual-march-templates-visual/2026-06-16T01-41-59-372Z/`
+  - `routeCount = 1`
+  - selected target `tile_29_9`
+  - `knownTileChangeCount = 0`
+  - `stateOnlyChangeCount = 9`, all from `renderReady` changing from `1` to `0`
+  - route render-ahead coverage for target `tile_29_9`: target rendered and all 6 neighboring tiles rendered
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Key screenshots:
+  - `04-active-mission-started-full.png`
+  - `05-template-short-route-complete-full.png`
+  - `iab-public-h5-visible.png`
+
+Result:
+
+- Step 17E passed on the deployed public H5 for the tested short route.
+- This specifically proves: known rendered tiles did not change visual identity across the tested march completion flow, and route-ahead coverage had the next target plus its six adjacent tiles rendered before completion.
+- This does not prove every long-route edge/transition case yet. It is a regression guard and evidence harness for the exact complaint class: "the same known tile visibly changes while marching."
+
+Next manual/browser test target:
+
+- Open `http://47.116.32.216/wxgame/`.
+- Use a tutorial-completed account with a saved formation.
+- Pick one nearby visible land tile and start a free manual march.
+- Watch only the already-visible tiles around the actor and target.
+- Pass condition: the same visible tile keeps the same terrain/edge/transition/resource or city appearance while the actor moves and after the movement completes.
+- Ignore long-route return-home behavior in this pass; Step 17C already covered that.
+
 ## Non-Goals
 
 - No frontend redesign.

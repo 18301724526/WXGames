@@ -22,6 +22,7 @@ const CONFIG = {
   sampleIntervalMs: Number(process.env.PLAYTEST_SAMPLE_INTERVAL_MS || 700),
   finalPhaseScreenshotIntervalMs: Number(process.env.PLAYTEST_FINAL_PHASE_SCREENSHOT_INTERVAL_MS || 1000),
   maxWaitMs: Number(process.env.PLAYTEST_MAX_WAIT_MS || 90000),
+  mapHudBottomInsetPx: Number(process.env.PLAYTEST_MAP_HUD_BOTTOM_INSET_PX || 120),
 };
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
@@ -123,6 +124,125 @@ function getRouteIndex(mission = null) {
   return mission.route.findIndex((step) => sameCoord(step, mission.position));
 }
 
+const VISUAL_SIGNATURE_KEYS = ['terrain', 'asset', 'water', 'templates', 'river', 'ocean', 'transition', 'site'];
+
+function parseSignatureParts(signature = '') {
+  return String(signature || '').split('|').reduce((parts, part) => {
+    const splitAt = part.indexOf('=');
+    if (splitAt < 0) return parts;
+    parts[part.slice(0, splitAt)] = part.slice(splitAt + 1);
+    return parts;
+  }, {});
+}
+
+function getVisualSignature(signature = '') {
+  const parts = parseSignatureParts(signature);
+  return VISUAL_SIGNATURE_KEYS.map((key) => `${key}=${parts[key] || ''}`).join('|');
+}
+
+function getChangedKnownTileSignatures(snapshots = []) {
+  const firstById = new Map();
+  const changes = [];
+  const stateOnlyChanges = [];
+  (Array.isArray(snapshots) ? snapshots : []).forEach((snapshot) => {
+    const entries = Array.isArray(snapshot?.renderTileSignatures) ? snapshot.renderTileSignatures : [];
+    entries
+      .filter((entry) => entry && !entry.renderOnly && !entry.renderReadyOnly)
+      .forEach((entry) => {
+        const visualSignature = getVisualSignature(entry.signature);
+        const previous = firstById.get(entry.tileId);
+        if (!previous) {
+          firstById.set(entry.tileId, { ...entry, visualSignature, label: snapshot.label });
+          return;
+        }
+        if (previous.visualSignature !== visualSignature) {
+          changes.push({
+            tileId: entry.tileId,
+            beforeLabel: previous.label,
+            afterLabel: snapshot.label,
+            beforeHash: previous.signatureHash,
+            afterHash: entry.signatureHash,
+            before: previous.signature,
+            after: entry.signature,
+            beforeVisual: previous.visualSignature,
+            afterVisual: visualSignature,
+          });
+        } else if (previous.signatureHash !== entry.signatureHash || previous.signature !== entry.signature) {
+          stateOnlyChanges.push({
+            tileId: entry.tileId,
+            beforeLabel: previous.label,
+            afterLabel: snapshot.label,
+            beforeHash: previous.signatureHash,
+            afterHash: entry.signatureHash,
+            before: previous.signature,
+            after: entry.signature,
+          });
+        }
+        firstById.set(entry.tileId, { ...entry, visualSignature, label: snapshot.label });
+      });
+  });
+  return { visualChanges: changes, stateOnlyChanges };
+}
+
+function summarizeRenderAheadCoverage(state = {}, mission = null) {
+  const renderIds = new Set((state.renderTileSignatures || []).map((entry) => entry.tileId).filter(Boolean));
+  const route = Array.isArray(mission?.route) ? mission.route : [];
+  return route.map((step, index) => {
+    const tileId = coordsKey(step);
+    const oneRing = [
+      { q: Number(step.q) + 1, r: Number(step.r) },
+      { q: Number(step.q) + 1, r: Number(step.r) - 1 },
+      { q: Number(step.q), r: Number(step.r) - 1 },
+      { q: Number(step.q) - 1, r: Number(step.r) },
+      { q: Number(step.q) - 1, r: Number(step.r) + 1 },
+      { q: Number(step.q), r: Number(step.r) + 1 },
+    ].map(coordsKey);
+    const missingNeighbors = oneRing.filter((id) => !renderIds.has(id));
+    return {
+      index,
+      tileId,
+      rendered: renderIds.has(tileId),
+      neighborCount: oneRing.length,
+      renderedNeighborCount: oneRing.length - missingNeighbors.length,
+      missingNeighbors,
+    };
+  });
+}
+
+function getRoutePreview(origin = {}, target = {}) {
+  const startQ = Number(origin.q);
+  const startR = Number(origin.r);
+  const targetQ = Number(target.q);
+  const targetR = Number(target.r);
+  if (![startQ, startR, targetQ, targetR].every(Number.isFinite)) return [];
+  const deltaQ = targetQ - startQ;
+  const deltaR = targetR - startR;
+  const distance = Math.max(Math.abs(deltaQ), Math.abs(deltaR));
+  const route = [];
+  let q = startQ;
+  let r = startR;
+  let remainingQ = deltaQ;
+  let remainingR = deltaR;
+  for (let step = 1; step <= distance; step += 1) {
+    const stepQ = Math.sign(remainingQ);
+    const stepR = Math.sign(remainingR);
+    q += stepQ;
+    r += stepR;
+    remainingQ -= stepQ;
+    remainingR -= stepR;
+    route.push({ q, r, tileId: coordsKey({ q, r }), step });
+  }
+  return route;
+}
+
+function isRouteKnownPassable(state = {}, origin = {}, target = {}) {
+  const terrainById = new Map((state.renderTileSignatures || [])
+    .map((entry) => [entry.tileId, entry.terrain || '']));
+  const route = getRoutePreview(origin, target);
+  if (!route.length) return false;
+  return route.every((step) => terrainById.has(step.tileId) && terrainById.get(step.tileId) !== 'ocean');
+}
+
 function getFormationMission(state, formationSlot = 1, cityId = 'capital') {
   const explorer = state.worldExplorerState || {};
   const all = [
@@ -220,6 +340,80 @@ async function getState(page) {
       counts[type] = (counts[type] || 0) + 1;
     });
     const explorer = game?.state?.worldExplorerState || {};
+    const contextCandidates = [
+      runtime?.getLastTileMapContext?.(),
+      runtime?.lastTileMapContext,
+      renderer?.lastWorldTileMapContext,
+      renderer?.worldMapLayerRenderer?.lastWorldTileMapContext,
+      renderer?.worldMapRenderer?.lastWorldTileMapContext,
+      shell?.worldMapRenderer?.lastWorldTileMapContext,
+      shell?.worldMapRuntime?.getLastTileMapContext?.(),
+      shell?.worldMapRuntime?.lastTileMapContext,
+    ].filter(Boolean);
+    const tileMapContext = contextCandidates.find((context) => Array.isArray(context?.tileMapView?.tiles)) || null;
+    const tileMapView = tileMapContext?.tileMapView || {};
+    const renderDiagnostics = window.WorldTileMapRenderDiagnostics || null;
+    const hashText = renderDiagnostics?.hashText || ((text) => {
+      let hash = 2166136261;
+      const source = String(text || '');
+      for (let index = 0; index < source.length; index += 1) {
+        hash ^= source.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(36);
+    });
+    const getSignature = renderDiagnostics?.getTileRenderSignature || ((tile = {}) => [
+      `terrain=${tile.terrain || ''}`,
+      `asset=${tile.terrainAsset || ''}`,
+      `water=${tile.waterAsset || tile.water?.asset || tile.water?.kind || ''}`,
+      `templates=${(Array.isArray(tile.templateAssets) ? tile.templateAssets : []).map((asset) => [
+        asset.templateType || asset.type || '',
+        asset.key || asset.name || asset.path || '',
+        asset.path || '',
+      ].filter(Boolean).join(':')).sort().join(',')}`,
+      `river=${(Array.isArray(tile.riverPorts) ? tile.riverPorts : []).filter(Boolean).map(String).sort().join(',')}`,
+      `ocean=${(Array.isArray(tile.oceanTemplates) ? tile.oceanTemplates : []).filter(Boolean).map(String).sort().join(',')}`,
+      `transition=${tile.transitionKey || ''}`,
+      `visibility=${tile.visibility || ''}`,
+      `visible=${tile.visible !== false ? 1 : 0}`,
+      `discovered=${tile.discovered !== false ? 1 : 0}`,
+      `renderReady=${tile.renderReady ? 1 : 0}`,
+      `renderOnly=${tile.renderOnly ? 1 : 0}`,
+      `site=${tile.siteId || ''}:${tile.site?.id || ''}:${tile.site?.type || ''}:${tile.site?.status || ''}:${tile.site?.owner || ''}:${tile.site?.art || ''}`,
+    ].join('|'));
+    const renderTileSignatures = (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [])
+      .map((tile) => {
+        const tileId = tile.id || tile.tileId || (
+          Number.isFinite(Number(tile.q)) && Number.isFinite(Number(tile.r))
+            ? `tile_${Number(tile.q)}_${Number(tile.r)}`
+            : ''
+        );
+        const signature = getSignature(tile);
+        return {
+          tileId,
+          q: Number(tile.q),
+          r: Number(tile.r),
+          terrain: tile.terrain || '',
+          transitionKey: tile.transitionKey || '',
+          riverPorts: Array.isArray(tile.riverPorts) ? tile.riverPorts.filter(Boolean).map(String).sort() : [],
+          oceanTemplates: Array.isArray(tile.oceanTemplates) ? tile.oceanTemplates.filter(Boolean).map(String).sort() : [],
+          templateAssets: Array.isArray(tile.templateAssets)
+            ? tile.templateAssets.map((asset) => [
+              asset.templateType || asset.type || '',
+              asset.key || asset.name || asset.path || '',
+              asset.path || '',
+            ].filter(Boolean).join(':')).filter(Boolean).sort()
+            : [],
+          renderReady: Boolean(tile.renderReady),
+          renderOnly: Boolean(tile.renderOnly),
+          visibility: tile.visibility || '',
+          siteId: tile.siteId || tile.site?.id || '',
+          signature,
+          signatureHash: hashText(signature),
+        };
+      })
+      .filter((entry) => entry.tileId)
+      .sort((a, b) => a.q - b.q || a.r - b.r || a.tileId.localeCompare(b.tileId));
     const activeMission = summarizeMissionInPage(explorer.activeMission)
       || (Array.isArray(explorer.missions)
         ? explorer.missions.map(summarizeMissionInPage).find((mission) => mission?.status === 'active')
@@ -250,6 +444,14 @@ async function getState(page) {
       },
       hitTargets: summarizedTargets,
       hitTargetCounts: counts,
+      renderTileContext: {
+        present: Boolean(tileMapContext),
+        tileCount: renderTileSignatures.length,
+        signatureHash: hashText(renderTileSignatures.map((entry) => `${entry.tileId}:${entry.signatureHash}`).join('|')),
+        origin: tileMapView.origin || tileMapView.worldOrigin || null,
+        pan: tileMapView.pan || null,
+      },
+      renderTileSignatures,
       worldExplorerState: {
         activeMission,
         missions: Array.isArray(explorer.missions) ? explorer.missions.map(summarizeMissionInPage) : [],
@@ -381,12 +583,17 @@ function chooseLongMarchTarget(state) {
     const q = Number(action.targetQ);
     const r = Number(action.targetR);
     if (!Number.isFinite(q) || !Number.isFinite(r)) return;
+    if (action.terrain === 'ocean') return;
     const tileId = action.tileId || `tile_${q}_${r}`;
     if (tileId === coordsKey(origin)) return;
+    if (!isRouteKnownPassable(state, origin, { q, r })) return;
     const center = targetCenter(target);
     const canvasWidth = Number(state.canvas?.logicalWidth || CONFIG.viewportWidth);
     const canvasHeight = Number(state.canvas?.logicalHeight || CONFIG.viewportHeight);
-    if (center.x < 24 || center.x > canvasWidth - 24 || center.y < 64 || center.y > canvasHeight - 24) return;
+    if (center.x < 24
+      || center.x > canvasWidth - 24
+      || center.y < 64
+      || center.y > canvasHeight - CONFIG.mapHudBottomInsetPx) return;
     const item = {
       target,
       tileId,
@@ -402,9 +609,17 @@ function chooseLongMarchTarget(state) {
   });
   const candidates = [...unique.values()]
     .filter((item) => item.distance >= CONFIG.minTargetDistance)
-    .sort((a, b) => b.distance - a.distance || b.center.y - a.center.y);
+    .sort((a, b) => (
+      CONFIG.mode === 'templates'
+        ? a.distance - b.distance || a.center.y - b.center.y
+        : b.distance - a.distance || b.center.y - a.center.y
+    ));
   if (candidates.length) return candidates[0];
-  return [...unique.values()].sort((a, b) => b.distance - a.distance)[0] || null;
+  return [...unique.values()].sort((a, b) => (
+    CONFIG.mode === 'templates'
+      ? a.distance - b.distance
+      : b.distance - a.distance
+  ))[0] || null;
 }
 
 function buildPositionSample(state, tag, missionId = '') {
@@ -603,8 +818,38 @@ function evaluateCompleteResult({ activeMission, preFinalSnapshot, finalSnapshot
   };
 }
 
+function evaluateTemplateStabilityResult({ snapshots = [], activeMission = null }) {
+  const failures = [];
+  const signatureChanges = getChangedKnownTileSignatures(snapshots);
+  const visualChanges = signatureChanges.visualChanges || [];
+  const stateOnlyChanges = signatureChanges.stateOnlyChanges || [];
+  if (visualChanges.length) {
+    failures.push(`known render tile visual signatures changed for ${visualChanges.length} entries`);
+  }
+  const missingContexts = snapshots.filter((snapshot) => !snapshot.renderTileContext?.present);
+  if (missingContexts.length) {
+    failures.push(`missing render tile context for ${missingContexts.length} snapshots`);
+  }
+  const coverage = summarizeRenderAheadCoverage(snapshots[0] || {}, activeMission);
+  return {
+    pass: failures.length === 0,
+    failures,
+    snapshotCount: snapshots.length,
+    knownTileChangeCount: visualChanges.length,
+    changedKnownTiles: visualChanges.slice(0, 16),
+    stateOnlyChangeCount: stateOnlyChanges.length,
+    stateOnlyChangedKnownTiles: stateOnlyChanges.slice(0, 16),
+    renderContextHashes: snapshots.map((snapshot) => ({
+      label: snapshot.label,
+      tileCount: snapshot.renderTileContext?.tileCount || 0,
+      signatureHash: snapshot.renderTileContext?.signatureHash || '',
+    })),
+    routeRenderAheadCoverage: coverage,
+  };
+}
+
 async function main() {
-  if (!['return', 'complete'].includes(CONFIG.mode)) {
+  if (!['return', 'complete', 'templates'].includes(CONFIG.mode)) {
     throw new Error(`unsupported PLAYTEST_MARCH_MODE=${CONFIG.mode}`);
   }
   const login = await postJson(`${CONFIG.apiBase}/player/login`, {
@@ -709,8 +954,82 @@ async function main() {
   }, { timeoutMs: 15000 });
   const activeMission = activeReady.result;
   const routeCount = Array.isArray(activeMission.route) ? activeMission.route.length : 0;
-  if (routeCount < 4) throw new Error(`selected target route too short for long-route return test: routeCount=${routeCount}`);
+  const minimumRouteCount = CONFIG.mode === 'templates' ? 1 : 4;
+  if (routeCount < minimumRouteCount) throw new Error(`selected target route too short for ${CONFIG.mode} test: routeCount=${routeCount}`);
   await writeSnapshot(page, '04-active-mission-started', { activeMission });
+  const templateSnapshots = [{
+    label: '04-active-mission-started',
+    renderTileContext: activeReady.state.renderTileContext,
+    renderTileSignatures: activeReady.state.renderTileSignatures,
+  }];
+
+  if (CONFIG.mode === 'templates' && routeCount < 3) {
+    const completed = await waitForMissionComplete(page, activeMission.id, routeCount);
+    const finalSnapshot = await writeSnapshot(page, '05-template-short-route-complete', {
+      missionId: activeMission.id,
+      finalResult: sanitize(completed.result),
+    });
+    templateSnapshots.push({
+      label: '05-template-short-route-complete',
+      renderTileContext: finalSnapshot.state.renderTileContext,
+      renderTileSignatures: finalSnapshot.state.renderTileSignatures,
+    });
+    const completeVerdict = evaluateCompleteResult({
+      activeMission,
+      preFinalSnapshot: activeReady.state,
+      finalSnapshot: finalSnapshot.state,
+      completeResult: completed,
+    });
+    const templateVerdict = evaluateTemplateStabilityResult({
+      snapshots: templateSnapshots,
+      activeMission,
+    });
+    const verdict = {
+      pass: completeVerdict.pass && templateVerdict.pass,
+      failures: [...completeVerdict.failures, ...templateVerdict.failures],
+      completeVerdict,
+      templateVerdict,
+    };
+    const summary = {
+      mode: CONFIG.mode,
+      outputDir: outDir,
+      gameUrl: CONFIG.gameUrl,
+      apiBase: CONFIG.apiBase,
+      deployedUrl: url.toString(),
+      playerId: CONFIG.username,
+      initialTutorialCompleted: Boolean(login.tutorial?.completed || initialState.tutorial?.completed),
+      chosenTarget: sanitize(chosen),
+      routeCount,
+      missionId: activeMission.id,
+      activeMission: summarizeMission(activeMission),
+      finalMission: summarizeMission(getMissionFromState(finalSnapshot.state, activeMission.id)),
+      actionEvidence,
+      sampleCount: samples.length,
+      samples: sanitize(samples),
+      templateSnapshots: sanitize(templateSnapshots),
+      badResponses,
+      requestFailures,
+      pageErrors,
+      browserEventCount: browserEvents.length,
+      verdict,
+    };
+    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2));
+    fs.writeFileSync(path.join(outDir, 'browser-events.json'), JSON.stringify(browserEvents, null, 2));
+    await browser.close();
+    console.log(JSON.stringify({
+      mode: CONFIG.mode,
+      outputDir: outDir,
+      missionId: activeMission.id,
+      routeCount,
+      chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance },
+      badResponses: badResponses.length,
+      requestFailures: requestFailures.length,
+      pageErrors: pageErrors.length,
+      verdict,
+    }, null, 2));
+    if (!verdict.pass || badResponses.length || requestFailures.length || pageErrors.length) process.exit(1);
+    return;
+  }
 
   if (CONFIG.mode === 'complete') {
     const preFinalIndex = Math.max(0, routeCount - 2);
@@ -778,11 +1097,18 @@ async function main() {
     return;
   }
 
-  const returnIndex = Math.max(1, Math.min(routeCount - 2, routeCount - 2));
+  const returnIndex = CONFIG.mode === 'templates'
+    ? Math.max(1, Math.min(routeCount - 3, Math.floor(routeCount / 2)))
+    : Math.max(1, Math.min(routeCount - 2, routeCount - 2));
   const midRoute = await waitForPositionIndex(page, activeMission.id, returnIndex, routeCount);
   const beforeReturnSnapshot = await writeSnapshot(page, '05-before-return-click', {
     desiredRouteIndex: returnIndex,
     reached: midRoute.result,
+  });
+  templateSnapshots.push({
+    label: '05-before-return-click',
+    renderTileContext: beforeReturnSnapshot.state.renderTileContext,
+    renderTileSignatures: beforeReturnSnapshot.state.renderTileSignatures,
   });
 
   const actorTarget = findTopHitTarget(beforeReturnSnapshot.state, (action) => (
@@ -793,11 +1119,26 @@ async function main() {
     findTopHitTarget(state, (action) => action.type === 'returnWorldMarch' && action.missionId === activeMission.id)
   ), { timeoutMs: 12000 });
   const beforeReturnCommand = await writeSnapshot(page, '07-return-command-visible', { missionId: activeMission.id });
+  templateSnapshots.push({
+    label: '07-return-command-visible',
+    renderTileContext: beforeReturnCommand.state.renderTileContext,
+    renderTileSignatures: beforeReturnCommand.state.renderTileSignatures,
+  });
   const returnStartedAtMs = Date.now();
   await clickTarget(page, '08-click-return-home', returnReady.result, { missionId: activeMission.id });
   const afterReturn = await writeSnapshot(page, '09-after-return-click', { missionId: activeMission.id });
+  templateSnapshots.push({
+    label: '09-after-return-click',
+    renderTileContext: afterReturn.state.renderTileContext,
+    renderTileSignatures: afterReturn.state.renderTileSignatures,
+  });
   await page.waitForTimeout(1500);
   const firstReturnFrame = await writeSnapshot(page, '10-first-return-frame', { missionId: activeMission.id });
+  templateSnapshots.push({
+    label: '10-first-return-frame',
+    renderTileContext: firstReturnFrame.state.renderTileContext,
+    renderTileSignatures: firstReturnFrame.state.renderTileSignatures,
+  });
 
   const homeOrigin = activeMission.homeOrigin || activeMission.origin;
   const finalReturn = await waitForReturnedHome(page, activeMission.id, homeOrigin, returnStartedAtMs);
@@ -805,14 +1146,32 @@ async function main() {
     missionId: activeMission.id,
     finalResult: sanitize(finalReturn.result),
   });
+  templateSnapshots.push({
+    label: '11-final-return-home',
+    renderTileContext: finalSnapshot.state.renderTileContext,
+    renderTileSignatures: finalSnapshot.state.renderTileSignatures,
+  });
 
-  const verdict = evaluateReturnResult({
+  const returnVerdict = evaluateReturnResult({
     beforeReturn: beforeReturnSnapshot.state,
     afterReturn: afterReturn.state,
     firstReturnFrame: firstReturnFrame.state,
     finalResult: finalReturn,
   });
+  const templateVerdict = evaluateTemplateStabilityResult({
+    snapshots: templateSnapshots,
+    activeMission,
+  });
+  const verdict = CONFIG.mode === 'templates'
+    ? {
+      pass: returnVerdict.pass && templateVerdict.pass,
+      failures: [...returnVerdict.failures, ...templateVerdict.failures],
+      returnVerdict,
+      templateVerdict,
+    }
+    : returnVerdict;
   const summary = {
+    mode: CONFIG.mode,
     outputDir: outDir,
     gameUrl: CONFIG.gameUrl,
     apiBase: CONFIG.apiBase,
@@ -840,6 +1199,13 @@ async function main() {
     browserEventCount: browserEvents.length,
     verdict,
   };
+  if (CONFIG.mode === 'templates') {
+    summary.templateSnapshots = sanitize(templateSnapshots.map((snapshot) => ({
+      label: snapshot.label,
+      renderTileContext: snapshot.renderTileContext,
+      renderTileSignatures: snapshot.renderTileSignatures,
+    })));
+  }
   fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2));
   fs.writeFileSync(path.join(outDir, 'browser-events.json'), JSON.stringify(browserEvents, null, 2));
 
