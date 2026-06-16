@@ -776,6 +776,66 @@ Next manual/browser test target:
 - Pass condition: the actor does not jump backward when return is clicked and ends on the capital/home tile.
 - Ignore no-return final outbound snapping unless this new separate target is being tested.
 
+### Step 17D - Online Free Manual March Complete Verification
+
+Evidence:
+
+- Added repeatable online browser playtest command:
+  `npm.cmd run playtest:online-manual-march-complete`
+- The playtest uses the deployed public H5 at `http://47.116.32.216/wxgame/`, public API `http://47.116.32.216:3000/api`, QA account `codexqa / 123456`, real browser canvas clicks, full-page screenshots, and JSON state snapshots. It does not use a local temporary server.
+- The pre-fix online complete-mode run reproduced the reported no-return final-step problem:
+  - Evidence path: `tmp/verification/online-manual-march-complete/2026-06-16T00-56-43-644Z/`
+  - `routeCount = 6`
+  - target `tile_26_7`
+  - failure: `active actor disappeared during final route phase for 2 samples`
+  - during the failure window, backend state still reported the mission active at `tile_27_8`, but actor hit targets were missing from the frontend render state.
+- Fix commit deployed for the passing runs:
+  - `141440eb2c37b2c9a206042e66bff36af3b53e63`
+  - commit title: `keep manual march actor visible at final arrival`
+  - public `/api/version` confirmed `deployedCommit = 141440eb2c37b2c9a206042e66bff36af3b53e63`
+  - `deployedAt = 2026-06-16T01:05:31Z`
+- First post-fix passing online evidence:
+  - `tmp/verification/online-manual-march-complete-after-fix/2026-06-16T01-06-36-051Z/`
+  - `routeCount = 7`
+  - target `tile_33_14`
+  - `activeActorDisappearances = []`
+  - saw both penultimate and final route indices
+  - final position reached `tile_33_14`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+- User-complaint rerun on the same deployed version:
+  - `tmp/verification/online-manual-march-complete-rerun-user-complaint/2026-06-16T01-09-59-784Z/`
+  - `routeCount = 8`
+  - start/current formation origin `tile_33_14`
+  - selected target `tile_25_6`
+  - pre-final position `tile_26_7`
+  - final position `tile_25_6`
+  - final route indices sampled: `[6, 6, 6, 7]`
+  - `activeActorDisappearances = []`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Key screenshots for the rerun:
+  - `05-before-final-route-steps-full.png`
+  - `complete-final-phase-step-06-1-full.png`
+  - `complete-final-phase-step-06-2-full.png`
+  - `complete-final-phase-step-06-3-full.png`
+  - `complete-final-phase-step-07-4-full.png`
+  - `06-final-route-complete-full.png`
+
+Result:
+
+- Step 17D no-return complete-mode behavior passed on the deployed public H5 for the tested long route.
+- This specifically proves: during the final active route phase the actor remains represented in frontend hit targets, the script saw the penultimate route index and final route index, and the mission finishes on the selected target tile.
+- The in-app Browser public-H5 screenshot taken during this loop proves the public page was opened, but it only showed the online H5 loading/tutorial surface. The behavioral proof is the real-browser Playwright screenshot/state evidence above.
+
+Next manual/browser test target:
+
+- Open `http://47.116.32.216/wxgame/`.
+- Use a tutorial-completed account with a saved formation.
+- Start one visibly long free manual march and do not click return-home.
+- Watch only the final two route steps.
+- Pass condition: the actor remains visible through the penultimate step, enters the final target tile, and finishes on that target tile without disappearing or snapping to completion.
+- Ignore active return-home in this manual pass; that was Step 17C.
+
 ## Non-Goals
 
 - No frontend redesign.
