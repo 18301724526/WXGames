@@ -1499,6 +1499,56 @@ Next manual/browser test target:
   - run one additional explicit canary, or
   - implement a guarded batch command with a sample limit and explicit confirmation.
 
+### Step 27 - Repeatable Public-H5 Spawn Readonly QA
+
+Implementation:
+
+- Added:
+  - `scripts/playtest-online-spawn-readonly.js`
+- Added npm command:
+  - `playtest:online-spawn-readonly`
+- Purpose:
+  - verify public-H5 spawn/capital/camera evidence without using a reset flow
+  - capture screenshot and `summary.json`
+  - compare API projection with frontend runtime state
+  - fail if `/api/player/reset` is called
+  - fail on bad HTTP responses, request failures, page errors, or console errors
+
+Verification:
+
+```bash
+node --check scripts/playtest-online-spawn-readonly.js
+npm.cmd run playtest:online-spawn-readonly -- --username=test2 --password=123456 --expected-origin-tile-id=tile_-12_-25
+```
+
+- Note: plain `npm run ...` is blocked by this machine's PowerShell `npm.ps1` policy; `npm.cmd` is the verified Windows form.
+
+Public-H5 proof:
+
+- Evidence:
+  `tmp/verification/online-spawn-readonly/2026-06-16T04-32-54-990Z/`
+- Screenshot:
+  `public-h5-spawn-readonly.png`
+- Summary:
+  `summary.json`
+- Pass conditions met:
+  - player `test2`
+  - API origin/capital `tile_-12_-25`
+  - frontend origin/capital `tile_-12_-25`
+  - visible tile count `25`
+  - local owned territories `capital`
+  - shared occupied projection `site_25_20` belongs to `codexqa`
+  - render context present
+  - render contains capital
+  - capital hit target visible
+  - reset calls `0`
+  - no bad responses, request failures, page errors, or console errors
+
+Manual/browser test target:
+
+- Open the screenshot in the evidence path and confirm the public H5 world screen is visible around the `test2` capital area.
+- This step does not claim march, tutorial, reset, or batch-repair behavior.
+
 ## Non-Goals
 
 - No frontend redesign.

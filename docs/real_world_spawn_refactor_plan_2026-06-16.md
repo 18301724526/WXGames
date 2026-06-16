@@ -278,6 +278,44 @@ Manual public-H5 canary target after the write step:
   - Only `test2` was repaired.
   - No batch repair has been performed.
 
+## Repeatable Public-H5 Verification Contract
+
+- Added:
+  - `scripts/playtest-online-spawn-readonly.js`
+  - npm command `playtest:online-spawn-readonly`
+- Purpose:
+  - provide a fixed, readonly public-H5 spawn/capital/camera verification step
+  - avoid reusing reset or tutorial scripts for spawn-only proof
+  - capture screenshot and `summary.json`
+  - compare public API projection with frontend runtime state
+  - fail if `/api/player/reset` is called
+  - fail on bad HTTP responses, request failures, page errors, or console errors
+- Verification command:
+  ```bash
+  node --check scripts/playtest-online-spawn-readonly.js
+  npm.cmd run playtest:online-spawn-readonly -- --username=test2 --password=123456 --expected-origin-tile-id=tile_-12_-25
+  ```
+  - Plain `npm run ...` is blocked by this machine's PowerShell `npm.ps1` policy; `npm.cmd` is the verified Windows form.
+- Latest public-H5 proof:
+  - Evidence:
+    `tmp/verification/online-spawn-readonly/2026-06-16T04-32-54-990Z/`
+  - Screenshot:
+    `public-h5-spawn-readonly.png`
+  - Summary:
+    `summary.json`
+  - Result:
+    - player `test2`
+    - API and frontend origin/capital `tile_-12_-25`
+    - visible tile count `25`
+    - owned territories `capital`
+    - shared occupied projection `site_25_20` belongs to `codexqa`
+    - render context contains capital
+    - capital hit target visible
+    - reset calls `0`
+    - no bad responses, request failures, page errors, or console errors
+- Requirement:
+  - Every future spawn/capital/camera delivery step must include this readonly public-H5 proof or explain why a broader real-browser proof supersedes it.
+
 ## Target Architecture
 
 ### Spawn Domain
