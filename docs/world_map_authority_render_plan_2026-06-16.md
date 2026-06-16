@@ -1409,6 +1409,96 @@ Next manual/browser test target:
 - Add a future single-account canary writer for `test2` only.
 - Then verify with public H5 that the repaired account opens at a new capital with 25 starting visible tiles and no old `(0,0)` ownership for that account.
 
+### Step 26 - Test2 Single-Account Repair Canary
+
+Implementation and local verification:
+
+- Added:
+  - `scripts/repair-legacy-spawn-account.js`
+  - `scripts/repair-legacy-spawn-account.test.js`
+- Commit:
+  `eea6037e feat add legacy spawn canary repair command`
+- Verification:
+  ```bash
+  node --check scripts/repair-legacy-spawn-account.js
+  node --test scripts/plan-legacy-spawn-repair.test.js scripts/repair-legacy-spawn-account.test.js backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+  git diff --check
+  ```
+  - Result: `41` tests passed.
+
+Server canary:
+
+- Dry-run for `test2` reported:
+  - `repairMode = eligible-reset-style-repair`
+  - before origin/capital `(0,0)`
+  - `writesPerformed = false`
+- Missing-confirm write attempt was blocked.
+- Confirmed write command included:
+  `--player test2 --write --confirm repair-legacy-spawn:test2`
+- Result:
+  - before origin/capital: `(0,0)`
+  - after origin/capital: `(-12,-25)`
+  - spawn allocation: `-12,-25`
+  - visible tile count: `25`
+  - canonical owned territories: `capital` only
+  - `writesPerformed = true`
+- Planner after canary:
+  - spawn allocation rows: `4`
+  - remaining legacy `(0,0)` accounts: `33`
+  - already spawned: `4`
+
+Public-H5 proof:
+
+- Evidence:
+  `tmp/verification/test2-canary-public-h5-playwright-fixed/2026-06-16T04-11-35-028Z/`
+- Screenshot:
+  `test2-canary-public-h5.png`
+- Summary:
+  `summary.json`
+- Pass conditions met:
+  - API origin/capital `tile_-12_-25`
+  - frontend origin/capital `tile_-12_-25`
+  - API visible tile count `25`
+  - frontend visible tile count `25`
+  - local owned territories `capital` only
+  - render contains capital
+  - capital hit target visible
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+
+User-demanded follow-up QA evidence:
+
+- In-app Browser screenshot:
+  `tmp/verification/user-demand-public-h5-test2-qa/2026-06-16T12-20-00-codex/iab-current-public-h5.png`
+- A reset-flow script was attempted and failed at `wait-02-request-reset`; this is recorded as a test-target mistake, not a pass.
+- Final readonly public-H5 proof:
+  `tmp/verification/user-demand-public-h5-test2-readonly-iab-auth/2026-06-16T04-24-27-720Z/`
+- Final readonly screenshot:
+  `public-h5-test2-readonly-iab-auth.png`
+- Final readonly `summary.json` passed:
+  - player `test2`
+  - API origin/capital `tile_-12_-25`
+  - frontend origin/capital `tile_-12_-25`
+  - API visible tile count `25`
+  - frontend visible tile count `25`
+  - local owned territories `capital` only
+  - shared occupied projection `site_25_20` belongs to `codexqa`
+  - render contains capital
+  - capital hit target visible
+  - no bad responses, request failures, or page errors
+
+Evidence correction:
+
+- The first verifier run counted shared projection `site_25_20` as local-owned and failed.
+- Readonly DB inspection proved `site_25_20` belongs to `codexqa`; `test2` canonical territories contain only `capital`.
+- The fixed verifier separates current-player ownership from shared occupied projection.
+
+Next manual/browser test target:
+
+- Do not batch repair the remaining `33` legacy accounts yet.
+- Decide one next small step:
+  - run one additional explicit canary, or
+  - implement a guarded batch command with a sample limit and explicit confirmation.
+
 ## Non-Goals
 
 - No frontend redesign.

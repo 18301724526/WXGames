@@ -44,7 +44,8 @@ This means tutorial exploration and first city conquest naturally collide across
   - Treat the repeated `codexqa` reset/tutorial path as sufficiently covered until spawn/reset product code changes.
   - Legacy-account repair contract is now defined below.
   - Read-only repair planner is now implemented.
-  - Next implementation step may add a single-account explicit canary writer for `test2`, still with confirmation and public-H5 proof.
+  - `test2` single-account explicit canary repair has passed public-H5 proof.
+  - Next implementation step should not batch repair automatically; decide between one more canary or a guarded batch command.
 - Still outside current proof:
   - migration/repair of older live accounts born at `(0,0)`
   - broad all-edge-case spawn exhaustion or high-density load coverage
@@ -214,6 +215,68 @@ Manual public-H5 canary target after the write step:
 - Boundary:
   - This step has no player-visible browser behavior.
   - The next player-visible proof belongs to the future single-account canary write step and must use public H5.
+
+## Single-Account Canary Repair Evidence
+
+- Added and pushed:
+  - `scripts/repair-legacy-spawn-account.js`
+  - `scripts/repair-legacy-spawn-account.test.js`
+  - commit: `eea6037e feat add legacy spawn canary repair command`
+- Local verification:
+  ```bash
+  node --check scripts/repair-legacy-spawn-account.js
+  node --test scripts/plan-legacy-spawn-repair.test.js scripts/repair-legacy-spawn-account.test.js backend/tests/SpawnLifecycleService.test.js backend/tests/GameStateRepository.test.js
+  git diff --check
+  ```
+  - Result: `41` tests passed.
+- Server safety checks before write:
+  - `test2` dry-run reported `eligible-reset-style-repair` and `writesPerformed = false`.
+  - write without exact confirmation was rejected.
+- Confirmed write:
+  - Command included `--player test2 --write --confirm repair-legacy-spawn:test2`.
+  - Before origin/capital: `(0,0)`.
+  - After origin/capital: `(-12,-25)`.
+  - After spawn allocation: `-12,-25`.
+  - After visible tile count: `25`.
+  - Canonical `test2` territories: `capital` only.
+- Planner after canary:
+  - spawn allocations: `4`
+  - remaining legacy origin/capital `(0,0)`: `33`
+  - eligible reset-style repairs: `33`
+  - already spawned: `4`
+- Public-H5 proof:
+  - `tmp/verification/test2-canary-public-h5-playwright-fixed/2026-06-16T04-11-35-028Z/`
+  - screenshot: `test2-canary-public-h5.png`
+  - summary: `summary.json`
+  - API and frontend both reported:
+    - player `test2`
+    - origin/capital `tile_-12_-25`
+    - visible tile count `25`
+    - local owned territories `capital` only
+    - render contains capital
+    - capital hit target visible
+    - no bad responses, request failures, or page errors
+- User-demanded QA follow-up:
+  - In-app Browser screenshot:
+    `tmp/verification/user-demand-public-h5-test2-qa/2026-06-16T12-20-00-codex/iab-current-public-h5.png`
+  - A reset-flow script was tried and failed at `wait-02-request-reset`; this is recorded as a bad test target, not a pass.
+  - Final readonly public-H5 proof:
+    `tmp/verification/user-demand-public-h5-test2-readonly-iab-auth/2026-06-16T04-24-27-720Z/`
+  - Final readonly proof used `codexIabToken/codexIabUser` URL auth, performed no reset/settings clicks, and passed:
+    - player `test2`
+    - API and frontend origin/capital `tile_-12_-25`
+    - API and frontend visible tile count `25`
+    - current-player owned territories `capital` only
+    - shared occupied projection `site_25_20` belongs to `codexqa`
+    - render contains capital and capital hit target visible
+    - no HTTP failures, request failures, or page errors
+- Evidence correction:
+  - The first public-H5 verifier run misclassified `site_25_20` as local-owned.
+  - Readonly DB inspection showed `site_25_20` belongs to `codexqa` in shared-world projection, while `test2` canonical state contains only `capital`.
+  - The fixed verifier separates shared occupied projections from current-player owned territory.
+- Boundary:
+  - Only `test2` was repaired.
+  - No batch repair has been performed.
 
 ## Target Architecture
 
