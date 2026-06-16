@@ -1043,6 +1043,52 @@ Next manual/browser test target:
   - visible terrain/edge/transition/resource/city identity does not change while the actor passes;
   - return-home starts from the actor's current tile and ends on the capital.
 
+### Step 18 - Evidence-First Public-H5 Render And Return Retest
+
+Evidence:
+
+- This step exists because the manual acceptance flow requires visible browser proof, screenshots, and exact test steps instead of a text-only "passed" report.
+- Visible in-app browser proof:
+  - URL: `http://47.116.32.216/wxgame/?codexEvidence=public-h5-visible-20260616`
+  - screenshot: `tmp/verification/public-h5-browser-visible-20260616/public-h5-visible.png`
+  - browser info: `tmp/verification/public-h5-browser-visible-20260616/browser-info.json`
+- Passing public-H5 automated evidence:
+  - command: `npm.cmd run playtest:online-manual-march-templates`
+  - output: `tmp/verification/online-visible-step18-render-return-proof/2026-06-16T02-49-16-094Z/`
+  - deployed URL: `http://47.116.32.216/wxgame/?codexManualMarchReturn=2026-06-16T02-49-16-094Z`
+  - `routeCount = 4`
+  - selected target `tile_28_7`
+  - return clicked from `tile_27_7`
+  - first return frame stayed at `tile_27_7`
+  - final return position `tile_28_9` matched home/capital
+  - `knownTileChangeCount = 0`
+  - `missingBeforeEntryCoverage = []`
+  - `badResponses = 0`, `requestFailures = 0`, `pageErrors = 0`
+  - `verdict.pass = true`
+- Key screenshots:
+  - `outbound-step-00-render-full.png`
+  - `outbound-step-01-render-full.png`
+  - `outbound-step-02-render-full.png`
+  - `05-before-return-click-full.png`
+  - `07-return-command-visible-full.png`
+  - `11-final-return-home-full.png`
+
+Result:
+
+- Step 18 passed on the deployed public H5 for the tested 4-step route.
+- This step proves the tested route's before-entry render coverage, known-tile visual stability, and active return-home completion with visible public-H5 evidence.
+- No product code change was made in this step.
+
+Next manual/browser test target:
+
+- Open only `http://47.116.32.216/wxgame/`.
+- Start one about-4-step free manual march.
+- Watch only:
+  - the next route tile and its adjacent ring are rendered before actor entry;
+  - already visible terrain/edge/transition/resource/city visuals do not change while the actor passes;
+  - return-home starts from the current actor tile and ends on the capital.
+- Ignore unrelated tutorial/spawn/camera issues during this specific pass unless they block the test.
+
 ## Non-Goals
 
 - No frontend redesign.
