@@ -42,7 +42,7 @@
   function getProjectionKind(row = {}) {
     if (row.status === 'active') return 'worldRoute';
     if (row.status !== 'idle') return '';
-    if (row.rawStatus && row.rawStatus !== 'idle') return '';
+    if (row.rawStatus && row.rawStatus !== 'idle' && row.mode !== 'manual') return '';
     const current = row.current || row.position || row.target || {};
     return isSameCoord(current, getHomeCoord(row)) ? 'garrisonedAtHome' : 'parkedAwayFromHome';
   }

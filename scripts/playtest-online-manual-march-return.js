@@ -2,7 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 
+function getArgValue(name, fallback = '') {
+  const prefix = `--${name}=`;
+  const match = process.argv.find((arg) => arg.startsWith(prefix));
+  return match ? match.slice(prefix.length) : fallback;
+}
+
 const CONFIG = {
+  mode: getArgValue('mode', process.env.PLAYTEST_MARCH_MODE || 'return'),
   gameUrl: process.env.PLAYTEST_GAME_URL || 'http://47.116.32.216/wxgame/',
   apiBase: process.env.PLAYTEST_API_BASE || 'http://47.116.32.216:3000/api',
   username: process.env.PLAYTEST_USERNAME || 'codexqa',
@@ -13,6 +20,7 @@ const CONFIG = {
   outputRoot: process.env.PLAYTEST_OUTPUT_DIR || path.join('tmp', 'verification', 'online-manual-march-return'),
   minTargetDistance: Number(process.env.PLAYTEST_MIN_TARGET_DISTANCE || 5),
   sampleIntervalMs: Number(process.env.PLAYTEST_SAMPLE_INTERVAL_MS || 700),
+  finalPhaseScreenshotIntervalMs: Number(process.env.PLAYTEST_FINAL_PHASE_SCREENSHOT_INTERVAL_MS || 1000),
   maxWaitMs: Number(process.env.PLAYTEST_MAX_WAIT_MS || 90000),
 };
 
@@ -352,7 +360,7 @@ async function waitForState(page, label, predicate, options = {}) {
   while (Date.now() - startedAt <= timeoutMs) {
     const state = await getState(page);
     lastState = state;
-    const result = predicate(state);
+    const result = await predicate(state);
     if (result) return { state, result, elapsedMs: Date.now() - startedAt };
     await page.waitForTimeout(intervalMs);
   }
@@ -418,7 +426,7 @@ function buildPositionSample(state, tag, missionId = '') {
   };
 }
 
-async function waitForPositionIndex(page, missionId, desiredIndex, routeCount) {
+async function waitForPositionIndex(page, missionId, desiredIndex, routeCount, options = {}) {
   const stepDurationSeconds = 10;
   const maxWait = Math.max(CONFIG.maxWaitMs, (Math.max(1, desiredIndex + 2) * stepDurationSeconds + 8) * 1000);
   let lastIndex = -1;
@@ -435,7 +443,60 @@ async function waitForPositionIndex(page, missionId, desiredIndex, routeCount) {
         JSON.stringify(sanitize(sample), null, 2),
       );
     }
-    if (routeIndex >= desiredIndex && routeIndex < routeCount - 1) return { routeIndex, active };
+    const allowFinal = Boolean(options.allowFinal);
+    if (routeIndex >= desiredIndex && (allowFinal || routeIndex < routeCount - 1)) return { routeIndex, active };
+    return false;
+  }, { timeoutMs: maxWait, intervalMs: CONFIG.sampleIntervalMs });
+}
+
+async function waitForMissionComplete(page, missionId, routeCount) {
+  const stepDurationSeconds = 10;
+  const maxWait = Math.max(CONFIG.maxWaitMs, (Math.max(1, routeCount + 1) * stepDurationSeconds + 10) * 1000);
+  const positions = [];
+  let lastRouteIndex = -1;
+  let lastScreenshotAt = 0;
+  return waitForState(page, 'wait-for-full-route-complete', async (state) => {
+    const active = getActiveMission(state);
+    const mission = getMissionFromState(state, missionId) || active;
+    const sample = buildPositionSample(state, 'complete-monitor', missionId);
+    const routeIndex = getRouteIndex(mission || active);
+    samples.push(sample);
+    positions.push({
+      at: new Date().toISOString(),
+      missionStatus: mission?.status || '',
+      activeStatus: active?.status || '',
+      position: mission?.position || active?.position || null,
+      routeIndex,
+      actorTargetCount: (sample.actorTargets || [])
+        .filter((target) => !target.missionId || target.missionId === missionId)
+        .length,
+    });
+    if (routeIndex !== lastRouteIndex) {
+      lastRouteIndex = routeIndex;
+      fs.writeFileSync(
+        path.join(outDir, `complete-step-${String(routeIndex).padStart(2, '0')}.json`),
+        JSON.stringify(sanitize(sample), null, 2),
+      );
+    }
+    const now = Date.now();
+    if (routeIndex >= Math.max(0, routeCount - 2)
+      && now - lastScreenshotAt >= CONFIG.finalPhaseScreenshotIntervalMs) {
+      lastScreenshotAt = now;
+      await writeSnapshot(page, `complete-final-phase-step-${String(routeIndex).padStart(2, '0')}-${positions.length}`, {
+        missionId,
+        routeCount,
+        routeIndex,
+      });
+    }
+    if (!mission) return false;
+    const atTarget = sameCoord(mission.position, mission.target);
+    const inactive = !active || active.id !== missionId || mission.status === 'idle';
+    if (atTarget && inactive) {
+      return {
+        finalMission: mission,
+        positions: sanitize(positions),
+      };
+    }
     return false;
   }, { timeoutMs: maxWait, intervalMs: CONFIG.sampleIntervalMs });
 }
@@ -497,7 +558,55 @@ function evaluateReturnResult({ beforeReturn, afterReturn, firstReturnFrame, fin
   };
 }
 
+function evaluateCompleteResult({ activeMission, preFinalSnapshot, finalSnapshot, completeResult }) {
+  const failures = [];
+  const finalMission = completeResult?.result?.finalMission
+    || getMissionFromState(finalSnapshot, activeMission?.id)
+    || null;
+  if (!activeMission) failures.push('missing active mission at start');
+  if (!preFinalSnapshot) failures.push('missing pre-final route snapshot');
+  if (!finalMission) failures.push('missing final mission result');
+  if (finalMission && !sameCoord(finalMission.position, activeMission.target)) {
+    failures.push(`final mission did not end at target: position=${coordsKey(finalMission.position)} target=${coordsKey(activeMission.target)}`);
+  }
+  const positions = Array.isArray(completeResult?.result?.positions)
+    ? completeResult.result.positions
+    : [];
+  const routeIndices = positions
+    .map((item) => Number(item.routeIndex))
+    .filter(Number.isFinite);
+  const activeActorDisappearances = positions.filter((item) => (
+    item.missionStatus === 'active'
+    && Number(item.routeIndex) >= Math.max(0, (activeMission?.route?.length || 0) - 2)
+    && Number(item.actorTargetCount || 0) === 0
+  ));
+  const sawPenultimate = routeIndices.includes(Math.max(0, (activeMission?.route?.length || 0) - 2));
+  const sawFinal = routeIndices.includes(Math.max(0, (activeMission?.route?.length || 0) - 1));
+  if ((activeMission?.route?.length || 0) >= 4 && !sawPenultimate) {
+    failures.push('monitor did not observe the penultimate route tile before completion');
+  }
+  if ((activeMission?.route?.length || 0) >= 4 && !sawFinal) {
+    failures.push('monitor did not observe the final route tile before completion');
+  }
+  if (activeActorDisappearances.length) {
+    failures.push(`active actor disappeared during final route phase for ${activeActorDisappearances.length} samples`);
+  }
+  return {
+    pass: failures.length === 0,
+    failures,
+    routeIndices,
+    activeActorDisappearances,
+    sawPenultimate,
+    sawFinal,
+    finalPosition: finalMission?.position || null,
+    target: activeMission?.target || null,
+  };
+}
+
 async function main() {
+  if (!['return', 'complete'].includes(CONFIG.mode)) {
+    throw new Error(`unsupported PLAYTEST_MARCH_MODE=${CONFIG.mode}`);
+  }
   const login = await postJson(`${CONFIG.apiBase}/player/login`, {
     username: CONFIG.username,
     password: CONFIG.password,
@@ -602,6 +711,72 @@ async function main() {
   const routeCount = Array.isArray(activeMission.route) ? activeMission.route.length : 0;
   if (routeCount < 4) throw new Error(`selected target route too short for long-route return test: routeCount=${routeCount}`);
   await writeSnapshot(page, '04-active-mission-started', { activeMission });
+
+  if (CONFIG.mode === 'complete') {
+    const preFinalIndex = Math.max(0, routeCount - 2);
+    const preFinal = await waitForPositionIndex(page, activeMission.id, preFinalIndex, routeCount);
+    const preFinalSnapshot = await writeSnapshot(page, '05-before-final-route-steps', {
+      desiredRouteIndex: preFinalIndex,
+      reached: preFinal.result,
+    });
+    const completeStartedAtMs = Date.now();
+    const completed = await waitForMissionComplete(page, activeMission.id, routeCount);
+    const finalSnapshot = await writeSnapshot(page, '06-final-route-complete', {
+      missionId: activeMission.id,
+      finalResult: sanitize(completed.result),
+    });
+    const verdict = evaluateCompleteResult({
+      activeMission,
+      preFinalSnapshot: preFinalSnapshot.state,
+      finalSnapshot: finalSnapshot.state,
+      completeResult: completed,
+    });
+    const summary = {
+      mode: CONFIG.mode,
+      outputDir: outDir,
+      gameUrl: CONFIG.gameUrl,
+      apiBase: CONFIG.apiBase,
+      deployedUrl: url.toString(),
+      playerId: CONFIG.username,
+      initialTutorialCompleted: Boolean(login.tutorial?.completed || initialState.tutorial?.completed),
+      chosenTarget: sanitize(chosen),
+      routeCount,
+      missionId: activeMission.id,
+      beforeStart: {
+        activeMission: summarizeMission(getActiveMission(beforeStart)),
+        hitTargetCounts: beforeStart.hitTargetCounts,
+      },
+      activeMission: summarizeMission(activeMission),
+      preFinal: summarizeMission(getActiveMission(preFinalSnapshot.state) || getMissionFromState(preFinalSnapshot.state, activeMission.id)),
+      finalMission: summarizeMission(getMissionFromState(finalSnapshot.state, activeMission.id)),
+      finalElapsedMs: Date.now() - completeStartedAtMs,
+      actionEvidence,
+      sampleCount: samples.length,
+      samples: sanitize(samples),
+      badResponses,
+      requestFailures,
+      pageErrors,
+      browserEventCount: browserEvents.length,
+      verdict,
+    };
+    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2));
+    fs.writeFileSync(path.join(outDir, 'browser-events.json'), JSON.stringify(browserEvents, null, 2));
+
+    await browser.close();
+    console.log(JSON.stringify({
+      mode: CONFIG.mode,
+      outputDir: outDir,
+      missionId: activeMission.id,
+      routeCount,
+      chosenTarget: { tileId: chosen.tileId, q: chosen.q, r: chosen.r, distance: chosen.distance },
+      badResponses: badResponses.length,
+      requestFailures: requestFailures.length,
+      pageErrors: pageErrors.length,
+      verdict,
+    }, null, 2));
+    if (!verdict.pass || badResponses.length || requestFailures.length || pageErrors.length) process.exit(1);
+    return;
+  }
 
   const returnIndex = Math.max(1, Math.min(routeCount - 2, routeCount - 2));
   const midRoute = await waitForPositionIndex(page, activeMission.id, returnIndex, routeCount);

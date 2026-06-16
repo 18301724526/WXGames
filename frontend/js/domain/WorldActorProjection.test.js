@@ -107,3 +107,57 @@ test('WorldActorProjection renders active returning missions until they arrive h
   assert.equal(actors[0].status, 'active');
   assert.equal(actors[0].projection.kind, 'worldRoute');
 });
+
+test('WorldActorProjection keeps expired active manual march visible when parked away from home', () => {
+  const nowMs = new Date('2026-06-06T00:00:45.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    missions: [createMission({
+      status: 'active',
+      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+      target: { q: 2, r: 0, tileId: 'tile_2_0' },
+      position: { q: 1, r: 0, tileId: 'tile_1_0' },
+      route: [
+        { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+        { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: true },
+      ],
+      startedAt: '2026-06-06T00:00:20.000Z',
+      nextStepAt: '2026-06-06T00:00:40.000Z',
+      completesAt: '2026-06-06T00:00:40.000Z',
+      completedAt: null,
+    })],
+  }, { nowMs });
+
+  const row = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
+  const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
+
+  assert.equal(row.status, 'idle');
+  assert.equal(row.rawStatus, 'active');
+  assert.equal(row.current.tileId, 'tile_2_0');
+  assert.equal(actors.length, 1);
+  assert.equal(actors[0].status, 'idle');
+  assert.equal(actors[0].current.tileId, 'tile_2_0');
+  assert.equal(actors[0].projection.kind, 'parkedAwayFromHome');
+});
+
+test('WorldActorProjection keeps expired active return-home mission hidden at home', () => {
+  const nowMs = new Date('2026-06-06T00:00:45.000Z').getTime();
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
+    missions: [createMission({
+      status: 'active',
+      position: { q: 1, r: 0, tileId: 'tile_1_0' },
+      startedAt: '2026-06-06T00:00:20.000Z',
+      nextStepAt: '2026-06-06T00:00:40.000Z',
+      completesAt: '2026-06-06T00:00:40.000Z',
+      completedAt: null,
+    })],
+  }, { nowMs });
+
+  const row = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
+  const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
+
+  assert.equal(row.status, 'idle');
+  assert.equal(row.rawStatus, 'active');
+  assert.equal(row.current.tileId, 'tile_0_0');
+  assert.deepEqual(actors, []);
+});

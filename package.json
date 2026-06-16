@@ -14,6 +14,7 @@
     "config:validate": "node scripts/validate-config-pipeline.js",
     "playtest:online-tutorial": "node scripts/playtest-online-tutorial.js",
     "playtest:online-manual-march": "node scripts/playtest-online-manual-march-return.js",
+    "playtest:online-manual-march-complete": "node scripts/playtest-online-manual-march-return.js --mode=complete",
     "profile:h5-performance": "node scripts/profile-h5-performance.js",
     "profile:h5-phone-sim": "node scripts/profile-h5-performance.js --phone-sim"
   },
