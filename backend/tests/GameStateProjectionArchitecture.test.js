@@ -826,6 +826,100 @@ test('login route normalizes once and assembles the response from normalized-onl
   ]);
 });
 
+test('login route retries once when worker saves a newer revision first', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'projection-login-revision-retry-test';
+  let currentState = { ...createNormalizedRouteState(playerId), revision: 1 };
+  const calls = [];
+  let saveCount = 0;
+  const authService = {
+    loginPlayer(username, password, getGameState, _calculateOfflineIncome, saveGameState) {
+      calls.push(`login:${username}:${password}`);
+      const loaded = getGameState(username);
+      saveGameState(loaded);
+      return {
+        playerId: username,
+        username,
+        token: 'login-token',
+        gameState: loaded,
+        offlineIncome: null,
+      };
+    },
+  };
+  const repository = {
+    findByPlayerId(playerIdArg) {
+      calls.push(`find:${playerIdArg}`);
+      return clone(currentState);
+    },
+    save(gameState) {
+      saveCount += 1;
+      calls.push(`save:${gameState.playerId}:${gameState.revision}`);
+      if (saveCount === 1) {
+        currentState = { ...currentState, revision: 2 };
+        const error = new Error('Game state revision conflict');
+        error.code = 'GAME_STATE_REVISION_CONFLICT';
+        error.expectedRevision = gameState.revision;
+        error.actualRevision = 2;
+        throw error;
+      }
+      currentState = { ...clone(gameState), revision: 3 };
+    },
+    getClientProjectionForPlayer(playerIdArg) {
+      calls.push(`projection:${playerIdArg}`);
+      return { sharedWorldTerritories: [] };
+    },
+  };
+  const gameStateService = {
+    createInitialGameState() {
+      throw new Error('existing login must not create a new state');
+    },
+    calculateOfflineIncome() {
+      throw new Error('offline income should not be needed in this test');
+    },
+    normalizeState(gameState) {
+      calls.push(`normalizeState:${gameState.revision}`);
+      return gameState;
+    },
+    getClientGameStateFromNormalized(gameState) {
+      calls.push(`getClientGameStateFromNormalized:${gameState.revision}`);
+      return { playerId: gameState.playerId, revision: gameState.revision };
+    },
+    calculateEraProgressFromNormalized(gameState) {
+      calls.push(`calculateEraProgressFromNormalized:${gameState.revision}`);
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  registerPlayerRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    authService,
+    repository,
+    gameStateService,
+    logService: { getPlayerLogs: () => [] },
+  });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/player/login');
+
+  const res = invokeRoute(route, {
+    body: { username: playerId, password: '123456' },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.gameState.playerId, playerId);
+  assert.equal(res.payload.gameState.revision, 2);
+  assert.equal(saveCount, 2);
+  assert.deepEqual(calls, [
+    `login:${playerId}:123456`,
+    `find:${playerId}`,
+    `save:${playerId}:1`,
+    `login:${playerId}:123456`,
+    `find:${playerId}`,
+    `save:${playerId}:2`,
+    'normalizeState:2',
+    `projection:${playerId}`,
+    'getClientGameStateFromNormalized:2',
+    'calculateEraProgressFromNormalized:2',
+  ]);
+});
+
 test('login route passes spawn lifecycle creation into auth service for missing states', () => {
   const { app, routes } = createAppHarness();
   const createdState = createNormalizedRouteState('projection-login-spawn-test');

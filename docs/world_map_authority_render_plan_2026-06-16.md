@@ -645,6 +645,56 @@ Manual/browser test target:
 - Pass condition for this step only: the step-25 conquest action no longer returns HTTP 500; the browser evidence directory must contain screenshots and `summary.json`.
 - After this passes, continue Step 17 free manual march/return-home verification as a separate target.
 
+Implementation and verification record:
+
+- Commit `402048df285641293c513bf9b739bb46f216a08a` was deployed on the development server.
+- Local focused backend tests passed: 41 pass.
+- Local and remote architecture smoke passed: 925 pass.
+- Public `/api/version` confirmed `deployedCommit = 402048df285641293c513bf9b739bb46f216a08a`.
+- The first real online H5 rerun after deployment did not reach the browser/tutorial action stage because `POST /api/player/login` returned HTTP 500.
+- Server PM2 logs showed this new earlier blocker was also `GAME_STATE_REVISION_CONFLICT`, now from `backend/routes/playerRoutes.js` during login save.
+- Therefore Step 17A fixed the game-action boundary but did not yet unblock the full browser test chain.
+
+### Step 17B - Online Login Precondition Blocker: Login Revision Conflict
+
+Evidence:
+
+- Real online H5 playtest command:
+  `npm.cmd run playtest:online-tutorial`
+- Output directory requested: `tmp/verification/online-action-revision-retry/`.
+- The run failed before browser screenshots because the first `POST http://47.116.32.216:3000/api/player/login` returned HTTP 500.
+- Dev-server PM2 logs under user `www` showed `Error: Game state revision conflict` at `backend/routes/playerRoutes.js` during `AuthService.loginPlayer`.
+- This is another gateway/worker concurrent-save boundary, not a frontend visual/rendering result.
+
+Scope:
+
+- Backend `/api/player/login` route resilience only.
+- Do not change account whitelist rules, token generation, reset lifecycle, spawn assignment, game-action routing, world generation, camera, march, or frontend code in this step.
+- Keep the auth service behavior stable; the route owns retrying the request because it owns the repository callbacks.
+
+Implementation rule:
+
+- Call `authService.loginPlayer` once with the same repository callbacks as before.
+- If `repository.save` throws `GAME_STATE_REVISION_CONFLICT`, retry the same login once so it reloads the latest player state.
+- If the retry also conflicts, return HTTP 409 with `retryable: true` instead of HTTP 500.
+- Assemble the response from the successfully returned normalized state exactly as before.
+
+Automated test target:
+
+```bash
+node --check backend/routes/playerRoutes.js
+node --test backend/tests/GameStateProjectionArchitecture.test.js backend/tests/AuthServiceBotAccounts.test.js backend/tests/GameRoutesTutorial.test.js
+npm.cmd run test:architecture
+```
+
+Manual/browser test target:
+
+- Deploy this narrow login retry fix to the development server.
+- Confirm public `/api/version` reports the new commit.
+- Rerun the real online H5 tutorial automation with `codexqa / 123456`.
+- Pass condition for this step only: login/reset/tutorial automation gets past `POST /api/player/login` without HTTP 500 and produces browser screenshots/`summary.json`.
+- After this passes, re-check Step 17A conquest and then continue the separate Step 17 free manual march/return-home target.
+
 ## Non-Goals
 
 - No frontend redesign.

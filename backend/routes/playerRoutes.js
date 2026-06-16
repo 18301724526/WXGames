@@ -24,6 +24,43 @@ function registerPlayerRoutes(app, deps) {
     return repository.getClientProjectionForPlayer?.(playerId) || {};
   }
 
+  function isGameStateRevisionConflict(error = {}) {
+    return error?.code === 'GAME_STATE_REVISION_CONFLICT';
+  }
+
+  function buildRevisionConflictPayload(error = {}) {
+    return {
+      success: false,
+      error: 'GAME_STATE_REVISION_CONFLICT',
+      message: 'Game state changed while processing this request. Please retry.',
+      retryable: true,
+      expectedRevision: error.expectedRevision ?? null,
+      actualRevision: error.actualRevision ?? null,
+    };
+  }
+
+  function loginPlayerWithRevisionRetry(username, password) {
+    const loginOnce = () => authService.loginPlayer(
+      username,
+      password,
+      (playerId) => repository.findByPlayerId(playerId),
+      (gameState, offlineSeconds) => gameStateService.calculateOfflineIncome(gameState, offlineSeconds),
+      (gameState) => repository.save(gameState),
+      createInitialStateForPlayer,
+    );
+    try {
+      return { result: loginOnce(), retried: false };
+    } catch (error) {
+      if (!isGameStateRevisionConflict(error)) throw error;
+      try {
+        return { result: loginOnce(), retried: true };
+      } catch (retryError) {
+        if (!isGameStateRevisionConflict(retryError)) throw retryError;
+        return { conflictPayload: buildRevisionConflictPayload(retryError) };
+      }
+    }
+  }
+
   app.post('/api/player/register', (req, res) => {
     return res.status(403).json({
       error: 'REGISTER_DISABLED',
@@ -36,14 +73,11 @@ function registerPlayerRoutes(app, deps) {
     if (!username || !password) {
       return res.status(400).json({ error: 'CREDENTIALS_REQUIRED', message: '用户名和密码必填' });
     }
-    const result = authService.loginPlayer(
-      username,
-      password,
-      (playerId) => repository.findByPlayerId(playerId),
-      (gameState, offlineSeconds) => gameStateService.calculateOfflineIncome(gameState, offlineSeconds),
-      (gameState) => repository.save(gameState),
-      createInitialStateForPlayer,
-    );
+    const loginAttempt = loginPlayerWithRevisionRetry(username, password);
+    if (loginAttempt.conflictPayload) {
+      return res.status(409).json(loginAttempt.conflictPayload);
+    }
+    const { result } = loginAttempt;
     if (result.error) {
       return res.status(403).json({ error: result.error, message: result.message || result.error });
     }
