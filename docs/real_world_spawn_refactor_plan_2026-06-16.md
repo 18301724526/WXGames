@@ -351,6 +351,23 @@ Manual public-H5 canary target after the write step:
   - Before any batch write, the operator must accept the dry-run target list and confirmation string.
   - After any batch write, each repaired account must receive public-H5 readonly proof with `scripts/playtest-online-spawn-readonly.js`.
 
+## Batch Write Verification Blocker
+
+- Probe evidence:
+  `tmp/verification/legacy-candidate-login-probe/2026-06-16T04-41-22-262Z/summary.json`
+- Dry-run selected:
+  - `p_1779040192120_lj1uz2hji`
+  - `p_1779037160673_bkxrcf8gd`
+- Public API login probe:
+  - both candidates returned HTTP `403`
+  - error code `ACCOUNT_NOT_ALLOWED`
+- Interpretation:
+  - The remaining legacy accounts are historical `p_...` player ids, not current whitelist login accounts.
+  - They cannot currently be verified by the public-H5 browser flow after a write.
+- Requirement before any confirmed batch write:
+  - either provide a dev-only explicit-player verification login route for these historical accounts, or
+  - choose only accounts already reachable through public-H5 auth.
+
 ## Target Architecture
 
 ### Spawn Domain

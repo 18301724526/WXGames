@@ -1595,6 +1595,37 @@ Manual/browser test target:
 - Review the dry-run summary and confirm it selected only two accounts and performed no writes.
 - The next write step must use a very small confirmed batch and then public-H5 readonly proof for each repaired account.
 
+### Step 29 - Legacy Candidate Public-H5 Login Probe
+
+Reason:
+
+- Step 28 selected two historical `p_...` players.
+- Public-H5 proof requires an account that can actually enter the H5 client.
+- The current auth whitelist only includes `test1`, `test2`, `test3`, `codexqa`, plus explicitly enabled bot accounts.
+
+Probe:
+
+- API:
+  `http://47.116.32.216:3000/api/player/login`
+- Candidates:
+  - `p_1779040192120_lj1uz2hji`
+  - `p_1779037160673_bkxrcf8gd`
+- Evidence:
+  `tmp/verification/legacy-candidate-login-probe/2026-06-16T04-41-22-262Z/summary.json`
+
+Result:
+
+- Both candidates returned HTTP `403`.
+- Error code: `ACCOUNT_NOT_ALLOWED`.
+- They cannot currently be used for public-H5 browser verification.
+
+Decision:
+
+- Do not run a confirmed batch write on these candidates yet.
+- Before a write, choose one verification route:
+  - add a dev-only explicit historical-player verification login path, or
+  - restrict the confirmed write to accounts already reachable through public-H5 auth.
+
 ## Non-Goals
 
 - No frontend redesign.
