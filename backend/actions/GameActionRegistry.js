@@ -126,6 +126,7 @@ function createGameActionRegistry(overrides = {}) {
       cityId: body.cityId,
       slot: body.slot,
       memberIds: body.memberIds,
+      soldierAssignments: body.soldierAssignments,
     })
   ));
   register('research', ({ gameState, body }) => (

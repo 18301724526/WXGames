@@ -7,36 +7,15 @@ const repoRoot = path.resolve(__dirname, '..');
 const docsRoot = path.join(repoRoot, 'docs');
 
 const officialDocPaths = [
+  'docs/current_product_design_2026-06-09.md',
   'docs/current_gameplay_design_2026-06-09.md',
   'docs/current_technical_architecture_2026-06-09.md',
-  'docs/current_product_design_2026-06-09.md',
   'docs/long_term_architecture_refactor_plan_2026-06-08.md',
   'docs/architecture_module_responsibility_index_2026-06-08.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
-  'docs/6月11日重构与问题交接.md',
-  'docs/6月15日交接文档.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
-];
-
-const obsoleteDocPatterns = [
-  /_v\d/i,
-  /v\d+\.\d+/i,
-  /handoff/i,
-  /release_notes/i,
-  /test_cases/i,
-  /implementation_steps/i,
-  /architecture_refactor_plan_2026-06-04/i,
-  /world_map_runtime_architecture/i,
-  /完整新手强引导/,
-  /统一Canvas/,
-  /设计_v/,
-  /任务_v/,
-  /策划案_v/,
-  /路线图_v/,
-  /调优补充_v/,
-  /交接文档/,
-  /素材清理记录/,
+  'docs/config_registry_snapshot_2026-06-11.json',
 ];
 
 const requiredText = {
@@ -83,28 +62,22 @@ const requiredText = {
     'Large-Studio Parity Definition',
     'scripts/verify-production-security-config.js',
   ],
-  'docs/6月11日重构与问题交接.md': [
-    'P12-007',
-    'GameplayConfigRuntime',
-    'server hook anomaly',
-    'CONFIG_RELEASE_GATE=required',
-    'scripts/verify-production-security-config.js',
-    '08639bab086d5d87ebb7445a043ffb72cc88754c',
-    '613/613',
-  ],
-  'docs/6月15日交接文档.md': [
-    'WorldMarchTrace',
-    'bc0be98ed26563493f771a9187597d4d420614bd',
-    'Harden world march frontend trace identity',
-    'node --test frontend/js/debug/WorldMarchTrace.test.js',
-    'git push private main',
-  ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',
     'full wrapping torus',
     'CanvasLayerContract',
     'single input surface',
     'ServerTimelineSnapshot',
+  ],
+  'docs/stable_block_manifest_2026-06-09.json': [
+    'Machine-readable stable block manifest',
+    'promotionEvidence',
+    'candidatePromotionQueue',
+  ],
+  'docs/config_registry_snapshot_2026-06-11.json': [
+    'config-pipeline-snapshot-v1',
+    '"registryCount": 7',
+    '"contentHash"',
   ],
 };
 
@@ -144,13 +117,12 @@ function assertNoReplacementChars() {
   }
 }
 
-function assertNoObsoleteDocs() {
+function assertOnlyAllowedDocs() {
   const official = new Set(officialDocPaths);
-  const obsolete = collectDocs().filter((relativePath) => (
-    !official.has(relativePath)
-    && obsoleteDocPatterns.some((pattern) => pattern.test(path.basename(relativePath)))
-  ));
-  assert(obsolete.length === 0, `Obsolete/non-authoritative docs remain:\n${obsolete.join('\n')}`);
+  const unexpected = collectDocs()
+    .filter((relativePath) => !official.has(relativePath))
+    .sort();
+  assert(unexpected.length === 0, `Non-authoritative docs remain outside the normalized authority set:\n${unexpected.join('\n')}`);
 }
 
 function collectFiles(directory, result = []) {
@@ -208,7 +180,7 @@ function assertCanvasBusinessLayerHasNoDomUi() {
 assertOfficialDocsExist();
 assertRequiredText();
 assertNoReplacementChars();
-assertNoObsoleteDocs();
+assertOnlyAllowedDocs();
 assertCanvasBusinessLayerHasNoDomUi();
 
 console.log('[official-docs] passed');

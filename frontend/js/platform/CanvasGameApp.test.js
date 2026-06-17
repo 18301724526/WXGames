@@ -66,14 +66,16 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
       cityId: 'capital',
       slot: 1,
       memberIds: ['fp-scout'],
+      soldierAssignments: { 'fp-scout': 120 },
+      soldierDraftAssignments: { 'fp-scout': 999 },
       page: 0,
       saving: false,
     },
     canvasShell: {},
     getGameApi() {
       return {
-        async setArmyFormation(cityId, slot, memberIds) {
-          calls.push(['setArmyFormation', cityId, slot, memberIds]);
+        async setArmyFormation(cityId, slot, memberIds, soldierAssignments) {
+          calls.push(['setArmyFormation', cityId, slot, memberIds, soldierAssignments]);
           return {
             message: 'saved',
             tutorial: { completed: false, currentStep: 22 },
@@ -111,11 +113,69 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
   assert.equal(await host.saveArmyFormation(), true);
   assert.deepEqual(calls, [
     ['renderCanvasSurface', 'buildings'],
-    ['setArmyFormation', 'capital', 1, ['fp-scout']],
+    ['setArmyFormation', 'capital', 1, ['fp-scout'], { 'fp-scout': 120 }],
     ['applyApiState', 22],
     ['onArmyFormationSaved', 22],
     ['showFloatingText', 'saved'],
     ['log', 'saved'],
+  ]);
+});
+
+test('autoReplenishArmyFormation drafts soldiers and confirm applies them to the saved formation payload', async () => {
+  class Host {}
+  CanvasGameAppCommands.install(Host);
+  const calls = [];
+  const host = new Host();
+  Object.assign(host, {
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 600,
+        formations: {
+          capital: [{
+            slot: 1,
+            memberIds: ['hero-1', 'hero-2'],
+            maxSoldiersPerMember: 1000,
+            soldierAssignments: { 'hero-1': 100, 'hero-2': 0 },
+          }],
+        },
+      },
+    },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['hero-1', 'hero-2'],
+      soldierAssignments: { 'hero-1': 100, 'hero-2': 0 },
+      soldierDraftAssignments: { 'hero-1': 100, 'hero-2': 0 },
+      saving: false,
+    },
+    getGameApi() {
+      return {
+        async setArmyFormation(cityId, slot, memberIds, soldierAssignments) {
+          calls.push(['setArmyFormation', cityId, slot, memberIds, soldierAssignments]);
+          return { message: 'saved' };
+        },
+      };
+    },
+    applyApiState() {},
+    renderCanvasSurface() {},
+    showFloatingText(message) { calls.push(['showFloatingText', message]); },
+    log(message) { calls.push(['log', message]); },
+  });
+
+  assert.equal(host.autoReplenishArmyFormation(), true);
+  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { 'hero-1': 100, 'hero-2': 0 });
+  assert.deepEqual(host.armyFormationEditor.soldierDraftAssignments, { 'hero-1': 350, 'hero-2': 350 });
+  assert.equal(host.confirmArmyFormationSoldiers(), true);
+  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { 'hero-1': 350, 'hero-2': 350 });
+  assert.equal(await host.saveArmyFormation(), true);
+  assert.deepEqual(calls.find((call) => call[0] === 'setArmyFormation'), [
+    'setArmyFormation',
+    'capital',
+    1,
+    ['hero-1', 'hero-2'],
+    { 'hero-1': 350, 'hero-2': 350 },
   ]);
 });
 

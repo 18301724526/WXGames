@@ -1,6 +1,6 @@
 {
   "schema": "config-pipeline-snapshot-v1",
-  "generatedAt": "2026-06-12T23:31:51.525Z",
+  "generatedAt": "2026-06-17T20:16:54.434Z",
   "registryCount": 7,
   "validation": {
     "success": true,
@@ -32,8 +32,8 @@
       "id": "building-config",
       "schema": "building-config-registry",
       "schemaVersion": 1,
-      "version": "2.3",
-      "contentHash": "607bfe628e36",
+      "version": "2.4",
+      "contentHash": "ca4257cc0d2d",
       "entryCount": 10,
       "entryIds": [
         "academy",

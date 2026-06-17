@@ -7,6 +7,7 @@ const {
   toTimestamp,
   toInteger,
 } = require('./WorldExplorerShared');
+const FormationStrengthService = require('../military/FormationStrengthService');
 
 function normalizeCoord(source = {}, fallback = {}) {
   const q = toInteger(source?.q ?? source?.x, fallback.q ?? 0);
@@ -172,6 +173,7 @@ function getMissionDto(mission = {}, now = new Date()) {
     plannedTiles: (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).map(getPlannedTileDto),
     plannedSites: (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).map(getPlannedSiteDto),
     formation: clone(mission.formation || {}),
+    formationSnapshot: clone(FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot)),
     position,
     revealedTileIds,
     stepDurationSeconds: Math.floor(stepDurationMs / 1000),

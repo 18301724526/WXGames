@@ -28,6 +28,16 @@ function createMission(overrides = {}) {
       site: { id: 'site_2_0', x: 2, y: 0, owner: 'neutral' },
     }],
     formation: { cityId: 'capital', slot: 1, memberIds: ['fp-1'] },
+    formationSnapshot: {
+      schema: 'formation-snapshot-v1',
+      sourceCityId: 'capital',
+      slot: 1,
+      members: [{ personId: 'fp-1', soldiersCommitted: 120, soldiersRemaining: 90 }],
+      soldiersCommitted: 120,
+      soldiersRemaining: 90,
+      lockedAt: '2026-06-06T00:00:00.000Z',
+      settledAt: null,
+    },
     revealedTileIds: ['tile_1_0'],
     stepDurationMs: 10000,
     startedAt: '2026-06-06T00:00:00.000Z',
@@ -47,6 +57,8 @@ test('WorldExplorerDtoMapper maps a mission into the public API shape', () => {
   assert.equal(dto.stepDurationSeconds, 10);
   assert.deepEqual(dto.route.map((step) => step.tileId), ['tile_1_0', 'tile_2_0']);
   assert.equal(dto.plannedSites[0].site.id, 'site_2_0');
+  assert.equal(dto.formationSnapshot.soldiersCommitted, 120);
+  assert.equal(dto.formationSnapshot.soldiersRemaining, 90);
 });
 
 test('WorldExplorerDtoMapper derives public tile identity from coordinates', () => {

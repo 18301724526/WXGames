@@ -3,6 +3,7 @@ const {
   EXPLORE_STEP_DURATION_MS,
   toInteger,
 } = require('./WorldExplorerShared');
+const FormationStrengthService = require('../military/FormationStrengthService');
 
 function normalizeRouteStep(rawStep, index = 0) {
   if (!rawStep || typeof rawStep !== 'object') return null;
@@ -209,6 +210,7 @@ function normalizeMission(rawMission) {
         slot: Math.max(1, toInteger(rawMission.formationSlot, 1)),
         memberIds: [],
       },
+    formationSnapshot: FormationStrengthService.normalizeFormationSnapshot(rawMission.formationSnapshot),
     startedAt: rawMission.startedAt || new Date().toISOString(),
     nextStepAt: status === 'idle' ? null : rawMission.nextStepAt || rawMission.startedAt || new Date().toISOString(),
     completesAt: rawMission.completesAt || rawMission.startedAt || new Date().toISOString(),

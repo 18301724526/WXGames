@@ -151,7 +151,7 @@
         if (typeof target?.closeArmyFormationEditor === 'function') {
           return target.closeArmyFormationEditor(action) !== false;
         }
-        if (this.host && typeof this.host === 'object') this.host.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+        if (this.host && typeof this.host === 'object') this.host.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
         return this.afterHandled(action);
       },
 
@@ -169,6 +169,42 @@
         const target = game && game !== this.host ? game : this.host;
         if (typeof target?.changeArmyFormationPage === 'function') {
           return target.changeArmyFormationPage(action) !== false;
+        }
+        return false;
+      },
+
+      handle_changeArmyFormationSoldiers(action) {
+        const game = this.getGameHost();
+        const target = game && game !== this.host ? game : this.host;
+        if (typeof target?.changeArmyFormationSoldiers === 'function') {
+          return target.changeArmyFormationSoldiers(action) !== false;
+        }
+        return false;
+      },
+
+      handle_requestArmyFormationSoldierInput(action) {
+        const game = this.getGameHost();
+        const target = game && game !== this.host ? game : this.host;
+        if (typeof target?.requestArmyFormationSoldierInput === 'function') {
+          return this.finalize(target.requestArmyFormationSoldierInput(action));
+        }
+        return false;
+      },
+
+      handle_autoReplenishArmyFormation(action) {
+        const game = this.getGameHost();
+        const target = game && game !== this.host ? game : this.host;
+        if (typeof target?.autoReplenishArmyFormation === 'function') {
+          return target.autoReplenishArmyFormation(action) !== false;
+        }
+        return false;
+      },
+
+      handle_confirmArmyFormationSoldiers(action) {
+        const game = this.getGameHost();
+        const target = game && game !== this.host ? game : this.host;
+        if (typeof target?.confirmArmyFormationSoldiers === 'function') {
+          return target.confirmArmyFormationSoldiers(action) !== false;
         }
         return false;
       },

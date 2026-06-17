@@ -480,6 +480,9 @@
       arrived: arrivalKind !== ARRIVAL_NONE,
       actorId: [STATUS_ACTIVE, STATUS_IDLE].includes(status) && (route.length || status === STATUS_IDLE) ? id : '',
       formation: normalizeFormation(source.formation || {}, origin),
+      formationSnapshot: source.formationSnapshot && typeof source.formationSnapshot === 'object'
+        ? JSON.parse(JSON.stringify(source.formationSnapshot))
+        : null,
     };
   }
 
@@ -501,6 +504,7 @@
       renderReadyTileIds: Array.isArray(row.renderReadyTileIds) ? row.renderReadyTileIds : [],
       route: row.route,
       formation: row.formation,
+      formationSnapshot: row.formationSnapshot || null,
       progress: row.progress,
       remainingSeconds: row.remainingSeconds,
       travelRemainingSeconds: row.travelRemainingSeconds,

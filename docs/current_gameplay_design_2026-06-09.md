@@ -118,12 +118,24 @@
 - `WorldExplorerService` and split modules own world-march mission planning, route progress, discovery, and DTO mapping.
 - 前端 `WorldMarchProgressSnapshot`, `WorldActorProjection`, `WorldMarchGeometry`, and `WorldMarchSystem` own progress facts, visible actor projection, geometry, and rendering-facing march state.
 
-稳定规则：
+Implemented: March Formation Strength
 
-- 前端不提交最终坐标。
-- 停止移动应提交停止意图，后端根据服务器时间线计算当前位置。
-- 玩家离线时世界继续推进，保护规则由后端负责。
-- 前端表现按后端确认后的时间线插值。
+- The formation panel is now a standing-troop editor, not a temporary expedition soldier input. It separates selected members, confirmed per-member soldier assignments, and an unconfirmed replenishment draft.
+- Each selected hero has troop controls under the portrait: a slider hit area and a numeric input hit area. Manual input and auto replenish only change the draft; confirm replenishment promotes the draft into the formation save payload.
+- First-version cap is config-driven by `formationMemberSoldierCap: 1000` per member. Hero level, command, tech, building, and troop-type growth must extend that config contract instead of hardcoding UI limits.
+- Formation troops are standing troops assigned to the formation and do not count against city reserve capacity. After assigning reserve soldiers into a formation, the city can recruit new reserve soldiers up to `soldierCap` again.
+- Saving a formation with higher assigned troops deducts the delta from the current city reserve and charges configured recruitment resources. If reserve soldiers or resources are insufficient, the backend rejects the save.
+- Saving a formation with lower assigned troops does not return soldiers to city reserve. It refunds configured resources through `soldierRefundRatio`; battle losses do not refund resources.
+- Reallocating the same total troop count inside one formation does not deduct soldiers and does not refund resources.
+- Starting a world march freezes the saved standing formation into `mission.formationSnapshot` with `soldiersCommitted` and `soldiersRemaining`; AI, battle, and raid systems must consume that snapshot, not live city reserve soldiers.
+- A formation away from home is backend-locked from editing while an active or unsettled idle march snapshot exists. Returning home settles surviving snapshot troops back into the saved formation.
+
+Stable rules:
+
+- Frontend does not submit final coordinates.
+- Stop movement submits an intent; backend derives the current tile from the server timeline.
+- Player logout does not cancel an already-started server-side world action.
+- Frontend rendering interpolates only from backend-confirmed timeline facts.
 
 ## 8. 阵营交互 / Diplomacy Interaction
 
@@ -132,6 +144,17 @@
 - 敌对势力直接拦截或攻击。
 - 中立势力弹提示或请求确认。
 - 同盟势力不阻挡、不拦截。
+
+已确认待实现设计：共享世界 AI / Confirmed Pending Design: Shared World AI
+
+- AI 世界状态是全服共享权威，不是每个玩家存档中的私有野地状态。
+- 第一版 AI 必须主动攻击玩家，包括城市、已占领据点和正在大地图行军的部队。
+- AI 只对当前在线玩家发起新的攻击。若玩家在 AI 攻击已开始后下线，本轮攻击继续结算完成；结算后该玩家不再被后续 AI 行为选为目标，直到重新在线。
+- AI 运行范围只覆盖玩家已生成、已可见或近期活跃过的附近世界区域；无玩家生成的地图区域不凭空运行 AI。
+- 山贼营寨、部落、遗迹守军和城邦都应作为 AI faction/site 的具体策略类型接入统一 AI，不做孤立的 `BanditService`。
+- AI 袭扰必须造成实际压力：城市/据点袭扰扣除资源和城市预备兵或驻防兵；行军袭扰扣除 `formationSnapshot.soldiersRemaining`。
+- AI 战斗和袭扰结果以后端结算为准，并生成玩家可读的 incident/report。
+- AI 不能绕过世界地图、行军、城市、军队和战斗的服务边界直接改前端 DTO。
 
 暂不封死：
 

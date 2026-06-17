@@ -1,6 +1,7 @@
 ﻿const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 const TerritoryService = require('./TerritoryService');
+const FormationStrengthService = require('./military/FormationStrengthService');
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
@@ -29,6 +30,10 @@ function getBarracksLevel(buildings) {
 
 function getBarracksMilitaryConfig() {
   return BuildingConfig.getBuilding('barracks')?.military || {};
+}
+
+function getFormationStrengthPolicy() {
+  return FormationStrengthService.normalizePolicy(getBarracksMilitaryConfig());
 }
 
 function getValueByLevel(values, level, fallback) {
@@ -131,15 +136,20 @@ function normalizeFormationMemberIds(memberIds, validPersonIds = null) {
 }
 
 function createEmptyFormations() {
+  const strengthPolicy = getFormationStrengthPolicy();
   return Array.from({ length: MAX_FORMATION_SLOTS }, (_, index) => ({
     slot: index + 1,
     name: FORMATION_NAMES[index] || `Formation ${index + 1}`,
     memberIds: [],
     maxMembers: MAX_FORMATION_MEMBERS,
+    maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
+    soldierAssignments: {},
+    soldiersAssigned: 0,
   }));
 }
 
 function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
+  const strengthPolicy = getFormationStrengthPolicy();
   const source = Array.isArray(rawCityFormations)
     ? rawCityFormations
     : Object.values(rawCityFormations && typeof rawCityFormations === 'object' ? rawCityFormations : {});
@@ -148,11 +158,19 @@ function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
     const raw = rawFormation && typeof rawFormation === 'object' ? rawFormation : {};
     const slot = normalizeFormationSlot(raw.slot || index + 1);
     if (!slot) return;
+    const memberIds = normalizeFormationMemberIds(raw.memberIds || raw.members, validPersonIds);
+    const strength = FormationStrengthService.normalizeFormationStrength({
+      ...raw,
+      memberIds,
+    }, strengthPolicy);
     bySlot.set(slot, {
       slot,
       name: String(raw.name || FORMATION_NAMES[slot - 1] || `Formation ${slot}`).trim(),
-      memberIds: normalizeFormationMemberIds(raw.memberIds || raw.members, validPersonIds),
+      memberIds,
       maxMembers: MAX_FORMATION_MEMBERS,
+      maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
+      soldierAssignments: strength.soldierAssignments,
+      soldiersAssigned: strength.soldiersAssigned,
     });
   });
   return createEmptyFormations().map((fallback) => ({
@@ -204,6 +222,64 @@ function normalizeMilitaryState(rawMilitary, gameState) {
   };
 }
 
+function getCityForMilitaryUpdate(gameState = {}, cityId = 'capital') {
+  return gameState.cities?.[cityId] || null;
+}
+
+function getCityMilitary(gameState = {}, cityId = 'capital') {
+  const city = getCityForMilitaryUpdate(gameState, cityId);
+  if (city?.military) return city.military;
+  return gameState.military || {};
+}
+
+function getCityResources(gameState = {}, cityId = 'capital') {
+  const city = getCityForMilitaryUpdate(gameState, cityId);
+  if (city?.resources) return city.resources;
+  return gameState.resources || {};
+}
+
+function setCityMilitary(gameState = {}, cityId = 'capital', military = {}) {
+  if (gameState.cities?.[cityId]) gameState.cities[cityId].military = military;
+  if (cityId === (gameState.activeCityId || 'capital') || !gameState.military) gameState.military = military;
+  return military;
+}
+
+function setCityResources(gameState = {}, cityId = 'capital', resources = {}) {
+  if (gameState.cities?.[cityId]) gameState.cities[cityId].resources = resources;
+  if (cityId === (gameState.activeCityId || 'capital') || !gameState.resources) gameState.resources = resources;
+  return resources;
+}
+
+function applyResourceDelta(resources = {}, delta = {}) {
+  const next = { ...(resources || {}) };
+  Object.entries(delta || {}).forEach(([key, value]) => {
+    const amount = Number(value) || 0;
+    if (!key || amount === 0) return;
+    next[key] = Math.max(0, Number(next[key] || 0) + amount);
+    if (key === 'iron') next.metal = next.iron;
+    if (key === 'metal') next.iron = next.metal;
+  });
+  return next;
+}
+
+function createNegativeCost(cost = {}) {
+  return Object.fromEntries(Object.entries(cost || {}).map(([key, value]) => [key, -Math.max(0, Number(value) || 0)]));
+}
+
+function createMilitaryContext(gameState = {}, cityId = 'capital', military = null) {
+  return {
+    ...(gameState || {}),
+    activeCityId: cityId,
+    buildings: gameState.cities?.[cityId]?.buildings || gameState.buildings,
+    military: military || getCityMilitary(gameState, cityId),
+  };
+}
+
+function isFormationLocked(gameState = {}, cityId = 'capital', slot = 1) {
+  return (Array.isArray(gameState.exploreMissions) ? gameState.exploreMissions : [])
+    .some((mission) => FormationStrengthService.isFormationLockedByMission(mission, cityId, slot));
+}
+
 function setArmyFormation(gameState, payload = {}) {
   const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
   const slot = normalizeFormationSlot(payload.slot);
@@ -213,29 +289,84 @@ function setArmyFormation(gameState, payload = {}) {
   if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
     return { success: false, error: 'CITY_NOT_FOUND', message: 'City not found' };
   }
-  gameState.military = normalizeMilitaryState(gameState.military, gameState);
+  if (isFormationLocked(gameState, cityId, slot)) {
+    return { success: false, error: 'FORMATION_LOCKED_BY_MISSION', message: 'Formation is away from the city.' };
+  }
+  const sourceMilitary = getCityMilitary(gameState, cityId);
+  const context = createMilitaryContext(gameState, cityId, sourceMilitary);
+  const normalizedMilitary = normalizeMilitaryState(sourceMilitary, context);
+  setCityMilitary(gameState, cityId, normalizedMilitary);
   const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
     .map((person) => String(person?.id || '').trim())
     .filter(Boolean));
   const memberIds = normalizeFormationMemberIds(payload.memberIds || payload.members, validPersonIds);
+  const strengthPolicy = getFormationStrengthPolicy();
+  const requestedSource = payload.soldierAssignments || payload.memberSoldiers || {};
+  const assignmentValidation = FormationStrengthService.validateRequestedAssignments(
+    requestedSource,
+    memberIds,
+    strengthPolicy,
+  );
+  if (!assignmentValidation.success) {
+    return {
+      success: false,
+      error: assignmentValidation.error,
+      message: assignmentValidation.error === 'FORMATION_SOLDIER_CAP_EXCEEDED'
+        ? 'Formation soldier cap exceeded'
+        : 'Formation soldier assignment invalid',
+      personId: assignmentValidation.personId,
+      cap: assignmentValidation.cap,
+    };
+  }
   const formations = {
-    ...(gameState.military.formations || {}),
-    [cityId]: normalizeCityFormations(gameState.military.formations?.[cityId], validPersonIds),
+    ...(normalizedMilitary.formations || {}),
+    [cityId]: normalizeCityFormations(normalizedMilitary.formations?.[cityId], validPersonIds),
   };
+  const previousFormation = formations[cityId][slot - 1] || {};
+  const requestedAssignments = FormationStrengthService.normalizeSoldierAssignments(
+    payload.soldierAssignments || payload.memberSoldiers || previousFormation.soldierAssignments || {},
+    memberIds,
+    strengthPolicy,
+  );
+  const previousAssigned = FormationStrengthService.sumAssignments(previousFormation.soldierAssignments || {});
+  const nextAssigned = FormationStrengthService.sumAssignments(requestedAssignments);
+  const reserveDelta = nextAssigned - previousAssigned;
+  const cityResources = getCityResources(gameState, cityId);
+  const resourceCost = reserveDelta > 0
+    ? FormationStrengthService.scaleResourceCost(strengthPolicy.recruitmentCostPerSoldier, reserveDelta)
+    : {};
+  if (reserveDelta > normalizedMilitary.soldiers) {
+    return { success: false, error: 'INSUFFICIENT_CITY_SOLDIERS', message: 'City reserve soldiers are insufficient' };
+  }
+  if (reserveDelta > 0 && !FormationStrengthService.hasEnoughResources(cityResources, resourceCost)) {
+    return { success: false, error: 'INSUFFICIENT_RECRUITMENT_RESOURCES', message: 'Recruitment resources are insufficient' };
+  }
+  const refund = reserveDelta < 0
+    ? FormationStrengthService.scaleResourceCost(
+      strengthPolicy.recruitmentCostPerSoldier,
+      Math.abs(reserveDelta),
+      strengthPolicy.soldierRefundRatio,
+      { round: 'floor' },
+    )
+    : {};
   formations[cityId][slot - 1] = {
     ...formations[cityId][slot - 1],
     slot,
     name: FORMATION_NAMES[slot - 1] || `Formation ${slot}`,
     memberIds,
     maxMembers: MAX_FORMATION_MEMBERS,
+    maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
+    soldierAssignments: requestedAssignments,
+    soldiersAssigned: nextAssigned,
   };
-  gameState.military = normalizeMilitaryState({
-    ...gameState.military,
+  const nextMilitary = normalizeMilitaryState({
+    ...normalizedMilitary,
+    soldiers: normalizedMilitary.soldiers - Math.max(0, reserveDelta),
     formations,
-  }, gameState);
-  if (gameState.cities?.[cityId]) {
-    gameState.cities[cityId].military = gameState.military;
-  }
+  }, createMilitaryContext(gameState, cityId, normalizedMilitary));
+  setCityMilitary(gameState, cityId, nextMilitary);
+  if (reserveDelta > 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, createNegativeCost(resourceCost)));
+  if (reserveDelta < 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
   const scoutPersonId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
   const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
     ? advanceTutorialStep(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
@@ -244,7 +375,10 @@ function setArmyFormation(gameState, payload = {}) {
   return {
     success: true,
     message: `${FORMATION_NAMES[slot - 1] || `Formation ${slot}`} saved`,
-    formation: gameState.military.formations?.[cityId]?.[slot - 1] || null,
+    formation: getCityMilitary(gameState, cityId).formations?.[cityId]?.[slot - 1] || null,
+    reserveDelta,
+    resourceCost,
+    refund,
     tutorial,
   };
 }
@@ -255,6 +389,9 @@ function advanceTraining(gameState, deltaSeconds = 0) {
   let soldiers = current.soldiers;
   let trainingProgress = current.trainingProgress;
   let trained = 0;
+  const strengthPolicy = getFormationStrengthPolicy();
+  const cityId = gameState.activeCityId || 'capital';
+  const cityResources = getCityResources(gameState, cityId);
 
   if (
     elapsed > 0
@@ -265,23 +402,83 @@ function advanceTraining(gameState, deltaSeconds = 0) {
   ) {
     const totalProgress = trainingProgress + elapsed;
     const possibleBatches = Math.floor(totalProgress / current.trainingIntervalSeconds);
-    trained = Math.min(possibleBatches * current.trainingBatchSize, current.soldierCap - soldiers);
+    const possibleTrained = Math.min(possibleBatches * current.trainingBatchSize, current.soldierCap - soldiers);
+    trained = FormationStrengthService.getAffordableSoldierCount(
+      cityResources,
+      strengthPolicy.recruitmentCostPerSoldier,
+      possibleTrained,
+    );
     soldiers += trained;
-    trainingProgress = soldiers >= current.soldierCap
+    if (trained > 0) {
+      const resourceCost = FormationStrengthService.scaleResourceCost(strengthPolicy.recruitmentCostPerSoldier, trained);
+      setCityResources(gameState, cityId, applyResourceDelta(cityResources, createNegativeCost(resourceCost)));
+    }
+    trainingProgress = trained <= 0 && possibleTrained > 0
+      ? current.trainingIntervalSeconds
+      : soldiers >= current.soldierCap
       ? 0
       : totalProgress - possibleBatches * current.trainingIntervalSeconds;
   }
 
-  gameState.military = normalizeMilitaryState({ ...current, soldiers, trainingProgress }, gameState);
-  return { trained, military: gameState.military };
+  const nextMilitary = normalizeMilitaryState({ ...current, soldiers, trainingProgress }, gameState);
+  setCityMilitary(gameState, cityId, nextMilitary);
+  return { trained, military: nextMilitary };
+}
+
+function settleFormationSnapshot(gameState, snapshot = {}, options = {}) {
+  const normalizedSnapshot = FormationStrengthService.normalizeFormationSnapshot(snapshot);
+  if (!normalizedSnapshot || FormationStrengthService.isSnapshotSettled(snapshot)) {
+    return { success: false, error: 'FORMATION_SNAPSHOT_INVALID' };
+  }
+  const cityId = String(options.cityId || normalizedSnapshot.sourceCityId || 'capital').trim() || 'capital';
+  const slot = normalizeFormationSlot(options.slot || normalizedSnapshot.slot);
+  if (!slot) return { success: false, error: 'FORMATION_SLOT_INVALID' };
+  const sourceMilitary = getCityMilitary(gameState, cityId);
+  const context = createMilitaryContext(gameState, cityId, sourceMilitary);
+  const normalizedMilitary = normalizeMilitaryState(sourceMilitary, context);
+  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
+    .map((person) => String(person?.id || '').trim())
+    .filter(Boolean));
+  const formations = {
+    ...(normalizedMilitary.formations || {}),
+    [cityId]: normalizeCityFormations(normalizedMilitary.formations?.[cityId], validPersonIds),
+  };
+  const formation = formations[cityId][slot - 1] || null;
+  if (!formation) return { success: false, error: 'FORMATION_NOT_FOUND' };
+  const assignments = FormationStrengthService.normalizeSoldierAssignments(
+    FormationStrengthService.getSnapshotAssignments(normalizedSnapshot),
+    formation.memberIds,
+    getFormationStrengthPolicy(),
+  );
+  formations[cityId][slot - 1] = {
+    ...formation,
+    soldierAssignments: assignments,
+    soldiersAssigned: FormationStrengthService.sumAssignments(assignments),
+  };
+  const nextMilitary = normalizeMilitaryState({
+    ...normalizedMilitary,
+    formations,
+  }, context);
+  setCityMilitary(gameState, cityId, nextMilitary);
+  const settledAt = options.now instanceof Date ? options.now.toISOString() : new Date(options.now || Date.now()).toISOString();
+  return {
+    success: true,
+    formation: nextMilitary.formations?.[cityId]?.[slot - 1] || null,
+    snapshot: {
+      ...normalizedSnapshot,
+      settledAt,
+    },
+  };
 }
 
 module.exports = {
   MAX_FORMATION_SLOTS,
   MAX_FORMATION_MEMBERS,
+  getFormationStrengthPolicy,
   getTrainingStats,
   normalizeMilitaryState,
   normalizeArmyFormations,
   setArmyFormation,
+  settleFormationSnapshot,
   advanceTraining,
 };

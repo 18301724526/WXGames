@@ -34,18 +34,25 @@ function createTutorialExploreState() {
       status: 'occupied',
     }],
     worldMap: WorldMapService.createInitialWorldMap('tutorial-explorer-seed', new Date('2026-06-06T00:00:00.000Z')),
+    famousPeople: [{ id: scoutPersonId, name: 'Tutorial Scout' }],
     military: {
+      soldiers: 300,
+      soldierCap: 300,
       formations: {
-        capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+        capital: [{ slot: 1, memberIds: [scoutPersonId], soldierAssignments: { [scoutPersonId]: 120 } }],
       },
     },
     cities: {
       capital: {
         id: 'capital',
         territoryId: 'capital',
+        buildings: { barracks: { level: 1 } },
+        resources: { food: 500, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
         military: {
+          soldiers: 300,
+          soldierCap: 300,
           formations: {
-            capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+            capital: [{ slot: 1, memberIds: [scoutPersonId], soldierAssignments: { [scoutPersonId]: 120 } }],
           },
         },
       },
@@ -69,6 +76,8 @@ test('guided world march returns server-planned tiles and the first empty city p
   assert.equal(result.mission.plannedSites[0].site.owner, 'neutral');
   assert.equal(result.mission.plannedSites[0].site.status, 'discovered');
   assert.equal(result.mission.formation.slot, 1);
+  assert.equal(result.mission.formationSnapshot.soldiersCommitted, 120);
+  assert.equal(result.mission.formationSnapshot.soldiersRemaining, 120);
   assert.equal(result.mission.nextStepAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS).toISOString());
   assert.equal(result.mission.completesAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * 2).toISOString());
   assert.deepEqual(result.mission.formation.memberIds, ['fp-tutorial-scout']);
@@ -422,6 +431,32 @@ test('returned-home idle world march stays in explorer state but leaves the worl
   assert.equal(clientState.idleMissions.length, 1);
   assert.equal(clientState.idleMissions[0].position.tileId, 'tile_0_0');
   assert.deepEqual(actors, []);
+});
+
+test('returned-home world march settles surviving snapshot troops back to the saved formation', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+  const reachedTargetAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, reachedTargetAt);
+  gameState.exploreMissions[0].formationSnapshot.members[0].soldiersRemaining = 77;
+  gameState.exploreMissions[0].formationSnapshot.soldiersRemaining = 77;
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    new Date(reachedTargetAt.getTime() + 1),
+  );
+  const returnedAt = new Date(new Date(returned.mission.completesAt).getTime() + 1);
+
+  WorldExplorerService.advanceExploreMissions(gameState, returnedAt);
+
+  const formation = gameState.cities.capital.military.formations.capital[0];
+  assert.deepEqual(formation.soldierAssignments, { 'fp-tutorial-scout': 77 });
+  assert.equal(gameState.exploreMissions[0].formationSnapshot.settledAt, returnedAt.toISOString());
 });
 
 test('returned-home idle world march can start a new march from home', () => {

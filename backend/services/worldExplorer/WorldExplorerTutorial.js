@@ -43,6 +43,7 @@ function getFormationSnapshot(gameState = {}, options = {}) {
       : [];
   const formation = formations.find((item) => Number(item?.slot) === slot) || formations[slot - 1] || null;
   return {
+    ...(formation && typeof formation === 'object' ? formation : {}),
     cityId,
     slot,
     memberIds: Array.isArray(formation?.memberIds) ? formation.memberIds.map(String) : [],

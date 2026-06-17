@@ -538,13 +538,13 @@
             this.showTaskCenter = false;
             this.showGuidebook = false;
             this.showFamousPersons = false;
-            this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+            this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             this.activeCommandPanel = '';
             this.rewardReveal = null;
             this.famousPersonsPage = 0;
             this.selectedFamousPersonId = '';
             if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-            if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+            if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             this.renderer?.clearFamousSkillTooltip?.();
             this.activeBuildingCategory = 'all';
             this.buildingOffset = 0;
@@ -597,7 +597,7 @@
             this.showTaskCenter = false;
             this.showGuidebook = false;
             this.showFamousPersons = false;
-            this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+            this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             this.activeCommandPanel = '';
             this.famousPersonsPage = 0;
             this.selectedFamousPersonId = '';
@@ -623,7 +623,7 @@
               };
               this.canvasShell.closeWorldSiteHud?.({ render: false });
             }
-            if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+            if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             if (this.state && typeof this.state === 'object') {
               this.state = {
                 ...this.state,

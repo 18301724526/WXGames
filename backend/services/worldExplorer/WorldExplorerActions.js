@@ -24,6 +24,7 @@ const {
   CommandAuthorityContract,
   ServerTimelineSnapshot,
 } = require('../realtime');
+const FormationStrengthService = require('../military/FormationStrengthService');
 
 function countActiveMissions(gameState) {
   return (gameState.exploreMissions || []).filter((mission) => mission.status === 'active').length;
@@ -100,6 +101,11 @@ function summarizeMission(mission = null) {
       cityId: mission.formation.cityId || 'capital',
       slot: normalizeFormationSlot(mission.formation.slot),
       memberCount: Array.isArray(mission.formation.memberIds) ? mission.formation.memberIds.length : 0,
+    } : null,
+    formationSnapshot: mission.formationSnapshot ? {
+      soldiersCommitted: Number(mission.formationSnapshot.soldiersCommitted) || 0,
+      soldiersRemaining: Number(mission.formationSnapshot.soldiersRemaining) || 0,
+      settled: Boolean(mission.formationSnapshot.settledAt),
     } : null,
     startedAt: mission.startedAt || '',
     nextStepAt: mission.nextStepAt || '',
@@ -235,11 +241,25 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     homeOrigin: idleMission?.homeOrigin || origin,
     route,
     formation: formationValidation.formation,
+    formationSnapshot: FormationStrengthService.buildFormationSnapshot(formationValidation.formation, {
+      cityId: formationValidation.formation.cityId,
+      now,
+    }),
     stepDurationMs: EXPLORE_STEP_DURATION_MS,
     startedAt: now.toISOString(),
     nextStepAt: new Date(now.getTime() + EXPLORE_STEP_DURATION_MS).toISOString(),
     completesAt: new Date(now.getTime() + EXPLORE_STEP_DURATION_MS * route.length).toISOString(),
   });
+  if (idleMission && (
+    !idleMission.formationSnapshot
+    || FormationStrengthService.isSnapshotSettled(idleMission.formationSnapshot)
+  )) {
+    idleMission.formation = formationValidation.formation;
+    idleMission.formationSnapshot = FormationStrengthService.buildFormationSnapshot(formationValidation.formation, {
+      cityId: formationValidation.formation.cityId,
+      now,
+    });
+  }
   if (idleMission) {
     rebaseMissionRoute(idleMission, route, now, {
       origin: marchOrigin,

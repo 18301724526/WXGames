@@ -163,6 +163,25 @@ test('GameAPI sends compact client input intent evidence for world march command
   assert.equal(calls[1].clientInputIntent.target.tileId, 'tile_3_-2');
 });
 
+test('GameAPI sends formation soldier assignments with saved formations', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request(request) {
+        calls.push(JSON.parse(request.body));
+        return createResponse(200, { success: true, gameState: { playerId: 'player-1' } });
+      },
+    },
+  });
+
+  await api.setArmyFormation('capital', 1, ['hero-1'], { 'hero-1': 300 });
+
+  assert.equal(calls[0].action, 'setArmyFormation');
+  assert.equal(calls[0].cityId, 'capital');
+  assert.deepEqual(calls[0].memberIds, ['hero-1']);
+  assert.deepEqual(calls[0].soldierAssignments, { 'hero-1': 300 });
+});
+
 test('GameAPI records replay correlation evidence in local operation logs', async () => {
   const operationEvents = [];
   const api = new GameAPI('/api', 'token-a', {

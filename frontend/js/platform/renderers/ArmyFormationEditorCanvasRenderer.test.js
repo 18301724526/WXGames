@@ -51,6 +51,9 @@ function createMilitaryView(overrides = {}) {
       name: 'Vanguard',
       memberIds: overrides.memberIds || ['hero-1'],
       maxMembers: overrides.maxMembers || 2,
+      maxSoldiersPerMember: 1000,
+      soldierAssignments: overrides.soldierAssignments || { 'hero-1': 300 },
+      soldiersAssigned: 300,
     }],
     formationPeople,
   };
@@ -89,6 +92,10 @@ test('ArmyFormationEditorCanvasRenderer preserves pager and save actions', () =>
   assert.equal(host.hitTargets.some((target) => target.action.type === 'changeArmyFormationPage' && target.action.delta === -1), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'saveArmyFormation'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'autoReplenishArmyFormation'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'confirmArmyFormationSoldiers'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'changeArmyFormationSoldiers' && target.action.personId === 'hero-1'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'requestArmyFormationSoldierInput' && target.action.personId === 'hero-1'), true);
 
   const savingHost = createHost();
   const savingRenderer = new ArmyFormationEditorCanvasRenderer({ host: savingHost });

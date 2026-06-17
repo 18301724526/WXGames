@@ -81,6 +81,7 @@ test('dispatches setArmyFormation actions without losing slot and member ids', (
       cityId: 'capital',
       slot: 2,
       memberIds: ['person-a', 'person-b'],
+      soldierAssignments: { 'person-a': 300, 'person-b': 200 },
     },
     gameState,
     tutorial: {},
@@ -94,6 +95,7 @@ test('dispatches setArmyFormation actions without losing slot and member ids', (
       cityId: 'capital',
       slot: 2,
       memberIds: ['person-a', 'person-b'],
+      soldierAssignments: { 'person-a': 300, 'person-b': 200 },
     },
   });
 });

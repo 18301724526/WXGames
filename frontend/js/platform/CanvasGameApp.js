@@ -104,7 +104,7 @@
           this.showFamousPersons = false;
           this.famousPersonsPage = 0;
           this.selectedFamousPersonId = '';
-          this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+          this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
           this.activeCommandPanel = '';
           this.rewardReveal = null;
           this.battleScene = null;

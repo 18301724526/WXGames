@@ -128,6 +128,8 @@ setArmyFormationEditor(editor = {}, options = {}) {
         cityId: '',
         slot: 1,
         memberIds: [],
+        soldierAssignments: {},
+        soldierDraftAssignments: {},
         page: 0,
         saving: false,
         ...(editor || {}),
@@ -155,6 +157,8 @@ openArmyFormation(action = {}) {
         cityId,
         slot,
         memberIds: [...memberIds].slice(0, 5),
+        soldierAssignments: { ...(formation?.soldierAssignments || {}) },
+        soldierDraftAssignments: { ...(formation?.soldierAssignments || {}) },
         page: 0,
         saving: false,
       });
@@ -164,11 +168,11 @@ closeArmyFormationEditor(options = {}) {
       const game = this.lastGame;
       if (game && game !== this && typeof game.closeArmyFormationEditor === 'function') {
         const closed = game.closeArmyFormationEditor({ render: false });
-        this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+        this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
         if (options.render !== false) this.renderActive();
         return closed !== false;
       }
-      return this.setArmyFormationEditor({ open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false }, options);
+      return this.setArmyFormationEditor({ open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false }, options);
     },
 
 toggleArmyFormationMember(action = {}) {
@@ -206,6 +210,52 @@ changeArmyFormationPage(action = {}) {
       if (!editor.open) return false;
       const page = Math.max(0, (Number(editor.page) || 0) + (Number(action.delta) || 0));
       return this.setArmyFormationEditor({ ...editor, page }, { render: true });
+    },
+
+changeArmyFormationSoldiers(action = {}) {
+      const game = this.lastGame;
+      if (game && game !== this && typeof game.changeArmyFormationSoldiers === 'function') {
+        const result = game.changeArmyFormationSoldiers(action);
+        this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
+        return result !== false;
+      }
+      return false;
+    },
+
+requestArmyFormationSoldierInput(action = {}) {
+      const game = this.lastGame;
+      if (game && game !== this && typeof game.requestArmyFormationSoldierInput === 'function') {
+        const result = game.requestArmyFormationSoldierInput(action);
+        if (result && typeof result.then === 'function') {
+          result.finally(() => {
+            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
+          });
+          return result;
+        }
+        this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
+        return result !== false;
+      }
+      return false;
+    },
+
+autoReplenishArmyFormation(action = {}) {
+      const game = this.lastGame;
+      if (game && game !== this && typeof game.autoReplenishArmyFormation === 'function') {
+        const result = game.autoReplenishArmyFormation(action);
+        this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
+        return result !== false;
+      }
+      return false;
+    },
+
+confirmArmyFormationSoldiers(action = {}) {
+      const game = this.lastGame;
+      if (game && game !== this && typeof game.confirmArmyFormationSoldiers === 'function') {
+        const result = game.confirmArmyFormationSoldiers(action);
+        this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
+        return result !== false;
+      }
+      return false;
     },
 
 saveArmyFormation() {
@@ -288,7 +338,7 @@ resetForCanvasTabSwitch() {
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showCityManagement = false;
-      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
       this.rewardReveal = null;
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
@@ -325,7 +375,7 @@ resetLocalViewToResources(options = {}) {
       this.showTaskCenter = false;
       this.showGuidebook = false;
       this.showFamousPersons = false;
-      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
       this.activeCommandPanel = '';
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';

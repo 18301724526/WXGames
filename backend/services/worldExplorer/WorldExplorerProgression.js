@@ -15,6 +15,8 @@ const {
 } = require('./WorldExplorerTutorial');
 const WorldExplorerTrace = require('./WorldExplorerTrace');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const MilitaryService = require('../MilitaryService');
+const FormationStrengthService = require('../military/FormationStrengthService');
 
 function getTutorialSteps() {
   return TutorialFlowConfig.TUTORIAL_STEPS;
@@ -73,6 +75,26 @@ function createTileIdSet(coords = []) {
   return new Set((Array.isArray(coords) ? coords : [])
     .map((coord) => WorldMapService.getTileId(coord.q, coord.r))
     .filter(Boolean));
+}
+
+function isAtHomeOrigin(mission = {}) {
+  const position = mission.position || {};
+  const home = mission.homeOrigin || mission.origin || {};
+  return WorldMapService.getCanonicalTileId(position.q ?? position.x, position.r ?? position.y)
+    === WorldMapService.getCanonicalTileId(home.q ?? home.x, home.r ?? home.y);
+}
+
+function settleReturnedFormationSnapshot(gameState = {}, mission = {}, now = new Date()) {
+  if (!mission.formationSnapshot || FormationStrengthService.isSnapshotSettled(mission.formationSnapshot)) return false;
+  if (mission.status !== 'idle' || !isAtHomeOrigin(mission)) return false;
+  const settlement = MilitaryService.settleFormationSnapshot(gameState, mission.formationSnapshot, {
+    cityId: mission.formation?.cityId,
+    slot: mission.formation?.slot,
+    now,
+  });
+  if (!settlement.success) return false;
+  mission.formationSnapshot = settlement.snapshot;
+  return true;
 }
 
 function findTerritoryAtCoordinate(gameState = {}, q = 0, r = 0) {
@@ -224,6 +246,10 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
   const nowMs = now.getTime();
   const newlyRevealedTiles = [];
   for (const mission of gameState.exploreMissions) {
+    if (mission.status === 'idle') {
+      settleReturnedFormationSnapshot(gameState, mission, now);
+      continue;
+    }
     if (mission.status !== 'active') continue;
     let nextStepAtMs = toTimestamp(mission.nextStepAt, nowMs);
     WorldExplorerTrace.log('progression:advanceMission:begin', {
@@ -257,6 +283,7 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       mission.status = 'idle';
       mission.completedAt = mission.completedAt || now.toISOString();
       mission.nextStepAt = null;
+      settleReturnedFormationSnapshot(gameState, mission, now);
       if (mission.status === 'idle' && gameState.tutorial?.currentStep === TUTORIAL_STEPS.scoutExploreStarted) {
         gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.firstCityDiscovered);
         ensureTutorialFirstCityClaimSoldiers(gameState);

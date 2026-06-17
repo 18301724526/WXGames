@@ -581,7 +581,9 @@
     acceptFamousPerson(candidateId) { return this.request('POST', '/game/action', { action: 'acceptFamousPerson', candidateId }); }
     dismissFamousPersonCandidate(candidateId) { return this.request('POST', '/game/action', { action: 'dismissFamousPersonCandidate', candidateId }); }
     assignFamousAttributePoint(personId, attribute) { return this.request('POST', '/game/action', { action: 'assignFamousAttributePoint', personId, attribute }); }
-    setArmyFormation(cityId, slot, memberIds = []) { return this.request('POST', '/game/action', { action: 'setArmyFormation', cityId, slot, memberIds }); }
+    setArmyFormation(cityId, slot, memberIds = [], soldierAssignments = {}) {
+      return this.request('POST', '/game/action', { action: 'setArmyFormation', cityId, slot, memberIds, soldierAssignments });
+    }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }

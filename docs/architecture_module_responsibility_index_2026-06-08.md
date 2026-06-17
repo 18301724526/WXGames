@@ -2977,13 +2977,19 @@ Regression:
 
 ### `docs/config_registry_snapshot_2026-06-11.json`
 
-状态 / Status: candidate
+状态 / Status: authoritative machine baseline
 
 职责 / Owns:
 
 - current P12-007 baseline config registry snapshot
 - expected registry ids, schema versions, config versions, content hashes, entry counts, entry ids, and source paths
 - baseline diff input for `scripts/validate-config-pipeline.js --baseline`
+
+公开约定 / Public Contract:
+
+- This JSON is the current config-registry authority used by the architecture gate.
+- It belongs in the normalized official doc set because it is reviewed machine evidence, not a scratch export.
+- Config content drift must update registry versions and regenerate this file through the pipeline.
 
 扩展方式 / Extension Path:
 
@@ -4161,6 +4167,7 @@ Regression:
 - 存档 shape 迁移逻辑放在 `GameStateMigrationPipeline`，不要放进 repository。
 - 存档容量预算规则放在 `PerformanceCapacityBudget`，repository 只写入摘要，不承载容量规则。
 - repository 返回 raw persisted state，由 service/normalizer 决定如何升级和派生。
+- Confirmed pending shared-world AI persistence must use dedicated global repository/table ownership. Do not store AI factions, AI raid intents, AI incidents, or AI actors as projection fields on canonical player state.
 
 回归 / Regression:
 
@@ -4207,10 +4214,49 @@ Extension Path:
 - Future distributed/chunk services may replace these tables behind the same authority/visibility contract.
 - Do not put terrain generation rules here; generation belongs in `WorldMapTiles` / `WorldMapGenerationAuthority` and the first-explorer context comes from explorer services.
 
+Confirmed Pending Adjacent Boundary:
+
+- Shared World AI persistence should follow the same global-authority pattern as world-map persistence, but in focused AI repository modules such as `WorldAiAuthorityRepository`, not in `WorldMapAuthorityRepository`.
+- Expected AI tables include factions, sites, actors, committed intents, incidents, and player report projections. These are global gameplay facts, not `game_states.worldAi` per-player state.
+
 Regression:
 
 - `node --test backend/tests/GameStateRepository.test.js backend/tests/WorldMapArchitecture.test.js`
 - `npm run test:architecture`
+
+### Confirmed Pending: `backend/services/worldAi/*`
+
+Status: confirmed design, pending implementation
+
+Owns:
+
+- full-server shared World AI runtime, policy, perception, validation, executor, and incident projection
+- online-player eligibility for starting new AI attacks, with committed actions resolving even if the target logs out
+- AI intents for city/outpost raids, marching-army raids, site defense, patrol spawning, retreat, reinforcement, and future diplomacy/expansion
+- conversion of wild/bandit camps into `WorldFaction(type=wild)` behavior inside the unified AI runtime
+- bounded execution near generated/player-visible/recently active world areas only
+
+Expected Modules:
+
+- `WorldAiRuntime`
+- `WorldAiPerception`
+- `WorldAiPolicy`
+- `WorldAiIntentValidator`
+- `WorldAiIntentExecutor`
+- `WorldAiIncidentProjection`
+- `WorldAiWorkerService`
+
+Extension Path:
+
+- First vertical slice should implement wild/bandit raid behavior through the shared runtime, not a standalone bandit service.
+- Raid execution may reuse `BattleService` combat math/report helpers but must not masquerade as player `TerritoryService.startConquest()` / `claimConquest()` actions.
+- Marching-army attacks consume mission `formationSnapshot.soldiersRemaining`; city/outpost attacks consume city/military/resource service boundaries.
+- AI sites and actors must enter frontend world entity/picking snapshots through DTO/presenter projection; renderers must not derive AI target authority from hit targets.
+
+Regression:
+
+- Add focused `WorldAiArchitecture.test.js`, repository tests, worker tests, and frontend entity/picking projection tests before implementation is promoted.
+- Include in `npm run test:architecture`.
 
 ### `backend/services/WorldAiExplorerService.js`
 
@@ -4243,6 +4289,8 @@ Extension Path:
 - New AI explorer behaviors extend this service or a focused `worldAi/*` module, not DTO/projection helpers.
 - Any coordinate-bearing AI reveal state must recompute tile identity from `q/r`; `WorldMapService.revealTiles()` return `tile.id` is not an authority boundary.
 - Keep global/persistent world-map storage in `WorldMapAuthorityRepository`; this service owns runtime AI reveal decisions and sync orchestration.
+- Confirmed shared-world AI raids, factions, sites, actors, committed intents, and incidents must not extend this service as long-term authority. Add focused `backend/services/worldAi/*` runtime/policy/executor modules and a global AI repository instead.
+- `game_states.worldAi` remains compatibility/migration state for the current AI explorer scope; it is not the authority for full-server AI pressure.
 
 Regression:
 
@@ -4737,6 +4785,8 @@ Extension Path:
 - Keep persisted mission-row normalization in `WorldExplorerMissionNormalizer`.
 - Keep runtime reveal/materialization side effects in `WorldExplorerProgression`.
 - New action flows must add command-boundary tests before changing mission rebasing, authority envelopes, or trace summaries.
+- Implemented march-strength authority: `FormationStrengthService` and `MilitaryService` own standing troop assignment, resource cost/refund math, formation edit locks, snapshot build/normalization, and return-home settlement. `startWorldMarch()` freezes saved formation standing troops into `mission.formationSnapshot`; return/stop/destruction paths must preserve or settle `soldiersRemaining` through focused march-strength helpers. Route planning, reveal progression, DTO mapping, and renderers must not read live city reserve soldiers to infer marching army strength.
+- AI attacks against marching armies must target the mission `formationSnapshot`, not the city reserve and not renderer actor data.
 
 Regression:
 
@@ -5081,6 +5131,8 @@ Extension Path:
 
 - Future region workers, event queues, or distributed schedulers should shard or replace this service boundary rather than adding `setInterval` world sweeps back into `backend/server.js`.
 - Long-term partitioning should route by player/team/region/chunk while preserving the gateway/worker split.
+- Shared World AI should use a dedicated worker/service path such as `WorldAiWorkerService` or an explicit opt-in world-authority tick. Do not add global AI raids to this active-player runtime sweep by default.
+- Online eligibility for AI must be process-shared if the AI worker is separate from the gateway; gateway-only in-memory presence is insufficient for attack selection.
 
 Regression:
 
@@ -6258,6 +6310,33 @@ Regression:
 - `node scripts/verify-refactor-plan-doc.js`
 - `npm run test:architecture`
 
+### `docs/long_term_architecture_refactor_plan_2026-06-08.md`
+
+Status: authoritative governance
+
+Owns:
+
+- long-term refactor phases from P0 through production-engineering hardening
+- stable-block hardening intent and P12 production-engineering continuation plan
+- mature engine canvas layer contract history and promotion rationale
+- cross-phase context that is too broad for one module entry
+
+Public Contract:
+
+- This document is governance context, not the current technical entrypoint.
+- Current architecture decisions must still be reflected in `docs/current_technical_architecture_2026-06-09.md`.
+- Module ownership and extension paths must still be reflected in this responsibility index.
+
+Extension Path:
+
+- Update this file only when long-term phase boundaries or governance intent change.
+- One-off implementation plans, daily notes, and fix logs do not belong in `docs/`; durable decisions must be folded into the current technical architecture, production roadmap, or this responsibility index.
+
+Regression:
+
+- `node scripts/verify-refactor-plan-doc.js`
+- `npm run test:architecture`
+
 ### `docs/production_engineering_roadmap_2026-06-09.md`
 
 状态 / Status: authoritative
@@ -6278,66 +6357,9 @@ Regression:
 扩展方式 / Extension Path:
 
 - Add or update P12 items through this roadmap and keep concrete modules/scripts/runbooks registered in this responsibility index.
-- Do not create separate release, handoff, or operations notes outside the official doc set unless they are registered here and guarded by `scripts/verify-refactor-plan-doc.js`.
+- Do not create separate release, daily-note, or operations Markdown inside `docs/`; durable production decisions must be folded into this roadmap and guarded by `scripts/verify-refactor-plan-doc.js`.
 
 回归 / Regression:
-
-- `node scripts/verify-refactor-plan-doc.js`
-- `npm run test:architecture`
-
-### `docs/6月11日重构与问题交接.md`
-
-Status: authoritative daily handoff
-
-Owns:
-
-- 2026-06-11 production-engineering implementation handoff
-- summary of committed production-engineering and follow-up result through `08639bab`
-- deleted-stage-doc replacement record
-- local validation result record
-- dual-remote push result record
-- server hook anomaly follow-up note
-- host backup/restore and config release required-gate evidence
-
-Public Contract:
-
-- This document replaces the prior temporary refactor, issue, and handoff notes for 2026-06-11.
-- It is not a product/gameplay/architecture source of truth; use it to resume operational follow-up and trace what changed today.
-- Future daily handoff notes must be registered in `scripts/verify-refactor-plan-doc.js` before they are considered official.
-
-Extension Path:
-
-- Update this file only for corrections to the 2026-06-11 handoff facts.
-- New-day handoff documents should not revive obsolete `handoff` filenames; use a dated Chinese title and register it in the guard.
-
-Regression:
-
-- `node scripts/verify-refactor-plan-doc.js`
-- `npm run test:architecture`
-
-### `docs/6月15日交接文档.md`
-
-Status: authoritative daily handoff
-
-Owns:
-
-- 2026-06-15 world-map/world-march coordinate identity governance handoff
-- current commit, remote, server-deploy, and validation checklist for company Codex continuation
-- completed coordinate-authority progress summary across input, presenter/runtime, backend world explorer, realtime sync, map writes, and diagnostics
-- next-step guidance for one-red-test-at-a-time legacy identity cleanup
-
-Public Contract:
-
-- This document is a daily continuation handoff, not a product/gameplay/architecture source of truth.
-- It must point back to the current official architecture docs and responsibility index for durable contracts.
-- It must stay registered in `scripts/verify-refactor-plan-doc.js` while present in `docs/`.
-
-Extension Path:
-
-- Update this file only for corrections to the 2026-06-15 handoff facts before the next daily handoff replaces it.
-- New daily handoff documents must use dated Chinese titles and be registered in the official doc guard.
-
-Regression:
 
 - `node scripts/verify-refactor-plan-doc.js`
 - `npm run test:architecture`
@@ -7676,7 +7698,7 @@ Recommended first split sequence:
 | 2026-06-11 | Continued P12-007 config release audit scope: added `ConfigReleaseService` plus admin `/api/admin/config-releases`, `/active`, `/runtime-status`, `/preview`, `/publish`, and `/rollback` routes for audit-only release history, active release pointer, active-vs-current registry drift status, rollback records, and startup release gate policy. |
 | 2026-06-11 | Continued P12-007 runtime bundle consumption: added `ConfigRuntimeLoader` to build a read-only payload bundle only after active release gate match, validate payload hashes against the active snapshot, and expose loader readiness through health/admin status; `GameplayConfigRuntime` now consumes game/building/era/tutorial/tech-tree payloads for core gameplay with module fallback only in observe modes. |
 | 2026-06-11 | Added `frontend/tools/config-release-console.html` as the P12-007 standalone admin console for active release/history, runtime drift status, preview, audit-only publish, and rollback actions; it stays outside the main H5 boot chain and does not hot-load gameplay config. |
-| 2026-06-11 | Added `docs/6月11日重构与问题交接.md` as the official daily handoff for the production-engineering sequence through `08639bab`, replacing the prior temporary refactor/progress/issue handoff notes while recording local/server validation, dual-remote sync, server hook anomaly resolution, backup/restore drill evidence, config release publish/rollback evidence, and production `CONFIG_RELEASE_GATE=required` health. |
+| 2026-06-11 | Recorded the production-engineering sequence through `08639bab`: local validation, dual-remote sync, server hook anomaly resolution, backup/restore drill evidence, config release publish/rollback evidence, and production `CONFIG_RELEASE_GATE=required` health. The durable facts now live in the production roadmap, current technical architecture, and this responsibility index; daily handoff files are retired from the official doc set. |
 | 2026-06-11 | Closed current host evidence for P12-004 and P12-007: installed runtime backup cron, verified real backup/restore drill, moved production config release state under `.wxgame/config-release`, verified post-required-gate backup contents, published config releases A/B, rolled back B -> A, restored active B, and restarted production healthy with `CONFIG_RELEASE_GATE=required` on `08639bab086d5d87ebb7445a043ffb72cc88754c`. |
 | 2026-06-11 | Continued P12-006/P12-009 operations hardening: production Node was upgraded to `20.20.2`, PM2 was reinstalled under Node 20, `better-sqlite3@12.10.0` was rebuilt, backend engines now require Node 20, and `OpsControlService` plus `/api/admin/ops/*`, maintenance middleware, and `/tools/ops-console.html` provide a protected admin operations console for status, soft maintenance, audited PM2 restart, and ops audit evidence. |
 | 2026-06-12 | Fixed P12-009 ops dashboard health false negatives: `OpsControlService` now defaults dashboard health to a `local-process` summary assembled from version, observability, config runtime, loader, and gameplay runtime status; `OPS_HEALTH_URL` remains only an explicit external probe override, and regression asserts the default dashboard does not run `curl`. |

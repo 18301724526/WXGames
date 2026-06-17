@@ -35,6 +35,22 @@
       return [...people];
     }
 
+    static normalizeSoldierAssignments(assignments = {}, memberIds = [], cap = 1000) {
+      const result = {};
+      const max = Math.max(0, this.toInteger(cap, 1000));
+      (Array.isArray(memberIds) ? memberIds : []).forEach((memberId) => {
+        const id = String(memberId || '').trim();
+        if (!id) return;
+        result[id] = Math.max(0, Math.min(max, this.toInteger(assignments?.[id], 0)));
+      });
+      return result;
+    }
+
+    static sumSoldierAssignments(assignments = {}) {
+      return Object.values(assignments && typeof assignments === 'object' ? assignments : {})
+        .reduce((sum, value) => sum + Math.max(0, this.toInteger(value, 0)), 0);
+    }
+
     static buildMilitaryNavigationViewState(state = {}) {
       const requestedView = ['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army';
       const activeView = requestedView;
@@ -73,10 +89,21 @@
       const formations = [1, 2, 3].map((slot) => {
         const rawFormation = cityFormations.find((item) => Number(item?.slot) === slot) || cityFormations[slot - 1] || {};
         const memberIds = Array.isArray(rawFormation.memberIds) ? rawFormation.memberIds : [];
+        const maxSoldiersPerMember = Math.max(0, this.toInteger(rawFormation.maxSoldiersPerMember, 1000));
+        const soldierAssignments = this.normalizeSoldierAssignments(
+          rawFormation.soldierAssignments || rawFormation.memberSoldiers || {},
+          memberIds,
+          maxSoldiersPerMember,
+        );
+        const soldiersAssigned = this.toInteger(rawFormation.soldiersAssigned, this.sumSoldierAssignments(soldierAssignments));
         const members = memberIds
           .map((personId) => peopleById.get(personId))
           .filter(Boolean)
-          .map((person) => this.buildFamousPersonCard(person));
+          .map((person) => ({
+            ...this.buildFamousPersonCard(person),
+            soldiersAssigned: soldierAssignments[person.id] || 0,
+            maxSoldiers: maxSoldiersPerMember,
+          }));
         return {
           slot,
           cityId,
@@ -86,6 +113,9 @@
           leader: members[0] || null,
           memberCount: members.length,
           maxMembers: maxFormationMembers,
+          maxSoldiersPerMember,
+          soldierAssignments,
+          soldiersAssigned,
           isEmpty: members.length === 0,
         };
       });
@@ -121,6 +151,8 @@
           cityId,
           maxSlots: 3,
           maxMembers: maxFormationMembers,
+          availableReserveSoldiers: soldiers,
+          perMemberSoldierCap: 1000,
           summary: `3 支部队 · 每队最多 ${maxFormationMembers} 名名人`,
         },
       };

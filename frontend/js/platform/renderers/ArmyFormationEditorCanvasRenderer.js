@@ -39,6 +39,22 @@
       const peopleById = new Map(allPeople.map((person) => [person.id, person]));
       const selectedMembers = memberIds.map((personId) => peopleById.get(personId)).filter(Boolean);
       const maxMembers = formation.maxMembers || view.formationMeta?.maxMembers || 5;
+      const maxSoldiersPerMember = Math.max(0, Math.floor(Number(formation.maxSoldiersPerMember || view.formationMeta?.perMemberSoldierCap || 1000) || 1000));
+      const confirmedAssignments = editor.soldierAssignments && typeof editor.soldierAssignments === 'object'
+        ? editor.soldierAssignments
+        : formation.soldierAssignments || {};
+      const draftAssignments = editor.soldierDraftAssignments && typeof editor.soldierDraftAssignments === 'object'
+        ? editor.soldierDraftAssignments
+        : confirmedAssignments;
+      const previousAssigned = Math.max(0, Math.floor(Number(formation.soldiersAssigned) || 0));
+      const reserveSoldiers = Math.max(0, Math.floor(Number(view.formationMeta?.availableReserveSoldiers ?? state.military?.soldiers) || 0));
+      const editableSoldierPool = previousAssigned + reserveSoldiers;
+      const currentAssigned = memberIds.reduce((sum, personId) => (
+        sum + Math.max(0, Math.floor(Number(confirmedAssignments?.[personId]) || 0))
+      ), 0);
+      const draftAssigned = memberIds.reduce((sum, personId) => (
+        sum + Math.max(0, Math.floor(Number(draftAssignments?.[personId]) || 0))
+      ), 0);
       const layout = this.getLayout();
       const panelWidth = Math.min(390, layout.contentWidth - 10);
       const panelHeight = Math.min(570, Math.max(470, this.height - 132));
@@ -73,7 +89,7 @@
       const innerX = x + 14;
       const innerWidth = panelWidth - 28;
       const summaryY = y + 72;
-      this.drawPanel(innerX, summaryY, innerWidth, 78, {
+      this.drawPanel(innerX, summaryY, innerWidth, 186, {
         fill: 'rgba(24, 21, 17, 0.64)',
         stroke: 'rgba(240, 180, 91, 0.18)',
         radius: 8,
@@ -90,11 +106,88 @@
           color: member ? '#ffe6b5' : 'rgba(255, 230, 181, 0.46)',
           align: 'center',
         });
+        if (member) {
+          const confirmed = Math.max(0, Math.floor(Number(confirmedAssignments?.[member.id]) || 0));
+          const assigned = Math.max(0, Math.floor(Number(draftAssignments?.[member.id]) || 0));
+          const sliderY = summaryY + 82;
+          const sliderHeight = 10;
+          const ratio = maxSoldiersPerMember > 0 ? Math.max(0, Math.min(1, assigned / maxSoldiersPerMember)) : 0;
+          this.drawPanel(slotX, sliderY, slotSize, sliderHeight, {
+            fill: 'rgba(9, 13, 14, 0.82)',
+            stroke: 'rgba(255, 226, 177, 0.12)',
+            radius: 5,
+          });
+          if (this.ctx) {
+            this.ctx.fillStyle = '#74d3a0';
+            this.ctx.fillRect(slotX + 1, sliderY + 1, Math.max(0, (slotSize - 2) * ratio), sliderHeight - 2);
+          }
+          const thumbX = slotX + Math.max(1, Math.min(slotSize - 3, Math.round((slotSize - 2) * ratio)));
+          this.drawPanel(thumbX - 3, sliderY - 2, 6, sliderHeight + 4, {
+            fill: '#ffe6b5',
+            stroke: 'rgba(0, 0, 0, 0.28)',
+            radius: 3,
+          });
+          const inputY = sliderY + 17;
+          this.drawPanel(slotX, inputY, slotSize, 22, {
+            fill: 'rgba(11, 15, 15, 0.82)',
+            stroke: 'rgba(116, 211, 160, 0.28)',
+            radius: 5,
+          });
+          this.drawText(`${assigned}`, slotX + slotSize / 2, inputY + 11, {
+            size: 10,
+            color: '#dff9cf',
+            align: 'center',
+            baseline: 'middle',
+          });
+          this.drawText(`/${maxSoldiersPerMember}`, slotX + slotSize / 2, inputY + 32, {
+            size: 8,
+            color: confirmed === assigned ? '#9da783' : '#ffd27d',
+            align: 'center',
+          });
+          for (let segment = 0; segment < 5; segment += 1) {
+            this.addHitTarget(
+              { x: slotX + (slotSize / 5) * segment, y: sliderY - 6, width: slotSize / 5, height: 22 },
+              { type: 'changeArmyFormationSoldiers', personId: member.id, ratio: (segment + 1) / 5 },
+            );
+          }
+          this.addHitTarget(
+            { x: slotX, y: inputY, width: slotSize, height: 22 },
+            { type: 'requestArmyFormationSoldierInput', personId: member.id },
+          );
+        }
       }
 
-      const listTop = summaryY + 94;
-      this.drawText('名人列表', innerX, listTop, { size: 13, bold: true, color: '#ffe6b5' });
-      const pageSize = Math.max(3, Math.min(5, Math.floor((panelHeight - 244) / 58)));
+      const autoY = summaryY + 154;
+      this.drawText(`\u9884\u5907 ${reserveSoldiers} / \u53ef\u5206 ${editableSoldierPool} / \u5df2\u786e\u8ba4 ${currentAssigned} / \u8349\u7a3f ${draftAssigned}`, innerX + 10, autoY + 12, {
+        size: 10,
+        color: '#cbbd96',
+      });
+      const autoX = innerX + innerWidth - 128;
+      this.drawButton(autoX, autoY, 54, 24, '\u8865\u5175', {
+        size: 10,
+        radius: 7,
+        active: true,
+        disabled: selectedMembers.length <= 0 || editor.saving,
+      });
+      this.addHitTarget(
+        { x: autoX, y: autoY, width: 54, height: 24 },
+        selectedMembers.length <= 0 || editor.saving ? { type: 'blockCanvasModal' } : { type: 'autoReplenishArmyFormation' },
+      );
+      const confirmX = autoX + 62;
+      this.drawButton(confirmX, autoY, 62, 24, '\u786e\u8ba4', {
+        size: 10,
+        radius: 7,
+        active: true,
+        disabled: selectedMembers.length <= 0 || editor.saving,
+      });
+      this.addHitTarget(
+        { x: confirmX, y: autoY, width: 62, height: 24 },
+        selectedMembers.length <= 0 || editor.saving ? { type: 'blockCanvasModal' } : { type: 'confirmArmyFormationSoldiers' },
+      );
+
+      const listTop = summaryY + 204;
+      this.drawText('\u540d\u4eba\u5217\u8868', innerX, listTop, { size: 13, bold: true, color: '#ffe6b5' });
+      const pageSize = Math.max(2, Math.min(4, Math.floor((panelHeight - 354) / 58)));
       const pages = Math.max(1, Math.ceil(allPeople.length / pageSize));
       const page = Math.max(0, Math.min(pages - 1, Number(editor.page) || 0));
       const listY = listTop + 22;
