@@ -18,7 +18,6 @@
     ['getWorldTileLocalEntries', []],
     ['getWorldTileKey', ''],
     ['getWorldTileRenderedDiamondCenter', { x: 0, y: 0 }],
-    ['getWorldTileFogRevealEntries', []],
     ['getWorldTileStaticCacheLayout', null],
     ['getWorldTileStaticViewportCacheLayout', null],
     ['getWorldTileStaticChunkSize', 512],

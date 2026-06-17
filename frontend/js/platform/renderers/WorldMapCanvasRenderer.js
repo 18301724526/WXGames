@@ -287,11 +287,6 @@
       if (!this.worldMapLayoutFacade?.getWorldTileLocalEntries) return [];
       return this.worldMapLayoutFacade.getWorldTileLocalEntries(tileMapView, viewport, geometry);
     }
-    getWorldTileKey(tile = {}) {
-      if (!this.worldMapFogMaskContextRenderer?.getWorldTileKey) return `${Number(tile.q) || 0},${Number(tile.r) || 0}`;
-      return this.worldMapFogMaskContextRenderer.getWorldTileKey(tile);
-    }
-
     getWorldTileRenderedDiamondCenter(tile = {}, drawRect = {}) {
       if (!this.worldMapLayoutFacade?.getWorldTileRenderedDiamondCenter) {
         return {
@@ -301,11 +296,6 @@
       }
       return this.worldMapLayoutFacade.getWorldTileRenderedDiamondCenter(tile, drawRect);
     }
-    getWorldTileFogRevealEntries(entries = []) {
-      if (!this.worldMapFogMaskContextRenderer?.getWorldTileFogRevealEntries) return entries || [];
-      return this.worldMapFogMaskContextRenderer.getWorldTileFogRevealEntries(entries);
-    }
-
     getWorldTileStaticCacheLayout(tileMapView = {}, viewport = {}, geometry = {}) {
       if (!this.worldMapLayoutFacade?.getWorldTileStaticCacheLayout) return null;
       return this.worldMapLayoutFacade.getWorldTileStaticCacheLayout(tileMapView, viewport, geometry);

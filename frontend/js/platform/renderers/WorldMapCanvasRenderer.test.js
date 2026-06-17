@@ -672,14 +672,6 @@ test('WorldMapCanvasRenderer delegates fog mask context capture to split rendere
   const renderer = new WorldMapCanvasRenderer({
     host,
     worldMapFogMaskContextRenderer: {
-      getWorldTileKey(...args) {
-        calls.push(['fog-key', ...args]);
-        return 'fog-key-ok';
-      },
-      getWorldTileFogRevealEntries(...args) {
-        calls.push(['fog-reveal', ...args]);
-        return [{ tile: { id: 'inner' } }];
-      },
       renderWorldTileFogMask(...args) {
         calls.push(['fog-mask', ...args]);
         host.lastWorldFogContext = { tileMapView: args[0], viewport: args[1], frame: args[2], entries: args[3] };
@@ -692,12 +684,10 @@ test('WorldMapCanvasRenderer delegates fog mask context capture to split rendere
   const frame = { x: 1, y: 2, width: 3, height: 4 };
   const entries = [{ tile: tileMapView.tiles[0] }];
 
-  assert.equal(renderer.getWorldTileKey(tileMapView.tiles[0]), 'fog-key-ok');
-  assert.deepEqual(renderer.getWorldTileFogRevealEntries(entries), [{ tile: { id: 'inner' } }]);
   assert.equal(renderer.renderWorldTileFogMask(tileMapView, viewport, frame, entries), false);
-  assert.deepEqual(calls.map((call) => call[0]), ['fog-key', 'fog-reveal', 'fog-mask']);
-  assert.equal(calls[2][1], tileMapView);
-  assert.equal(calls[2][4], entries);
+  assert.deepEqual(calls.map((call) => call[0]), ['fog-mask']);
+  assert.equal(calls[0][1], tileMapView);
+  assert.equal(calls[0][4], entries);
   assert.equal(host.lastWorldFogContext.tileMapView, tileMapView);
 });
 

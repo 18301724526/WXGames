@@ -26,29 +26,10 @@
       });
     }
 
-    getWorldTileKey(tile = {}) {
-      return `${Number(tile.q) || 0},${Number(tile.r) || 0}`;
-    }
-
-    getWorldTileFogRevealEntries(entries = []) {
-      if (!Array.isArray(entries) || entries.length <= 1) return entries || [];
-      const keySet = new Set(entries.map(({ tile }) => this.getWorldTileKey(tile)));
-      const offsets = [
-        { q: -1, r: -1 }, { q: 0, r: -1 }, { q: 1, r: -1 },
-        { q: -1, r: 0 }, { q: 1, r: 0 },
-        { q: -1, r: 1 }, { q: 0, r: 1 }, { q: 1, r: 1 },
-      ];
-      const innerEntries = entries.filter(({ tile }) => {
-        const q = Number(tile?.q) || 0;
-        const r = Number(tile?.r) || 0;
-        return offsets.every((offset) => keySet.has(`${q + offset.q},${r + offset.r}`));
-      });
-      return innerEntries.length ? innerEntries : entries;
-    }
-
     createWorldTileFogMaskContext(tileMapView = {}, viewport = {}, frame = {}, entries = [], options = {}) {
       return {
         renderSnapshot: options.renderSnapshot || this.lastWorldTileMapContext?.renderSnapshot || null,
+        actors: options.actors || this.lastWorldTileMapContext?.actors || [],
         tileMapView,
         viewport,
         geometry: tileMapView.geometry || viewport.geometry || {},

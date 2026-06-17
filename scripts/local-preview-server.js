@@ -4,8 +4,8 @@ const path = require('path');
 const { URL } = require('url');
 
 const root = path.resolve(__dirname, '..', 'frontend');
-const port = 8080;
-const apiBase = 'http://127.0.0.1:3000';
+const port = Number(process.env.LOCAL_PREVIEW_PORT || process.env.PORT) || 8080;
+const apiBase = process.env.LOCAL_PREVIEW_API_BASE || 'http://127.0.0.1:3000';
 const mime = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',

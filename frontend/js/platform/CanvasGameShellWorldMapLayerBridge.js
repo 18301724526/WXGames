@@ -126,15 +126,31 @@
           return false;
         }
         const visualRegistry = WorldMapVisualPluginRegistryBase || global.WorldMapVisualPluginRegistry;
-        const visualContext = visualRegistry?.createRendererContext?.('worldFog', {
+        const baseWorldContext = {
           ...(this.worldMapRenderer?.lastWorldTileMapContext || {}),
           ...(fogContext || {}),
           config: this.config,
-        }, {
+        };
+        const visualContext = visualRegistry?.createRendererContext?.('worldFog', baseWorldContext, {
           config: this.config,
         }) || null;
+        const renderContext = visualContext ? {
+          ...baseWorldContext,
+          ...visualContext,
+          actors: Array.isArray(baseWorldContext.actors)
+            ? baseWorldContext.actors
+            : (Array.isArray(baseWorldContext.renderSnapshot?.actors) ? baseWorldContext.renderSnapshot.actors : []),
+          renderSnapshot: baseWorldContext.renderSnapshot || visualContext.renderSnapshot || null,
+          tileMapView: {
+            ...(baseWorldContext.tileMapView || {}),
+            ...(visualContext.tileMapView || {}),
+            sites: Array.isArray(baseWorldContext.tileMapView?.sites)
+              ? baseWorldContext.tileMapView.sites
+              : (Array.isArray(visualContext.tileMapView?.sites) ? visualContext.tileMapView.sites : []),
+          },
+        } : fogContext;
         this.syncWorldMapRendererLayerMetrics();
-        return this.worldFogRenderer.renderWorldFog(visualContext || fogContext);
+        return this.worldFogRenderer.renderWorldFog(renderContext || fogContext);
       },
 
       clearWorldMapLayerTransform() {

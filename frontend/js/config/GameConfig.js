@@ -8,7 +8,7 @@
     TUTORIAL_START_DELAY_MS: 2000,
     TUTORIAL_COMPLETE_DELAY_MS: 1000,
     FEATURES: {
-      FOG_OF_WAR_ENABLED: false,
+      FOG_OF_WAR_ENABLED: true,
       DEBUG_OVERLAYS_ENABLED: false,
     },
     TABS: {
