@@ -1,4 +1,16 @@
 (function (global) {
+  const WorldMapSelectionResolver = (() => {
+    if (global.WorldMapSelectionResolver) return global.WorldMapSelectionResolver;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/WorldMapSelectionResolver');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function containsPoint(rect = {}, point = {}) {
     const x = Number(point.x);
     const y = Number(point.y);
@@ -51,12 +63,13 @@
   }
 
   const DEFAULT_PRIORITY_ACTIONS = Object.freeze([
+    'closeWorldTargetPicker',
+    'chooseWorldTarget',
     'returnWorldMarch',
     'stopWorldMarch',
     'openWorldMarchFormationPicker',
     'startWorldMarch',
     'closeWorldMarchHud',
-    'selectWorldActor',
   ]);
 
   function isWorldSiteAction(action = {}) {
@@ -85,38 +98,82 @@
     return null;
   }
 
-  function resolveHitTarget(hitTargets = [], point = {}, intro = null) {
-    let backgroundAction = null;
-    let tutorialShieldAction = null;
-    const tutorialAllowedActions = [];
-    const priorityAction = getPriorityHitTarget(hitTargets, point);
-    if (priorityAction) {
-      if (priorityAction.type === 'selectWorldActor') {
-        const siteAction = getTopmostForegroundAction(hitTargets, point, isWorldSiteAction);
-        if (siteAction) return siteAction;
-      }
-      return priorityAction;
+  function resolveWorldEntityCandidates(hitTargets = [], point = {}) {
+    if (!WorldMapSelectionResolver?.resolveCandidates) return null;
+    const matches = [];
+    for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
+      const target = hitTargets[index];
+      if (!target?.action || target.action.background || !containsPoint(target, point)) continue;
+      if (!WorldMapSelectionResolver.isWorldEntityAction?.(target.action)) continue;
+      matches.push({ ...target, index });
     }
+    return matches.length > 1 ? WorldMapSelectionResolver.resolveCandidates(matches, { point }) : null;
+  }
+
+  function hasTutorialShieldAtPoint(hitTargets = [], point = {}) {
+    return (Array.isArray(hitTargets) ? hitTargets : []).some((target) => (
+      target?.action?.type === 'blockCanvasModal' && containsPoint(target, point)
+    ));
+  }
+
+  function isAllowedByTutorialShield(action = {}, allowedActions = [], intro = null) {
+    return isAllowedUnderTutorialShield(action)
+      || allowedActions.some((allowed) => matchesTutorialShieldAllowedAction(action, allowed))
+      || matchesCurrentTutorialIntroAction(action, intro);
+  }
+
+  function resolveTutorialShieldedHitTarget(hitTargets = [], point = {}, intro = null) {
+    let backgroundAction = null;
     for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
       const target = hitTargets[index];
       if (!containsPoint(target, point)) continue;
       if (target.action?.type === 'blockCanvasModal') {
-        tutorialShieldAction = target.action;
-        if (target.action.allowedAction) tutorialAllowedActions.push(target.action.allowedAction);
-      } else if (tutorialShieldAction && !isAllowedUnderTutorialShield(target.action)) {
-        return (
-          tutorialAllowedActions.some((allowed) => matchesTutorialShieldAllowedAction(target.action, allowed))
-          || matchesCurrentTutorialIntroAction(target.action, intro)
-        )
-          ? target.action
-          : tutorialShieldAction;
+        const shieldAction = target.action;
+        const tutorialAllowedActions = [];
+        if (shieldAction.allowedAction) tutorialAllowedActions.push(shieldAction.allowedAction);
+        for (let shieldedIndex = index - 1; shieldedIndex >= 0; shieldedIndex -= 1) {
+          const shieldedTarget = hitTargets[shieldedIndex];
+          const shieldedAction = shieldedTarget?.action || {};
+          if (!containsPoint(shieldedTarget, point)) continue;
+          if (shieldedAction.type === 'blockCanvasModal') {
+            if (shieldedAction.allowedAction) tutorialAllowedActions.push(shieldedAction.allowedAction);
+            continue;
+          }
+          if (shieldedAction.background) {
+            if (!backgroundAction) backgroundAction = shieldedAction;
+            continue;
+          }
+          if (isAllowedByTutorialShield(shieldedAction, tutorialAllowedActions, intro)) return shieldedAction;
+        }
+        return shieldAction;
       } else if (target.action?.background) {
         backgroundAction = target.action;
       } else {
         return target.action;
       }
     }
-    return tutorialShieldAction || backgroundAction;
+    return backgroundAction;
+  }
+
+  function resolveHitTarget(hitTargets = [], point = {}, intro = null) {
+    if (hasTutorialShieldAtPoint(hitTargets, point)) {
+      return resolveTutorialShieldedHitTarget(hitTargets, point, intro);
+    }
+    const priorityAction = getPriorityHitTarget(hitTargets, point);
+    if (priorityAction) return priorityAction;
+    const worldEntityAction = resolveWorldEntityCandidates(hitTargets, point);
+    if (worldEntityAction) return worldEntityAction;
+    let backgroundAction = null;
+    for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
+      const target = hitTargets[index];
+      if (!containsPoint(target, point)) continue;
+      if (target.action?.background) {
+        backgroundAction = target.action;
+      } else {
+        return target.action;
+      }
+    }
+    return backgroundAction;
   }
 
   const api = {
@@ -124,11 +181,15 @@
     DEFAULT_PRIORITY_ACTIONS,
     getTopmostForegroundAction,
     getPriorityHitTarget,
+    hasTutorialShieldAtPoint,
     isAllowedUnderTutorialShield,
+    isAllowedByTutorialShield,
     isWorldSiteAction,
     matchesCurrentTutorialIntroAction,
     matchesTutorialShieldAllowedAction,
     normalizeHitTarget,
+    resolveTutorialShieldedHitTarget,
+    resolveWorldEntityCandidates,
     resolveHitTarget,
   };
 

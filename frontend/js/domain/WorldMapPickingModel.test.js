@@ -6,6 +6,7 @@ require('./WorldMarchProgressSnapshot');
 require('./WorldActorProjection');
 require('./WorldMarchGeometry');
 require('./WorldMarchSystem');
+require('./WorldMapSelectionResolver');
 const PickingModel = require('./WorldMapPickingModel');
 
 function createContext() {
@@ -97,4 +98,28 @@ test('WorldMapPickingModel resolves world entities without renderer hit targets'
   assert.equal(siteAction.siteId, 'capital');
   assert.equal(actorAction.type, 'selectWorldActor');
   assert.equal(actorAction.actorId, 'actor-1');
+});
+
+test('WorldMapPickingModel opens a target picker for overlapping site and actor entities', () => {
+  const context = createContext();
+  context.tileMapView.tiles = [
+    { id: 'tile_1_0', q: 1, r: 0, terrain: 'capital', siteId: 'capital', site: { id: 'capital', type: 'city', owner: 'player' } },
+  ];
+  context.actors = [
+    {
+      id: 'actor-1',
+      missionId: 'mission-1',
+      status: 'idle',
+      current: { q: 1, r: 0, tileId: 'tile_1_0' },
+    },
+  ];
+
+  const snapshot = PickingModel.createSnapshot(context);
+  const action = PickingModel.resolveAction({ x: 276, y: 252 }, snapshot);
+
+  assert.equal(action.type, 'openWorldTargetPicker');
+  assert.equal(action.tileId, 'tile_1_0');
+  assert.equal(action.candidates.length, 2);
+  assert.equal(action.candidates.some((candidate) => candidate.action.type === 'openWorldSite'), true);
+  assert.equal(action.candidates.some((candidate) => candidate.action.type === 'selectWorldActor'), true);
 });

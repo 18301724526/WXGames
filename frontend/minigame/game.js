@@ -19,6 +19,7 @@ require('../js/domain/WorldMapEntitySnapshot');
 require('../js/domain/WorldMapRenderSnapshot');
 require('../js/domain/WorldMapPerformanceBudget');
 require('../js/domain/WorldFogVisualSnapshot');
+require('../js/domain/WorldMapSelectionResolver');
 require('../js/domain/WorldMapPickingModel');
 require('../js/domain/WorldMapInputIntent');
 require('../js/domain/WorldMapInputActionMap');

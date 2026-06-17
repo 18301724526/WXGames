@@ -224,6 +224,48 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
   ]);
 });
 
+test('CanvasTerritoryActionHandlers opens and resolves world target picker candidates', () => {
+  const calls = [];
+  const host = {
+    territoryUiState: {},
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['refreshWorldMap', options]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_openWorldTargetPicker({
+    type: 'openWorldTargetPicker',
+    q: 0,
+    r: 0,
+    tileId: 'tile_0_0',
+    candidates: [
+      { id: 'capital', kind: 'site', label: 'Capital', action: { type: 'openWorldSite', siteId: 'capital' } },
+      { id: 'march-1', kind: 'actor', label: 'Scout A', action: { type: 'selectWorldActor', actorId: 'march-1' } },
+    ],
+  }), true);
+
+  assert.equal(host.territoryUiState.worldTargetPicker.candidates.length, 2);
+  assert.equal(host.territoryUiState.selectedSiteId, '');
+
+  assert.equal(controller.handle_chooseWorldTarget({
+    type: 'chooseWorldTarget',
+    targetId: 'march-1',
+  }), true);
+
+  assert.equal(host.territoryUiState.worldTargetPicker, null);
+  assert.equal(host.territoryUiState.selectedWorldActorId, 'march-1');
+  assert.deepEqual(calls.map((call) => call[0] === 'render' ? call : [call[0]]), [
+    ['render', 'openWorldTargetPicker'],
+    ['refreshWorldMap'],
+    ['render', 'selectWorldActor'],
+    ['refreshWorldMap'],
+  ]);
+});
+
 test('CanvasTerritoryActionHandlers resets runtime world camera for return-home control', () => {
   const calls = [];
   const runtime = {

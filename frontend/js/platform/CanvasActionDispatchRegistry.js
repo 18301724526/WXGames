@@ -59,6 +59,9 @@
     openWorldMarchFormationPicker: { method: 'openWorldMarchFormationPicker' },
     closeWorldMarchHud: { method: 'closeWorldMarchHud' },
     selectWorldActor: { method: 'selectWorldActor' },
+    openWorldTargetPicker: { method: 'openWorldTargetPicker' },
+    chooseWorldTarget: { method: 'chooseWorldTarget' },
+    closeWorldTargetPicker: { method: 'closeWorldTargetPicker' },
   };
 
   const SUPPORTED_ACTIONS = [
@@ -100,6 +103,9 @@
     'closeWorldMarchHud',
     'startWorldMarch',
     'selectWorldActor',
+    'openWorldTargetPicker',
+    'chooseWorldTarget',
+    'closeWorldTargetPicker',
     'returnWorldMarch',
     'stopWorldMarch',
     'changeExpeditionSoldiers',

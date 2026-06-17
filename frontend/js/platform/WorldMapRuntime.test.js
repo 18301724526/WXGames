@@ -786,6 +786,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
   const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
 
   [
+    'WorldMapSelectionResolver.js',
     'WorldMapPickingModel.js',
     'WorldMapInputIntent.js',
     'WorldMapRuntimeBakePolicy.js',
@@ -805,6 +806,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
     );
   });
   [
+    "require('../js/domain/WorldMapSelectionResolver')",
     "require('../js/domain/WorldMapPickingModel')",
     "require('../js/domain/WorldMapInputIntent')",
     "require('../js/platform/WorldMapRuntimeBakePolicy')",

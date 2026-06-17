@@ -5,6 +5,7 @@ require('./TileMapGeometry');
 require('./WorldTime');
 require('./WorldMarchProgressSnapshot');
 require('./WorldMarchSystem');
+require('./WorldMapSelectionResolver');
 const WorldMapInputActionMap = require('./WorldMapInputActionMap');
 const WorldMapPickingModel = require('./WorldMapPickingModel');
 
@@ -37,14 +38,32 @@ test('WorldMapInputActionMap resolves topmost foreground target before backgroun
   assert.deepEqual(action, { type: 'openWorldSite', siteId: 'capital' });
 });
 
-test('WorldMapInputActionMap keeps a city click as openWorldSite when an actor stands on the city', () => {
+test('WorldMapInputActionMap opens a target picker when an actor stands on a city', () => {
   const action = WorldMapInputActionMap.getHitTarget({ x: 60, y: 60 }, [
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
     { x: 40, y: 40, width: 80, height: 60, action: { type: 'openWorldSite', siteId: 'capital' } },
     { x: 50, y: 50, width: 42, height: 42, action: { type: 'selectWorldActor', missionId: 'march-1' } },
   ]);
 
-  assert.deepEqual(action, { type: 'openWorldSite', siteId: 'capital' });
+  assert.equal(action.type, 'openWorldTargetPicker');
+  assert.equal(action.candidates.length, 2);
+  assert.equal(action.candidates.some((candidate) => candidate.action.type === 'openWorldSite'), true);
+  assert.equal(action.candidates.some((candidate) => candidate.action.type === 'selectWorldActor'), true);
+});
+
+test('WorldMapInputActionMap keeps HUD controls above world entity disambiguation', () => {
+  const chooseAction = WorldMapInputActionMap.getHitTarget({ x: 60, y: 60 }, [
+    { x: 40, y: 40, width: 80, height: 60, action: { type: 'openWorldSite', siteId: 'capital' } },
+    { x: 50, y: 50, width: 42, height: 42, action: { type: 'selectWorldActor', missionId: 'march-1' } },
+    { x: 35, y: 35, width: 120, height: 32, action: { type: 'chooseWorldTarget', targetId: 'march-1' } },
+  ]);
+  const stopAction = WorldMapInputActionMap.getHitTarget({ x: 60, y: 50 }, [
+    { x: 50, y: 50, width: 42, height: 42, action: { type: 'selectWorldActor', missionId: 'march-1' } },
+    { x: 35, y: 35, width: 58, height: 24, action: { type: 'stopWorldMarch', missionId: 'march-1' } },
+  ]);
+
+  assert.deepEqual(chooseAction, { type: 'chooseWorldTarget', targetId: 'march-1' });
+  assert.deepEqual(stopAction, { type: 'stopWorldMarch', missionId: 'march-1' });
 });
 
 test('WorldMapInputActionMap preserves topmost background target over older background', () => {
@@ -152,6 +171,29 @@ test('WorldMapInputActionMap resolves world entities from picking snapshot befor
 
   assert.equal(action.type, 'selectWorldActor');
   assert.equal(action.actorId, 'actor-1');
+});
+
+test('WorldMapInputActionMap opens target picker for overlapping picking snapshot entities', () => {
+  const context = createContext();
+  context.tileMapView.sites = [{ id: 'capital', type: 'city', owner: 'player' }];
+  context.tileMapView.tiles = [
+    { id: 'tile_1_0', q: 1, r: 0, terrain: 'capital', siteId: 'capital', site: { id: 'capital', type: 'city', owner: 'player' } },
+  ];
+  const pickingSnapshot = WorldMapPickingModel.createSnapshot({
+    ...context,
+    frame: { x: 0, y: 0, width: 300, height: 300 },
+    actors: [{ id: 'actor-1', missionId: 'mission-1', current: { q: 1, r: 0 } }],
+  });
+
+  const action = WorldMapInputActionMap.resolveTapAction({ x: 148, y: 124 }, {
+    hitTargets: [{ x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } }],
+    backgroundPoint: { x: 148, y: 124 },
+    context,
+    pickingSnapshot,
+  });
+
+  assert.equal(action.type, 'openWorldTargetPicker');
+  assert.equal(action.candidates.length, 2);
 });
 
 test('WorldMapInputActionMap does not dispatch stale renderer world entity targets when stable picking misses', () => {

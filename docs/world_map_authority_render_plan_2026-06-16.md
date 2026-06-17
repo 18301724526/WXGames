@@ -16,6 +16,7 @@ Bring the world-map implementation back in line with the shared-world SLG contra
 ## Latest Evidence Snapshot
 
 - Latest pushed evidence target:
+  - Step 30 world target disambiguation picker implementation is now the current local code target before private-server QA.
   - Step 19 reset-spawn visible verification
   - Step 20 post-reset tutorial closure
   - Step 21 public-H5 reachability/documentation audit
@@ -1625,6 +1626,51 @@ Decision:
 - Before a write, choose one verification route:
   - add a dev-only explicit historical-player verification login path, or
   - restrict the confirmed write to accounts already reachable through public-H5 auth.
+
+### Step 30 - World Target Disambiguation Picker
+
+Problem:
+
+- When a world-map actor stands on a city/site, a single tap can hit both world entities.
+- The old single-winner behavior made one target unreachable from that tap, usually preventing the player from selecting the marching actor when it overlapped a city.
+- A priority flip would only move the bug to the other target. The mature-engine fix is explicit disambiguation after candidate collection.
+
+Architecture decision:
+
+- Keep picking, input, UI state, HUD rendering, and action dispatch separated.
+- `WorldMapSelectionResolver` is the pure domain resolver. It normalizes world entity candidates, dedupes them, sorts them deterministically, returns one direct action for one candidate, and returns `openWorldTargetPicker` for multiple candidates.
+- `WorldMapPickingModel` remains the owner of stable world-entity picking snapshots and now passes overlapping site/actor candidates through the resolver.
+- `WorldMapInputActionMap` and `CanvasSurfaceHitTargets` keep HUD controls above world-entity disambiguation. Target-picker rows, close buttons, return/stop, formation picker, and march commands are resolved before site/actor candidate selection.
+- Tutorial/modal shields stay above disambiguation. A tutorial block can still block overlapping world entities, and an explicitly allowed tutorial city action can pass without opening the picker.
+- `CanvasTerritoryActionHandlers` owns the `worldTargetPicker` UI state and resolves `chooseWorldTarget` by dispatching the selected candidate's original action.
+- `WorldMarchHudCanvasRenderer` renders the compact picker on `mainHud` and registers `chooseWorldTarget` / `closeWorldTargetPicker` hit targets.
+- H5 and minigame entrypoints load `WorldMapSelectionResolver` before `WorldMapPickingModel`, so browser, minigame, and Node tests share the same dependency order.
+
+Review notes:
+
+- This does not change server authority or march/city gameplay rules.
+- This does not make renderer hit targets authoritative. Renderer targets can still supply surface evidence, while stable picking/context recomputation owns world target identity.
+- This follows the same input-stack shape used by mature engines: modal/input-mode gates first, explicit UI controls second, world entity candidate resolution third, background terrain inference last.
+
+Verification:
+
+```bash
+node --check frontend/js/domain/WorldMapSelectionResolver.js
+node --check frontend/js/domain/WorldMapPickingModel.js
+node --check frontend/js/domain/WorldMapInputActionMap.js
+node --check frontend/js/platform/CanvasTerritoryActionHandlers.js
+node --check frontend/js/platform/renderers/CanvasSurfaceHitTargets.js
+node --check frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js
+node --test frontend/js/domain/WorldMapSelectionResolver.test.js frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/CanvasActionDispatcher.test.js
+git diff --check
+```
+
+Manual/private-server test target:
+
+- Open the private H5 after deploy.
+- Move or use an existing actor that stands on the same tile as a player city/site.
+- Tap the overlapped tile.
+- Pass if a compact target picker appears with both the city/site and actor, selecting the actor opens actor return/stop commands, selecting the city opens the city/site flow, and tutorial/modal overlays still block non-allowed world taps.
 
 ## Non-Goals
 

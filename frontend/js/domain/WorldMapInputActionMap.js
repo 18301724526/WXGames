@@ -32,6 +32,17 @@
     }
     return null;
   })();
+  const WorldMapSelectionResolver = (() => {
+    if (global.WorldMapSelectionResolver) return global.WorldMapSelectionResolver;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMapSelectionResolver');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const DEFAULT_ALLOWED_ACTIONS = Object.freeze([
     'openWorldSite',
@@ -42,11 +53,23 @@
     'startWorldMarch',
     'closeWorldMarchHud',
     'selectWorldActor',
+    'openWorldTargetPicker',
+    'chooseWorldTarget',
+    'closeWorldTargetPicker',
     'returnWorldMarch',
     'stopWorldMarch',
     'enterCity',
     'renameCity',
     'territoryAction',
+  ]);
+  const DEFAULT_PRIORITY_ACTIONS = Object.freeze([
+    'closeWorldTargetPicker',
+    'chooseWorldTarget',
+    'returnWorldMarch',
+    'stopWorldMarch',
+    'openWorldMarchFormationPicker',
+    'startWorldMarch',
+    'closeWorldMarchHud',
   ]);
 
   function toNumber(value, fallback = 0) {
@@ -143,7 +166,44 @@
     return null;
   }
 
+  function getForegroundTargets(point = {}, targets = []) {
+    const matches = [];
+    for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
+      const target = targets[index];
+      if (!target?.action || target.action.background || !containsPoint(target, point)) continue;
+      matches.push({ ...target, index });
+    }
+    return matches;
+  }
+
+  function resolveForegroundCandidates(point = {}, targets = [], options = {}) {
+    if (!WorldMapSelectionResolver?.resolveCandidates) return null;
+    const candidates = getForegroundTargets(point, targets)
+      .filter((target) => WorldMapSelectionResolver.isWorldEntityAction?.(target.action));
+    if (candidates.length <= 1) return null;
+    return WorldMapSelectionResolver.resolveCandidates(candidates, {
+      point,
+      tile: options.tile || {},
+    });
+  }
+
+  function getPriorityForegroundAction(point = {}, targets = [], options = {}) {
+    const priorities = Array.isArray(options.priorities) ? options.priorities : DEFAULT_PRIORITY_ACTIONS;
+    for (const type of priorities) {
+      for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
+        const target = targets[index];
+        if (target?.action?.type !== type || target.action.background) continue;
+        if (containsPoint(target, point)) return target.action;
+      }
+    }
+    return null;
+  }
+
   function getHitTarget(point = {}, targets = []) {
+    const priorityAction = getPriorityForegroundAction(point, targets);
+    if (priorityAction) return priorityAction;
+    const resolvedCandidates = resolveForegroundCandidates(point, targets);
+    if (resolvedCandidates) return resolvedCandidates;
     let backgroundAction = null;
     for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
       const target = targets[index];
@@ -258,9 +318,12 @@
 
   const api = {
     DEFAULT_ALLOWED_ACTIONS,
+    DEFAULT_PRIORITY_ACTIONS,
     buildSelectWorldMarchTargetAction,
     containsPoint,
     findKnownTile,
+    getForegroundTargets,
+    getPriorityForegroundAction,
     getBackgroundMarchTargetAction,
     getContextFrame,
     getHitTarget,
@@ -274,6 +337,7 @@
     isWorldSiteAction,
     normalizeHitTarget,
     normalizeHitTargets,
+    resolveForegroundCandidates,
     resolveTapAction,
     shouldRouteTapThroughWorldMapRuntime,
   };

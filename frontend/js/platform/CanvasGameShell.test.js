@@ -1919,7 +1919,7 @@ test('CanvasGameShell syncs local world site selection after handled open action
   assert.deepEqual(calls, [['handle', 'openWorldSite', 'site_3_-9']]);
 });
 
-test('CanvasGameShell routes a city tap to openWorldSite when an actor overlaps the city', () => {
+test('CanvasGameShell opens a target picker when an actor overlaps the city', () => {
   const calls = [];
   const hitTargets = [
     CanvasSurfaceHitTargets.normalizeHitTarget(
@@ -1941,7 +1941,7 @@ test('CanvasGameShell routes a city tap to openWorldSite when an actor overlaps 
     },
     actionController: {
       handle(action) {
-        calls.push(['handle', action.type, action.siteId || action.missionId || '']);
+        calls.push(['handle', action.type, action.siteId || action.missionId || action.candidates?.length || '']);
         return true;
       },
     },
@@ -1949,8 +1949,8 @@ test('CanvasGameShell routes a city tap to openWorldSite when an actor overlaps 
 
   assert.equal(shell.handleTap({ x: 60, y: 60 }, {}), true);
 
-  assert.deepEqual(calls, [['handle', 'openWorldSite', 'capital']]);
-  assert.equal(shell.territoryUiState.selectedSiteId, 'capital');
+  assert.deepEqual(calls, [['handle', 'openWorldTargetPicker', 2]]);
+  assert.equal(shell.territoryUiState.selectedSiteId || '', '');
 });
 
 test('CanvasGameShell routes tagged world-map entity hits through runtime before action dispatch', () => {

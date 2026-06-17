@@ -51,6 +51,31 @@ test('WorldMarchHudCanvasRenderer renders target march action', () => {
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes(',')), false);
 });
 
+test('WorldMarchHudCanvasRenderer renders overlapping world target picker actions', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({}, {
+    worldTargetPicker: {
+      q: 0,
+      r: 0,
+      tileId: 'tile_0_0',
+      anchorX: 180,
+      anchorY: 240,
+      candidates: [
+        { id: 'capital', kind: 'site', label: 'Capital', subtitle: 'City', action: { type: 'openWorldSite', siteId: 'capital' } },
+        { id: 'march-1', kind: 'actor', label: 'Scout A', subtitle: 'Idle', action: { type: 'selectWorldActor', actorId: 'march-1' } },
+      ],
+    },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'chooseWorldTarget' && target.action.targetId === 'capital'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'chooseWorldTarget' && target.action.targetId === 'march-1'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeWorldTargetPicker'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === '选择目标'), true);
+});
+
+
 test('WorldMarchHudCanvasRenderer renders formation picker with start action', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });

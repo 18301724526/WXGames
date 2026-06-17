@@ -2562,6 +2562,45 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js`
 - `npm run test:architecture`
 
+### `frontend/js/domain/WorldMapSelectionResolver.js`
+
+Status: candidate
+
+Owns:
+
+- Pure disambiguation for overlapping world-map entity candidates.
+- Candidate normalization for world entity actions: `openWorldSite`, `enterCity`, and `selectWorldActor`.
+- Candidate dedupe, stable sorting, compact labels/subtitles, tile identity normalization, and serializable action cloning.
+- Direct single-candidate resolution versus multi-candidate `openWorldTargetPicker` creation.
+- No gameplay mutation, renderer object retention, DOM/canvas access, backend authority, or tutorial rules.
+
+Public API:
+
+- `WorldMapSelectionResolver.WORLD_ENTITY_ACTIONS`
+- `WorldMapSelectionResolver.isWorldEntityAction(action)`
+- `WorldMapSelectionResolver.createCandidate(target, index, options)`
+- `WorldMapSelectionResolver.normalizeCandidates(targets, options)`
+- `WorldMapSelectionResolver.createPickerAction(candidates, options)`
+- `WorldMapSelectionResolver.resolveCandidates(candidates, options)`
+- `WorldMapSelectionResolver.normalizeCoord(source, fallback)`
+
+Performance Constraints:
+
+- Work only on compact hit-target/picking candidate rows, not full renderer snapshots.
+- Clone only plain serializable action payloads; functions and renderer/runtime references are excluded.
+- Keep sorting deterministic and small-list oriented; broad spatial indexing still belongs upstream in picking/runtime caches.
+
+Extension Path:
+
+- Add new selectable world entity types by first adding their world action type to this resolver and focused tests.
+- Keep UI ordering and visual presentation in HUD renderers; this module only decides direct action versus picker action.
+- Keep input-mode gates above this module: tutorial/modal shields and HUD command hit targets must resolve before world entity disambiguation.
+
+Regression:
+
+- `node --test frontend/js/domain/WorldMapSelectionResolver.test.js frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`
+- `npm run test:architecture`
+
 ### `frontend/js/domain/WorldMapInputIntent.js` - 337 lines
 
 状态 / Status: candidate
@@ -2615,16 +2654,22 @@ P0 新增公开 API / Public API Added During P0:
 - single authority for H5 Shell and minigame/compat App world-map tap routing; Shell/App routers must not duplicate these routing rules
 - `TileCoord`-normalized background input coordinates: stable `x/y` and legacy `q/r` mapper output both produce deterministic compact action payloads
 - coordinate-authoritative known-tile lookup for background inference: `findKnownTile()` matches current `tileMapView.tiles` by normalized coordinates and `buildSelectWorldMarchTargetAction()` emits canonical `tileId`, so stale or colliding raw tile ids cannot redirect target coordinates
+- HUD/control priority above world entity disambiguation: target-picker rows, close buttons, return/stop, formation picker, and march commands resolve before map-site/map-actor candidates.
+- Multi-candidate world entity resolution through `WorldMapSelectionResolver`; the action map opens `openWorldTargetPicker` instead of silently preferring city or actor when both occupy the tap.
 - 将地图背景点击通过 `screenPointToAxialTile` 推断为 `selectWorldMarchTarget`
 - 生成稳定 action payload，不直接修改游戏状态、不调 renderer、不调 backend
 
 公开 API / Public API:
 
 - `WorldMapInputActionMap.DEFAULT_ALLOWED_ACTIONS`
+- `WorldMapInputActionMap.DEFAULT_PRIORITY_ACTIONS`
 - `WorldMapInputActionMap.normalizeHitTargets(targets, options)`
 - `WorldMapInputActionMap.normalizeHitTarget(target, options)`
 - `WorldMapInputActionMap.getHitTarget(point, targets)`
 - `WorldMapInputActionMap.resolveTapAction(point, input, options)`
+- `WorldMapInputActionMap.getForegroundTargets(point, targets)`
+- `WorldMapInputActionMap.getPriorityForegroundAction(point, targets, options)`
+- `WorldMapInputActionMap.resolveForegroundCandidates(point, targets, options)`
 - renderer world-surface targets (`openWorldSite`, `selectWorldActor`, `worldMapDrag`, background `selectWorldMarchTarget`) marked with `inputSurface: 'worldMap'` as non-authoritative surface evidence only; stable picking/context recomputation owns target identity
 - `WorldMapInputActionMap.getBackgroundMarchTargetAction(point, context, options)`
 - `WorldMapInputActionMap.inferTileFromPoint(point, context, options)`
@@ -2649,7 +2694,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapInputAuthority.contract.test.js`
+- `node --test frontend/js/domain/WorldMapSelectionResolver.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapInputAuthority.contract.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/config/ConfigRegistryContract.js`

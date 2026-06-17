@@ -21,6 +21,52 @@
     };
   }
 
+  function clonePlain(value) {
+    if (!value || typeof value !== 'object') return value;
+    if (Array.isArray(value)) return value.map(clonePlain);
+    const output = {};
+    Object.entries(value).forEach(([key, next]) => {
+      if (typeof next !== 'function') output[key] = clonePlain(next);
+    });
+    return output;
+  }
+
+  function sanitizeWorldTargetCandidate(candidate = {}, index = 0) {
+    const action = clonePlain(candidate.action || {});
+    if (!action?.type) return null;
+    return {
+      id: String(candidate.id || action.siteId || action.cityId || action.territoryId || action.actorId || action.missionId || `target-${index}`),
+      index,
+      kind: candidate.kind || (action.type === 'selectWorldActor' ? 'actor' : 'site'),
+      label: String(candidate.label || action.actorName || action.siteName || action.cityName || action.siteId || action.actorId || '目标'),
+      subtitle: String(candidate.subtitle || action.statusLabel || action.ownerLabel || ''),
+      tileId: candidate.tileId || action.tileId || '',
+      q: candidate.q,
+      r: candidate.r,
+      action,
+    };
+  }
+
+  function sanitizeWorldTargetPicker(action = {}) {
+    const candidates = (Array.isArray(action.candidates) ? action.candidates : [])
+      .map((candidate, index) => sanitizeWorldTargetCandidate(candidate, index))
+      .filter(Boolean);
+    if (!candidates.length) return null;
+    const q = Math.floor(Number(action.q ?? action.targetQ ?? candidates[0]?.q));
+    const r = Math.floor(Number(action.r ?? action.targetR ?? candidates[0]?.r));
+    const coord = Number.isFinite(q) && Number.isFinite(r)
+      ? (TileCoord?.normalizeCoord ? TileCoord.normalizeCoord({ q, r, tileId: action.tileId }) : { q, r, tileId: action.tileId || `tile_${q}_${r}` })
+      : { q: undefined, r: undefined, tileId: action.tileId || candidates[0]?.tileId || '' };
+    return {
+      tileId: coord.tileId || action.tileId || candidates[0]?.tileId || '',
+      q: coord.q,
+      r: coord.r,
+      anchorX: Number.isFinite(Number(action.anchorX)) ? Number(action.anchorX) : undefined,
+      anchorY: Number.isFinite(Number(action.anchorY)) ? Number(action.anchorY) : undefined,
+      candidates,
+    };
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
@@ -32,10 +78,12 @@
         }
         this.host.territoryUiState = this.host.territoryUiState || {};
         this.host.territoryUiState.selectedSiteId = siteId;
+        this.host.territoryUiState.worldTargetPicker = null;
         const game = this.getGameHost();
         if (game && game !== this.host) {
           game.territoryUiState = game.territoryUiState || {};
           game.territoryUiState.selectedSiteId = siteId;
+          game.territoryUiState.worldTargetPicker = null;
         }
         return true;
       },
@@ -278,6 +326,7 @@
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
         uiState.selectedSiteId = '';
+        uiState.worldTargetPicker = null;
         uiState.expeditionConfigSiteId = '';
         const tutorialResult = game?.tutorialController?.onWorldMarchTargetSelected?.(action) || true;
         return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
@@ -306,6 +355,7 @@
         if (action.terrainLabel || previousTarget.terrainLabel) nextTarget.terrainLabel = action.terrainLabel || previousTarget.terrainLabel;
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
+        uiState.worldTargetPicker = null;
         const handled = this.refreshWorldMarchLayer(action);
         this.refreshWorldMarchTutorialHighlight();
         return handled;
@@ -315,6 +365,7 @@
         const uiState = this.getSharedTerritoryUiState();
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
+        uiState.worldTargetPicker = null;
         const handled = this.refreshWorldMarchLayer(action);
         this.refreshWorldMarchTutorialHighlight();
         return handled;
@@ -327,9 +378,45 @@
         uiState.selectedWorldActorId = actorId;
         uiState.worldMarchTarget = null;
         uiState.selectedSiteId = '';
+        uiState.worldTargetPicker = null;
         const handled = this.refreshWorldMarchLayer(action);
         this.refreshWorldMarchTutorialHighlight();
         return handled;
+      },
+
+      handle_openWorldTargetPicker(action) {
+        const picker = sanitizeWorldTargetPicker(action);
+        if (!picker) return false;
+        const game = this.getGameHost();
+        game?.territoryController?.closeSiteDialog?.({ render: false });
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.worldTargetPicker = picker;
+        uiState.worldMarchTarget = null;
+        uiState.selectedWorldActorId = '';
+        uiState.selectedSiteId = '';
+        uiState.expeditionConfigSiteId = '';
+        return this.refreshWorldMarchLayer(action);
+      },
+
+      handle_chooseWorldTarget(action, meta = {}) {
+        const uiState = this.getSharedTerritoryUiState();
+        const picker = uiState.worldTargetPicker || {};
+        const candidates = Array.isArray(picker.candidates) ? picker.candidates : [];
+        const candidate = candidates.find((item) => String(item.id) === String(action.targetId || action.id || ''))
+          || candidates[Math.max(0, Math.floor(Number(action.index) || 0))]
+          || null;
+        const nextAction = candidate?.action || action.action || null;
+        if (!nextAction?.type || nextAction.type === 'chooseWorldTarget') return false;
+        uiState.worldTargetPicker = null;
+        if (typeof this.handle === 'function') return this.handle(nextAction, meta);
+        const handler = this[`handle_${nextAction.type}`];
+        return typeof handler === 'function' ? handler.call(this, nextAction, meta) : false;
+      },
+
+      handle_closeWorldTargetPicker(action) {
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.worldTargetPicker = null;
+        return this.refreshWorldMarchLayer(action);
       },
 
       handle_startWorldMarch(action, meta = {}) {
@@ -353,6 +440,7 @@
             const uiState = this.getSharedTerritoryUiState();
             uiState.worldMarchTarget = null;
             uiState.selectedWorldActorId = '';
+            uiState.worldTargetPicker = null;
             this.refreshWorldMarchLayer(action);
             this.refreshWorldMarchTutorialHighlight();
           }
@@ -372,6 +460,7 @@
         return this.finalize(Promise.resolve(run()).then((result) => {
           if (result !== false) {
             this.getSharedTerritoryUiState().selectedWorldActorId = '';
+            this.getSharedTerritoryUiState().worldTargetPicker = null;
             this.refreshWorldMarchLayer(action);
             this.refreshWorldMarchTutorialHighlight();
           }
@@ -391,6 +480,7 @@
         return this.finalize(Promise.resolve(run()).then((result) => {
           if (result !== false) {
             this.getSharedTerritoryUiState().selectedWorldActorId = '';
+            this.getSharedTerritoryUiState().worldTargetPicker = null;
             this.refreshWorldMarchLayer(action);
             this.refreshWorldMarchTutorialHighlight();
           }
@@ -442,6 +532,7 @@
         }
         this.host.territoryUiState = this.host.territoryUiState || {};
         this.host.territoryUiState.selectedSiteId = siteId;
+        this.host.territoryUiState.worldTargetPicker = null;
         const handled = this.afterHandled(action);
         this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
         return handled;

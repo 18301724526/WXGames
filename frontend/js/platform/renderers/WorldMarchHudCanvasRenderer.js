@@ -105,6 +105,76 @@
       };
     }
 
+    getWorldTargetPicker(uiState = {}) {
+      const picker = uiState.worldTargetPicker || null;
+      if (!picker || !Array.isArray(picker.candidates) || picker.candidates.length < 2) return null;
+      return picker;
+    }
+
+    getCandidateKindLabel(candidate = {}) {
+      if (candidate.kind === 'actor') return '部队';
+      if (candidate.kind === 'site') return '城池';
+      return '目标';
+    }
+
+    renderWorldTargetPicker(picker = {}, viewport = {}, geometry = {}, frame = {}) {
+      const hudFrame = this.getVisibleHudFrame(frame);
+      const candidates = Array.isArray(picker.candidates) ? picker.candidates.slice(0, 5) : [];
+      if (candidates.length < 2) return false;
+      const anchor = Number.isFinite(Number(picker.anchorX)) && Number.isFinite(Number(picker.anchorY))
+        ? { x: Number(picker.anchorX), y: Number(picker.anchorY) }
+        : this.getTileScreenCenter(picker, viewport, geometry);
+      const rowH = 38;
+      const width = Math.min(220, Math.max(172, (Number(hudFrame.width) || this.width || 390) - 24));
+      const height = 34 + rowH * candidates.length + 10;
+      const rect = this.clampHudRect({
+        x: anchor.x - width / 2,
+        y: anchor.y - height - 36,
+        width,
+        height,
+      }, hudFrame);
+      this.drawSmallHudPanel(rect.x, rect.y, rect.width, rect.height, '选择目标');
+      const closeSize = 24;
+      this.drawButton(rect.x + rect.width - closeSize - 7, rect.y + 7, closeSize, closeSize, 'x', { size: 12, radius: 7 });
+      this.addHitTarget({ x: rect.x + rect.width - closeSize - 7, y: rect.y + 7, width: closeSize, height: closeSize }, {
+        type: 'closeWorldTargetPicker',
+      });
+      candidates.forEach((candidate, index) => {
+        const rowX = rect.x + 10;
+        const rowY = rect.y + 32 + index * rowH;
+        const rowW = rect.width - 20;
+        const active = candidate.kind === 'actor';
+        this.drawPanel(rowX, rowY, rowW, rowH - 6, {
+          fill: active ? 'rgba(35, 49, 34, 0.84)' : 'rgba(41, 39, 32, 0.82)',
+          stroke: active ? 'rgba(116, 211, 160, 0.42)' : 'rgba(255, 226, 177, 0.18)',
+          radius: 7,
+          inset: 'rgba(255, 231, 184, 0.04)',
+        });
+        this.drawText(this.getCandidateKindLabel(candidate), rowX + 12, rowY + 12, {
+          size: 10,
+          bold: true,
+          color: active ? '#74d3a0' : '#f0b45b',
+        });
+        this.drawText(this.truncateText(candidate.label || '目标', rowW - 76, { size: 11, bold: true }), rowX + 56, rowY + 12, {
+          size: 11,
+          bold: true,
+          color: '#ffe6b5',
+        });
+        if (candidate.subtitle) {
+          this.drawText(this.truncateText(candidate.subtitle, rowW - 76, { size: 9 }), rowX + 56, rowY + 26, {
+            size: 9,
+            color: '#aeb0b8',
+          });
+        }
+        this.addHitTarget({ x: rowX, y: rowY, width: rowW, height: rowH - 6 }, {
+          type: 'chooseWorldTarget',
+          targetId: candidate.id,
+          index,
+        });
+      });
+      return true;
+    }
+
     hasMilitaryData(state = {}) {
       return Boolean(state?.military || state?.famousPersons || state?.cityState);
     }
@@ -343,6 +413,8 @@
     }
 
     renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}) {
+      const picker = this.getWorldTargetPicker(uiState);
+      if (picker) return this.renderWorldTargetPicker(picker, viewport, geometry, frame);
       const target = WorldMarchSystem?.getMarchTargetUiState?.(uiState);
       if (target?.pickerOpen) return this.renderFormationPicker(state, target, frame);
       const selectedActorId = uiState.selectedWorldActorId || '';

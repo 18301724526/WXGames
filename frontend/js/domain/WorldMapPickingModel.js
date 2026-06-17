@@ -21,6 +21,17 @@
     }
     return null;
   })();
+  const WorldMapSelectionResolver = (() => {
+    if (global.WorldMapSelectionResolver) return global.WorldMapSelectionResolver;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMapSelectionResolver');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -139,10 +150,14 @@
       height: drawH + 26,
       priority: 20,
       kind: 'site',
+      label: site?.cityName || site?.naturalName || site?.name || site?.title || (site?.owner === 'player' ? '城池' : '地点'),
+      subtitle: site?.owner === 'player' ? '我方城池' : (site?.owner === 'neutral' ? '中立地点' : '世界地点'),
       action: {
         type: 'openWorldSite',
         siteId,
         tileId: coord.tileId,
+        siteName: site?.cityName || site?.naturalName || site?.name || site?.title || '',
+        owner: site?.owner || '',
       },
     };
   }
@@ -162,10 +177,15 @@
       height: size,
       priority: 10,
       kind: 'actor',
+      label: actor.formation?.label || actor.formation?.name || actor.name || actor.label || '部队',
+      subtitle: actor.status === 'active' ? '行军中' : '驻留部队',
+      current,
       action: {
         type: 'selectWorldActor',
         actorId,
         missionId,
+        actorName: actor.formation?.label || actor.formation?.name || actor.name || actor.label || '',
+        status: actor.status || '',
       },
     };
   }
@@ -306,14 +326,30 @@
     return action?.type === 'openWorldSite' || action?.type === 'enterCity';
   }
 
-  function resolveAction(point = {}, snapshot = {}) {
+  function resolveCandidates(point = {}, snapshot = {}, options = {}) {
     const targets = Array.isArray(snapshot?.targets) ? snapshot.targets : [];
     const matches = [];
     for (let index = targets.length - 1; index >= 0; index -= 1) {
       const target = targets[index];
       if (!target?.action || !containsPoint(target, point)) continue;
-      matches.push({ target, index });
+      matches.push({ ...target, index });
     }
+    if (WorldMapSelectionResolver?.normalizeCandidates) {
+      return WorldMapSelectionResolver.normalizeCandidates(matches, {
+        point,
+        tile: options.tile || {},
+      });
+    }
+    return matches;
+  }
+
+  function resolveAction(point = {}, snapshot = {}) {
+    const candidates = resolveCandidates(point, snapshot);
+    if (WorldMapSelectionResolver?.resolveCandidates) {
+      const resolved = WorldMapSelectionResolver.resolveCandidates(candidates, { point });
+      if (resolved) return resolved;
+    }
+    const matches = candidates.map((target, index) => ({ target, index }));
     const site = matches.find(({ target }) => isWorldSiteAction(target.action));
     if (site) return site.target.action;
     const top = matches
@@ -327,6 +363,7 @@
     createActorTargets,
     createSiteTargets,
     createSnapshot,
+    resolveCandidates,
     resolveAction,
     targetSignature,
   };

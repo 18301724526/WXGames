@@ -125,7 +125,15 @@ test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield ru
   renderer.setHitTargets([]);
   renderer.addHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' });
   renderer.addHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' });
-  assert.deepEqual(renderer.getHitTarget({ x: 24, y: 24 }), { type: 'openWorldSite', siteId: 'capital' });
+  const picker = renderer.getHitTarget({ x: 24, y: 24 });
+  assert.equal(picker.type, 'openWorldTargetPicker');
+  assert.equal(picker.candidates.length, 2);
+
+  renderer.setHitTargets([]);
+  renderer.addHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' });
+  renderer.addHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' });
+  renderer.addHitTarget({ x: 10, y: 10, width: 80, height: 32 }, { type: 'chooseWorldTarget', targetId: 'march-1' });
+  assert.deepEqual(renderer.getHitTarget({ x: 24, y: 24 }), { type: 'chooseWorldTarget', targetId: 'march-1' });
 
   renderer.setHitTargets([]);
   renderer.addHitTarget({ x: 174, y: 236, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' });
@@ -261,10 +269,30 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'closeAdvisor', source: 'houseBuilt' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'blockCanvasModal' }),
   ], { x: 20, y: 20 }), { type: 'closeAdvisor', source: 'houseBuilt' });
+  const picker = CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),
+  ], { x: 24, y: 24 });
+  assert.equal(picker.type, 'openWorldTargetPicker');
+  assert.equal(picker.candidates.length, 2);
   assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'blockCanvasModal' }),
+  ], { x: 24, y: 24 }), { type: 'blockCanvasModal' });
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
+      type: 'blockCanvasModal',
+      allowedAction: { type: 'openWorldSite', siteId: 'capital' },
+    }),
   ], { x: 24, y: 24 }), { type: 'openWorldSite', siteId: 'capital' });
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 80, height: 32 }, { type: 'chooseWorldTarget', targetId: 'march-1' }),
+  ], { x: 24, y: 24 }), { type: 'chooseWorldTarget', targetId: 'march-1' });
   assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 174, y: 236, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 166, y: 231, width: 58, height: 24 }, { type: 'returnWorldMarch', missionId: 'march-1' }),
