@@ -112,6 +112,27 @@
       return true;
     }
 
+    getWorldSiteIntroAnchorSource(options = {}) {
+      const candidates = [options.worldMapAnchorSource, options.worldMapRenderer, this.worldMapRenderer, this.host?.worldMapRenderer, this.host?.host?.worldMapRenderer, this];
+      const seen = new Set();
+      return candidates.find((source) => {
+        if (!source || seen.has(source) || typeof source.getWorldSiteCanvasAnchor !== 'function') return false;
+        seen.add(source);
+        return true;
+      }) || null;
+    }
+
+    resolveWorldSiteIntroAnchor(siteId = '', state = {}, options = {}) {
+      const source = this.getWorldSiteIntroAnchorSource(options);
+      if (!siteId || !source) return null;
+      const anchor = source.getWorldSiteCanvasAnchor(siteId, state, { ...options, worldMapRenderer: options.worldMapRenderer || source });
+      if (anchor?.hitRect) return anchor;
+      if (options.worldMapRuntimeContext) return null;
+      if (source !== this && typeof this.getWorldSiteCanvasAnchor === 'function') {
+        return this.getWorldSiteCanvasAnchor(siteId, state, options);
+      }
+      return null;
+    }
     resolveTutorialIntroTarget(intro = {}, state = {}, options = {}) {
       const capitalCityId = intro.capitalCityId || state.cityState?.capitalCityId || 'capital';
       if (intro.step === 'enter') {
@@ -122,10 +143,8 @@
         if (target) return this.inflateRect(target, 10);
         return null;
       }
-      const hitTarget = this.findHitTarget('openWorldSite', (action) => action.siteId === capitalCityId);
-      if (hitTarget) return this.inflateRect(hitTarget, intro.step === 'march' ? 0 : 12);
-      const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
-      if (!anchor) return null;
+      const anchor = this.resolveWorldSiteIntroAnchor(capitalCityId, state, options);
+      if (!anchor?.hitRect) return null;
       const target = this.inflateRect(anchor.hitRect, intro.step === 'march' ? 0 : 12);
       target.action = target.action || {
         type: 'openWorldSite',
@@ -138,9 +157,7 @@
 
     resolveTutorialIntroUnitTarget(intro = {}, state = {}, options = {}) {
       const capitalCityId = intro.capitalCityId || state.cityState?.capitalCityId || 'capital';
-      const hitTarget = this.findHitTarget('openWorldSite', (action) => action.siteId === capitalCityId);
-      if (hitTarget) return this.inflateRect(hitTarget, 0);
-      const anchor = this.getWorldSiteCanvasAnchor(capitalCityId, state, options);
+      const anchor = this.resolveWorldSiteIntroAnchor(capitalCityId, state, options);
       return anchor?.hitRect ? this.inflateRect(anchor.hitRect, 0) : null;
     }
 

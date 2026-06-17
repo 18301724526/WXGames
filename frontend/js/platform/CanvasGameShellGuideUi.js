@@ -62,7 +62,65 @@ getGuideCanvasTarget(type, predicate = null) {
       return this.renderActive();
     },
 
+refreshTutorialHighlightTarget(highlight = this.tutorialHighlight) {
+      const locator = highlight?.locator || null;
+      if (!locator || locator.type !== 'worldSite' || !locator.siteId) return highlight || null;
+      const anchorSource = [
+        this.worldMapRenderer,
+        this.renderer,
+        this.worldActorLayerRenderer,
+      ].find((source) => typeof source?.getWorldSiteCanvasAnchor === 'function') || null;
+      if (!anchorSource) return highlight || null;
+      const anchor = anchorSource.getWorldSiteCanvasAnchor(locator.siteId, this.lastGame?.state || {}, {
+          worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+            || this.worldMapRuntime?.lastTileMapContext
+            || this.worldMapRenderer?.lastWorldTileMapContext
+            || this.renderer?.lastWorldTileMapContext
+            || null,
+          territoryUiState: this.territoryUiState || this.lastGame?.territoryUiState || {},
+        });
+      if (!anchor?.hitRect) return null;
+      const rect = this.resolveTutorialRect({
+        ...anchor.hitRect,
+        action: {
+          type: 'openWorldSite',
+          siteId: anchor.site?.id || anchor.siteId || locator.siteId,
+          tileId: anchor.tile?.id || anchor.tileId || '',
+          inputSurface: 'worldMap',
+        },
+      });
+      if (!rect) return null;
+      const sameRect = highlight?.rect
+        && rect.left === highlight.rect.left
+        && rect.top === highlight.rect.top
+        && rect.width === highlight.rect.width
+        && rect.height === highlight.rect.height;
+      return {
+        ...highlight,
+        rect,
+        targetAction: {
+          ...(highlight?.targetAction || {}),
+          type: 'openWorldSite',
+          siteId: anchor.site?.id || anchor.siteId || locator.siteId,
+          tileId: anchor.tile?.id || anchor.tileId || '',
+          inputSurface: 'worldMap',
+        },
+        transition: sameRect ? highlight.transition : null,
+      };
+    },
+
 renderGuideHighlightFrame(highlight = this.tutorialHighlight) {
+      if (highlight?.locator) {
+        const refreshed = this.refreshTutorialHighlightTarget(highlight);
+        if (!refreshed) {
+          this.tutorialHighlight = null;
+          return this.renderReadOnly
+            ? this.renderReadOnly(this.lastGame?.state, this.getActiveTab())
+            : this.renderActive();
+        }
+        this.tutorialHighlight = refreshed;
+        highlight = refreshed;
+      }
       const activeTab = highlight?.renderActiveTab || this.getActiveTab();
       const renderOptions = highlight?.renderOptions || null;
       if (highlight?.renderActiveTab) {
@@ -183,6 +241,7 @@ showTutorialHighlight(target, message, options = {}) {
         message: String(message ?? ''),
         allowedAction: options.allowedAction || null,
         targetAction: options.targetAction || target?.action || null,
+        locator: options.locator || null,
         renderActiveTab: options.renderActiveTab || null,
         renderOptions: options.renderOptions || null,
         transition: {

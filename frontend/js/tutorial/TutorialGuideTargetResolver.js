@@ -21,6 +21,66 @@
       return this.getShell()?.getCanvasTarget?.(type, predicate) || null;
     }
 
+    getState() {
+      return this.getGame()?.state || {};
+    }
+
+    getWorldMapRuntimeContext() {
+      const shell = this.getShell() || {};
+      return shell.worldMapRuntime?.getLastTileMapContext?.()
+        || shell.worldMapRuntime?.lastTileMapContext
+        || shell.worldMapRenderer?.lastWorldTileMapContext
+        || shell.renderer?.lastWorldTileMapContext
+        || null;
+    }
+
+    getWorldSiteAnchorSource() {
+      const shell = this.getShell() || {};
+      return [
+        shell.worldMapRenderer,
+        shell.renderer,
+        shell.worldActorLayerRenderer,
+      ].find((source) => typeof source?.getWorldSiteCanvasAnchor === 'function') || null;
+    }
+
+    resolveWorldSiteAnchorTarget(siteId = '') {
+      const anchorSource = this.getWorldSiteAnchorSource();
+      const runtimeContext = this.getWorldMapRuntimeContext();
+      if (!siteId || !anchorSource || !runtimeContext) return null;
+      const shell = this.getShell() || {};
+      const anchor = anchorSource.getWorldSiteCanvasAnchor(siteId, this.getState(), {
+        worldMapRuntimeContext: runtimeContext,
+        territoryUiState: shell.territoryUiState || this.getGame()?.territoryUiState || {},
+      });
+      if (!anchor?.hitRect) return null;
+      const action = {
+        type: 'openWorldSite',
+        siteId: anchor.site?.id || anchor.siteId || siteId,
+        tileId: anchor.tile?.id || anchor.tileId || '',
+        inputSurface: 'worldMap',
+      };
+      return {
+        ...anchor.hitRect,
+        action,
+        getRect: () => ({
+          left: anchor.hitRect.x,
+          top: anchor.hitRect.y,
+          width: anchor.hitRect.width,
+          height: anchor.hitRect.height,
+          right: anchor.hitRect.x + anchor.hitRect.width,
+          bottom: anchor.hitRect.y + anchor.hitRect.height,
+        }),
+        getBoundingClientRect: () => ({
+          left: anchor.hitRect.x,
+          top: anchor.hitRect.y,
+          width: anchor.hitRect.width,
+          height: anchor.hitRect.height,
+          right: anchor.hitRect.x + anchor.hitRect.width,
+          bottom: anchor.hitRect.y + anchor.hitRect.height,
+        }),
+      };
+    }
+
     showHighlight(type, predicate, message, allowedAction, options = {}) {
       const game = this.getGame();
       const shell = this.getShell();
@@ -78,17 +138,30 @@
 
     showOpenWorldSiteHighlight(options = {}) {
       const siteId = options.siteId || '';
-      const target = this.getCanvasTarget(
+      const anchorSource = this.getWorldSiteAnchorSource();
+      const anchorTarget = this.resolveWorldSiteAnchorTarget(siteId);
+      if (anchorSource && !anchorTarget) {
+        this.getShell()?.hideTutorialHighlight?.();
+        return false;
+      }
+      const target = anchorTarget || this.getCanvasTarget(
         'openWorldSite',
         (action) => !action.disabled && (!siteId || action.siteId === siteId || action.territoryId === siteId),
       );
-      if (!target) return false;
-      if (!this.isCanvasTargetVisible(target, options.padding)) return false;
+      if (!target || !this.isCanvasTargetVisible(target, options.padding)) {
+        this.getShell()?.hideTutorialHighlight?.();
+        return false;
+      }
       return this.getShell()?.showTutorialHighlight?.(
         target,
         options.message || '',
         {
           allowedAction: options.allowedAction || { type: 'openWorldSite', siteId },
+          targetAction: target.action || null,
+          locator: {
+            type: 'worldSite',
+            siteId,
+          },
           source: options.source || 'strongTutorial',
         },
       ) || false;

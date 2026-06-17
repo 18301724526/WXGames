@@ -225,6 +225,98 @@ test('WorldMapSiteOverlayRenderer maps city command buttons through one action h
   assert.equal(renderer.getWorldCityCommandButtonAction({ action: 'rename-city', territoryId: 'capital' }).type, 'renameCity');
 });
 
+test('WorldMapSiteOverlayRenderer resolves site anchors from runtime context in HUD coordinates', () => {
+  const host = createHost({
+    viewportOffsetX: 120,
+    viewportOffsetY: 130,
+    getWorldTileScreenCenter(tile, viewport) {
+      return {
+        x: viewport.originX + (Number(tile.q) || 0) * 96,
+        y: viewport.originY + (Number(tile.r) || 0) * 48,
+      };
+    },
+    getWorldTileSiteLayout(tile, viewport, geometry, tileWidth, tileHeight, center) {
+      return {
+        site: tile.site,
+        hitRect: {
+          x: center.x - 20,
+          y: center.y - 10,
+          width: 40,
+          height: 30,
+        },
+      };
+    },
+  });
+  const renderer = new WorldMapSiteOverlayRenderer({ host });
+  const state = {
+    territoryState: {
+      territories: [{ id: 'capital' }],
+      worldMap: {
+        tiles: [{ id: 'tile_capital', q: 0, r: 0, siteId: 'capital', site: { id: 'capital' } }],
+      },
+    },
+  };
+  const context = {
+    tileMapView: {
+      tiles: [{ id: 'tile_capital', q: 0, r: 0, siteId: 'capital', site: { id: 'capital' } }],
+      geometry: { tileWidth: 192, tileHeight: 96 },
+    },
+    viewport: { originX: 220, originY: 260, panX: 0, panY: 0, scale: 1 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+  };
+
+  const anchor = renderer.getWorldSiteCanvasAnchor('capital', state, { worldMapRuntimeContext: context });
+
+  assert.deepEqual(anchor.hitRect, { x: 80, y: 120, width: 40, height: 30 });
+  assert.deepEqual(anchor.center, { x: 100, y: 130 });
+  assert.deepEqual(anchor.layerCenter, { x: 220, y: 260 });
+});
+
+test('WorldMapSiteOverlayRenderer rejects stale runtime context for a moved site', () => {
+  const calls = [];
+  const host = createHost({
+    viewportOffsetX: 120,
+    viewportOffsetY: 120,
+    resolveWorldTileMapView(territoryState) {
+      return territoryState.worldMap;
+    },
+    getWorldTileScreenCenter(tile) {
+      return { x: 200 + (Number(tile.q) || 0) * 10, y: 240 + (Number(tile.r) || 0) * 10 };
+    },
+    getWorldTileSiteLayout(tile, viewport, geometry, tileWidth, tileHeight, center) {
+      calls.push(['layout', tile.id]);
+      return {
+        site: tile.site,
+        hitRect: { x: center.x, y: center.y, width: 40, height: 30 },
+      };
+    },
+  });
+  const renderer = new WorldMapSiteOverlayRenderer({ host });
+  const state = {
+    territoryState: {
+      territories: [{ id: 'capital' }],
+      worldMap: {
+        tiles: [{ id: 'tile_new', q: 2, r: 1, siteId: 'capital', site: { id: 'capital' } }],
+      },
+    },
+  };
+  const staleContext = {
+    viewportOffsetX: 120,
+    viewportOffsetY: 120,
+    tileMapView: {
+      tiles: [{ id: 'tile_old', q: 0, r: 0, siteId: 'capital', site: { id: 'capital' } }],
+      geometry: { tileWidth: 192, tileHeight: 96 },
+    },
+    viewport: { originX: 220, originY: 260, panX: 0, panY: 0, scale: 1 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+  };
+
+  const anchor = renderer.getWorldSiteCanvasAnchor('capital', state, { worldMapRuntimeContext: staleContext });
+
+  assert.equal(anchor, null);
+  assert.deepEqual(calls, []);
+});
+
 test('WorldMapSiteOverlayRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

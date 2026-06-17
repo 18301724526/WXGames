@@ -809,6 +809,55 @@ test('WorldMapLayerCanvasRenderer keeps current layer untouched when preserved s
   assert.equal(host.calls.filter((call) => call[0] === 'renderWorldTileSnapshotCache').length, 1);
 });
 
+test('WorldMapLayerCanvasRenderer preserves the previous full map layer on transient empty tile input', () => {
+  const host = createHost({
+    lastWorldTileMapContext: {
+      tileMapView: createTileMapView(),
+    },
+    resolveWorldTileMapView(territoryState = {}, uiState = {}) {
+      host.calls.push(['resolveWorldTileMapView', territoryState, uiState]);
+      return { tiles: [] };
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapLayer({
+    militaryView: 'world',
+    territoryState: { worldMap: { version: 0, tiles: [] } },
+  }, {
+    activeTab: 'military',
+    isMapHome: true,
+    topBarBottom: 96,
+  });
+
+  assert.equal(rendered, true);
+  assert.equal(host.calls.some((call) => call[0] === 'clearAll'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileMap'), false);
+});
+
+test('WorldMapLayerCanvasRenderer fails empty tile input when no previous map layer exists', () => {
+  const host = createHost({
+    resolveWorldTileMapView(territoryState = {}, uiState = {}) {
+      host.calls.push(['resolveWorldTileMapView', territoryState, uiState]);
+      return { tiles: [] };
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapLayer({
+    militaryView: 'world',
+    territoryState: { worldMap: { version: 0, tiles: [] } },
+  }, {
+    activeTab: 'military',
+    isMapHome: true,
+    topBarBottom: 96,
+  });
+
+  assert.equal(rendered, false);
+  assert.equal(host.calls.some((call) => call[0] === 'clearAll'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileMap'), false);
+});
+
 test('CanvasGameRenderer exposes world map layer rendering through facade', () => {
   class StubWorldMapLayerRenderer {
     constructor(options) {

@@ -58,6 +58,59 @@
         return true;
       },
 
+      getWorldMapLayerBackingStoreState() {
+        const backing = this.getCanvasLayerBackingStoreState?.('worldMap', null);
+        if (!backing) return null;
+        const metrics = this.getCanvasLayerMetrics?.('worldMap', null) || {};
+        return {
+          epoch: Number(backing.epoch) || 0,
+          reason: backing.reason || '',
+          width: Number(backing.width) || 0,
+          height: Number(backing.height) || 0,
+          pixelRatio: Number(backing.pixelRatio) || Number(this.runtime?.pixelRatio) || 1,
+          logicalWidth: Number(metrics.width) || 0,
+          logicalHeight: Number(metrics.height) || 0,
+        };
+      },
+
+      getWorldMapRuntimeBakeState() {
+        const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime || null;
+        return runtime?.getBakedLayerState?.() || runtime?.bakedLayerState || null;
+      },
+
+      getWorldMapBakedLayerValidity() {
+        const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime || null;
+        if (!runtime?.hasBakedMapLayer) return { valid: false, reason: 'notBaked' };
+        if (runtime?.mapBakeDirty) return { valid: false, reason: 'mapBakeDirty' };
+        const backing = this.getWorldMapLayerBackingStoreState?.() || null;
+        if (!backing) return { valid: true, reason: 'noBackingState' };
+        const baked = this.getWorldMapRuntimeBakeState?.() || null;
+        if (!baked) return { valid: false, reason: 'missingBakedLayerState', backing };
+        const sameEpoch = Number(baked.epoch) === Number(backing.epoch);
+        const sameWidth = Number(baked.width) === Number(backing.width);
+        const sameHeight = Number(baked.height) === Number(backing.height);
+        const samePixelRatio = Number(baked.pixelRatio || 1) === Number(backing.pixelRatio || 1);
+        const valid = sameEpoch && sameWidth && sameHeight && samePixelRatio;
+        return {
+          valid,
+          reason: valid ? 'valid' : 'backingStoreChanged',
+          baked,
+          backing,
+          checks: {
+            sameEpoch,
+            sameWidth,
+            sameHeight,
+            samePixelRatio,
+          },
+        };
+      },
+
+      hasValidBakedWorldMapLayer() {
+        const validity = this.getWorldMapBakedLayerValidity?.() || { valid: false, reason: 'missingValidator' };
+        this.lastWorldMapBakedLayerValidity = validity;
+        return Boolean(validity.valid);
+      },
+
       renderWorldFogLayer(context = null) {
         if (this.isFogOfWarEnabled?.() !== true) {
           this.worldFogRenderer?.clear?.();

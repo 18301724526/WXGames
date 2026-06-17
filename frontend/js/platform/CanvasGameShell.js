@@ -240,6 +240,11 @@ getCanvasLayerMetrics(name = '', fallback = null) {
       return this.runtime?.getLayerMetrics?.(this.getCanvasLayerName(name)) || fallback;
     }
 
+getCanvasLayerBackingStoreState(name = '', fallback = null) {
+      if (this.isCanvasLayerEnabled(name) !== true) return fallback;
+      return this.runtime?.getLayerBackingStoreState?.(this.getCanvasLayerName(name)) || fallback;
+    }
+
 setCanvasLayerTranslate(name = '', x = 0, y = 0) {
       if (this.isCanvasLayerEnabled(name) !== true) return false;
       return this.runtime?.setLayerTranslate?.(this.getCanvasLayerName(name), x, y) || false;

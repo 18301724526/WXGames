@@ -217,8 +217,9 @@ window.mountAuthMethods = function(game, deps = {}) {
       if (this.canvasShell) this.canvasShell.tutorialIntro = null;
       this.resetLocalViewToResources?.({ skipRender: true });
       this.canvasShell?.resetLocalViewToResources?.({ skipGame: true, skipRender: true });
-      this.applyApiState(result);
       const actionController = this.actionController || this.canvasShell?.actionController || null;
+      actionController?.resetWorldMapCamera?.({ source: 'accountReset', render: false, resetRuntimeState: true });
+      this.applyApiState(result);
       actionController?.resetWorldMapCamera?.({ source: 'accountReset', render: true });
       this.canvasShell?.closeConfirmDialog?.();
       this.showFloatingText && this.showFloatingText(result.message || '进度已重置');

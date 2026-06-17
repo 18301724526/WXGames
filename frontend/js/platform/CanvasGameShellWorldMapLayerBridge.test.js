@@ -73,6 +73,51 @@ test('CanvasGameShellWorldMapLayerBridge syncs map and fog metrics', () => {
   assert.equal(calls.includes('invalidateBake'), true);
 });
 
+test('CanvasGameShellWorldMapLayerBridge validates baked world-map layer backing store', () => {
+  const runtime = {
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+    bakedLayerState: {
+      epoch: 4,
+      width: 300,
+      height: 200,
+      pixelRatio: 2,
+    },
+    getBakedLayerState() {
+      return this.bakedLayerState;
+    },
+  };
+  const shell = createShell({
+    getCanvasLayerBackingStoreState() {
+      return {
+        epoch: 4,
+        width: 300,
+        height: 200,
+        pixelRatio: 2,
+        reason: 'init',
+      };
+    },
+    worldMapRuntime: runtime,
+    worldMapRuntimeCoordinator: {
+      getMapRuntime() {
+        return runtime;
+      },
+    },
+  });
+
+  assert.equal(shell.hasValidBakedWorldMapLayer(), true);
+
+  runtime.bakedLayerState = {
+    epoch: 3,
+    width: 300,
+    height: 200,
+    pixelRatio: 2,
+  };
+  assert.equal(shell.hasValidBakedWorldMapLayer(), false);
+  assert.equal(shell.lastWorldMapBakedLayerValidity.reason, 'backingStoreChanged');
+  assert.equal(shell.lastWorldMapBakedLayerValidity.checks.sameEpoch, false);
+});
+
 test('CanvasGameShellWorldMapLayerBridge clears disabled fog and skips plugins', () => {
   const calls = [];
   const shell = createShell({
@@ -125,6 +170,51 @@ test('CanvasGameShellWorldMapLayerBridge treats map, fog, and actor as one camer
     ['visible', 'worldActor', false],
     ['clearFog'],
     ['clearActor'],
+  ]);
+});
+
+test('CanvasGameShellWorldMapFrameRuntime invalidates bake when clearing non-military map layer', () => {
+  const FrameRuntime = require('./CanvasGameShellWorldMapFrameRuntime');
+  class Shell {}
+  FrameRuntime.install(Shell);
+  const calls = [];
+  const shell = Object.assign(new Shell(), {
+    getActiveTab() {
+      return 'resources';
+    },
+    isWorldMapHomeActive() {
+      return false;
+    },
+    lastGame: {
+      state: { currentTab: 'resources', militaryView: 'world' },
+      mapHomeActive: false,
+    },
+    mapHomeActive: false,
+    previewEnabled: true,
+    resolveMapHomeViewState() {
+      return { activeTab: 'resources', isMapHome: false, militaryView: 'world' };
+    },
+    syncWorldMapRendererLayerMetrics() {
+      calls.push(['syncMetrics']);
+      return true;
+    },
+    worldMapRenderer: {
+      clearAll() {
+        calls.push(['clearAll']);
+      },
+    },
+    worldMapRuntime: {
+      invalidateBake() {
+        calls.push(['invalidateBake']);
+      },
+    },
+  });
+
+  assert.equal(shell.renderWorldMapLayer(shell.lastGame.state, { activeTab: 'resources' }), false);
+  assert.deepEqual(calls, [
+    ['syncMetrics'],
+    ['clearAll'],
+    ['invalidateBake'],
   ]);
 });
 

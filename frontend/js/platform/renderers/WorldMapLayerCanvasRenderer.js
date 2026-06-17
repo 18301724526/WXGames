@@ -230,6 +230,8 @@
       this.lastMapHomeWorldHudContext = {
         actors,
         frame,
+        viewportOffsetX: Number(this.viewportOffsetX) || 0,
+        viewportOffsetY: Number(this.viewportOffsetY) || 0,
         geometry,
         renderSnapshot: lastContext?.renderSnapshot || null,
         tileMapView,
@@ -258,6 +260,8 @@
       return {
         actors,
         frame: context.frame || renderSnapshot?.frame || {},
+        viewportOffsetX: Number(context.viewportOffsetX ?? this.viewportOffsetX) || 0,
+        viewportOffsetY: Number(context.viewportOffsetY ?? this.viewportOffsetY) || 0,
         geometry: context.geometry || renderSnapshot?.geometry || context.tileMapView?.geometry || {},
         renderSnapshot,
         tileMapView: context.tileMapView,
@@ -452,14 +456,45 @@
       return true;
     }
 
+    hasRenderableWorldTileMap(tileMapView = null) {
+      return Array.isArray(tileMapView?.tiles) && tileMapView.tiles.length > 0;
+    }
+
+    getLastRenderableWorldMapContext() {
+      const contexts = [
+        this.lastWorldTileMapContext,
+        this.worldMapRenderer?.lastWorldTileMapContext,
+        this.worldMapLayerRenderer?.lastWorldTileMapContext,
+        this.host?.lastWorldTileMapContext,
+      ].filter(Boolean);
+      return contexts.find((context) => this.hasRenderableWorldTileMap(context?.tileMapView)) || null;
+    }
+
+    shouldPreserveWorldMapLayerOnEmpty(state = {}, options = {}) {
+      if (options.__snapshotBackbuffer) return false;
+      if (options.preserveOnEmptyWorldMap === false || options.clearOnEmptyWorldMap === true) return false;
+      if (options.loading?.visible || options.auth?.view?.loginPanelVisible) return false;
+      return Boolean(this.getLastRenderableWorldMapContext());
+    }
+
+    setWorldMapLayerRenderResult(result = {}) {
+      const next = {
+        rendered: Boolean(result.rendered),
+        drewFrame: Boolean(result.drewFrame),
+        preserved: Boolean(result.preserved),
+        reason: result.reason || '',
+      };
+      this.lastWorldMapLayerRenderResult = next;
+      if (this.host && this.host !== this) this.host.lastWorldMapLayerRenderResult = next;
+      return next;
+    }
+
     renderWorldMapLayer(state = {}, options = {}) {
       if (!this.presenter || !this.ctx) return false;
-      this.beginFrame(options);
-      this.setHitTargets([]);
-      this.clearAll();
+      this.setWorldMapLayerRenderResult({ rendered: false, reason: 'notReady' });
       const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
       if (!layout) {
-        this.endFrame({ ...options, showFpsOverlay: false });
+        this.setWorldMapLayerRenderResult({ rendered: false, reason: 'noLayout' });
         return false;
       }
       const territoryState = state.territoryState || {};
@@ -468,10 +503,18 @@
         ...options,
         worldExplorerState: state.worldExplorerState || {},
       });
-      if (!tileMapView?.tiles?.length) {
-        this.endFrame({ ...options, showFpsOverlay: false });
-        return false;
+      if (!this.hasRenderableWorldTileMap(tileMapView)) {
+        const preserved = this.shouldPreserveWorldMapLayerOnEmpty(state, options);
+        this.setWorldMapLayerRenderResult({
+          rendered: preserved,
+          preserved,
+          reason: preserved ? 'preservedOnEmptyTiles' : 'emptyTiles',
+        });
+        return preserved;
       }
+      this.beginFrame(options);
+      this.setHitTargets([]);
+      this.clearAll();
       if (this.isWorldTileMapWaterAnimated(tileMapView)) uiState.tileMapWaterAnimated = true;
       this.worldTileWaterTimeOverride = options.waterTimeMs !== null
         && options.waterTimeMs !== undefined
@@ -494,11 +537,13 @@
         this.worldTileWaterTimeOverride = null;
       }
       this.endFrame({ ...options, showFpsOverlay: false });
+      this.setWorldMapLayerRenderResult({ rendered: true, drewFrame: true, reason: 'drawn' });
       return true;
     }
 
     renderWorldMapSnapshotLayer(state = {}, options = {}) {
       if (!this.presenter || !this.ctx || typeof this.ctx.drawImage !== 'function') return false;
+      this.setWorldMapLayerRenderResult({ rendered: false, reason: 'notReady' });
       if (options.preserveOnMiss && !options.__snapshotBackbuffer) {
         const cacheScale = Math.max(1, Number(this.pixelRatio) || 1);
         const work = this.getWorldTileLayerCacheContext('worldTileSnapshotLayerBackbuffer', this.width, this.height, cacheScale);
@@ -529,14 +574,12 @@
           work.width || this.width,
           work.height || this.height,
         );
+        this.setWorldMapLayerRenderResult({ rendered: true, drewFrame: true, reason: 'snapshotDrawn' });
         return true;
       }
-      this.beginFrame(options);
-      this.setHitTargets([]);
-      this.clearAll();
       const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
       if (!layout) {
-        this.endFrame({ ...options, showFpsOverlay: false });
+        this.setWorldMapLayerRenderResult({ rendered: false, reason: 'noLayout' });
         return false;
       }
       const territoryState = state.territoryState || {};
@@ -545,10 +588,18 @@
         ...options,
         worldExplorerState: state.worldExplorerState || {},
       });
-      if (!tileMapView?.tiles?.length) {
-        this.endFrame({ ...options, showFpsOverlay: false });
-        return false;
+      if (!this.hasRenderableWorldTileMap(tileMapView)) {
+        const preserved = this.shouldPreserveWorldMapLayerOnEmpty(state, options);
+        this.setWorldMapLayerRenderResult({
+          rendered: preserved,
+          preserved,
+          reason: preserved ? 'preservedOnEmptyTiles' : 'emptyTiles',
+        });
+        return preserved;
       }
+      this.beginFrame(options);
+      this.setHitTargets([]);
+      this.clearAll();
       const x = layout.map.x;
       const y = layout.map.y;
       const width = layout.map.width;
@@ -621,6 +672,11 @@
         this.worldTileWaterTimeOverride = null;
       }
       this.endFrame({ ...options, showFpsOverlay: false });
+      this.setWorldMapLayerRenderResult({
+        rendered: Boolean(renderedSnapshot),
+        drewFrame: Boolean(renderedSnapshot),
+        reason: renderedSnapshot ? 'snapshotDrawn' : 'snapshotMiss',
+      });
       return renderedSnapshot;
     }
   }

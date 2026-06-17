@@ -54,6 +54,10 @@ function createHost(overrides = {}) {
     lastMapDataSignature: '',
     lastRenderAt: 0,
     mapBakeDirty: true,
+    markBakedLayerCommitted() {
+      this.bakedLayerCommitted = true;
+      return { epoch: 1, width: 100, height: 100, pixelRatio: 1 };
+    },
     markBakedCamera(camera) {
       this.bakedCamera = { ...camera };
       return this.bakedCamera;
@@ -287,10 +291,42 @@ test('WorldMapRuntimeRenderPipeline renders a full frame and commits bake state'
   assert.equal(host.syncedSignature.optionsArg.epochNowMs, 4321);
   assert.equal(host.hasBakedMapLayer, true);
   assert.equal(host.mapBakeDirty, false);
+  assert.equal(host.bakedLayerCommitted, true);
   assert.deepEqual(host.bakedCamera, { x: 1, y: 2 });
   assert.equal(host.hitTargets[0].action.type, 'resetWorldPan');
   assert.equal(actorOptions[0].worldMapRuntimeContext.tileMapView instanceof Object, true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});
+
+test('WorldMapRuntimeRenderPipeline does not commit bake state when full render only preserves the previous map layer', () => {
+  const host = createHost({
+    hasBakedMapLayer: true,
+    mapBakeDirty: true,
+    renderer: {
+      hitTargets: [{ x: 8, y: 9, action: { type: 'resetWorldPan' } }],
+      lastWorldMapLayerRenderResult: null,
+      renderWorldMapLayer() {
+        this.lastWorldMapLayerRenderResult = {
+          rendered: true,
+          drewFrame: false,
+          preserved: true,
+          reason: 'preservedOnEmptyTiles',
+        };
+        return true;
+      },
+      renderWorldMapActorLayer() {
+        throw new Error('actor layer should not refresh when no map frame was drawn');
+      },
+    },
+  });
+
+  assert.equal(RenderPipeline.render(host, { epochNowMs: 4321 }), true);
+  assert.equal(host.hasBakedMapLayer, true);
+  assert.equal(host.mapBakeDirty, true);
+  assert.equal(host.bakedLayerCommitted, undefined);
+  assert.equal(host.bakedCamera, undefined);
+  assert.deepEqual(host.hitTargets, []);
+  assert.equal(host.syncedWaterUiState.worldPanX, 1);
 });
 
 test('WorldMapRuntimeRenderPipeline keeps actor anchor on the full frame context', () => {

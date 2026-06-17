@@ -91,6 +91,31 @@ test('CanvasGameAppWorldMapRuntimeBridge delegates render decisions to coordinat
   ]);
 });
 
+test('CanvasGameAppWorldMapRuntimeBridge forces render for stale baked backing store', () => {
+  class App {}
+  CanvasGameAppWorldMapRuntimeBridge.install(App);
+
+  const app = new App();
+  app.state = { id: 'state-stale' };
+  app.runtime = {
+    getLayerBackingStoreState() {
+      return { epoch: 2, width: 300, height: 200, pixelRatio: 1 };
+    },
+  };
+  app.renderer = {};
+  app.worldMapRuntimeCoordinator = null;
+
+  const coordinator = app.ensureWorldMapRuntimeCoordinator();
+  const runtime = coordinator.ensureRuntime();
+  runtime.hasBakedMapLayer = true;
+  runtime.mapBakeDirty = false;
+  runtime.bakedLayerState = { epoch: 1, width: 300, height: 200, pixelRatio: 1 };
+  coordinator.canRender = () => true;
+
+  assert.equal(runtime.isBakedLayerStateValid(), false);
+  assert.equal(app.shouldRenderRuntimeWorldMap(app.state, {}), true);
+});
+
 test('CanvasGameAppWorldMapRuntimeBridge refreshes snapshot layer and commits camera', () => {
   class App {}
   CanvasGameAppWorldMapRuntimeBridge.install(App);

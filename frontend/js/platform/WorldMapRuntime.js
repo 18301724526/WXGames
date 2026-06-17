@@ -112,6 +112,9 @@
       this.renderer = options.renderer || null;
       this.presenter = options.presenter || this.renderer?.presenter || null;
       this.getState = typeof options.getState === 'function' ? options.getState : (() => options.state || {});
+      this.getLayerBackingStoreState = typeof options.getLayerBackingStoreState === 'function'
+        ? options.getLayerBackingStoreState
+        : null;
       this.getBaseUiState = typeof options.getBaseUiState === 'function' ? options.getBaseUiState : (() => options.uiState || {});
       this.getTopBarBottom = typeof options.getTopBarBottom === 'function' ? options.getTopBarBottom : (() => 84);
       this.onAction = typeof options.onAction === 'function' ? options.onAction : null;
@@ -132,6 +135,7 @@
       this.baseHitTargets = [];
       this.hasBakedMapLayer = false;
       this.mapBakeDirty = true;
+      this.bakedLayerState = null;
       this.lastMapDataSignature = '';
       this.lastTileMapContext = null;
       this.inputEpoch = 0;
@@ -269,6 +273,7 @@
     }
 
     isMapBakeDirty(state = this.getState(), options = {}) {
+      if (typeof this.isBakedLayerStateValid === 'function' && !this.isBakedLayerStateValid()) return true;
       return WorldMapRuntimeBakePolicy.isMapBakeDirty({
         hasBakedMapLayer: this.hasBakedMapLayer,
         mapBakeDirty: this.mapBakeDirty,
@@ -282,6 +287,82 @@
     invalidateBake() {
       this.mapBakeDirty = true;
       return true;
+    }
+
+    resetWorldState(options = {}) {
+      this.drag = null;
+      this.renderQueued = false;
+      this.queuedRenderOptions = null;
+      this.lastLayout = null;
+      this.hitTargets = [];
+      this.baseHitTargets = [];
+      this.hasBakedMapLayer = false;
+      this.mapBakeDirty = true;
+      this.bakedLayerState = null;
+      this.lastMapDataSignature = '';
+      this.lastTileMapContext = null;
+      this.inputEpoch = 0;
+      this.lastPickingSignature = '';
+      this.pickingSnapshot = null;
+      this.lastInputIntent = null;
+      this.waterTimeMs = null;
+      this.dragLayerOffset = { x: 0, y: 0 };
+      this.bakedCamera = { x: this.camera.x, y: this.camera.y };
+      if (options.resetInputSequence === true) this.inputSequence = 0;
+      if (options.invalidateRendererCaches !== false) {
+        if (typeof this.renderer?.invalidateWorldTileCaches === 'function') {
+          this.renderer.invalidateWorldTileCaches();
+        } else {
+          this.renderer?.invalidateWorldTileViewCache?.();
+        }
+      }
+      return true;
+    }
+
+    getCurrentLayerBackingStoreState() {
+      const direct = this.getLayerBackingStoreState?.();
+      if (direct) return direct;
+      const runtimeLayerState = this.runtime?.getLayerBackingStoreState?.('worldMap');
+      if (runtimeLayerState) return runtimeLayerState;
+      const rendererCanvas = this.renderer?.canvas || this.renderer?.worldMapLayerRenderer?.canvas || null;
+      const canvasState = this.runtime?.getCanvasBackingStoreState?.(rendererCanvas) || null;
+      if (canvasState) return canvasState;
+      if (!rendererCanvas) return null;
+      return {
+        epoch: Number(rendererCanvas._backingStoreEpoch) || 0,
+        reason: rendererCanvas._backingStoreReason || '',
+        width: Number(rendererCanvas.width) || 0,
+        height: Number(rendererCanvas.height) || 0,
+        pixelRatio: Number(rendererCanvas._backingStorePixelRatio || rendererCanvas._pixelRatioOverride) || Number(this.renderer?.pixelRatio) || 1,
+      };
+    }
+
+    markBakedLayerCommitted(layerState = this.getCurrentLayerBackingStoreState()) {
+      if (!layerState) {
+        this.bakedLayerState = null;
+        return null;
+      }
+      this.bakedLayerState = {
+        epoch: Number(layerState.epoch) || 0,
+        reason: layerState.reason || '',
+        width: Number(layerState.width) || 0,
+        height: Number(layerState.height) || 0,
+        pixelRatio: Number(layerState.pixelRatio) || 1,
+      };
+      return this.bakedLayerState;
+    }
+
+    getBakedLayerState() {
+      return this.bakedLayerState || null;
+    }
+
+    isBakedLayerStateValid(layerState = this.getCurrentLayerBackingStoreState()) {
+      if (!this.hasBakedMapLayer || this.mapBakeDirty) return false;
+      if (!layerState || !this.bakedLayerState) return true;
+      return Number(this.bakedLayerState.epoch) === Number(layerState.epoch)
+        && Number(this.bakedLayerState.width) === Number(layerState.width)
+        && Number(this.bakedLayerState.height) === Number(layerState.height)
+        && Number(this.bakedLayerState.pixelRatio || 1) === Number(layerState.pixelRatio || 1);
     }
 
     resetCamera(options = {}) {

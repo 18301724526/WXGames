@@ -105,7 +105,14 @@
       waterTimeMs: host.waterTimeMs,
     }));
     host.lastLayout = host.getLayerLayout(state, { topBarBottom: context.topBarBottom });
-    if (rendered) {
+    const renderResult = host.renderer.lastWorldMapLayerRenderResult
+      || host.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult
+      || null;
+    const drewFrame = rendered && renderResult?.drewFrame !== false;
+    if (rendered && !drewFrame) {
+      host.syncWaterAnimationFlag(context.uiState);
+    }
+    if (drewFrame) {
       host.syncWaterAnimationFlag(context.uiState);
       host.lastTileMapContext = host.renderer.lastWorldTileMapContext
         || host.renderer.worldMapLayerRenderer?.lastWorldTileMapContext
@@ -113,6 +120,7 @@
         || null;
       host.hasBakedMapLayer = true;
       host.mapBakeDirty = false;
+      host.markBakedLayerCommitted?.();
       if (typeof host.renderer.renderWorldMapActorLayer === 'function') {
         host.renderer.renderWorldMapActorLayer(state, RenderPolicy.createActorRenderOptions(options, {
           epochNowMs: context.epochNowMs,

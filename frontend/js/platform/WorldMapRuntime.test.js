@@ -662,6 +662,63 @@ test('WorldMapRuntime preserves stable map hit targets while refreshing actor ta
   assert.equal(runtime.hitTargets.some((target) => target.action.actorId === 'next'), true);
 });
 
+test('WorldMapRuntime resetWorldState invalidates stale world input and render state', () => {
+  const calls = [];
+  const context = {
+    tileMapView: { tiles: [{ id: 'tile_0_0', q: 0, r: 0 }] },
+    viewport: { originX: 100, originY: 120, scale: 1 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      renderWorldMapLayer() {},
+      lastWorldTileMapContext: context,
+      invalidateWorldTileCaches() {
+        calls.push(['invalidateWorldTileCaches']);
+      },
+    },
+    presenter: {},
+  });
+  runtime.drag = { pointerId: 1 };
+  runtime.renderQueued = true;
+  runtime.queuedRenderOptions = { force: true };
+  runtime.lastLayout = { map: {} };
+  runtime.hitTargets = [{ action: { type: 'openWorldSite', siteId: 'capital' } }];
+  runtime.baseHitTargets = runtime.hitTargets.slice();
+  runtime.hasBakedMapLayer = true;
+  runtime.mapBakeDirty = false;
+  runtime.bakedLayerState = { epoch: 3 };
+  runtime.lastMapDataSignature = 'old-signature';
+  runtime.lastTileMapContext = context;
+  runtime.inputEpoch = 4;
+  runtime.lastPickingSignature = 'pick-old';
+  runtime.pickingSnapshot = { inputEpoch: 4 };
+  runtime.lastInputIntent = { inputId: 'old' };
+  runtime.waterTimeMs = 123;
+  runtime.dragLayerOffset = { x: 12, y: -8 };
+
+  assert.equal(runtime.resetWorldState(), true);
+
+  assert.equal(runtime.drag, null);
+  assert.equal(runtime.renderQueued, false);
+  assert.equal(runtime.queuedRenderOptions, null);
+  assert.equal(runtime.lastLayout, null);
+  assert.deepEqual(runtime.hitTargets, []);
+  assert.deepEqual(runtime.baseHitTargets, []);
+  assert.equal(runtime.hasBakedMapLayer, false);
+  assert.equal(runtime.mapBakeDirty, true);
+  assert.equal(runtime.bakedLayerState, null);
+  assert.equal(runtime.lastMapDataSignature, '');
+  assert.equal(runtime.lastTileMapContext, null);
+  assert.equal(runtime.inputEpoch, 0);
+  assert.equal(runtime.lastPickingSignature, '');
+  assert.equal(runtime.pickingSnapshot, null);
+  assert.equal(runtime.lastInputIntent, null);
+  assert.equal(runtime.waterTimeMs, null);
+  assert.deepEqual(runtime.dragLayerOffset, { x: 0, y: 0 });
+  assert.deepEqual(calls, [['invalidateWorldTileCaches']]);
+});
+
 test('WorldMapRuntime drag helpers delegate camera math but keep map guards', () => {
   const calls = [];
   const runtime = new WorldMapRuntime({

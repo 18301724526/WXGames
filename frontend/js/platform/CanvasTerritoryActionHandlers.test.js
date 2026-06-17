@@ -441,6 +441,166 @@ test('CanvasTerritoryActionHandlers resolves the capital site id from state when
   ]);
 });
 
+test('CanvasTerritoryActionHandlers can invalidate world runtime before account reset state is applied', () => {
+  const calls = [];
+  const runtime = {
+    resetWorldState(options) {
+      calls.push(['resetWorldState', options.source]);
+    },
+    setCamera(x, y, options) {
+      calls.push(['setCamera', Math.round(x), Math.round(y), options.source, options.render]);
+      return false;
+    },
+  };
+  const host = {
+    territoryUiState: { worldPanX: 5, worldPanY: 6 },
+    state: {
+      territoryState: {
+        worldMap: {
+          origin: { q: 0, r: 0 },
+          tiles: [{ id: 'tile_0_0', q: 0, r: 0, siteId: 'capital' }],
+        },
+        territories: [{ id: 'capital', x: 0, y: 0 }],
+      },
+      cityState: { capitalCityId: 'capital' },
+    },
+    runtime: { width: 420, height: 747 },
+    renderer: {
+      lastWorldTileMapContext: { stale: true },
+      invalidateWorldTileCaches() {
+        calls.push(['invalidateRendererCaches']);
+      },
+      getTopBarBottom() {
+        return 84;
+      },
+    },
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['ensureRuntime']);
+          return runtime;
+        },
+        getMapRuntime() {
+          return runtime;
+        },
+      };
+    },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.resetWorldMapCamera({ source: 'accountReset', render: false, resetRuntimeState: true }), true);
+
+  assert.deepEqual(calls, [
+    ['ensureRuntime'],
+    ['resetWorldState', 'accountReset'],
+    ['invalidateRendererCaches'],
+    ['setCamera', 0, 24, 'accountReset', false],
+    ['invalidateRendererCaches'],
+    ['clearTransform'],
+  ]);
+  assert.equal(host.renderer.lastWorldTileMapContext, null);
+});
+
+test('CanvasTerritoryActionHandlers clears cyclic world renderer graph without recursion overflow', () => {
+  const calls = [];
+  const runtime = {
+    setCamera(x, y, options) {
+      calls.push(['setCamera', Math.round(x), Math.round(y), options.source, options.render]);
+      return true;
+    },
+    requestRender(options) {
+      calls.push(['requestRender', options]);
+      return true;
+    },
+  };
+  const worldMapRenderer = {
+    lastWorldTileMapContext: { stale: 'map' },
+    lastMapHomeWorldHudContext: { stale: 'mapHud' },
+    lastWorldMapLayerRenderResult: { stale: 'mapResult' },
+    hitTargets: [{ action: { type: 'openWorldSite' } }],
+    invalidateWorldTileCaches() {
+      calls.push(['invalidateWorldTileCaches', 'map']);
+    },
+    invalidateWorldTileViewCache() {
+      calls.push(['invalidateWorldTileViewCache', 'map']);
+    },
+    setHitTargets(targets) {
+      calls.push(['setHitTargets', 'map', targets.length]);
+      this.hitTargets = targets;
+    },
+  };
+  const worldActorLayerRenderer = {
+    lastWorldTileMapContext: { stale: 'actor' },
+    lastMapHomeWorldHudContext: { stale: 'actorHud' },
+    hitTargets: [{ action: { type: 'openWorldSite' } }],
+    invalidateWorldTileCaches() {
+      calls.push(['invalidateWorldTileCaches', 'actor']);
+    },
+    invalidateWorldTileViewCache() {
+      calls.push(['invalidateWorldTileViewCache', 'actor']);
+    },
+    setHitTargets(targets) {
+      calls.push(['setHitTargets', 'actor', targets.length]);
+      this.hitTargets = targets;
+    },
+  };
+  worldMapRenderer.worldActorLayerRenderer = worldActorLayerRenderer;
+  worldActorLayerRenderer.worldMapRenderer = worldMapRenderer;
+  const host = {
+    territoryUiState: { worldPanX: 3, worldPanY: 4 },
+    state: {
+      territoryState: {
+        worldMap: {
+          origin: { q: 12, r: 6 },
+          tiles: [{ id: 'tile_12_6', q: 12, r: 6, siteId: 'capital' }],
+        },
+        territories: [{ id: 'capital', x: 12, y: 6 }],
+      },
+      cityState: { capitalCityId: 'capital' },
+    },
+    runtime: { width: 420, height: 747 },
+    renderer: { getTopBarBottom: () => 84 },
+    worldMapRenderer,
+    worldActorLayerRenderer,
+    ensureWorldMapRuntimeCoordinator() {
+      return {
+        ensureRuntime() {
+          calls.push(['ensureRuntime']);
+          return runtime;
+        },
+        getMapRuntime() {
+          return runtime;
+        },
+      };
+    },
+    clearWorldMapLayerTransform() {
+      calls.push(['clearTransform']);
+      return true;
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.resetWorldMapCamera({ source: 'accountReset' }), true);
+
+  assert.equal(worldMapRenderer.lastWorldTileMapContext, null);
+  assert.equal(worldMapRenderer.lastMapHomeWorldHudContext, null);
+  assert.equal(worldMapRenderer.lastWorldMapLayerRenderResult, null);
+  assert.deepEqual(worldMapRenderer.hitTargets, []);
+  assert.equal(worldActorLayerRenderer.lastWorldTileMapContext, null);
+  assert.equal(worldActorLayerRenderer.lastMapHomeWorldHudContext, null);
+  assert.deepEqual(worldActorLayerRenderer.hitTargets, []);
+  assert.deepEqual(calls.filter((call) => call[0] === 'setCamera'), [
+    ['setCamera', 0, 24, 'accountReset', false],
+  ]);
+  assert.deepEqual(calls.filter((call) => call[0] === 'requestRender'), [
+    ['requestRender', { force: true }],
+  ]);
+});
+
 test('CanvasActionController centers account reset camera from the updated game state behind the shell', () => {
   const calls = [];
   const runtime = {

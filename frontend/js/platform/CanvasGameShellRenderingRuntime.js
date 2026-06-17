@@ -58,6 +58,16 @@ renderAnimationFrame() {
       return this.renderActive();
     },
 
+render() {
+      return this.renderActive();
+    },
+
+renderCanvasSurface(activeTab = null, options = {}) {
+      const state = this.lastGame?.state || null;
+      if (!state) return false;
+      return this.renderReadOnly(state, activeTab || state.currentTab || this.getActiveTab(), options);
+    },
+
 requestRenderAnimationFrame(action = {}) {
       if (action?.type === 'worldMapDrag' && action.phase === 'move' && this.worldMapRenderer) {
         this.updateWorldMapDragCompositor();
@@ -380,25 +390,38 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
              ...renderOptions,
              force: explorerAnimated || renderOptions.force,
            }) !== false
-           : Boolean(this.worldMapRuntime?.hasBakedMapLayer);
+           : this.hasValidBakedWorldMapLayer?.() !== false;
        } else {
          worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }
       this.setWorldMapLayerVisible(worldMapLayerRendered);
+      const refreshedTutorialHighlight = typeof this.refreshTutorialHighlightTarget === 'function'
+        ? this.refreshTutorialHighlightTarget(this.tutorialHighlight)
+        : this.tutorialHighlight;
+      this.tutorialHighlight = refreshedTutorialHighlight || null;
+      const liveWorldMapRuntimeContext = this.worldMapRuntime?.getLastTileMapContext?.()
+        || this.worldMapRuntime?.lastTileMapContext
+        || this.worldMapRenderer?.lastWorldTileMapContext
+        || null;
+      const liveWorldMapAnchorSource = this.worldMapRenderer || null;
       this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
         ? {
           ...renderOptions,
+          tutorialHighlight: this.tutorialHighlight,
+          worldMapRenderer: liveWorldMapAnchorSource,
+          worldMapAnchorSource: liveWorldMapAnchorSource,
           skipWorldMapLayer: true,
           worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
             ? this.worldMapRuntime.hitTargets
             : [],
-          worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
-            || this.worldMapRuntime?.lastTileMapContext
-            || this.worldMapRenderer?.lastWorldTileMapContext
-            || null,
+          worldMapRuntimeContext: liveWorldMapRuntimeContext,
         }
         : {
           ...renderOptions,
+          tutorialHighlight: this.tutorialHighlight,
+          worldMapRenderer: liveWorldMapAnchorSource,
+          worldMapAnchorSource: liveWorldMapAnchorSource,
+          worldMapRuntimeContext: liveWorldMapRuntimeContext,
           mode: undefined,
           skipWorldMapLayer: false,
           preserveCanvas: false,
