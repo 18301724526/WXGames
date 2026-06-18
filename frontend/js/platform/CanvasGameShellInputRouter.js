@@ -255,7 +255,7 @@ shouldBlockTutorialInput(point = {}) {
       if (this.isTutorialInputActive()) {
         if (phase === 'start') {
           if (this.shouldBlockTutorialInput(point)) return this.blockTutorialCanvasInput(event);
-          return this.blockTutorialCanvasInput(event);
+          return false;
         }
         if (!this.dragAction) return this.blockTutorialCanvasInput(event);
       }

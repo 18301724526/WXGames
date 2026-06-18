@@ -8,6 +8,7 @@ require('../domain/WorldMarchProgressSnapshot');
 const WorldMapRenderSnapshot = require('../domain/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
+const H5CanvasInputController = require('./H5CanvasInputController');
 
 const SHELL_MODULES = [
   'CanvasGameShellMounting',
@@ -1563,6 +1564,78 @@ test('CanvasGameShell still allows tutorial target taps to advance', () => {
     ['handle', 'openWorldSite'],
     ['advance', 'openWorldSite'],
   ]);
+});
+
+test('CanvasGameShell preserves jittered tutorial target touches as taps', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget(point) {
+        if (point.x >= 100 && point.x <= 170 && point.y >= 200 && point.y <= 270) {
+          return { type: 'enterCity', cityId: 'capital' };
+        }
+        return { type: 'blockCanvasModal', allowedAction: { type: 'enterCity', cityId: 'capital' } };
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['handle', action.type, action.cityId || '']);
+        return true;
+      },
+    },
+  });
+  shell.tutorialIntro = { active: true, step: 'enter', capitalCityId: 'capital' };
+  shell.tutorialIntroOverlay = {
+    advanceFromAction(action) {
+      calls.push(['advance', action.type, action.cityId || '']);
+      return true;
+    },
+  };
+
+  const eventCalls = [];
+  const makeEvent = (type, x, y, timeStamp) => ({
+    type,
+    x,
+    y,
+    clientX: x,
+    clientY: y,
+    pointerId: 1,
+    pointerType: 'touch',
+    timeStamp,
+    cancelable: true,
+    currentTarget: {
+      setPointerCapture() {},
+      releasePointerCapture() {},
+    },
+    preventDefault() {
+      eventCalls.push(['preventDefault', type]);
+    },
+    stopPropagation() {
+      eventCalls.push(['stopPropagation', type]);
+    },
+  });
+  const input = new H5CanvasInputController({
+    dragHandlers: [(phase, point, event) => shell.handleDrag(phase, point, event)],
+    tapHandlers: [(point, event) => shell.handleTap(point, event)],
+    gestureHandlers: [],
+    pointerMoveHandlers: [],
+    now: () => 1000,
+    toCanvasPoint(event) {
+      return { x: Number(event.x ?? event.clientX) || 0, y: Number(event.y ?? event.clientY) || 0 };
+    },
+  });
+
+  assert.equal(input.handlePointerDown(makeEvent('pointerdown', 120, 220, 1000)), false);
+  assert.equal(input.handlePointerMove(makeEvent('pointermove', 124.5, 220, 1020)), false);
+  assert.equal(input.handlePointerUp(makeEvent('pointerup', 124.5, 220, 1040)), true);
+
+  assert.deepEqual(calls, [
+    ['handle', 'enterCity', 'capital'],
+    ['advance', 'enterCity', 'capital'],
+  ]);
+  assert.equal(eventCalls.some((call) => call[1] === 'pointermove'), false);
 });
 
 test('CanvasGameShell lets reward reveal close above tutorial highlight', () => {
