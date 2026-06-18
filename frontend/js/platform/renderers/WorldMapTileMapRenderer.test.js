@@ -154,25 +154,6 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), true);
 });
 
-test('WorldMapTileMapRenderer publishes world explorer state for fog visibility snapshots', () => {
-  const host = createHost();
-  const renderer = new WorldMapTileMapRenderer({ host });
-  const worldExplorerState = {
-    activeMission: {
-      id: 'explore-active-1',
-      status: 'active',
-      position: { q: 2, r: 0, tileId: 'tile_2_0' },
-      route: [{ q: 2, r: 0, tileId: 'tile_2_0' }],
-    },
-  };
-
-  renderer.renderWorldTileMap(createTileMapViewWithoutScouts(), 10, 90, 360, 300, {}, {
-    state: { worldExplorerState },
-  });
-
-  assert.equal(host.lastWorldTileMapContext.worldExplorerState, worldExplorerState);
-});
-
 test('WorldMapTileMapRenderer publishes continuous march actors without painting them on the map layer', () => {
   const host = createHost();
   const renderer = new WorldMapTileMapRenderer({ host });

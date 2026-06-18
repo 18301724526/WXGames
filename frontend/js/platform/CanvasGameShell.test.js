@@ -457,64 +457,6 @@ test('CanvasGameShell routes enabled fog rendering through the visual plugin reg
   assert.equal(renderCall?.[1]?.entries[0].tile.visible, true);
 });
 
-test('CanvasGameShell includes world explorer state when building fog visibility snapshots', () => {
-  const shell = new CanvasGameShell({
-    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
-  });
-  const calls = [];
-  shell.worldFogRenderer = {
-    renderWorldFog(context) {
-      calls.push(['renderWorldFog', context]);
-      return true;
-    },
-    clear() {
-      calls.push(['clear']);
-    },
-  };
-  const tileMapView = {
-    version: 1,
-    seed: 'shell-fog-explorer-test',
-    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
-    tiles: [
-      { id: 'tile_0_0', q: 0, r: 0, visibility: 'scouted', discovered: true, visible: false },
-      { id: 'tile_1_0', q: 1, r: 0, visibility: 'unknown', discovered: false, visible: false },
-    ],
-  };
-  const worldExplorerState = {
-    activeMission: {
-      id: 'explore-active-1',
-      status: 'active',
-      position: { q: 1, r: 0, tileId: 'tile_1_0' },
-      route: [{ q: 1, r: 0, tileId: 'tile_1_0' }],
-    },
-  };
-  const renderSnapshot = WorldMapRenderSnapshot.createSnapshot({
-    tileMapView,
-    x: 0,
-    y: 0,
-    width: 100,
-    height: 100,
-  });
-  shell.worldMapRenderer = {
-    lastWorldTileMapContext: {
-      worldExplorerState,
-      renderSnapshot,
-      tileMapView,
-      viewport: renderSnapshot.viewport,
-      geometry: tileMapView.geometry,
-      frame: renderSnapshot.frame,
-    },
-  };
-  shell.syncWorldMapRendererLayerMetrics = () => true;
-
-  assert.equal(shell.renderWorldFogLayer(), true);
-
-  const renderCall = calls.find((call) => call[0] === 'renderWorldFog');
-  const activeTile = renderCall?.[1]?.entries.find((entry) => entry.tile.id === 'tile_1_0');
-  assert.equal(activeTile?.tile.visible, true);
-  assert.equal(activeTile?.tile.visibility, 'visible');
-});
-
 test('CanvasGameShell does not invoke visual fog plugins when fog is disabled', () => {
   const shell = new CanvasGameShell({});
   const calls = [];

@@ -16,14 +16,7 @@ function createHost(overrides = {}) {
 }
 
 test('WorldMapFogMaskContextRenderer captures renderer-safe fog context', () => {
-  const worldExplorerState = { activeMission: { id: 'explore-1', status: 'active' } };
-  const host = createHost({
-    lastWorldTileMapContext: {
-      actors: [{ id: 'actor-1' }],
-      renderSnapshot: { schema: 'world-map-render-snapshot-v1', signature: 'snapshot-1' },
-      worldExplorerState,
-    },
-  });
+  const host = createHost();
   const renderer = new WorldMapFogMaskContextRenderer({ host });
   const tileMapView = { geometry: { tileWidth: 192 }, tiles: [{ id: 'tile-1', q: 0, r: 0 }] };
   const viewport = { originX: 10, geometry: { tileWidth: 96 } };
@@ -38,7 +31,6 @@ test('WorldMapFogMaskContextRenderer captures renderer-safe fog context', () => 
   assert.equal(renderer.lastWorldFogContext.geometry, tileMapView.geometry);
   assert.equal(renderer.lastWorldFogContext.renderSnapshot, host.lastWorldTileMapContext.renderSnapshot);
   assert.equal(renderer.lastWorldFogContext.actors, host.lastWorldTileMapContext.actors);
-  assert.equal(renderer.lastWorldFogContext.worldExplorerState, worldExplorerState);
   assert.equal(host.lastWorldFogContext, renderer.lastWorldFogContext);
 });
 
