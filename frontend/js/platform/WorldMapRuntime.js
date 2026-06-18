@@ -117,6 +117,72 @@
     };
   }
 
+  function summarizeBackgroundTargetProbe(action = null, context = {}, layerPoint = {}) {
+    if (!action || action.type !== 'selectWorldMarchTarget') return null;
+    const tileMapView = context?.tileMapView || context?.renderSnapshot?.tileMapView || {};
+    const viewport = context?.viewport || context?.renderSnapshot?.viewport || {};
+    const frame = context?.frame || context?.renderSnapshot?.frame || {};
+    const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
+    const targetQ = Number(action.targetQ ?? action.q);
+    const targetR = Number(action.targetR ?? action.r);
+    const targetTileId = action.tileId || (Number.isFinite(targetQ) && Number.isFinite(targetR) ? `tile_${Math.floor(targetQ)}_${Math.floor(targetR)}` : '');
+    const targetTile = tiles.find((tile) => {
+      const q = Number(tile?.q ?? tile?.x);
+      const r = Number(tile?.r ?? tile?.y);
+      const id = tile?.tileId || tile?.id || (Number.isFinite(q) && Number.isFinite(r) ? `tile_${Math.floor(q)}_${Math.floor(r)}` : '');
+      if (targetTileId && id === targetTileId) return true;
+      return Number.isFinite(q) && Number.isFinite(r)
+        && Number.isFinite(targetQ) && Number.isFinite(targetR)
+        && Math.floor(q) === Math.floor(targetQ)
+        && Math.floor(r) === Math.floor(targetR);
+    }) || null;
+    return {
+      target: {
+        tileId: targetTileId,
+        q: Number.isFinite(targetQ) ? Math.floor(targetQ) : null,
+        r: Number.isFinite(targetR) ? Math.floor(targetR) : null,
+        known: action.known === undefined ? null : Boolean(action.known),
+        terrain: action.terrain || '',
+        terrainLabel: action.terrainLabel || '',
+      },
+      targetExists: Boolean(targetTile),
+      targetTile: targetTile ? {
+        id: targetTile.id || '',
+        tileId: targetTile.tileId || targetTile.id || '',
+        q: targetTile.q ?? targetTile.x ?? null,
+        r: targetTile.r ?? targetTile.y ?? null,
+        terrain: targetTile.terrain || '',
+        terrainLabel: targetTile.terrainLabel || '',
+        visibility: targetTile.visibility || '',
+        discovered: targetTile.discovered === false ? false : true,
+        visible: targetTile.visible === false ? false : true,
+        renderOnly: Boolean(targetTile.renderOnly),
+        renderReady: Boolean(targetTile.renderReady),
+        siteId: targetTile.siteId || '',
+      } : null,
+      tileMap: {
+        tileCount: tiles.length,
+        version: tileMapView.version || 0,
+        seed: tileMapView.seed || '',
+        origin: tileMapView.origin || tileMapView.worldOrigin || viewport.worldOrigin || null,
+      },
+      viewport: {
+        originX: Number(viewport.originX) || 0,
+        originY: Number(viewport.originY) || 0,
+        panX: Number(viewport.panX) || 0,
+        panY: Number(viewport.panY) || 0,
+        scale: Number(viewport.scale) || 0,
+      },
+      frame: {
+        x: Number(frame.x) || 0,
+        y: Number(frame.y) || 0,
+        width: Number(frame.width) || 0,
+        height: Number(frame.height) || 0,
+      },
+      layerPoint: global.ClientOperationLog?.summarizePoint?.(layerPoint) || layerPoint,
+    };
+  }
+
   class WorldMapRuntime {
     constructor(options = {}) {
       this.runtime = options.runtime || null;
@@ -499,6 +565,7 @@
       if (!action || action.disabled) return false;
       if (action.type === 'worldMapDrag') return false;
       if (action.type === 'selectWorldMarchTarget' && action.background) {
+        global.ClientOperationLog?.record?.('worldMap:backgroundTargetProbe', summarizeBackgroundTargetProbe(action, context, layerPoint), { flush: true });
         global.ClientOperationLog?.record?.('worldMap:backgroundTarget', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
           action: global.ClientOperationLog?.summarizeAction?.(action),
