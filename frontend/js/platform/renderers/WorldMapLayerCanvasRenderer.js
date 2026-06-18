@@ -494,9 +494,34 @@
     renderWorldMapLayer(state = {}, options = {}) {
       if (!this.presenter || !this.ctx) return false;
       this.setWorldMapLayerRenderResult({ rendered: false, reason: 'notReady' });
+      const stateSummary = global.CodexWorldMapDiag?.summarizeState?.(state) || null;
+      global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:start', {
+        activeTab: options.activeTab || '',
+        isMapHome: Boolean(options.isMapHome),
+        snapshotOnly: Boolean(options.snapshotOnly),
+        collectHitTargets: options.collectHitTargets,
+        tileCount: stateSummary?.worldMap?.tileCount || 0,
+        mapVersion: stateSummary?.worldMap?.version || 0,
+        currentTab: stateSummary?.currentTab || '',
+        militaryView: stateSummary?.militaryView || '',
+      }, {
+        options: {
+          activeTab: options.activeTab,
+          isMapHome: options.isMapHome,
+          snapshotOnly: options.snapshotOnly,
+          collectHitTargets: options.collectHitTargets,
+        },
+        state: stateSummary,
+      });
       const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
       if (!layout) {
         this.setWorldMapLayerRenderResult({ rendered: false, reason: 'noLayout' });
+        global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:noLayout', {
+          activeTab: options.activeTab || '',
+          isMapHome: Boolean(options.isMapHome),
+          currentTab: stateSummary?.currentTab || '',
+          militaryView: stateSummary?.militaryView || '',
+        });
         return false;
       }
       const territoryState = state.territoryState || {};
@@ -505,12 +530,50 @@
         ...options,
         worldExplorerState: state.worldExplorerState || {},
       });
+      const rawWorldMapSummary = global.CodexWorldMapDiag?.summarizeWorldMap?.(territoryState) || null;
+      const tileMapViewSummary = {
+        hasTileMapView: Boolean(tileMapView),
+        tileCount: Array.isArray(tileMapView?.tiles) ? tileMapView.tiles.length : 0,
+        plannedTileCount: Array.isArray(tileMapView?.plannedTiles) ? tileMapView.plannedTiles.length : 0,
+        siteCount: Array.isArray(tileMapView?.sites) ? tileMapView.sites.length : 0,
+        version: tileMapView?.version || 0,
+        origin: tileMapView?.origin || tileMapView?.worldOrigin || null,
+      };
+      global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:tileMapView', {
+        rawTileCount: rawWorldMapSummary?.tileCount || 0,
+        rawVersion: rawWorldMapSummary?.version || 0,
+        viewTileCount: tileMapViewSummary.tileCount,
+        viewPlannedTileCount: tileMapViewSummary.plannedTileCount,
+        viewSiteCount: tileMapViewSummary.siteCount,
+        viewVersion: tileMapViewSummary.version,
+        currentTab: stateSummary?.currentTab || '',
+        militaryView: stateSummary?.militaryView || '',
+      }, {
+        rawWorldMap: rawWorldMapSummary,
+        tileMapView: tileMapViewSummary,
+      });
       if (!this.hasRenderableWorldTileMap(tileMapView)) {
         const preserved = this.shouldPreserveWorldMapLayerOnEmpty(state, options);
         this.setWorldMapLayerRenderResult({
           rendered: preserved,
           preserved,
           reason: preserved ? 'preservedOnEmptyTiles' : 'emptyTiles',
+        });
+        const lastRenderableContext = this.getLastRenderableWorldMapContext?.();
+        global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:empty', {
+          preserved,
+          reason: this.lastWorldMapLayerRenderResult?.reason || '',
+          rawTileCount: rawWorldMapSummary?.tileCount || 0,
+          viewTileCount: tileMapViewSummary.tileCount,
+          lastRenderableContextTiles: Array.isArray(lastRenderableContext?.tileMapView?.tiles)
+            ? lastRenderableContext.tileMapView.tiles.length
+            : null,
+        }, {
+          preserved,
+          renderResult: global.CodexWorldMapDiag?.summarizeRenderResult?.(this.lastWorldMapLayerRenderResult) || null,
+          lastRenderableContextTiles: Array.isArray(lastRenderableContext?.tileMapView?.tiles)
+            ? lastRenderableContext.tileMapView.tiles.length
+            : null,
         });
         return preserved;
       }
@@ -540,6 +603,15 @@
       }
       this.endFrame({ ...options, showFpsOverlay: false });
       this.setWorldMapLayerRenderResult({ rendered: true, drewFrame: true, reason: 'drawn' });
+      global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:drawn', {
+        tileCount: Array.isArray(tileMapView?.tiles) ? tileMapView.tiles.length : 0,
+        hitTargetCount: Array.isArray(this.hitTargets) ? this.hitTargets.length : 0,
+        reason: this.lastWorldMapLayerRenderResult?.reason || '',
+      }, {
+        tileCount: Array.isArray(tileMapView?.tiles) ? tileMapView.tiles.length : 0,
+        hitTargetCount: Array.isArray(this.hitTargets) ? this.hitTargets.length : 0,
+        renderResult: global.CodexWorldMapDiag?.summarizeRenderResult?.(this.lastWorldMapLayerRenderResult) || null,
+      });
       return true;
     }
 

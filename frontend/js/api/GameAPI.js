@@ -338,6 +338,24 @@
       if (path === '/version') {
         this.captureVersionCache(response, data);
       }
+      if (path === '/game/state' || path === '/game/heartbeat') {
+        const payloadWorldMap = global.CodexWorldMapDiag?.summarizeWorldMap?.(data) || null;
+        global.CodexWorldMapDiag?.logChanged?.('api:response', {
+          method,
+          path,
+          status: response.status,
+          hasGameState: Boolean(data?.gameState),
+          hasWorldMap: Boolean(payloadWorldMap?.hasWorldMap),
+          tileCount: payloadWorldMap?.tileCount || 0,
+          version: payloadWorldMap?.version || 0,
+        }, {
+          method,
+          path,
+          status: response.status,
+          hasGameState: Boolean(data?.gameState),
+          payloadWorldMap,
+        });
+      }
       loadTrace?.apiEnd?.(loadTraceSpan, {
         status: response.status,
         ok: true,

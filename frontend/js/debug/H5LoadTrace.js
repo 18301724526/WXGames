@@ -23,7 +23,7 @@
       const storageValue = runtime.localStorage?.getItem?.('h5LoadTrace');
       if (storageValue !== null && storageValue !== undefined) return toBooleanFlag(storageValue, true);
     } catch (_) {}
-    return true;
+    return false;
   }
 
   function formatDuration(ms) {

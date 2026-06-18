@@ -258,5 +258,4 @@ window.mountAuthMethods = function(game, deps = {}) {
     game.showLoginPanel();
   }
 
-  console.log('[auth.js] 账号管理模块已挂载');
 };

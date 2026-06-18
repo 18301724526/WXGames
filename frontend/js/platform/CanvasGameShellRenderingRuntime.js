@@ -366,6 +366,28 @@ renderActive(options = {}) {
 renderReadOnly(state, activeTab = 'resources', options = {}) {
       if (!this.previewEnabled || !this.renderer || !state) return false;
       this.syncWorldMapRendererLayerMetrics();
+      const inputSummary = global.CodexWorldMapDiag?.summarizeState?.(state) || null;
+      global.CodexWorldMapDiag?.logChanged?.('shell:renderReadOnly:input', {
+        activeTab,
+        optionsForceMapHome: options.forceMapHome,
+        optionsAllowDefaultMapHome: options.allowDefaultMapHome,
+        optionsIsMapHome: options.isMapHome,
+        shellMapHomeActive: Boolean(this.mapHomeActive),
+        tileCount: inputSummary?.worldMap?.tileCount || 0,
+        mapVersion: inputSummary?.worldMap?.version || 0,
+        currentTab: inputSummary?.currentTab || '',
+        militaryView: inputSummary?.militaryView || '',
+        tutorialStep: inputSummary?.tutorial?.currentStep ?? null,
+      }, {
+        activeTab,
+        options: {
+          forceMapHome: options.forceMapHome,
+          allowDefaultMapHome: options.allowDefaultMapHome,
+          isMapHome: options.isMapHome,
+        },
+        state: inputSummary,
+        shellMapHomeActive: Boolean(this.mapHomeActive),
+      });
       const territoryUiState = this.resolveTerritoryUiState(options.territoryUiState);
       const defaultForceMapHome = (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
         || activeTab === 'resources'
@@ -392,7 +414,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
        };
        let worldMapLayerRendered = false;
        let worldMapFrameState = null;
-       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
+      if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
          const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
          worldMapLayerRendered = (explorerAnimated || this.shouldRenderRuntimeWorldMap(state, renderOptions))
            ? this.renderRuntimeWorldMap(state, {
@@ -412,8 +434,39 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
          worldMapLayerRendered = WorldMapRuntimeRenderPolicy?.canSkipWorldMapLayer
            ? WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(worldMapFrameState)
            : Boolean(worldMapLayerRendered);
+         const runtimeRenderResult = global.CodexWorldMapDiag?.summarizeRenderResult?.(
+           this.lastWorldMapLayerRenderResult || this.worldMapRenderer?.lastWorldMapLayerRenderResult || null,
+         );
+         global.CodexWorldMapDiag?.logChanged?.('shell:runtimeMap:frameState', {
+           rendered: worldMapLayerRendered,
+           visualLayerValid: worldMapFrameState?.visualLayerValid,
+           visualLayerReason: worldMapFrameState?.visualLayerReason || '',
+           hitTargetsPreserved: worldMapFrameState?.hitTargetsPreserved,
+           resultReason: runtimeRenderResult?.reason || '',
+           resultPreserved: Boolean(runtimeRenderResult?.preserved),
+         }, {
+           homeView,
+           worldMapLayerRendered,
+           frameState: worldMapFrameState,
+           renderResult: runtimeRenderResult,
+         });
        } else {
          worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
+         const directRenderResult = global.CodexWorldMapDiag?.summarizeRenderResult?.(
+           this.lastWorldMapLayerRenderResult || this.worldMapRenderer?.lastWorldMapLayerRenderResult || null,
+         );
+         global.CodexWorldMapDiag?.logChanged?.('shell:directMap:renderResult', {
+           rendered: worldMapLayerRendered,
+           resultReason: directRenderResult?.reason || '',
+           resultPreserved: Boolean(directRenderResult?.preserved),
+           isMapHome: Boolean(homeView.isMapHome),
+           activeTab: homeView.activeTab || '',
+           requestedTab: homeView.requestedTab || '',
+         }, {
+           homeView,
+           worldMapLayerRendered,
+           renderResult: directRenderResult,
+         });
       }
       this.setWorldMapLayerVisible(worldMapLayerRendered);
       const refreshedTutorialHighlight = typeof this.refreshTutorialHighlightTarget === 'function'
@@ -444,6 +497,32 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
             : [],
           worldMapRuntimeContext: liveWorldMapRuntimeContext,
         };
+      const composeSummary = {
+        worldMapLayerRendered,
+        hasRuntimeContext: Boolean(liveWorldMapRuntimeContext),
+        runtimeContextTiles: Array.isArray(liveWorldMapRuntimeContext?.tileMapView?.tiles)
+          ? liveWorldMapRuntimeContext.tileMapView.tiles.length
+          : null,
+        skipWorldMapLayer: runtimeCompositionOptions.skipWorldMapLayer,
+        preserveCanvas: runtimeCompositionOptions.preserveCanvas,
+        visualLayerValid: runtimeCompositionOptions.worldMapFrameState?.visualLayerValid,
+        visualLayerReason: runtimeCompositionOptions.worldMapFrameState?.visualLayerReason || '',
+        hitTargetsPreserved: runtimeCompositionOptions.worldMapFrameState?.hitTargetsPreserved,
+      };
+      global.CodexWorldMapDiag?.logChanged?.('shell:renderReadOnly:compose', composeSummary, {
+        worldMapLayerRendered,
+        hasRuntimeContext: Boolean(liveWorldMapRuntimeContext),
+        runtimeContextTiles: Array.isArray(liveWorldMapRuntimeContext?.tileMapView?.tiles)
+          ? liveWorldMapRuntimeContext.tileMapView.tiles.length
+          : null,
+        composition: {
+          skipWorldMapLayer: runtimeCompositionOptions.skipWorldMapLayer,
+          preserveCanvas: runtimeCompositionOptions.preserveCanvas,
+          visualLayerValid: runtimeCompositionOptions.worldMapFrameState?.visualLayerValid,
+          visualLayerReason: runtimeCompositionOptions.worldMapFrameState?.visualLayerReason,
+          hitTargetsPreserved: runtimeCompositionOptions.worldMapFrameState?.hitTargetsPreserved,
+        },
+      });
       this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
         ? runtimeCompositionOptions
         : {
