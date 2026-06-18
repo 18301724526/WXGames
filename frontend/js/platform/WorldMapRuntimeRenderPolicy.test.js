@@ -191,5 +191,7 @@ test('WorldMapRuntimeRenderPolicy separates preserved hit targets from visual la
   assert.equal(validFrame.hitTargetsPreserved, true);
   assert.equal(validFrame.visualLayerValid, true);
   assert.equal(Policy.canSkipWorldMapLayer(validFrame), true);
+  assert.equal(Policy.createWorldMapCompositionOptions({}, validFrame).preserveCanvas, false);
   assert.equal(Policy.createWorldMapCompositionOptions({ preserveCanvas: true }, validFrame).skipWorldMapLayer, true);
+  assert.equal(Policy.createWorldMapCompositionOptions({ preserveCanvas: true }, validFrame).preserveCanvas, true);
 });

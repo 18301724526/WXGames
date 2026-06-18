@@ -958,7 +958,7 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
     previewEnabled: true,
     renderer: {
       render(renderState, options) {
-        calls.push(['render', options.skipWorldMapLayer]);
+        calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas]);
       },
     },
   });
@@ -1005,7 +1005,7 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
   assert.deepEqual(calls, [
     ['renderRuntimeWorldMap', 'military', false],
     ['visible', true],
-    ['render', true],
+    ['render', true, false],
   ]);
 });
 

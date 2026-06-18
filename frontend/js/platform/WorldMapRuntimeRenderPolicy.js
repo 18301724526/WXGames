@@ -156,7 +156,7 @@
     const skipWorldMapLayer = canSkipWorldMapLayer(state);
     return {
       ...options,
-      preserveCanvas: skipWorldMapLayer && options.preserveCanvas !== false,
+      preserveCanvas: skipWorldMapLayer && options.preserveCanvas === true,
       skipWorldMapLayer,
       worldMapFrameState: state,
       worldMapRuntimeHitTargets: toArray(options.worldMapRuntimeHitTargets || state.hitTargets),
