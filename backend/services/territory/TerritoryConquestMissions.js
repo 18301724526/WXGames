@@ -7,6 +7,8 @@ const {
   clone,
 } = require('./TerritoryShared');
 
+const OCCUPIED_CITY_TERRAIN_REVEAL_RADIUS = 3;
+
 function createTerritoryConquestMissions(dependencies = {}) {
   const {
     BattleService,
@@ -30,6 +32,16 @@ function createTerritoryConquestMissions(dependencies = {}) {
 
   function getOccupationMode(territory) {
     return isUnownedTerritory(territory) ? 'settlement' : 'conquest';
+  }
+
+  function revealOccupiedCityTerrain(gameState, territory, now = new Date()) {
+    if (!territory || !WorldMapService?.getRevealArea || !WorldMapService?.revealTiles) return [];
+    const coords = WorldMapService.getRevealArea(territory.x, territory.y, OCCUPIED_CITY_TERRAIN_REVEAL_RADIUS);
+    return WorldMapService.revealTiles(gameState, coords, now, {
+      overrides: {
+        visibility: 'scouted',
+      },
+    });
   }
 
   function normalizeExpeditionConfig(rawConfig, territory) {
@@ -117,6 +129,7 @@ function createTerritoryConquestMissions(dependencies = {}) {
       territory.owner = 'player';
       territory.occupiedAt = now.toISOString();
       territory.cityName = null;
+      revealOccupiedCityTerrain(gameState, territory, now);
       WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, { visibility: 'controlled' });
       return { success: true, casualties: 0 };
     }
@@ -181,6 +194,7 @@ function createTerritoryConquestMissions(dependencies = {}) {
       territory.garrison = null;
       territory.occupiedAt = now.toISOString();
       territory.cityName = null;
+      revealOccupiedCityTerrain(gameState, territory, now);
       WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, { visibility: 'controlled' });
     } else {
       territory.status = 'discovered';
@@ -235,6 +249,7 @@ function createTerritoryConquestMissions(dependencies = {}) {
     getOccupationMode,
     isUnownedTerritory,
     normalizeExpeditionConfig,
+    revealOccupiedCityTerrain,
     resolveMission,
     startConquest,
   };

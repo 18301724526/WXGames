@@ -1007,6 +1007,8 @@ test('territory site migration module owns current-rule retargeting contracts', 
 test('territory conquest missions module owns settlement and battle resolution contracts', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const boundTiles = [];
+  const terrainRevealRequests = [];
+  const terrainRevealBatches = [];
   const experienceGrants = [];
   const Conquest = createTerritoryConquestMissions({
     BattleService: {
@@ -1035,6 +1037,21 @@ test('territory conquest missions module owns settlement and battle resolution c
       },
     }),
     WorldMapService: {
+      getRevealArea: (x, y, radius) => {
+        terrainRevealRequests.push({ x, y, radius });
+        return [
+          { q: x, r: y },
+          { q: x + radius, r: y },
+          { q: x, r: y - radius },
+        ];
+      },
+      revealTiles: (_gameState, coords, _now, options) => {
+        terrainRevealBatches.push({
+          coords: coords.map((coord) => ({ q: coord.q, r: coord.r })),
+          options,
+        });
+        return coords.map((coord) => ({ id: `tile_${coord.q}_${coord.r}`, q: coord.q, r: coord.r }));
+      },
       bindSiteToTile: (_gameState, x, y, siteId, _now, options) => {
         boundTiles.push({ x, y, siteId, options });
       },
@@ -1092,6 +1109,13 @@ test('territory conquest missions module owns settlement and battle resolution c
   assert.equal(claimedSettlement.namingPrompt.type, 'city');
   assert.equal(settlementState.territories[0].status, 'occupied');
   assert.equal(settlementState.territories[0].owner, 'player');
+  assert.deepEqual(terrainRevealRequests.at(-1), { x: 2, y: 0, radius: 3 });
+  assert.deepEqual(terrainRevealBatches.at(-1).coords, [
+    { q: 2, r: 0 },
+    { q: 5, r: 0 },
+    { q: 2, r: -3 },
+  ]);
+  assert.equal(terrainRevealBatches.at(-1).options.overrides.visibility, 'scouted');
   assert.equal(boundTiles.at(-1).options.visibility, 'controlled');
 
   const battleState = {
@@ -1125,6 +1149,13 @@ test('territory conquest missions module owns settlement and battle resolution c
   assert.equal(battleState.territories[0].garrison, null);
   assert.equal(battleState.territories[0].lastBattle.leaderGrowth.leader, 'leader-1');
   assert.deepEqual(experienceGrants[0], { leader: 'leader-1', experience: { leader: 12 } });
+  assert.deepEqual(terrainRevealRequests.at(-1), { x: 3, y: 0, radius: 3 });
+  assert.deepEqual(terrainRevealBatches.at(-1).coords, [
+    { q: 3, r: 0 },
+    { q: 6, r: 0 },
+    { q: 3, r: -3 },
+  ]);
+  assert.equal(terrainRevealBatches.length, 2);
 });
 
 test('TerritoryService battle tile snapshot terrain lookup uses coordinates over colliding tile ids', () => {
