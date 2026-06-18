@@ -66,6 +66,17 @@ test('WorldMapInputActionMap keeps HUD controls above world entity disambiguatio
   assert.deepEqual(stopAction, { type: 'stopWorldMarch', missionId: 'march-1' });
 });
 
+test('WorldMapInputActionMap keeps city HUD commands out of world entity disambiguation', () => {
+  const action = WorldMapInputActionMap.getHitTarget({ x: 60, y: 60 }, [
+    { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
+    { x: 40, y: 40, width: 80, height: 60, action: { type: 'openWorldSite', siteId: 'capital', tileId: 'tile_23_18' } },
+    { x: 35, y: 35, width: 90, height: 90, action: { type: 'enterCity', cityId: 'capital' } },
+    { x: 45, y: 45, width: 70, height: 70, action: { type: 'enterCity', cityId: 'capital', territoryId: 'capital' } },
+  ]);
+
+  assert.deepEqual(action, { type: 'enterCity', cityId: 'capital', territoryId: 'capital' });
+});
+
 test('WorldMapInputActionMap preserves topmost background target over older background', () => {
   const action = WorldMapInputActionMap.getHitTarget({ x: 60, y: 60 }, [
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },

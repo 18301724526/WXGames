@@ -216,9 +216,11 @@
         height: layout.map.height - 2,
       };
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
-      this.addWorldMapDragHitTarget?.(layout.map.x, layout.map.y, layout.map.width, layout.map.height);
-      this.addWorldMarchTileHitTargets?.(tileMapView, viewport, frame);
-      this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+      if (options.collectHitTargets !== false) {
+        this.addWorldMapDragHitTarget?.(layout.map.x, layout.map.y, layout.map.width, layout.map.height);
+        this.addWorldMarchTileHitTargets?.(tileMapView, viewport, frame);
+        this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+      }
       const lastContext = options.worldMapRuntimeContext
         || this.lastWorldTileMapContext
         || this.worldMapRenderer?.lastWorldTileMapContext

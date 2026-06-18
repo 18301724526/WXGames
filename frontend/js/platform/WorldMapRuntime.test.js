@@ -660,6 +660,11 @@ test('WorldMapRuntime preserves stable map hit targets while refreshing actor ta
   assert.equal(runtime.hitTargets.some((target) => target.action.type === 'openWorldSite'), true);
   assert.equal(runtime.hitTargets.some((target) => target.action.actorId === 'old'), false);
   assert.equal(runtime.hitTargets.some((target) => target.action.actorId === 'next'), true);
+  assert.equal(runtime.lastHitTargetSync.preserved, true);
+  assert.equal(runtime.lastHitTargetSync.mapTargetCount, 0);
+  assert.equal(runtime.lastHitTargetSync.sourceHitTargetCount, 1);
+  assert.equal(runtime.getWorldMapFrameState().hitTargetsPreserved, true);
+  assert.equal(runtime.getWorldMapFrameState().visualLayerValid, false);
 });
 
 test('WorldMapRuntime resetWorldState invalidates stale world input and render state', () => {
@@ -685,6 +690,8 @@ test('WorldMapRuntime resetWorldState invalidates stale world input and render s
   runtime.lastLayout = { map: {} };
   runtime.hitTargets = [{ action: { type: 'openWorldSite', siteId: 'capital' } }];
   runtime.baseHitTargets = runtime.hitTargets.slice();
+  runtime.lastHitTargetSync = { preserved: true };
+  runtime.hitTargetSyncSequence = 3;
   runtime.hasBakedMapLayer = true;
   runtime.mapBakeDirty = false;
   runtime.bakedLayerState = { epoch: 3 };
@@ -705,6 +712,8 @@ test('WorldMapRuntime resetWorldState invalidates stale world input and render s
   assert.equal(runtime.lastLayout, null);
   assert.deepEqual(runtime.hitTargets, []);
   assert.deepEqual(runtime.baseHitTargets, []);
+  assert.equal(runtime.lastHitTargetSync, null);
+  assert.equal(runtime.hitTargetSyncSequence, 0);
   assert.equal(runtime.hasBakedMapLayer, false);
   assert.equal(runtime.mapBakeDirty, true);
   assert.equal(runtime.bakedLayerState, null);

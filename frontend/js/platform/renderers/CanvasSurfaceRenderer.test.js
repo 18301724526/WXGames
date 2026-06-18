@@ -276,6 +276,11 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
   assert.equal(picker.type, 'openWorldTargetPicker');
   assert.equal(picker.candidates.length, 2);
   assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital', tileId: 'tile_23_18' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 50, height: 50 }, { type: 'enterCity', cityId: 'capital' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 8, y: 8, width: 60, height: 60 }, { type: 'enterCity', cityId: 'capital', territoryId: 'capital' }),
+  ], { x: 24, y: 24 }), { type: 'enterCity', cityId: 'capital', territoryId: 'capital' });
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'blockCanvasModal' }),

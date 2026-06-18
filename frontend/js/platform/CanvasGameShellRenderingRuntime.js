@@ -7,6 +7,14 @@
       WorldMarchSystem = null;
     }
   }
+  var WorldMapRuntimeRenderPolicy = global.WorldMapRuntimeRenderPolicy;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeRenderPolicy) {
+    try {
+      WorldMapRuntimeRenderPolicy = require('./WorldMapRuntimeRenderPolicy');
+    } catch (error) {
+      WorldMapRuntimeRenderPolicy = null;
+    }
+  }
 
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     const explorer = state?.worldExplorerState || {};
@@ -383,6 +391,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
          isMapHome: homeView.isMapHome,
        };
        let worldMapLayerRendered = false;
+       let worldMapFrameState = null;
        if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
          const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
          worldMapLayerRendered = (explorerAnimated || this.shouldRenderRuntimeWorldMap(state, renderOptions))
@@ -391,6 +400,18 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
              force: explorerAnimated || renderOptions.force,
            }) !== false
            : this.hasValidBakedWorldMapLayer?.() !== false;
+         const bakedLayerValidity = typeof this.getWorldMapBakedLayerValidity === 'function'
+           ? this.getWorldMapBakedLayerValidity()
+           : null;
+         worldMapFrameState = this.worldMapRuntime?.getWorldMapFrameState?.({ bakedLayerValidity, rendered: worldMapLayerRendered })
+           || WorldMapRuntimeRenderPolicy?.createWorldMapFrameState?.(this.worldMapRuntime || {}, {
+             bakedLayerValidity,
+             rendered: worldMapLayerRendered,
+           })
+           || null;
+         worldMapLayerRendered = WorldMapRuntimeRenderPolicy?.canSkipWorldMapLayer
+           ? WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(worldMapFrameState)
+           : Boolean(worldMapLayerRendered);
        } else {
          worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
       }
@@ -404,8 +425,15 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
         || this.worldMapRenderer?.lastWorldTileMapContext
         || null;
       const liveWorldMapAnchorSource = this.worldMapRenderer || null;
-      this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
-        ? {
+      const runtimeCompositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
+        ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions({
+          ...renderOptions,
+          tutorialHighlight: this.tutorialHighlight,
+          worldMapRenderer: liveWorldMapAnchorSource,
+          worldMapAnchorSource: liveWorldMapAnchorSource,
+          worldMapRuntimeContext: liveWorldMapRuntimeContext,
+        }, worldMapFrameState || {})
+        : {
           ...renderOptions,
           tutorialHighlight: this.tutorialHighlight,
           worldMapRenderer: liveWorldMapAnchorSource,
@@ -415,7 +443,9 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
             ? this.worldMapRuntime.hitTargets
             : [],
           worldMapRuntimeContext: liveWorldMapRuntimeContext,
-        }
+        };
+      this.renderer.render(state, this.worldMapRenderer && worldMapLayerRendered
+        ? runtimeCompositionOptions
         : {
           ...renderOptions,
           tutorialHighlight: this.tutorialHighlight,

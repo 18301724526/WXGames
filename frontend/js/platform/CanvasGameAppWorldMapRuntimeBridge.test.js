@@ -221,6 +221,136 @@ test('CanvasGameAppWorldMapRuntimeBridge keeps actor anchor on the dragged map s
   ]);
 });
 
+test('CanvasGameAppWorldMapRuntimeBridge does not skip map layer when snapshot render misses', () => {
+  class App {}
+  CanvasGameAppWorldMapRuntimeBridge.install(App);
+
+  const calls = [];
+  const runtime = {
+    baseHitTargets: [{ action: { type: 'enterCity' } }],
+    hasBakedMapLayer: false,
+    hitTargets: [{ action: { type: 'enterCity' } }],
+    lastHitTargetSync: {
+      baseHitTargetCount: 1,
+      hitTargetCount: 1,
+      mapTargetCount: 0,
+      preserved: true,
+      sourceHitTargetCount: 0,
+    },
+    mapBakeDirty: true,
+    getCameraUiState: () => ({ worldPanX: 0, worldPanY: 0 }),
+    syncHitTargetsFromRenderer(options) {
+      calls.push(['syncHitTargetsFromRenderer', options]);
+    },
+  };
+  const app = new App();
+  app.state = { id: 'state-miss' };
+  app.getWorldEpochNowMs = () => 1000;
+  app.now = () => 2000;
+  app.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+  };
+  app.renderer = {
+    lastWorldMapLayerRenderResult: {
+      rendered: true,
+      drewFrame: false,
+      reason: 'snapshotMiss',
+    },
+    renderWorldMapSnapshotLayer() {
+      calls.push(['renderSnapshot']);
+      return true;
+    },
+    renderWorldMapActorLayer() {
+      calls.push(['renderActor']);
+      return true;
+    },
+    render(state, options) {
+      calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas, options.worldMapFrameState?.hitTargetsPreserved]);
+    },
+  };
+
+  assert.equal(app.renderWorldMapSnapshotDragFrame(), true);
+  assert.deepEqual(calls, [
+    ['renderSnapshot'],
+    ['renderActor'],
+    ['syncHitTargetsFromRenderer', { preserveOnEmpty: true }],
+    ['render', false, false, true],
+  ]);
+});
+
+test('CanvasGameAppWorldMapRuntimeBridge commits baked state only after a snapshot frame draws', () => {
+  class App {}
+  CanvasGameAppWorldMapRuntimeBridge.install(App);
+
+  const calls = [];
+  const runtime = {
+    camera: { x: 2, y: 3 },
+    getCameraUiState: () => ({ worldPanX: 2, worldPanY: 3 }),
+    markBakedCamera() {
+      calls.push(['markBakedCamera']);
+    },
+    markBakedLayerCommitted() {
+      calls.push(['markBakedLayerCommitted']);
+    },
+    syncHitTargetsFromRenderer() {
+      calls.push(['syncHitTargetsFromRenderer']);
+    },
+  };
+  const app = new App();
+  app.state = { id: 'state-commit' };
+  app.worldMapRuntimeCoordinator = {
+    getMapRuntime: () => runtime,
+  };
+  app.renderer = {
+    getTopBarBottom: () => 91,
+    lastWorldMapLayerRenderResult: {
+      rendered: true,
+      drewFrame: false,
+      reason: 'snapshotMiss',
+    },
+    renderWorldMapSnapshotLayer() {
+      calls.push(['renderSnapshot']);
+      return true;
+    },
+    renderWorldMapActorLayer() {
+      calls.push(['renderActor']);
+      return true;
+    },
+  };
+
+  assert.equal(app.refreshWorldMapLayerFromSnapshot(), true);
+  assert.equal(runtime.hasBakedMapLayer, undefined);
+  assert.equal(runtime.mapBakeDirty, undefined);
+  assert.deepEqual(calls, [
+    ['renderSnapshot'],
+    ['renderActor'],
+    ['syncHitTargetsFromRenderer'],
+    ['markBakedCamera'],
+  ]);
+
+  calls.length = 0;
+  app.renderer.lastWorldMapLayerRenderResult = {
+    rendered: true,
+    drewFrame: true,
+    reason: 'snapshotDrawn',
+  };
+  assert.equal(app.refreshWorldMapLayerFromSnapshot(), true);
+  assert.equal(runtime.hasBakedMapLayer, true);
+  assert.equal(runtime.mapBakeDirty, false);
+  assert.deepEqual(calls, [
+    ['renderSnapshot'],
+    ['renderActor'],
+    ['syncHitTargetsFromRenderer'],
+    ['markBakedLayerCommitted'],
+    ['markBakedCamera'],
+  ]);
+});
+
 test('CanvasGameAppWorldMapRuntimeBridge observes async action failures without changing the rejection', async () => {
   class App {}
   CanvasGameAppWorldMapRuntimeBridge.install(App);

@@ -272,6 +272,32 @@ test('WorldMapLayerCanvasRenderer preserves hit-target-only world site collectio
   assert.equal(emptyHost.hitTargets.some((target) => target.action.type === 'startExplore'), false);
 });
 
+test('WorldMapLayerCanvasRenderer can refresh map-home HUD context without registering duplicate map targets', () => {
+  const host = createHost({
+    lastWorldTileMapContext: {
+      renderSnapshot: { actors: [{ id: 'scout-1' }] },
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const collected = renderer.collectMapHomeWorldSiteHitTargets({
+    activeCityId: 'capital',
+    territoryState: { worldMap: createTileMapView() },
+  }, 96, {
+    collectHitTargets: false,
+    territoryUiState: {},
+  });
+
+  assert.equal(collected, true);
+  assert.equal(host.calls.some((call) => call[0] === 'getWorldTileRenderEntries'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldMapDragHitTarget'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldMarchTileHitTargets'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'addWorldTileSiteHitTargets'), false);
+  assert.equal(host.hitTargets.length, 0);
+  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, [{ id: 'scout-1' }]);
+  assert.equal(host.lastMapHomeWorldHudContext.tileMapView.seed, 'test-seed');
+});
+
 test('WorldMapLayerCanvasRenderer collects map-home world targets without painting march HUD', () => {
   const host = createHost({
     lastWorldTileMapContext: {
