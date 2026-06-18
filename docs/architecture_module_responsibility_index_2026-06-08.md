@@ -3096,7 +3096,7 @@ Owns:
 - `generationAuthority` metadata attachment during initial world-map creation and normalization
 - delegation to focused world-map modules for terrain, water, tile normalization, IDs, and deterministic generation authority
 - scout reveal area branch materialization through `WorldMapGenerationAuthority.roll01()`
-- context-aware first materialization through `WorldMapTiles.chooseMaterializedTerrain(seed, q, r, generationContext)`; persisted global terrain authority is owned by `WorldMapAuthorityRepository`, not by this facade
+- deterministic base-terrain materialization through `WorldMapTiles.chooseMaterializedTerrain(seed, q, r, generationContext)`: base terrain must be derived from shared world seed, canonical coordinate, and generation algorithm version, while `generationContext` is limited to route previews and dynamic payload decisions; persisted global terrain authority is owned by `WorldMapAuthorityRepository`, not by this facade
 - server-side tile write-boundary identity: `WorldMapTiles.createTile()` / `normalizeTile()` and `WorldMapBatch.mergeTiles()` derive public tile `id` from display `q/r`; caller-supplied `id`, stale persisted `id`, or merge-time `id` values cannot override coordinate identity
 
 Public API:
@@ -4182,11 +4182,11 @@ Status: candidate
 
 Owns:
 
-- authoritative global world-map persistence for materialized terrain
+- authoritative global world-map persistence for deterministic materialized base terrain and committed dynamic tile payload
 - `global_world_chunks` and `global_world_tiles` schema, indexed by canonical tile/chunk identity
 - coordinate-authoritative global tile payload identity: stored tile JSON `id` derives from display `q/r`; `canonicalId` remains the wrapped global key
 - `player_world_visibility` schema for per-player visibility, discovered/scouted timestamps, and intel
-- first-writer-wins terrain commits for real explored/revealed tiles
+- deterministic-first-write commits for real explored/revealed tiles: first reveal may cache/commit the shared authority result, but player context must not decide base terrain
 - hydration of player-visible `worldMap.tiles` from global authority plus visibility rows
 - sanitizing player saves so `game_states.worldMap.tiles` stays empty on disk
 - one-time legacy migration from old per-player visible tiles into authority tables
@@ -4212,7 +4212,7 @@ Extension Path:
 - New world persistence semantics extend this repository with focused repository tests.
 - New global tile payload fields must not preserve caller-supplied `tile.id` when coordinates exist; public display identity is derived from `q/r`.
 - Future distributed/chunk services may replace these tables behind the same authority/visibility contract.
-- Do not put terrain generation rules here; generation belongs in `WorldMapTiles` / `WorldMapGenerationAuthority` and the first-explorer context comes from explorer services.
+- Do not put terrain generation rules here; generation belongs in `WorldMapTiles` / `WorldMapGenerationAuthority`. Explorer `generationContext` may feed dynamic content and preview choices, but not base terrain, water, or transition terrain.
 
 Confirmed Pending Adjacent Boundary:
 
@@ -4800,7 +4800,7 @@ Status: candidate
 Owns:
 
 - world explorer route planning for accepted manual world-march targets
-- route generation, generation-context hashing, planned tile creation, and tutorial first empty-city planned site creation
+- route generation, generation-context hashing for dynamic content, planned tile creation, and tutorial first empty-city planned site creation
 - canonical tile identity for route-planner outputs: route steps and tutorial planned sites derive tile ids from `q/r`; planned tile lookup for tutorial site selection also keys by coordinates, so stale route `tileId` or planned tile `id` cannot change tutorial site terrain or tile identity
 
 Public API:
