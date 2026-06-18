@@ -5753,6 +5753,7 @@ Regression:
 
 - pure runtime render context derivation
 - snapshot/full render option composition for `WorldMapRuntimeRenderPipeline`
+- world-map frame/composition state derivation for visual-layer reuse vs hit-target preservation
 - render throttling predicate
 - cannot-render state reset payloads
 - render trace key/data payload derivation without renderer/runtime mutation
@@ -5769,10 +5770,14 @@ Regression:
 - `WorldMapRuntimeRenderPolicy.createSnapshotTrace(state, rendered, context)`
 - `WorldMapRuntimeRenderPolicy.createFullRenderOptions(options, context)`
 - `WorldMapRuntimeRenderPolicy.createFullTrace(state, rendered, runtimeState, epochNowMs)`
+- `WorldMapRuntimeRenderPolicy.createWorldMapFrameState(runtime, options)`
+- `WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(frameState)`
+- `WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions(options, frameState)`
 
 扩展方式 / Extension Path:
 
 - New pure world-map runtime render calculations first extend this module with focused tests.
+- New map-home overlay reuse rules must extend the frame/composition policy here; callers must not infer visual validity from preserved runtime hit targets.
 - Renderer calls, runtime state publication, and trace dispatch stay in `WorldMapRuntimeRenderPipeline`.
 - Camera, bake, and input geometry calculations stay in their P9 policy modules.
 

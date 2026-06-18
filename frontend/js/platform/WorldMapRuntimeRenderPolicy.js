@@ -52,9 +52,115 @@
     return {
       hitTargets: [],
       baseHitTargets: [],
+      lastHitTargetSync: null,
+      hitTargetSyncSequence: 0,
       hasBakedMapLayer: false,
       mapBakeDirty: true,
       lastMapDataSignature: '',
+    };
+  }
+
+  function toArray(value) {
+    return Array.isArray(value) ? value : [];
+  }
+
+  function createHitTargetFrameState(runtime = {}, syncState = null) {
+    const source = syncState && typeof syncState === 'object' && !Array.isArray(syncState)
+      ? syncState
+      : (runtime?.lastHitTargetSync || {});
+    const hitTargets = toArray(runtime?.hitTargets);
+    const sourceHitTargetCount = Number(source.sourceHitTargetCount);
+    const mapTargetCount = Number(source.mapTargetCount);
+    return {
+      actorTargetCount: Number(source.actorTargetCount) || 0,
+      baseHitTargetCount: Number(source.baseHitTargetCount) || toArray(runtime?.baseHitTargets).length,
+      hitTargetCount: Number(source.hitTargetCount) || hitTargets.length,
+      hitTargets,
+      hitTargetsFresh: Boolean(!source.preserved && (
+        (Number.isFinite(sourceHitTargetCount) && sourceHitTargetCount > 0)
+        || (Number.isFinite(mapTargetCount) && mapTargetCount > 0)
+      )),
+      hitTargetsPreserved: Boolean(source.preserved),
+      mapTargetCount: Number.isFinite(mapTargetCount) ? mapTargetCount : 0,
+      sourceHitTargetCount: Number.isFinite(sourceHitTargetCount) ? sourceHitTargetCount : hitTargets.length,
+      syncSequence: Number(source.sequence) || 0,
+    };
+  }
+
+  function createRenderResultVisualState(renderResult = null) {
+    if (!renderResult || typeof renderResult !== 'object') return null;
+    if (renderResult.rendered && renderResult.drewFrame !== false) {
+      return { valid: true, reason: renderResult.reason || 'renderedFrame' };
+    }
+    if (renderResult.rendered && renderResult.drewFrame === false) {
+      return { valid: false, reason: renderResult.reason || 'renderedWithoutFrame' };
+    }
+    return { valid: false, reason: renderResult.reason || 'renderMissed' };
+  }
+
+  function createRuntimeVisualLayerState(runtime = {}, options = {}) {
+    const explicitValidity = options.bakedLayerValidity || options.visualLayerValidity || null;
+    if (explicitValidity && typeof explicitValidity === 'object') {
+      return {
+        valid: Boolean(explicitValidity.valid),
+        reason: explicitValidity.reason || (explicitValidity.valid ? 'valid' : 'invalid'),
+        baked: explicitValidity.baked || null,
+        backing: explicitValidity.backing || null,
+        checks: explicitValidity.checks || null,
+      };
+    }
+    if (typeof options.visualLayerValid === 'boolean') {
+      return {
+        valid: options.visualLayerValid,
+        reason: options.visualLayerReason || (options.visualLayerValid ? 'valid' : 'invalid'),
+      };
+    }
+    if (!runtime) return { valid: false, reason: 'missingRuntime' };
+    if (!runtime.hasBakedMapLayer) return { valid: false, reason: 'notBaked' };
+    if (runtime.mapBakeDirty) return { valid: false, reason: 'mapBakeDirty' };
+    if (typeof runtime.isBakedLayerStateValid === 'function') {
+      const valid = runtime.isBakedLayerStateValid(options.layerState);
+      return {
+        valid: Boolean(valid),
+        reason: valid ? 'valid' : 'bakedLayerInvalid',
+      };
+    }
+    return { valid: true, reason: 'valid' };
+  }
+
+  function createWorldMapFrameState(runtime = {}, options = {}) {
+    const renderResultState = createRenderResultVisualState(options.renderResult || null);
+    const runtimeVisualState = createRuntimeVisualLayerState(runtime, options);
+    const visualState = renderResultState || runtimeVisualState;
+    const hitTargetState = createHitTargetFrameState(runtime, options.hitTargetSync || null);
+    const context = options.worldMapRuntimeContext
+      || runtime?.getLastTileMapContext?.()
+      || runtime?.lastTileMapContext
+      || null;
+    return {
+      ...hitTargetState,
+      context,
+      rendered: Boolean(options.rendered),
+      visualLayerValid: Boolean(visualState.valid),
+      visualLayerReason: visualState.reason || '',
+      visualLayerState: visualState,
+    };
+  }
+
+  function canSkipWorldMapLayer(frameState = {}) {
+    return Boolean(frameState?.visualLayerValid);
+  }
+
+  function createWorldMapCompositionOptions(options = {}, frameState = {}) {
+    const state = frameState || {};
+    const skipWorldMapLayer = canSkipWorldMapLayer(state);
+    return {
+      ...options,
+      preserveCanvas: skipWorldMapLayer && options.preserveCanvas !== false,
+      skipWorldMapLayer,
+      worldMapFrameState: state,
+      worldMapRuntimeHitTargets: toArray(options.worldMapRuntimeHitTargets || state.hitTargets),
+      worldMapRuntimeContext: options.worldMapRuntimeContext || state.context || null,
     };
   }
 
@@ -198,11 +304,17 @@
     createCannotRenderState,
     createCannotRenderTrace,
     createActorRenderOptions,
+    createHitTargetFrameState,
+    createRenderResultVisualState,
+    createRuntimeVisualLayerState,
+    createWorldMapCompositionOptions,
+    createWorldMapFrameState,
     createRenderBeginTrace,
     createSnapshotRenderOptions,
     createSnapshotTrace,
     createFullRenderOptions,
     createFullTrace,
+    canSkipWorldMapLayer,
   });
 
   global.WorldMapRuntimeRenderPolicy = WorldMapRuntimeRenderPolicy;

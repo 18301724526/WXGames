@@ -1009,6 +1009,87 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
   ]);
 });
 
+test('CanvasGameShell does not skip map layer when hit targets are preserved but baked layer is invalid', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+  };
+  const runtime = {
+    baseHitTargets: [{ action: { type: 'enterCity' } }],
+    hasBakedMapLayer: true,
+    hitTargets: [{ action: { type: 'enterCity' } }],
+    lastHitTargetSync: {
+      baseHitTargetCount: 1,
+      hitTargetCount: 1,
+      mapTargetCount: 0,
+      preserved: true,
+      sourceHitTargetCount: 0,
+    },
+    mapBakeDirty: false,
+    bakedLayerState: {
+      epoch: 1,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    },
+    getBakedLayerState() {
+      return this.bakedLayerState;
+    },
+    isMapBakeDirty() {
+      return false;
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas, options.worldMapFrameState?.hitTargetsPreserved]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.getCanvasLayerBackingStoreState = () => ({
+    epoch: 2,
+    width: 300,
+    height: 200,
+    pixelRatio: 1,
+    reason: 'resize',
+  });
+  shell.getCanvasLayerMetrics = () => ({ width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 });
+  shell.setWorldMapLayerVisible = (visible) => {
+    calls.push(['visible', visible]);
+    return true;
+  };
+  shell.renderRuntimeWorldMap = () => {
+    calls.push(['renderRuntimeWorldMap']);
+    return true;
+  };
+  shell.worldMapRenderer = {};
+  shell.worldMapRuntime = runtime;
+  shell.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+  };
+
+  assert.equal(shell.renderReadOnly(state, 'military'), true);
+
+  assert.deepEqual(calls, [
+    ['renderRuntimeWorldMap'],
+    ['visible', false],
+    ['render', false, false, undefined],
+  ]);
+});
+
 test('CanvasGameShell keeps guided resource render target during active refreshes', () => {
   const calls = [];
   const state = {

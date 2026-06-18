@@ -87,6 +87,17 @@
     }
     return null;
   })();
+  const WorldMapRuntimeRenderPolicy = (() => {
+    if (global.WorldMapRuntimeRenderPolicy) return global.WorldMapRuntimeRenderPolicy;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMapRuntimeRenderPolicy');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const WorldMapRuntimeRenderPipeline = (() => {
     if (global.WorldMapRuntimeRenderPipeline) return global.WorldMapRuntimeRenderPipeline;
     if (typeof module !== 'undefined' && module.exports) {
@@ -133,6 +144,8 @@
       this.renderOnDrag = options.renderOnDrag !== false;
       this.bakedCamera = { x: this.camera.x, y: this.camera.y };
       this.baseHitTargets = [];
+      this.lastHitTargetSync = null;
+      this.hitTargetSyncSequence = 0;
       this.hasBakedMapLayer = false;
       this.mapBakeDirty = true;
       this.bakedLayerState = null;
@@ -296,6 +309,8 @@
       this.lastLayout = null;
       this.hitTargets = [];
       this.baseHitTargets = [];
+      this.lastHitTargetSync = null;
+      this.hitTargetSyncSequence = 0;
       this.hasBakedMapLayer = false;
       this.mapBakeDirty = true;
       this.bakedLayerState = null;
@@ -632,6 +647,18 @@
         : { preserved: false, targets: sourceTargets };
       this.baseHitTargets = resolvedTargets.targets;
       this.hitTargets = this.getOffsetHitTargets();
+      this.hitTargetSyncSequence += 1;
+      this.lastHitTargetSync = {
+        actorTargetCount: actorTargets.length,
+        baseHitTargetCount: this.baseHitTargets.length,
+        hitTargetCount: this.hitTargets.length,
+        mapTargetCount: mapTargets.length,
+        preserved: Boolean(resolvedTargets.preserved),
+        sequence: this.hitTargetSyncSequence,
+        sourceHitTargetCount: sourceTargets.length,
+        viewportOffsetX,
+        viewportOffsetY,
+      };
       global.ClientOperationLog?.recordSampled?.('worldMap:hitTargetsSynced', 'hitTargets', {
         baseHitTargetCount: this.baseHitTargets.length,
         hitTargetCount: this.hitTargets.length,
@@ -644,6 +671,20 @@
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
       }, 500);
       return this.hitTargets;
+    }
+
+    getWorldMapFrameState(options = {}) {
+      if (WorldMapRuntimeRenderPolicy?.createWorldMapFrameState) {
+        return WorldMapRuntimeRenderPolicy.createWorldMapFrameState(this, options);
+      }
+      return {
+        context: this.getLastTileMapContext(),
+        hitTargetCount: this.hitTargets.length,
+        hitTargets: this.hitTargets,
+        hitTargetsFresh: !this.lastHitTargetSync?.preserved,
+        hitTargetsPreserved: Boolean(this.lastHitTargetSync?.preserved),
+        visualLayerValid: this.isBakedLayerStateValid(),
+      };
     }
 
     getLastTileMapContext() {
