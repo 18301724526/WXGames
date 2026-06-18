@@ -344,7 +344,7 @@ test('WorldFogMaskGenerator produces center-clear and ring-falloff unit vision',
     actors: [{ id: 'unit-1', current: { q: 1, r: 0 }, status: 'active' }],
   });
 
-  const { mask } = generator.prepare(context);
+  const { mask, sourceSet } = generator.prepare(context);
   const center = readMaskAt(mask.visible, mask, { x: 178, y: 144 });
   const ring = readMaskAt(mask.visible, mask, { x: 226, y: 168 });
   const outside = readMaskAt(mask.visible, mask, { x: 274, y: 192 });
@@ -413,11 +413,40 @@ test('WorldFogMaskGenerator does not grant current vision from non-player cities
   const visible = readMaskAt(mask.visible, mask, { x: 130, y: 120 });
 
   assert.equal(sourceSet.citySources.length, 0);
-  assert.equal(explored >= 245, true);
+  assert.equal(explored, 0);
   assert.equal(visible, 0);
 });
 
-test('WorldFogMaskGenerator separates explored memory from current visibility', () => {
+test('WorldFogMaskGenerator builds explored memory from historical unit vision sources', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const context = createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      visionHistory: {
+        sources: [{ kind: 'unit', q: 2, r: 0 }],
+      },
+      tiles: [{ id: 'memory', q: 2, r: 0, discovered: true, visible: false, visibility: 'scouted' }],
+      sites: [],
+    },
+    entries: [
+      { tile: { id: 'memory', q: 2, r: 0, discovered: true, visible: false, visibility: 'scouted' }, center: { x: 226, y: 168 } },
+    ],
+    actors: [],
+  });
+
+  const { mask, sourceSet } = generator.prepare(context);
+  const explored = readMaskAt(mask.explored, mask, { x: 226, y: 168 });
+  const visible = readMaskAt(mask.visible, mask, { x: 226, y: 168 });
+  const unknown = readMaskAt(mask.explored, mask, { x: 322, y: 216 });
+
+  assert.equal(sourceSet.memorySources.length > 0, true);
+  assert.equal(sourceSet.memorySources.every((source) => source.kind === 'unit'), true);
+  assert.equal(explored >= 245, true);
+  assert.equal(visible, 0);
+  assert.equal(unknown < explored * 0.08, true);
+});
+
+test('WorldFogMaskGenerator does not grow explored fog from tile-only memory', () => {
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
   const context = createWorldContext({
     tileMapView: {
@@ -431,14 +460,54 @@ test('WorldFogMaskGenerator separates explored memory from current visibility', 
     actors: [],
   });
 
-  const { mask } = generator.prepare(context);
-  const explored = readMaskAt(mask.explored, mask, { x: 226, y: 168 });
-  const visible = readMaskAt(mask.visible, mask, { x: 226, y: 168 });
-  const unknown = readMaskAt(mask.explored, mask, { x: 322, y: 216 });
+  const { mask, sourceSet } = generator.prepare(context);
 
-  assert.equal(explored >= 245, true);
-  assert.equal(visible, 0);
-  assert.equal(unknown < explored * 0.08, true);
+  assert.equal(sourceSet.memorySources.length, 0);
+  assert.equal(readMaskAt(mask.explored, mask, { x: 226, y: 168 }), 0);
+  assert.equal(readMaskAt(mask.visible, mask, { x: 226, y: 168 }), 0);
+});
+
+test('WorldFogMaskGenerator keeps historical and current unit sources on the same vision rule', () => {
+  const historyGenerator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const currentGenerator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const base = {
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [{ id: 'origin', q: 1, r: 0, discovered: true, visible: true, visibility: 'visible' }],
+      sites: [],
+    },
+    entries: [
+      { tile: { id: 'origin', q: 1, r: 0, discovered: true, visible: true, visibility: 'visible' }, center: { x: 178, y: 144 } },
+    ],
+  };
+  const historyPrepared = historyGenerator.prepare(createWorldContext({
+    ...base,
+    tileMapView: {
+      ...base.tileMapView,
+      visionHistory: { sources: [{ kind: 'unit', q: 1, r: 0 }] },
+    },
+    actors: [],
+  }));
+  const currentPrepared = currentGenerator.prepare(createWorldContext({
+    ...base,
+    actors: [{ id: 'unit-1', current: { q: 1, r: 0 }, status: 'active' }],
+  }));
+  const historySource = historyPrepared.sourceSet.memorySources[0];
+  const currentSource = currentPrepared.sourceSet.unitSources[0];
+  const history = historyPrepared.mask;
+  const current = currentPrepared.mask;
+  const points = [
+    { x: 178, y: 144 },
+    { x: 226, y: 168 },
+    { x: 274, y: 192 },
+  ];
+
+  assert.equal(historySource.radiusTiles, currentSource.radiusTiles);
+  assert.equal(historySource.clearRadiusTiles, currentSource.clearRadiusTiles);
+  assert.equal(historySource.strength, currentSource.strength);
+  points.forEach((point) => {
+    assert.equal(Math.abs(readMaskAt(history.explored, history, point) - readMaskAt(current.visible, current, point)) <= 6, true);
+  });
 });
 
 test('WorldFogMaskGenerator pads the mask frame so soft sources are not cut by frame edges', () => {
@@ -490,7 +559,7 @@ test('WorldFogMaskGenerator does not clear by stitching visible tiles when no so
 
   assert.equal(sourceSet.visibleTileSources.length, 1);
   assert.equal(sourceSet.visionSources.length, 0);
-  assert.equal(explored >= 245, true);
+  assert.equal(explored, 0);
   assert.equal(visible, 0);
 });
 
@@ -502,11 +571,11 @@ test('WorldFogMaskGenerator stamps source-local masks without per-pixel source s
   assert.equal(typeof generator.stampSource, 'function');
 });
 
-test('WorldFogMaskGenerator thins interior memory sources while preserving explored boundaries', () => {
+test('WorldFogMaskGenerator derives explored history from revealed route paths without tile memory sources', () => {
   const tiles = [];
   const entries = [];
-  for (let q = -8; q <= 8; q += 1) {
-    for (let r = -8; r <= 8; r += 1) {
+  for (let q = 0; q <= 3; q += 1) {
+    for (let r = 0; r <= 0; r += 1) {
       const tile = { id: `tile_${q}_${r}`, q, r, discovered: true, visible: false, visibility: 'scouted' };
       tiles.push(tile);
       entries.push({
@@ -524,11 +593,25 @@ test('WorldFogMaskGenerator thins interior memory sources while preserving explo
     },
     entries,
     actors: [],
+    renderSnapshot: {
+      march: {
+        missions: [{
+          id: 'route-memory',
+          status: 'idle',
+          origin: { q: 0, r: 0 },
+          route: [
+            { q: 1, r: 0, step: 1, revealed: true },
+            { q: 2, r: 0, step: 2, revealed: true },
+          ],
+          revealedTileIds: [],
+        }],
+      },
+    },
   }));
 
-  assert.equal(entries.length, 289);
-  assert.equal(sourceSet.memorySources.length < entries.length, true);
-  assert.equal(sourceSet.memorySources.some((source) => source.q === -8 && source.r === -8), true);
+  assert.equal(sourceSet.memorySources.length > 2, true);
+  assert.equal(sourceSet.memorySources.every((source) => source.kind === 'unit'), true);
+  assert.equal(sourceSet.memorySources.some((source) => source.source === 'routeHistory'), true);
 });
 
 function readMaskAt(channel, mask, point) {

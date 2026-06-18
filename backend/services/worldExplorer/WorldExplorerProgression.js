@@ -261,9 +261,11 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
     while (nextStepAtMs <= nowMs) {
       const step = mission.route.find((item) => !item.revealed);
       if (!step) break;
+      const previousPosition = mission.position || [...mission.route].reverse().find((item) => item.revealed) || mission.origin || step;
       const revealedTiles = revealStep(gameState, mission, step, now, {
         planningContext: options.planningContext,
       });
+      WorldMapService.recordVisionPath?.(gameState, previousPosition, step, now, { kind: 'unit' });
       step.revealed = true;
       step.revealedAt = now.toISOString();
       mission.position = {

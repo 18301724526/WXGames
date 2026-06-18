@@ -372,6 +372,31 @@ test('GameStateRepository strips legacy hidden terrain instead of promoting it i
   }
 });
 
+test('GameStateRepository preserves fog vision history while sanitizing saved tiles', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-12T00:00:00.000Z');
+    const state = GameStateNormalizer.createInitialGameState('vision-history-repo-test', { now });
+    WorldMapService.recordVisionPath(state, { q: 0, r: 0 }, { q: 1, r: 0 }, now, { kind: 'unit' });
+
+    repository.save(state);
+
+    const row = db.prepare('SELECT worldMap FROM game_states WHERE playerId = ?').get(state.playerId);
+    const storedMap = JSON.parse(row.worldMap);
+    const reloaded = repository.findByPlayerId(state.playerId);
+
+    assert.equal(storedMap.tiles.length, 0);
+    assert.equal(storedMap.visionHistory.schema, 'world-fog-vision-history-v1');
+    assert.equal(storedMap.visionHistory.sources.some((source) => source.kind === 'unit' && source.q > 0 && source.q < 1), true);
+    assert.equal(reloaded.worldMap.visionHistory.sources.some((source) => source.kind === 'unit' && source.q > 0 && source.q < 1), true);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository keeps test1-scale AI hidden exploration out of the player save budget', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);

@@ -126,6 +126,16 @@
     getContextKey(context = {}, frame = {}, dimensions = {}) {
       const viewport = context.viewport || {};
       const geometry = context.geometry || context.tileMapView?.geometry || viewport.geometry || {};
+      const historySources = context.tileMapView?.visionHistory?.sources
+        || context.tileMapView?.visionHistorySources
+        || context.renderSnapshot?.tileMapView?.visionHistory?.sources
+        || [];
+      const historySignature = VisionModel?.getSourceSignature
+        ? VisionModel.getSourceSignature((Array.isArray(historySources) ? historySources : []).map((source) => {
+          const kind = source?.kind === 'city' ? 'city' : 'unit';
+          return VisionModel.createSource(kind, source, viewport, geometry);
+        }))
+        : '';
       const actors = Array.isArray(context.actors)
         ? context.actors
         : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []);
@@ -157,6 +167,7 @@
         Math.round(toNumber(viewport.scale, 1) * 1000),
         Math.round(toNumber(geometry.stepX, 96) * 10),
         Math.round(toNumber(geometry.stepY, 48) * 10),
+        historySignature,
         actorSignature,
       ].join('|');
     }

@@ -24,12 +24,6 @@
   })();
 
   const SOURCE_RULES = Object.freeze({
-    memory: Object.freeze({
-      kind: 'memory',
-      radiusTiles: 2.05,
-      clearRadiusTiles: 0.9,
-      strength: 1,
-    }),
     visibleTile: Object.freeze({
       kind: 'visibleTile',
       radiusTiles: 1.55,
@@ -204,7 +198,7 @@
   }
 
   function createSource(kind = '', coord = {}, viewport = {}, geometry = {}, overrides = {}) {
-    const rule = SOURCE_RULES[kind] || SOURCE_RULES.memory;
+    const rule = SOURCE_RULES[kind] || SOURCE_RULES.unit;
     const normalizedCoord = normalizeFloatCoord(coord);
     const center = overrides.center || getCoordScreenCenter(normalizedCoord, viewport, geometry);
     return {
@@ -218,7 +212,7 @@
     };
   }
 
-  function createTileSource(entry = {}, kind = 'memory', viewport = {}, geometry = {}, overrides = {}) {
+  function createTileSource(entry = {}, kind = 'visibleTile', viewport = {}, geometry = {}, overrides = {}) {
     const tile = entry.tile || {};
     const coord = normalizeCoord(tile);
     const center = entry.center || getTileScreenCenter(coord, viewport, geometry);
@@ -307,50 +301,101 @@
       .filter(Boolean);
   }
 
-  function getSourceCoordKey(source = {}) {
-    return `${Math.round(toNumber(source.q))},${Math.round(toNumber(source.r))}`;
+  function sourceIdentity(source = {}) {
+    return [
+      source.kind || '',
+      Math.round(toNumber(source.q) * 100),
+      Math.round(toNumber(source.r) * 100),
+    ].join(':');
   }
 
-  function isMemoryBoundarySource(source = {}, sourceKeys = new Set()) {
-    const q = Math.round(toNumber(source.q));
-    const r = Math.round(toNumber(source.r));
-    const neighbors = [
-      [q + 1, r],
-      [q - 1, r],
-      [q, r + 1],
-      [q, r - 1],
-      [q + 1, r - 1],
-      [q - 1, r + 1],
-    ];
-    return neighbors.some(([neighborQ, neighborR]) => !sourceKeys.has(`${neighborQ},${neighborR}`));
+  function getVisionHistorySourceRecords(context = {}) {
+    const tileMapView = context.tileMapView || {};
+    const sources = tileMapView.visionHistory?.sources
+      || tileMapView.visionHistorySources
+      || context.renderSnapshot?.tileMapView?.visionHistory?.sources
+      || [];
+    return Array.isArray(sources) ? sources : [];
   }
 
-  function thinInteriorMemorySources(sources = [], viewport = {}, geometry = {}, options = {}) {
-    const memorySources = Array.isArray(sources) ? sources : [];
-    const threshold = Math.max(96, toInteger(options.memorySourceThinThreshold, 192));
-    if (memorySources.length <= threshold) return memorySources;
-    const scale = Math.max(0.05, toNumber(viewport.scale, 1));
-    const boundaryCellWidth = Math.max(24, toNumber(geometry.stepX, 96) * scale * 2.6);
-    const boundaryCellHeight = Math.max(16, toNumber(geometry.stepY, 48) * scale * 2.6);
-    const interiorCellWidth = Math.max(32, toNumber(geometry.stepX, 96) * scale * 4.4);
-    const interiorCellHeight = Math.max(22, toNumber(geometry.stepY, 48) * scale * 4.4);
-    const keys = new Set(memorySources.map(getSourceCoordKey));
-    const boundaryByCell = new Map();
-    const interiorByCell = new Map();
-
-    memorySources.forEach((source) => {
-      if (isMemoryBoundarySource(source, keys)) {
-        const boundaryKey = `${Math.floor(toNumber(source.center?.x) / boundaryCellWidth)}:${Math.floor(toNumber(source.center?.y) / boundaryCellHeight)}`;
-        if (!boundaryByCell.has(boundaryKey)) boundaryByCell.set(boundaryKey, source);
-        return;
-      }
-      const cellKey = `${Math.floor(toNumber(source.center?.x) / interiorCellWidth)}:${Math.floor(toNumber(source.center?.y) / interiorCellHeight)}`;
-      if (!interiorByCell.has(cellKey)) interiorByCell.set(cellKey, source);
+  function getMissionList(context = {}) {
+    const tileMapView = context.tileMapView || {};
+    const fromMarch = Array.isArray(context.renderSnapshot?.march?.missions)
+      ? context.renderSnapshot.march.missions
+      : [];
+    const fromTileMap = Array.isArray(tileMapView.activeScouts) ? tileMapView.activeScouts : [];
+    const byId = new Map();
+    [...fromTileMap, ...fromMarch].forEach((mission) => {
+      if (!mission || typeof mission !== 'object') return;
+      const id = mission.id || mission.missionId || `mission-${byId.size}`;
+      byId.set(id, { ...(byId.get(id) || {}), ...mission });
     });
-    const thinned = [];
-    boundaryByCell.forEach((source) => thinned.push(source));
-    interiorByCell.forEach((source) => thinned.push(source));
-    return thinned;
+    return [...byId.values()];
+  }
+
+  function isRouteStepRevealed(step = {}, mission = {}) {
+    if (step.revealed) return true;
+    const id = normalizeCoord(step).tileId;
+    return (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : []).map(String).includes(id);
+  }
+
+  function samplePathSources(from = {}, to = {}, viewport = {}, geometry = {}, options = {}) {
+    const start = normalizeFloatCoord(from, to);
+    const end = normalizeFloatCoord(to, start);
+    const sampleStepTiles = Math.max(0.1, toNumber(options.historySampleStepTiles, 0.45));
+    const distance = Math.hypot(end.q - start.q, end.r - start.r);
+    const steps = Math.max(1, Math.ceil(distance / sampleStepTiles));
+    const sources = [];
+    for (let index = 0; index <= steps; index += 1) {
+      const t = index / steps;
+      sources.push(createSource('unit', {
+        q: start.q + (end.q - start.q) * t,
+        r: start.r + (end.r - start.r) * t,
+      }, viewport, geometry, {
+        source: 'routeHistory',
+      }));
+    }
+    return sources;
+  }
+
+  function collectRouteHistorySources(context = {}, viewport = {}, geometry = {}, options = {}) {
+    const actorByMissionId = new Map((Array.isArray(context.actors) ? context.actors : [])
+      .map((actor) => [actor?.missionId || actor?.id || '', actor])
+      .filter(([id]) => id));
+    const sources = [];
+    getMissionList(context).forEach((mission) => {
+      const route = (Array.isArray(mission.route) ? mission.route : [])
+        .map((step, index) => ({ ...normalizeCoord(step), step: toInteger(step.step, index + 1), revealed: isRouteStepRevealed(step, mission) }))
+        .sort((a, b) => a.step - b.step);
+      let cursor = normalizeFloatCoord(mission.origin || mission.position || route[0] || {});
+      route.forEach((step) => {
+        if (!step.revealed) return;
+        sources.push(...samplePathSources(cursor, step, viewport, geometry, options));
+        cursor = step;
+      });
+      const actor = actorByMissionId.get(mission.id || mission.missionId || '');
+      const current = actor?.current || null;
+      if (actor?.status === 'active' && current) {
+        sources.push(...samplePathSources(cursor, current, viewport, geometry, options));
+      }
+    });
+    return sources;
+  }
+
+  function collectVisionHistorySources(context = {}, viewport = {}, geometry = {}, options = {}) {
+    const byKey = new Map();
+    const append = (source) => {
+      if (!source) return;
+      byKey.set(sourceIdentity(source), source);
+    };
+    getVisionHistorySourceRecords(context).forEach((record) => {
+      const kind = record.kind === 'city' ? 'city' : 'unit';
+      append(createSource(kind, record, viewport, geometry, {
+        source: 'visionHistory',
+      }));
+    });
+    collectRouteHistorySources(context, viewport, geometry, options).forEach(append);
+    return [...byKey.values()];
   }
 
   function collectSources(context = {}, options = {}) {
@@ -358,21 +403,22 @@
     const viewport = context.viewport || {};
     const geometry = normalizeGeometry(context.geometry || tileMapView.geometry || viewport.geometry || {});
     const entries = getFogEntries(tileMapView, context.entries, viewport, geometry);
-    const memorySources = [];
     const visibleTileSources = [];
     entries.forEach((entry) => {
-      if (isExploredTile(entry.tile)) memorySources.push(createTileSource(entry, 'memory', viewport, geometry));
       if (isVisibleTile(entry.tile)) visibleTileSources.push(createTileSource(entry, 'visibleTile', viewport, geometry));
     });
     const citySources = collectCitySources(tileMapView, entries, viewport, geometry);
     const unitSources = collectUnitSources(context, viewport, geometry);
     const visionSources = [...citySources, ...unitSources];
+    const visionHistorySources = collectVisionHistorySources(context, viewport, geometry, options);
     const fallbackVisibleSources = options.useVisibleTileFallback === true && !visionSources.length
       ? visibleTileSources
       : [];
     return {
       entries,
-      memorySources: thinInteriorMemorySources(memorySources, viewport, geometry, options),
+      exploredSources: visionHistorySources,
+      memorySources: visionHistorySources,
+      visionHistorySources,
       visibleTileSources,
       visionSources: [...visionSources, ...fallbackVisibleSources],
       unitSources,
@@ -412,6 +458,7 @@
   const api = {
     SOURCE_RULES,
     collectSources,
+    collectVisionHistorySources,
     createSource,
     createTileSource,
     getCoordScreenCenter,

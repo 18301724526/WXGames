@@ -412,6 +412,8 @@
         version: worldMap.version || 0,
         seed: worldMap.seed || '',
         origin,
+        visionHistory: worldMap.visionHistory || null,
+        visionHistorySources: Array.isArray(worldMap.visionHistorySources) ? worldMap.visionHistorySources : [],
         pan: {
           x: this.toNumber(options.panX),
           y: this.toNumber(options.panY),

@@ -33,6 +33,7 @@ test('WorldMapService delegates terrain, water, and shared responsibilities to f
     'WorldMapShared.js',
     'WorldMapTiles.js',
     'WorldMapTopology.js',
+    'WorldMapVisionHistory.js',
     'WorldMapWater.js',
   ]);
   for (const fileName of moduleFiles) {
@@ -362,6 +363,8 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'normalizeWorldMap',
     'normalizeWorldSize',
     'recordScoutTrail',
+    'recordVisionPath',
+    'recordVisionSource',
     'revealScoutArea',
     'revealTile',
     'revealTileArea',
@@ -389,4 +392,21 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
   assert.equal(revealed.length >= 4, true);
   const trail = WorldMapService.recordScoutTrail(gameState, { id: 'mission-1', direction: 'e' }, revealed.map((tile) => tile.id), true);
   assert.equal(trail.returned, true);
+});
+
+test('world map vision history records capital and unit path sources', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = {
+    playerId: 'vision-history-player',
+    worldMap: WorldMapService.createInitialWorldMap('vision-history-seed', now),
+  };
+
+  assert.equal(gameState.worldMap.visionHistory.schema, 'world-fog-vision-history-v1');
+  assert.equal(gameState.worldMap.visionHistory.sources.some((source) => source.kind === 'city' && source.q === 0 && source.r === 0), true);
+
+  WorldMapService.recordVisionPath(gameState, { q: 0, r: 0 }, { q: 1, r: 0 }, now, { kind: 'unit' });
+
+  const unitSources = gameState.worldMap.visionHistory.sources.filter((source) => source.kind === 'unit');
+  assert.equal(unitSources.length > 2, true);
+  assert.equal(unitSources.some((source) => source.q > 0 && source.q < 1), true);
 });

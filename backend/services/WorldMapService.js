@@ -48,6 +48,7 @@ const {
   isStartSafeLandCoord,
   normalizeTile,
 } = require('./worldMap/WorldMapTiles');
+const VisionHistory = require('./worldMap/WorldMapVisionHistory');
 
 function normalizeScoutTrail(rawTrail) {
   if (!rawTrail || typeof rawTrail !== 'object') return null;
@@ -79,6 +80,9 @@ function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date(), opti
     topology: WorldMapTopology.createWorldTopologyMetadata(),
     origin: { q: origin.q, r: origin.r },
     tiles,
+    visionHistory: VisionHistory.normalizeHistory({
+      sources: [{ kind: 'city', q: origin.q, r: origin.r, revealedAt: typeof now === 'string' ? now : now.toISOString() }],
+    }),
     scoutTrails: [],
   };
 }
@@ -139,6 +143,10 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
   const scoutTrails = (Array.isArray(rawWorldMap?.scoutTrails) ? rawWorldMap.scoutTrails : [])
     .map(normalizeScoutTrail)
     .filter(Boolean);
+  const visionHistory = VisionHistory.normalizeHistory(rawWorldMap?.visionHistory || rawWorldMap?.visionHistorySources);
+  if (!visionHistory.sources.some((source) => source.kind === 'city' && source.q === origin.q && source.r === origin.r)) {
+    visionHistory.sources.push({ kind: 'city', q: origin.q, r: origin.r, tileId: getTileId(origin.q, origin.r), revealedAt: null });
+  }
   return {
     version: WORLD_MAP_VERSION,
     seed,
@@ -149,6 +157,7 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
       r: origin.r,
     },
     tiles: [...tileMap.values()].sort(compareTiles),
+    visionHistory: VisionHistory.normalizeHistory(visionHistory),
     scoutTrails,
   };
 }
@@ -222,6 +231,20 @@ function revealTiles(gameState, coords = [], now = new Date(), options = {}) {
   }
   batch.commit();
   return revealed;
+}
+
+function recordVisionSource(gameState, source, now = new Date()) {
+  ensureWorldMap(gameState, now);
+  return VisionHistory.recordSource(gameState, source, now);
+}
+
+function recordVisionPath(gameState, from, to, now = new Date(), options = {}) {
+  ensureWorldMap(gameState, now);
+  return VisionHistory.recordPath(gameState, {
+    kind: options.kind || 'unit',
+    from,
+    to,
+  }, now, options);
 }
 
 function getRevealArea(q, r, radius = SCOUT_REVEAL_RADIUS) {
@@ -329,11 +352,13 @@ function canPlaceSiteOnTerrain(seed, q, r) {
 
 function bindSiteToTile(gameState, q, r, siteId, now = new Date(), options = {}) {
   const controlled = Boolean(options.controlled || options.visibility === 'controlled');
-  return revealTile(gameState, q, r, now, {
+  const tile = revealTile(gameState, q, r, now, {
     siteId,
     visibility: controlled ? 'controlled' : (options.visibility || 'scouted'),
     intel: options.intel,
   });
+  if (controlled) recordVisionSource(gameState, { kind: 'city', q, r }, now);
+  return tile;
 }
 
 function getDirectionVector(direction) {
@@ -445,6 +470,8 @@ module.exports = {
   createInitialWorldMap,
   normalizeWorldMap,
   ensureWorldMap,
+  recordVisionPath,
+  recordVisionSource,
   revealTile,
   revealTiles,
   bindSiteToTile,
