@@ -181,10 +181,14 @@
     const candidates = getForegroundTargets(point, targets)
       .filter((target) => WorldMapSelectionResolver.isWorldEntityAction?.(target.action));
     if (candidates.length <= 1) return null;
-    return WorldMapSelectionResolver.resolveCandidates(candidates, {
+    const normalized = WorldMapSelectionResolver.normalizeCandidates?.(candidates, {
       point,
       tile: options.tile || {},
     });
+    if (!Array.isArray(normalized) || normalized.length <= 1) return null;
+    return WorldMapSelectionResolver.createPickerAction
+      ? WorldMapSelectionResolver.createPickerAction(normalized, { point, tile: options.tile || {} })
+      : WorldMapSelectionResolver.resolveCandidates(normalized, { point, tile: options.tile || {} });
   }
 
   function getPriorityForegroundAction(point = {}, targets = [], options = {}) {

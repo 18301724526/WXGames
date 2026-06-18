@@ -256,6 +256,10 @@ test('HudOverlayCanvasRenderer preserves runtime world-map site targets on skipp
   });
 
   assert.equal(callNames(host).includes('appendWorldMapRuntimeHitTargets'), true);
+  assert.equal(host.calls.some((call) => (
+    call[0] === 'collectMapHomeWorldSiteHitTargets'
+    && call[1][2].collectHitTargets === false
+  )), true);
   assert.equal(host.hitTargets.some((target) => (
     target.action.type === 'openWorldSite' && target.action.siteId === 'site_2_2'
   )), true);

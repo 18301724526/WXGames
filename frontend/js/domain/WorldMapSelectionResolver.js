@@ -13,7 +13,6 @@
 
   const WORLD_ENTITY_ACTIONS = Object.freeze([
     'openWorldSite',
-    'enterCity',
     'selectWorldActor',
   ]);
   const WORLD_ENTITY_ACTION_SET = new Set(WORLD_ENTITY_ACTIONS);
@@ -60,6 +59,14 @@
     };
   }
 
+  function hasCoordEvidence(source = {}) {
+    if (!source || typeof source !== 'object') return false;
+    if (parseTileId(source.tileId || source.id || '')) return true;
+    const hasX = source.x !== undefined || source.q !== undefined;
+    const hasY = source.y !== undefined || source.r !== undefined;
+    return hasX && hasY;
+  }
+
   function clonePlain(value) {
     if (!value || typeof value !== 'object') return value;
     if (Array.isArray(value)) return value.map(clonePlain);
@@ -80,7 +87,7 @@
 
   function inferKind(action = {}, target = {}) {
     if (target.kind === 'actor' || action.type === 'selectWorldActor') return 'actor';
-    if (target.kind === 'site' || action.type === 'openWorldSite' || action.type === 'enterCity') return 'site';
+    if (target.kind === 'site' || action.type === 'openWorldSite') return 'site';
     return target.kind || 'target';
   }
 
@@ -117,6 +124,7 @@
     ].filter(Boolean);
     let coord = null;
     for (const source of coordSources) {
+      if (!hasCoordEvidence(source)) continue;
       const next = normalizeCoord(source, coord || fallback || {});
       if (Number.isFinite(Number(next.q)) && Number.isFinite(Number(next.r))) {
         coord = next;
@@ -186,9 +194,9 @@
   }
 
   function resolveSharedTile(candidates = [], fallback = {}) {
-    const first = candidates.find((candidate) => candidate?.tileId || Number.isFinite(Number(candidate?.q)));
+    const first = candidates.find((candidate) => hasCoordEvidence(candidate));
     if (first) return normalizeCoord(first, fallback);
-    return normalizeCoord(fallback, {});
+    return hasCoordEvidence(fallback) ? normalizeCoord(fallback, {}) : {};
   }
 
   function resolveAnchor(candidates = [], point = {}) {

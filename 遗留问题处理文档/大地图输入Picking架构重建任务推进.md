@@ -183,3 +183,14 @@
 - 每次大地图 tap 都有可导出、可 JSON 序列化、体积受控的 `WorldMapInputIntent`，并能从日志对齐输入事实与 action 执行。
 - 世界行军命令可带 compact `clientInputIntent` evidence，但服务端路线、停止点、timeline、AOI 和接受/拒绝仍由服务器当前状态计算。
 - 文档与代码事实一致，旧实现不留在当前项目目录中。
+
+## 2026-06-18 新手引导入城点击 / world target picker 边界修复记录
+
+- 线上复现账号 `codexqa` 的重置/出生数据正常：只有一个 capital，坐标为 `tile_23_18`，问题不是新账号落地算法或后端重置产生实体重叠。
+- 根因一：`WorldMapSelectionResolver` 把 HUD command `enterCity` 纳入 world entity candidates，导致 `openWorldSite + enterCity` 被错误改写为 `openWorldTargetPicker`；教程 enter 步只允许 `enterCity`，因此 picker 被教程输入门禁拒绝，表现为“入城点不了”。
+- 根因二：`skipWorldMapLayer` 时先 append runtime hit targets，又调用 `collectMapHomeWorldSiteHitTargets()` 重新注册 drag/tile/site targets，导致线上同一点出现重复 `openWorldSite` 和背景 targets。两个机制分别服务 runtime 复用和 context 刷新，但不能同时注册同一批地图目标。
+- 修复：`WORLD_ENTITY_ACTIONS` 只保留 `openWorldSite` / `selectWorldActor`；`enterCity` / `renameCity` / `territoryAction` 明确留在 HUD/command 层。前景候选归一化后只有一个世界实体时不提前返回，让正常 topmost hit target 处理 HUD 命令。
+- 修复：`collectMapHomeWorldSiteHitTargets()` 增加 `collectHitTargets: false` 的 context-only 模式；Frame/HUD 在成功复用 runtime hit targets 后只刷新 `lastMapHomeWorldHudContext`，不重复注册 map hit targets；如果 runtime targets 不存在，则保留原注册路径作为 fallback。
+- 修复：world picker 坐标归一化不再让无坐标 command 默认落到 `tile_0_0`；候选只接受明确 tileId/q/r/coord/tile 这类世界坐标证据。
+- 回归测试覆盖：site+actor 仍打开 target picker；openWorldSite+enterCity 返回 topmost `enterCity`；picker candidates 不包含 HUD command；context-only 收集不注册重复地图 targets。
+- 验证：`node --test frontend/js/domain/WorldMapSelectionResolver.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js`，84 tests passed。
