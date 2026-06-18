@@ -35,16 +35,32 @@
     return (hash >>> 0).toString(36);
   }
 
-  function getSoftBoundaryNoise(x = 0, y = 0, radius = 4) {
-    const scale = Math.max(8, toNumber(radius, 4) * 3.5);
-    const waveA = Math.sin((toNumber(x) * 1.37 + toNumber(y) * 0.73) / scale);
-    const waveB = Math.sin((toNumber(x) * -0.61 + toNumber(y) * 1.19) / (scale * 1.7) + 1.9);
-    return clamp01(0.5 + waveA * 0.28 + waveB * 0.22);
-  }
-
   const TILE_MASK_UNKNOWN = 0;
   const TILE_MASK_EXPLORED = 1;
   const TILE_MASK_VISIBLE = 2;
+
+  const TILE_BOUNDARY_SIDES = Object.freeze([
+    Object.freeze({
+      dq: 0,
+      dr: -1,
+      margin: (u, v) => 1 - (u - v),
+    }),
+    Object.freeze({
+      dq: 1,
+      dr: 0,
+      margin: (u, v) => 1 - (u + v),
+    }),
+    Object.freeze({
+      dq: 0,
+      dr: 1,
+      margin: (u, v) => 1 - (-u + v),
+    }),
+    Object.freeze({
+      dq: -1,
+      dr: 0,
+      margin: (u, v) => 1 - (-u - v),
+    }),
+  ]);
 
   function clampMaskLevel(value = TILE_MASK_UNKNOWN) {
     const level = Math.floor(toNumber(value, TILE_MASK_UNKNOWN));
@@ -243,7 +259,23 @@
         .filter(Boolean);
     }
 
-    rasterizeTileMask(channel, cache = this.cache, frame = {}, entry = {}, strength = 1) {
+    getChannelTileSet(tileMaskEntries = [], channel = 'explored') {
+      const result = new Set();
+      tileMaskEntries.forEach((entry) => {
+        const strength = channel === 'visible' ? entry.visibleStrength : entry.exploredStrength;
+        if (strength > 0.01) result.add(entry.id);
+      });
+      return result;
+    }
+
+    getNeighborId(entry = {}, side = {}) {
+      return getTileId({
+        q: toNumber(entry.q) + toNumber(side.dq),
+        r: toNumber(entry.r) + toNumber(side.dr),
+      });
+    }
+
+    rasterizeTileMask(channel, cache = this.cache, frame = {}, entry = {}, channelTileSet = new Set(), strength = 1) {
       const maskRect = entry?.maskRect || entry?.drawRect || null;
       if (!channel || !entry?.center || !maskRect || strength <= 0) return false;
       const maskScaleX = cache.width / Math.max(1, toNumber(frame.width, 1));
@@ -257,8 +289,7 @@
       const minY = Math.max(0, Math.floor(centerY - halfH - 1));
       const maxY = Math.min(cache.height - 1, Math.ceil(centerY + halfH + 1));
       if (minX > maxX || minY > maxY) return false;
-      const value = Math.round(clamp01(strength) * 255);
-      if (value <= 0) return false;
+      const feather = Math.max(0.08, Math.min(0.34, 8 / Math.max(1, Math.min(halfW, halfH))));
       let wrote = false;
       for (let y = minY; y <= maxY; y += 1) {
         const v = ((y + 0.5) - centerY) / halfH;
@@ -266,6 +297,14 @@
         for (let x = minX; x <= maxX; x += 1) {
           const u = ((x + 0.5) - centerX) / halfW;
           if (Math.abs(u) + Math.abs(v) > 1) continue;
+          let edgeFade = 1;
+          for (let index = 0; index < TILE_BOUNDARY_SIDES.length; index += 1) {
+            const side = TILE_BOUNDARY_SIDES[index];
+            if (channelTileSet.has(this.getNeighborId(entry, side))) continue;
+            edgeFade = Math.min(edgeFade, smoothstep(0, feather, side.margin(u, v)));
+          }
+          const value = Math.round(clamp01(edgeFade * strength) * 255);
+          if (value <= 0) continue;
           const channelIndex = row + x;
           if (value > channel[channelIndex]) {
             channel[channelIndex] = value;
@@ -276,76 +315,20 @@
       return wrote;
     }
 
-    getChannelFeatherRadius(cache = this.cache, frame = {}, sourceSet = {}) {
-      const geometry = sourceSet.geometry || {};
-      const viewport = sourceSet.viewport || {};
-      const scale = Math.max(0.05, toNumber(viewport.scale, 1));
-      const maskScaleX = cache.width / Math.max(1, toNumber(frame.width, 1));
-      const maskScaleY = cache.height / Math.max(1, toNumber(frame.height, 1));
-      const tileWidthPx = Math.max(1, toNumber(geometry.tileWidth, 192)) * scale * maskScaleX;
-      const tileHeightPx = Math.max(1, toNumber(geometry.tileHeight, 96)) * scale * maskScaleY;
-      const tileMin = Math.max(1, Math.min(tileWidthPx, tileHeightPx));
-      return Math.max(3, Math.min(10, Math.round(tileMin * 0.24)));
-    }
-
-    softenChannelInward(channel, cache = this.cache, radius = 4) {
-      const blurRadius = Math.max(0, Math.min(12, Math.floor(toNumber(radius, 0))));
-      if (!channel || !cache?.scratch || blurRadius <= 0) return channel;
-      const { width, height, scratch } = cache;
-      scratch.set(channel);
-      const radiusSquared = blurRadius * blurRadius;
-      for (let y = 0; y < height; y += 1) {
-        const row = y * width;
-        for (let x = 0; x < width; x += 1) {
-          const index = row + x;
-          if (scratch[index] <= 0) {
-            channel[index] = 0;
-            continue;
-          }
-          let nearestOutsideSquared = Infinity;
-          for (let dy = -blurRadius; dy <= blurRadius; dy += 1) {
-            const ny = y + dy;
-            if (ny < 0 || ny >= height) {
-              nearestOutsideSquared = Math.min(nearestOutsideSquared, dy * dy);
-              continue;
-            }
-            for (let dx = -blurRadius; dx <= blurRadius; dx += 1) {
-              const distanceSquared = dx * dx + dy * dy;
-              if (distanceSquared > radiusSquared || distanceSquared >= nearestOutsideSquared) continue;
-              const nx = x + dx;
-              if (nx < 0 || nx >= width || scratch[ny * width + nx] <= 0) {
-                nearestOutsideSquared = distanceSquared;
-              }
-            }
-          }
-          if (nearestOutsideSquared === Infinity) {
-            channel[index] = scratch[index];
-            continue;
-          }
-          const distance = Math.sqrt(nearestOutsideSquared);
-          const inset = Math.max(0.75, blurRadius * (0.10 + getSoftBoundaryNoise(x, y, blurRadius) * 0.24));
-          const fade = smoothstep(inset, blurRadius, distance);
-          channel[index] = Math.round(clamp01(fade * (scratch[index] / 255)) * 255);
-        }
-      }
-      return channel;
-    }
-
     fillMasks(cache = this.cache, frame = {}, sourceSet = {}) {
       const tileMaskEntries = Array.isArray(sourceSet.tileMaskEntries)
         ? sourceSet.tileMaskEntries
         : this.getTileMaskEntries(sourceSet);
+      const exploredTileSet = this.getChannelTileSet(tileMaskEntries, 'explored');
+      const visibleTileSet = this.getChannelTileSet(tileMaskEntries, 'visible');
       for (let i = 0; i < tileMaskEntries.length; i += 1) {
         const entry = tileMaskEntries[i];
-        this.rasterizeTileMask(cache.explored, cache, frame, entry, entry.exploredStrength);
+        this.rasterizeTileMask(cache.explored, cache, frame, entry, exploredTileSet, entry.exploredStrength);
       }
       for (let i = 0; i < tileMaskEntries.length; i += 1) {
         const entry = tileMaskEntries[i];
-        this.rasterizeTileMask(cache.visible, cache, frame, entry, entry.visibleStrength);
+        this.rasterizeTileMask(cache.visible, cache, frame, entry, visibleTileSet, entry.visibleStrength);
       }
-      const featherRadius = this.getChannelFeatherRadius(cache, frame, sourceSet);
-      this.softenChannelInward(cache.explored, cache, featherRadius);
-      this.softenChannelInward(cache.visible, cache, Math.max(2, Math.round(featherRadius * 0.75)));
       cache.tileMaskEntries = tileMaskEntries;
       return cache;
     }
