@@ -35,6 +35,65 @@
     return (hash >>> 0).toString(36);
   }
 
+  const TILE_MASK_UNKNOWN = 0;
+  const TILE_MASK_EXPLORED = 1;
+  const TILE_MASK_VISIBLE = 2;
+
+  const TILE_BOUNDARY_SIDES = Object.freeze([
+    Object.freeze({
+      dq: 0,
+      dr: -1,
+      margin: (u, v) => 1 - (u - v),
+    }),
+    Object.freeze({
+      dq: 1,
+      dr: 0,
+      margin: (u, v) => 1 - (u + v),
+    }),
+    Object.freeze({
+      dq: 0,
+      dr: 1,
+      margin: (u, v) => 1 - (-u + v),
+    }),
+    Object.freeze({
+      dq: -1,
+      dr: 0,
+      margin: (u, v) => 1 - (-u - v),
+    }),
+  ]);
+
+  function clampMaskLevel(value = TILE_MASK_UNKNOWN) {
+    const level = Math.floor(toNumber(value, TILE_MASK_UNKNOWN));
+    if (level >= TILE_MASK_VISIBLE) return TILE_MASK_VISIBLE;
+    if (level >= TILE_MASK_EXPLORED) return TILE_MASK_EXPLORED;
+    return TILE_MASK_UNKNOWN;
+  }
+
+  function getTileMaskLevel(tile = {}) {
+    if (tile?.fogMaskLevel !== undefined) return clampMaskLevel(tile.fogMaskLevel);
+    if (VisionModel?.isVisibleTile?.(tile)) return TILE_MASK_VISIBLE;
+    if (VisionModel?.isExploredTile?.(tile)) return TILE_MASK_EXPLORED;
+    return TILE_MASK_UNKNOWN;
+  }
+
+  function getTileId(coord = {}) {
+    return VisionModel?.normalizeCoord?.(coord)?.tileId
+      || `tile_${Math.floor(toNumber(coord.q ?? coord.x, 0))}_${Math.floor(toNumber(coord.r ?? coord.y, 0))}`;
+  }
+
+  function getTileMaskDrawRect(center = {}, viewport = {}, geometry = {}) {
+    const scale = Math.max(0.05, toNumber(viewport.scale, 1));
+    const width = Math.max(1, toNumber(geometry.tileWidth, 192)) * scale;
+    const height = Math.max(1, toNumber(geometry.tileHeight, 96)) * scale;
+    const anchorY = Math.max(0, Math.min(1, toNumber(geometry.anchorY, 0.5)));
+    return {
+      x: toNumber(center.x) - width * 0.5,
+      y: toNumber(center.y) - height * anchorY,
+      width,
+      height,
+    };
+  }
+
   class WorldFogMaskGenerator {
     constructor(options = {}) {
       this.maskSize = Math.max(96, Math.min(512, Number(options.maskSize) || 256));
@@ -56,6 +115,7 @@
       this.cache.contextKey = '';
       this.cache.explored?.fill?.(0);
       this.cache.visible?.fill?.(0);
+      this.cache.tileMaskEntries = null;
       this.cache.maskFrame = null;
       return this.cache;
     }
@@ -97,6 +157,26 @@
       };
     }
 
+    getTileMaskSignature(sourceSet = {}) {
+      const parts = [];
+      const entries = Array.isArray(sourceSet.tileMaskEntries)
+        ? sourceSet.tileMaskEntries
+        : this.getTileMaskEntries(sourceSet);
+      entries.forEach((entry) => {
+        parts.push([
+          entry.id,
+          entry.maskLevel,
+          Math.round(toNumber(entry.center?.x) * 10),
+          Math.round(toNumber(entry.center?.y) * 10),
+          Math.round(toNumber(entry.maskRect?.width) * 10),
+          Math.round(toNumber(entry.maskRect?.height) * 10),
+          Math.round(toNumber(entry.exploredStrength) * 1000),
+          Math.round(toNumber(entry.visibleStrength) * 1000),
+        ].join(':'));
+      });
+      return hashText(parts.join('|'));
+    }
+
     getMaskKey(context = {}, frame = {}, dimensions = {}, sourceSet = {}) {
       const viewport = sourceSet.viewport || context.viewport || {};
       const geometry = sourceSet.geometry || context.geometry || {};
@@ -104,8 +184,7 @@
       const signatureText = [
         context.fogVisualSnapshot?.signature || context.tileMapView?.signature || '',
         entries.length,
-        VisionModel?.getSourceSignature?.(sourceSet.memorySources || []) || '',
-        VisionModel?.getSourceSignature?.(sourceSet.visionSources || []) || '',
+        this.getTileMaskSignature(sourceSet),
         dimensions.width,
         dimensions.height,
         Math.round(toNumber(frame.x)),
@@ -123,27 +202,19 @@
       return hashText(signatureText);
     }
 
-    getContextKey(context = {}, frame = {}, dimensions = {}) {
+    getContextKey(context = {}, frame = {}, dimensions = {}, sourceSet = null) {
       const viewport = context.viewport || {};
       const geometry = context.geometry || context.tileMapView?.geometry || viewport.geometry || {};
-      const actors = Array.isArray(context.actors)
-        ? context.actors
-        : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []);
-      const actorSignature = actors
-        .map((actor) => {
-          const current = actor?.current || actor?.position || actor?.target || {};
-          return [
-            actor?.id || actor?.missionId || '',
-            Math.round(toNumber(current.q ?? current.x, 0) * 1000),
-            Math.round(toNumber(current.r ?? current.y, 0) * 1000),
-            actor?.status || '',
-          ].join(':');
-        })
-        .join(',');
+      const signatureSource = sourceSet || {
+        entries: context.entries || [],
+        geometry,
+        viewport,
+      };
       return [
         context.fogVisualSnapshot?.signature || context.tileMapView?.signature || '',
         context.tileMapView?.version || '',
         Array.isArray(context.entries) ? context.entries.length : '',
+        this.getTileMaskSignature(signatureSource),
         Math.round(toNumber(frame.x)),
         Math.round(toNumber(frame.y)),
         Math.round(toNumber(frame.width)),
@@ -157,58 +228,86 @@
         Math.round(toNumber(viewport.scale, 1) * 1000),
         Math.round(toNumber(geometry.stepX, 96) * 10),
         Math.round(toNumber(geometry.stepY, 48) * 10),
-        actorSignature,
       ].join('|');
     }
 
-    getSourceEllipse(source = {}, viewport = {}, geometry = {}, frame = {}, cache = this.cache) {
-      const scale = Math.max(0.05, toNumber(viewport.scale, 1));
-      const radiusTiles = Math.max(0.05, toNumber(source.radiusTiles, 1));
-      const clearRadiusTiles = Math.max(0, Math.min(radiusTiles, toNumber(source.clearRadiusTiles, radiusTiles * 0.42)));
-      const radiusScale = 1.36;
-      const radiusScreenX = Math.max(1, Math.max(1, toNumber(geometry.stepX, 96)) * scale * radiusTiles * radiusScale);
-      const radiusScreenY = Math.max(1, Math.max(1, toNumber(geometry.stepY, 48)) * scale * radiusTiles * radiusScale);
-      const maskScaleX = cache.width / Math.max(1, toNumber(frame.width, 1));
-      const maskScaleY = cache.height / Math.max(1, toNumber(frame.height, 1));
-      const clearRatio = radiusTiles > 0 ? clamp01(clearRadiusTiles / radiusTiles) : 0;
-      return {
-        centerX: (toNumber(source.center?.x) - toNumber(frame.x)) * maskScaleX,
-        centerY: (toNumber(source.center?.y) - toNumber(frame.y)) * maskScaleY,
-        radiusX: Math.max(1, radiusScreenX * maskScaleX),
-        radiusY: Math.max(1, radiusScreenY * maskScaleY),
-        clearRatio,
-      };
+    getTileMaskEntries(sourceSet = {}) {
+      const viewport = sourceSet.viewport || {};
+      const geometry = sourceSet.geometry || {};
+      return (Array.isArray(sourceSet.entries) ? sourceSet.entries : [])
+        .map((entry) => {
+          if (!entry?.tile) return null;
+          const coord = VisionModel?.normalizeCoord?.(entry.tile) || {
+            q: Math.floor(toNumber(entry.tile.q ?? entry.tile.x, 0)),
+            r: Math.floor(toNumber(entry.tile.r ?? entry.tile.y, 0)),
+            tileId: getTileId(entry.tile),
+          };
+          const center = entry.center || VisionModel?.getTileScreenCenter?.(coord, viewport, geometry) || { x: 0, y: 0 };
+          const maskRect = getTileMaskDrawRect(center, viewport, geometry);
+          const maskLevel = getTileMaskLevel(entry.tile);
+          return {
+            id: coord.tileId,
+            q: coord.q,
+            r: coord.r,
+            center,
+            maskRect,
+            maskLevel,
+            exploredStrength: maskLevel >= TILE_MASK_EXPLORED ? 1 : 0,
+            visibleStrength: maskLevel >= TILE_MASK_VISIBLE ? 1 : 0,
+          };
+        })
+        .filter(Boolean);
     }
 
-    stampSource(channel, cache = this.cache, frame = {}, source = {}, viewport = {}, geometry = {}) {
-      if (!channel || !source?.center) return false;
-      const ellipse = this.getSourceEllipse(source, viewport, geometry, frame, cache);
-      const minX = Math.max(0, Math.floor(ellipse.centerX - ellipse.radiusX - 1));
-      const maxX = Math.min(cache.width - 1, Math.ceil(ellipse.centerX + ellipse.radiusX + 1));
-      const minY = Math.max(0, Math.floor(ellipse.centerY - ellipse.radiusY - 1));
-      const maxY = Math.min(cache.height - 1, Math.ceil(ellipse.centerY + ellipse.radiusY + 1));
+    getChannelTileSet(tileMaskEntries = [], channel = 'explored') {
+      const result = new Set();
+      tileMaskEntries.forEach((entry) => {
+        const strength = channel === 'visible' ? entry.visibleStrength : entry.exploredStrength;
+        if (strength > 0.01) result.add(entry.id);
+      });
+      return result;
+    }
+
+    getNeighborId(entry = {}, side = {}) {
+      return getTileId({
+        q: toNumber(entry.q) + toNumber(side.dq),
+        r: toNumber(entry.r) + toNumber(side.dr),
+      });
+    }
+
+    rasterizeTileMask(channel, cache = this.cache, frame = {}, entry = {}, channelTileSet = new Set(), strength = 1) {
+      const maskRect = entry?.maskRect || entry?.drawRect || null;
+      if (!channel || !entry?.center || !maskRect || strength <= 0) return false;
+      const maskScaleX = cache.width / Math.max(1, toNumber(frame.width, 1));
+      const maskScaleY = cache.height / Math.max(1, toNumber(frame.height, 1));
+      const centerX = (toNumber(entry.center.x) - toNumber(frame.x)) * maskScaleX;
+      const centerY = (toNumber(entry.center.y) - toNumber(frame.y)) * maskScaleY;
+      const halfW = Math.max(1, toNumber(maskRect.width, 1) * maskScaleX * 0.5);
+      const halfH = Math.max(1, toNumber(maskRect.height, 1) * maskScaleY * 0.5);
+      const minX = Math.max(0, Math.floor(centerX - halfW - 1));
+      const maxX = Math.min(cache.width - 1, Math.ceil(centerX + halfW + 1));
+      const minY = Math.max(0, Math.floor(centerY - halfH - 1));
+      const maxY = Math.min(cache.height - 1, Math.ceil(centerY + halfH + 1));
       if (minX > maxX || minY > maxY) return false;
-      const strength = clamp01(source.strength ?? 1);
-      const clearRatio = Math.max(0, Math.min(0.98, ellipse.clearRatio));
-      const invRadiusX = 1 / Math.max(1, ellipse.radiusX);
-      const invRadiusY = 1 / Math.max(1, ellipse.radiusY);
+      const feather = Math.max(0.08, Math.min(0.34, 8 / Math.max(1, Math.min(halfW, halfH))));
       let wrote = false;
       for (let y = minY; y <= maxY; y += 1) {
-        const normalizedY = ((y + 0.5) - ellipse.centerY) * invRadiusY;
+        const v = ((y + 0.5) - centerY) / halfH;
         const row = y * cache.width;
-        const y2 = normalizedY * normalizedY;
-        if (y2 >= 1.05) continue;
         for (let x = minX; x <= maxX; x += 1) {
-          const normalizedX = ((x + 0.5) - ellipse.centerX) * invRadiusX;
-          const distance = Math.sqrt(normalizedX * normalizedX + y2);
-          if (distance >= 1) continue;
-          const fade = distance <= clearRatio
-            ? 1
-            : 1 - smoothstep(clearRatio, 1, distance);
-          const value = Math.round(clamp01(fade * strength) * 255);
-          const index = row + x;
-          if (value > channel[index]) {
-            channel[index] = value;
+          const u = ((x + 0.5) - centerX) / halfW;
+          if (Math.abs(u) + Math.abs(v) > 1) continue;
+          let edgeFade = 1;
+          for (let index = 0; index < TILE_BOUNDARY_SIDES.length; index += 1) {
+            const side = TILE_BOUNDARY_SIDES[index];
+            if (channelTileSet.has(this.getNeighborId(entry, side))) continue;
+            edgeFade = Math.min(edgeFade, smoothstep(0, feather, side.margin(u, v)));
+          }
+          const value = Math.round(clamp01(edgeFade * strength) * 255);
+          if (value <= 0) continue;
+          const channelIndex = row + x;
+          if (value > channel[channelIndex]) {
+            channel[channelIndex] = value;
             wrote = true;
           }
         }
@@ -217,47 +316,21 @@
     }
 
     fillMasks(cache = this.cache, frame = {}, sourceSet = {}) {
-      const viewport = sourceSet.viewport || {};
-      const geometry = sourceSet.geometry || {};
-      const memorySources = sourceSet.memorySources || [];
-      const visionSources = sourceSet.visionSources || [];
-      for (let i = 0; i < memorySources.length; i += 1) {
-        this.stampSource(cache.explored, cache, frame, memorySources[i], viewport, geometry);
+      const tileMaskEntries = Array.isArray(sourceSet.tileMaskEntries)
+        ? sourceSet.tileMaskEntries
+        : this.getTileMaskEntries(sourceSet);
+      const exploredTileSet = this.getChannelTileSet(tileMaskEntries, 'explored');
+      const visibleTileSet = this.getChannelTileSet(tileMaskEntries, 'visible');
+      for (let i = 0; i < tileMaskEntries.length; i += 1) {
+        const entry = tileMaskEntries[i];
+        this.rasterizeTileMask(cache.explored, cache, frame, entry, exploredTileSet, entry.exploredStrength);
       }
-      for (let i = 0; i < visionSources.length; i += 1) {
-        this.stampSource(cache.explored, cache, frame, visionSources[i], viewport, geometry);
-        this.stampSource(cache.visible, cache, frame, visionSources[i], viewport, geometry);
+      for (let i = 0; i < tileMaskEntries.length; i += 1) {
+        const entry = tileMaskEntries[i];
+        this.rasterizeTileMask(cache.visible, cache, frame, entry, visibleTileSet, entry.visibleStrength);
       }
-      this.softBlurChannel(cache.explored, cache, 2);
-      this.softBlurChannel(cache.visible, cache, 1);
+      cache.tileMaskEntries = tileMaskEntries;
       return cache;
-    }
-
-    softBlurChannel(channel, cache = this.cache, radius = 1) {
-      const blurRadius = Math.max(0, Math.min(4, Math.floor(Number(radius) || 0)));
-      if (!channel || !cache?.scratch || blurRadius <= 0) return channel;
-      const { width, height, scratch } = cache;
-      const diameter = blurRadius * 2 + 1;
-      for (let y = 0; y < height; y += 1) {
-        const row = y * width;
-        for (let x = 0; x < width; x += 1) {
-          let total = 0;
-          for (let dx = -blurRadius; dx <= blurRadius; dx += 1) {
-            total += channel[row + Math.max(0, Math.min(width - 1, x + dx))];
-          }
-          scratch[row + x] = Math.round(total / diameter);
-        }
-      }
-      for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-          let total = 0;
-          for (let dy = -blurRadius; dy <= blurRadius; dy += 1) {
-            total += scratch[Math.max(0, Math.min(height - 1, y + dy)) * width + x];
-          }
-          channel[y * width + x] = Math.round(total / diameter);
-        }
-      }
-      return channel;
     }
 
     getFramePadding(context = {}) {
@@ -297,7 +370,9 @@
       if (!VisionModel?.collectSources) return null;
       const maskFrame = this.getMaskFrame(context);
       const dimensions = this.getMaskDimensions(maskFrame);
-      const contextKey = this.getContextKey(context, maskFrame, dimensions);
+      const sourceSet = VisionModel.collectSources(context);
+      sourceSet.tileMaskEntries = this.getTileMaskEntries(sourceSet);
+      const contextKey = this.getContextKey(context, maskFrame, dimensions, sourceSet);
       if (this.cache.contextKey === contextKey && this.cache.key && this.cache.maskFrame) {
         return {
           mask: this.cache,
@@ -305,7 +380,6 @@
           sourceSet: this.cache.sourceSet || null,
         };
       }
-      const sourceSet = VisionModel.collectSources(context);
       const key = this.getMaskKey(context, maskFrame, dimensions, sourceSet);
       const cache = this.ensureCache(dimensions.width, dimensions.height);
       if (cache.key === key && cache.maskFrame) {

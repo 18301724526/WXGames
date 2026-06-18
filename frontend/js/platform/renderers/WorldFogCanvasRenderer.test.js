@@ -330,68 +330,176 @@ test('WorldFogCanvasRenderer shader samples soft masks inside the map frame', ()
   assert.equal(source.includes('stroke'), false);
 });
 
-test('WorldFogMaskGenerator produces center-clear and ring-falloff unit vision', () => {
+test('WorldFogMaskGenerator keeps visible softness inside the visible tile boundary', () => {
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
   const context = createWorldContext({
     tileMapView: {
       geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
-      tiles: [{ id: 'origin', q: 1, r: 0, discovered: true, visible: true, visibility: 'visible' }],
+      tiles: [
+        { id: 'origin', q: 1, r: 0, discovered: true, visible: true, visibility: 'visible' },
+        { id: 'unknown-neighbor', q: 2, r: 0, discovered: false, visible: false, visibility: 'unknown' },
+      ],
       sites: [],
     },
     entries: [
       { tile: { id: 'origin', q: 1, r: 0, discovered: true, visible: true, visibility: 'visible' }, center: { x: 178, y: 144 } },
+      { tile: { id: 'unknown-neighbor', q: 2, r: 0, discovered: false, visible: false, visibility: 'unknown' }, center: { x: 226, y: 168 } },
     ],
     actors: [{ id: 'unit-1', current: { q: 1, r: 0 }, status: 'active' }],
   });
 
   const { mask } = generator.prepare(context);
   const center = readMaskAt(mask.visible, mask, { x: 178, y: 144 });
-  const ring = readMaskAt(mask.visible, mask, { x: 226, y: 168 });
-  const outside = readMaskAt(mask.visible, mask, { x: 274, y: 192 });
+  const insideEdge = readMaskAt(mask.visible, mask, { x: 190, y: 150 });
+  const unknownNeighborCenter = readMaskAt(mask.visible, mask, { x: 226, y: 168 });
 
   assert.equal(center >= 245, true);
-  assert.equal(ring > 35 && ring < 220, true);
-  assert.equal(outside < ring, true);
+  assert.equal(insideEdge > 0 && insideEdge < center, true);
+  assert.equal(unknownNeighborCenter, 0);
 });
 
-test('WorldFogMaskGenerator gives cities a larger soft vision radius than units', () => {
+test('WorldFogMaskGenerator gate: a single unlocked visible tile cannot reveal unknown neighbor pixels', () => {
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
   const context = createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [
+        { id: 'tile_1_1', q: 1, r: 1, discovered: true, visible: true, visibility: 'visible' },
+        { id: 'tile_1_2', q: 1, r: 2, discovered: false, visible: false, visibility: 'unknown' },
+        { id: 'tile_1_3', q: 1, r: 3, discovered: false, visible: false, visibility: 'unknown' },
+      ],
+      sites: [],
+    },
+    entries: [
+      { tile: { id: 'tile_1_1', q: 1, r: 1, discovered: true, visible: true, visibility: 'visible' }, center: { x: 130, y: 120 }, drawRect: { x: 82, y: 96, width: 96, height: 48 } },
+      { tile: { id: 'tile_1_2', q: 1, r: 2, discovered: false, visible: false, visibility: 'unknown' }, center: { x: 82, y: 144 }, drawRect: { x: 34, y: 120, width: 96, height: 48 } },
+      { tile: { id: 'tile_1_3', q: 1, r: 3, discovered: false, visible: false, visibility: 'unknown' }, center: { x: 34, y: 168 }, drawRect: { x: -14, y: 144, width: 96, height: 48 } },
+    ],
+    actors: [{ id: 'unit-1', current: { q: 1, r: 1 }, status: 'active' }],
+  });
+
+  const { mask } = generator.prepare(context);
+  const unlockedVisible = readMaskAt(mask.visible, mask, { x: 130, y: 120 });
+  const neighborExplored = readMaskAt(mask.explored, mask, { x: 82, y: 144 });
+  const neighborVisible = readMaskAt(mask.visible, mask, { x: 82, y: 144 });
+  const nextNeighborVisible = readMaskAt(mask.visible, mask, { x: 34, y: 168 });
+
+  assert.equal(unlockedVisible >= 245, true);
+  assert.equal(neighborExplored, 0);
+  assert.equal(neighborVisible, 0);
+  assert.equal(nextNeighborVisible, 0);
+});
+
+test('WorldFogMaskGenerator does not feather explored mask into unknown tiles', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const context = createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [
+        { id: 'memory', q: 0, r: 0, discovered: true, visible: false, visibility: 'scouted' },
+        { id: 'unknown', q: 1, r: 0, discovered: false, visible: false, visibility: 'unknown' },
+      ],
+      sites: [],
+    },
+    entries: [
+      { tile: { id: 'memory', q: 0, r: 0, discovered: true, visible: false, visibility: 'scouted' }, center: { x: 130, y: 120 } },
+      { tile: { id: 'unknown', q: 1, r: 0, discovered: false, visible: false, visibility: 'unknown' }, center: { x: 178, y: 144 } },
+    ],
     actors: [],
   });
 
   const { mask, sourceSet } = generator.prepare(context);
   const center = readMaskAt(mask.visible, mask, { x: 130, y: 120 });
-  const radiusTwo = readMaskAt(mask.visible, mask, { x: 226, y: 168 });
-  const outside = readMaskAt(mask.visible, mask, { x: 274, y: 192 });
+  const exploredCenter = readMaskAt(mask.explored, mask, { x: 130, y: 120 });
+  const unknownExplored = readMaskAt(mask.explored, mask, { x: 178, y: 144 });
+  const unknownVisible = readMaskAt(mask.visible, mask, { x: 178, y: 144 });
 
-  assert.equal(sourceSet.citySources.length, 1);
-  assert.equal(center >= 245, true);
-  assert.equal(radiusTwo > 35 && radiusTwo < center, true);
-  assert.equal(outside < radiusTwo, true);
+  assert.equal(sourceSet.memorySources.length, 1);
+  assert.equal(exploredCenter >= 245, true);
+  assert.equal(center, 0);
+  assert.equal(unknownExplored, 0);
+  assert.equal(unknownVisible, 0);
 });
 
-test('WorldFogMaskGenerator treats player subcities as city vision sources', () => {
+test('WorldFogMaskGenerator keeps explored memory out of current visibility even when sources are nearby', () => {
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
   const context = createWorldContext({
     tileMapView: {
       geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
-      tiles: [{ id: 'frontier', q: 1, r: 0, discovered: true, visible: true, visibility: 'controlled', siteId: 'frontier' }],
+      tiles: [
+        { id: 'visible-origin', q: 0, r: 0, discovered: true, visible: true, visibility: 'controlled', siteId: 'capital' },
+        { id: 'memory-neighbor', q: 1, r: 0, discovered: true, visible: false, visibility: 'scouted' },
+      ],
+      sites: [{ id: 'capital', q: 0, r: 0, type: 'capital', owner: 'player', cityName: 'Capital' }],
+    },
+    entries: [
+      { tile: { id: 'visible-origin', q: 0, r: 0, discovered: true, visible: true, visibility: 'controlled', siteId: 'capital' }, center: { x: 130, y: 120 } },
+      { tile: { id: 'memory-neighbor', q: 1, r: 0, discovered: true, visible: false, visibility: 'scouted' }, center: { x: 178, y: 144 } },
+    ],
+    actors: [{ id: 'unit-1', current: { q: 0, r: 0 }, status: 'active' }],
+  });
+
+  const { mask, sourceSet } = generator.prepare(context);
+  const memoryExplored = readMaskAt(mask.explored, mask, { x: 178, y: 144 });
+  const memoryVisible = readMaskAt(mask.visible, mask, { x: 178, y: 144 });
+
+  assert.equal(sourceSet.citySources.length, 1);
+  assert.equal(sourceSet.unitSources.length, 1);
+  assert.equal(memoryExplored >= 245, true);
+  assert.equal(memoryVisible, 0);
+});
+
+test('WorldFogMaskGenerator ignores terrain draw overdraw when clipping fog masks', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const context = createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [{ id: 'visible-origin', q: 0, r: 0, discovered: true, visible: true, visibility: 'visible' }],
+      sites: [],
+    },
+    entries: [
+      {
+        tile: { id: 'visible-origin', q: 0, r: 0, discovered: true, visible: true, visibility: 'visible' },
+        center: { x: 130, y: 120 },
+        drawRect: { x: 58, y: 72, width: 144, height: 96 },
+      },
+    ],
+    actors: [],
+  });
+
+  const { mask } = generator.prepare(context);
+  const center = readMaskAt(mask.visible, mask, { x: 130, y: 120 });
+  const drawOverhang = readMaskAt(mask.visible, mask, { x: 185, y: 120 });
+
+  assert.equal(center >= 245, true);
+  assert.equal(drawOverhang, 0);
+});
+
+test('WorldFogMaskGenerator treats player subcities as tile-bounded city vision sources', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const context = createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [
+        { id: 'frontier', q: 1, r: 0, discovered: true, visible: true, visibility: 'controlled', siteId: 'frontier' },
+        { id: 'unknown-next', q: 2, r: 0, discovered: false, visible: false, visibility: 'unknown' },
+      ],
       sites: [{ id: 'frontier', q: 1, r: 0, type: 'town', owner: 'player', status: 'occupied', cityName: 'Frontier' }],
     },
     entries: [
       { tile: { id: 'frontier', q: 1, r: 0, discovered: true, visible: true, visibility: 'controlled', siteId: 'frontier' }, center: { x: 178, y: 144 } },
+      { tile: { id: 'unknown-next', q: 2, r: 0, discovered: false, visible: false, visibility: 'unknown' }, center: { x: 226, y: 168 } },
     ],
     actors: [],
   });
 
   const { mask, sourceSet } = generator.prepare(context);
   const center = readMaskAt(mask.visible, mask, { x: 178, y: 144 });
-  const radiusTwo = readMaskAt(mask.visible, mask, { x: 274, y: 192 });
+  const unknownNext = readMaskAt(mask.visible, mask, { x: 226, y: 168 });
 
   assert.equal(sourceSet.citySources.length, 1);
   assert.equal(center >= 245, true);
-  assert.equal(radiusTwo > 35 && radiusTwo < center, true);
+  assert.equal(unknownNext, 0);
 });
 
 test('WorldFogMaskGenerator does not grant current vision from non-player cities', () => {
@@ -470,7 +578,7 @@ test('WorldFogMaskGenerator includes the full fog cover viewport in its mask fra
   assert.equal(mask.maskFrame.y + mask.maskFrame.height > context.coverFrame.y + context.coverFrame.height, true);
 });
 
-test('WorldFogMaskGenerator does not clear by stitching visible tiles when no source exists', () => {
+test('WorldFogMaskGenerator trusts tile visibility as current clear mask authority', () => {
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
   const context = createWorldContext({
     tileMapView: {
@@ -491,15 +599,17 @@ test('WorldFogMaskGenerator does not clear by stitching visible tiles when no so
   assert.equal(sourceSet.visibleTileSources.length, 1);
   assert.equal(sourceSet.visionSources.length, 0);
   assert.equal(explored >= 245, true);
-  assert.equal(visible, 0);
+  assert.equal(visible >= 245, true);
 });
 
-test('WorldFogMaskGenerator stamps source-local masks without per-pixel source sweeps', () => {
+test('WorldFogMaskGenerator rasterizes tile-local masks without outward source stamps', () => {
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
 
   assert.equal(typeof generator.evaluateSources, 'undefined');
   assert.equal(typeof generator.evaluateSource, 'undefined');
-  assert.equal(typeof generator.stampSource, 'function');
+  assert.equal(typeof generator.stampSource, 'undefined');
+  assert.equal(typeof generator.softBlurChannel, 'undefined');
+  assert.equal(typeof generator.rasterizeTileMask, 'function');
 });
 
 test('WorldFogMaskGenerator thins interior memory sources while preserving explored boundaries', () => {

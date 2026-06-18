@@ -48,6 +48,65 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
+  function toInteger(value, fallback = 0) {
+    return Math.floor(toNumber(value, fallback));
+  }
+
+  function hasCoord(source = {}) {
+    return source && typeof source === 'object'
+      && (source.q !== undefined || source.r !== undefined || source.x !== undefined || source.y !== undefined);
+  }
+
+  function coordSignature(source = {}) {
+    if (!hasCoord(source)) return '';
+    const q = toInteger(source.q ?? source.x, 0);
+    const r = toInteger(source.r ?? source.y, 0);
+    return `${q},${r}:${source.tileId || source.id || `tile_${q}_${r}`}`;
+  }
+
+  function revealedIdSignature(mission = {}) {
+    return (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [])
+      .map((id) => String(id || ''))
+      .filter(Boolean)
+      .sort()
+      .join(',');
+  }
+
+  function coordListSignature(list = [], options = {}) {
+    return (Array.isArray(list) ? list : [])
+      .map((item) => [
+        coordSignature(item),
+        item?.revealed === true ? 1 : 0,
+        options.includeTerrain ? (item?.terrain || '') : '',
+      ].join(':'))
+      .join(';');
+  }
+
+  function missionVisibilitySignature(mission = {}) {
+    if (!mission || typeof mission !== 'object') return '';
+    return [
+      mission.id || '',
+      mission.status || '',
+      coordSignature(mission.position),
+      coordListSignature(mission.route),
+      coordListSignature(mission.plannedTiles, { includeTerrain: true }),
+      revealedIdSignature(mission),
+    ].join('|');
+  }
+
+  function getWorldExplorerVisibilitySignature(context = {}) {
+    const explorer = context.worldExplorerState || {};
+    const missions = [];
+    const append = (mission) => {
+      if (mission && typeof mission === 'object') missions.push(missionVisibilitySignature(mission));
+    };
+    (Array.isArray(context.missions) ? context.missions : []).forEach(append);
+    (Array.isArray(explorer.missions) ? explorer.missions : []).forEach(append);
+    append(explorer.activeMission);
+    (Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []).forEach(append);
+    return missions.join('||');
+  }
+
   function getFogSnapshotCacheKey(context = {}) {
     const renderSnapshot = context.renderSnapshot || {};
     const tileMapView = context.tileMapView || renderSnapshot.tileMapView || {};
@@ -61,6 +120,7 @@
       tileMapView.seed || '',
       Array.isArray(tileMapView.tiles) ? tileMapView.tiles.length : 0,
       visibilitySnapshot?.signature || '',
+      visibilitySnapshot?.signature ? '' : getWorldExplorerVisibilitySignature(context),
       Math.round(toNumber(viewport.originX, 0)),
       Math.round(toNumber(viewport.originY, 0)),
       Math.round(toNumber(viewport.panX, 0)),

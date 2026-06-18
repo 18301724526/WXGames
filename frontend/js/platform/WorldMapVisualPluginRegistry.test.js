@@ -100,3 +100,44 @@ test('WorldMapVisualPluginRegistry reuses fog renderer context for unchanged vis
   assert.equal(first, second);
   assert.equal(first.entries.length, 2);
 });
+
+test('WorldMapVisualPluginRegistry invalidates cached fog snapshots when explorer visibility moves', () => {
+  const config = { FEATURES: { FOG_OF_WAR_ENABLED: true } };
+  const cacheHost = {};
+  const { renderSnapshot } = createContext();
+  const baseContext = { renderSnapshot };
+  const first = WorldMapVisualPluginRegistry.createRendererContext('worldFog', {
+    ...baseContext,
+    cacheHost,
+    worldExplorerState: {
+      activeMission: {
+        id: 'active-1',
+        status: 'active',
+        position: { q: 0, r: 0, tileId: 'tile_0_0' },
+      },
+    },
+  }, {
+    config,
+    FeatureFlags,
+    cacheHost,
+  });
+  const second = WorldMapVisualPluginRegistry.createRendererContext('worldFog', {
+    ...baseContext,
+    cacheHost,
+    worldExplorerState: {
+      activeMission: {
+        id: 'active-1',
+        status: 'active',
+        position: { q: 1, r: 0, tileId: 'tile_1_0' },
+      },
+    },
+  }, {
+    config,
+    FeatureFlags,
+    cacheHost,
+  });
+
+  assert.notEqual(first, second);
+  assert.equal(first.entries[1].tile.visible, false);
+  assert.equal(second.entries[1].tile.visible, true);
+});

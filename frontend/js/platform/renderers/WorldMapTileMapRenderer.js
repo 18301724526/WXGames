@@ -62,6 +62,7 @@
     }
 
     createWorldTileMapContext(tileMapView = {}, x = 0, y = 0, width = 0, height = 0, uiState = {}, options = {}) {
+      const worldExplorerState = options.worldExplorerState || options.state?.worldExplorerState || {};
       const renderSnapshot = sharedWorldMapRenderSnapshot?.createSnapshot
         ? sharedWorldMapRenderSnapshot.createSnapshot({
           tileMapView,
@@ -90,6 +91,7 @@
       return {
         actors: Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [],
         uiState,
+        worldExplorerState,
         renderSnapshot,
         tileMapView,
         viewport,

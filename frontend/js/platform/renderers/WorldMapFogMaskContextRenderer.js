@@ -27,9 +27,11 @@
     }
 
     createWorldTileFogMaskContext(tileMapView = {}, viewport = {}, frame = {}, entries = [], options = {}) {
+      const previousContext = this.lastWorldTileMapContext || {};
       return {
-        renderSnapshot: options.renderSnapshot || this.lastWorldTileMapContext?.renderSnapshot || null,
-        actors: options.actors || this.lastWorldTileMapContext?.actors || [],
+        renderSnapshot: options.renderSnapshot || previousContext.renderSnapshot || null,
+        actors: options.actors || previousContext.actors || [],
+        worldExplorerState: options.worldExplorerState || previousContext.worldExplorerState || {},
         tileMapView,
         viewport,
         geometry: tileMapView.geometry || viewport.geometry || {},
