@@ -237,6 +237,30 @@ test('WorldFogCanvasRenderer renders fog through WebGL mask textures', () => {
   assert.equal(calls.some((call) => call[0] === 'drawArrays' && call[1] === gl.TRIANGLES && call[3] === 6), true);
 });
 
+test('WorldFogCanvasRenderer covers the world viewport instead of only the map render frame', () => {
+  const calls = [];
+  const gl = createFakeGl(calls);
+  const renderer = new WorldFogCanvasRenderer({
+    gl,
+    canvas: createCanvas(gl),
+    pixelRatio: 1,
+    width: 520,
+    height: 760,
+    viewportOffsetX: 40,
+    viewportOffsetY: 50,
+    viewportWidth: 390,
+    viewportHeight: 640,
+    maskSize: 128,
+  });
+
+  assert.equal(renderer.renderWorldFog(createWorldContext({
+    frame: { x: 82, y: 120, width: 260, height: 220 },
+  })), true);
+
+  const frameUniform = calls.find((call) => call[0] === 'uniform4f' && call[1] === 'uFrame');
+  assert.deepEqual(frameUniform?.slice(2), [40, 50, 390, 640]);
+});
+
 test('WorldFogCanvasRenderer keeps rendering concerns separate from mask generation', () => {
   const gl = createFakeGl([]);
   const maskGenerator = {
@@ -296,7 +320,10 @@ test('WorldFogCanvasRenderer shader samples soft masks inside the map frame', ()
   assert.match(source, /sampler2D uExploredMask/);
   assert.match(source, /sampler2D uVisibleMask/);
   assert.match(source, /uMaskFrame/);
-  assert.match(source, /maskUv = \(pixel - uMaskFrame\.xy\)/);
+  assert.match(source, /rawMaskUv = \(pixel - uMaskFrame\.xy\)/);
+  assert.match(source, /float maskInside = step\(0\.0, rawMaskUv\.x\)/);
+  assert.match(source, /texture2D\(uExploredMask, maskUv\)\.r \* maskInside/);
+  assert.match(source, /coverEdge \*= smoothstep/);
   assert.match(source, /vec3 unknownColor = vec3\(0\.0, 0\.0, 0\.0\)/);
   assert.equal(source.includes('uMaskOffset'), false);
   assert.equal(source.includes('uFeather'), false);
@@ -411,7 +438,97 @@ test('WorldFogMaskGenerator separates explored memory from current visibility', 
 
   assert.equal(explored >= 245, true);
   assert.equal(visible, 0);
-  assert.equal(unknown, 0);
+  assert.equal(unknown < explored * 0.08, true);
+});
+
+test('WorldFogMaskGenerator pads the mask frame so soft sources are not cut by frame edges', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const context = createWorldContext({
+    frame: { x: 40, y: 60, width: 180, height: 140 },
+  });
+
+  const { mask } = generator.prepare(context);
+
+  assert.equal(mask.maskFrame.x < context.frame.x, true);
+  assert.equal(mask.maskFrame.y < context.frame.y, true);
+  assert.equal(mask.maskFrame.width > context.frame.width, true);
+  assert.equal(mask.maskFrame.height > context.frame.height, true);
+});
+
+test('WorldFogMaskGenerator includes the full fog cover viewport in its mask frame', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const context = createWorldContext({
+    frame: { x: 82, y: 120, width: 260, height: 220 },
+    coverFrame: { x: 40, y: 50, width: 390, height: 640 },
+  });
+
+  const { mask } = generator.prepare(context);
+
+  assert.equal(mask.maskFrame.x < context.coverFrame.x, true);
+  assert.equal(mask.maskFrame.y < context.coverFrame.y, true);
+  assert.equal(mask.maskFrame.x + mask.maskFrame.width > context.coverFrame.x + context.coverFrame.width, true);
+  assert.equal(mask.maskFrame.y + mask.maskFrame.height > context.coverFrame.y + context.coverFrame.height, true);
+});
+
+test('WorldFogMaskGenerator does not clear by stitching visible tiles when no source exists', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const context = createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles: [{ id: 'visible-fallback', q: 0, r: 0, discovered: true, visible: true, visibility: 'visible' }],
+      sites: [],
+    },
+    entries: [
+      { tile: { id: 'visible-fallback', q: 0, r: 0, discovered: true, visible: true, visibility: 'visible' }, center: { x: 130, y: 120 } },
+    ],
+    actors: [],
+  });
+
+  const { mask, sourceSet } = generator.prepare(context);
+  const explored = readMaskAt(mask.explored, mask, { x: 130, y: 120 });
+  const visible = readMaskAt(mask.visible, mask, { x: 130, y: 120 });
+
+  assert.equal(sourceSet.visibleTileSources.length, 1);
+  assert.equal(sourceSet.visionSources.length, 0);
+  assert.equal(explored >= 245, true);
+  assert.equal(visible, 0);
+});
+
+test('WorldFogMaskGenerator stamps source-local masks without per-pixel source sweeps', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+
+  assert.equal(typeof generator.evaluateSources, 'undefined');
+  assert.equal(typeof generator.evaluateSource, 'undefined');
+  assert.equal(typeof generator.stampSource, 'function');
+});
+
+test('WorldFogMaskGenerator thins interior memory sources while preserving explored boundaries', () => {
+  const tiles = [];
+  const entries = [];
+  for (let q = -8; q <= 8; q += 1) {
+    for (let r = -8; r <= 8; r += 1) {
+      const tile = { id: `tile_${q}_${r}`, q, r, discovered: true, visible: false, visibility: 'scouted' };
+      tiles.push(tile);
+      entries.push({
+        tile,
+        center: { x: 130 + (q - r) * 48, y: 120 + (q + r) * 24 },
+      });
+    }
+  }
+  const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const { sourceSet } = generator.prepare(createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles,
+      sites: [],
+    },
+    entries,
+    actors: [],
+  }));
+
+  assert.equal(entries.length, 289);
+  assert.equal(sourceSet.memorySources.length < entries.length, true);
+  assert.equal(sourceSet.memorySources.some((source) => source.q === -8 && source.r === -8), true);
 });
 
 function readMaskAt(channel, mask, point) {

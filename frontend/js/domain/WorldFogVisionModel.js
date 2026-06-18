@@ -26,26 +26,26 @@
   const SOURCE_RULES = Object.freeze({
     memory: Object.freeze({
       kind: 'memory',
-      radiusTiles: 0.92,
-      clearRadiusTiles: 0.54,
+      radiusTiles: 2.05,
+      clearRadiusTiles: 0.9,
       strength: 1,
     }),
     visibleTile: Object.freeze({
       kind: 'visibleTile',
-      radiusTiles: 1.05,
-      clearRadiusTiles: 0.58,
+      radiusTiles: 1.55,
+      clearRadiusTiles: 0.78,
       strength: 0.92,
     }),
     unit: Object.freeze({
       kind: 'unit',
-      radiusTiles: 1.45,
-      clearRadiusTiles: 0.46,
+      radiusTiles: 1.68,
+      clearRadiusTiles: 0.72,
       strength: 1,
     }),
     city: Object.freeze({
       kind: 'city',
-      radiusTiles: 2.45,
-      clearRadiusTiles: 1.25,
+      radiusTiles: 3.05,
+      clearRadiusTiles: 1.28,
       strength: 1,
     }),
   });
@@ -178,7 +178,8 @@
 
   function getFogEntries(tileMapView = {}, entries = [], viewport = {}, geometry = {}) {
     const entryByKey = new Map();
-    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+    const rendererEntries = Array.isArray(entries) ? entries : [];
+    rendererEntries.forEach((entry) => {
       if (!entry?.tile) return;
       const coord = normalizeCoord(entry.tile);
       entryByKey.set(coord.tileId, {
@@ -192,11 +193,13 @@
         },
       });
     });
-    (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).forEach((tile) => {
-      if (!tile) return;
-      const key = getTileKey(tile);
-      if (!entryByKey.has(key)) entryByKey.set(key, normalizeEntry(tile, viewport, geometry));
-    });
+    if (!rendererEntries.length) {
+      (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).forEach((tile) => {
+        if (!tile) return;
+        const key = getTileKey(tile);
+        if (!entryByKey.has(key)) entryByKey.set(key, normalizeEntry(tile, viewport, geometry));
+      });
+    }
     return [...entryByKey.values()];
   }
 
@@ -304,6 +307,52 @@
       .filter(Boolean);
   }
 
+  function getSourceCoordKey(source = {}) {
+    return `${Math.round(toNumber(source.q))},${Math.round(toNumber(source.r))}`;
+  }
+
+  function isMemoryBoundarySource(source = {}, sourceKeys = new Set()) {
+    const q = Math.round(toNumber(source.q));
+    const r = Math.round(toNumber(source.r));
+    const neighbors = [
+      [q + 1, r],
+      [q - 1, r],
+      [q, r + 1],
+      [q, r - 1],
+      [q + 1, r - 1],
+      [q - 1, r + 1],
+    ];
+    return neighbors.some(([neighborQ, neighborR]) => !sourceKeys.has(`${neighborQ},${neighborR}`));
+  }
+
+  function thinInteriorMemorySources(sources = [], viewport = {}, geometry = {}, options = {}) {
+    const memorySources = Array.isArray(sources) ? sources : [];
+    const threshold = Math.max(96, toInteger(options.memorySourceThinThreshold, 192));
+    if (memorySources.length <= threshold) return memorySources;
+    const scale = Math.max(0.05, toNumber(viewport.scale, 1));
+    const boundaryCellWidth = Math.max(24, toNumber(geometry.stepX, 96) * scale * 2.6);
+    const boundaryCellHeight = Math.max(16, toNumber(geometry.stepY, 48) * scale * 2.6);
+    const interiorCellWidth = Math.max(32, toNumber(geometry.stepX, 96) * scale * 4.4);
+    const interiorCellHeight = Math.max(22, toNumber(geometry.stepY, 48) * scale * 4.4);
+    const keys = new Set(memorySources.map(getSourceCoordKey));
+    const boundaryByCell = new Map();
+    const interiorByCell = new Map();
+
+    memorySources.forEach((source) => {
+      if (isMemoryBoundarySource(source, keys)) {
+        const boundaryKey = `${Math.floor(toNumber(source.center?.x) / boundaryCellWidth)}:${Math.floor(toNumber(source.center?.y) / boundaryCellHeight)}`;
+        if (!boundaryByCell.has(boundaryKey)) boundaryByCell.set(boundaryKey, source);
+        return;
+      }
+      const cellKey = `${Math.floor(toNumber(source.center?.x) / interiorCellWidth)}:${Math.floor(toNumber(source.center?.y) / interiorCellHeight)}`;
+      if (!interiorByCell.has(cellKey)) interiorByCell.set(cellKey, source);
+    });
+    const thinned = [];
+    boundaryByCell.forEach((source) => thinned.push(source));
+    interiorByCell.forEach((source) => thinned.push(source));
+    return thinned;
+  }
+
   function collectSources(context = {}, options = {}) {
     const tileMapView = context.tileMapView || {};
     const viewport = context.viewport || {};
@@ -318,12 +367,12 @@
     const citySources = collectCitySources(tileMapView, entries, viewport, geometry);
     const unitSources = collectUnitSources(context, viewport, geometry);
     const visionSources = [...citySources, ...unitSources];
-    const fallbackVisibleSources = options.useVisibleTileFallback === false || visionSources.length
-      ? []
-      : visibleTileSources;
+    const fallbackVisibleSources = options.useVisibleTileFallback === true && !visionSources.length
+      ? visibleTileSources
+      : [];
     return {
       entries,
-      memorySources,
+      memorySources: thinInteriorMemorySources(memorySources, viewport, geometry, options),
       visibleTileSources,
       visionSources: [...visionSources, ...fallbackVisibleSources],
       unitSources,

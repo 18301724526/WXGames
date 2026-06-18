@@ -30,55 +30,38 @@
     uniform vec2 uResolution;
     uniform vec4 uFrame;
     uniform vec4 uMaskFrame;
-    uniform float uTime;
-    uniform float uNoiseStrength;
-
-    float hash(vec2 p) {
-      p = fract(p * vec2(123.34, 456.21));
-      p += dot(p, p + 45.32);
-      return fract(p.x * p.y);
-    }
-
-    float noise(vec2 p) {
-      vec2 i = floor(p);
-      vec2 f = fract(p);
-      vec2 u = f * f * (3.0 - 2.0 * f);
-      return mix(
-        mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
-        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-        u.y
-      );
-    }
 
     void main() {
       vec2 pixel = vec2(vUv.x * uResolution.x, (1.0 - vUv.y) * uResolution.y);
-      if (
-        pixel.x < uFrame.x
-        || pixel.y < uFrame.y
-        || pixel.x > uFrame.x + uFrame.z
-        || pixel.y > uFrame.y + uFrame.w
-      ) {
+      float coverEdge = 1.0;
+      coverEdge *= smoothstep(uFrame.x - 1.0, uFrame.x + 1.0, pixel.x);
+      coverEdge *= 1.0 - smoothstep(uFrame.x + uFrame.z - 1.0, uFrame.x + uFrame.z + 1.0, pixel.x);
+      coverEdge *= smoothstep(uFrame.y - 1.0, uFrame.y + 1.0, pixel.y);
+      coverEdge *= 1.0 - smoothstep(uFrame.y + uFrame.w - 1.0, uFrame.y + uFrame.w + 1.0, pixel.y);
+      if (coverEdge <= 0.001) {
         gl_FragColor = vec4(0.0);
         return;
       }
 
-      vec2 maskUv = (pixel - uMaskFrame.xy) / max(uMaskFrame.zw, vec2(1.0));
-      float explored = texture2D(uExploredMask, maskUv).r;
-      float visible = texture2D(uVisibleMask, maskUv).r;
+      vec2 rawMaskUv = (pixel - uMaskFrame.xy) / max(uMaskFrame.zw, vec2(1.0));
+      float maskInside = step(0.0, rawMaskUv.x)
+        * step(0.0, rawMaskUv.y)
+        * step(rawMaskUv.x, 1.0)
+        * step(rawMaskUv.y, 1.0);
+      vec2 maskUv = clamp(rawMaskUv, vec2(0.0), vec2(1.0));
+      float explored = texture2D(uExploredMask, maskUv).r * maskInside;
+      float visible = texture2D(uVisibleMask, maskUv).r * maskInside;
 
       float clear = smoothstep(0.08, 0.92, visible);
-      float memory = smoothstep(0.08, 0.86, clamp(explored - clear * 0.72, 0.0, 1.0));
-      float slowNoise = noise(vUv * vec2(9.0, 14.0) + vec2(uTime * 0.006, -uTime * 0.004));
-      float fineNoise = noise(vUv * vec2(42.0, 55.0) + vec2(-uTime * 0.018, uTime * 0.012));
-      float fogNoise = mix(slowNoise, fineNoise, 0.34) - 0.5;
+      float memory = smoothstep(0.06, 0.88, max(explored, visible * 0.72));
 
       vec3 unknownColor = vec3(0.0, 0.0, 0.0);
       vec3 exploredColor = vec3(0.080, 0.088, 0.082);
       vec3 fogColor = mix(unknownColor, exploredColor, memory);
-      float alpha = mix(0.985, 0.54, memory) * (1.0 - clear);
-      alpha = clamp(alpha + fogNoise * uNoiseStrength, 0.0, 0.99);
+      float alpha = mix(1.0, 0.56, memory) * (1.0 - clear);
+      alpha = clamp(alpha, 0.0, 1.0) * coverEdge;
 
-      gl_FragColor = vec4(fogColor + fogNoise * 0.035, alpha);
+      gl_FragColor = vec4(fogColor, alpha);
     }
   `;
 
@@ -93,7 +76,6 @@
       this.viewportOffsetY = Number(options.viewportOffsetY) || 0;
       this.viewportWidth = Math.max(1, Number(options.viewportWidth) || this.width);
       this.viewportHeight = Math.max(1, Number(options.viewportHeight) || this.height);
-      this.noiseStrength = Math.max(0, Math.min(0.22, Number(options.noiseStrength) || 0.045));
       this.maskGenerator = options.maskGenerator || (MaskGenerator ? new MaskGenerator({
         maskSize: options.maskSize,
       }) : null);
@@ -124,6 +106,17 @@
       this.viewportWidth = Math.max(1, Number(metrics.viewportWidth) || this.viewportWidth || this.width);
       this.viewportHeight = Math.max(1, Number(metrics.viewportHeight) || this.viewportHeight || this.height);
       return this;
+    }
+
+    getCoverFrame() {
+      const offsetX = Math.max(0, Number(this.viewportOffsetX) || 0);
+      const offsetY = Math.max(0, Number(this.viewportOffsetY) || 0);
+      return {
+        x: offsetX,
+        y: offsetY,
+        width: Math.max(1, Number(this.viewportWidth) || this.width || 1),
+        height: Math.max(1, Number(this.viewportHeight) || this.height || 1),
+      };
     }
 
     getContext() {
@@ -232,8 +225,6 @@
           uResolution: gl.getUniformLocation(this.program, 'uResolution'),
           uFrame: gl.getUniformLocation(this.program, 'uFrame'),
           uMaskFrame: gl.getUniformLocation(this.program, 'uMaskFrame'),
-          uTime: gl.getUniformLocation(this.program, 'uTime'),
-          uNoiseStrength: gl.getUniformLocation(this.program, 'uNoiseStrength'),
         };
         this.initError = null;
         return true;
@@ -245,7 +236,10 @@
 
     prepareMask(tileMapContext = {}) {
       if (!this.maskGenerator?.prepare) return null;
-      const prepared = this.maskGenerator.prepare(tileMapContext);
+      const prepared = this.maskGenerator.prepare({
+        ...tileMapContext,
+        coverFrame: this.getCoverFrame(),
+      });
       this.lastPreparedMask = prepared;
       return prepared;
     }
@@ -296,12 +290,13 @@
       gl.uniform1i?.(this.locations.uExploredMask, 0);
       gl.uniform1i?.(this.locations.uVisibleMask, 1);
       gl.uniform2f?.(this.locations.uResolution, drawingWidth, drawingHeight);
+      const coverFrame = options.coverFrame || this.getCoverFrame();
       gl.uniform4f?.(
         this.locations.uFrame,
-        (Number(frame.x) || 0) * pixelRatio,
-        (Number(frame.y) || 0) * pixelRatio,
-        Math.max(1, Number(frame.width) || this.width || 1) * pixelRatio,
-        Math.max(1, Number(frame.height) || this.height || 1) * pixelRatio,
+        (Number(coverFrame.x) || 0) * pixelRatio,
+        (Number(coverFrame.y) || 0) * pixelRatio,
+        Math.max(1, Number(coverFrame.width) || Number(frame.width) || this.width || 1) * pixelRatio,
+        Math.max(1, Number(coverFrame.height) || Number(frame.height) || this.height || 1) * pixelRatio,
       );
       const maskFrame = mask?.maskFrame || frame || {};
       gl.uniform4f?.(
@@ -311,8 +306,6 @@
         Math.max(1, Number(maskFrame.width) || Number(frame.width) || this.width || 1) * pixelRatio,
         Math.max(1, Number(maskFrame.height) || Number(frame.height) || this.height || 1) * pixelRatio,
       );
-      gl.uniform1f?.(this.locations.uTime, (this.now() - this.startedAt) * 0.001);
-      gl.uniform1f?.(this.locations.uNoiseStrength, this.noiseStrength);
       if (mask && options.uploadMask !== false) {
         this.uploadTexture(gl, this.textures.explored, 0, mask.explored, mask.width, mask.height);
         this.uploadTexture(gl, this.textures.visible, 1, mask.visible, mask.width, mask.height);
@@ -339,7 +332,10 @@
       }
       const gl = this.getContext();
       const uploadMask = prepared.changed || this.uploadedMaskKey !== mask.key;
-      this.useProgram(gl, frame, mask, { uploadMask });
+      this.useProgram(gl, frame, mask, {
+        uploadMask,
+        coverFrame: this.getCoverFrame(),
+      });
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       return true;
     }

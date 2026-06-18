@@ -113,6 +113,25 @@
     };
   }
 
+  function expandFrame(frame = {}, padding = 0) {
+    const size = Math.max(0, toNumber(padding, 0));
+    return {
+      x: toNumber(frame.x, 0) - size,
+      y: toNumber(frame.y, 0) - size,
+      width: Math.max(1, toNumber(frame.width, 1) + size * 2),
+      height: Math.max(1, toNumber(frame.height, 1) + size * 2),
+    };
+  }
+
+  function getFogCullPadding(options = {}, viewport = {}, geometry = {}) {
+    const explicit = options.fogCullPaddingPx ?? options.cullPaddingPx;
+    if (Number.isFinite(Number(explicit))) return Math.max(0, Number(explicit));
+    const scale = Math.max(0.05, toNumber(viewport.scale, 1));
+    const stepX = Math.max(1, toNumber(geometry.stepX, 96)) * scale;
+    const stepY = Math.max(1, toNumber(geometry.stepY, 48)) * scale;
+    return Math.max(96, Math.ceil(Math.max(stepX, stepY) * 4));
+  }
+
   function getTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
     const origin = normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {});
     const q = toNumber(tile.q ?? tile.x, 0);
@@ -292,12 +311,37 @@
     return accumulator;
   }
 
+  function getFogRenderSignature(viewport = {}, frame = {}, geometry = {}) {
+    let hash = 2166136261;
+    [
+      Math.round(toNumber(viewport.originX, 0)),
+      Math.round(toNumber(viewport.originY, 0)),
+      Math.round(toNumber(viewport.panX, 0)),
+      Math.round(toNumber(viewport.panY, 0)),
+      Math.round(toNumber(viewport.scale, 1) * 1000),
+      normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {}).tileId,
+      Math.round(toNumber(frame.x, 0)),
+      Math.round(toNumber(frame.y, 0)),
+      Math.round(toNumber(frame.width, 1)),
+      Math.round(toNumber(frame.height, 1)),
+      Math.round(toNumber(geometry.tileWidth, 192) * 10),
+      Math.round(toNumber(geometry.tileHeight, 96) * 10),
+      Math.round(toNumber(geometry.stepX, 96) * 10),
+      Math.round(toNumber(geometry.stepY, 48) * 10),
+      Math.round(toNumber(geometry.anchorY, 0.5) * 1000),
+    ].forEach((part) => {
+      hash = hashStep(hash, part);
+    });
+    return (hash >>> 0).toString(16);
+  }
+
   function createSnapshot(input = {}, options = {}) {
     const renderSnapshot = buildRenderSnapshot(input, options);
     const tileMapView = input.tileMapView || renderSnapshot?.tileMapView || {};
     const geometry = normalizeGeometry(input.geometry || renderSnapshot?.geometry || tileMapView.geometry || renderSnapshot?.viewport?.geometry || {});
     const viewport = normalizeViewport(input.viewport || renderSnapshot?.viewport || {}, geometry);
     const frame = normalizeFrame(input.frame || renderSnapshot?.frame || {});
+    const cullFrame = expandFrame(frame, getFogCullPadding(options, viewport, geometry));
     const tiles = Array.isArray(input.tiles) ? input.tiles : (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []);
     const visibilitySnapshot = buildVisibilitySnapshot(input, tileMapView, options);
     const accumulator = createAccumulator({
@@ -306,11 +350,11 @@
       frame,
       geometry,
       visibilitySignature: visibilitySnapshot?.signature || '',
-      renderSignature: renderSnapshot?.signature || '',
+      renderSignature: getFogRenderSignature(viewport, frame, geometry),
     });
     for (let i = 0; i < tiles.length; i += 1) {
       const coord = normalizeCoord(tiles[i]);
-      appendTile(accumulator, coord, getLevel(visibilitySnapshot, coord.tileId, tiles[i]), viewport, geometry, frame);
+      appendTile(accumulator, coord, getLevel(visibilitySnapshot, coord.tileId, tiles[i]), viewport, geometry, cullFrame);
     }
     return finalizeSnapshot(accumulator);
   }
@@ -363,7 +407,10 @@
   }
 
   function toRendererContext(snapshot = {}, options = {}) {
-    const entries = toRendererEntries(snapshot, options);
+    const entries = toRendererEntries(snapshot, {
+      ...options,
+      inViewOnly: options.inViewOnly !== false,
+    });
     return {
       tileMapView: {
         seed: options.seed || snapshot.viewport?.seed || 'scout-tile-v1',

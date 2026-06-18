@@ -37,19 +37,23 @@
 
   class WorldFogMaskGenerator {
     constructor(options = {}) {
-      this.maskSize = Math.max(128, Math.min(1024, Number(options.maskSize) || 640));
+      this.maskSize = Math.max(96, Math.min(512, Number(options.maskSize) || 256));
+      this.framePaddingTiles = Math.max(0, Math.min(4, Number(options.framePaddingTiles) || 3));
       this.cache = {
         key: '',
+        contextKey: '',
         width: 0,
         height: 0,
         explored: null,
         visible: null,
+        scratch: null,
         maskFrame: null,
       };
     }
 
     reset() {
       this.cache.key = '';
+      this.cache.contextKey = '';
       this.cache.explored?.fill?.(0);
       this.cache.visible?.fill?.(0);
       this.cache.maskFrame = null;
@@ -68,10 +72,12 @@
       ) {
         this.cache = {
           key: '',
+          contextKey: '',
           width: maskWidth,
           height: maskHeight,
           explored: new Uint8Array(size),
           visible: new Uint8Array(size),
+          scratch: new Uint8Array(size),
           maskFrame: null,
         };
       }
@@ -82,10 +88,10 @@
       const width = Math.max(1, Number(frame.width) || 1);
       const height = Math.max(1, Number(frame.height) || 1);
       const longest = Math.max(width, height);
-      const scale = Math.max(0.25, Math.min(1, this.maskSize / longest));
+      const scale = Math.max(0.18, Math.min(1, this.maskSize / longest));
       return {
-        width: Math.max(64, Math.ceil(width * scale)),
-        height: Math.max(64, Math.ceil(height * scale)),
+        width: Math.max(48, Math.ceil(width * scale)),
+        height: Math.max(48, Math.ceil(height * scale)),
         scaleX: scale,
         scaleY: scale,
       };
@@ -102,14 +108,14 @@
         VisionModel?.getSourceSignature?.(sourceSet.visionSources || []) || '',
         dimensions.width,
         dimensions.height,
-        Math.round(toNumber(frame.x) * 10),
-        Math.round(toNumber(frame.y) * 10),
-        Math.round(toNumber(frame.width) * 10),
-        Math.round(toNumber(frame.height) * 10),
-        Math.round(toNumber(viewport.originX) * 10),
-        Math.round(toNumber(viewport.originY) * 10),
-        Math.round(toNumber(viewport.panX) * 10),
-        Math.round(toNumber(viewport.panY) * 10),
+        Math.round(toNumber(frame.x)),
+        Math.round(toNumber(frame.y)),
+        Math.round(toNumber(frame.width)),
+        Math.round(toNumber(frame.height)),
+        Math.round(toNumber(viewport.originX)),
+        Math.round(toNumber(viewport.originY)),
+        Math.round(toNumber(viewport.panX)),
+        Math.round(toNumber(viewport.panY)),
         Math.round(toNumber(viewport.scale, 1) * 1000),
         Math.round(toNumber(geometry.stepX, 96) * 10),
         Math.round(toNumber(geometry.stepY, 48) * 10),
@@ -117,44 +123,97 @@
       return hashText(signatureText);
     }
 
-    screenPointToTileDelta(point = {}, source = {}, viewport = {}, geometry = {}) {
+    getContextKey(context = {}, frame = {}, dimensions = {}) {
+      const viewport = context.viewport || {};
+      const geometry = context.geometry || context.tileMapView?.geometry || viewport.geometry || {};
+      const actors = Array.isArray(context.actors)
+        ? context.actors
+        : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []);
+      const actorSignature = actors
+        .map((actor) => {
+          const current = actor?.current || actor?.position || actor?.target || {};
+          return [
+            actor?.id || actor?.missionId || '',
+            Math.round(toNumber(current.q ?? current.x, 0) * 1000),
+            Math.round(toNumber(current.r ?? current.y, 0) * 1000),
+            actor?.status || '',
+          ].join(':');
+        })
+        .join(',');
+      return [
+        context.fogVisualSnapshot?.signature || context.tileMapView?.signature || '',
+        context.tileMapView?.version || '',
+        Array.isArray(context.entries) ? context.entries.length : '',
+        Math.round(toNumber(frame.x)),
+        Math.round(toNumber(frame.y)),
+        Math.round(toNumber(frame.width)),
+        Math.round(toNumber(frame.height)),
+        dimensions.width,
+        dimensions.height,
+        Math.round(toNumber(viewport.originX)),
+        Math.round(toNumber(viewport.originY)),
+        Math.round(toNumber(viewport.panX)),
+        Math.round(toNumber(viewport.panY)),
+        Math.round(toNumber(viewport.scale, 1) * 1000),
+        Math.round(toNumber(geometry.stepX, 96) * 10),
+        Math.round(toNumber(geometry.stepY, 48) * 10),
+        actorSignature,
+      ].join('|');
+    }
+
+    getSourceEllipse(source = {}, viewport = {}, geometry = {}, frame = {}, cache = this.cache) {
       const scale = Math.max(0.05, toNumber(viewport.scale, 1));
-      const stepX = Math.max(1, toNumber(geometry.stepX, 96)) * scale;
-      const stepY = Math.max(1, toNumber(geometry.stepY, 48)) * scale;
-      const localX = (toNumber(point.x) - toNumber(source.center?.x)) / stepX;
-      const localY = (toNumber(point.y) - toNumber(source.center?.y)) / stepY;
+      const radiusTiles = Math.max(0.05, toNumber(source.radiusTiles, 1));
+      const clearRadiusTiles = Math.max(0, Math.min(radiusTiles, toNumber(source.clearRadiusTiles, radiusTiles * 0.42)));
+      const radiusScale = 1.36;
+      const radiusScreenX = Math.max(1, Math.max(1, toNumber(geometry.stepX, 96)) * scale * radiusTiles * radiusScale);
+      const radiusScreenY = Math.max(1, Math.max(1, toNumber(geometry.stepY, 48)) * scale * radiusTiles * radiusScale);
+      const maskScaleX = cache.width / Math.max(1, toNumber(frame.width, 1));
+      const maskScaleY = cache.height / Math.max(1, toNumber(frame.height, 1));
+      const clearRatio = radiusTiles > 0 ? clamp01(clearRadiusTiles / radiusTiles) : 0;
       return {
-        q: (localX + localY) * 0.5,
-        r: (localY - localX) * 0.5,
+        centerX: (toNumber(source.center?.x) - toNumber(frame.x)) * maskScaleX,
+        centerY: (toNumber(source.center?.y) - toNumber(frame.y)) * maskScaleY,
+        radiusX: Math.max(1, radiusScreenX * maskScaleX),
+        radiusY: Math.max(1, radiusScreenY * maskScaleY),
+        clearRatio,
       };
     }
 
-    getSoftTileDistance(point = {}, source = {}, viewport = {}, geometry = {}) {
-      const delta = this.screenPointToTileDelta(point, source, viewport, geometry);
-      const absQ = Math.abs(delta.q);
-      const absR = Math.abs(delta.r);
-      const chebyshev = Math.max(absQ, absR);
-      const euclidean = Math.hypot(absQ, absR);
-      return chebyshev * 0.72 + euclidean * 0.28;
-    }
-
-    evaluateSource(point = {}, source = {}, viewport = {}, geometry = {}) {
-      const radius = Math.max(0.05, toNumber(source.radiusTiles, 1));
-      const clearRadius = Math.max(0, Math.min(radius, toNumber(source.clearRadiusTiles, radius * 0.45)));
-      const distance = this.getSoftTileDistance(point, source, viewport, geometry);
-      if (distance <= clearRadius) return clamp01(source.strength ?? 1);
-      if (distance >= radius) return 0;
-      const fade = smoothstep(clearRadius, radius, distance);
-      return clamp01((1 - fade) * toNumber(source.strength, 1));
-    }
-
-    evaluateSources(point = {}, sources = [], viewport = {}, geometry = {}) {
-      let value = 0;
-      for (let i = 0; i < sources.length; i += 1) {
-        value = Math.max(value, this.evaluateSource(point, sources[i], viewport, geometry));
-        if (value >= 1) return 1;
+    stampSource(channel, cache = this.cache, frame = {}, source = {}, viewport = {}, geometry = {}) {
+      if (!channel || !source?.center) return false;
+      const ellipse = this.getSourceEllipse(source, viewport, geometry, frame, cache);
+      const minX = Math.max(0, Math.floor(ellipse.centerX - ellipse.radiusX - 1));
+      const maxX = Math.min(cache.width - 1, Math.ceil(ellipse.centerX + ellipse.radiusX + 1));
+      const minY = Math.max(0, Math.floor(ellipse.centerY - ellipse.radiusY - 1));
+      const maxY = Math.min(cache.height - 1, Math.ceil(ellipse.centerY + ellipse.radiusY + 1));
+      if (minX > maxX || minY > maxY) return false;
+      const strength = clamp01(source.strength ?? 1);
+      const clearRatio = Math.max(0, Math.min(0.98, ellipse.clearRatio));
+      const invRadiusX = 1 / Math.max(1, ellipse.radiusX);
+      const invRadiusY = 1 / Math.max(1, ellipse.radiusY);
+      let wrote = false;
+      for (let y = minY; y <= maxY; y += 1) {
+        const normalizedY = ((y + 0.5) - ellipse.centerY) * invRadiusY;
+        const row = y * cache.width;
+        const y2 = normalizedY * normalizedY;
+        if (y2 >= 1.05) continue;
+        for (let x = minX; x <= maxX; x += 1) {
+          const normalizedX = ((x + 0.5) - ellipse.centerX) * invRadiusX;
+          const distance = Math.sqrt(normalizedX * normalizedX + y2);
+          if (distance >= 1) continue;
+          const fade = distance <= clearRatio
+            ? 1
+            : 1 - smoothstep(clearRatio, 1, distance);
+          const value = Math.round(clamp01(fade * strength) * 255);
+          const index = row + x;
+          if (value > channel[index]) {
+            channel[index] = value;
+            wrote = true;
+          }
+        }
       }
-      return value;
+      return wrote;
     }
 
     fillMasks(cache = this.cache, frame = {}, sourceSet = {}) {
@@ -162,45 +221,96 @@
       const geometry = sourceSet.geometry || {};
       const memorySources = sourceSet.memorySources || [];
       const visionSources = sourceSet.visionSources || [];
-      const exploredSources = [...memorySources, ...visionSources];
-      const frameX = toNumber(frame.x);
-      const frameY = toNumber(frame.y);
-      const width = Math.max(1, toNumber(frame.width, 1));
-      const height = Math.max(1, toNumber(frame.height, 1));
-      const scaleX = width / Math.max(1, cache.width);
-      const scaleY = height / Math.max(1, cache.height);
+      for (let i = 0; i < memorySources.length; i += 1) {
+        this.stampSource(cache.explored, cache, frame, memorySources[i], viewport, geometry);
+      }
+      for (let i = 0; i < visionSources.length; i += 1) {
+        this.stampSource(cache.explored, cache, frame, visionSources[i], viewport, geometry);
+        this.stampSource(cache.visible, cache, frame, visionSources[i], viewport, geometry);
+      }
+      this.softBlurChannel(cache.explored, cache, 2);
+      this.softBlurChannel(cache.visible, cache, 1);
+      return cache;
+    }
 
-      for (let y = 0; y < cache.height; y += 1) {
-        const screenY = frameY + (y + 0.5) * scaleY;
-        const row = y * cache.width;
-        for (let x = 0; x < cache.width; x += 1) {
-          const point = {
-            x: frameX + (x + 0.5) * scaleX,
-            y: screenY,
-          };
-          const explored = this.evaluateSources(point, exploredSources, viewport, geometry);
-          const visible = this.evaluateSources(point, visionSources, viewport, geometry);
-          cache.explored[row + x] = Math.round(clamp01(explored) * 255);
-          cache.visible[row + x] = Math.round(clamp01(visible) * 255);
+    softBlurChannel(channel, cache = this.cache, radius = 1) {
+      const blurRadius = Math.max(0, Math.min(4, Math.floor(Number(radius) || 0)));
+      if (!channel || !cache?.scratch || blurRadius <= 0) return channel;
+      const { width, height, scratch } = cache;
+      const diameter = blurRadius * 2 + 1;
+      for (let y = 0; y < height; y += 1) {
+        const row = y * width;
+        for (let x = 0; x < width; x += 1) {
+          let total = 0;
+          for (let dx = -blurRadius; dx <= blurRadius; dx += 1) {
+            total += channel[row + Math.max(0, Math.min(width - 1, x + dx))];
+          }
+          scratch[row + x] = Math.round(total / diameter);
         }
       }
-      return cache;
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          let total = 0;
+          for (let dy = -blurRadius; dy <= blurRadius; dy += 1) {
+            total += scratch[Math.max(0, Math.min(height - 1, y + dy)) * width + x];
+          }
+          channel[y * width + x] = Math.round(total / diameter);
+        }
+      }
+      return channel;
+    }
+
+    getFramePadding(context = {}) {
+      const viewport = context.viewport || {};
+      const geometry = context.geometry || context.tileMapView?.geometry || viewport.geometry || {};
+      const scale = Math.max(0.05, toNumber(viewport.scale, 1));
+      const stepX = Math.max(1, toNumber(geometry.stepX, 96)) * scale;
+      const stepY = Math.max(1, toNumber(geometry.stepY, 48)) * scale;
+      return Math.max(12, Math.ceil(Math.max(stepX, stepY) * this.framePaddingTiles));
+    }
+
+    getMaskFrame(context = {}) {
+      const frame = context.frame || {};
+      const coverFrame = context.coverFrame || context.viewportFrame || {};
+      const padding = this.getFramePadding(context);
+      const frameX = toNumber(frame.x, 0);
+      const frameY = toNumber(frame.y, 0);
+      const frameRight = frameX + Math.max(1, toNumber(frame.width, 1));
+      const frameBottom = frameY + Math.max(1, toNumber(frame.height, 1));
+      const coverX = toNumber(coverFrame.x, frameX);
+      const coverY = toNumber(coverFrame.y, frameY);
+      const coverRight = coverX + Math.max(1, toNumber(coverFrame.width, frameRight - coverX));
+      const coverBottom = coverY + Math.max(1, toNumber(coverFrame.height, frameBottom - coverY));
+      const x = Math.min(frameX, coverX) - padding;
+      const y = Math.min(frameY, coverY) - padding;
+      const right = Math.max(frameRight, coverRight) + padding;
+      const bottom = Math.max(frameBottom, coverBottom) + padding;
+      return {
+        x,
+        y,
+        width: Math.max(1, right - x),
+        height: Math.max(1, bottom - y),
+      };
     }
 
     prepare(context = {}) {
       if (!VisionModel?.collectSources) return null;
-      const frame = context.frame || {};
-      const maskFrame = {
-        x: toNumber(frame.x, 0),
-        y: toNumber(frame.y, 0),
-        width: Math.max(1, toNumber(frame.width, 1)),
-        height: Math.max(1, toNumber(frame.height, 1)),
-      };
+      const maskFrame = this.getMaskFrame(context);
       const dimensions = this.getMaskDimensions(maskFrame);
+      const contextKey = this.getContextKey(context, maskFrame, dimensions);
+      if (this.cache.contextKey === contextKey && this.cache.key && this.cache.maskFrame) {
+        return {
+          mask: this.cache,
+          changed: false,
+          sourceSet: this.cache.sourceSet || null,
+        };
+      }
       const sourceSet = VisionModel.collectSources(context);
       const key = this.getMaskKey(context, maskFrame, dimensions, sourceSet);
       const cache = this.ensureCache(dimensions.width, dimensions.height);
       if (cache.key === key && cache.maskFrame) {
+        cache.contextKey = contextKey;
+        cache.sourceSet = sourceSet;
         return {
           mask: cache,
           changed: false,
@@ -212,6 +322,8 @@
       cache.maskFrame = { ...maskFrame };
       this.fillMasks(cache, maskFrame, sourceSet);
       cache.key = key;
+      cache.contextKey = contextKey;
+      cache.sourceSet = sourceSet;
       return {
         mask: cache,
         changed: true,

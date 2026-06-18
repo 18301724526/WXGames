@@ -75,3 +75,28 @@ test('WorldMapVisualPluginRegistry runs enabled visual plugins with stable signa
   assert.equal(first.signature, second.signature);
   assert.equal(first.snapshots.worldFog.schema, 'world-fog-visual-snapshot-v1');
 });
+
+test('WorldMapVisualPluginRegistry reuses fog renderer context for unchanged visual inputs', () => {
+  const config = { FEATURES: { FOG_OF_WAR_ENABLED: true } };
+  const cacheHost = {};
+  const context = createContext();
+  const first = WorldMapVisualPluginRegistry.createRendererContext('worldFog', {
+    ...context,
+    cacheHost,
+  }, {
+    config,
+    FeatureFlags,
+    cacheHost,
+  });
+  const second = WorldMapVisualPluginRegistry.createRendererContext('worldFog', {
+    ...context,
+    cacheHost,
+  }, {
+    config,
+    FeatureFlags,
+    cacheHost,
+  });
+
+  assert.equal(first, second);
+  assert.equal(first.entries.length, 2);
+});

@@ -130,9 +130,11 @@
           ...(this.worldMapRenderer?.lastWorldTileMapContext || {}),
           ...(fogContext || {}),
           config: this.config,
+          cacheHost: this,
         };
         const visualContext = visualRegistry?.createRendererContext?.('worldFog', baseWorldContext, {
           config: this.config,
+          cacheHost: this,
         }) || null;
         const renderContext = visualContext ? {
           ...baseWorldContext,
