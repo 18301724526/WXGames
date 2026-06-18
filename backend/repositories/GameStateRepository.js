@@ -215,6 +215,7 @@ class GameStateRepository {
     state.worldMap = this.worldMapAuthority.hydrateWorldMapForPlayer(
       state.playerId,
       state.worldMap,
+      { territories: state.territories },
     );
     return state;
   }

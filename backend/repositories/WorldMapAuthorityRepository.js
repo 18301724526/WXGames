@@ -59,9 +59,17 @@ function normalizeGenerationContext(tile = {}, fallback = {}) {
   return context && typeof context === 'object' ? context : {};
 }
 
-function createGlobalTilePayload(tile = {}) {
+function getNaturalGlobalTerrain(tile = {}, seed = WorldMapService.DEFAULT_WORLD_SEED) {
+  const { q, r } = getTileCoord(tile);
+  if (tile.terrain && tile.terrain !== 'capital') return tile.terrain;
+  const terrain = WorldMapService.chooseTerrain(seed, q, r);
+  return terrain === 'capital' ? 'plains' : terrain;
+}
+
+function createGlobalTilePayload(tile = {}, options = {}) {
   const { q, r } = getTileCoord(tile);
   const canonicalId = getCanonicalId(tile);
+  const seed = options.seed || WorldMapService.DEFAULT_WORLD_SEED;
   const payload = {
     ...tile,
     id: WorldMapService.getTileId(q, r),
@@ -70,7 +78,10 @@ function createGlobalTilePayload(tile = {}) {
     x: tile.x ?? q,
     y: tile.y ?? r,
     canonicalId,
+    terrain: getNaturalGlobalTerrain(tile, seed),
   };
+  delete payload.siteId;
+  delete payload.controlled;
   delete payload.visibility;
   delete payload.visible;
   delete payload.discovered;
@@ -80,11 +91,83 @@ function createGlobalTilePayload(tile = {}) {
   return payload;
 }
 
-function createPlayerTile(globalTile = {}, visibilityRow = {}) {
+function shouldRepairGlobalTilePayload(existingPayload = {}, nextPayload = {}) {
+  if (!existingPayload || typeof existingPayload !== 'object') return true;
+  if ('siteId' in existingPayload || 'controlled' in existingPayload) return true;
+  if (existingPayload.terrain === 'capital') return true;
+  void nextPayload;
+  return false;
+}
+
+function repairGlobalTilePayload(existingPayload = {}, nextPayload = {}, options = {}) {
+  const seed = options.seed || WorldMapService.DEFAULT_WORLD_SEED;
+  const source = existingPayload && typeof existingPayload === 'object' ? existingPayload : nextPayload;
+  const repaired = createGlobalTilePayload(source, { seed });
+  if (existingPayload?.terrain === 'capital') {
+    repaired.terrain = getNaturalGlobalTerrain(existingPayload, seed);
+  }
+  return repaired;
+}
+
+function createLocalSiteIndex(territories = []) {
+  const byCanonicalId = new Map();
+  (Array.isArray(territories) ? territories : []).forEach((site) => {
+    if (!site || typeof site !== 'object' || !site.id) return;
+    byCanonicalId.set(WorldMapService.getCanonicalTileId(site.x ?? site.q, site.y ?? site.r), site);
+  });
+  return byCanonicalId;
+}
+
+function isWorldMapOriginTile(tile = {}, worldMap = {}) {
+  const origin = worldMap?.origin || {};
+  return getCanonicalId(tile) === WorldMapService.getCanonicalTileId(origin.q ?? origin.x, origin.r ?? origin.y);
+}
+
+function stripForeignLocalIdentity(tile = {}, options = {}) {
+  const seed = options.seed || WorldMapService.DEFAULT_WORLD_SEED;
+  if (!tile.siteId && tile.terrain !== 'capital' && !tile.controlled) return tile;
+  const next = {
+    ...tile,
+    terrain: getNaturalGlobalTerrain(tile, seed),
+  };
+  delete next.siteId;
+  delete next.controlled;
+  return next;
+}
+
+function localizePlayerTile(tile = {}, options = {}) {
+  const siteIndex = options.siteIndex instanceof Map ? options.siteIndex : new Map();
+  const stripped = stripForeignLocalIdentity(tile, options);
+  const site = siteIndex.get(getCanonicalId(tile));
+  if (site) {
+    const controlled = site.id === 'capital' || (site.owner === 'player' && site.status === 'occupied');
+    return {
+      ...stripped,
+      terrain: site.id === 'capital' ? 'capital' : stripped.terrain,
+      siteId: site.id,
+      visibility: controlled ? 'controlled' : tile.visibility,
+      visible: true,
+      discovered: true,
+    };
+  }
+  if (isWorldMapOriginTile(tile, options.worldMap)) {
+    return {
+      ...stripped,
+      terrain: 'capital',
+      siteId: 'capital',
+      visibility: 'controlled',
+      visible: true,
+      discovered: true,
+    };
+  }
+  return stripped;
+}
+
+function createPlayerTile(globalTile = {}, visibilityRow = {}, options = {}) {
   const visibility = visibilityRow.visibility || 'scouted';
   const discoveredAt = visibilityRow.discoveredAt || visibilityRow.updatedAt || null;
   const intel = parseJson(visibilityRow.intel, null);
-  return {
+  return localizePlayerTile({
     ...globalTile,
     visibility,
     visible: visibility !== 'hidden' && visibility !== 'unknown',
@@ -92,7 +175,7 @@ function createPlayerTile(globalTile = {}, visibilityRow = {}) {
     discoveredAt,
     lastScoutedAt: visibilityRow.lastScoutedAt || discoveredAt,
     ...(intel ? { intel } : {}),
-  };
+  }, options);
 }
 
 class WorldMapAuthorityRepository {
@@ -166,10 +249,20 @@ class WorldMapAuthorityRepository {
     );
   }
 
-  upsertGlobalTile(tile, playerId, nowIso) {
+  upsertGlobalTile(tile, playerId, nowIso, options = {}) {
     const canonicalId = getCanonicalId(tile);
     const existing = this.db.prepare('SELECT tile FROM global_world_tiles WHERE canonicalId = ?').get(canonicalId);
-    if (existing) return parseJson(existing.tile, null);
+    const payload = createGlobalTilePayload(tile, { seed: options.seed });
+    if (existing) {
+      const existingPayload = parseJson(existing.tile, null);
+      if (shouldRepairGlobalTilePayload(existingPayload, payload)) {
+        const repairedPayload = repairGlobalTilePayload(existingPayload, payload, { seed: options.seed });
+        this.db.prepare('UPDATE global_world_tiles SET tile = ?, updatedAt = ? WHERE canonicalId = ?')
+          .run(JSON.stringify(repairedPayload), nowIso, canonicalId);
+        return repairedPayload;
+      }
+      return existingPayload;
+    }
 
     const { q, r } = getTileCoord(tile);
     const chunkRef = createChunkRef(tile, this.chunkSize);
@@ -177,7 +270,6 @@ class WorldMapAuthorityRepository {
       source: 'legacy-world-map',
       playerId,
     });
-    const payload = createGlobalTilePayload(tile);
     this.upsertChunk(chunkRef, playerId, generationContext, nowIso);
     this.db.prepare(`
       INSERT INTO global_world_tiles (
@@ -230,19 +322,23 @@ class WorldMapAuthorityRepository {
     const playerId = gameState?.playerId || '';
     if (!playerId) return;
     const tiles = Array.isArray(gameState?.worldMap?.tiles) ? gameState.worldMap.tiles : [];
+    const seed = gameState?.worldMap?.seed || WorldMapService.DEFAULT_WORLD_SEED;
     for (const tile of tiles) {
       if (!tile || typeof tile !== 'object') continue;
       if (!isPlayerVisibleTile(tile)) continue;
-      const authoritativeTile = this.upsertGlobalTile(tile, playerId, nowIso);
+      const authoritativeTile = this.upsertGlobalTile(tile, playerId, nowIso, { seed });
       this.upsertPlayerVisibility(playerId, authoritativeTile ? { ...tile, ...authoritativeTile } : tile, nowIso);
     }
     gameState.worldMap = this.hydrateWorldMapForPlayer(
       playerId,
       this.sanitizeWorldMapForSave(gameState.worldMap),
+      { territories: gameState.territories },
     );
   }
 
-  getPlayerVisibleTiles(playerId) {
+  getPlayerVisibleTiles(playerId, options = {}) {
+    const siteIndex = createLocalSiteIndex(options.territories);
+    const seed = options.worldMap?.seed || WorldMapService.DEFAULT_WORLD_SEED;
     return this.db.prepare(`
       SELECT visibility.*, global_world_tiles.tile
       FROM player_world_visibility AS visibility
@@ -253,7 +349,11 @@ class WorldMapAuthorityRepository {
     `).all(playerId)
       .map((row) => {
         const globalTile = parseJson(row.tile, null);
-        return globalTile ? createPlayerTile(globalTile, row) : null;
+        return globalTile ? createPlayerTile(globalTile, row, {
+          siteIndex,
+          worldMap: options.worldMap,
+          seed,
+        }) : null;
       })
       .filter(Boolean);
   }
@@ -265,8 +365,11 @@ class WorldMapAuthorityRepository {
     };
   }
 
-  hydrateWorldMapForPlayer(playerId, worldMap = {}) {
-    const visibleTiles = this.getPlayerVisibleTiles(playerId);
+  hydrateWorldMapForPlayer(playerId, worldMap = {}, options = {}) {
+    const visibleTiles = this.getPlayerVisibleTiles(playerId, {
+      ...options,
+      worldMap,
+    });
     return {
       ...(worldMap || {}),
       tiles: visibleTiles,

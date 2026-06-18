@@ -5,6 +5,7 @@ const Database = require('better-sqlite3');
 const GameStateRepository = require('../repositories/GameStateRepository');
 const { createGlobalTilePayload } = require('../repositories/WorldMapAuthorityRepository');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
+const GameStateService = require('../services/GameStateService');
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 const WorldMapService = require('../services/WorldMapService');
 const WorldMapTiles = require('../services/worldMap/WorldMapTiles');
@@ -821,6 +822,123 @@ test('GameStateRepository resetPlayerState persists the new spawn starting visib
         .get(playerId).count,
       25,
     );
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository keeps other players capital identity out of shared global tiles', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-18T00:00:00.000Z');
+    const firstPlayer = GameStateNormalizer.createInitialGameState('global-capital-owner', {
+      now,
+      spawn: { q: 23, r: 18, spawnKey: '23,18' },
+    });
+    repository.save(firstPlayer);
+
+    const secondPlayer = GameStateNormalizer.createInitialGameState('global-capital-neighbor', {
+      now,
+      spawn: { q: 24, r: 16, spawnKey: '24,16' },
+    });
+    repository.save(secondPlayer);
+
+    const globalTile = JSON.parse(db.prepare('SELECT tile FROM global_world_tiles WHERE canonicalId = ?')
+      .get(WorldMapService.getCanonicalTileId(23, 18)).tile);
+    const secondReloaded = repository.findByPlayerId(secondPlayer.playerId);
+    const secondClient = GameStateService.getClientGameStateFromNormalized(
+      GameStateService.normalizeState(secondReloaded),
+    );
+    const neighborTile = secondClient.territoryState.worldMap.tiles
+      .find((tile) => tile.q === 23 && tile.r === 18);
+    const secondCapitalTiles = secondClient.territoryState.worldMap.tiles
+      .filter((tile) => tile.siteId === 'capital' || tile.terrain === 'capital');
+
+    assert.equal(globalTile.siteId, undefined);
+    assert.notEqual(globalTile.terrain, 'capital');
+    assert.ok(neighborTile);
+    assert.notEqual(neighborTile.siteId, 'capital');
+    assert.notEqual(neighborTile.terrain, 'capital');
+    assert.deepEqual(secondCapitalTiles.map((tile) => `${tile.q},${tile.r}`), ['24,16']);
+    assert.equal(secondClient.territoryState.worldMap.tiles.length, 25);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository hydrates legacy global capital pollution as local natural terrain', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const now = new Date('2026-06-18T00:00:00.000Z');
+    const player = GameStateNormalizer.createInitialGameState('legacy-global-capital-reader', {
+      now,
+      spawn: { q: 24, r: 16, spawnKey: '24,16' },
+    });
+    repository.save(player);
+    const canonicalId = WorldMapService.getCanonicalTileId(23, 18);
+    db.prepare('UPDATE global_world_tiles SET tile = ? WHERE canonicalId = ?')
+      .run(JSON.stringify({
+        id: 'tile_23_18',
+        q: 23,
+        r: 18,
+        x: 23,
+        y: 18,
+        canonicalId,
+        terrain: 'capital',
+        siteId: 'capital',
+      }), canonicalId);
+
+    const reloaded = repository.findByPlayerId(player.playerId);
+    const client = GameStateService.getClientGameStateFromNormalized(
+      GameStateService.normalizeState(reloaded),
+    );
+    const repairedTile = client.territoryState.worldMap.tiles.find((tile) => tile.q === 23 && tile.r === 18);
+
+    assert.ok(repairedTile);
+    assert.notEqual(repairedTile.terrain, 'capital');
+    assert.notEqual(repairedTile.siteId, 'capital');
+    assert.equal(client.territoryState.worldMap.tiles.length, 25);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository repairs local-only field pollution from existing global tiles', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const state = GameStateNormalizer.createInitialGameState('global-local-field-repair');
+    repository.save(state);
+    const canonicalId = WorldMapService.getCanonicalTileId(0, 1);
+    db.prepare('UPDATE global_world_tiles SET tile = ? WHERE canonicalId = ?')
+      .run(JSON.stringify({
+        id: 'tile_0_1',
+        q: 0,
+        r: 1,
+        x: 0,
+        y: 1,
+        canonicalId,
+        terrain: 'plains',
+        siteId: null,
+        controlled: false,
+      }), canonicalId);
+
+    repository.save(state);
+
+    const storedTile = JSON.parse(db.prepare('SELECT tile FROM global_world_tiles WHERE canonicalId = ?')
+      .get(canonicalId).tile);
+
+    assert.equal(Object.prototype.hasOwnProperty.call(storedTile, 'siteId'), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(storedTile, 'controlled'), false);
+    assert.equal(storedTile.terrain, 'plains');
   } finally {
     db.close();
   }
