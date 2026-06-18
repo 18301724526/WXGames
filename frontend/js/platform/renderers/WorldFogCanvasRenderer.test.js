@@ -421,6 +421,47 @@ test('WorldFogMaskGenerator does not feather explored mask into unknown tiles', 
   assert.equal(unknownVisible, 0);
 });
 
+test('WorldFogMaskGenerator rounds explored fog falloff inside the discovered region', () => {
+  const generator = new WorldFogMaskGenerator({ maskSize: 256 });
+  const geometry = { tileWidth: 80, tileHeight: 40, stepX: 40, stepY: 20, anchorY: 0.5 };
+  const exploredTile = { id: 'tile_1_2', q: 1, r: 2, discovered: true, visible: false, visibility: 'scouted' };
+  const unknownTile = { id: 'tile_1_3', q: 1, r: 3, discovered: false, visible: false, visibility: 'unknown' };
+  const context = createWorldContext({
+    tileMapView: {
+      geometry,
+      tiles: [exploredTile, unknownTile],
+      sites: [],
+    },
+    viewport: {
+      originX: 200,
+      originY: 120,
+      panX: 0,
+      panY: 0,
+      scale: 1,
+      geometry,
+      worldOrigin: { q: 1, r: 1 },
+    },
+    frame: { x: 0, y: 0, width: 400, height: 300 },
+    entries: [
+      { tile: exploredTile, center: { x: 160, y: 140 } },
+      { tile: unknownTile, center: { x: 120, y: 160 } },
+    ],
+    actors: [],
+  });
+
+  const { mask } = generator.prepare(context);
+  const nearEdgeA = readMaskAt(mask.explored, mask, { x: 150, y: 150 });
+  const nearEdgeB = readMaskAt(mask.explored, mask, { x: 142, y: 146 });
+  const deeperA = readMaskAt(mask.explored, mask, { x: 152, y: 149 });
+  const unknownNearEdge = readMaskAt(mask.explored, mask, { x: 136, y: 152 });
+
+  assert.equal(unknownNearEdge, 0);
+  assert.equal(nearEdgeA > 0 && nearEdgeA < 255, true);
+  assert.equal(nearEdgeB > 0 && nearEdgeB < 255, true);
+  assert.notEqual(nearEdgeA, nearEdgeB);
+  assert.equal(deeperA > nearEdgeA, true);
+});
+
 test('WorldFogMaskGenerator keeps explored memory out of current visibility even when sources are nearby', () => {
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
   const context = createWorldContext({
@@ -609,7 +650,9 @@ test('WorldFogMaskGenerator rasterizes tile-local masks without outward source s
   assert.equal(typeof generator.evaluateSource, 'undefined');
   assert.equal(typeof generator.stampSource, 'undefined');
   assert.equal(typeof generator.softBlurChannel, 'undefined');
+  assert.equal(typeof generator.getChannelTileSet, 'undefined');
   assert.equal(typeof generator.rasterizeTileMask, 'function');
+  assert.equal(typeof generator.softenChannelInward, 'function');
 });
 
 test('WorldFogMaskGenerator thins interior memory sources while preserving explored boundaries', () => {
