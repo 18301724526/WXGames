@@ -13,6 +13,7 @@ const PRODUCTION_FILES = [
   'frontend/js/platform/renderers/WorldMapCachePolicy.js',
   'frontend/js/platform/renderers/WorldMapCanvasRenderer.js',
   'frontend/js/platform/renderers/WorldMapFastDragCompositeRenderer.js',
+  'frontend/js/platform/renderers/WorldMapMilitaryViewRenderer.js',
   'frontend/js/platform/renderers/WorldMapSnapshotCacheRenderer.js',
   'frontend/js/platform/renderers/WorldMapStaticLayerRenderer.js',
   'frontend/js/platform/renderers/WorldMapTileMapRenderer.js',
@@ -47,6 +48,14 @@ test('mainHud renderers own map-home march command HUD invocation', () => {
 
   assert.equal(frameSource.includes('renderMapHomeWorldMarchHud(state, options)'), true);
   assert.equal(hudSource.includes('renderMapHomeWorldMarchHud(state, options)'), true);
+});
+
+test('mainHud map-home world viewport stays transparent instead of clear-cutting the HUD canvas', () => {
+  const source = readProjectFile('frontend/js/platform/renderers/WorldMapMilitaryViewRenderer.js');
+
+  assert.equal(source.includes('clearRect'), false);
+  assert.equal(source.includes('this.drawPanel(x, y, width, height'), false);
+  assert.equal(source.includes('hitTargetsOnly: skipWorldMapLayer'), true);
 });
 
 test('retired scout route cache API stays out of production renderers', () => {

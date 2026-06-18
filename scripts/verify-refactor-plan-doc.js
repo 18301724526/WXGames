@@ -13,6 +13,7 @@ const officialDocPaths = [
   'docs/long_term_architecture_refactor_plan_2026-06-08.md',
   'docs/architecture_module_responsibility_index_2026-06-08.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
+  'docs/world_map_hud_transparency_contract_2026-06-19.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
   'docs/config_registry_snapshot_2026-06-11.json',
@@ -61,6 +62,12 @@ const requiredText = {
     'P12 - 生产工程化 / Production Engineering',
     'Large-Studio Parity Definition',
     'scripts/verify-production-security-config.js',
+  ],
+  'docs/world_map_hud_transparency_contract_2026-06-19.md': [
+    'World Map HUD Transparency Contract',
+    'transparent area of `mainHud`',
+    'must not use `clearRect(mapX, mapY, mapW, mapH)`',
+    'Hit-target collection is separate from visual drawing',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',

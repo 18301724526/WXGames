@@ -93,7 +93,7 @@ function createTileMapView() {
   };
 }
 
-test('WorldMapMilitaryViewRenderer renders tile-map branch and reset target', () => {
+test('WorldMapMilitaryViewRenderer renders tile-map branch without clearing the map viewport', () => {
   const host = createHost({
     isWorldTileMapWaterAnimated() {
       return true;
@@ -115,7 +115,9 @@ test('WorldMapMilitaryViewRenderer renders tile-map branch and reset target', ()
   assert.equal(renderCall[3], 66);
   assert.equal(renderCall[6].tileMapWaterAnimated, true);
   assert.equal(renderCall[7].hitTargetsOnly, true);
-  assert.equal(host.calls.some((call) => call[0] === 'clearRect'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel' && call[4] === 300), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel' && call[4] === 40), true);
+  assert.equal(host.calls.some((call) => call[0] === 'clearRect'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'resetWorldPan'), true);
 });
 

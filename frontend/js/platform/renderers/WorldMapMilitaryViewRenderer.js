@@ -31,7 +31,11 @@
       const uiState = options.territoryUiState || {};
       const skipWorldMapLayer = Boolean(options.skipWorldMapLayer);
       const summary = this.presenter.buildTerritorySummaryViewState(territoryState);
-      this.drawPanel(x, y, width, height, {
+      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
+        ...options,
+        worldExplorerState: state.worldExplorerState || {},
+      });
+      this.drawPanel(x, y, width, skipWorldMapLayer && tileMapView?.tiles?.length ? 40 : height, {
         fill: 'rgba(28, 22, 17, 0.78)',
         stroke: 'rgba(255, 226, 177, 0.12)',
         radius: 10,
@@ -41,10 +45,6 @@
         size: 11,
         color: '#74d3a0',
         align: 'right',
-      });
-      const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
-        ...options,
-        worldExplorerState: state.worldExplorerState || {},
       });
       if (tileMapView?.tiles?.length) {
         if (this.isWorldTileMapWaterAnimated(tileMapView)) {
@@ -57,7 +57,6 @@
         this.renderWorldTileMap(tileMapView, mapX, mapY, mapW, mapH, uiState, {
           hitTargetsOnly: skipWorldMapLayer,
         });
-        if (skipWorldMapLayer && this.ctx?.clearRect) this.ctx.clearRect(mapX, mapY, mapW, mapH);
         const resetW = 76;
         this.drawButton(mapX + mapW - resetW - 8, mapY + 8, resetW, 28, 'Home', { size: 11, radius: 8 });
         this.addHitTarget({ x: mapX + mapW - resetW - 8, y: mapY + 8, width: resetW, height: 28 }, { type: 'resetWorldPan' });
