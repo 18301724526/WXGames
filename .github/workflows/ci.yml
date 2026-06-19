@@ -12,13 +12,58 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+
+      - name: Install root tooling dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier check
+        run: npm run format:check
+
+      - name: Regenerate ESLint suppressions baseline
+        run: |
+          mkdir -p tmp
+          npm run lint:baseline:ci
+
+      - name: Extract base ESLint suppressions baseline
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF_NAME: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          mkdir -p tmp
+          BASE_SPEC=""
+          ZERO_SHA="0000000000000000000000000000000000000000"
+
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_REF_NAME" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF_NAME"
+            BASE_SPEC="FETCH_HEAD"
+          elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "$ZERO_SHA" ]; then
+            BASE_SPEC="$BEFORE_SHA"
+          fi
+
+          if [ -n "$BASE_SPEC" ] && git cat-file -e "$BASE_SPEC:eslint-suppressions.json" 2>/dev/null; then
+            git show "$BASE_SPEC:eslint-suppressions.json" > tmp/eslint-suppressions.base.json
+          else
+            cp eslint-suppressions.json tmp/eslint-suppressions.base.json
+          fi
+
+      - name: Check ESLint suppressions budget
+        run: npm run lint:baseline:check -- --base tmp/eslint-suppressions.base.json
 
       - name: Install backend dependencies
         working-directory: backend

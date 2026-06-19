@@ -42,6 +42,106 @@ function createAdvisorView(hasAdvice = true, goDisabled = false) {
   };
 }
 
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    bottomSafeArea: 12,
+    addHitTarget(rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    wrapText(text) {
+      calls.push([label, 'wrapText', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+test('AdvisorCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  fallbackHost.presenter = {
+    buildAdvisorViewState() {
+      return createAdvisorView(true, false);
+    },
+  };
+  const renderer = new AdvisorCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+  renderer.presenter = fallbackHost.presenter;
+  renderer.width = 390;
+  renderer.height = 844;
+  renderer.bottomSafeArea = 12;
+
+  renderer.renderAdvisorPanel({ softGuide: {} });
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), [
+    'addHitTarget',
+    'createGradient',
+    'drawButton',
+    'drawPanel',
+    'drawText',
+    'drawTextLines',
+    'getLayout',
+    'wrapText',
+  ]);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('AdvisorCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  fallbackHost.presenter = {
+    buildAdvisorViewState() {
+      return createAdvisorView(true, false);
+    },
+  };
+  const renderer = new AdvisorCanvasRenderer({ host: fallbackHost });
+  renderer.presenter = fallbackHost.presenter;
+  renderer.width = 390;
+  renderer.height = 844;
+  renderer.bottomSafeArea = 12;
+
+  renderer.renderAdvisorPanel({ softGuide: {} });
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), [
+    'addHitTarget',
+    'createGradient',
+    'drawButton',
+    'drawPanel',
+    'drawText',
+    'drawTextLines',
+    'getLayout',
+    'wrapText',
+  ]);
+});
+
 test('AdvisorCanvasRenderer renders bottom advisor strip when advice exists', () => {
   const host = createHost();
   const renderer = new AdvisorCanvasRenderer({ host });

@@ -6,6 +6,25 @@ require('../../domain/WorldMarchSystem');
 require('../../config/UnitSpriteManifest');
 const WorldActorCanvasRenderer = require('./WorldActorCanvasRenderer');
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 function createHost() {
   const calls = [];
   const hitTargets = [];
@@ -38,6 +57,36 @@ function createHost() {
     },
   };
 }
+
+test('WorldActorCanvasRenderer prefers registry tutorial unit renderer over host constructor fallback', () => {
+  const host = createHost();
+  const calls = [];
+  const registryUnitRenderer = {
+    renderUnit() {
+      calls.push('registry');
+      return true;
+    },
+  };
+  const fallbackUnitRenderer = {
+    renderUnit() {
+      calls.push('fallback');
+      return true;
+    },
+  };
+  host.constructor = {
+    getTutorialIntroUnitRenderer() {
+      return fallbackUnitRenderer;
+    },
+  };
+  const renderer = new WorldActorCanvasRenderer({ host });
+
+  withRendererDependencyRegistry({ tutorialIntroUnitRenderer: registryUnitRenderer }, () => {
+    assert.equal(renderer.drawActorUnit({ unitKey: 'scout_squad_default' }, { x: 10, y: 20 }, { scale: 1 }), true);
+  });
+  assert.deepEqual(calls, ['registry']);
+  assert.equal(renderer.drawActorUnit({ unitKey: 'scout_squad_default' }, { x: 10, y: 20 }, { scale: 1 }), true);
+  assert.deepEqual(calls, ['registry', 'fallback']);
+});
 
 test('WorldActorCanvasRenderer draws scout actor and exposes selection hit target', () => {
   const host = createHost();

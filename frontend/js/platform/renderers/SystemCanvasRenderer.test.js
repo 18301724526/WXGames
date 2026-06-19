@@ -43,6 +43,135 @@ function createHost(overrides = {}) {
   return host;
 }
 
+const SYSTEM_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawCoverAsset',
+  'drawPanel',
+  'drawProgressBar',
+  'drawText',
+  'drawTextLines',
+  'getLayout',
+  'getNow',
+  'setHitTargets',
+  'truncateText',
+  'wrapTextLimit',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: {
+      globalAlpha: 1,
+      fillRect() {},
+      beginPath() {},
+      arc() {},
+      stroke() {},
+      save() {},
+      restore() {},
+    },
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawCoverAsset(assetPath) {
+      calls.push([label, 'drawCoverAsset', assetPath]);
+      return false;
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawProgressBar(_x, _y, _width, _height, percentage) {
+      calls.push([label, 'drawProgressBar', percentage]);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    getNow() {
+      calls.push([label, 'getNow']);
+      return 1000;
+    },
+    setHitTargets(targets = []) {
+      calls.push([label, 'setHitTargets', targets.length]);
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderSystemSentinelPaths(renderer) {
+  renderer.renderLoginPanel({
+    view: { loginPanelVisible: true, message: 'bad password' },
+    credentials: { usernameValue: 'alice', passwordValue: 'secret', rememberPasswordChecked: true },
+  });
+  renderer.renderLoadingScreen({ visible: true, percentage: 42, message: 'Loading' });
+  renderer.renderNetworkOverlay({ status: 'reconnecting', failureCount: 3 });
+  renderer.renderConfirmDialog({
+    visible: true,
+    kind: 'resetGame',
+    source: 'settings',
+    title: 'Reset',
+    message: 'Reset all progress.',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+  });
+}
+
+test('SystemCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new SystemCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderSystemSentinelPaths(renderer);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), SYSTEM_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('SystemCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new SystemCanvasRenderer({ host: fallbackHost });
+
+  renderSystemSentinelPaths(renderer);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), SYSTEM_DRAWING_METHODS);
+});
+
 test('SystemCanvasRenderer preserves login form hit target contract', () => {
   const host = createHost();
   const renderer = new SystemCanvasRenderer({ host });

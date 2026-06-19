@@ -42,6 +42,25 @@ function createLayout(overrides = {}) {
   };
 }
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 function createHost(overrides = {}) {
   const calls = [];
   return {
@@ -85,6 +104,25 @@ function createHost(overrides = {}) {
     ...overrides,
   };
 }
+
+test('WorldMapStaticChunkRenderer prefers registry cache policy over host constructor fallback', () => {
+  const registryPolicy = { id: 'registry-cache-policy' };
+  const fallbackPolicy = { id: 'fallback-cache-policy' };
+  const renderer = new WorldMapStaticChunkRenderer({
+    host: {
+      constructor: {
+        getWorldMapCachePolicy() {
+          return fallbackPolicy;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({ worldMapCachePolicy: registryPolicy }, () => {
+    assert.equal(renderer.getWorldMapCachePolicy(), registryPolicy);
+  });
+  assert.equal(renderer.getWorldMapCachePolicy(), fallbackPolicy);
+});
 
 test('WorldMapStaticChunkRenderer renders and caches static chunk work', () => {
   const host = createHost();

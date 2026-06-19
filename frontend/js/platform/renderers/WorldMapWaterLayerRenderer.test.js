@@ -41,6 +41,25 @@ function createEntry(id = 'tile-water') {
   };
 }
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 function createLayout(calls = [], overrides = {}) {
   return {
     kind: 'world',
@@ -106,6 +125,25 @@ function createHost(overrides = {}) {
     ...overrides,
   };
 }
+
+test('WorldMapWaterLayerRenderer prefers registry cache policy over host constructor fallback', () => {
+  const registryPolicy = { id: 'registry-cache-policy' };
+  const fallbackPolicy = { id: 'fallback-cache-policy' };
+  const renderer = new WorldMapWaterLayerRenderer({
+    host: {
+      constructor: {
+        getWorldMapCachePolicy() {
+          return fallbackPolicy;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({ worldMapCachePolicy: registryPolicy }, () => {
+    assert.equal(renderer.getWorldMapCachePolicy(), registryPolicy);
+  });
+  assert.equal(renderer.getWorldMapCachePolicy(), fallbackPolicy);
+});
 
 test('WorldMapWaterLayerRenderer renders and caches all water frame variants', () => {
   const host = createHost({ worldTileWaterTimeOverride: 125 });

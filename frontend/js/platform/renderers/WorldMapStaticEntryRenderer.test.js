@@ -5,6 +5,25 @@ const path = require('node:path');
 
 const WorldMapStaticEntryRenderer = require('./WorldMapStaticEntryRenderer');
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 function createCtx(calls = []) {
   return {
     beginPath() { calls.push(['beginPath']); },
@@ -110,6 +129,35 @@ function createEntry(overrides = {}) {
     ...entryOverrides,
   };
 }
+
+test('WorldMapStaticEntryRenderer prefers registry dependencies over host constructor fallbacks', () => {
+  const registryManifest = { id: 'registry-manifest' };
+  const registryGeometry = { id: 'registry-geometry' };
+  const fallbackManifest = { id: 'fallback-manifest' };
+  const fallbackGeometry = { id: 'fallback-geometry' };
+  const renderer = new WorldMapStaticEntryRenderer({
+    host: {
+      constructor: {
+        getTileMapAssetManifest() {
+          return fallbackManifest;
+        },
+        getTileMapGeometry() {
+          return fallbackGeometry;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({
+    tileMapAssetManifest: registryManifest,
+    tileMapGeometry: registryGeometry,
+  }, () => {
+    assert.equal(renderer.getTileMapAssetManifest(), registryManifest);
+    assert.equal(renderer.getTileMapGeometry(), registryGeometry);
+  });
+  assert.equal(renderer.getTileMapAssetManifest(), fallbackManifest);
+  assert.equal(renderer.getTileMapGeometry(), fallbackGeometry);
+});
 
 test('WorldMapStaticEntryRenderer draws base, selection, feature, and site entries in stable phases', () => {
   const host = createHost();

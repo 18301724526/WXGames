@@ -14,7 +14,7 @@ const topology = {
 };
 
 test('WorldInterestWindow creates visible preload and AOI windows from one center', () => {
-  const window = WorldInterestWindow.createWindow({ x: 10, y: 9 }, {
+  const interestWindow = WorldInterestWindow.createWindow({ x: 10, y: 9 }, {
     ...topology,
     radiusX: 2,
     radiusY: 1,
@@ -24,8 +24,8 @@ test('WorldInterestWindow creates visible preload and AOI windows from one cente
     aoiRadiusY: 8,
   });
 
-  assert.equal(window.schema, 'world-interest-window-v1');
-  assert.deepEqual(window.visibleRect, {
+  assert.equal(interestWindow.schema, 'world-interest-window-v1');
+  assert.deepEqual(interestWindow.visibleRect, {
     centerX: 10,
     centerY: 9,
     minX: 8,
@@ -35,13 +35,13 @@ test('WorldInterestWindow creates visible preload and AOI windows from one cente
     width: 5,
     height: 3,
   });
-  assert.deepEqual(WorldInterestWindow.getChunkIds(window, 'visibleChunks'), ['chunk_1_1']);
-  assert.ok(window.counts.preloadChunks > window.counts.visibleChunks);
-  assert.ok(window.counts.aoiChunks >= window.counts.preloadChunks);
+  assert.deepEqual(WorldInterestWindow.getChunkIds(interestWindow, 'visibleChunks'), ['chunk_1_1']);
+  assert.ok(interestWindow.counts.preloadChunks > interestWindow.counts.visibleChunks);
+  assert.ok(interestWindow.counts.aoiChunks >= interestWindow.counts.preloadChunks);
 });
 
 test('WorldInterestWindow includes wrapped preload chunks near world edges', () => {
-  const window = WorldInterestWindow.createWindow({ x: 0, y: 0 }, {
+  const interestWindow = WorldInterestWindow.createWindow({ x: 0, y: 0 }, {
     ...topology,
     radiusX: 1,
     radiusY: 1,
@@ -51,7 +51,7 @@ test('WorldInterestWindow includes wrapped preload chunks near world edges', () 
     aoiRadiusY: 3,
   });
 
-  assert.deepEqual(WorldInterestWindow.getChunkIds(window, 'preloadChunks'), [
+  assert.deepEqual(WorldInterestWindow.getChunkIds(interestWindow, 'preloadChunks'), [
     'chunk_0_0',
     'chunk_3_0',
     'chunk_0_3',
@@ -60,24 +60,31 @@ test('WorldInterestWindow includes wrapped preload chunks near world edges', () 
 });
 
 test('WorldInterestWindow checks wrapped tile membership near world edges', () => {
-  const window = WorldInterestWindow.createWindow({ x: 0, y: 0 }, {
+  const interestWindow = WorldInterestWindow.createWindow({ x: 0, y: 0 }, {
     ...topology,
     radiusX: 1,
     radiusY: 1,
   });
 
-  assert.equal(WorldInterestWindow.containsTile(window, { x: 31, y: 0 }), true);
-  assert.equal(WorldInterestWindow.containsTile(window, { x: 0, y: 23 }), true);
-  assert.equal(WorldInterestWindow.containsTile(window, { x: 30, y: 0 }), false);
+  assert.equal(WorldInterestWindow.containsTile(interestWindow, { x: 31, y: 0 }), true);
+  assert.equal(WorldInterestWindow.containsTile(interestWindow, { x: 0, y: 23 }), true);
+  assert.equal(WorldInterestWindow.containsTile(interestWindow, { x: 30, y: 0 }), false);
 });
 
 test('WorldInterestWindow checks tile membership without reading map tiles', () => {
-  const window = WorldInterestWindow.createWindow({ x: 10, y: 9 }, {
+  const interestWindow = WorldInterestWindow.createWindow({ x: 10, y: 9 }, {
     ...topology,
     radiusX: 2,
     radiusY: 1,
   });
 
-  assert.equal(WorldInterestWindow.containsTile(window, { x: 8, y: 8 }), true);
-  assert.equal(WorldInterestWindow.containsTile(window, { x: 13, y: 8 }), false);
+  assert.equal(WorldInterestWindow.containsTile(interestWindow, { x: 8, y: 8 }), true);
+  assert.equal(WorldInterestWindow.containsTile(interestWindow, { x: 13, y: 8 }), false);
+});
+
+test('WorldInterestWindow keeps empty interest window defaults unchanged', () => {
+  assert.deepEqual(WorldInterestWindow.getChunkIds(), []);
+  assert.deepEqual(WorldInterestWindow.getChunkIds({}), []);
+  assert.equal(WorldInterestWindow.containsTile({}, { x: 0, y: 0 }), true);
+  assert.equal(WorldInterestWindow.containsTile({}, { x: 1, y: 0 }), false);
 });

@@ -80,8 +80,8 @@ test('WorldRevealStore fallback coordinate normalization does not preserve stale
   }
 });
 
-test('WorldRevealStore returns only revealed records for a streaming window', () => {
-  const window = globalThis.WorldInterestWindow.createWindow({ x: 4, y: 3 }, {
+test('WorldRevealStore returns only revealed records for a streaming interest window', () => {
+  const interestWindow = globalThis.WorldInterestWindow.createWindow({ x: 4, y: 3 }, {
     ...topology,
     radiusX: 1,
     radiusY: 1,
@@ -95,7 +95,18 @@ test('WorldRevealStore returns only revealed records for a streaming window', ()
     ],
   }, topology);
 
-  assert.deepEqual(WorldRevealStore.getTilesForWindow(store, window).map((tile) => tile.tileId), ['tile_4_3']);
+  assert.deepEqual(WorldRevealStore.getTilesForWindow(store, interestWindow).map((tile) => tile.tileId), ['tile_4_3']);
+});
+
+test('WorldRevealStore returns no window tiles when interest window data is omitted', () => {
+  const store = WorldRevealStore.createStore({
+    tiles: [
+      { x: 4, y: 3, terrain: 'plains' },
+    ],
+  }, topology);
+
+  assert.deepEqual(WorldRevealStore.getTilesForWindow(store), []);
+  assert.deepEqual(WorldRevealStore.getTilesForWindow(store, {}), []);
 });
 
 test('WorldRevealStore serializes without renderer payloads or full world arrays', () => {

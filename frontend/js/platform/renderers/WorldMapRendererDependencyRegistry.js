@@ -81,9 +81,14 @@
   }
 
   const defaultRegistry = createRegistry();
+  function getRendererDependency(key, fallback = null) {
+    return defaultRegistry.getOrFallback(key, fallback);
+  }
+
   const api = Object.freeze({
     DEFINITIONS,
     createRegistry,
+    getRendererDependency,
     resolve: resolveDependency,
     get: defaultRegistry.get.bind(defaultRegistry),
     getOrFallback: defaultRegistry.getOrFallback.bind(defaultRegistry),

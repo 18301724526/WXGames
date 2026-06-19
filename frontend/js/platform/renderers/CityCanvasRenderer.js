@@ -2,6 +2,7 @@
   class CityCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.drawingSurface = options.drawingSurface || null;
       return new Proxy(this, {
         get(target, prop, receiver) {
           const ownValue = Reflect.get(target, prop, receiver);
@@ -23,6 +24,66 @@
           return true;
         },
       });
+    }
+
+    callDrawingSurface(method, args = []) {
+      const explicitSurface = this.drawingSurface;
+      if (explicitSurface && typeof explicitSurface[method] === 'function') {
+        return explicitSurface[method](...Array.from(args));
+      }
+      const fallbackSurface = this.host;
+      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
+        return fallbackSurface[method](...Array.from(args));
+      }
+      return undefined;
+    }
+
+    addHitTarget(...args) {
+      return this.callDrawingSurface('addHitTarget', args);
+    }
+
+    createGradient(...args) {
+      return this.callDrawingSurface('createGradient', args);
+    }
+
+    drawAsset(...args) {
+      return this.callDrawingSurface('drawAsset', args);
+    }
+
+    drawButton(...args) {
+      return this.callDrawingSurface('drawButton', args);
+    }
+
+    drawPanel(...args) {
+      return this.callDrawingSurface('drawPanel', args);
+    }
+
+    drawText(...args) {
+      return this.callDrawingSurface('drawText', args);
+    }
+
+    getLayout(...args) {
+      return this.callDrawingSurface('getLayout', args);
+    }
+
+    getTopBarBottom(...args) {
+      return this.callDrawingSurface('getTopBarBottom', args);
+    }
+
+    renderArmyFormationStrip(...args) {
+      return this.callDrawingSurface('renderArmyFormationStrip', args);
+    }
+
+    renderBuildings(...args) {
+      return this.callDrawingSurface('renderBuildings', args);
+    }
+
+    renderPopulation(...args) {
+      return this.callDrawingSurface('renderPopulation', args);
+    }
+
+    truncateText(...args) {
+      return this.callDrawingSurface('truncateText', args);
     }
 
     getActiveCitySummary(state = {}) {

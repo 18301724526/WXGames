@@ -61,6 +61,37 @@ test('CanvasGameRendererCompositionFactory preserves injected child instances be
   assert.equal(composition.rendererMap.surfaceRenderer, injectedSurface);
 });
 
+test('CanvasGameRendererCompositionFactory injects host facade into drawing surface renderers', () => {
+  const calls = [];
+  const host = { id: 'game-renderer-facade' };
+  const dependencies = {
+    advisorCanvasRenderer: createClass('advisor', calls),
+    resourceTopBarCanvasRenderer: createClass('resource-top-bar', calls),
+    guideTaskCanvasRenderer: createClass('guide-task', calls),
+    civilizationCanvasRenderer: createClass('civilization', calls),
+    militaryCanvasRenderer: createClass('military', calls),
+    techCanvasRenderer: createClass('tech', calls),
+    cityCanvasRenderer: createClass('city', calls),
+    systemCanvasRenderer: createClass('system', calls),
+  };
+
+  const composition = CanvasGameRendererCompositionFactory.create({ host, dependencies });
+
+  [
+    'advisorRenderer',
+    'resourceTopBarRenderer',
+    'guideTaskRenderer',
+    'civilizationRenderer',
+    'militaryRenderer',
+    'techRenderer',
+    'cityRenderer',
+    'systemRenderer',
+  ].forEach((property) => {
+    assert.equal(composition.rendererMap[property].options.host, host);
+    assert.equal(composition.rendererMap[property].options.drawingSurface, host);
+  });
+});
+
 test('CanvasGameRendererCompositionFactory syncs presenter through descriptor fallback boundary', () => {
   const host = { presenter: { id: 'presenter' } };
   const renderer = {};

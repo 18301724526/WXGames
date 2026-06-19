@@ -18,8 +18,16 @@
     "playtest:online-manual-march": "node scripts/playtest-online-manual-march-return.js",
     "playtest:online-manual-march-complete": "node scripts/playtest-online-manual-march-return.js --mode=complete",
     "playtest:online-manual-march-templates": "node scripts/playtest-online-manual-march-return.js --mode=templates",
+    "package:code": "node scripts/package-game-code.js",
+    "package:code:list": "node scripts/package-game-code.js --dry-run",
     "profile:h5-performance": "node scripts/profile-h5-performance.js",
-    "profile:h5-phone-sim": "node scripts/profile-h5-performance.js --phone-sim"
+    "profile:h5-phone-sim": "node scripts/profile-h5-performance.js --phone-sim",
+    "lint": "eslint . --suppressions-location eslint-suppressions.json",
+    "lint:fix": "eslint . --fix --suppressions-location eslint-suppressions.json",
+    "lint:baseline": "eslint . --suppress-all --suppressions-location eslint-suppressions.json",
+    "lint:baseline:ci": "eslint . --suppress-all --suppressions-location tmp/eslint-suppressions.generated.json",
+    "lint:baseline:check": "node scripts/check-eslint-suppressions-budget.js --current eslint-suppressions.json --generated tmp/eslint-suppressions.generated.json",
+    "format:check": "prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -34,8 +42,10 @@
   },
   "homepage": "https://github.com/18301724526/WXGames#readme",
   "devDependencies": {
+    "eslint": "^9.39.4",
     "playwright": "^1.60.0",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "prettier": "^3.8.4"
   },
   "dependencies": {
     "asn1": "^0.2.6",

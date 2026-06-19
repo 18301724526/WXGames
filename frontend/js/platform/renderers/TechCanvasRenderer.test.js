@@ -8,6 +8,159 @@ const TechTreeLayoutModel = require('./TechTreeLayoutModel');
 const TechTreeCanvasRenderer = require('./TechTreeCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
+const TECH_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawCircle',
+  'drawPanel',
+  'drawPrimaryActionButton',
+  'drawText',
+  'drawTextLines',
+  'getLayout',
+  'renderSectionHeader',
+  'truncateText',
+  'wrapTextLimit',
+];
+
+function createTechView() {
+  return {
+    text: {
+      title: 'Tech',
+      subtitle: 'Choose a discovery',
+      points: '12 pts',
+      researched: '1 done',
+      available: '2 open',
+      placeholder: 'No tech',
+    },
+    tree: { nodes: [] },
+  };
+}
+
+function createTechDetail() {
+  return {
+    id: 'fire',
+    title: 'Fire',
+    eraName: 'Stone',
+    routeId: 'knowledge',
+    routeLabel: 'Knowledge',
+    statusLabel: 'Available',
+    summary: 'Unlocks cooking and warmth.',
+    canResearch: true,
+    effectRows: [{ label: 'Unlock', text: 'Campfire' }],
+    prerequisiteText: 'None',
+    pointsText: '10 pts',
+    buttonLabel: 'Research',
+    routes: ['knowledge'],
+  };
+}
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: {
+      globalAlpha: 1,
+      fillRect() {},
+      measureText(text) {
+        return { width: String(text || '').length * 6 };
+      },
+    },
+    presenter: {
+      buildTechViewState() {
+        return createTechView();
+      },
+    },
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawCircle() {
+      calls.push([label, 'drawCircle']);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawPrimaryActionButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawPrimaryActionButton', buttonLabel]);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    renderSectionHeader(title) {
+      calls.push([label, 'renderSectionHeader', title]);
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderTechSentinelPaths(renderer, fallbackHost) {
+  renderer.presenter = fallbackHost.presenter;
+  renderer.renderTechInternal({}, 100, 320, {});
+  renderer.renderTechNode(
+    { id: 'fire', title: 'Fire', route: 'knowledge', routes: ['knowledge', 'culture'] },
+    { x: 20, y: 120, width: 96, height: 96, centerX: 68, centerY: 168 },
+    { selected: true },
+  );
+  const detail = createTechDetail();
+  renderer.renderTechDetailPanel(detail, 20, 240, 330, 132);
+  renderer.renderTechDetailModal(detail);
+}
+
+test('TechCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new TechCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderTechSentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), TECH_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('TechCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new TechCanvasRenderer({ host: fallbackHost });
+
+  renderTechSentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), TECH_DRAWING_METHODS);
+});
+
 test('TechTreeLayoutModel owns tech tree layout calculations', () => {
   assert.equal(typeof TechTreeLayoutModel.getTechRouteCatalog, 'function');
   assert.equal(typeof TechTreeLayoutModel.getTechNodeRoutes, 'function');

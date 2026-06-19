@@ -148,6 +148,36 @@ function createHost(overrides = {}) {
   return host;
 }
 
+test('WorldMapLayerCanvasRenderer prefers injected world actor renderer over fallback candidates', () => {
+  const injectedActorRenderer = { id: 'injected-actor-renderer' };
+  const fallbackActorRenderer = { id: 'fallback-actor-renderer' };
+  const renderer = new WorldMapLayerCanvasRenderer({
+    host: {
+      worldActorRenderer: fallbackActorRenderer,
+      worldMapRenderer: {
+        worldMapActorHudRenderer: { worldActorRenderer: fallbackActorRenderer },
+        worldActorRenderer: fallbackActorRenderer,
+      },
+    },
+    worldActorRenderer: injectedActorRenderer,
+  });
+
+  assert.equal(renderer.getExplicitWorldActorRenderer(), injectedActorRenderer);
+});
+
+test('WorldMapLayerCanvasRenderer keeps fallback actor renderer lookup when nothing is injected', () => {
+  const fallbackActorRenderer = { id: 'fallback-actor-renderer' };
+  const renderer = new WorldMapLayerCanvasRenderer({
+    host: {
+      worldMapRenderer: {
+        worldMapActorHudRenderer: { worldActorRenderer: fallbackActorRenderer },
+      },
+    },
+  });
+
+  assert.equal(renderer.getExplicitWorldActorRenderer(), fallbackActorRenderer);
+});
+
 test('WorldMapLayerCanvasRenderer preserves map layer layout contracts', () => {
   const host = createHost();
   const renderer = new WorldMapLayerCanvasRenderer({ host });

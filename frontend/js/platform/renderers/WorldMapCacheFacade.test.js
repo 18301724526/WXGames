@@ -7,6 +7,25 @@ const WorldMapCachePolicy = require('./WorldMapCachePolicy');
 const WorldMapLayerCacheStore = require('./WorldMapLayerCacheStore');
 const WorldMapCacheFacade = require('./WorldMapCacheFacade');
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 function createCanvasFactory(calls = []) {
   return function createCanvas(width, height) {
     calls.push(['createCanvas', width, height]);
@@ -72,6 +91,35 @@ function createTileMapView() {
     geometry: { tileWidth: 192, tileHeight: 96 },
   };
 }
+
+test('WorldMapCacheFacade prefers registry dependencies over host constructor fallbacks', () => {
+  const registryPolicy = { id: 'registry-cache-policy' };
+  const registryStore = { id: 'registry-layer-cache-store' };
+  const fallbackPolicy = { id: 'fallback-cache-policy' };
+  const fallbackStore = { id: 'fallback-layer-cache-store' };
+  const renderer = new WorldMapCacheFacade({
+    host: {
+      constructor: {
+        getWorldMapCachePolicy() {
+          return fallbackPolicy;
+        },
+        getWorldMapLayerCacheStore() {
+          return fallbackStore;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({
+    worldMapCachePolicy: registryPolicy,
+    worldMapLayerCacheStore: registryStore,
+  }, () => {
+    assert.equal(renderer.getWorldMapCachePolicy(), registryPolicy);
+    assert.equal(renderer.getWorldMapLayerCacheStore(), registryStore);
+  });
+  assert.equal(renderer.getWorldMapCachePolicy(), fallbackPolicy);
+  assert.equal(renderer.getWorldMapLayerCacheStore(), fallbackStore);
+});
 
 test('WorldMapCacheFacade delegates static cache identity to cache policy', () => {
   const renderer = new WorldMapCacheFacade({ host: createHost() });

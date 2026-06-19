@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const WorldMapRendererCompositionFactory = require('./WorldMapRendererCompositionFactory');
+const WorldMapLayerCanvasRenderer = require('./WorldMapLayerCanvasRenderer');
 
 function createClass(name, calls) {
   return class {
@@ -34,6 +35,28 @@ test('WorldMapRendererCompositionFactory creates shared child renderers with one
   assert.equal(composition.worldMapLayoutFacade.name, 'layout');
   assert.equal(composition.worldMapTileMapRenderer.name, 'tile-map');
   assert.equal(calls.every((call) => call.options.host === composition.childHost), true);
+});
+
+test('WorldMapRendererCompositionFactory injects actor renderer into tile-map layer renderer', () => {
+  const fallbackActorRenderer = { id: 'fallback-actor-renderer' };
+  const renderer = {
+    worldActorRenderer: fallbackActorRenderer,
+    worldMapActorHudRenderer: { worldActorRenderer: fallbackActorRenderer },
+  };
+  const rendererHost = {
+    worldActorRenderer: fallbackActorRenderer,
+  };
+  const composition = WorldMapRendererCompositionFactory.create({
+    renderer,
+    rendererHost,
+    dependencies: {
+      worldActorCanvasRenderer: createClass('actor', []),
+      worldMapTileMapRenderer: WorldMapLayerCanvasRenderer,
+    },
+  });
+
+  assert.equal(composition.worldMapTileMapRenderer.getExplicitWorldActorRenderer(), composition.worldActorRenderer);
+  assert.notEqual(composition.worldMapTileMapRenderer.getExplicitWorldActorRenderer(), fallbackActorRenderer);
 });
 
 test('WorldMapRendererCompositionFactory preserves injected instances before class fallback', () => {

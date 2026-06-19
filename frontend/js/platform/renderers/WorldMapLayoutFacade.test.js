@@ -7,6 +7,25 @@ require('../../domain/TileMapGeometry');
 const WorldMapLayoutModel = require('./WorldMapLayoutModel');
 const WorldMapLayoutFacade = require('./WorldMapLayoutFacade');
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 const geometry = Object.freeze({
   tileWidth: 192,
   tileHeight: 96,
@@ -84,6 +103,43 @@ function createHost(overrides = {}) {
     ...overrides,
   };
 }
+
+test('WorldMapLayoutFacade prefers registry dependencies over host constructor fallbacks', () => {
+  const registryLayoutModel = { id: 'registry-layout-model' };
+  const registryGeometry = { id: 'registry-geometry' };
+  const registryManifest = { id: 'registry-manifest' };
+  const fallbackLayoutModel = { id: 'fallback-layout-model' };
+  const fallbackGeometry = { id: 'fallback-geometry' };
+  const fallbackManifest = { id: 'fallback-manifest' };
+  const renderer = new WorldMapLayoutFacade({
+    host: {
+      constructor: {
+        getWorldMapLayoutModel() {
+          return fallbackLayoutModel;
+        },
+        getTileMapGeometry() {
+          return fallbackGeometry;
+        },
+        getTileMapAssetManifest() {
+          return fallbackManifest;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({
+    worldMapLayoutModel: registryLayoutModel,
+    tileMapGeometry: registryGeometry,
+    tileMapAssetManifest: registryManifest,
+  }, () => {
+    assert.equal(renderer.getWorldMapLayoutModel(), registryLayoutModel);
+    assert.equal(renderer.getTileMapGeometry(), registryGeometry);
+    assert.equal(renderer.getTileMapAssetManifest(), registryManifest);
+  });
+  assert.equal(renderer.getWorldMapLayoutModel(), fallbackLayoutModel);
+  assert.equal(renderer.getTileMapGeometry(), fallbackGeometry);
+  assert.equal(renderer.getTileMapAssetManifest(), fallbackManifest);
+});
 
 test('WorldMapLayoutFacade delegates projection and site layout to the layout model', () => {
   const renderer = new WorldMapLayoutFacade({ host: createHost() });

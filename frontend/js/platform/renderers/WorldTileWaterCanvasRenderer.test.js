@@ -76,6 +76,29 @@ function measurePixelBounds(data, width, height, predicate) {
   return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1, count, sourceWidth: width, sourceHeight: height };
 }
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  if (dependencies) {
+    globalThis.WorldMapRendererDependencyRegistry = {
+      getRendererDependency(key) {
+        return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+      },
+    };
+  } else {
+    delete globalThis.WorldMapRendererDependencyRegistry;
+  }
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 function createHost(overrides = {}) {
   const calls = [];
   const outputRef = {};
@@ -133,6 +156,37 @@ function createHost(overrides = {}) {
   };
 }
 
+test('WorldTileWaterCanvasRenderer prefers registry dependencies over host constructor fallbacks', () => {
+  const registryManifest = { id: 'registry-manifest' };
+  const registryGeometry = { id: 'registry-geometry' };
+  const fallbackManifest = { id: 'fallback-manifest' };
+  const fallbackGeometry = { id: 'fallback-geometry' };
+  const renderer = new WorldTileWaterCanvasRenderer({
+    host: {
+      constructor: {
+        getTileMapAssetManifest() {
+          return fallbackManifest;
+        },
+        getTileMapGeometry() {
+          return fallbackGeometry;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({
+    tileMapAssetManifest: registryManifest,
+    tileMapGeometry: registryGeometry,
+  }, () => {
+    assert.equal(renderer.getTileMapAssetManifest(), registryManifest);
+    assert.equal(renderer.getTileMapGeometry(), registryGeometry);
+  });
+  withRendererDependencyRegistry(null, () => {
+    assert.equal(renderer.getTileMapAssetManifest(), fallbackManifest);
+    assert.equal(renderer.getTileMapGeometry(), fallbackGeometry);
+  });
+});
+
 test('WorldTileWaterCanvasRenderer creates and caches template water masks', () => {
   const host = createHost();
   const renderer = new WorldTileWaterCanvasRenderer({ host });
@@ -156,21 +210,23 @@ test('WorldTileWaterCanvasRenderer creates and caches template water masks', () 
 });
 
 test('WorldTileWaterCanvasRenderer expands ocean river-mouth templates into shore and river masks', () => {
-  const renderer = new WorldTileWaterCanvasRenderer({ host: createHost() });
+  withRendererDependencyRegistry(null, () => {
+    const renderer = new WorldTileWaterCanvasRenderer({ host: createHost() });
 
-  const templates = renderer.getWorldTileWaterTemplateAssets({
-    water: { kind: 'ocean' },
-    templateAssets: [
-      { key: 'river-mouth-ne', asset: 'mouth.png' },
+    const templates = renderer.getWorldTileWaterTemplateAssets({
+      water: { kind: 'ocean' },
+      templateAssets: [
+        { key: 'river-mouth-ne', asset: 'mouth.png' },
+        { key: 'coast', asset: 'coast.png' },
+      ],
+    });
+
+    assert.deepEqual(templates, [
+      { key: 'river-mouth-ne', asset: 'river-mouth-ne-shore.png', waterKind: 'ocean' },
+      { key: 'river-mouth-ne', asset: 'river-mouth-ne-river.png', waterKind: 'river' },
       { key: 'coast', asset: 'coast.png' },
-    ],
+    ]);
   });
-
-  assert.deepEqual(templates, [
-    { key: 'river-mouth-ne', asset: 'river-mouth-ne-shore.png', waterKind: 'ocean' },
-    { key: 'river-mouth-ne', asset: 'river-mouth-ne-river.png', waterKind: 'river' },
-    { key: 'coast', asset: 'coast.png' },
-  ]);
 });
 
 test('WorldTileWaterCanvasRenderer fills animated water texture from stable world coordinates', () => {
@@ -196,33 +252,35 @@ test('WorldTileWaterCanvasRenderer fills animated water texture from stable worl
 });
 
 test('WorldTileWaterCanvasRenderer draws water layers and dry template once a texture is available', () => {
-  const host = createHost();
-  const renderer = new WorldTileWaterCanvasRenderer({ host });
-  const calls = [];
-  renderer.drawWorldTileWaterLayer = function drawWorldTileWaterLayer(...args) {
-    calls.push(['drawWorldTileWaterLayer', ...args]);
-    return true;
-  };
-  renderer.drawWorldTileDryTemplate = function drawWorldTileDryTemplate(...args) {
-    calls.push(['drawWorldTileDryTemplate', ...args]);
-    return true;
-  };
+  withRendererDependencyRegistry(null, () => {
+    const host = createHost();
+    const renderer = new WorldTileWaterCanvasRenderer({ host });
+    const calls = [];
+    renderer.drawWorldTileWaterLayer = function drawWorldTileWaterLayer(...args) {
+      calls.push(['drawWorldTileWaterLayer', ...args]);
+      return true;
+    };
+    renderer.drawWorldTileDryTemplate = function drawWorldTileDryTemplate(...args) {
+      calls.push(['drawWorldTileDryTemplate', ...args]);
+      return true;
+    };
 
-  const drawn = renderer.drawWorldTileWater(
-    {
-      water: { kind: 'river', asset: 'water-river.png' },
-      templateAssets: [{ key: 'river', asset: 'river-template.png' }],
-    },
-    { x: 10, y: 20 },
-    { x: 1, y: 2, width: 30, height: 40 },
-    { scale: 1, geometry: {} },
-    { waterTimeMs: 1200 },
-  );
+    const drawn = renderer.drawWorldTileWater(
+      {
+        water: { kind: 'river', asset: 'water-river.png' },
+        templateAssets: [{ key: 'river', asset: 'river-template.png' }],
+      },
+      { x: 10, y: 20 },
+      { x: 1, y: 2, width: 30, height: 40 },
+      { scale: 1, geometry: {} },
+      { waterTimeMs: 1200 },
+    );
 
-  assert.equal(drawn, true);
-  assert.equal(calls[0][0], 'drawWorldTileWaterLayer');
-  assert.equal(calls[0][3].naturalWidth, 10);
-  assert.equal(calls.at(-1)[0], 'drawWorldTileDryTemplate');
+    assert.equal(drawn, true);
+    assert.equal(calls[0][0], 'drawWorldTileWaterLayer');
+    assert.equal(calls[0][3].naturalWidth, 10);
+    assert.equal(calls.at(-1)[0], 'drawWorldTileDryTemplate');
+  });
 });
 
 test('CanvasGameRenderer exposes world tile water rendering through facade', () => {

@@ -1,0 +1,688 @@
+{
+  "backend/frontend-api-example.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/routes/gameRoutes.js": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "backend/routes/opsRoutes.js": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "backend/services/BattleService.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/services/DefenderLeaderService.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/services/TaskDefinitionService.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/services/TerritoryService.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "backend/services/VersionService.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "backend/services/WorldMapService.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/services/famousPerson/FamousPersonProgression.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/services/logService.js": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "backend/services/worldExplorer/WorldExplorerActions.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/services/worldMap/WorldMapVisionHistory.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/tests/WorldExplorerService.test.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "backend/world-worker.js": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "frontend/auth.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/debug/ClientOperationLog.js": {
+    "no-empty": {
+      "count": 5
+    }
+  },
+  "frontend/js/debug/ClientOperationLog.test.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/debug/CodexWorldMapDiag.js": {
+    "no-empty": {
+      "count": 2
+    }
+  },
+  "frontend/js/debug/H5LoadTrace.js": {
+    "no-empty": {
+      "count": 3
+    }
+  },
+  "frontend/js/debug/WorldMarchTrace.js": {
+    "no-empty": {
+      "count": 5
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/domain/TileMapGeometry.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/domain/WorldActorProjection.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/domain/WorldChunkAddress.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/domain/WorldFogVisionModel.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/domain/WorldFogVisualSnapshot.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/domain/WorldInterestWindow.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/domain/WorldMapEntitySnapshot.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/domain/WorldMapInputActionMap.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/domain/WorldMapInputIntent.js": {
+    "no-undef": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/domain/WorldMapPerformanceBudget.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/domain/WorldMapPickingModel.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/domain/WorldMapRenderSnapshot.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/domain/WorldMapSelectionResolver.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/domain/WorldMapVisibilityModel.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/domain/WorldMarchGeometry.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/domain/WorldMarchProgressSnapshot.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/domain/WorldRevealStore.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/domain/WorldTime.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/domain/WorldTopology.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasActionDispatcher.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasCityActionHandlers.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/CanvasGameApp.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasGameAppCommands.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 11
+    }
+  },
+  "frontend/js/platform/CanvasGameAppGuideUi.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "frontend/js/platform/CanvasGameAppInputRouter.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasGameAppStateSync.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/CanvasGameRenderer.js": {
+    "no-unused-vars": {
+      "count": 9
+    }
+  },
+  "frontend/js/platform/CanvasGameRendererCompositionFactory.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/platform/CanvasGameRendererPageFacades.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "frontend/js/platform/CanvasGameShell.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/platform/CanvasGameShellCommands.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/CanvasGameShellGuideUi.js": {
+    "no-unused-vars": {
+      "count": 6
+    }
+  },
+  "frontend/js/platform/CanvasGameShellInputRouter.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasGameShellMounting.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasGameShellRenderingRuntime.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasGameShellWorldMapLayerBridge.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/CanvasGameWorldActorAnimationRuntime.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/CanvasShellActionHandlers.js": {
+    "no-unused-vars": {
+      "count": 6
+    }
+  },
+  "frontend/js/platform/CanvasTerritoryActionHandlers.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/platform/DebugOverlayRegistry.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/H5CanvasGameRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/H5CanvasInputController.js": {
+    "no-empty": {
+      "count": 2
+    },
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/MiniGameCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/WorldMapRuntime.js": {
+    "no-unused-vars": {
+      "count": 10
+    }
+  },
+  "frontend/js/platform/WorldMapRuntimeBakePolicy.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/WorldMapRuntimeCoordinator.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/WorldMapRuntimeRenderPolicy.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/WorldMapVisualPluginRegistry.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/AdvisorCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/BattleCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "frontend/js/platform/renderers/BuildingCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/platform/renderers/CanvasAssetRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/CanvasFrameRenderer.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/platform/renderers/CanvasPreloadAssetManifest.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/CanvasSurfaceHitTargets.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/CanvasSurfaceRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/CityCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/CityPeopleCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/CivilizationCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/EventCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/FamousCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/GuideTaskCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/platform/renderers/HudOverlayCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/HudTabPageCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/MapCommandCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/platform/renderers/MilitaryCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/OverlayCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/SystemCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/TabBarCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/TechCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/TutorialAdvisorDialogueRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/TutorialCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/WorldActorCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/WorldActorCanvasRenderer.test.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldFogCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldFogMaskGenerator.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapActorHudRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapCachePolicy.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapFastDragCompositeRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapHitTargetModel.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 7
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapLayoutModel.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapRendererDependencyRegistry.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapStaticEntryRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapTileMapRenderer.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapWaterEntryRenderer.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/platform/renderers/WorldMapWaterLayerRenderer.test.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/platform/renderers/WorldTileWaterCanvasRenderer.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "frontend/js/state/UIStatePresenter.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/state/UIStatePresenterDelegates.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/state/presenters/MilitaryPresenter.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/state/presenters/TaskGuidePresenter.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/state/presenters/WorldTileMapExplorerNormalizer.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/state/presenters/WorldTileMapPresenter.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "frontend/js/state/presenters/WorldTileMapTileNormalizer.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/tutorial/TutorialGuideController.test.js": {
+    "no-dupe-keys": {
+      "count": 1
+    }
+  },
+  "frontend/js/ui/H5UpdateRuntimeAdapter.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/tools/tile-map-lab.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 9
+    }
+  },
+  "scripts/check-retired-legacy-code.test.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/playtest-online-manual-march-return.js": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "scripts/playtest-online-reset-spawn.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/playtest-online-tutorial.js": {
+    "no-empty": {
+      "count": 6
+    }
+  },
+  "scripts/profile-h5-performance.js": {
+    "no-empty": {
+      "count": 5
+    }
+  },
+  "scripts/verify-production-security-config.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  }
+}

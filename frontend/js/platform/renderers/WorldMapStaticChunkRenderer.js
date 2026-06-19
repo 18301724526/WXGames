@@ -27,7 +27,9 @@
     }
 
     getWorldMapCachePolicy() {
-      return this.host?.constructor?.getWorldMapCachePolicy?.() || null;
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldMapCachePolicy')
+        || this.host?.constructor?.getWorldMapCachePolicy?.()
+        || null;
     }
 
     getWorldTileStaticChunkCacheKey(tileMapView = {}, viewport = {}, layout = {}, uiState = {}, options = {}) {

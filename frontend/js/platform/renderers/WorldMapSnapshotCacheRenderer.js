@@ -27,7 +27,9 @@
     }
 
     getWorldMapCachePolicy() {
-      return this.host?.constructor?.getWorldMapCachePolicy?.() || null;
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldMapCachePolicy')
+        || this.host?.constructor?.getWorldMapCachePolicy?.()
+        || null;
     }
 
     renderWorldTileSnapshotChunkCacheMap(cacheMap = null, viewport = {}, frame = {}) {

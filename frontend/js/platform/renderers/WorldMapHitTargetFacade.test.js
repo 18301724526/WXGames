@@ -8,6 +8,25 @@ const WorldMapLayoutModel = require('./WorldMapLayoutModel');
 const WorldMapHitTargetModel = require('./WorldMapHitTargetModel');
 const WorldMapHitTargetFacade = require('./WorldMapHitTargetFacade');
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 const geometry = Object.freeze({
   tileWidth: 192,
   tileHeight: 96,
@@ -90,6 +109,51 @@ function createHost(overrides = {}) {
   };
   return host;
 }
+
+test('WorldMapHitTargetFacade prefers registry dependencies over host constructor fallbacks', () => {
+  const registryHitTargetModel = { id: 'registry-hit-target-model' };
+  const registryLayoutModel = { id: 'registry-layout-model' };
+  const registryGeometry = { id: 'registry-geometry' };
+  const registryManifest = { id: 'registry-manifest' };
+  const fallbackHitTargetModel = { id: 'fallback-hit-target-model' };
+  const fallbackLayoutModel = { id: 'fallback-layout-model' };
+  const fallbackGeometry = { id: 'fallback-geometry' };
+  const fallbackManifest = { id: 'fallback-manifest' };
+  const renderer = new WorldMapHitTargetFacade({
+    host: {
+      constructor: {
+        getWorldMapHitTargetModel() {
+          return fallbackHitTargetModel;
+        },
+        getWorldMapLayoutModel() {
+          return fallbackLayoutModel;
+        },
+        getTileMapGeometry() {
+          return fallbackGeometry;
+        },
+        getTileMapAssetManifest() {
+          return fallbackManifest;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({
+    worldMapHitTargetModel: registryHitTargetModel,
+    worldMapLayoutModel: registryLayoutModel,
+    tileMapGeometry: registryGeometry,
+    tileMapAssetManifest: registryManifest,
+  }, () => {
+    assert.equal(renderer.getWorldMapHitTargetModel(), registryHitTargetModel);
+    assert.equal(renderer.getWorldMapLayoutModel(), registryLayoutModel);
+    assert.equal(renderer.getTileMapGeometry(), registryGeometry);
+    assert.equal(renderer.getTileMapAssetManifest(), registryManifest);
+  });
+  assert.equal(renderer.getWorldMapHitTargetModel(), fallbackHitTargetModel);
+  assert.equal(renderer.getWorldMapLayoutModel(), fallbackLayoutModel);
+  assert.equal(renderer.getTileMapGeometry(), fallbackGeometry);
+  assert.equal(renderer.getTileMapAssetManifest(), fallbackManifest);
+});
 
 test('WorldMapHitTargetFacade registers site targets from hit-target model output', () => {
   const host = createHost();

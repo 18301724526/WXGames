@@ -28,6 +28,17 @@
     { property: 'frameRenderer', classOption: 'frameRendererClass', dependencyKey: 'canvasFrameRenderer', globalName: 'CanvasFrameRenderer', requirePath: './renderers/CanvasFrameRenderer' },
   ]);
 
+  const DRAWING_SURFACE_RENDERER_PROPERTIES = new Set([
+    'advisorRenderer',
+    'resourceTopBarRenderer',
+    'guideTaskRenderer',
+    'civilizationRenderer',
+    'militaryRenderer',
+    'techRenderer',
+    'cityRenderer',
+    'systemRenderer',
+  ]);
+
   function resolveSharedDependency(spec) {
     if (global[spec.globalName]) return global[spec.globalName];
     if (typeof module !== 'undefined' && module.exports) {
@@ -64,7 +75,8 @@
       if (this.options[spec.property]) return this.options[spec.property];
       const RendererClass = this.getRendererClass(spec);
       if (!RendererClass) return null;
-      return new RendererClass({ host: this.host });
+      const extraOptions = DRAWING_SURFACE_RENDERER_PROPERTIES.has(spec.property) ? { drawingSurface: this.host } : {};
+      return new RendererClass({ host: this.host, ...extraOptions });
     }
 
     createComposition() {

@@ -68,11 +68,15 @@
     }
 
     getTileMapAssetManifest() {
-      return this.host?.constructor?.getTileMapAssetManifest?.() || this.constructor.getTileMapAssetManifest();
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('tileMapAssetManifest')
+        || this.host?.constructor?.getTileMapAssetManifest?.()
+        || this.constructor.getTileMapAssetManifest();
     }
 
     getTileMapGeometry() {
-      return this.host?.constructor?.getTileMapGeometry?.() || this.constructor.getTileMapGeometry();
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('tileMapGeometry')
+        || this.host?.constructor?.getTileMapGeometry?.()
+        || this.constructor.getTileMapGeometry();
     }
 
     getMapCache(name) {

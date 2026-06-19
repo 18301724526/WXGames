@@ -163,10 +163,10 @@
     return Object.freeze(ids.map((id) => getTile(store, id)).filter(Boolean));
   }
 
-  function getTilesForWindow(store = {}, window = {}) {
+  function getTilesForWindow(store = {}, interestWindow = {}) {
     const chunkIds = [
-      ...(Array.isArray(window.visibleChunks) ? window.visibleChunks : []),
-      ...(Array.isArray(window.preloadChunks) ? window.preloadChunks : []),
+      ...(Array.isArray(interestWindow.visibleChunks) ? interestWindow.visibleChunks : []),
+      ...(Array.isArray(interestWindow.preloadChunks) ? interestWindow.preloadChunks : []),
     ].map((chunk) => chunk.chunkId).filter(Boolean);
     const seen = new Set();
     const result = [];

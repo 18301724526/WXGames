@@ -27,11 +27,15 @@
     }
 
     getWorldMapCachePolicy() {
-      return this.host?.constructor?.getWorldMapCachePolicy?.() || null;
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldMapCachePolicy')
+        || this.host?.constructor?.getWorldMapCachePolicy?.()
+        || null;
     }
 
     getWorldMapLayerCacheStore() {
-      return this.host?.constructor?.getWorldMapLayerCacheStore?.() || null;
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldMapLayerCacheStore')
+        || this.host?.constructor?.getWorldMapLayerCacheStore?.()
+        || null;
     }
 
     normalizeTileCoord(tile = {}) {

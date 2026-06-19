@@ -168,23 +168,23 @@
     });
   }
 
-  function getChunkIds(window = {}, key = 'preloadChunks') {
-    const chunks = Array.isArray(window[key]) ? window[key] : [];
+  function getChunkIds(interestWindow = {}, key = 'preloadChunks') {
+    const chunks = Array.isArray(interestWindow[key]) ? interestWindow[key] : [];
     return Object.freeze(chunks.map((chunk) => chunk.chunkId).filter(Boolean));
   }
 
-  function containsTile(window = {}, tile = {}, key = 'visibleRect') {
-    const rect = window[key] || {};
-    const hasTopology = Boolean(window.topology);
+  function containsTile(interestWindow = {}, tile = {}, key = 'visibleRect') {
+    const rect = interestWindow[key] || {};
+    const hasTopology = Boolean(interestWindow.topology);
     const coord = WorldTopology?.normalizeCoord
-      ? WorldTopology.normalizeCoord(tile, window.topology || {})
+      ? WorldTopology.normalizeCoord(tile, interestWindow.topology || {})
       : (TileCoord?.normalizeCoord
         ? TileCoord.normalizeCoord(tile)
         : {
           x: toInteger(tile.x ?? tile.q, 0),
           y: toInteger(tile.y ?? tile.r, 0),
         });
-    const topology = window.topology || {};
+    const topology = interestWindow.topology || {};
     const wrapping = hasTopology && (topology.wrapping === undefined ? true : topology.wrapping !== false);
     const xRanges = WorldChunkAddress?.getWrappedRanges
       ? WorldChunkAddress.getWrappedRanges(rect.minX, rect.maxX, topology.worldWidth, wrapping)

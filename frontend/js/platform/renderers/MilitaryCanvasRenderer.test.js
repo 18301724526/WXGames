@@ -87,6 +87,113 @@ function createScoutView() {
   };
 }
 
+const MILITARY_DRAWING_METHODS = [
+  'addHitTarget',
+  'drawAsset',
+  'drawButton',
+  'drawFamousPortrait',
+  'drawPanel',
+  'drawProgressBar',
+  'drawText',
+  'drawTextLines',
+  'getLayout',
+  'renderMilitaryWorldView',
+  'renderSectionHeader',
+  'truncateText',
+  'wrapTextLimit',
+];
+
+function createDrawingSurfaceSentinel(label, calls = [], overrides = {}) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: { fillRect() {}, globalAlpha: 1 },
+    presenter: createHost(overrides).presenter,
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawFamousPortrait() {
+      calls.push([label, 'drawFamousPortrait']);
+      return false;
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawProgressBar(_x, _y, _width, _height, percentage) {
+      calls.push([label, 'drawProgressBar', percentage]);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    renderMilitaryWorldView(...args) {
+      calls.push([label, 'renderMilitaryWorldView', args]);
+    },
+    renderSectionHeader(title) {
+      calls.push([label, 'renderSectionHeader', title]);
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderMilitarySentinelViews(renderer, presenterSource) {
+  renderer.presenter = presenterSource.presenter;
+  renderer.renderMilitary({}, 100, 480, {});
+  renderer.presenter = createHost({ activeView: 'scout' }).presenter;
+  renderer.renderMilitary({}, 100, 520, {});
+  renderer.presenter = createHost({ activeView: 'world' }).presenter;
+  renderer.renderMilitary({}, 100, 480, {});
+}
+
+test('MilitaryCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new MilitaryCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderMilitarySentinelViews(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), MILITARY_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('MilitaryCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new MilitaryCanvasRenderer({ host: fallbackHost });
+
+  renderMilitarySentinelViews(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), MILITARY_DRAWING_METHODS);
+});
+
 test('MilitaryCanvasRenderer preserves military tab and formation hit targets', () => {
   const host = createHost();
   const renderer = new MilitaryCanvasRenderer({ host });

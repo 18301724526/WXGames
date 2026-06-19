@@ -92,6 +92,7 @@
   class WorldMapLayerCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.injectedWorldActorRenderer = options.worldActorRenderer || null;
       return new Proxy(this, {
         get(target, prop, receiver) {
           const ownValue = Reflect.get(target, prop, receiver);
@@ -566,6 +567,8 @@
     }
 
     getExplicitWorldActorRenderer() {
+      if (this.injectedWorldActorRenderer) return this.injectedWorldActorRenderer;
+
       const renderer = this.worldMapRenderer || this.host?.worldMapRenderer || null;
       const worldMapRenderer = renderer?.worldMapRenderer || renderer || null;
       const hudRenderer = this.worldMapActorHudRenderer

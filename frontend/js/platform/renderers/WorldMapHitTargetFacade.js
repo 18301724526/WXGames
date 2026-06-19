@@ -27,19 +27,27 @@
     }
 
     getWorldMapHitTargetModel() {
-      return this.host?.constructor?.getWorldMapHitTargetModel?.() || null;
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldMapHitTargetModel')
+        || this.host?.constructor?.getWorldMapHitTargetModel?.()
+        || null;
     }
 
     getWorldMapLayoutModel() {
-      return this.host?.constructor?.getWorldMapLayoutModel?.() || null;
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldMapLayoutModel')
+        || this.host?.constructor?.getWorldMapLayoutModel?.()
+        || null;
     }
 
     getTileMapGeometry() {
-      return this.host?.constructor?.getTileMapGeometry?.() || null;
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('tileMapGeometry')
+        || this.host?.constructor?.getTileMapGeometry?.()
+        || null;
     }
 
     getTileMapAssetManifest() {
-      return this.host?.constructor?.getTileMapAssetManifest?.() || {};
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('tileMapAssetManifest')
+        || this.host?.constructor?.getTileMapAssetManifest?.()
+        || {};
     }
 
     normalizeTileCoord(tile = {}) {

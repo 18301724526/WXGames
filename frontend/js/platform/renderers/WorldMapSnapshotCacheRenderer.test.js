@@ -13,6 +13,25 @@ function createWork(id = 'work') {
   };
 }
 
+function withRendererDependencyRegistry(dependencies = {}, callback = null) {
+  const hadRegistry = Object.prototype.hasOwnProperty.call(globalThis, 'WorldMapRendererDependencyRegistry');
+  const previousRegistry = globalThis.WorldMapRendererDependencyRegistry;
+  globalThis.WorldMapRendererDependencyRegistry = {
+    getRendererDependency(key) {
+      return Object.prototype.hasOwnProperty.call(dependencies, key) ? dependencies[key] : null;
+    },
+  };
+  try {
+    return callback();
+  } finally {
+    if (hadRegistry) {
+      globalThis.WorldMapRendererDependencyRegistry = previousRegistry;
+    } else {
+      delete globalThis.WorldMapRendererDependencyRegistry;
+    }
+  }
+}
+
 function createHost(overrides = {}) {
   const calls = [];
   const host = {
@@ -59,6 +78,25 @@ function createHost(overrides = {}) {
   };
   return host;
 }
+
+test('WorldMapSnapshotCacheRenderer prefers registry cache policy over host constructor fallback', () => {
+  const registryPolicy = { id: 'registry-cache-policy' };
+  const fallbackPolicy = { id: 'fallback-cache-policy' };
+  const renderer = new WorldMapSnapshotCacheRenderer({
+    host: {
+      constructor: {
+        getWorldMapCachePolicy() {
+          return fallbackPolicy;
+        },
+      },
+    },
+  });
+
+  withRendererDependencyRegistry({ worldMapCachePolicy: registryPolicy }, () => {
+    assert.equal(renderer.getWorldMapCachePolicy(), registryPolicy);
+  });
+  assert.equal(renderer.getWorldMapCachePolicy(), fallbackPolicy);
+});
 
 test('WorldMapSnapshotCacheRenderer redraws layered snapshot caches and fog mask', () => {
   const host = createHost();

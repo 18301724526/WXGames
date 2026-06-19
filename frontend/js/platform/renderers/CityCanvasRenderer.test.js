@@ -76,6 +76,111 @@ function createState() {
   };
 }
 
+const CITY_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawPanel',
+  'drawText',
+  'getLayout',
+  'getTopBarBottom',
+  'renderArmyFormationStrip',
+  'renderBuildings',
+  'renderPopulation',
+  'truncateText',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: { fillRect() {}, globalAlpha: 1 },
+    presenter: createHost().presenter,
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    getTopBarBottom() {
+      calls.push([label, 'getTopBarBottom']);
+      return 72;
+    },
+    renderArmyFormationStrip(...args) {
+      calls.push([label, 'renderArmyFormationStrip', args]);
+      return true;
+    },
+    renderBuildings(...args) {
+      calls.push([label, 'renderBuildings', args]);
+      return true;
+    },
+    renderPopulation(...args) {
+      calls.push([label, 'renderPopulation', args]);
+      return 360;
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderCitySentinelPaths(renderer, fallbackHost) {
+  renderer.presenter = fallbackHost.presenter;
+  renderer.renderCitySwitcherMenu(createState());
+  renderer.renderCityManagementPanel(createState(), { activeCityManagementTab: 'buildings', activeBuildingCategory: 'housing' });
+  renderer.renderCityManagementPanel(createState(), { activeCityManagementTab: 'people' });
+  renderer.renderCityMilitaryPanel(createState(), { id: 'city-2', military: { soldiers: 8 } }, 10, 100, 360, 300);
+}
+
+test('CityCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new CityCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderCitySentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), CITY_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('CityCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new CityCanvasRenderer({ host: fallbackHost });
+
+  renderCitySentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), CITY_DRAWING_METHODS);
+});
+
 test('CityCanvasRenderer resolves active city summary from city state and territory state', () => {
   const renderer = new CityCanvasRenderer({ host: createHost() });
 

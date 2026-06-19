@@ -95,6 +95,104 @@ function createTaskCenterView() {
   };
 }
 
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    bottomSafeArea: 12,
+    addHitTarget(rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+test('GuideTaskCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  fallbackHost.presenter = createHost().presenter;
+  const renderer = new GuideTaskCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+  renderer.presenter = fallbackHost.presenter;
+  renderer.width = 390;
+  renderer.height = 844;
+  renderer.bottomSafeArea = 12;
+
+  renderer.renderTaskCenterPanel({}, { activeTaskCenterTab: 'main' });
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), [
+    'addHitTarget',
+    'createGradient',
+    'drawButton',
+    'drawPanel',
+    'drawText',
+    'drawTextLines',
+    'getLayout',
+    'truncateText',
+    'wrapTextLimit',
+  ]);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('GuideTaskCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  fallbackHost.presenter = createHost().presenter;
+  const renderer = new GuideTaskCanvasRenderer({ host: fallbackHost });
+  renderer.presenter = fallbackHost.presenter;
+  renderer.width = 390;
+  renderer.height = 844;
+  renderer.bottomSafeArea = 12;
+
+  renderer.renderTaskCenterPanel({}, { activeTaskCenterTab: 'main' });
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), [
+    'addHitTarget',
+    'createGradient',
+    'drawButton',
+    'drawPanel',
+    'drawText',
+    'drawTextLines',
+    'getLayout',
+    'truncateText',
+    'wrapTextLimit',
+  ]);
+});
+
 test('GuideTaskCanvasRenderer preserves guidebook modal hit targets', () => {
   const host = createHost();
   const renderer = new GuideTaskCanvasRenderer({ host });

@@ -54,6 +54,10 @@ test('WorldMapRendererDependencyRegistry handles unknown keys and explicit fallb
   assert.equal(registry.getOrFallback('missingDependency', fallback), fallback);
 });
 
+test('WorldMapRendererDependencyRegistry exposes shared renderer dependency helper', () => {
+  assert.equal(WorldMapRendererDependencyRegistry.getRendererDependency('missingDependency'), null);
+});
+
 test('WorldMapRendererDependencyRegistry loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

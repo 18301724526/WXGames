@@ -62,6 +62,104 @@ function createHost(overrides = {}) {
   return host;
 }
 
+const CIVILIZATION_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawLine',
+  'drawPanel',
+  'drawProgressBar',
+  'drawText',
+  'drawTextLines',
+  'getLayout',
+  'renderSectionHeader',
+  'truncateText',
+  'wrapTextLimit',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: { fillRect() {}, globalAlpha: 1 },
+    presenter: createHost().presenter,
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawLine() {
+      calls.push([label, 'drawLine']);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawProgressBar(_x, _y, _width, _height, percentage) {
+      calls.push([label, 'drawProgressBar', percentage]);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    renderSectionHeader(title) {
+      calls.push([label, 'renderSectionHeader', title]);
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+test('CivilizationCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new CivilizationCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderer.renderCivilization({ tutorial: { step: 'civ' } }, 100, 460, { canOpenCivilizationTab: true });
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), CIVILIZATION_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('CivilizationCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new CivilizationCanvasRenderer({ host: fallbackHost });
+
+  renderer.renderCivilization({ tutorial: { step: 'civ' } }, 100, 460, { canOpenCivilizationTab: true });
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), CIVILIZATION_DRAWING_METHODS);
+});
+
 test('CivilizationCanvasRenderer renders overview, era and feature areas', () => {
   const host = createHost();
   const renderer = new CivilizationCanvasRenderer({ host });
