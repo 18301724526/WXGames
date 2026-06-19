@@ -16,6 +16,41 @@ function createHost(overrides = {}) {
   };
 }
 
+test('WorldMapFogMaskContextRenderer reads dynamic host tile map context through explicit getter', () => {
+  const firstContext = createHost().lastWorldTileMapContext;
+  const secondContext = {
+    actors: [{ id: 'actor-2' }],
+    visibilityActors: [{ id: 'visibility-2' }],
+    renderSnapshot: { schema: 'world-map-render-snapshot-v1', signature: 'snapshot-2' },
+  };
+  const host = createHost({ lastWorldTileMapContext: firstContext });
+  const renderer = new WorldMapFogMaskContextRenderer({ host });
+
+  assert.equal(renderer.lastWorldTileMapContext, firstContext);
+  host.lastWorldTileMapContext = secondContext;
+  assert.equal(renderer.lastWorldTileMapContext, secondContext);
+});
+
+test('WorldMapFogMaskContextRenderer forwards fog context writes to host', () => {
+  const host = createHost();
+  const renderer = new WorldMapFogMaskContextRenderer({ host });
+  const firstContext = { id: 'fog-context-1' };
+  const secondContext = { id: 'fog-context-2' };
+
+  renderer.lastWorldFogContext = firstContext;
+  assert.equal(host.lastWorldFogContext, firstContext);
+  host.lastWorldFogContext = secondContext;
+  assert.equal(renderer.lastWorldFogContext, secondContext);
+});
+
+test('WorldMapFogMaskContextRenderer does not proxy unknown host properties', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new WorldMapFogMaskContextRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('WorldMapFogMaskContextRenderer captures renderer-safe fog context', () => {
   const host = createHost();
   const renderer = new WorldMapFogMaskContextRenderer({ host });
