@@ -261,6 +261,41 @@ test('TutorialCanvasRenderer uses world-map layer anchor over HUD fallback for i
   ]);
 });
 
+test('TutorialCanvasRenderer prefers explicit intro anchor source over host.host world-map renderer', () => {
+  const explicitSource = {
+    getWorldSiteCanvasAnchor(siteId) {
+      return {
+        siteId,
+        __sentinelSource: 'explicit',
+        hitRect: { x: 11, y: 22, width: 33, height: 44 },
+      };
+    },
+  };
+  const hostHostSource = {
+    getWorldSiteCanvasAnchor(siteId) {
+      return {
+        siteId,
+        __sentinelSource: 'hosthost',
+        hitRect: { x: 99, y: 88, width: 77, height: 66 },
+      };
+    },
+  };
+  const host = createHost({
+    host: {
+      worldMapRenderer: hostHostSource,
+    },
+  });
+  const renderer = new TutorialCanvasRenderer({ host, advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } } });
+
+  const hostHostAnchor = host.host.worldMapRenderer.getWorldSiteCanvasAnchor('capital');
+  const source = renderer.getWorldSiteIntroAnchorSource({ worldMapAnchorSource: explicitSource });
+  const anchor = source.getWorldSiteCanvasAnchor('capital');
+
+  assert.equal(hostHostAnchor.__sentinelSource, 'hosthost');
+  assert.equal(source, explicitSource);
+  assert.equal(anchor.__sentinelSource, 'explicit');
+});
+
 test('CanvasGameRenderer exposes tutorial helpers through the tutorial renderer facade', () => {
   const renderer = new CanvasGameRenderer({
     ctx: {},
