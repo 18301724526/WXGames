@@ -8,6 +8,28 @@
     }
   }
 
+  function getWorldActorOverlayAssemblyReason(assembly, context = {}) {
+    if (assembly.enabled !== true) return 'flag_disabled';
+    if (assembly.canvasCreated !== true) {
+      return context.runtimeHasEnsureLayerCanvas ? 'canvas_not_created' : 'runtime_no_ensureLayerCanvas';
+    }
+    if (!context.worldMapRenderer) return 'terrain_renderer_missing';
+    if (!context.worldActorLayerRenderer) return 'actor_renderer_missing';
+    if (!context.terrainCtx) return 'terrain_ctx_missing';
+    if (!context.actorCtx) return 'actor_ctx_missing';
+    if (assembly.ctxSeparated !== true) return 'ctx_shared';
+    return 'ok';
+  }
+
+  function recordWorldActorOverlayAssembly(assembly) {
+    global.ClientOperationLog?.record?.('worldActorOverlay:assembly', {
+      enabled: assembly.enabled,
+      canvasCreated: assembly.canvasCreated,
+      ctxSeparated: assembly.ctxSeparated,
+      reason: assembly.reason,
+    });
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -24,7 +46,14 @@ createRenderer(canvas) {
       const mapCanvas = this.ensureCanvasLayer?.('worldMap', { padding: worldMapLayerPadding }) || null;
       const fogEnabled = this.isCanvasLayerEnabled?.('worldFog') === true;
       const fogCanvas = this.ensureCanvasLayer?.('worldFog', { padding: worldMapLayerPadding }) || null;
-      const actorCanvas = this.ensureCanvasLayer?.('worldActor', { padding: worldMapLayerPadding }) || null;
+      const actorEnabled = this.isCanvasLayerEnabled?.('worldActor') === true;
+      const actorCanvas = actorEnabled ? (this.ensureCanvasLayer?.('worldActor', { padding: worldMapLayerPadding }) || null) : null;
+      const actorAssembly = {
+        enabled: actorEnabled,
+        canvasCreated: Boolean(actorCanvas),
+        ctxSeparated: false,
+        reason: actorEnabled ? 'pending' : 'flag_disabled',
+      };
       if (mapCanvas && !this.worldMapRenderer) {
         const layerMetrics = this.getCanvasLayerMetrics?.('worldMap', {}) || {};
         this.worldMapRenderer = new RendererCtor({
@@ -77,19 +106,31 @@ createRenderer(canvas) {
         this.worldActorLayerRenderer.worldMapRenderer = this.worldMapRenderer;
         this.worldMapRenderer.worldActorOverlayCanvas = actorCanvas;
         this.worldMapRenderer.worldActorOverlayCtx = this.worldActorLayerRenderer.ctx || null;
-        this.worldMapRenderer.worldActorOverlaySeparate = Boolean(
-          this.worldMapRenderer.ctx
-          && this.worldActorLayerRenderer.ctx
-          && this.worldMapRenderer.ctx !== this.worldActorLayerRenderer.ctx,
-        );
         this.worldActorLayerRenderer.worldActorOverlayCanvas = actorCanvas;
-        this.worldActorLayerRenderer.worldActorOverlaySeparate = this.worldMapRenderer.worldActorOverlaySeparate;
         if (typeof this.worldActorLayerRenderer.setAssetsChangedHandler === 'function') {
           this.worldActorLayerRenderer.setAssetsChangedHandler(() => {
             this.requestWorldMapRenderAnimationFrame({ force: true, invalidateWorldTileView: false });
           });
         }
       }
+      const terrainCtx = this.worldMapRenderer?.ctx || null;
+      const actorCtx = this.worldActorLayerRenderer?.ctx || null;
+      actorAssembly.ctxSeparated = Boolean(terrainCtx && actorCtx && terrainCtx !== actorCtx);
+      actorAssembly.reason = getWorldActorOverlayAssemblyReason(actorAssembly, {
+        runtimeHasEnsureLayerCanvas: typeof this.runtime?.ensureLayerCanvas === 'function',
+        worldMapRenderer: this.worldMapRenderer || null,
+        worldActorLayerRenderer: this.worldActorLayerRenderer || null,
+        terrainCtx,
+        actorCtx,
+      });
+      this.worldActorOverlayAssembly = actorAssembly;
+      if (this.worldMapRenderer) {
+        this.worldMapRenderer.worldActorOverlaySeparate = this.worldActorOverlayAssembly.ctxSeparated;
+      }
+      if (this.worldActorLayerRenderer) {
+        this.worldActorLayerRenderer.worldActorOverlaySeparate = this.worldActorOverlayAssembly.ctxSeparated;
+      }
+      recordWorldActorOverlayAssembly(this.worldActorOverlayAssembly);
       const FogRendererCtor = fogEnabled ? (WorldFogCanvasRendererBase || global.WorldFogCanvasRenderer) : null;
       if (fogEnabled && fogCanvas && !this.worldFogRenderer && FogRendererCtor) {
         const fogMetrics = this.getCanvasLayerMetrics?.('worldFog', this.getCanvasLayerMetrics?.('worldMap', {}) || {}) || {};

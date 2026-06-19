@@ -350,7 +350,9 @@ test('CanvasGameShell does not mount world fog by default', () => {
 
 test('CanvasGameShell mounts actor overlay with a context separate from the terrain layer', () => {
   const previousRenderer = global.H5CanvasGameRenderer;
+  const previousLog = global.ClientOperationLog;
   const calls = [];
+  const events = [];
   const contextsByLayer = new Map();
   class FakeRenderer {
     constructor(options = {}) {
@@ -367,6 +369,11 @@ test('CanvasGameShell mounts actor overlay with a context separate from the terr
     setAssetsChangedHandler() {}
   }
   global.H5CanvasGameRenderer = FakeRenderer;
+  global.ClientOperationLog = {
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
   const runtime = {
     width: 390,
     height: 844,
@@ -395,6 +402,7 @@ test('CanvasGameShell mounts actor overlay with a context separate from the terr
     shell.createRenderer({});
   } finally {
     global.H5CanvasGameRenderer = previousRenderer;
+    global.ClientOperationLog = previousLog;
   }
 
   assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldMap'), true);
@@ -404,7 +412,97 @@ test('CanvasGameShell mounts actor overlay with a context separate from the terr
   assert.notEqual(shell.worldActorLayerRenderer.ctx, shell.worldMapRenderer.ctx);
   assert.equal(shell.worldMapRenderer.worldActorOverlayCtx, shell.worldActorLayerRenderer.ctx);
   assert.equal(shell.worldMapRenderer.worldActorOverlaySeparate, true);
+  assert.equal(shell.worldActorLayerRenderer.worldActorOverlaySeparate, true);
+  assert.deepEqual(shell.worldActorOverlayAssembly, {
+    enabled: true,
+    canvasCreated: true,
+    ctxSeparated: true,
+    reason: 'ok',
+  });
+  assert.deepEqual(events, [
+    ['worldActorOverlay:assembly', {
+      enabled: true,
+      canvasCreated: true,
+      ctxSeparated: true,
+      reason: 'ok',
+    }],
+  ]);
   assert.equal(contextsByLayer.get('worldActor'), shell.worldActorLayerRenderer.ctx);
+});
+
+test('CanvasGameShell records actor overlay assembly when the actor context is shared', () => {
+  const previousRenderer = global.H5CanvasGameRenderer;
+  const previousLog = global.ClientOperationLog;
+  const events = [];
+  const sharedCtx = { layer: 'shared' };
+  class FakeRenderer {
+    constructor(options = {}) {
+      this.canvas = options.canvas || null;
+      this.ctx = this.canvas?.getContext?.('2d') || null;
+      this.presenter = options.presenter || null;
+      this.width = options.width || 390;
+      this.height = options.height || 844;
+      this.viewportWidth = options.viewportWidth || this.width;
+      this.viewportHeight = options.viewportHeight || this.height;
+      this.viewportOffsetX = options.viewportOffsetX || 0;
+      this.viewportOffsetY = options.viewportOffsetY || 0;
+    }
+    setAssetsChangedHandler() {}
+  }
+  global.H5CanvasGameRenderer = FakeRenderer;
+  global.ClientOperationLog = {
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const runtime = {
+    width: 390,
+    height: 844,
+    pixelRatio: 1,
+    ensureLayerCanvas(name) {
+      return {
+        id: name,
+        getContext(type) {
+          return type === '2d' ? sharedCtx : null;
+        },
+      };
+    },
+    getLayerMetrics() {
+      return { width: 390, height: 844, viewportWidth: 390, viewportHeight: 844, padding: 0 };
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime,
+    presenter: {},
+  });
+
+  try {
+    shell.createRenderer({});
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+    global.ClientOperationLog = previousLog;
+  }
+
+  assert.ok(shell.worldMapRenderer);
+  assert.ok(shell.worldActorLayerRenderer);
+  assert.equal(shell.worldActorLayerRenderer.ctx, shell.worldMapRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlayCtx, shell.worldActorLayerRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlaySeparate, false);
+  assert.equal(shell.worldActorLayerRenderer.worldActorOverlaySeparate, false);
+  assert.deepEqual(shell.worldActorOverlayAssembly, {
+    enabled: true,
+    canvasCreated: true,
+    ctxSeparated: false,
+    reason: 'ctx_shared',
+  });
+  assert.deepEqual(events, [
+    ['worldActorOverlay:assembly', {
+      enabled: true,
+      canvasCreated: true,
+      ctxSeparated: false,
+      reason: 'ctx_shared',
+    }],
+  ]);
 });
 
 test('CanvasGameShell mounts world fog as a WebGL layer when the feature flag is enabled', () => {
