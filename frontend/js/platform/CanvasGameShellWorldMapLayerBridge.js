@@ -139,9 +139,12 @@
         const renderContext = visualContext ? {
           ...baseWorldContext,
           ...visualContext,
-          actors: Array.isArray(baseWorldContext.actors)
+          actors: Array.isArray(baseWorldContext.actors) ? baseWorldContext.actors : [],
+          visibilityActors: Array.isArray(baseWorldContext.visibilityActors)
+            ? baseWorldContext.visibilityActors
+            : (Array.isArray(baseWorldContext.actors)
             ? baseWorldContext.actors
-            : (Array.isArray(baseWorldContext.renderSnapshot?.actors) ? baseWorldContext.renderSnapshot.actors : []),
+            : (Array.isArray(baseWorldContext.renderSnapshot?.actors) ? baseWorldContext.renderSnapshot.actors : [])),
           renderSnapshot: baseWorldContext.renderSnapshot || visualContext.renderSnapshot || null,
           tileMapView: {
             ...(baseWorldContext.tileMapView || {}),

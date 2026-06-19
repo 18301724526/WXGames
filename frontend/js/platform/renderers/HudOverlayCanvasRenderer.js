@@ -122,8 +122,11 @@
       const topBarBottom = this.renderTopBar(state, options);
       this.renderHudTabPageWithTransition(state, activeTab, topBarBottom, options);
       if (options.isMapHome && activeTab === 'military' && options.skipWorldMapLayer) {
-        this.appendWorldMapRuntimeHitTargets?.(options.worldMapRuntimeHitTargets);
-        this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, options);
+        const runtimeTargetsAppended = Boolean(this.appendWorldMapRuntimeHitTargets?.(options.worldMapRuntimeHitTargets));
+        this.collectMapHomeWorldSiteHitTargets(state, topBarBottom, {
+          ...options,
+          collectHitTargets: !runtimeTargetsAppended,
+        });
       }
       if (options.isMapHome && activeTab === 'military') {
         this.renderMapHomeWorldMarchHud(state, options);

@@ -40,3 +40,18 @@ test('WorldMapSelectionResolver directly returns the only candidate action', () 
 
   assert.deepEqual(action, { type: 'selectWorldActor', actorId: 'actor-1' });
 });
+
+test('WorldMapSelectionResolver excludes HUD command actions from world entity candidates', () => {
+  assert.equal(Resolver.isWorldEntityAction({ type: 'enterCity', cityId: 'capital' }), false);
+  assert.equal(Resolver.isWorldEntityAction({ type: 'renameCity', cityId: 'capital' }), false);
+  assert.equal(Resolver.isWorldEntityAction({ type: 'territoryAction', cityId: 'capital' }), false);
+
+  const candidates = Resolver.normalizeCandidates([
+    { kind: 'site', action: { type: 'openWorldSite', siteId: 'capital', tileId: 'tile_23_18' } },
+    { action: { type: 'enterCity', cityId: 'capital' } },
+    { action: { type: 'renameCity', cityId: 'capital' } },
+    { action: { type: 'territoryAction', cityId: 'capital', action: 'inspect' } },
+  ]);
+
+  assert.deepEqual(candidates.map((candidate) => candidate.action.type), ['openWorldSite']);
+});

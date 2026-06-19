@@ -2173,7 +2173,7 @@ P0 新增公开 API / Public API Added During P0:
 
 职责 / Owns:
 
-- military world-view panel composition
+- military world-view screen chrome and tile-map branch handoff
 - territory summary header drawing for the world view
 - tile-map render branch and reset control overlay
 - empty exploration fallback copy
@@ -2188,12 +2188,13 @@ P0 新增公开 API / Public API Added During P0:
 
 - Rendering is a bounded branch over tile-map view or empty world copy.
 - Tile-map drawing delegates to `renderWorldTileMap()` instead of owning tile rendering.
+- Map-home world pixels stay on `worldMap`; this module must not clear-cut the map viewport on `mainHud`.
 - Hit-target registration is bounded to current tile-map reset controls.
 - No cache lifecycle, no gameplay simulation, no asset discovery, no visibility decision.
 
 扩展方式 / Extension Path:
 
-- 新 military world-view panel composition 先扩展本文件。
+- 新 military world-view screen chrome 先扩展本文件；不要通过 HUD 局部清屏露出地图。
 - 新 tile-map rendering details 仍扩展 world-map split renderers, not this module.
 - 新 world-site modal/action overlay 仍扩展 `WorldMapSiteOverlayRenderer`。
 - New presenter data rules still extend `WorldSitePresenter` or related current presenter modules; `WorldRadarPresenter` is retired.
@@ -5753,6 +5754,7 @@ Regression:
 
 - pure runtime render context derivation
 - snapshot/full render option composition for `WorldMapRuntimeRenderPipeline`
+- world-map frame/composition state derivation for visual-layer reuse vs hit-target preservation
 - render throttling predicate
 - cannot-render state reset payloads
 - render trace key/data payload derivation without renderer/runtime mutation
@@ -5769,10 +5771,14 @@ Regression:
 - `WorldMapRuntimeRenderPolicy.createSnapshotTrace(state, rendered, context)`
 - `WorldMapRuntimeRenderPolicy.createFullRenderOptions(options, context)`
 - `WorldMapRuntimeRenderPolicy.createFullTrace(state, rendered, runtimeState, epochNowMs)`
+- `WorldMapRuntimeRenderPolicy.createWorldMapFrameState(runtime, options)`
+- `WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(frameState)`
+- `WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions(options, frameState)`
 
 扩展方式 / Extension Path:
 
 - New pure world-map runtime render calculations first extend this module with focused tests.
+- New map-home overlay reuse rules must extend the frame/composition policy here; callers must not infer visual validity from preserved runtime hit targets.
 - Renderer calls, runtime state publication, and trace dispatch stay in `WorldMapRuntimeRenderPipeline`.
 - Camera, bake, and input geometry calculations stay in their P9 policy modules.
 
@@ -7687,6 +7693,7 @@ Recommended first split sequence:
 | 2026-06-11 | Added production gates for CI/deploy and repo/frontend hygiene: `.github/workflows/architecture-gate.yml`, `scripts/pre-deploy-gate.sh`, `scripts/check-frontend-script-manifest.js`, and `scripts/check-repository-hygiene.js` are now documented and registered in the architecture baseline. |
 | 2026-06-11 | Continued P12/P1 deploy-version hardening: `/api/version` now has a route module with ETag/304 semantics, `VersionService` reads deploy manifest metadata, `GameAPI` reuses `/version` ETag cache, `deploy.sh` writes fixed deploy state/log files, and `run-architecture-smoke.js` auto-discovers contract tests. |
 | 2026-06-11 | Continued P12-003 observability current scope: added `ObservabilityService`, `metricsRoutes`, and `clientEventsRoutes` for in-memory backend/API/frontend metrics, `/api/health` observability summary, authenticated admin `/api/metrics`, `POST /api/client-events`, and alert threshold codes for 5xx rate, slow requests, action failures, and frontend load failures. |
+| 2026-06-19 | Corrected the map-home HUD transparency contract: `mainHud` leaves the world viewport transparent by construction, `WorldMapMilitaryViewRenderer` no longer clear-cuts the map rectangle to reveal `worldMap`, and `WorldMapLayerOwnershipContract.test.js` guards against reintroducing viewport clear behavior. See `docs/world_map_hud_transparency_contract_2026-06-19.md`. |
 | 2026-06-11 | Continued P12-002 release/deploy governance: `deploy.sh` now accepts deployable branch/tag/commit refs, `scripts/verify-deploy-hook.sh` verifies server hook wiring read-only, `scripts/rollback-deploy.sh` provides an explicit rollback entry, and shell syntax guard covers all project-owned deploy scripts. |
 | 2026-06-11 | Continued P12-004 backup/restore current script scope: added `scripts/backup-runtime-state.sh` and `scripts/restore-runtime-state.sh` for runtime DB/shared/deploy-state archives, checksum/manifest/retention handling, strong restore confirmation, pre-restore safety backups, and shell syntax/test coverage. |
 | 2026-06-11 | Extended P12-004 backup operations: added `scripts/install-runtime-backup-cron.sh` and `scripts/verify-runtime-backup.sh` for marked cron installation, backup log/root/retention wiring, latest archive age/checksum/content verification, and shell syntax/test coverage. |

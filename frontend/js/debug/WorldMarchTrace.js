@@ -373,8 +373,7 @@
   global.WorldMarchTrace = api;
   try {
     const bootState = getBootState();
-    const writer = bootState.enabled ? global?.console?.warn : global?.console?.info;
-    writer?.call?.(global.console, '[WorldMarchTrace]', 'boot', bootState);
+    if (bootState.enabled) global?.console?.warn?.('[WorldMarchTrace]', 'boot', bootState);
   } catch (_) {}
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

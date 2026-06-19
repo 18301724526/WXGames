@@ -80,7 +80,47 @@ test('CanvasGameShellWorldMapFrameRuntime merges queued options without requestA
   assert.equal(shell.worldMapQueuedRenderOptions, null);
 });
 
-test('CanvasGameShellWorldMapFrameRuntime renders active exploration frame and HUD', () => {
+test('CanvasGameShellWorldMapFrameRuntime lets actor loop own active exploration frames', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const shell = createShell({
+    lastGame: {
+      state: {
+        currentTab: 'military',
+        militaryView: 'world',
+        worldExplorerState: {
+          activeMission: { id: 'explore-1', status: 'active' },
+        },
+      },
+      mapHomeActive: true,
+    },
+    renderWorldMapLayerFrame(options) {
+      calls.push(['renderWorldMapLayerFrame', options]);
+      return true;
+    },
+    runtime: {
+      setInterval(callback, ms) {
+        intervalCallback = callback;
+        calls.push(['setInterval', ms]);
+        return 1;
+      },
+    },
+    updateWorldActorAnimationLoop(options) {
+      calls.push(['updateWorldActorAnimationLoop', options.epochNowMs]);
+      return true;
+    },
+    worldActorLayerRenderer: {},
+  });
+
+  assert.equal(shell.startTileMapWaterTimer(), true);
+  intervalCallback();
+
+  assert.equal(calls.some((call) => call[0] === 'setInterval' && call[1] >= 16), true);
+  assert.equal(calls.some((call) => call[0] === 'updateWorldActorAnimationLoop'), true);
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
+});
+
+test('CanvasGameShellWorldMapFrameRuntime keeps a fallback full frame when actor layer is unavailable', () => {
   const calls = [];
   let intervalCallback = null;
   const shell = createShell({
@@ -114,12 +154,10 @@ test('CanvasGameShellWorldMapFrameRuntime renders active exploration frame and H
   assert.equal(shell.startTileMapWaterTimer(), true);
   intervalCallback();
 
-  assert.equal(calls.some((call) => call[0] === 'setInterval' && call[1] >= 16), true);
   assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
-  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
 });
 
-test('CanvasGameShellWorldMapFrameRuntime refreshes active missions from mission list', () => {
+test('CanvasGameShellWorldMapFrameRuntime routes active missions from mission list to actor loop', () => {
   const calls = [];
   let intervalCallback = null;
   const shell = createShell({
@@ -141,10 +179,6 @@ test('CanvasGameShellWorldMapFrameRuntime refreshes active missions from mission
       },
       mapHomeActive: true,
     },
-    renderAnimationFrame() {
-      calls.push(['renderAnimationFrame']);
-      return true;
-    },
     renderWorldMapLayerFrame(options) {
       calls.push(['renderWorldMapLayerFrame', options]);
       return true;
@@ -156,11 +190,16 @@ test('CanvasGameShellWorldMapFrameRuntime refreshes active missions from mission
         return 1;
       },
     },
+    updateWorldActorAnimationLoop(options) {
+      calls.push(['updateWorldActorAnimationLoop', options.epochNowMs]);
+      return true;
+    },
+    worldActorLayerRenderer: {},
   });
 
   assert.equal(shell.startTileMapWaterTimer(), true);
   intervalCallback();
 
-  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1]?.force === true), true);
-  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+  assert.equal(calls.some((call) => call[0] === 'updateWorldActorAnimationLoop'), true);
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
 });

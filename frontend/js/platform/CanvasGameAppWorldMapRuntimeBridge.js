@@ -3,6 +3,10 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
     WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
   }
+  var WorldMapRuntimeRenderPolicy = global.WorldMapRuntimeRenderPolicy;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeRenderPolicy) {
+    WorldMapRuntimeRenderPolicy = require('./WorldMapRuntimeRenderPolicy');
+  }
 
   const WORLD_MAP_RUNTIME_METHODS = Object.freeze({
     getFrozenWorldMapWaterTimeMs() {
@@ -33,6 +37,7 @@
       this.worldMapDragWaterTimeMs = null;
       this.worldMapPinchDragging = false;
       if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
+      this.updateWorldActorAnimationLoop?.({ force: true });
     },
 
     renderWorldMapSnapshotDragFrame() {
@@ -71,12 +76,32 @@
         showFpsOverlay: false,
       });
       runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
+      const renderResult = this.renderer.lastWorldMapLayerRenderResult
+        || this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult
+        || null;
+      const frameState = runtime.getWorldMapFrameState?.({ renderResult, rendered })
+        || WorldMapRuntimeRenderPolicy?.createWorldMapFrameState?.(runtime, { renderResult, rendered })
+        || null;
+      const compositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
+        ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions({
+          activeTab: 'military',
+          isMapHome: true,
+          territoryUiState,
+          network: this.networkState,
+        }, frameState || {})
+        : {
+          activeTab: 'military',
+          isMapHome: true,
+          skipWorldMapLayer: true,
+          worldMapRuntimeHitTargets: Array.isArray(runtime.hitTargets) ? runtime.hitTargets : [],
+          preserveCanvas: true,
+          territoryUiState,
+          network: this.networkState,
+        };
       this.renderer.render(this.state, {
+        ...compositionOptions,
         activeTab: 'military',
         isMapHome: true,
-        skipWorldMapLayer: true,
-        worldMapRuntimeHitTargets: Array.isArray(runtime.hitTargets) ? runtime.hitTargets : [],
-        preserveCanvas: true,
         territoryUiState,
         network: this.networkState,
       });
@@ -218,6 +243,14 @@
         showFpsOverlay: false,
       });
       runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
+      const renderResult = this.renderer.lastWorldMapLayerRenderResult
+        || this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult
+        || null;
+      if (renderResult?.drewFrame !== false) {
+        runtime.hasBakedMapLayer = true;
+        runtime.mapBakeDirty = false;
+        runtime.markBakedLayerCommitted?.();
+      }
       if (options.commitCamera !== false) runtime.markBakedCamera?.(runtime.camera);
       return true;
     },

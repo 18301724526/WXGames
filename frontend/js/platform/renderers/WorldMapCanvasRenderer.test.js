@@ -259,9 +259,10 @@ test('WorldMapCanvasRenderer computes world march actors from epoch time, not fr
   });
 
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
-  capturedActors.push(...(host.lastWorldTileMapContext?.actors || []));
+  capturedActors.push(...(host.lastWorldTileMapContext?.visibilityActors || []));
 
   assert.equal(capturedActors.length, 1);
+  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
   assert.equal(host.lastWorldTileMapContext.renderSnapshot.actors.length, 1);
   assert.equal(capturedActors[0].current.q > 0, true);
   assert.equal(capturedActors[0].current.q < 1, true);
@@ -771,6 +772,63 @@ test('WorldMapCanvasRenderer delegates actor and march HUD helpers to split rend
     'nearest-tile',
     'epoch-now',
   ]);
+});
+
+test('WorldMapCanvasRenderer routes actor layer frames to a separate overlay context', () => {
+  const calls = [];
+  const terrainCtx = createHost().ctx;
+  const overlayCtx = { ...createHost().ctx };
+  const overlayLayerRenderer = {
+    ctx: overlayCtx,
+    lastWorldTileMapContext: null,
+    renderWorldMapActorLayer(state, options) {
+      calls.push(['overlayActorLayer', state, options, this.ctx]);
+      return true;
+    },
+  };
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost({ ctx: terrainCtx }),
+  });
+  renderer.ctx = terrainCtx;
+  renderer.lastWorldTileMapContext = { id: 'runtime-context' };
+  renderer.worldActorLayerRenderer = {
+    ctx: overlayCtx,
+    worldMapLayerRenderer: overlayLayerRenderer,
+  };
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, { preserveCanvas: true });
+
+  assert.equal(rendered, true);
+  assert.notEqual(overlayCtx, terrainCtx);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], 'overlayActorLayer');
+  assert.equal(calls[0][2].worldMapRuntimeContext.id, 'runtime-context');
+  assert.equal(renderer.worldActorLayerRenderer.lastWorldTileMapContext.id, 'runtime-context');
+});
+
+test('WorldMapCanvasRenderer refuses actor overlay rendering when overlay shares terrain context', () => {
+  const calls = [];
+  const sharedCtx = createHost().ctx;
+  const overlayLayerRenderer = {
+    ctx: sharedCtx,
+    renderWorldMapActorLayer() {
+      calls.push(['sharedCtxActorLayer']);
+      return true;
+    },
+  };
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost({ ctx: sharedCtx }),
+  });
+  renderer.ctx = sharedCtx;
+  renderer.worldActorLayerRenderer = {
+    ctx: sharedCtx,
+    worldMapLayerRenderer: overlayLayerRenderer,
+  };
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, { preserveCanvas: true });
+
+  assert.equal(rendered, false);
+  assert.deepEqual(calls, []);
 });
 
 test('WorldMapCanvasRenderer delegates layout helpers to split facade', () => {

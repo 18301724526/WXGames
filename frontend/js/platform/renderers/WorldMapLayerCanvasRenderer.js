@@ -270,16 +270,16 @@
         height: layout.map.height - 2,
       };
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
-      this.addWorldMapDragHitTarget?.(layout.map.x, layout.map.y, layout.map.width, layout.map.height);
-      this.addWorldMarchTileHitTargets?.(tileMapView, viewport, frame);
-      this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+      if (options.collectHitTargets !== false) {
+        this.addWorldMapDragHitTarget?.(layout.map.x, layout.map.y, layout.map.width, layout.map.height);
+        this.addWorldMarchTileHitTargets?.(tileMapView, viewport, frame);
+        this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
+      }
       const lastContext = options.worldMapRuntimeContext
         || this.lastWorldTileMapContext
         || this.worldMapRenderer?.lastWorldTileMapContext
         || null;
-      const contextActors = Array.isArray(lastContext?.actors)
-        ? lastContext.actors
-        : (Array.isArray(lastContext?.renderSnapshot?.actors) ? lastContext.renderSnapshot.actors : []);
+      const contextActors = this.getWorldMapContextActors(state, lastContext, lastContext?.renderSnapshot || null);
       const actors = this.resolveWorldMapActors(state, contextActors, options);
       this.lastMapHomeWorldHudContext = {
         actors,
@@ -307,9 +307,7 @@
       if (!context?.tileMapView || !context?.viewport || !context?.frame) return null;
       const renderSnapshot = context.renderSnapshot || null;
       const uiState = options.territoryUiState || context.uiState || renderSnapshot?.ui || {};
-      const contextActors = Array.isArray(context.actors)
-        ? context.actors
-        : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []);
+      const contextActors = this.getWorldMapContextActors(state, context, renderSnapshot);
       const actors = this.resolveWorldMapActors(state, contextActors, options);
       return {
         actors,
@@ -340,6 +338,18 @@
       return ids;
     }
 
+    hasWorldExplorerState(state = {}) {
+      return Boolean(state && state.worldExplorerState && typeof state.worldExplorerState === 'object');
+    }
+
+    getWorldMapContextActors(state = {}, context = null, renderSnapshot = null) {
+      const contextActors = Array.isArray(context?.actors) ? context.actors : null;
+      if (contextActors && (contextActors.length || this.hasWorldExplorerState(state))) return contextActors;
+      if (this.hasWorldExplorerState(state)) return [];
+      if (Array.isArray(context?.visibilityActors) && context.visibilityActors.length) return context.visibilityActors;
+      return Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [];
+    }
+
     getWorldMapActorNowMs(options = {}) {
       const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
       if (optionNow !== null && optionNow !== undefined) return optionNow;
@@ -358,38 +368,60 @@
     }
 
     getActorIdentityKeys(actor = {}) {
-      return [actor?.id, actor?.missionId]
+      return [actor?.missionId, actor?.id, actor?.formation?.id, actor?.formationId]
         .map((key) => String(key || ''))
         .filter(Boolean);
     }
 
+    isWorldMapMissionActor(actor = {}) {
+      if (!actor || typeof actor !== 'object') return false;
+      if (actor.missionId || actor.unitKey || actor.type === 'scout') return true;
+      if (actor.status === 'active' || actor.status === 'idle') return true;
+      if (Array.isArray(actor.route) && actor.route.length) return true;
+      return Boolean(
+        actor.progress
+        || actor.formation
+        || actor.formationSnapshot
+        || actor.remainingSeconds !== undefined
+        || actor.travelRemainingSeconds !== undefined
+      );
+    }
+
+    dedupeWorldMapActors(actors = []) {
+      const result = [];
+      const seen = new Set();
+      (Array.isArray(actors) ? actors : []).forEach((actor) => {
+        const keys = this.getActorIdentityKeys(actor);
+        if (keys.length && keys.some((key) => seen.has(key))) return;
+        keys.forEach((key) => seen.add(key));
+        result.push(actor);
+      });
+      return result;
+    }
+
+    getNonMissionContextActors(actors = [], missionIds = new Set()) {
+      return (Array.isArray(actors) ? actors : []).filter((actor) => {
+        if (this.getActorIdentityKeys(actor).some((key) => missionIds.has(key))) return false;
+        return !this.isWorldMapMissionActor(actor);
+      });
+    }
+
     resolveWorldMapActors(state = {}, contextActors = [], options = {}) {
       const actors = Array.isArray(contextActors) ? contextActors : [];
-      const freshActors = this.buildFreshWorldMapActors(state, options);
+      const freshActors = this.dedupeWorldMapActors(this.buildFreshWorldMapActors(state, options));
       const missionIds = this.getWorldExplorerMissionIds(state);
       if (!freshActors.length) {
-        if (!missionIds.size) return actors;
-        return actors.filter((actor) => !this.getActorIdentityKeys(actor).some((key) => missionIds.has(key)));
+        if (!missionIds.size) {
+          return this.hasWorldExplorerState(state)
+            ? this.dedupeWorldMapActors(this.getNonMissionContextActors(actors, missionIds))
+            : this.dedupeWorldMapActors(actors);
+        }
+        return this.dedupeWorldMapActors(this.getNonMissionContextActors(actors, missionIds));
       }
-      if (!actors.length) return freshActors;
-
-      const freshByKey = new Map();
-      freshActors.forEach((actor) => {
-        this.getActorIdentityKeys(actor).forEach((key) => freshByKey.set(key, actor));
-      });
-      const usedFreshActors = new Set();
-      const mergedActors = actors.map((actor) => {
-        const freshActor = this.getActorIdentityKeys(actor)
-          .map((key) => freshByKey.get(key))
-          .find(Boolean);
-        if (!freshActor) return actor;
-        usedFreshActors.add(freshActor);
-        return freshActor;
-      });
-      freshActors.forEach((actor) => {
-        if (!usedFreshActors.has(actor)) mergedActors.push(actor);
-      });
-      return mergedActors;
+      return this.dedupeWorldMapActors([
+        ...freshActors,
+        ...this.getNonMissionContextActors(actors, missionIds),
+      ]);
     }
 
     publishWorldMapActorLayerContext(context = null) {
@@ -414,7 +446,10 @@
 
     publishWorldActorOverlayDiag(diag = null) {
       this.lastWorldActorOverlayDiag = diag;
-      if (this.host && this.host !== this) this.host.lastWorldActorOverlayDiag = diag;
+      if (this.host && this.host !== this) {
+        this.host.lastWorldActorOverlayDiag = diag;
+        if (this.host.worldMapRenderer) this.host.worldMapRenderer.lastWorldActorOverlayDiag = diag;
+      }
       return diag;
     }
 
@@ -471,11 +506,24 @@
 
     clearWorldActorBackingStore(diag = null) {
       if (!this.ctx || typeof this.ctx.clearRect !== 'function') return false;
-      const x = 0;
-      const y = 0;
-      const w = this.width;
-      const h = this.height;
-      const clearRect = { x, y, w, h };
+      const canvas = this.canvas || this.ctx.canvas || null;
+      const pixelRatio = Math.max(1, Number(canvas?._backingStorePixelRatio || this.pixelRatio) || 1);
+      const logicalWidth = Math.max(1, Number(this.width) || Number(canvas?.clientWidth) || 1);
+      const logicalHeight = Math.max(1, Number(this.height) || Number(canvas?.clientHeight) || 1);
+      const backingWidth = Math.max(1, Number(canvas?.width) || Math.ceil(logicalWidth * pixelRatio));
+      const backingHeight = Math.max(1, Number(canvas?.height) || Math.ceil(logicalHeight * pixelRatio));
+      if (typeof this.ctx.setTransform === 'function') {
+        const clearRect = { x: 0, y: 0, w: backingWidth, h: backingHeight };
+        if (diag) {
+          diag.clearedCanvasId = getWorldActorOverlayCanvasId(this.ctx);
+          diag.clearRect = clearRect;
+        }
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.clearRect(clearRect.x, clearRect.y, clearRect.w, clearRect.h);
+        this.ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        return true;
+      }
+      const clearRect = { x: 0, y: 0, w: this.width, h: this.height };
       if (diag) {
         diag.clearedCanvasId = getWorldActorOverlayCanvasId(this.ctx);
         diag.clearRect = clearRect;
@@ -484,8 +532,53 @@
       return true;
     }
 
+    getWorldActorOverlayLayerRenderer() {
+      const host = this.host || null;
+      const currentCtx = this.ctx || host?.ctx || null;
+      const candidates = [
+        this.worldActorLayerRenderer,
+        host?.worldActorLayerRenderer,
+        host?.host?.worldActorLayerRenderer,
+      ].filter(Boolean);
+      for (const candidate of candidates) {
+        const layerRenderer = candidate?.worldMapLayerRenderer || candidate;
+        if (!layerRenderer || layerRenderer === this) continue;
+        if (typeof layerRenderer.renderWorldMapActorLayer !== 'function') continue;
+        const candidateCtx = layerRenderer.ctx || candidate?.ctx || null;
+        if (currentCtx && candidateCtx && currentCtx === candidateCtx) continue;
+        return layerRenderer;
+      }
+      return null;
+    }
+
+    publishWorldActorOverlayLayerContext(layerRenderer = null, context = null) {
+      if (!layerRenderer || layerRenderer === this) return false;
+      layerRenderer.lastWorldTileMapContext = context;
+      layerRenderer.lastGameState = this.lastGameState;
+      layerRenderer.lastWorldMarchState = this.lastWorldMarchState;
+      const layerHost = layerRenderer.host || null;
+      if (layerHost && layerHost !== layerRenderer) {
+        layerHost.lastWorldTileMapContext = context;
+        layerHost.lastGameState = this.lastGameState;
+        layerHost.lastWorldMarchState = this.lastWorldMarchState;
+      }
+      return true;
+    }
+
     renderWorldMapActorLayer(state = {}, options = {}) {
       if (!this.ctx) return false;
+      if (!options.__worldActorOverlayDelegated) {
+        const overlayLayerRenderer = this.getWorldActorOverlayLayerRenderer();
+        if (overlayLayerRenderer) {
+          const layerContext = options.worldMapRuntimeContext || this.getWorldMapActorLayerContext(state, options);
+          this.publishWorldActorOverlayLayerContext(overlayLayerRenderer, layerContext);
+          return overlayLayerRenderer.renderWorldMapActorLayer(state, {
+            ...options,
+            __worldActorOverlayDelegated: true,
+            worldMapRuntimeContext: layerContext,
+          });
+        }
+      }
       const context = this.getWorldMapActorLayerContext(state, options);
       this.beginFrame(options);
       this.setHitTargets([]);
@@ -628,9 +721,34 @@
     renderWorldMapLayer(state = {}, options = {}) {
       if (!this.presenter || !this.ctx) return false;
       this.setWorldMapLayerRenderResult({ rendered: false, reason: 'notReady' });
+      const stateSummary = global.CodexWorldMapDiag?.summarizeState?.(state) || null;
+      global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:start', {
+        activeTab: options.activeTab || '',
+        isMapHome: Boolean(options.isMapHome),
+        snapshotOnly: Boolean(options.snapshotOnly),
+        collectHitTargets: options.collectHitTargets,
+        tileCount: stateSummary?.worldMap?.tileCount || 0,
+        mapVersion: stateSummary?.worldMap?.version || 0,
+        currentTab: stateSummary?.currentTab || '',
+        militaryView: stateSummary?.militaryView || '',
+      }, {
+        options: {
+          activeTab: options.activeTab,
+          isMapHome: options.isMapHome,
+          snapshotOnly: options.snapshotOnly,
+          collectHitTargets: options.collectHitTargets,
+        },
+        state: stateSummary,
+      });
       const layout = this.getWorldMapLayerLayout(state, options.topBarBottom, options);
       if (!layout) {
         this.setWorldMapLayerRenderResult({ rendered: false, reason: 'noLayout' });
+        global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:noLayout', {
+          activeTab: options.activeTab || '',
+          isMapHome: Boolean(options.isMapHome),
+          currentTab: stateSummary?.currentTab || '',
+          militaryView: stateSummary?.militaryView || '',
+        });
         return false;
       }
       const territoryState = state.territoryState || {};
@@ -639,12 +757,50 @@
         ...options,
         worldExplorerState: state.worldExplorerState || {},
       });
+      const rawWorldMapSummary = global.CodexWorldMapDiag?.summarizeWorldMap?.(territoryState) || null;
+      const tileMapViewSummary = {
+        hasTileMapView: Boolean(tileMapView),
+        tileCount: Array.isArray(tileMapView?.tiles) ? tileMapView.tiles.length : 0,
+        plannedTileCount: Array.isArray(tileMapView?.plannedTiles) ? tileMapView.plannedTiles.length : 0,
+        siteCount: Array.isArray(tileMapView?.sites) ? tileMapView.sites.length : 0,
+        version: tileMapView?.version || 0,
+        origin: tileMapView?.origin || tileMapView?.worldOrigin || null,
+      };
+      global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:tileMapView', {
+        rawTileCount: rawWorldMapSummary?.tileCount || 0,
+        rawVersion: rawWorldMapSummary?.version || 0,
+        viewTileCount: tileMapViewSummary.tileCount,
+        viewPlannedTileCount: tileMapViewSummary.plannedTileCount,
+        viewSiteCount: tileMapViewSummary.siteCount,
+        viewVersion: tileMapViewSummary.version,
+        currentTab: stateSummary?.currentTab || '',
+        militaryView: stateSummary?.militaryView || '',
+      }, {
+        rawWorldMap: rawWorldMapSummary,
+        tileMapView: tileMapViewSummary,
+      });
       if (!this.hasRenderableWorldTileMap(tileMapView)) {
         const preserved = this.shouldPreserveWorldMapLayerOnEmpty(state, options);
         this.setWorldMapLayerRenderResult({
           rendered: preserved,
           preserved,
           reason: preserved ? 'preservedOnEmptyTiles' : 'emptyTiles',
+        });
+        const lastRenderableContext = this.getLastRenderableWorldMapContext?.();
+        global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:empty', {
+          preserved,
+          reason: this.lastWorldMapLayerRenderResult?.reason || '',
+          rawTileCount: rawWorldMapSummary?.tileCount || 0,
+          viewTileCount: tileMapViewSummary.tileCount,
+          lastRenderableContextTiles: Array.isArray(lastRenderableContext?.tileMapView?.tiles)
+            ? lastRenderableContext.tileMapView.tiles.length
+            : null,
+        }, {
+          preserved,
+          renderResult: global.CodexWorldMapDiag?.summarizeRenderResult?.(this.lastWorldMapLayerRenderResult) || null,
+          lastRenderableContextTiles: Array.isArray(lastRenderableContext?.tileMapView?.tiles)
+            ? lastRenderableContext.tileMapView.tiles.length
+            : null,
         });
         return preserved;
       }
@@ -674,6 +830,15 @@
       }
       this.endFrame({ ...options, showFpsOverlay: false });
       this.setWorldMapLayerRenderResult({ rendered: true, drewFrame: true, reason: 'drawn' });
+      global.CodexWorldMapDiag?.logChanged?.('renderer:worldMapLayer:drawn', {
+        tileCount: Array.isArray(tileMapView?.tiles) ? tileMapView.tiles.length : 0,
+        hitTargetCount: Array.isArray(this.hitTargets) ? this.hitTargets.length : 0,
+        reason: this.lastWorldMapLayerRenderResult?.reason || '',
+      }, {
+        tileCount: Array.isArray(tileMapView?.tiles) ? tileMapView.tiles.length : 0,
+        hitTargetCount: Array.isArray(this.hitTargets) ? this.hitTargets.length : 0,
+        renderResult: global.CodexWorldMapDiag?.summarizeRenderResult?.(this.lastWorldMapLayerRenderResult) || null,
+      });
       return true;
     }
 
@@ -773,8 +938,12 @@
           nowMs: options.nowMs ?? options.epochNowMs ?? options.serverNowMs,
         })
         : null;
+      const freshVisibilityActors = this.buildFreshWorldMapActors(state, options);
       const context = {
-        actors: Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [],
+        actors: [],
+        visibilityActors: freshVisibilityActors.length
+          ? freshVisibilityActors
+          : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []),
         frame,
         geometry,
         renderSnapshot,

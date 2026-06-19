@@ -29,6 +29,22 @@
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
             const nextState = payload.gameState || payload.state || this.state;
+            const payloadWorldMap = global.CodexWorldMapDiag?.summarizeWorldMap?.(payload) || null;
+            const nextStateSummary = global.CodexWorldMapDiag?.summarizeState?.(nextState) || null;
+            global.CodexWorldMapDiag?.logChanged?.('state:applyState:input', {
+              source: payload.gameState ? 'payload.gameState' : (payload.state ? 'payload.state' : 'currentState'),
+              payloadHasWorldMap: Boolean(payloadWorldMap?.hasWorldMap),
+              payloadTileCount: payloadWorldMap?.tileCount || 0,
+              payloadVersion: payloadWorldMap?.version || 0,
+              nextTileCount: nextStateSummary?.worldMap?.tileCount || 0,
+              nextVersion: nextStateSummary?.worldMap?.version || 0,
+              nextCurrentTab: nextStateSummary?.currentTab || '',
+              nextMilitaryView: nextStateSummary?.militaryView || '',
+            }, {
+              source: payload.gameState ? 'payload.gameState' : (payload.state ? 'payload.state' : 'currentState'),
+              payloadWorldMap,
+              nextState: nextStateSummary,
+            });
             const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
             const localTab = this.getActiveTab();
             const localMilitaryView = this.state?.militaryView || this.militaryView || nextState.militaryView || 'army';
@@ -46,6 +62,17 @@
               taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
               eraProgress: payload.eraProgress ?? nextState.eraProgress,
             };
+            const assignedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+            global.CodexWorldMapDiag?.logChanged?.('state:applyState:afterAssign', {
+              tileCount: assignedStateSummary?.worldMap?.tileCount || 0,
+              version: assignedStateSummary?.worldMap?.version || 0,
+              currentTab: assignedStateSummary?.currentTab || '',
+              militaryView: assignedStateSummary?.militaryView || '',
+              mapHomeActive: Boolean(this.mapHomeActive),
+            }, {
+              state: assignedStateSummary,
+              mapHomeActive: Boolean(this.mapHomeActive),
+            });
             this.tutorial = nextTutorial;
             this.activeTab = this.state.currentTab || homeView.activeTab;
             this.militaryView = this.state.militaryView || homeView.militaryView;
@@ -79,12 +106,32 @@
 
       applyApiState(data = {}) {
             this.syncWorldClock?.(data);
+            const apiPayloadWorldMap = global.CodexWorldMapDiag?.summarizeWorldMap?.(data) || null;
+            global.CodexWorldMapDiag?.logChanged?.('state:applyApiState:input', {
+              payloadHasWorldMap: Boolean(apiPayloadWorldMap?.hasWorldMap),
+              payloadTileCount: apiPayloadWorldMap?.tileCount || 0,
+              payloadVersion: apiPayloadWorldMap?.version || 0,
+              hasNormalizer: Boolean(this.stateNormalizer?.normalizeGameState),
+            }, {
+              payloadWorldMap: apiPayloadWorldMap,
+              hasNormalizer: Boolean(this.stateNormalizer?.normalizeGameState),
+            });
             global.WorldMarchTrace?.log?.('app:applyApiState:input', {
               payload: global.WorldMarchTrace?.summarizeApiPayload?.(data) || null,
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
             if (this.stateNormalizer?.normalizeGameState) {
               const nextState = this.stateNormalizer.normalizeGameState(data);
+              const normalizedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(nextState) || null;
+              global.CodexWorldMapDiag?.logChanged?.('state:applyApiState:afterNormalizer', {
+                tileCount: normalizedStateSummary?.worldMap?.tileCount || 0,
+                version: normalizedStateSummary?.worldMap?.version || 0,
+                currentTab: normalizedStateSummary?.currentTab || '',
+                militaryView: normalizedStateSummary?.militaryView || '',
+                tutorialStep: normalizedStateSummary?.tutorial?.currentStep ?? null,
+              }, {
+                nextState: normalizedStateSummary,
+              });
               this.tutorial = this.stateNormalizer.normalizeTutorialState?.(data) || this.tutorial || {};
               this.syncFromServer(nextState, data.tutorial, data.eraProgress);
               global.WorldMarchTrace?.log?.('app:applyApiState:afterNormalizer', {
@@ -109,6 +156,19 @@
               server: global.WorldMarchTrace?.summarizeWorldExplorerState?.(serverState?.worldExplorerState),
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
+            const serverStateSummary = global.CodexWorldMapDiag?.summarizeState?.(serverState) || null;
+            const beforeStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+            global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:input', {
+              serverTileCount: serverStateSummary?.worldMap?.tileCount || 0,
+              serverVersion: serverStateSummary?.worldMap?.version || 0,
+              beforeTileCount: beforeStateSummary?.worldMap?.tileCount || 0,
+              beforeVersion: beforeStateSummary?.worldMap?.version || 0,
+              serverCurrentTab: serverStateSummary?.currentTab || '',
+              beforeCurrentTab: beforeStateSummary?.currentTab || '',
+            }, {
+              serverState: serverStateSummary,
+              beforeState: beforeStateSummary,
+            });
             const localTab = this.getActiveTab();
             const localMilitaryView = this.state?.militaryView || this.militaryView || 'army';
             const homeView = this.resolveMapHomeViewState(serverState, {
@@ -132,6 +192,17 @@
                 militaryView: homeView.militaryView,
                 eraProgress: eraProgress ?? serverState?.eraProgress,
               };
+            const syncedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+            global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:afterSync', {
+              tileCount: syncedStateSummary?.worldMap?.tileCount || 0,
+              version: syncedStateSummary?.worldMap?.version || 0,
+              currentTab: syncedStateSummary?.currentTab || '',
+              militaryView: syncedStateSummary?.militaryView || '',
+              usedStateManager: Boolean(this.stateManager?.sync),
+            }, {
+              state: syncedStateSummary,
+              usedStateManager: Boolean(this.stateManager?.sync),
+            });
             const syncedHomeView = this.resolveMapHomeViewState(this.state, {
               requestedTab: homeView.activeTab,
               militaryView: homeView.militaryView,
@@ -151,6 +222,18 @@
               ...this.state,
               tutorial: nextTutorial,
             };
+            const beforeRenderStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+            global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:beforeRender', {
+              tileCount: beforeRenderStateSummary?.worldMap?.tileCount || 0,
+              version: beforeRenderStateSummary?.worldMap?.version || 0,
+              currentTab: beforeRenderStateSummary?.currentTab || '',
+              militaryView: beforeRenderStateSummary?.militaryView || '',
+              tutorialStep: beforeRenderStateSummary?.tutorial?.currentStep ?? null,
+              mapHomeActive: Boolean(this.mapHomeActive),
+            }, {
+              state: beforeRenderStateSummary,
+              mapHomeActive: Boolean(this.mapHomeActive),
+            });
             this.tutorialController?.sync?.(nextTutorial);
             this.updateSyncInterval();
             this.hasServerState = true;

@@ -107,7 +107,12 @@
       if (!WorldMapSelectionResolver.isWorldEntityAction?.(target.action)) continue;
       matches.push({ ...target, index });
     }
-    return matches.length > 1 ? WorldMapSelectionResolver.resolveCandidates(matches, { point }) : null;
+    if (matches.length <= 1) return null;
+    const normalized = WorldMapSelectionResolver.normalizeCandidates?.(matches, { point });
+    if (!Array.isArray(normalized) || normalized.length <= 1) return null;
+    return WorldMapSelectionResolver.createPickerAction
+      ? WorldMapSelectionResolver.createPickerAction(normalized, { point })
+      : WorldMapSelectionResolver.resolveCandidates(normalized, { point });
   }
 
   function hasTutorialShieldAtPoint(hitTargets = [], point = {}) {

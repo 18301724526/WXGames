@@ -8,7 +8,8 @@ const WorldMapFogMaskContextRenderer = require('./WorldMapFogMaskContextRenderer
 function createHost(overrides = {}) {
   return {
     lastWorldTileMapContext: {
-      actors: [{ id: 'actor-1' }],
+      actors: [],
+      visibilityActors: [{ id: 'actor-1' }],
       renderSnapshot: { schema: 'world-map-render-snapshot-v1', signature: 'snapshot-1' },
     },
     ...overrides,
@@ -30,24 +31,27 @@ test('WorldMapFogMaskContextRenderer captures renderer-safe fog context', () => 
   assert.equal(renderer.lastWorldFogContext.entries, entries);
   assert.equal(renderer.lastWorldFogContext.geometry, tileMapView.geometry);
   assert.equal(renderer.lastWorldFogContext.renderSnapshot, host.lastWorldTileMapContext.renderSnapshot);
-  assert.equal(renderer.lastWorldFogContext.actors, host.lastWorldTileMapContext.actors);
+  assert.equal(renderer.lastWorldFogContext.actors.length, 0);
+  assert.equal(renderer.lastWorldFogContext.visibilityActors, host.lastWorldTileMapContext.visibilityActors);
   assert.equal(host.lastWorldFogContext, renderer.lastWorldFogContext);
 });
 
 test('WorldMapFogMaskContextRenderer accepts explicit snapshot and actor context', () => {
   const renderer = new WorldMapFogMaskContextRenderer({ host: createHost() });
   const actors = [{ id: 'explicit-actor' }];
+  const visibilityActors = [{ id: 'explicit-visibility-actor' }];
   const context = renderer.createWorldTileFogMaskContext(
     { tiles: [] },
     { geometry: { tileWidth: 128 } },
     {},
     [],
-    { renderSnapshot: { id: 'explicit-snapshot' }, actors },
+    { renderSnapshot: { id: 'explicit-snapshot' }, actors, visibilityActors },
   );
 
   assert.deepEqual(context.geometry, { tileWidth: 128 });
   assert.deepEqual(context.renderSnapshot, { id: 'explicit-snapshot' });
   assert.equal(context.actors, actors);
+  assert.equal(context.visibilityActors, visibilityActors);
   assert.equal(typeof renderer.getWorldTileFogRevealEntries, 'undefined');
 });
 

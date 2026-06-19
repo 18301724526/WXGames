@@ -23,7 +23,10 @@ function createHost(overrides = {}) {
     },
     beginFrame(options) { calls.push(['beginFrame', options]); },
     clear() { calls.push(['clear']); },
-    appendWorldMapRuntimeHitTargets(...args) { calls.push(['appendWorldMapRuntimeHitTargets', args]); },
+    appendWorldMapRuntimeHitTargets(targets = []) {
+      calls.push(['appendWorldMapRuntimeHitTargets', [targets]]);
+      return Array.isArray(targets) && targets.length > 0;
+    },
     collectMapHomeWorldSiteHitTargets(...args) { calls.push(['collectMapHomeWorldSiteHitTargets', args]); },
     getWorldMapLayerLayout() {
       calls.push(['getWorldMapLayerLayout']);
@@ -152,7 +155,7 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   assert.equal(names.includes('renderWorldMarchHud'), true);
   assert.equal(names.includes('getWorldMapLayerLayout'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'startExplore'), false);
-  assert.equal(host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'collectMapHomeWorldSiteHitTargets' && call[1][2].collectHitTargets === false), true);
   assert.equal(names.includes('renderMapCommandPanel'), true);
   assert.equal(names.includes('renderSubcityListPanel'), true);
   assert.equal(names.includes('renderSettingsPanel'), true);

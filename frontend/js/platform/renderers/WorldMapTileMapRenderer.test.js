@@ -141,7 +141,8 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
   assert.equal(host.lastWorldTileMapContext.tileMapView, tileMapView);
   assert.equal(host.lastWorldTileMapContext.renderSnapshot.schema, 'world-map-render-snapshot-v1');
   assert.equal(host.lastWorldTileMapContext.uiState.selectedSiteId, 'tile-1');
-  assert.equal(host.lastWorldTileMapContext.actors.length, 1);
+  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
+  assert.equal(host.lastWorldTileMapContext.visibilityActors.length, 1);
   assert.deepEqual(host.lastWorldTileMapContext.frame, { x: 11, y: 91, width: 358, height: 298 });
   assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.deepEqual(host.calls.filter((call) => call[0].startsWith('renderWorld') || call[0].startsWith('addWorld')).map((call) => call[0]), [
@@ -154,18 +155,19 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), true);
 });
 
-test('WorldMapTileMapRenderer publishes continuous march actors without painting them on the map layer', () => {
+test('WorldMapTileMapRenderer publishes continuous march visibility actors without painting them on the map layer', () => {
   const host = createHost();
   const renderer = new WorldMapTileMapRenderer({ host });
 
   renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
     epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
   });
-  const actor = host.lastWorldTileMapContext.actors[0];
+  const actor = host.lastWorldTileMapContext.visibilityActors[0];
 
   assert.equal(Boolean(actor), true);
   assert.equal(actor.current.q > 0, true);
   assert.equal(actor.current.q < 1, true);
+  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
 });
@@ -190,13 +192,14 @@ test('WorldMapTileMapRenderer derives continuous actors from world explorer stat
       },
     },
   });
-  const actor = host.lastWorldTileMapContext.actors[0];
+  const actor = host.lastWorldTileMapContext.visibilityActors[0];
 
   assert.equal(Boolean(actor), true);
   assert.equal(actor.missionId, 'explore-active-1');
   assert.equal(actor.current.q > 0, true);
   assert.equal(actor.current.q < 1, true);
-  assert.equal(host.lastWorldTileMapContext.actors[0].missionId, 'explore-active-1');
+  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
+  assert.equal(host.lastWorldTileMapContext.visibilityActors[0].missionId, 'explore-active-1');
 });
 
 test('WorldMapTileMapRenderer keeps later epoch movement continuous', () => {
@@ -206,7 +209,7 @@ test('WorldMapTileMapRenderer keeps later epoch movement continuous', () => {
   renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
     epochNowMs: new Date('2026-06-06T00:00:09.000Z').getTime(),
   });
-  const actor = host.lastWorldTileMapContext.actors[0];
+  const actor = host.lastWorldTileMapContext.visibilityActors[0];
 
   assert.equal(Boolean(actor), true);
   assert.equal(actor.current.q > 0.8, true);
@@ -251,7 +254,21 @@ test('WorldMapTileMapRenderer snapshot-only stays static so dynamic actors can l
 
   assert.notEqual(callNames.indexOf('renderWorldTileSnapshotCache'), -1);
   assert.equal(callNames.includes('renderWorldActors'), false);
-  assert.equal(host.lastWorldTileMapContext.actors.length, 1);
+  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
+  assert.equal(host.lastWorldTileMapContext.visibilityActors.length, 1);
+});
+
+test('WorldMapTileMapRenderer does not revive snapshot actors when canonical explorer state is empty', () => {
+  const host = createHost();
+  const renderer = new WorldMapTileMapRenderer({ host });
+
+  renderer.renderWorldTileMap(createTileMapView(), 10, 90, 360, 300, {}, {
+    state: { worldExplorerState: { missions: [], idleMissions: [] } },
+    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+
+  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
+  assert.equal(host.lastWorldTileMapContext.visibilityActors.length, 0);
 });
 
 test('WorldMapTileMapRenderer restores fast-drag state after render', () => {

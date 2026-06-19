@@ -19,6 +19,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderingRuntime) {
     CanvasGameAppRenderingRuntime = require('./CanvasGameAppRenderingRuntime');
   }
+  var CanvasGameWorldActorAnimationRuntime = global.CanvasGameWorldActorAnimationRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameWorldActorAnimationRuntime) {
+    CanvasGameWorldActorAnimationRuntime = require('./CanvasGameWorldActorAnimationRuntime');
+  }
   var CanvasGameAppBattleScene = global.CanvasGameAppBattleScene;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppBattleScene) {
     CanvasGameAppBattleScene = require('./CanvasGameAppBattleScene');
@@ -139,6 +143,10 @@
           this.transitionTimer = null;
           this.lastAnimationRenderAt = 0;
           this.animationRenderQueued = false;
+          this.worldActorAnimationActive = false;
+          this.worldActorAnimationQueued = false;
+          this.worldActorQueuedRenderOptions = null;
+          this.lastWorldActorAnimationRenderAt = 0;
           this.tileMapWaterTimer = null;
           this.activeEventId = null;
           this.naming = {
@@ -227,6 +235,7 @@
   [
     CanvasGameAppStateSync,
     CanvasGameAppRenderingRuntime,
+    CanvasGameWorldActorAnimationRuntime,
     CanvasGameAppBattleScene,
     CanvasGameAppCommands,
     CanvasGameAppGuideUi,

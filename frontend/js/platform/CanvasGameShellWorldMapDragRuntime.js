@@ -59,6 +59,7 @@
         if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
         const shouldRender = Boolean(this.deferRenderUntilWorldMapDragEnd);
         this.deferRenderUntilWorldMapDragEnd = false;
+        this.updateWorldActorAnimationLoop?.({ force: true });
         return shouldRender ? this.renderActive({ invalidateWorldTileView: false }) : true;
       },
 

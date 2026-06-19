@@ -13,6 +13,7 @@ const PRODUCTION_FILES = [
   'frontend/js/platform/renderers/WorldMapCachePolicy.js',
   'frontend/js/platform/renderers/WorldMapCanvasRenderer.js',
   'frontend/js/platform/renderers/WorldMapFastDragCompositeRenderer.js',
+  'frontend/js/platform/renderers/WorldMapMilitaryViewRenderer.js',
   'frontend/js/platform/renderers/WorldMapSnapshotCacheRenderer.js',
   'frontend/js/platform/renderers/WorldMapStaticLayerRenderer.js',
   'frontend/js/platform/renderers/WorldMapTileMapRenderer.js',
@@ -29,6 +30,8 @@ test('worldMap layer owns only terrain/static/site work and never actor/HUD owne
   assert.equal(source.includes('addWorldActorHitTargets('), false);
   assert.equal(source.includes('renderWorldMarchHud('), false);
   assert.equal(source.includes('publishWorldTileMapContext'), true);
+  assert.equal(source.includes('visibilityActors'), true);
+  assert.equal(source.includes('context.actors = []'), true);
 });
 
 test('worldActor layer owns actor drawing and actor hit targets without command HUD', () => {
@@ -41,12 +44,32 @@ test('worldActor layer owns actor drawing and actor hit targets without command 
   assert.equal(actorLayerSource.includes('renderWorldMarchHud'), false);
 });
 
+test('worldActor overlay has a physical canvas and refuses shared terrain ctx rendering', () => {
+  const shellMounting = readProjectFile('frontend/js/platform/CanvasGameShellMounting.js');
+  const canvasRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapCanvasRenderer.js');
+  const layerRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js');
+
+  assert.equal(shellMounting.includes("ensureCanvasLayer?.('worldActor'"), true);
+  assert.equal(shellMounting.includes('worldActorOverlaySeparate'), true);
+  assert.equal(canvasRenderer.includes('terrainCtx && targetCtx && terrainCtx === targetCtx'), true);
+  assert.equal(layerRenderer.includes('getWorldActorOverlayLayerRenderer'), true);
+  assert.equal(layerRenderer.includes('__worldActorOverlayDelegated'), true);
+});
+
 test('mainHud renderers own map-home march command HUD invocation', () => {
   const frameSource = readProjectFile('frontend/js/platform/renderers/CanvasFrameRenderer.js');
   const hudSource = readProjectFile('frontend/js/platform/renderers/HudOverlayCanvasRenderer.js');
 
   assert.equal(frameSource.includes('renderMapHomeWorldMarchHud(state, options)'), true);
   assert.equal(hudSource.includes('renderMapHomeWorldMarchHud(state, options)'), true);
+});
+
+test('mainHud map-home world viewport stays transparent instead of clear-cutting the HUD canvas', () => {
+  const source = readProjectFile('frontend/js/platform/renderers/WorldMapMilitaryViewRenderer.js');
+
+  assert.equal(source.includes('clearRect'), false);
+  assert.equal(source.includes('this.drawPanel(x, y, width, height'), false);
+  assert.equal(source.includes('hitTargetsOnly: skipWorldMapLayer'), true);
 });
 
 test('retired scout route cache API stays out of production renderers', () => {

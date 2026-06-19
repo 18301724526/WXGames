@@ -9,6 +9,7 @@ const CanvasGameShell = require('./CanvasGameShell');
 
 const APP_MODULES = [
   'CanvasGameAppStateSync',
+  'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameAppRenderingRuntime',
   'CanvasGameAppBattleScene',
   'CanvasGameAppCommands',
@@ -20,7 +21,8 @@ test('CanvasGameApp installs responsibility modules into the compatibility facad
   const proto = CanvasGameApp.prototype;
   const expectedMethods = {
     stateSync: ['applyState', 'syncFromServer', 'start', 'stop'],
-    renderingRuntime: ['renderCanvasSurface', 'ensureWorldMapRuntime', 'switchTab', 'setTechTreeZoom'],
+    actorAnimation: ['startWorldActorAnimationLoop', 'stopWorldActorAnimationLoop', 'renderWorldActorAnimationFrame'],
+    renderingRuntime: ['renderCanvasSurface', 'buildRenderOptions', 'ensureWorldMapRuntime', 'switchTab', 'setTechTreeZoom'],
     battleScene: ['startBattleScene', 'skipBattleScene', 'closeBattleScene'],
     commands: ['buildBuilding', 'advanceEra', 'research', 'enterCity', 'showHouseBuiltAdvisorDialogue'],
     guideUi: ['openNaming', 'closeCityManagement', 'renderSoftGuide', 'cacheRequestLog'],
@@ -272,6 +274,194 @@ test('CanvasGameApp renders territory site selection through map-home city HUD',
   assert.deepEqual(calls.at(-1), ['render', 'military', 'world', 'military', true, 'capital']);
   assert.equal(app.mapHomeActive, true);
   assert.equal(shell.mapHomeActive, true);
+});
+
+test('CanvasGameApp does not preserve canvas when runtime hit targets are preserved but map layer is invalid', () => {
+  const calls = [];
+  const runtime = {
+    baseHitTargets: [{ action: { type: 'enterCity' } }],
+    hasBakedMapLayer: true,
+    hitTargets: [{ action: { type: 'enterCity' } }],
+    lastHitTargetSync: {
+      baseHitTargetCount: 1,
+      hitTargetCount: 1,
+      mapTargetCount: 0,
+      preserved: true,
+      sourceHitTargetCount: 0,
+    },
+    mapBakeDirty: true,
+    isMapBakeDirty() {
+      return true;
+    },
+  };
+  const renderer = {
+    render(renderState, options) {
+      calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas, options.worldMapFrameState?.hitTargetsPreserved]);
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer,
+    worldMapRuntime: runtime,
+    useWorldMapRuntime: true,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: {
+        worldMap: { tiles: [{ id: 'tile_0_0' }] },
+      },
+    },
+  });
+  app.canvasShell = null;
+  app.mapHomeActive = true;
+  app.worldMapRuntime = runtime;
+  app.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+    render() {
+      calls.push(['runtimeRender']);
+      return true;
+    },
+  };
+
+  assert.equal(app.renderCanvasSurface('military'), true);
+  assert.deepEqual(calls, [
+    ['runtimeRender'],
+    ['render', false, false, true],
+  ]);
+});
+
+test('CanvasGameApp routes active march animation to actor loop instead of map water timer redraw', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      worldExplorerState: {
+        activeMission: { id: 'march-1', status: 'active' },
+      },
+    },
+    scheduler: {
+      setInterval(callback, ms) {
+        intervalCallback = callback;
+        calls.push(['setInterval', ms]);
+        return 1;
+      },
+      clearInterval() {},
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.getActiveTab = () => 'military';
+  app.getWorldEpochNowMs = () => 1000;
+  app.getWorldTileWaterAnimationFrameMs = () => 125;
+  app.isWorldMapDragging = () => false;
+  app.isWorldMapDragCoolingDown = () => false;
+  app.isWorldMapHomeActive = () => true;
+  app.renderRuntimeWorldMap = () => {
+    calls.push(['renderRuntimeWorldMap']);
+    return true;
+  };
+  app.renderAnimationFrame = () => {
+    calls.push(['renderAnimationFrame']);
+    return true;
+  };
+  app.updateWorldActorAnimationLoop = (options) => {
+    calls.push(['updateWorldActorAnimationLoop', options.epochNowMs]);
+    return true;
+  };
+  app.renderer = {
+    worldActorLayerRenderer: {},
+  };
+
+  assert.equal(app.startTileMapWaterTimer(), true);
+  intervalCallback();
+
+  assert.deepEqual(calls, [
+    ['setInterval', 125],
+    ['updateWorldActorAnimationLoop', 1000],
+  ]);
+});
+
+test('CanvasGameApp keeps active march animation from forcing map layer redraw', () => {
+  const calls = [];
+  const runtime = {
+    hasBakedMapLayer: true,
+    isBakedLayerStateValid() {
+      return true;
+    },
+    getWorldMapFrameState(options) {
+      calls.push(['getWorldMapFrameState', options.rendered]);
+      return { visualLayerValid: true, hitTargets: [] };
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: {
+      worldActorLayerRenderer: {},
+      render(state, options) {
+        calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas]);
+      },
+    },
+    worldMapRuntime: runtime,
+    initialState: {
+      currentTab: 'military',
+      militaryView: 'world',
+      territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+      worldExplorerState: {
+        activeMission: { id: 'march-1', status: 'active' },
+      },
+    },
+  });
+  app.activeTab = 'military';
+  app.militaryView = 'world';
+  app.mapHomeActive = true;
+  app.worldMapRuntime = runtime;
+  app.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+    render() {
+      calls.push(['runtimeRender']);
+      return true;
+    },
+  };
+  app.shouldRenderRuntimeWorldMap = () => false;
+  app.updateWorldActorAnimationLoop = () => {
+    calls.push(['updateWorldActorAnimationLoop']);
+    return true;
+  };
+  app.startTileMapWaterTimer = () => {
+    calls.push(['startTileMapWaterTimer']);
+    return true;
+  };
+  app.stopTileMapWaterTimer = () => {
+    calls.push(['stopTileMapWaterTimer']);
+  };
+
+  assert.equal(app.renderCanvasSurface('military'), true);
+  assert.deepEqual(calls, [
+    ['getWorldMapFrameState', true],
+    ['render', true, true],
+    ['updateWorldActorAnimationLoop'],
+    ['stopTileMapWaterTimer'],
+  ]);
 });
 
 test('CanvasGameApp routes world map drag taps through runtime before action dispatch', async () => {

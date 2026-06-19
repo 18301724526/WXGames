@@ -136,9 +136,11 @@
           return VisionModel.createSource(kind, source, viewport, geometry);
         }))
         : '';
-      const actors = Array.isArray(context.actors)
+      const actors = Array.isArray(context.visibilityActors)
+        ? context.visibilityActors
+        : (Array.isArray(context.actors)
         ? context.actors
-        : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []);
+        : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []));
       const actorSignature = actors
         .map((actor) => {
           const current = actor?.current || actor?.position || actor?.target || {};

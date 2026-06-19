@@ -61,6 +61,11 @@
       return typeof this.getEpochNowMs === 'function' ? this.getEpochNowMs() : Date.now();
     }
 
+    hasCanonicalWorldExplorerState(options = {}) {
+      const explorerState = options.worldExplorerState ?? options.state?.worldExplorerState;
+      return Boolean(explorerState && typeof explorerState === 'object');
+    }
+
     createWorldTileMapContext(tileMapView = {}, x = 0, y = 0, width = 0, height = 0, uiState = {}, options = {}) {
       const renderSnapshot = sharedWorldMapRenderSnapshot?.createSnapshot
         ? sharedWorldMapRenderSnapshot.createSnapshot({
@@ -87,8 +92,10 @@
         worldOrigin: tileMapView.origin || tileMapView.worldOrigin || { q: 0, r: 0 },
       };
       const frame = renderSnapshot?.frame || { x: x + 1, y: y + 1, width: width - 2, height: height - 2 };
+      const visibilityActors = this.getWorldTileMapVisibilityActors(tileMapView, renderSnapshot, options);
       return {
-        actors: Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [],
+        actors: [],
+        visibilityActors,
         uiState,
         renderSnapshot,
         tileMapView,
@@ -112,14 +119,15 @@
       return context;
     }
 
-    getWorldTileMapActors(tileMapView = {}, renderSnapshot = null, options = {}) {
-      const snapshotActors = Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : null;
-      if (snapshotActors?.length) return snapshotActors;
+    getWorldTileMapVisibilityActors(tileMapView = {}, renderSnapshot = null, options = {}) {
       const explorerState = options.worldExplorerState || options.state?.worldExplorerState || null;
       const explorerActors = explorerState && sharedWorldMarchSystem?.buildActors
         ? sharedWorldMarchSystem.buildActors(explorerState, { nowMs: this.getWorldTileMapNowMs(options) })
         : [];
       if (Array.isArray(explorerActors) && explorerActors.length) return explorerActors;
+      if (this.hasCanonicalWorldExplorerState(options)) return [];
+      const snapshotActors = Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : null;
+      if (snapshotActors?.length) return snapshotActors;
       if (this.worldMapActorHudRenderer?.buildWorldMapActors) {
         const actors = this.worldMapActorHudRenderer.buildWorldMapActors(tileMapView, renderSnapshot, options);
         if (Array.isArray(actors) && actors.length) return actors;
@@ -128,6 +136,10 @@
         nowMs: this.getWorldTileMapNowMs(options),
       }) || [];
       return tileActors.length ? tileActors : (snapshotActors || []);
+    }
+
+    getWorldTileMapActors(tileMapView = {}, renderSnapshot = null, options = {}) {
+      return this.getWorldTileMapVisibilityActors(tileMapView, renderSnapshot, options);
     }
 
     drawWorldTileMapPanel(x = 0, y = 0, width = 0, height = 0, hitTargetsOnly = false, options = {}) {
@@ -219,14 +231,15 @@
           return;
         }
         const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
-        const actors = this.getWorldTileMapActors(tileMapView, renderSnapshot, options);
-        context.actors = actors;
+        const visibilityActors = this.getWorldTileMapVisibilityActors(tileMapView, renderSnapshot, options);
+        context.visibilityActors = visibilityActors;
+        context.actors = [];
         if (hitTargetsOnly) {
-          this.renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors);
+          this.renderWorldTileMapHitTargets(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, visibilityActors);
           return;
         }
         this.withWorldTileMapClip(x, y, width, height, () => (
-          this.renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, actors)
+          this.renderWorldTileMapLayers(tileMapView, viewport, frame, geometry, visibleEntries, uiState, options, renderSnapshot, visibilityActors)
         ));
       } finally {
         this.worldTileFastDragActive = previousFastDragActive;

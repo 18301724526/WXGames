@@ -18,6 +18,7 @@ const SHELL_MODULES = [
   'CanvasGameShellWorldMapDragRuntime',
   'CanvasGameShellWorldMapFrameRuntime',
   'CanvasGameShellWorldMapRuntime',
+  'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameShellRenderingRuntime',
   'CanvasGameShellSystemUi',
 ];
@@ -30,6 +31,7 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
     commands: ['openCityManagement', 'openArmyFormation', 'forwardCanvasAction', 'closeWorldSiteHud'],
     guideUi: ['getCanvasTarget', 'showTutorialHighlight', 'hideTutorialHighlight'],
     worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
+    actorAnimation: ['startWorldActorAnimationLoop', 'stopWorldActorAnimationLoop', 'renderWorldActorAnimationFrame'],
     renderingRuntime: ['renderActive', 'renderReadOnly', 'buildRenderOptions', 'setTechTreeZoom'],
     systemUi: ['applyAuthShell', 'showLoading', 'setNetworkState', 'startBattleScene'],
     layerRegistry: ['ensureCanvasLayer', 'setCanvasLayerTranslate', 'setCanvasLayerVisible', 'getCanvasLayerMetrics'],
@@ -344,6 +346,163 @@ test('CanvasGameShell does not mount world fog by default', () => {
   assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldFog'), false);
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === 'webgl'), false);
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);
+});
+
+test('CanvasGameShell mounts actor overlay with a context separate from the terrain layer', () => {
+  const previousRenderer = global.H5CanvasGameRenderer;
+  const previousLog = global.ClientOperationLog;
+  const calls = [];
+  const events = [];
+  const contextsByLayer = new Map();
+  class FakeRenderer {
+    constructor(options = {}) {
+      this.canvas = options.canvas || null;
+      this.ctx = this.canvas?.getContext?.('2d') || null;
+      this.presenter = options.presenter || null;
+      this.width = options.width || 390;
+      this.height = options.height || 844;
+      this.viewportWidth = options.viewportWidth || this.width;
+      this.viewportHeight = options.viewportHeight || this.height;
+      this.viewportOffsetX = options.viewportOffsetX || 0;
+      this.viewportOffsetY = options.viewportOffsetY || 0;
+    }
+    setAssetsChangedHandler() {}
+  }
+  global.H5CanvasGameRenderer = FakeRenderer;
+  global.ClientOperationLog = {
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const runtime = {
+    width: 390,
+    height: 844,
+    pixelRatio: 1,
+    ensureLayerCanvas(name, options) {
+      calls.push(['ensureLayerCanvas', name, options]);
+      const ctx = { layer: name };
+      contextsByLayer.set(name, ctx);
+      return {
+        id: name,
+        getContext(type) {
+          return type === '2d' ? ctx : null;
+        },
+      };
+    },
+    getLayerMetrics() {
+      return { width: 390, height: 844, viewportWidth: 390, viewportHeight: 844, padding: 0 };
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime,
+    presenter: {},
+  });
+
+  try {
+    shell.createRenderer({});
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+    global.ClientOperationLog = previousLog;
+  }
+
+  assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldMap'), true);
+  assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldActor'), true);
+  assert.ok(shell.worldMapRenderer);
+  assert.ok(shell.worldActorLayerRenderer);
+  assert.notEqual(shell.worldActorLayerRenderer.ctx, shell.worldMapRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlayCtx, shell.worldActorLayerRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlaySeparate, true);
+  assert.equal(shell.worldActorLayerRenderer.worldActorOverlaySeparate, true);
+  assert.deepEqual(shell.worldActorOverlayAssembly, {
+    enabled: true,
+    canvasCreated: true,
+    ctxSeparated: true,
+    reason: 'ok',
+  });
+  assert.deepEqual(events, [
+    ['worldActorOverlay:assembly', {
+      enabled: true,
+      canvasCreated: true,
+      ctxSeparated: true,
+      reason: 'ok',
+    }],
+  ]);
+  assert.equal(contextsByLayer.get('worldActor'), shell.worldActorLayerRenderer.ctx);
+});
+
+test('CanvasGameShell records actor overlay assembly when the actor context is shared', () => {
+  const previousRenderer = global.H5CanvasGameRenderer;
+  const previousLog = global.ClientOperationLog;
+  const events = [];
+  const sharedCtx = { layer: 'shared' };
+  class FakeRenderer {
+    constructor(options = {}) {
+      this.canvas = options.canvas || null;
+      this.ctx = this.canvas?.getContext?.('2d') || null;
+      this.presenter = options.presenter || null;
+      this.width = options.width || 390;
+      this.height = options.height || 844;
+      this.viewportWidth = options.viewportWidth || this.width;
+      this.viewportHeight = options.viewportHeight || this.height;
+      this.viewportOffsetX = options.viewportOffsetX || 0;
+      this.viewportOffsetY = options.viewportOffsetY || 0;
+    }
+    setAssetsChangedHandler() {}
+  }
+  global.H5CanvasGameRenderer = FakeRenderer;
+  global.ClientOperationLog = {
+    record(type, detail) {
+      events.push([type, detail]);
+    },
+  };
+  const runtime = {
+    width: 390,
+    height: 844,
+    pixelRatio: 1,
+    ensureLayerCanvas(name) {
+      return {
+        id: name,
+        getContext(type) {
+          return type === '2d' ? sharedCtx : null;
+        },
+      };
+    },
+    getLayerMetrics() {
+      return { width: 390, height: 844, viewportWidth: 390, viewportHeight: 844, padding: 0 };
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime,
+    presenter: {},
+  });
+
+  try {
+    shell.createRenderer({});
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+    global.ClientOperationLog = previousLog;
+  }
+
+  assert.ok(shell.worldMapRenderer);
+  assert.ok(shell.worldActorLayerRenderer);
+  assert.equal(shell.worldActorLayerRenderer.ctx, shell.worldMapRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlayCtx, shell.worldActorLayerRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlaySeparate, false);
+  assert.equal(shell.worldActorLayerRenderer.worldActorOverlaySeparate, false);
+  assert.deepEqual(shell.worldActorOverlayAssembly, {
+    enabled: true,
+    canvasCreated: true,
+    ctxSeparated: false,
+    reason: 'ctx_shared',
+  });
+  assert.deepEqual(events, [
+    ['worldActorOverlay:assembly', {
+      enabled: true,
+      canvasCreated: true,
+      ctxSeparated: false,
+      reason: 'ctx_shared',
+    }],
+  ]);
 });
 
 test('CanvasGameShell mounts world fog as a WebGL layer when the feature flag is enabled', () => {
@@ -958,7 +1117,7 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
     previewEnabled: true,
     renderer: {
       render(renderState, options) {
-        calls.push(['render', options.skipWorldMapLayer]);
+        calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas]);
       },
     },
   });
@@ -1005,7 +1164,88 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
   assert.deepEqual(calls, [
     ['renderRuntimeWorldMap', 'military', false],
     ['visible', true],
-    ['render', true],
+    ['render', true, false],
+  ]);
+});
+
+test('CanvasGameShell does not skip map layer when hit targets are preserved but baked layer is invalid', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+  };
+  const runtime = {
+    baseHitTargets: [{ action: { type: 'enterCity' } }],
+    hasBakedMapLayer: true,
+    hitTargets: [{ action: { type: 'enterCity' } }],
+    lastHitTargetSync: {
+      baseHitTargetCount: 1,
+      hitTargetCount: 1,
+      mapTargetCount: 0,
+      preserved: true,
+      sourceHitTargetCount: 0,
+    },
+    mapBakeDirty: false,
+    bakedLayerState: {
+      epoch: 1,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    },
+    getBakedLayerState() {
+      return this.bakedLayerState;
+    },
+    isMapBakeDirty() {
+      return false;
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas, options.worldMapFrameState?.hitTargetsPreserved]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.getCanvasLayerBackingStoreState = () => ({
+    epoch: 2,
+    width: 300,
+    height: 200,
+    pixelRatio: 1,
+    reason: 'resize',
+  });
+  shell.getCanvasLayerMetrics = () => ({ width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 });
+  shell.setWorldMapLayerVisible = (visible) => {
+    calls.push(['visible', visible]);
+    return true;
+  };
+  shell.renderRuntimeWorldMap = () => {
+    calls.push(['renderRuntimeWorldMap']);
+    return true;
+  };
+  shell.worldMapRenderer = {};
+  shell.worldMapRuntime = runtime;
+  shell.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+  };
+
+  assert.equal(shell.renderReadOnly(state, 'military'), true);
+
+  assert.deepEqual(calls, [
+    ['renderRuntimeWorldMap'],
+    ['visible', false],
+    ['render', false, false, undefined],
   ]);
 });
 
@@ -2356,7 +2596,7 @@ test('CanvasGameShell blocks all drags while a guided highlight is active', () =
   assert.deepEqual(calls, []);
 });
 
-test('CanvasGameShell refreshes both map layer and HUD while exploration is active', () => {
+test('CanvasGameShell routes active exploration refreshes to the actor animation loop', () => {
   const calls = [];
   let intervalCallback = null;
   const shell = new CanvasGameShell({
@@ -2375,6 +2615,7 @@ test('CanvasGameShell refreshes both map layer and HUD while exploration is acti
     renderer: {},
     worldMapRenderer: {},
   });
+  shell.worldActorLayerRenderer = {};
   shell.lastGame = {
     state: {
       currentTab: 'military',
@@ -2399,15 +2640,20 @@ test('CanvasGameShell refreshes both map layer and HUD while exploration is acti
     calls.push(['renderAnimationFrame']);
     return true;
   };
+  shell.updateWorldActorAnimationLoop = (options) => {
+    calls.push(['updateWorldActorAnimationLoop', options.epochNowMs]);
+    return true;
+  };
 
   assert.equal(shell.startTileMapWaterTimer(), true);
   intervalCallback();
 
-  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
-  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+  assert.equal(calls.some((call) => call[0] === 'updateWorldActorAnimationLoop'), true);
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
+  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
 });
 
-test('CanvasGameShell refreshes map layer for active missions kept in mission list', () => {
+test('CanvasGameShell routes active missions kept in mission list to actor animation loop', () => {
   const calls = [];
   let intervalCallback = null;
   const shell = new CanvasGameShell({
@@ -2426,6 +2672,7 @@ test('CanvasGameShell refreshes map layer for active missions kept in mission li
     renderer: {},
     worldMapRenderer: {},
   });
+  shell.worldActorLayerRenderer = {};
   shell.lastGame = {
     state: {
       currentTab: 'military',
@@ -2458,10 +2705,15 @@ test('CanvasGameShell refreshes map layer for active missions kept in mission li
     calls.push(['renderAnimationFrame']);
     return true;
   };
+  shell.updateWorldActorAnimationLoop = (options) => {
+    calls.push(['updateWorldActorAnimationLoop', options.epochNowMs]);
+    return true;
+  };
 
   assert.equal(shell.startTileMapWaterTimer(), true);
   intervalCallback();
 
-  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
-  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+  assert.equal(calls.some((call) => call[0] === 'updateWorldActorAnimationLoop'), true);
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
+  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
 });

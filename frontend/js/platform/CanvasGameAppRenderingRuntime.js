@@ -11,6 +11,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderScheduler) {
     CanvasGameAppRenderScheduler = require('./CanvasGameAppRenderScheduler');
   }
+  var WorldMapRuntimeRenderPolicy = global.WorldMapRuntimeRenderPolicy;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeRenderPolicy) {
+    WorldMapRuntimeRenderPolicy = require('./WorldMapRuntimeRenderPolicy');
+  }
   var WorldMarchSystem = global.WorldMarchSystem;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     WorldMarchSystem = require('../domain/WorldMarchSystem');
@@ -85,26 +89,51 @@
               && this.ensureWorldMapRuntimeCoordinator()?.canRender(this.state));
             const runtimeRenderOptions = this.buildRenderOptions(resolvedActiveTab, this.territoryUiState);
             const explorerAnimatedForRuntime = hasActiveWorldExplorerMission(this.state, runtimeRenderOptions);
-            const worldMapLayerRendered = runtimeCanRenderWorldMap
-              ? (explorerAnimatedForRuntime || this.shouldRenderRuntimeWorldMap(runtimeRenderOptions)
+            let worldMapLayerRendered = runtimeCanRenderWorldMap
+              ? (this.shouldRenderRuntimeWorldMap(runtimeRenderOptions)
                 ? this.renderRuntimeWorldMap({
                   ...runtimeRenderOptions,
-                  force: explorerAnimatedForRuntime || runtimeRenderOptions.force,
+                  force: runtimeRenderOptions.force,
                 }) !== false
                 : (this.worldMapRuntime?.isBakedLayerStateValid?.() ?? Boolean(this.worldMapRuntime?.hasBakedMapLayer)))
               : false;
+            const worldMapFrameState = runtimeCanRenderWorldMap
+              ? (this.worldMapRuntime?.getWorldMapFrameState?.({ rendered: worldMapLayerRendered })
+                || WorldMapRuntimeRenderPolicy?.createWorldMapFrameState?.(this.worldMapRuntime || {}, {
+                  rendered: worldMapLayerRendered,
+                })
+                || null)
+              : null;
+            worldMapLayerRendered = WorldMapRuntimeRenderPolicy?.canSkipWorldMapLayer
+              ? WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(worldMapFrameState)
+              : Boolean(worldMapLayerRendered);
+            const worldMapCompositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
+              ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions({
+                skipWorldMapLayer: worldMapLayerRendered,
+                worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
+                  ? this.worldMapRuntime.hitTargets
+                  : [],
+                worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+                  || this.worldMapRuntime?.lastTileMapContext
+                  || this.renderer?.lastWorldTileMapContext
+                  || null,
+                preserveCanvas: worldMapLayerRendered,
+              }, worldMapFrameState || {})
+              : {
+                skipWorldMapLayer: worldMapLayerRendered,
+                worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
+                  ? this.worldMapRuntime.hitTargets
+                  : [],
+                worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+                  || this.worldMapRuntime?.lastTileMapContext
+                  || this.renderer?.lastWorldTileMapContext
+                  || null,
+                preserveCanvas: worldMapLayerRendered,
+              };
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
-              skipWorldMapLayer: worldMapLayerRendered,
-              worldMapRuntimeHitTargets: Array.isArray(this.worldMapRuntime?.hitTargets)
-                ? this.worldMapRuntime.hitTargets
-                : [],
-              worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
-                || this.worldMapRuntime?.lastTileMapContext
-                || this.renderer?.lastWorldTileMapContext
-                || null,
-              preserveCanvas: worldMapLayerRendered,
+              ...worldMapCompositionOptions,
               showResourceDetails: this.showResourceDetails,
               showCitySwitcher: this.showCitySwitcher,
               showSubcityList: this.showSubcityList,
@@ -146,9 +175,37 @@
             const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
               || this.territoryController?.uiState?.tileMapWaterAnimated);
             const explorerAnimated = explorerAnimatedForRuntime;
-            if (resolvedActiveTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
+            this.updateWorldActorAnimationLoop?.({
+              ...runtimeRenderOptions,
+              state: this.state,
+            });
+            if (resolvedActiveTab === 'military' && (waterAnimated || (explorerAnimated && !this.canvasShell && !this.renderer?.worldActorLayerRenderer))) this.startTileMapWaterTimer();
             else this.stopTileMapWaterTimer();
             return true;
+          },
+
+      buildRenderOptions(activeTab = this.getActiveTab(), territoryUiState = this.territoryUiState, options = {}) {
+            const state = this.state || {};
+            const homeView = this.resolveMapHomeViewState(state, {
+              requestedTab: activeTab || state.currentTab || 'resources',
+              militaryView: state.militaryView || this.militaryView,
+              forceMapHome: options.forceMapHome ?? Boolean(this.mapHomeActive),
+              allowDefaultMapHome: options.allowDefaultMapHome,
+            });
+            return {
+              epochNowMs: this.getWorldEpochNowMs?.() ?? Date.now(),
+              activeTab: homeView.activeTab,
+              isMapHome: homeView.isMapHome,
+              territoryUiState: territoryUiState || this.territoryUiState || {},
+              tutorial: this.tutorialController?.state || this.tutorial || {},
+              tutorialIntro: this.tutorialIntro || null,
+              tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
+              worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+                || this.worldMapRuntime?.lastTileMapContext
+                || this.renderer?.lastWorldTileMapContext
+                || null,
+              network: this.networkState,
+            };
           },
 
       startTileMapWaterTimer() {
@@ -161,12 +218,15 @@
               if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
               const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
               if (hasActiveWorldExplorerMission(this.state, { epochNowMs })) {
-                this.renderRuntimeWorldMap({
-                  ...this.buildRenderOptions('military', this.territoryUiState),
-                  epochNowMs,
-                  force: true,
-                });
-                this.renderAnimationFrame('military');
+                this.updateWorldActorAnimationLoop?.({ epochNowMs, state: this.state });
+                if (!this.canvasShell && !this.renderer?.worldActorLayerRenderer) {
+                  this.renderRuntimeWorldMap({
+                    ...this.buildRenderOptions('military', this.territoryUiState),
+                    epochNowMs,
+                    force: true,
+                  });
+                  this.renderAnimationFrame('military');
+                }
                 return;
               }
               if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) {

@@ -159,8 +159,11 @@
           if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
           const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
           if (hasActiveWorldExplorerMission(this.lastGame?.state, { epochNowMs })) {
-            if (this.worldMapRenderer) this.renderWorldMapLayerFrame({ force: true, epochNowMs });
-            this.renderAnimationFrame();
+            this.updateWorldActorAnimationLoop?.({ epochNowMs });
+            if (!this.worldActorLayerRenderer) {
+              if (this.worldMapRenderer) this.renderWorldMapLayerFrame({ force: true, epochNowMs });
+              else this.renderAnimationFrame();
+            }
             return;
           }
           if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap(this.lastGame?.state, {})) {

@@ -148,6 +148,8 @@ test('WorldMapRuntimeRenderPolicy builds trace payloads without renderer state',
   assert.deepEqual(Policy.createCannotRenderState(), {
     hitTargets: [],
     baseHitTargets: [],
+    lastHitTargetSync: null,
+    hitTargetSyncSequence: 0,
     hasBakedMapLayer: false,
     mapBakeDirty: true,
     lastMapDataSignature: '',
@@ -157,4 +159,39 @@ test('WorldMapRuntimeRenderPolicy builds trace payloads without renderer state',
     mapBakeDirty: false,
     hitTargetCount: 5,
   }, 20000).data.hitTargetCount, 5);
+});
+
+test('WorldMapRuntimeRenderPolicy separates preserved hit targets from visual layer validity', () => {
+  const preservedRuntime = {
+    baseHitTargets: [{ action: { type: 'enterCity' } }],
+    hasBakedMapLayer: true,
+    hitTargets: [{ action: { type: 'enterCity' } }],
+    lastHitTargetSync: {
+      baseHitTargetCount: 1,
+      hitTargetCount: 1,
+      mapTargetCount: 0,
+      preserved: true,
+      sourceHitTargetCount: 0,
+    },
+    mapBakeDirty: true,
+  };
+
+  const invalidFrame = Policy.createWorldMapFrameState(preservedRuntime);
+  assert.equal(invalidFrame.hitTargetsPreserved, true);
+  assert.equal(invalidFrame.visualLayerValid, false);
+  assert.equal(Policy.canSkipWorldMapLayer(invalidFrame), false);
+  assert.equal(Policy.createWorldMapCompositionOptions({ preserveCanvas: true }, invalidFrame).skipWorldMapLayer, false);
+
+  const validFrame = Policy.createWorldMapFrameState({
+    ...preservedRuntime,
+    mapBakeDirty: false,
+  }, {
+    visualLayerValidity: { valid: true, reason: 'valid' },
+  });
+  assert.equal(validFrame.hitTargetsPreserved, true);
+  assert.equal(validFrame.visualLayerValid, true);
+  assert.equal(Policy.canSkipWorldMapLayer(validFrame), true);
+  assert.equal(Policy.createWorldMapCompositionOptions({}, validFrame).preserveCanvas, false);
+  assert.equal(Policy.createWorldMapCompositionOptions({ preserveCanvas: true }, validFrame).skipWorldMapLayer, true);
+  assert.equal(Policy.createWorldMapCompositionOptions({ preserveCanvas: true }, validFrame).preserveCanvas, true);
 });

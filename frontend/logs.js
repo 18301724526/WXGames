@@ -41,5 +41,4 @@ window.mountLogMethods = function(game) {
     this.showRequestLogs?.();
   };
 
-  console.log('[logs.js] 请求日志模块已挂载');
 };
