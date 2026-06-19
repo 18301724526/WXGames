@@ -295,6 +295,41 @@ test('WorldMarchHudCanvasRenderer prefers explicit military state over host host
   assert.equal(resolved.__sentinelSource, 'explicit');
 });
 
+test('WorldMarchHudCanvasRenderer prefers explicit presenter over host host presenter', () => {
+  const testState = { activeCityId: 'capital' };
+  const explicitPresenter = {
+    buildMilitaryViewState() {
+      return {
+        __sentinelSource: 'explicit',
+        formations: [{ slot: 1, cityId: 'capital', name: 'Explicit Presenter' }],
+      };
+    },
+  };
+  const hostHostPresenter = {
+    buildMilitaryViewState() {
+      return {
+        __sentinelSource: 'hosthost',
+        formations: [{ slot: 1, cityId: 'capital', name: 'Host Host Presenter' }],
+      };
+    },
+  };
+  const host = createHost({
+    presenter: null,
+    host: {
+      presenter: hostHostPresenter,
+    },
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+  renderer.presenter = explicitPresenter;
+
+  const hostHostView = host.host.presenter.buildMilitaryViewState(testState);
+  const view = renderer.buildMilitaryViewState(testState);
+
+  assert.equal(hostHostView.__sentinelSource, 'hosthost');
+  assert.equal(typeof host.host.presenter.buildMilitaryViewState, 'function');
+  assert.equal(view.__sentinelSource, 'explicit');
+});
+
 test('WorldMarchHudCanvasRenderer skips activeCity-only state when resolving formations', () => {
   const fullState = {
     activeCityId: 'capital',
