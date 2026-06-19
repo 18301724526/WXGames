@@ -35,6 +35,60 @@
     return null;
   })();
 
+  const WORLD_ACTOR_OVERLAY_DIAG_LOG_INTERVAL_MS = 1000;
+  function getWorldActorOverlayCanvasIdStore() {
+    if (typeof WeakMap !== 'function') return null;
+    if (!global.__worldActorOverlayDiagCanvasIds) {
+      global.__worldActorOverlayDiagCanvasIds = new WeakMap();
+      global.__worldActorOverlayDiagCanvasIdSeq = 0;
+    }
+    return global.__worldActorOverlayDiagCanvasIds;
+  }
+
+  function getWorldActorOverlayCanvasId(ctx = null) {
+    const canvas = ctx?.canvas || null;
+    if (!canvas) return '';
+    const existing = canvas._layerName
+      || canvas.dataset?.canvasLayer
+      || canvas.id
+      || '';
+    if (existing) return existing;
+    const canvasIds = getWorldActorOverlayCanvasIdStore();
+    if (!canvasIds) return '';
+    if (!canvasIds.has(canvas)) {
+      global.__worldActorOverlayDiagCanvasIdSeq = (Number(global.__worldActorOverlayDiagCanvasIdSeq) || 0) + 1;
+      canvasIds.set(canvas, `canvas#${global.__worldActorOverlayDiagCanvasIdSeq}`);
+    }
+    return canvasIds.get(canvas);
+  }
+
+  function cloneWorldActorOverlayFrame(frame = null) {
+    if (!frame) return null;
+    return {
+      x: Number(frame.x),
+      y: Number(frame.y),
+      width: Number(frame.width),
+      height: Number(frame.height),
+    };
+  }
+
+  function doesClearCoverWorldActorFrame(clearRect = null, drawFrame = null) {
+    if (!clearRect || !drawFrame) return false;
+    const clearX = Number(clearRect.x);
+    const clearY = Number(clearRect.y);
+    const clearW = Number(clearRect.w);
+    const clearH = Number(clearRect.h);
+    const frameX = Number(drawFrame.x);
+    const frameY = Number(drawFrame.y);
+    const frameW = Number(drawFrame.width);
+    const frameH = Number(drawFrame.height);
+    if (![clearX, clearY, clearW, clearH, frameX, frameY, frameW, frameH].every(Number.isFinite)) return false;
+    return clearX <= frameX
+      && clearY <= frameY
+      && clearX + clearW >= frameX + frameW
+      && clearY + clearH >= frameY + frameH;
+  }
+
   class WorldMapLayerCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -390,7 +444,67 @@
       return context;
     }
 
-    clearWorldActorBackingStore() {
+    publishWorldActorOverlayDiag(diag = null) {
+      this.lastWorldActorOverlayDiag = diag;
+      if (this.host && this.host !== this) {
+        this.host.lastWorldActorOverlayDiag = diag;
+        if (this.host.worldMapRenderer) this.host.worldMapRenderer.lastWorldActorOverlayDiag = diag;
+      }
+      return diag;
+    }
+
+    createWorldActorOverlayDiag(context = null, options = {}) {
+      const frame = cloneWorldActorOverlayFrame(context?.frame || null);
+      const delegated = Boolean(
+        options.__worldActorOverlayDelegated
+        || this.__worldActorOverlayDelegated
+        || (this.host?.worldMapRenderer && this.host.worldMapRenderer !== this.host && this.host.worldMapRenderer.ctx !== this.ctx)
+      );
+      return {
+        delegated,
+        clearedCanvasId: '',
+        drawnCanvasId: '',
+        clearRect: null,
+        drawFrame: frame,
+        actorCount: Array.isArray(context?.actors) ? context.actors.length : 0,
+        arrowCanvasId: '',
+        clearedEqualsDrawn: false,
+        clearCoversDrawFrame: false,
+      };
+    }
+
+    finalizeWorldActorOverlayDiag(diag = null) {
+      if (!diag) return null;
+      const clearedCanvasId = diag.clearedCanvasId || '';
+      const drawnCanvasId = diag.drawnCanvasId || '';
+      diag.clearedEqualsDrawn = clearedCanvasId === drawnCanvasId;
+      diag.clearCoversDrawFrame = doesClearCoverWorldActorFrame(diag.clearRect, diag.drawFrame);
+      return diag;
+    }
+
+    logWorldActorOverlayDiag(diag = null, options = {}) {
+      if (!diag) return false;
+      const now = Number(options.epochNowMs ?? options.nowMs ?? options.serverNowMs ?? this.getNow?.() ?? Date.now());
+      const safeNow = Number.isFinite(now) ? now : Date.now();
+      const last = Number(this.lastWorldActorOverlayDiagLogAt);
+      if (Number.isFinite(last) && safeNow - last < WORLD_ACTOR_OVERLAY_DIAG_LOG_INTERVAL_MS) return false;
+      this.lastWorldActorOverlayDiagLogAt = safeNow;
+      if (this.host && this.host !== this) this.host.lastWorldActorOverlayDiagLogAt = safeNow;
+      const logger = global.ClientOperationLog || globalThis.ClientOperationLog;
+      logger?.record?.('worldActorOverlay:diag', diag);
+      return true;
+    }
+
+    setActiveWorldActorOverlayDiag(diag = null) {
+      this.__worldActorOverlayActiveDiag = diag;
+      if (this.host && this.host !== this) {
+        this.host.__worldActorOverlayActiveDiag = diag;
+        if (this.host.worldMapRenderer) this.host.worldMapRenderer.__worldActorOverlayActiveDiag = diag;
+      }
+      return diag;
+    }
+
+    clearWorldActorBackingStore(diag = null) {
       if (!this.ctx || typeof this.ctx.clearRect !== 'function') return false;
       const canvas = this.canvas || this.ctx.canvas || null;
       const pixelRatio = Math.max(1, Number(canvas?._backingStorePixelRatio || this.pixelRatio) || 1);
@@ -399,12 +513,22 @@
       const backingWidth = Math.max(1, Number(canvas?.width) || Math.ceil(logicalWidth * pixelRatio));
       const backingHeight = Math.max(1, Number(canvas?.height) || Math.ceil(logicalHeight * pixelRatio));
       if (typeof this.ctx.setTransform === 'function') {
+        const clearRect = { x: 0, y: 0, w: backingWidth, h: backingHeight };
+        if (diag) {
+          diag.clearedCanvasId = getWorldActorOverlayCanvasId(this.ctx);
+          diag.clearRect = clearRect;
+        }
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.clearRect(0, 0, backingWidth, backingHeight);
+        this.ctx.clearRect(clearRect.x, clearRect.y, clearRect.w, clearRect.h);
         this.ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
         return true;
       }
-      this.clearAll?.();
+      const clearRect = { x: 0, y: 0, w: this.width, h: this.height };
+      if (diag) {
+        diag.clearedCanvasId = getWorldActorOverlayCanvasId(this.ctx);
+        diag.clearRect = clearRect;
+      }
+      this.ctx.clearRect(clearRect.x, clearRect.y, clearRect.w, clearRect.h);
       return true;
     }
 
@@ -458,9 +582,13 @@
       const context = this.getWorldMapActorLayerContext(state, options);
       this.beginFrame(options);
       this.setHitTargets([]);
-      this.clearWorldActorBackingStore();
+      const diag = this.createWorldActorOverlayDiag(context, options);
+      this.clearWorldActorBackingStore(diag);
       if (!context) {
         this.publishWorldMapActorLayerContext(null);
+        this.finalizeWorldActorOverlayDiag(diag);
+        this.publishWorldActorOverlayDiag(diag);
+        this.logWorldActorOverlayDiag(diag, options);
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
       }
@@ -475,12 +603,18 @@
       }
       try {
         this.renderWorldScoutRoutes?.(context.tileMapView, viewport, actors);
+        diag.drawnCanvasId = getWorldActorOverlayCanvasId(this.ctx);
+        this.setActiveWorldActorOverlayDiag(diag);
         this.renderWorldActors?.(actors, viewport, geometry);
       } finally {
+        this.setActiveWorldActorOverlayDiag(null);
         if (didClip && this.ctx.restore) this.ctx.restore();
       }
       this.addWorldActorHitTargets?.(actors, viewport, geometry);
       this.publishWorldMapActorLayerContext(context);
+      this.finalizeWorldActorOverlayDiag(diag);
+      this.publishWorldActorOverlayDiag(diag);
+      this.logWorldActorOverlayDiag(diag, options);
       this.endFrame({ ...options, showFpsOverlay: false });
       return true;
     }

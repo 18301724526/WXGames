@@ -23,6 +23,32 @@
     return null;
   })();
 
+  function getCanvasIdStore() {
+    if (typeof WeakMap !== 'function') return null;
+    if (!global.__worldActorOverlayDiagCanvasIds) {
+      global.__worldActorOverlayDiagCanvasIds = new WeakMap();
+      global.__worldActorOverlayDiagCanvasIdSeq = 0;
+    }
+    return global.__worldActorOverlayDiagCanvasIds;
+  }
+
+  function getCanvasId(ctx = null) {
+    const canvas = ctx?.canvas || null;
+    if (!canvas) return '';
+    const existing = canvas._layerName
+      || canvas.dataset?.canvasLayer
+      || canvas.id
+      || '';
+    if (existing) return existing;
+    const canvasIds = getCanvasIdStore();
+    if (!canvasIds) return '';
+    if (!canvasIds.has(canvas)) {
+      global.__worldActorOverlayDiagCanvasIdSeq = (Number(global.__worldActorOverlayDiagCanvasIdSeq) || 0) + 1;
+      canvasIds.set(canvas, `canvas#${global.__worldActorOverlayDiagCanvasIdSeq}`);
+    }
+    return canvasIds.get(canvas);
+  }
+
   class WorldActorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -68,6 +94,8 @@
       const dy = Number(to.y) - Number(from.y);
       const length = Math.hypot(dx, dy);
       if (!Number.isFinite(length) || length < 8) return false;
+      const diag = this.__worldActorOverlayActiveDiag;
+      if (diag) diag.arrowCanvasId = getCanvasId(this.ctx);
       const ux = dx / length;
       const uy = dy / length;
       const endX = Number(to.x) - ux * 14;
@@ -108,6 +136,8 @@
     }
 
     renderActors(actors = [], viewport = {}, geometry = {}) {
+      const diag = this.__worldActorOverlayActiveDiag;
+      if (diag) diag.drawnCanvasId = getCanvasId(this.ctx);
       if (!Array.isArray(actors) || !actors.length) return false;
       let rendered = false;
       actors.forEach((actor) => {
