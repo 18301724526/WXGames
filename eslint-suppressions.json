@@ -434,11 +434,6 @@
       "count": 3
     }
   },
-  "frontend/js/platform/renderers/TabBarCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/renderers/TechCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
