@@ -142,6 +142,39 @@ test('MapCommandCanvasRenderer falls back to host drawing surface when none is i
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), MAP_COMMAND_DRAWING_METHODS);
 });
 
+test('MapCommandCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstCtx = { fillRect() {}, globalAlpha: 1, fillStyle: '' };
+  const secondCtx = { fillRect() {}, globalAlpha: 1, fillStyle: '' };
+  const host = createHost({
+    width: 390,
+    height: 844,
+    ctx: firstCtx,
+  });
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.ctx, firstCtx);
+
+  host.width = 512;
+  host.height = 900;
+  host.ctx = secondCtx;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.ctx, secondCtx);
+});
+
+test('MapCommandCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });

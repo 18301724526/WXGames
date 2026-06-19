@@ -172,6 +172,39 @@ test('SystemCanvasRenderer falls back to host drawing surface when none is injec
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), SYSTEM_DRAWING_METHODS);
 });
 
+test('SystemCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstCtx = { fillRect() {}, globalAlpha: 1 };
+  const secondCtx = { fillRect() {}, globalAlpha: 1 };
+  const host = createHost({
+    width: 390,
+    height: 844,
+    ctx: firstCtx,
+  });
+  const renderer = new SystemCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.ctx, firstCtx);
+
+  host.width = 512;
+  host.height = 900;
+  host.ctx = secondCtx;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.ctx, secondCtx);
+});
+
+test('SystemCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new SystemCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('SystemCanvasRenderer preserves login form hit target contract', () => {
   const host = createHost();
   const renderer = new SystemCanvasRenderer({ host });

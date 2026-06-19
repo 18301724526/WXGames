@@ -161,11 +161,11 @@ function getCalledDrawingSurfaceMethods(calls, label) {
 }
 
 function renderMilitarySentinelViews(renderer, presenterSource) {
-  renderer.presenter = presenterSource.presenter;
+  renderer.host.presenter = presenterSource.presenter;
   renderer.renderMilitary({}, 100, 480, {});
-  renderer.presenter = createHost({ activeView: 'scout' }).presenter;
+  renderer.host.presenter = createHost({ activeView: 'scout' }).presenter;
   renderer.renderMilitary({}, 100, 520, {});
-  renderer.presenter = createHost({ activeView: 'world' }).presenter;
+  renderer.host.presenter = createHost({ activeView: 'world' }).presenter;
   renderer.renderMilitary({}, 100, 480, {});
 }
 
@@ -192,6 +192,29 @@ test('MilitaryCanvasRenderer falls back to host drawing surface when none is inj
   renderMilitarySentinelViews(renderer, fallbackHost);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), MILITARY_DRAWING_METHODS);
+});
+
+test('MilitaryCanvasRenderer reads dynamic host presenter through explicit getter', () => {
+  const firstPresenter = createHost({ activeView: 'army' }).presenter;
+  const secondPresenter = createHost({ activeView: 'scout' }).presenter;
+  const host = createHost({ presenter: firstPresenter });
+  const renderer = new MilitaryCanvasRenderer({ host });
+
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('MilitaryCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new MilitaryCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('MilitaryCanvasRenderer preserves military tab and formation hit targets', () => {

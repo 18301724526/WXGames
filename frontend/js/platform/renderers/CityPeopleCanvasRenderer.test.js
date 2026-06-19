@@ -124,7 +124,7 @@ test('CityPeopleCanvasRenderer prefers explicit drawing surface over proxy fallb
     host: fallbackHost,
     drawingSurface: explicitSurface,
   });
-  renderer.presenter = fallbackHost.presenter;
+  fallbackHost.presenter = createHost().presenter;
 
   renderer.renderPopulation({}, 100);
 
@@ -136,11 +136,40 @@ test('CityPeopleCanvasRenderer falls back to host drawing surface when none is i
   const calls = [];
   const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
   const renderer = new CityPeopleCanvasRenderer({ host: fallbackHost });
-  renderer.presenter = fallbackHost.presenter;
+  fallbackHost.presenter = createHost().presenter;
 
   renderer.renderPopulation({}, 100);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), CITY_PEOPLE_DRAWING_METHODS);
+});
+
+test('CityPeopleCanvasRenderer reads dynamic host presenter through explicit getter', () => {
+  const firstPresenter = createHost().presenter;
+  const secondPresenter = createHost({
+    presenter: {
+      buildPopulationViewState() {
+        return createPopulationView();
+      },
+    },
+  }).presenter;
+  const host = createHost({ presenter: firstPresenter });
+  const renderer = new CityPeopleCanvasRenderer({ host });
+
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('CityPeopleCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new CityPeopleCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('CityPeopleCanvasRenderer owns population assignment and policy hit targets', () => {

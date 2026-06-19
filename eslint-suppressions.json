@@ -406,16 +406,6 @@
   },
   "frontend/js/platform/renderers/CityCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/renderers/CityPeopleCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/renderers/CivilizationCanvasRenderer.js": {
-    "no-unused-vars": {
       "count": 1
     }
   },
@@ -446,12 +436,7 @@
   },
   "frontend/js/platform/renderers/MapCommandCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 4
-    }
-  },
-  "frontend/js/platform/renderers/MilitaryCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
+      "count": 3
     }
   },
   "frontend/js/platform/renderers/OverlayCanvasRenderer.js": {
@@ -460,11 +445,6 @@
     }
   },
   "frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/renderers/SystemCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
     }

@@ -149,7 +149,7 @@ function getCalledDrawingSurfaceMethods(calls, label) {
 }
 
 function renderCitySentinelPaths(renderer, fallbackHost) {
-  renderer.presenter = fallbackHost.presenter;
+  fallbackHost.presenter = createHost().presenter;
   renderer.renderCitySwitcherMenu(createState());
   renderer.renderCityManagementPanel(createState(), { activeCityManagementTab: 'buildings', activeBuildingCategory: 'housing' });
   renderer.renderCityManagementPanel(createState(), { activeCityManagementTab: 'people' });
@@ -179,6 +179,39 @@ test('CityCanvasRenderer falls back to host drawing surface when none is injecte
   renderCitySentinelPaths(renderer, fallbackHost);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), CITY_DRAWING_METHODS);
+});
+
+test('CityCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstPresenter = createHost().presenter;
+  const secondPresenter = createHost().presenter;
+  const host = createHost({
+    width: 390,
+    height: 844,
+    presenter: firstPresenter,
+  });
+  const renderer = new CityCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 512;
+  host.height = 900;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('CityCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new CityCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('CityCanvasRenderer resolves active city summary from city state and territory state', () => {

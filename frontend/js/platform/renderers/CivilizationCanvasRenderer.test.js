@@ -160,6 +160,29 @@ test('CivilizationCanvasRenderer falls back to host drawing surface when none is
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), CIVILIZATION_DRAWING_METHODS);
 });
 
+test('CivilizationCanvasRenderer reads dynamic host presenter through explicit getter', () => {
+  const firstPresenter = createHost().presenter;
+  const secondPresenter = createHost({ viewOverrides: { disabled: true } }).presenter;
+  const host = createHost({ presenter: firstPresenter });
+  const renderer = new CivilizationCanvasRenderer({ host });
+
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('CivilizationCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new CivilizationCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('CivilizationCanvasRenderer renders overview, era and feature areas', () => {
   const host = createHost();
   const renderer = new CivilizationCanvasRenderer({ host });
