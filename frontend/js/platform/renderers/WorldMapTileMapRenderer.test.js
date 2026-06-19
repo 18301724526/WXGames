@@ -133,11 +133,17 @@ function createHost(overrides = {}) {
 
 test('WorldMapTileMapRenderer publishes context and renders layers in stable order', () => {
   const host = createHost();
+  Object.defineProperty(host, 'host', {
+    get() {
+      throw new Error('WorldMapTileMapRenderer should not read host.host');
+    },
+  });
   const renderer = new WorldMapTileMapRenderer({ host });
   const tileMapView = createTileMapView();
 
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, { selectedSiteId: 'tile-1' }, { state: { id: 'state-1' } });
 
+  assert.equal(renderer.lastWorldTileMapContext, host.lastWorldTileMapContext);
   assert.equal(host.lastWorldTileMapContext.tileMapView, tileMapView);
   assert.equal(host.lastWorldTileMapContext.renderSnapshot.schema, 'world-map-render-snapshot-v1');
   assert.equal(host.lastWorldTileMapContext.uiState.selectedSiteId, 'tile-1');

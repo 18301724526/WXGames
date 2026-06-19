@@ -82,8 +82,12 @@ test('WorldMapActorHudRenderer publishes march HUD state before rendering', () =
       return true;
     },
   };
-  const outerHost = {};
-  const host = createHost({ host: outerHost });
+  const host = createHost();
+  Object.defineProperty(host, 'host', {
+    get() {
+      throw new Error('WorldMapActorHudRenderer should not read host.host');
+    },
+  });
   const renderer = new WorldMapActorHudRenderer({
     host,
     worldMarchHudRenderer: hudRenderer,
@@ -94,8 +98,8 @@ test('WorldMapActorHudRenderer publishes march HUD state before rendering', () =
   assert.equal(renderer.renderWorldMarchHud(state, { selected: true }, actors, { scale: 1 }, {}, { x: 1 }), true);
   assert.equal(host.lastGameState, state);
   assert.equal(host.lastWorldMarchState, state);
-  assert.equal(outerHost.lastGameState, state);
   assert.equal(hudRenderer.lastGameState, state);
+  assert.equal(hudRenderer.lastWorldMarchState, state);
   assert.equal(calls[0][1], state);
   assert.equal(calls[0][3], actors);
 });

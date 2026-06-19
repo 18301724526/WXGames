@@ -83,11 +83,6 @@
       if (this.host && this.host !== this) {
         this.host.lastGameState = state;
         this.host.lastWorldMarchState = state;
-        const externalHost = this.host.host || null;
-        if (externalHost && externalHost !== this.host && externalHost !== this) {
-          externalHost.lastGameState = state;
-          externalHost.lastWorldMarchState = state;
-        }
       }
       if (this.worldMarchHudRenderer) {
         this.worldMarchHudRenderer.lastGameState = state;

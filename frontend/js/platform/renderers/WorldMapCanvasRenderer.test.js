@@ -144,17 +144,18 @@ test('WorldMapCanvasRenderer keeps world map hit target contract in hit-target-o
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), false);
 });
 
-test('WorldMapCanvasRenderer exposes tile map context on its host', () => {
+test('WorldMapCanvasRenderer exposes tile map context on the renderer facade', () => {
   const host = createHost();
   const renderer = new WorldMapCanvasRenderer({ host });
   const tileMapView = createTileMapView();
 
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
 
-  assert.equal(host.lastWorldTileMapContext.tileMapView, tileMapView);
-  assert.equal(host.lastWorldTileMapContext.renderSnapshot.schema, 'world-map-render-snapshot-v1');
-  assert.deepEqual(host.lastWorldTileMapContext.frame, { x: 11, y: 91, width: 358, height: 298 });
-  assert.equal(host.lastWorldTileMapContext.viewport.originX, 190);
+  const context = renderer.lastWorldTileMapContext;
+  assert.equal(context.tileMapView, tileMapView);
+  assert.equal(context.renderSnapshot.schema, 'world-map-render-snapshot-v1');
+  assert.deepEqual(context.frame, { x: 11, y: 91, width: 358, height: 298 });
+  assert.equal(context.viewport.originX, 190);
 });
 
 test('WorldMapCanvasRenderer renders world march formation picker through HUD facade', () => {
@@ -259,11 +260,12 @@ test('WorldMapCanvasRenderer computes world march actors from epoch time, not fr
   });
 
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
-  capturedActors.push(...(host.lastWorldTileMapContext?.visibilityActors || []));
+  const context = renderer.lastWorldTileMapContext;
+  capturedActors.push(...(context?.visibilityActors || []));
 
   assert.equal(capturedActors.length, 1);
-  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
-  assert.equal(host.lastWorldTileMapContext.renderSnapshot.actors.length, 1);
+  assert.equal(context.actors.length, 0);
+  assert.equal(context.renderSnapshot.actors.length, 1);
   assert.equal(capturedActors[0].current.q > 0, true);
   assert.equal(capturedActors[0].current.q < 1, true);
   assert.equal(capturedActors[0].remainingSeconds, 15);
