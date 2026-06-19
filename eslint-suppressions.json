@@ -376,7 +376,7 @@
   },
   "frontend/js/platform/renderers/BuildingCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 4
+      "count": 3
     }
   },
   "frontend/js/platform/renderers/CanvasAssetRenderer.js": {

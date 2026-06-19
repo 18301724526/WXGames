@@ -161,14 +161,38 @@ function getCalledDrawingSurfaceMethods(calls, label) {
   return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
 }
 
-function renderBuildingSentinelPath(renderer, fallbackHost) {
-  renderer.presenter = fallbackHost.presenter;
+function renderBuildingSentinelPath(renderer) {
   renderer.renderBuildings({ resources: { wood: 30, iron: 1, metal: 1, stone: 20, food: 20 } }, 100, 250, {
     activeBuildingCategory: 'housing',
     offset: 1,
     buildingTransition: { fromOffset: 0, toOffset: 1 },
   });
 }
+
+test('BuildingCanvasRenderer reads host ctx and presenter dynamically after proxy removal', () => {
+  const firstCtx = { id: 'first-ctx' };
+  const secondCtx = { id: 'second-ctx' };
+  const firstPresenter = { id: 'first-presenter' };
+  const secondPresenter = { id: 'second-presenter' };
+  const host = createHost({ ctx: firstCtx, presenter: firstPresenter });
+  const renderer = new BuildingCanvasRenderer({ host });
+
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('BuildingCanvasRenderer no longer forwards unknown host properties through proxy', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new BuildingCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
 
 test('BuildingCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
   const calls = [];
@@ -179,7 +203,7 @@ test('BuildingCanvasRenderer prefers explicit drawing surface over proxy fallbac
     drawingSurface: explicitSurface,
   });
 
-  renderBuildingSentinelPath(renderer, fallbackHost);
+  renderBuildingSentinelPath(renderer);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), BUILDING_DRAWING_METHODS);
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
@@ -192,7 +216,7 @@ test('BuildingCanvasRenderer falls back to host drawing surface when none is inj
   const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
   const renderer = new BuildingCanvasRenderer({ host: fallbackHost });
 
-  renderBuildingSentinelPath(renderer, fallbackHost);
+  renderBuildingSentinelPath(renderer);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), BUILDING_DRAWING_METHODS);
   assert.equal(calls.some((call) => call[0] === 'fallback' && call[1] === 'withSlideClip' && call[2] === 'function'), true);
