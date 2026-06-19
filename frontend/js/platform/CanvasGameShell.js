@@ -59,6 +59,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapRuntime) {
     CanvasGameShellWorldMapRuntime = require('./CanvasGameShellWorldMapRuntime');
   }
+  var CanvasGameWorldActorAnimationRuntime = global.CanvasGameWorldActorAnimationRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameWorldActorAnimationRuntime) {
+    CanvasGameWorldActorAnimationRuntime = require('./CanvasGameWorldActorAnimationRuntime');
+  }
   var CanvasGameShellRenderingRuntime = global.CanvasGameShellRenderingRuntime;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellRenderingRuntime) {
     CanvasGameShellRenderingRuntime = require('./CanvasGameShellRenderingRuntime');
@@ -150,6 +154,10 @@ constructor(options = {}) {
       this.lastWorldMapLayerRenderAt = 0;
       this.worldMapLayerRenderQueued = false;
       this.worldMapQueuedRenderOptions = null;
+      this.worldActorAnimationActive = false;
+      this.worldActorAnimationQueued = false;
+      this.worldActorQueuedRenderOptions = null;
+      this.lastWorldActorAnimationRenderAt = 0;
       this.worldMapDragFrameActive = false;
       this.worldMapDragWaterTimeMs = null;
       this.worldMapDragCooldownUntil = 0;
@@ -317,6 +325,7 @@ static mount(game, options = {}) {
     CanvasGameShellWorldMapDragRuntime,
     CanvasGameShellWorldMapFrameRuntime,
     CanvasGameShellWorldMapRuntime,
+    CanvasGameWorldActorAnimationRuntime,
     CanvasGameShellRenderingRuntime,
     CanvasGameShellSystemUi,
   ].forEach((shellModule) => shellModule?.install?.(CanvasGameShell));

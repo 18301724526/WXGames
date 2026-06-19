@@ -412,14 +412,13 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
          activeTab: homeView.activeTab,
          isMapHome: homeView.isMapHome,
        };
-       let worldMapLayerRendered = false;
-       let worldMapFrameState = null;
+      let worldMapLayerRendered = false;
+      let worldMapFrameState = null;
       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
-         const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
-         worldMapLayerRendered = (explorerAnimated || this.shouldRenderRuntimeWorldMap(state, renderOptions))
+         worldMapLayerRendered = this.shouldRenderRuntimeWorldMap(state, renderOptions)
            ? this.renderRuntimeWorldMap(state, {
              ...renderOptions,
-             force: explorerAnimated || renderOptions.force,
+             force: renderOptions.force,
            }) !== false
            : this.hasValidBakedWorldMapLayer?.() !== false;
          const bakedLayerValidity = typeof this.getWorldMapBakedLayerValidity === 'function'
@@ -536,13 +535,14 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
           preserveCanvas: false,
         });
        const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
-         || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
-         || this.territoryUiState?.tileMapWaterAnimated);
-       const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
-       if (homeView.activeTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
-      else this.stopTileMapWaterTimer();
-      return true;
-    },
+          || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
+          || this.territoryUiState?.tileMapWaterAnimated);
+        const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
+        this.updateWorldActorAnimationLoop?.({ ...renderOptions, state });
+        if (homeView.activeTab === 'military' && (waterAnimated || (explorerAnimated && !this.worldActorLayerRenderer))) this.startTileMapWaterTimer();
+       else this.stopTileMapWaterTimer();
+       return true;
+      },
 
 getTabLocks(state = {}) {
       const tabIds = ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];

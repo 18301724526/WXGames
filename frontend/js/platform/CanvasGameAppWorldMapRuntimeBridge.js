@@ -37,6 +37,7 @@
       this.worldMapDragWaterTimeMs = null;
       this.worldMapPinchDragging = false;
       if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
+      this.updateWorldActorAnimationLoop?.({ force: true });
     },
 
     renderWorldMapSnapshotDragFrame() {

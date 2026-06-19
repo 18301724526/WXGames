@@ -31,7 +31,13 @@ function createShell(overrides = {}) {
 }
 
 test('CanvasGameShellWorldMapDragRuntime tracks drag water time and cooldown', () => {
-  const shell = createShell();
+  const calls = [];
+  const shell = createShell({
+    updateWorldActorAnimationLoop(options) {
+      calls.push(['updateWorldActorAnimationLoop', options.force]);
+      return true;
+    },
+  });
 
   assert.equal(shell.getFrozenWorldMapWaterTimeMs(), 1000);
   assert.equal(shell.isWorldMapDragging(), false);
@@ -43,6 +49,9 @@ test('CanvasGameShellWorldMapDragRuntime tracks drag water time and cooldown', (
   assert.equal(shell.isWorldMapDragCoolingDown(), true);
   assert.equal(shell.worldMapRuntime.waterTimeMs, null);
   assert.equal(shell.worldMapPinchDragging, false);
+  assert.deepEqual(calls, [
+    ['updateWorldActorAnimationLoop', true],
+  ]);
 });
 
 test('CanvasGameShellWorldMapDragRuntime renders deferred frame after drag', () => {

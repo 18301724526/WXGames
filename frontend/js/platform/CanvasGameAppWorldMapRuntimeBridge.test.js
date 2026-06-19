@@ -25,6 +25,7 @@ test('CanvasGameAppWorldMapRuntimeBridge tracks snapshot drag water time and coo
   CanvasGameAppWorldMapRuntimeBridge.install(App);
 
   let now = 1000;
+  const calls = [];
   const app = new App();
   app.now = () => now;
   app.getWorldMapDragCooldownMs = () => 220;
@@ -32,6 +33,7 @@ test('CanvasGameAppWorldMapRuntimeBridge tracks snapshot drag water time and coo
   app.worldMapDragWaterTimeMs = null;
   app.worldMapDragCooldownUntil = 0;
   app.worldMapPinchDragging = true;
+  app.updateWorldActorAnimationLoop = (options) => calls.push(['updateWorldActorAnimationLoop', options.force]);
 
   assert.equal(app.getFrozenWorldMapWaterTimeMs(), 1000);
   assert.equal(app.isWorldMapDragging(), false);
@@ -45,6 +47,9 @@ test('CanvasGameAppWorldMapRuntimeBridge tracks snapshot drag water time and coo
   assert.equal(app.worldMapPinchDragging, false);
   assert.equal(app.worldMapRuntime.waterTimeMs, null);
   assert.equal(app.worldMapDragCooldownUntil, 1420);
+  assert.deepEqual(calls, [
+    ['updateWorldActorAnimationLoop', true],
+  ]);
 });
 
 test('CanvasGameAppWorldMapRuntimeBridge delegates render decisions to coordinator', () => {

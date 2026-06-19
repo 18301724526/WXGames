@@ -18,6 +18,7 @@ const SHELL_MODULES = [
   'CanvasGameShellWorldMapDragRuntime',
   'CanvasGameShellWorldMapFrameRuntime',
   'CanvasGameShellWorldMapRuntime',
+  'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameShellRenderingRuntime',
   'CanvasGameShellSystemUi',
 ];
@@ -30,6 +31,7 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
     commands: ['openCityManagement', 'openArmyFormation', 'forwardCanvasAction', 'closeWorldSiteHud'],
     guideUi: ['getCanvasTarget', 'showTutorialHighlight', 'hideTutorialHighlight'],
     worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
+    actorAnimation: ['startWorldActorAnimationLoop', 'stopWorldActorAnimationLoop', 'renderWorldActorAnimationFrame'],
     renderingRuntime: ['renderActive', 'renderReadOnly', 'buildRenderOptions', 'setTechTreeZoom'],
     systemUi: ['applyAuthShell', 'showLoading', 'setNetworkState', 'startBattleScene'],
     layerRegistry: ['ensureCanvasLayer', 'setCanvasLayerTranslate', 'setCanvasLayerVisible', 'getCanvasLayerMetrics'],
@@ -2437,7 +2439,7 @@ test('CanvasGameShell blocks all drags while a guided highlight is active', () =
   assert.deepEqual(calls, []);
 });
 
-test('CanvasGameShell refreshes both map layer and HUD while exploration is active', () => {
+test('CanvasGameShell routes active exploration refreshes to the actor animation loop', () => {
   const calls = [];
   let intervalCallback = null;
   const shell = new CanvasGameShell({
@@ -2456,6 +2458,7 @@ test('CanvasGameShell refreshes both map layer and HUD while exploration is acti
     renderer: {},
     worldMapRenderer: {},
   });
+  shell.worldActorLayerRenderer = {};
   shell.lastGame = {
     state: {
       currentTab: 'military',
@@ -2480,15 +2483,20 @@ test('CanvasGameShell refreshes both map layer and HUD while exploration is acti
     calls.push(['renderAnimationFrame']);
     return true;
   };
+  shell.updateWorldActorAnimationLoop = (options) => {
+    calls.push(['updateWorldActorAnimationLoop', options.epochNowMs]);
+    return true;
+  };
 
   assert.equal(shell.startTileMapWaterTimer(), true);
   intervalCallback();
 
-  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
-  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+  assert.equal(calls.some((call) => call[0] === 'updateWorldActorAnimationLoop'), true);
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
+  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
 });
 
-test('CanvasGameShell refreshes map layer for active missions kept in mission list', () => {
+test('CanvasGameShell routes active missions kept in mission list to actor animation loop', () => {
   const calls = [];
   let intervalCallback = null;
   const shell = new CanvasGameShell({
@@ -2507,6 +2515,7 @@ test('CanvasGameShell refreshes map layer for active missions kept in mission li
     renderer: {},
     worldMapRenderer: {},
   });
+  shell.worldActorLayerRenderer = {};
   shell.lastGame = {
     state: {
       currentTab: 'military',
@@ -2539,10 +2548,15 @@ test('CanvasGameShell refreshes map layer for active missions kept in mission li
     calls.push(['renderAnimationFrame']);
     return true;
   };
+  shell.updateWorldActorAnimationLoop = (options) => {
+    calls.push(['updateWorldActorAnimationLoop', options.epochNowMs]);
+    return true;
+  };
 
   assert.equal(shell.startTileMapWaterTimer(), true);
   intervalCallback();
 
-  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame' && call[1].force === true), true);
-  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), true);
+  assert.equal(calls.some((call) => call[0] === 'updateWorldActorAnimationLoop'), true);
+  assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
+  assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
 });

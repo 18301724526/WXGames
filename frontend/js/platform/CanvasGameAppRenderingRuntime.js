@@ -90,10 +90,10 @@
             const runtimeRenderOptions = this.buildRenderOptions(resolvedActiveTab, this.territoryUiState);
             const explorerAnimatedForRuntime = hasActiveWorldExplorerMission(this.state, runtimeRenderOptions);
             let worldMapLayerRendered = runtimeCanRenderWorldMap
-              ? (explorerAnimatedForRuntime || this.shouldRenderRuntimeWorldMap(runtimeRenderOptions)
+              ? (this.shouldRenderRuntimeWorldMap(runtimeRenderOptions)
                 ? this.renderRuntimeWorldMap({
                   ...runtimeRenderOptions,
-                  force: explorerAnimatedForRuntime || runtimeRenderOptions.force,
+                  force: runtimeRenderOptions.force,
                 }) !== false
                 : (this.worldMapRuntime?.isBakedLayerStateValid?.() ?? Boolean(this.worldMapRuntime?.hasBakedMapLayer)))
               : false;
@@ -175,7 +175,11 @@
             const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
               || this.territoryController?.uiState?.tileMapWaterAnimated);
             const explorerAnimated = explorerAnimatedForRuntime;
-            if (resolvedActiveTab === 'military' && (waterAnimated || explorerAnimated)) this.startTileMapWaterTimer();
+            this.updateWorldActorAnimationLoop?.({
+              ...runtimeRenderOptions,
+              state: this.state,
+            });
+            if (resolvedActiveTab === 'military' && (waterAnimated || (explorerAnimated && !this.canvasShell && !this.renderer?.worldActorLayerRenderer))) this.startTileMapWaterTimer();
             else this.stopTileMapWaterTimer();
             return true;
           },
@@ -214,12 +218,15 @@
               if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
               const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
               if (hasActiveWorldExplorerMission(this.state, { epochNowMs })) {
-                this.renderRuntimeWorldMap({
-                  ...this.buildRenderOptions('military', this.territoryUiState),
-                  epochNowMs,
-                  force: true,
-                });
-                this.renderAnimationFrame('military');
+                this.updateWorldActorAnimationLoop?.({ epochNowMs, state: this.state });
+                if (!this.canvasShell && !this.renderer?.worldActorLayerRenderer) {
+                  this.renderRuntimeWorldMap({
+                    ...this.buildRenderOptions('military', this.territoryUiState),
+                    epochNowMs,
+                    force: true,
+                  });
+                  this.renderAnimationFrame('military');
+                }
                 return;
               }
               if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) {

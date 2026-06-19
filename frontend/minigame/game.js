@@ -127,6 +127,7 @@ require('../js/platform/CanvasGameAppStateSync');
 require('../js/platform/CanvasGameAppRenderPolicy');
 require('../js/platform/CanvasGameAppRenderScheduler');
 require('../js/platform/CanvasGameAppWorldMapRuntimeBridge');
+require('../js/platform/CanvasGameWorldActorAnimationRuntime');
 require('../js/platform/CanvasGameAppRenderingRuntime');
 require('../js/platform/CanvasGameAppBattleScene');
 require('../js/platform/CanvasGameAppCommands');
