@@ -94,10 +94,9 @@ test('AdvisorCanvasRenderer prefers explicit drawing surface over proxy fallback
     host: fallbackHost,
     drawingSurface: explicitSurface,
   });
-  renderer.presenter = fallbackHost.presenter;
-  renderer.width = 390;
-  renderer.height = 844;
-  renderer.bottomSafeArea = 12;
+  fallbackHost.width = 390;
+  fallbackHost.height = 844;
+  fallbackHost.bottomSafeArea = 12;
 
   renderer.renderAdvisorPanel({ softGuide: {} });
 
@@ -123,10 +122,9 @@ test('AdvisorCanvasRenderer falls back to host drawing surface when none is inje
     },
   };
   const renderer = new AdvisorCanvasRenderer({ host: fallbackHost });
-  renderer.presenter = fallbackHost.presenter;
-  renderer.width = 390;
-  renderer.height = 844;
-  renderer.bottomSafeArea = 12;
+  fallbackHost.width = 390;
+  fallbackHost.height = 844;
+  fallbackHost.bottomSafeArea = 12;
 
   renderer.renderAdvisorPanel({ softGuide: {} });
 
@@ -140,6 +138,43 @@ test('AdvisorCanvasRenderer falls back to host drawing surface when none is inje
     'getLayout',
     'wrapText',
   ]);
+});
+
+test('AdvisorCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstPresenter = {
+    buildAdvisorViewState() {
+      return createAdvisorView(true, false);
+    },
+  };
+  const secondPresenter = {
+    buildAdvisorViewState() {
+      return createAdvisorView(false, false);
+    },
+  };
+  const host = createHost({
+    width: 390,
+    presenter: firstPresenter,
+  });
+  const renderer = new AdvisorCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 512;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('AdvisorCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new AdvisorCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('AdvisorCanvasRenderer renders bottom advisor strip when advice exists', () => {

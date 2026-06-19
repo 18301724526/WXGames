@@ -364,11 +364,6 @@
       "count": 2
     }
   },
-  "frontend/js/platform/renderers/AdvisorCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
   "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
