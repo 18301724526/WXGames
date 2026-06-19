@@ -15,7 +15,9 @@ Branch: `codex/p2-cclass-pilot`
 
 ## Skipped
 
-None yet.
+| File | Reason | Exposed dependencies |
+| --- | --- | --- |
+| `frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js` | Needs a new/manual pattern beyond schemes 1-4. The file combines host data reads, host drawing-method reads, nested `host.host` candidate chains already under staged sentinel coverage, and local override writes such as `renderer.lastGameState = explicitState` / `renderer.presenter = explicitPresenter`. Converting those local override fields to plain host getters would change precedence semantics, while getter/setter pairs would need a distinct "local override before host fallback" pattern not covered by the autorun document. | Data/state: `width`, `height`, `viewportOffsetX`, `viewportOffsetY`, `viewportWidth`, `viewportHeight`, `epochNowMs`, `presenter`, `lastGameState`, `lastWorldMarchState`; host drawing methods: `drawPanel`, `drawText`, `drawButton`, `addHitTarget`, `truncateText`; retained nested candidates: `host.host.*` state and presenter fallbacks. |
 
 ## Final Status
 
