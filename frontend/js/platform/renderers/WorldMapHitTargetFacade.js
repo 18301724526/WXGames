@@ -2,28 +2,22 @@
   class WorldMapHitTargetFacade {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+    }
+
+    addHitTarget(...args) {
+      return this.host?.addHitTarget?.(...args);
+    }
+
+    analyzeAssetAlphaBounds(...args) {
+      return this.host?.analyzeAssetAlphaBounds?.(...args);
+    }
+
+    getWorldTileScreenCenter(...args) {
+      return this.host?.getWorldTileScreenCenter?.(...args);
+    }
+
+    getWorldTileSiteLayout(...args) {
+      return this.host?.getWorldTileSiteLayout?.(...args);
     }
 
     getWorldMapHitTargetModel() {
