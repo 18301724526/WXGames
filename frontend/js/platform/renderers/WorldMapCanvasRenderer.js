@@ -588,6 +588,11 @@
       const target = this.worldActorLayerRenderer && this.worldActorLayerRenderer !== this
         ? this.worldActorLayerRenderer
         : this;
+      const targetCtx = target?.ctx || target?.worldMapLayerRenderer?.ctx || null;
+      const terrainCtx = this.ctx || this.host?.ctx || null;
+      if (target !== this && terrainCtx && targetCtx && terrainCtx === targetCtx) {
+        return false;
+      }
       const layerContext = options.worldMapRuntimeContext
         || this.lastWorldTileMapContext
         || target.lastWorldTileMapContext

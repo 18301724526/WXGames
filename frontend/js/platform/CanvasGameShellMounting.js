@@ -75,6 +75,15 @@ createRenderer(canvas) {
         });
         this.worldMapRenderer.worldActorLayerRenderer = this.worldActorLayerRenderer;
         this.worldActorLayerRenderer.worldMapRenderer = this.worldMapRenderer;
+        this.worldMapRenderer.worldActorOverlayCanvas = actorCanvas;
+        this.worldMapRenderer.worldActorOverlayCtx = this.worldActorLayerRenderer.ctx || null;
+        this.worldMapRenderer.worldActorOverlaySeparate = Boolean(
+          this.worldMapRenderer.ctx
+          && this.worldActorLayerRenderer.ctx
+          && this.worldMapRenderer.ctx !== this.worldActorLayerRenderer.ctx,
+        );
+        this.worldActorLayerRenderer.worldActorOverlayCanvas = actorCanvas;
+        this.worldActorLayerRenderer.worldActorOverlaySeparate = this.worldMapRenderer.worldActorOverlaySeparate;
         if (typeof this.worldActorLayerRenderer.setAssetsChangedHandler === 'function') {
           this.worldActorLayerRenderer.setAssetsChangedHandler(() => {
             this.requestWorldMapRenderAnimationFrame({ force: true, invalidateWorldTileView: false });

@@ -348,6 +348,65 @@ test('CanvasGameShell does not mount world fog by default', () => {
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);
 });
 
+test('CanvasGameShell mounts actor overlay with a context separate from the terrain layer', () => {
+  const previousRenderer = global.H5CanvasGameRenderer;
+  const calls = [];
+  const contextsByLayer = new Map();
+  class FakeRenderer {
+    constructor(options = {}) {
+      this.canvas = options.canvas || null;
+      this.ctx = this.canvas?.getContext?.('2d') || null;
+      this.presenter = options.presenter || null;
+      this.width = options.width || 390;
+      this.height = options.height || 844;
+      this.viewportWidth = options.viewportWidth || this.width;
+      this.viewportHeight = options.viewportHeight || this.height;
+      this.viewportOffsetX = options.viewportOffsetX || 0;
+      this.viewportOffsetY = options.viewportOffsetY || 0;
+    }
+    setAssetsChangedHandler() {}
+  }
+  global.H5CanvasGameRenderer = FakeRenderer;
+  const runtime = {
+    width: 390,
+    height: 844,
+    pixelRatio: 1,
+    ensureLayerCanvas(name, options) {
+      calls.push(['ensureLayerCanvas', name, options]);
+      const ctx = { layer: name };
+      contextsByLayer.set(name, ctx);
+      return {
+        id: name,
+        getContext(type) {
+          return type === '2d' ? ctx : null;
+        },
+      };
+    },
+    getLayerMetrics() {
+      return { width: 390, height: 844, viewportWidth: 390, viewportHeight: 844, padding: 0 };
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime,
+    presenter: {},
+  });
+
+  try {
+    shell.createRenderer({});
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+  }
+
+  assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldMap'), true);
+  assert.equal(calls.some((call) => call[0] === 'ensureLayerCanvas' && call[1] === 'worldActor'), true);
+  assert.ok(shell.worldMapRenderer);
+  assert.ok(shell.worldActorLayerRenderer);
+  assert.notEqual(shell.worldActorLayerRenderer.ctx, shell.worldMapRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlayCtx, shell.worldActorLayerRenderer.ctx);
+  assert.equal(shell.worldMapRenderer.worldActorOverlaySeparate, true);
+  assert.equal(contextsByLayer.get('worldActor'), shell.worldActorLayerRenderer.ctx);
+});
+
 test('CanvasGameShell mounts world fog as a WebGL layer when the feature flag is enabled', () => {
   const previousRenderer = global.H5CanvasGameRenderer;
   const calls = [];

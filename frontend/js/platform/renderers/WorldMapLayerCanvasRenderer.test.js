@@ -679,6 +679,54 @@ test('WorldMapLayerCanvasRenderer clears actor backing store before each dynamic
   assert.equal(calls.findIndex((call) => call[0] === 'clearRect') < calls.findIndex((call) => call[0] === 'renderWorldActors'), true);
 });
 
+test('WorldMapLayerCanvasRenderer delegates direct actor frames to a separate overlay renderer', () => {
+  const actorContext = {
+    actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const terrainCalls = [];
+  const overlayCalls = [];
+  const terrainCtx = createCtx(terrainCalls);
+  const overlayCtx = createCtx(overlayCalls);
+  const overlayHost = createHost({
+    calls: overlayCalls,
+    ctx: overlayCtx,
+    canvas: { width: 390, height: 844, _backingStorePixelRatio: 1 },
+    lastWorldTileMapContext: actorContext,
+    renderWorldActors(actors) {
+      overlayCalls.push(['overlayRenderWorldActors', actors]);
+      return true;
+    },
+  });
+  const overlayRenderer = new WorldMapLayerCanvasRenderer({ host: overlayHost });
+  const host = createHost({
+    calls: terrainCalls,
+    ctx: terrainCtx,
+    canvas: { width: 390, height: 844, _backingStorePixelRatio: 1 },
+    lastWorldTileMapContext: actorContext,
+    worldActorLayerRenderer: {
+      ctx: overlayCtx,
+      worldMapLayerRenderer: overlayRenderer,
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, {
+    activeTab: 'military',
+    isMapHome: true,
+  });
+
+  assert.equal(rendered, true);
+  assert.notEqual(overlayCtx, terrainCtx);
+  assert.equal(terrainCalls.some((call) => call[0] === 'clearRect'), false);
+  assert.equal(overlayCalls.some((call) => call[0] === 'clearRect'), true);
+  assert.equal(overlayCalls.some((call) => call[0] === 'overlayRenderWorldActors'), true);
+});
+
 test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time on the actor layer', () => {
   const startedAt = new Date('2026-06-15T00:00:00.000Z').getTime();
   const mission = {

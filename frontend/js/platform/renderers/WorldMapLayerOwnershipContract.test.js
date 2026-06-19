@@ -44,6 +44,18 @@ test('worldActor layer owns actor drawing and actor hit targets without command 
   assert.equal(actorLayerSource.includes('renderWorldMarchHud'), false);
 });
 
+test('worldActor overlay has a physical canvas and refuses shared terrain ctx rendering', () => {
+  const shellMounting = readProjectFile('frontend/js/platform/CanvasGameShellMounting.js');
+  const canvasRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapCanvasRenderer.js');
+  const layerRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js');
+
+  assert.equal(shellMounting.includes("ensureCanvasLayer?.('worldActor'"), true);
+  assert.equal(shellMounting.includes('worldActorOverlaySeparate'), true);
+  assert.equal(canvasRenderer.includes('terrainCtx && targetCtx && terrainCtx === targetCtx'), true);
+  assert.equal(layerRenderer.includes('getWorldActorOverlayLayerRenderer'), true);
+  assert.equal(layerRenderer.includes('__worldActorOverlayDelegated'), true);
+});
+
 test('mainHud renderers own map-home march command HUD invocation', () => {
   const frameSource = readProjectFile('frontend/js/platform/renderers/CanvasFrameRenderer.js');
   const hudSource = readProjectFile('frontend/js/platform/renderers/HudOverlayCanvasRenderer.js');

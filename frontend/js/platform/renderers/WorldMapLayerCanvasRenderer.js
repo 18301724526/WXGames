@@ -408,8 +408,53 @@
       return true;
     }
 
+    getWorldActorOverlayLayerRenderer() {
+      const host = this.host || null;
+      const currentCtx = this.ctx || host?.ctx || null;
+      const candidates = [
+        this.worldActorLayerRenderer,
+        host?.worldActorLayerRenderer,
+        host?.host?.worldActorLayerRenderer,
+      ].filter(Boolean);
+      for (const candidate of candidates) {
+        const layerRenderer = candidate?.worldMapLayerRenderer || candidate;
+        if (!layerRenderer || layerRenderer === this) continue;
+        if (typeof layerRenderer.renderWorldMapActorLayer !== 'function') continue;
+        const candidateCtx = layerRenderer.ctx || candidate?.ctx || null;
+        if (currentCtx && candidateCtx && currentCtx === candidateCtx) continue;
+        return layerRenderer;
+      }
+      return null;
+    }
+
+    publishWorldActorOverlayLayerContext(layerRenderer = null, context = null) {
+      if (!layerRenderer || layerRenderer === this) return false;
+      layerRenderer.lastWorldTileMapContext = context;
+      layerRenderer.lastGameState = this.lastGameState;
+      layerRenderer.lastWorldMarchState = this.lastWorldMarchState;
+      const layerHost = layerRenderer.host || null;
+      if (layerHost && layerHost !== layerRenderer) {
+        layerHost.lastWorldTileMapContext = context;
+        layerHost.lastGameState = this.lastGameState;
+        layerHost.lastWorldMarchState = this.lastWorldMarchState;
+      }
+      return true;
+    }
+
     renderWorldMapActorLayer(state = {}, options = {}) {
       if (!this.ctx) return false;
+      if (!options.__worldActorOverlayDelegated) {
+        const overlayLayerRenderer = this.getWorldActorOverlayLayerRenderer();
+        if (overlayLayerRenderer) {
+          const layerContext = options.worldMapRuntimeContext || this.getWorldMapActorLayerContext(state, options);
+          this.publishWorldActorOverlayLayerContext(overlayLayerRenderer, layerContext);
+          return overlayLayerRenderer.renderWorldMapActorLayer(state, {
+            ...options,
+            __worldActorOverlayDelegated: true,
+            worldMapRuntimeContext: layerContext,
+          });
+        }
+      }
       const context = this.getWorldMapActorLayerContext(state, options);
       this.beginFrame(options);
       this.setHitTargets([]);
