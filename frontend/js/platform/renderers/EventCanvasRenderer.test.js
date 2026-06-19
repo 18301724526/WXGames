@@ -94,6 +94,121 @@ function createEventModalView() {
   };
 }
 
+const EVENT_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawLine',
+  'drawPanel',
+  'drawText',
+  'drawTextLines',
+  'getLayout',
+  'measureTextWidth',
+  'renderSectionHeader',
+  'resourceIconPath',
+  'resourceShortName',
+  'truncateText',
+  'wrapTextLimit',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: createCtx(),
+    presenter: createHost().presenter,
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawLine() {
+      calls.push([label, 'drawLine']);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    measureTextWidth(text) {
+      calls.push([label, 'measureTextWidth', text]);
+      return String(text || '').length * 8;
+    },
+    renderSectionHeader(title) {
+      calls.push([label, 'renderSectionHeader', title]);
+    },
+    resourceIconPath(resource) {
+      calls.push([label, 'resourceIconPath', resource]);
+      return resource === 'food' ? 'assets/art/icon-food-cutout.webp' : '';
+    },
+    resourceShortName(resource) {
+      calls.push([label, 'resourceShortName', resource]);
+      return resource === 'food' ? 'Food' : String(resource || '');
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderEventSentinelPaths(renderer, fallbackHost) {
+  renderer.presenter = fallbackHost.presenter;
+  renderer.renderEvents({}, 100, 320);
+  renderer.renderEventModal({ eventQueue: [{ id: 'event-1' }] }, 'event-1');
+}
+
+test('EventCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new EventCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderEventSentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), EVENT_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('EventCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new EventCanvasRenderer({ host: fallbackHost });
+
+  renderEventSentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), EVENT_DRAWING_METHODS);
+});
+
 test('EventCanvasRenderer owns event row color and resource part drawing', () => {
   const host = createHost();
   const renderer = new EventCanvasRenderer({ host });

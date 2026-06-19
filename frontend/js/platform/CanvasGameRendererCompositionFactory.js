@@ -37,6 +37,12 @@
     'techRenderer',
     'cityRenderer',
     'systemRenderer',
+    'battleRenderer',
+    'eventRenderer',
+    'buildingRenderer',
+    'overlayRenderer',
+    'mapCommandRenderer',
+    'cityPeopleRenderer',
   ]);
 
   function resolveSharedDependency(spec) {

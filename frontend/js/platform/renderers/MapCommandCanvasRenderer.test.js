@@ -38,6 +38,110 @@ function createHost(overrides = {}) {
   return host;
 }
 
+const MAP_COMMAND_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawPanel',
+  'drawText',
+  'getLayout',
+  'getMapHomeFloatingButtonLayout',
+  'getTopBarBottom',
+  'renderMainPanel',
+  'truncateText',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    bottomSafeArea: 12,
+    ctx: {
+      fillRect() {},
+      globalAlpha: 1,
+      fillStyle: '',
+    },
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    getMapHomeFloatingButtonLayout(slot = 0) {
+      calls.push([label, 'getMapHomeFloatingButtonLayout', slot]);
+      const size = 48;
+      return { x: 370 - size, y: 700 - slot * 58, size };
+    },
+    getTopBarBottom() {
+      calls.push([label, 'getTopBarBottom']);
+      return 72;
+    },
+    renderMainPanel(...args) {
+      calls.push([label, 'renderMainPanel', args]);
+      return true;
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderMapCommandSentinelPaths(renderer) {
+  renderer.renderMapCommandDock({}, { activeCommandPanel: 'tech', showTaskCenter: true });
+  renderer.renderFloatingSubcityButton({}, { showSubcityList: true });
+  renderer.renderFloatingEventButton({}, { activeCommandPanel: 'events' });
+  renderer.renderMapCommandPanel({ militaryView: 'world' }, { activeCommandPanel: 'military', activeBuildingCategory: 'housing' });
+}
+
+test('MapCommandCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new MapCommandCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderMapCommandSentinelPaths(renderer);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), MAP_COMMAND_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('MapCommandCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new MapCommandCanvasRenderer({ host: fallbackHost });
+
+  renderMapCommandSentinelPaths(renderer);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), MAP_COMMAND_DRAWING_METHODS);
+});
+
 test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });

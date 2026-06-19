@@ -2,6 +2,7 @@
   class EventCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.drawingSurface = options.drawingSurface || null;
       return new Proxy(this, {
         get(target, prop, receiver) {
           const ownValue = Reflect.get(target, prop, receiver);
@@ -23,6 +24,78 @@
           return true;
         },
       });
+    }
+
+    callDrawingSurface(method, args = []) {
+      const explicitSurface = this.drawingSurface;
+      if (explicitSurface && typeof explicitSurface[method] === 'function') {
+        return explicitSurface[method](...Array.from(args));
+      }
+      const fallbackSurface = this.host;
+      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
+        return fallbackSurface[method](...Array.from(args));
+      }
+      return undefined;
+    }
+
+    addHitTarget(...args) {
+      return this.callDrawingSurface('addHitTarget', args);
+    }
+
+    createGradient(...args) {
+      return this.callDrawingSurface('createGradient', args);
+    }
+
+    drawAsset(...args) {
+      return this.callDrawingSurface('drawAsset', args);
+    }
+
+    drawButton(...args) {
+      return this.callDrawingSurface('drawButton', args);
+    }
+
+    drawLine(...args) {
+      return this.callDrawingSurface('drawLine', args);
+    }
+
+    drawPanel(...args) {
+      return this.callDrawingSurface('drawPanel', args);
+    }
+
+    drawText(...args) {
+      return this.callDrawingSurface('drawText', args);
+    }
+
+    drawTextLines(...args) {
+      return this.callDrawingSurface('drawTextLines', args);
+    }
+
+    getLayout(...args) {
+      return this.callDrawingSurface('getLayout', args);
+    }
+
+    measureTextWidth(...args) {
+      return this.callDrawingSurface('measureTextWidth', args);
+    }
+
+    renderSectionHeader(...args) {
+      return this.callDrawingSurface('renderSectionHeader', args);
+    }
+
+    resourceIconPath(...args) {
+      return this.callDrawingSurface('resourceIconPath', args);
+    }
+
+    resourceShortName(...args) {
+      return this.callDrawingSurface('resourceShortName', args);
+    }
+
+    truncateText(...args) {
+      return this.callDrawingSurface('truncateText', args);
+    }
+
+    wrapTextLimit(...args) {
+      return this.callDrawingSurface('wrapTextLimit', args);
     }
 
     eventRowColor(tone) {

@@ -60,6 +60,121 @@ function createResourceView() {
   };
 }
 
+const OVERLAY_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawPanel',
+  'drawText',
+  'drawTextLines',
+  'getLayout',
+  'getNow',
+  'measureTextWidth',
+  'truncateText',
+  'wrapTextLimit',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: {
+      globalAlpha: 1,
+      fillRect() {},
+      beginPath() {},
+      arc() {},
+      fill() {},
+    },
+    presenter: createHost().presenter,
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    drawTextLines(lines) {
+      calls.push([label, 'drawTextLines', lines]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    getNow() {
+      calls.push([label, 'getNow']);
+      return 1900;
+    },
+    measureTextWidth(text) {
+      calls.push([label, 'measureTextWidth', text]);
+      return String(text || '').length * 8;
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit', text]);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderOverlaySentinelPaths(renderer, fallbackHost) {
+  renderer.presenter = fallbackHost.presenter;
+  renderer.renderNamingModal({
+    visible: true,
+    inputValue: 'Harbor',
+    submitting: false,
+    view: { title: 'Name city', message: 'Pick a name.', placeholder: 'City name' },
+  });
+  renderer.renderFloatingTexts([{ text: '+10 wood', progress: 0.25, color: '#fff' }]);
+  renderer.renderRewardReveal({ title: 'Reward', subtitle: 'Task', rewardText: '+10 wood', createdAt: 1000 });
+  renderer.renderResourceDetailsPanel({});
+}
+
+test('OverlayCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new OverlayCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderOverlaySentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), OVERLAY_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('OverlayCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new OverlayCanvasRenderer({ host: fallbackHost });
+
+  renderOverlaySentinelPaths(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), OVERLAY_DRAWING_METHODS);
+});
+
 test('OverlayCanvasRenderer preserves naming modal hit target contract', () => {
   const host = createHost();
   const renderer = new OverlayCanvasRenderer({ host });

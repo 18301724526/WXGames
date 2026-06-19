@@ -7,6 +7,149 @@ const BattleCanvasModel = require('./BattleCanvasModel');
 const BattleCanvasRenderer = require('./BattleCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
+const BATTLE_DRAWING_METHODS = [
+  'addHitTarget',
+  'drawButton',
+  'drawCircle',
+  'drawCoverAsset',
+  'drawFamousPortrait',
+  'drawPanel',
+  'drawText',
+  'getAsset',
+  'getNow',
+  'measureTextWidth',
+  'setHitTargets',
+  'truncateText',
+];
+
+function createBattleSceneView() {
+  return {
+    visible: true,
+    title: 'Battle',
+    resultText: 'Fighting',
+    turnIndex: 0,
+    turnCount: 1,
+    ended: false,
+    activeTurn: { actor: 'attacker', target: 'defender', action: 'attack' },
+    map: {},
+    attacker: {
+      side: 'attacker',
+      name: 'Ada',
+      leaderName: 'Ada',
+      soldiers: 10,
+      soldiersStart: 10,
+      groups: [{ ratio: 1 }],
+      statuses: [{ label: 'Ready', tone: 'buff' }],
+    },
+    defender: {
+      side: 'defender',
+      name: 'Enemy',
+      leaderName: 'Enemy',
+      soldiers: 8,
+      soldiersStart: 8,
+      groups: [{ ratio: 1 }],
+      statuses: [{ label: 'Guard', tone: 'neutral' }],
+    },
+    logLines: ['attack'],
+  };
+}
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: { fillRect() {}, drawImage() {}, globalAlpha: 1 },
+    presenter: {
+      buildBattleSceneViewState() {
+        return createBattleSceneView();
+      },
+    },
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawCircle() {
+      calls.push([label, 'drawCircle']);
+    },
+    drawCoverAsset(assetPath) {
+      calls.push([label, 'drawCoverAsset', assetPath]);
+      return false;
+    },
+    drawFamousPortrait() {
+      calls.push([label, 'drawFamousPortrait']);
+      return false;
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    getAsset(assetPath) {
+      calls.push([label, 'getAsset', assetPath]);
+      return null;
+    },
+    getNow() {
+      calls.push([label, 'getNow']);
+      return 1000;
+    },
+    measureTextWidth(text) {
+      calls.push([label, 'measureTextWidth', text]);
+      return String(text || '').length * 8;
+    },
+    setHitTargets(targets = []) {
+      calls.push([label, 'setHitTargets', targets.length]);
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderBattleSentinelPath(renderer, fallbackHost) {
+  renderer.presenter = fallbackHost.presenter;
+  renderer.render({}, {
+    battleScene: {
+      report: { turns: [{ actor: 'attacker', target: 'defender', action: 'attack' }] },
+      turnIndex: 0,
+      turnDurationMs: 1000,
+      turnStartedAt: 500,
+    },
+  });
+}
+
+test('BattleCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new BattleCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderBattleSentinelPath(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), BATTLE_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('BattleCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new BattleCanvasRenderer({ host: fallbackHost });
+
+  renderBattleSentinelPath(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), BATTLE_DRAWING_METHODS);
+});
+
 test('BattleCanvasRenderer owns battle playback and unit frame helpers', () => {
   const renderer = new BattleCanvasRenderer({ host: { width: 390, height: 844 } });
 

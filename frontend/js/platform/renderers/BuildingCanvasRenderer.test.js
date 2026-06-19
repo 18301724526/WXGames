@@ -81,6 +81,124 @@ function createBuildingView() {
   };
 }
 
+const BUILDING_DRAWING_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawButton',
+  'drawIconCard',
+  'drawLine',
+  'drawPanel',
+  'drawText',
+  'getLayout',
+  'getTransitionFrame',
+  'measureTextWidth',
+  'truncateText',
+  'withSlideClip',
+  'withSuppressedHitTargets',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    width: 390,
+    height: 844,
+    ctx: { fillRect() {}, globalAlpha: 1 },
+    presenter: createHost().presenter,
+    addHitTarget(_rect, action) {
+      calls.push([label, 'addHitTarget', action?.type]);
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawAsset(assetPath) {
+      calls.push([label, 'drawAsset', assetPath]);
+      return false;
+    },
+    drawButton(_x, _y, _width, _height, buttonLabel) {
+      calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawIconCard() {
+      calls.push([label, 'drawIconCard']);
+    },
+    drawLine() {
+      calls.push([label, 'drawLine']);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText(text) {
+      calls.push([label, 'drawText', text]);
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    getTransitionFrame(transition) {
+      calls.push([label, 'getTransitionFrame', transition?.fromOffset, transition?.toOffset]);
+      return { direction: 1, eased: 0.5 };
+    },
+    measureTextWidth(text) {
+      calls.push([label, 'measureTextWidth', text]);
+      return String(text || '').length * 8;
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText', text]);
+      return String(text || '');
+    },
+    withSlideClip(_x, _y, _width, _height, _offsetX, callback) {
+      calls.push([label, 'withSlideClip', typeof callback]);
+      return callback?.();
+    },
+    withSuppressedHitTargets(callback) {
+      calls.push([label, 'withSuppressedHitTargets', typeof callback]);
+      return callback?.();
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+function renderBuildingSentinelPath(renderer, fallbackHost) {
+  renderer.presenter = fallbackHost.presenter;
+  renderer.renderBuildings({ resources: { wood: 30, iron: 1, metal: 1, stone: 20, food: 20 } }, 100, 250, {
+    activeBuildingCategory: 'housing',
+    offset: 1,
+    buildingTransition: { fromOffset: 0, toOffset: 1 },
+  });
+}
+
+test('BuildingCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new BuildingCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderBuildingSentinelPath(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), BUILDING_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+  assert.equal(calls.some((call) => call[0] === 'explicit' && call[1] === 'withSlideClip' && call[2] === 'function'), true);
+  assert.equal(calls.some((call) => call[0] === 'explicit' && call[1] === 'withSuppressedHitTargets' && call[2] === 'function'), true);
+});
+
+test('BuildingCanvasRenderer falls back to host drawing surface when none is injected', () => {
+  const calls = [];
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new BuildingCanvasRenderer({ host: fallbackHost });
+
+  renderBuildingSentinelPath(renderer, fallbackHost);
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), BUILDING_DRAWING_METHODS);
+  assert.equal(calls.some((call) => call[0] === 'fallback' && call[1] === 'withSlideClip' && call[2] === 'function'), true);
+  assert.equal(calls.some((call) => call[0] === 'fallback' && call[1] === 'withSuppressedHitTargets' && call[2] === 'function'), true);
+});
+
 test('BuildingCanvasRenderer owns building cost helpers', () => {
   const renderer = new BuildingCanvasRenderer({ host: createHost() });
   const cost = {

@@ -73,6 +73,12 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
     techCanvasRenderer: createClass('tech', calls),
     cityCanvasRenderer: createClass('city', calls),
     systemCanvasRenderer: createClass('system', calls),
+    battleCanvasRenderer: createClass('battle', calls),
+    eventCanvasRenderer: createClass('event', calls),
+    buildingCanvasRenderer: createClass('building', calls),
+    overlayCanvasRenderer: createClass('overlay', calls),
+    mapCommandCanvasRenderer: createClass('map-command', calls),
+    cityPeopleCanvasRenderer: createClass('city-people', calls),
   };
 
   const composition = CanvasGameRendererCompositionFactory.create({ host, dependencies });
@@ -86,6 +92,12 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
     'techRenderer',
     'cityRenderer',
     'systemRenderer',
+    'battleRenderer',
+    'eventRenderer',
+    'buildingRenderer',
+    'overlayRenderer',
+    'mapCommandRenderer',
+    'cityPeopleRenderer',
   ].forEach((property) => {
     assert.equal(composition.rendererMap[property].options.host, host);
     assert.equal(composition.rendererMap[property].options.drawingSurface, host);

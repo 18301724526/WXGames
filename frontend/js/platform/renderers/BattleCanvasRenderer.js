@@ -44,6 +44,7 @@
   class BattleCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.drawingSurface = options.drawingSurface || null;
       return new Proxy(this, {
         get(target, prop, receiver) {
           const ownValue = Reflect.get(target, prop, receiver);
@@ -68,6 +69,66 @@
           return true;
         },
       });
+    }
+
+    callDrawingSurface(method, args = []) {
+      const explicitSurface = this.drawingSurface;
+      if (explicitSurface && typeof explicitSurface[method] === 'function') {
+        return explicitSurface[method](...Array.from(args));
+      }
+      const fallbackSurface = this.host;
+      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
+        return fallbackSurface[method](...Array.from(args));
+      }
+      return undefined;
+    }
+
+    addHitTarget(...args) {
+      return this.callDrawingSurface('addHitTarget', args);
+    }
+
+    drawButton(...args) {
+      return this.callDrawingSurface('drawButton', args);
+    }
+
+    drawCircle(...args) {
+      return this.callDrawingSurface('drawCircle', args);
+    }
+
+    drawCoverAsset(...args) {
+      return this.callDrawingSurface('drawCoverAsset', args);
+    }
+
+    drawFamousPortrait(...args) {
+      return this.callDrawingSurface('drawFamousPortrait', args);
+    }
+
+    drawPanel(...args) {
+      return this.callDrawingSurface('drawPanel', args);
+    }
+
+    drawText(...args) {
+      return this.callDrawingSurface('drawText', args);
+    }
+
+    getAsset(...args) {
+      return this.callDrawingSurface('getAsset', args);
+    }
+
+    getNow(...args) {
+      return this.callDrawingSurface('getNow', args);
+    }
+
+    measureTextWidth(...args) {
+      return this.callDrawingSurface('measureTextWidth', args);
+    }
+
+    setHitTargets(...args) {
+      return this.callDrawingSurface('setHitTargets', args);
+    }
+
+    truncateText(...args) {
+      return this.callDrawingSurface('truncateText', args);
     }
 
     static getBattleUnitAssetVersion() {
