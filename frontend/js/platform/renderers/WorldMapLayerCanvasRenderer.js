@@ -437,10 +437,6 @@
       this.lastWorldTileMapContext = context;
       if (this.host && this.host !== this) {
         this.host.lastWorldTileMapContext = context;
-        const externalHost = this.host.host || null;
-        if (externalHost && externalHost !== this.host && externalHost !== this) {
-          externalHost.lastWorldTileMapContext = context;
-        }
       }
       return context;
     }

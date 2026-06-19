@@ -605,6 +605,26 @@ test('WorldMapLayerCanvasRenderer publishes current snapshot context for split a
   assert.equal(host.lastWorldTileMapContext.viewport.panY, -24);
 });
 
+test('WorldMapLayerCanvasRenderer publishes snapshot context without reading host host', () => {
+  const host = createHost();
+  Object.defineProperty(host, 'host', {
+    get() {
+      throw new Error('WorldMapLayerCanvasRenderer should not read host.host while publishing snapshot context');
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+  const context = {
+    tileMapView: createTileMapView(),
+    viewport: { panX: 12, panY: -6 },
+  };
+
+  const published = renderer.publishWorldMapSnapshotLayerContext(context);
+
+  assert.equal(published, context);
+  assert.equal(renderer.lastWorldTileMapContext, context);
+  assert.equal(host.lastWorldTileMapContext, context);
+});
+
 test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targets on the actor layer', () => {
   const actorContext = {
     actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],
