@@ -411,7 +411,7 @@
   },
   "frontend/js/platform/renderers/FamousCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/GuideTaskCanvasRenderer.js": {
