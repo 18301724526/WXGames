@@ -246,6 +246,55 @@ test('WorldMarchHudCanvasRenderer reads formations from renderer chain state in 
   assert.equal(starts.find((target) => target.action.formationSlot === 2).action.disabled, true);
 });
 
+test('WorldMarchHudCanvasRenderer prefers explicit military state over host host candidates', () => {
+  const explicitState = {
+    __sentinelSource: 'explicit',
+    activeCityId: 'capital',
+    military: {
+      formations: {
+        capital: [
+          { slot: 1, cityId: 'capital', name: 'Explicit', memberIds: ['fp-explicit'], maxMembers: 5 },
+        ],
+      },
+    },
+  };
+  const hostHostState = {
+    __sentinelSource: 'hosthost',
+    activeCityId: 'capital',
+    military: {
+      formations: {
+        capital: [
+          { slot: 1, cityId: 'capital', name: 'HostHost', memberIds: ['fp-hosthost'], maxMembers: 5 },
+        ],
+      },
+    },
+  };
+  const host = createHost({
+    host: {
+      lastGameState: hostHostState,
+      lastWorldMarchState: hostHostState,
+      lastGame: { state: hostHostState },
+      state: hostHostState,
+      worldMapRenderer: {
+        lastGameState: hostHostState,
+        lastWorldMarchState: hostHostState,
+      },
+      worldMapLayerRenderer: {
+        lastGameState: hostHostState,
+        lastWorldMarchState: hostHostState,
+      },
+    },
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+  renderer.lastGameState = explicitState;
+
+  const resolved = renderer.resolveMilitaryState({ type: 'openWorldMarchFormationPicker' });
+
+  assert.equal(host.host.lastGameState.__sentinelSource, 'hosthost');
+  assert.equal(host.host.worldMapLayerRenderer.lastWorldMarchState.__sentinelSource, 'hosthost');
+  assert.equal(resolved.__sentinelSource, 'explicit');
+});
+
 test('WorldMarchHudCanvasRenderer skips activeCity-only state when resolving formations', () => {
   const fullState = {
     activeCityId: 'capital',
