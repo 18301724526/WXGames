@@ -24,6 +24,27 @@ function createHost() {
   return host;
 }
 
+test('WorldMapRenderUtilityFacade reads dynamic host ctx through explicit getter', () => {
+  const firstHost = createHost();
+  const secondHost = createHost();
+  const host = createHost();
+  host.ctx = firstHost.ctx;
+  const renderer = new WorldMapRenderUtilityFacade({ host });
+
+  assert.equal(renderer.ctx, firstHost.ctx);
+  host.ctx = secondHost.ctx;
+  assert.equal(renderer.ctx, secondHost.ctx);
+});
+
+test('WorldMapRenderUtilityFacade does not proxy unknown host properties', () => {
+  const host = createHost();
+  host.someRandomProp = 'host-only';
+  const renderer = new WorldMapRenderUtilityFacade({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('WorldMapRenderUtilityFacade draws fallback iso diamonds through host canvas context', () => {
   const host = createHost();
   const renderer = new WorldMapRenderUtilityFacade({ host });
