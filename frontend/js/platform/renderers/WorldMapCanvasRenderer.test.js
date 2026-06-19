@@ -259,9 +259,10 @@ test('WorldMapCanvasRenderer computes world march actors from epoch time, not fr
   });
 
   renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, {}, { hitTargetsOnly: true });
-  capturedActors.push(...(host.lastWorldTileMapContext?.actors || []));
+  capturedActors.push(...(host.lastWorldTileMapContext?.visibilityActors || []));
 
   assert.equal(capturedActors.length, 1);
+  assert.equal(host.lastWorldTileMapContext.actors.length, 0);
   assert.equal(host.lastWorldTileMapContext.renderSnapshot.actors.length, 1);
   assert.equal(capturedActors[0].current.q > 0, true);
   assert.equal(capturedActors[0].current.q < 1, true);

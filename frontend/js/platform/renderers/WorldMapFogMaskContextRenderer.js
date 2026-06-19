@@ -27,9 +27,20 @@
     }
 
     createWorldTileFogMaskContext(tileMapView = {}, viewport = {}, frame = {}, entries = [], options = {}) {
+      const renderSnapshot = options.renderSnapshot || this.lastWorldTileMapContext?.renderSnapshot || null;
+      const visibilityActors = Array.isArray(options.visibilityActors)
+        ? options.visibilityActors
+        : (Array.isArray(this.lastWorldTileMapContext?.visibilityActors)
+          ? this.lastWorldTileMapContext.visibilityActors
+          : (Array.isArray(options.actors)
+            ? options.actors
+            : (Array.isArray(this.lastWorldTileMapContext?.actors)
+              ? this.lastWorldTileMapContext.actors
+              : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []))));
       return {
-        renderSnapshot: options.renderSnapshot || this.lastWorldTileMapContext?.renderSnapshot || null,
-        actors: options.actors || this.lastWorldTileMapContext?.actors || [],
+        renderSnapshot,
+        actors: Array.isArray(options.actors) ? options.actors : [],
+        visibilityActors,
         tileMapView,
         viewport,
         geometry: tileMapView.geometry || viewport.geometry || {},

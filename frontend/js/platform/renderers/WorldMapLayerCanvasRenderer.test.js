@@ -731,6 +731,98 @@ test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time 
   assert.equal(host.lastMapHomeWorldHudContext.actors[0].current.q, 0.5);
 });
 
+test('WorldMapLayerCanvasRenderer ignores stale context mission actors when canonical state is available', () => {
+  const startedAt = new Date('2026-06-15T00:00:00.000Z').getTime();
+  const mission = {
+    id: 'canonical-mission-1',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false }],
+    target: { q: 1, r: 0, tileId: 'tile_1_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    nextStepAt: new Date(startedAt + 10000).toISOString(),
+    completesAt: new Date(startedAt + 10000).toISOString(),
+    stepDurationMs: 10000,
+    stepDurationSeconds: 10,
+  };
+  const actorContext = {
+    actors: [
+      {
+        id: 'legacy-active-scout',
+        status: 'active',
+        unitKey: 'scout_squad_default',
+        current: { q: 0.12, r: 0, segmentProgress: 0.12, progress: 0.12 },
+        route: mission.route,
+      },
+      { id: 'non-mission-overlay', current: { q: 2, r: 0 } },
+    ],
+    visibilityActors: [{
+      id: 'legacy-visibility-scout',
+      status: 'active',
+      current: { q: 0.2, r: 0, segmentProgress: 0.2, progress: 0.2 },
+      route: mission.route,
+    }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: actorContext,
+    renderWorldActors(actors) {
+      host.calls.push(['renderWorldActors', actors]);
+      return true;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapActorLayer({
+    worldExplorerState: { activeMission: mission },
+  }, {
+    activeTab: 'military',
+    isMapHome: true,
+    epochNowMs: startedAt + 5000,
+  });
+  const actorsCall = host.calls.find((call) => call[0] === 'renderWorldActors');
+
+  assert.equal(rendered, true);
+  assert.deepEqual(actorsCall[1].map((actor) => actor.id), ['canonical-mission-1', 'non-mission-overlay']);
+  assert.equal(actorsCall[1][0].current.q, 0.5);
+  assert.equal(host.lastMapHomeWorldHudContext.actors.length, 2);
+});
+
+test('WorldMapLayerCanvasRenderer does not revive snapshot actors when canonical state has no missions', () => {
+  const actorContext = {
+    actors: [],
+    visibilityActors: [{
+      id: 'legacy-snapshot-scout',
+      status: 'active',
+      current: { q: 0.2, r: 0 },
+      route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0' }],
+    }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: actorContext,
+    renderWorldActors(actors) {
+      host.calls.push(['renderWorldActors', actors]);
+      return true;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const context = renderer.getWorldMapActorLayerContext({
+    worldExplorerState: { missions: [], idleMissions: [] },
+  });
+
+  assert.deepEqual(context.actors, []);
+});
+
 test('WorldMapLayerCanvasRenderer does not paint route overlays for returned idle actors', () => {
   const actorContext = {
     actors: [{

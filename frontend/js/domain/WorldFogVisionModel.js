@@ -286,9 +286,11 @@
   }
 
   function collectUnitSources(context = {}, viewport = {}, geometry = {}) {
-    const actors = Array.isArray(context.actors)
+    const actors = Array.isArray(context.visibilityActors)
+      ? context.visibilityActors
+      : (Array.isArray(context.actors)
       ? context.actors
-      : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []);
+      : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []));
     return actors
       .map((actor) => {
         const current = actor?.current || actor?.position || actor?.target || null;
@@ -359,7 +361,10 @@
   }
 
   function collectRouteHistorySources(context = {}, viewport = {}, geometry = {}, options = {}) {
-    const actorByMissionId = new Map((Array.isArray(context.actors) ? context.actors : [])
+    const contextActors = Array.isArray(context.visibilityActors)
+      ? context.visibilityActors
+      : (Array.isArray(context.actors) ? context.actors : []);
+    const actorByMissionId = new Map(contextActors
       .map((actor) => [actor?.missionId || actor?.id || '', actor])
       .filter(([id]) => id));
     const sources = [];

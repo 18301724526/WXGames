@@ -225,9 +225,7 @@
         || this.lastWorldTileMapContext
         || this.worldMapRenderer?.lastWorldTileMapContext
         || null;
-      const contextActors = Array.isArray(lastContext?.actors)
-        ? lastContext.actors
-        : (Array.isArray(lastContext?.renderSnapshot?.actors) ? lastContext.renderSnapshot.actors : []);
+      const contextActors = this.getWorldMapContextActors(state, lastContext, lastContext?.renderSnapshot || null);
       const actors = this.resolveWorldMapActors(state, contextActors, options);
       this.lastMapHomeWorldHudContext = {
         actors,
@@ -255,9 +253,7 @@
       if (!context?.tileMapView || !context?.viewport || !context?.frame) return null;
       const renderSnapshot = context.renderSnapshot || null;
       const uiState = options.territoryUiState || context.uiState || renderSnapshot?.ui || {};
-      const contextActors = Array.isArray(context.actors)
-        ? context.actors
-        : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []);
+      const contextActors = this.getWorldMapContextActors(state, context, renderSnapshot);
       const actors = this.resolveWorldMapActors(state, contextActors, options);
       return {
         actors,
@@ -288,6 +284,18 @@
       return ids;
     }
 
+    hasWorldExplorerState(state = {}) {
+      return Boolean(state && state.worldExplorerState && typeof state.worldExplorerState === 'object');
+    }
+
+    getWorldMapContextActors(state = {}, context = null, renderSnapshot = null) {
+      const contextActors = Array.isArray(context?.actors) ? context.actors : null;
+      if (contextActors && (contextActors.length || this.hasWorldExplorerState(state))) return contextActors;
+      if (this.hasWorldExplorerState(state)) return [];
+      if (Array.isArray(context?.visibilityActors) && context.visibilityActors.length) return context.visibilityActors;
+      return Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [];
+    }
+
     getWorldMapActorNowMs(options = {}) {
       const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
       if (optionNow !== null && optionNow !== undefined) return optionNow;
@@ -306,38 +314,60 @@
     }
 
     getActorIdentityKeys(actor = {}) {
-      return [actor?.id, actor?.missionId]
+      return [actor?.missionId, actor?.id, actor?.formation?.id, actor?.formationId]
         .map((key) => String(key || ''))
         .filter(Boolean);
     }
 
+    isWorldMapMissionActor(actor = {}) {
+      if (!actor || typeof actor !== 'object') return false;
+      if (actor.missionId || actor.unitKey || actor.type === 'scout') return true;
+      if (actor.status === 'active' || actor.status === 'idle') return true;
+      if (Array.isArray(actor.route) && actor.route.length) return true;
+      return Boolean(
+        actor.progress
+        || actor.formation
+        || actor.formationSnapshot
+        || actor.remainingSeconds !== undefined
+        || actor.travelRemainingSeconds !== undefined
+      );
+    }
+
+    dedupeWorldMapActors(actors = []) {
+      const result = [];
+      const seen = new Set();
+      (Array.isArray(actors) ? actors : []).forEach((actor) => {
+        const keys = this.getActorIdentityKeys(actor);
+        if (keys.length && keys.some((key) => seen.has(key))) return;
+        keys.forEach((key) => seen.add(key));
+        result.push(actor);
+      });
+      return result;
+    }
+
+    getNonMissionContextActors(actors = [], missionIds = new Set()) {
+      return (Array.isArray(actors) ? actors : []).filter((actor) => {
+        if (this.getActorIdentityKeys(actor).some((key) => missionIds.has(key))) return false;
+        return !this.isWorldMapMissionActor(actor);
+      });
+    }
+
     resolveWorldMapActors(state = {}, contextActors = [], options = {}) {
       const actors = Array.isArray(contextActors) ? contextActors : [];
-      const freshActors = this.buildFreshWorldMapActors(state, options);
+      const freshActors = this.dedupeWorldMapActors(this.buildFreshWorldMapActors(state, options));
       const missionIds = this.getWorldExplorerMissionIds(state);
       if (!freshActors.length) {
-        if (!missionIds.size) return actors;
-        return actors.filter((actor) => !this.getActorIdentityKeys(actor).some((key) => missionIds.has(key)));
+        if (!missionIds.size) {
+          return this.hasWorldExplorerState(state)
+            ? this.dedupeWorldMapActors(this.getNonMissionContextActors(actors, missionIds))
+            : this.dedupeWorldMapActors(actors);
+        }
+        return this.dedupeWorldMapActors(this.getNonMissionContextActors(actors, missionIds));
       }
-      if (!actors.length) return freshActors;
-
-      const freshByKey = new Map();
-      freshActors.forEach((actor) => {
-        this.getActorIdentityKeys(actor).forEach((key) => freshByKey.set(key, actor));
-      });
-      const usedFreshActors = new Set();
-      const mergedActors = actors.map((actor) => {
-        const freshActor = this.getActorIdentityKeys(actor)
-          .map((key) => freshByKey.get(key))
-          .find(Boolean);
-        if (!freshActor) return actor;
-        usedFreshActors.add(freshActor);
-        return freshActor;
-      });
-      freshActors.forEach((actor) => {
-        if (!usedFreshActors.has(actor)) mergedActors.push(actor);
-      });
-      return mergedActors;
+      return this.dedupeWorldMapActors([
+        ...freshActors,
+        ...this.getNonMissionContextActors(actors, missionIds),
+      ]);
     }
 
     publishWorldMapActorLayerContext(context = null) {
@@ -729,8 +759,12 @@
           nowMs: options.nowMs ?? options.epochNowMs ?? options.serverNowMs,
         })
         : null;
+      const freshVisibilityActors = this.buildFreshWorldMapActors(state, options);
       const context = {
-        actors: Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : [],
+        actors: [],
+        visibilityActors: freshVisibilityActors.length
+          ? freshVisibilityActors
+          : (Array.isArray(renderSnapshot?.actors) ? renderSnapshot.actors : []),
         frame,
         geometry,
         renderSnapshot,

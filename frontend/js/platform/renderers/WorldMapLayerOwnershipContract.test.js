@@ -30,6 +30,8 @@ test('worldMap layer owns only terrain/static/site work and never actor/HUD owne
   assert.equal(source.includes('addWorldActorHitTargets('), false);
   assert.equal(source.includes('renderWorldMarchHud('), false);
   assert.equal(source.includes('publishWorldTileMapContext'), true);
+  assert.equal(source.includes('visibilityActors'), true);
+  assert.equal(source.includes('context.actors = []'), true);
 });
 
 test('worldActor layer owns actor drawing and actor hit targets without command HUD', () => {
