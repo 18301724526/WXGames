@@ -5,6 +5,25 @@ const path = require('node:path');
 
 const WorldMapCacheConfigFacade = require('./WorldMapCacheConfigFacade');
 
+test('WorldMapCacheConfigFacade reads dynamic host pixelRatio through explicit getter', () => {
+  const host = { pixelRatio: 2 };
+  const renderer = new WorldMapCacheConfigFacade({ host });
+
+  assert.equal(renderer.pixelRatio, 2);
+  assert.equal(renderer.getWorldTileStaticCacheScale(), 2);
+  host.pixelRatio = 3;
+  assert.equal(renderer.pixelRatio, 3);
+  assert.equal(renderer.getWorldTileStaticCacheScale(), 3);
+});
+
+test('WorldMapCacheConfigFacade does not proxy unknown host properties', () => {
+  const host = { pixelRatio: 2, someRandomProp: 'host-only' };
+  const renderer = new WorldMapCacheConfigFacade({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('WorldMapCacheConfigFacade owns default cache performance knobs', () => {
   const renderer = new WorldMapCacheConfigFacade({ host: { pixelRatio: 2 } });
 
