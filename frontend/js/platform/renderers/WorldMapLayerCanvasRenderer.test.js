@@ -864,6 +864,83 @@ test('WorldMapLayerCanvasRenderer delegates direct actor frames to a separate ov
   assert.equal(overlayCalls.some((call) => call[0] === 'overlayRenderWorldActors'), true);
 });
 
+test('WorldMapLayerCanvasRenderer prefers explicit actor overlay renderer over host host candidate', () => {
+  const currentCtx = createCtx();
+  const explicitCtx = createCtx();
+  const hostHostCtx = createCtx();
+  const explicitLayer = {
+    ctx: explicitCtx,
+    __sentinelSource: 'explicit',
+    renderWorldMapActorLayer() {
+      return true;
+    },
+  };
+  const hostHostLayer = {
+    ctx: hostHostCtx,
+    __sentinelSource: 'hosthost',
+    renderWorldMapActorLayer() {
+      return true;
+    },
+  };
+  const host = createHost({
+    ctx: createCtx(),
+    host: {
+      worldActorLayerRenderer: hostHostLayer,
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+  Object.defineProperty(renderer, 'ctx', { value: currentCtx, configurable: true });
+  Object.defineProperty(renderer, 'worldActorLayerRenderer', { value: explicitLayer, configurable: true });
+
+  assert.equal(typeof host.host.worldActorLayerRenderer.renderWorldMapActorLayer, 'function');
+  assert.notEqual(host.host.worldActorLayerRenderer.ctx, currentCtx);
+  assert.equal(renderer.ctx, currentCtx);
+  assert.equal(renderer.worldActorLayerRenderer, explicitLayer);
+  assert.notEqual(explicitLayer.ctx, currentCtx);
+
+  const layerRenderer = renderer.getWorldActorOverlayLayerRenderer();
+
+  assert.equal(layerRenderer, explicitLayer);
+  assert.equal(layerRenderer.__sentinelSource, 'explicit');
+});
+
+test('WorldMapLayerCanvasRenderer skips same-ctx actor overlay candidates', () => {
+  const currentCtx = createCtx();
+  const differentCtx = createCtx();
+  const sameCtxLayer = {
+    ctx: currentCtx,
+    __sentinelSource: 'sameCtx',
+    renderWorldMapActorLayer() {
+      return true;
+    },
+  };
+  const differentCtxLayer = {
+    ctx: differentCtx,
+    __sentinelSource: 'differentCtx',
+    renderWorldMapActorLayer() {
+      return true;
+    },
+  };
+  const host = createHost({
+    ctx: createCtx(),
+    worldActorLayerRenderer: differentCtxLayer,
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+  Object.defineProperty(renderer, 'ctx', { value: currentCtx, configurable: true });
+  Object.defineProperty(renderer, 'worldActorLayerRenderer', { value: sameCtxLayer, configurable: true });
+
+  assert.equal(renderer.ctx, currentCtx);
+  assert.equal(sameCtxLayer.ctx, currentCtx);
+  assert.notEqual(differentCtxLayer.ctx, currentCtx);
+  assert.equal(renderer.worldActorLayerRenderer, sameCtxLayer);
+  assert.equal(host.worldActorLayerRenderer, differentCtxLayer);
+
+  const layerRenderer = renderer.getWorldActorOverlayLayerRenderer();
+
+  assert.equal(layerRenderer, differentCtxLayer);
+  assert.equal(layerRenderer.__sentinelSource, 'differentCtx');
+});
+
 test('WorldMapLayerCanvasRenderer draws delegated actors on explicit worldActor overlay ctx', () => {
   const actorContext = {
     actors: [{
