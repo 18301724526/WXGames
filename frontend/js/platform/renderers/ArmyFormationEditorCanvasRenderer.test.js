@@ -34,6 +34,43 @@ function createHost(overrides = {}) {
   return host;
 }
 
+function createDrawingSurfaceSentinel(label, calls = []) {
+  const surface = {
+    addHitTarget(...args) {
+      calls.push([label, 'addHitTarget', args]);
+    },
+    createGradient(...args) {
+      calls.push([label, 'createGradient', args]);
+      return `${label}-gradient`;
+    },
+    drawButton(...args) {
+      calls.push([label, 'drawButton', args]);
+    },
+    drawPanel(...args) {
+      calls.push([label, 'drawPanel', args]);
+    },
+    drawText(...args) {
+      calls.push([label, 'drawText', args]);
+    },
+    drawTextLines(...args) {
+      calls.push([label, 'drawTextLines', args]);
+    },
+    getLayout(...args) {
+      calls.push([label, 'getLayout', args]);
+      return { contentX: 10, contentWidth: 360, contentRight: 370 };
+    },
+    truncateText(...args) {
+      calls.push([label, 'truncateText', args]);
+      return String(args[0] || '');
+    },
+    wrapTextLimit(...args) {
+      calls.push([label, 'wrapTextLimit', args]);
+      return [String(args[0] || '')];
+    },
+  };
+  return surface;
+}
+
 function createMilitaryView(overrides = {}) {
   const formationPeople = overrides.formationPeople || [
     { id: 'hero-1', name: 'Ada', qualityLabel: 'Rare', roleText: 'General' },
@@ -113,6 +150,93 @@ test('ArmyFormationEditorCanvasRenderer skips closed editor without drawing', ()
 
   assert.equal(host.hitTargets.length, 0);
   assert.equal(host.calls.length, 0);
+});
+
+test('ArmyFormationEditorCanvasRenderer reads host state dynamically after proxy removal', () => {
+  const firstCtx = { fillRect() {}, fillStyle: '' };
+  const secondCtx = { fillRect() {}, fillStyle: '' };
+  const firstPresenter = { buildMilitaryViewState: () => createMilitaryView() };
+  const secondPresenter = { buildMilitaryViewState: () => createMilitaryView({ memberIds: [] }) };
+  const host = createHost({
+    ctx: firstCtx,
+    height: 844,
+    presenter: firstPresenter,
+    width: 390,
+  });
+  const renderer = new ArmyFormationEditorCanvasRenderer({ host });
+
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.presenter, firstPresenter);
+  assert.equal(renderer.width, 390);
+
+  host.ctx = secondCtx;
+  host.height = 900;
+  host.presenter = secondPresenter;
+  host.width = 512;
+
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.presenter, secondPresenter);
+  assert.equal(renderer.width, 512);
+});
+
+test('ArmyFormationEditorCanvasRenderer does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new ArmyFormationEditorCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('ArmyFormationEditorCanvasRenderer drawing wrappers prefer explicit drawing surface over host fallback', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new ArmyFormationEditorCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderer.addHitTarget({ x: 0 }, { type: 'test' });
+  assert.equal(renderer.createGradient(0, 0, 1, 1, [], '#000'), 'explicit-gradient');
+  renderer.drawButton(0, 0, 10, 10, 'ok');
+  renderer.drawPanel(0, 0, 10, 10);
+  renderer.drawText('hello', 0, 0);
+  renderer.drawTextLines(['hello'], 0, 0);
+  assert.deepEqual(renderer.getLayout(), { contentX: 10, contentWidth: 360, contentRight: 370 });
+  assert.equal(renderer.truncateText('Ada', 100), 'Ada');
+  assert.deepEqual(renderer.wrapTextLimit('Ada', 100), ['Ada']);
+
+  const explicitMethods = calls.filter((call) => call[0] === 'explicit').map((call) => call[1]).sort();
+  const fallbackHits = calls.filter((call) => call[0] === 'fallback');
+  assert.deepEqual(explicitMethods, [
+    'addHitTarget',
+    'createGradient',
+    'drawButton',
+    'drawPanel',
+    'drawText',
+    'drawTextLines',
+    'getLayout',
+    'truncateText',
+    'wrapTextLimit',
+  ].sort());
+  assert.equal(fallbackHits.length, 0);
+});
+
+test('ArmyFormationEditorCanvasRenderer delegates portrait rendering to host method', () => {
+  const result = { rendered: true };
+  const calls = [];
+  const host = createHost({
+    renderArmyFormationPortrait(...args) {
+      calls.push(args);
+      return result;
+    },
+  });
+  const renderer = new ArmyFormationEditorCanvasRenderer({ host });
+  const person = { id: 'hero-1' };
+
+  assert.equal(renderer.renderArmyFormationPortrait(person, 1, 2, 3, 4, { radius: 5 }), result);
+  assert.deepEqual(calls, [[person, 1, 2, 3, 4, { radius: 5 }]]);
 });
 
 test('CanvasGameRenderer exposes army formation editor through facade', () => {

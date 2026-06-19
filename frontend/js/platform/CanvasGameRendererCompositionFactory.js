@@ -43,6 +43,7 @@
     'overlayRenderer',
     'mapCommandRenderer',
     'cityPeopleRenderer',
+    'armyFormationEditorRenderer',
   ]);
 
   function resolveSharedDependency(spec) {
