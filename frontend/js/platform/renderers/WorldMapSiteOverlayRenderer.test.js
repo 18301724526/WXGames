@@ -82,6 +82,43 @@ test('WorldMapSiteOverlayRenderer delegates dialog view state to presenter when 
   );
 });
 
+test('WorldMapSiteOverlayRenderer prefers explicit presenter over host host presenter', () => {
+  const territories = [{ id: 'site-1' }];
+  const territoryState = { version: 1 };
+  const uiState = { selectedSiteId: 'site-1' };
+  const explicitPresenter = {
+    buildWorldSiteDialogViewState() {
+      return {
+        __sentinelSource: 'explicit',
+        title: 'Explicit Presenter',
+      };
+    },
+  };
+  const hostHostPresenter = {
+    buildWorldSiteDialogViewState() {
+      return {
+        __sentinelSource: 'hosthost',
+        title: 'Host Host Presenter',
+      };
+    },
+  };
+  const host = createHost({
+    presenter: null,
+    host: {
+      presenter: hostHostPresenter,
+    },
+  });
+  const renderer = new WorldMapSiteOverlayRenderer({ host });
+  renderer.presenter = explicitPresenter;
+
+  const hostHostView = host.host.presenter.buildWorldSiteDialogViewState(territories, territoryState, uiState);
+  const view = renderer.buildWorldSiteDialogViewState(territories, territoryState, uiState);
+
+  assert.equal(hostHostView.__sentinelSource, 'hosthost');
+  assert.equal(typeof host.host.presenter.buildWorldSiteDialogViewState, 'function');
+  assert.equal(view.__sentinelSource, 'explicit');
+});
+
 test('WorldMapSiteOverlayRenderer passes tutorial context into world site presenter state', () => {
   const host = createHost({
     state: {
