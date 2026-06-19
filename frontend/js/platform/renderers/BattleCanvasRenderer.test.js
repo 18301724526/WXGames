@@ -114,7 +114,7 @@ function getCalledDrawingSurfaceMethods(calls, label) {
 }
 
 function renderBattleSentinelPath(renderer, fallbackHost) {
-  renderer.presenter = fallbackHost.presenter;
+  fallbackHost.presenter = createDrawingSurfaceSentinel('presenter').presenter;
   renderer.render({}, {
     battleScene: {
       report: { turns: [{ actor: 'attacker', target: 'defender', action: 'attack' }] },
@@ -148,6 +148,47 @@ test('BattleCanvasRenderer falls back to host drawing surface when none is injec
   renderBattleSentinelPath(renderer, fallbackHost);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), BATTLE_DRAWING_METHODS);
+});
+
+test('BattleCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstCtx = { fillRect() {}, drawImage() {}, globalAlpha: 1 };
+  const secondCtx = { fillRect() {}, drawImage() {}, globalAlpha: 1 };
+  const firstPresenter = createDrawingSurfaceSentinel('first').presenter;
+  const secondPresenter = createDrawingSurfaceSentinel('second').presenter;
+  const host = {
+    width: 390,
+    height: 844,
+    ctx: firstCtx,
+    presenter: firstPresenter,
+  };
+  const renderer = new BattleCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 512;
+  host.height = 900;
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('BattleCanvasRenderer does not proxy unknown host properties', () => {
+  const host = {
+    width: 390,
+    height: 844,
+    someRandomProp: 'host-only',
+  };
+  const renderer = new BattleCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('BattleCanvasRenderer owns battle playback and unit frame helpers', () => {

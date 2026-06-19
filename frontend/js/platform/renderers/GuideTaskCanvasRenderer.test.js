@@ -147,10 +147,10 @@ test('GuideTaskCanvasRenderer prefers explicit drawing surface over proxy fallba
     host: fallbackHost,
     drawingSurface: explicitSurface,
   });
-  renderer.presenter = fallbackHost.presenter;
-  renderer.width = 390;
-  renderer.height = 844;
-  renderer.bottomSafeArea = 12;
+  fallbackHost.presenter = createHost().presenter;
+  fallbackHost.width = 390;
+  fallbackHost.height = 844;
+  fallbackHost.bottomSafeArea = 12;
 
   renderer.renderTaskCenterPanel({}, { activeTaskCenterTab: 'main' });
 
@@ -173,10 +173,10 @@ test('GuideTaskCanvasRenderer falls back to host drawing surface when none is in
   const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
   fallbackHost.presenter = createHost().presenter;
   const renderer = new GuideTaskCanvasRenderer({ host: fallbackHost });
-  renderer.presenter = fallbackHost.presenter;
-  renderer.width = 390;
-  renderer.height = 844;
-  renderer.bottomSafeArea = 12;
+  fallbackHost.presenter = createHost().presenter;
+  fallbackHost.width = 390;
+  fallbackHost.height = 844;
+  fallbackHost.bottomSafeArea = 12;
 
   renderer.renderTaskCenterPanel({}, { activeTaskCenterTab: 'main' });
 
@@ -191,6 +191,45 @@ test('GuideTaskCanvasRenderer falls back to host drawing surface when none is in
     'truncateText',
     'wrapTextLimit',
   ]);
+});
+
+test('GuideTaskCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstCtx = { fillRect() {}, globalAlpha: 1 };
+  const secondCtx = { fillRect() {}, globalAlpha: 1 };
+  const firstPresenter = createHost().presenter;
+  const secondPresenter = createHost().presenter;
+  const host = createHost({
+    width: 390,
+    height: 844,
+    ctx: firstCtx,
+    presenter: firstPresenter,
+  });
+  const renderer = new GuideTaskCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 512;
+  host.height = 900;
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('GuideTaskCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new GuideTaskCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('GuideTaskCanvasRenderer preserves guidebook modal hit targets', () => {

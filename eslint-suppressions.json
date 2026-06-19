@@ -409,11 +409,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/EventCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/renderers/FamousCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 2
@@ -421,7 +416,7 @@
   },
   "frontend/js/platform/renderers/GuideTaskCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 4
+      "count": 3
     }
   },
   "frontend/js/platform/renderers/HudOverlayCanvasRenderer.js": {
@@ -439,11 +434,6 @@
       "count": 3
     }
   },
-  "frontend/js/platform/renderers/OverlayCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
@@ -456,7 +446,7 @@
   },
   "frontend/js/platform/renderers/TechCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js": {

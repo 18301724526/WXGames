@@ -179,7 +179,7 @@ function getCalledDrawingSurfaceMethods(calls, label) {
 }
 
 function renderEventSentinelPaths(renderer, fallbackHost) {
-  renderer.presenter = fallbackHost.presenter;
+  fallbackHost.presenter = createHost().presenter;
   renderer.renderEvents({}, 100, 320);
   renderer.renderEventModal({ eventQueue: [{ id: 'event-1' }] }, 'event-1');
 }
@@ -207,6 +207,45 @@ test('EventCanvasRenderer falls back to host drawing surface when none is inject
   renderEventSentinelPaths(renderer, fallbackHost);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), EVENT_DRAWING_METHODS);
+});
+
+test('EventCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstCtx = createCtx();
+  const secondCtx = createCtx();
+  const firstPresenter = createHost().presenter;
+  const secondPresenter = createHost().presenter;
+  const host = createHost({
+    width: 390,
+    height: 844,
+    ctx: firstCtx,
+    presenter: firstPresenter,
+  });
+  const renderer = new EventCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 512;
+  host.height = 900;
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('EventCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new EventCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('EventCanvasRenderer owns event row color and resource part drawing', () => {

@@ -14,6 +14,8 @@ const TECH_DRAWING_METHODS = [
   'drawAsset',
   'drawButton',
   'drawCircle',
+  'drawCurvePath',
+  'drawLine',
   'drawPanel',
   'drawPrimaryActionButton',
   'drawText',
@@ -21,6 +23,8 @@ const TECH_DRAWING_METHODS = [
   'getLayout',
   'renderSectionHeader',
   'truncateText',
+  'withTransformedClip',
+  'withTranslatedClip',
   'wrapTextLimit',
 ];
 
@@ -89,6 +93,12 @@ function createDrawingSurfaceSentinel(label, calls = []) {
     drawCircle() {
       calls.push([label, 'drawCircle']);
     },
+    drawCurvePath(curve) {
+      calls.push([label, 'drawCurvePath', curve]);
+    },
+    drawLine(...args) {
+      calls.push([label, 'drawLine', args]);
+    },
     drawPanel() {
       calls.push([label, 'drawPanel']);
     },
@@ -116,6 +126,14 @@ function createDrawingSurfaceSentinel(label, calls = []) {
       calls.push([label, 'wrapTextLimit', text]);
       return [String(text || '')];
     },
+    withTransformedClip(_x, _y, _width, _height, panX, panY, zoom, callback) {
+      calls.push([label, 'withTransformedClip', panX, panY, zoom]);
+      callback?.();
+    },
+    withTranslatedClip(_x, _y, _width, _height, dx, dy, callback) {
+      calls.push([label, 'withTranslatedClip', dx, dy]);
+      callback?.();
+    },
   };
 }
 
@@ -124,7 +142,7 @@ function getCalledDrawingSurfaceMethods(calls, label) {
 }
 
 function renderTechSentinelPaths(renderer, fallbackHost) {
-  renderer.presenter = fallbackHost.presenter;
+  fallbackHost.presenter = createDrawingSurfaceSentinel('presenter').presenter;
   renderer.renderTechInternal({}, 100, 320, {});
   renderer.renderTechNode(
     { id: 'fire', title: 'Fire', route: 'knowledge', routes: ['knowledge', 'culture'] },
@@ -134,6 +152,19 @@ function renderTechSentinelPaths(renderer, fallbackHost) {
   const detail = createTechDetail();
   renderer.renderTechDetailPanel(detail, 20, 240, 330, 132);
   renderer.renderTechDetailModal(detail);
+  renderer.drawCurvePath([{ x: 20, y: 80 }, { x: 80, y: 120 }], { color: '#fff' });
+  TechTreeCanvasRenderer.renderTechTreePanel(
+    renderer,
+    {
+      selectedTechId: 'fire',
+      tree: {
+        eras: [{ era: 1, column: 1, name: 'Era 1' }],
+        nodes: [{ id: 'fire', era: 1, route: 'knowledge', tree: { column: 1, row: 1, parents: [] } }],
+      },
+    },
+    { x: 20, y: 80, width: 320, height: 260 },
+    {},
+  );
 }
 
 test('TechCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
@@ -159,6 +190,76 @@ test('TechCanvasRenderer falls back to host drawing surface when none is injecte
   renderTechSentinelPaths(renderer, fallbackHost);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), TECH_DRAWING_METHODS);
+});
+
+test('TechCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstCtx = {
+    globalAlpha: 1,
+    fillRect() {},
+    measureText(text) {
+      return { width: String(text || '').length * 6 };
+    },
+  };
+  const secondCtx = {
+    globalAlpha: 1,
+    fillRect() {},
+    measureText(text) {
+      return { width: String(text || '').length * 6 };
+    },
+  };
+  const firstPresenter = createDrawingSurfaceSentinel('first').presenter;
+  const secondPresenter = createDrawingSurfaceSentinel('second').presenter;
+  const host = {
+    width: 390,
+    height: 844,
+    ctx: firstCtx,
+    presenter: firstPresenter,
+  };
+  const renderer = new TechCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 512;
+  host.height = 900;
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('TechCanvasRenderer does not proxy unknown host properties', () => {
+  const host = {
+    width: 390,
+    height: 844,
+    someRandomProp: 'host-only',
+  };
+  const renderer = new TechCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('TechCanvasRenderer forwards tech tree scroll state through explicit accessors', () => {
+  const host = {
+    lastTechTreeScroll: null,
+  };
+  const renderer = new TechCanvasRenderer({ host });
+  const writtenScroll = { panel: { width: 320 } };
+
+  renderer.lastTechTreeScroll = writtenScroll;
+
+  assert.equal(host.lastTechTreeScroll, writtenScroll);
+
+  const hostScroll = { panel: { width: 640 } };
+  host.lastTechTreeScroll = hostScroll;
+
+  assert.equal(renderer.lastTechTreeScroll, hostScroll);
 });
 
 test('TechTreeLayoutModel owns tech tree layout calculations', () => {

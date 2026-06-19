@@ -6,31 +6,30 @@
     constructor(options = {}) {
       this.host = options.host || null;
       this.drawingSurface = options.drawingSurface || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'lastTechTreeScroll' && target.host) {
-            target.host.lastTechTreeScroll = value;
-            return true;
-          }
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
-          if (target.host && prop in target.host) {
-            target.host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+    }
+
+    get width() {
+      return this.host?.width;
+    }
+
+    get height() {
+      return this.host?.height;
+    }
+
+    get ctx() {
+      return this.host?.ctx;
+    }
+
+    get presenter() {
+      return this.host?.presenter;
+    }
+
+    get lastTechTreeScroll() {
+      return this.host?.lastTechTreeScroll;
+    }
+
+    set lastTechTreeScroll(value) {
+      if (this.host) this.host.lastTechTreeScroll = value;
     }
 
     callDrawingSurface(method, args = []) {
@@ -65,6 +64,14 @@
       return this.callDrawingSurface('drawCircle', args);
     }
 
+    drawCurvePath(...args) {
+      return this.callDrawingSurface('drawCurvePath', args);
+    }
+
+    drawLine(...args) {
+      return this.callDrawingSurface('drawLine', args);
+    }
+
     drawPanel(...args) {
       return this.callDrawingSurface('drawPanel', args);
     }
@@ -95,6 +102,14 @@
 
     wrapTextLimit(...args) {
       return this.callDrawingSurface('wrapTextLimit', args);
+    }
+
+    withTransformedClip(...args) {
+      return this.callDrawingSurface('withTransformedClip', args);
+    }
+
+    withTranslatedClip(...args) {
+      return this.callDrawingSurface('withTranslatedClip', args);
     }
 
     render(state = {}, startY = 210, panelHeight = 250, options = {}) {

@@ -138,7 +138,7 @@ function getCalledDrawingSurfaceMethods(calls, label) {
 }
 
 function renderOverlaySentinelPaths(renderer, fallbackHost) {
-  renderer.presenter = fallbackHost.presenter;
+  fallbackHost.presenter = createHost().presenter;
   renderer.renderNamingModal({
     visible: true,
     inputValue: 'Harbor',
@@ -173,6 +173,45 @@ test('OverlayCanvasRenderer falls back to host drawing surface when none is inje
   renderOverlaySentinelPaths(renderer, fallbackHost);
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), OVERLAY_DRAWING_METHODS);
+});
+
+test('OverlayCanvasRenderer reads dynamic host state through explicit getters', () => {
+  const firstCtx = { fillRect() {}, beginPath() {}, arc() {}, fill() {}, globalAlpha: 1 };
+  const secondCtx = { fillRect() {}, beginPath() {}, arc() {}, fill() {}, globalAlpha: 1 };
+  const firstPresenter = createHost().presenter;
+  const secondPresenter = createHost().presenter;
+  const host = createHost({
+    width: 390,
+    height: 844,
+    ctx: firstCtx,
+    presenter: firstPresenter,
+  });
+  const renderer = new OverlayCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 512;
+  host.height = 900;
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('OverlayCanvasRenderer does not proxy unknown host properties', () => {
+  const host = createHost({
+    someRandomProp: 'host-only',
+  });
+  const renderer = new OverlayCanvasRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
 });
 
 test('OverlayCanvasRenderer preserves naming modal hit target contract', () => {
