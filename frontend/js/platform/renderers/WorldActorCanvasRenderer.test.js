@@ -91,6 +91,63 @@ test('WorldActorCanvasRenderer records actual actor and arrow canvas ids during 
   assert.equal(diag.arrowCanvasId, 'actor-layer');
 });
 
+test('WorldActorCanvasRenderer uses explicit ctx through actor and arrow drawing', () => {
+  const host = createHost();
+  let unitRendererCtx = null;
+  host.constructor = {
+    getTutorialIntroUnitRenderer() {
+      return {
+        renderUnit(renderHost, x, y, scale, framePath) {
+          unitRendererCtx = renderHost.ctx;
+          renderHost.ctx.drawImage({ width: 80, height: 120 }, x, y, scale, scale);
+          return true;
+        },
+      };
+    },
+  };
+  const explicitCalls = [];
+  const explicitCtx = {
+    ...createHost().ctx,
+    canvas: { _layerName: 'worldActor' },
+    save() { explicitCalls.push(['save']); },
+    restore() { explicitCalls.push(['restore']); },
+    beginPath() { explicitCalls.push(['beginPath']); },
+    closePath() { explicitCalls.push(['closePath']); },
+    moveTo(...args) { explicitCalls.push(['moveTo', args]); },
+    lineTo(...args) { explicitCalls.push(['lineTo', args]); },
+    stroke() { explicitCalls.push(['stroke']); },
+    fill() { explicitCalls.push(['fill']); },
+    drawImage(...args) { explicitCalls.push(['drawImage', args]); },
+  };
+  const diag = {};
+  const renderer = new WorldActorCanvasRenderer({ host });
+  renderer.__worldActorOverlayActiveDiag = diag;
+  const actor = {
+    id: 'explore-1',
+    missionId: 'explore-1',
+    status: 'active',
+    unitKey: 'scout_squad_default',
+    current: { q: 0, r: 0 },
+    target: { q: 1, r: 0 },
+  };
+
+  assert.equal(renderer.renderActors([actor], {
+    originX: 100,
+    originY: 100,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }, { stepX: 96, stepY: 48 }, { ctx: explicitCtx }), true);
+
+  assert.equal(diag.drawnCanvasId, 'worldActor');
+  assert.equal(diag.arrowCanvasId, 'worldActor');
+  assert.equal(unitRendererCtx, explicitCtx);
+  assert.equal(explicitCalls.some((call) => call[0] === 'stroke'), true);
+  assert.equal(explicitCalls.some((call) => call[0] === 'drawImage'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'stroke'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawImage'), false);
+});
+
 test('WorldActorCanvasRenderer renders active actors between tile centers', () => {
   const host = createHost();
   const renderer = new WorldActorCanvasRenderer({ host });

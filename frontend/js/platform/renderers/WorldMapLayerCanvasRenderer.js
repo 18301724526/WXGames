@@ -565,6 +565,33 @@
       return true;
     }
 
+    getExplicitWorldActorRenderer() {
+      const renderer = this.worldMapRenderer || this.host?.worldMapRenderer || null;
+      const worldMapRenderer = renderer?.worldMapRenderer || renderer || null;
+      const hudRenderer = this.worldMapActorHudRenderer
+        || this.host?.worldMapActorHudRenderer
+        || worldMapRenderer?.worldMapActorHudRenderer
+        || renderer?.worldMapActorHudRenderer
+        || null;
+      return hudRenderer?.worldActorRenderer
+        || worldMapRenderer?.worldActorRenderer
+        || renderer?.worldActorRenderer
+        || this.worldActorRenderer
+        || this.host?.worldActorRenderer
+        || null;
+    }
+
+    renderWorldActorsWithCtx(actors = [], viewport = {}, geometry = {}, ctx = null) {
+      const actorRenderer = this.getExplicitWorldActorRenderer();
+      if (actorRenderer?.renderActors) {
+        if (typeof actorRenderer.withActorRenderCtx === 'function') {
+          return actorRenderer.withActorRenderCtx(ctx, () => actorRenderer.renderActors(actors, viewport, geometry, { ctx }));
+        }
+        return actorRenderer.renderActors(actors, viewport, geometry, { ctx });
+      }
+      return this.renderWorldActors?.(actors, viewport, geometry, { ctx }) || false;
+    }
+
     renderWorldMapActorLayer(state = {}, options = {}) {
       if (!this.ctx) return false;
       if (!options.__worldActorOverlayDelegated) {
@@ -605,7 +632,7 @@
         this.renderWorldScoutRoutes?.(context.tileMapView, viewport, actors);
         diag.drawnCanvasId = getWorldActorOverlayCanvasId(this.ctx);
         this.setActiveWorldActorOverlayDiag(diag);
-        this.renderWorldActors?.(actors, viewport, geometry);
+        this.renderWorldActorsWithCtx(actors, viewport, geometry, this.ctx);
       } finally {
         this.setActiveWorldActorOverlayDiag(null);
         if (didClip && this.ctx.restore) this.ctx.restore();

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const WorldMapLayerCanvasRenderer = require('./WorldMapLayerCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
+const WorldActorCanvasRenderer = require('./WorldActorCanvasRenderer');
 
 function createCtx(calls = []) {
   return {
@@ -811,6 +812,68 @@ test('WorldMapLayerCanvasRenderer delegates direct actor frames to a separate ov
   assert.equal(terrainCalls.some((call) => call[0] === 'clearRect'), false);
   assert.equal(overlayCalls.some((call) => call[0] === 'clearRect'), true);
   assert.equal(overlayCalls.some((call) => call[0] === 'overlayRenderWorldActors'), true);
+});
+
+test('WorldMapLayerCanvasRenderer draws delegated actors on explicit worldActor overlay ctx', () => {
+  const actorContext = {
+    actors: [{
+      id: 'scout-1',
+      missionId: 'explore-active-1',
+      status: 'active',
+      unitKey: 'scout_squad_default',
+      current: { q: 0, r: 0 },
+      target: { q: 1, r: 0 },
+    }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const terrainCalls = [];
+  const overlayCalls = [];
+  const terrainCtx = createCtx(terrainCalls);
+  const overlayCtx = createCtx(overlayCalls);
+  terrainCtx.canvas = { _layerName: 'worldMap' };
+  overlayCtx.canvas = { _layerName: 'worldActor' };
+  const terrainContainer = {
+    ctx: terrainCtx,
+    getNow() { return 1000; },
+    getAsset(path) {
+      terrainCalls.push(['getAsset', path]);
+      return { width: 80, height: 120 };
+    },
+    addHitTarget() {},
+  };
+  const actorRenderer = new WorldActorCanvasRenderer({ host: terrainContainer });
+  terrainContainer.worldMapRenderer = {
+    worldMapActorHudRenderer: { worldActorRenderer: actorRenderer },
+  };
+  const overlayHost = createHost({
+    calls: overlayCalls,
+    ctx: overlayCtx,
+    canvas: { width: 390, height: 844, _layerName: 'worldActor', _backingStorePixelRatio: 1 },
+    lastWorldTileMapContext: actorContext,
+    worldMapRenderer: terrainContainer,
+  });
+  const overlayRenderer = new WorldMapLayerCanvasRenderer({ host: overlayHost });
+
+  const rendered = overlayRenderer.renderWorldMapActorLayer({ id: 'state-actor' }, {
+    __worldActorOverlayDelegated: true,
+    epochNowMs: 1000,
+    territoryUiState: actorContext.uiState,
+  });
+  const diag = overlayHost.lastWorldActorOverlayDiag;
+
+  assert.equal(rendered, true);
+  assert.equal(diag.clearedCanvasId, 'worldActor');
+  assert.equal(diag.drawnCanvasId, 'worldActor');
+  assert.equal(diag.arrowCanvasId, 'worldActor');
+  assert.equal(diag.clearedEqualsDrawn, true);
+  assert.equal(overlayCalls.some((call) => call[0] === 'stroke'), true);
+  assert.equal(overlayCalls.some((call) => call[0] === 'drawImage'), true);
+  assert.equal(terrainCalls.some((call) => call[0] === 'stroke'), false);
+  assert.equal(terrainCalls.some((call) => call[0] === 'drawImage'), false);
 });
 
 test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time on the actor layer', () => {

@@ -88,63 +88,105 @@
       return frames[Math.floor(Number(nowMs) / Math.max(1, frameMs)) % frames.length] || frames[0];
     }
 
-    drawMarchArrow(from = {}, to = {}) {
-      if (!this.ctx) return false;
+    getActorRenderCtx(options = {}) {
+      return options?.ctx || this.__worldActorOverlayTargetCtx || this.ctx || null;
+    }
+
+    withActorRenderCtx(ctx = null, callback = null) {
+      const hadOwnCtx = Object.prototype.hasOwnProperty.call(this, '__worldActorOverlayTargetCtx');
+      const previousCtx = this.__worldActorOverlayTargetCtx;
+      if (ctx) this.__worldActorOverlayTargetCtx = ctx;
+      try {
+        return typeof callback === 'function' ? callback() : false;
+      } finally {
+        if (hadOwnCtx) {
+          this.__worldActorOverlayTargetCtx = previousCtx;
+        } else {
+          delete this.__worldActorOverlayTargetCtx;
+        }
+      }
+    }
+
+    getActorRenderHost(ctx = null) {
+      if (!ctx) return this;
+      return new Proxy(this, {
+        get(target, prop, receiver) {
+          if (prop === 'ctx') return ctx;
+          if (prop === 'roundRectPath') {
+            return (x, y, width, height, radius = 8) => {
+              ctx.beginPath?.();
+              if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(x, y, width, height, radius);
+              } else {
+                ctx.rect?.(x, y, width, height);
+              }
+            };
+          }
+          return Reflect.get(target, prop, receiver);
+        },
+      });
+    }
+
+    drawMarchArrow(from = {}, to = {}, options = {}) {
+      const ctx = this.getActorRenderCtx(options);
+      if (!ctx) return false;
       const dx = Number(to.x) - Number(from.x);
       const dy = Number(to.y) - Number(from.y);
       const length = Math.hypot(dx, dy);
       if (!Number.isFinite(length) || length < 8) return false;
       const diag = this.__worldActorOverlayActiveDiag;
-      if (diag) diag.arrowCanvasId = getCanvasId(this.ctx);
+      if (diag) diag.arrowCanvasId = getCanvasId(ctx);
       const ux = dx / length;
       const uy = dy / length;
       const endX = Number(to.x) - ux * 14;
       const endY = Number(to.y) - uy * 14;
       const arrowSize = 10;
-      this.ctx.save?.();
-      this.ctx.strokeStyle = 'rgba(76, 232, 132, 0.88)';
-      this.ctx.lineWidth = 3;
-      this.ctx.lineCap = 'round';
-      this.ctx.beginPath?.();
-      this.ctx.moveTo?.(Number(from.x), Number(from.y) - 5);
-      this.ctx.lineTo?.(endX, endY - 5);
-      this.ctx.stroke?.();
-      this.ctx.fillStyle = 'rgba(76, 232, 132, 0.92)';
-      this.ctx.beginPath?.();
-      this.ctx.moveTo?.(endX + ux * arrowSize, endY + uy * arrowSize - 5);
-      this.ctx.lineTo?.(endX - ux * arrowSize - uy * arrowSize * 0.65, endY - uy * arrowSize + ux * arrowSize * 0.65 - 5);
-      this.ctx.lineTo?.(endX - ux * arrowSize + uy * arrowSize * 0.65, endY - uy * arrowSize - ux * arrowSize * 0.65 - 5);
-      this.ctx.closePath?.();
-      this.ctx.fill?.();
-      this.ctx.restore?.();
+      ctx.save?.();
+      ctx.strokeStyle = 'rgba(76, 232, 132, 0.88)';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath?.();
+      ctx.moveTo?.(Number(from.x), Number(from.y) - 5);
+      ctx.lineTo?.(endX, endY - 5);
+      ctx.stroke?.();
+      ctx.fillStyle = 'rgba(76, 232, 132, 0.92)';
+      ctx.beginPath?.();
+      ctx.moveTo?.(endX + ux * arrowSize, endY + uy * arrowSize - 5);
+      ctx.lineTo?.(endX - ux * arrowSize - uy * arrowSize * 0.65, endY - uy * arrowSize + ux * arrowSize * 0.65 - 5);
+      ctx.lineTo?.(endX - ux * arrowSize + uy * arrowSize * 0.65, endY - uy * arrowSize - ux * arrowSize * 0.65 - 5);
+      ctx.closePath?.();
+      ctx.fill?.();
+      ctx.restore?.();
       return true;
     }
 
-    drawActorUnit(actor = {}, point = {}, viewport = {}) {
+    drawActorUnit(actor = {}, point = {}, viewport = {}, options = {}) {
+      const ctx = this.getActorRenderCtx(options);
       const framePath = this.getActorFramePath(actor);
       const scale = Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
       const unitRenderer = this.host?.constructor?.getTutorialIntroUnitRenderer?.() || this.constructor.getTutorialIntroUnitRenderer?.();
       if (unitRenderer?.renderUnit) {
-        return unitRenderer.renderUnit(this, point.x, point.y + 6 * scale, scale, framePath);
+        return unitRenderer.renderUnit(this.getActorRenderHost(ctx), point.x, point.y + 6 * scale, scale, framePath);
       }
       const asset = framePath ? this.getAsset?.(framePath) : null;
-      if (!asset || !this.ctx?.drawImage) return false;
+      if (!asset || !ctx?.drawImage) return false;
       const width = 68 * scale;
       const height = 86 * scale;
-      this.ctx.drawImage(asset, point.x - width / 2, point.y - height + 10 * scale, width, height);
+      ctx.drawImage(asset, point.x - width / 2, point.y - height + 10 * scale, width, height);
       return true;
     }
 
-    renderActors(actors = [], viewport = {}, geometry = {}) {
+    renderActors(actors = [], viewport = {}, geometry = {}, options = {}) {
+      const ctx = this.getActorRenderCtx(options);
       const diag = this.__worldActorOverlayActiveDiag;
-      if (diag) diag.drawnCanvasId = getCanvasId(this.ctx);
+      if (diag) diag.drawnCanvasId = getCanvasId(ctx);
       if (!Array.isArray(actors) || !actors.length) return false;
       let rendered = false;
       actors.forEach((actor) => {
         const point = this.getActorScreenPoint(actor, viewport, geometry);
         const targetPoint = this.getActorTargetScreenPoint(actor, viewport, geometry);
-        if (actor.status === 'active') this.drawMarchArrow(point, targetPoint);
-        if (this.drawActorUnit(actor, point, viewport)) rendered = true;
+        if (actor.status === 'active') this.drawMarchArrow(point, targetPoint, { ctx });
+        if (this.drawActorUnit(actor, point, viewport, { ctx })) rendered = true;
         this.addActorHitTarget(actor, point);
       });
       return rendered;
