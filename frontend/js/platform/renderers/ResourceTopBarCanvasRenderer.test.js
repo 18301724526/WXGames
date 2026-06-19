@@ -110,19 +110,46 @@ function getCalledDrawingSurfaceMethods(calls, label) {
   return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
 }
 
+test('ResourceTopBarCanvasRenderer reads host ctx presenter and width dynamically after proxy removal', () => {
+  const firstCtx = { id: 'first-ctx' };
+  const secondCtx = { id: 'second-ctx' };
+  const firstPresenter = { id: 'first-presenter' };
+  const secondPresenter = { id: 'second-presenter' };
+  const host = createHost({ ctx: firstCtx, presenter: firstPresenter, width: 390 });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+  assert.equal(renderer.width, 390);
+
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+  host.width = 512;
+
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+  assert.equal(renderer.width, 512);
+});
+
+test('ResourceTopBarCanvasRenderer no longer forwards unknown host properties through proxy', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('ResourceTopBarCanvasRenderer prefers explicit drawing surface over proxy fallback host', () => {
   const calls = [];
   const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
   const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
   fallbackHost.presenter = createHost().presenter;
+  fallbackHost.width = 390;
+  fallbackHost.height = 844;
+  fallbackHost.bottomSafeArea = 12;
   const renderer = new ResourceTopBarCanvasRenderer({
     host: fallbackHost,
     drawingSurface: explicitSurface,
   });
-  renderer.presenter = fallbackHost.presenter;
-  renderer.width = 390;
-  renderer.height = 844;
-  renderer.bottomSafeArea = 12;
 
   renderer.renderTopBar({ currentEraName: 'Stone', population: { total: 12 } }, {});
 
@@ -143,11 +170,10 @@ test('ResourceTopBarCanvasRenderer falls back to host drawing surface when none 
   const calls = [];
   const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
   fallbackHost.presenter = createHost().presenter;
+  fallbackHost.width = 390;
+  fallbackHost.height = 844;
+  fallbackHost.bottomSafeArea = 12;
   const renderer = new ResourceTopBarCanvasRenderer({ host: fallbackHost });
-  renderer.presenter = fallbackHost.presenter;
-  renderer.width = 390;
-  renderer.height = 844;
-  renderer.bottomSafeArea = 12;
 
   renderer.renderTopBar({ currentEraName: 'Stone', population: { total: 12 } }, {});
 
