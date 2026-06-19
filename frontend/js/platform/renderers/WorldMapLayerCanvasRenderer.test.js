@@ -6,6 +6,7 @@ const CanvasGameRenderer = require('../CanvasGameRenderer');
 
 function createCtx(calls = []) {
   return {
+    canvas: null,
     fillRect(...args) { calls.push(['fillRect', ...args]); },
     clearRect(...args) { calls.push(['clearRect', ...args]); },
     drawImage(...args) { calls.push(['drawImage', ...args]); },
@@ -604,10 +605,16 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
 
   assert.equal(rendered, true);
   assert.equal(host.calls.some((call) => call[0] === 'beginFrame'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'clearAll'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'setTransform' && call[1] === 1), true);
+  assert.equal(host.calls.some((call) => call[0] === 'clearRect'), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
+  assert.equal(
+    host.calls.findIndex((call) => call[0] === 'clearRect')
+      < host.calls.findIndex((call) => call[0] === 'renderWorldScoutRoutes'),
+    true,
+  );
   assert.equal(
     host.calls.findIndex((call) => call[0] === 'renderWorldScoutRoutes')
       < host.calls.findIndex((call) => call[0] === 'renderWorldActors'),
@@ -617,6 +624,59 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileSnapshotCache'), false);
   assert.equal(host.lastMapHomeWorldHudContext.actors[0].id, 'scout-1');
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});
+
+test('WorldMapLayerCanvasRenderer clears actor backing store before each dynamic actor frame', () => {
+  const actorContext = {
+    actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: { selectedWorldActorId: 'explore-active-1' },
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const calls = [];
+  const ctx = createCtx(calls);
+  const canvas = {
+    width: 1200,
+    height: 2200,
+    clientWidth: 600,
+    clientHeight: 1100,
+    _backingStorePixelRatio: 2,
+  };
+  ctx.canvas = canvas;
+  const host = createHost({
+    calls,
+    ctx,
+    canvas,
+    width: 600,
+    height: 1100,
+    pixelRatio: 2,
+    lastWorldTileMapContext: actorContext,
+    clearAll() {
+      calls.push(['clearAll']);
+    },
+    renderWorldActors(actors) {
+      calls.push(['renderWorldActors', actors]);
+      return true;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, {
+    activeTab: 'military',
+    isMapHome: true,
+    territoryUiState: actorContext.uiState,
+  });
+
+  assert.equal(rendered, true);
+  assert.deepEqual(calls.slice(0, 3), [
+    ['setTransform', 1, 0, 0, 1, 0, 0],
+    ['clearRect', 0, 0, 1200, 2200],
+    ['setTransform', 2, 0, 0, 2, 0, 0],
+  ]);
+  assert.equal(calls.some((call) => call[0] === 'clearAll'), false);
+  assert.equal(calls.findIndex((call) => call[0] === 'clearRect') < calls.findIndex((call) => call[0] === 'renderWorldActors'), true);
 });
 
 test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time on the actor layer', () => {

@@ -360,12 +360,30 @@
       return context;
     }
 
+    clearWorldActorBackingStore() {
+      if (!this.ctx || typeof this.ctx.clearRect !== 'function') return false;
+      const canvas = this.canvas || this.ctx.canvas || null;
+      const pixelRatio = Math.max(1, Number(canvas?._backingStorePixelRatio || this.pixelRatio) || 1);
+      const logicalWidth = Math.max(1, Number(this.width) || Number(canvas?.clientWidth) || 1);
+      const logicalHeight = Math.max(1, Number(this.height) || Number(canvas?.clientHeight) || 1);
+      const backingWidth = Math.max(1, Number(canvas?.width) || Math.ceil(logicalWidth * pixelRatio));
+      const backingHeight = Math.max(1, Number(canvas?.height) || Math.ceil(logicalHeight * pixelRatio));
+      if (typeof this.ctx.setTransform === 'function') {
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.clearRect(0, 0, backingWidth, backingHeight);
+        this.ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        return true;
+      }
+      this.clearAll?.();
+      return true;
+    }
+
     renderWorldMapActorLayer(state = {}, options = {}) {
       if (!this.ctx) return false;
       const context = this.getWorldMapActorLayerContext(state, options);
       this.beginFrame(options);
       this.setHitTargets([]);
-      this.clearAll();
+      this.clearWorldActorBackingStore();
       if (!context) {
         this.publishWorldMapActorLayerContext(null);
         this.endFrame({ ...options, showFpsOverlay: false });
