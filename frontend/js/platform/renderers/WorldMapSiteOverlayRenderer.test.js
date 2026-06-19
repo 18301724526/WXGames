@@ -119,6 +119,33 @@ test('WorldMapSiteOverlayRenderer prefers explicit presenter over host host pres
   assert.equal(view.__sentinelSource, 'explicit');
 });
 
+test('WorldMapSiteOverlayRenderer prefers explicit viewport source over host host offsets', () => {
+  const explicitWorldMapRenderer = {
+    viewportOffsetX: 111,
+    viewportOffsetY: 111,
+  };
+  const hostHostOffsetSource = {
+    viewportOffsetX: 999,
+    viewportOffsetY: 999,
+  };
+  const host = createHost({
+    host: {
+      viewportOffsetX: 999,
+      viewportOffsetY: 999,
+      worldMapRenderer: hostHostOffsetSource,
+    },
+  });
+  const renderer = new WorldMapSiteOverlayRenderer({ host });
+
+  const offset = renderer.getWorldSiteLayerOffset({ worldMapRenderer: explicitWorldMapRenderer });
+
+  assert.equal(host.host.worldMapRenderer.viewportOffsetX, 999);
+  assert.equal(host.host.worldMapRenderer.viewportOffsetY, 999);
+  assert.equal(host.host.viewportOffsetX, 999);
+  assert.equal(host.host.viewportOffsetY, 999);
+  assert.deepEqual(offset, { x: 111, y: 111 });
+});
+
 test('WorldMapSiteOverlayRenderer passes tutorial context into world site presenter state', () => {
   const host = createHost({
     state: {
