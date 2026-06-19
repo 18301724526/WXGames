@@ -13,6 +13,7 @@ function createHost() {
     calls,
     hitTargets,
     ctx: {
+      canvas: { _layerName: 'actor-layer' },
       save() { calls.push(['save']); },
       restore() { calls.push(['restore']); },
       beginPath() { calls.push(['beginPath']); },
@@ -62,6 +63,32 @@ test('WorldActorCanvasRenderer draws scout actor and exposes selection hit targe
   assert.equal(host.calls.some((call) => call[0] === 'getAsset' && call[1].includes('assets/art/units/spearman/move/')), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor' && target.action.missionId === 'explore-1'), true);
   assert.equal(host.hitTargets.find((target) => target.action.type === 'selectWorldActor')?.action.inputSurface, 'worldMap');
+});
+
+test('WorldActorCanvasRenderer records actual actor and arrow canvas ids during drawing', () => {
+  const host = createHost();
+  const diag = {};
+  const renderer = new WorldActorCanvasRenderer({ host });
+  renderer.__worldActorOverlayActiveDiag = diag;
+  const actor = {
+    id: 'explore-1',
+    missionId: 'explore-1',
+    status: 'active',
+    unitKey: 'scout_squad_default',
+    current: { q: 0, r: 0 },
+    target: { q: 1, r: 0 },
+  };
+
+  assert.equal(renderer.renderActors([actor], {
+    originX: 100,
+    originY: 100,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }, { stepX: 96, stepY: 48 }), true);
+
+  assert.equal(diag.drawnCanvasId, 'actor-layer');
+  assert.equal(diag.arrowCanvasId, 'actor-layer');
 });
 
 test('WorldActorCanvasRenderer renders active actors between tile centers', () => {

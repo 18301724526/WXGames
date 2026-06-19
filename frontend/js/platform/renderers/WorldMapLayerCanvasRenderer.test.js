@@ -6,6 +6,7 @@ const CanvasGameRenderer = require('../CanvasGameRenderer');
 
 function createCtx(calls = []) {
   return {
+    canvas: { id: 'test-canvas' },
     fillRect(...args) { calls.push(['fillRect', ...args]); },
     clearRect(...args) { calls.push(['clearRect', ...args]); },
     drawImage(...args) { calls.push(['drawImage', ...args]); },
@@ -578,7 +579,7 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
 
   assert.equal(rendered, true);
   assert.equal(host.calls.some((call) => call[0] === 'beginFrame'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'clearAll'), true);
+  assert.deepEqual(host.calls.find((call) => call[0] === 'clearRect'), ['clearRect', 0, 0, host.width, host.height]);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldScoutRoutes'), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldActors'), true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), true);
@@ -591,6 +592,92 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileSnapshotCache'), false);
   assert.equal(host.lastMapHomeWorldHudContext.actors[0].id, 'scout-1');
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});
+
+test('WorldMapLayerCanvasRenderer records actor overlay diagnostics from actual clear and draw canvases', () => {
+  const actorContext = {
+    actors: [{ id: 'scout-1', status: 'active' }],
+    frame: { x: 8, y: 8, width: 60, height: 40 },
+    geometry: {},
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const drawCanvas = { _layerName: 'draw-layer' };
+  const host = createHost({
+    width: 50,
+    height: 40,
+    lastWorldTileMapContext: actorContext,
+    renderWorldActors(actors) {
+      host.calls.push(['renderWorldActors', actors]);
+      const diag = host.__worldActorOverlayActiveDiag;
+      if (diag) {
+        diag.drawnCanvasId = drawCanvas._layerName;
+        diag.arrowCanvasId = drawCanvas._layerName;
+      }
+      return true;
+    },
+  });
+  host.ctx.canvas = { _layerName: 'clear-layer' };
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, {
+    __worldActorOverlayDelegated: true,
+    epochNowMs: 1000,
+    territoryUiState: actorContext.uiState,
+  });
+  const diag = host.lastWorldActorOverlayDiag;
+  const clearCall = host.calls.find((call) => call[0] === 'clearRect');
+
+  assert.equal(rendered, true);
+  assert.equal(diag.delegated, true);
+  assert.equal(diag.clearedCanvasId, 'clear-layer');
+  assert.equal(diag.drawnCanvasId, 'draw-layer');
+  assert.equal(diag.arrowCanvasId, 'draw-layer');
+  assert.deepEqual(diag.clearRect, { x: 0, y: 0, w: 50, h: 40 });
+  assert.deepEqual(clearCall, ['clearRect', diag.clearRect.x, diag.clearRect.y, diag.clearRect.w, diag.clearRect.h]);
+  assert.deepEqual(diag.drawFrame, actorContext.frame);
+  assert.equal(diag.actorCount, 1);
+  assert.equal(diag.clearedEqualsDrawn, false);
+  assert.equal(diag.clearCoversDrawFrame, false);
+});
+
+test('WorldMapLayerCanvasRenderer throttles actor overlay diagnostic logs to one per second', () => {
+  const previousLogger = global.ClientOperationLog;
+  const logs = [];
+  global.ClientOperationLog = {
+    record(type, detail) {
+      logs.push([type, detail]);
+      return { type, detail };
+    },
+  };
+  try {
+    const actorContext = {
+      actors: [{ id: 'scout-1' }],
+      frame: { x: 1, y: 1, width: 20, height: 20 },
+      geometry: {},
+      tileMapView: createTileMapView(),
+      uiState: {},
+      viewport: { originX: 195, originY: 360, scale: 0.78 },
+    };
+    const host = createHost({
+      lastWorldTileMapContext: actorContext,
+      renderWorldActors(actors) {
+        host.calls.push(['renderWorldActors', actors]);
+        return true;
+      },
+    });
+    const renderer = new WorldMapLayerCanvasRenderer({ host });
+    const options = { territoryUiState: actorContext.uiState };
+
+    assert.equal(renderer.renderWorldMapActorLayer({}, { ...options, epochNowMs: 1000 }), true);
+    assert.equal(renderer.renderWorldMapActorLayer({}, { ...options, epochNowMs: 1500 }), true);
+    assert.equal(renderer.renderWorldMapActorLayer({}, { ...options, epochNowMs: 2000 }), true);
+
+    assert.deepEqual(logs.map((entry) => entry[0]), ['worldActorOverlay:diag', 'worldActorOverlay:diag']);
+  } finally {
+    global.ClientOperationLog = previousLogger;
+  }
 });
 
 test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time on the actor layer', () => {
