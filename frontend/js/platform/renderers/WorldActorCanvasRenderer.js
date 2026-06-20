@@ -49,105 +49,10 @@
     return canvasIds.get(canvas);
   }
 
-  function getDiagObjectId(value = null) {
-    if (!value || (typeof value !== 'object' && typeof value !== 'function')) return '';
-    if (typeof WeakMap !== 'function') return '';
-    if (!global.__actorPickingDiagObjectIds) {
-      global.__actorPickingDiagObjectIds = new WeakMap();
-      global.__actorPickingDiagObjectIdSeq = 0;
-    }
-    if (!global.__actorPickingDiagObjectIds.has(value)) {
-      global.__actorPickingDiagObjectIdSeq = (Number(global.__actorPickingDiagObjectIdSeq) || 0) + 1;
-      global.__actorPickingDiagObjectIds.set(value, `obj#${global.__actorPickingDiagObjectIdSeq}`);
-    }
-    return global.__actorPickingDiagObjectIds.get(value);
-  }
-
-  function summarizeObjectRef(value = null) {
-    if (!value || (typeof value !== 'object' && typeof value !== 'function')) {
-      return { present: false, id: '', constructorName: '' };
-    }
-    return {
-      present: true,
-      id: getDiagObjectId(value),
-      constructorName: value.constructor?.name || '',
-    };
-  }
-
-  function summarizeHitTargetStore(value = null) {
-    const hitTargets = value?.hitTargets;
-    const isArray = Array.isArray(hitTargets);
-    return {
-      object: summarizeObjectRef(value),
-      hitTargetsIsArray: isArray,
-      hitTargetsLength: isArray ? hitTargets.length : null,
-      selectWorldActorCount: isArray
-        ? hitTargets.filter((target) => target?.action?.type === 'selectWorldActor').length
-        : null,
-    };
-  }
-
-  function isActorPickingDiagEnabled() {
-    if (global.__actorPickingDiag === true) return true;
-    try {
-      const params = new URL(global.location?.href || '').searchParams;
-      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
-      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    try {
-      const value = global.localStorage?.getItem?.('actorPickingDiag');
-      return value === '1' || value === 'true' || value === 'on';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    return false;
-  }
-
-  function summarizeCoord(coord = null) {
-    if (!coord || typeof coord !== 'object') return null;
-    return {
-      x: coord.x ?? null,
-      y: coord.y ?? null,
-      q: coord.q ?? null,
-      r: coord.r ?? null,
-      tileId: coord.tileId || coord.id || '',
-    };
-  }
-
   function getActorScreenCoordSource(actor = {}) {
     if (actor.current) return { source: 'current', coord: actor.current };
     if (actor.origin) return { source: 'origin', coord: actor.origin };
     return { source: 'none', coord: {} };
-  }
-
-  function logActorPickingDiag(stage = '', detail = {}) {
-    if (!isActorPickingDiagEnabled()) return null;
-    const payload = {
-      at: new Date().toISOString(),
-      stage,
-      ...detail,
-    };
-    try {
-      const events = global.__actorPickingDiagEvents || [];
-      events.push(payload);
-      while (events.length > 80) events.shift();
-      global.__actorPickingDiagEvents = events;
-      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
-      global.__actorPickingDiagLastByStage[stage] = payload;
-    } catch (_) {
-      // Ignore diagnostic buffer failures.
-    }
-    try {
-      if (global.__actorPickingDiagVerbose === true
-        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
-        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
-      }
-    } catch (_) {
-      // Ignore diagnostic console failures.
-    }
-    return payload;
   }
 
   class WorldActorCanvasRenderer {
@@ -179,21 +84,6 @@
       if (!WorldMarchSystem?.getTileScreenCenter) return { x: 0, y: 0 };
       const selected = getActorScreenCoordSource(actor);
       const point = WorldMarchSystem.getTileScreenCenter(selected.coord, viewport, geometry);
-      logActorPickingDiag('worldActorRenderer:getActorScreenPoint', {
-        actorId: actor.id || actor.actorId || actor.missionId || '',
-        missionId: actor.missionId || '',
-        status: actor.status || '',
-        selectedSource: selected.source,
-        selectedCoord: summarizeCoord(selected.coord),
-        current: summarizeCoord(actor.current),
-        position: summarizeCoord(actor.position),
-        origin: summarizeCoord(actor.origin),
-        target: summarizeCoord(actor.target),
-        point: {
-          x: Number(point.x),
-          y: Number(point.y),
-        },
-      });
       return point;
     }
 
@@ -324,36 +214,6 @@
 
     addActorHitTarget(actor = {}, point = {}) {
       const size = 42;
-      const hostBefore = summarizeHitTargetStore(this.host);
-      const selfBefore = summarizeHitTargetStore(this);
-      logActorPickingDiag('worldActorRenderer:addActorHitTarget', {
-        actorId: actor.id || actor.actorId || actor.missionId || '',
-        missionId: actor.missionId || '',
-        status: actor.status || '',
-        self: summarizeObjectRef(this),
-        host: summarizeObjectRef(this.host),
-        hostWorldActorLayerRenderer: summarizeObjectRef(this.host?.worldActorLayerRenderer),
-        hostIsSelf: this.host === this,
-        hostWorldActorLayerRendererIsSelf: this.host?.worldActorLayerRenderer === this,
-        hostHitTargetStoreBefore: hostBefore,
-        selfHitTargetStoreBefore: selfBefore,
-        current: summarizeCoord(actor.current),
-        position: summarizeCoord(actor.position),
-        origin: summarizeCoord(actor.origin),
-        target: summarizeCoord(actor.target),
-        selectedSource: getActorScreenCoordSource(actor).source,
-        selectedCoord: summarizeCoord(getActorScreenCoordSource(actor).coord),
-        point: {
-          x: Number(point.x),
-          y: Number(point.y),
-        },
-        targetBox: {
-          x: point.x - size / 2,
-          y: point.y - size / 2 - 16,
-          width: size,
-          height: size,
-        },
-      });
       this.addHitTarget?.({
         x: point.x - size / 2,
         y: point.y - size / 2 - 16,
@@ -364,20 +224,6 @@
         actorId: actor.id,
         missionId: actor.missionId,
         inputSurface: 'worldMap',
-      });
-      logActorPickingDiag('worldActorRenderer:addActorHitTarget:afterWrite', {
-        actorId: actor.id || actor.actorId || actor.missionId || '',
-        missionId: actor.missionId || '',
-        status: actor.status || '',
-        self: summarizeObjectRef(this),
-        host: summarizeObjectRef(this.host),
-        hostWorldActorLayerRenderer: summarizeObjectRef(this.host?.worldActorLayerRenderer),
-        hostIsSelf: this.host === this,
-        hostWorldActorLayerRendererIsSelf: this.host?.worldActorLayerRenderer === this,
-        hostHitTargetStoreBefore: hostBefore,
-        hostHitTargetStoreAfter: summarizeHitTargetStore(this.host),
-        selfHitTargetStoreBefore: selfBefore,
-        selfHitTargetStoreAfter: summarizeHitTargetStore(this),
       });
       return true;
     }

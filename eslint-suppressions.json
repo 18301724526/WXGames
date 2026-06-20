@@ -142,11 +142,6 @@
       "count": 3
     }
   },
-  "frontend/js/domain/WorldMapInputActionMap.js": {
-    "no-unused-vars": {
-      "count": 4
-    }
-  },
   "frontend/js/domain/WorldMapInputIntent.js": {
     "no-undef": {
       "count": 1

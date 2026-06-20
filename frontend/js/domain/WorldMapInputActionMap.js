@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldMarchSystem');
-      } catch (error) {
+      } catch (_) {
         return null;
       }
     }
@@ -15,7 +15,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./TileCoord');
-      } catch (error) {
+      } catch (_) {
         return null;
       }
     }
@@ -26,7 +26,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldMapPickingModel');
-      } catch (error) {
+      } catch (_) {
         return null;
       }
     }
@@ -37,7 +37,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldMapSelectionResolver');
-      } catch (error) {
+      } catch (_) {
         return null;
       }
     }
@@ -99,108 +99,9 @@
     return false;
   }
 
-  function summarizeHitTarget(target = {}, index = -1, point = null) {
-    const action = target.action || {};
-    const rect = {
-      x: toNumber(target.x),
-      y: toNumber(target.y),
-      width: toNumber(target.width),
-      height: toNumber(target.height),
-    };
-    const pointInsideRect = point ? containsPoint(target, point) : undefined;
-    return {
-      index,
-      kind: target.kind || '',
-      actionType: action.type || '',
-      actorId: action.actorId || '',
-      missionId: action.missionId || '',
-      siteId: action.siteId || '',
-      tileId: action.tileId || '',
-      background: Boolean(action.background),
-      ...rect,
-      rect,
-      clickPoint: point ? { x: toNumber(point.x), y: toNumber(point.y) } : null,
-      containsPoint: pointInsideRect,
-      pointInsideRect,
-    };
-  }
-
-  function summarizeActorHitRect(target = {}, index = -1, point = {}) {
-    const summary = summarizeHitTarget(target, index, point);
-    return {
-      index: summary.index,
-      actorId: summary.actorId,
-      missionId: summary.missionId,
-      rect: summary.rect,
-      clickPoint: summary.clickPoint,
-      pointInsideRect: summary.pointInsideRect,
-      containsPoint: summary.containsPoint,
-      actionType: summary.actionType,
-      kind: summary.kind,
-    };
-  }
-
   function getRecentActorPickingDiagEvents(limit = 20) {
     const events = Array.isArray(global.__actorPickingDiagEvents) ? global.__actorPickingDiagEvents : [];
     return events.slice(Math.max(0, events.length - limit));
-  }
-
-  function cloneJsonSafe(value = null) {
-    try {
-      return JSON.parse(JSON.stringify(value));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function getLastActorPickingDiagByStage() {
-    const lastByStage = global.__actorPickingDiagLastByStage || {};
-    return {
-      addActorHitTargetAfterWrite: cloneJsonSafe(lastByStage['worldActorRenderer:addActorHitTarget:afterWrite']),
-      runtimeSources: cloneJsonSafe(lastByStage['worldMapRuntime:syncHitTargetsFromRenderer:sources']),
-      actorScreenPoint: cloneJsonSafe(lastByStage['worldActorRenderer:getActorScreenPoint']),
-      projectionKind: cloneJsonSafe(lastByStage['worldActorProjection:getProjectionKind']),
-      pickingModelActorTarget: cloneJsonSafe(lastByStage['pickingModel:createActorTarget']),
-    };
-  }
-
-  function summarizeTargetsByAction(targets = [], point = {}, actionType = '', limit = 12) {
-    return targets
-      .map((target, index) => summarizeHitTarget(target, index, point))
-      .filter((target) => target.actionType === actionType)
-      .slice(0, limit);
-  }
-
-  function summarizeContainsMatches(targets = [], point = {}, limit = 12) {
-    return targets
-      .map((target, index) => summarizeHitTarget(target, index, point))
-      .filter((target) => target.containsPoint)
-      .slice(0, limit);
-  }
-
-  function logActorPickingDiag(stage = '', detail = {}) {
-    if (!isActorPickingDiagEnabled()) return null;
-    const payload = {
-      at: new Date().toISOString(),
-      stage,
-      ...detail,
-    };
-    try {
-      const events = global.__actorPickingDiagEvents || [];
-      events.push(payload);
-      while (events.length > 80) events.shift();
-      global.__actorPickingDiagEvents = events;
-      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
-      global.__actorPickingDiagLastByStage[stage] = payload;
-    } catch (_) {
-      // Ignore diagnostic buffer failures.
-    }
-    try {
-      global.console?.log?.('[ActorPickingDiag]', JSON.stringify(payload));
-    } catch (_) {
-      // Ignore diagnostic console failures.
-    }
-    return payload;
   }
 
   function normalizeCoord(source = {}, fallback = {}) {
@@ -326,43 +227,10 @@
   }
 
   function getHitTarget(point = {}, targets = []) {
-    const targetList = Array.isArray(targets) ? targets : [];
-    const diagEnabled = isActorPickingDiagEnabled();
-    if (diagEnabled) {
-      logActorPickingDiag('inputActionMap:getHitTarget:start', {
-        point: { x: toNumber(point.x), y: toNumber(point.y) },
-        targetCount: targetList.length,
-        actorHitRects: targetList
-          .map((target, index) => ({ target, index }))
-          .filter(({ target }) => target?.action?.type === 'selectWorldActor')
-          .map(({ target, index }) => summarizeActorHitRect(target, index, point)),
-        siteHitRects: [
-          ...summarizeTargetsByAction(targetList, point, 'openWorldSite'),
-          ...summarizeTargetsByAction(targetList, point, 'enterCity'),
-        ],
-        containsMatches: summarizeContainsMatches(targetList, point),
-        recentEvents: cloneJsonSafe(getRecentActorPickingDiagEvents()) || [],
-        lastByStage: getLastActorPickingDiagByStage(),
-      });
-    }
     const priorityAction = getPriorityForegroundAction(point, targets);
-    if (priorityAction) {
-      logActorPickingDiag('inputActionMap:getHitTarget:return', {
-        reason: 'priorityAction',
-        actionType: priorityAction.type || '',
-        action: priorityAction,
-      });
-      return priorityAction;
-    }
+    if (priorityAction) return priorityAction;
     const resolvedCandidates = resolveForegroundCandidates(point, targets);
-    if (resolvedCandidates) {
-      logActorPickingDiag('inputActionMap:getHitTarget:return', {
-        reason: 'resolvedCandidates',
-        actionType: resolvedCandidates.type || '',
-        action: resolvedCandidates,
-      });
-      return resolvedCandidates;
-    }
+    if (resolvedCandidates) return resolvedCandidates;
     let backgroundAction = null;
     for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
       const target = targets[index];
@@ -372,30 +240,11 @@
       } else {
         if (target.action?.type === 'selectWorldActor') {
           const siteAction = getTopmostForegroundAction(point, targets, isWorldSiteAction);
-          if (siteAction) {
-            logActorPickingDiag('inputActionMap:getHitTarget:return', {
-              reason: 'siteOverridesActor',
-              actorTarget: summarizeHitTarget(target, index, point),
-              siteActionType: siteAction.type || '',
-              siteAction,
-            });
-            return siteAction;
-          }
+          if (siteAction) return siteAction;
         }
-        logActorPickingDiag('inputActionMap:getHitTarget:return', {
-          reason: 'foregroundTarget',
-          target: summarizeHitTarget(target, index, point),
-          actionType: target.action?.type || '',
-          action: target.action,
-        });
         return target.action;
       }
     }
-    logActorPickingDiag('inputActionMap:getHitTarget:return', {
-      reason: backgroundAction ? 'backgroundAction' : 'none',
-      actionType: backgroundAction?.type || '',
-      action: backgroundAction,
-    });
     return backgroundAction;
   }
 
@@ -501,6 +350,7 @@
     containsPoint,
     findKnownTile,
     getForegroundTargets,
+    getRecentActorPickingDiagEvents,
     getPriorityForegroundAction,
     getBackgroundMarchTargetAction,
     getContextFrame,
@@ -508,6 +358,7 @@
     getTopmostForegroundAction,
     inferTileFromPoint,
     isAllowedAction,
+    isActorPickingDiagEnabled,
     isPointInContextFrame,
     isKnownTile,
     isRendererWorldSurfaceAction,

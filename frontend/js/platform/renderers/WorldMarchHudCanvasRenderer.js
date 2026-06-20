@@ -22,6 +22,52 @@
     return null;
   })();
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return false;
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      const events = global.__actorPickingDiagEvents || [];
+      events.push(payload);
+      while (events.length > 80) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {
+      // Ignore diagnostic buffer failures.
+    }
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
+    } catch (_) {
+      // Ignore diagnostic console failures.
+    }
+    return payload;
+  }
+
   class WorldMarchHudCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -448,6 +494,19 @@
       if (target?.pickerOpen) return this.renderFormationPicker(state, target, frame);
       const selectedActorId = uiState.selectedWorldActorId || '';
       const selectedActor = selectedActorId ? actors.find((actor) => actor.id === selectedActorId || actor.missionId === selectedActorId) : null;
+      logActorPickingDiag('worldMarchHud:resolveSelectedActor', {
+        selectedWorldActorId: selectedActorId,
+        actorsCount: Array.isArray(actors) ? actors.length : 0,
+        actorsBrief: (Array.isArray(actors) ? actors : []).slice(0, 10).map((actor) => ({
+          id: actor?.id || '',
+          actorId: actor?.actorId || '',
+          missionId: actor?.missionId || '',
+        })),
+        matchedActor: Boolean(selectedActor),
+        notMatchedReason: selectedActor
+          ? ''
+          : (!(Array.isArray(actors) && actors.length) ? 'actors-empty' : 'no-id-actorId-missionId-match'),
+      });
       if (selectedActor) return this.renderActorHud(selectedActor, viewport, geometry, frame);
       if (target) return this.renderTargetHud(target, viewport, geometry, frame);
       return false;
