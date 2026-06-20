@@ -49,8 +49,12 @@
     };
     try {
       const events = global.__actorPickingDiagEvents || [];
+      const signature = detail?.signature || '';
+      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
+      if (signature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === signature) return null;
+      if (signature) global.__actorPickingDiagLastSignatureByStage[stage] = signature;
       events.push(payload);
-      while (events.length > 80) events.shift();
+      while (events.length > 120) events.shift();
       global.__actorPickingDiagEvents = events;
       global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
       global.__actorPickingDiagLastByStage[stage] = payload;
@@ -492,15 +496,41 @@
       const selectedActor = selectedActorId ? actors.find((actor) => actor.id === selectedActorId || actor.missionId === selectedActorId) : null;
       const picker = this.getWorldTargetPicker(uiState);
       const target = WorldMarchSystem?.getMarchTargetUiState?.(uiState);
-      logActorPickingDiag('worldMarchHud:resolveSelectedActor', {
+      logActorPickingDiag('hud:renderWorldMarchHud', {
+        signature: [
+          selectedActorId,
+          Array.isArray(actors) ? actors.length : 0,
+          Boolean(selectedActor),
+          picker ? 'picker' : '',
+          target?.pickerOpen ? 'formation' : '',
+          Boolean(target),
+        ].join('|'),
         selectedWorldActorId: selectedActorId,
+        uiStateBrief: {
+          selectedWorldActorId: selectedActorId,
+          selectedSiteId: uiState.selectedSiteId || '',
+          hasWorldMarchTarget: Boolean(uiState.worldMarchTarget),
+          worldMarchTargetTileId: uiState.worldMarchTarget?.tileId || '',
+          worldMarchTargetPickerOpen: Boolean(uiState.worldMarchTarget?.pickerOpen),
+          hasWorldTargetPicker: Boolean(uiState.worldTargetPicker),
+          worldTargetPickerCandidates: Array.isArray(uiState.worldTargetPicker?.candidates)
+            ? uiState.worldTargetPicker.candidates.length
+            : 0,
+        },
         actorsCount: Array.isArray(actors) ? actors.length : 0,
         actorsBrief: (Array.isArray(actors) ? actors : []).slice(0, 10).map((actor) => ({
           id: actor?.id || '',
           actorId: actor?.actorId || '',
           missionId: actor?.missionId || '',
+          status: actor?.status || '',
         })),
         matchedActor: Boolean(selectedActor),
+        matchedActorBrief: selectedActor ? {
+          id: selectedActor.id || '',
+          actorId: selectedActor.actorId || '',
+          missionId: selectedActor.missionId || '',
+          status: selectedActor.status || '',
+        } : null,
         earlyReturnReason: picker ? 'world-target-picker' : (target?.pickerOpen ? 'formation-picker' : ''),
         notMatchedReason: selectedActor
           ? ''

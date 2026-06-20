@@ -36,6 +36,81 @@
     'activeCommandPanel',
   ];
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return false;
+  }
+
+  function summarizeActorPickingAction(action = {}) {
+    return {
+      type: action?.type || '',
+      actorId: action?.actorId || '',
+      missionId: action?.missionId || '',
+      tileId: action?.tileId || '',
+      inputSurface: action?.inputSurface || '',
+      background: Boolean(action?.background),
+    };
+  }
+
+  function summarizeActorPickingUiState(uiState = {}) {
+    return {
+      selectedWorldActorId: uiState?.selectedWorldActorId || '',
+      selectedSiteId: uiState?.selectedSiteId || '',
+      hasWorldMarchTarget: Boolean(uiState?.worldMarchTarget),
+      worldMarchTargetTileId: uiState?.worldMarchTarget?.tileId || '',
+      worldMarchTargetPickerOpen: Boolean(uiState?.worldMarchTarget?.pickerOpen),
+      hasWorldTargetPicker: Boolean(uiState?.worldTargetPicker),
+      worldTargetPickerCandidates: Array.isArray(uiState?.worldTargetPicker?.candidates)
+        ? uiState.worldTargetPicker.candidates.length
+        : 0,
+    };
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}, options = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      const events = global.__actorPickingDiagEvents || [];
+      const signature = options.signature || '';
+      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
+      if (signature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === signature) return null;
+      if (signature) global.__actorPickingDiagLastSignatureByStage[stage] = signature;
+      events.push(payload);
+      while (events.length > 120) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return payload;
+  }
+
   class CanvasActionController {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -182,8 +257,22 @@
     }
 
     refreshWorldMarchLayer(action = {}) {
+      if (isActorPickingDiagEnabled()) {
+        logActorPickingDiag('actionController:refreshWorldMarchLayer:before', {
+          action: summarizeActorPickingAction(action),
+          uiState: summarizeActorPickingUiState(this.getSharedTerritoryUiState?.() || {}),
+        });
+      }
       const handled = this.afterHandled(action);
-      this.refreshWorldMapLayer();
+      const refreshResult = this.refreshWorldMapLayer();
+      if (isActorPickingDiagEnabled()) {
+        logActorPickingDiag('actionController:refreshWorldMarchLayer:after', {
+          action: summarizeActorPickingAction(action),
+          handled: handled !== false,
+          refreshResult: refreshResult !== false,
+          uiState: summarizeActorPickingUiState(this.getSharedTerritoryUiState?.() || {}),
+        });
+      }
       return handled;
     }
 
@@ -236,6 +325,12 @@
         return Boolean(action?.disabled);
       }
       const handler = this[`handle_${action.type}`] || this.handleUnknown;
+      if (action.type === 'selectWorldActor' && isActorPickingDiagEnabled()) {
+        logActorPickingDiag('actionController:handle:selectWorldActor:before', {
+          action: summarizeActorPickingAction(action),
+          uiState: summarizeActorPickingUiState(this.getOperationLogUiState()),
+        });
+      }
       global.ClientOperationLog?.record?.('action:begin', {
         action: global.ClientOperationLog?.summarizeAction?.(action),
         inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(meta.inputIntent),
@@ -260,6 +355,14 @@
             }, { flush: true });
           });
         } else {
+          if (action.type === 'selectWorldActor' && isActorPickingDiagEnabled()) {
+            logActorPickingDiag('actionController:handle:selectWorldActor:after', {
+              action: summarizeActorPickingAction(action),
+              result: result !== false,
+              async: false,
+              uiState: summarizeActorPickingUiState(this.getOperationLogUiState()),
+            });
+          }
           global.ClientOperationLog?.record?.('action:end', {
             action: global.ClientOperationLog?.summarizeAction?.(action),
             inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(meta.inputIntent),

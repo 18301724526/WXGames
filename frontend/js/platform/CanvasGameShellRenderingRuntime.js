@@ -29,6 +29,71 @@
     return missions.some((mission) => mission.status === 'active');
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return false;
+  }
+
+  function summarizeActorPickingUiState(uiState = {}) {
+    return {
+      present: Boolean(uiState && typeof uiState === 'object'),
+      selectedWorldActorId: uiState?.selectedWorldActorId || '',
+      selectedSiteId: uiState?.selectedSiteId || '',
+      hasWorldMarchTarget: Boolean(uiState?.worldMarchTarget),
+      worldMarchTargetTileId: uiState?.worldMarchTarget?.tileId || '',
+      worldMarchTargetPickerOpen: Boolean(uiState?.worldMarchTarget?.pickerOpen),
+      hasWorldTargetPicker: Boolean(uiState?.worldTargetPicker),
+      worldTargetPickerCandidates: Array.isArray(uiState?.worldTargetPicker?.candidates)
+        ? uiState.worldTargetPicker.candidates.length
+        : 0,
+    };
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}, options = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      const events = global.__actorPickingDiagEvents || [];
+      const signature = options.signature || '';
+      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
+      if (signature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === signature) return null;
+      if (signature) global.__actorPickingDiagLastSignatureByStage[stage] = signature;
+      events.push(payload);
+      while (events.length > 120) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return payload;
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -266,6 +331,30 @@ resolveTerritoryUiState(overrideUiState = null) {
       if (liveSelectedActorSource?.selectedWorldActorId) {
         resolved.selectedWorldActorId = liveSelectedActorSource.selectedWorldActorId;
       }
+      logActorPickingDiag('shell:resolveTerritoryUiState', {
+        sources: {
+          controllerSnapshot: summarizeActorPickingUiState(controllerSnapshot),
+          lastGameTerritoryUiState: summarizeActorPickingUiState(this.lastGame?.territoryUiState),
+          shellTerritoryUiState: summarizeActorPickingUiState(this.territoryUiState),
+          controllerUiState: summarizeActorPickingUiState(territoryController?.uiState),
+          overrideUiState: summarizeActorPickingUiState(overrideUiState),
+        },
+        resolved: summarizeActorPickingUiState(resolved),
+        liveSelectedActorSource: liveSelectedActorSource === this.lastGame?.territoryUiState
+          ? 'lastGame.territoryUiState'
+          : (liveSelectedActorSource === this.territoryUiState
+            ? 'shell.territoryUiState'
+            : (liveSelectedActorSource === territoryController?.uiState ? 'territoryController.uiState' : '')),
+      }, {
+        signature: [
+          controllerSnapshot?.selectedWorldActorId || '',
+          this.lastGame?.territoryUiState?.selectedWorldActorId || '',
+          this.territoryUiState?.selectedWorldActorId || '',
+          territoryController?.uiState?.selectedWorldActorId || '',
+          overrideUiState?.selectedWorldActorId || '',
+          resolved.selectedWorldActorId || '',
+        ].join('|'),
+      });
       return resolved;
     },
 
@@ -283,6 +372,19 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       });
       this.mapHomeActive = homeView.isMapHome;
       const resolvedTerritoryUiState = this.resolveTerritoryUiState(territoryUiState);
+      logActorPickingDiag('shell:buildRenderOptions:territoryUiState', {
+        activeTab,
+        input: summarizeActorPickingUiState(territoryUiState),
+        resolved: summarizeActorPickingUiState(resolvedTerritoryUiState),
+      }, {
+        signature: [
+          activeTab,
+          territoryUiState?.selectedWorldActorId || '',
+          resolvedTerritoryUiState?.selectedWorldActorId || '',
+          Boolean(resolvedTerritoryUiState?.worldMarchTarget),
+          Boolean(resolvedTerritoryUiState?.worldTargetPicker),
+        ].join('|'),
+      });
       return {
         now: this.now(),
         epochNowMs: this.getWorldEpochNowMs?.() ?? Date.now(),
@@ -389,6 +491,19 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
         shellMapHomeActive: Boolean(this.mapHomeActive),
       });
       const territoryUiState = this.resolveTerritoryUiState(options.territoryUiState);
+      logActorPickingDiag('shell:renderReadOnly:territoryUiState', {
+        activeTab,
+        optionsTerritoryUiState: summarizeActorPickingUiState(options.territoryUiState),
+        resolved: summarizeActorPickingUiState(territoryUiState),
+      }, {
+        signature: [
+          activeTab,
+          options.territoryUiState?.selectedWorldActorId || '',
+          territoryUiState?.selectedWorldActorId || '',
+          Boolean(territoryUiState?.worldMarchTarget),
+          Boolean(territoryUiState?.worldTargetPicker),
+        ].join('|'),
+      });
       const defaultForceMapHome = (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))
         || activeTab === 'resources'
         || activeTab === 'territory';

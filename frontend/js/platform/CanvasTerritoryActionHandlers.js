@@ -67,6 +67,78 @@
     };
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return false;
+  }
+
+  function summarizeActorPickingAction(action = {}) {
+    return {
+      type: action?.type || '',
+      actorId: action?.actorId || '',
+      missionId: action?.missionId || '',
+      tileId: action?.tileId || '',
+      inputSurface: action?.inputSurface || '',
+    };
+  }
+
+  function summarizeActorPickingUiState(uiState = {}) {
+    return {
+      selectedWorldActorId: uiState?.selectedWorldActorId || '',
+      selectedSiteId: uiState?.selectedSiteId || '',
+      hasWorldMarchTarget: Boolean(uiState?.worldMarchTarget),
+      hasWorldTargetPicker: Boolean(uiState?.worldTargetPicker),
+      worldTargetPickerCandidates: Array.isArray(uiState?.worldTargetPicker?.candidates)
+        ? uiState.worldTargetPicker.candidates.length
+        : 0,
+    };
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}, options = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      const events = global.__actorPickingDiagEvents || [];
+      const signature = options.signature || '';
+      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
+      if (signature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === signature) return null;
+      if (signature) global.__actorPickingDiagLastSignatureByStage[stage] = signature;
+      events.push(payload);
+      while (events.length > 120) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return payload;
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
@@ -373,13 +445,34 @@
 
       handle_selectWorldActor(action) {
         const actorId = action.actorId || action.missionId || '';
-        if (!actorId) return false;
+        if (!actorId) {
+          logActorPickingDiag('territory:selectWorldActor:missingActorId', {
+            action: summarizeActorPickingAction(action),
+          });
+          return false;
+        }
         const uiState = this.getSharedTerritoryUiState();
+        logActorPickingDiag('territory:selectWorldActor:beforeWrite', {
+          action: summarizeActorPickingAction(action),
+          actorId,
+          uiState: summarizeActorPickingUiState(uiState),
+        });
         uiState.selectedWorldActorId = actorId;
         uiState.worldMarchTarget = null;
         uiState.selectedSiteId = '';
         uiState.worldTargetPicker = null;
+        logActorPickingDiag('territory:selectWorldActor:afterWrite', {
+          action: summarizeActorPickingAction(action),
+          actorId,
+          uiState: summarizeActorPickingUiState(uiState),
+        });
         const handled = this.refreshWorldMarchLayer(action);
+        logActorPickingDiag('territory:selectWorldActor:afterRefresh', {
+          action: summarizeActorPickingAction(action),
+          actorId,
+          handled: handled !== false,
+          uiState: summarizeActorPickingUiState(uiState),
+        });
         this.refreshWorldMarchTutorialHighlight();
         return handled;
       },
