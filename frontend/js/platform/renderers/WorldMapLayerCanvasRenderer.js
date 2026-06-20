@@ -551,13 +551,9 @@
     publishWorldActorOverlayLayerContext(layerRenderer = null, context = null) {
       if (!layerRenderer || layerRenderer === this) return false;
       layerRenderer.lastWorldTileMapContext = context;
-      layerRenderer.lastGameState = this.lastGameState;
-      layerRenderer.lastWorldMarchState = this.lastWorldMarchState;
       const layerHost = layerRenderer.host || null;
       if (layerHost && layerHost !== layerRenderer) {
         layerHost.lastWorldTileMapContext = context;
-        layerHost.lastGameState = this.lastGameState;
-        layerHost.lastWorldMarchState = this.lastWorldMarchState;
       }
       return true;
     }

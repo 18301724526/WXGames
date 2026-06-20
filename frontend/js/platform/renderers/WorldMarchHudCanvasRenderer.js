@@ -25,18 +25,69 @@
   class WorldMarchHudCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-      });
+      this.drawingSurface = options.drawingSurface || null;
+    }
+
+    get width() {
+      return this.host?.width;
+    }
+
+    get height() {
+      return this.host?.height;
+    }
+
+    get viewportOffsetX() {
+      return this.host?.viewportOffsetX;
+    }
+
+    get viewportOffsetY() {
+      return this.host?.viewportOffsetY;
+    }
+
+    get viewportWidth() {
+      return this.host?.viewportWidth;
+    }
+
+    get viewportHeight() {
+      return this.host?.viewportHeight;
+    }
+
+    get epochNowMs() {
+      return this.host?.epochNowMs;
+    }
+
+    get presenter() {
+      return this.host?.presenter;
+    }
+
+    callDrawingSurface(method, args = []) {
+      const explicitSurface = this.drawingSurface;
+      if (explicitSurface && typeof explicitSurface[method] === 'function') {
+        return explicitSurface[method](...args);
+      }
+      const host = this.host;
+      if (!host || typeof host[method] !== 'function') return undefined;
+      return host[method](...args);
+    }
+
+    addHitTarget(...args) {
+      return this.callDrawingSurface('addHitTarget', args);
+    }
+
+    drawButton(...args) {
+      return this.callDrawingSurface('drawButton', args);
+    }
+
+    drawPanel(...args) {
+      return this.callDrawingSurface('drawPanel', args);
+    }
+
+    drawText(...args) {
+      return this.callDrawingSurface('drawText', args);
+    }
+
+    truncateText(...args) {
+      return this.callDrawingSurface('truncateText', args);
     }
 
     getTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
@@ -180,38 +231,16 @@
     }
 
     resolveStateCandidates(state = {}) {
-      return [
-        state,
-        this.lastGameState,
-        this.lastWorldMarchState,
-        this.host?.lastGameState,
-        this.host?.lastWorldMarchState,
-        this.host?.lastGame?.state,
-        this.host?.state,
-        this.host?.host?.lastGameState,
-        this.host?.host?.lastWorldMarchState,
-        this.host?.host?.lastGame?.state,
-        this.host?.host?.state,
-        this.host?.worldMapRenderer?.lastGameState,
-        this.host?.worldMapRenderer?.lastWorldMarchState,
-        this.host?.worldMapLayerRenderer?.lastGameState,
-        this.host?.worldMapLayerRenderer?.lastWorldMarchState,
-        this.host?.host?.worldMapRenderer?.lastGameState,
-        this.host?.host?.worldMapRenderer?.lastWorldMarchState,
-        this.host?.host?.worldMapLayerRenderer?.lastGameState,
-        this.host?.host?.worldMapLayerRenderer?.lastWorldMarchState,
-      ];
+      return [state];
     }
 
     resolveMilitaryState(state = {}) {
-      return this.resolveStateCandidates(state).find((candidate) => this.hasMilitaryData(candidate)) || state || {};
+      return this.resolveStateCandidates(state).find((candidate) => this.hasMilitaryData(candidate)) || {};
     }
 
     getMilitaryPresenter() {
       return [
         this.presenter,
-        this.host?.presenter,
-        this.host?.host?.presenter,
         sharedUIStatePresenter,
       ].find((presenter) => presenter && typeof presenter.buildMilitaryViewState === 'function') || null;
     }

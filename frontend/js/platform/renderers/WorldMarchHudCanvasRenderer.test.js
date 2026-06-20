@@ -33,6 +33,74 @@ function createHost(overrides = {}) {
   };
 }
 
+test('WorldMarchHudCanvasRenderer drawing wrappers prefer explicit drawing surface', () => {
+  const explicitCalls = [];
+  const fallbackCalls = [];
+  const drawingSurface = {
+    addHitTarget(...args) { explicitCalls.push(['addHitTarget', args]); },
+    drawButton(...args) { explicitCalls.push(['drawButton', args]); },
+    drawPanel(...args) { explicitCalls.push(['drawPanel', args]); },
+    drawText(...args) { explicitCalls.push(['drawText', args]); },
+    truncateText(...args) {
+      explicitCalls.push(['truncateText', args]);
+      return 'explicit-truncated';
+    },
+  };
+  const host = createHost({
+    addHitTarget(...args) { fallbackCalls.push(['addHitTarget', args]); },
+    drawButton(...args) { fallbackCalls.push(['drawButton', args]); },
+    drawPanel(...args) { fallbackCalls.push(['drawPanel', args]); },
+    drawText(...args) { fallbackCalls.push(['drawText', args]); },
+    truncateText(...args) {
+      fallbackCalls.push(['truncateText', args]);
+      return 'fallback-truncated';
+    },
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host, drawingSurface });
+
+  renderer.addHitTarget({ x: 1 }, { type: 'hit' });
+  renderer.drawButton(1, 2, 3, 4, 'button');
+  renderer.drawPanel(1, 2, 3, 4, {});
+  renderer.drawText('text', 1, 2, {});
+  const truncated = renderer.truncateText('abcdef', 24, {});
+
+  assert.deepEqual(explicitCalls.map((call) => call[0]), [
+    'addHitTarget',
+    'drawButton',
+    'drawPanel',
+    'drawText',
+    'truncateText',
+  ]);
+  assert.deepEqual(fallbackCalls, []);
+  assert.equal(truncated, 'explicit-truncated');
+});
+
+test('WorldMarchHudCanvasRenderer reads host data dynamically after proxy removal', () => {
+  const firstPresenter = { buildMilitaryViewState: () => ({ formations: [] }) };
+  const secondPresenter = { buildMilitaryViewState: () => ({ formations: [{ slot: 1 }] }) };
+  const host = createHost({
+    width: 390,
+    presenter: firstPresenter,
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.presenter, firstPresenter);
+
+  host.width = 480;
+  host.presenter = secondPresenter;
+
+  assert.equal(renderer.width, 480);
+  assert.equal(renderer.presenter, secondPresenter);
+});
+
+test('WorldMarchHudCanvasRenderer does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
 test('WorldMarchHudCanvasRenderer renders target march action', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });
@@ -159,7 +227,7 @@ test('WorldMarchHudCanvasRenderer allows expired active manual marches to reuse 
   assert.equal(start.action.disabled, false);
 });
 
-test('WorldMarchHudCanvasRenderer reads formations from last game state when refreshed with action state', () => {
+test('WorldMarchHudCanvasRenderer does not read formations from last game state when action state is incomplete', () => {
   const host = createHost({
     lastGame: {
       state: {
@@ -195,40 +263,48 @@ test('WorldMarchHudCanvasRenderer reads formations from last game state when ref
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
-  assert.equal(start.action.disabled, false);
+  assert.equal(start.action.disabled, true);
 });
 
-test('WorldMarchHudCanvasRenderer reads formations from renderer chain state in map runtime flow', () => {
-  const fullState = {
-    activeCityId: 'capital',
+test('WorldMarchHudCanvasRenderer uses passed state as authoritative formation source', () => {
+  const explicitState = {
+    activeCityId: 'frontier',
     military: {
       formations: {
-        capital: [{ slot: 1, cityId: 'capital', name: '部队一', memberIds: ['fp-1'], maxMembers: 5 }],
+        frontier: [{ slot: 1, cityId: 'frontier', name: 'Explicit Formation', memberIds: ['fp-1'], maxMembers: 5 }],
       },
     },
     famousPersons: {
-      people: [{ id: 'fp-1', name: '孟隼' }],
+      people: [{ id: 'fp-1', name: 'Meng' }],
+    },
+  };
+  const staleState = {
+    activeCityId: 'stale-city',
+    military: {
+      formations: {
+        'stale-city': [{ slot: 1, cityId: 'stale-city', name: 'Stale Formation', memberIds: [], maxMembers: 5 }],
+      },
     },
   };
   const host = createHost({
     worldMapRenderer: {
-      lastWorldMarchState: fullState,
+      lastWorldMarchState: staleState,
     },
     presenter: {
       buildMilitaryViewState(state = {}) {
-        const formation = state.military?.formations?.capital?.[0] || {};
+        const formation = state.military?.formations?.[state.activeCityId]?.[0] || {};
         return {
           formations: [
             {
               slot: 1,
-              cityId: 'capital',
-              name: formation.name || '部队一',
+              cityId: formation.cityId || state.activeCityId || 'capital',
+              name: formation.name || 'Formation 1',
               memberIds: formation.memberIds || [],
               memberCount: Array.isArray(formation.memberIds) ? formation.memberIds.length : 0,
               maxMembers: formation.maxMembers || 5,
             },
-            { slot: 2, cityId: 'capital', name: '部队二', memberCount: 0, maxMembers: 5, memberIds: [] },
-            { slot: 3, cityId: 'capital', name: '部队三', memberCount: 0, maxMembers: 5, memberIds: [] },
+            { slot: 2, cityId: state.activeCityId || 'capital', name: 'Formation 2', memberCount: 0, maxMembers: 5, memberIds: [] },
+            { slot: 3, cityId: state.activeCityId || 'capital', name: 'Formation 3', memberCount: 0, maxMembers: 5, memberIds: [] },
           ],
         };
       },
@@ -236,17 +312,19 @@ test('WorldMarchHudCanvasRenderer reads formations from renderer chain state in 
   });
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
-  renderer.renderWorldMarchHud({ type: 'openWorldMarchFormationPicker' }, {
+  renderer.renderWorldMarchHud(explicitState, {
     worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
   }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
 
   const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
   assert.equal(starts.length, 3);
-  assert.equal(starts.find((target) => target.action.formationSlot === 1).action.disabled, false);
+  const explicitStart = starts.find((target) => target.action.formationSlot === 1);
+  assert.equal(explicitStart.action.disabled, false);
+  assert.equal(explicitStart.action.cityId, 'frontier');
   assert.equal(starts.find((target) => target.action.formationSlot === 2).action.disabled, true);
 });
 
-test('WorldMarchHudCanvasRenderer prefers explicit military state over host host candidates', () => {
+test('WorldMarchHudCanvasRenderer resolves only passed military state over stale host candidates', () => {
   const explicitState = {
     __sentinelSource: 'explicit',
     activeCityId: 'capital',
@@ -286,16 +364,15 @@ test('WorldMarchHudCanvasRenderer prefers explicit military state over host host
     },
   });
   const renderer = new WorldMarchHudCanvasRenderer({ host });
-  renderer.lastGameState = explicitState;
 
-  const resolved = renderer.resolveMilitaryState({ type: 'openWorldMarchFormationPicker' });
+  const resolved = renderer.resolveMilitaryState(explicitState);
 
   assert.equal(host.host.lastGameState.__sentinelSource, 'hosthost');
   assert.equal(host.host.worldMapLayerRenderer.lastWorldMarchState.__sentinelSource, 'hosthost');
   assert.equal(resolved.__sentinelSource, 'explicit');
 });
 
-test('WorldMarchHudCanvasRenderer prefers explicit presenter over host host presenter', () => {
+test('WorldMarchHudCanvasRenderer uses explicit host presenter over host host presenter', () => {
   const testState = { activeCityId: 'capital' };
   const explicitPresenter = {
     buildMilitaryViewState() {
@@ -314,13 +391,12 @@ test('WorldMarchHudCanvasRenderer prefers explicit presenter over host host pres
     },
   };
   const host = createHost({
-    presenter: null,
+    presenter: explicitPresenter,
     host: {
       presenter: hostHostPresenter,
     },
   });
   const renderer = new WorldMarchHudCanvasRenderer({ host });
-  renderer.presenter = explicitPresenter;
 
   const hostHostView = host.host.presenter.buildMilitaryViewState(testState);
   const view = renderer.buildMilitaryViewState(testState);
@@ -330,7 +406,7 @@ test('WorldMarchHudCanvasRenderer prefers explicit presenter over host host pres
   assert.equal(view.__sentinelSource, 'explicit');
 });
 
-test('WorldMarchHudCanvasRenderer skips activeCity-only state when resolving formations', () => {
+test('WorldMarchHudCanvasRenderer does not fill activeCity-only state from host copies', () => {
   const fullState = {
     activeCityId: 'capital',
     military: {
@@ -370,7 +446,7 @@ test('WorldMarchHudCanvasRenderer skips activeCity-only state when resolving for
   }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
-  assert.equal(start.action.disabled, false);
+  assert.equal(start.action.disabled, true);
 });
 
 test('WorldMarchHudCanvasRenderer falls back to shared presenter when host presenter is split out', () => {

@@ -98,8 +98,8 @@ test('WorldMapActorHudRenderer publishes march HUD state before rendering', () =
   assert.equal(renderer.renderWorldMarchHud(state, { selected: true }, actors, { scale: 1 }, {}, { x: 1 }), true);
   assert.equal(host.lastGameState, state);
   assert.equal(host.lastWorldMarchState, state);
-  assert.equal(hudRenderer.lastGameState, state);
-  assert.equal(hudRenderer.lastWorldMarchState, state);
+  assert.equal(hudRenderer.lastGameState, undefined);
+  assert.equal(hudRenderer.lastWorldMarchState, undefined);
   assert.equal(calls[0][1], state);
   assert.equal(calls[0][3], actors);
 });

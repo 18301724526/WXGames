@@ -11,18 +11,6 @@
   function publishStateToRenderer(host, state) {
     host.lastGameState = state;
     host.lastWorldMarchState = state;
-    const renderer = host.renderer;
-    if (!renderer) return;
-    renderer.lastGameState = state;
-    renderer.lastWorldMarchState = state;
-    if (renderer.worldMapRenderer) {
-      renderer.worldMapRenderer.lastGameState = state;
-      renderer.worldMapRenderer.lastWorldMarchState = state;
-    }
-    if (renderer.worldMapLayerRenderer) {
-      renderer.worldMapLayerRenderer.lastGameState = state;
-      renderer.worldMapLayerRenderer.lastWorldMarchState = state;
-    }
   }
 
   function handleCannotRender(host, state) {

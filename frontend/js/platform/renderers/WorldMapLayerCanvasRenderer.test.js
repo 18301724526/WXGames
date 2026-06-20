@@ -677,6 +677,26 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
 });
 
+test('WorldMapLayerCanvasRenderer publishes actor overlay context without stale state copies', () => {
+  const host = createHost();
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+  const context = { frame: { x: 1, y: 2, width: 3, height: 4 } };
+  const layerHost = {};
+  const layerRenderer = { host: layerHost };
+
+  renderer.lastGameState = { id: 'stale-game' };
+  renderer.lastWorldMarchState = { id: 'stale-march' };
+
+  assert.equal(renderer.publishWorldActorOverlayLayerContext(layerRenderer, context), true);
+
+  assert.equal(layerRenderer.lastWorldTileMapContext, context);
+  assert.equal(layerHost.lastWorldTileMapContext, context);
+  assert.equal(layerRenderer.lastGameState, undefined);
+  assert.equal(layerRenderer.lastWorldMarchState, undefined);
+  assert.equal(layerHost.lastGameState, undefined);
+  assert.equal(layerHost.lastWorldMarchState, undefined);
+});
+
 test('WorldMapLayerCanvasRenderer records actor overlay diagnostics from actual clear and draw canvases', () => {
   const actorContext = {
     actors: [{ id: 'scout-1', status: 'active' }],

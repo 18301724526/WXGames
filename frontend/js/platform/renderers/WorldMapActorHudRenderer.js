@@ -78,14 +78,6 @@
     publishWorldMarchHudState(state = {}) {
       this.lastGameState = state;
       this.lastWorldMarchState = state;
-      if (this.host && this.host !== this) {
-        this.host.lastGameState = state;
-        this.host.lastWorldMarchState = state;
-      }
-      if (this.worldMarchHudRenderer) {
-        this.worldMarchHudRenderer.lastGameState = state;
-        this.worldMarchHudRenderer.lastWorldMarchState = state;
-      }
       return state;
     }
 
