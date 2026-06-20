@@ -667,6 +667,66 @@ test('WorldMapRuntime preserves stable map hit targets while refreshing actor ta
   assert.equal(runtime.getWorldMapFrameState().visualLayerValid, false);
 });
 
+test('WorldMapRuntime collects actor targets registered on the map renderer hit target store', () => {
+  const mapTarget = {
+    x: 0,
+    y: 0,
+    width: 300,
+    height: 300,
+    action: { type: 'worldMapDrag', background: true },
+  };
+  const actorTarget = {
+    x: 100,
+    y: 120,
+    width: 42,
+    height: 42,
+    action: { type: 'selectWorldActor', actorId: 'scout-1' },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      hitTargets: [mapTarget, actorTarget],
+      viewportOffsetX: 0,
+      viewportOffsetY: 0,
+      worldActorLayerRenderer: {
+        hitTargets: [],
+      },
+      renderWorldMapLayer() {},
+    },
+    presenter: {},
+  });
+
+  runtime.syncHitTargetsFromRenderer();
+
+  assert.equal(runtime.lastHitTargetSync.actorTargetCount, 1);
+  assert.equal(runtime.lastHitTargetSync.mapTargetCount, 1);
+  assert.equal(runtime.baseHitTargets.some((target) => target.action.type === 'selectWorldActor' && target.action.actorId === 'scout-1'), true);
+  assert.equal(runtime.baseHitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
+});
+
+test('WorldMapRuntime getHitTarget resolves clicks inside renderer-store actor targets as selectWorldActor', () => {
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      hitTargets: [
+        { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
+        { x: 100, y: 120, width: 42, height: 42, action: { type: 'selectWorldActor', actorId: 'scout-1' } },
+      ],
+      viewportOffsetX: 0,
+      viewportOffsetY: 0,
+      worldActorLayerRenderer: {
+        hitTargets: [],
+      },
+      renderWorldMapLayer() {},
+    },
+    presenter: {},
+  });
+
+  runtime.syncHitTargetsFromRenderer();
+  const action = runtime.getHitTarget({ x: 121, y: 141 });
+
+  assert.equal(action.type, 'selectWorldActor');
+  assert.equal(action.actorId, 'scout-1');
+});
+
 test('WorldMapRuntime resetWorldState invalidates stale world input and render state', () => {
   const calls = [];
   const context = {

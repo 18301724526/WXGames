@@ -3,14 +3,45 @@
     return Array.isArray(value) ? value : [];
   }
 
+  function getActorTargetKey(target = {}) {
+    const action = target?.action || {};
+    return [
+      action.type || '',
+      action.actorId || '',
+      action.missionId || '',
+      action.tileId || '',
+      Number(target.x) || 0,
+      Number(target.y) || 0,
+      Number(target.width) || 0,
+      Number(target.height) || 0,
+    ].join('|');
+  }
+
   function collectRendererHitTargets(renderer = {}) {
     const groups = collectRendererHitTargetGroups(renderer);
     return groups.sourceTargets;
   }
 
   function collectRendererHitTargetGroups(renderer = {}) {
-    const mapTargets = toArray(renderer?.hitTargets);
-    const actorTargets = toArray(renderer?.worldActorLayerRenderer?.hitTargets);
+    const rendererTargets = toArray(renderer?.hitTargets);
+    const actorLayerTargets = toArray(renderer?.worldActorLayerRenderer?.hitTargets);
+    const mapTargets = [];
+    const actorTargets = [];
+    const seenActorTargetKeys = new Set();
+    const addActorTarget = (target) => {
+      const key = getActorTargetKey(target);
+      if (!target || seenActorTargetKeys.has(key)) return;
+      seenActorTargetKeys.add(key);
+      actorTargets.push(target);
+    };
+    rendererTargets.forEach((target) => {
+      if (isActorLayerTarget(target)) {
+        addActorTarget(target);
+      } else {
+        mapTargets.push(target);
+      }
+    });
+    actorLayerTargets.forEach(addActorTarget);
     return {
       actorTargets,
       mapTargets,

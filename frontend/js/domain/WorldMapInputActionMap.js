@@ -87,11 +87,15 @@
       const params = new URL(global.location?.href || '').searchParams;
       const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
       if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
-    } catch (_) {}
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
     try {
       const value = global.localStorage?.getItem?.('actorPickingDiag');
       return value === '1' || value === 'true' || value === 'on';
-    } catch (_) {}
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
     return false;
   }
 
@@ -188,10 +192,14 @@
       global.__actorPickingDiagEvents = events;
       global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
       global.__actorPickingDiagLastByStage[stage] = payload;
-    } catch (_) {}
+    } catch (_) {
+      // Ignore diagnostic buffer failures.
+    }
     try {
       global.console?.log?.('[ActorPickingDiag]', JSON.stringify(payload));
-    } catch (_) {}
+    } catch (_) {
+      // Ignore diagnostic console failures.
+    }
     return payload;
   }
 
