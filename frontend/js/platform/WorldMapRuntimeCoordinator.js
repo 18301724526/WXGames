@@ -178,7 +178,7 @@
       return handled;
     }
 
-    handleTap(point = {}, event) {
+    handleTap(point = {}, event, meta = {}) {
       const state = this.getState();
       const runtime = this.ensureRuntime();
       if (!runtime
@@ -189,7 +189,7 @@
         || !runtime.isPointInMap?.(point, state)) {
         return false;
       }
-      return runtime.handleTap(point, event);
+      return runtime.handleTap(point, event, meta);
     }
 
     render(state = this.getState(), options = {}) {

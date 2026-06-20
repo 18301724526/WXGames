@@ -117,6 +117,75 @@
     };
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return false;
+  }
+
+  function summarizeActorPickingAction(action = {}) {
+    return action ? {
+      type: action.type || '',
+      actorId: action.actorId || '',
+      missionId: action.missionId || '',
+      tileId: action.tileId || '',
+      siteId: action.siteId || '',
+      targetQ: action.targetQ ?? action.q ?? null,
+      targetR: action.targetR ?? action.r ?? null,
+      inputSurface: action.inputSurface || '',
+      background: Boolean(action.background),
+      disabled: Boolean(action.disabled),
+    } : null;
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}, options = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...(tapTraceId ? { tapTraceId } : {}),
+      ...detail,
+    };
+    try {
+      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
+      const events = global.__actorPickingDiagEvents || [];
+      const signature = options.signature || '';
+      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
+      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
+      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
+      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
+      events.push(payload);
+      while (events.length > 160) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {
+      // Ignore diagnostic buffer failures.
+    }
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
+    } catch (_) {
+      // Ignore diagnostic console failures.
+    }
+    return payload;
+  }
+
   function summarizeBackgroundTargetProbe(action = null, context = {}, layerPoint = {}) {
     if (!action || action.type !== 'selectWorldMarchTarget') return null;
     const tileMapView = context?.tileMapView || context?.renderSnapshot?.tileMapView || {};
@@ -520,7 +589,8 @@
       return result !== false;
     }
 
-    handleTap(point = {}, event = null) {
+    handleTap(point = {}, event = null, meta = {}) {
+      const tapTraceId = meta.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
       const context = this.getLastTileMapContext();
       const layerPoint = this.getLayerPointFromHudPoint(point);
       const pickingSnapshot = this.getPickingSnapshot();
@@ -528,6 +598,7 @@
         context,
         layerPoint,
         pickingSnapshot,
+        tapTraceId,
       });
       const inputIntent = this.createTapIntent(point, action, {
         context,
@@ -535,7 +606,19 @@
         pickingSnapshot,
       });
       this.lastInputIntent = inputIntent;
-      const actionMeta = { inputIntent };
+      const actionMeta = { inputIntent, tapTraceId };
+      logActorPickingDiag('worldMapRuntime:handleTap', {
+        tapTraceId,
+        point: global.ClientOperationLog?.summarizePoint?.(point) || point,
+        layerPoint: global.ClientOperationLog?.summarizePoint?.(layerPoint) || layerPoint,
+        action: summarizeActorPickingAction(action),
+        hitTargetCount: this.hitTargets.length,
+        pickingSnapshot: pickingSnapshot ? {
+          inputEpoch: pickingSnapshot.inputEpoch || 0,
+          signature: pickingSnapshot.signature || '',
+          counts: pickingSnapshot.counts || null,
+        } : null,
+      });
       global.ClientOperationLog?.record?.('worldMap:tapHit', {
         point: global.ClientOperationLog?.summarizePoint?.(point),
         layerPoint: global.ClientOperationLog?.summarizePoint?.(layerPoint),
@@ -618,7 +701,8 @@
           hitTargets: this.hitTargets,
           backgroundPoint: normalizedPoint,
           context,
-          pickingSnapshot: options.pickingSnapshot || this.getPickingSnapshot(),
+        pickingSnapshot: options.pickingSnapshot || this.getPickingSnapshot(),
+          tapTraceId: options.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '',
         });
         if (action) return action;
       }

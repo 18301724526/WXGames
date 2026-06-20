@@ -22,6 +22,81 @@
     return handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled);
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {
+      // Ignore diagnostic preference lookup failures.
+    }
+    return false;
+  }
+
+  function summarizeActorPickingAction(action = {}) {
+    return action ? {
+      type: action.type || '',
+      actorId: action.actorId || '',
+      missionId: action.missionId || '',
+      tileId: action.tileId || '',
+      siteId: action.siteId || '',
+      targetQ: action.targetQ ?? action.q ?? null,
+      targetR: action.targetR ?? action.r ?? null,
+      inputSurface: action.inputSurface || '',
+      background: Boolean(action.background),
+      disabled: Boolean(action.disabled),
+    } : null;
+  }
+
+  function createActorPickingTapTraceId() {
+    const sequence = (Number(global.__actorPickingDiagTapSequence) || 0) + 1;
+    global.__actorPickingDiagTapSequence = sequence;
+    return `tap-${Date.now()}-${sequence}`;
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}, options = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...(tapTraceId ? { tapTraceId } : {}),
+      ...detail,
+    };
+    try {
+      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
+      const events = global.__actorPickingDiagEvents || [];
+      const signature = options.signature || '';
+      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
+      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
+      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
+      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
+      events.push(payload);
+      while (events.length > 160) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {
+      // Ignore diagnostic buffer failures.
+    }
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
+    } catch (_) {
+      // Ignore diagnostic console failures.
+    }
+    return payload;
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -392,7 +467,21 @@ handleWorldMapGesture(gesture = {}, event) {
 
 handleTap(point, event) {
       if (!this.inputEnabled || !this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
+      const tapTraceId = createActorPickingTapTraceId();
+      global.__actorPickingDiagActiveTapTraceId = tapTraceId;
       const action = this.renderer.getHitTarget(point);
+      const routeThroughRuntime = shouldRouteTapThroughWorldMapRuntime(action);
+      logActorPickingDiag('shellInput:handleTap:start', {
+        tapTraceId,
+        point: global.ClientOperationLog?.summarizePoint?.(point) || point,
+        rendererAction: summarizeActorPickingAction(action),
+        routeThroughRuntime,
+        tutorialActive: this.isTutorialInputActive(),
+        blockingOverlay: Boolean(this.hasBlockingOverlayOpen?.()),
+        mapHomeActive: Boolean(this.lastGame?.mapHomeActive),
+        currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
+        militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView || '',
+      });
       global.ClientOperationLog?.record?.('input:tapHit', {
         point: global.ClientOperationLog?.summarizePoint?.(point),
         action: global.ClientOperationLog?.summarizeAction?.(action),
@@ -410,10 +499,15 @@ handleTap(point, event) {
         if (handled) this.stopCanvasEvent(event);
         return handled;
       }
-      if (shouldRouteTapThroughWorldMapRuntime(action)) {
-        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+      if (routeThroughRuntime) {
+        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event, { tapTraceId }) || false;
         this.observeAsyncActionResult(runtimeHandled);
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        logActorPickingDiag('shellInput:handleTap:runtimeResult', {
+          tapTraceId,
+          rendererAction: summarizeActorPickingAction(action),
+          runtimeHandled: summarizeHandledForOperationLog(runtimeHandled),
+        });
         global.ClientOperationLog?.record?.(action ? 'input:tapRuntime' : 'input:tapMiss', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
           actionType: action?.type || '',
@@ -440,9 +534,13 @@ handleTap(point, event) {
         return true;
       }
       if (!action) {
-        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event) || false;
+        const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event, { tapTraceId }) || false;
         this.observeAsyncActionResult(runtimeHandled);
         this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+        logActorPickingDiag('shellInput:handleTap:missRuntimeResult', {
+          tapTraceId,
+          runtimeHandled: summarizeHandledForOperationLog(runtimeHandled),
+        });
         global.ClientOperationLog?.record?.('input:tapMiss', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
           runtimeHandled: summarizeHandledForOperationLog(runtimeHandled),
@@ -478,7 +576,12 @@ handleTap(point, event) {
         if (handled) this.renderActive();
         return handled;
       }
-      const handled = this.handleAction(action, event);
+      const handled = this.handleAction(action, event, { tapTraceId });
+      logActorPickingDiag('shellInput:handleTap:directActionResult', {
+        tapTraceId,
+        action: summarizeActorPickingAction(action),
+        handled: summarizeHandledForOperationLog(handled),
+      });
       global.ClientOperationLog?.record?.('input:tapAction', {
         action: global.ClientOperationLog?.summarizeAction?.(action),
         handled: handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled),

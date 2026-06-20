@@ -109,19 +109,23 @@
 
   function logActorPickingDiag(stage = '', detail = {}, options = {}) {
     if (!isActorPickingDiagEnabled()) return null;
+    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
     const payload = {
       at: new Date().toISOString(),
       stage,
+      ...(tapTraceId ? { tapTraceId } : {}),
       ...detail,
     };
     try {
+      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
       const events = global.__actorPickingDiagEvents || [];
       const signature = options.signature || '';
+      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
       global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
-      if (signature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === signature) return null;
-      if (signature) global.__actorPickingDiagLastSignatureByStage[stage] = signature;
+      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
+      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
       events.push(payload);
-      while (events.length > 120) events.shift();
+      while (events.length > 160) events.shift();
       global.__actorPickingDiagEvents = events;
       global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
       global.__actorPickingDiagLastByStage[stage] = payload;
@@ -382,10 +386,23 @@
 
       handle_selectWorldMarchTarget(action) {
         const target = normalizeWorldMarchTarget(action);
-        if (!target) return false;
+        const tapTraceId = action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
+        if (!target) {
+          logActorPickingDiag('territory:selectWorldMarchTarget:invalidTarget', {
+            tapTraceId,
+            action: summarizeActorPickingAction(action),
+          });
+          return false;
+        }
         const game = this.getGameHost();
         game?.territoryController?.closeSiteDialog?.({ render: false });
         const uiState = this.getSharedTerritoryUiState();
+        logActorPickingDiag('territory:selectWorldMarchTarget:beforeWrite', {
+          tapTraceId,
+          action: summarizeActorPickingAction(action),
+          target,
+          uiState: summarizeActorPickingUiState(uiState),
+        });
         const nextTarget = {
           q: target.q,
           r: target.r,
@@ -400,8 +417,19 @@
         uiState.selectedSiteId = '';
         uiState.worldTargetPicker = null;
         uiState.expeditionConfigSiteId = '';
+        logActorPickingDiag('territory:selectWorldMarchTarget:afterWrite', {
+          tapTraceId,
+          action: summarizeActorPickingAction(action),
+          target,
+          uiState: summarizeActorPickingUiState(uiState),
+        });
         const tutorialResult = game?.tutorialController?.onWorldMarchTargetSelected?.(action) || true;
         return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
+          logActorPickingDiag('territory:selectWorldMarchTarget:tutorialResult', {
+            tapTraceId,
+            allowed: allowed !== false,
+            uiState: summarizeActorPickingUiState(uiState),
+          });
           if (allowed !== false) {
             this.refreshWorldMarchLayer(action);
             this.refreshWorldMarchTutorialHighlight();
@@ -445,14 +473,17 @@
 
       handle_selectWorldActor(action) {
         const actorId = action.actorId || action.missionId || '';
+        const tapTraceId = action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
         if (!actorId) {
           logActorPickingDiag('territory:selectWorldActor:missingActorId', {
+            tapTraceId,
             action: summarizeActorPickingAction(action),
           });
           return false;
         }
         const uiState = this.getSharedTerritoryUiState();
         logActorPickingDiag('territory:selectWorldActor:beforeWrite', {
+          tapTraceId,
           action: summarizeActorPickingAction(action),
           actorId,
           uiState: summarizeActorPickingUiState(uiState),
@@ -462,12 +493,14 @@
         uiState.selectedSiteId = '';
         uiState.worldTargetPicker = null;
         logActorPickingDiag('territory:selectWorldActor:afterWrite', {
+          tapTraceId,
           action: summarizeActorPickingAction(action),
           actorId,
           uiState: summarizeActorPickingUiState(uiState),
         });
         const handled = this.refreshWorldMarchLayer(action);
         logActorPickingDiag('territory:selectWorldActor:afterRefresh', {
+          tapTraceId,
           action: summarizeActorPickingAction(action),
           actorId,
           handled: handled !== false,

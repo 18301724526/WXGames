@@ -104,6 +104,42 @@
     return events.slice(Math.max(0, events.length - limit));
   }
 
+  function logActorPickingDiag(stage = '', detail = {}, options = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...(tapTraceId ? { tapTraceId } : {}),
+      ...detail,
+    };
+    try {
+      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
+      const events = global.__actorPickingDiagEvents || [];
+      const signature = options.signature || '';
+      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
+      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
+      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
+      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
+      events.push(payload);
+      while (events.length > 160) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {
+      // Ignore diagnostic buffer failures.
+    }
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
+    } catch (_) {
+      // Ignore diagnostic console failures.
+    }
+    return payload;
+  }
+
   function normalizeCoord(source = {}, fallback = {}) {
     if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
     const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
@@ -126,6 +162,53 @@
       && x <= toNumber(target.x) + toNumber(target.width)
       && y >= toNumber(target.y)
       && y <= toNumber(target.y) + toNumber(target.height));
+  }
+
+  function summarizeAction(action = {}) {
+    return action ? {
+      type: action.type || '',
+      actorId: action.actorId || '',
+      missionId: action.missionId || '',
+      tileId: action.tileId || '',
+      siteId: action.siteId || '',
+      targetQ: action.targetQ ?? action.q ?? null,
+      targetR: action.targetR ?? action.r ?? null,
+      inputSurface: action.inputSurface || '',
+      background: Boolean(action.background),
+      disabled: Boolean(action.disabled),
+    } : null;
+  }
+
+  function summarizeHitTarget(target = {}, index = -1, point = {}) {
+    return {
+      index,
+      x: toNumber(target.x),
+      y: toNumber(target.y),
+      width: toNumber(target.width),
+      height: toNumber(target.height),
+      containsPoint: containsPoint(target, point),
+      action: summarizeAction(target.action || {}),
+    };
+  }
+
+  function summarizeHitTargetsForTap(point = {}, targets = []) {
+    const list = Array.isArray(targets) ? targets : [];
+    const actorTargets = [];
+    const containsMatches = [];
+    list.forEach((target, index) => {
+      const summary = summarizeHitTarget(target, index, point);
+      if (target?.action?.type === 'selectWorldActor') actorTargets.push(summary);
+      if (summary.containsPoint) containsMatches.push(summary);
+    });
+    return {
+      targetCount: list.length,
+      actorTargetCount: actorTargets.length,
+      containsMatchCount: containsMatches.length,
+      containsActorCount: containsMatches.filter((target) => target.action?.type === 'selectWorldActor').length,
+      containsSiteCount: containsMatches.filter((target) => isWorldSiteAction(target.action)).length,
+      actorTargets: actorTargets.slice(0, 12),
+      containsMatches: containsMatches.slice(0, 12),
+    };
   }
 
   function isAllowedAction(action = {}, allowedActions = DEFAULT_ALLOWED_ACTIONS) {
@@ -324,23 +407,61 @@
   }
 
   function resolveTapAction(point = {}, input = {}, options = {}) {
-    const action = getHitTarget(point, input.hitTargets || input.targets || []);
+    const hitTargets = input.hitTargets || input.targets || [];
+    const tapTraceId = options.tapTraceId || input.tapTraceId || '';
+    const action = getHitTarget(point, hitTargets);
     const context = input.context || input.tileMapContext || {};
     const backgroundPoint = input.backgroundPoint || options.backgroundPoint || point;
-    if (action?.disabled) return null;
-    if (action && !isRendererWorldSurfaceAction(action)) return action;
-    const pickingAction = getPickingSnapshotAction(backgroundPoint, input, options);
-    if (pickingAction) return pickingAction.disabled ? null : pickingAction;
-    if (!action) {
-      if (options.allowContextBackground === false) return null;
-      if (!isPointInContextFrame(backgroundPoint, context)) return null;
-      return getBackgroundMarchTargetAction(backgroundPoint, context, options);
+    let pickingAction = null;
+    let finalAction = null;
+    let reason = '';
+    if (action?.disabled) {
+      reason = 'renderer-disabled';
+    } else if (action && !isRendererWorldSurfaceAction(action)) {
+      finalAction = action;
+      reason = 'renderer-direct';
+    } else {
+      pickingAction = getPickingSnapshotAction(backgroundPoint, input, options);
+      if (pickingAction) {
+        finalAction = pickingAction.disabled ? null : pickingAction;
+        reason = pickingAction.disabled ? 'picking-disabled' : 'picking';
+      } else if (!action) {
+        if (options.allowContextBackground === false) {
+          reason = 'context-background-disabled';
+        } else if (!isPointInContextFrame(backgroundPoint, context)) {
+          reason = 'outside-context-frame';
+        } else {
+          finalAction = getBackgroundMarchTargetAction(backgroundPoint, context, options);
+          reason = finalAction ? 'context-background' : 'context-background-miss';
+        }
+      } else if (isRendererWorldSurfaceAction(action)) {
+        if (options.allowContextBackground === false) {
+          reason = 'renderer-world-surface-background-disabled';
+        } else {
+          finalAction = getBackgroundMarchTargetAction(backgroundPoint, context, options);
+          reason = finalAction ? 'renderer-world-surface-background' : 'renderer-world-surface-background-miss';
+        }
+      } else {
+        finalAction = action;
+        reason = 'fallback';
+      }
     }
-    if (isRendererWorldSurfaceAction(action)) {
-      if (options.allowContextBackground === false) return null;
-      return getBackgroundMarchTargetAction(backgroundPoint, context, options);
-    }
-    return action;
+    logActorPickingDiag('inputActionMap:resolveTapAction', {
+      tapTraceId,
+      point: { x: toNumber(point.x), y: toNumber(point.y) },
+      backgroundPoint: { x: toNumber(backgroundPoint.x), y: toNumber(backgroundPoint.y) },
+      reason,
+      rendererAction: summarizeAction(action),
+      pickingAction: summarizeAction(pickingAction),
+      finalAction: summarizeAction(finalAction),
+      pickingSnapshot: input.pickingSnapshot ? {
+        inputEpoch: input.pickingSnapshot.inputEpoch || 0,
+        signature: input.pickingSnapshot.signature || '',
+        counts: input.pickingSnapshot.counts || null,
+      } : null,
+      hitTargets: summarizeHitTargetsForTap(point, hitTargets),
+    });
+    return finalAction;
   }
 
   const api = {

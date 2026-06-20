@@ -42,19 +42,22 @@
 
   function logActorPickingDiag(stage = '', detail = {}) {
     if (!isActorPickingDiagEnabled()) return null;
+    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
     const payload = {
       at: new Date().toISOString(),
       stage,
+      ...(tapTraceId ? { tapTraceId } : {}),
       ...detail,
     };
     try {
       const events = global.__actorPickingDiagEvents || [];
       const signature = detail?.signature || '';
+      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
       global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
-      if (signature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === signature) return null;
-      if (signature) global.__actorPickingDiagLastSignatureByStage[stage] = signature;
+      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
+      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
       events.push(payload);
-      while (events.length > 120) events.shift();
+      while (events.length > 160) events.shift();
       global.__actorPickingDiagEvents = events;
       global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
       global.__actorPickingDiagLastByStage[stage] = payload;

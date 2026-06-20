@@ -273,6 +273,43 @@ test('WorldMapInputActionMap resolves tap action through action map contract', (
   assert.equal(action.targetR, 0);
 });
 
+test('WorldMapInputActionMap records one tap resolution diagnostic with final action', () => {
+  const previousEnabled = global.__actorPickingDiag;
+  const previousEvents = global.__actorPickingDiagEvents;
+  const previousTraceId = global.__actorPickingDiagActiveTapTraceId;
+  const previousSignatures = global.__actorPickingDiagLastSignatureByStage;
+  global.__actorPickingDiag = true;
+  global.__actorPickingDiagEvents = [];
+  global.__actorPickingDiagActiveTapTraceId = '';
+  global.__actorPickingDiagLastSignatureByStage = {};
+
+  try {
+    const action = WorldMapInputActionMap.resolveTapAction({ x: 148, y: 124 }, {
+      tapTraceId: 'tap-test-1',
+      hitTargets: [
+        { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
+      ],
+      context: {
+        ...createContext(),
+        frame: { x: 0, y: 0, width: 300, height: 300 },
+      },
+    }, { tapTraceId: 'tap-test-1' });
+
+    assert.equal(action.type, 'selectWorldMarchTarget');
+    assert.equal(global.__actorPickingDiagEvents.length, 1);
+    assert.equal(global.__actorPickingDiagEvents[0].stage, 'inputActionMap:resolveTapAction');
+    assert.equal(global.__actorPickingDiagEvents[0].tapTraceId, 'tap-test-1');
+    assert.equal(global.__actorPickingDiagEvents[0].reason, 'renderer-world-surface-background');
+    assert.equal(global.__actorPickingDiagEvents[0].finalAction.type, 'selectWorldMarchTarget');
+    assert.equal(global.__actorPickingDiagEvents[0].hitTargets.targetCount, 1);
+  } finally {
+    global.__actorPickingDiag = previousEnabled;
+    global.__actorPickingDiagEvents = previousEvents;
+    global.__actorPickingDiagActiveTapTraceId = previousTraceId;
+    global.__actorPickingDiagLastSignatureByStage = previousSignatures;
+  }
+});
+
 test('WorldMapInputActionMap shares the runtime-routing predicate for app and shell input', () => {
   assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime(null), true);
   assert.equal(WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime({ type: 'worldMapDrag', background: true }), true);

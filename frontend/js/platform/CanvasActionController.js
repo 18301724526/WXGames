@@ -81,19 +81,23 @@
 
   function logActorPickingDiag(stage = '', detail = {}, options = {}) {
     if (!isActorPickingDiagEnabled()) return null;
+    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
     const payload = {
       at: new Date().toISOString(),
       stage,
+      ...(tapTraceId ? { tapTraceId } : {}),
       ...detail,
     };
     try {
+      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
       const events = global.__actorPickingDiagEvents || [];
       const signature = options.signature || '';
+      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
       global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
-      if (signature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === signature) return null;
-      if (signature) global.__actorPickingDiagLastSignatureByStage[stage] = signature;
+      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
+      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
       events.push(payload);
-      while (events.length > 120) events.shift();
+      while (events.length > 160) events.shift();
       global.__actorPickingDiagEvents = events;
       global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
       global.__actorPickingDiagLastByStage[stage] = payload;
@@ -259,6 +263,7 @@
     refreshWorldMarchLayer(action = {}) {
       if (isActorPickingDiagEnabled()) {
         logActorPickingDiag('actionController:refreshWorldMarchLayer:before', {
+          tapTraceId: action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '',
           action: summarizeActorPickingAction(action),
           uiState: summarizeActorPickingUiState(this.getSharedTerritoryUiState?.() || {}),
         });
@@ -267,6 +272,7 @@
       const refreshResult = this.refreshWorldMapLayer();
       if (isActorPickingDiagEnabled()) {
         logActorPickingDiag('actionController:refreshWorldMarchLayer:after', {
+          tapTraceId: action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '',
           action: summarizeActorPickingAction(action),
           handled: handled !== false,
           refreshResult: refreshResult !== false,
@@ -325,8 +331,11 @@
         return Boolean(action?.disabled);
       }
       const handler = this[`handle_${action.type}`] || this.handleUnknown;
-      if (action.type === 'selectWorldActor' && isActorPickingDiagEnabled()) {
-        logActorPickingDiag('actionController:handle:selectWorldActor:before', {
+      const tapTraceId = meta.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
+      if (tapTraceId && action && typeof action === 'object') action.__tapTraceId = tapTraceId;
+      if (isActorPickingDiagEnabled()) {
+        logActorPickingDiag('actionController:handle:before', {
+          tapTraceId,
           action: summarizeActorPickingAction(action),
           uiState: summarizeActorPickingUiState(this.getOperationLogUiState()),
         });
@@ -355,8 +364,9 @@
             }, { flush: true });
           });
         } else {
-          if (action.type === 'selectWorldActor' && isActorPickingDiagEnabled()) {
-            logActorPickingDiag('actionController:handle:selectWorldActor:after', {
+          if (isActorPickingDiagEnabled()) {
+            logActorPickingDiag('actionController:handle:after', {
+              tapTraceId,
               action: summarizeActorPickingAction(action),
               result: result !== false,
               async: false,
