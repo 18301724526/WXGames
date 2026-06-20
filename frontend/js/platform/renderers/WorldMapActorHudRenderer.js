@@ -28,28 +28,26 @@
       this.host = options.host || null;
       this.worldActorRenderer = options.worldActorRenderer || null;
       this.worldMarchHudRenderer = options.worldMarchHudRenderer || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+    }
+
+    get epochNowMs() {
+      return this.host?.epochNowMs;
+    }
+
+    get lastGameState() {
+      return this.host?.lastGameState;
+    }
+
+    set lastGameState(value) {
+      if (this.host) this.host.lastGameState = value;
+    }
+
+    get lastWorldMarchState() {
+      return this.host?.lastWorldMarchState;
+    }
+
+    set lastWorldMarchState(value) {
+      if (this.host) this.host.lastWorldMarchState = value;
     }
 
     getEpochNowMs() {
