@@ -78,7 +78,10 @@
       ...detail,
     };
     try {
-      global?.console?.info?.(PREFIX, stage, payload);
+      if (global.__codexWorldMapDiagVerbose === true
+        || global.localStorage?.getItem?.('codexWorldMapDiagVerbose') === '1') {
+        global?.console?.info?.(PREFIX, stage, payload);
+      }
     } catch (_) {}
     try {
       global.ClientOperationLog?.record?.('codex:worldMapDiag', payload, { flush: true });
