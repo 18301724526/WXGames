@@ -54,6 +54,171 @@ function createHost(overrides = {}) {
   return host;
 }
 
+const FAMOUS_DRAWING_METHODS = [
+  'addHitTarget',
+  'containsPoint',
+  'createGradient',
+  'drawButton',
+  'drawLine',
+  'drawPanel',
+  'drawText',
+  'drawTextLines',
+  'getAsset',
+  'getLayout',
+  'roundRectPath',
+  'truncateText',
+  'wrapTextLimit',
+];
+
+function createDrawingSurfaceSentinel(label, calls = []) {
+  return {
+    addHitTarget() {
+      calls.push([label, 'addHitTarget']);
+    },
+    containsPoint() {
+      calls.push([label, 'containsPoint']);
+      return label === 'explicit';
+    },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
+    drawButton() {
+      calls.push([label, 'drawButton']);
+    },
+    drawLine() {
+      calls.push([label, 'drawLine']);
+    },
+    drawPanel() {
+      calls.push([label, 'drawPanel']);
+    },
+    drawText() {
+      calls.push([label, 'drawText']);
+    },
+    drawTextLines() {
+      calls.push([label, 'drawTextLines']);
+    },
+    getAsset() {
+      calls.push([label, 'getAsset']);
+      return { width: 1, height: 1 };
+    },
+    getLayout() {
+      calls.push([label, 'getLayout']);
+      return { contentWidth: 380, contentX: 10, contentRight: 390 };
+    },
+    roundRectPath() {
+      calls.push([label, 'roundRectPath']);
+    },
+    truncateText(text) {
+      calls.push([label, 'truncateText']);
+      return String(text || '');
+    },
+    wrapTextLimit(text) {
+      calls.push([label, 'wrapTextLimit']);
+      return [String(text || '')];
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return Array.from(new Set(calls.filter((call) => call[0] === label).map((call) => call[1]))).sort();
+}
+
+test('FamousCanvasRenderer reads host view state dynamically after proxy removal', () => {
+  const firstCtx = { id: 'first-ctx' };
+  const secondCtx = { id: 'second-ctx' };
+  const firstPresenter = { id: 'first-presenter' };
+  const secondPresenter = { id: 'second-presenter' };
+  const host = createHost({
+    ctx: firstCtx,
+    presenter: firstPresenter,
+    width: 390,
+    height: 844,
+    hoverPoint: { x: 1, y: 2 },
+    famousSkillHitTargets: [{ id: 'first-target' }],
+  });
+  const renderer = new FamousCanvasRenderer({ host });
+
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.presenter, firstPresenter);
+  assert.equal(renderer.width, 390);
+  assert.equal(renderer.height, 844);
+  assert.deepEqual(renderer.hoverPoint, { x: 1, y: 2 });
+  assert.equal(renderer.famousSkillHitTargets, host.famousSkillHitTargets);
+
+  host.ctx = secondCtx;
+  host.presenter = secondPresenter;
+  host.width = 512;
+  host.height = 900;
+  host.hoverPoint = { x: 3, y: 4 };
+  host.famousSkillHitTargets = [{ id: 'second-target' }];
+
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.presenter, secondPresenter);
+  assert.equal(renderer.width, 512);
+  assert.equal(renderer.height, 900);
+  assert.deepEqual(renderer.hoverPoint, { x: 3, y: 4 });
+  assert.equal(renderer.famousSkillHitTargets, host.famousSkillHitTargets);
+});
+
+test('FamousCanvasRenderer forwards tooltip state writes to host after proxy removal', () => {
+  const host = createHost();
+  const renderer = new FamousCanvasRenderer({ host });
+  const hoverPoint = { x: 11, y: 22 };
+  const active = { type: 'showFamousSkillTooltip', cardId: 'active', skillIndex: 0 };
+  const pinned = { type: 'showFamousSkillTooltip', cardId: 'pinned', skillIndex: 1 };
+
+  renderer.hoverPoint = hoverPoint;
+  renderer.activeFamousSkillTooltip = active;
+  renderer.pinnedFamousSkillTooltip = pinned;
+
+  assert.equal(host.hoverPoint, hoverPoint);
+  assert.equal(host.activeFamousSkillTooltip, active);
+  assert.equal(host.pinnedFamousSkillTooltip, pinned);
+
+  host.hoverPoint = null;
+  host.activeFamousSkillTooltip = null;
+  host.pinnedFamousSkillTooltip = null;
+
+  assert.equal(renderer.hoverPoint, null);
+  assert.equal(renderer.activeFamousSkillTooltip, null);
+  assert.equal(renderer.pinnedFamousSkillTooltip, null);
+});
+
+test('FamousCanvasRenderer no longer forwards unknown host properties through proxy', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new FamousCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('FamousCanvasRenderer drawing wrappers prefer explicit drawing surface over host fallback', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new FamousCanvasRenderer({
+    host: fallbackHost,
+    drawingSurface: explicitSurface,
+  });
+
+  renderer.addHitTarget({}, {});
+  renderer.containsPoint({}, {});
+  renderer.createGradient();
+  renderer.drawButton();
+  renderer.drawLine();
+  renderer.drawPanel();
+  renderer.drawText();
+  renderer.drawTextLines();
+  renderer.getAsset('asset');
+  renderer.getLayout();
+  renderer.roundRectPath();
+  renderer.truncateText('text');
+  renderer.wrapTextLimit('text');
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), FAMOUS_DRAWING_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
 test('FamousCanvasRenderer owns pagination and tooltip state helpers', () => {
   const host = createHost();
   const renderer = new FamousCanvasRenderer({ host });

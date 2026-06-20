@@ -52,18 +52,26 @@
   class WorldActorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-      });
+    }
+
+    get ctx() {
+      return this.host?.ctx;
+    }
+
+    get __worldActorOverlayActiveDiag() {
+      return this.host?.__worldActorOverlayActiveDiag;
+    }
+
+    addHitTarget(...args) {
+      return this.host?.addHitTarget?.(...args);
+    }
+
+    getAsset(...args) {
+      return this.host?.getAsset?.(...args);
+    }
+
+    getNow(...args) {
+      return this.host?.getNow?.(...args);
     }
 
     getActorScreenPoint(actor = {}, viewport = {}, geometry = {}) {
@@ -109,22 +117,25 @@
 
     getActorRenderHost(ctx = null) {
       if (!ctx) return this;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          if (prop === 'ctx') return ctx;
-          if (prop === 'roundRectPath') {
-            return (x, y, width, height, radius = 8) => {
-              ctx.beginPath?.();
-              if (typeof ctx.roundRect === 'function') {
-                ctx.roundRect(x, y, width, height, radius);
-              } else {
-                ctx.rect?.(x, y, width, height);
-              }
-            };
-          }
-          return Reflect.get(target, prop, receiver);
+      const renderHost = Object.create(this);
+      Object.defineProperties(renderHost, {
+        ctx: {
+          configurable: true,
+          value: ctx,
+        },
+        roundRectPath: {
+          configurable: true,
+          value(x, y, width, height, radius = 8) {
+            ctx.beginPath?.();
+            if (typeof ctx.roundRect === 'function') {
+              ctx.roundRect(x, y, width, height, radius);
+            } else {
+              ctx.rect?.(x, y, width, height);
+            }
+          },
         },
       });
+      return renderHost;
     }
 
     drawMarchArrow(from = {}, to = {}, options = {}) {

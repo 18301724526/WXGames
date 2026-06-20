@@ -104,6 +104,44 @@ test('WorldMapActorHudRenderer publishes march HUD state before rendering', () =
   assert.equal(calls[0][3], actors);
 });
 
+test('WorldMapActorHudRenderer reads host epoch time dynamically after proxy removal', () => {
+  const firstEpochMs = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const secondEpochMs = new Date('2026-06-06T00:00:12.000Z').getTime();
+  const host = createHost({ epochNowMs: firstEpochMs });
+  const renderer = new WorldMapActorHudRenderer({ host });
+
+  assert.equal(renderer.epochNowMs, firstEpochMs);
+
+  host.epochNowMs = secondEpochMs;
+
+  assert.equal(renderer.epochNowMs, secondEpochMs);
+  assert.equal(renderer.getEpochNowMs(), secondEpochMs);
+});
+
+test('WorldMapActorHudRenderer does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new WorldMapActorHudRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('WorldMapActorHudRenderer forwards march state reads and writes through host', () => {
+  const host = createHost();
+  const renderer = new WorldMapActorHudRenderer({ host });
+  const firstState = { id: 'first-state' };
+  const secondState = { id: 'second-state' };
+
+  renderer.lastGameState = firstState;
+  renderer.lastWorldMarchState = firstState;
+  assert.equal(host.lastGameState, firstState);
+  assert.equal(host.lastWorldMarchState, firstState);
+
+  host.lastGameState = secondState;
+  host.lastWorldMarchState = secondState;
+  assert.equal(renderer.lastGameState, secondState);
+  assert.equal(renderer.lastWorldMarchState, secondState);
+});
+
 test('WorldMapActorHudRenderer maps nearest world tile through march system', () => {
   const renderer = new WorldMapActorHudRenderer({ host: createHost() });
   const tileMapView = createTileMapView();

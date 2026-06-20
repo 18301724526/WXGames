@@ -127,6 +127,107 @@ test('HudTabPageCanvasRenderer falls back to direct render without valid transit
   assert.deepEqual(callNames(host), ['getTransitionFrame', 'renderEvents']);
 });
 
+test('HudTabPageCanvasRenderer reads host layout state dynamically after proxy removal', () => {
+  const host = createHost({
+    bottomSafeArea: 12,
+    height: 844,
+    viewportOffsetY: 0,
+    width: 390,
+  });
+  const renderer = new HudTabPageCanvasRenderer({ host });
+
+  assert.equal(renderer.bottomSafeArea, 12);
+  assert.equal(renderer.height, 844);
+  assert.equal(renderer.viewportOffsetY, 0);
+  assert.equal(renderer.width, 390);
+
+  host.bottomSafeArea = 24;
+  host.height = 900;
+  host.viewportOffsetY = 18;
+  host.width = 512;
+
+  assert.equal(renderer.bottomSafeArea, 24);
+  assert.equal(renderer.height, 900);
+  assert.equal(renderer.viewportOffsetY, 18);
+  assert.equal(renderer.width, 512);
+});
+
+test('HudTabPageCanvasRenderer does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new HudTabPageCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('HudTabPageCanvasRenderer delegates host methods explicitly after proxy removal', () => {
+  const calls = [];
+  const callbackResult = { callback: true };
+  const host = {
+    getTransitionFrame(...args) {
+      calls.push(['getTransitionFrame', args]);
+      return { sentinel: 'transition' };
+    },
+    renderBuildings(...args) {
+      calls.push(['renderBuildings', args]);
+      return { sentinel: 'buildings' };
+    },
+    renderCivilization(...args) {
+      calls.push(['renderCivilization', args]);
+      return { sentinel: 'civilization' };
+    },
+    renderEvents(...args) {
+      calls.push(['renderEvents', args]);
+      return { sentinel: 'events' };
+    },
+    renderMapHomeWorldView(...args) {
+      calls.push(['renderMapHomeWorldView', args]);
+      return { sentinel: 'map-home' };
+    },
+    renderMilitary(...args) {
+      calls.push(['renderMilitary', args]);
+      return { sentinel: 'military' };
+    },
+    renderTech(...args) {
+      calls.push(['renderTech', args]);
+      return { sentinel: 'tech' };
+    },
+    withSlideClip(...args) {
+      calls.push(['withSlideClip', args]);
+      const callback = args.at(-1);
+      return callback();
+    },
+    withSuppressedHitTargets(...args) {
+      calls.push(['withSuppressedHitTargets', args]);
+      const callback = args[0];
+      return callback();
+    },
+  };
+  const renderer = new HudTabPageCanvasRenderer({ host });
+  const callback = () => callbackResult;
+
+  assert.deepEqual(renderer.getTransitionFrame({ ready: true }), { sentinel: 'transition' });
+  assert.deepEqual(renderer.renderBuildings('state', 1, 2), { sentinel: 'buildings' });
+  assert.deepEqual(renderer.renderCivilization('state', 1, 2), { sentinel: 'civilization' });
+  assert.deepEqual(renderer.renderEvents('state', 1, 2), { sentinel: 'events' });
+  assert.deepEqual(renderer.renderMapHomeWorldView('state', 1, {}), { sentinel: 'map-home' });
+  assert.deepEqual(renderer.renderMilitary('state', 1, 2), { sentinel: 'military' });
+  assert.deepEqual(renderer.renderTech('state', 1, 2), { sentinel: 'tech' });
+  assert.equal(renderer.withSlideClip(0, 1, 2, 3, 4, callback), callbackResult);
+  assert.equal(renderer.withSuppressedHitTargets(callback), callbackResult);
+
+  assert.deepEqual(calls, [
+    ['getTransitionFrame', [{ ready: true }]],
+    ['renderBuildings', ['state', 1, 2]],
+    ['renderCivilization', ['state', 1, 2]],
+    ['renderEvents', ['state', 1, 2]],
+    ['renderMapHomeWorldView', ['state', 1, {}]],
+    ['renderMilitary', ['state', 1, 2]],
+    ['renderTech', ['state', 1, 2]],
+    ['withSlideClip', [0, 1, 2, 3, 4, callback]],
+    ['withSuppressedHitTargets', [callback]],
+  ]);
+});
+
 test('CanvasGameRenderer exposes HUD tab page rendering through facade', () => {
   class StubHudTabPageRenderer {
     constructor(options) {

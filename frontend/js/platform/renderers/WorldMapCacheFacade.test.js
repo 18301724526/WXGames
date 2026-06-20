@@ -257,6 +257,87 @@ test('WorldMapCacheFacade resolves static cache layout through cache policy', ()
   assert.equal(layout.layouts.length, 1);
 });
 
+test('WorldMapCacheFacade reads host cache state dynamically after proxy removal', () => {
+  const firstCtx = { drawImage() {} };
+  const secondCtx = { drawImage() {} };
+  const host = createHost({
+    ctx: firstCtx,
+    worldTileFastDragActive: false,
+  });
+  const renderer = new WorldMapCacheFacade({ host });
+
+  assert.equal(renderer.ctx, firstCtx);
+  assert.equal(renderer.worldTileFastDragActive, false);
+
+  host.ctx = secondCtx;
+  host.worldTileFastDragActive = true;
+
+  assert.equal(renderer.ctx, secondCtx);
+  assert.equal(renderer.worldTileFastDragActive, true);
+});
+
+test('WorldMapCacheFacade does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new WorldMapCacheFacade({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('WorldMapCacheFacade delegates cache helpers to host methods', () => {
+  const calls = [];
+  const canvas = { getContext: () => ({}) };
+  const worldLayout = { kind: 'world' };
+  const chunkLayouts = [{ kind: 'chunk' }];
+  const viewportLayout = { kind: 'viewport' };
+  const host = createHost({
+    createTileWorkCanvas(...args) {
+      calls.push(['createTileWorkCanvas', args]);
+      return canvas;
+    },
+    getWorldTileStaticCacheScale(...args) {
+      calls.push(['getWorldTileStaticCacheScale', args]);
+      return 3;
+    },
+    getWorldTileStaticCachePixelBudget(...args) {
+      calls.push(['getWorldTileStaticCachePixelBudget', args]);
+      return 4000;
+    },
+    getWorldTileStaticCacheLayout(...args) {
+      calls.push(['getWorldTileStaticCacheLayout', args]);
+      return worldLayout;
+    },
+    getWorldTileStaticChunkLayouts(...args) {
+      calls.push(['getWorldTileStaticChunkLayouts', args]);
+      return chunkLayouts;
+    },
+    getWorldTileStaticViewportCacheLayout(...args) {
+      calls.push(['getWorldTileStaticViewportCacheLayout', args]);
+      return viewportLayout;
+    },
+  });
+  const renderer = new WorldMapCacheFacade({ host });
+  const tileMapView = createTileMapView();
+  const viewport = { scale: 1 };
+  const geometry = { tileWidth: 192 };
+  const frame = { x: 0, y: 0, width: 20, height: 20 };
+  const entries = [{ tile: { q: 0, r: 0 } }];
+
+  assert.equal(renderer.createTileWorkCanvas(10, 20), canvas);
+  assert.equal(renderer.getWorldTileStaticCacheScale(), 3);
+  assert.equal(renderer.getWorldTileStaticCachePixelBudget(), 4000);
+  assert.equal(renderer.getWorldTileStaticCacheLayout(tileMapView, viewport, geometry), worldLayout);
+  assert.equal(renderer.getWorldTileStaticChunkLayouts(tileMapView, viewport, frame, geometry), chunkLayouts);
+  assert.equal(renderer.getWorldTileStaticViewportCacheLayout(tileMapView, viewport, frame, entries), viewportLayout);
+  assert.deepEqual(calls, [
+    ['createTileWorkCanvas', [10, 20]],
+    ['getWorldTileStaticCacheScale', []],
+    ['getWorldTileStaticCachePixelBudget', []],
+    ['getWorldTileStaticCacheLayout', [tileMapView, viewport, geometry]],
+    ['getWorldTileStaticChunkLayouts', [tileMapView, viewport, frame, geometry]],
+    ['getWorldTileStaticViewportCacheLayout', [tileMapView, viewport, frame, entries]],
+  ]);
+});
+
 test('WorldMapCacheFacade loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

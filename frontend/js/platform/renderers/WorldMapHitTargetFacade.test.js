@@ -297,6 +297,70 @@ test('WorldMapHitTargetFacade fallback derives action identity from stable coord
   assert.equal(host.hitTargets.find((target) => target.action.targetQ === 4 && target.action.targetR === -2).action.tileId, 'tile_4_-2');
 });
 
+test('WorldMapHitTargetFacade reads host method delegates dynamically after proxy removal', () => {
+  const host = createHost({
+    getWorldTileScreenCenter() {
+      return { x: 1, y: 2 };
+    },
+  });
+  const renderer = new WorldMapHitTargetFacade({ host });
+
+  assert.deepEqual(renderer.getWorldTileScreenCenter({ q: 0, r: 0 }, {}, {}), { x: 1, y: 2 });
+
+  host.getWorldTileScreenCenter = () => ({ x: 30, y: 40 });
+
+  assert.deepEqual(renderer.getWorldTileScreenCenter({ q: 0, r: 0 }, {}, {}), { x: 30, y: 40 });
+});
+
+test('WorldMapHitTargetFacade does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new WorldMapHitTargetFacade({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('WorldMapHitTargetFacade delegates host methods explicitly', () => {
+  const calls = [];
+  const expectedBounds = { x: 1, y: 2, width: 3, height: 4 };
+  const expectedCenter = { x: 10, y: 20 };
+  const expectedLayout = { site: { id: 'site-1' }, hitRect: { x: 5, y: 6, width: 7, height: 8 } };
+  const host = createHost({
+    addHitTarget(...args) {
+      calls.push(['addHitTarget', args]);
+      return 'hit-target-added';
+    },
+    analyzeAssetAlphaBounds(...args) {
+      calls.push(['analyzeAssetAlphaBounds', args]);
+      return expectedBounds;
+    },
+    getWorldTileScreenCenter(...args) {
+      calls.push(['getWorldTileScreenCenter', args]);
+      return expectedCenter;
+    },
+    getWorldTileSiteLayout(...args) {
+      calls.push(['getWorldTileSiteLayout', args]);
+      return expectedLayout;
+    },
+  });
+  const renderer = new WorldMapHitTargetFacade({ host });
+  const rect = { x: 1, y: 2, width: 3, height: 4 };
+  const action = { type: 'openWorldSite' };
+  const tile = { q: 0, r: 0 };
+  const viewport = { scale: 1 };
+  const geometry = { tileWidth: 192, tileHeight: 96 };
+
+  assert.equal(renderer.addHitTarget(rect, action), 'hit-target-added');
+  assert.equal(renderer.analyzeAssetAlphaBounds('site.png'), expectedBounds);
+  assert.equal(renderer.getWorldTileScreenCenter(tile, viewport, geometry), expectedCenter);
+  assert.equal(renderer.getWorldTileSiteLayout(tile, viewport, geometry, 96, 48, expectedCenter), expectedLayout);
+  assert.deepEqual(calls, [
+    ['addHitTarget', [rect, action]],
+    ['analyzeAssetAlphaBounds', ['site.png']],
+    ['getWorldTileScreenCenter', [tile, viewport, geometry]],
+    ['getWorldTileSiteLayout', [tile, viewport, geometry, 96, 48, expectedCenter]],
+  ]);
+});
+
 test('WorldMapHitTargetFacade loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

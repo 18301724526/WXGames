@@ -364,11 +364,6 @@
       "count": 2
     }
   },
-  "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/renderers/BattleCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 5
@@ -376,7 +371,7 @@
   },
   "frontend/js/platform/renderers/BuildingCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 4
+      "count": 3
     }
   },
   "frontend/js/platform/renderers/CanvasAssetRenderer.js": {
@@ -411,7 +406,7 @@
   },
   "frontend/js/platform/renderers/FamousCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/GuideTaskCanvasRenderer.js": {
@@ -424,24 +419,9 @@
       "count": 2
     }
   },
-  "frontend/js/platform/renderers/HudTabPageCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/renderers/MapCommandCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 3
-    }
-  },
-  "frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/renderers/TabBarCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
     }
   },
   "frontend/js/platform/renderers/TechCanvasRenderer.js": {

@@ -79,6 +79,7 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
     overlayCanvasRenderer: createClass('overlay', calls),
     mapCommandCanvasRenderer: createClass('map-command', calls),
     cityPeopleCanvasRenderer: createClass('city-people', calls),
+    armyFormationEditorCanvasRenderer: createClass('army-formation-editor', calls),
   };
 
   const composition = CanvasGameRendererCompositionFactory.create({ host, dependencies });
@@ -98,6 +99,7 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
     'overlayRenderer',
     'mapCommandRenderer',
     'cityPeopleRenderer',
+    'armyFormationEditorRenderer',
   ].forEach((property) => {
     assert.equal(composition.rendererMap[property].options.host, host);
     assert.equal(composition.rendererMap[property].options.drawingSurface, host);

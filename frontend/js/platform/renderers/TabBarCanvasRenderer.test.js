@@ -4,6 +4,15 @@ const assert = require('node:assert/strict');
 const TabBarCanvasRenderer = require('./TabBarCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
+const DRAWING_WRAPPER_METHODS = [
+  'addHitTarget',
+  'createGradient',
+  'drawAsset',
+  'drawPanel',
+  'drawText',
+  'getLayout',
+];
+
 function createHost(overrides = {}) {
   const hitTargets = [];
   const calls = [];
@@ -33,6 +42,24 @@ function createHost(overrides = {}) {
     ...overrides,
   };
   return host;
+}
+
+function createDrawingSurfaceSentinel(label, calls) {
+  return {
+    addHitTarget(...args) { calls.push([label, 'addHitTarget', args]); },
+    createGradient(...args) { calls.push([label, 'createGradient', args]); return `${label}-gradient`; },
+    drawAsset(...args) { calls.push([label, 'drawAsset', args]); return `${label}-asset`; },
+    drawPanel(...args) { calls.push([label, 'drawPanel', args]); },
+    drawText(...args) { calls.push([label, 'drawText', args]); },
+    getLayout(...args) {
+      calls.push([label, 'getLayout', args]);
+      return { contentX: 12, contentWidth: 240, contentRight: 252 };
+    },
+  };
+}
+
+function getCalledDrawingSurfaceMethods(calls, label) {
+  return calls.filter((call) => call[0] === label).map((call) => call[1]);
 }
 
 test('TabBarCanvasRenderer preserves standard tab hit targets', () => {
@@ -93,6 +120,69 @@ test('TabBarCanvasRenderer delegates map-home tabs to command dock', () => {
 
   assert.deepEqual(host.calls, [['renderMapCommandDock', [state, options]]]);
   assert.deepEqual(host.hitTargets, []);
+});
+
+test('TabBarCanvasRenderer reads host state dynamically after proxy removal', () => {
+  const host = createHost();
+  const renderer = new TabBarCanvasRenderer({ host });
+  const nextCtx = { globalAlpha: 1 };
+  const nextPresenter = { buildEventViewState: () => ({ badge: { hidden: true } }) };
+
+  host.height = 912;
+  host.presenter = nextPresenter;
+  host.ctx = nextCtx;
+
+  assert.equal(renderer.height, 912);
+  assert.equal(renderer.presenter, nextPresenter);
+  assert.equal(renderer.ctx, nextCtx);
+});
+
+test('TabBarCanvasRenderer does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new TabBarCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('TabBarCanvasRenderer drawing wrappers prefer explicit drawing surface over host fallback', () => {
+  const calls = [];
+  const explicitSurface = createDrawingSurfaceSentinel('explicit', calls);
+  const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
+  const renderer = new TabBarCanvasRenderer({
+    host: {
+      ...fallbackHost,
+      renderMapCommandDock() {},
+    },
+    drawingSurface: explicitSurface,
+  });
+
+  renderer.addHitTarget({ x: 1 }, { type: 'tab' });
+  renderer.createGradient(0, 0, 1, 1, [], '#000');
+  renderer.drawAsset('asset.png', 1, 2, 3, 4);
+  renderer.drawPanel(1, 2, 3, 4, {});
+  renderer.drawText('label', 1, 2, {});
+  renderer.getLayout();
+
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), DRAWING_WRAPPER_METHODS);
+  assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
+});
+
+test('TabBarCanvasRenderer delegates command dock rendering to host method', () => {
+  const state = { map: true };
+  const options = { isMapHome: true };
+  const expected = { source: 'host-renderMapCommandDock' };
+  const host = createHost({
+    renderMapCommandDock(...args) {
+      host.calls.push(['renderMapCommandDockResult', args]);
+      return expected;
+    },
+  });
+  const renderer = new TabBarCanvasRenderer({ host });
+
+  const result = renderer.renderMapCommandDock(state, options);
+
+  assert.equal(result, expected);
+  assert.deepEqual(host.calls, [['renderMapCommandDockResult', [state, options]]]);
 });
 
 test('CanvasGameRenderer exposes tab bar rendering through facade', () => {

@@ -47,6 +47,54 @@ test('WorldMapWaterEntryRenderer reports false when no water entry is drawn', ()
   assert.equal(host.calls.length, 0);
 });
 
+test('WorldMapWaterEntryRenderer reads host water delegate dynamically after proxy removal', () => {
+  const host = createHost({
+    drawWorldTileWater() {
+      return false;
+    },
+  });
+  const renderer = new WorldMapWaterEntryRenderer({ host });
+  const entry = createEntry({ id: 'water-1', water: { kind: 'river', asset: 'river.png' } });
+
+  assert.equal(renderer.renderWorldTileWaterEntries({}, {}, [entry]), false);
+
+  host.drawWorldTileWater = (...args) => {
+    host.calls.push(['replacementDrawWorldTileWater', ...args]);
+    return true;
+  };
+
+  assert.equal(renderer.renderWorldTileWaterEntries({}, {}, [entry]), true);
+  assert.equal(host.calls[0][0], 'replacementDrawWorldTileWater');
+});
+
+test('WorldMapWaterEntryRenderer does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new WorldMapWaterEntryRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('WorldMapWaterEntryRenderer delegates water drawing to host method', () => {
+  const expected = { source: 'host-drawWorldTileWater' };
+  const tile = { id: 'water-1' };
+  const center = { x: 1, y: 2 };
+  const drawRect = { x: 3, y: 4, width: 5, height: 6 };
+  const viewport = { scale: 2 };
+  const options = { drawDryTemplate: false };
+  const host = createHost({
+    drawWorldTileWater(...args) {
+      host.calls.push(['drawWorldTileWaterResult', args]);
+      return expected;
+    },
+  });
+  const renderer = new WorldMapWaterEntryRenderer({ host });
+
+  const result = renderer.drawWorldTileWater(tile, center, drawRect, viewport, options);
+
+  assert.equal(result, expected);
+  assert.deepEqual(host.calls, [['drawWorldTileWaterResult', [tile, center, drawRect, viewport, options]]]);
+});
+
 test('WorldMapWaterEntryRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

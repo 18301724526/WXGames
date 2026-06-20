@@ -2,27 +2,75 @@
   class ArmyFormationEditorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
-          if (target.host && prop in target.host) {
-            target.host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.drawingSurface = options.drawingSurface || null;
+    }
+
+    get ctx() {
+      return this.host?.ctx;
+    }
+
+    get height() {
+      return this.host?.height;
+    }
+
+    get presenter() {
+      return this.host?.presenter;
+    }
+
+    get width() {
+      return this.host?.width;
+    }
+
+    callDrawingSurface(method, args = []) {
+      const explicitSurface = this.drawingSurface;
+      if (explicitSurface && typeof explicitSurface[method] === 'function') {
+        return explicitSurface[method](...Array.from(args));
+      }
+      const fallbackSurface = this.host;
+      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
+        return fallbackSurface[method](...Array.from(args));
+      }
+      return undefined;
+    }
+
+    addHitTarget(...args) {
+      return this.callDrawingSurface('addHitTarget', args);
+    }
+
+    createGradient(...args) {
+      return this.callDrawingSurface('createGradient', args);
+    }
+
+    drawButton(...args) {
+      return this.callDrawingSurface('drawButton', args);
+    }
+
+    drawPanel(...args) {
+      return this.callDrawingSurface('drawPanel', args);
+    }
+
+    drawText(...args) {
+      return this.callDrawingSurface('drawText', args);
+    }
+
+    drawTextLines(...args) {
+      return this.callDrawingSurface('drawTextLines', args);
+    }
+
+    getLayout(...args) {
+      return this.callDrawingSurface('getLayout', args);
+    }
+
+    truncateText(...args) {
+      return this.callDrawingSurface('truncateText', args);
+    }
+
+    wrapTextLimit(...args) {
+      return this.callDrawingSurface('wrapTextLimit', args);
+    }
+
+    renderArmyFormationPortrait(...args) {
+      return this.host?.renderArmyFormationPortrait?.(...args);
     }
 
     renderArmyFormationEditor(state = {}, options = {}) {

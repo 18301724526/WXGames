@@ -103,6 +103,39 @@ function createMission(overrides = {}) {
   };
 }
 
+test('WorldMapScoutRenderer reads dynamic host ctx through explicit getter', () => {
+  const firstCtx = { name: 'first' };
+  const secondCtx = { name: 'second' };
+  const host = createHost({ ctx: firstCtx });
+  const renderer = new WorldMapScoutRenderer({ host });
+
+  assert.equal(renderer.ctx, firstCtx);
+  host.ctx = secondCtx;
+  assert.equal(renderer.ctx, secondCtx);
+});
+
+test('WorldMapScoutRenderer does not proxy unknown host properties', () => {
+  const host = createHost({ someRandomProp: 'host-only' });
+  const renderer = new WorldMapScoutRenderer({ host });
+
+  assert.equal(host.someRandomProp, 'host-only');
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('WorldMapScoutRenderer delegates tile center lookup to host', () => {
+  const host = createHost({
+    getWorldTileScreenCenter(tile) {
+      return { x: tile.q * 10, y: tile.r * 10 };
+    },
+  });
+  const renderer = new WorldMapScoutRenderer({ host });
+
+  assert.deepEqual(
+    renderer.getWorldTileScreenCenter({ q: 5, r: 3 }, {}, {}),
+    { x: 50, y: 30 },
+  );
+});
+
 test('WorldMapScoutRenderer renders dashed route from actor standing tile without dash animation', () => {
   const host = createHost();
   const renderer = new WorldMapScoutRenderer({ host });
