@@ -82,7 +82,18 @@
       ...detail,
     };
     try {
-      global.console?.log?.('[ActorPickingDiag]', stage, payload);
+      const events = global.__actorPickingDiagEvents || [];
+      events.push(payload);
+      while (events.length > 80) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {}
+    try {
+      if (global.__actorPickingDiagVerbose === true
+        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
+        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
+      }
     } catch (_) {}
     return payload;
   }

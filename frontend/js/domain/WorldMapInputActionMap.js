@@ -136,6 +136,44 @@
     };
   }
 
+  function getRecentActorPickingDiagEvents(limit = 20) {
+    const events = Array.isArray(global.__actorPickingDiagEvents) ? global.__actorPickingDiagEvents : [];
+    return events.slice(Math.max(0, events.length - limit));
+  }
+
+  function cloneJsonSafe(value = null) {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getLastActorPickingDiagByStage() {
+    const lastByStage = global.__actorPickingDiagLastByStage || {};
+    return {
+      addActorHitTargetAfterWrite: cloneJsonSafe(lastByStage['worldActorRenderer:addActorHitTarget:afterWrite']),
+      runtimeSources: cloneJsonSafe(lastByStage['worldMapRuntime:syncHitTargetsFromRenderer:sources']),
+      actorScreenPoint: cloneJsonSafe(lastByStage['worldActorRenderer:getActorScreenPoint']),
+      projectionKind: cloneJsonSafe(lastByStage['worldActorProjection:getProjectionKind']),
+      pickingModelActorTarget: cloneJsonSafe(lastByStage['pickingModel:createActorTarget']),
+    };
+  }
+
+  function summarizeTargetsByAction(targets = [], point = {}, actionType = '', limit = 12) {
+    return targets
+      .map((target, index) => summarizeHitTarget(target, index, point))
+      .filter((target) => target.actionType === actionType)
+      .slice(0, limit);
+  }
+
+  function summarizeContainsMatches(targets = [], point = {}, limit = 12) {
+    return targets
+      .map((target, index) => summarizeHitTarget(target, index, point))
+      .filter((target) => target.containsPoint)
+      .slice(0, limit);
+  }
+
   function logActorPickingDiag(stage = '', detail = {}) {
     if (!isActorPickingDiagEnabled()) return null;
     const payload = {
@@ -144,7 +182,15 @@
       ...detail,
     };
     try {
-      global.console?.log?.('[ActorPickingDiag]', stage, payload);
+      const events = global.__actorPickingDiagEvents || [];
+      events.push(payload);
+      while (events.length > 80) events.shift();
+      global.__actorPickingDiagEvents = events;
+      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
+      global.__actorPickingDiagLastByStage[stage] = payload;
+    } catch (_) {}
+    try {
+      global.console?.log?.('[ActorPickingDiag]', JSON.stringify(payload));
     } catch (_) {}
     return payload;
   }
@@ -278,14 +324,17 @@
       logActorPickingDiag('inputActionMap:getHitTarget:start', {
         point: { x: toNumber(point.x), y: toNumber(point.y) },
         targetCount: targetList.length,
-        targets: targetList.map((target, index) => summarizeHitTarget(target, index, point)),
         actorHitRects: targetList
           .map((target, index) => ({ target, index }))
           .filter(({ target }) => target?.action?.type === 'selectWorldActor')
           .map(({ target, index }) => summarizeActorHitRect(target, index, point)),
-        containsMatches: targetList
-          .map((target, index) => summarizeHitTarget(target, index, point))
-          .filter((target) => target.containsPoint),
+        siteHitRects: [
+          ...summarizeTargetsByAction(targetList, point, 'openWorldSite'),
+          ...summarizeTargetsByAction(targetList, point, 'enterCity'),
+        ],
+        containsMatches: summarizeContainsMatches(targetList, point),
+        recentEvents: cloneJsonSafe(getRecentActorPickingDiagEvents()) || [],
+        lastByStage: getLastActorPickingDiagByStage(),
       });
     }
     const priorityAction = getPriorityForegroundAction(point, targets);
