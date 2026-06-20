@@ -2,27 +2,58 @@
   class HudTabPageCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
-          if (target.host && prop in target.host) {
-            target.host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+    }
+
+    get bottomSafeArea() {
+      return this.host?.bottomSafeArea;
+    }
+
+    get height() {
+      return this.host?.height;
+    }
+
+    get viewportOffsetY() {
+      return this.host?.viewportOffsetY;
+    }
+
+    get width() {
+      return this.host?.width;
+    }
+
+    getTransitionFrame(...args) {
+      return this.host?.getTransitionFrame?.(...args);
+    }
+
+    renderBuildings(...args) {
+      return this.host?.renderBuildings?.(...args);
+    }
+
+    renderCivilization(...args) {
+      return this.host?.renderCivilization?.(...args);
+    }
+
+    renderEvents(...args) {
+      return this.host?.renderEvents?.(...args);
+    }
+
+    renderMapHomeWorldView(...args) {
+      return this.host?.renderMapHomeWorldView?.(...args);
+    }
+
+    renderMilitary(...args) {
+      return this.host?.renderMilitary?.(...args);
+    }
+
+    renderTech(...args) {
+      return this.host?.renderTech?.(...args);
+    }
+
+    withSlideClip(...args) {
+      return this.host?.withSlideClip?.(...args);
+    }
+
+    withSuppressedHitTargets(...args) {
+      return this.host?.withSuppressedHitTargets?.(...args);
     }
 
     renderMainPanel(state = {}, activeTab = 'resources', startY = 210, availableHeight = 310, options = {}) {
