@@ -118,7 +118,7 @@ test('WorldActorCanvasRenderer records actual actor and arrow canvas ids during 
   const host = createHost();
   const diag = {};
   const renderer = new WorldActorCanvasRenderer({ host });
-  renderer.__worldActorOverlayActiveDiag = diag;
+  host.__worldActorOverlayActiveDiag = diag;
   const actor = {
     id: 'explore-1',
     missionId: 'explore-1',
@@ -170,7 +170,7 @@ test('WorldActorCanvasRenderer uses explicit ctx through actor and arrow drawing
   };
   const diag = {};
   const renderer = new WorldActorCanvasRenderer({ host });
-  renderer.__worldActorOverlayActiveDiag = diag;
+  host.__worldActorOverlayActiveDiag = diag;
   const actor = {
     id: 'explore-1',
     missionId: 'explore-1',
@@ -195,6 +195,94 @@ test('WorldActorCanvasRenderer uses explicit ctx through actor and arrow drawing
   assert.equal(explicitCalls.some((call) => call[0] === 'drawImage'), true);
   assert.equal(host.calls.some((call) => call[0] === 'stroke'), false);
   assert.equal(host.calls.some((call) => call[0] === 'drawImage'), false);
+});
+
+test('WorldActorCanvasRenderer reads host ctx dynamically after proxy removal', () => {
+  const firstCtx = createHost().ctx;
+  const secondCtx = { ...createHost().ctx, canvas: { _layerName: 'second-layer' } };
+  const host = createHost();
+  host.ctx = firstCtx;
+  const renderer = new WorldActorCanvasRenderer({ host });
+
+  assert.equal(renderer.ctx, firstCtx);
+
+  host.ctx = secondCtx;
+
+  assert.equal(renderer.ctx, secondCtx);
+});
+
+test('WorldActorCanvasRenderer reads active overlay diagnostics dynamically from host', () => {
+  const host = createHost();
+  const renderer = new WorldActorCanvasRenderer({ host });
+  const firstDiag = { drawnCanvasId: 'first' };
+  const secondDiag = { drawnCanvasId: 'second' };
+
+  host.__worldActorOverlayActiveDiag = firstDiag;
+  assert.equal(renderer.__worldActorOverlayActiveDiag, firstDiag);
+
+  host.__worldActorOverlayActiveDiag = secondDiag;
+  assert.equal(renderer.__worldActorOverlayActiveDiag, secondDiag);
+});
+
+test('WorldActorCanvasRenderer does not proxy unknown host properties after proxy removal', () => {
+  const host = createHost();
+  host.someRandomProp = 'host-only';
+  const renderer = new WorldActorCanvasRenderer({ host });
+
+  assert.equal(renderer.someRandomProp, undefined);
+});
+
+test('WorldActorCanvasRenderer delegates host helpers explicitly after proxy removal', () => {
+  const calls = [];
+  const asset = { width: 80, height: 120 };
+  const host = {
+    addHitTarget(...args) {
+      calls.push(['addHitTarget', args]);
+      return { sentinel: 'hit-target' };
+    },
+    getAsset(...args) {
+      calls.push(['getAsset', args]);
+      return asset;
+    },
+    getNow(...args) {
+      calls.push(['getNow', args]);
+      return 4321;
+    },
+  };
+  const renderer = new WorldActorCanvasRenderer({ host });
+
+  assert.deepEqual(renderer.addHitTarget({ x: 1 }, { type: 'test' }), { sentinel: 'hit-target' });
+  assert.equal(renderer.getAsset('asset.png'), asset);
+  assert.equal(renderer.getNow('clock'), 4321);
+  assert.deepEqual(calls, [
+    ['addHitTarget', [{ x: 1 }, { type: 'test' }]],
+    ['getAsset', ['asset.png']],
+    ['getNow', ['clock']],
+  ]);
+});
+
+test('WorldActorCanvasRenderer render host exposes explicit ctx and roundRectPath without proxy', () => {
+  const host = createHost();
+  const renderer = new WorldActorCanvasRenderer({ host });
+  const calls = [];
+  const ctx = {
+    beginPath() {
+      calls.push(['beginPath']);
+    },
+    rect(...args) {
+      calls.push(['rect', args]);
+    },
+  };
+
+  const renderHost = renderer.getActorRenderHost(ctx);
+
+  assert.equal(renderHost.ctx, ctx);
+  assert.equal(renderHost.getAsset, renderer.getAsset);
+  renderHost.roundRectPath(1, 2, 3, 4, 5);
+  assert.deepEqual(calls, [
+    ['beginPath'],
+    ['rect', [1, 2, 3, 4]],
+  ]);
 });
 
 test('WorldActorCanvasRenderer renders active actors between tile centers', () => {
