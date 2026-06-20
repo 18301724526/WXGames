@@ -117,6 +117,71 @@
     };
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {}
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {}
+    return false;
+  }
+
+  function getDiagObjectId(value = null) {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) return '';
+    if (typeof WeakMap !== 'function') return '';
+    if (!global.__actorPickingDiagObjectIds) {
+      global.__actorPickingDiagObjectIds = new WeakMap();
+      global.__actorPickingDiagObjectIdSeq = 0;
+    }
+    if (!global.__actorPickingDiagObjectIds.has(value)) {
+      global.__actorPickingDiagObjectIdSeq = (Number(global.__actorPickingDiagObjectIdSeq) || 0) + 1;
+      global.__actorPickingDiagObjectIds.set(value, `obj#${global.__actorPickingDiagObjectIdSeq}`);
+    }
+    return global.__actorPickingDiagObjectIds.get(value);
+  }
+
+  function summarizeObjectRef(value = null) {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) {
+      return { present: false, id: '', constructorName: '' };
+    }
+    return {
+      present: true,
+      id: getDiagObjectId(value),
+      constructorName: value.constructor?.name || '',
+    };
+  }
+
+  function summarizeHitTargetStore(value = null) {
+    const hitTargets = value?.hitTargets;
+    const isArray = Array.isArray(hitTargets);
+    return {
+      object: summarizeObjectRef(value),
+      hitTargetsIsArray: isArray,
+      hitTargetsLength: isArray ? hitTargets.length : null,
+      selectWorldActorCount: isArray
+        ? hitTargets.filter((target) => target?.action?.type === 'selectWorldActor').length
+        : null,
+    };
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      global.console?.log?.('[ActorPickingDiag]', stage, payload);
+    } catch (_) {}
+    return payload;
+  }
+
   function summarizeBackgroundTargetProbe(action = null, context = {}, layerPoint = {}) {
     if (!action || action.type !== 'selectWorldMarchTarget') return null;
     const tileMapView = context?.tileMapView || context?.renderSnapshot?.tileMapView || {};
@@ -683,6 +748,8 @@
     syncHitTargetsFromRenderer(options = {}) {
       const viewportOffsetX = Number(this.renderer?.viewportOffsetX) || 0;
       const viewportOffsetY = Number(this.renderer?.viewportOffsetY) || 0;
+      const rendererRef = this.renderer || null;
+      const actorLayerRef = this.renderer?.worldActorLayerRenderer || null;
       const rendererTargetGroups = WorldMapRuntimeHitTargetPolicy?.collectRendererHitTargetGroups
         ? WorldMapRuntimeHitTargetPolicy.collectRendererHitTargetGroups(this.renderer)
         : {
@@ -699,6 +766,21 @@
         : []);
       const mapTargets = normalizeTargets(rendererTargetGroups.mapTargets);
       const actorTargets = normalizeTargets(rendererTargetGroups.actorTargets);
+      logActorPickingDiag('worldMapRuntime:syncHitTargetsFromRenderer:sources', {
+        renderer: summarizeObjectRef(rendererRef),
+        worldActorLayerRenderer: summarizeObjectRef(actorLayerRef),
+        rendererIsWorldActorLayerRenderer: rendererRef === actorLayerRef,
+        rendererHitTargetStore: summarizeHitTargetStore(rendererRef),
+        worldActorLayerHitTargetStore: summarizeHitTargetStore(actorLayerRef),
+        collectedMapTargetsLength: Array.isArray(rendererTargetGroups.mapTargets) ? rendererTargetGroups.mapTargets.length : null,
+        collectedActorTargetsLength: Array.isArray(rendererTargetGroups.actorTargets) ? rendererTargetGroups.actorTargets.length : null,
+        normalizedMapTargetCount: mapTargets.length,
+        normalizedActorTargetCount: actorTargets.length,
+        normalizedActorSelectWorldActorCount: actorTargets
+          .filter((target) => target?.action?.type === 'selectWorldActor').length,
+        viewportOffsetX,
+        viewportOffsetY,
+      });
       const sourceTargets = [
         ...mapTargets,
         ...actorTargets,

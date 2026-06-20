@@ -49,6 +49,44 @@
     return canvasIds.get(canvas);
   }
 
+  function getDiagObjectId(value = null) {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) return '';
+    if (typeof WeakMap !== 'function') return '';
+    if (!global.__actorPickingDiagObjectIds) {
+      global.__actorPickingDiagObjectIds = new WeakMap();
+      global.__actorPickingDiagObjectIdSeq = 0;
+    }
+    if (!global.__actorPickingDiagObjectIds.has(value)) {
+      global.__actorPickingDiagObjectIdSeq = (Number(global.__actorPickingDiagObjectIdSeq) || 0) + 1;
+      global.__actorPickingDiagObjectIds.set(value, `obj#${global.__actorPickingDiagObjectIdSeq}`);
+    }
+    return global.__actorPickingDiagObjectIds.get(value);
+  }
+
+  function summarizeObjectRef(value = null) {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) {
+      return { present: false, id: '', constructorName: '' };
+    }
+    return {
+      present: true,
+      id: getDiagObjectId(value),
+      constructorName: value.constructor?.name || '',
+    };
+  }
+
+  function summarizeHitTargetStore(value = null) {
+    const hitTargets = value?.hitTargets;
+    const isArray = Array.isArray(hitTargets);
+    return {
+      object: summarizeObjectRef(value),
+      hitTargetsIsArray: isArray,
+      hitTargetsLength: isArray ? hitTargets.length : null,
+      selectWorldActorCount: isArray
+        ? hitTargets.filter((target) => target?.action?.type === 'selectWorldActor').length
+        : null,
+    };
+  }
+
   function isActorPickingDiagEnabled() {
     if (global.__actorPickingDiag === true) return true;
     try {
@@ -267,10 +305,19 @@
 
     addActorHitTarget(actor = {}, point = {}) {
       const size = 42;
+      const hostBefore = summarizeHitTargetStore(this.host);
+      const selfBefore = summarizeHitTargetStore(this);
       logActorPickingDiag('worldActorRenderer:addActorHitTarget', {
         actorId: actor.id || actor.actorId || actor.missionId || '',
         missionId: actor.missionId || '',
         status: actor.status || '',
+        self: summarizeObjectRef(this),
+        host: summarizeObjectRef(this.host),
+        hostWorldActorLayerRenderer: summarizeObjectRef(this.host?.worldActorLayerRenderer),
+        hostIsSelf: this.host === this,
+        hostWorldActorLayerRendererIsSelf: this.host?.worldActorLayerRenderer === this,
+        hostHitTargetStoreBefore: hostBefore,
+        selfHitTargetStoreBefore: selfBefore,
         current: summarizeCoord(actor.current),
         position: summarizeCoord(actor.position),
         origin: summarizeCoord(actor.origin),
@@ -298,6 +345,20 @@
         actorId: actor.id,
         missionId: actor.missionId,
         inputSurface: 'worldMap',
+      });
+      logActorPickingDiag('worldActorRenderer:addActorHitTarget:afterWrite', {
+        actorId: actor.id || actor.actorId || actor.missionId || '',
+        missionId: actor.missionId || '',
+        status: actor.status || '',
+        self: summarizeObjectRef(this),
+        host: summarizeObjectRef(this.host),
+        hostWorldActorLayerRenderer: summarizeObjectRef(this.host?.worldActorLayerRenderer),
+        hostIsSelf: this.host === this,
+        hostWorldActorLayerRendererIsSelf: this.host?.worldActorLayerRenderer === this,
+        hostHitTargetStoreBefore: hostBefore,
+        hostHitTargetStoreAfter: summarizeHitTargetStore(this.host),
+        selfHitTargetStoreBefore: selfBefore,
+        selfHitTargetStoreAfter: summarizeHitTargetStore(this),
       });
       return true;
     }
