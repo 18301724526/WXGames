@@ -729,7 +729,7 @@
     }
 
     getPickingSnapshot() {
-      const context = this.getLastTileMapContext();
+      const context = this.getPickingContext();
       if (!context || !WorldMapPickingModel?.buildSignature || !WorldMapPickingModel?.createSnapshot) {
         this.lastPickingSignature = '';
         this.pickingSnapshot = null;
@@ -826,6 +826,37 @@
         || this.renderer?.worldMapRenderer?.lastWorldTileMapContext
         || this.renderer?.worldMapLayerRenderer?.lastWorldTileMapContext
         || null;
+    }
+
+    getLastActorLayerContext() {
+      return this.renderer?.lastMapHomeWorldHudContext
+        || this.renderer?.worldMapRenderer?.lastMapHomeWorldHudContext
+        || this.renderer?.worldMapLayerRenderer?.lastMapHomeWorldHudContext
+        || this.renderer?.worldActorLayerRenderer?.lastMapHomeWorldHudContext
+        || this.renderer?.worldActorLayerRenderer?.lastWorldTileMapContext
+        || null;
+    }
+
+    isActorLayerContextAligned(mapContext = null, actorContext = null) {
+      if (!mapContext || !actorContext) return false;
+      return Boolean(
+        (actorContext.tileMapView && actorContext.tileMapView === mapContext.tileMapView)
+        || (actorContext.renderSnapshot && actorContext.renderSnapshot === mapContext.renderSnapshot)
+        || (actorContext.viewport && actorContext.viewport === mapContext.viewport)
+      );
+    }
+
+    getPickingContext() {
+      const mapContext = this.getLastTileMapContext();
+      const actorContext = this.getLastActorLayerContext();
+      const actors = Array.isArray(actorContext?.actors) ? actorContext.actors : null;
+      if (!mapContext || !actors || actors.length === 0 || !this.isActorLayerContextAligned(mapContext, actorContext)) {
+        return mapContext;
+      }
+      return {
+        ...mapContext,
+        actors,
+      };
     }
 
     getLayerPointFromHudPoint(point = {}) {

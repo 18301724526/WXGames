@@ -241,6 +241,161 @@ test('WorldMapRuntime resolves world site and actor picks from stable context in
   assert.equal(calls[1].actorId, 'actor-1');
 });
 
+test('WorldMapRuntime picking snapshot uses actor layer actors when map context actors are empty', () => {
+  const calls = [];
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const actor = {
+    id: 'explore_manual_1781814115621',
+    missionId: 'explore_manual_1781814115621',
+    status: 'idle',
+    current: { q: 1, r: 0, tileId: 'tile_1_0' },
+  };
+  const mapContext = {
+    frame: { x: 0, y: 84, width: 390, height: 640 },
+    geometry,
+    viewport: {
+      originX: 180,
+      originY: 220,
+      panX: 0,
+      panY: 0,
+      scale: 1,
+    },
+    tileMapView: {
+      version: 3,
+      seed: 'seed',
+      geometry,
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital' },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
+      ],
+    },
+    actors: [],
+  };
+  const renderer = {
+    renderWorldMapLayer() {},
+    lastWorldTileMapContext: mapContext,
+    lastMapHomeWorldHudContext: {
+      ...mapContext,
+      actors: [actor],
+    },
+  };
+  const runtime = new WorldMapRuntime({
+    renderer,
+    presenter: {},
+    onAction(action) {
+      calls.push(action);
+      return true;
+    },
+  });
+  runtime.hitTargets = [
+    { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true, inputSurface: 'worldMap' } },
+    {
+      x: 255,
+      y: 231,
+      width: 42,
+      height: 42,
+      action: {
+        type: 'selectWorldActor',
+        actorId: actor.id,
+        missionId: actor.missionId,
+        inputSurface: 'worldMap',
+      },
+    },
+  ];
+
+  const snapshot = runtime.getPickingSnapshot();
+  assert.equal(snapshot.counts.actors, 1);
+
+  assert.equal(runtime.handleTap({ x: 276, y: 252 }), true);
+  assert.equal(calls[0].type, 'selectWorldActor');
+  assert.equal(calls[0].actorId, actor.id);
+});
+
+test('WorldMapRuntime picking snapshot ignores actor layer actors from a different map context', () => {
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const mapContext = {
+    frame: { x: 0, y: 84, width: 390, height: 640 },
+    geometry,
+    viewport: { originX: 180, originY: 220, panX: 0, panY: 0, scale: 1 },
+    tileMapView: {
+      version: 3,
+      seed: 'current-seed',
+      geometry,
+      tiles: [{ id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' }],
+    },
+    actors: [],
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      renderWorldMapLayer() {},
+      lastWorldTileMapContext: mapContext,
+      lastMapHomeWorldHudContext: {
+        ...mapContext,
+        tileMapView: {
+          ...mapContext.tileMapView,
+          seed: 'stale-seed',
+        },
+        viewport: { ...mapContext.viewport },
+        actors: [{ id: 'stale-actor', current: { q: 1, r: 0 } }],
+      },
+    },
+    presenter: {},
+  });
+
+  const snapshot = runtime.getPickingSnapshot();
+
+  assert.equal(snapshot.counts.actors, 0);
+});
+
+test('WorldMapRuntime keeps stale renderer actor targets as background when no current actor context exists', () => {
+  const calls = [];
+  const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
+  const mapContext = {
+    frame: { x: 0, y: 84, width: 390, height: 640 },
+    geometry,
+    viewport: { originX: 180, originY: 220, panX: 0, panY: 0, scale: 1 },
+    tileMapView: {
+      version: 3,
+      seed: 'seed',
+      geometry,
+      tiles: [
+        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital' },
+        { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
+      ],
+    },
+    actors: [],
+  };
+  const runtime = new WorldMapRuntime({
+    renderer: {
+      renderWorldMapLayer() {},
+      lastWorldTileMapContext: mapContext,
+    },
+    presenter: {},
+    onAction(action) {
+      calls.push(action);
+      return true;
+    },
+  });
+  runtime.hitTargets = [
+    { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true, inputSurface: 'worldMap' } },
+    {
+      x: 255,
+      y: 231,
+      width: 42,
+      height: 42,
+      action: {
+        type: 'selectWorldActor',
+        actorId: 'stale-actor',
+        inputSurface: 'worldMap',
+      },
+    },
+  ];
+
+  assert.equal(runtime.handleTap({ x: 276, y: 252 }), true);
+  assert.equal(calls[0].type, 'selectWorldMarchTarget');
+  assert.notEqual(calls[0].actorId, 'stale-actor');
+});
+
 test('WorldMapRuntime emits a serializable input intent for routed taps', () => {
   const previousLog = global.ClientOperationLog;
   const logEntries = [];
