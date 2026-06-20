@@ -74,6 +74,12 @@
     };
   }
 
+  function getActorScreenCoordSource(actor = {}) {
+    if (actor.current) return { source: 'current', coord: actor.current };
+    if (actor.origin) return { source: 'origin', coord: actor.origin };
+    return { source: 'none', coord: {} };
+  }
+
   function logActorPickingDiag(stage = '', detail = {}) {
     if (!isActorPickingDiagEnabled()) return null;
     const payload = {
@@ -114,8 +120,24 @@
 
     getActorScreenPoint(actor = {}, viewport = {}, geometry = {}) {
       if (!WorldMarchSystem?.getTileScreenCenter) return { x: 0, y: 0 };
-      const current = actor.current || actor.origin || {};
-      return WorldMarchSystem.getTileScreenCenter(current, viewport, geometry);
+      const selected = getActorScreenCoordSource(actor);
+      const point = WorldMarchSystem.getTileScreenCenter(selected.coord, viewport, geometry);
+      logActorPickingDiag('worldActorRenderer:getActorScreenPoint', {
+        actorId: actor.id || actor.actorId || actor.missionId || '',
+        missionId: actor.missionId || '',
+        status: actor.status || '',
+        selectedSource: selected.source,
+        selectedCoord: summarizeCoord(selected.coord),
+        current: summarizeCoord(actor.current),
+        position: summarizeCoord(actor.position),
+        origin: summarizeCoord(actor.origin),
+        target: summarizeCoord(actor.target),
+        point: {
+          x: Number(point.x),
+          y: Number(point.y),
+        },
+      });
+      return point;
     }
 
     getActorTargetScreenPoint(actor = {}, viewport = {}, geometry = {}) {
@@ -252,6 +274,9 @@
         current: summarizeCoord(actor.current),
         position: summarizeCoord(actor.position),
         origin: summarizeCoord(actor.origin),
+        target: summarizeCoord(actor.target),
+        selectedSource: getActorScreenCoordSource(actor).source,
+        selectedCoord: summarizeCoord(getActorScreenCoordSource(actor).coord),
         point: {
           x: Number(point.x),
           y: Number(point.y),

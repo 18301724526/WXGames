@@ -141,6 +141,7 @@
       target: summarizeCoord(row.target),
       homeCoord: summarizeCoord(homeCoord),
       selectedCurrentSource: row.current ? 'current' : (row.position ? 'position' : (row.target ? 'target' : 'none')),
+      selectedCurrentCoord: summarizeCoord(current),
       result,
     });
     return result;

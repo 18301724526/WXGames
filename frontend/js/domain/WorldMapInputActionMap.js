@@ -97,6 +97,13 @@
 
   function summarizeHitTarget(target = {}, index = -1, point = null) {
     const action = target.action || {};
+    const rect = {
+      x: toNumber(target.x),
+      y: toNumber(target.y),
+      width: toNumber(target.width),
+      height: toNumber(target.height),
+    };
+    const pointInsideRect = point ? containsPoint(target, point) : undefined;
     return {
       index,
       kind: target.kind || '',
@@ -106,11 +113,26 @@
       siteId: action.siteId || '',
       tileId: action.tileId || '',
       background: Boolean(action.background),
-      x: toNumber(target.x),
-      y: toNumber(target.y),
-      width: toNumber(target.width),
-      height: toNumber(target.height),
-      containsPoint: point ? containsPoint(target, point) : undefined,
+      ...rect,
+      rect,
+      clickPoint: point ? { x: toNumber(point.x), y: toNumber(point.y) } : null,
+      containsPoint: pointInsideRect,
+      pointInsideRect,
+    };
+  }
+
+  function summarizeActorHitRect(target = {}, index = -1, point = {}) {
+    const summary = summarizeHitTarget(target, index, point);
+    return {
+      index: summary.index,
+      actorId: summary.actorId,
+      missionId: summary.missionId,
+      rect: summary.rect,
+      clickPoint: summary.clickPoint,
+      pointInsideRect: summary.pointInsideRect,
+      containsPoint: summary.containsPoint,
+      actionType: summary.actionType,
+      kind: summary.kind,
     };
   }
 
@@ -257,6 +279,10 @@
         point: { x: toNumber(point.x), y: toNumber(point.y) },
         targetCount: targetList.length,
         targets: targetList.map((target, index) => summarizeHitTarget(target, index, point)),
+        actorHitRects: targetList
+          .map((target, index) => ({ target, index }))
+          .filter(({ target }) => target?.action?.type === 'selectWorldActor')
+          .map(({ target, index }) => summarizeActorHitRect(target, index, point)),
         containsMatches: targetList
           .map((target, index) => summarizeHitTarget(target, index, point))
           .filter((target) => target.containsPoint),

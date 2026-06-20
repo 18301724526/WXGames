@@ -67,6 +67,13 @@
     };
   }
 
+  function getActorTargetCoordSource(actor = {}) {
+    if (actor.current) return { source: 'current', coord: actor.current };
+    if (actor.position) return { source: 'position', coord: actor.position };
+    if (actor.origin) return { source: 'origin', coord: actor.origin };
+    return { source: 'none', coord: {} };
+  }
+
   function logActorPickingDiag(stage = '', detail = {}) {
     if (!isActorPickingDiagEnabled()) return null;
     const payload = {
@@ -201,7 +208,8 @@
   }
 
   function createActorTarget(actor = {}, context = {}) {
-    const current = actor.current || actor.position || actor.origin || {};
+    const selected = getActorTargetCoordSource(actor);
+    const current = selected.coord;
     if (!Number.isFinite(Number(current.q ?? current.x)) || !Number.isFinite(Number(current.r ?? current.y))) return null;
     const point = getTileScreenCenter(current, getViewport(context), getGeometry(context));
     const size = 42;
@@ -212,10 +220,12 @@
       actorId,
       missionId,
       status: actor.status || '',
-      selectedSource: actor.current ? 'current' : (actor.position ? 'position' : (actor.origin ? 'origin' : 'none')),
+      selectedSource: selected.source,
+      selectedCoord: summarizeCoord(selected.coord),
       current: summarizeCoord(actor.current),
       position: summarizeCoord(actor.position),
       origin: summarizeCoord(actor.origin),
+      target: summarizeCoord(actor.target),
       point: {
         x: Number(point.x),
         y: Number(point.y),
