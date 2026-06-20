@@ -39,12 +39,111 @@
     return row.homeOrigin || row.formation?.homeOrigin || row.origin || {};
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {}
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {}
+    return false;
+  }
+
+  function summarizeCoord(coord = null) {
+    if (!coord || typeof coord !== 'object') return null;
+    return {
+      x: coord.x ?? null,
+      y: coord.y ?? null,
+      q: coord.q ?? null,
+      r: coord.r ?? null,
+      tileId: coord.tileId || coord.id || coordKey(coord),
+    };
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      global.console?.log?.('[ActorPickingDiag]', stage, payload);
+    } catch (_) {}
+    return payload;
+  }
+
   function getProjectionKind(row = {}) {
-    if (row.status === 'active') return 'worldRoute';
-    if (row.status !== 'idle') return '';
-    if (row.rawStatus && row.rawStatus !== 'idle' && row.mode !== 'manual') return '';
+    if (row.status === 'active') {
+      logActorPickingDiag('worldActorProjection:getProjectionKind', {
+        actorId: row.id || row.actorId || row.missionId || '',
+        missionId: row.missionId || '',
+        status: row.status || '',
+        rawStatus: row.rawStatus || '',
+        mode: row.mode || '',
+        current: summarizeCoord(row.current),
+        position: summarizeCoord(row.position),
+        origin: summarizeCoord(row.origin),
+        target: summarizeCoord(row.target),
+        homeCoord: summarizeCoord(getHomeCoord(row)),
+        result: 'worldRoute',
+      });
+      return 'worldRoute';
+    }
+    if (row.status !== 'idle') {
+      logActorPickingDiag('worldActorProjection:getProjectionKind', {
+        actorId: row.id || row.actorId || row.missionId || '',
+        missionId: row.missionId || '',
+        status: row.status || '',
+        rawStatus: row.rawStatus || '',
+        mode: row.mode || '',
+        current: summarizeCoord(row.current),
+        position: summarizeCoord(row.position),
+        origin: summarizeCoord(row.origin),
+        target: summarizeCoord(row.target),
+        homeCoord: summarizeCoord(getHomeCoord(row)),
+        result: '',
+      });
+      return '';
+    }
+    if (row.rawStatus && row.rawStatus !== 'idle' && row.mode !== 'manual') {
+      logActorPickingDiag('worldActorProjection:getProjectionKind', {
+        actorId: row.id || row.actorId || row.missionId || '',
+        missionId: row.missionId || '',
+        status: row.status || '',
+        rawStatus: row.rawStatus || '',
+        mode: row.mode || '',
+        current: summarizeCoord(row.current),
+        position: summarizeCoord(row.position),
+        origin: summarizeCoord(row.origin),
+        target: summarizeCoord(row.target),
+        homeCoord: summarizeCoord(getHomeCoord(row)),
+        result: '',
+      });
+      return '';
+    }
     const current = row.current || row.position || row.target || {};
-    return isSameCoord(current, getHomeCoord(row)) ? 'garrisonedAtHome' : 'parkedAwayFromHome';
+    const homeCoord = getHomeCoord(row);
+    const result = isSameCoord(current, homeCoord) ? 'garrisonedAtHome' : 'parkedAwayFromHome';
+    logActorPickingDiag('worldActorProjection:getProjectionKind', {
+      actorId: row.id || row.actorId || row.missionId || '',
+      missionId: row.missionId || '',
+      status: row.status || '',
+      rawStatus: row.rawStatus || '',
+      mode: row.mode || '',
+      current: summarizeCoord(row.current),
+      position: summarizeCoord(row.position),
+      origin: summarizeCoord(row.origin),
+      target: summarizeCoord(row.target),
+      homeCoord: summarizeCoord(homeCoord),
+      selectedCurrentSource: row.current ? 'current' : (row.position ? 'position' : (row.target ? 'target' : 'none')),
+      result,
+    });
+    return result;
   }
 
   function shouldRenderWorldActor(row = {}) {

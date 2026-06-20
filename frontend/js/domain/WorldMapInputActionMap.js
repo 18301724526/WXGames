@@ -81,6 +81,52 @@
     return Math.floor(toNumber(value, fallback));
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {}
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {}
+    return false;
+  }
+
+  function summarizeHitTarget(target = {}, index = -1, point = null) {
+    const action = target.action || {};
+    return {
+      index,
+      kind: target.kind || '',
+      actionType: action.type || '',
+      actorId: action.actorId || '',
+      missionId: action.missionId || '',
+      siteId: action.siteId || '',
+      tileId: action.tileId || '',
+      background: Boolean(action.background),
+      x: toNumber(target.x),
+      y: toNumber(target.y),
+      width: toNumber(target.width),
+      height: toNumber(target.height),
+      containsPoint: point ? containsPoint(target, point) : undefined,
+    };
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      global.console?.log?.('[ActorPickingDiag]', stage, payload);
+    } catch (_) {}
+    return payload;
+  }
+
   function normalizeCoord(source = {}, fallback = {}) {
     if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
     const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
@@ -204,10 +250,36 @@
   }
 
   function getHitTarget(point = {}, targets = []) {
+    const targetList = Array.isArray(targets) ? targets : [];
+    const diagEnabled = isActorPickingDiagEnabled();
+    if (diagEnabled) {
+      logActorPickingDiag('inputActionMap:getHitTarget:start', {
+        point: { x: toNumber(point.x), y: toNumber(point.y) },
+        targetCount: targetList.length,
+        targets: targetList.map((target, index) => summarizeHitTarget(target, index, point)),
+        containsMatches: targetList
+          .map((target, index) => summarizeHitTarget(target, index, point))
+          .filter((target) => target.containsPoint),
+      });
+    }
     const priorityAction = getPriorityForegroundAction(point, targets);
-    if (priorityAction) return priorityAction;
+    if (priorityAction) {
+      logActorPickingDiag('inputActionMap:getHitTarget:return', {
+        reason: 'priorityAction',
+        actionType: priorityAction.type || '',
+        action: priorityAction,
+      });
+      return priorityAction;
+    }
     const resolvedCandidates = resolveForegroundCandidates(point, targets);
-    if (resolvedCandidates) return resolvedCandidates;
+    if (resolvedCandidates) {
+      logActorPickingDiag('inputActionMap:getHitTarget:return', {
+        reason: 'resolvedCandidates',
+        actionType: resolvedCandidates.type || '',
+        action: resolvedCandidates,
+      });
+      return resolvedCandidates;
+    }
     let backgroundAction = null;
     for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
       const target = targets[index];
@@ -217,11 +289,30 @@
       } else {
         if (target.action?.type === 'selectWorldActor') {
           const siteAction = getTopmostForegroundAction(point, targets, isWorldSiteAction);
-          if (siteAction) return siteAction;
+          if (siteAction) {
+            logActorPickingDiag('inputActionMap:getHitTarget:return', {
+              reason: 'siteOverridesActor',
+              actorTarget: summarizeHitTarget(target, index, point),
+              siteActionType: siteAction.type || '',
+              siteAction,
+            });
+            return siteAction;
+          }
         }
+        logActorPickingDiag('inputActionMap:getHitTarget:return', {
+          reason: 'foregroundTarget',
+          target: summarizeHitTarget(target, index, point),
+          actionType: target.action?.type || '',
+          action: target.action,
+        });
         return target.action;
       }
     }
+    logActorPickingDiag('inputActionMap:getHitTarget:return', {
+      reason: backgroundAction ? 'backgroundAction' : 'none',
+      actionType: backgroundAction?.type || '',
+      action: backgroundAction,
+    });
     return backgroundAction;
   }
 

@@ -42,6 +42,44 @@
     return Math.floor(toNumber(value, fallback));
   }
 
+  function isActorPickingDiagEnabled() {
+    if (global.__actorPickingDiag === true) return true;
+    try {
+      const params = new URL(global.location?.href || '').searchParams;
+      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
+      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
+    } catch (_) {}
+    try {
+      const value = global.localStorage?.getItem?.('actorPickingDiag');
+      return value === '1' || value === 'true' || value === 'on';
+    } catch (_) {}
+    return false;
+  }
+
+  function summarizeCoord(coord = null) {
+    if (!coord || typeof coord !== 'object') return null;
+    return {
+      x: coord.x ?? null,
+      y: coord.y ?? null,
+      q: coord.q ?? null,
+      r: coord.r ?? null,
+      tileId: coord.tileId || coord.id || '',
+    };
+  }
+
+  function logActorPickingDiag(stage = '', detail = {}) {
+    if (!isActorPickingDiagEnabled()) return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      global.console?.log?.('[ActorPickingDiag]', stage, payload);
+    } catch (_) {}
+    return payload;
+  }
+
   function normalizeCoord(source = {}, fallback = {}) {
     if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
     const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
@@ -170,6 +208,25 @@
     const actorId = actor.id || actor.actorId || actor.missionId || '';
     const missionId = actor.missionId || actor.id || '';
     if (!actorId && !missionId) return null;
+    logActorPickingDiag('pickingModel:createActorTarget', {
+      actorId,
+      missionId,
+      status: actor.status || '',
+      selectedSource: actor.current ? 'current' : (actor.position ? 'position' : (actor.origin ? 'origin' : 'none')),
+      current: summarizeCoord(actor.current),
+      position: summarizeCoord(actor.position),
+      origin: summarizeCoord(actor.origin),
+      point: {
+        x: Number(point.x),
+        y: Number(point.y),
+      },
+      targetBox: {
+        x: point.x - size / 2,
+        y: point.y - size / 2 - 16,
+        width: size,
+        height: size,
+      },
+    });
     return {
       x: point.x - size / 2,
       y: point.y - size / 2 - 16,
