@@ -114,14 +114,32 @@
 
     sides.forEach((sideDef, sideIndex) => {
       const generals = Array.isArray(sideDef.generals) ? sideDef.generals : [];
-      generals.forEach((g) => {
+      generals.forEach((g, gi) => {
         const gid = String(g.gid);
         const gStats = g.stats || {};
-        const spreadH = arena.h;
-        // General anchors near its side's edge; soldiers cluster behind/around it.
-        const baseX = sideIndex === 0 ? arena.w * 0.12 : arena.w * 0.88;
-        const baseY = (rng() * 0.8 + 0.1) * spreadH;
-        const general = makeUnit(units.length, sideIndex, gid, 'general', baseX, baseY, gStats);
+        const troop = g.troop || {};
+        const count = Math.max(0, Math.floor(toNum(troop.count, 0)));
+        const tpl = troop.template || {};
+        // Tidy starting formation: each general owns a vertical band; soldiers line
+        // up in files (across) and ranks (depth), general anchored at the home edge.
+        const bandH = arena.h / Math.max(1, generals.length);
+        const bandCenterY = bandH * (gi + 0.5);
+        const dir = sideIndex === 0 ? 1 : -1; // toward the enemy
+        const homeX = sideIndex === 0 ? arena.w * 0.05 : arena.w * 0.95;
+        const frontX = sideIndex === 0 ? arena.w * 0.3 : arena.w * 0.7;
+        const files = Math.max(1, Math.round(Math.sqrt(count * 2.2)));
+        const ranks = Math.max(1, Math.ceil(count / files));
+        const fileGap = Math.min((bandH * 0.9) / files, 12);
+        const rankGap = Math.min((Math.abs(frontX - homeX) * 0.8) / ranks, 9);
+        const general = makeUnit(
+          units.length,
+          sideIndex,
+          gid,
+          'general',
+          homeX,
+          bandCenterY,
+          gStats,
+        );
         units.push(general);
         squads[gid] = {
           gid,
@@ -133,16 +151,11 @@
           leaderAlive: true,
           damageMult: 1,
         };
-        const troop = g.troop || {};
-        const count = Math.max(0, Math.floor(toNum(troop.count, 0)));
-        const tpl = troop.template || {};
         for (let i = 0; i < count; i += 1) {
-          const jitterX = (rng() - 0.5) * arena.w * 0.18;
-          const x =
-            sideIndex === 0
-              ? arena.w * 0.06 + Math.abs(jitterX)
-              : arena.w * 0.94 - Math.abs(jitterX);
-          const y = (rng() * 0.9 + 0.05) * spreadH;
+          const rank = Math.floor(i / files);
+          const file = i % files;
+          const x = frontX - dir * rank * rankGap;
+          const y = bandCenterY + (file - (files - 1) / 2) * fileGap;
           const soldier = makeUnit(units.length, sideIndex, gid, 'soldier', x, y, tpl);
           units.push(soldier);
           squads[gid].soldierIds.push(soldier.id);
