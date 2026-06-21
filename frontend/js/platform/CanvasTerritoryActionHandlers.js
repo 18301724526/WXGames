@@ -561,17 +561,16 @@
           if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
           return this.runAction(() => this.host.api.startWorldMarch(options));
         };
-        return this.finalize(Promise.resolve(run()).then((result) => {
-          if (result !== false) {
-            const uiState = this.getSharedTerritoryUiState();
-            uiState.worldMarchTarget = null;
-            uiState.selectedWorldActorId = '';
-            uiState.worldTargetPicker = null;
-            this.refreshWorldMarchLayer(action);
-            this.refreshWorldMarchTutorialHighlight();
-          }
-          return result !== false;
-        }));
+        const result = run();
+        if (result !== false) {
+          const uiState = this.getSharedTerritoryUiState();
+          uiState.worldMarchTarget = null;
+          uiState.selectedWorldActorId = '';
+          uiState.worldTargetPicker = null;
+          this.refreshWorldMarchLayer(action);
+          this.refreshWorldMarchTutorialHighlight();
+        }
+        return this.finalize(Promise.resolve(result).then((value) => value !== false));
       },
 
       handle_returnWorldMarch(action, meta = {}) {
@@ -583,15 +582,14 @@
           if (typeof game?.returnWorldMarch === 'function') return game.returnWorldMarch(missionId, options);
           return this.runAction(() => this.host.api.returnWorldMarch(missionId, options));
         };
-        return this.finalize(Promise.resolve(run()).then((result) => {
-          if (result !== false) {
-            this.getSharedTerritoryUiState().selectedWorldActorId = '';
-            this.getSharedTerritoryUiState().worldTargetPicker = null;
-            this.refreshWorldMarchLayer(action);
-            this.refreshWorldMarchTutorialHighlight();
-          }
-          return result !== false;
-        }));
+        const result = run();
+        if (result !== false) {
+          this.getSharedTerritoryUiState().selectedWorldActorId = '';
+          this.getSharedTerritoryUiState().worldTargetPicker = null;
+          this.refreshWorldMarchLayer(action);
+          this.refreshWorldMarchTutorialHighlight();
+        }
+        return this.finalize(Promise.resolve(result).then((value) => value !== false));
       },
 
       handle_stopWorldMarch(action, meta = {}) {

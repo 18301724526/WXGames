@@ -3,7 +3,7 @@
   if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
     try {
       SharedWorldClock = require('../domain/WorldClock');
-    } catch (error) {
+    } catch (_error) {
       SharedWorldClock = null;
     }
   }
@@ -11,8 +11,16 @@
   if (typeof module !== 'undefined' && module.exports && !TutorialGuideControllerBase) {
     try {
       TutorialGuideControllerBase = require('../tutorial/TutorialGuideController');
-    } catch (error) {
+    } catch (_error) {
       TutorialGuideControllerBase = null;
+    }
+  }
+  var WorldMarchOptimisticState = global.WorldMarchOptimisticState;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchOptimisticState) {
+    try {
+      WorldMarchOptimisticState = require('../domain/WorldMarchOptimisticState');
+    } catch (_error) {
+      WorldMarchOptimisticState = null;
     }
   }
   function install(CanvasGameApp) {
@@ -28,7 +36,9 @@
               payload: global.WorldMarchTrace?.summarizeApiPayload?.(payload) || null,
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
-            const nextState = payload.gameState || payload.state || this.state;
+            const rawNextState = payload.gameState || payload.state || this.state;
+            const nextState = WorldMarchOptimisticState?.reconcileState?.(this, rawNextState, { source: 'applyState' })
+              || rawNextState;
             const payloadWorldMap = global.CodexWorldMapDiag?.summarizeWorldMap?.(payload) || null;
             const nextStateSummary = global.CodexWorldMapDiag?.summarizeState?.(nextState) || null;
             global.CodexWorldMapDiag?.logChanged?.('state:applyState:input', {
@@ -148,15 +158,17 @@
               tutorial,
               eraProgress,
             });
+            const reconciledServerState = WorldMarchOptimisticState?.reconcileState?.(this, serverState, { source: 'syncFromServer' })
+              || serverState;
             const loadTrace = global.H5LoadTrace;
             loadTrace?.mark?.('state:syncFromServer:start', {
               payload: loadTrace.summarizePayload?.({ gameState: serverState }) || null,
             });
             global.WorldMarchTrace?.log?.('app:syncFromServer:input', {
-              server: global.WorldMarchTrace?.summarizeWorldExplorerState?.(serverState?.worldExplorerState),
+              server: global.WorldMarchTrace?.summarizeWorldExplorerState?.(reconciledServerState?.worldExplorerState),
               before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
-            const serverStateSummary = global.CodexWorldMapDiag?.summarizeState?.(serverState) || null;
+            const serverStateSummary = global.CodexWorldMapDiag?.summarizeState?.(reconciledServerState) || null;
             const beforeStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
             global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:input', {
               serverTileCount: serverStateSummary?.worldMap?.tileCount || 0,
@@ -171,7 +183,7 @@
             });
             const localTab = this.getActiveTab();
             const localMilitaryView = this.state?.militaryView || this.militaryView || 'army';
-            const homeView = this.resolveMapHomeViewState(serverState, {
+            const homeView = this.resolveMapHomeViewState(reconciledServerState, {
               requestedTab: localTab,
               militaryView: localMilitaryView,
               forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
@@ -185,12 +197,12 @@
               };
             }
             this.state = this.stateManager?.sync
-              ? this.stateManager.sync(serverState, eraProgress)
+              ? this.stateManager.sync(reconciledServerState, eraProgress)
               : {
-                ...serverState,
+                ...reconciledServerState,
                 currentTab: homeView.activeTab,
                 militaryView: homeView.militaryView,
-                eraProgress: eraProgress ?? serverState?.eraProgress,
+                eraProgress: eraProgress ?? reconciledServerState?.eraProgress,
               };
             const syncedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
             global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:afterSync', {

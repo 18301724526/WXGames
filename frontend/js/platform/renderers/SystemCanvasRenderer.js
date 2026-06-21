@@ -316,7 +316,7 @@
         bold: true,
         color: '#ffe6b5',
       });
-      this.drawText('正在重连中', x + 76, y + 54, {
+      this.drawText(network.message || '正在重连中', x + 76, y + 54, {
         size: 12,
         color: '#cbbd96',
       });

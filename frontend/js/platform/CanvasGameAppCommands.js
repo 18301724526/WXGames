@@ -1,4 +1,13 @@
 (function (global) {
+  var WorldMarchOptimisticState = global.WorldMarchOptimisticState;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchOptimisticState) {
+    try {
+      WorldMarchOptimisticState = require('../domain/WorldMarchOptimisticState');
+    } catch (_error) {
+      WorldMarchOptimisticState = null;
+    }
+  }
+
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -553,6 +562,7 @@
           },
 
       async startWorldMarch(options = {}) {
+            let optimistic = null;
             try {
               const trace = global.WorldMarchTrace;
               trace?.log?.('app:startWorldMarch:begin', {
@@ -564,12 +574,14 @@
                 },
                 before: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
+              optimistic = WorldMarchOptimisticState?.beginStart?.(this, { ...options, mode: 'manual' }) || null;
               const api = this.getGameApi();
               const result = await api.startWorldMarch({ ...options, mode: 'manual' });
               trace?.log?.('app:startWorldMarch:apiResult', {
                 result: trace.summarizeApiPayload?.(result) || result,
               });
               this.applyApiState(result);
+              WorldMarchOptimisticState?.complete?.(this, optimistic || result?.mission?.id || '');
               trace?.log?.('app:startWorldMarch:afterApply', {
                 after: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
@@ -592,6 +604,7 @@
                 message: error.payload?.message || error.message,
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
+              WorldMarchOptimisticState?.rollback?.(this, optimistic || '', { render: false });
               this.log(`March failed: ${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
@@ -600,14 +613,17 @@
 
       async returnWorldMarch(missionId, options = {}) {
             if (!missionId) return false;
+            let optimistic = null;
             try {
               global.WorldMarchTrace?.log?.('app:returnWorldMarch:begin', {
                 missionId,
                 before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
+              optimistic = WorldMarchOptimisticState?.beginReturn?.(this, missionId, options) || null;
               const api = this.getGameApi();
               const result = await api.returnWorldMarch(missionId, options);
               this.applyApiState(result);
+              WorldMarchOptimisticState?.complete?.(this, optimistic || missionId);
               global.WorldMarchTrace?.log?.('app:returnWorldMarch:afterApply', {
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
                 after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
@@ -621,6 +637,7 @@
                 message: error.payload?.message || error.message,
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
+              WorldMarchOptimisticState?.rollback?.(this, optimistic || missionId, { render: false });
               this.log(`Return failed: ${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
@@ -656,11 +673,11 @@
             }
           },
 
-      async claimGuideTaskReward(taskId) {
+      async claimGuideTaskReward(_taskId) {
             return false;
           },
 
-      async claimTaskReward(taskId, category = 'main', options = {}) {
+      async claimTaskReward(taskId, category = 'main', _options = {}) {
             if (!taskId) return false;
             try {
               const api = this.getGameApi();

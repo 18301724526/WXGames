@@ -53,6 +53,25 @@ test('html and minigame entries load CanvasGameApp modules before the facade', (
     assert.equal(htmlPosition < facadeHtmlPosition, true, `${moduleName}.js should load before CanvasGameApp.js`);
     assert.equal(minigamePosition < facadeMinigamePosition, true, `${moduleName} should require before CanvasGameApp`);
   });
+
+  const optimisticHtmlPosition = html.indexOf('WorldMarchOptimisticState.js');
+  const optimisticMinigamePosition = minigame.indexOf("require('../js/domain/WorldMarchOptimisticState')");
+  const syncHtmlPosition = html.indexOf('CanvasGameAppStateSync.js');
+  const syncMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppStateSync')");
+  const commandsHtmlPosition = html.indexOf('CanvasGameAppCommands.js');
+  const commandsMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppCommands')");
+  assert.notEqual(optimisticHtmlPosition, -1, 'WorldMarchOptimisticState.js should be loaded by index.html');
+  assert.notEqual(optimisticMinigamePosition, -1, 'WorldMarchOptimisticState should be required by minigame/game.js');
+  assert.equal(
+    optimisticHtmlPosition < syncHtmlPosition && optimisticHtmlPosition < commandsHtmlPosition,
+    true,
+    'WorldMarchOptimisticState.js should load before CanvasGameApp state/command modules',
+  );
+  assert.equal(
+    optimisticMinigamePosition < syncMinigamePosition && optimisticMinigamePosition < commandsMinigamePosition,
+    true,
+    'WorldMarchOptimisticState should require before CanvasGameApp state/command modules',
+  );
 });
 
 test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
@@ -335,6 +354,60 @@ test('CanvasGameApp does not preserve canvas when runtime hit targets are preser
     ['runtimeRender'],
     ['render', false, false, true],
   ]);
+});
+
+test('CanvasGameApp rolls back optimistic world march after start rejection', async () => {
+  class Host {}
+  CanvasGameAppCommands.install(Host);
+  const calls = [];
+  const host = new Host();
+  const initialExplorer = {
+    missions: [],
+    activeMission: null,
+    idleMissions: [],
+    maxManualRouteLength: 8,
+    stepDurationSeconds: 10,
+  };
+  Object.assign(host, {
+    state: {
+      activeCityId: 'capital',
+      currentTab: 'military',
+      worldExplorerState: initialExplorer,
+      territoryState: {
+        worldMap: { origin: { q: 0, r: 0 }, tiles: [{ q: 0, r: 0, siteId: 'capital' }] },
+        territories: [{ id: 'capital', q: 0, r: 0 }],
+      },
+    },
+    config: {},
+    getWorldEpochNowMs() {
+      return Date.parse('2026-06-21T00:00:00.000Z');
+    },
+    getGameApi() {
+      return {
+        async startWorldMarch() {
+          calls.push(['api:startWorldMarch', host.state.worldExplorerState.activeMission?.id || '']);
+          const error = new Error('busy');
+          error.payload = { success: false, error: 'EXPLORE_FORMATION_BUSY', message: 'busy' };
+          throw error;
+        },
+      };
+    },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab, this.state.worldExplorerState.activeMission?.status || 'none']);
+    },
+    updateWorldActorAnimationLoop(options) {
+      calls.push(['updateWorldActorAnimationLoop', options.state.worldExplorerState.activeMission?.status || 'none']);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  assert.equal(await host.startWorldMarch({ targetQ: 2, targetR: 0, formationSlot: 1 }), false);
+
+  assert.equal(calls.some((call) => call[0] === 'api:startWorldMarch' && call[1].startsWith('optimistic_manual_')), true);
+  assert.equal(calls.some((call) => call[0] === 'renderCanvasSurface' && call[2] === 'active'), true);
+  assert.deepEqual(host.state.worldExplorerState, initialExplorer);
 });
 
 test('CanvasGameApp routes active march animation to actor loop instead of map water timer redraw', () => {

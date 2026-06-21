@@ -224,6 +224,65 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
   ]);
 });
 
+test('CanvasTerritoryActionHandlers refreshes world march UI before start command resolves', async () => {
+  const calls = [];
+  let resolveStart = null;
+  const startPromise = new Promise((resolve) => {
+    resolveStart = resolve;
+  });
+  const game = {
+    territoryUiState: {
+      worldMarchTarget: { q: 4, r: -2, tileId: 'tile_4_-2', pickerOpen: true },
+    },
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options.targetQ, options.targetR]);
+      return startPromise;
+    },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    runtime: {
+      setTimeout(callback) {
+        calls.push(['setTimeout']);
+        callback?.();
+      },
+    },
+  };
+  const host = {
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['refreshWorldMap', options.force]);
+    },
+  };
+  const controller = new HostController(host);
+
+  const handled = controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 4,
+    targetR: -2,
+  });
+
+  assert.equal(host.territoryUiState.worldMarchTarget, null);
+  assert.deepEqual(calls, [
+    ['startWorldMarch', 4, -2],
+    ['render', 'startWorldMarch'],
+    ['refreshWorldMap', true],
+    ['refreshCurrentHighlight'],
+    ['setTimeout'],
+    ['refreshCurrentHighlight'],
+  ]);
+
+  resolveStart(true);
+  assert.equal(await handled, true);
+});
+
 test('CanvasTerritoryActionHandlers opens and resolves world target picker candidates', () => {
   const calls = [];
   const host = {

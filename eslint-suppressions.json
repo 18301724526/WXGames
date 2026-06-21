@@ -215,7 +215,7 @@
       "count": 1
     },
     "no-unused-vars": {
-      "count": 11
+      "count": 9
     }
   },
   "frontend/js/platform/CanvasGameAppGuideUi.js": {
@@ -226,11 +226,6 @@
   "frontend/js/platform/CanvasGameAppInputRouter.js": {
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameAppStateSync.js": {
-    "no-unused-vars": {
-      "count": 2
     }
   },
   "frontend/js/platform/CanvasGameRenderer.js": {

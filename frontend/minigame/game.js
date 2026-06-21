@@ -12,6 +12,7 @@ require('../js/domain/TileMapGeometry');
 require('../js/domain/WorldClock');
 require('../js/domain/WorldTime');
 require('../js/domain/WorldMarchProgressSnapshot');
+require('../js/domain/WorldMarchOptimisticState');
 require('../js/domain/WorldActorProjection');
 require('../js/domain/WorldMarchGeometry');
 require('../js/domain/WorldMarchSystem');
