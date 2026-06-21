@@ -46,6 +46,7 @@
       <label><input id="sprite" type="checkbox" checked /> 真实精灵</label>
       <label><input id="prescale" type="checkbox" /> 预缩放</label>
       <label><input id="grid" type="checkbox" checked /> 空间网格</label>
+      <label><input id="sticky" type="checkbox" checked /> 目标粘性</label>
       <label><input id="immortal" type="checkbox" checked /> 不死(固定人数)</label>
       <label><input id="capDpr" type="checkbox" /> 限 DPR=1</label>
     </div>
@@ -131,7 +132,7 @@
       var prescaleBuilt = false;
 
       // ---- config / state ----
-      var cfg = { perSide: 200, render: true, sprite: true, prescale: false, grid: true, immortal: true, capDpr: false };
+      var cfg = { perSide: 200, render: true, sprite: true, prescale: false, grid: true, sticky: true, immortal: true, capDpr: false };
       var agents = [], totalSpawned = 0, running = false, W = 0, H = 0, dpr = 1;
       var TICK_HZ = 20, TICK_DT = 1 / TICK_HZ;
       var SPEED = 28, ATK_RANGE = 11, ATK_RANGE2 = ATK_RANGE * ATK_RANGE;
@@ -153,7 +154,7 @@
             agents.push({
               x: s === 0 ? Math.random() * W * 0.25 : W - Math.random() * W * 0.25,
               y: Math.random() * H, side: s, hp: HP0, cd: Math.random() * ATK_CD,
-              alive: true, pose: 'move', phase: (Math.random() * FRAMES) | 0,
+              alive: true, pose: 'move', phase: (Math.random() * FRAMES) | 0, target: null,
             });
           }
         }
@@ -210,7 +211,13 @@
         if (cfg.grid) buildGrid();
         for (var i = 0; i < agents.length; i++) {
           var a = agents[i]; if (!a.alive) continue;
-          var t = cfg.grid ? findGrid(a) : findBrute(a);
+          var t;
+          if (cfg.sticky) {
+            if (!a.target || !a.target.alive) a.target = cfg.grid ? findGrid(a) : findBrute(a);
+            t = a.target;
+          } else {
+            t = cfg.grid ? findGrid(a) : findBrute(a);
+          }
           if (!t) { a.pose = 'idle'; continue; }
           var dx = t.x - a.x, dy = t.y - a.y, d2 = dx * dx + dy * dy;
           if (d2 <= ATK_RANGE2) {
@@ -278,7 +285,7 @@
       function readCfg() {
         cfg.perSide = Math.max(1, parseInt($('perSide').value, 10) || 1);
         cfg.render = $('render').checked; cfg.sprite = $('sprite').checked; cfg.prescale = $('prescale').checked;
-        cfg.grid = $('grid').checked; cfg.immortal = $('immortal').checked; cfg.capDpr = $('capDpr').checked;
+        cfg.grid = $('grid').checked; cfg.sticky = $('sticky').checked; cfg.immortal = $('immortal').checked; cfg.capDpr = $('capDpr').checked;
       }
       function start() {
         readCfg(); resize(); spawn(cfg.perSide);
@@ -319,7 +326,7 @@
       $('start').addEventListener('click', start);
       $('stop').addEventListener('click', stop);
       $('sweep-btn').addEventListener('click', startSweep);
-      ['render', 'sprite', 'prescale', 'grid', 'immortal', 'capDpr'].forEach(function (id) {
+      ['render', 'sprite', 'prescale', 'grid', 'sticky', 'immortal', 'capDpr'].forEach(function (id) {
         $(id).addEventListener('change', function () { readCfg(); if (id === 'capDpr') resize(); });
       });
 
