@@ -129,3 +129,60 @@ test('skill input entries are accepted by the stream but ignored for now', () =>
   const b = createBattle(setup({}));
   assert.strictEqual(applyInput(b, { type: 'skill', side: 0, gid: 'L1', skillId: 'x' }), false);
 });
+
+// ---- step 2: per-kind order behaviors ----
+// Far-apart, immortal-ish stats so movement is observable without anyone dying.
+function squadOrderBattle(order) {
+  const b = createBattle(setup({ lSold: 4, lHp: 99999, rHp: 99999, lAtk: 1, rAtk: 1 }));
+  // Enemy holds so it does not charge across and spoil the observation.
+  assert.ok(applyInput(b, { type: 'order', gid: 'R1', order: 'defend' }), 'enemy holds');
+  assert.ok(applyInput(b, { type: 'order', gid: 'L1', order }), 'order accepted');
+  return b;
+}
+function firstSoldier(b) {
+  return b.units.find((u) => u.side === 0 && u.kind === 'soldier');
+}
+
+test('士兵出击: soldiers advance, general holds the rear', () => {
+  const b = squadOrderBattle('soldierAttack');
+  const gen = b.units[0];
+  const gx0 = gen.x;
+  const sol = firstSoldier(b);
+  const sx0 = sol.x;
+  for (let i = 0; i < 30; i += 1) step(b, null);
+  assert.ok(sol.x > sx0 + 5, 'soldier pushed toward the enemy');
+  assert.ok(Math.abs(gen.x - gx0) < 2, 'general stayed at the rear');
+});
+
+test('武将出击: general charges, soldiers stand guard', () => {
+  const b = squadOrderBattle('generalCharge');
+  const gen = b.units[0];
+  const gx0 = gen.x;
+  const sol = firstSoldier(b);
+  const sx0 = sol.x;
+  for (let i = 0; i < 30; i += 1) step(b, null);
+  assert.ok(gen.x > gx0 + 5, 'general charged toward the enemy');
+  assert.ok(Math.abs(sol.x - sx0) < 2, 'soldiers held position');
+});
+
+test('武将后退: general pulls back but stays on field, soldiers cover', () => {
+  const b = squadOrderBattle('generalRetreat');
+  const gen = b.units[0];
+  const gx0 = gen.x;
+  for (let i = 0; i < 30; i += 1) step(b, null);
+  assert.ok(gen.x < gx0 - 2, 'general moved back toward home edge');
+  assert.strictEqual(gen.left, false, 'general did not leave the field');
+  const covering = b.units.some(
+    (u) => u.side === 0 && u.kind === 'soldier' && u.state === 'covering',
+  );
+  assert.ok(covering, 'soldiers entered cover');
+});
+
+test('掩护: soldiers screen the general', () => {
+  const b = squadOrderBattle('cover');
+  for (let i = 0; i < 20; i += 1) step(b, null);
+  const covering = b.units.some(
+    (u) => u.side === 0 && u.kind === 'soldier' && u.state === 'covering',
+  );
+  assert.ok(covering, 'soldiers are covering the general');
+});

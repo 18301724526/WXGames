@@ -17,6 +17,7 @@ const STATE = Object.freeze({
   ADVANCE: 'advance',
   ENGAGE: 'engage',
   HOLD: 'hold',
+  COVER: 'covering',
   RETREAT: 'retreat',
   DEAD: 'dead',
 });
@@ -26,6 +27,7 @@ const STATE = Object.freeze({
 // the rest are registered as aliases so they exist and can be filled in later.
 const ORDER = Object.freeze({
   ADVANCE: 'advance', // push forward and engage (default)
+  SOLDIER_ATTACK: 'soldierAttack', // soldiers push, general holds the rear
   DEFEND: 'defend', // hold position, only strike enemies in range
   COVER: 'cover', // screen the general (step 2)
   GENERAL_CHARGE: 'generalCharge', // general charges in (step 2)
@@ -223,20 +225,44 @@ function acquireTarget(battle, u, g) {
   return best;
 }
 
-// ---- order behaviors (extension point: register one handler per order) ----
-// Returns an intent: { engage, advance, retreat }.
+// ---- order behaviors (extension point: register one kind-aware handler) ----
+// Each handler returns an intent: { engage, pursue, fallback, leaveField }.
+//   engage:     acquire/keep a target and attack when in range
+//   pursue:     when engaging and target out of range, advance toward it
+//   fallback:   movement when not attacking — 'enemyEdge' | 'homeEdge' | 'screen' | null
+//   leaveField: when moving to the home edge, leave the field on crossing it
+function intentAdvance() {
+  return { engage: true, pursue: true, fallback: 'enemyEdge', leaveField: false };
+}
+function intentDefend() {
+  return { engage: true, pursue: false, fallback: null, leaveField: false };
+}
+function intentRetreat(leaveField) {
+  return { engage: false, pursue: false, fallback: 'homeEdge', leaveField: leaveField };
+}
+function intentCover() {
+  return { engage: true, pursue: false, fallback: 'screen', leaveField: false };
+}
+
 const ORDER_BEHAVIORS = Object.create(null);
-ORDER_BEHAVIORS[ORDER.ADVANCE] = () => ({ engage: true, advance: true, retreat: false });
-ORDER_BEHAVIORS[ORDER.DEFEND] = () => ({ engage: true, advance: false, retreat: false });
-ORDER_BEHAVIORS[ORDER.ALL_OUT] = () => ({ engage: true, advance: true, retreat: false });
-ORDER_BEHAVIORS[ORDER.ALL_RETREAT] = () => ({ engage: false, advance: false, retreat: true });
-// Step-2 orders registered as advance for now so they exist and can be refined.
-ORDER_BEHAVIORS[ORDER.COVER] = ORDER_BEHAVIORS[ORDER.ADVANCE];
-ORDER_BEHAVIORS[ORDER.GENERAL_CHARGE] = ORDER_BEHAVIORS[ORDER.ADVANCE];
-ORDER_BEHAVIORS[ORDER.GENERAL_RETREAT] = ORDER_BEHAVIORS[ORDER.ADVANCE];
+ORDER_BEHAVIORS[ORDER.ADVANCE] = () => intentAdvance();
+ORDER_BEHAVIORS[ORDER.ALL_OUT] = () => intentAdvance();
+ORDER_BEHAVIORS[ORDER.DEFEND] = () => intentDefend();
+ORDER_BEHAVIORS[ORDER.ALL_RETREAT] = () => intentRetreat(true);
+// 士兵出击: soldiers push, general holds the rear.
+ORDER_BEHAVIORS[ORDER.SOLDIER_ATTACK] = (u) =>
+  u.kind === 'soldier' ? intentAdvance() : intentDefend();
+// 武将出击: general charges in, soldiers stand guard.
+ORDER_BEHAVIORS[ORDER.GENERAL_CHARGE] = (u) =>
+  u.kind === 'general' ? intentAdvance() : intentDefend();
+// 武将后退: general pulls back (stays on field), soldiers cover.
+ORDER_BEHAVIORS[ORDER.GENERAL_RETREAT] = (u) =>
+  u.kind === 'general' ? intentRetreat(false) : intentCover();
+// 掩护: soldiers screen the general, general holds.
+ORDER_BEHAVIORS[ORDER.COVER] = (u) => (u.kind === 'soldier' ? intentCover() : intentDefend());
 
 function resolveIntent(u, squad) {
-  if (u.routed) return { engage: false, advance: false, retreat: true };
+  if (u.routed) return intentRetreat(true);
   const handler = ORDER_BEHAVIORS[squad.order] || ORDER_BEHAVIORS[ORDER.ADVANCE];
   return handler(u, squad);
 }
@@ -282,6 +308,20 @@ function homeEdgeX(battle, side) {
   return side === 0 ? -battle.config.edgeMargin : battle.arena.w + battle.config.edgeMargin;
 }
 
+// Covering soldiers position between their general and the nearest threat to it.
+function screenPoint(battle, squad, g) {
+  const gen = battle.units[squad.generalId];
+  if (!gen || !gen.alive || gen.left) return null;
+  const enemyIdx = acquireTarget(battle, gen, g);
+  if (enemyIdx < 0) return { x: gen.x, y: gen.y };
+  const e = battle.units[enemyIdx];
+  const dx = e.x - gen.x;
+  const dy = e.y - gen.y;
+  const d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const screenDist = battle.config.aggroRange * 0.5;
+  return { x: gen.x + (dx / d) * screenDist, y: gen.y + (dy / d) * screenDist };
+}
+
 function step(battle, inputs) {
   if (battle.result) return battle.result;
   const cfg = battle.config;
@@ -299,7 +339,6 @@ function step(battle, inputs) {
   const cell = Math.max(16, cfg.aggroRange);
   const g = buildGrid(battle, cell);
   const units = battle.units;
-  const aggro2 = cfg.aggroRange * cfg.aggroRange;
   const deadGenerals = [];
 
   for (let i = 0; i < units.length; i += 1) {
@@ -307,58 +346,72 @@ function step(battle, inputs) {
     if (!u.alive || u.left) continue;
     const sq = battle.squads[u.gid];
     const intent = resolveIntent(u, sq);
+    const sp = u.moveSpeed * (1 / cfg.tickHz);
 
-    if (intent.retreat) {
+    // 1) engage: attack a target in range, or pursue it.
+    if (intent.engage) {
+      let target = u.targetId >= 0 ? units[u.targetId] : null;
+      if (!target || !target.alive || target.left) {
+        u.targetId = acquireTarget(battle, u, g);
+        target = u.targetId >= 0 ? units[u.targetId] : null;
+      }
+      if (target) {
+        const dx = target.x - u.x;
+        const dy = target.y - u.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= u.range * u.range) {
+          u.state = STATE.ENGAGE;
+          if (u.atkCd > 0) {
+            u.atkCd -= 1;
+          } else {
+            u.atkCd = u.atkInterval;
+            const dmg = Math.max(1, Math.round(u.atk * sq.damageMult - target.def * 0.5));
+            target.hp -= dmg;
+            u.rage += cfg.rageOnHit; // reserved for skills
+            if (target.hp <= 0 && target.alive) {
+              target.alive = false;
+              target.state = STATE.DEAD;
+              if (target.kind === 'general') deadGenerals.push(target);
+            }
+          }
+          continue;
+        }
+        if (intent.pursue) {
+          const d = Math.sqrt(d2) || 1;
+          u.x += (dx / d) * sp;
+          u.y += (dy / d) * sp;
+          u.state = STATE.ADVANCE;
+          continue;
+        }
+        // engaging but not pursuing: fall through to fallback movement.
+      }
+    }
+
+    // 2) fallback movement when not attacking/pursuing.
+    if (intent.fallback === 'enemyEdge') {
+      u.state = STATE.ADVANCE;
+      u.x += (u.side === 0 ? 1 : -1) * sp;
+    } else if (intent.fallback === 'homeEdge') {
       u.state = STATE.RETREAT;
       const ex = homeEdgeX(battle, u.side);
-      const dx = ex - u.x;
-      const step = Math.sign(dx) * u.moveSpeed * (1 / cfg.tickHz);
-      u.x += step;
-      if ((u.side === 0 && u.x <= ex) || (u.side === 1 && u.x >= ex)) u.left = true;
-      continue;
-    }
-
-    let target = u.targetId >= 0 ? units[u.targetId] : null;
-    if (intent.engage && (!target || !target.alive || target.left)) {
-      u.targetId = acquireTarget(battle, u, g);
-      target = u.targetId >= 0 ? units[u.targetId] : null;
-    }
-
-    if (target) {
-      const dx = target.x - u.x;
-      const dy = target.y - u.y;
-      const d2 = dx * dx + dy * dy;
-      const reach = (u.range + 0) * (u.range + 0);
-      if (d2 <= reach) {
-        u.state = STATE.ENGAGE;
-        if (u.atkCd > 0) {
-          u.atkCd -= 1;
-        } else {
-          u.atkCd = u.atkInterval;
-          const mult = sq.damageMult;
-          const dmg = Math.max(1, Math.round(u.atk * mult - target.def * 0.5));
-          target.hp -= dmg;
-          u.rage += cfg.rageOnHit; // reserved
-          if (target.hp <= 0 && target.alive) {
-            target.alive = false;
-            target.state = STATE.DEAD;
-            if (target.kind === 'general') deadGenerals.push(target);
-          }
+      u.x += Math.sign(ex - u.x) * sp;
+      if (intent.leaveField && ((u.side === 0 && u.x <= ex) || (u.side === 1 && u.x >= ex))) {
+        u.left = true;
+      }
+    } else if (intent.fallback === 'screen') {
+      const p = screenPoint(battle, sq, g);
+      if (p) {
+        const dx = p.x - u.x;
+        const dy = p.y - u.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d > 1) {
+          u.x += (dx / d) * sp;
+          u.y += (dy / d) * sp;
         }
-      } else if (intent.advance || d2 <= aggro2) {
-        u.state = STATE.ADVANCE;
-        const d = Math.sqrt(d2) || 1;
-        const sp = u.moveSpeed * (1 / cfg.tickHz);
-        u.x += (dx / d) * sp;
-        u.y += (dy / d) * sp;
+        u.state = STATE.COVER;
       } else {
         u.state = STATE.HOLD;
       }
-    } else if (intent.advance) {
-      // No target yet: walk toward the enemy edge.
-      u.state = STATE.ADVANCE;
-      const dir = u.side === 0 ? 1 : -1;
-      u.x += dir * u.moveSpeed * (1 / cfg.tickHz);
     } else {
       u.state = STATE.HOLD;
     }
