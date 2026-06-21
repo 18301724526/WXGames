@@ -103,12 +103,7 @@
 
   function normalizeTileCoord(tile = {}, options = {}) {
     if (WorldTopology?.normalizeCoord) return WorldTopology.normalizeCoord(tile, options);
-    const coord = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord(tile)
-      : {
-        x: toInteger(tile.x ?? tile.q, 0),
-        y: toInteger(tile.y ?? tile.r, 0),
-      };
+    const coord = TileCoord.normalizeCoord(tile);
     const world = normalizeWorldSize(options);
     const x = world.wrapping ? modulo(coord.x, world.width) : coord.x;
     const y = world.wrapping ? modulo(coord.y, world.height) : coord.y;
@@ -117,7 +112,7 @@
       y,
       q: x,
       r: y,
-      tileId: TileCoord?.tileId ? TileCoord.tileId(x, y) : `tile_${x}_${y}`,
+      tileId: TileCoord.tileId(x, y),
     });
   }
 

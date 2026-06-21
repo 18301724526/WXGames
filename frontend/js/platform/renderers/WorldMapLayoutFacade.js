@@ -1,4 +1,16 @@
 (function (global) {
+  const TileCoord = (() => {
+    if (global.TileCoord) return global.TileCoord;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/TileCoord');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SignatureHash = (() => {
     if (global.SignatureHash) return global.SignatureHash;
     if (typeof module !== 'undefined' && module.exports) {
@@ -59,19 +71,7 @@
     normalizeTileCoord(tile = {}) {
       const helper = this.getTileMapGeometry();
       if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
-      const toInteger = (value, fallback = 0) => {
-        const number = Number(value);
-        return Number.isFinite(number) ? Math.floor(number) : fallback;
-      };
-      const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
-      const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
-      return {
-        x: q,
-        y: r,
-        q,
-        r,
-        tileId: `tile_${q}_${r}`,
-      };
+      return TileCoord.normalizeCoord(tile);
     }
 
     getWorldTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {

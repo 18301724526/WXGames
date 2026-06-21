@@ -17,20 +17,7 @@
   }
 
   function normalizeTileCoord(tile = {}) {
-    if (SharedTileCoord?.normalizeCoord) return SharedTileCoord.normalizeCoord(tile);
-    const toInteger = (value, fallback = 0) => {
-      const number = Number(value);
-      return Number.isFinite(number) ? Math.floor(number) : fallback;
-    };
-    const q = toInteger(tile.x !== undefined ? tile.x : tile.q, 0);
-    const r = toInteger(tile.y !== undefined ? tile.y : tile.r, 0);
-    return {
-      x: q,
-      y: r,
-      q,
-      r,
-      tileId: `tile_${q}_${r}`,
-    };
+    return SharedTileCoord.normalizeCoord(tile);
   }
 
   function getFramePixels(layout = {}, cacheScale = 1) {
