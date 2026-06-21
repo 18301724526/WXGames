@@ -1266,6 +1266,62 @@ test('WorldMapLayerCanvasRenderer uses world clock instead of stale host epoch f
   assert.equal(actorsCall[1][0].current.segmentProgress, 0.5);
 });
 
+test('WorldMapLayerCanvasRenderer advances active actors on 16ms epoch frames', () => {
+  const startedAt = new Date('2026-06-15T00:00:00.000Z').getTime();
+  const mission = {
+    id: 'active-frame-16ms-1',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [
+      { q: 1, r: 0, step: 1, tileId: 'tile_1_0' },
+      { q: 2, r: 0, step: 2, tileId: 'tile_2_0' },
+    ],
+    target: { q: 2, r: 0, tileId: 'tile_2_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    nextStepAt: new Date(startedAt + 1000).toISOString(),
+    completesAt: new Date(startedAt + 2000).toISOString(),
+    stepDurationMs: 1000,
+    stepDurationSeconds: 1,
+  };
+  const actorContext = {
+    actors: [],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const host = createHost({
+    lastWorldTileMapContext: actorContext,
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const first = renderer.buildFreshWorldMapActors({
+    worldExplorerState: { activeMission: mission },
+  }, {
+    epochNowMs: startedAt + 16,
+  });
+  const second = renderer.buildFreshWorldMapActors({
+    worldExplorerState: { activeMission: mission },
+  }, {
+    epochNowMs: startedAt + 32,
+  });
+  const afterFirstStep = renderer.buildFreshWorldMapActors({
+    worldExplorerState: { activeMission: mission },
+  }, {
+    epochNowMs: startedAt + 1016,
+  });
+
+  assert.equal(first.length, 1);
+  assert.equal(second.length, 1);
+  assert.equal(second[0].current.q > first[0].current.q, true);
+  assert.equal(second[0].current.q - first[0].current.q > 0, true);
+  assert.equal(second[0].current.q - first[0].current.q < 0.05, true);
+  assert.deepEqual(first[0].renderReadyTileIds, ['tile_1_0']);
+  assert.deepEqual(afterFirstStep[0].renderReadyTileIds, ['tile_1_0', 'tile_2_0']);
+});
+
 test('WorldMapLayerCanvasRenderer drops stale mission actors after they return home', () => {
   const completedAt = new Date('2026-06-15T00:00:10.000Z').getTime();
   const mission = {

@@ -353,11 +353,13 @@
 
     getWorldMapActorNowMs(options = {}) {
       const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
-      if (optionNow !== null && optionNow !== undefined) return optionNow;
-      return SharedWorldTime?.getEpochNowMs?.({
+      const resolvedOptionNow = Number(optionNow);
+      if (Number.isFinite(resolvedOptionNow)) return resolvedOptionNow;
+      const resolvedNow = SharedWorldTime?.getEpochNowMs?.({
         ...options,
         host: this.host || this,
-      }) ?? Date.now();
+      }, Number.NaN);
+      return Number.isFinite(resolvedNow) ? resolvedNow : Number.NaN;
     }
 
     buildFreshWorldMapActors(state = {}, options = {}) {

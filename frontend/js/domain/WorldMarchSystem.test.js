@@ -157,11 +157,28 @@ test('WorldMarchSystem delegates geometry facade behavior', () => {
   });
 });
 
-test('entrypoints load world march geometry before WorldMarchSystem', () => {
+test('entrypoints load shared world march core before march domain modules', () => {
   const rootDir = path.resolve(__dirname, '../../..');
   const html = fs.readFileSync(path.join(rootDir, 'frontend/index.html'), 'utf8');
   const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
 
+  assert.ok(html.indexOf('WorldMarchCoreAdapter.js') >= 0, 'index.html should load WorldMarchCoreAdapter');
+  assert.ok(
+    html.indexOf('WorldMarchCoreAdapter.js') < html.indexOf('TileCoord.js'),
+    'index.html should load WorldMarchCoreAdapter before TileCoord',
+  );
+  assert.ok(
+    html.indexOf('WorldMarchCoreAdapter.js') < html.indexOf('WorldMarchProgressSnapshot.js'),
+    'index.html should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
+  );
+  assert.ok(
+    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") < minigame.indexOf("require('../js/domain/TileCoord')"),
+    'minigame should load WorldMarchCoreAdapter before TileCoord',
+  );
+  assert.ok(
+    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") < minigame.indexOf("require('../js/domain/WorldMarchProgressSnapshot')"),
+    'minigame should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
+  );
   assert.ok(html.indexOf('WorldMarchGeometry.js') >= 0, 'index.html should load WorldMarchGeometry');
   assert.ok(
     html.indexOf('WorldMarchGeometry.js') < html.indexOf('WorldMarchSystem.js'),
