@@ -851,6 +851,8 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
   }), true);
   assert.equal(shell.territoryUiState.worldMarchTarget, null);
   assert.equal(shell.territoryUiState.selectedWorldActorId, '');
+  const startCall = calls.find((call) => call[0] === 'startWorldMarch');
+  assert.equal(startCall[1].missionId, 'march-1');
 
   assert.equal(await controller.handle_returnWorldMarch({
     type: 'returnWorldMarch',

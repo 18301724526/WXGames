@@ -17,3 +17,5 @@ march 重构开始，共6步
 提示：所有改动在本地 main，未 push，等待 review 后再推。
 
 fix-fog 三层修复完成：迷雾显示改为消费 core 连续 reveal source，后端 revealedTileIds 仅作权威兜底；core reveal 前沿改为跟随 segmentProgress 输出 strength/signature；fog mask 历史源按 strength 淡入，cache/bake/render trace 签名跟随连续前沿；雾层渲染复用旧地图 context 时会按当前 epoch 重新派生 visibilityActors，避免迷雾滞后。最终验证：npm.cmd test 通过（1493/1493）；npm.cmd run lint 通过；npm.cmd run test:architecture 通过（1063/1063）。
+
+march-identity 步骤1 完成：前端出发请求从 action/worldMarchTarget/selectedWorldActorId 传递选中部队真实 id；无选中部队时仍不带 missionId。验证：npm.cmd test、npm.cmd run lint、npm.cmd run test:architecture 通过。

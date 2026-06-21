@@ -156,9 +156,30 @@ test('WorldMarchHudCanvasRenderer renders formation picker with start action', (
   const empty = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 2);
   assert.equal(Boolean(start), true);
   assert.equal(start.action.targetQ, 2);
+  assert.equal(Object.hasOwn(start.action, 'missionId'), false);
   assert.equal(empty.action.disabled, true);
   assert.equal(start.rect.y >= 84, true);
   assert.equal(start.rect.y + start.rect.height <= 84 + 696, true);
+});
+
+test('WorldMarchHudCanvasRenderer includes selected actor id in formation picker start actions', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
+    worldMarchTarget: {
+      q: 2,
+      r: -1,
+      tileId: 'tile_2_-1',
+      pickerOpen: true,
+      missionId: 'explore-idle',
+      actorId: 'explore-idle',
+    },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
+  assert.equal(start.action.missionId, 'explore-idle');
+  assert.equal(start.action.actorId, 'explore-idle');
 });
 
 test('WorldMarchHudCanvasRenderer disables busy formations in march picker', () => {

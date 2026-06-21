@@ -394,9 +394,10 @@
           });
           return false;
         }
+        const uiState = this.getSharedTerritoryUiState();
+        const selectedActorId = action.missionId || action.actorId || uiState.selectedWorldActorId || '';
         const game = this.getGameHost();
         game?.territoryController?.closeSiteDialog?.({ render: false });
-        const uiState = this.getSharedTerritoryUiState();
         logActorPickingDiag('territory:selectWorldMarchTarget:beforeWrite', {
           tapTraceId,
           action: summarizeActorPickingAction(action),
@@ -409,6 +410,10 @@
           tileId: target.tileId,
           pickerOpen: false,
         };
+        if (selectedActorId) {
+          nextTarget.missionId = action.missionId || selectedActorId;
+          nextTarget.actorId = action.actorId || selectedActorId;
+        }
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
         if (action.terrain) nextTarget.terrain = action.terrain;
         if (action.terrainLabel) nextTarget.terrainLabel = action.terrainLabel;
@@ -443,12 +448,22 @@
         if (!target) return false;
         const uiState = this.getSharedTerritoryUiState();
         const previousTarget = uiState.worldMarchTarget || {};
+        const selectedActorId = action.missionId
+          || action.actorId
+          || previousTarget.missionId
+          || previousTarget.actorId
+          || uiState.selectedWorldActorId
+          || '';
         const nextTarget = {
           q: target.q,
           r: target.r,
           tileId: target.tileId,
           pickerOpen: true,
         };
+        if (selectedActorId) {
+          nextTarget.missionId = action.missionId || previousTarget.missionId || selectedActorId;
+          nextTarget.actorId = action.actorId || previousTarget.actorId || selectedActorId;
+        }
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
         else if (previousTarget.known !== undefined) nextTarget.known = Boolean(previousTarget.known);
         if (action.terrain || previousTarget.terrain) nextTarget.terrain = action.terrain || previousTarget.terrain;
@@ -548,6 +563,13 @@
       handle_startWorldMarch(action, meta = {}) {
         const target = normalizeWorldMarchTarget(action);
         if (!target) return false;
+        const uiState = this.getSharedTerritoryUiState();
+        const selectedActorId = action.missionId
+          || action.actorId
+          || uiState.worldMarchTarget?.missionId
+          || uiState.worldMarchTarget?.actorId
+          || uiState.selectedWorldActorId
+          || '';
         const run = () => {
           const game = this.getGameHost();
           const options = {
@@ -557,13 +579,13 @@
             formationSlot: action.formationSlot || action.slot || 1,
             cityId: action.cityId || game?.state?.activeCityId || 'capital',
           };
+          if (selectedActorId) options.missionId = selectedActorId;
           if (meta.inputIntent) options.clientInputIntent = meta.inputIntent;
           if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
           return this.runAction(() => this.host.api.startWorldMarch(options));
         };
         const result = run();
         if (result !== false) {
-          const uiState = this.getSharedTerritoryUiState();
           uiState.worldMarchTarget = null;
           uiState.selectedWorldActorId = '';
           uiState.worldTargetPicker = null;

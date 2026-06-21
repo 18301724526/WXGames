@@ -88,6 +88,8 @@ test('WorldMarchGeometry infers axial tiles and target UI state', () => {
       known: false,
       terrain: 'plains',
       terrainLabel: 'Plains',
+      missionId: 'explore-idle',
+      actorId: 'explore-idle',
     },
   }), {
     q: 3,
@@ -97,6 +99,8 @@ test('WorldMarchGeometry infers axial tiles and target UI state', () => {
     known: false,
     terrain: 'plains',
     terrainLabel: 'Plains',
+    missionId: 'explore-idle',
+    actorId: 'explore-idle',
   });
   assert.equal(WorldMarchGeometry.getMarchTargetUiState({ worldMarchTarget: { q: 'bad', r: 0 } }), null);
 });

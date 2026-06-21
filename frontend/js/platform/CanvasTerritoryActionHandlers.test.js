@@ -325,6 +325,84 @@ test('CanvasTerritoryActionHandlers opens and resolves world target picker candi
   ]);
 });
 
+test('CanvasTerritoryActionHandlers forwards selected world actor id on start march only when present', async () => {
+  const calls = [];
+  const game = {
+    territoryUiState: { selectedWorldActorId: 'march-1' },
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+  };
+  const host = {
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    renderCanvasAction() {},
+    requestWorldMapRenderAnimationFrame() {},
+  };
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 4,
+    targetR: -2,
+    formationSlot: 1,
+  }), true);
+  assert.equal(calls[0][1].missionId, 'march-1');
+  assert.equal(host.territoryUiState.selectedWorldActorId, '');
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 5,
+    targetR: -3,
+    formationSlot: 1,
+  }), true);
+  assert.equal(Object.hasOwn(calls[1][1], 'missionId'), false);
+});
+
+test('CanvasTerritoryActionHandlers preserves selected world actor id through target and picker handoff', async () => {
+  const calls = [];
+  const game = {
+    territoryUiState: { selectedWorldActorId: 'march-1' },
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+  };
+  const host = {
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    renderCanvasAction() {},
+    requestWorldMapRenderAnimationFrame() {},
+  };
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_selectWorldMarchTarget({
+    type: 'selectWorldMarchTarget',
+    targetQ: 4,
+    targetR: -2,
+  }), true);
+  assert.equal(host.territoryUiState.worldMarchTarget.missionId, 'march-1');
+  assert.equal(host.territoryUiState.selectedWorldActorId, '');
+
+  assert.equal(controller.handle_openWorldMarchFormationPicker({
+    type: 'openWorldMarchFormationPicker',
+    targetQ: 4,
+    targetR: -2,
+  }), true);
+  assert.equal(host.territoryUiState.worldMarchTarget.missionId, 'march-1');
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 4,
+    targetR: -2,
+    formationSlot: 1,
+  }), true);
+  assert.equal(calls[0][1].missionId, 'march-1');
+});
+
 test('CanvasTerritoryActionHandlers resets runtime world camera for return-home control', () => {
   const calls = [];
   const runtime = {

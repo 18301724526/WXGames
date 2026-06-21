@@ -381,6 +381,10 @@
         targetQ: target.q,
         targetR: target.r,
         tileId: target.tileId,
+        ...(target.missionId || target.actorId ? {
+          missionId: target.missionId || target.actorId,
+          actorId: target.actorId || target.missionId,
+        } : {}),
         known: target.known,
         terrain: target.terrain,
         terrainLabel: target.terrainLabel,
@@ -451,6 +455,10 @@
           tileId: target.tileId,
           formationSlot: formation.slot || index + 1,
           cityId: formation.cityId || militaryState.activeCityId || 'capital',
+          ...(target.missionId || target.actorId ? {
+            missionId: target.missionId || target.actorId,
+            actorId: target.actorId || target.missionId,
+          } : {}),
           disabled,
         });
       });

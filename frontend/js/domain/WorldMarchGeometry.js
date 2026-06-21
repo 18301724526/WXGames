@@ -132,7 +132,7 @@
     if (!target || typeof target !== 'object') return null;
     if (!Number.isFinite(Number(target.x ?? target.q)) || !Number.isFinite(Number(target.y ?? target.r))) return null;
     const coord = normalizeCoord(target);
-    return {
+    const result = {
       q: coord.q,
       r: coord.r,
       tileId: coord.tileId,
@@ -141,6 +141,11 @@
       terrain: target.terrain || '',
       terrainLabel: target.terrainLabel || '',
     };
+    if (target.missionId || target.actorId) {
+      result.missionId = target.missionId || target.actorId;
+      result.actorId = target.actorId || target.missionId;
+    }
+    return result;
   }
 
   const WorldMarchGeometry = Object.freeze({
