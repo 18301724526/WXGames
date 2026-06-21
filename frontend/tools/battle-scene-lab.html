@@ -105,6 +105,10 @@
           ],
         };
         battle = Core.createBattle(setup);
+        // Default is hold/待命. Enemy advances as a stand-in AI; our side waits for orders.
+        Object.keys(battle.squads).forEach(function (gid) {
+          if (battle.squads[gid].side === 1) battle.squads[gid].order = 'advance';
+        });
         selectedGid = 'L1';
         pending = []; inputLog = [];
         buildUi();

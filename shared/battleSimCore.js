@@ -126,7 +126,7 @@
         squads[gid] = {
           gid,
           side: sideIndex,
-          order: ORDER.ADVANCE,
+          order: ORDER.DEFEND, // 待命: hold until commanded, no auto-clash
           orderCdLeft: 0,
           generalId: general.id,
           soldierIds: [],

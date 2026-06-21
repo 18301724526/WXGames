@@ -49,6 +49,28 @@ function runToEnd(battle, cap = 2000) {
   return res;
 }
 
+// Default order is now 待命/hold (no auto-clash), so combat tests must commit.
+function bothAllOut() {
+  return [
+    { tick: 0, type: 'order', side: 0, order: 'allOut' },
+    { tick: 0, type: 'order', side: 1, order: 'allOut' },
+  ];
+}
+function clashToEnd(opts, cap) {
+  const b = createBattle(setup(opts));
+  applyInput(b, { type: 'order', side: 0, order: 'allOut' });
+  applyInput(b, { type: 'order', side: 1, order: 'allOut' });
+  return { b, res: runToEnd(b, cap) };
+}
+
+test('default order holds: neither side advances without a command', () => {
+  const b = createBattle(setup({ lHp: 9999, rHp: 9999, lAtk: 1, rAtk: 1 }));
+  const lx0 = b.units[0].x;
+  for (let i = 0; i < 60; i += 1) step(b, null);
+  assert.ok(Math.abs(b.units[0].x - lx0) < 1, 'units hold position until ordered');
+  assert.strictEqual(b.result, null, 'no auto-clash, battle not resolved');
+});
+
 test('createBattle builds generals and soldiers per side', () => {
   const b = createBattle(setup({ lSold: 3, rSold: 2 }));
   const left = b.units.filter((u) => u.side === 0);
@@ -60,15 +82,15 @@ test('createBattle builds generals and soldiers per side', () => {
 });
 
 test('annihilation: stronger side wins by wiping the other', () => {
-  const res = runToEnd(createBattle(setup({ lAtk: 30, rAtk: 1 })));
+  const { res } = clashToEnd({ lAtk: 30, rAtk: 1 });
   assert.ok(res, 'battle should resolve');
   assert.strictEqual(res.winner, 'L');
   assert.strictEqual(res.onField[1], 0);
 });
 
 test('same seed + inputs is deterministic', () => {
-  const a = simulate(setup({ lSold: 5, rSold: 5, seed: 42 }));
-  const b = simulate(setup({ lSold: 5, rSold: 5, seed: 42 }));
+  const a = simulate(setup({ lSold: 5, rSold: 5, seed: 42 }), bothAllOut());
+  const b = simulate(setup({ lSold: 5, rSold: 5, seed: 42 }), bothAllOut());
   assert.deepStrictEqual(a, b);
 });
 
@@ -115,10 +137,14 @@ test('all-retreat master order loses by leaving the field', () => {
 });
 
 test('general death halves squad damage and routs soldiers (seeded)', () => {
-  const b = createBattle(
-    setup({ lAtk: 999, lHp: 9999, rHp: 20, rAtk: 1, rSold: 4, config: { routChance: 1 } }),
-  );
-  const res = runToEnd(b);
+  const { b, res } = clashToEnd({
+    lAtk: 999,
+    lHp: 9999,
+    rHp: 20,
+    rAtk: 1,
+    rSold: 4,
+    config: { routChance: 1 },
+  });
   const rsq = b.squads.R1;
   assert.strictEqual(rsq.leaderAlive, false, 'R general died');
   assert.strictEqual(rsq.damageMult, 0.5, 'surviving soldiers fight at half power');

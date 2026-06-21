@@ -10,6 +10,13 @@ function force(generals) {
 }
 
 const SMALL_ARENA = { config: { arena: { w: 200, h: 200 } } };
+// Default order is hold; commit both sides so the battle actually resolves.
+const ENGAGE = {
+  inputStream: [
+    { tick: 0, type: 'order', side: 0, order: 'allOut' },
+    { tick: 0, type: 'order', side: 1, order: 'allOut' },
+  ],
+};
 
 test('buildSetup maps formation members to core generals with troops', () => {
   const setup = BattleSimService.buildSetup({
@@ -60,6 +67,7 @@ test('resolve: stronger attacker wins and keeps survivors', () => {
         ]),
       },
       SMALL_ARENA,
+      ENGAGE,
     ),
   );
   assert.strictEqual(out.result.winner, 'attacker');
@@ -74,6 +82,7 @@ test('resolve is deterministic for the same seed', () => {
       defender: force([{ gid: 'd1', attributes: { force: 55 }, soldiers: 50 }]),
     },
     SMALL_ARENA,
+    ENGAGE,
   );
   assert.deepStrictEqual(
     BattleSimService.resolve(input).result,
