@@ -585,7 +585,12 @@
     }
 
     getState() { return this.request('GET', '/game/state'); }
-    heartbeat() { return this.request('GET', '/game/heartbeat'); }
+    heartbeat(options = {}) {
+      const report = options?.worldMarchClientReport || null;
+      return report
+        ? this.request('POST', '/game/heartbeat', { worldMarchClientReport: report })
+        : this.request('GET', '/game/heartbeat');
+    }
     getTasks() { return this.request('GET', '/game/tasks'); }
     getVersion() { return this.request('GET', '/version'); }
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }

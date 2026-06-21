@@ -654,12 +654,41 @@
     };
   }
 
+  function buildClientReport(host = {}, options = {}) {
+    const state = options.state || getState(host);
+    const explorer = state.worldExplorerState || {};
+    const nowMs = options.epochNowMs ?? getNowMs(host);
+    const missions = getMissionList(explorer)
+      .filter((mission) => mission?.status === 'active')
+      .slice(0, 12)
+      .map((mission) => {
+        const current = getCurrentCoord(mission, nowMs);
+        return {
+          missionId: mission.id || '',
+          clientTime: toIso(nowMs),
+          position: {
+            q: toNumber(current.q ?? current.x, 0),
+            r: toNumber(current.r ?? current.y, 0),
+            tileId: tileId(current.q ?? current.x, current.r ?? current.y),
+          },
+        };
+      })
+      .filter((mission) => mission.missionId);
+    if (!missions.length) return null;
+    return {
+      schema: 'world-march-client-report-batch-v1',
+      clientTime: toIso(nowMs),
+      missions,
+    };
+  }
+
   function complete(host = {}, pendingRef = '') {
     return removePending(host, typeof pendingRef === 'string' ? pendingRef : pendingRef?.pendingId || pendingRef?.missionId || '');
   }
 
   const api = {
     SLOW_SYNC_MESSAGE,
+    buildClientReport,
     beginReturn,
     beginStart,
     buildLinearRoute,

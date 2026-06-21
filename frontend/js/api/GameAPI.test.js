@@ -163,6 +163,31 @@ test('GameAPI sends compact client input intent evidence for world march command
   assert.equal(calls[1].clientInputIntent.target.tileId, 'tile_3_-2');
 });
 
+test('GameAPI sends world march heartbeat reports with POST only when present', async () => {
+  const requests = [];
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request(request) {
+        requests.push(request);
+        return createResponse(200, { type: 'heartbeat', serverTime: '2026-06-21T00:00:00.000Z' });
+      },
+    },
+  });
+
+  await api.heartbeat();
+  await api.heartbeat({
+    worldMarchClientReport: {
+      schema: 'world-march-client-report-batch-v1',
+      missions: [{ missionId: 'march-1', position: { q: 1.25, r: 0 } }],
+    },
+  });
+
+  assert.equal(requests[0].method, 'GET');
+  assert.equal(requests[0].body, undefined);
+  assert.equal(requests[1].method, 'POST');
+  assert.equal(JSON.parse(requests[1].body).worldMarchClientReport.missions[0].position.q, 1.25);
+});
+
 test('GameAPI sends formation soldier assignments with saved formations', async () => {
   const calls = [];
   const api = new GameAPI('/api', 'token-a', {

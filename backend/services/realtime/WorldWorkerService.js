@@ -52,6 +52,7 @@ class WorldWorkerService {
     const advanced = typeof this.gameStateService.advanceRuntimeState === 'function'
       ? this.gameStateService.advanceRuntimeState(rawState, now, {
         advanceWorldAi: false,
+        marchVerification: { enabled: true },
         planningContext: projection,
       })
       : rawState;

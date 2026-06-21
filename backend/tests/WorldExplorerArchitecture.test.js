@@ -39,6 +39,7 @@ test('WorldExplorerService stays a facade over focused explorer modules', () => 
     'WorldExplorerShared.js',
     'WorldExplorerTrace.js',
     'WorldExplorerTutorial.js',
+    'WorldMarchVerification.js',
   ]);
   for (const fileName of moduleFiles) {
     assert.ok(lineCount(path.join(explorerRoot, fileName)) < 500, `${fileName} should stay below 500 lines`);

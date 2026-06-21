@@ -138,6 +138,39 @@ test('GameStateRepository persists world explorer missions with the game state',
   db.close();
 });
 
+test('GameStateRepository persists world march verification report state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const state = GameStateNormalizer.createInitialGameState('march-verification-repo-test');
+    state.worldMarchClientReports = {
+      schema: 'world-march-client-report-batch-v1',
+      missions: {
+        'march-1': {
+          missionId: 'march-1',
+          position: { q: 1.25, r: 0, tileId: 'tile_1_0' },
+        },
+      },
+    };
+    state.worldMarchVerification = {
+      schema: 'world-march-verification-summary-v1',
+      status: 'pullback',
+      results: [{ missionId: 'march-1', severity: 'large', diffTiles: 4 }],
+    };
+
+    repository.save(state);
+    const saved = repository.findByPlayerId('march-verification-repo-test');
+
+    assert.equal(saved.worldMarchClientReports.missions['march-1'].position.q, 1.25);
+    assert.equal(saved.worldMarchVerification.status, 'pullback');
+    assert.equal(saved.worldMarchVerification.results[0].severity, 'large');
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository persists world AI exploration state with the game state', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);

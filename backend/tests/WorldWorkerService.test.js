@@ -125,6 +125,7 @@ test('WorldWorkerService advances player runtime without background AI world exp
     ['getClientProjectionForPlayer', 'test1'],
     ['advanceRuntimeState', 'test1', {
       advanceWorldAi: false,
+      marchVerification: { enabled: true },
       planningContext: { sharedWorldTerritories: [{ id: 'worker-shared-site' }] },
     }],
     ['save', 'test1'],

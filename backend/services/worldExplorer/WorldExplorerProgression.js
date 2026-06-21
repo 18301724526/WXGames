@@ -17,6 +17,7 @@ const WorldExplorerTrace = require('./WorldExplorerTrace');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const MilitaryService = require('../MilitaryService');
 const FormationStrengthService = require('../military/FormationStrengthService');
+const WorldMarchVerification = require('./WorldMarchVerification');
 
 function getTutorialSteps() {
   return TutorialFlowConfig.TUTORIAL_STEPS;
@@ -294,6 +295,9 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       newlyRevealedIds: getTileIdentities(newlyRevealedTiles).slice(0, 12),
     });
   }
+  if (options.marchVerification?.enabled === true) {
+    WorldMarchVerification.verifyMissions(gameState, now, options.marchVerification);
+  }
   return newlyRevealedTiles;
 }
 
@@ -302,6 +306,7 @@ function normalizeExploreState(gameState, now = new Date(), options = {}) {
   gameState.exploreMissions = normalizeMissions(gameState.exploreMissions);
   advanceExploreMissions(gameState, now, {
     planningContext: options.planningContext,
+    marchVerification: options.marchVerification,
   });
   return gameState.exploreMissions;
 }

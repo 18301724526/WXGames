@@ -150,3 +150,19 @@ test('WorldMarchOptimisticState treats successful return route rebase, including
   assert.deepEqual(reconciled.idleMissions[0].route, []);
   assert.equal(reconciled.idleMissions[0]._optimistic.reconciled, true);
 });
+
+test('WorldMarchOptimisticState builds compact continuous client position reports', () => {
+  const nowMs = Date.parse('2026-06-21T00:00:05.000Z');
+  const mission = makeMission();
+  const host = makeHost({
+    worldExplorerState: { missions: [mission], activeMission: mission, idleMissions: [] },
+  }, nowMs);
+
+  const report = WorldMarchOptimisticState.buildClientReport(host);
+
+  assert.equal(report.schema, 'world-march-client-report-batch-v1');
+  assert.equal(report.missions.length, 1);
+  assert.equal(report.missions[0].missionId, 'march-1');
+  assert.equal(report.missions[0].position.q, 0.5);
+  assert.equal(JSON.stringify(report).includes('plannedTiles'), false);
+});

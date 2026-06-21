@@ -51,6 +51,9 @@
       this.stateRefreshMinIntervalMs = Math.max(0, toNumber(scheduler.stateRefreshMinIntervalMs, 1000));
       this.lastStateRefreshAt = 0;
       this.refreshingState = false;
+      this.getWorldMarchClientReport = typeof scheduler.getWorldMarchClientReport === 'function'
+        ? scheduler.getWorldMarchClientReport
+        : null;
     }
 
     setStateProvider(getLocalState) {
@@ -66,6 +69,16 @@
 
     getAuthorityStateRefreshReason(state = {}, heartbeatData = {}) {
       const nowMs = this.getNowMs(heartbeatData);
+      const marchVerification = heartbeatData.worldMarchVerification || heartbeatData.marchVerification || null;
+      if (marchVerification?.status === 'pullback'
+        || (Array.isArray(marchVerification?.results)
+          && marchVerification.results.some((result) => result?.severity === 'large'))) {
+        return {
+          type: 'worldMarchDriftPullback',
+          missionId: marchVerification.results?.find((result) => result?.severity === 'large')?.missionId || '',
+          dueAt: new Date(nowMs).toISOString(),
+        };
+      }
       const dueAtThresholdMs = nowMs + this.stateRefreshLeadTimeMs;
       const missions = collectActiveWorldExplorerMissions(state);
       for (const mission of missions) {
@@ -134,7 +147,8 @@
         if (typeof this.api?.heartbeat !== 'function') {
           throw new Error('GameStateSync requires a lightweight heartbeat endpoint');
         }
-        const data = await this.api.heartbeat();
+        const report = this.getWorldMarchClientReport?.(this.getLocalState?.()) || null;
+        const data = await this.api.heartbeat(report ? { worldMarchClientReport: report } : undefined);
         this.failureCount = 0;
         this.nextAllowedAt = 0;
         if (this.reconnecting) {

@@ -543,6 +543,59 @@ test('game action route starts guided world march with planned tiles in client s
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedSites.length, 1);
 });
 
+test('heartbeat stores compact world march client reports without returning game state', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'heartbeat-world-march-report-test';
+  let gameState = GameStateService.createInitialGameState(playerId);
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return gameState;
+    },
+    save(state) {
+      gameState = JSON.parse(JSON.stringify(state));
+      savedStates.push(gameState);
+    },
+  };
+  const gameStateService = {
+    normalizeState(state) {
+      return GameStateService.normalizeState(state);
+    },
+  };
+
+  registerGameRoutes(app, {
+    authMiddleware: (req, res, next) => next(),
+    repository,
+    gameStateService,
+  });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/heartbeat');
+  const req = {
+    playerId,
+    body: {
+      worldMarchClientReport: {
+        missions: [{
+          missionId: 'march-report-1',
+          clientTime: '2026-06-21T00:00:02.000Z',
+          position: { q: 1.25, r: 0 },
+          extraLargePayload: 'x'.repeat(1000),
+        }],
+      },
+    },
+    get() { return ''; },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.type, 'heartbeat');
+  assert.equal(Boolean(res.payload.gameState), false);
+  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates[0].worldMarchClientReports.missions['march-report-1'].position.q, 1.25);
+  assert.equal(JSON.stringify(savedStates[0].worldMarchClientReports).includes('extraLargePayload'), false);
+});
+
 test('game action route uses shared world projection when planning guided first city march', () => {
   const { app, routes } = createAppHarness();
   const playerId = 'route-guided-world-shared-occupied-test';

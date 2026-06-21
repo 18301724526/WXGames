@@ -57,6 +57,8 @@ function createInitialGameState(playerId, options = {}) {
     scoutedCoordinates: [],
     scoutState: { emptyStreak: 0, areas: [] },
     exploreMissions: [],
+    worldMarchClientReports: {},
+    worldMarchVerification: null,
     worldAi: WorldAiExplorerService.normalizeWorldAi(),
     warMissions: [],
     scoutReports: [],
@@ -112,6 +114,12 @@ function normalizeStateStructure(rawState) {
   state.exploreMissions = Array.isArray(state.exploreMissions)
     ? state.exploreMissions.map((mission) => WorldExplorerService.normalizeMission(mission)).filter(Boolean)
     : [];
+  state.worldMarchClientReports = state.worldMarchClientReports && typeof state.worldMarchClientReports === 'object'
+    ? state.worldMarchClientReports
+    : {};
+  state.worldMarchVerification = state.worldMarchVerification && typeof state.worldMarchVerification === 'object'
+    ? state.worldMarchVerification
+    : null;
   CityService.normalizeCities(state);
   WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];

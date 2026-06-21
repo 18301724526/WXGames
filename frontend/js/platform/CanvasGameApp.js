@@ -1,4 +1,4 @@
-﻿(function (global) {
+(function (global) {
   var GameCommandServiceBase = global.GameCommandService;
   if (typeof module !== 'undefined' && module.exports && !GameCommandServiceBase) {
     GameCommandServiceBase = require('./GameCommandService');
@@ -198,6 +198,9 @@
               };
             }
             this.syncService.setStateProvider?.(() => this.state);
+            if ('getWorldMarchClientReport' in this.syncService) {
+              this.syncService.getWorldMarchClientReport = () => this.getWorldMarchClientReport?.();
+            }
           }
           this.updateChecker = options.updateChecker || null;
           this.networkState = {

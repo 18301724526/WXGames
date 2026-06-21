@@ -207,6 +207,7 @@ function getClientStateDto(missions = [], options = {}) {
     activeMission: missionDtos.find((mission) => mission.status === 'active') || null,
     idleMissions: missionDtos.filter((mission) => mission.status === 'idle'),
     busyFormations,
+    marchVerification: options.marchVerification || null,
     maxActiveMissions: MAX_ACTIVE_EXPLORE_MISSIONS,
     maxManualRouteLength: MAX_MANUAL_ROUTE_LENGTH,
     stepDurationSeconds: Math.floor(EXPLORE_STEP_DURATION_MS / 1000),

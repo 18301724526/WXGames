@@ -26,6 +26,10 @@
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
+      getWorldMarchClientReport() {
+            return WorldMarchOptimisticState?.buildClientReport?.(this) || null;
+          },
+
       applyState(payload = {}) {
             this.syncWorldClock?.(payload);
             const loadTrace = global.H5LoadTrace;
@@ -277,15 +281,23 @@
             this.syncWorldClock?.(data);
             if (!data || data.gameState) return data;
             const wasReconnecting = this.networkState?.status === 'reconnecting';
+            const marchVerification = data.worldMarchVerification || data.marchVerification || null;
+            const largeDrift = marchVerification?.status === 'pullback'
+              || (Array.isArray(marchVerification?.results)
+                && marchVerification.results.some((result) => result?.severity === 'large'));
             this.networkState = {
               ...(this.networkState || {}),
-              status: 'online',
-              failureCount: 0,
+              status: largeDrift ? 'reconnecting' : 'online',
+              failureCount: largeDrift ? Math.max(1, Number(this.networkState?.failureCount) || 0) : 0,
               serverTime: data.serverTime || this.networkState?.serverTime || null,
               heartbeatSeq: Number(data.heartbeatSeq) || this.networkState?.heartbeatSeq || 0,
+              message: largeDrift
+                ? (WorldMarchOptimisticState?.SLOW_SYNC_MESSAGE || this.networkState?.message || null)
+                : null,
+              worldMarchReconciliation: marchVerification || null,
             };
             if (this.canvasShell?.setNetworkState) this.canvasShell.setNetworkState(this.networkState);
-            else if (wasReconnecting) this.renderCanvasSurface(this.state?.currentTab);
+            else if (wasReconnecting || largeDrift) this.renderCanvasSurface(this.state?.currentTab);
             return data;
           },
 
@@ -444,7 +456,8 @@
             if (this.syncService?.start) this.syncService.start();
             else if (this.api?.heartbeat && this.runtime?.setInterval) {
               this.timer = this.runtime.setInterval(() => {
-                this.api.heartbeat().then((data) => this.applyHeartbeat(data)).catch((error) => this.applyConnectionState({
+                const report = this.getWorldMarchClientReport?.();
+                this.api.heartbeat(report ? { worldMarchClientReport: report } : undefined).then((data) => this.applyHeartbeat(data)).catch((error) => this.applyConnectionState({
                   status: 'reconnecting',
                   failureCount: (this.networkState?.failureCount || 0) + 1,
                   error,

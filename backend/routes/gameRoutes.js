@@ -3,6 +3,7 @@ const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
 const GameActionRegistry = require('../actions/GameActionRegistry');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
+const WorldMarchVerification = require('../services/worldExplorer/WorldMarchVerification');
 
 function buildGameView(gameState, tutorial, gameStateService, projection = {}) {
   const clientState = gameStateService.getClientGameStateFromNormalized
@@ -50,6 +51,18 @@ function loadReadOnlyGameState(repository, gameStateService, playerId) {
   return gameStateService.normalizeState
     ? gameStateService.normalizeState(rawState)
     : rawState;
+}
+
+function recordWorldMarchClientReport(repository, gameStateService, playerId, reportPayload = null, now = new Date()) {
+  if (!reportPayload || typeof reportPayload !== 'object') return null;
+  const batch = WorldMarchVerification.sanitizeReportBatch(reportPayload, now);
+  if (!Object.keys(batch.missions || {}).length) return null;
+  const gameState = loadReadOnlyGameState(repository, gameStateService, playerId);
+  if (!gameState) return null;
+  gameState.worldMarchClientReports = batch;
+  gameState.updatedAt = now.toISOString();
+  repository.save?.(gameState);
+  return batch;
 }
 
 function shouldTraceWorldMarch(body = {}) {
@@ -338,22 +351,34 @@ function registerGameRoutes(app, deps) {
     });
   });
 
-  app.get('/api/game/heartbeat', authMiddleware, (req, res) => {
+  const handleHeartbeat = (req, res) => {
     const now = new Date();
     presenceService?.recordHeartbeat?.(req.playerId);
+    const clientReport = recordWorldMarchClientReport(
+      repository,
+      gameStateService,
+      req.playerId,
+      req.body?.worldMarchClientReport,
+      now,
+    );
+    const verificationState = repository.findByPlayerId?.(req.playerId)?.worldMarchVerification || null;
     if (shouldTraceWorldMarchRequest(req)) {
       traceWorldMarch('route:heartbeat', {
         playerId: req.playerId,
         serverTime: now.toISOString(),
         returnsGameState: false,
+        clientReportMissionCount: Object.keys(clientReport?.missions || {}).length,
       });
     }
     return res.json({
       type: 'heartbeat',
       serverTime: now.toISOString(),
       heartbeatSeq: now.getTime(),
+      worldMarchVerification: verificationState,
     });
-  });
+  };
+  app.get('/api/game/heartbeat', authMiddleware, handleHeartbeat);
+  app.post('/api/game/heartbeat', authMiddleware, handleHeartbeat);
 
   app.get('/api/game/tasks', authMiddleware, (req, res) => {
     const gameState = loadReadOnlyGameState(repository, gameStateService, req.playerId);

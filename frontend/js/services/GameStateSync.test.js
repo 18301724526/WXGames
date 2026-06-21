@@ -116,6 +116,67 @@ test('GameStateSync throttles repeated authority refreshes while a mission remai
   assert.equal(calls.filter((call) => call[0] === 'getState').length, 1);
 });
 
+test('GameStateSync sends compact march reports and refreshes authority on pullback drift', async () => {
+  const calls = [];
+  const sync = new GameStateSync({
+    async heartbeat(payload) {
+      calls.push(['heartbeat', payload.worldMarchClientReport.missions[0].missionId]);
+      return {
+        type: 'heartbeat',
+        serverTime: '2026-06-21T00:00:02.000Z',
+        worldMarchVerification: {
+          status: 'pullback',
+          results: [{ missionId: 'march-1', severity: 'large' }],
+        },
+      };
+    },
+    async getState() {
+      calls.push(['getState']);
+      return { gameState: { worldExplorerState: { activeMission: { id: 'march-1' } } } };
+    },
+  }, 1000, {
+    getLocalState() {
+      return { worldExplorerState: { activeMission: { id: 'march-1', status: 'active' } } };
+    },
+    getWorldMarchClientReport() {
+      return {
+        schema: 'world-march-client-report-batch-v1',
+        missions: [{ missionId: 'march-1', position: { q: 8, r: 0 } }],
+      };
+    },
+  });
+  sync.onState = (_data, reason) => calls.push(['onState', reason.type, reason.missionId]);
+
+  await sync.fetchNow();
+
+  assert.deepEqual(calls, [
+    ['heartbeat', 'march-1'],
+    ['getState'],
+    ['onState', 'worldMarchDriftPullback', 'march-1'],
+  ]);
+});
+
+test('GameStateSync sends no march report when no active report is available', async () => {
+  const calls = [];
+  const sync = new GameStateSync({
+    async heartbeat(payload) {
+      calls.push(['heartbeat', payload]);
+      return {
+        type: 'heartbeat',
+        serverTime: '2026-06-21T00:00:02.000Z',
+      };
+    },
+  }, 1000, {
+    getWorldMarchClientReport() {
+      return null;
+    },
+  });
+
+  await sync.fetchNow();
+
+  assert.deepEqual(calls, [['heartbeat', undefined]]);
+});
+
 test('GameStateSync backs off heartbeat attempts after failures and resets on success', async () => {
   const calls = [];
   let now = 1000;

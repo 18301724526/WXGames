@@ -5,7 +5,10 @@ function getClientMission(mission, now = new Date()) {
 }
 
 function getClientState(gameState, now = new Date()) {
-  return DtoMapper.getClientStateDto(gameState.exploreMissions || [], { now });
+  return DtoMapper.getClientStateDto(gameState.exploreMissions || [], {
+    now,
+    marchVerification: gameState.worldMarchVerification || null,
+  });
 }
 
 module.exports = {

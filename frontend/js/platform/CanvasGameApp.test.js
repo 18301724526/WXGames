@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const CanvasGameApp = require('./CanvasGameApp');
 const CanvasGameAppCommands = require('./CanvasGameAppCommands');
+const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
 const CanvasGameShell = require('./CanvasGameShell');
 
 const APP_MODULES = [
@@ -408,6 +409,70 @@ test('CanvasGameApp rolls back optimistic world march after start rejection', as
   assert.equal(calls.some((call) => call[0] === 'api:startWorldMarch' && call[1].startsWith('optimistic_manual_')), true);
   assert.equal(calls.some((call) => call[0] === 'renderCanvasSurface' && call[2] === 'active'), true);
   assert.deepEqual(host.state.worldExplorerState, initialExplorer);
+});
+
+test('CanvasGameApp applies world march verification pullback overlay from heartbeat', () => {
+  class Host {}
+  CanvasGameAppStateSync.install(Host);
+  const calls = [];
+  const host = new Host();
+  Object.assign(host, {
+    state: { currentTab: 'military' },
+    networkState: { status: 'online', failureCount: 0 },
+    renderCanvasSurface(tab) {
+      calls.push(['render', tab]);
+    },
+    ensureWorldClock() {
+      return null;
+    },
+  });
+
+  host.applyHeartbeat({
+    type: 'heartbeat',
+    serverTime: '2026-06-21T00:00:02.000Z',
+    heartbeatSeq: 2,
+    worldMarchVerification: {
+      status: 'pullback',
+      results: [{ missionId: 'march-1', severity: 'large' }],
+    },
+  });
+
+  assert.equal(host.networkState.status, 'reconnecting');
+  assert.equal(host.networkState.message, '网络连接缓慢，正在尝试同步');
+  assert.equal(host.networkState.worldMarchReconciliation.status, 'pullback');
+  assert.deepEqual(calls, [['render', 'military']]);
+});
+
+test('CanvasGameApp clears quiet world march verification heartbeat without overlay', () => {
+  class Host {}
+  CanvasGameAppStateSync.install(Host);
+  const host = new Host();
+  Object.assign(host, {
+    state: { currentTab: 'military' },
+    networkState: {
+      status: 'reconnecting',
+      failureCount: 1,
+      message: '网络连接缓慢，正在尝试同步',
+    },
+    renderCanvasSurface() {},
+    ensureWorldClock() {
+      return null;
+    },
+  });
+
+  host.applyHeartbeat({
+    type: 'heartbeat',
+    serverTime: '2026-06-21T00:00:03.000Z',
+    heartbeatSeq: 3,
+    worldMarchVerification: {
+      status: 'ok',
+      results: [],
+    },
+  });
+
+  assert.equal(host.networkState.status, 'online');
+  assert.equal(host.networkState.message, null);
+  assert.equal(host.networkState.failureCount, 0);
 });
 
 test('CanvasGameApp routes active march animation to actor loop instead of map water timer redraw', () => {
