@@ -108,7 +108,7 @@
         battle = Core.createBattle(setup);
         // Default is hold/待命; the enemy side is driven by the behavior-tree AI.
         selectedGid = 'L1';
-        pending = []; inputLog = [];
+        pending = []; inputLog = []; rstate = {};
         buildUi();
       }
 
@@ -168,30 +168,55 @@
         requestAnimationFrame(frame);
       }
 
-      function poseFor(u) {
-        if (u.state === 'engage') return 'attack';
-        if (u.state === 'hold') return 'idle';
-        return 'move';
-      }
+      // Extensible (兵种, 状态)->(精灵集, 动画) resolver. Temp art is keyed by side;
+      // when real per-兵种 sprites arrive, spriteSetFor() switches on u.unitType.
+      // Unknown states fall back to 'move', so new states never break rendering.
+      var STATE_POSE = { engage: 'attack', hold: 'idle', covering: 'move', advance: 'move', retreat: 'move', dead: 'die' };
+      function spriteSetFor(u) { return u.side === 0 ? 'player' : 'enemy'; }
+      function poseFor(u) { return STATE_POSE[u.state] || 'move'; }
+
+      var rstate = {}; // render-only per-unit: facing(fx) + prev x
       function render(now) {
         ctx.clearRect(0, 0, W, H);
         if (!battle) return;
         var sx = W / ARENA.w, sy = H / ARENA.h;
         var base = (now / FRAME_MS) | 0;
         var us = battle.units;
+        // collect alive units, update facing, sort by depth (y) for overlap.
+        var draw = [];
         for (var i = 0; i < us.length; i++) {
           var u = us[i];
           if (!u.alive || u.left) continue;
-          var sideKey = u.side === 0 ? 'player' : 'enemy';
-          var h = u.kind === 'general' ? 46 : 16;
-          var w = Math.round(h * 500 / 400);
-          var x = u.x * sx, y = u.y * sy;
+          var rs = rstate[u.id] || (rstate[u.id] = { fx: u.side === 0 ? 1 : -1, px: u.x });
+          if (u.x > rs.px + 0.05) rs.fx = 1;
+          else if (u.x < rs.px - 0.05) rs.fx = -1;
+          rs.px = u.x;
+          draw.push(u);
+        }
+        draw.sort(function (a, b) { return a.y - b.y; });
+        for (var j = 0; j < draw.length; j++) {
+          var d = draw[j];
+          var h = d.kind === 'general' ? 46 : 16;
+          var w = Math.round((h * 500) / 400);
+          var x = d.x * sx, y = d.y * sy;
+          var drew = false;
           if (ready) {
-            var fr = img[sideKey][poseFor(u)][(base + (i % FRAMES)) % FRAMES];
-            if (fr && fr.complete && fr.naturalWidth) ctx.drawImage(fr, x - w / 2, y - h, w, h);
-            else dot(u, x, y);
-          } else dot(u, x, y);
-          if (u.kind === 'general') { ctx.fillStyle = u.side === 0 ? '#3fb950' : '#f0c000'; ctx.fillRect(x - 2, y - h - 6, 4, 4); }
+            var fr = img[spriteSetFor(d)][poseFor(d)][(base + (d.id % FRAMES)) % FRAMES];
+            if (fr && fr.complete && fr.naturalWidth) {
+              if (rstate[d.id].fx < 0) {
+                ctx.save();
+                ctx.translate(x, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(fr, -w / 2, y - h, w, h);
+                ctx.restore();
+              } else {
+                ctx.drawImage(fr, x - w / 2, y - h, w, h);
+              }
+              drew = true;
+            }
+          }
+          if (!drew) dot(d, x, y);
+          if (d.kind === 'general') { ctx.fillStyle = d.side === 0 ? '#3fb950' : '#f0c000'; ctx.fillRect(x - 2, y - h - 6, 4, 4); }
         }
       }
       function dot(u, x, y) { ctx.fillStyle = u.side === 0 ? '#f0564b' : '#4a9bf0'; ctx.fillRect(x - 1.5, y - 1.5, 3, 3); }

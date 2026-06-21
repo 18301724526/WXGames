@@ -46,6 +46,11 @@
     leaderDeathDamageMult: 0.5, // surviving soldiers fight at half power
     edgeMargin: 8, // beyond own edge => left the field
     rageOnHit: 0, // reserved for the skill system
+    speedJitter: 0.15, // ± per-unit move-speed variation
+    cohesion: 0.5, // formation-pull weight (Total War <-> 三国群英传 dial)
+    separationRadius: 7, // anti-stack jostle radius
+    separationPush: 0.6, // separation nudge as a fraction of a move step
+    separationMaxNeighbors: 12, // cap separation neighbor scan
   });
 
   function toNum(v, d = 0) {
@@ -97,6 +102,12 @@
       rage: 0,
       skillCds: [],
       skills: kind === 'general' ? (stats.skills || []).slice() : [],
+      // organic movement + extensibility
+      speedMul: 1, // per-unit speed variation (set at spawn)
+      slotOffX: 0, // formation slot offset relative to the general
+      slotOffY: 0,
+      unitType: stats.unitType || kind, // 兵种: drives stats + sprite set (extensible)
+      action: null, // reserved slot for signature moves / skills
     };
   }
 
@@ -140,6 +151,7 @@
           bandCenterY,
           gStats,
         );
+        general.speedMul = 1 + (rng() - 0.5) * config.speedJitter;
         units.push(general);
         squads[gid] = {
           gid,
@@ -157,6 +169,9 @@
           const x = frontX - dir * rank * rankGap;
           const y = bandCenterY + (file - (files - 1) / 2) * fileGap;
           const soldier = makeUnit(units.length, sideIndex, gid, 'soldier', x, y, tpl);
+          soldier.speedMul = 1 + (rng() - 0.5) * 2 * config.speedJitter;
+          soldier.slotOffX = x - general.x;
+          soldier.slotOffY = y - general.y;
           units.push(soldier);
           squads[gid].soldierIds.push(soldier.id);
         }
@@ -338,6 +353,50 @@
     return { x: gen.x + (dx / d) * screenDist, y: gen.y + (dy / d) * screenDist };
   }
 
+  // Gentle anti-stack push so units jostle/swirl instead of overlapping.
+  function applySeparation(battle, g) {
+    const cfg = battle.config;
+    const units = battle.units;
+    const r2 = cfg.separationRadius * cfg.separationRadius;
+    const maxN = cfg.separationMaxNeighbors;
+    for (let i = 0; i < units.length; i += 1) {
+      const u = units[i];
+      if (!u.alive || u.left) continue;
+      let cx = (u.x / g.cell) | 0;
+      let cy = (u.y / g.cell) | 0;
+      if (cx < 0) cx = 0;
+      else if (cx >= g.cols) cx = g.cols - 1;
+      if (cy < 0) cy = 0;
+      else if (cy >= g.rows) cy = g.rows - 1;
+      const bucket = g.grid[cy * g.cols + cx];
+      if (!bucket) continue;
+      let px = 0;
+      let py = 0;
+      let n = 0;
+      for (let k = 0; k < bucket.length && n < maxN; k += 1) {
+        const bi = bucket[k];
+        if (bi === i) continue;
+        const b = units[bi];
+        if (!b.alive || b.left) continue;
+        const dx = u.x - b.x;
+        const dy = u.y - b.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > 0 && d2 < r2) {
+          const d = Math.sqrt(d2);
+          px += dx / d;
+          py += dy / d;
+          n += 1;
+        }
+      }
+      if (n > 0) {
+        const d = Math.sqrt(px * px + py * py) || 1;
+        const mag = cfg.separationPush * ((u.moveSpeed * u.speedMul) / cfg.tickHz);
+        u.x += (px / d) * mag;
+        u.y += (py / d) * mag;
+      }
+    }
+  }
+
   function step(battle, inputs) {
     if (battle.result) return battle.result;
     const cfg = battle.config;
@@ -362,11 +421,12 @@
       if (!u.alive || u.left) continue;
       const sq = battle.squads[u.gid];
       const intent = resolveIntent(u, sq);
-      const sp = u.moveSpeed * (1 / cfg.tickHz);
+      const sp = u.moveSpeed * u.speedMul * (1 / cfg.tickHz);
 
-      // 1) engage: attack a target in range, or pursue it.
+      // 1) engage: attack a target in range (no move this tick), else remember it.
+      let target = null;
       if (intent.engage) {
-        let target = u.targetId >= 0 ? units[u.targetId] : null;
+        target = u.targetId >= 0 ? units[u.targetId] : null;
         if (!target || !target.alive || target.left) {
           u.targetId = acquireTarget(battle, u, g);
           target = u.targetId >= 0 ? units[u.targetId] : null;
@@ -374,8 +434,7 @@
         if (target) {
           const dx = target.x - u.x;
           const dy = target.y - u.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 <= u.range * u.range) {
+          if (dx * dx + dy * dy <= u.range * u.range) {
             u.state = STATE.ENGAGE;
             if (u.atkCd > 0) {
               u.atkCd -= 1;
@@ -390,48 +449,81 @@
                 if (target.kind === 'general') deadGenerals.push(target);
               }
             }
-            continue;
+            continue; // attacking: hold ground (separation may still jostle)
           }
-          if (intent.pursue) {
-            const d = Math.sqrt(d2) || 1;
-            u.x += (dx / d) * sp;
-            u.y += (dy / d) * sp;
-            u.state = STATE.ADVANCE;
-            continue;
-          }
-          // engaging but not pursuing: fall through to fallback movement.
         }
       }
 
-      // 2) fallback movement when not attacking/pursuing.
-      if (intent.fallback === 'enemyEdge') {
-        u.state = STATE.ADVANCE;
-        u.x += (u.side === 0 ? 1 : -1) * sp;
+      // 2) pick a goal point from the intent.
+      let goalX = null;
+      let goalY = null;
+      let retreating = false;
+      if (intent.engage && intent.pursue && target) {
+        goalX = target.x;
+        goalY = target.y;
+      } else if (intent.fallback === 'enemyEdge') {
+        goalX = u.x + (u.side === 0 ? 1 : -1) * 100;
+        goalY = u.y;
       } else if (intent.fallback === 'homeEdge') {
-        u.state = STATE.RETREAT;
-        const ex = homeEdgeX(battle, u.side);
-        u.x += Math.sign(ex - u.x) * sp;
-        if (intent.leaveField && ((u.side === 0 && u.x <= ex) || (u.side === 1 && u.x >= ex))) {
-          u.left = true;
-        }
+        goalX = homeEdgeX(battle, u.side);
+        goalY = u.y;
+        retreating = true;
       } else if (intent.fallback === 'screen') {
         const p = screenPoint(battle, sq, g);
         if (p) {
-          const dx = p.x - u.x;
-          const dy = p.y - u.y;
+          goalX = p.x;
+          goalY = p.y;
+        }
+      }
+      // (待命/防御 soldiers have no goal here -> they hold ground; only separation jostles.)
+
+      // 3) steering = goal direction + loose formation cohesion while advancing.
+      let vx = 0;
+      let vy = 0;
+      if (goalX !== null) {
+        const dx = goalX - u.x;
+        const dy = goalY - u.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        vx += dx / d;
+        vy += dy / d;
+      }
+      const advancing =
+        intent.fallback === 'enemyEdge' || (intent.engage && intent.pursue && target);
+      if (u.kind === 'soldier' && advancing) {
+        const gen = units[sq.generalId];
+        if (gen && gen.alive && !gen.left) {
+          const dx = gen.x + u.slotOffX - u.x;
+          const dy = gen.y + u.slotOffY - u.y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d > 1) {
-            u.x += (dx / d) * sp;
-            u.y += (dy / d) * sp;
+            vx += (dx / d) * cfg.cohesion;
+            vy += (dy / d) * cfg.cohesion;
           }
-          u.state = STATE.COVER;
-        } else {
-          u.state = STATE.HOLD;
+        }
+      }
+
+      if (vx !== 0 || vy !== 0) {
+        const d = Math.sqrt(vx * vx + vy * vy) || 1;
+        u.x += (vx / d) * sp;
+        u.y += (vy / d) * sp;
+        u.state = retreating
+          ? STATE.RETREAT
+          : intent.fallback === 'screen'
+            ? STATE.COVER
+            : STATE.ADVANCE;
+        if (
+          retreating &&
+          intent.leaveField &&
+          ((u.side === 0 && u.x <= goalX) || (u.side === 1 && u.x >= goalX))
+        ) {
+          u.left = true;
         }
       } else {
         u.state = STATE.HOLD;
       }
     }
+
+    applySeparation(battle, g);
 
     // Leader death -> squad morale collapse: half damage + seeded rout rolls.
     for (let i = 0; i < deadGenerals.length; i += 1) {
