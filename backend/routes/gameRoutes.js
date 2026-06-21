@@ -319,9 +319,11 @@ function registerGameRoutes(app, deps) {
       });
     }
     const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
+    const syncTime = new Date().toISOString();
     const responsePayload = {
       ...buildGameView(gameState, tutorial, gameStateService, projection),
-      syncTime: new Date().toISOString(),
+      syncTime,
+      serverTime: syncTime,
     };
     if (traceEnabled) {
       traceWorldMarch('route:state:response', {
