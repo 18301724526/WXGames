@@ -288,7 +288,19 @@
     )) || null;
   }
 
-  function resolveStartOrigin(host = {}, formation = {}) {
+  function getExplicitMissionId(options = {}) {
+    return String(options.missionId || options.actorId || '').trim();
+  }
+
+  function findMissionById(explorer = {}, missionId = '') {
+    if (!missionId) return null;
+    return getMissionList(explorer).find((mission) => mission.id === missionId) || null;
+  }
+
+  function resolveStartOrigin(host = {}, formation = {}, mission = null, nowMs = 0) {
+    if (mission) {
+      return normalizeCoord(getCurrentCoord(mission, nowMs) || mission.position || mission.target || mission.origin || {});
+    }
     const state = getState(host);
     const explorer = state.worldExplorerState || {};
     const idleMission = findIdleMissionForFormation(explorer, formation);
@@ -385,8 +397,12 @@
       cityId: options.cityId || getActiveCityId(state, options),
       slot: Math.max(1, toInteger(options.formationSlot ?? options.slot, 1)),
     };
-    const idleMission = findIdleMissionForFormation(explorer, formation);
-    const origin = resolveStartOrigin(host, formation);
+    const explicitMissionId = getExplicitMissionId(options);
+    const idleMission = explicitMissionId
+      ? findMissionById(explorer, explicitMissionId)
+      : findIdleMissionForFormation(explorer, formation);
+    if (explicitMissionId && !idleMission) return null;
+    const origin = resolveStartOrigin(host, formation, idleMission, nowMs);
     const target = normalizeCoord({ q: options.targetQ ?? options.q ?? options.x, r: options.targetR ?? options.r ?? options.y }, origin);
     const route = buildLinearRoute(origin, target, explorer.maxManualRouteLength || 0);
     if (!route.length) return null;
@@ -405,8 +421,8 @@
       plannedTiles: getPlannedTiles(route),
       plannedSites: [],
       formation: {
-        ...(idleMission?.formation || {}),
         ...formation,
+        ...(idleMission?.formation || {}),
       },
       formationSnapshot: idleMission?.formationSnapshot || null,
       position: origin,

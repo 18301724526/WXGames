@@ -166,3 +166,96 @@ test('WorldMarchOptimisticState builds compact continuous client position report
   assert.equal(report.missions[0].position.q, 0.5);
   assert.equal(JSON.stringify(report).includes('plannedTiles'), false);
 });
+
+test('WorldMarchOptimisticState begins an id-addressed march from the selected idle mission position', () => {
+  const parkedMission = makeMission({
+    id: 'march-parked',
+    status: 'idle',
+    origin: { q: 7, r: -2, tileId: 'tile_7_-2' },
+    homeOrigin: { q: 1, r: 1, tileId: 'tile_1_1' },
+    target: { q: 7, r: -2, tileId: 'tile_7_-2' },
+    position: { q: 7, r: -2, tileId: 'tile_7_-2' },
+    route: [],
+    formation: { cityId: 'frontier-city', slot: 2 },
+    nextStepAt: null,
+    completedAt: '2026-06-21T00:00:00.000Z',
+  });
+  const host = makeHost({
+    activeCityId: 'capital',
+    worldExplorerState: {
+      missions: [parkedMission],
+      activeMission: null,
+      idleMissions: [parkedMission],
+      maxManualRouteLength: 10,
+    },
+  });
+
+  const pending = WorldMarchOptimisticState.beginStart(host, {
+    missionId: 'march-parked',
+    cityId: 'capital',
+    formationSlot: 1,
+    targetQ: 9,
+    targetR: -2,
+  });
+
+  assert.equal(pending.mission.id, 'march-parked');
+  assert.deepEqual(pending.mission.origin, { q: 7, r: -2, tileId: 'tile_7_-2' });
+  assert.deepEqual(pending.mission.position, { q: 7, r: -2, tileId: 'tile_7_-2' });
+  assert.deepEqual(pending.mission.formation, { cityId: 'frontier-city', slot: 2 });
+  assert.deepEqual(pending.mission.route.map((step) => step.tileId), ['tile_8_-2', 'tile_9_-2']);
+  assert.equal(host.state.worldExplorerState.missions.length, 1);
+  assert.equal(host.state.worldExplorerState.activeMission.id, 'march-parked');
+});
+
+test('WorldMarchOptimisticState does not create an optimistic unit when explicit id is missing', () => {
+  const host = makeHost({
+    activeCityId: 'capital',
+    worldExplorerState: {
+      missions: [],
+      activeMission: null,
+      idleMissions: [],
+      maxManualRouteLength: 10,
+    },
+  });
+
+  const pending = WorldMarchOptimisticState.beginStart(host, {
+    missionId: 'missing-march',
+    cityId: 'capital',
+    formationSlot: 1,
+    targetQ: 2,
+    targetR: 0,
+  });
+
+  assert.equal(pending, null);
+  assert.equal(host.state.worldExplorerState.missions.length, 0);
+  assert.equal(host.state.worldExplorerState.activeMission, null);
+});
+
+test('WorldMarchOptimisticState still creates a new optimistic mission when no id is provided', () => {
+  const host = makeHost({
+    activeCityId: 'capital',
+    worldExplorerState: {
+      missions: [],
+      activeMission: null,
+      idleMissions: [],
+      maxManualRouteLength: 10,
+    },
+    territoryState: {
+      worldMap: {
+        tiles: [{ q: 0, r: 0, siteId: 'capital' }],
+      },
+    },
+  });
+
+  const pending = WorldMarchOptimisticState.beginStart(host, {
+    cityId: 'capital',
+    formationSlot: 1,
+    targetQ: 2,
+    targetR: 0,
+  });
+
+  assert.match(pending.mission.id, /^optimistic_manual_/);
+  assert.deepEqual(pending.mission.origin, { q: 0, r: 0, tileId: 'tile_0_0' });
+  assert.deepEqual(pending.mission.formation, { cityId: 'capital', slot: 1 });
+  assert.equal(host.state.worldExplorerState.activeMission.id, pending.mission.id);
+});
