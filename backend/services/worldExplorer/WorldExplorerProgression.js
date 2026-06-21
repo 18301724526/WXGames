@@ -1,9 +1,9 @@
 const WorldMapService = require('../WorldMapService');
+const WorldMarchCore = require('../../../shared/worldMarchCore');
 const {
   EXPLORE_REVEAL_RADIUS,
   TUTORIAL_FIRST_SITE_GRANT_KEY,
   toInteger,
-  toTimestamp,
 } = require('./WorldExplorerShared');
 const {
   normalizePlannedSite,
@@ -251,7 +251,8 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       continue;
     }
     if (mission.status !== 'active') continue;
-    let nextStepAtMs = toTimestamp(mission.nextStepAt, nowMs);
+    const stepDurationMs = WorldMarchCore.getMissionStepDurationMs(mission);
+    let nextStepAtMs = WorldMarchCore.toTimestamp(mission.nextStepAt, nowMs);
     WorldExplorerTrace.log('progression:advanceMission:begin', {
       now: now.toISOString(),
       nowMs,
@@ -261,24 +262,20 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
     while (nextStepAtMs <= nowMs) {
       const step = mission.route.find((item) => !item.revealed);
       if (!step) break;
-      const previousPosition = mission.position || [...mission.route].reverse().find((item) => item.revealed) || mission.origin || step;
+      const previousPosition = WorldMarchCore.getConfirmedPosition(mission);
       const revealedTiles = revealStep(gameState, mission, step, now, {
         planningContext: options.planningContext,
       });
       WorldMapService.recordVisionPath?.(gameState, previousPosition, step, now, { kind: 'unit' });
       step.revealed = true;
       step.revealedAt = now.toISOString();
-      mission.position = {
-        q: step.q,
-        r: step.r,
-        tileId: WorldMapService.getTileId(step.q, step.r),
-      };
+      mission.position = WorldMarchCore.normalizeCoord(step);
       newlyRevealedTiles.push(...revealedTiles);
       mission.revealedTileIds = Array.from(new Set([
         ...(mission.revealedTileIds || []),
         ...getTileIdentities(revealedTiles),
       ]));
-      nextStepAtMs += mission.stepDurationMs;
+      nextStepAtMs += stepDurationMs;
     }
     mission.nextStepAt = new Date(nextStepAtMs).toISOString();
     if (mission.route.every((step) => step.revealed)) {
