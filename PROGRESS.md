@@ -5,3 +5,13 @@ march 重构开始，共6步
 步骤4 完成：前端通过 WorldMarchCoreAdapter 接入共享 core，H5/minigame 入口提前加载，actor 层使用 epoch 时间满帧预测，+16ms 连续移动 sentinel 通过；npm.cmd test、npm.cmd run lint、npm.cmd run test:architecture 通过。
 步骤5 完成：新增 WorldMarchOptimisticState 乐观出发/回城与对账，点击后 UI 立即刷新，后端轻微滞后不回跳，大差异显示慢同步遮罩，拒绝时回滚；npm.cmd test、npm.cmd run lint、npm.cmd run test:architecture 通过。
 步骤6 完成：后端低频 march 校验接入 WorldWorkerService 推进链路，heartbeat 存储 compact 前端上报并下发差异级别，前端大漂移触发慢同步拉回、小抖动静默对齐；npm.cmd test、npm.cmd run lint、npm.cmd run test:architecture 通过。
+
+全部完成：6 步全部完成。
+步骤1 commit：6d8c6903 march-step-1: /game/state 补发 serverTime
+步骤2 commit：fe9240f6 march-step-2: 抽共享 worldMarchCore 并统一发散点
+步骤3 commit：8726d328 march-step-3: 后端接入共享 core
+步骤4 commit：4b889926 march-step-4: 前端接入 core 满帧预测
+步骤5 commit：054c0abc march-step-5: 乐观执行+对账
+步骤6 commit：d3d199bc march-step-6: 后端校验+清理
+最终验证：npm.cmd test 通过（1487/1487）；npm.cmd run lint 通过；npm.cmd run test:architecture 通过。
+提示：所有改动在本地 main，未 push，等待 review 后再推。
