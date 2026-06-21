@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const VisionModel = (() => {
     if (global.WorldFogVisionModel) return global.WorldFogVisionModel;
     if (typeof module !== 'undefined' && module.exports) {
@@ -27,12 +39,7 @@
   }
 
   function hashText(text = '') {
-    let hash = 2166136261;
-    for (let index = 0; index < text.length; index += 1) {
-      hash ^= text.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0).toString(36);
+    return SignatureHash.hashString(text).toString(36);
   }
 
   class WorldFogMaskGenerator {

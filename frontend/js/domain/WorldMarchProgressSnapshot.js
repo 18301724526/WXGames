@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const WorldTime = (() => {
     if (global.WorldTime) return global.WorldTime;
     if (typeof module !== 'undefined' && module.exports) {
@@ -411,16 +423,13 @@
     if (WorldMarchCore?.getRouteRenderRevealSignature) return WorldMarchCore.getRouteRenderRevealSignature(mission, nowMs);
     const progress = getMissionProgress(mission, nowMs);
     const sources = getRouteRenderRevealSources(mission, nowMs);
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     sources.forEach((source) => {
       const text = [
         source.tileId || '',
         Math.round(Math.max(0, Math.min(1, toNumber(source.strength, 0))) * 1000),
       ].join(':');
-      for (let index = 0; index < text.length; index += 1) {
-        hash ^= text.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-      }
+      hash = hashStep(hash, text);
     });
     return [
       sources.length,
@@ -657,13 +666,7 @@
   }
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let i = 0; i < text.length; i += 1) {
-      next ^= text.charCodeAt(i);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function buildIndex(items = []) {
@@ -679,7 +682,7 @@
     const actors = [];
     const arrivals = [];
     const counts = { missions: missionsRaw.length, actors: 0, arrivals: 0, active: 0, idle: 0 };
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     for (let i = 0; i < missionsRaw.length; i += 1) {
       const mission = normalizeMissionProgress(missionsRaw[i], { ...options, nowMs, index: i });
       missions[i] = mission;

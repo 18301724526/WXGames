@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapLayoutFacade {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -159,15 +171,11 @@
         return layoutModel.getWorldTileEntitySignature(tileMapView);
       }
       const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
-      let hash = 2166136261;
+      let hash = SignatureHash.FNV_OFFSET_BASIS;
       const push = (value) => {
-        const text = String(value ?? '');
-        for (let index = 0; index < text.length; index += 1) {
-          hash ^= text.charCodeAt(index);
-          hash = Math.imul(hash, 16777619);
-        }
+        hash = SignatureHash.foldString(hash, String(value ?? ''));
         hash ^= 31;
-        hash = Math.imul(hash, 16777619);
+        hash = Math.imul(hash, SignatureHash.FNV_PRIME);
       };
       for (let index = 0; index < tiles.length; index += 1) {
         const tile = tiles[index] || {};

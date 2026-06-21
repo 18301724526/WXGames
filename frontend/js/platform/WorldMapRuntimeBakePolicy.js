@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedTileCoord = (() => {
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
@@ -150,16 +162,13 @@
     }
     const sources = Array.isArray(mission.renderRevealSources) ? mission.renderRevealSources : [];
     if (!sources.length) return '';
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     sources.forEach((source) => {
       const text = [
         source.tileId || '',
         Math.round(toNumber(source.strength, 1) * 1000),
       ].join(':');
-      for (let index = 0; index < text.length; index += 1) {
-        hash ^= text.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-      }
+      hash = SignatureHash.hashStep(hash, text);
     });
     return `${sources.length}:${(hash >>> 0).toString(36)}`;
   }

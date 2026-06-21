@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const STORAGE_KEY = 'clientOperationLog';
   const URL_KEYS = ['clientOperationLog', 'operationLog', 'opLog'];
   const DEFAULT_MAX_ENTRIES = 800;
@@ -89,12 +101,7 @@
       runtime?.Date?.now?.() || Date.now(),
       Math.random().toString(36).slice(2),
     ].join('|');
-    let hash = 2166136261;
-    for (let index = 0; index < seed.length; index += 1) {
-      hash ^= seed.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return `run-${(hash >>> 0).toString(36)}`;
+    return `run-${SignatureHash.hashString(seed).toString(36)}`;
   }
 
   function readUrlFlag(runtime = global) {

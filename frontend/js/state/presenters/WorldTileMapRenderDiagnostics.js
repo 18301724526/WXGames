@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const TILE_RENDER_DIFF_LIMIT = 16;
   const TILE_RENDER_SAMPLE_LIMIT = 8;
   const TILE_RENDER_SNAPSHOT_INTERVAL_MS = 1000;
@@ -11,13 +23,7 @@
   }
 
   function hashText(text = '') {
-    let hash = 2166136261;
-    const source = String(text || '');
-    for (let index = 0; index < source.length; index += 1) {
-      hash ^= source.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0).toString(36);
+    return SignatureHash.hashText(text).toString(36);
   }
 
   function summarizeTemplateAssets(tile = {}) {

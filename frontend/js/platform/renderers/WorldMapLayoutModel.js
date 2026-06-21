@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedTileMapGeometry = (() => {
     if (global.TileMapGeometry) return global.TileMapGeometry;
     if (typeof module !== 'undefined' && module.exports) {
@@ -114,15 +126,11 @@
   }
 
   function hashSignatureParts(parts = []) {
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     for (let partIndex = 0; partIndex < parts.length; partIndex += 1) {
-      const text = String(parts[partIndex] ?? '');
-      for (let index = 0; index < text.length; index += 1) {
-        hash ^= text.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-      }
+      hash = SignatureHash.foldString(hash, String(parts[partIndex] ?? ''));
       hash ^= 31;
-      hash = Math.imul(hash, 16777619);
+      hash = Math.imul(hash, SignatureHash.FNV_PRIME);
     }
     return (hash >>> 0).toString(36);
   }

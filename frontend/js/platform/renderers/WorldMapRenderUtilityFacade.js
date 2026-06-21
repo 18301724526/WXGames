@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapRenderUtilityFacade {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -40,13 +52,7 @@
     }
 
     hashString(input) {
-      let hash = 2166136261;
-      const text = String(input);
-      for (let index = 0; index < text.length; index += 1) {
-        hash ^= text.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-      }
-      return hash >>> 0;
+      return SignatureHash.hashString(input);
     }
 
     random01(seed, q, r, salt) {
