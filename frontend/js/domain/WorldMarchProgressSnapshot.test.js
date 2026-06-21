@@ -99,8 +99,14 @@ test('WorldMarchProgressSnapshot exposes render-ready route tiles without reveal
   assert.deepEqual(halfwayDerived.route.map((step) => step.revealed), [false, false]);
   assert.equal(halfwayActor.renderAheadTileId, 'tile_1_0');
   assert.deepEqual(halfwayActor.renderReadyTileIds, ['tile_1_0']);
+  assert.equal(halfwayActor.renderRevealSources[0].tileId, 'tile_1_0');
+  assert.equal(halfwayActor.renderRevealSources[0].strength > 0, true);
+  assert.equal(halfwayActor.renderRevealSources[0].strength < 1, true);
   assert.equal(nextSegmentActor.renderAheadTileId, 'tile_2_0');
   assert.deepEqual(nextSegmentActor.renderReadyTileIds, ['tile_1_0', 'tile_2_0']);
+  assert.equal(nextSegmentActor.renderRevealSources[0].strength, 1);
+  assert.equal(nextSegmentActor.renderRevealSources[1].strength > 0, true);
+  assert.equal(nextSegmentActor.renderRevealSources[1].strength < 1, true);
 });
 
 test('WorldMarchProgressSnapshot canonicalizes stale tile ids through stable axes', () => {

@@ -90,6 +90,44 @@ test('WorldMapFogMaskContextRenderer accepts explicit snapshot and actor context
   assert.equal(typeof renderer.getWorldTileFogRevealEntries, 'undefined');
 });
 
+test('WorldMapFogMaskContextRenderer derives live fog actors from current epoch time', () => {
+  const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
+  const mission = {
+    id: 'live-fog-mission',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false },
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: false },
+    ],
+    target: { q: 2, r: 0, tileId: 'tile_2_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    stepDurationMs: 10000,
+    revealedTileIds: [],
+  };
+  const host = createHost({
+    lastWorldTileMapContext: {
+      actors: [],
+      visibilityActors: [],
+      renderSnapshot: { schema: 'world-map-render-snapshot-v1', signature: 'snapshot-live' },
+    },
+  });
+  const renderer = new WorldMapFogMaskContextRenderer({ host });
+  const tileMapView = {
+    geometry: { tileWidth: 192 },
+    activeScouts: [mission],
+    tiles: [{ id: 'tile_1_0', q: 1, r: 0 }],
+  };
+
+  const early = renderer.createWorldTileFogMaskContext(tileMapView, {}, {}, [], { epochNowMs: startedAt + 1000 });
+  const later = renderer.createWorldTileFogMaskContext(tileMapView, {}, {}, [], { epochNowMs: startedAt + 5000 });
+
+  assert.equal(early.visibilityActors.length, 1);
+  assert.equal(later.visibilityActors.length, 1);
+  assert.equal(early.visibilityActors[0].current.q < later.visibilityActors[0].current.q, true);
+  assert.notEqual(early.visibilityActors[0].renderRevealSignature, later.visibilityActors[0].renderRevealSignature);
+});
+
 test('WorldMapFogMaskContextRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./TileMapGeometry');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -16,7 +16,19 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./TileCoord');
-      } catch (error) {
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const WorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMarchSystem');
+      } catch (_error) {
         return null;
       }
     }
@@ -341,6 +353,19 @@
     return (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : []).map(String).includes(id);
   }
 
+  function getMissionRevealSources(mission = {}, actor = null) {
+    const fromActor = Array.isArray(actor?.renderRevealSources) ? actor.renderRevealSources : [];
+    if (fromActor.length) return fromActor;
+    if (Array.isArray(mission.renderRevealSources) && mission.renderRevealSources.length) return mission.renderRevealSources;
+    if (WorldMarchSystem?.getRouteRenderRevealSources) {
+      const nowMs = toNumber(mission.nowMs ?? mission.epochNowMs, Number.NaN);
+      if (!Number.isFinite(nowMs)) return [];
+      const computed = WorldMarchSystem.getRouteRenderRevealSources(mission, nowMs);
+      if (Array.isArray(computed) && computed.length) return computed;
+    }
+    return [];
+  }
+
   function samplePathSources(from = {}, to = {}, viewport = {}, geometry = {}, options = {}) {
     const start = normalizeFloatCoord(from, to);
     const end = normalizeFloatCoord(to, start);
@@ -355,6 +380,7 @@
         r: start.r + (end.r - start.r) * t,
       }, viewport, geometry, {
         source: 'routeHistory',
+        strength: Math.max(0, Math.min(1, toNumber(options.strength ?? 1, 1))),
       }));
     }
     return sources;
@@ -373,12 +399,24 @@
         .map((step, index) => ({ ...normalizeCoord(step), step: toInteger(step.step, index + 1), revealed: isRouteStepRevealed(step, mission) }))
         .sort((a, b) => a.step - b.step);
       let cursor = normalizeFloatCoord(mission.origin || mission.position || route[0] || {});
+      const actor = actorByMissionId.get(mission.id || mission.missionId || '');
+      const revealSources = getMissionRevealSources(mission, actor);
+      if (revealSources.length) {
+        revealSources.forEach((source) => {
+          const coord = normalizeFloatCoord(source, cursor);
+          sources.push(...samplePathSources(cursor, coord, viewport, geometry, {
+            ...options,
+            strength: source.strength ?? 1,
+          }));
+          if (toNumber(source.strength, 1) >= 1) cursor = coord;
+        });
+        return;
+      }
       route.forEach((step) => {
         if (!step.revealed) return;
         sources.push(...samplePathSources(cursor, step, viewport, geometry, options));
         cursor = step;
       });
-      const actor = actorByMissionId.get(mission.id || mission.missionId || '');
       const current = actor?.current || null;
       if (actor?.status === 'active' && current) {
         sources.push(...samplePathSources(cursor, current, viewport, geometry, options));
@@ -443,6 +481,7 @@
       Math.round(toNumber(source.center?.y) * 10),
       Math.round(toNumber(source.radiusTiles) * 1000),
       Math.round(toNumber(source.clearRadiusTiles) * 1000),
+      Math.round(toNumber(source.strength, 1) * 1000),
     ].join(':');
     let next = hash >>> 0;
     for (let i = 0; i < text.length; i += 1) {

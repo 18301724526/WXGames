@@ -64,4 +64,25 @@ test('worldMarchCore produces deterministic continuous position and route reveal
   assert.equal(state.current.q < 2, true);
   assert.deepEqual(state.revealedTileIds, ['tile_1_0']);
   assert.deepEqual(state.renderReadyTileIds, ['tile_1_0', 'tile_2_0']);
+  assert.equal(state.renderRevealSources.length, 2);
+  assert.equal(state.renderRevealSources[0].strength, 1);
+  assert.equal(state.renderRevealSources[1].strength > 0, true);
+  assert.equal(state.renderRevealSources[1].strength < 1, true);
+});
+
+test('worldMarchCore moves fog reveal strength continuously inside a route step', () => {
+  const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
+  const mission = createMission({ revealedTileIds: [] });
+  const first = WorldMarchCore.computeMarchState(mission, startedAt + 1000);
+  const middle = WorldMarchCore.computeMarchState(mission, startedAt + 5000);
+  const late = WorldMarchCore.computeMarchState(mission, startedAt + 9000);
+
+  assert.deepEqual(first.renderReadyTileIds, ['tile_1_0']);
+  assert.deepEqual(middle.renderReadyTileIds, ['tile_1_0']);
+  assert.deepEqual(late.renderReadyTileIds, ['tile_1_0']);
+  assert.equal(first.renderRevealSources[0].strength > 0, true);
+  assert.equal(first.renderRevealSources[0].strength < middle.renderRevealSources[0].strength, true);
+  assert.equal(middle.renderRevealSources[0].strength < late.renderRevealSources[0].strength, true);
+  assert.notEqual(first.renderRevealSignature, middle.renderRevealSignature);
+  assert.notEqual(middle.renderRevealSignature, late.renderRevealSignature);
 });

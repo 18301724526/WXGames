@@ -148,6 +148,8 @@
             actor?.id || actor?.missionId || '',
             Math.round(toNumber(current.q ?? current.x, 0) * 1000),
             Math.round(toNumber(current.r ?? current.y, 0) * 1000),
+            actor?.renderRevealSignature || '',
+            WorldFogMaskGenerator.getRevealSourceSignature?.(actor?.renderRevealSources || []) || '',
             actor?.status || '',
           ].join(':');
         })
@@ -346,6 +348,16 @@
   }
 
   WorldFogMaskGenerator.smoothstep = smoothstep;
+  WorldFogMaskGenerator.getRevealSourceSignature = function getRevealSourceSignature(sources = []) {
+    return hashText((Array.isArray(sources) ? sources : [])
+      .map((source) => [
+        source?.tileId || '',
+        Math.round(toNumber(source?.q) * 1000),
+        Math.round(toNumber(source?.r) * 1000),
+        Math.round(clamp01(source?.strength ?? 1) * 1000),
+      ].join(':'))
+      .join('|'));
+  };
   global.WorldFogMaskGenerator = WorldFogMaskGenerator;
   if (typeof module !== 'undefined' && module.exports) module.exports = WorldFogMaskGenerator;
 })(typeof window !== 'undefined' ? window : globalThis);

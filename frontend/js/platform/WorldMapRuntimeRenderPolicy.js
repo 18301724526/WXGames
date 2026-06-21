@@ -3,8 +3,16 @@
   if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
     try {
       SharedWorldClock = require('../domain/WorldClock');
-    } catch (error) {
+    } catch (_error) {
       SharedWorldClock = null;
+    }
+  }
+  var SharedWorldMarchSystem = global.WorldMarchSystem;
+  if (typeof module !== 'undefined' && module.exports && !SharedWorldMarchSystem) {
+    try {
+      SharedWorldMarchSystem = require('../domain/WorldMarchSystem');
+    } catch (_error) {
+      SharedWorldMarchSystem = null;
     }
   }
 
@@ -166,12 +174,16 @@
 
   function getMissionTraceParts(state = {}, epochNowMs = Date.now()) {
     const activeMission = state?.worldExplorerState?.activeMission || null;
+    const renderRevealSignature = activeMission && SharedWorldMarchSystem?.getRouteRenderRevealSignature
+      ? SharedWorldMarchSystem.getRouteRenderRevealSignature(activeMission, epochNowMs)
+      : (activeMission?.renderRevealSignature || '');
     return {
       activeMission,
       missionId: activeMission?.id || '',
       missionStatus: activeMission?.status || '',
-      revealedCount: (activeMission?.revealedTileIds || []).length,
-      epochBucket: Math.floor(Number(epochNowMs) / 10000),
+      revealedCount: (activeMission?.renderRevealSources || activeMission?.revealedTileIds || []).length,
+      renderRevealSignature,
+      epochBucket: Math.floor(Number(epochNowMs) / 1000),
     };
   }
 
@@ -197,6 +209,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
+        parts.renderRevealSignature,
         parts.epochBucket,
       ],
       data: {
@@ -233,6 +246,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
+        parts.renderRevealSignature,
         parts.epochBucket,
       ],
       data: {
@@ -283,6 +297,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
+        parts.renderRevealSignature,
         parts.epochBucket,
       ],
       data: {

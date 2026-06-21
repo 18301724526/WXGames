@@ -614,6 +614,50 @@ test('WorldFogMaskGenerator derives explored history from revealed route paths w
   assert.equal(sourceSet.memorySources.some((source) => source.source === 'routeHistory'), true);
 });
 
+test('WorldFogMaskGenerator fades route frontier reveals through source strength', () => {
+  const tiles = [];
+  const entries = [];
+  for (let q = 0; q <= 1; q += 1) {
+    const tile = { id: `tile_${q}_0`, q, r: 0, discovered: true, visible: false, visibility: 'scouted' };
+    tiles.push(tile);
+    entries.push({
+      tile,
+      center: { x: 130 + q * 48, y: 120 + q * 24 },
+    });
+  }
+  const createContext = (strength) => createWorldContext({
+    tileMapView: {
+      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+      tiles,
+      sites: [],
+    },
+    entries,
+    actors: [],
+    renderSnapshot: {
+      march: {
+        missions: [{
+          id: 'route-memory',
+          status: 'active',
+          origin: { q: 0, r: 0 },
+          route: [{ q: 1, r: 0, step: 1, revealed: false }],
+          revealedTileIds: [],
+          renderRevealSignature: `frontier:${strength}`,
+          renderRevealSources: [{ q: 1, r: 0, tileId: 'tile_1_0', strength }],
+        }],
+      },
+    },
+  });
+
+  const low = new WorldFogMaskGenerator({ maskSize: 128 }).prepare(createContext(0.25)).mask;
+  const high = new WorldFogMaskGenerator({ maskSize: 128 }).prepare(createContext(0.75)).mask;
+  const lowAlpha = readMaskAt(low.explored, low, { x: 178, y: 144 });
+  const highAlpha = readMaskAt(high.explored, high, { x: 178, y: 144 });
+
+  assert.equal(lowAlpha > 0, true);
+  assert.equal(lowAlpha < highAlpha, true);
+  assert.equal(highAlpha < 255, true);
+});
+
 function readMaskAt(channel, mask, point) {
   const frame = mask.maskFrame;
   const x = Math.max(0, Math.min(mask.width - 1, Math.round(((point.x - frame.x) / frame.width) * mask.width)));

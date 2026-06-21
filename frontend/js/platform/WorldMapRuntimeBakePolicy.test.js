@@ -64,6 +64,30 @@ test('WorldMapRuntimeBakePolicy fallback signature includes world explorer state
   assert.equal(readySignature.includes('site_1_0'), true);
 });
 
+test('WorldMapRuntimeBakePolicy fallback signature follows continuous fog reveal progress', () => {
+  const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
+  const state = createState('active');
+  state.worldExplorerState.activeMission = {
+    ...state.worldExplorerState.activeMission,
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false },
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: false },
+    ],
+    target: { q: 2, r: 0, tileId: 'tile_2_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    stepDurationMs: 10000,
+    revealedTileIds: [],
+  };
+
+  const early = WorldMapRuntimeBakePolicy.getMapDataSignature(state, { epochNowMs: startedAt + 1000 });
+  const later = WorldMapRuntimeBakePolicy.getMapDataSignature(state, { epochNowMs: startedAt + 5000 });
+
+  assert.notEqual(early, later);
+  assert.equal(early.includes('"revealedTileIds":[]'), true);
+  assert.equal(later.includes('"revealedTileIds":[]'), true);
+});
+
 test('WorldMapRuntimeBakePolicy fallback signature canonicalizes stable x/y and legacy q/r map shapes', () => {
   const stableShape = {
     territoryState: {

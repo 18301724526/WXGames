@@ -4,7 +4,31 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../domain/TileCoord');
-      } catch (error) {
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const sharedWorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldMarchSystem');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const sharedWorldClock = (() => {
+    if (global.WorldClock) return global.WorldClock;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/WorldClock');
+      } catch (_error) {
         return null;
       }
     }
@@ -115,6 +139,31 @@
     return ids;
   }
 
+  function summarizeRenderReveal(mission = {}, options = {}) {
+    const nowMs = options.nowMs
+      ?? options.epochNowMs
+      ?? options.serverNowMs
+      ?? sharedWorldClock?.getEpochNowMs?.(options, Number.NaN);
+    if (mission.renderRevealSignature) return mission.renderRevealSignature;
+    if (sharedWorldMarchSystem?.getRouteRenderRevealSignature) {
+      return sharedWorldMarchSystem.getRouteRenderRevealSignature(mission, nowMs);
+    }
+    const sources = Array.isArray(mission.renderRevealSources) ? mission.renderRevealSources : [];
+    if (!sources.length) return '';
+    let hash = 2166136261;
+    sources.forEach((source) => {
+      const text = [
+        source.tileId || '',
+        Math.round(toNumber(source.strength, 1) * 1000),
+      ].join(':');
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+    });
+    return `${sources.length}:${(hash >>> 0).toString(36)}`;
+  }
+
   function summarizeTile(tile = {}) {
     const coord = summarizeCoord(tile);
     return {
@@ -183,7 +232,7 @@
     };
   }
 
-  function summarizeExplorerMission(mission = {}) {
+  function summarizeExplorerMission(mission = {}, options = {}) {
     return {
       id: mission.id,
       status: mission.status,
@@ -192,6 +241,7 @@
       plannedTiles: (mission.plannedTiles || []).map(summarizeTile),
       plannedSites: (mission.plannedSites || []).map(summarizePlannedSite),
       revealedTileIds: summarizeRevealedTileIds(mission),
+      renderReveal: summarizeRenderReveal(mission, options),
     };
   }
 
@@ -216,7 +266,7 @@
       explorerMissions: [
         worldExplorerState.activeMission,
         ...(Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []),
-      ].filter(Boolean).map(summarizeExplorerMission),
+      ].filter(Boolean).map((mission) => summarizeExplorerMission(mission, options)),
     });
   }
 
@@ -243,6 +293,7 @@
     normalizeCoord,
     summarizeCoord,
     summarizeExplorerMission,
+    summarizeRenderReveal,
     summarizeMission,
     summarizePlannedSite,
     summarizeRouteCoord,

@@ -50,6 +50,8 @@
     getCurrentCoord: delegate(WorldMarchProgressSnapshot, 'getCurrentCoord', null),
     getRouteRenderAheadTileId: delegate(WorldMarchProgressSnapshot, 'getRouteRenderAheadTileId', null),
     getRouteRenderReadyTileIds: delegate(WorldMarchProgressSnapshot, 'getRouteRenderReadyTileIds', []),
+    getRouteRenderRevealSources: delegate(WorldMarchProgressSnapshot, 'getRouteRenderRevealSources', []),
+    getRouteRenderRevealSignature: delegate(WorldMarchProgressSnapshot, 'getRouteRenderRevealSignature', ''),
     chooseStopTile: delegate(WorldMarchProgressSnapshot, 'chooseStopTile', null),
     getRemainingSeconds: delegate(WorldMarchProgressSnapshot, 'getRemainingSeconds', 0),
     buildActorFromMission: delegate(WorldMarchProgressSnapshot, 'buildActorFromMission', null),

@@ -138,10 +138,11 @@ test('WorldMapRuntimeRenderPolicy builds trace payloads without renderer state',
     true,
     true,
     false,
-    'mission-1',
-    'ready',
-    2,
-    2,
+      'mission-1',
+      'ready',
+      2,
+      '0:0:0:ztntfp',
+      20,
   ]);
   assert.equal(beginTrace.data.activeMission.status, 'ready');
 
@@ -194,4 +195,41 @@ test('WorldMapRuntimeRenderPolicy separates preserved hit targets from visual la
   assert.equal(Policy.createWorldMapCompositionOptions({}, validFrame).preserveCanvas, false);
   assert.equal(Policy.createWorldMapCompositionOptions({ preserveCanvas: true }, validFrame).skipWorldMapLayer, true);
   assert.equal(Policy.createWorldMapCompositionOptions({ preserveCanvas: true }, validFrame).preserveCanvas, true);
+});
+
+test('WorldMapRuntimeRenderPolicy trace key follows continuous fog reveal progress', () => {
+  const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
+  const state = createState('active');
+  state.worldExplorerState.activeMission = {
+    id: 'mission-1',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false },
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: false },
+    ],
+    startedAt: new Date(startedAt).toISOString(),
+    stepDurationMs: 10000,
+    revealedTileIds: [],
+  };
+  const first = Policy.createRenderBeginTrace(state, {
+    snapshotOnly: false,
+    renderOptions: { epochNowMs: startedAt + 1000 },
+  }, {
+    canUseSnapshotLayer: true,
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+  });
+  const second = Policy.createRenderBeginTrace(state, {
+    snapshotOnly: false,
+    renderOptions: { epochNowMs: startedAt + 5000 },
+  }, {
+    canUseSnapshotLayer: true,
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+  });
+
+  assert.notEqual(first.keyParts.join('|'), second.keyParts.join('|'));
+  assert.equal(first.keyParts[8], Math.floor((startedAt + 1000) / 1000));
+  assert.equal(second.keyParts[8], Math.floor((startedAt + 5000) / 1000));
 });

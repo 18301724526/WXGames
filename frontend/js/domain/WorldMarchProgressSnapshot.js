@@ -360,12 +360,74 @@
 
   function getRouteRenderReadyTileIds(mission = {}, nowMs = Date.now()) {
     if (WorldMarchCore?.getRouteRenderReadyTileIds) return WorldMarchCore.getRouteRenderReadyTileIds(mission, nowMs);
-    if (!mission || mission.status !== STATUS_ACTIVE) return [];
+    return getRouteRenderRevealSources(mission, nowMs)
+      .filter((source) => toNumber(source.strength, 0) > 0)
+      .map((source) => source.tileId)
+      .filter(Boolean);
+  }
+
+  function appendRouteRevealSource(sources = [], coord = {}, strength = 1, source = 'routeHistory') {
+    const normalized = normalizeCoord(coord);
+    if (!normalized.tileId) return sources;
+    const nextStrength = Math.max(0, Math.min(1, toNumber(strength, 0)));
+    const existing = sources.find((item) => item.tileId === normalized.tileId);
+    if (existing) {
+      existing.strength = Math.max(existing.strength, nextStrength);
+      return sources;
+    }
+    sources.push({
+      q: normalized.q,
+      r: normalized.r,
+      tileId: normalized.tileId,
+      strength: nextStrength,
+      source,
+    });
+    return sources;
+  }
+
+  function getRouteRenderRevealSources(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getRouteRenderRevealSources) return WorldMarchCore.getRouteRenderRevealSources(mission, nowMs);
+    if (!mission) return [];
     const route = normalizeRoute(mission.route);
-    if (!route.length) return [];
+    const revealedSet = createRevealedTileSet(mission);
+    const sources = [];
+    route.forEach((step) => {
+      if (step.revealed || revealedSet.has(step.tileId)) appendRouteRevealSource(sources, step, 1, 'backendReveal');
+    });
+    if (mission.status !== STATUS_ACTIVE) return sources;
+    if (!route.length) return sources;
     const progress = getMissionProgress(mission, nowMs);
-    const readyCount = Math.max(1, Math.min(route.length, progress.segmentIndex + 1));
-    return route.slice(0, readyCount).map((step) => step.tileId).filter(Boolean);
+    const completedCount = Math.max(0, Math.min(route.length, progress.segmentIndex));
+    route.slice(0, completedCount).forEach((step) => appendRouteRevealSource(sources, step, 1));
+    const frontierStep = route[progress.segmentIndex];
+    const frontierStrength = Math.max(0, Math.min(1, toNumber(progress.segmentProgress, 0)));
+    if (frontierStep && frontierStrength > 0) {
+      appendRouteRevealSource(sources, frontierStep, frontierStrength, frontierStrength >= 1 ? 'routeHistory' : 'routeFrontier');
+    }
+    return sources;
+  }
+
+  function getRouteRenderRevealSignature(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getRouteRenderRevealSignature) return WorldMarchCore.getRouteRenderRevealSignature(mission, nowMs);
+    const progress = getMissionProgress(mission, nowMs);
+    const sources = getRouteRenderRevealSources(mission, nowMs);
+    let hash = 2166136261;
+    sources.forEach((source) => {
+      const text = [
+        source.tileId || '',
+        Math.round(Math.max(0, Math.min(1, toNumber(source.strength, 0))) * 1000),
+      ].join(':');
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+    });
+    return [
+      sources.length,
+      progress.segmentIndex,
+      Math.round(toNumber(progress.segmentProgress, 0) * 1000),
+      (hash >>> 0).toString(36),
+    ].join(':');
   }
 
   function chooseStopTile(mission = {}, nowMs = Date.now()) {
@@ -440,6 +502,8 @@
       route,
       renderAheadTileId: getRouteRenderAheadTileId(mission, nowMs),
       renderReadyTileIds: getRouteRenderReadyTileIds(mission, nowMs),
+      renderRevealSources: getRouteRenderRevealSources(mission, nowMs),
+      renderRevealSignature: getRouteRenderRevealSignature(mission, nowMs),
       formation: normalizeFormation(formation, origin),
       progress: getMissionProgress(effectiveMission, nowMs),
       remainingSeconds: getRemainingSeconds(effectiveMission, nowMs),
@@ -494,6 +558,8 @@
     const stopTile = chooseStopTile(effectiveMission, nowMs);
     const renderAheadTileId = getRouteRenderAheadTileId(source, nowMs);
     const renderReadyTileIds = getRouteRenderReadyTileIds(source, nowMs);
+    const renderRevealSources = getRouteRenderRevealSources(source, nowMs);
+    const renderRevealSignature = getRouteRenderRevealSignature(source, nowMs);
     const remainingSeconds = getRemainingSeconds(effectiveMission, nowMs);
     const travelRemainingSeconds = getTravelRemainingSeconds(effectiveMission, nowMs);
     const arrivalKind = getArrivalKind(status);
@@ -512,6 +578,8 @@
       stopTile,
       renderAheadTileId,
       renderReadyTileIds,
+      renderRevealSources,
+      renderRevealSignature,
       route,
       routeLength: route.length,
       revealedCount: Array.isArray(source.revealedTileIds) ? source.revealedTileIds.length : route.filter((step) => step.revealed).length,
@@ -552,6 +620,8 @@
       stopTile: row.stopTile,
       renderAheadTileId: row.renderAheadTileId || null,
       renderReadyTileIds: Array.isArray(row.renderReadyTileIds) ? row.renderReadyTileIds : [],
+      renderRevealSources: Array.isArray(row.renderRevealSources) ? row.renderRevealSources : [],
+      renderRevealSignature: row.renderRevealSignature || '',
       route: row.route,
       formation: row.formation,
       formationSnapshot: row.formationSnapshot || null,
@@ -626,6 +696,7 @@
       hash = hashStep(hash, Math.round(mission.progress.progress * 10000));
       hash = hashStep(hash, Math.round(toNumber(mission.current?.q) * 1000));
       hash = hashStep(hash, Math.round(toNumber(mission.current?.r) * 1000));
+      hash = hashStep(hash, mission.renderRevealSignature);
       hash = hashStep(hash, mission.remainingSeconds);
     }
     counts.actors = actors.length;
@@ -708,6 +779,8 @@
     getCurrentCoord,
     getRouteRenderAheadTileId,
     getRouteRenderReadyTileIds,
+    getRouteRenderRevealSources,
+    getRouteRenderRevealSignature,
     chooseStopTile,
     getRemainingSeconds,
     getTravelRemainingSeconds,

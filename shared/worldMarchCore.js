@@ -295,12 +295,72 @@ function getRouteRenderAheadTileId(mission = {}, nowMs = 0) {
 }
 
 function getRouteRenderReadyTileIds(mission = {}, nowMs = 0) {
-  if (!mission || mission.status !== STATUS_ACTIVE) return [];
+  return getRouteRenderRevealSources(mission, nowMs)
+    .filter((source) => clampUnit(source.strength) > 0)
+    .map((source) => source.tileId)
+    .filter(Boolean);
+}
+
+function appendRouteRevealSource(sources = [], coord = {}, strength = 1, source = 'routeHistory') {
+  const normalized = normalizeCoord(coord);
+  if (!normalized.tileId) return sources;
+  const nextStrength = clampUnit(strength);
+  const existing = sources.find((item) => item.tileId === normalized.tileId);
+  if (existing) {
+    existing.strength = Math.max(existing.strength, nextStrength);
+    return sources;
+  }
+  sources.push({
+    q: normalized.q,
+    r: normalized.r,
+    tileId: normalized.tileId,
+    strength: nextStrength,
+    source,
+  });
+  return sources;
+}
+
+function getRouteRenderRevealSources(mission = {}, nowMs = 0) {
+  if (!mission) return [];
   const route = normalizeRoute(mission.route);
-  if (!route.length) return [];
+  const revealedSet = createRevealedTileSet(mission);
+  const sources = [];
+  route.forEach((step) => {
+    if (step.revealed || revealedSet.has(step.tileId)) appendRouteRevealSource(sources, step, 1, 'backendReveal');
+  });
+  if (mission.status !== STATUS_ACTIVE) return sources;
+  if (!route.length) return sources;
   const progress = getMissionProgress(mission, nowMs);
-  const readyCount = Math.max(1, Math.min(route.length, progress.segmentIndex + 1));
-  return route.slice(0, readyCount).map((step) => step.tileId).filter(Boolean);
+  const completedCount = Math.max(0, Math.min(route.length, progress.segmentIndex));
+  route.slice(0, completedCount).forEach((step) => appendRouteRevealSource(sources, step, 1));
+  const frontierStep = route[progress.segmentIndex];
+  const frontierStrength = clampUnit(progress.segmentProgress);
+  if (frontierStep && frontierStrength > 0) {
+    appendRouteRevealSource(sources, frontierStep, frontierStrength, frontierStrength >= 1 ? 'routeHistory' : 'routeFrontier');
+  }
+  return sources;
+}
+
+function getRouteRenderRevealSignature(mission = {}, nowMs = 0) {
+  const progress = getMissionProgress(mission, nowMs);
+  const sources = getRouteRenderRevealSources(mission, nowMs);
+  let hash = 2166136261;
+  sources.forEach((source) => {
+    const text = [
+      source.tileId || '',
+      Math.round(clampUnit(source.strength) * 1000),
+    ].join(':');
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+  });
+  return [
+    sources.length,
+    progress.segmentIndex,
+    Math.round(progress.segmentProgress * 1000),
+    (hash >>> 0).toString(36),
+  ].join(':');
 }
 
 function chooseStopTile(mission = {}, nowMs = 0) {
@@ -330,6 +390,8 @@ function computeMarchState(missionParams = {}, nowMs = 0) {
     stopTile: chooseStopTile(mission, nowMs),
     renderAheadTileId: getRouteRenderAheadTileId(mission, nowMs),
     renderReadyTileIds: getRouteRenderReadyTileIds(mission, nowMs),
+    renderRevealSources: getRouteRenderRevealSources(mission, nowMs),
+    renderRevealSignature: getRouteRenderRevealSignature(mission, nowMs),
     remainingSeconds: getRemainingSeconds(mission, nowMs),
     travelRemainingSeconds: getTravelRemainingSeconds(mission, nowMs),
   };
@@ -363,6 +425,8 @@ module.exports = {
   getCurrentCoord,
   getRouteRenderAheadTileId,
   getRouteRenderReadyTileIds,
+  getRouteRenderRevealSources,
+  getRouteRenderRevealSignature,
   chooseStopTile,
   getConfirmedPosition,
   getRemainingSeconds,

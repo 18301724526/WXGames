@@ -136,6 +136,66 @@ test('CanvasGameShellWorldMapLayerBridge clears disabled fog and skips plugins',
   assert.deepEqual(calls, ['clear']);
 });
 
+test('CanvasGameShellWorldMapLayerBridge refreshes fog actors when map layer context is reused', () => {
+  const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
+  const calls = [];
+  const mission = {
+    id: 'fog-live-1',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [{ q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false }],
+    target: { q: 1, r: 0, tileId: 'tile_1_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    stepDurationMs: 10000,
+    revealedTileIds: [],
+  };
+  const shell = createShell({
+    getWorldEpochNowMs() {
+      return startedAt + 5000;
+    },
+    isFogOfWarEnabled() {
+      return true;
+    },
+    lastGame: {
+      state: {
+        worldExplorerState: { activeMission: mission },
+      },
+    },
+    syncWorldMapRendererLayerMetrics() {
+      calls.push(['syncMetrics']);
+      return true;
+    },
+    worldFogRenderer: {
+      renderWorldFog(context) {
+        calls.push(['renderWorldFog', context]);
+        return true;
+      },
+    },
+    worldMapRenderer: {
+      lastWorldFogContext: {
+        actors: [],
+        visibilityActors: [],
+        tileMapView: { geometry: { tileWidth: 192 }, tiles: [{ id: 'tile_1_0', q: 1, r: 0 }] },
+        viewport: { originX: 0, originY: 0 },
+        frame: { x: 0, y: 0, width: 100, height: 100 },
+        entries: [],
+      },
+      lastWorldTileMapContext: {
+        actors: [],
+        visibilityActors: [],
+      },
+    },
+  });
+
+  assert.equal(shell.renderWorldFogLayer(), true);
+  const context = calls.find((call) => call[0] === 'renderWorldFog')?.[1];
+  assert.equal(context.visibilityActors.length, 1);
+  assert.equal(context.visibilityActors[0].current.q > 0, true);
+  assert.equal(context.visibilityActors[0].current.q < 1, true);
+  assert.equal(context.visibilityActors[0].renderRevealSources[0].strength > 0, true);
+  assert.equal(context.visibilityActors[0].renderRevealSources[0].strength < 1, true);
+});
+
 test('CanvasGameShellWorldMapLayerBridge treats map, fog, and actor as one camera layer group', () => {
   const calls = [];
   const shell = createShell({

@@ -3,9 +3,35 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapVisualPluginRegistryBase) {
     try {
       WorldMapVisualPluginRegistryBase = require('./WorldMapVisualPluginRegistry');
-    } catch (error) {
+    } catch (_error) {
       WorldMapVisualPluginRegistryBase = null;
     }
+  }
+  var WorldMarchSystem = global.WorldMarchSystem;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
+    try {
+      WorldMarchSystem = require('../domain/WorldMarchSystem');
+    } catch (_error) {
+      WorldMarchSystem = null;
+    }
+  }
+
+  function buildLiveFogVisibilityActors(shell = {}, baseContext = {}, epochNowMs = Number.NaN) {
+    if (!WorldMarchSystem?.buildActors) {
+      return Array.isArray(baseContext.visibilityActors)
+        ? baseContext.visibilityActors
+        : (Array.isArray(baseContext.renderSnapshot?.actors) ? baseContext.renderSnapshot.actors : []);
+    }
+    const state = shell.lastGame?.state || shell.state || {};
+    const explorerState = state.worldExplorerState || {};
+    const fromExplorer = WorldMarchSystem.buildActors(explorerState, { nowMs: epochNowMs });
+    if (Array.isArray(fromExplorer) && fromExplorer.length) return fromExplorer;
+    const activeScouts = baseContext.tileMapView?.activeScouts || [];
+    const fromTileMap = WorldMarchSystem.buildActors({ missions: activeScouts }, { nowMs: epochNowMs });
+    if (Array.isArray(fromTileMap) && fromTileMap.length) return fromTileMap;
+    return Array.isArray(baseContext.visibilityActors)
+      ? baseContext.visibilityActors
+      : (Array.isArray(baseContext.renderSnapshot?.actors) ? baseContext.renderSnapshot.actors : []);
   }
 
   function install(CanvasGameShell) {
@@ -132,19 +158,23 @@
           config: this.config,
           cacheHost: this,
         };
+        const epochNowMs = this.getWorldEpochNowMs?.() ?? baseWorldContext.epochNowMs;
+        const liveVisibilityActors = buildLiveFogVisibilityActors(this, baseWorldContext, epochNowMs);
         const visualContext = visualRegistry?.createRendererContext?.('worldFog', baseWorldContext, {
           config: this.config,
           cacheHost: this,
         }) || null;
-        const renderContext = visualContext ? {
+        const liveBaseWorldContext = {
           ...baseWorldContext,
+          epochNowMs,
+          visibilityActors: liveVisibilityActors,
+        };
+        const renderContext = visualContext ? {
+          ...liveBaseWorldContext,
           ...visualContext,
+          epochNowMs,
           actors: Array.isArray(baseWorldContext.actors) ? baseWorldContext.actors : [],
-          visibilityActors: Array.isArray(baseWorldContext.visibilityActors)
-            ? baseWorldContext.visibilityActors
-            : (Array.isArray(baseWorldContext.actors)
-            ? baseWorldContext.actors
-            : (Array.isArray(baseWorldContext.renderSnapshot?.actors) ? baseWorldContext.renderSnapshot.actors : [])),
+          visibilityActors: liveVisibilityActors,
           renderSnapshot: baseWorldContext.renderSnapshot || visualContext.renderSnapshot || null,
           tileMapView: {
             ...(baseWorldContext.tileMapView || {}),
@@ -153,7 +183,7 @@
               ? baseWorldContext.tileMapView.sites
               : (Array.isArray(visualContext.tileMapView?.sites) ? visualContext.tileMapView.sites : []),
           },
-        } : fogContext;
+        } : liveBaseWorldContext;
         this.syncWorldMapRendererLayerMetrics();
         return this.worldFogRenderer.renderWorldFog(renderContext || fogContext);
       },
