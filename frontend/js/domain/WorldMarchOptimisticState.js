@@ -439,6 +439,7 @@
     const pending = registerPending(host, {
       pendingId,
       missionId,
+      explicitMissionId,
       action: 'startWorldMarch',
       previousExplorer: clonePlain(explorer),
       formation,
@@ -526,7 +527,9 @@
   }
 
   function matchPendingAuthority(pending = {}, authorityMissions = []) {
-    return authorityMissions.find((mission) => mission.id === pending.missionId)
+    const idMatch = authorityMissions.find((mission) => mission.id === pending.missionId);
+    if (pending.explicitMissionId) return idMatch || null;
+    return idMatch
       || authorityMissions.find((mission) => getMissionFormationKey(mission) === getFormationKey(pending.formation)
         && (!pending.routeSignature || getRouteSignature(mission.route) === pending.routeSignature))
       || authorityMissions.find((mission) => getMissionFormationKey(mission) === getFormationKey(pending.formation)

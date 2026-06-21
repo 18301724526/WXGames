@@ -411,6 +411,138 @@ test('CanvasGameApp rolls back optimistic world march after start rejection', as
   assert.deepEqual(host.state.worldExplorerState, initialExplorer);
 });
 
+test('CanvasGameApp starts a selected idle world actor by id without a capital optimistic replacement', async () => {
+  class Host {}
+  CanvasGameAppStateSync.install(Host);
+  CanvasGameAppCommands.install(Host);
+  const calls = [];
+  const parkedMission = {
+    id: 'march-parked',
+    kind: 'worldExplore',
+    mode: 'manual',
+    status: 'idle',
+    origin: { q: 7, r: -2, tileId: 'tile_7_-2' },
+    homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    target: { q: 7, r: -2, tileId: 'tile_7_-2' },
+    position: { q: 7, r: -2, tileId: 'tile_7_-2' },
+    route: [],
+    formation: { cityId: 'frontier-city', slot: 2 },
+    revealedTileIds: [],
+    stepDurationSeconds: 10,
+    stepDurationMs: 10000,
+    nextStepAt: null,
+    completedAt: '2026-06-21T00:00:00.000Z',
+  };
+  const host = new Host();
+  Object.assign(host, {
+    state: {
+      activeCityId: 'capital',
+      currentTab: 'military',
+      worldExplorerState: {
+        missions: [parkedMission],
+        activeMission: null,
+        idleMissions: [parkedMission],
+        maxManualRouteLength: 10,
+        stepDurationSeconds: 10,
+      },
+      territoryState: {
+        worldMap: { origin: { q: 0, r: 0 }, tiles: [{ q: 0, r: 0, siteId: 'capital' }] },
+        territories: [{ id: 'capital', q: 0, r: 0 }],
+      },
+    },
+    tutorial: {},
+    loading: {},
+    canvasShell: { loading: {}, territoryUiState: {} },
+    config: {},
+    mapHomeActive: false,
+    getActiveTab() {
+      return this.state.currentTab;
+    },
+    resolveMapHomeViewState(nextState) {
+      return { activeTab: nextState.currentTab || 'military', militaryView: nextState.militaryView || 'army', isMapHome: false };
+    },
+    setPendingBuildingAction() {},
+    getWorldEpochNowMs() {
+      return Date.parse('2026-06-21T00:00:00.000Z');
+    },
+    getGameApi() {
+      return {
+        async startWorldMarch(options) {
+          calls.push(['api:startWorldMarch', options.missionId, host.state.worldExplorerState.activeMission?.id || '']);
+          assert.equal(options.missionId, 'march-parked');
+          return {
+            success: true,
+            message: 'Explorer mission started.',
+            gameState: {
+              ...host.state,
+              worldExplorerState: {
+                missions: [{
+                  ...parkedMission,
+                  status: 'active',
+                  origin: { q: 7, r: -2, tileId: 'tile_7_-2' },
+                  position: { q: 7, r: -2, tileId: 'tile_7_-2' },
+                  target: { q: 9, r: -2, tileId: 'tile_9_-2' },
+                  route: [
+                    { q: 8, r: -2, step: 1, tileId: 'tile_8_-2', revealed: false, revealedAt: null },
+                    { q: 9, r: -2, step: 2, tileId: 'tile_9_-2', revealed: false, revealedAt: null },
+                  ],
+                  plannedTiles: [],
+                  plannedSites: [],
+                }],
+                activeMission: {
+                  ...parkedMission,
+                  status: 'active',
+                  origin: { q: 7, r: -2, tileId: 'tile_7_-2' },
+                  position: { q: 7, r: -2, tileId: 'tile_7_-2' },
+                  target: { q: 9, r: -2, tileId: 'tile_9_-2' },
+                  route: [
+                    { q: 8, r: -2, step: 1, tileId: 'tile_8_-2', revealed: false, revealedAt: null },
+                    { q: 9, r: -2, step: 2, tileId: 'tile_9_-2', revealed: false, revealedAt: null },
+                  ],
+                  plannedTiles: [],
+                  plannedSites: [],
+                },
+                idleMissions: [],
+              },
+            },
+            tutorial: {},
+          };
+        },
+      };
+    },
+    render() {
+      calls.push(['render']);
+    },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab, this.state.worldExplorerState.activeMission?.id || '']);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+    tutorialController: {
+      sync() {},
+      onExploreStarted() {},
+    },
+  });
+
+  assert.equal(await host.startWorldMarch({
+    missionId: 'march-parked',
+    cityId: 'capital',
+    formationSlot: 1,
+    targetQ: 9,
+    targetR: -2,
+  }), true);
+
+  const missionIds = host.state.worldExplorerState.missions.map((mission) => mission.id);
+  assert.deepEqual(missionIds, ['march-parked']);
+  assert.equal(host.state.worldExplorerState.activeMission.origin.tileId, 'tile_7_-2');
+  assert.equal(missionIds.some((id) => id.startsWith('optimistic_manual_')), false);
+  assert.equal(calls.some((call) => call[0] === 'api:startWorldMarch' && call[1] === 'march-parked' && call[2] === 'march-parked'), true);
+});
+
 test('CanvasGameApp applies world march verification pullback overlay from heartbeat', () => {
   class Host {}
   CanvasGameAppStateSync.install(Host);

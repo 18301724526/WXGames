@@ -111,6 +111,43 @@ test('WorldMarchOptimisticState marks slow sync and accepts authority on large d
   assert.equal(host.networkState.message, WorldMarchOptimisticState.SLOW_SYNC_MESSAGE);
 });
 
+test('WorldMarchOptimisticState does not reconcile explicit id pending through formation fallback', () => {
+  const nowMs = Date.parse('2026-06-21T00:00:00.000Z');
+  const localMission = makeMission({
+    id: 'march-1',
+    route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false, revealedAt: null }],
+    target: { q: 1, r: 0, tileId: 'tile_1_0' },
+    _optimistic: { pending: true, pendingId: 'pending-1', action: 'startWorldMarch' },
+  });
+  const wrongAuthorityMission = makeMission({
+    id: 'other-march',
+    route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false, revealedAt: null }],
+    target: { q: 1, r: 0, tileId: 'tile_1_0' },
+    formation: { cityId: 'capital', slot: 1 },
+  });
+  const host = makeHost({
+    worldExplorerState: { missions: [localMission], activeMission: localMission, idleMissions: [] },
+  }, nowMs);
+  WorldMarchOptimisticState.ensureStore(host).pending['pending-1'] = {
+    pendingId: 'pending-1',
+    missionId: 'march-1',
+    explicitMissionId: 'march-1',
+    action: 'startWorldMarch',
+    formation: { cityId: 'capital', slot: 1 },
+    routeSignature: '1:0',
+    target: { q: 1, r: 0 },
+  };
+
+  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(host, {
+    missions: [wrongAuthorityMission],
+    activeMission: wrongAuthorityMission,
+    idleMissions: [],
+  }, { epochNowMs: nowMs });
+
+  assert.equal(reconciled.missions.some((mission) => mission.id === 'march-1' && mission._optimistic.pending), true);
+  assert.equal(reconciled.missions.some((mission) => mission.id === 'other-march' && mission._optimistic?.reconciled), false);
+});
+
 test('WorldMarchOptimisticState treats successful return route rebase, including empty route, as authority', () => {
   const localMission = makeMission({
     route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false, revealedAt: null }],
