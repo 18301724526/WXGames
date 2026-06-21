@@ -107,3 +107,39 @@ test('applyCasualtiesToFormationSnapshot writes per-member survivors, capped at 
   assert.strictEqual(next.soldiersRemaining, 117);
   assert.strictEqual(snapshot.members[0].soldiersRemaining, 100, 'original snapshot not mutated');
 });
+
+test('resolveBattle closes the loop: snapshot + attributes -> battle -> survivors written back', () => {
+  const snapshot = {
+    schema: 'formation-snapshot-v1',
+    members: [
+      { personId: 'p1', soldiersCommitted: 120, soldiersRemaining: 120 },
+      { personId: 'p2', soldiersCommitted: 80, soldiersRemaining: 80 },
+    ],
+    soldiersCommitted: 200,
+    soldiersRemaining: 200,
+  };
+  const out = BattleSimService.resolveBattle({
+    seed: 5,
+    config: { arena: { w: 200, h: 200 } },
+    inputStream: [
+      { tick: 0, type: 'order', side: 0, order: 'allOut' },
+      { tick: 0, type: 'order', side: 1, order: 'allOut' },
+    ],
+    attacker: {
+      snapshot: snapshot,
+      attributesByPersonId: {
+        p1: { force: 95, command: 80, speed: 70 },
+        p2: { force: 90, command: 75, speed: 65 },
+      },
+    },
+    defender: {
+      generals: [{ gid: 'd1', attributes: { force: 15, command: 15, speed: 15 }, soldiers: 40 }],
+    },
+  });
+  assert.strictEqual(out.winner, 'attacker');
+  // survivors written back, capped at committed, original snapshot untouched.
+  const m1 = out.attackerSnapshot.members.find((m) => m.personId === 'p1');
+  assert.ok(m1.soldiersRemaining > 0 && m1.soldiersRemaining <= 120);
+  assert.ok(out.attackerSnapshot.soldiersRemaining <= 200);
+  assert.strictEqual(snapshot.members[0].soldiersRemaining, 120, 'input snapshot not mutated');
+});

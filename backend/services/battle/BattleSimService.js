@@ -125,6 +125,40 @@ function applyCasualtiesToFormationSnapshot(snapshot, result) {
   return Object.assign({}, snapshot, { members, soldiersRemaining });
 }
 
+// Full authoritative loop: real attacker formation snapshot + general attributes
+// vs a defender force -> deterministic battle -> survivors written back onto the
+// snapshot. This is the backend half of "march/expedition meets enemy -> fight ->
+// persist". The caller resolves personId -> attributes (from famous-person state)
+// and persists the returned attackerSnapshot; this service owns no game-state shape.
+function resolveBattle(request = {}) {
+  const attacker = request.attacker || {};
+  const snapshot = attacker.snapshot || { members: [] };
+  const attrs = attacker.attributesByPersonId || {};
+  const members = Array.isArray(snapshot.members) ? snapshot.members : [];
+  const attackerGenerals = members.map((m) => ({
+    gid: String(m.personId),
+    attributes: attrs[m.personId] || {},
+    soldiers: num(m.soldiersRemaining != null ? m.soldiersRemaining : m.soldiersCommitted, 0),
+  }));
+  const defender = request.defender || { generals: [] };
+  const out = resolve({
+    seed: request.seed,
+    arena: request.arena,
+    config: request.config,
+    inputStream: request.inputStream,
+    options: request.options,
+    attacker: { side: 'attacker', generals: attackerGenerals },
+    defender: { side: 'defender', generals: defender.generals || [] },
+  });
+  const attackerSnapshot = applyCasualtiesToFormationSnapshot(snapshot, out.result);
+  return {
+    schema: SCHEMA,
+    result: out.result,
+    winner: out.result.winner,
+    attackerSnapshot,
+  };
+}
+
 module.exports = {
   SCHEMA,
   DEFAULT_BALANCE,
@@ -132,4 +166,5 @@ module.exports = {
   buildSetup,
   resolve,
   applyCasualtiesToFormationSnapshot,
+  resolveBattle,
 };

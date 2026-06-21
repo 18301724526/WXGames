@@ -23,6 +23,9 @@
     button:disabled { opacity: 0.4; }
     button.cd { color: #d29922; }
     #restart { background: #238636; border-color: #238636; }
+    #result { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); min-width: 70%; background: rgba(13,17,23,0.95); border: 1px solid #2a3340; border-radius: 10px; padding: 14px 16px; font-size: 14px; line-height: 1.7; }
+    #result h2 { margin: 0 0 8px; font-size: 18px; color: #58a6ff; }
+    #result .side { color: #8b98a5; }
   </style>
 </head>
 <body>
@@ -35,7 +38,7 @@
       <span id="status">素材加载中…</span>
       <button id="restart">重开</button>
     </div>
-    <div id="stageWrap"><canvas id="stage"></canvas></div>
+    <div id="stageWrap"><canvas id="stage"></canvas><div id="result" hidden></div></div>
     <div id="ui">
       <div class="row"><span class="label">选将</span><span id="generals"></span></div>
       <div class="row"><span class="label">单部队令</span><span id="orders"></span></div>
@@ -123,6 +126,7 @@
         });
         selectedGid = 'L1';
         pending = []; inputLog = []; rstate = {};
+        $('result').hidden = true;
         buildUi();
       }
 
@@ -205,7 +209,7 @@
         frame._n = (frame._n || 0) + 1;
         if (uiDirty || frame._n % 15 === 0 || (battle && battle.result && !frame._ended)) {
           buildUi();
-          if (battle && battle.result) frame._ended = true;
+          if (battle && battle.result && !frame._ended) { frame._ended = true; showResult(); }
         }
         requestAnimationFrame(frame);
       }
@@ -271,6 +275,30 @@
         var fps = fpsBuf.reduce(function (a, b) { return a + b; }, 0) / (fpsBuf.length || 1);
         $('m-fps').textContent = fps.toFixed(0);
         if (battle.result) { $('status').textContent = '结束 — 胜者: ' + battle.result.winner; $('status').style.color = '#58a6ff'; }
+      }
+
+      function showResult() {
+        var r = battle && battle.result;
+        if (!r) return;
+        var sv = r.survivorsByGid || {};
+        function sideLine(side) {
+          var parts = [], total = 0;
+          Object.keys(battle.squads).forEach(function (gid) {
+            if (battle.squads[gid].side !== side) return;
+            var n = Math.floor(sv[gid] || 0);
+            total += n;
+            parts.push(gid + ' ' + n);
+          });
+          return parts.join(' , ') + '  (总 ' + total + ')';
+        }
+        var win = r.winner === 'player' ? '我方胜' : r.winner === 'enemy' ? '敌方胜' : '平局';
+        $('result').innerHTML =
+          '<h2>' + win + '</h2>' +
+          '<div><span class="side">我方剩余:</span> ' + sideLine(0) + '</div>' +
+          '<div><span class="side">敌方剩余:</span> ' + sideLine(1) + '</div>' +
+          '<div class="side" style="margin-top:6px;font-size:12px">用时 ' + r.ticks +
+          ' tick · 输入流 ' + inputLog.length + ' 条(后端可凭此重算校验)</div>';
+        $('result').hidden = false;
       }
 
       $('restart').onclick = function () { frame._ended = false; newBattle(); };
