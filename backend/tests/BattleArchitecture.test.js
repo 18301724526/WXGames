@@ -29,6 +29,7 @@ test('BattleService delegates focused responsibilities to battle modules', () =>
     'BattleLeaders.js',
     'BattleReports.js',
     'BattleShared.js',
+    'BattleSimService.js',
     'BattleSkillRuntime.js',
     'BattleStatuses.js',
   ]);
