@@ -46,9 +46,10 @@ function sanitizeReport(report = {}, receivedAt = new Date()) {
   const clientTimeMs = toTimestamp(report.clientTime ?? report.clientTimeMs, Number.NaN);
   const position = normalizeContinuousCoord(report.position || report.current || {});
   if (!Number.isFinite(position.q) || !Number.isFinite(position.r)) return null;
-  const receivedAtIso = receivedAt instanceof Date
-    ? receivedAt.toISOString()
-    : new Date(receivedAt || Date.now()).toISOString();
+  const receivedAtIso =
+    receivedAt instanceof Date
+      ? receivedAt.toISOString()
+      : new Date(receivedAt || Date.now()).toISOString();
   return {
     schema: 'world-march-client-report-v1',
     missionId,
@@ -74,19 +75,28 @@ function sanitizeReportBatch(input = {}, receivedAt = new Date()) {
     });
   return {
     schema: 'world-march-client-report-batch-v1',
-    receivedAt: receivedAt instanceof Date ? receivedAt.toISOString() : new Date(receivedAt || Date.now()).toISOString(),
+    receivedAt:
+      receivedAt instanceof Date
+        ? receivedAt.toISOString()
+        : new Date(receivedAt || Date.now()).toISOString(),
     missions: reports,
   };
 }
 
 function getThresholds(options = {}) {
-  const jitterThresholdTiles = Math.max(0, toNumber(
-    options.jitterThresholdTiles ?? options.smallDriftThresholdTiles,
-    DEFAULT_JITTER_THRESHOLD_TILES,
-  ));
+  const jitterThresholdTiles = Math.max(
+    0,
+    toNumber(
+      options.jitterThresholdTiles ?? options.smallDriftThresholdTiles,
+      DEFAULT_JITTER_THRESHOLD_TILES,
+    ),
+  );
   const driftThresholdTiles = Math.max(
     jitterThresholdTiles,
-    toNumber(options.driftThresholdTiles ?? options.largeDriftThresholdTiles, DEFAULT_DRIFT_THRESHOLD_TILES),
+    toNumber(
+      options.driftThresholdTiles ?? options.largeDriftThresholdTiles,
+      DEFAULT_DRIFT_THRESHOLD_TILES,
+    ),
   );
   return { jitterThresholdTiles, driftThresholdTiles };
 }
@@ -106,13 +116,17 @@ function verifyMission(mission = {}, report = null, now = new Date(), options = 
   }
   const { jitterThresholdTiles, driftThresholdTiles } = getThresholds(options);
   const authority = WorldMarchCore.computeMarchState(mission, nowMs);
-  const clientPosition = normalizeContinuousCoord(report.position || {}, authority.position || mission.position || mission.origin || {});
+  const clientPosition = normalizeContinuousCoord(
+    report.position || {},
+    authority.position || mission.position || mission.origin || {},
+  );
   const diffTiles = coordDistanceTiles(clientPosition, authority.position);
-  const severity = diffTiles >= driftThresholdTiles
-    ? 'large'
-    : diffTiles > jitterThresholdTiles
-      ? 'jitter'
-      : 'none';
+  const severity =
+    diffTiles >= driftThresholdTiles
+      ? 'large'
+      : diffTiles > jitterThresholdTiles
+        ? 'jitter'
+        : 'none';
   return {
     schema: 'world-march-verification-v1',
     missionId: mission.id || '',

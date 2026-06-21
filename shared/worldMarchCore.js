@@ -23,7 +23,10 @@ function toTimestamp(value, fallback = 0) {
     const stamp = value.getTime();
     return Number.isFinite(stamp) ? stamp : fallback;
   }
-  if (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '' && /^-?\d+(\.\d+)?$/.test(value.trim()))) {
+  if (
+    typeof value === 'number' ||
+    (typeof value === 'string' && value.trim() !== '' && /^-?\d+(\.\d+)?$/.test(value.trim()))
+  ) {
     const number = Number(value);
     if (!Number.isFinite(number)) return fallback;
     return Math.abs(number) < EPOCH_MILLISECONDS_THRESHOLD ? number * 1000 : number;
@@ -95,7 +98,10 @@ function getMissionPath(mission = {}) {
   const origin = normalizeCoord(mission.origin || mission.position || {});
   const route = normalizeRoute(mission.route);
   if (!route.length && mission.status === STATUS_IDLE) {
-    return [origin, normalizeCoord(mission.position || mission.target || mission.origin || {}, origin)];
+    return [
+      origin,
+      normalizeCoord(mission.position || mission.target || mission.origin || {}, origin),
+    ];
   }
   return [origin, ...route];
 }
@@ -194,7 +200,8 @@ function isRouteStepRevealed(mission = {}, step = {}, nowMs = 0, revealedTileIds
   if (step.revealed) return true;
   const status = getEffectiveMissionStatus(mission, nowMs);
   if (isFinishedStatus(status)) return true;
-  if (mission.status === STATUS_ACTIVE && isRouteStepTimeRevealed(mission, step, nowMs)) return true;
+  if (mission.status === STATUS_ACTIVE && isRouteStepTimeRevealed(mission, step, nowMs))
+    return true;
   if (step.routeRevealedExplicit) return false;
   const id = step.tileId || tileId(step.q, step.r);
   const revealedSet = revealedTileIds || createRevealedTileSet(mission);
@@ -207,9 +214,11 @@ function getRemainingSeconds(mission = {}, nowMs = 0) {
   if (!mission || isFinishedStatus(mission.status)) return 0;
   const resolvedNowMs = toNumber(nowMs, 0);
   const nextStepAtMs = toTimestamp(mission.nextStepAt, Number.NaN);
-  if (Number.isFinite(nextStepAtMs)) return Math.max(0, Math.ceil((nextStepAtMs - resolvedNowMs) / 1000));
+  if (Number.isFinite(nextStepAtMs))
+    return Math.max(0, Math.ceil((nextStepAtMs - resolvedNowMs) / 1000));
   const completesAtMs = toTimestamp(mission.completesAt, Number.NaN);
-  if (Number.isFinite(completesAtMs)) return Math.max(0, Math.ceil((completesAtMs - resolvedNowMs) / 1000));
+  if (Number.isFinite(completesAtMs))
+    return Math.max(0, Math.ceil((completesAtMs - resolvedNowMs) / 1000));
   const progress = getMissionProgress(mission, resolvedNowMs);
   return Math.max(0, Math.ceil((progress.durationMs - progress.elapsedMs) / 1000));
 }
@@ -235,20 +244,32 @@ function deriveMissionForTime(mission = {}, options = {}) {
       revealedAtMs: revealed ? (Number.isFinite(revealAtMs) ? revealAtMs : nowMs) : Number.NaN,
     };
   });
-  const revealedTileIds = Array.from(new Set([
-    ...revealedSet,
-    ...revealedRoute.filter((step) => step.revealed).map((step) => step.tileId || tileId(step.q, step.r)),
-  ]));
+  const revealedTileIds = Array.from(
+    new Set([
+      ...revealedSet,
+      ...revealedRoute
+        .filter((step) => step.revealed)
+        .map((step) => step.tileId || tileId(step.q, step.r)),
+    ]),
+  );
   const status = getEffectiveMissionStatus(mission, nowMs);
   const lastRevealed = [...revealedRoute].reverse().find((step) => step.revealed) || null;
   const nextUnrevealed = revealedRoute.find((step) => !step.revealed) || null;
-  const nextStepAtMs = nextUnrevealed ? getRouteStepRevealTimeMs(mission, nextUnrevealed) : Number.NaN;
+  const nextStepAtMs = nextUnrevealed
+    ? getRouteStepRevealTimeMs(mission, nextUnrevealed)
+    : Number.NaN;
   const nextStepAt = mission.nextStepAt || null;
   const routeTarget = route.length ? route[route.length - 1] : null;
-  const target = normalizeCoord(mission.target || routeTarget, routeTarget || mission.position || mission.origin || {});
-  const positionSource = status === STATUS_IDLE
-    ? (mission.status === STATUS_IDLE ? (mission.position || target) : target)
-    : (lastRevealed || mission.position || mission.origin || target);
+  const target = normalizeCoord(
+    mission.target || routeTarget,
+    routeTarget || mission.position || mission.origin || {},
+  );
+  const positionSource =
+    status === STATUS_IDLE
+      ? mission.status === STATUS_IDLE
+        ? mission.position || target
+        : target
+      : lastRevealed || mission.position || mission.origin || target;
   const derived = {
     ...mission,
     status,
@@ -256,7 +277,8 @@ function deriveMissionForTime(mission = {}, options = {}) {
     revealedTileIds,
     position: normalizeCoord(positionSource, target),
     nextStepAt,
-    nextStepAtMs: Number.isFinite(nextStepAtMs) && status === STATUS_ACTIVE ? nextStepAtMs : Number.NaN,
+    nextStepAtMs:
+      Number.isFinite(nextStepAtMs) && status === STATUS_ACTIVE ? nextStepAtMs : Number.NaN,
   };
   return {
     ...derived,
@@ -326,7 +348,8 @@ function getRouteRenderRevealSources(mission = {}, nowMs = 0) {
   const revealedSet = createRevealedTileSet(mission);
   const sources = [];
   route.forEach((step) => {
-    if (step.revealed || revealedSet.has(step.tileId)) appendRouteRevealSource(sources, step, 1, 'backendReveal');
+    if (step.revealed || revealedSet.has(step.tileId))
+      appendRouteRevealSource(sources, step, 1, 'backendReveal');
   });
   if (mission.status !== STATUS_ACTIVE) return sources;
   if (!route.length) return sources;
@@ -336,7 +359,12 @@ function getRouteRenderRevealSources(mission = {}, nowMs = 0) {
   const frontierStep = route[progress.segmentIndex];
   const frontierStrength = clampUnit(progress.segmentProgress);
   if (frontierStep && frontierStrength > 0) {
-    appendRouteRevealSource(sources, frontierStep, frontierStrength, frontierStrength >= 1 ? 'routeHistory' : 'routeFrontier');
+    appendRouteRevealSource(
+      sources,
+      frontierStep,
+      frontierStrength,
+      frontierStrength >= 1 ? 'routeHistory' : 'routeFrontier',
+    );
   }
   return sources;
 }
@@ -346,10 +374,7 @@ function getRouteRenderRevealSignature(mission = {}, nowMs = 0) {
   const sources = getRouteRenderRevealSources(mission, nowMs);
   let hash = 2166136261;
   sources.forEach((source) => {
-    const text = [
-      source.tileId || '',
-      Math.round(clampUnit(source.strength) * 1000),
-    ].join(':');
+    const text = [source.tileId || '', Math.round(clampUnit(source.strength) * 1000)].join(':');
     for (let index = 0; index < text.length; index += 1) {
       hash ^= text.charCodeAt(index);
       hash = Math.imul(hash, 16777619);
@@ -381,7 +406,10 @@ function getConfirmedPosition(mission = {}) {
 function computeMarchState(missionParams = {}, nowMs = 0) {
   const mission = deriveMissionForTime(missionParams, { nowMs }) || {};
   return {
-    position: normalizeCoord(getCurrentCoord(mission, nowMs), mission.position || mission.target || mission.origin || {}),
+    position: normalizeCoord(
+      getCurrentCoord(mission, nowMs),
+      mission.position || mission.target || mission.origin || {},
+    ),
     revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.slice() : [],
     route: Array.isArray(mission.route) ? mission.route.slice() : [],
     status: mission.status || '',

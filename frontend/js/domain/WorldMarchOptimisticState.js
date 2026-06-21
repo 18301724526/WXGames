@@ -11,7 +11,8 @@
     return null;
   })();
 
-  const SLOW_SYNC_MESSAGE = '\u7f51\u7edc\u8fde\u63a5\u7f13\u6162\uff0c\u6b63\u5728\u5c1d\u8bd5\u540c\u6b65';
+  const SLOW_SYNC_MESSAGE =
+    '\u7f51\u7edc\u8fde\u63a5\u7f13\u6162\uff0c\u6b63\u5728\u5c1d\u8bd5\u540c\u6b65';
   const DEFAULT_STEP_DURATION_MS = 10000;
   const DEFAULT_RECONCILE_THRESHOLD_TILES = 0.75;
 
@@ -65,9 +66,9 @@
 
   function getStepDurationMs(host = {}, explorer = {}) {
     const configured = toInteger(
-      host.config?.WORLD_MARCH_STEP_DURATION_MS
-        ?? host.config?.worldMarchStepDurationMs
-        ?? explorer.stepDurationMs,
+      host.config?.WORLD_MARCH_STEP_DURATION_MS ??
+        host.config?.worldMarchStepDurationMs ??
+        explorer.stepDurationMs,
       0,
     );
     if (configured > 0) return Math.max(1000, configured);
@@ -76,12 +77,15 @@
   }
 
   function getReconcileThresholdTiles(host = {}) {
-    return Math.max(0, toNumber(
-      host.config?.WORLD_MARCH_RECONCILE_THRESHOLD_TILES
-        ?? host.config?.worldMarchReconcileThresholdTiles
-        ?? host.worldMarchOptimistic?.thresholdTiles,
-      DEFAULT_RECONCILE_THRESHOLD_TILES,
-    ));
+    return Math.max(
+      0,
+      toNumber(
+        host.config?.WORLD_MARCH_RECONCILE_THRESHOLD_TILES ??
+          host.config?.worldMarchReconcileThresholdTiles ??
+          host.worldMarchOptimistic?.thresholdTiles,
+        DEFAULT_RECONCILE_THRESHOLD_TILES,
+      ),
+    );
   }
 
   function getMissionList(explorer = {}) {
@@ -140,7 +144,8 @@
   }
 
   function ensureStore(host = {}) {
-    if (!host || typeof host !== 'object') return { sequence: 0, pending: Object.create(null), aliases: Object.create(null) };
+    if (!host || typeof host !== 'object')
+      return { sequence: 0, pending: Object.create(null), aliases: Object.create(null) };
     if (!host.worldMarchOptimistic || typeof host.worldMarchOptimistic !== 'object') {
       host.worldMarchOptimistic = {
         sequence: 0,
@@ -232,11 +237,13 @@
   }
 
   function getActiveCityId(state = {}, options = {}) {
-    return options.cityId
-      || state.activeCityId
-      || state.cityState?.activeCityId
-      || state.cityState?.capitalCityId
-      || 'capital';
+    return (
+      options.cityId ||
+      state.activeCityId ||
+      state.cityState?.activeCityId ||
+      state.cityState?.capitalCityId ||
+      'capital'
+    );
   }
 
   function findTerritoryCoord(state = {}, cityId = 'capital') {
@@ -245,13 +252,19 @@
       ...(Array.isArray(territoryState.territories) ? territoryState.territories : []),
       ...(Array.isArray(state.territories) ? state.territories : []),
     ];
-    const city = state.cities?.[cityId]
-      || (Array.isArray(state.cityState?.cities) ? state.cityState.cities.find((item) => item?.id === cityId) : null)
-      || null;
+    const city =
+      state.cities?.[cityId] ||
+      (Array.isArray(state.cityState?.cities)
+        ? state.cityState.cities.find((item) => item?.id === cityId)
+        : null) ||
+      null;
     const territoryId = city?.territoryId || cityId;
-    const territory = territories.find((item) => item?.id === territoryId || item?.id === cityId)
-      || territories.find((item) => item?.id === state.cityState?.capitalCityId || item?.id === 'capital')
-      || null;
+    const territory =
+      territories.find((item) => item?.id === territoryId || item?.id === cityId) ||
+      territories.find(
+        (item) => item?.id === state.cityState?.capitalCityId || item?.id === 'capital',
+      ) ||
+      null;
     if (territory) {
       return {
         q: toInteger(territory.q ?? territory.x, 0),
@@ -260,10 +273,15 @@
         territoryId: territory.id || territoryId || cityId,
       };
     }
-    const tiles = Array.isArray(territoryState.worldMap?.tiles) ? territoryState.worldMap.tiles : [];
-    const tile = tiles.find((item) => item?.siteId === territoryId || item?.siteId === cityId)
-      || tiles.find((item) => item?.siteId === state.cityState?.capitalCityId || item?.siteId === 'capital')
-      || null;
+    const tiles = Array.isArray(territoryState.worldMap?.tiles)
+      ? territoryState.worldMap.tiles
+      : [];
+    const tile =
+      tiles.find((item) => item?.siteId === territoryId || item?.siteId === cityId) ||
+      tiles.find(
+        (item) => item?.siteId === state.cityState?.capitalCityId || item?.siteId === 'capital',
+      ) ||
+      null;
     if (tile) {
       return {
         q: toInteger(tile.q ?? tile.x, 0),
@@ -283,9 +301,11 @@
 
   function findIdleMissionForFormation(explorer = {}, formation = {}) {
     const key = getFormationKey(formation);
-    return getMissionList(explorer).find((mission) => (
-      mission?.status === 'idle' && getMissionFormationKey(mission) === key
-    )) || null;
+    return (
+      getMissionList(explorer).find(
+        (mission) => mission?.status === 'idle' && getMissionFormationKey(mission) === key,
+      ) || null
+    );
   }
 
   function getExplicitMissionId(options = {}) {
@@ -299,7 +319,13 @@
 
   function resolveStartOrigin(host = {}, formation = {}, mission = null, nowMs = 0) {
     if (mission) {
-      return normalizeCoord(getCurrentCoord(mission, nowMs) || mission.position || mission.target || mission.origin || {});
+      return normalizeCoord(
+        getCurrentCoord(mission, nowMs) ||
+          mission.position ||
+          mission.target ||
+          mission.origin ||
+          {},
+      );
     }
     const state = getState(host);
     const explorer = state.worldExplorerState || {};
@@ -307,7 +333,9 @@
     if (idleMission) {
       return normalizeCoord(idleMission.position || idleMission.target || idleMission.origin || {});
     }
-    return normalizeCoord(findTerritoryCoord(state, formation.cityId || state.activeCityId || 'capital'));
+    return normalizeCoord(
+      findTerritoryCoord(state, formation.cityId || state.activeCityId || 'capital'),
+    );
   }
 
   function buildLinearRoute(origin = {}, target = {}, maxLength = 0) {
@@ -371,8 +399,9 @@
 
   function applyOptimisticMission(host = {}, mission = {}, previousId = '') {
     const explorer = getExplorer(host);
-    const missions = getMissionList(explorer)
-      .filter((item) => item.id !== mission.id && (!previousId || item.id !== previousId));
+    const missions = getMissionList(explorer).filter(
+      (item) => item.id !== mission.id && (!previousId || item.id !== previousId),
+    );
     missions.push(mission);
     const nextExplorer = rebuildExplorer(explorer, missions);
     setExplorer(host, nextExplorer);
@@ -403,7 +432,13 @@
       : findIdleMissionForFormation(explorer, formation);
     if (explicitMissionId && !idleMission) return null;
     const origin = resolveStartOrigin(host, formation, idleMission, nowMs);
-    const target = normalizeCoord({ q: options.targetQ ?? options.q ?? options.x, r: options.targetR ?? options.r ?? options.y }, origin);
+    const target = normalizeCoord(
+      {
+        q: options.targetQ ?? options.q ?? options.x,
+        r: options.targetR ?? options.r ?? options.y,
+      },
+      origin,
+    );
     const route = buildLinearRoute(origin, target, explorer.maxManualRouteLength || 0);
     if (!route.length) return null;
     const stepDurationMs = getStepDurationMs(host, explorer);
@@ -459,13 +494,16 @@
     const nowMs = getNowMs(host);
     const stepDurationMs = getStepDurationMs(host, explorer);
     const routeOrigin = normalizeCoord(
-      options.origin
-        || chooseStopTile(mission, nowMs)
-        || getCurrentCoord(mission, nowMs)
-        || mission.position
-        || mission.origin,
+      options.origin ||
+        chooseStopTile(mission, nowMs) ||
+        getCurrentCoord(mission, nowMs) ||
+        mission.position ||
+        mission.origin,
     );
-    const homeOrigin = normalizeCoord(mission.homeOrigin || mission.origin || routeOrigin, routeOrigin);
+    const homeOrigin = normalizeCoord(
+      mission.homeOrigin || mission.origin || routeOrigin,
+      routeOrigin,
+    );
     const route = buildLinearRoute(routeOrigin, homeOrigin, explorer.maxManualRouteLength || 0);
     const nextMission = {
       ...clonePlain(mission),
@@ -516,7 +554,10 @@
 
   function rollback(host = {}, pendingRef = '', options = {}) {
     const store = ensureStore(host);
-    const pendingId = typeof pendingRef === 'string' ? (store.aliases[pendingRef] || pendingRef) : pendingRef?.pendingId;
+    const pendingId =
+      typeof pendingRef === 'string'
+        ? store.aliases[pendingRef] || pendingRef
+        : pendingRef?.pendingId;
     const pending = store.pending[pendingId] || null;
     if (!pending) return false;
     const previousExplorer = clonePlain(pending.previousExplorer || {});
@@ -529,11 +570,19 @@
   function matchPendingAuthority(pending = {}, authorityMissions = []) {
     const idMatch = authorityMissions.find((mission) => mission.id === pending.missionId);
     if (pending.explicitMissionId) return idMatch || null;
-    return idMatch
-      || authorityMissions.find((mission) => getMissionFormationKey(mission) === getFormationKey(pending.formation)
-        && (!pending.routeSignature || getRouteSignature(mission.route) === pending.routeSignature))
-      || authorityMissions.find((mission) => getMissionFormationKey(mission) === getFormationKey(pending.formation)
-        && coordDistanceTiles(mission.target || {}, pending.target || {}) <= 0);
+    return (
+      idMatch ||
+      authorityMissions.find(
+        (mission) =>
+          getMissionFormationKey(mission) === getFormationKey(pending.formation) &&
+          (!pending.routeSignature || getRouteSignature(mission.route) === pending.routeSignature),
+      ) ||
+      authorityMissions.find(
+        (mission) =>
+          getMissionFormationKey(mission) === getFormationKey(pending.formation) &&
+          coordDistanceTiles(mission.target || {}, pending.target || {}) <= 0,
+      )
+    );
   }
 
   function markSlowSync(host = {}, detail = {}) {
@@ -559,7 +608,9 @@
       ...clonePlain(localMission),
       id: authorityMission.id || localMission.id,
       formation: clonePlain(authorityMission.formation || localMission.formation || {}),
-      formationSnapshot: clonePlain(authorityMission.formationSnapshot || localMission.formationSnapshot || null),
+      formationSnapshot: clonePlain(
+        authorityMission.formationSnapshot || localMission.formationSnapshot || null,
+      ),
       plannedTiles: clonePlain(authorityMission.plannedTiles || localMission.plannedTiles || []),
       plannedSites: clonePlain(authorityMission.plannedSites || localMission.plannedSites || []),
       _optimistic: {
@@ -592,11 +643,13 @@
     };
 
     Object.values(store.pending || {}).forEach((pending) => {
-      const localMission = localMissions.find((mission) => (
-        mission.id === pending.missionId
-          || mission.id === pending.pendingId
-          || mission._optimistic?.pendingId === pending.pendingId
-      )) || null;
+      const localMission =
+        localMissions.find(
+          (mission) =>
+            mission.id === pending.missionId ||
+            mission.id === pending.pendingId ||
+            mission._optimistic?.pendingId === pending.pendingId,
+        ) || null;
       const authorityMission = matchPendingAuthority(pending, serverMissions);
       if (!localMission) return;
       if (!authorityMission) {
@@ -622,7 +675,10 @@
       const authorityCurrent = getCurrentCoord(authorityMission, nowMs);
       const diffTiles = coordDistanceTiles(localCurrent, authorityCurrent);
       if (isSameRoute(localMission, authorityMission) && diffTiles <= threshold) {
-        replaceServerMission(authorityMission, mergeAuthorityIntoLocal(localMission, authorityMission, pending));
+        replaceServerMission(
+          authorityMission,
+          mergeAuthorityIntoLocal(localMission, authorityMission, pending),
+        );
         return;
       }
       markSlowSync(host, {
@@ -651,7 +707,10 @@
       const authorityCurrent = getCurrentCoord(serverMission, nowMs);
       const diffTiles = coordDistanceTiles(localCurrent, authorityCurrent);
       if (diffTiles <= threshold) {
-        replaceServerMission(serverMission, mergeAuthorityIntoLocal(localMission, serverMission, null));
+        replaceServerMission(
+          serverMission,
+          mergeAuthorityIntoLocal(localMission, serverMission, null),
+        );
       } else {
         markSlowSync(host, {
           missionId: serverMission.id || localMission.id || '',
@@ -665,8 +724,13 @@
   }
 
   function reconcileState(host = {}, serverState = {}, options = {}) {
-    if (!serverState || typeof serverState !== 'object' || !serverState.worldExplorerState) return serverState;
-    const worldExplorerState = reconcileWorldExplorerState(host, serverState.worldExplorerState, options);
+    if (!serverState || typeof serverState !== 'object' || !serverState.worldExplorerState)
+      return serverState;
+    const worldExplorerState = reconcileWorldExplorerState(
+      host,
+      serverState.worldExplorerState,
+      options,
+    );
     return {
       ...serverState,
       worldExplorerState,
@@ -702,7 +766,12 @@
   }
 
   function complete(host = {}, pendingRef = '') {
-    return removePending(host, typeof pendingRef === 'string' ? pendingRef : pendingRef?.pendingId || pendingRef?.missionId || '');
+    return removePending(
+      host,
+      typeof pendingRef === 'string'
+        ? pendingRef
+        : pendingRef?.pendingId || pendingRef?.missionId || '',
+    );
   }
 
   const api = {

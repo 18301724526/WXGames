@@ -28,11 +28,14 @@ function makeMission(overrides = {}) {
 test('WorldMarchVerification reports consistent client position without overlay', () => {
   const now = new Date('2026-06-21T00:00:02.000Z');
   const mission = makeMission();
-  const report = WorldMarchVerification.sanitizeReport({
-    missionId: mission.id,
-    clientTime: now.toISOString(),
-    position: { q: 2, r: 0 },
-  }, now);
+  const report = WorldMarchVerification.sanitizeReport(
+    {
+      missionId: mission.id,
+      clientTime: now.toISOString(),
+      position: { q: 2, r: 0 },
+    },
+    now,
+  );
 
   const result = WorldMarchVerification.verifyMission(mission, report, now);
 
@@ -44,11 +47,14 @@ test('WorldMarchVerification reports consistent client position without overlay'
 test('WorldMarchVerification treats slight client jitter as quiet alignment', () => {
   const now = new Date('2026-06-21T00:00:02.000Z');
   const mission = makeMission();
-  const report = WorldMarchVerification.sanitizeReport({
-    missionId: mission.id,
-    clientTime: now.toISOString(),
-    position: { q: 2.4, r: 0 },
-  }, now);
+  const report = WorldMarchVerification.sanitizeReport(
+    {
+      missionId: mission.id,
+      clientTime: now.toISOString(),
+      position: { q: 2.4, r: 0 },
+    },
+    now,
+  );
 
   const result = WorldMarchVerification.verifyMission(mission, report, now);
 
@@ -60,11 +66,14 @@ test('WorldMarchVerification treats slight client jitter as quiet alignment', ()
 test('WorldMarchVerification flags client fast-forward as pullback drift', () => {
   const now = new Date('2026-06-21T00:00:02.000Z');
   const mission = makeMission();
-  const report = WorldMarchVerification.sanitizeReport({
-    missionId: mission.id,
-    clientTime: now.toISOString(),
-    position: { q: 8, r: 0 },
-  }, now);
+  const report = WorldMarchVerification.sanitizeReport(
+    {
+      missionId: mission.id,
+      clientTime: now.toISOString(),
+      position: { q: 8, r: 0 },
+    },
+    now,
+  );
 
   const result = WorldMarchVerification.verifyMission(mission, report, now);
 

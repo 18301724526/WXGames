@@ -49,9 +49,16 @@ test('WorldMarchOptimisticState keeps local predicted mission when authority is 
     position: { q: 0, r: 0, tileId: 'tile_0_0' },
     revealedTileIds: [],
   });
-  const host = makeHost({
-    worldExplorerState: { missions: [localMission], activeMission: localMission, idleMissions: [] },
-  }, nowMs);
+  const host = makeHost(
+    {
+      worldExplorerState: {
+        missions: [localMission],
+        activeMission: localMission,
+        idleMissions: [],
+      },
+    },
+    nowMs,
+  );
   WorldMarchOptimisticState.ensureStore(host).pending['pending-1'] = {
     pendingId: 'pending-1',
     missionId: 'march-1',
@@ -62,11 +69,15 @@ test('WorldMarchOptimisticState keeps local predicted mission when authority is 
   };
   localMission._optimistic = { pending: true, pendingId: 'pending-1', action: 'startWorldMarch' };
 
-  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(host, {
-    missions: [serverMission],
-    activeMission: serverMission,
-    idleMissions: [],
-  }, { epochNowMs: nowMs });
+  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(
+    host,
+    {
+      missions: [serverMission],
+      activeMission: serverMission,
+      idleMissions: [],
+    },
+    { epochNowMs: nowMs },
+  );
 
   const current = WorldMarchCore.getCurrentCoord(reconciled.activeMission, nowMs);
   assert.equal(current.q, 0.5);
@@ -86,9 +97,16 @@ test('WorldMarchOptimisticState marks slow sync and accepts authority on large d
       { q: 10, r: 0, step: 2, tileId: 'tile_10_0', revealed: false, revealedAt: null },
     ],
   });
-  const host = makeHost({
-    worldExplorerState: { missions: [localMission], activeMission: localMission, idleMissions: [] },
-  }, nowMs);
+  const host = makeHost(
+    {
+      worldExplorerState: {
+        missions: [localMission],
+        activeMission: localMission,
+        idleMissions: [],
+      },
+    },
+    nowMs,
+  );
   WorldMarchOptimisticState.ensureStore(host).pending['pending-1'] = {
     pendingId: 'pending-1',
     missionId: 'march-1',
@@ -99,11 +117,15 @@ test('WorldMarchOptimisticState marks slow sync and accepts authority on large d
   };
   localMission._optimistic = { pending: true, pendingId: 'pending-1', action: 'startWorldMarch' };
 
-  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(host, {
-    missions: [serverMission],
-    activeMission: serverMission,
-    idleMissions: [],
-  }, { epochNowMs: nowMs });
+  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(
+    host,
+    {
+      missions: [serverMission],
+      activeMission: serverMission,
+      idleMissions: [],
+    },
+    { epochNowMs: nowMs },
+  );
 
   assert.equal(reconciled.activeMission.origin.q, 8);
   assert.equal(reconciled.activeMission._optimistic.pullback, true);
@@ -125,9 +147,16 @@ test('WorldMarchOptimisticState does not reconcile explicit id pending through f
     target: { q: 1, r: 0, tileId: 'tile_1_0' },
     formation: { cityId: 'capital', slot: 1 },
   });
-  const host = makeHost({
-    worldExplorerState: { missions: [localMission], activeMission: localMission, idleMissions: [] },
-  }, nowMs);
+  const host = makeHost(
+    {
+      worldExplorerState: {
+        missions: [localMission],
+        activeMission: localMission,
+        idleMissions: [],
+      },
+    },
+    nowMs,
+  );
   WorldMarchOptimisticState.ensureStore(host).pending['pending-1'] = {
     pendingId: 'pending-1',
     missionId: 'march-1',
@@ -138,14 +167,26 @@ test('WorldMarchOptimisticState does not reconcile explicit id pending through f
     target: { q: 1, r: 0 },
   };
 
-  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(host, {
-    missions: [wrongAuthorityMission],
-    activeMission: wrongAuthorityMission,
-    idleMissions: [],
-  }, { epochNowMs: nowMs });
+  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(
+    host,
+    {
+      missions: [wrongAuthorityMission],
+      activeMission: wrongAuthorityMission,
+      idleMissions: [],
+    },
+    { epochNowMs: nowMs },
+  );
 
-  assert.equal(reconciled.missions.some((mission) => mission.id === 'march-1' && mission._optimistic.pending), true);
-  assert.equal(reconciled.missions.some((mission) => mission.id === 'other-march' && mission._optimistic?.reconciled), false);
+  assert.equal(
+    reconciled.missions.some((mission) => mission.id === 'march-1' && mission._optimistic.pending),
+    true,
+  );
+  assert.equal(
+    reconciled.missions.some(
+      (mission) => mission.id === 'other-march' && mission._optimistic?.reconciled,
+    ),
+    false,
+  );
 });
 
 test('WorldMarchOptimisticState treats successful return route rebase, including empty route, as authority', () => {
@@ -191,9 +232,12 @@ test('WorldMarchOptimisticState treats successful return route rebase, including
 test('WorldMarchOptimisticState builds compact continuous client position reports', () => {
   const nowMs = Date.parse('2026-06-21T00:00:05.000Z');
   const mission = makeMission();
-  const host = makeHost({
-    worldExplorerState: { missions: [mission], activeMission: mission, idleMissions: [] },
-  }, nowMs);
+  const host = makeHost(
+    {
+      worldExplorerState: { missions: [mission], activeMission: mission, idleMissions: [] },
+    },
+    nowMs,
+  );
 
   const report = WorldMarchOptimisticState.buildClientReport(host);
 
@@ -239,7 +283,10 @@ test('WorldMarchOptimisticState begins an id-addressed march from the selected i
   assert.deepEqual(pending.mission.origin, { q: 7, r: -2, tileId: 'tile_7_-2' });
   assert.deepEqual(pending.mission.position, { q: 7, r: -2, tileId: 'tile_7_-2' });
   assert.deepEqual(pending.mission.formation, { cityId: 'frontier-city', slot: 2 });
-  assert.deepEqual(pending.mission.route.map((step) => step.tileId), ['tile_8_-2', 'tile_9_-2']);
+  assert.deepEqual(
+    pending.mission.route.map((step) => step.tileId),
+    ['tile_8_-2', 'tile_9_-2'],
+  );
   assert.equal(host.state.worldExplorerState.missions.length, 1);
   assert.equal(host.state.worldExplorerState.activeMission.id, 'march-parked');
 });
