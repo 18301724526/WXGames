@@ -45,7 +45,10 @@
     routChance: 0.5, // per-soldier flee roll when their general dies
     leaderDeathDamageMult: 0.5, // surviving soldiers fight at half power
     edgeMargin: 8, // beyond own edge => left the field
-    rageOnHit: 0, // reserved for the skill system
+    rageMax: 100, // ultimate rage bar capacity
+    rageRegen: 0.4, // general rage gained per tick
+    rageOnHit: 4, // general rage gained when its squad lands a hit
+    skillActionTicks: 10, // how long a cast occupies unit.action (animation window)
     speedJitter: 0.15, // ± per-unit move-speed variation
     cohesion: 0.5, // formation-pull weight (Total War <-> 三国群英传 dial)
     separationRadius: 7, // anti-stack jostle radius
@@ -152,6 +155,7 @@
           gStats,
         );
         general.speedMul = 1 + (rng() - 0.5) * config.speedJitter;
+        general.skillCds = (general.skills || []).map(() => 0);
         units.push(general);
         squads[gid] = {
           gid,
@@ -298,17 +302,89 @@
     return handler(u, squad);
   }
 
-  // ---- skill phase (reserved stub for the deferred skill system) ----
+  // ---- damage (shared by melee + skill effects) ----
+  // Deaths of generals collect into battle._dead for the morale pass.
+  function dealDamage(battle, attacker, target, dmg) {
+    if (!target.alive || target.left) return;
+    target.hp -= dmg;
+    if (target.hp <= 0) {
+      target.alive = false;
+      target.state = STATE.DEAD;
+      if (target.kind === 'general' && battle._dead) battle._dead.push(target);
+    }
+  }
+
+  // ---- skills: data-driven definitions + pluggable effect registry ----
+  // A skill is data: { id, name, kind:'ultimate'|'minor', effect, params, rageCost?, cooldownTicks?, auto }.
+  // Add a new effect = register one handler here; no hardcoded skill list in the core.
+  const EFFECT_REGISTRY = Object.create(null);
+  EFFECT_REGISTRY.aoeDamage = function (battle, caster, skill) {
+    const p = skill.params || {};
+    const r2 = toNum(p.radius, 60) * toNum(p.radius, 60);
+    const dmg = Math.max(1, Math.round(toNum(p.damage, 50)));
+    const us = battle.units;
+    for (let i = 0; i < us.length; i += 1) {
+      const t = us[i];
+      if (t.side === caster.side || !t.alive || t.left) continue;
+      const dx = t.x - caster.x;
+      const dy = t.y - caster.y;
+      if (dx * dx + dy * dy <= r2) dealDamage(battle, caster, t, dmg);
+    }
+  };
+  EFFECT_REGISTRY.rallyAtk = function (battle, caster, skill) {
+    const sq = battle.squads[caster.gid];
+    if (sq) sq.damageMult = Math.max(sq.damageMult, toNum((skill.params || {}).mult, 1.5));
+  };
+
+  function skillReady(battle, gen, skill, idx) {
+    if (gen.skillCds[idx] > 0) return false;
+    if (skill.kind === 'ultimate') return gen.rage >= toNum(skill.rageCost, battle.config.rageMax);
+    return true;
+  }
+
+  function castSkill(battle, gen, idx) {
+    const skill = gen.skills && gen.skills[idx];
+    if (!skill || !skillReady(battle, gen, skill, idx)) return false;
+    if (skill.kind === 'ultimate') gen.rage -= toNum(skill.rageCost, battle.config.rageMax);
+    gen.skillCds[idx] = Math.max(1, toNum(skill.cooldownTicks, battle.config.tickHz * 5));
+    gen.action = {
+      kind: 'skill',
+      skillId: skill.id,
+      untilTick: battle.tick + battle.config.skillActionTicks,
+    };
+    const fx = EFFECT_REGISTRY[skill.effect];
+    if (fx) fx(battle, gen, skill);
+    return true;
+  }
+
+  // Per-tick: regen general rage, tick skill cooldowns, expire actions, auto-cast.
   function skillPhase(battle) {
-    // Future: tick down skillCds, accumulate passive rage, auto-cast when ready.
-    // Manual casts arrive via 'skill' input entries (currently ignored).
-    void battle;
+    const cfg = battle.config;
+    const us = battle.units;
+    for (let i = 0; i < us.length; i += 1) {
+      const gen = us[i];
+      if (gen.kind !== 'general' || !gen.alive || gen.left) continue;
+      gen.rage = Math.min(cfg.rageMax, gen.rage + cfg.rageRegen);
+      if (gen.action && battle.tick >= gen.action.untilTick) gen.action = null;
+      const skills = gen.skills || [];
+      for (let s = 0; s < skills.length; s += 1) {
+        if (gen.skillCds[s] > 0) gen.skillCds[s] -= 1;
+        if (skills[s].auto && skillReady(battle, gen, skills[s], s)) castSkill(battle, gen, s);
+      }
+    }
   }
 
   // ---- input stream ----
   function applyInput(battle, input) {
     if (!input || typeof input !== 'object') return false;
-    if (input.type === 'skill') return false; // reserved
+    if (input.type === 'skill') {
+      const sq = battle.squads[String(input.gid)];
+      const gen = sq ? battle.units[sq.generalId] : null;
+      if (!gen || !gen.alive || gen.left) return false;
+      const idx = (gen.skills || []).findIndex((sk) => sk.id === input.skillId);
+      if (idx < 0) return false;
+      return castSkill(battle, gen, idx);
+    }
     if (input.type !== 'order') return false;
     const order = String(input.order);
 
@@ -400,6 +476,7 @@
   function step(battle, inputs) {
     if (battle.result) return battle.result;
     const cfg = battle.config;
+    battle._dead = []; // general deaths this tick (melee + skills) -> morale pass
 
     if (Array.isArray(inputs)) {
       for (let i = 0; i < inputs.length; i += 1) applyInput(battle, inputs[i]);
@@ -414,7 +491,7 @@
     const cell = Math.max(16, cfg.aggroRange);
     const g = buildGrid(battle, cell);
     const units = battle.units;
-    const deadGenerals = [];
+    const deadGenerals = battle._dead;
 
     for (let i = 0; i < units.length; i += 1) {
       const u = units[i];
@@ -441,13 +518,9 @@
             } else {
               u.atkCd = u.atkInterval;
               const dmg = Math.max(1, Math.round(u.atk * sq.damageMult - target.def * 0.5));
-              target.hp -= dmg;
-              u.rage += cfg.rageOnHit; // reserved for skills
-              if (target.hp <= 0 && target.alive) {
-                target.alive = false;
-                target.state = STATE.DEAD;
-                if (target.kind === 'general') deadGenerals.push(target);
-              }
+              dealDamage(battle, u, target, dmg);
+              const agen = units[sq.generalId]; // melee builds the squad general's rage
+              if (agen && agen.alive) agen.rage = Math.min(cfg.rageMax, agen.rage + cfg.rageOnHit);
             }
             continue; // attacking: hold ground (separation may still jostle)
           }
@@ -632,6 +705,9 @@
     simulate,
     applyInput,
     countOnField,
+    EFFECT_REGISTRY,
+    castSkill,
+    skillReady,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = BattleSimCore;

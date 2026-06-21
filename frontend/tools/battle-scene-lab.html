@@ -40,6 +40,7 @@
       <div class="row"><span class="label">选将</span><span id="generals"></span></div>
       <div class="row"><span class="label">单部队令</span><span id="orders"></span></div>
       <div class="row"><span class="label">全军总令</span><span id="masters"></span></div>
+      <div class="row"><span class="label">技能</span><span id="skills"></span></div>
     </div>
   </div>
   <script src="../shared/battleSimCore.js"></script>
@@ -76,9 +77,16 @@
         ['soldierAttack', '士兵出击'], ['generalCharge', '武将出击'],
         ['generalRetreat', '武将后退'], ['defend', '防御'], ['cover', '掩护'],
       ];
+      function makeSkills() {
+        // Data-driven: a 怒气大招 (rage-gated AoE) + a 小技能 (cooldown buff).
+        return [
+          { id: 'ult', name: '大招', kind: 'ultimate', effect: 'aoeDamage', params: { radius: 90, damage: 40 }, rageCost: 100, cooldownTicks: 120, auto: false },
+          { id: 'minor', name: '小技', kind: 'minor', effect: 'rallyAtk', params: { mult: 1.5 }, cooldownTicks: 100, auto: false },
+        ];
+      }
       function makeGeneral(gid, force, command, speed, soldiers) {
         return { gid: gid, attributes: { force: force, command: command, speed: speed }, soldiers: soldiers,
-          stats: { hp: 200 + force * 4, atk: 20 + force * 0.6, def: command * 0.4, range: 16, moveSpeed: 60, atkSpeed: Math.max(5, Math.round(20 - speed * 0.12)) },
+          stats: { hp: 200 + force * 4, atk: 20 + force * 0.6, def: command * 0.4, range: 16, moveSpeed: 60, atkSpeed: Math.max(5, Math.round(20 - speed * 0.12)), skills: makeSkills() },
           troop: { count: soldiers, template: { hp: 22, atk: 6, def: 2, range: 11, moveSpeed: 55, atkSpeed: 12 } } };
       }
       var W = 0, H = 0, dpr = 1, ARENA = { w: 0, h: 0 };
@@ -107,6 +115,12 @@
         };
         battle = Core.createBattle(setup);
         // Default is hold/待命; the enemy side is driven by the behavior-tree AI.
+        // Enemy generals auto-cast their skills (simple AI use of the same system).
+        Object.keys(battle.squads).forEach(function (gid) {
+          if (battle.squads[gid].side !== 1) return;
+          var eg = battle.units[battle.squads[gid].generalId];
+          (eg.skills || []).forEach(function (sk) { sk.auto = true; });
+        });
         selectedGid = 'L1';
         pending = []; inputLog = []; rstate = {};
         buildUi();
@@ -143,6 +157,30 @@
           b.onclick = function () { issue({ type: 'order', side: 0, order: pair[0] }); };
           mel.appendChild(b);
         });
+        var sel = $('skills'); sel.innerHTML = '';
+        var g = battle.units[battle.squads[selectedGid].generalId];
+        (g.skills || []).forEach(function (sk, idx) {
+          var b = document.createElement('button');
+          var rageMax = battle.config.rageMax;
+          var ready = Core.skillReady(battle, g, sk, idx);
+          var info = sk.kind === 'ultimate'
+            ? '怒' + Math.floor(g.rage) + '/' + (sk.rageCost || rageMax)
+            : (g.skillCds[idx] > 0 ? Math.ceil(g.skillCds[idx] / 20) + 's' : '就绪');
+          b.textContent = sk.name + ' [' + info + ']';
+          if (!ready) b.className = 'cd';
+          b.disabled = !!battle.result || !ready;
+          b.onclick = function () { issue({ type: 'skill', gid: selectedGid, skillId: sk.id }); };
+          sel.appendChild(b);
+          var lab = document.createElement('label');
+          lab.style.cssText = 'margin-left:2px;color:#8b98a5';
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = !!sk.auto;
+          cb.onchange = function () { sk.auto = cb.checked; };
+          lab.appendChild(cb);
+          lab.appendChild(document.createTextNode('自动'));
+          sel.appendChild(lab);
+        });
       }
       function issue(input) { pending.push(input); inputLog.push(Object.assign({ tick: battle.tick }, input)); }
 
@@ -164,7 +202,11 @@
         }
         render(now);
         updateTop();
-        if (uiDirty || (battle && battle.result && !frame._ended)) { buildUi(); if (battle.result) frame._ended = true; }
+        frame._n = (frame._n || 0) + 1;
+        if (uiDirty || frame._n % 15 === 0 || (battle && battle.result && !frame._ended)) {
+          buildUi();
+          if (battle && battle.result) frame._ended = true;
+        }
         requestAnimationFrame(frame);
       }
 

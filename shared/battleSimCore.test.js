@@ -212,3 +212,138 @@ test('掩护: soldiers screen the general', () => {
   );
   assert.ok(covering, 'soldiers are covering the general');
 });
+
+// ---- step 3: skills / rage (data-driven + effect registry) ----
+function skillBattle(skills) {
+  return createBattle({
+    seed: 1,
+    arena: { w: 200, h: 200 },
+    sides: [
+      {
+        side: 'L',
+        generals: [
+          {
+            gid: 'L1',
+            stats: {
+              hp: 500,
+              atk: 10,
+              def: 0,
+              range: 14,
+              moveSpeed: 0,
+              atkSpeed: 10,
+              skills: skills,
+            },
+            troop: { count: 0, template: {} },
+          },
+        ],
+      },
+      {
+        side: 'R',
+        generals: [
+          {
+            gid: 'R1',
+            stats: { hp: 500, atk: 10, def: 0, range: 14, moveSpeed: 0, atkSpeed: 10 },
+            troop: {
+              count: 3,
+              template: { hp: 30, atk: 1, def: 0, range: 10, moveSpeed: 0, atkSpeed: 10 },
+            },
+          },
+        ],
+      },
+    ],
+  });
+}
+function gen(b) {
+  return b.units[b.squads.L1.generalId];
+}
+
+test('ultimate is gated by rage and consumes it; aoeDamage hits nearby enemies', () => {
+  const b = skillBattle([
+    {
+      id: 'ult',
+      kind: 'ultimate',
+      effect: 'aoeDamage',
+      params: { radius: 300, damage: 35 },
+      rageCost: 50,
+      cooldownTicks: 100,
+    },
+  ]);
+  const g = gen(b);
+  assert.strictEqual(core.skillReady(b, g, g.skills[0], 0), false, 'not ready at 0 rage');
+  g.rage = 60;
+  assert.strictEqual(core.skillReady(b, g, g.skills[0], 0), true, 'ready once rage met');
+  b._dead = [];
+  const before = core.countOnField(b)[1];
+  assert.ok(core.castSkill(b, g, 0));
+  assert.strictEqual(g.rage, 10, 'rage consumed (60-50)');
+  assert.ok(core.countOnField(b)[1] < before, 'enemies in radius died');
+  assert.ok(g.action && g.action.kind === 'skill', 'cast occupies the action slot');
+});
+
+test('minor skill is gated by cooldown', () => {
+  const b = skillBattle([
+    { id: 'm', kind: 'minor', effect: 'rallyAtk', params: { mult: 2 }, cooldownTicks: 60 },
+  ]);
+  const g = gen(b);
+  assert.strictEqual(core.skillReady(b, g, g.skills[0], 0), true, 'minor ready immediately');
+  assert.ok(core.castSkill(b, g, 0));
+  assert.strictEqual(g.skillCds[0], 60, 'on cooldown after cast');
+  assert.strictEqual(core.skillReady(b, g, g.skills[0], 0), false);
+  assert.strictEqual(b.squads.L1.damageMult, 2, 'rallyAtk buff applied');
+});
+
+test('auto skills fire from skillPhase during step', () => {
+  const b = skillBattle([
+    {
+      id: 'm',
+      kind: 'minor',
+      effect: 'rallyAtk',
+      params: { mult: 2 },
+      cooldownTicks: 60,
+      auto: true,
+    },
+  ]);
+  step(b, null);
+  assert.strictEqual(b.squads.L1.damageMult, 2, 'auto-cast applied the buff');
+});
+
+test('manual skill cast via the input stream', () => {
+  const b = skillBattle([
+    {
+      id: 'ult',
+      kind: 'ultimate',
+      effect: 'rallyAtk',
+      params: { mult: 2 },
+      rageCost: 0,
+      cooldownTicks: 10,
+    },
+  ]);
+  assert.strictEqual(applyInput(b, { type: 'skill', gid: 'L1', skillId: 'ult' }), true);
+  assert.strictEqual(b.squads.L1.damageMult, 2);
+  assert.strictEqual(
+    applyInput(b, { type: 'skill', gid: 'L1', skillId: 'nope' }),
+    false,
+    'unknown skill rejected',
+  );
+});
+
+test('general rage regenerates over ticks', () => {
+  const b = skillBattle([]);
+  const g = gen(b);
+  g.rage = 0;
+  step(b, null);
+  assert.ok(g.rage > 0, 'rage regenerated');
+});
+
+test('effect registry is extensible (register a new effect)', () => {
+  core.EFFECT_REGISTRY.testFx = function (battle, caster, skill) {
+    caster._flag = skill.params.v;
+  };
+  const b = skillBattle([
+    { id: 't', kind: 'minor', effect: 'testFx', params: { v: 42 }, cooldownTicks: 5 },
+  ]);
+  const g = gen(b);
+  core.castSkill(b, g, 0);
+  assert.strictEqual(g._flag, 42);
+  delete core.EFFECT_REGISTRY.testFx;
+});
