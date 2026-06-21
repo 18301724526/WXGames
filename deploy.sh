@@ -428,6 +428,13 @@ publish_frontend_assets() {
         rsync -a --delete "$frontend_source/" "$FRONTEND_PUBLIC_DIR/"
     fi
 
+    # Publish shared/ so the browser can load shared modules (e.g. battleSimCore).
+    # Skipped when the work tree already IS the web root (shared/ is served in place).
+    if [ "$resolved_public" != "$resolved_work_tree" ] && [ -d "$WORK_TREE/shared" ]; then
+        echo "[Deploy] 发布 shared/ 到网站根目录: $FRONTEND_PUBLIC_DIR/shared"
+        rsync -a "$WORK_TREE/shared/" "$FRONTEND_PUBLIC_DIR/shared/"
+    fi
+
     for required_file in index.html style.css app.js js/config/GameConfig.js js/state/GameStateManager.js; do
         if [ ! -f "$FRONTEND_PUBLIC_DIR/$required_file" ]; then
             echo "[Deploy] 前端发布校验失败，缺少: $FRONTEND_PUBLIC_DIR/$required_file" >&2
