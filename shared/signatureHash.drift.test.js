@@ -37,8 +37,16 @@ test('frontend SignatureHash exposes the same constants as the backend source', 
 
 test('frontend hashString/hashText match the backend source for every input', () => {
   for (const input of ANY_INPUTS) {
-    assert.strictEqual(frontend.hashString(input), backend.hashString(input), `hashString(${String(input)})`);
-    assert.strictEqual(frontend.hashText(input), backend.hashText(input), `hashText(${String(input)})`);
+    assert.strictEqual(
+      frontend.hashString(input),
+      backend.hashString(input),
+      `hashString(${String(input)})`,
+    );
+    assert.strictEqual(
+      frontend.hashText(input),
+      backend.hashText(input),
+      `hashText(${String(input)})`,
+    );
   }
 });
 

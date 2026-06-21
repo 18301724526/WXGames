@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>战斗压力测试 / Battle Stress Lab</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #0e1116; color: #e6edf3; font: 13px/1.4 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    #app { display: flex; flex-direction: column; height: 100%; }
+    header { padding: 6px 10px; background: #161b22; border-bottom: 1px solid #2a3340; }
+    h1 { font-size: 14px; margin: 0 0 4px; }
+    #device { font-size: 11px; color: #8b98a5; word-break: break-all; }
+    #controls { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 10px; background: #11161d; border-bottom: 1px solid #2a3340; }
+    #controls label { display: inline-flex; align-items: center; gap: 4px; }
+    #controls input[type="number"] { width: 80px; background: #0e1116; color: #e6edf3; border: 1px solid #2a3340; border-radius: 4px; padding: 3px 5px; }
+    button { background: #1f6feb; color: #fff; border: 0; border-radius: 5px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+    button.secondary { background: #30363d; }
+    button:active { opacity: 0.8; }
+    #stats { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 6px 10px; background: #11161d; border-bottom: 1px solid #2a3340; font-variant-numeric: tabular-nums; }
+    #stats b { color: #58a6ff; font-weight: 600; }
+    .fps-good { color: #3fb950; } .fps-mid { color: #d29922; } .fps-bad { color: #f85149; }
+    #stageWrap { flex: 1; position: relative; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; background: #0a0d12; }
+    #sweep { position: absolute; top: 8px; right: 8px; width: 230px; max-height: 60%; overflow: auto; background: rgba(13,17,23,0.92); border: 1px solid #2a3340; border-radius: 6px; padding: 8px; font-size: 11px; }
+    #sweep table { width: 100%; border-collapse: collapse; }
+    #sweep td { padding: 1px 4px; }
+    #sweep .hit { color: #f85149; font-weight: 700; }
+    #note { font-size: 11px; color: #8b98a5; padding: 6px 10px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>战斗压力测试 / Battle Stress Lab</h1>
+      <div id="device">采集设备信息中…</div>
+    </header>
+    <div id="controls">
+      <label>每方士兵 <input id="perSide" type="number" value="200" min="1" max="20000" step="50" /></label>
+      <button id="start">开始</button>
+      <button id="stop" class="secondary">停止</button>
+      <button id="sweep-btn" class="secondary">自动扫描上限</button>
+      <label><input id="render" type="checkbox" checked /> 渲染</label>
+      <label><input id="grid" type="checkbox" checked /> 空间网格</label>
+      <label><input id="immortal" type="checkbox" checked /> 不死(固定人数)</label>
+      <label><input id="capDpr" type="checkbox" /> 限 DPR=1</label>
+    </div>
+    <div id="stats">
+      <span>FPS <b id="m-fps" class="fps-good">–</b></span>
+      <span>帧 <b id="m-frame">–</b>ms</span>
+      <span>算 <b id="m-sim">–</b>ms</span>
+      <span>画 <b id="m-render">–</b>ms</span>
+      <span>存活 <b id="m-alive">–</b></span>
+      <span>总生成 <b id="m-total">–</b></span>
+    </div>
+    <div id="stageWrap">
+      <canvas id="stage"></canvas>
+      <div id="sweep" hidden>
+        <div style="margin-bottom:4px;color:#8b98a5;">自动扫描(目标 ≥30 FPS)</div>
+        <table id="sweep-tbody"></table>
+      </div>
+    </div>
+    <div id="note">
+      手机 / 电脑各打开本页跑一次「自动扫描上限」即可对比。FPS 用每方人数(总数 = 2×)。
+      士兵用色块画(真实带 sprite 动画会更重,所以这里测出的上限是乐观值)。「算」是模拟耗时,「画」是渲染耗时,分开看瓶颈在哪。
+    </div>
+  </div>
+  <script>
+    (function () {
+      'use strict';
+      var canvas = document.getElementById('stage');
+      var ctx = canvas.getContext('2d');
+      var $ = function (id) { return document.getElementById(id); };
+
+      // ---- device info ----
+      var nav = navigator;
+      var isMobile = /Mobi|Android|iPhone|iPad|iPod|HarmonyOS/i.test(nav.userAgent);
+      $('device').textContent =
+        (isMobile ? '📱 手机' : '💻 电脑') +
+        ' | 核心 ' + (nav.hardwareConcurrency || '?') +
+        ' | 内存 ' + (nav.deviceMemory ? nav.deviceMemory + 'GB' : '?') +
+        ' | 屏 ' + screen.width + '×' + screen.height +
+        ' | DPR ' + window.devicePixelRatio +
+        ' | ' + nav.userAgent;
+
+      // ---- config / state ----
+      var cfg = { perSide: 200, render: true, grid: true, immortal: true, capDpr: false };
+      var agents = [];          // flat soldier list
+      var totalSpawned = 0;
+      var running = false;
+      var W = 0, H = 0, dpr = 1;
+
+      var TICK_HZ = 20, TICK_DT = 1 / TICK_HZ;
+      var SPEED = 28;           // px/sec
+      var ATK_RANGE = 11, ATK_RANGE2 = ATK_RANGE * ATK_RANGE;
+      var ATK_CD = 0.6, DMG = 6, HP0 = 24;
+      var CELL = 36;            // spatial grid cell size
+
+      function resize() {
+        dpr = cfg.capDpr ? 1 : Math.min(window.devicePixelRatio || 1, 3);
+        var r = canvas.getBoundingClientRect();
+        W = Math.max(1, Math.floor(r.width));
+        H = Math.max(1, Math.floor(r.height));
+        canvas.width = Math.floor(W * dpr);
+        canvas.height = Math.floor(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener('resize', resize);
+
+      function spawn(perSide) {
+        agents = [];
+        for (var s = 0; s < 2; s++) {
+          for (var i = 0; i < perSide; i++) {
+            agents.push({
+              x: s === 0 ? Math.random() * W * 0.25 : W - Math.random() * W * 0.25,
+              y: Math.random() * H,
+              side: s,
+              hp: HP0,
+              cd: Math.random() * ATK_CD,
+              alive: true,
+            });
+          }
+        }
+        totalSpawned = agents.length;
+      }
+
+      // ---- spatial grid ----
+      var grid = null, gw = 0, gh = 0;
+      function buildGrid() {
+        gw = Math.max(1, Math.ceil(W / CELL));
+        gh = Math.max(1, Math.ceil(H / CELL));
+        var n = gw * gh;
+        grid = new Array(n);
+        for (var c = 0; c < n; c++) grid[c] = null;
+        for (var i = 0; i < agents.length; i++) {
+          var a = agents[i];
+          if (!a.alive) continue;
+          var cx = (a.x / CELL) | 0, cy = (a.y / CELL) | 0;
+          if (cx < 0) cx = 0; else if (cx >= gw) cx = gw - 1;
+          if (cy < 0) cy = 0; else if (cy >= gh) cy = gh - 1;
+          var idx = cy * gw + cx;
+          a._g = idx;
+          if (grid[idx] === null) grid[idx] = [];
+          grid[idx].push(a);
+        }
+      }
+
+      function findTargetGrid(a) {
+        var cx = (a.x / CELL) | 0, cy = (a.y / CELL) | 0;
+        var best = null, bestD = Infinity;
+        for (var r = 0; r <= gw + gh; r++) {
+          for (var oy = -r; oy <= r; oy++) {
+            for (var ox = -r; ox <= r; ox++) {
+              if (Math.abs(ox) !== r && Math.abs(oy) !== r) continue; // ring only
+              var nx = cx + ox, ny = cy + oy;
+              if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+              var bucket = grid[ny * gw + nx];
+              if (!bucket) continue;
+              for (var k = 0; k < bucket.length; k++) {
+                var b = bucket[k];
+                if (b.side === a.side || !b.alive) continue;
+                var dx = b.x - a.x, dy = b.y - a.y, d = dx * dx + dy * dy;
+                if (d < bestD) { bestD = d; best = b; }
+              }
+            }
+          }
+          if (best && r >= 1) break; // found something within a ring margin
+        }
+        return best;
+      }
+
+      function findTargetBrute(a) {
+        var best = null, bestD = Infinity;
+        for (var i = 0; i < agents.length; i++) {
+          var b = agents[i];
+          if (b.side === a.side || !b.alive) continue;
+          var dx = b.x - a.x, dy = b.y - a.y, d = dx * dx + dy * dy;
+          if (d < bestD) { bestD = d; best = b; }
+        }
+        return best;
+      }
+
+      function tick() {
+        if (cfg.grid) buildGrid();
+        for (var i = 0; i < agents.length; i++) {
+          var a = agents[i];
+          if (!a.alive) continue;
+          var t = cfg.grid ? findTargetGrid(a) : findTargetBrute(a);
+          if (!t) continue;
+          var dx = t.x - a.x, dy = t.y - a.y, d2 = dx * dx + dy * dy;
+          if (d2 <= ATK_RANGE2) {
+            a.cd -= TICK_DT;
+            if (a.cd <= 0) {
+              a.cd = ATK_CD;
+              if (!cfg.immortal) {
+                t.hp -= DMG;
+                if (t.hp <= 0) t.alive = false;
+              }
+            }
+          } else {
+            var d = Math.sqrt(d2) || 1;
+            a.x += (dx / d) * SPEED * TICK_DT;
+            a.y += (dy / d) * SPEED * TICK_DT;
+          }
+        }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, W, H);
+        for (var i = 0; i < agents.length; i++) {
+          var a = agents[i];
+          if (!a.alive) continue;
+          ctx.fillStyle = a.side === 0 ? '#f0564b' : '#4a9bf0';
+          ctx.fillRect(a.x - 1.5, a.y - 1.5, 3, 3);
+        }
+      }
+
+      function aliveCount() {
+        var n = 0;
+        for (var i = 0; i < agents.length; i++) if (agents[i].alive) n++;
+        return n;
+      }
+
+      // ---- loop with fixed-step sim + rolling metrics ----
+      var acc = 0, last = 0;
+      var fpsBuf = [], simBuf = [], renBuf = [];
+      function pushAvg(buf, v) { buf.push(v); if (buf.length > 30) buf.shift(); }
+      function avg(buf) { if (!buf.length) return 0; var s = 0; for (var i = 0; i < buf.length; i++) s += buf[i]; return s / buf.length; }
+
+      function frame(now) {
+        if (!running) return;
+        if (!last) last = now;
+        var dt = (now - last) / 1000; last = now;
+        if (dt > 0.25) dt = 0.25;
+        pushAvg(fpsBuf, 1 / Math.max(dt, 0.0001));
+
+        acc += dt;
+        var simMs = 0, steps = 0;
+        var t0 = performance.now();
+        while (acc >= TICK_DT && steps < 5) { tick(); acc -= TICK_DT; steps++; }
+        simMs = performance.now() - t0;
+        if (steps > 0) pushAvg(simBuf, simMs / steps);
+
+        var renMs = 0;
+        if (cfg.render) { var r0 = performance.now(); render(); renMs = performance.now() - r0; pushAvg(renBuf, renMs); }
+        else { pushAvg(renBuf, 0); }
+
+        updateStats();
+        if (sweep.active) sweepStep(now);
+        requestAnimationFrame(frame);
+      }
+
+      function updateStats() {
+        var fps = avg(fpsBuf);
+        var fpsEl = $('m-fps');
+        fpsEl.textContent = fps.toFixed(0);
+        fpsEl.className = fps >= 50 ? 'fps-good' : fps >= 30 ? 'fps-mid' : 'fps-bad';
+        $('m-frame').textContent = (1000 / Math.max(fps, 0.001)).toFixed(1);
+        $('m-sim').textContent = avg(simBuf).toFixed(2);
+        $('m-render').textContent = avg(renBuf).toFixed(2);
+        $('m-alive').textContent = aliveCount();
+        $('m-total').textContent = totalSpawned;
+      }
+
+      function readCfg() {
+        cfg.perSide = Math.max(1, parseInt($('perSide').value, 10) || 1);
+        cfg.render = $('render').checked;
+        cfg.grid = $('grid').checked;
+        cfg.immortal = $('immortal').checked;
+        cfg.capDpr = $('capDpr').checked;
+      }
+
+      function start() {
+        readCfg(); resize(); spawn(cfg.perSide);
+        fpsBuf = []; simBuf = []; renBuf = []; acc = 0; last = 0;
+        if (!running) { running = true; requestAnimationFrame(frame); }
+      }
+      function stop() { running = false; sweep.active = false; $('sweep').hidden = true; }
+
+      // ---- auto sweep: ramp perSide until FPS < 30 ----
+      var sweep = { active: false, level: 0, t0: 0, rows: [] };
+      var SWEEP_LEVELS = [50, 100, 200, 400, 700, 1000, 1500, 2000, 3000, 5000, 8000];
+      var SWEEP_HOLD = 2500; // ms per level
+      var SWEEP_TARGET = 30;
+
+      function startSweep() {
+        readCfg(); resize();
+        cfg.immortal = true; // hold population during measurement
+        sweep.active = true; sweep.level = 0; sweep.rows = [];
+        $('sweep').hidden = false; $('sweep-tbody').innerHTML = '';
+        applySweepLevel();
+        if (!running) { running = true; last = 0; requestAnimationFrame(frame); }
+      }
+      function applySweepLevel() {
+        var n = SWEEP_LEVELS[sweep.level];
+        spawn(n); fpsBuf = []; simBuf = []; renBuf = []; acc = 0;
+        sweep.t0 = 0;
+      }
+      function sweepStep(now) {
+        if (!sweep.t0) sweep.t0 = now;
+        if (now - sweep.t0 < SWEEP_HOLD) return;
+        var fps = avg(fpsBuf);
+        var n = SWEEP_LEVELS[sweep.level];
+        sweep.rows.push({ n: n, fps: fps, sim: avg(simBuf), ren: avg(renBuf) });
+        renderSweep();
+        if (fps < SWEEP_TARGET || sweep.level >= SWEEP_LEVELS.length - 1) {
+          sweep.active = false;
+          return;
+        }
+        sweep.level++; applySweepLevel();
+      }
+      function renderSweep() {
+        var rows = sweep.rows.map(function (r) {
+          var cls = r.fps < SWEEP_TARGET ? ' class="hit"' : '';
+          return '<tr' + cls + '><td>' + r.n + '/方</td><td>' + r.fps.toFixed(0) + 'fps</td><td>算' +
+            r.sim.toFixed(1) + '</td><td>画' + r.ren.toFixed(1) + '</td></tr>';
+        }).join('');
+        $('sweep-tbody').innerHTML = '<tr style="color:#8b98a5"><td>人数</td><td>FPS</td><td>算ms</td><td>画ms</td></tr>' + rows;
+      }
+
+      $('start').addEventListener('click', start);
+      $('stop').addEventListener('click', stop);
+      $('sweep-btn').addEventListener('click', startSweep);
+      ['render', 'grid', 'immortal', 'capDpr'].forEach(function (id) {
+        $(id).addEventListener('change', function () { readCfg(); if (id === 'capDpr') resize(); });
+      });
+
+      resize();
+    })();
+  </script>
+</body>
+</html>

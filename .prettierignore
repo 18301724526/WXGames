@@ -538,6 +538,7 @@ frontend/js/ui/H5UpdateRuntimeAdapter.js
 frontend/js/ui/H5UpdateRuntimeAdapter.test.js
 frontend/logs.js
 frontend/style.css
+frontend/tools/battle-stress-lab.html
 frontend/tools/config-release-console.html
 frontend/tools/famous-portrait-lab.html
 frontend/tools/famous-portrait-lab.js

@@ -86,7 +86,10 @@ test('foldString is the shared core for both seeded helpers', () => {
 test('every helper returns an unsigned 32-bit integer', () => {
   for (const input of ANY_INPUTS) {
     const value = hashString(input);
-    assert.ok(Number.isInteger(value) && value >= 0 && value <= 0xffffffff, `range for ${String(input)}`);
+    assert.ok(
+      Number.isInteger(value) && value >= 0 && value <= 0xffffffff,
+      `range for ${String(input)}`,
+    );
   }
 });
 
