@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const MarchSnapshot = (() => {
     if (global.WorldMarchProgressSnapshot) return global.WorldMarchProgressSnapshot;
     if (typeof module !== 'undefined' && module.exports) {
@@ -58,13 +70,7 @@
   }
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let i = 0; i < text.length; i += 1) {
-      next ^= text.charCodeAt(i);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function normalizeFrame(input = {}) {
@@ -188,7 +194,7 @@
       : (Array.isArray(march.actors) ? march.actors : []);
     const flags = normalizeFlags(options);
     const ui = normalizeUiState(uiState);
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     hash = hashStep(hash, tileMapView.signature || '');
     hash = hashStep(hash, tileMapView.version || 0);
     hash = hashStep(hash, tileMapView.seed || '');

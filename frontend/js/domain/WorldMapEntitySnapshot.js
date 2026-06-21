@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const VisibilityModel = (() => {
     if (global.WorldMapVisibilityModel) return global.WorldMapVisibilityModel;
     if (typeof module !== 'undefined' && module.exports) {
@@ -65,13 +77,7 @@
   }
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let i = 0; i < text.length; i += 1) {
-      next ^= text.charCodeAt(i);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function createIndex() {
@@ -196,7 +202,7 @@
     const tiles = new Array(rawTiles.length);
     for (let i = 0; i < rawTiles.length; i += 1) tiles[i] = normalizeTile(rawTiles[i], visibility);
     const sites = rawSites.map(normalizeSite);
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     const feed = (items) => {
       for (let i = 0; i < items.length; i += 1) {
         hash = hashStep(hash, items[i].id);

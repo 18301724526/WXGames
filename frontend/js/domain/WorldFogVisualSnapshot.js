@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const VisibilityModel = (() => {
     if (global.WorldMapVisibilityModel) return global.WorldMapVisibilityModel;
     if (typeof module !== 'undefined' && module.exports) {
@@ -49,13 +61,7 @@
   }
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let i = 0; i < text.length; i += 1) {
-      next ^= text.charCodeAt(i);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function tileId(q, r) {
@@ -253,7 +259,7 @@
       visibilitySignature: input.visibilitySignature || '',
       renderSignature: input.renderSignature || '',
       signature: '',
-      _hash: 2166136261,
+      _hash: SignatureHash.FNV_OFFSET_BASIS,
     };
   }
 
@@ -312,7 +318,7 @@
   }
 
   function getFogRenderSignature(viewport = {}, frame = {}, geometry = {}) {
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     [
       Math.round(toNumber(viewport.originX, 0)),
       Math.round(toNumber(viewport.originY, 0)),

@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const TileCoord = (() => {
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
@@ -71,13 +83,7 @@
   }
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let i = 0; i < text.length; i += 1) {
-      next ^= text.charCodeAt(i);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function createStore(input = {}, options = {}) {
@@ -105,7 +111,7 @@
         if (record.materialized) materializedChunkIds.add(record.chunkId);
       }
     }
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     for (const record of tiles) {
       hash = hashStep(hash, record.tileId);
       hash = hashStep(hash, record.terrain);

@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const STATUS_UNKNOWN = 'unknown';
   const STATUS_OK = 'ok';
   const STATUS_WARN = 'warn';
@@ -16,13 +28,7 @@
   }
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let i = 0; i < text.length; i += 1) {
-      next ^= text.charCodeAt(i);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function normalizeOverlayKeys(keys = DEFAULT_OVERLAY_KEYS) {
@@ -154,7 +160,7 @@
         unknown: 0,
       },
       signature: '',
-      _hash: 2166136261,
+      _hash: SignatureHash.FNV_OFFSET_BASIS,
     };
   }
 

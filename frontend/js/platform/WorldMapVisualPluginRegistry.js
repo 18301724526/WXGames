@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const FeatureFlags = (() => {
     if (global.FeatureFlags) return global.FeatureFlags;
     if (typeof module !== 'undefined' && module.exports) {
@@ -34,13 +46,7 @@
   });
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let i = 0; i < text.length; i += 1) {
-      next ^= text.charCodeAt(i);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function toNumber(value, fallback = 0) {
@@ -74,7 +80,7 @@
       Math.round(toNumber(geometry.stepX, 96) * 10),
       Math.round(toNumber(geometry.stepY, 48) * 10),
     ];
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     parts.forEach((part) => {
       hash = hashStep(hash, part);
     });
@@ -160,7 +166,7 @@
     const config = options.config || context.config || null;
     const plugins = getEnabledPlugins(config, options);
     const snapshots = Object.create(null);
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     plugins.forEach((plugin) => {
       const snapshot = createPluginSnapshot(plugin.key, context, options);
       if (!snapshot) return;

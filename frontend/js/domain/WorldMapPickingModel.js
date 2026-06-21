@@ -1,4 +1,16 @@
 (function (global) {
+  const SignatureHash = (() => {
+    if (global.SignatureHash) return global.SignatureHash;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/SignatureHash');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const WorldMarchSystem = (() => {
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
@@ -67,13 +79,7 @@
   }
 
   function hashStep(hash, value) {
-    const text = String(value ?? '');
-    let next = hash >>> 0;
-    for (let index = 0; index < text.length; index += 1) {
-      next ^= text.charCodeAt(index);
-      next = Math.imul(next, 16777619);
-    }
-    return next >>> 0;
+    return SignatureHash.hashStep(hash, value);
   }
 
   function containsPoint(target = {}, point = {}) {
@@ -236,7 +242,7 @@
     const frame = getFrame(context);
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const actors = getActors(context);
-    let hash = 2166136261;
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
     [
       tileMapView.signature || '',
       tileMapView.version || 0,
