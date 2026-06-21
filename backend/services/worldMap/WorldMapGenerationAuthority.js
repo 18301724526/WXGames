@@ -1,6 +1,7 @@
 const {
   DEFAULT_WORLD_SEED,
 } = require('./WorldMapConstants');
+const { hashString } = require('../../../shared/signatureHash');
 
 const SCHEMA = 'world-map-generation-authority-v1';
 const AUTHORITY = 'server';
@@ -25,16 +26,6 @@ function normalizeStableKey(value, fallback = 0) {
 
 function normalizeSeed(seed, fallback = DEFAULT_WORLD_SEED) {
   return sanitizeText(seed, fallback);
-}
-
-function hashString(input) {
-  let hash = 2166136261;
-  const text = String(input);
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function normalizeRollInput(input = {}) {

@@ -1,4 +1,5 @@
 const WorldMapService = require('../WorldMapService');
+const { hashString } = require('../../../shared/signatureHash');
 
 const EXPLORE_STEP_DURATION_MS = 10 * 1000;
 const MAX_MANUAL_ROUTE_LENGTH = 16;
@@ -28,16 +29,6 @@ function toTimestamp(value, fallback = 0) {
   }
   const time = new Date(value).getTime();
   return Number.isFinite(time) ? time : fallback;
-}
-
-function hashString(input) {
-  let hash = 2166136261;
-  const text = String(input);
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function getCoordinateKey(q, r) {

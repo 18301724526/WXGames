@@ -1,3 +1,5 @@
+const { hashText } = require('../../../shared/signatureHash');
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -11,16 +13,6 @@ function rollUnit(randomSource = null) {
 function pick(list, randomSource = null) {
   if (!Array.isArray(list) || list.length === 0) return null;
   return list[Math.floor(rollUnit(randomSource) * list.length)];
-}
-
-function hashText(value) {
-  const text = String(value || '');
-  let hash = 2166136261;
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function createSeedRandom(seed) {

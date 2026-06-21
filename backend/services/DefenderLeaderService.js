@@ -1,5 +1,6 @@
 const SkillGeneratorService = require('./SkillGeneratorService');
 const DefenderLeaderRandomAuthority = require('./defenderLeader/DefenderLeaderRandomAuthority');
+const { hashText } = require('../../shared/signatureHash');
 
 const DEFENDER_LEADER_VERSION = 'defender-leader-v1';
 const APPEARANCE_VERSION = 'famous-portrait-v3.0';
@@ -73,16 +74,6 @@ function toInteger(value, fallback = 0) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
-}
-
-function hashText(value) {
-  const text = String(value || '');
-  let hash = 2166136261;
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function createSeedRandom(seed) {

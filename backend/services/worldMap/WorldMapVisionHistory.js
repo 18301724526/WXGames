@@ -2,6 +2,7 @@ const {
   getTileId,
   toInteger,
 } = require('./WorldMapShared');
+const { hashStep, FNV_OFFSET_BASIS } = require('../../../shared/signatureHash');
 
 const SCHEMA = 'world-fog-vision-history-v1';
 const VERSION = 1;
@@ -50,16 +51,6 @@ function normalizeSource(source = {}, fallback = {}) {
   };
 }
 
-function hashStep(hash, value) {
-  const text = String(value ?? '');
-  let next = hash >>> 0;
-  for (let i = 0; i < text.length; i += 1) {
-    next ^= text.charCodeAt(i);
-    next = Math.imul(next, 16777619);
-  }
-  return next >>> 0;
-}
-
 function normalizeHistory(input = {}) {
   const rawSources = Array.isArray(input)
     ? input
@@ -71,7 +62,7 @@ function normalizeHistory(input = {}) {
     byKey.set(getSourceKey(normalized), normalized);
   });
   const sources = [...byKey.values()].slice(-MAX_HISTORY_SOURCES);
-  let hash = 2166136261;
+  let hash = FNV_OFFSET_BASIS;
   sources.forEach((source) => {
     hash = hashStep(hash, source.kind);
     hash = hashStep(hash, Math.round(source.q * 100));

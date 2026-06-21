@@ -4,20 +4,11 @@ const {
   DEFAULT_SPAWN_RING_RADIUS,
 } = require('./SpawnConstants');
 const { getCoordinateKey } = require('./SpawnScoring');
+const { hashString } = require('../../../shared/signatureHash');
 
 function toInteger(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
-
-function hashString(input) {
-  let hash = 2166136261;
-  const text = String(input);
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function createCandidateStream(options = {}) {

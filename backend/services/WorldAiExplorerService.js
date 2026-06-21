@@ -1,4 +1,5 @@
 const WorldMapService = require('./WorldMapService');
+const { hashString } = require('../../shared/signatureHash');
 
 const WORLD_AI_SCHEMA = 'world-ai-explorer-v1';
 const DEFAULT_AI_FACTION_ID = 'ai-frontier';
@@ -23,16 +24,6 @@ function toTimestamp(value, fallback = 0) {
   }
   const stamp = new Date(value).getTime();
   return Number.isFinite(stamp) ? stamp : fallback;
-}
-
-function hashString(input) {
-  let hash = 2166136261;
-  const text = String(input);
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function createCoord(q, r) {
