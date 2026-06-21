@@ -305,6 +305,73 @@ test('world march becomes idle at destination and can continue from its current 
   assert.equal(continued.mission.route.at(-1).r, 1);
 });
 
+test('world march with mission id reuses the selected idle mission even when formation options differ', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  gameState.exploreMissions = [WorldExplorerService.normalizeMission({
+    id: 'manual-frontier',
+    mode: 'manual',
+    status: 'idle',
+    origin: { q: 4, r: -1 },
+    homeOrigin: { q: 0, r: 0 },
+    target: { q: 4, r: -1 },
+    position: { q: 4, r: -1 },
+    route: [],
+    formation: { cityId: 'frontier-city', slot: 2, memberIds: ['fp-tutorial-scout'] },
+    stepDurationMs: WorldExplorerService.EXPLORE_STEP_DURATION_MS,
+  })];
+
+  const result = WorldExplorerService.startWorldMarch(gameState, {
+    missionId: 'manual-frontier',
+    cityId: 'capital',
+    formationSlot: 1,
+    targetQ: 6,
+    targetR: -1,
+  }, new Date(now.getTime() + 1));
+
+  assert.equal(result.success, true);
+  assert.equal(gameState.exploreMissions.length, 1);
+  assert.equal(result.mission.id, 'manual-frontier');
+  assert.equal(result.mission.origin.tileId, 'tile_4_-1');
+  assert.equal(result.mission.route.at(-1).tileId, 'tile_6_-1');
+  assert.deepEqual(gameState.exploreMissions[0].formation, { cityId: 'frontier-city', slot: 2, memberIds: ['fp-tutorial-scout'] });
+});
+
+test('world march with missing mission id fails without creating a new mission', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+
+  const result = WorldExplorerService.startWorldMarch(gameState, {
+    missionId: 'missing-mission',
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+
+  assert.equal(result.success, false);
+  assert.equal(result.error, 'EXPLORE_MISSION_NOT_FOUND');
+  assert.equal(gameState.exploreMissions.length, 0);
+});
+
+test('world march without mission id still creates a new manual mission by formation', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+
+  const result = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+
+  assert.equal(result.success, true);
+  assert.match(result.mission.id, /^explore_manual_/);
+  assert.equal(gameState.exploreMissions.length, 1);
+  assert.equal(result.mission.formation.cityId, 'capital');
+  assert.equal(result.mission.formation.slot, 1);
+});
+
 test('world march can be redirected home', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();

@@ -60,7 +60,6 @@ function getIdleFormationMission(gameState, formation = {}) {
       && normalizeFormationSlot(missionFormation.slot) === slot;
   }) || null;
 }
-
 function isTraceEnabled(options = {}) {
   return Boolean(options?.debugTrace || options?.worldMarchTrace);
 }
@@ -137,14 +136,26 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     formationSlot: options.formationSlot ?? options.slot ?? null,
     existingMissions: (gameState.exploreMissions || []).map(summarizeMission),
   });
-  const formationValidation = validateTutorialFormation(gameState, options);
+  const explicitMissionId = String(options.missionId || options.actorId || '').trim();
+  const explicitMission = explicitMissionId
+    ? (gameState.exploreMissions || []).find((mission) => mission.id === explicitMissionId) || null
+    : null;
+  if (explicitMissionId && !explicitMission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
+  if (explicitMission && explicitMission.status !== 'idle') {
+    traceWorldMarch('actions:startWorldMarch:missionBusy', options, { mission: summarizeMission(explicitMission) });
+    return { success: false, error: 'EXPLORE_FORMATION_BUSY', message: 'This explorer is already marching.', mission: getClientMission(explicitMission, now) };
+  }
+  const formationValidation = validateTutorialFormation(gameState, explicitMission ? {
+    ...options, cityId: explicitMission.formation?.cityId || options.cityId,
+    formationSlot: explicitMission.formation?.slot ?? options.formationSlot ?? options.slot,
+  } : options);
   if (!formationValidation.success) {
     traceWorldMarch('actions:startWorldMarch:formationRejected', options, {
       result: formationValidation,
     });
     return formationValidation;
   }
-  const busyMission = getBusyFormationMission(gameState, formationValidation.formation);
+  const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formationValidation.formation);
   if (busyMission) {
     traceWorldMarch('actions:startWorldMarch:busyFormation', options, {
       formation: formationValidation.formation,
@@ -165,7 +176,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     return { success: false, error: 'EXPLORE_LIMIT_REACHED', message: 'An explorer mission is already active.' };
   }
   const origin = getExploreOrigin(gameState);
-  const idleMission = getIdleFormationMission(gameState, formationValidation.formation);
+  const idleMission = explicitMission || getIdleFormationMission(gameState, formationValidation.formation);
   const marchOrigin = idleMission
     ? (idleMission.position || getLastRevealedOrOrigin(idleMission))
     : origin;
@@ -233,6 +244,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
     idleMission: summarizeMission(idleMission),
   });
+  const missionFormation = explicitMission
+    ? (idleMission?.formation || formationValidation.formation)
+    : formationValidation.formation;
   const mission = idleMission || normalizeMission({
     id: `explore_manual_${now.getTime()}`,
     mode: 'manual',
@@ -240,9 +254,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     origin: marchOrigin,
     homeOrigin: idleMission?.homeOrigin || origin,
     route,
-    formation: formationValidation.formation,
-    formationSnapshot: FormationStrengthService.buildFormationSnapshot(formationValidation.formation, {
-      cityId: formationValidation.formation.cityId,
+    formation: missionFormation,
+    formationSnapshot: FormationStrengthService.buildFormationSnapshot(missionFormation, {
+      cityId: missionFormation.cityId,
       now,
     }),
     stepDurationMs: EXPLORE_STEP_DURATION_MS,
@@ -254,9 +268,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     !idleMission.formationSnapshot
     || FormationStrengthService.isSnapshotSettled(idleMission.formationSnapshot)
   )) {
-    idleMission.formation = formationValidation.formation;
-    idleMission.formationSnapshot = FormationStrengthService.buildFormationSnapshot(formationValidation.formation, {
-      cityId: formationValidation.formation.cityId,
+    idleMission.formation = missionFormation;
+    idleMission.formationSnapshot = FormationStrengthService.buildFormationSnapshot(missionFormation, {
+      cityId: missionFormation.cityId,
       now,
     });
   }
