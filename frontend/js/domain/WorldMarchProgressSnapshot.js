@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldTime');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -16,7 +16,19 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./TileCoord');
-      } catch (error) {
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const WorldMarchCore = (() => {
+    if (global.WorldMarchCore) return global.WorldMarchCore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/worldMarchCore');
+      } catch (_error) {
         return null;
       }
     }
@@ -109,6 +121,7 @@
   }
 
   function getMissionPath(mission = {}) {
+    if (WorldMarchCore?.getMissionPath) return WorldMarchCore.getMissionPath(mission);
     const origin = normalizeCoord(mission.origin || {});
     const route = normalizeRoute(mission.route);
     if (!route.length && mission.status === STATUS_IDLE) {
@@ -118,6 +131,7 @@
   }
 
   function getMissionStepDurationMs(mission = {}) {
+    if (WorldMarchCore?.getMissionStepDurationMs) return WorldMarchCore.getMissionStepDurationMs(mission);
     return Math.max(1000, toInteger(
       mission.stepDurationMs,
       Math.max(1, toNumber(mission.stepDurationSeconds, 10)) * 1000,
@@ -125,12 +139,14 @@
   }
 
   function getMissionDurationMs(mission = {}) {
+    if (WorldMarchCore?.getMissionDurationMs) return WorldMarchCore.getMissionDurationMs(mission);
     const route = normalizeRoute(mission.route);
     const stepDurationMs = getMissionStepDurationMs(mission);
     return Math.max(stepDurationMs, route.length * stepDurationMs);
   }
 
   function getMissionProgress(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getMissionProgress) return WorldMarchCore.getMissionProgress(mission, nowMs);
     const route = normalizeRoute(mission.route);
     if (!route.length) {
       return { progress: 0, segmentIndex: 0, segmentProgress: 0, elapsedMs: 0, durationMs: 0 };
@@ -156,22 +172,26 @@
   }
 
   function isExpiredActiveMission(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.isExpiredActiveMission) return WorldMarchCore.isExpiredActiveMission(mission, nowMs);
     if (!mission || mission.status !== STATUS_ACTIVE) return false;
     const completesAtMs = toTimestamp(mission.completesAt, Number.NaN);
     return Number.isFinite(completesAtMs) && completesAtMs <= toNumber(nowMs, Date.now());
   }
 
   function getEffectiveMissionStatus(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getEffectiveMissionStatus) return WorldMarchCore.getEffectiveMissionStatus(mission, nowMs);
     if (isExpiredActiveMission(mission, nowMs)) return STATUS_IDLE;
     return mission.status || '';
   }
 
   function getArrivalKind(status = '') {
+    if (WorldMarchCore?.getArrivalKind) return WorldMarchCore.getArrivalKind(status);
     if (status === STATUS_IDLE) return ARRIVAL_IDLE;
     return ARRIVAL_NONE;
   }
 
   function getRouteStepRevealTimeMs(mission = {}, step = {}) {
+    if (WorldMarchCore?.getRouteStepRevealTimeMs) return WorldMarchCore.getRouteStepRevealTimeMs(mission, step);
     const startedAtMs = toTimestamp(mission.startedAt, Number.NaN);
     if (!Number.isFinite(startedAtMs)) return Number.NaN;
     const stepIndex = Math.max(1, toInteger(step.step, 1));
@@ -179,6 +199,7 @@
   }
 
   function isRouteStepTimeRevealed(mission = {}, step = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.isRouteStepTimeRevealed) return WorldMarchCore.isRouteStepTimeRevealed(mission, step, nowMs);
     const revealAtMs = getRouteStepRevealTimeMs(mission, step);
     return Number.isFinite(revealAtMs) && revealAtMs <= toNumber(nowMs, Date.now());
   }
@@ -200,6 +221,7 @@
   }
 
   function isRouteStepRevealed(mission = {}, step = {}, nowMs = Date.now(), revealedTileIds = null) {
+    if (WorldMarchCore?.isRouteStepRevealed) return WorldMarchCore.isRouteStepRevealed(mission, step, nowMs, revealedTileIds);
     if (!step) return false;
     if (step.revealed) return true;
     const status = getEffectiveMissionStatus(mission, nowMs);
@@ -216,6 +238,28 @@
   function deriveMissionForTime(mission = {}, options = {}) {
     if (!mission || typeof mission !== 'object') return null;
     const nowMs = toNumber(options.nowMs, Date.now());
+    if (WorldMarchCore?.deriveMissionForTime) {
+      const coreDerived = WorldMarchCore.deriveMissionForTime(mission, { nowMs });
+      if (!coreDerived) return null;
+      const route = (Array.isArray(coreDerived.route) ? coreDerived.route : []).map((step) => {
+        const revealAtMs = toNumber(step.revealedAtMs, Number.NaN);
+        const { revealedAtMs, ...rest } = step;
+        return {
+          ...rest,
+          revealedAt: rest.revealedAt || (rest.revealed && Number.isFinite(revealAtMs)
+            ? new Date(revealAtMs).toISOString()
+            : null),
+        };
+      });
+      const nextStepAtMs = toNumber(coreDerived.nextStepAtMs, Number.NaN);
+      return {
+        ...coreDerived,
+        route,
+        nextStepAt: Number.isFinite(nextStepAtMs) && coreDerived.status === STATUS_ACTIVE
+          ? new Date(nextStepAtMs).toISOString()
+          : null,
+      };
+    }
     const route = normalizeRoute(mission.route);
     const revealedSet = createRevealedTileSet(mission);
     const revealedRoute = route.map((step) => {
@@ -287,6 +331,7 @@
   }
 
   function getCurrentCoord(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getCurrentCoord) return WorldMarchCore.getCurrentCoord(mission, nowMs);
     const path = getMissionPath(mission);
     if (path.length <= 1) return path[0] || normalizeCoord({});
     const progress = getMissionProgress(mission, nowMs);
@@ -304,6 +349,7 @@
   }
 
   function getRouteRenderAheadTileId(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getRouteRenderAheadTileId) return WorldMarchCore.getRouteRenderAheadTileId(mission, nowMs);
     if (!mission || mission.status !== STATUS_ACTIVE) return null;
     const route = normalizeRoute(mission.route);
     if (!route.length) return null;
@@ -313,6 +359,7 @@
   }
 
   function getRouteRenderReadyTileIds(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getRouteRenderReadyTileIds) return WorldMarchCore.getRouteRenderReadyTileIds(mission, nowMs);
     if (!mission || mission.status !== STATUS_ACTIVE) return [];
     const route = normalizeRoute(mission.route);
     if (!route.length) return [];
@@ -322,6 +369,7 @@
   }
 
   function chooseStopTile(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.chooseStopTile) return WorldMarchCore.chooseStopTile(mission, nowMs);
     const path = getMissionPath(mission);
     if (path.length <= 1) return path[0] || normalizeCoord({});
     const progress = getMissionProgress(mission, nowMs);
@@ -331,6 +379,7 @@
   }
 
   function getRemainingSeconds(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getRemainingSeconds) return WorldMarchCore.getRemainingSeconds(mission, nowMs);
     if (!mission || mission.status === STATUS_IDLE) return 0;
     if (WorldTime?.getRemainingSeconds) {
       return WorldTime.getRemainingSeconds(mission, nowMs);
@@ -342,6 +391,7 @@
   }
 
   function getTravelRemainingSeconds(mission = {}, nowMs = Date.now()) {
+    if (WorldMarchCore?.getTravelRemainingSeconds) return WorldMarchCore.getTravelRemainingSeconds(mission, nowMs);
     if (!mission || mission.status === STATUS_IDLE) return 0;
     const progress = getMissionProgress(mission, nowMs);
     return Math.max(0, Math.ceil((progress.durationMs - progress.elapsedMs) / 1000));

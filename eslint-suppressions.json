@@ -180,11 +180,6 @@
       "count": 2
     }
   },
-  "frontend/js/domain/WorldMarchProgressSnapshot.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
   "frontend/js/domain/WorldRevealStore.js": {
     "no-unused-vars": {
       "count": 2

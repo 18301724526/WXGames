@@ -6,7 +6,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const TEST_SCOPES = Object.freeze({
   backend: ['backend/tests'],
   frontend: ['frontend/js'],
-  all: ['backend/tests', 'frontend/js'],
+  all: ['backend/tests', 'frontend/js', 'shared'],
 });
 
 function collectTestFiles(directory, result = []) {
