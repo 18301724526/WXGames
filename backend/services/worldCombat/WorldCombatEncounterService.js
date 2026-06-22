@@ -444,6 +444,25 @@ function resolveMissionArrival(gameState = {}, mission = {}, now = new Date()) {
   return resolveEncounterBattle(gameState, mission, encounter, now);
 }
 
+// Attacking a hostile force the formation is already standing on resolves with no
+// travel: mark the (single-step) route arrived and resolve the battle right away,
+// so the formation returns to idle immediately instead of being busy for a full
+// explore march step.
+function resolveImmediateArrival(gameState = {}, mission = {}, coord = {}, now = new Date()) {
+  const q = toInteger(coord.q ?? coord.x, 0);
+  const r = toInteger(coord.r ?? coord.y, 0);
+  const stamp = now && typeof now.toISOString === 'function' ? now.toISOString() : null;
+  (Array.isArray(mission.route) ? mission.route : []).forEach((step) => {
+    step.revealed = true;
+    step.revealedAt = stamp;
+  });
+  mission.status = 'idle';
+  mission.position = { q, r, tileId: WorldMapService.getTileId(q, r) };
+  mission.nextStepAt = null;
+  mission.completedAt = mission.completedAt || stamp;
+  return resolveMissionArrival(gameState, mission, now);
+}
+
 function getClientEncounterBattleTarget(encounter = {}) {
   return {
     source: 'world-combat',
@@ -534,6 +553,7 @@ module.exports = {
   normalizeCombatState,
   normalizeEncounter,
   resolveEncounterBattle,
+  resolveImmediateArrival,
   resolveMarchTarget,
   resolveMissionArrival,
 };

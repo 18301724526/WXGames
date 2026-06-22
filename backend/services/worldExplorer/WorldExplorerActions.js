@@ -290,6 +290,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     gameState.exploreMissions = [...(gameState.exploreMissions || []), mission];
   }
   setMissionCombatTarget(mission, combatTarget.encounter, now);
+  if (routeResult.inPlace && combatTarget.encounter) WorldCombatEncounterService.resolveImmediateArrival(gameState, mission, targetInput, now);
   gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
   const result = {
     success: true,

@@ -49,6 +49,7 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     if (options.combatEncounter) {
       return {
         success: true,
+        inPlace: true,
         route: [{
           q: targetQ,
           r: targetR,
