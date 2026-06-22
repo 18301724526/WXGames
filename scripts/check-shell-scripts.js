@@ -5,7 +5,10 @@ const { spawnSync } = require('node:child_process');
 const repoRoot = path.join(__dirname, '..');
 const SHELL_SCRIPTS = Object.freeze([
   'deploy.sh',
+  'scripts/deploy-test-server.sh',
   'scripts/pre-deploy-gate.sh',
+  'scripts/prepare-test-server-runtime.sh',
+  'scripts/test-server-ci-gate.sh',
   'scripts/verify-deploy-hook.sh',
   'scripts/rollback-deploy.sh',
   'scripts/backup-runtime-state.sh',

@@ -7,10 +7,10 @@ set -euo pipefail
 
 WORK_TREE="${WORK_TREE:-/www/wwwroot/h5}"
 FRONTEND_PUBLIC_DIR="${FRONTEND_PUBLIC_DIR:-${WEB_ROOT:-$WORK_TREE}}"
-BACKEND_DIR="/opt/wxgame-workspace/backend"
-SHARED_LINK="/opt/wxgame-workspace/shared"
+BACKEND_DIR="${BACKEND_DIR:-/opt/wxgame-workspace/backend}"
+SHARED_LINK="${SHARED_LINK:-/opt/wxgame-workspace/shared}"
 BRANCH="${1:-main}"
-PM2_APP_NAME="server"
+PM2_APP_NAME="${PM2_APP_NAME:-server}"
 WORLD_WORKER_PM2_NAME="${WORLD_WORKER_PM2_NAME:-wxgame-world-worker}"
 OPS_AGENT_PM2_NAME="${OPS_AGENT_PM2_NAME:-wxgame-ops-agent}"
 API_PORT="${PORT:-3000}"
@@ -19,6 +19,11 @@ ALLOWED_FRONTEND_PUBLIC_DIR="/www/wwwroot/h5"
 DEFAULT_REPO_GIT_DIR="/home/git/wxgame.git"
 COCOS_PROJECT_ROOT="/www/wwwroot/civilization-fire-next"
 DEPLOY_STATE_DIR="${DEPLOY_STATE_DIR:-/opt/wxgame-workspace/.wxgame}"
+DEPLOY_ENVIRONMENT="${DEPLOY_ENVIRONMENT:-production}"
+DEPLOY_GATE_SCRIPT="${DEPLOY_GATE_SCRIPT:-scripts/pre-deploy-gate.sh}"
+FRONTEND_API_BASE="${FRONTEND_API_BASE:-}"
+FRONTEND_ENVIRONMENT_LABEL="${FRONTEND_ENVIRONMENT_LABEL:-}"
+POST_BACKEND_SYNC_SCRIPT="${POST_BACKEND_SYNC_SCRIPT:-}"
 
 normalize_configured_path() {
     local input_path="$1"
@@ -149,15 +154,15 @@ write_deploy_version() {
     deployed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     mkdir -p "$DEPLOY_STATE_DIR"
     deploy_manifest="$(mktemp)"
-    node -e "const fs=require('fs'); const data={branch:process.argv[1],commit:process.argv[2],deployedAt:process.argv[3],workTree:process.argv[4],frontendPublicDir:process.argv[5]}; fs.writeFileSync(process.argv[6], JSON.stringify(data, null, 2) + '\n');" \
-        "$BRANCH" "$deployed_commit" "$deployed_at" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$deploy_manifest"
+    node -e "const fs=require('fs'); const data={environment:process.argv[1],branch:process.argv[2],commit:process.argv[3],deployedAt:process.argv[4],workTree:process.argv[5],frontendPublicDir:process.argv[6]}; fs.writeFileSync(process.argv[7], JSON.stringify(data, null, 2) + '\n');" \
+        "$DEPLOY_ENVIRONMENT" "$BRANCH" "$deployed_commit" "$deployed_at" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$deploy_manifest"
     cp "$deploy_manifest" "$FRONTEND_PUBLIC_DIR/.wxgame-deploy-version.json"
     current_deploy_path="$DEPLOY_STATE_DIR/current-deploy.json"
     deploy_log_path="$DEPLOY_STATE_DIR/deploy.log"
     cp "$deploy_manifest" "$current_deploy_path"
     rm -f "$deploy_manifest"
-    printf '%s branch=%s commit=%s workTree=%s frontendPublicDir=%s\n' \
-        "$deployed_at" "$BRANCH" "$deployed_commit" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" >> "$deploy_log_path"
+    printf '%s environment=%s branch=%s commit=%s workTree=%s frontendPublicDir=%s\n' \
+        "$deployed_at" "$DEPLOY_ENVIRONMENT" "$BRANCH" "$deployed_commit" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" >> "$deploy_log_path"
     export WXGAME_DEPLOY_MANIFEST_PATH="$current_deploy_path"
     echo "[Deploy] 部署状态文件: $current_deploy_path"
     echo "[Deploy] 部署日志: $deploy_log_path"
@@ -451,6 +456,93 @@ publish_frontend_assets() {
         --require-version "$asset_version"
 }
 
+apply_frontend_environment_overrides() {
+    local label="$FRONTEND_ENVIRONMENT_LABEL"
+    local api_base="$FRONTEND_API_BASE"
+    local config_file="$FRONTEND_PUBLIC_DIR/js/config/GameConfig.js"
+    local index_file="$FRONTEND_PUBLIC_DIR/index.html"
+
+    if [ -z "$label" ] && [ -z "$api_base" ]; then
+        return
+    fi
+
+    node - "$config_file" "$index_file" "$api_base" "$label" "$DEPLOY_ENVIRONMENT" <<'NODE'
+const fs = require('fs');
+
+const [configFile, indexFile, apiBase, label, environment] = process.argv.slice(2);
+
+if (apiBase) {
+  let config = fs.readFileSync(configFile, 'utf8');
+  let replacements = 0;
+  config = config.replace(
+    /API_BASE:\s*['"][^'"]+['"],/,
+    () => {
+      replacements += 1;
+      return `API_BASE: ${JSON.stringify(apiBase)},\n    ENVIRONMENT: { name: ${JSON.stringify(environment)}, label: ${JSON.stringify(label || environment)}, apiBase: ${JSON.stringify(apiBase)} },`;
+    },
+  );
+  if (replacements !== 1) {
+    throw new Error(`Expected to replace exactly one API_BASE in ${configFile}, replaced ${replacements}`);
+  }
+  fs.writeFileSync(configFile, config);
+}
+
+if (label) {
+  let html = fs.readFileSync(indexFile, 'utf8');
+  const badge = `<div id="wxgame-environment-badge" aria-label="${label}">${label}</div>`;
+  const style = [
+    '<style id="wxgame-environment-badge-style">',
+    '#wxgame-environment-badge{position:fixed;z-index:2147483647;left:10px;top:10px;padding:4px 8px;border:1px solid rgba(255,255,255,.65);background:rgba(20,20,20,.82);color:#fff;font:600 12px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;border-radius:4px;pointer-events:none;}',
+    '</style>',
+  ].join('');
+  html = html.replace(/<title>(.*?)<\/title>/i, `<title>${label} - $1</title>`);
+  if (!html.includes('wxgame-environment-badge-style')) {
+    html = html.replace('</head>', `    ${style}\n</head>`);
+  }
+  if (!html.includes('wxgame-environment-badge')) {
+    html = html.replace('<body>', `<body>\n    ${badge}`);
+  }
+  fs.writeFileSync(indexFile, html);
+}
+NODE
+
+    echo "[Deploy] Frontend environment override applied: environment=$DEPLOY_ENVIRONMENT label=${label:-none} apiBase=${api_base:-default}"
+}
+
+run_deploy_gate() {
+    local gate_script="$DEPLOY_GATE_SCRIPT"
+
+    if [ "${SKIP_DEPLOY_GATE:-0}" = "1" ]; then
+        echo "[Deploy] SKIP_DEPLOY_GATE=1 set; skipping deploy gate."
+        return
+    fi
+
+    if [[ "$gate_script" != /* ]]; then
+        gate_script="$WORK_TREE/$gate_script"
+    fi
+
+    echo "[Deploy] Running deploy gate: $gate_script"
+    REPO_GIT_DIR="$GIT_DIR_PATH" bash "$gate_script" "$WORK_TREE"
+}
+
+run_post_backend_sync_script() {
+    local hook_script="$POST_BACKEND_SYNC_SCRIPT"
+
+    if [ -z "$hook_script" ]; then
+        return
+    fi
+
+    if [[ "$hook_script" != /* ]]; then
+        hook_script="$WORK_TREE/$hook_script"
+    fi
+
+    echo "[Deploy] Running post-backend sync script: $hook_script"
+    BACKEND_DIR="$BACKEND_DIR" \
+        DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" \
+        DEPLOY_STATE_DIR="$DEPLOY_STATE_DIR" \
+        bash "$hook_script"
+}
+
 echo "[Deploy] 开始部署..."
 
 sanitize_git_env
@@ -499,15 +591,11 @@ else
     git_repo clean -fd
 fi
 
-if [ "${SKIP_DEPLOY_GATE:-0}" != "1" ]; then
-    echo "[Deploy] Running pre-deploy architecture gate..."
-    REPO_GIT_DIR="$GIT_DIR_PATH" bash "$WORK_TREE/scripts/pre-deploy-gate.sh" "$WORK_TREE"
-else
-    echo "[Deploy] SKIP_DEPLOY_GATE=1 set; skipping pre-deploy architecture gate."
-fi
+run_deploy_gate
 
 echo "[Deploy] 发布前端静态文件..."
 publish_frontend_assets
+apply_frontend_environment_overrides
 write_deploy_version
 
 echo "[Deploy] 同步 shared/ 目录..."
@@ -530,6 +618,7 @@ rsync -a --delete \
     --exclude '*.backup.*' \
     --exclude '*.pre-tick' \
     "$WORK_TREE/backend/" "$BACKEND_DIR/"
+run_post_backend_sync_script
 
 echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"

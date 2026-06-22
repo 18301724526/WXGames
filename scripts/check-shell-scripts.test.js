@@ -14,7 +14,10 @@ const {
 test('shell script guard tracks project-owned shell entrypoints', () => {
   assert.deepEqual(SHELL_SCRIPTS, [
     'deploy.sh',
+    'scripts/deploy-test-server.sh',
     'scripts/pre-deploy-gate.sh',
+    'scripts/prepare-test-server-runtime.sh',
+    'scripts/test-server-ci-gate.sh',
     'scripts/verify-deploy-hook.sh',
     'scripts/rollback-deploy.sh',
     'scripts/backup-runtime-state.sh',
@@ -45,7 +48,13 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
 
   assert.match(deployScript, /rev-parse --verify "\$BRANCH\^\{commit\}"/);
   assert.match(deployScript, /checkout -f "\$DEPLOY_COMMIT"/);
-  assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$WORK_TREE\/scripts\/pre-deploy-gate\.sh" "\$WORK_TREE"/);
+  assert.match(deployScript, /DEPLOY_GATE_SCRIPT="\$\{DEPLOY_GATE_SCRIPT:-scripts\/pre-deploy-gate\.sh\}"/);
+  assert.match(deployScript, /run_deploy_gate\(\)/);
+  assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$gate_script" "\$WORK_TREE"/);
+  assert.match(deployScript, /apply_frontend_environment_overrides/);
+  assert.match(deployScript, /FRONTEND_API_BASE="\$\{FRONTEND_API_BASE:-\}"/);
+  assert.match(deployScript, /POST_BACKEND_SYNC_SCRIPT="\$\{POST_BACKEND_SYNC_SCRIPT:-\}"/);
+  assert.match(deployScript, /run_post_backend_sync_script/);
   assert.match(deployScript, /publish_runtime_config_release\(\)/);
   assert.match(deployScript, /ConfigReleaseService\.publishRelease/);
   assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+publish_runtime_config_release\s+echo "\[Deploy\]/s);
