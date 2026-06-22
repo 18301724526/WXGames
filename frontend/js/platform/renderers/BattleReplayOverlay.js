@@ -48,7 +48,12 @@
     // ---- DOM shell ----
     const root = doc.createElement('div');
     root.id = 'wxgame-battle-replay';
-    root.style.cssText = 'position:fixed;inset:0;z-index:2147483600;background:#0c1116;display:flex;flex-direction:column;color:#e6edf3;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;';
+    // Match the game's 9:16 portrait viewport (same sizing as #app::before in
+    // style.css) and center it, instead of covering the whole browser window.
+    root.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);'
+      + 'width:min(100vw,56.25dvh);height:min(100dvh,177.7778vw);'
+      + 'z-index:2147483600;overflow:hidden;background:#0c1116;display:flex;flex-direction:column;'
+      + 'color:#e6edf3;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;';
 
     const attackerName = (report.attacker && report.attacker.leaderName) || '我军';
     const defenderName = (report.defender && (report.defender.name || report.defender.leaderName)) || '敌军';
