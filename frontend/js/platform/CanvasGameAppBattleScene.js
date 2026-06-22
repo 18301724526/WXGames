@@ -25,6 +25,63 @@
             if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
           },
 
+      // LIVE attack on an active encounter tile. Opens a session on the backend
+      // (startWorldCombat → deterministic {battleId, setup}, no simulation), then
+      // runs the INTERACTIVE battle scene; on battle end it submits the recorded
+      // inputStream to resolveWorldCombat for the authoritative result. Returns a
+      // promise that resolves true when the scene opened. Falls back to false (so
+      // the caller can use the passive/legacy path) when prerequisites are missing.
+      async enterInteractiveBattle(options = {}) {
+            const view = (typeof window !== 'undefined' ? window : globalThis);
+            const Scene = view.BattleInteractiveScene;
+            const api = this.getGameApi?.() || this.api;
+            if (!Scene || typeof Scene.show !== 'function' || !api?.startWorldCombat || !view.BattleSimCore) {
+              view.console?.log?.('[battle-interactive] enterInteractiveBattle:abort', {
+                hasScene: !!Scene, hasApi: !!api?.startWorldCombat, hasCore: !!view.BattleSimCore,
+              });
+              return false;
+            }
+            let opened = null;
+            try {
+              opened = await api.startWorldCombat({
+                missionId: options.missionId || '',
+                formationSlot: options.formationSlot ?? options.slot ?? 1,
+                cityId: options.cityId || this.state?.activeCityId || 'capital',
+                targetQ: options.targetQ ?? options.q,
+                targetR: options.targetR ?? options.r,
+              });
+            } catch (err) {
+              view.console?.error?.('[battle-interactive] startWorldCombat failed:', err);
+              this.log?.(`战斗开启失败: ${err?.payload?.message || err?.message || ''}`);
+              return false;
+            }
+            if (!opened || opened.success === false || !opened.setup || !opened.battleId) {
+              this.log?.(opened?.message || '无法在此格开战');
+              return false;
+            }
+            this.applyApiState?.(opened);
+            const battleId = opened.battleId;
+            const shown = Scene.show({
+              battleId,
+              setup: opened.setup,
+              encounter: opened.encounter,
+              battleTarget: opened.battleTarget,
+              onResolve: async ({ inputStream }) => {
+                try {
+                  const resolved = await api.resolveWorldCombat(battleId, inputStream);
+                  this.applyApiState?.(resolved);
+                  return resolved;
+                } catch (err) {
+                  view.console?.error?.('[battle-interactive] resolveWorldCombat failed:', err);
+                  this.log?.(`战斗结算失败: ${err?.payload?.message || err?.message || ''}`);
+                  return null;
+                }
+              },
+              onClose: () => this.renderCanvasSurface?.(this.state?.currentTab || 'military'),
+            });
+            return shown !== false;
+          },
+
       startBattleScene(report = null) {
             if (!report) return false;
             // Entity battles carry a deterministic replay; render them in the new

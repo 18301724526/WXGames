@@ -636,6 +636,23 @@
         ...(clientInputIntent ? { clientInputIntent } : {}),
       });
     }
+    startWorldCombat(options = {}) {
+      return this.request('POST', '/game/action', {
+        action: 'startWorldCombat',
+        missionId: options.missionId || '',
+        formationSlot: options.formationSlot ?? options.slot ?? 1,
+        cityId: options.cityId || 'capital',
+        targetQ: options.targetQ ?? options.q ?? options.x,
+        targetR: options.targetR ?? options.r ?? options.y,
+      });
+    }
+    resolveWorldCombat(battleId, inputStream = []) {
+      return this.request('POST', '/game/action', {
+        action: 'resolveWorldCombat',
+        battleId,
+        inputStream,
+      });
+    }
     startConquest(territoryId, expedition = {}) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, expedition }); }
     claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }
     renameCity(territoryId, name) { return this.request('POST', '/game/action', { action: 'renameCity', territoryId, name }); }

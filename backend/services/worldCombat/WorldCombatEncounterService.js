@@ -170,6 +170,10 @@ function normalizeCombatState(gameState = {}, now = new Date()) {
     schema: SCHEMA,
     encounters: [...encountersById.values()],
     recentReports,
+    // Carry the active interactive battle session through normalization so it is
+    // not dropped while re-seeding encounters (the session service writes/reads it).
+    session:
+      rawState.session && typeof rawState.session === 'object' ? rawState.session : null,
     updatedAt: rawState.updatedAt || now.toISOString(),
   };
   return gameState.worldCombat;
@@ -276,11 +280,27 @@ function buildBattleReport(
   battle = {},
   now = new Date(),
 ) {
-  const snapshotBefore =
-    FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot) || {};
+  return buildEncounterBattleReport(gameState, {
+    snapshotBefore: mission.formationSnapshot,
+    encounter,
+    battle,
+    now,
+  });
+}
+
+// Public, mission-agnostic report builder. Takes the attacker snapshot directly
+// (the interactive session stores it on the session, not on a live mission) and
+// produces the SAME report shape buildBattleReport emits, so recentReports and
+// the passive BattleReplayOverlay consume it unchanged.
+function buildEncounterBattleReport(
+  gameState = {},
+  { snapshotBefore = null, encounter = {}, battle = {}, now = new Date() } = {},
+) {
+  const snapshotBeforeNormalized =
+    FormationStrengthService.normalizeFormationSnapshot(snapshotBefore) || {};
   const attackerStart = Math.max(
     0,
-    toInteger(snapshotBefore.soldiersRemaining, snapshotBefore.soldiersCommitted),
+    toInteger(snapshotBeforeNormalized.soldiersRemaining, snapshotBeforeNormalized.soldiersCommitted),
   );
   const attackerEnd = Math.max(0, toInteger(battle.attackerSnapshot?.soldiersRemaining, 0));
   const defenderStart = Math.max(
@@ -291,7 +311,7 @@ function buildBattleReport(
   const defenderGid = getDefenderGenerals(encounter)[0]?.gid || '';
   const defenderEnd = Math.max(0, toInteger(defenderSurvivors[defenderGid], 0));
   const victory = battle.winner === 'attacker';
-  const leaderName = getPrimaryLeaderName(gameState, snapshotBefore);
+  const leaderName = getPrimaryLeaderName(gameState, snapshotBeforeNormalized);
   const defenderLeader = encounter.defender?.leader || {};
   const report = BattleService.createLegacyBattleReport(
     {
@@ -550,6 +570,11 @@ module.exports = {
   getClientEncounterBattleTarget,
   getClientState,
   getEncounterIdFromMarchOptions,
+  getDefenderGenerals,
+  getFamousPersonAttributes,
+  buildBattleReport,
+  buildEncounterBattleReport,
+  settleMissionSnapshot,
   normalizeCombatState,
   normalizeEncounter,
   resolveEncounterBattle,

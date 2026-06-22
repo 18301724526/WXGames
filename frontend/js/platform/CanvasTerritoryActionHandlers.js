@@ -620,6 +620,11 @@
           if (missionId) options.missionId = missionId;
           if (combatEncounterId) options.combatEncounterId = combatEncounterId;
           if (meta.inputIntent) options.clientInputIntent = meta.inputIntent;
+          // LIVE attack on an active encounter tile → open the INTERACTIVE battle
+          // scene (decoupled session) instead of the passive explore-march combat.
+          if (combatEncounterId && typeof game?.enterInteractiveBattle === 'function') {
+            return game.enterInteractiveBattle(options);
+          }
           if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
           return this.runAction(() => this.host.api.startWorldMarch(options));
         };

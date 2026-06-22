@@ -2,8 +2,33 @@ const TutorialService = require('../services/TutorialService');
 const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
 const GameActionRegistry = require('../actions/GameActionRegistry');
+const WorldCombatSessionService = require('../services/worldCombat/WorldCombatSessionService');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
 const WorldMarchVerification = require('../services/worldExplorer/WorldMarchVerification');
+
+// Interactive world-combat actions are resolved directly here (not via the
+// territory/registry pipeline) so the deterministic battle session lives on the
+// persisted worldCombat column and flows back through the normal game view.
+const WORLD_COMBAT_ACTIONS = new Set(['startWorldCombat', 'resolveWorldCombat']);
+
+function executeWorldCombatAction(action, gameState, body = {}) {
+  if (action === 'startWorldCombat') {
+    return WorldCombatSessionService.openSession(gameState, {
+      missionId: body.missionId,
+      formationSlot: body.formationSlot ?? body.slot,
+      cityId: body.cityId,
+      targetQ: body.targetQ ?? body.q ?? body.x,
+      targetR: body.targetR ?? body.r ?? body.y,
+    });
+  }
+  if (action === 'resolveWorldCombat') {
+    return WorldCombatSessionService.resolveSession(gameState, {
+      battleId: body.battleId,
+      inputStream: body.inputStream,
+    });
+  }
+  return { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
+}
 
 function buildGameView(gameState, tutorial, gameStateService, projection = {}) {
   const clientState = gameStateService.getClientGameStateFromNormalized
@@ -210,7 +235,8 @@ function executeGameActionRequest({
 
   EventService.maybeGenerateRegularEvent(gameState);
   EventService.maybeGenerateThreatEvent(gameState);
-  if (!GameActionRegistry.has(action)) {
+  const isWorldCombatAction = WORLD_COMBAT_ACTIONS.has(action);
+  if (!isWorldCombatAction && !GameActionRegistry.has(action)) {
     return { statusCode: 400, payload: result };
   }
   const tutorialCheck = TutorialService.validateAction(tutorial, action, {
@@ -264,13 +290,15 @@ function executeGameActionRequest({
     });
   }
   result = WorldExplorerTrace.run(traceEnabled, () => (
-    GameActionRegistry.execute({
-      action,
-      body: req.body || {},
-      gameState,
-      tutorial,
-      planningContext: planningProjection,
-    })
+    isWorldCombatAction
+      ? executeWorldCombatAction(action, gameState, req.body || {})
+      : GameActionRegistry.execute({
+        action,
+        body: req.body || {},
+        gameState,
+        tutorial,
+        planningContext: planningProjection,
+      })
   ));
   if (traceEnabled) {
     traceWorldMarch('route:afterExecute', {
