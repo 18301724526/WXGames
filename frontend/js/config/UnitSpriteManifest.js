@@ -30,6 +30,21 @@
         }),
       }),
     }),
+    hostile_squad_default: Object.freeze({
+      id: 'hostile_squad_default',
+      label: 'Hostile Squad',
+      animations: Object.freeze({
+        move: Object.freeze({
+          id: 'move',
+          frameCount: 11,
+          frameDurationMs: 80,
+          basePath: 'assets/art/units/spearman/move',
+          framePrefix: '',
+          frameExtension: 'png',
+          framePad: 3,
+        }),
+      }),
+    }),
     spearman: Object.freeze({
       id: 'spearman',
       label: 'Spearman',

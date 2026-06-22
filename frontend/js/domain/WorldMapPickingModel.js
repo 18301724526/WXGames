@@ -200,6 +200,10 @@
         missionId,
         actorName: actor.formation?.label || actor.formation?.name || actor.name || actor.label || '',
         status: actor.status || '',
+        ...(actor.combatTarget ? {
+          combatEncounterId: actor.combatTarget.encounterId,
+          combatTarget: actor.combatTarget,
+        } : {}),
       },
     };
   }

@@ -13,6 +13,7 @@ const TalentPolicyService = require('./TalentPolicyService');
 const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateMigrationPipeline = require('./GameStateMigrationPipeline');
+const WorldCombatEncounterService = require('./worldCombat/WorldCombatEncounterService');
 
 function createInitialGameState(playerId, options = {}) {
   const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
@@ -20,7 +21,7 @@ function createInitialGameState(playerId, options = {}) {
   const buildings = BuildingState.createInitialBuildingState();
   const buildingEffects = BuildingEffectCalculator.calculate(buildings);
   const spawn = options.spawn || options.spawnAssignment || null;
-  return {
+  const state = {
     playerId,
     saveMetadata: GameStateMigrationPipeline.createSaveMetadata(),
     resources: { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
@@ -64,6 +65,8 @@ function createInitialGameState(playerId, options = {}) {
     scoutReports: [],
     updatedAt: nowIso,
   };
+  WorldCombatEncounterService.normalizeCombatState(state, now);
+  return state;
 }
 
 function normalizeStateStructure(rawState) {
@@ -111,6 +114,7 @@ function normalizeStateStructure(rawState) {
   TutorialService.ensureHouseGuideResources(state);
   TutorialService.ensureScoutFamousPersonGrant(state);
   WorldMapService.ensureWorldMap(state);
+  WorldCombatEncounterService.normalizeCombatState(state);
   state.exploreMissions = Array.isArray(state.exploreMissions)
     ? state.exploreMissions.map((mission) => WorldExplorerService.normalizeMission(mission)).filter(Boolean)
     : [];
@@ -137,6 +141,7 @@ function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   WorldExplorerService.normalizeExploreState(state, now, {
     planningContext: options.planningContext,
   });
+  WorldCombatEncounterService.normalizeCombatState(state, now);
   if (options.advanceWorldAi === true) {
     WorldAiExplorerService.advanceAiExploration(state, now);
   }

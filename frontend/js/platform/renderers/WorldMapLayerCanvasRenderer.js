@@ -324,7 +324,10 @@
     }
 
     hasWorldExplorerMissions(state = {}) {
-      return this.getWorldExplorerMissionIds(state).size > 0;
+      const explorer = state.worldExplorerState || {};
+      const combat = explorer.combat || {};
+      return this.getWorldExplorerMissionIds(state).size > 0
+        || (Array.isArray(combat.activeEncounters) && combat.activeEncounters.length > 0);
     }
 
     getWorldExplorerMissionIds(state = {}) {

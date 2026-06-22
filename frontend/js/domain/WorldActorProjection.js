@@ -75,6 +75,53 @@
     };
   }
 
+  function normalizeCombatEncounterCoord(encounter = {}) {
+    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(encounter);
+    const q = Number.isFinite(Number(encounter.q ?? encounter.x)) ? Math.floor(Number(encounter.q ?? encounter.x)) : 0;
+    const r = Number.isFinite(Number(encounter.r ?? encounter.y)) ? Math.floor(Number(encounter.r ?? encounter.y)) : 0;
+    return { q, r, tileId: `tile_${q}_${r}` };
+  }
+
+  function projectActorFromCombatEncounter(encounter = {}) {
+    if (!encounter || typeof encounter !== 'object' || encounter.status !== 'active') return null;
+    const current = normalizeCombatEncounterCoord(encounter);
+    const id = encounter.id || `combat_${current.tileId}`;
+    return {
+      id,
+      actorId: id,
+      type: 'hostileForce',
+      kind: 'worldCombatEncounter',
+      status: 'idle',
+      unitKey: encounter.unitKey || 'hostile_squad_default',
+      animationId: 'move',
+      name: encounter.name || 'Hostile Force',
+      label: encounter.name || 'Hostile Force',
+      current,
+      target: current,
+      origin: current,
+      combatTarget: {
+        encounterId: id,
+        q: current.q,
+        r: current.r,
+        tileId: current.tileId,
+        name: encounter.name || 'Hostile Force',
+        terrain: encounter.terrain || encounter.battleTarget?.tile?.terrain || '',
+        defender: encounter.defender || encounter.battleTarget?.defender || null,
+        battleTarget: encounter.battleTarget || null,
+      },
+      projection: {
+        kind: 'combatEncounter',
+        source: 'WorldActorProjection',
+      },
+    };
+  }
+
+  function getCombatEncounters(input = {}) {
+    const explorer = input?.worldExplorerState || input || {};
+    const combat = explorer.combat || {};
+    return Array.isArray(combat.activeEncounters) ? combat.activeEncounters : [];
+  }
+
   function getRows(input = {}, options = {}) {
     if (Array.isArray(input.rows)) return input.rows;
     if (input.schema === 'world-march-progress-snapshot-v1') return input.missions || [];
@@ -83,9 +130,14 @@
   }
 
   function projectWorldActors(input = {}, options = {}) {
-    return getRows(input, options)
+    return [
+      ...getRows(input, options)
       .map(projectActorFromProgress)
-      .filter(Boolean);
+        .filter(Boolean),
+      ...getCombatEncounters(input)
+        .map(projectActorFromCombatEncounter)
+        .filter(Boolean),
+    ];
   }
 
   const api = {
@@ -93,6 +145,7 @@
     getProjectionKind,
     isSameCoord,
     projectActorFromProgress,
+    projectActorFromCombatEncounter,
     projectWorldActors,
     shouldRenderWorldActor,
   };

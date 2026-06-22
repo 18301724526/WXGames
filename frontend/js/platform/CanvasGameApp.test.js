@@ -244,6 +244,50 @@ test('CanvasGameApp wires authority state refreshes from the sync service', () =
   ]);
 });
 
+test('CanvasGameAppStateSync plays unseen world combat reports once', () => {
+  class Host {}
+  CanvasGameAppStateSync.install(Host);
+  const calls = [];
+  const host = new Host();
+  Object.assign(host, {
+    state: { currentTab: 'military' },
+    tutorial: {},
+    loading: { visible: false },
+    resolveMapHomeViewState(state = {}, options = {}) {
+      return {
+        activeTab: state.currentTab || options.requestedTab || 'military',
+        militaryView: state.militaryView || options.militaryView || 'world',
+        isMapHome: false,
+      };
+    },
+    getActiveTab() { return this.state?.currentTab || 'military'; },
+    getGameApi() { return null; },
+    setPendingBuildingAction() {},
+    syncWorldClock() {},
+    updateSyncInterval() {},
+    render() { calls.push(['render']); },
+    startBattleScene(report) { calls.push(['battle', report.id]); return true; },
+  });
+  const payload = {
+    gameState: {
+      currentTab: 'military',
+      worldExplorerState: {
+        combat: {
+          recentReports: [{
+            id: 'report-1',
+            report: { id: 'report-1', turns: [], summary: 'Resolved' },
+          }],
+        },
+      },
+    },
+  };
+
+  host.applyState(payload);
+  host.applyState(payload);
+
+  assert.deepEqual(calls.filter((call) => call[0] === 'battle'), [['battle', 'report-1']]);
+});
+
 test('CanvasGameApp renders territory site selection through map-home city HUD', () => {
   const calls = [];
   const renderer = {

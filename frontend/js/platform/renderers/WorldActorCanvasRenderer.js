@@ -224,6 +224,10 @@
         actorId: actor.id,
         missionId: actor.missionId,
         inputSurface: 'worldMap',
+        ...(actor.combatTarget ? {
+          combatEncounterId: actor.combatTarget.encounterId,
+          combatTarget: actor.combatTarget,
+        } : {}),
       });
       return true;
     }

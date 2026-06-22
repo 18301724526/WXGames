@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const TutorialService = require('../services/TutorialService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldMapService = require('../services/WorldMapService');
+const GameStateNormalizer = require('../services/GameStateNormalizer');
+const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
 require('../../frontend/js/domain/WorldTime');
 require('../../frontend/js/domain/WorldMarchProgressSnapshot');
 const WorldActorProjection = require('../../frontend/js/domain/WorldActorProjection');
@@ -497,7 +499,7 @@ test('returned-home idle world march stays in explorer state but leaves the worl
 
   assert.equal(clientState.idleMissions.length, 1);
   assert.equal(clientState.idleMissions[0].position.tileId, 'tile_0_0');
-  assert.deepEqual(actors, []);
+  assert.equal(actors.some((actor) => actor.missionId === started.mission.id), false);
 });
 
 test('returned-home world march settles surviving snapshot troops back to the saved formation', () => {
@@ -608,4 +610,71 @@ test('world march client state does not expose retired ready reports', () => {
 
   assert.equal(gameState.exploreMissions[0].status, 'idle');
   assert.equal(Object.prototype.hasOwnProperty.call(clientState, 'readyMissions'), false);
+});
+
+test('world combat encounter is seeded near capital and resolves when a formation arrives', () => {
+  const now = new Date('2026-06-22T00:00:00.000Z');
+  const gameState = GameStateNormalizer.createInitialGameState('world-combat-chain-test', { now });
+  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  gameState.famousPeople = [{
+    id: 'fp-commander',
+    name: 'Commander',
+    attributes: { force: 95, command: 90, speed: 80, intelligence: 60, politics: 40, charisma: 50 },
+  }];
+  gameState.military = {
+    ...(gameState.military || {}),
+    soldiers: 300,
+    soldierCap: 300,
+    formations: {
+      capital: [{
+        slot: 1,
+        memberIds: ['fp-commander'],
+        soldierAssignments: { 'fp-commander': 180 },
+      }],
+    },
+  };
+  gameState.cities.capital = gameState.cities.capital || { id: 'capital', territoryId: 'capital' };
+  gameState.cities.capital.military = {
+    ...(gameState.cities.capital.military || {}),
+    soldiers: 300,
+    soldierCap: 300,
+    formations: gameState.military.formations,
+  };
+  const combatState = WorldCombatEncounterService.normalizeCombatState(gameState, now);
+  const encounter = combatState.encounters.find((item) => item.id === WorldCombatEncounterService.ENCOUNTER_ID);
+
+  assert.ok(encounter);
+  assert.equal(WorldMapService.getWrappedDistance({ q: 0, r: 0 }, encounter), 2);
+
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    combatEncounterId: encounter.id,
+    targetQ: 999,
+    targetR: 999,
+    formationSlot: 1,
+  }, now);
+
+  assert.equal(started.success, true);
+  assert.equal(started.mission.target.tileId, encounter.tileId);
+  assert.equal(started.mission.combat.encounterId, encounter.id);
+  assert.equal(gameState.exploreMissions[0].combat.status, 'marching');
+
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt);
+  const resolvedMission = gameState.exploreMissions[0];
+  const resolvedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
+  const clientState = WorldExplorerService.getClientState(gameState, finishAt);
+
+  assert.equal(resolvedMission.status, 'idle');
+  assert.equal(resolvedMission.combat.status, 'resolved');
+  assert.equal(Boolean(resolvedMission.combat.battleReportId), true);
+  assert.equal(gameState.worldCombat.recentReports.length, 1);
+  assert.equal(gameState.worldCombat.recentReports[0].report.mode, 'entity-battle');
+  assert.equal(clientState.combat.recentReports.length, 1);
+  assert.equal(clientState.combat.activeEncounters.some((item) => item.id === encounter.id), resolvedEncounter.status === 'active');
+  assert.ok(resolvedMission.formationSnapshot.soldiersRemaining <= 180);
+  WorldCombatEncounterService.normalizeCombatState(gameState, finishAt);
+  const renormalizedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
+  if (renormalizedEncounter.status === 'resolved') {
+    assert.equal(renormalizedEncounter.defender.soldiers, 0);
+  }
 });

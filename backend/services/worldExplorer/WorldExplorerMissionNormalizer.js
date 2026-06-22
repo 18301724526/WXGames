@@ -211,6 +211,15 @@ function normalizeMission(rawMission) {
         memberIds: [],
       },
     formationSnapshot: FormationStrengthService.normalizeFormationSnapshot(rawMission.formationSnapshot),
+    combat: rawMission.combat && typeof rawMission.combat === 'object'
+      ? {
+        encounterId: String(rawMission.combat.encounterId || rawMission.combat.combatEncounterId || '').trim(),
+        status: ['marching', 'resolved'].includes(rawMission.combat.status) ? rawMission.combat.status : 'marching',
+        startedAt: rawMission.combat.startedAt || rawMission.startedAt || new Date().toISOString(),
+        resolvedAt: rawMission.combat.resolvedAt || null,
+        battleReportId: rawMission.combat.battleReportId || null,
+      }
+      : null,
     startedAt: rawMission.startedAt || new Date().toISOString(),
     nextStepAt: status === 'idle' ? null : rawMission.nextStepAt || rawMission.startedAt || new Date().toISOString(),
     completesAt: rawMission.completesAt || rawMission.startedAt || new Date().toISOString(),

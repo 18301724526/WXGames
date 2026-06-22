@@ -617,3 +617,62 @@ test('WorldMarchHudCanvasRenderer hides stop command for idle parked actors', ()
   assert.equal(host.hitTargets.some((target) => target.action.type === 'returnWorldMarch' && target.action.missionId === 'explore-idle'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'stopWorldMarch'), false);
 });
+
+test('WorldMarchHudCanvasRenderer renders selected combat actor attack flow', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+  const combatTarget = {
+    encounterId: 'hostile_force_capital_ridge',
+    q: 2,
+    r: -1,
+    tileId: 'tile_2_-1',
+    name: 'Frontier Patrol',
+    terrain: 'forest',
+    defender: { soldiers: 40 },
+  };
+
+  renderer.renderWorldMarchHud({}, {
+    selectedWorldActorId: 'hostile_force_capital_ridge',
+  }, [{
+    id: 'hostile_force_capital_ridge',
+    actorId: 'hostile_force_capital_ridge',
+    type: 'hostileForce',
+    status: 'idle',
+    current: { q: 2, r: -1, tileId: 'tile_2_-1' },
+    combatTarget,
+  }], {
+    originX: 100,
+    originY: 100,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }, { stepX: 96, stepY: 48 }, { x: 0, y: 84, width: 390, height: 696 });
+
+  const attack = host.hitTargets.find((target) => target.action.type === 'openWorldMarchFormationPicker');
+  assert.equal(Boolean(attack), true);
+  assert.equal(attack.action.combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(attack.action.targetQ, 2);
+  assert.equal(attack.action.targetR, -1);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'returnWorldMarch'), false);
+});
+
+test('WorldMarchHudCanvasRenderer carries combat encounter id through formation start actions', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
+    worldMarchTarget: {
+      q: 2,
+      r: -1,
+      tileId: 'tile_2_-1',
+      pickerOpen: true,
+      combatEncounterId: 'hostile_force_capital_ridge',
+      combatTarget: { encounterId: 'hostile_force_capital_ridge', defender: { soldiers: 40 } },
+    },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
+  assert.equal(Boolean(start), true);
+  assert.equal(start.action.combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(start.action.combatTarget.defender.soldiers, 40);
+});

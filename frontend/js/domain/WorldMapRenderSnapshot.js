@@ -119,7 +119,7 @@
     const q = coord ? coord.x : toInteger(target.x ?? target.q, Number.NaN);
     const r = coord ? coord.y : toInteger(target.y ?? target.r, Number.NaN);
     if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
-    return {
+    const result = {
       q,
       r,
       tileId: coord?.tileId || `tile_${q}_${r}`,
@@ -128,6 +128,13 @@
       terrain: target.terrain || '',
       terrainLabel: target.terrainLabel || '',
     };
+    if (target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId) {
+      result.combatEncounterId = target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId;
+    }
+    if (target.combatTarget && typeof target.combatTarget === 'object') {
+      result.combatTarget = JSON.parse(JSON.stringify(target.combatTarget));
+    }
+    return result;
   }
 
   function normalizeUiState(uiState = {}) {

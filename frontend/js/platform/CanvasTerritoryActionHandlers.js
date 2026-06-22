@@ -21,6 +21,24 @@
     };
   }
 
+  function getCombatEncounterId(action = {}, previousTarget = {}) {
+    return String(action.combatEncounterId
+      || action.encounterId
+      || action.combatTarget?.encounterId
+      || previousTarget.combatEncounterId
+      || previousTarget.encounterId
+      || previousTarget.combatTarget?.encounterId
+      || '').trim();
+  }
+
+  function copyCombatTargetFields(nextTarget = {}, action = {}, previousTarget = {}) {
+    const encounterId = getCombatEncounterId(action, previousTarget);
+    if (encounterId) nextTarget.combatEncounterId = encounterId;
+    const combatTarget = action.combatTarget || previousTarget.combatTarget || null;
+    if (combatTarget && typeof combatTarget === 'object') nextTarget.combatTarget = clonePlain(combatTarget);
+    return nextTarget;
+  }
+
   function clonePlain(value) {
     if (!value || typeof value !== 'object') return value;
     if (Array.isArray(value)) return value.map(clonePlain);
@@ -417,6 +435,7 @@
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
         if (action.terrain) nextTarget.terrain = action.terrain;
         if (action.terrainLabel) nextTarget.terrainLabel = action.terrainLabel;
+        copyCombatTargetFields(nextTarget, action);
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
         uiState.selectedSiteId = '';
@@ -468,6 +487,7 @@
         else if (previousTarget.known !== undefined) nextTarget.known = Boolean(previousTarget.known);
         if (action.terrain || previousTarget.terrain) nextTarget.terrain = action.terrain || previousTarget.terrain;
         if (action.terrainLabel || previousTarget.terrainLabel) nextTarget.terrainLabel = action.terrainLabel || previousTarget.terrainLabel;
+        copyCombatTargetFields(nextTarget, action, previousTarget);
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
         uiState.worldTargetPicker = null;
@@ -580,6 +600,8 @@
             cityId: action.cityId || game?.state?.activeCityId || 'capital',
           };
           if (selectedActorId) options.missionId = selectedActorId;
+          const combatEncounterId = getCombatEncounterId(action, uiState.worldMarchTarget || {});
+          if (combatEncounterId) options.combatEncounterId = combatEncounterId;
           if (meta.inputIntent) options.clientInputIntent = meta.inputIntent;
           if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
           return this.runAction(() => this.host.api.startWorldMarch(options));

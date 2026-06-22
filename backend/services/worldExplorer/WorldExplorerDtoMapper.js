@@ -174,6 +174,7 @@ function getMissionDto(mission = {}, now = new Date()) {
     plannedSites: (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).map(getPlannedSiteDto),
     formation: clone(mission.formation || {}),
     formationSnapshot: clone(FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot)),
+    combat: mission.combat && typeof mission.combat === 'object' ? clone(mission.combat) : null,
     position,
     revealedTileIds,
     stepDurationSeconds: Math.floor(stepDurationMs / 1000),

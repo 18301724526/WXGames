@@ -25,6 +25,7 @@ const {
   ServerTimelineSnapshot,
 } = require('../realtime');
 const FormationStrengthService = require('../military/FormationStrengthService');
+const WorldCombatEncounterService = require('../worldCombat/WorldCombatEncounterService');
 
 function countActiveMissions(gameState) {
   return (gameState.exploreMissions || []).filter((mission) => mission.status === 'active').length;
@@ -128,10 +129,16 @@ function traceWorldMarch(stage, options = {}, payload = {}) {
 function startWorldMarch(gameState, options = {}, now = new Date()) {
   const TUTORIAL_STEPS = getTutorialSteps();
   normalizeExploreState(gameState, now);
+  const combatTarget = WorldCombatEncounterService.resolveMarchTarget(gameState, options, now);
+  if (!combatTarget.success) return combatTarget;
+  const targetInput = combatTarget.target || {
+    q: options.targetQ ?? options.q ?? options.x,
+    r: options.targetR ?? options.r ?? options.y,
+  };
   traceWorldMarch('actions:startWorldMarch:begin', options, {
     target: {
-      q: options.targetQ ?? options.q ?? options.x ?? null,
-      r: options.targetR ?? options.r ?? options.y ?? null,
+      q: targetInput.q ?? null,
+      r: targetInput.r ?? null,
     },
     formationSlot: options.formationSlot ?? options.slot ?? null,
     existingMissions: (gameState.exploreMissions || []).map(summarizeMission),
@@ -182,16 +189,13 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     : origin;
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const routeResult = buildManualRoute(marchOrigin, {
-    q: options.targetQ ?? options.q ?? options.x,
-    r: options.targetR ?? options.r ?? options.y,
+    q: targetInput.q,
+    r: targetInput.r,
   }, worldMap.seed, { gameState, now });
   traceWorldMarch('actions:startWorldMarch:routeResult', options, {
     origin: summarizeCoord(origin),
     marchOrigin: summarizeCoord(marchOrigin),
-    target: summarizeCoord(routeResult.target || {
-      q: options.targetQ ?? options.q ?? options.x,
-      r: options.targetR ?? options.r ?? options.y,
-    }),
+    target: summarizeCoord(routeResult.target || targetInput),
     success: routeResult.success,
     error: routeResult.error || '',
     routeCount: Array.isArray(routeResult.route) ? routeResult.route.length : 0,
@@ -214,7 +218,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   let plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now, {
     planningContext: options.planningContext,
   });
-  if (shouldGuaranteeTutorialEmptyCity(gameState)) {
+  if (!combatTarget.encounter && shouldGuaranteeTutorialEmptyCity(gameState)) {
     if (!plannedSites.length) {
       return {
         success: false,
@@ -285,6 +289,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     mission.plannedSites = plannedSites;
     gameState.exploreMissions = [...(gameState.exploreMissions || []), mission];
   }
+  setMissionCombatTarget(mission, combatTarget.encounter, now);
   gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
   const result = {
     success: true,
@@ -302,6 +307,13 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     clientInputIntent: options.clientInputIntent,
     aoiRadius: options.aoiRadius,
   });
+}
+
+function setMissionCombatTarget(mission = {}, encounter = null, now = new Date()) {
+  mission.combat = encounter
+    ? { encounterId: encounter.id, status: 'marching', startedAt: now.toISOString(), resolvedAt: null, battleReportId: null }
+    : null;
+  return mission.combat;
 }
 
 function findActiveMission(gameState, missionId, now = new Date()) {
@@ -483,9 +495,4 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
   });
 }
 
-module.exports = {
-  countActiveMissions,
-  startWorldMarch,
-  returnWorldMarch,
-  stopWorldMarch,
-};
+module.exports = { countActiveMissions, startWorldMarch, returnWorldMarch, stopWorldMarch };

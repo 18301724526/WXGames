@@ -145,6 +145,12 @@
       result.missionId = target.missionId || target.actorId;
       result.actorId = target.actorId || target.missionId;
     }
+    if (target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId) {
+      result.combatEncounterId = target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId;
+    }
+    if (target.combatTarget && typeof target.combatTarget === 'object') {
+      result.combatTarget = JSON.parse(JSON.stringify(target.combatTarget));
+    }
     return result;
   }
 

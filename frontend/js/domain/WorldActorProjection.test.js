@@ -161,3 +161,31 @@ test('WorldActorProjection keeps expired active return-home mission hidden at ho
   assert.equal(row.current.tileId, 'tile_0_0');
   assert.deepEqual(actors, []);
 });
+
+test('WorldActorProjection projects active combat encounters as hostile world actors', () => {
+  const actors = WorldActorProjection.projectWorldActors({
+    combat: {
+      activeEncounters: [{
+        id: 'hostile_force_capital_ridge',
+        status: 'active',
+        kind: 'hostileForce',
+        name: 'Frontier Patrol',
+        q: 2,
+        r: -1,
+        tileId: 'tile_2_-1',
+        terrain: 'forest',
+        unitKey: 'hostile_squad_default',
+        defender: { soldiers: 40 },
+        battleTarget: { source: 'world-combat' },
+      }],
+    },
+  });
+
+  assert.equal(actors.length, 1);
+  assert.equal(actors[0].id, 'hostile_force_capital_ridge');
+  assert.equal(actors[0].type, 'hostileForce');
+  assert.equal(actors[0].unitKey, 'hostile_squad_default');
+  assert.equal(actors[0].current.tileId, 'tile_2_-1');
+  assert.equal(actors[0].combatTarget.encounterId, 'hostile_force_capital_ridge');
+  assert.equal(actors[0].combatTarget.defender.soldiers, 40);
+});

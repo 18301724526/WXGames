@@ -30,6 +30,24 @@
             return WorldMarchOptimisticState?.buildClientReport?.(this) || null;
           },
 
+      playUnseenWorldCombatReports(state = this.state) {
+            const reports = state?.worldExplorerState?.combat?.recentReports;
+            if (!Array.isArray(reports) || !reports.length) return false;
+            this.playedWorldCombatReportIds = this.playedWorldCombatReportIds || new Set();
+            let played = false;
+            reports.slice().reverse().forEach((entry) => {
+              const report = entry?.report || null;
+              const reportId = entry?.id || report?.id || '';
+              if (!report || !reportId || this.playedWorldCombatReportIds.has(reportId)) return;
+              this.playedWorldCombatReportIds.add(reportId);
+              if (typeof this.startBattleScene === 'function') {
+                this.startBattleScene(report);
+                played = true;
+              }
+            });
+            return played;
+          },
+
       applyState(payload = {}) {
             this.syncWorldClock?.(payload);
             const loadTrace = global.H5LoadTrace;
@@ -106,6 +124,7 @@
             global.WorldMarchTrace?.log?.('app:applyState:after', {
               after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
+            this.playUnseenWorldCombatReports?.(this.state);
             this.render();
             loadTrace?.ready?.({
               source: 'applyState',
@@ -261,6 +280,7 @@
             global.WorldMarchTrace?.log?.('app:syncFromServer:after', {
               after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
             });
+            this.playUnseenWorldCombatReports?.(this.state);
             this.render();
             loadTrace?.ready?.({
               source: 'syncFromServer',

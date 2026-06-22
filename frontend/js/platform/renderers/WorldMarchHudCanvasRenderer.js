@@ -340,6 +340,36 @@
       return this.getBusyFormationMap(state).get(`${cityId}:${slot}`) || null;
     }
 
+    isCombatActor(actor = {}) {
+      return Boolean(actor?.combatTarget || actor?.type === 'hostileForce' || actor?.kind === 'worldCombatEncounter');
+    }
+
+    getCombatTargetFromActor(actor = {}) {
+      const source = actor.combatTarget || {};
+      const current = actor.current || actor.target || actor.origin || {};
+      return {
+        q: source.q ?? current.q ?? current.x,
+        r: source.r ?? current.r ?? current.y,
+        tileId: source.tileId || current.tileId,
+        known: true,
+        terrain: source.terrain || source.battleTarget?.tile?.terrain || actor.terrain || '',
+        terrainLabel: source.terrainLabel || source.terrain || actor.terrain || '',
+        combatEncounterId: source.encounterId || actor.combatEncounterId || actor.id || '',
+        combatTarget: source,
+        title: source.name || actor.name || actor.label || 'Hostile Force',
+        defender: source.defender || null,
+      };
+    }
+
+    getCombatIntel(target = {}) {
+      const defender = target.defender || target.combatTarget?.defender || {};
+      const soldiers = Math.max(0, Math.floor(Number(defender.soldiers) || 0));
+      return {
+        title: target.title || target.combatTarget?.name || 'Hostile Force',
+        subtitle: soldiers > 0 ? `${soldiers} soldiers` : (target.terrainLabel || target.terrain || 'Hostile force'),
+      };
+    }
+
     renderTargetHud(target = {}, viewport = {}, geometry = {}, frame = {}) {
       const hudFrame = this.getVisibleHudFrame(frame);
       const point = this.getTileScreenCenter(target, viewport, geometry);
@@ -388,6 +418,43 @@
         known: target.known,
         terrain: target.terrain,
         terrainLabel: target.terrainLabel,
+        ...(target.combatEncounterId ? { combatEncounterId: target.combatEncounterId } : {}),
+        ...(target.combatTarget ? { combatTarget: target.combatTarget } : {}),
+      });
+      return true;
+    }
+
+    renderCombatActorHud(actor = {}, viewport = {}, geometry = {}, frame = {}) {
+      const target = this.getCombatTargetFromActor(actor);
+      const hudFrame = this.getVisibleHudFrame(frame);
+      const point = this.getTileScreenCenter(actor.current || actor.target || actor.origin || {}, viewport, geometry);
+      const intel = this.getCombatIntel(target);
+      const rect = this.clampHudRect({
+        x: point.x - 82,
+        y: point.y - 104,
+        width: 164,
+        height: 68,
+      }, hudFrame);
+      this.drawSmallHudPanel(rect.x, rect.y, rect.width, rect.height, this.truncateText(intel.title, 138, { size: 12, bold: true }));
+      this.drawText(this.truncateText(intel.subtitle, 140, { size: 10 }), rect.x + 12, rect.y + 32, {
+        size: 10,
+        color: '#f0b45b',
+      });
+      const buttonW = 64;
+      const buttonH = 24;
+      const buttonX = rect.x + rect.width - buttonW - 12;
+      const buttonY = rect.y + rect.height - buttonH - 9;
+      this.drawButton(buttonX, buttonY, buttonW, buttonH, 'Attack', { size: 11, radius: 7, active: true });
+      this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
+        type: 'openWorldMarchFormationPicker',
+        targetQ: target.q,
+        targetR: target.r,
+        tileId: target.tileId,
+        known: true,
+        terrain: target.terrain,
+        terrainLabel: target.terrainLabel,
+        combatEncounterId: target.combatEncounterId,
+        combatTarget: target.combatTarget,
       });
       return true;
     }
@@ -455,6 +522,8 @@
           tileId: target.tileId,
           formationSlot: formation.slot || index + 1,
           cityId: formation.cityId || militaryState.activeCityId || 'capital',
+          ...(target.combatEncounterId ? { combatEncounterId: target.combatEncounterId } : {}),
+          ...(target.combatTarget ? { combatTarget: target.combatTarget } : {}),
           ...(target.missionId || target.actorId ? {
             missionId: target.missionId || target.actorId,
             actorId: target.actorId || target.missionId,
@@ -549,7 +618,11 @@
       });
       if (picker) return this.renderWorldTargetPicker(picker, viewport, geometry, frame);
       if (target?.pickerOpen) return this.renderFormationPicker(state, target, frame);
-      if (selectedActor) return this.renderActorHud(selectedActor, viewport, geometry, frame);
+      if (selectedActor) {
+        return this.isCombatActor(selectedActor)
+          ? this.renderCombatActorHud(selectedActor, viewport, geometry, frame)
+          : this.renderActorHud(selectedActor, viewport, geometry, frame);
+      }
       if (target) return this.renderTargetHud(target, viewport, geometry, frame);
       return false;
     }

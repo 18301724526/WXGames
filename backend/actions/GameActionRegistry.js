@@ -51,6 +51,8 @@ function buildTerritoryPayload(body = {}, actionOverride = '') {
     stopR: body.stopR,
     formationSlot: body.formationSlot,
     slot: body.slot,
+    combatEncounterId: body.combatEncounterId,
+    encounterId: body.encounterId,
     q: body.q,
     r: body.r,
     x: body.x,
