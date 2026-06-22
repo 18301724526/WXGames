@@ -57,7 +57,9 @@
     top.innerHTML = `<div>${attackerName} 队 <span style="opacity:.6">vs</span> ${defenderName} 队</div><div id="wxgame-battle-replay-sub" style="font-size:12px;opacity:.7;margin-top:2px">交战中…</div>`;
 
     const stageWrap = doc.createElement('div');
-    stageWrap.style.cssText = 'position:relative;flex:1;min-height:0;';
+    const bgPath = (report.visual && report.visual.map && (report.visual.map.background || report.visual.map.image))
+      || 'assets/art/battle/battlefield-forest-camp.png';
+    stageWrap.style.cssText = 'position:relative;flex:1;min-height:0;background:#0c1116 center/cover no-repeat;background-image:url("' + bgPath + '");';
     const canvas = doc.createElement('canvas');
     canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
     stageWrap.appendChild(canvas);
@@ -119,8 +121,12 @@
 
     function render(now) {
       ctx.clearRect(0, 0, W, H);
-      const sx = W / (arena.w || W);
-      const sy = H / (arena.h || H);
+      // Uniform fit + center so the battlefield keeps its aspect ratio.
+      const aw = arena.w || W;
+      const ah = arena.h || H;
+      const scale = Math.min(W / aw, H / ah) || 1;
+      const offX = (W - aw * scale) / 2;
+      const offY = (H - ah * scale) / 2;
       const base = (now / FRAME_MS) | 0;
       const us = battle.units || [];
       const draw = [];
@@ -135,10 +141,10 @@
       draw.sort((a, b) => a.y - b.y);
       for (let j = 0; j < draw.length; j += 1) {
         const d = draw[j];
-        const h = d.kind === 'general' ? 46 : 16;
+        const h = (d.kind === 'general' ? 46 : 16) * scale;
         const w = Math.round((h * 500) / 400);
-        const x = d.x * sx;
-        const y = d.y * sy;
+        const x = offX + d.x * scale;
+        const y = offY + d.y * scale;
         let drew = false;
         if (sprites.ready) {
           const fr = sprites[spriteSetFor(d)][poseFor(d)][(base + (d.id % FRAMES)) % FRAMES];

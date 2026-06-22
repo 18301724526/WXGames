@@ -155,7 +155,11 @@ function normalizeCombatState(gameState = {}, now = new Date()) {
     const normalized = normalizeEncounter(encounter, gameState, now);
     if (normalized.id) encountersById.set(normalized.id, normalized);
   });
-  if (!encountersById.has(ENCOUNTER_ID)) {
+  // Respawn the seeded encounter when it is missing or already resolved so the
+  // hostile force is available to attack again (re-seeding keeps it active while
+  // recentReports below preserves the finished battle reports).
+  const seededExisting = encountersById.get(ENCOUNTER_ID);
+  if (!seededExisting || seededExisting.status === 'resolved') {
     const seeded = normalizeEncounter(createEncounter(gameState, now), gameState, now);
     encountersById.set(seeded.id, seeded);
   }
