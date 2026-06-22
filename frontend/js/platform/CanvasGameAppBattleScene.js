@@ -28,13 +28,25 @@
       startBattleScene(report = null) {
             if (!report) return false;
             // Entity battles carry a deterministic replay; render them in the new
-            // sprite overlay instead of the legacy turn-card scene.
+            // sprite overlay instead of the legacy turn-card scene. Any failure
+            // falls back to the legacy scene so a battle always shows.
             const view = (typeof window !== 'undefined' ? window : globalThis);
-            if (report.replay && report.replay.setup && view.BattleReplayOverlay && view.BattleSimCore) {
-              const shown = view.BattleReplayOverlay.show(report, {
-                onClose: () => this.renderCanvasSurface(this.state?.currentTab || 'military'),
+            try {
+              view.console?.log?.('[battle-replay] startBattleScene', {
+                hasReplay: !!(report.replay && report.replay.setup),
+                hasCore: !!view.BattleSimCore,
+                hasOverlay: !!view.BattleReplayOverlay,
               });
-              if (shown) return true;
+            } catch (e) { /* ignore */ }
+            if (report.replay && report.replay.setup && view.BattleReplayOverlay && view.BattleSimCore) {
+              try {
+                const shown = view.BattleReplayOverlay.show(report, {
+                  onClose: () => this.renderCanvasSurface(this.state?.currentTab || 'military'),
+                });
+                if (shown) return true;
+              } catch (err) {
+                view.console?.error?.('[battle-replay] overlay failed, using legacy scene:', err);
+              }
             }
             this.battleScene = {
               visible: true,
