@@ -14,6 +14,7 @@ const officialDocPaths = [
   'docs/architecture_module_responsibility_index_2026-06-08.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/world_map_hud_transparency_contract_2026-06-19.md',
+  'docs/server_environment_main_2026-06-22.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
   'docs/config_registry_snapshot_2026-06-11.json',
@@ -68,6 +69,14 @@ const requiredText = {
     'transparent area of `mainHud`',
     'must not use `clearRect(mapX, mapY, mapW, mapH)`',
     'Hit-target collection is separate from visual drawing',
+  ],
+  'docs/server_environment_main_2026-06-22.md': [
+    'WXGame Main Server Environment Report',
+    '310eb0b73d9012b43b14cbf94402d78dc5608344',
+    'codex/battle-core-test-server',
+    '/wxgame-test-api/',
+    'wxgame-test-server',
+    'one-way',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',
