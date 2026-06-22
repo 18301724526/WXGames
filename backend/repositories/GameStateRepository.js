@@ -63,6 +63,7 @@ class GameStateRepository {
         exploreMissions TEXT,
         worldMarchClientReports TEXT,
         worldMarchVerification TEXT,
+        worldCombat TEXT,
         worldAi TEXT,
         warMissions TEXT,
         scoutReports TEXT,
@@ -125,6 +126,9 @@ class GameStateRepository {
     }
     if (!columns.some((column) => column.name === 'worldMap')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMap TEXT').run();
+    }
+    if (!columns.some((column) => column.name === 'worldCombat')) {
+      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldCombat TEXT').run();
     }
     if (!columns.some((column) => column.name === 'activeCityId')) {
       this.db.prepare('ALTER TABLE game_states ADD COLUMN activeCityId TEXT').run();
@@ -217,6 +221,7 @@ class GameStateRepository {
       exploreMissions: row.exploreMissions ? JSON.parse(row.exploreMissions) : null,
       worldMarchClientReports: row.worldMarchClientReports ? JSON.parse(row.worldMarchClientReports) : null,
       worldMarchVerification: row.worldMarchVerification ? JSON.parse(row.worldMarchVerification) : null,
+      worldCombat: row.worldCombat ? JSON.parse(row.worldCombat) : null,
       worldAi: row.worldAi ? JSON.parse(row.worldAi) : undefined,
       warMissions: row.warMissions ? JSON.parse(row.warMissions) : null,
       scoutReports: row.scoutReports ? JSON.parse(row.scoutReports) : null,
@@ -326,8 +331,8 @@ class GameStateRepository {
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, worldMarchClientReports, worldMarchVerification,
-        worldAi, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        worldCombat, worldAi, warMissions, scoutReports, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(playerId) DO UPDATE SET
         revision = excluded.revision,
         saveMetadata = excluded.saveMetadata,
@@ -366,6 +371,7 @@ class GameStateRepository {
         exploreMissions = excluded.exploreMissions,
         worldMarchClientReports = excluded.worldMarchClientReports,
         worldMarchVerification = excluded.worldMarchVerification,
+        worldCombat = excluded.worldCombat,
         worldAi = excluded.worldAi,
         warMissions = excluded.warMissions,
         scoutReports = excluded.scoutReports,
@@ -409,6 +415,7 @@ class GameStateRepository {
       JSON.stringify(gameState.exploreMissions || []),
       JSON.stringify(gameState.worldMarchClientReports || {}),
       JSON.stringify(gameState.worldMarchVerification || null),
+      JSON.stringify(gameState.worldCombat || null),
       JSON.stringify(gameState.worldAi || {}),
       JSON.stringify(gameState.warMissions || []),
       JSON.stringify(gameState.scoutReports || []),
