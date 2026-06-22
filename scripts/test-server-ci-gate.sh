@@ -26,6 +26,10 @@ echo "[test-server-ci-gate] commit: $(git rev-parse --short HEAD)"
 export CI="${CI:-1}"
 export NODE_ENV="${WXGAME_GATE_NODE_ENV:-test}"
 export CONFIG_RELEASE_GATE="${WXGAME_GATE_CONFIG_RELEASE_GATE:-warn}"
+unset APP_VERSION
+unset GAME_VERSION
+unset WXGAME_DEPLOY_MANIFEST_PATH
+unset WXGAME_DEPLOY_STATE_DIR
 
 echo "[test-server-ci-gate] install root tooling dependencies"
 npm ci --include=dev --ignore-scripts --no-audit --no-fund

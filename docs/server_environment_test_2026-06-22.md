@@ -73,7 +73,7 @@ FRONTEND_PUBLIC_DIR=/www/wwwroot/h5-test
 
 After backend files are synced into `/opt/wxgame-test/backend`, `scripts/prepare-test-server-runtime.sh` copies the main database snapshot into the test DB and syncs the main backend `.env` into the isolated backend directory. This ordering prevents backend `rsync --delete` from removing the copied test runtime files.
 
-The test deploy gate is intentionally CI-equivalent and installs dev dependencies explicitly. The gate process forces `NODE_ENV=test` and `CONFIG_RELEASE_GATE=warn`; the runtime process still starts with `NODE_ENV=production`.
+The test deploy gate is intentionally CI-equivalent and installs dev dependencies explicitly. The gate process forces `NODE_ENV=test`, sets `CONFIG_RELEASE_GATE=warn`, and clears runtime-only version/deploy-state variables; the runtime process still starts with `NODE_ENV=production`.
 
 ```bash
 npm run lint
