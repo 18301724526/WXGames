@@ -163,11 +163,42 @@ function resolveBattle(request = {}) {
   };
 }
 
+// Build a battleSimCore setup (seed/arena/config/sides) from a request without
+// simulating. Used to OPEN an interactive battle session: the client plays this
+// exact setup, records the inputStream, and the backend later re-simulates the
+// same setup with the recorded inputStream for the authoritative result.
+function buildBattleSetup(request = {}) {
+  const attacker = request.attacker || {};
+  const snapshot = attacker.snapshot || { members: [] };
+  const attrs = attacker.attributesByPersonId || {};
+  const members = Array.isArray(snapshot.members) ? snapshot.members : [];
+  const attackerGenerals = members.map((m) => ({
+    gid: String(m.personId),
+    attributes: attrs[m.personId] || {},
+    soldiers: num(m.soldiersRemaining != null ? m.soldiersRemaining : m.soldiersCommitted, 0),
+  }));
+  const defender = request.defender || { generals: [] };
+  return buildSetup({
+    seed: request.seed,
+    arena: request.arena,
+    config: request.config,
+    attacker: { side: 'attacker', generals: attackerGenerals },
+    defender: { side: 'defender', generals: defender.generals || [] },
+  });
+}
+
+// Authoritatively simulate a previously-built setup with a recorded input stream.
+function simulateSetup(setup = {}, inputStream = [], options = {}) {
+  return BattleSimCore.simulate(setup, Array.isArray(inputStream) ? inputStream : [], options || {});
+}
+
 module.exports = {
   SCHEMA,
   DEFAULT_BALANCE,
   generalStats,
   buildSetup,
+  buildBattleSetup,
+  simulateSetup,
   resolve,
   applyCasualtiesToFormationSnapshot,
   resolveBattle,
