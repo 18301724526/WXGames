@@ -26,7 +26,7 @@ echo "[test-server-ci-gate] commit: $(git rev-parse --short HEAD)"
 export CI="${CI:-1}"
 
 echo "[test-server-ci-gate] install root tooling dependencies"
-npm ci --ignore-scripts --no-audit --no-fund
+npm ci --include=dev --ignore-scripts --no-audit --no-fund
 
 echo "[test-server-ci-gate] run ESLint"
 npm run lint
@@ -45,7 +45,7 @@ fi
 npm run lint:baseline:check -- --base tmp/eslint-suppressions.base.json
 
 echo "[test-server-ci-gate] install backend dependencies"
-npm ci --prefix backend --no-audit --no-fund
+npm ci --prefix backend --include=dev --no-audit --no-fund
 
 echo "[test-server-ci-gate] run node tests"
 npm test
