@@ -27,6 +27,15 @@
 
       startBattleScene(report = null) {
             if (!report) return false;
+            // Entity battles carry a deterministic replay; render them in the new
+            // sprite overlay instead of the legacy turn-card scene.
+            const view = (typeof window !== 'undefined' ? window : globalThis);
+            if (report.replay && report.replay.setup && view.BattleReplayOverlay && view.BattleSimCore) {
+              const shown = view.BattleReplayOverlay.show(report, {
+                onClose: () => this.renderCanvasSurface(this.state?.currentTab || 'military'),
+              });
+              if (shown) return true;
+            }
             this.battleScene = {
               visible: true,
               report,
