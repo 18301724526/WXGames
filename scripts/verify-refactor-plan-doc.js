@@ -15,6 +15,7 @@ const officialDocPaths = [
   'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/world_map_hud_transparency_contract_2026-06-19.md',
   'docs/server_environment_main_2026-06-22.md',
+  'docs/6月22日开发日志.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
   'docs/config_registry_snapshot_2026-06-11.json',
@@ -77,6 +78,12 @@ const requiredText = {
     '/wxgame-test-api/',
     'wxgame-test-server',
     'one-way',
+  ],
+  'docs/6月22日开发日志.md': [
+    'hostile_force_capital_ridge',
+    'selectedWorldMissionId',
+    'combatEncounterId',
+    'wxgame-test-api',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',
