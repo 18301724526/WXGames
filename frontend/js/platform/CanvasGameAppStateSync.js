@@ -32,13 +32,17 @@
 
       playUnseenWorldCombatReports(state = this.state) {
             const reports = state?.worldExplorerState?.combat?.recentReports;
+            const logv = (typeof window !== 'undefined' ? window : globalThis);
+            try { logv.console?.log?.('[battle-replay] playUnseen: recentReports=', Array.isArray(reports) ? reports.length : 0); } catch (e) { /* ignore */ }
             if (!Array.isArray(reports) || !reports.length) return false;
             this.playedWorldCombatReportIds = this.playedWorldCombatReportIds || new Set();
             let played = false;
             reports.slice().reverse().forEach((entry) => {
               const report = entry?.report || null;
               const reportId = entry?.id || report?.id || '';
-              if (!report || !reportId || this.playedWorldCombatReportIds.has(reportId)) return;
+              const seen = this.playedWorldCombatReportIds.has(reportId);
+              try { logv.console?.log?.('[battle-replay] playUnseen report', { reportId, hasReport: !!report, hasReplay: !!(report && report.replay && report.replay.setup), seen }); } catch (e) { /* ignore */ }
+              if (!report || !reportId || seen) return;
               this.playedWorldCombatReportIds.add(reportId);
               if (typeof this.startBattleScene === 'function') {
                 this.startBattleScene(report);

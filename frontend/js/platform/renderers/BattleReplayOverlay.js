@@ -38,7 +38,12 @@
   function show(report, options = {}) {
     const Core = global.BattleSimCore;
     const replay = report && report.replay;
-    if (!doc || !Core || typeof Core.createBattle !== 'function' || !replay || !replay.setup) return false;
+    const LOG = (m, o) => { try { (global.console && global.console.log) && global.console.log('[battle-replay] ' + m, o === undefined ? '' : o); } catch (e) { /* ignore */ } };
+    if (!doc || !Core || typeof Core.createBattle !== 'function' || !replay || !replay.setup) {
+      LOG('show:abort', { hasDoc: !!doc, hasCore: !!Core, hasReplay: !!replay, hasSetup: !!(replay && replay.setup) });
+      return false;
+    }
+    LOG('show:start', { id: report.id, result: report.result, seed: replay.setup.seed, sides: (replay.setup.sides || []).map((s) => `${s.side}:${(s.generals || []).length}`).join(','), inputs: (replay.inputStream || []).length });
 
     // ---- DOM shell ----
     const root = doc.createElement('div');
@@ -94,8 +99,10 @@
     global.addEventListener('resize', resize);
     resize();
 
+    LOG('show:dom-ok', { W, H });
     // ---- deterministic replay ----
     const battle = Core.createBattle(replay.setup);
+    LOG('createBattle:ok', { units: (battle.units || []).length, tick: battle.tick, hasConfig: !!battle.config, tickHz: battle.config && battle.config.tickHz });
     const arena = (replay.setup && replay.setup.arena) || { w: W, h: H };
     const byTick = {};
     (Array.isArray(replay.inputStream) ? replay.inputStream : []).forEach((e) => {
@@ -163,20 +170,29 @@
       if (sub) { sub.textContent = win ? '胜利' : '失败'; sub.style.color = win ? '#3fb950' : '#f85149'; }
       btnDone.style.background = win ? '#238636' : '#1f6feb';
     }
+    let framed = 0;
     function frame(now) {
-      if (!last) last = now;
-      let dt = (now - last) / 1000; last = now;
-      if (dt > 0.25) dt = 0.25;
-      acc += dt;
-      let steps = 0;
-      while (acc >= TICK_DT && steps < 6 && battle && !battle.result) {
-        Core.step(battle, byTick[battle.tick] || []);
-        acc -= TICK_DT; steps += 1;
+      try {
+        if (!last) last = now;
+        let dt = (now - last) / 1000; last = now;
+        if (dt > 0.25) dt = 0.25;
+        acc += dt;
+        let steps = 0;
+        while (acc >= TICK_DT && steps < 6 && battle && !battle.result) {
+          Core.step(battle, byTick[battle.tick] || []);
+          acc -= TICK_DT; steps += 1;
+        }
+        render(now);
+        if (framed === 0) LOG('first-frame:ok', { tick: battle.tick, alive: (battle.units || []).filter((u) => u.alive).length });
+        framed += 1;
+        if (battle && battle.result && !ended) { settle(); LOG('battle-ended', { winner: battle.result.winner, ticks: battle.result.ticks }); }
+        raf = global.requestAnimationFrame(frame);
+      } catch (e) {
+        LOG('frame:ERROR', (e && e.stack) ? String(e.stack).slice(0, 400) : String(e));
+        try { global.console && global.console.error && global.console.error('[battle-replay] frame error', e); } catch (e2) { /* ignore */ }
       }
-      render(now);
-      if (battle && battle.result && !ended) settle();
-      raf = global.requestAnimationFrame(frame);
     }
+    LOG('show:scheduling-frame');
     raf = global.requestAnimationFrame(frame);
 
     function close() {
