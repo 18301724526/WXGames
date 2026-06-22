@@ -191,7 +191,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   const routeResult = buildManualRoute(marchOrigin, {
     q: targetInput.q,
     r: targetInput.r,
-  }, worldMap.seed, { gameState, now });
+  }, worldMap.seed, { gameState, now, combatEncounter: combatTarget.encounter });
   traceWorldMarch('actions:startWorldMarch:routeResult', options, {
     origin: summarizeCoord(origin),
     marchOrigin: summarizeCoord(marchOrigin),

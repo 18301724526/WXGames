@@ -43,6 +43,23 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
   const delta = WorldMapService.getWrappedDelta(origin, { q: targetQ, r: targetR });
   const distance = Math.max(Math.abs(delta.q), Math.abs(delta.r));
   if (distance <= 0) {
+    // A formation already standing on a hostile encounter tile attacks it in
+    // place: there is no travel, so engage on the spot via a single-step route
+    // instead of rejecting the march as targeting its own origin.
+    if (options.combatEncounter) {
+      return {
+        success: true,
+        route: [{
+          q: targetQ,
+          r: targetR,
+          step: 1,
+          tileId: WorldMapService.getTileId(targetQ, targetR),
+          revealed: false,
+          revealedAt: null,
+        }],
+        target: { q: targetQ, r: targetR },
+      };
+    }
     return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: 'Explore target is already the origin.' };
   }
   if (distance > MAX_MANUAL_ROUTE_LENGTH) {

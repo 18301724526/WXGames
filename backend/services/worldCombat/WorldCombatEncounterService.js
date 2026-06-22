@@ -199,14 +199,31 @@ function getEncounterIdFromMarchOptions(options = {}) {
 
 function resolveMarchTarget(gameState = {}, options = {}, now = new Date()) {
   const encounterId = getEncounterIdFromMarchOptions(options);
-  if (!encounterId) return { success: true, encounter: null, target: null };
-  const encounter = getActiveEncounter(gameState, encounterId, now);
-  if (!encounter) {
-    return {
-      success: false,
-      error: 'WORLD_COMBAT_ENCOUNTER_NOT_FOUND',
-      message: 'Combat encounter is no longer available.',
-    };
+  let encounter = null;
+  if (encounterId) {
+    encounter = getActiveEncounter(gameState, encounterId, now);
+    if (!encounter) {
+      return {
+        success: false,
+        error: 'WORLD_COMBAT_ENCOUNTER_NOT_FOUND',
+        message: 'Combat encounter is no longer available.',
+      };
+    }
+  } else {
+    // No explicit encounter id: marching onto a tile occupied by an active
+    // hostile force is an attack on that force. The client does not always tag
+    // it (e.g. when the formation is already parked on the encounter tile, or
+    // when the target is picked via the tile selector), so resolve by tile.
+    const rawQ = options.targetQ ?? options.q ?? options.x;
+    const rawR = options.targetR ?? options.r ?? options.y;
+    if (!Number.isFinite(Number(rawQ)) || !Number.isFinite(Number(rawR))) {
+      return { success: true, encounter: null, target: null };
+    }
+    encounter = getActiveEncounterAt(gameState, {
+      q: Math.floor(Number(rawQ)),
+      r: Math.floor(Number(rawR)),
+    });
+    if (!encounter) return { success: true, encounter: null, target: null };
   }
   return {
     success: true,
