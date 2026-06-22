@@ -163,6 +163,7 @@
       id: missionId || `actor_${current.tileId}`,
       missionId,
       type: actor.type || 'scout',
+      kind: actor.kind || '',
       status: actor.status || '',
       tileId: current.tileId,
       q: current.q,
@@ -170,6 +171,13 @@
       unitKey: actor.unitKey || 'scout_squad_default',
       animationId: actor.animationId || 'idle',
       remainingSeconds: Math.max(0, toInteger(actor.remainingSeconds, 0)),
+      // Preserve the combat encounter linkage so clicking a hostile force
+      // carries combatEncounterId through to startWorldMarch (otherwise the
+      // attack is sent as a plain march and the backend rejects target==origin).
+      ...(actor.combatTarget ? {
+        combatTarget: actor.combatTarget,
+        combatEncounterId: actor.combatTarget.encounterId,
+      } : {}),
     };
   }
 
