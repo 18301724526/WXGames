@@ -392,5 +392,5 @@ test('frontend html loads battle helpers before the renderer', () => {
   assert.equal(floatingIndex > modelIndex, true);
   assert.equal(effectsIndex > floatingIndex, true);
   assert.equal(rendererIndex > effectsIndex, true);
-  assert.match(html, /BattleCanvasRenderer\.js\?v=entity-battle-canvas-v1/);
+  assert.match(html, /BattleCanvasRenderer\.js\?v=entity-battle-camera-v1/);
 });

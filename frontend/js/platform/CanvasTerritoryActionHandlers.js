@@ -983,6 +983,16 @@
         return game?.closeEntityBattle?.() !== false;
       },
 
+      handle_entityBattleZoom(action) {
+        const game = this.getGameHost();
+        return game?.entityBattleZoom?.(action.gesture || {}) !== false;
+      },
+
+      handle_entityBattleDrag(action) {
+        const game = this.getGameHost();
+        return game?.entityBattleDrag?.(action.phase, action.pointer || {}) !== false;
+      },
+
       handle_manageCity(action) {
         return this.handle_enterCity({
           ...action,

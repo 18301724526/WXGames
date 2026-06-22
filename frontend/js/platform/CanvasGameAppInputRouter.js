@@ -26,6 +26,9 @@
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
       handleDrag(phase, point = {}) {
+            if (this.entityBattle?.visible) {
+              return this.actionController?.handle?.({ type: 'entityBattleDrag', phase, pointer: point }) || false;
+            }
             if (this.activeTab === 'tech') {
               return this.actionController?.handle?.({ type: 'techTreeDrag', phase, pointer: point }) || false;
             }
@@ -59,10 +62,14 @@
               || this.activeEventId
               || this.naming?.visible
               || this.battleScene?.visible
+              || this.entityBattle?.visible
               || this.rewardReveal);
           },
 
       handleGesture(gesture) {
+            if (this.entityBattle?.visible) {
+              return this.actionController?.handle?.({ type: 'entityBattleZoom', gesture }) || false;
+            }
             const worldMapGestureHandled = this.handleWorldMapGesture(gesture);
             if (worldMapGestureHandled) return true;
             if (this.activeTab !== 'tech' || this.hasBlockingOverlayOpen()) return false;

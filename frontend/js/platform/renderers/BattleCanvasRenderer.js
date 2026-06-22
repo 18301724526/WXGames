@@ -35,6 +35,18 @@
     return null;
   })();
 
+  const BattleCameraPolicy = (() => {
+    if (global.BattleCameraPolicy) return global.BattleCameraPolicy;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/BattleCameraPolicy');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function model(method, args = [], fallback = undefined) {
     const fn = BattleCanvasModel?.[method];
     if (typeof fn === 'function') return fn(...args);
@@ -641,15 +653,37 @@
       if (!ctx) return;
       const battle = entityBattle.battle;
       const arena = entityBattle.arena || { w: layout.W, h: layout.stageH };
-      const aw = arena.w || layout.W;
-      const ah = arena.h || layout.stageH;
-      const scale = Math.min(layout.W / aw, layout.stageH / ah) || 1;
-      const offX = (layout.W - aw * scale) / 2;
-      const offY = layout.stageTop + (layout.stageH - ah * scale) / 2;
+      // Camera: the pure policy owns fit + zoom/pan math; the renderer only reads
+      // the resulting transform. _viewFit is stashed for the input layer so it can
+      // map screen<->world for zoom-at-cursor / pan without recomputing layout.
+      const stage = { x: 0, y: layout.stageTop, w: layout.W, h: layout.stageH };
+      const fit = BattleCameraPolicy
+        ? BattleCameraPolicy.computeFit(arena, stage)
+        : { scale: Math.min(layout.W / (arena.w || layout.W), layout.stageH / (arena.h || layout.stageH)) || 1, contentW: 0, contentH: 0, stageX: 0, stageY: layout.stageTop, stageW: layout.W, stageH: layout.stageH };
+      entityBattle._viewFit = fit;
+      const camera = entityBattle.camera || { zoom: 1, offsetX: 0, offsetY: 0 };
+      const transform = BattleCameraPolicy
+        ? BattleCameraPolicy.getViewTransform(camera, fit)
+        : { scale: fit.scale, offsetX: (layout.W - (arena.w || layout.W) * fit.scale) / 2, offsetY: layout.stageTop + (layout.stageH - (arena.h || layout.stageH) * fit.scale) / 2 };
+      const scale = transform.scale;
+      const offX = transform.offsetX;
+      const offY = transform.offsetY;
       const now = this.getNow();
       const base = (now / ENTITY_FRAME_MS) | 0;
       const rstate = entityBattle._rstate || (entityBattle._rstate = {});
       const units = battle.units || [];
+      // Clip to the stage so zoomed/panned sprites never spill into HUD/panel.
+      const canClip = typeof ctx.save === 'function'
+        && typeof ctx.restore === 'function'
+        && typeof ctx.beginPath === 'function'
+        && typeof ctx.rect === 'function'
+        && typeof ctx.clip === 'function';
+      if (canClip) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(stage.x, stage.y, stage.w, stage.h);
+        ctx.clip();
+      }
       const draw = [];
       for (let i = 0; i < units.length; i += 1) {
         const u = units[i];
@@ -694,6 +728,7 @@
           ctx.fillRect(x - 2, y - h - 6, 4, 4);
         }
       }
+      if (canClip) ctx.restore();
     }
 
     drawEntityBattleTopHud(entityBattle = {}, layout = {}) {

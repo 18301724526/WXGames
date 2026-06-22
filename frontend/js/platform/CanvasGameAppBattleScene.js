@@ -96,6 +96,11 @@
               lastMs: 0,
               onResolve: typeof opts.onResolve === 'function' ? opts.onResolve : null,
               onClose: typeof opts.onClose === 'function' ? opts.onClose : null,
+              camera: view.BattleCameraPolicy
+                ? view.BattleCameraPolicy.createCamera()
+                : { zoom: 1, offsetX: 0, offsetY: 0 },
+              _viewFit: null,
+              _dragLast: null,
               _rstate: {},
             };
             this.syncEntityBattleToShell();
@@ -216,6 +221,53 @@
             }
             this.syncEntityBattleToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
+            return true;
+          },
+
+      // Camera controller: translate an input gesture/drag into a camera change
+      // using the pure BattleCameraPolicy, then re-render. No math lives here or in
+      // the input routers — only orchestration.
+      entityBattleZoom(gesture = {}) {
+            const eb = this.entityBattle;
+            if (!eb || !eb.visible) return false;
+            const Policy = (typeof window !== 'undefined' ? window : globalThis).BattleCameraPolicy;
+            const fit = eb._viewFit;
+            if (!Policy || !fit) return false;
+            const point = {
+              x: Number(gesture.centerX != null ? gesture.centerX : gesture.x) || 0,
+              y: Number(gesture.centerY != null ? gesture.centerY : gesture.y) || 0,
+            };
+            const scaleDelta = Number(gesture.scaleDelta) || 1;
+            let camera = Policy.zoomAt(eb.camera || Policy.createCamera(), fit, point, scaleDelta);
+            // A pinch gesture also carries a pan delta; apply it too.
+            const dx = Number(gesture.deltaX);
+            const dy = Number(gesture.deltaY);
+            if ((Number.isFinite(dx) && dx) || (Number.isFinite(dy) && dy)) {
+              camera = Policy.panBy(camera, fit, dx || 0, dy || 0);
+            }
+            eb.camera = camera;
+            this.syncEntityBattleToShell();
+            this.renderAnimationFrame(this.state?.currentTab || 'military');
+            return true;
+          },
+
+      entityBattleDrag(phase, point = {}) {
+            const eb = this.entityBattle;
+            if (!eb || !eb.visible) return false;
+            const px = Number(point.x) || 0;
+            const py = Number(point.y) || 0;
+            if (phase === 'start') { eb._dragLast = { x: px, y: py }; return true; }
+            const Policy = (typeof window !== 'undefined' ? window : globalThis).BattleCameraPolicy;
+            const fit = eb._viewFit;
+            if (Policy && fit && eb._dragLast) {
+              const dx = px - eb._dragLast.x;
+              const dy = py - eb._dragLast.y;
+              eb.camera = Policy.panBy(eb.camera || Policy.createCamera(), fit, dx, dy);
+              eb._dragLast = { x: px, y: py };
+              this.syncEntityBattleToShell();
+              this.renderAnimationFrame(this.state?.currentTab || 'military');
+            }
+            if (phase === 'end' || phase === 'cancel') eb._dragLast = null;
             return true;
           },
 

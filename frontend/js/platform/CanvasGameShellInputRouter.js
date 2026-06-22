@@ -141,7 +141,12 @@ hasBlockingOverlayOpen() {
         || this.activeEventId
         || this.naming.visible
         || this.battleScene?.visible
+        || this.isEntityBattleActive()
         || this.rewardReveal);
+    },
+
+isEntityBattleActive() {
+      return Boolean((this.entityBattle || this.lastGame?.entityBattle)?.visible);
     },
 
 isWorldMapHudAction(action = {}) {
@@ -202,6 +207,7 @@ hasBlockingOverlayExceptTechTree() {
         || this.activeEventId
         || this.naming.visible
         || this.battleScene?.visible
+        || this.isEntityBattleActive()
         || this.rewardReveal);
     },
 
@@ -327,6 +333,9 @@ shouldBlockTutorialInput(point = {}) {
 
     handleDrag(phase, point, event) {
       if (!this.inputEnabled || !this.renderer) return false;
+      if (this.isEntityBattleActive()) {
+        return this.actionController?.handle?.({ type: 'entityBattleDrag', phase, pointer: point }, { event }) || false;
+      }
       if (this.isTutorialInputActive()) {
         if (phase === 'start') {
           if (this.shouldBlockTutorialInput(point)) return this.blockTutorialCanvasInput(event);
@@ -406,6 +415,12 @@ shouldBlockTutorialInput(point = {}) {
 handleGesture(gesture, event) {
       if (!this.inputEnabled || !this.renderer) return false;
       if (this.isTutorialInputActive()) return this.blockTutorialCanvasInput(event);
+      if (this.isEntityBattleActive()) {
+        const handled = this.actionController?.handle?.({ type: 'entityBattleZoom', gesture }, { event }) || false;
+        if (handled && event?.preventDefault) event.preventDefault();
+        if (handled && event?.stopPropagation) event.stopPropagation();
+        return handled;
+      }
       const worldMapGestureHandled = this.handleWorldMapGesture(gesture, event);
       if (worldMapGestureHandled) return true;
       if (!this.canRouteTechTreeInteraction()) return false;
