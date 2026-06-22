@@ -68,6 +68,7 @@
   function summarizeActorPickingUiState(uiState = {}) {
     return {
       selectedWorldActorId: uiState?.selectedWorldActorId || '',
+      selectedWorldMissionId: uiState?.selectedWorldMissionId || '',
       selectedSiteId: uiState?.selectedSiteId || '',
       hasWorldMarchTarget: Boolean(uiState?.worldMarchTarget),
       worldMarchTargetTileId: uiState?.worldMarchTarget?.tileId || '',

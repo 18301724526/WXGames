@@ -325,10 +325,10 @@ test('CanvasTerritoryActionHandlers opens and resolves world target picker candi
   ]);
 });
 
-test('CanvasTerritoryActionHandlers forwards selected world actor id on start march only when present', async () => {
+test('CanvasTerritoryActionHandlers forwards selected world mission id on start march only when present', async () => {
   const calls = [];
   const game = {
-    territoryUiState: { selectedWorldActorId: 'march-1' },
+    territoryUiState: { selectedWorldActorId: 'march-1', selectedWorldMissionId: 'march-1' },
     state: { activeCityId: 'capital' },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
@@ -364,7 +364,7 @@ test('CanvasTerritoryActionHandlers forwards selected world actor id on start ma
 test('CanvasTerritoryActionHandlers preserves selected world actor id through target and picker handoff', async () => {
   const calls = [];
   const game = {
-    territoryUiState: { selectedWorldActorId: 'march-1' },
+    territoryUiState: { selectedWorldActorId: 'march-1', selectedWorldMissionId: 'march-1' },
     state: { activeCityId: 'capital' },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
@@ -449,8 +449,53 @@ test('CanvasTerritoryActionHandlers carries combat encounter id into world march
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0][1].combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(Object.hasOwn(calls[0][1], 'missionId'), false);
   assert.equal(calls[0][1].targetQ, 2);
   assert.equal(calls[0][1].targetR, -1);
+});
+
+test('CanvasTerritoryActionHandlers keeps combat actor identity out of march mission payloads', async () => {
+  const calls = [];
+  const game = {
+    territoryUiState: { selectedWorldActorId: 'hostile_force_capital_ridge' },
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+  };
+  const host = {
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    renderCanvasAction() {},
+    requestWorldMapRenderAnimationFrame() {},
+  };
+  const controller = new HostController(host);
+  const combatTarget = { encounterId: 'hostile_force_capital_ridge', defender: { soldiers: 40 } };
+
+  assert.equal(controller.handle_openWorldMarchFormationPicker({
+    type: 'openWorldMarchFormationPicker',
+    targetQ: 2,
+    targetR: -1,
+    combatEncounterId: 'hostile_force_capital_ridge',
+    combatTarget,
+  }), true);
+
+  assert.equal(host.territoryUiState.worldMarchTarget.combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(Object.hasOwn(host.territoryUiState.worldMarchTarget, 'missionId'), false);
+  assert.equal(Object.hasOwn(host.territoryUiState.worldMarchTarget, 'actorId'), false);
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 2,
+    targetR: -1,
+    formationSlot: 1,
+    combatEncounterId: 'hostile_force_capital_ridge',
+  }), true);
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][1].combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(Object.hasOwn(calls[0][1], 'missionId'), false);
 });
 
 test('CanvasTerritoryActionHandlers resets runtime world camera for return-home control', () => {

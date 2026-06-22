@@ -594,6 +594,7 @@
         ...(clearWorldMarchTarget ? {
           worldMarchTarget: null,
           selectedWorldActorId: '',
+          selectedWorldMissionId: '',
         } : {}),
         expeditionConfigSiteId: '',
         expeditionSoldiers: '',
@@ -606,6 +607,7 @@
           ...(clearWorldMarchTarget ? {
             worldMarchTarget: null,
             selectedWorldActorId: '',
+            selectedWorldMissionId: '',
           } : {}),
           expeditionConfigSiteId: '',
           expeditionSoldiers: '',
@@ -627,6 +629,7 @@
           ...(clearWorldMarchTarget ? {
             worldMarchTarget: null,
             selectedWorldActorId: '',
+            selectedWorldMissionId: '',
           } : {}),
           expeditionConfigSiteId: '',
           expeditionSoldiers: '',
