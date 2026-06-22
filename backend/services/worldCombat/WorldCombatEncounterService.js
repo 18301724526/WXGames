@@ -346,6 +346,12 @@ function buildBattleReport(
       }),
     },
     simulation: clone(battle.result || {}),
+    // Deterministic replay inputs so the client can render the entity battle in
+    // the battle scene (battleSimCore.createBattle(setup) + step(inputStream)).
+    replay: {
+      setup: clone(battle.setup || null),
+      inputStream: clone(battle.inputStream || []),
+    },
   };
 }
 

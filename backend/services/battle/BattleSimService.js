@@ -154,6 +154,10 @@ function resolveBattle(request = {}) {
   return {
     schema: SCHEMA,
     result: out.result,
+    // setup + inputStream are the deterministic replay inputs: the client can
+    // feed them to battleSimCore.createBattle/step to reproduce the exact battle.
+    setup: out.setup,
+    inputStream: Array.isArray(request.inputStream) ? request.inputStream : [],
     winner: out.result.winner,
     attackerSnapshot,
   };
