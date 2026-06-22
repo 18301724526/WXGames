@@ -14,6 +14,7 @@ const officialDocPaths = [
   'docs/architecture_module_responsibility_index_2026-06-08.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/world_map_hud_transparency_contract_2026-06-19.md',
+  'docs/world-combat-interactive-architecture.md',
   'docs/server_environment_test_2026-06-22.md',
   'docs/6月22日开发日志.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',

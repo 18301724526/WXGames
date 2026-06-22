@@ -113,6 +113,12 @@
         this.endFrame(options);
         return;
       }
+      if (options.entityBattle?.visible) {
+        if (options.preserveCanvas) this.clear();
+        this.renderEntityBattleOverlay(state, options);
+        this.endFrame(options);
+        return;
+      }
       if (options.battleScene?.visible) {
         if (options.preserveCanvas) this.clear();
         this.renderBattleSceneOverlay(state, options);

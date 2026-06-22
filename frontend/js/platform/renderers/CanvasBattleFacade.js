@@ -43,6 +43,7 @@
     ['drawBattleStatusFloatingTexts', undefined],
     ['drawBattleLeader', undefined],
     ['renderBattleSceneOverlay', false],
+    ['renderEntityBattleOverlay', false],
   ]);
 
   function cloneFallback(fallback) {

@@ -41,6 +41,25 @@
     return typeof fallback === 'function' ? fallback() : fallback;
   }
 
+  // ---- entity battle (live sim) constants ----
+  // The entity battle is the 三国群英传-style mass-melee scene driven by
+  // battleSimCore. It is rendered through this canvas renderer (no DOM) for both
+  // the interactive 军令 path and the passive replay path. State lives on
+  // options.entityBattle; the app owns the sim stepping, this owns the drawing.
+  const ENTITY_STATE_POSE = { engage: 'attack', hold: 'idle', covering: 'move', advance: 'move', retreat: 'move', dead: 'die' };
+  const ENTITY_FRAMES = 4;
+  const ENTITY_FRAME_MS = 130;
+  const ENTITY_SPRITE_SCALE = 2;
+  const ENTITY_ORDER_LABELS = [
+    ['advance', '前进'],
+    ['soldierAttack', '士兵出击'],
+    ['generalCharge', '武将出击'],
+    ['generalRetreat', '武将后退'],
+    ['defend', '防御'],
+    ['cover', '掩护'],
+  ];
+  const ENTITY_MASTER_LABELS = [['allOut', '全军出击'], ['allRetreat', '全军撤退']];
+
   class BattleCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -574,6 +593,301 @@
       const primaryLabel = view.ended ? '\u5b8c\u6210' : '\u8df3\u8fc7';
       this.drawButton(this.width - 106, layout.buttonY, 88, 36, primaryLabel, { size: 12, radius: 8, active: true });
       this.addHitTarget({ x: this.width - 106, y: layout.buttonY, width: 88, height: 36 }, { type: view.ended ? 'closeBattleScene' : 'skipBattleScene' });
+    }
+
+    // ============================================================
+    // Entity battle (battleSimCore live sim) — pure canvas overlay.
+    // ============================================================
+    getEntityBattleCore() {
+      const view = (typeof window !== 'undefined' ? window : globalThis);
+      return view.BattleSimCore || null;
+    }
+
+    getEntityBattleLayout(entityBattle = {}) {
+      const W = this.width;
+      const H = this.height;
+      const hudH = 30;
+      const panelH = entityBattle.mode === 'interactive'
+        ? Math.min(260, Math.max(184, Math.round(H * 0.42)))
+        : 60;
+      const stageTop = hudH;
+      const stageBottom = H - panelH;
+      return { W, H, hudH, panelH, stageTop, stageBottom, stageH: Math.max(40, stageBottom - stageTop) };
+    }
+
+    renderEntityBattleOverlay(_state = {}, options = {}) {
+      const entityBattle = options.entityBattle;
+      if (!entityBattle || !entityBattle.visible || !entityBattle.battle) return;
+      const layout = this.getEntityBattleLayout(entityBattle);
+      this.setHitTargets([]);
+      this.drawEntityBattleBackground(entityBattle);
+      this.drawEntityBattleField(entityBattle, layout);
+      this.drawEntityBattleTopHud(entityBattle, layout);
+      if (entityBattle.mode === 'interactive') this.drawEntityBattleControls(entityBattle, layout);
+      else this.drawEntityReplayControls(entityBattle, layout);
+      if (entityBattle.ended) this.drawEntityBattleResult(entityBattle, layout);
+    }
+
+    drawEntityBattleBackground(entityBattle = {}) {
+      const path = entityBattle.bgPath || 'assets/art/battle/battlefield-forest-camp.png';
+      if (this.drawCoverAsset(path, 0, 0, this.width, this.height)) return;
+      if (!this.ctx) return;
+      this.ctx.fillStyle = '#0c1116';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+    }
+
+    drawEntityBattleField(entityBattle = {}, layout = {}) {
+      const ctx = this.ctx;
+      if (!ctx) return;
+      const battle = entityBattle.battle;
+      const arena = entityBattle.arena || { w: layout.W, h: layout.stageH };
+      const aw = arena.w || layout.W;
+      const ah = arena.h || layout.stageH;
+      const scale = Math.min(layout.W / aw, layout.stageH / ah) || 1;
+      const offX = (layout.W - aw * scale) / 2;
+      const offY = layout.stageTop + (layout.stageH - ah * scale) / 2;
+      const now = this.getNow();
+      const base = (now / ENTITY_FRAME_MS) | 0;
+      const rstate = entityBattle._rstate || (entityBattle._rstate = {});
+      const units = battle.units || [];
+      const draw = [];
+      for (let i = 0; i < units.length; i += 1) {
+        const u = units[i];
+        if (!u || !u.alive || u.left) continue;
+        const rs = rstate[u.id] || (rstate[u.id] = { fx: u.side === 0 ? 1 : -1, px: u.x });
+        if (u.x > rs.px + 0.05) rs.fx = 1;
+        else if (u.x < rs.px - 0.05) rs.fx = -1;
+        rs.px = u.x;
+        draw.push(u);
+      }
+      draw.sort((a, b) => a.y - b.y);
+      for (let j = 0; j < draw.length; j += 1) {
+        const d = draw[j];
+        const h = (d.kind === 'general' ? 46 : 16) * scale * ENTITY_SPRITE_SCALE;
+        const w = Math.round((h * 500) / 400);
+        const x = offX + d.x * scale;
+        const y = offY + d.y * scale;
+        const side = d.side === 0 ? 'player' : 'enemy';
+        const pose = ENTITY_STATE_POSE[d.state] || 'move';
+        const frameIdx = (base + (d.id % ENTITY_FRAMES)) % ENTITY_FRAMES;
+        const path = `assets/art/battle/units/${side}/${pose}/${String(frameIdx + 1).padStart(2, '0')}.png`;
+        const img = this.getAsset(path);
+        let drew = false;
+        if (img && (img.naturalWidth || img.width)) {
+          if (rstate[d.id].fx < 0) {
+            ctx.save();
+            ctx.translate(x, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, -w / 2, y - h, w, h);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, x - w / 2, y - h, w, h);
+          }
+          drew = true;
+        }
+        if (!drew) {
+          ctx.fillStyle = d.side === 0 ? '#f0564b' : '#4a9bf0';
+          ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+        }
+        if (d.kind === 'general') {
+          ctx.fillStyle = d.side === 0 ? '#3fb950' : '#f0c000';
+          ctx.fillRect(x - 2, y - h - 6, 4, 4);
+        }
+      }
+    }
+
+    drawEntityBattleTopHud(entityBattle = {}, layout = {}) {
+      const Core = this.getEntityBattleCore();
+      const battle = entityBattle.battle;
+      const counts = Core && typeof Core.countOnField === 'function' ? Core.countOnField(battle) : [0, 0];
+      this.drawPanel(8, 4, layout.W - 16, layout.hudH - 6, {
+        fill: 'rgba(0, 0, 0, 0.5)',
+        stroke: 'rgba(255, 226, 177, 0.18)',
+        radius: 6,
+      });
+      const midY = 4 + (layout.hudH - 6) / 2;
+      this.drawText(`tick ${battle.tick || 0}`, 16, midY, { size: 11, color: '#58a6ff', baseline: 'middle' });
+      this.drawText(`我方 ${counts[0] || 0}`, 92, midY, { size: 11, color: '#3fb950', baseline: 'middle' });
+      this.drawText(`敌方 ${counts[1] || 0}`, 168, midY, { size: 11, color: '#f0c000', baseline: 'middle' });
+      this.drawText(entityBattle.status || '交战中…', layout.W - 16, midY, {
+        size: 11,
+        color: entityBattle.statusColor || '#d29922',
+        align: 'right',
+        baseline: 'middle',
+      });
+    }
+
+    drawEntityButtonRow(label, items = [], x = 0, y = 0, maxW = 0) {
+      const labelW = 52;
+      const btnH = 26;
+      const gap = 5;
+      this.drawText(label, x, y + btnH / 2, { size: 11, color: '#8b98a5', baseline: 'middle' });
+      let cx = x + labelW;
+      let cy = y;
+      items.forEach((item) => {
+        const tw = this.measureTextWidth(item.label, { size: 12 }) + 16;
+        const bw = Math.max(40, Math.min(maxW - labelW, tw));
+        if (cx + bw > x + maxW) {
+          cx = x + labelW;
+          cy += btnH + gap;
+        }
+        this.drawButton(cx, cy, bw, btnH, item.label, {
+          size: 12,
+          radius: 6,
+          active: Boolean(item.active),
+          disabled: Boolean(item.disabled),
+        });
+        if (!item.disabled && item.action) {
+          this.addHitTarget({ x: cx, y: cy, width: bw, height: btnH }, item.action);
+        }
+        cx += bw + gap;
+      });
+      return cy + btnH + gap;
+    }
+
+    drawEntityBattleControls(entityBattle = {}, layout = {}) {
+      const Core = this.getEntityBattleCore();
+      const battle = entityBattle.battle;
+      const top = layout.H - layout.panelH;
+      this.drawPanel(0, top, layout.W, layout.panelH, {
+        fill: 'rgba(22, 27, 34, 0.96)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 0,
+      });
+      const pad = 10;
+      const x = pad;
+      const maxW = layout.W - pad * 2;
+      let y = top + 8;
+      const tickHz = entityBattle.tickHz || 20;
+      const disabled = Boolean(battle.result) || Boolean(entityBattle.ended);
+      const squads = battle.squads || {};
+
+      const genItems = [];
+      Object.keys(squads).forEach((gid) => {
+        if (squads[gid].side !== 0) return;
+        genItems.push({
+          label: gid,
+          active: gid === entityBattle.selectedGid,
+          action: { type: 'entityBattleSelectGeneral', gid },
+        });
+      });
+      y = this.drawEntityButtonRow('选将', genItems, x, y, maxW);
+
+      const sq = squads[entityBattle.selectedGid];
+
+      const orderItems = ENTITY_ORDER_LABELS.map((pair) => {
+        const cd = sq ? (sq.orderCdLeft || 0) : 0;
+        const labelCd = cd > 0 ? ` (${Math.ceil(cd / tickHz)}s)` : '';
+        return {
+          label: pair[1] + labelCd,
+          disabled: disabled || cd > 0 || !sq,
+          action: { type: 'entityBattleOrder', gid: entityBattle.selectedGid, order: pair[0] },
+        };
+      });
+      y = this.drawEntityButtonRow('单部队令', orderItems, x, y, maxW);
+
+      const masterItems = ENTITY_MASTER_LABELS.map((pair) => {
+        const used = battle.masterUsed && battle.masterUsed[0] && battle.masterUsed[0][pair[0]];
+        return {
+          label: pair[1],
+          active: true,
+          disabled: disabled || Boolean(used),
+          action: { type: 'entityBattleMaster', order: pair[0] },
+        };
+      });
+      y = this.drawEntityButtonRow('全军总令', masterItems, x, y, maxW);
+
+      const gen = sq ? battle.units[sq.generalId] : null;
+      const rageMax = battle.config && battle.config.rageMax;
+      const skillItems = [];
+      ((gen && gen.skills) || []).forEach((sk, idx) => {
+        const ready = Core && typeof Core.skillReady === 'function' ? Core.skillReady(battle, gen, sk, idx) : false;
+        const info = sk.kind === 'ultimate'
+          ? `怒${Math.floor(gen.rage || 0)}/${sk.rageCost || rageMax}`
+          : ((gen.skillCds && gen.skillCds[idx] > 0) ? `${Math.ceil(gen.skillCds[idx] / tickHz)}s` : '就绪');
+        skillItems.push({
+          label: `${sk.name}[${info}]${sk.auto ? '·自' : ''}`,
+          disabled: disabled || !ready,
+          action: { type: 'entityBattleSkill', gid: entityBattle.selectedGid, skillId: sk.id },
+        });
+      });
+      if (!skillItems.length) skillItems.push({ label: '无技能', disabled: true });
+      this.drawEntityButtonRow('技能', skillItems, x, y, maxW);
+
+      // Bottom row (anchored): 自动 托管 toggle + 完成 (only after the battle ends).
+      const bh = 28;
+      const by = layout.H - bh - 8;
+      const autoLabel = `自动: ${entityBattle.auto ? '开' : '关'}`;
+      const autoW = Math.max(72, this.measureTextWidth(autoLabel, { size: 12 }) + 18);
+      this.drawButton(x, by, autoW, bh, autoLabel, { size: 12, radius: 6, active: Boolean(entityBattle.auto) });
+      this.addHitTarget({ x, y: by, width: autoW, height: bh }, { type: 'entityBattleAuto' });
+      if (entityBattle.ended) {
+        const dw = 88;
+        const dx = layout.W - dw - pad;
+        this.drawButton(dx, by, dw, bh, '完成', { size: 13, radius: 6, active: true });
+        this.addHitTarget({ x: dx, y: by, width: dw, height: bh }, { type: 'entityBattleDone' });
+      }
+    }
+
+    drawEntityReplayControls(entityBattle = {}, layout = {}) {
+      const top = layout.H - layout.panelH;
+      this.drawPanel(0, top, layout.W, layout.panelH, {
+        fill: 'rgba(0, 0, 0, 0.5)',
+        stroke: 'rgba(255, 226, 177, 0.1)',
+        radius: 0,
+      });
+      const bh = 32;
+      const bw = 76;
+      const by = top + (layout.panelH - bh) / 2;
+      const summary = (entityBattle.report && entityBattle.report.summary) || '';
+      this.drawText(this.truncateText(summary, layout.W - bw * 2 - 40, { size: 12 }), 14, top + layout.panelH / 2, {
+        size: 12,
+        color: '#cbd5e1',
+        baseline: 'middle',
+      });
+      const doneX = layout.W - bw - 12;
+      this.drawButton(doneX, by, bw, bh, '完成', { size: 13, radius: 8, active: true });
+      this.addHitTarget({ x: doneX, y: by, width: bw, height: bh }, { type: 'entityBattleClose' });
+      const backX = doneX - bw - 8;
+      this.drawButton(backX, by, bw, bh, '返回', { size: 13, radius: 8 });
+      this.addHitTarget({ x: backX, y: by, width: bw, height: bh }, { type: 'entityBattleClose' });
+    }
+
+    entityBattleSideSurvivors(entityBattle = {}, side = 0, result = {}) {
+      const battle = entityBattle.battle;
+      const survivors = (result && result.survivorsByGid) || {};
+      const squads = battle.squads || {};
+      const parts = [];
+      let total = 0;
+      Object.keys(squads).forEach((gid) => {
+        if (squads[gid].side !== side) return;
+        const n = Math.floor(survivors[gid] || 0);
+        total += n;
+        parts.push(`${gid} ${n}`);
+      });
+      return `${parts.join(' , ')}  (总 ${total})`;
+    }
+
+    drawEntityBattleResult(entityBattle = {}, layout = {}) {
+      const winner = entityBattle.resultWinner;
+      const win = winner === 'attacker';
+      const draw = winner === 'draw';
+      const title = win ? '胜利' : (draw ? '平局' : '失败');
+      const color = win ? '#3fb950' : (draw ? '#d29922' : '#f85149');
+      const boxW = Math.min(layout.W - 40, 320);
+      const boxH = 124;
+      const bx = (layout.W - boxW) / 2;
+      const by = layout.stageTop + (layout.stageH - boxH) / 2;
+      this.drawPanel(bx, by, boxW, boxH, {
+        fill: 'rgba(13, 17, 23, 0.95)',
+        stroke: 'rgba(42, 51, 64, 1)',
+        radius: 10,
+      });
+      this.drawText(title, bx + boxW / 2, by + 22, { size: 20, bold: true, color, align: 'center', baseline: 'middle' });
+      const result = entityBattle.serverResult || (entityBattle.battle && entityBattle.battle.result) || {};
+      this.drawText(`我方剩余: ${this.entityBattleSideSurvivors(entityBattle, 0, result)}`, bx + 14, by + 52, { size: 12, color: '#cbd5e1' });
+      this.drawText(`敌方剩余: ${this.entityBattleSideSurvivors(entityBattle, 1, result)}`, bx + 14, by + 74, { size: 12, color: '#cbd5e1' });
+      this.drawText(`用时 ${result.ticks || 0} tick · 指令 ${entityBattle.inputStreamLen || 0} 条 (后端权威重算)`, bx + 14, by + 98, { size: 10, color: '#8b98a5' });
     }
   }
 

@@ -68,6 +68,11 @@
         this.endFrame(options);
         return undefined;
       }
+      if (options.entityBattle?.visible) {
+        this.renderEntityBattleOverlay(state, options);
+        this.endFrame(options);
+        return undefined;
+      }
       if (options.battleScene?.visible) {
         this.renderBattleSceneOverlay(state, options);
         this.endFrame(options);

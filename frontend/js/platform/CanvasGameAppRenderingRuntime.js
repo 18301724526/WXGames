@@ -164,6 +164,7 @@
               activeEventId: this.activeEventId,
               territoryUiState: this.territoryUiState,
               ...(this.battleScene ? { battleScene: this.battleScene } : {}),
+              ...(this.entityBattle ? { entityBattle: this.entityBattle } : {}),
               naming: this.naming,
               tutorialIntro: this.tutorialIntro || null,
               tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,

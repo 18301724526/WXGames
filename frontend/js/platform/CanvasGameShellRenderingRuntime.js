@@ -438,6 +438,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         activeEventId: this.activeEventId,
         territoryUiState: resolvedTerritoryUiState,
         ...((this.lastGame?.battleScene || this.battleScene) ? { battleScene: this.lastGame?.battleScene || this.battleScene } : {}),
+        ...((this.lastGame?.entityBattle || this.entityBattle) ? { entityBattle: this.lastGame?.entityBattle || this.entityBattle } : {}),
         tabLocks: this.getTabLocks(state),
         naming: this.naming,
         auth: this.auth,

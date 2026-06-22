@@ -303,6 +303,84 @@ test('BattleCanvasRenderer render overlay keeps battle hit target contract', () 
   assert.equal(hitTargets.some((target) => target.action.type === 'skipBattleScene'), true);
 });
 
+function makeEntityRendererHost() {
+  const hitTargets = [];
+  const calls = [];
+  const host = {
+    width: 390,
+    height: 844,
+    ctx: {
+      fillRect() {}, drawImage() {}, save() {}, restore() {}, translate() {}, scale() {},
+      clearRect() {}, globalAlpha: 1,
+    },
+    getNow() { return 1000; },
+    setHitTargets(targets) { hitTargets.length = 0; hitTargets.push(...targets); },
+    addHitTarget(rect, action) { hitTargets.push({ rect, action }); },
+    drawCoverAsset() { calls.push('drawCoverAsset'); return false; },
+    drawPanel() {},
+    drawText() {},
+    drawButton() {},
+    getAsset() { return null; },
+    truncateText(text) { return String(text || ''); },
+    measureTextWidth(text) { return String(text || '').length * 8; },
+  };
+  return { host, hitTargets, calls };
+}
+
+test('renderEntityBattleOverlay draws interactive 军令 controls as canvas hit targets', () => {
+  const prevCore = globalThis.BattleSimCore;
+  globalThis.BattleSimCore = { countOnField() { return [3, 2]; }, skillReady() { return true; } };
+  try {
+    const { host, hitTargets, calls } = makeEntityRendererHost();
+    const renderer = new BattleCanvasRenderer({ host });
+    const general = {
+      id: 1, side: 0, kind: 'general', alive: true, x: 10, y: 10, state: 'advance',
+      rage: 0, skillCds: [0], skills: [{ id: 's1', name: '冲锋', kind: 'active' }],
+    };
+    const battle = {
+      tick: 5, result: null, config: { tickHz: 20, rageMax: 100 }, masterUsed: { 0: {} },
+      squads: { A: { side: 0, generalId: 1, orderCdLeft: 0 } },
+      units: [{ id: 0, side: 1, alive: false }, general],
+    };
+    renderer.renderEntityBattleOverlay({}, {
+      entityBattle: {
+        visible: true, mode: 'interactive', battle, tickHz: 20, selectedGid: 'A',
+        arena: { w: 100, h: 100 }, _rstate: {},
+      },
+    });
+    assert.equal(calls.includes('drawCoverAsset'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleSelectGeneral'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleOrder'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleMaster'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleSkill'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleAuto'), true);
+  } finally {
+    globalThis.BattleSimCore = prevCore;
+  }
+});
+
+test('renderEntityBattleOverlay replay mode exposes a close hit target', () => {
+  const prevCore = globalThis.BattleSimCore;
+  globalThis.BattleSimCore = { countOnField() { return [0, 0]; }, skillReady() { return false; } };
+  try {
+    const { host, hitTargets } = makeEntityRendererHost();
+    const renderer = new BattleCanvasRenderer({ host });
+    const battle = {
+      tick: 9, result: { winner: 'attacker' }, config: { tickHz: 20 },
+      squads: { A: { side: 0, generalId: 1 } }, units: [],
+    };
+    renderer.renderEntityBattleOverlay({}, {
+      entityBattle: {
+        visible: true, mode: 'replay', battle, tickHz: 20,
+        report: { summary: '胜利' }, arena: { w: 100, h: 100 }, _rstate: {},
+      },
+    });
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleClose'), true);
+  } finally {
+    globalThis.BattleSimCore = prevCore;
+  }
+});
+
 test('frontend html loads battle helpers before the renderer', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../../index.html'), 'utf8');
   const modelIndex = html.indexOf('BattleCanvasModel.js');
@@ -314,5 +392,5 @@ test('frontend html loads battle helpers before the renderer', () => {
   assert.equal(floatingIndex > modelIndex, true);
   assert.equal(effectsIndex > floatingIndex, true);
   assert.equal(rendererIndex > effectsIndex, true);
-  assert.match(html, /BattleCanvasRenderer\.js\?v=architecture-refactor-battle-renderer-v2/);
+  assert.match(html, /BattleCanvasRenderer\.js\?v=entity-battle-canvas-v1/);
 });

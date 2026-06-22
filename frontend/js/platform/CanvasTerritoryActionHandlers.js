@@ -944,6 +944,45 @@
         return skipped !== false;
       },
 
+      // Entity battle (battleSimCore live sim) tap routing. Buttons are drawn by
+      // BattleCanvasRenderer.renderEntityBattleOverlay as canvas hitTargets; each
+      // carries one of these action types, dispatched to the game host's entity
+      // battle methods (CanvasGameAppBattleScene).
+      handle_entityBattleSelectGeneral(action) {
+        const game = this.getGameHost();
+        return game?.entityBattleSelectGeneral?.(action.gid) !== false;
+      },
+
+      handle_entityBattleOrder(action) {
+        const game = this.getGameHost();
+        return game?.entityBattleOrder?.(action.gid, action.order) !== false;
+      },
+
+      handle_entityBattleMaster(action) {
+        const game = this.getGameHost();
+        return game?.entityBattleMaster?.(action.order) !== false;
+      },
+
+      handle_entityBattleSkill(action) {
+        const game = this.getGameHost();
+        return game?.entityBattleSkill?.(action.gid, action.skillId) !== false;
+      },
+
+      handle_entityBattleAuto() {
+        const game = this.getGameHost();
+        return game?.toggleEntityBattleAuto?.() !== false;
+      },
+
+      handle_entityBattleDone() {
+        const game = this.getGameHost();
+        return game?.closeEntityBattle?.() !== false;
+      },
+
+      handle_entityBattleClose() {
+        const game = this.getGameHost();
+        return game?.closeEntityBattle?.() !== false;
+      },
+
       handle_manageCity(action) {
         return this.handle_enterCity({
           ...action,
