@@ -52,16 +52,19 @@ function getTerrain(gameState = {}, q = 0, r = 0, now = new Date()) {
 function createDefenderLeader(encounter = {}, now = new Date()) {
   const rawLeader = encounter.defender?.leader || encounter.leader || null;
   if (rawLeader && typeof rawLeader === 'object') return clone(rawLeader);
-  return DefenderLeaderService.createDefenderLeader({
-    id: encounter.id || ENCOUNTER_ID,
-    type: 'camp',
-    owner: 'tribe',
-    naturalName: encounter.name || 'Hostile Patrol',
-    defense: encounter.defender?.soldiers ?? DEFAULT_FORCE.soldiers,
-    quality: encounter.defender?.quality || DEFAULT_FORCE.quality,
-    threat: encounter.defender?.threat || DEFAULT_FORCE.threat,
-    scale: encounter.defender?.scale || DEFAULT_FORCE.scale,
-  }, { createdAt: encounter.createdAt || now.toISOString() });
+  return DefenderLeaderService.createDefenderLeader(
+    {
+      id: encounter.id || ENCOUNTER_ID,
+      type: 'camp',
+      owner: 'tribe',
+      naturalName: encounter.name || 'Hostile Patrol',
+      defense: encounter.defender?.soldiers ?? DEFAULT_FORCE.soldiers,
+      quality: encounter.defender?.quality || DEFAULT_FORCE.quality,
+      threat: encounter.defender?.threat || DEFAULT_FORCE.threat,
+      scale: encounter.defender?.scale || DEFAULT_FORCE.scale,
+    },
+    { createdAt: encounter.createdAt || now.toISOString() },
+  );
 }
 
 function createEncounter(gameState = {}, now = new Date()) {
@@ -123,7 +126,10 @@ function normalizeEncounter(rawEncounter = {}, gameState = {}, now = new Date())
       ...defenderRaw,
       id: defenderRaw.id || `${raw.id || fallback.id}_defender`,
       owner: defenderRaw.owner || 'hostile',
-      soldiers: Math.max(minimumDefenderSoldiers, toInteger(defenderRaw.soldiers, fallback.defender.soldiers)),
+      soldiers: Math.max(
+        minimumDefenderSoldiers,
+        toInteger(defenderRaw.soldiers, fallback.defender.soldiers),
+      ),
       quality: defenderRaw.quality || fallback.defender.quality,
       threat: Math.max(0, toInteger(defenderRaw.threat, fallback.defender.threat)),
       scale: Math.max(1, toInteger(defenderRaw.scale, fallback.defender.scale)),
@@ -171,7 +177,10 @@ function getActiveEncounter(gameState = {}, encounterId = '') {
 
 function getActiveEncounterAt(gameState = {}, coord = {}) {
   normalizeCombatState(gameState);
-  const tileId = WorldMapService.getTileId(toInteger(coord.q ?? coord.x, 0), toInteger(coord.r ?? coord.y, 0));
+  const tileId = WorldMapService.getTileId(
+    toInteger(coord.q ?? coord.x, 0),
+    toInteger(coord.r ?? coord.y, 0),
+  );
   return (gameState.worldCombat.encounters || [])
     .find((encounter) => encounter.status === 'active' && encounter.tileId === tileId) || null;
 }
@@ -205,19 +214,23 @@ function resolveMarchTarget(gameState = {}, options = {}, now = new Date()) {
 function getFamousPersonAttributes(gameState = {}, snapshot = {}) {
   const people = Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [];
   const byId = new Map(people.map((person) => [String(person.id), person]));
-  return Object.fromEntries((Array.isArray(snapshot.members) ? snapshot.members : []).map((member) => {
-    const person = byId.get(String(member.personId)) || {};
-    return [member.personId, clone(person.attributes || {})];
-  }));
+  return Object.fromEntries(
+    (Array.isArray(snapshot.members) ? snapshot.members : []).map((member) => {
+      const person = byId.get(String(member.personId)) || {};
+      return [member.personId, clone(person.attributes || {})];
+    }),
+  );
 }
 
 function getDefenderGenerals(encounter = {}) {
   const leader = encounter.defender?.leader || {};
-  return [{
-    gid: leader.id || `${encounter.id}_leader`,
-    attributes: clone(leader.attributes || {}),
-    soldiers: Math.max(1, toInteger(encounter.defender?.soldiers, DEFAULT_FORCE.soldiers)),
-  }];
+  return [
+    {
+      gid: leader.id || `${encounter.id}_leader`,
+      attributes: clone(leader.attributes || {}),
+      soldiers: Math.max(1, toInteger(encounter.defender?.soldiers, DEFAULT_FORCE.soldiers)),
+    },
+  ];
 }
 
 function getPrimaryLeaderName(gameState = {}, snapshot = {}) {
@@ -227,32 +240,50 @@ function getPrimaryLeaderName(gameState = {}, snapshot = {}) {
   return person?.name || 'Field Commander';
 }
 
-function buildBattleReport(gameState = {}, mission = {}, encounter = {}, battle = {}, now = new Date()) {
-  const snapshotBefore = FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot) || {};
-  const attackerStart = Math.max(0, toInteger(snapshotBefore.soldiersRemaining, snapshotBefore.soldiersCommitted));
+function buildBattleReport(
+  gameState = {},
+  mission = {},
+  encounter = {},
+  battle = {},
+  now = new Date(),
+) {
+  const snapshotBefore =
+    FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot) || {};
+  const attackerStart = Math.max(
+    0,
+    toInteger(snapshotBefore.soldiersRemaining, snapshotBefore.soldiersCommitted),
+  );
   const attackerEnd = Math.max(0, toInteger(battle.attackerSnapshot?.soldiersRemaining, 0));
-  const defenderStart = Math.max(1, toInteger(encounter.defender?.soldiers, DEFAULT_FORCE.soldiers));
+  const defenderStart = Math.max(
+    1,
+    toInteger(encounter.defender?.soldiers, DEFAULT_FORCE.soldiers),
+  );
   const defenderSurvivors = battle.result?.survivorsByGid || {};
   const defenderGid = getDefenderGenerals(encounter)[0]?.gid || '';
   const defenderEnd = Math.max(0, toInteger(defenderSurvivors[defenderGid], 0));
   const victory = battle.winner === 'attacker';
   const leaderName = getPrimaryLeaderName(gameState, snapshotBefore);
   const defenderLeader = encounter.defender?.leader || {};
-  const report = BattleService.createLegacyBattleReport({
-    id: `world_combat_${encounter.id}_${now.getTime()}`,
-    soldiersCommitted: attackerStart,
-    expedition: { leader: '', leaderSnapshot: { name: leaderName } },
-  }, {
-    id: encounter.id,
-    naturalName: encounter.name,
-    defense: defenderStart,
-    terrain: encounter.terrain,
-    mapTerrain: encounter.terrain,
-    battleTarget: getClientEncounterBattleTarget(encounter),
-  }, {
-    success: victory,
-    casualties: Math.max(0, attackerStart - attackerEnd),
-  }, now);
+  const report = BattleService.createLegacyBattleReport(
+    {
+      id: `world_combat_${encounter.id}_${now.getTime()}`,
+      soldiersCommitted: attackerStart,
+      expedition: { leader: '', leaderSnapshot: { name: leaderName } },
+    },
+    {
+      id: encounter.id,
+      naturalName: encounter.name,
+      defense: defenderStart,
+      terrain: encounter.terrain,
+      mapTerrain: encounter.terrain,
+      battleTarget: getClientEncounterBattleTarget(encounter),
+    },
+    {
+      success: victory,
+      casualties: Math.max(0, attackerStart - attackerEnd),
+    },
+    now,
+  );
   return {
     ...report,
     id: `world_combat_${encounter.id}_${now.getTime()}`,
@@ -395,16 +426,18 @@ function getClientEncounterBattleTarget(encounter = {}) {
       mapTerrain: encounter.terrain || 'plains',
       terrain: encounter.terrain || 'plains',
     },
-    defender: encounter.defender ? {
-      id: encounter.defender.id || '',
-      owner: encounter.defender.owner || 'hostile',
-      soldiers: Math.max(0, toInteger(encounter.defender.soldiers, 0)),
-      quality: encounter.defender.quality || '',
-      threat: Math.max(0, toInteger(encounter.defender.threat, 0)),
-      scale: Math.max(1, toInteger(encounter.defender.scale, 1)),
-      leader: clone(encounter.defender.leader || null),
-      generatedAt: encounter.createdAt || null,
-    } : null,
+    defender: encounter.defender
+      ? {
+          id: encounter.defender.id || '',
+          owner: encounter.defender.owner || 'hostile',
+          soldiers: Math.max(0, toInteger(encounter.defender.soldiers, 0)),
+          quality: encounter.defender.quality || '',
+          threat: Math.max(0, toInteger(encounter.defender.threat, 0)),
+          scale: Math.max(1, toInteger(encounter.defender.scale, 1)),
+          leader: clone(encounter.defender.leader || null),
+          generatedAt: encounter.createdAt || null,
+        }
+      : null,
     intelSnapshot: {
       knownTerrain: true,
       knownSite: true,
