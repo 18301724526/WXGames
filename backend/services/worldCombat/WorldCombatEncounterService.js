@@ -25,8 +25,10 @@ function clone(value) {
 }
 
 function getCapitalCoord(gameState = {}) {
-  const capital = (Array.isArray(gameState.territories) ? gameState.territories : [])
-    .find((territory) => territory?.id === 'capital') || {};
+  const capital =
+    (Array.isArray(gameState.territories) ? gameState.territories : []).find(
+      (territory) => territory?.id === 'capital',
+    ) || {};
   const origin = gameState.worldMap?.origin || {};
   return {
     q: toInteger(capital.q ?? capital.x ?? origin.q ?? origin.x, 0),
@@ -44,8 +46,9 @@ function getEncounterCoord(gameState = {}) {
 
 function getTerrain(gameState = {}, q = 0, r = 0, now = new Date()) {
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
-  const tile = (Array.isArray(worldMap.tiles) ? worldMap.tiles : [])
-    .find((item) => toInteger(item.q) === q && toInteger(item.r) === r);
+  const tile = (Array.isArray(worldMap.tiles) ? worldMap.tiles : []).find(
+    (item) => toInteger(item.q) === q && toInteger(item.r) === r,
+  );
   return tile?.terrain || WorldMapService.chooseTerrain(worldMap.seed, q, r) || 'plains';
 }
 
@@ -144,9 +147,8 @@ function normalizeEncounter(rawEncounter = {}, gameState = {}, now = new Date())
 }
 
 function normalizeCombatState(gameState = {}, now = new Date()) {
-  const rawState = gameState.worldCombat && typeof gameState.worldCombat === 'object'
-    ? gameState.worldCombat
-    : {};
+  const rawState =
+    gameState.worldCombat && typeof gameState.worldCombat === 'object' ? gameState.worldCombat : {};
   const rawEncounters = Array.isArray(rawState.encounters) ? rawState.encounters : [];
   const encountersById = new Map();
   rawEncounters.forEach((encounter) => {
@@ -171,8 +173,11 @@ function normalizeCombatState(gameState = {}, now = new Date()) {
 
 function getActiveEncounter(gameState = {}, encounterId = '') {
   normalizeCombatState(gameState);
-  return (gameState.worldCombat.encounters || [])
-    .find((encounter) => encounter.id === encounterId && encounter.status === 'active') || null;
+  return (
+    (gameState.worldCombat.encounters || []).find(
+      (encounter) => encounter.id === encounterId && encounter.status === 'active',
+    ) || null
+  );
 }
 
 function getActiveEncounterAt(gameState = {}, coord = {}) {
@@ -181,8 +186,11 @@ function getActiveEncounterAt(gameState = {}, coord = {}) {
     toInteger(coord.q ?? coord.x, 0),
     toInteger(coord.r ?? coord.y, 0),
   );
-  return (gameState.worldCombat.encounters || [])
-    .find((encounter) => encounter.status === 'active' && encounter.tileId === tileId) || null;
+  return (
+    (gameState.worldCombat.encounters || []).find(
+      (encounter) => encounter.status === 'active' && encounter.tileId === tileId,
+    ) || null
+  );
 }
 
 function getEncounterIdFromMarchOptions(options = {}) {
