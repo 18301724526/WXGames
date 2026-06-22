@@ -12,6 +12,7 @@
   const POSES = ['move', 'attack', 'die', 'idle'];
   const FRAMES = 4;
   const FRAME_MS = 130;
+  const SPRITE_SCALE = 2; // enlarge soldiers/general so detail is visible
   // unit.state -> sprite pose (unknown states fall back to 'move').
   const STATE_POSE = { engage: 'attack', hold: 'idle', covering: 'move', advance: 'move', retreat: 'move', dead: 'die' };
 
@@ -148,7 +149,7 @@
       draw.sort((a, b) => a.y - b.y);
       for (let j = 0; j < draw.length; j += 1) {
         const d = draw[j];
-        const h = (d.kind === 'general' ? 46 : 16) * scale;
+        const h = (d.kind === 'general' ? 46 : 16) * scale * SPRITE_SCALE;
         const w = Math.round((h * 500) / 400);
         const x = offX + d.x * scale;
         const y = offY + d.y * scale;
