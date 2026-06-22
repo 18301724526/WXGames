@@ -41,19 +41,24 @@ for (const suffix of ['', '-wal', '-shm']) {
   fs.rmSync(`${targetPath}${suffix}`, { force: true });
 }
 
-const db = new Database(sourcePath, { readonly: true, fileMustExist: true, timeout: 60000 });
-try {
-  db.backup(targetPath);
-} finally {
-  db.close();
-}
+(async () => {
+  const db = new Database(sourcePath, { readonly: true, fileMustExist: true, timeout: 60000 });
+  try {
+    await db.backup(targetPath);
+  } finally {
+    db.close();
+  }
 
-console.log(JSON.stringify({
-  schema: 'wxgame-test-db-copy-v1',
-  sourcePath,
-  targetPath,
-  copiedAt: new Date().toISOString(),
-}));
+  console.log(JSON.stringify({
+    schema: 'wxgame-test-db-copy-v1',
+    sourcePath,
+    targetPath,
+    copiedAt: new Date().toISOString(),
+  }));
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
 NODE
 
     chown www:www "$DB_PATH" "$DB_PATH-wal" "$DB_PATH-shm" 2>/dev/null || chown www:www "$DB_PATH" 2>/dev/null || true
