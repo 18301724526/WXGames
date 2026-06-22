@@ -24,6 +24,8 @@ echo "[test-server-ci-gate] repo: $REPO_ROOT"
 echo "[test-server-ci-gate] commit: $(git rev-parse --short HEAD)"
 
 export CI="${CI:-1}"
+export NODE_ENV="${WXGAME_GATE_NODE_ENV:-test}"
+export CONFIG_RELEASE_GATE="${WXGAME_GATE_CONFIG_RELEASE_GATE:-warn}"
 
 echo "[test-server-ci-gate] install root tooling dependencies"
 npm ci --include=dev --ignore-scripts --no-audit --no-fund
