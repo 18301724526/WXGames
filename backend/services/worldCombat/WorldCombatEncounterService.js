@@ -293,7 +293,7 @@ function buildBattleReport(gameState = {}, mission = {}, encounter = {}, battle 
   };
 }
 
-function settleMissionSnapshot(gameState = {}, mission = {}, nextSnapshot = null) {
+function settleMissionSnapshot(mission = {}, nextSnapshot = null) {
   if (!nextSnapshot) return false;
   mission.formationSnapshot = nextSnapshot;
   if (mission.status !== 'idle') return true;
@@ -319,7 +319,7 @@ function resolveEncounterBattle(gameState = {}, mission = {}, encounter = {}, no
     ],
   });
   const battleReport = buildBattleReport(gameState, mission, encounter, battle, now);
-  settleMissionSnapshot(gameState, mission, battle.attackerSnapshot);
+  settleMissionSnapshot(mission, battle.attackerSnapshot);
   encounter.battleReport = battleReport;
   encounter.resolvedAt = now.toISOString();
   encounter.resolvedByMissionId = mission.id || null;
