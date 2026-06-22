@@ -143,7 +143,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     formationSlot: options.formationSlot ?? options.slot ?? null,
     existingMissions: (gameState.exploreMissions || []).map(summarizeMission),
   });
-  const explicitMissionId = String(options.missionId || '').trim();
+  const explicitMissionId = String(options.missionId || options.actorId || '').trim();
   const explicitMission = explicitMissionId
     ? (gameState.exploreMissions || []).find((mission) => mission.id === explicitMissionId) || null
     : null;

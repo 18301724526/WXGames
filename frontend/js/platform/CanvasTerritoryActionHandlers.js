@@ -31,27 +31,6 @@
       || '').trim();
   }
 
-  function getMarchMissionId(action = {}, previousTarget = {}, uiState = {}) {
-    return String(action.missionId
-      || previousTarget.missionId
-      || uiState.selectedWorldMissionId
-      || '').trim();
-  }
-
-  function getWorldActorId(action = {}, previousTarget = {}, uiState = {}) {
-    return String(action.actorId
-      || previousTarget.actorId
-      || uiState.selectedWorldActorId
-      || '').trim();
-  }
-
-  function assignMarchMissionTarget(target = {}, missionId = '', actorId = '') {
-    if (!missionId) return target;
-    target.missionId = missionId;
-    if (actorId) target.actorId = actorId;
-    return target;
-  }
-
   function copyCombatTargetFields(nextTarget = {}, action = {}, previousTarget = {}) {
     const encounterId = getCombatEncounterId(action, previousTarget);
     if (encounterId) nextTarget.combatEncounterId = encounterId;
@@ -137,7 +116,6 @@
   function summarizeActorPickingUiState(uiState = {}) {
     return {
       selectedWorldActorId: uiState?.selectedWorldActorId || '',
-      selectedWorldMissionId: uiState?.selectedWorldMissionId || '',
       selectedSiteId: uiState?.selectedSiteId || '',
       hasWorldMarchTarget: Boolean(uiState?.worldMarchTarget),
       hasWorldTargetPicker: Boolean(uiState?.worldTargetPicker),
@@ -435,9 +413,7 @@
           return false;
         }
         const uiState = this.getSharedTerritoryUiState();
-        const combatEncounterId = getCombatEncounterId(action);
-        const missionId = combatEncounterId ? '' : getMarchMissionId(action, {}, uiState);
-        const actorId = missionId ? getWorldActorId(action, {}, uiState) : '';
+        const selectedActorId = action.missionId || action.actorId || uiState.selectedWorldActorId || '';
         const game = this.getGameHost();
         game?.territoryController?.closeSiteDialog?.({ render: false });
         logActorPickingDiag('territory:selectWorldMarchTarget:beforeWrite', {
@@ -452,14 +428,16 @@
           tileId: target.tileId,
           pickerOpen: false,
         };
-        assignMarchMissionTarget(nextTarget, missionId, actorId);
+        if (selectedActorId) {
+          nextTarget.missionId = action.missionId || selectedActorId;
+          nextTarget.actorId = action.actorId || selectedActorId;
+        }
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
         if (action.terrain) nextTarget.terrain = action.terrain;
         if (action.terrainLabel) nextTarget.terrainLabel = action.terrainLabel;
         copyCombatTargetFields(nextTarget, action);
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
-        uiState.selectedWorldMissionId = '';
         uiState.selectedSiteId = '';
         uiState.worldTargetPicker = null;
         uiState.expeditionConfigSiteId = '';
@@ -489,16 +467,22 @@
         if (!target) return false;
         const uiState = this.getSharedTerritoryUiState();
         const previousTarget = uiState.worldMarchTarget || {};
-        const combatEncounterId = getCombatEncounterId(action, previousTarget);
-        const missionId = combatEncounterId ? '' : getMarchMissionId(action, previousTarget, uiState);
-        const actorId = missionId ? getWorldActorId(action, previousTarget, uiState) : '';
+        const selectedActorId = action.missionId
+          || action.actorId
+          || previousTarget.missionId
+          || previousTarget.actorId
+          || uiState.selectedWorldActorId
+          || '';
         const nextTarget = {
           q: target.q,
           r: target.r,
           tileId: target.tileId,
           pickerOpen: true,
         };
-        assignMarchMissionTarget(nextTarget, missionId, actorId);
+        if (selectedActorId) {
+          nextTarget.missionId = action.missionId || previousTarget.missionId || selectedActorId;
+          nextTarget.actorId = action.actorId || previousTarget.actorId || selectedActorId;
+        }
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
         else if (previousTarget.known !== undefined) nextTarget.known = Boolean(previousTarget.known);
         if (action.terrain || previousTarget.terrain) nextTarget.terrain = action.terrain || previousTarget.terrain;
@@ -506,7 +490,6 @@
         copyCombatTargetFields(nextTarget, action, previousTarget);
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
-        uiState.selectedWorldMissionId = '';
         uiState.worldTargetPicker = null;
         const handled = this.refreshWorldMarchLayer(action);
         this.refreshWorldMarchTutorialHighlight();
@@ -517,7 +500,6 @@
         const uiState = this.getSharedTerritoryUiState();
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
-        uiState.selectedWorldMissionId = '';
         uiState.worldTargetPicker = null;
         const handled = this.refreshWorldMarchLayer(action);
         this.refreshWorldMarchTutorialHighlight();
@@ -526,7 +508,6 @@
 
       handle_selectWorldActor(action) {
         const actorId = action.actorId || action.missionId || '';
-        const missionId = action.missionId || '';
         const tapTraceId = action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
         if (!actorId) {
           logActorPickingDiag('territory:selectWorldActor:missingActorId', {
@@ -543,7 +524,6 @@
           uiState: summarizeActorPickingUiState(uiState),
         });
         uiState.selectedWorldActorId = actorId;
-        uiState.selectedWorldMissionId = missionId;
         uiState.worldMarchTarget = null;
         uiState.selectedSiteId = '';
         uiState.worldTargetPicker = null;
@@ -574,7 +554,6 @@
         uiState.worldTargetPicker = picker;
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
-        uiState.selectedWorldMissionId = '';
         uiState.selectedSiteId = '';
         uiState.expeditionConfigSiteId = '';
         return this.refreshWorldMarchLayer(action);
@@ -605,9 +584,12 @@
         const target = normalizeWorldMarchTarget(action);
         if (!target) return false;
         const uiState = this.getSharedTerritoryUiState();
-        const previousTarget = uiState.worldMarchTarget || {};
-        const combatEncounterId = getCombatEncounterId(action, previousTarget);
-        const missionId = combatEncounterId ? '' : getMarchMissionId(action, previousTarget, uiState);
+        const selectedActorId = action.missionId
+          || action.actorId
+          || uiState.worldMarchTarget?.missionId
+          || uiState.worldMarchTarget?.actorId
+          || uiState.selectedWorldActorId
+          || '';
         const run = () => {
           const game = this.getGameHost();
           const options = {
@@ -617,7 +599,8 @@
             formationSlot: action.formationSlot || action.slot || 1,
             cityId: action.cityId || game?.state?.activeCityId || 'capital',
           };
-          if (missionId) options.missionId = missionId;
+          if (selectedActorId) options.missionId = selectedActorId;
+          const combatEncounterId = getCombatEncounterId(action, uiState.worldMarchTarget || {});
           if (combatEncounterId) options.combatEncounterId = combatEncounterId;
           if (meta.inputIntent) options.clientInputIntent = meta.inputIntent;
           if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
@@ -627,7 +610,6 @@
         if (result !== false) {
           uiState.worldMarchTarget = null;
           uiState.selectedWorldActorId = '';
-          uiState.selectedWorldMissionId = '';
           uiState.worldTargetPicker = null;
           this.refreshWorldMarchLayer(action);
           this.refreshWorldMarchTutorialHighlight();
@@ -647,7 +629,6 @@
         const result = run();
         if (result !== false) {
           this.getSharedTerritoryUiState().selectedWorldActorId = '';
-          this.getSharedTerritoryUiState().selectedWorldMissionId = '';
           this.getSharedTerritoryUiState().worldTargetPicker = null;
           this.refreshWorldMarchLayer(action);
           this.refreshWorldMarchTutorialHighlight();
@@ -667,7 +648,6 @@
         return this.finalize(Promise.resolve(run()).then((result) => {
           if (result !== false) {
             this.getSharedTerritoryUiState().selectedWorldActorId = '';
-            this.getSharedTerritoryUiState().selectedWorldMissionId = '';
             this.getSharedTerritoryUiState().worldTargetPicker = null;
             this.refreshWorldMarchLayer(action);
             this.refreshWorldMarchTutorialHighlight();

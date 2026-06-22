@@ -251,7 +251,6 @@
     return sanitize({
       selectedSiteId: uiState.selectedSiteId || '',
       selectedWorldActorId: uiState.selectedWorldActorId || '',
-      selectedWorldMissionId: uiState.selectedWorldMissionId || '',
       worldPanX: round(uiState.worldPanX || 0),
       worldPanY: round(uiState.worldPanY || 0),
       worldMarchTarget: target ? {

@@ -160,7 +160,6 @@
             selectedSiteId: '',
             worldMarchTarget: null,
             selectedWorldActorId: '',
-            selectedWorldMissionId: '',
             worldPanX: 0,
             worldPanY: 0,
             expeditionConfigSiteId: '',

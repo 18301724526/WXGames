@@ -442,7 +442,6 @@ clearWorldSiteHudSelection() {
           uiState.selectedSiteId
           || uiState.worldMarchTarget
           || uiState.selectedWorldActorId
-          || uiState.selectedWorldMissionId
           || uiState.expeditionConfigSiteId
           || uiState.expeditionSoldiers
           || uiState.expeditionTroopType
@@ -451,7 +450,6 @@ clearWorldSiteHudSelection() {
         uiState.selectedSiteId = '';
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
-        uiState.selectedWorldMissionId = '';
         uiState.expeditionConfigSiteId = '';
         uiState.expeditionSoldiers = '';
         uiState.expeditionTroopType = '';

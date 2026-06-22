@@ -589,12 +589,10 @@
                 ...(this.territoryUiState || {}),
                 worldMarchTarget: null,
                 selectedWorldActorId: '',
-                selectedWorldMissionId: '',
               };
               if (this.canvasShell?.territoryUiState) {
                 this.canvasShell.territoryUiState.worldMarchTarget = null;
                 this.canvasShell.territoryUiState.selectedWorldActorId = '';
-                this.canvasShell.territoryUiState.selectedWorldMissionId = '';
               }
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onExploreStarted?.(result);
@@ -738,7 +736,6 @@
                 selectedSiteId: '',
                 worldMarchTarget: null,
                 selectedWorldActorId: '',
-                selectedWorldMissionId: '',
               };
               this.territoryController?.closeSiteDialog?.();
               if (this.canvasShell) {
@@ -749,7 +746,6 @@
                   selectedSiteId: '',
                   worldMarchTarget: null,
                   selectedWorldActorId: '',
-                  selectedWorldMissionId: '',
                 };
               }
               const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });

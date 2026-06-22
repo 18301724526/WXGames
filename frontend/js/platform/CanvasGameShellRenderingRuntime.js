@@ -51,7 +51,6 @@
     return {
       present: Boolean(uiState && typeof uiState === 'object'),
       selectedWorldActorId: uiState?.selectedWorldActorId || '',
-      selectedWorldMissionId: uiState?.selectedWorldMissionId || '',
       selectedSiteId: uiState?.selectedSiteId || '',
       hasWorldMarchTarget: Boolean(uiState?.worldMarchTarget),
       worldMarchTargetTileId: uiState?.worldMarchTarget?.tileId || '',
@@ -353,17 +352,11 @@ resolveTerritoryUiState(overrideUiState = null) {
       }, {
         signature: [
           controllerSnapshot?.selectedWorldActorId || '',
-          controllerSnapshot?.selectedWorldMissionId || '',
           this.lastGame?.territoryUiState?.selectedWorldActorId || '',
-          this.lastGame?.territoryUiState?.selectedWorldMissionId || '',
           this.territoryUiState?.selectedWorldActorId || '',
-          this.territoryUiState?.selectedWorldMissionId || '',
           territoryController?.uiState?.selectedWorldActorId || '',
-          territoryController?.uiState?.selectedWorldMissionId || '',
           overrideUiState?.selectedWorldActorId || '',
-          overrideUiState?.selectedWorldMissionId || '',
           resolved.selectedWorldActorId || '',
-          resolved.selectedWorldMissionId || '',
         ].join('|'),
       });
       return resolved;

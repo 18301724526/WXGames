@@ -232,13 +232,11 @@
       setIfChanged(game.territoryUiState, 'selectedSiteId', '');
       setIfChanged(game.territoryUiState, 'worldMarchTarget', null);
       setIfChanged(game.territoryUiState, 'selectedWorldActorId', '');
-      setIfChanged(game.territoryUiState, 'selectedWorldMissionId', '');
     }
     if (shell?.territoryUiState) {
       setIfChanged(shell.territoryUiState, 'selectedSiteId', '');
       setIfChanged(shell.territoryUiState, 'worldMarchTarget', null);
       setIfChanged(shell.territoryUiState, 'selectedWorldActorId', '');
-      setIfChanged(shell.territoryUiState, 'selectedWorldMissionId', '');
     }
     game.territoryController?.closeSiteDialog?.({ render: false });
     shell?.closeWorldSiteHud?.({ render: false });

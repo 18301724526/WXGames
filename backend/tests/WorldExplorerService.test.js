@@ -180,22 +180,6 @@ test('world march starts a manual route and stops only at the server timeline ti
   assert.equal(stopped.authority.timeline.stopTile.tileId, 'tile_0_0');
 });
 
-test('world march does not treat world actor identity as reusable mission identity', () => {
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-
-  const started = WorldExplorerService.startWorldMarch(gameState, {
-    targetQ: 2,
-    targetR: 0,
-    formationSlot: 1,
-    actorId: 'hostile_force_capital_ridge',
-  }, now);
-
-  assert.equal(started.success, true);
-  assert.equal(started.mission.target.q, 2);
-  assert.equal(started.mission.target.r, 0);
-});
-
 test('world march treats client input intent as evidence, not coordinate authority', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
