@@ -160,7 +160,6 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return formationValidation;
   }
-  // A 0-strength formation (no generals, no troops) cannot march out to attack.
   if (combatTarget.encounter && !(formationValidation.formation.memberIds || []).length) return { success: false, error: 'WORLD_COMBAT_NO_TROOPS', message: 'No troops available to attack.' };
   const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formationValidation.formation);
   if (busyMission) {
