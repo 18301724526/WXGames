@@ -32,24 +32,24 @@
 
       playUnseenWorldCombatReports(state = this.state) {
             const reports = state?.worldExplorerState?.combat?.recentReports;
-            const logv = (typeof window !== 'undefined' ? window : globalThis);
-            try { logv.console?.log?.('[battle-replay] playUnseen: recentReports=', Array.isArray(reports) ? reports.length : 0); } catch (e) { /* ignore */ }
             if (!Array.isArray(reports) || !reports.length) return false;
             this.playedWorldCombatReportIds = this.playedWorldCombatReportIds || new Set();
-            let played = false;
-            reports.slice().reverse().forEach((entry) => {
+            // recentReports is newest-first. Play only the newest unseen report
+            // and mark the rest seen, so a backlog (e.g. after a reload, or several
+            // battles between syncs) doesn't stack multiple battle scenes at once.
+            let toPlay = null;
+            for (const entry of reports) {
               const report = entry?.report || null;
               const reportId = entry?.id || report?.id || '';
-              const seen = this.playedWorldCombatReportIds.has(reportId);
-              try { logv.console?.log?.('[battle-replay] playUnseen report', { reportId, hasReport: !!report, hasReplay: !!(report && report.replay && report.replay.setup), seen }); } catch (e) { /* ignore */ }
-              if (!report || !reportId || seen) return;
+              if (!report || !reportId || this.playedWorldCombatReportIds.has(reportId)) continue;
+              if (!toPlay) toPlay = report;
               this.playedWorldCombatReportIds.add(reportId);
-              if (typeof this.startBattleScene === 'function') {
-                this.startBattleScene(report);
-                played = true;
-              }
-            });
-            return played;
+            }
+            if (toPlay && typeof this.startBattleScene === 'function') {
+              this.startBattleScene(toPlay);
+              return true;
+            }
+            return false;
           },
 
       applyState(payload = {}) {

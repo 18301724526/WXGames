@@ -45,7 +45,9 @@
     }
     LOG('show:start', { id: report.id, result: report.result, seed: replay.setup.seed, sides: (replay.setup.sides || []).map((s) => `${s.side}:${(s.generals || []).length}`).join(','), inputs: (replay.inputStream || []).length });
 
-    // ---- DOM shell ----
+    // ---- DOM shell ---- (singleton: drop any previous overlay first)
+    const prev = doc.getElementById('wxgame-battle-replay');
+    if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
     const root = doc.createElement('div');
     root.id = 'wxgame-battle-replay';
     // Match the game's 9:16 portrait viewport (same sizing as #app::before in
