@@ -15,19 +15,19 @@ This document is branch-owned by `codex/battle-core-test-server`. It records the
 
 The test server must not reuse production runtime paths, PM2 names, ports, deploy state, or public URL prefixes.
 
-| Surface | Main server | Test server |
-| --- | --- | --- |
-| Frontend public dir | `/www/wwwroot/h5` | `/www/wwwroot/h5-test` |
-| Work tree | `/www/wwwroot/h5` | `/www/wwwroot/h5-test-worktree` |
-| Backend dir | `/opt/wxgame-workspace/backend` | `/opt/wxgame-test/backend` |
-| Shared symlink | `/opt/wxgame-workspace/shared` | `/opt/wxgame-test/shared` |
-| Deploy state | `/opt/wxgame-workspace/.wxgame` | `/opt/wxgame-test/.wxgame` |
-| SQLite DB | `/opt/wxgame-workspace/backend/civilization.db` | `/opt/wxgame-test/backend/civilization.db` |
-| API listener | `127.0.0.1:3000` | `127.0.0.1:3002` |
-| API reverse proxy | `/api/` | `/wxgame-test-api/` |
-| Frontend route | `/` or `/wxgame/` depending on Nginx entry | `/wxgame-test/` |
-| API PM2 app | `server` | `wxgame-test-server` |
-| World worker PM2 app | `wxgame-world-worker` | `wxgame-test-world-worker` |
+| Surface              | Main server                                     | Test server                                |
+| -------------------- | ----------------------------------------------- | ------------------------------------------ |
+| Frontend public dir  | `/www/wwwroot/h5`                               | `/www/wwwroot/h5-test`                     |
+| Work tree            | `/www/wwwroot/h5`                               | `/www/wwwroot/h5-test-worktree`            |
+| Backend dir          | `/opt/wxgame-workspace/backend`                 | `/opt/wxgame-test/backend`                 |
+| Shared symlink       | `/opt/wxgame-workspace/shared`                  | `/opt/wxgame-test/shared`                  |
+| Deploy state         | `/opt/wxgame-workspace/.wxgame`                 | `/opt/wxgame-test/.wxgame`                 |
+| SQLite DB            | `/opt/wxgame-workspace/backend/civilization.db` | `/opt/wxgame-test/backend/civilization.db` |
+| API listener         | `127.0.0.1:3000`                                | `127.0.0.1:3002`                           |
+| API reverse proxy    | `/api/`                                         | `/wxgame-test-api/`                        |
+| Frontend route       | `/` or `/wxgame/` depending on Nginx entry      | `/wxgame-test/`                            |
+| API PM2 app          | `server`                                        | `wxgame-test-server`                       |
+| World worker PM2 app | `wxgame-world-worker`                           | `wxgame-test-world-worker`                 |
 
 ## Data Copy Rule
 
