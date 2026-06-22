@@ -131,10 +131,8 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   normalizeExploreState(gameState, now);
   const combatTarget = WorldCombatEncounterService.resolveMarchTarget(gameState, options, now);
   if (!combatTarget.success) return combatTarget;
-  const targetInput = combatTarget.target || {
-    q: options.targetQ ?? options.q ?? options.x,
-    r: options.targetR ?? options.r ?? options.y,
-  };
+  const targetInput = combatTarget.target
+    || { q: options.targetQ ?? options.q ?? options.x, r: options.targetR ?? options.r ?? options.y };
   traceWorldMarch('actions:startWorldMarch:begin', options, {
     target: {
       q: targetInput.q ?? null,
@@ -162,6 +160,8 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return formationValidation;
   }
+  // A 0-strength formation (no generals, no troops) cannot march out to attack.
+  if (combatTarget.encounter && !(formationValidation.formation.memberIds || []).length) return { success: false, error: 'WORLD_COMBAT_NO_TROOPS', message: 'No troops available to attack.' };
   const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formationValidation.formation);
   if (busyMission) {
     traceWorldMarch('actions:startWorldMarch:busyFormation', options, {
