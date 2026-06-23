@@ -393,14 +393,6 @@
     }
 
     resourceShortName(resource) {
-      const defaults = {
-        food: '食物',
-        wood: '木材',
-        iron: '铁矿',
-        knowledge: '知识',
-        stone: '石料',
-        metal: '铁矿',
-      };
       const labelKeys = {
         food: 'resource.food',
         wood: 'resource.wood',
@@ -409,7 +401,7 @@
         stone: 'resource.stone',
         metal: 'resource.metal',
       };
-      return this.t(labelKeys[resource], {}, defaults[resource] || resource);
+      return labelKeys[resource] ? this.t(labelKeys[resource]) : resource;
     }
 
     resourceIconPath(resource) {

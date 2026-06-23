@@ -1,5 +1,21 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class TalentPolicyPresenter {
+    static t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
     static toNumber(value, fallback = 0) {
       const number = Number(value);
       return Number.isFinite(number) ? number : fallback;
@@ -35,21 +51,26 @@
     }
 
     static makeTalentPolicyName(basePolicy = {}, tiers = {}) {
-      const baseLabel = basePolicy.label || '均衡发展';
+      const baseLabel = basePolicy.label || this.t('talent.policy.balanced');
       const labels = {
-        agriculture: '农业',
-        knowledge: '知识',
-        industry: '工业',
+        agriculture: this.t('talent.tendency.agriculture'),
+        knowledge: this.t('talent.tendency.knowledge'),
+        industry: this.t('talent.tendency.industry'),
       };
+      const join = this.t('talent.name.join');
       const high = Object.entries(labels)
         .filter(([key]) => this.toInteger(tiers[key], 2) === 3)
         .map(([, label]) => label);
-      if (high.length) return `${baseLabel}·偏${high.slice(0, 2).join('与')}`;
+      if (high.length) {
+        return this.t('talent.name.high', { base: baseLabel, labels: high.slice(0, 2).join(join) });
+      }
       const low = Object.entries(labels)
         .filter(([key]) => this.toInteger(tiers[key], 2) === 1)
         .map(([, label]) => label);
-      if (low.length) return `${baseLabel}·轻${low.slice(0, 2).join('与')}`;
-      return `${baseLabel}·微调`;
+      if (low.length) {
+        return this.t('talent.name.low', { base: baseLabel, labels: low.slice(0, 2).join(join) });
+      }
+      return this.t('talent.name.tweak', { base: baseLabel });
     }
 
     static getTalentPolicyAvailableRoles(state = {}) {
@@ -144,24 +165,37 @@
       const basePolicy = systemPolicies.find((policy) => policy.id === draft.basePolicyId)
         || systemPolicies.find((policy) => policy.id === activePolicyId)
         || systemPolicies[0]
-        || { id: 'balanced', label: '均衡发展', description: '维持稳定分工' };
+        || {
+          id: 'balanced',
+          label: this.t('talent.policy.balanced'),
+          description: this.t('talent.policy.balancedDesc'),
+        };
       const tendencies = Array.isArray(source.tendencies) ? source.tendencies : [
-        { id: 'agriculture', label: '农业', role: 'farmer', disabled: false },
-        { id: 'knowledge', label: '知识', role: 'scholar', disabled: false },
-        { id: 'industry', label: '工业', role: 'craftsman', disabled: this.toNumber(state.currentEra) < 2 },
+        { id: 'agriculture', label: this.t('talent.tendency.agriculture'), role: 'farmer', disabled: false },
+        { id: 'knowledge', label: this.t('talent.tendency.knowledge'), role: 'scholar', disabled: false },
+        {
+          id: 'industry',
+          label: this.t('talent.tendency.industry'),
+          role: 'craftsman',
+          disabled: this.toNumber(state.currentEra) < 2,
+        },
       ];
       const activePreview = source.preview || {};
       const preview = this.buildTalentPolicyDraftPreview(state, draft, basePolicy, tendencies) || activePreview;
       const allocation = preview.allocation || {};
-      const jobLabels = { farmer: '农民', scholar: '学者', craftsman: '工匠' };
+      const jobLabels = {
+        farmer: this.t('home.job.farmer'),
+        scholar: this.t('home.job.scholar'),
+        craftsman: this.t('home.job.craftsman'),
+      };
       const allocationText = ['farmer', 'scholar', 'craftsman']
         .filter((job) => job !== 'craftsman' || this.toNumber(state.currentEra) >= 2 || this.toNumber(allocation[job]) > 0)
         .map((job) => `${jobLabels[job]} ${this.toInteger(allocation[job])}`)
         .join(' / ');
       const tierLabels = {
-        1: '低',
-        2: '稳',
-        3: '高',
+        1: this.t('talent.tier.low'),
+        2: this.t('talent.tier.steady'),
+        3: this.t('talent.tier.high'),
       };
       const activePolicyLabel = activeDraftPolicy?.displayName
         || activeCustomPolicy?.displayName
@@ -170,14 +204,15 @@
         || source.activePolicyLabel
         || activePreview.policyLabel
         || basePolicy.label;
-      const draftPolicyLabel = basePolicy.label || preview.policyLabel || '均衡发展';
+      const draftPolicyLabel = basePolicy.label || preview.policyLabel || this.t('talent.policy.balanced');
       const isDefaultDraft = ['agriculture', 'knowledge', 'industry']
         .every((key) => this.toInteger(draft.tiers[key], 2) === this.toInteger(source.defaultTiers?.[key], 2));
       const previewPolicyLabel = isDefaultDraft ? draftPolicyLabel : this.makeTalentPolicyName(basePolicy, draft.tiers);
       const hasPendingPreview = previewPolicyLabel !== activePolicyLabel;
+      const activeLabel = activePolicyLabel || this.t('talent.policy.balanced');
       const subtitle = hasPendingPreview
-        ? `当前：${activePolicyLabel || '均衡发展'} / 预览：${previewPolicyLabel}`
-        : `当前：${activePolicyLabel || '均衡发展'}`;
+        ? this.t('talent.subtitle.withPreview', { active: activeLabel, preview: previewPolicyLabel })
+        : this.t('talent.subtitle.activeOnly', { active: activeLabel });
 
       return {
         activePolicyId,
@@ -189,7 +224,7 @@
         })),
         customPolicies: customPolicies.map((policy) => ({
           ...policy,
-          label: policy.displayName || policy.label || '自定义方针',
+          label: policy.displayName || policy.label || this.t('talent.customPolicyName'),
           active: policy.id === activePolicyId,
         })),
         tendencies: tendencies.map((tendency) => ({
@@ -204,17 +239,17 @@
         preview: {
           ...activePreview,
           ...preview,
-          allocationText: allocationText || '暂无人才',
+          allocationText: allocationText || this.t('talent.allocationEmpty'),
         },
         text: {
-          title: '人才方针',
+          title: this.t('talent.ui.title'),
           subtitle,
-          presetTitle: '系统方针',
-          customTitle: '自定义微调',
+          presetTitle: this.t('talent.ui.presetTitle'),
+          customTitle: this.t('talent.ui.customTitle'),
           customName: this.makeTalentPolicyName(basePolicy, draft.tiers),
-          emptyCustom: '暂无自定义方针',
-          applyDraft: '确认方针',
-          saveDraft: '保存微调',
+          emptyCustom: this.t('talent.ui.emptyCustom'),
+          applyDraft: this.t('talent.ui.applyDraft'),
+          saveDraft: this.t('talent.ui.saveDraft'),
         },
       };
     }
