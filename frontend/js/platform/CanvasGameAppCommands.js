@@ -48,11 +48,11 @@
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-              this.showFloatingText(result.message || '瀵昏瀹屾垚');
-              this.log(result.message || '瀵昏瀹屾垚');
+              this.showFloatingText(result.message || '寻访完成');
+              this.log(result.message || '寻访完成');
               return true;
             } catch (error) {
-              this.log(`瀵昏澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`寻访失败：${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -72,7 +72,7 @@
               this.log(result.message || t('command.famous.accepted', {}, '名人已接纳'));
               return true;
             } catch (error) {
-              this.log(`鎺ョ撼澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`接纳失败：${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -90,7 +90,7 @@
               this.log(result.message || t('command.famous.dismissed', {}, '候选人已放弃'));
               return true;
             } catch (error) {
-              this.log(`鏀惧純澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`放弃失败：${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -104,11 +104,11 @@
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = personId;
               this.selectedFamousPersonId = personId;
-              this.showFloatingText(result.message || '灞炴€у凡鎻愬崌');
-              this.log(result.message || '灞炴€у凡鎻愬崌');
+              this.showFloatingText(result.message || '属性已提升');
+              this.log(result.message || '属性已提升');
               return true;
             } catch (error) {
-              this.log(`鍔犵偣澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`加点失败：${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -510,22 +510,22 @@
 
       async assignJob(job, delta) {
             if (!this.token && this.authStorage) {
-              this.log('璇峰厛鐧诲綍');
+              this.log('请先登录');
               return false;
             }
             try {
               const result = await this.getGameApi().assignJob(job, delta);
               if (result?.success === false) {
-                this.log(result.message || '浜哄彛鍒嗛厤澶辫触');
+                this.log(result.message || '人口分配失败');
                 const data = await this.getGameApi().getState?.();
                 if (data?.gameState) this.applyApiState(data);
                 return false;
               }
               this.applyApiState(result);
-              this.log(`浜哄彛鍒嗛厤 ${delta > 0 ? '+' : ''}${delta} ${job}`);
+              this.log(`人口分配 ${delta > 0 ? '+' : ''}${delta} ${job}`);
               return true;
             } catch (error) {
-              this.log(`浜哄彛鍒嗛厤澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`人口分配失败：${error.payload?.message || error.message}`);
               try {
                 const data = await this.getGameApi().getState?.();
                 if (data?.gameState) this.applyApiState(data);
@@ -543,7 +543,7 @@
               this.log(result.message || t('command.policy.applied', {}, '方针已应用'));
               return true;
             } catch (error) {
-              this.log(`鏂归拡澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`方针失败：${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -564,11 +564,11 @@
               this.applyApiState(result);
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onEraAdvanced?.(result);
-              this.log(`杩涘叆鏂伴樁娈碉細${result.message || this.state.currentEraName || ''}`);
+              this.log(`进入新阶段：${result.message || this.state.currentEraName || ''}`);
               this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}, '已进入下一时代'));
               return true;
             } catch (error) {
-              this.log(`澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`失败：${error.payload?.message || error.message}`);
               return false;
             } finally {
               this.renderMilitary();
@@ -714,11 +714,11 @@
                 };
                 this.renderCanvasSurface(this.state?.currentTab);
               }
-              this.showFloatingText(result.rewardText || result.message || 'Reward claimed');
-              this.log(`濂栧姳锟?{result.message || ''}`);
+              this.showFloatingText(result.rewardText || result.message || '领取成功');
+              this.log(`奖励：${result.message || ''}`);
               return true;
             } catch (error) {
-              this.log(`澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`失败：${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -787,7 +787,7 @@
               }).catch((error) => this.log(error?.message || String(error)));
               return true;
             } catch (error) {
-              this.log(`澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`失败：${error.payload?.message || error.message}`);
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }

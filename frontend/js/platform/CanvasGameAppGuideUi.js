@@ -111,9 +111,9 @@
               this.tutorialController?.sync?.(this.tutorial || this.state?.tutorial || {});
               tutorialHandledView = this.tutorialController?.refreshCurrentHighlight?.() === true;
               this.showFloatingText(result.message);
-              this.log(`鎴愬姛锟?{result.message || ''}`);
+              this.log(`成功：${result.message || ''}`);
             } catch (error) {
-              this.log(`澶辫触锟?{error.payload?.message || error.message}`);
+              this.log(`失败：${error.payload?.message || error.message}`);
             } finally {
               this.naming.submitting = false;
               if (!tutorialHandledView) this.renderCanvasSurface(this.state?.currentTab);
@@ -127,7 +127,7 @@
               ? await onTabClicked.call(this.tutorialController, tabId).catch(() => false)
               : true;
             if (!allowed) {
-              this.log('璇峰厛瀹屾垚褰撳墠寮曞姝ラ');
+              this.log('请先完成当前引导步骤');
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
