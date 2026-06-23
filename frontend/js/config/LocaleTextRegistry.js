@@ -377,10 +377,13 @@
       'military.training.nextBatch': '下一批 {batchSize} 兵 · {progress}/{interval} 秒',
       'military.training.full': '训练已满',
       'military.training.waitBarracks': '等待兵营',
-      'military.scout.status.default': '选择方向派出侦察队；同一时间最多可有 {maxActiveScouts} 支侦察队在外。',
-      'military.scout.status.readyAndActive': '{readyCount} 份报告待查看，另有 {activeCount} 支侦察队仍在外。',
+      'military.scout.status.default':
+        '选择方向派出侦察队；同一时间最多可有 {maxActiveScouts} 支侦察队在外。',
+      'military.scout.status.readyAndActive':
+        '{readyCount} 份报告待查看，另有 {activeCount} 支侦察队仍在外。',
       'military.scout.status.ready': '{readyCount} 份侦察报告待查看，你仍可继续派出侦察队。',
-      'military.scout.status.activeMany': '{activeCount} 支侦察队在外行动，最早一支约 {remaining} 后返回。',
+      'military.scout.status.activeMany':
+        '{activeCount} 支侦察队在外行动，最早一支约 {remaining} 后返回。',
       'military.scout.status.activeOne': '{direction}侦察中，预计 {remaining} 后返回。',
       'military.scout.direction.nw': '西北',
       'military.scout.direction.n': '北',
@@ -406,10 +409,12 @@
       'military.formation.editor.selected': '已选 {selected}/{maxMembers} · 第一位为主将',
       'military.formation.editor.leaderSlot': '主',
       'military.formation.editor.memberSlot': '副',
-      'military.formation.editor.reserveLine': '预备 {reserve} / 可分 {pool} / 已确认 {confirmed} / 草稿 {draft}',
+      'military.formation.editor.reserveLine':
+        '预备 {reserve} / 可分 {pool} / 已确认 {confirmed} / 草稿 {draft}',
       'military.formation.editor.replenish': '补兵',
       'military.formation.editor.rosterTitle': '名人列表',
-      'military.formation.editor.emptyPeople': '暂无可编入的名人。先在名人入口接纳名人后，再回来编队。',
+      'military.formation.editor.emptyPeople':
+        '暂无可编入的名人。先在名人入口接纳名人后，再回来编队。',
       'military.formation.editor.unknownPerson': '无名',
       'military.formation.editor.remove': '移除',
       'military.formation.editor.add': '加入',
@@ -889,7 +894,8 @@
       'tech.availableCount': 'Available {count}',
       'tech.availableEmpty': 'None available',
       'tech.placeholder': 'Gain tech points after entering a new era',
-      'tech.subtitle': 'Early tech selects civilization routes; Classical era unlocks key buildings.',
+      'tech.subtitle':
+        'Early tech selects civilization routes; Classical era unlocks key buildings.',
       'event.resource.food': 'Food',
       'event.resource.knowledge': 'Knowledge',
       'event.resource.wood': 'Wood',
@@ -945,19 +951,24 @@
       'guidebook.title': 'Guide',
       'guidebook.resources.label': 'Resources',
       'guidebook.resources.title': 'Resource Output',
-      'guidebook.resources.line': 'Food supports population, wood supports construction, and knowledge advances eras.',
+      'guidebook.resources.line':
+        'Food supports population, wood supports construction, and knowledge advances eras.',
       'guidebook.planning.label': 'Planning',
       'guidebook.planning.title': 'City Planning',
-      'guidebook.planning.line': 'Habitability comes from building mix and geography; different cities suit different plans.',
+      'guidebook.planning.line':
+        'Habitability comes from building mix and geography; different cities suit different plans.',
       'guidebook.policy.label': 'Policy',
       'guidebook.policy.title': 'Talent Policy',
-      'guidebook.policy.line': 'Policies redistribute talent according to currently unlocked roles.',
+      'guidebook.policy.line':
+        'Policies redistribute talent according to currently unlocked roles.',
       'guidebook.military.label': 'Military',
       'guidebook.military.title': 'Military Expansion',
-      'guidebook.military.line': 'Barracks train soldiers; scouting and conquest gradually open a larger world.',
+      'guidebook.military.line':
+        'Barracks train soldiers; scouting and conquest gradually open a larger world.',
       'guidebook.events.label': 'Events',
       'guidebook.events.title': 'Event Threats',
-      'guidebook.events.line': 'Regular events offer opportunities; threat events test city defense.',
+      'guidebook.events.line':
+        'Regular events offer opportunities; threat events test city defense.',
       'guidebook.planning.geography': 'Geography: {terrain}',
       'guidebook.planning.statusLine': '{habitability} · {growth}',
       'civilization.era.fallback': 'Primitive Era',
@@ -992,7 +1003,8 @@
       'famous.summary': 'Joined {peopleCount} · candidates {candidateCount}/{maxCandidates}',
       'famous.section.candidates': 'Candidates',
       'famous.section.joined': 'Joined',
-      'famous.empty': 'No famous persons have joined yet. When clues appear, accept new leaders and talent here.',
+      'famous.empty':
+        'No famous persons have joined yet. When clues appear, accept new leaders and talent here.',
       'famous.action.accept': 'Accept',
       'famous.action.dismiss': 'Dismiss',
       'famous.attribute.title': 'Attributes',
@@ -1054,10 +1066,14 @@
       'military.training.nextBatch': 'Next batch {batchSize} soldiers · {progress}/{interval}s',
       'military.training.full': 'Training full',
       'military.training.waitBarracks': 'Waiting for barracks',
-      'military.scout.status.default': 'Choose a direction to send scouts; up to {maxActiveScouts} scout teams can be out at once.',
-      'military.scout.status.readyAndActive': '{readyCount} reports ready, with {activeCount} scout teams still out.',
-      'military.scout.status.ready': '{readyCount} scout reports ready; you can still send more scouts.',
-      'military.scout.status.activeMany': '{activeCount} scout teams are out. Earliest returns in about {remaining}.',
+      'military.scout.status.default':
+        'Choose a direction to send scouts; up to {maxActiveScouts} scout teams can be out at once.',
+      'military.scout.status.readyAndActive':
+        '{readyCount} reports ready, with {activeCount} scout teams still out.',
+      'military.scout.status.ready':
+        '{readyCount} scout reports ready; you can still send more scouts.',
+      'military.scout.status.activeMany':
+        '{activeCount} scout teams are out. Earliest returns in about {remaining}.',
       'military.scout.status.activeOne': 'Scouting {direction}, returns in about {remaining}.',
       'military.scout.direction.nw': 'NW',
       'military.scout.direction.n': 'N',
@@ -1074,7 +1090,8 @@
       'military.scout.wait': 'Wait',
       'military.scout.send': 'Send',
       'military.scout.reportTitle': 'Scout Reports',
-      'military.scout.reportEmpty': 'No scout reports yet. Send scouts and the outer world will start appearing here.',
+      'military.scout.reportEmpty':
+        'No scout reports yet. Send scouts and the outer world will start appearing here.',
       'military.scout.reportAria': '{direction} scout report',
       'military.scout.activeAria': '{direction} scouting',
       'military.scout.lockedAria': '{direction} scout unavailable',
@@ -1083,10 +1100,12 @@
       'military.formation.editor.selected': '{selected}/{maxMembers} selected · first is commander',
       'military.formation.editor.leaderSlot': 'Lead',
       'military.formation.editor.memberSlot': 'Sub',
-      'military.formation.editor.reserveLine': 'Reserve {reserve} / pool {pool} / confirmed {confirmed} / draft {draft}',
+      'military.formation.editor.reserveLine':
+        'Reserve {reserve} / pool {pool} / confirmed {confirmed} / draft {draft}',
       'military.formation.editor.replenish': 'Fill',
       'military.formation.editor.rosterTitle': 'Famous Roster',
-      'military.formation.editor.emptyPeople': 'No famous persons available. Accept famous persons first, then return to edit formation.',
+      'military.formation.editor.emptyPeople':
+        'No famous persons available. Accept famous persons first, then return to edit formation.',
       'military.formation.editor.unknownPerson': 'Unnamed',
       'military.formation.editor.remove': 'Remove',
       'military.formation.editor.add': 'Add',
@@ -1136,7 +1155,8 @@
       'battle.entity.survivors': '{parts}  (total {total})',
       'battle.entity.survivorLine.ally': 'Allies remaining: {survivors}',
       'battle.entity.survivorLine.enemy': 'Enemies remaining: {survivors}',
-      'battle.entity.result.audit': 'Time {ticks} ticks · Commands {commands} (server authoritative resim)',
+      'battle.entity.result.audit':
+        'Time {ticks} ticks · Commands {commands} (server authoritative resim)',
       'tutorial.advisorName': 'Advisor',
       'tutorial.continue': 'Tap to continue',
       'shell.topBar.eraFallback': 'Primitive Era',
