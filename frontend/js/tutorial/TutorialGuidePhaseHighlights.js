@@ -1,4 +1,20 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
   function install(TutorialGuideController) {
     if (!TutorialGuideController?.prototype) return false;
     const TUTORIAL_STEPS = TutorialGuideController.TUTORIAL_STEPS || {};
@@ -18,7 +34,7 @@
         return this.showHighlight(
           'openCommandPanel',
           (action) => !action.disabled && action.panel === 'civilization',
-          '点击文明，查看族群迈向下一阶段所需的条件。',
+          t('tutorial.highlight.openCivilization'),
           { type: 'openCommandPanel', panel: 'civilization' },
         );
       }
@@ -26,7 +42,7 @@
         return this.showHighlight(
           'advanceEra',
           (action) => !action.disabled,
-          '条件已经满足，点击进阶，让文明迈入农耕时代。',
+          t('tutorial.highlight.advanceEra'),
           { type: 'advanceEra' },
         );
       }
@@ -34,7 +50,7 @@
         return this.showHighlight(
           'openTaskCenter',
           (action) => !action.disabled && (action.tab || 'main') === 'main',
-          '打开任务，领取第一份主线物资。',
+          t('tutorial.highlight.openTaskCenter'),
           { type: 'openTaskCenter' },
         );
       }
@@ -42,7 +58,7 @@
         return this.showHighlight(
           'claimTaskReward',
           (action) => !action.disabled && action.taskId === 'main_first_supplies',
-          '领取“安居的火种”，准备建造第一块农田。',
+          t('tutorial.highlight.claimFirstSupplies'),
           { type: 'claimTaskReward', taskId: 'main_first_supplies', category: 'main' },
         );
       }
@@ -344,7 +360,7 @@
           return this.showHighlight(
             'switchCityManagementTab',
             (action) => !action.disabled && action.tab === 'people',
-            '切到人才标签，之后的人才调整都在这里完成。',
+            t('tutorial.highlight.switchTalentTab'),
             { type: 'switchCityManagementTab', tab: 'people' },
           );
         }
@@ -360,7 +376,7 @@
           return this.showHighlight(
             'switchCityManagementTab',
             (action) => !action.disabled && action.tab === 'people',
-            '切到人才标签，手动调整一次岗位分配。',
+            t('tutorial.highlight.switchTalentTabAdjust'),
             { type: 'switchCityManagementTab', tab: 'people' },
           );
         }
@@ -368,14 +384,14 @@
         if (picked?.target) {
           return this.game?.canvasShell?.showTutorialHighlight?.(
             picked.target,
-            '现在在城池人才页手动调整一次人才分配，之后你就能按城市需要微调岗位。',
+            t('tutorial.highlight.adjustTalentDetail'),
             { ...this.getCityPeopleGuideHighlightOptions(), allowedAction: picked.action, source: 'strongTutorial' },
           ) || false;
         }
         return this.showHighlight(
           'assignJob',
           (action) => !action.disabled && Number(action.delta) !== 0,
-          '在人才标签里手动调整一次岗位分配。',
+          t('tutorial.highlight.adjustTalentShort'),
           { type: 'assignJob' },
           this.getCityPeopleGuideHighlightOptions(),
         );
@@ -384,7 +400,7 @@
         return this.showHighlight(
           'openFamousPersons',
           (action) => !action.disabled,
-          '打开名人，试一次寻访，看看新的候选人如何出现。',
+          t('tutorial.highlight.openFamousSeek'),
           { type: 'openFamousPersons' },
         );
       }
@@ -393,14 +409,14 @@
           return this.showHighlight(
             'openFamousPersons',
             (action) => !action.disabled,
-            '打开名人面板，进行一次寻访。',
+            t('tutorial.highlight.openFamousPanel'),
             { type: 'openFamousPersons' },
           );
         }
         return this.showHighlight(
           'seekFamousPerson',
           (action) => !action.disabled,
-          '点击寻访名人，新的候选人会进入名人馆等待你后续处理。',
+          t('tutorial.highlight.seekFamous'),
           { type: 'seekFamousPerson' },
         );
       }
@@ -427,7 +443,7 @@
     if (!target) return false;
     return shell.showTutorialHighlight?.(
       target,
-      '建造第一处民居，让族人有稳定的居所。',
+      t('tutorial.highlight.buildFirstHouse'),
       { allowedAction: { type: 'buildBuilding', buildingId: 'house' }, source: 'strongTutorial' },
     ) || false;
     };

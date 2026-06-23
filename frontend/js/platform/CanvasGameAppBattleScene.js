@@ -1,4 +1,20 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -73,7 +89,7 @@
               setup,
               arena: (setup && setup.arena) || null,
               tickHz,
-              status: '交战中…',
+              status: t('battle.scene.status.fighting'),
               statusColor: '#d29922',
               selectedGid,
               auto: false,
@@ -278,14 +294,14 @@
             eb.resultWinner = eb.battle && eb.battle.result && eb.battle.result.winner;
             if (eb.mode === 'replay') {
               const win = eb.report ? (eb.report.result === 'victory') : (eb.resultWinner === 'attacker');
-              eb.status = win ? '胜利' : '失败';
+              eb.status = win ? t('battle.scene.result.win') : t('battle.scene.result.lose');
               eb.statusColor = win ? '#3fb950' : '#f85149';
               this.stopEntityBattleTimer();
               this.syncEntityBattleToShell();
               this.renderAnimationFrame(this.state?.currentTab || 'military');
               return;
             }
-            eb.status = '结算中…';
+            eb.status = t('battle.scene.status.settling');
             eb.statusColor = '#58a6ff';
             this.submitEntityResolve();
           },
@@ -313,7 +329,11 @@
             eb.serverResult = serverResult;
             const win = winner === 'attacker';
             const draw = winner === 'draw';
-            eb.status = win ? '胜利' : (draw ? '平局' : '失败');
+            eb.status = win
+        ? t('battle.scene.result.win')
+        : draw
+          ? t('battle.scene.result.draw')
+          : t('battle.scene.result.lose');
             eb.statusColor = win ? '#3fb950' : (draw ? '#d29922' : '#f85149');
             this.stopEntityBattleTimer();
             this.syncEntityBattleToShell();
@@ -359,11 +379,11 @@
               });
             } catch (err) {
               view.console?.error?.('[battle-interactive] startWorldCombat failed:', err);
-              this.log?.(`战斗开启失败: ${err?.payload?.message || err?.message || ''}`);
+              this.log?.(t('battle.scene.openFailed', { message: err?.payload?.message || err?.message || '' }));
               return false;
             }
             if (!opened || opened.success === false || !opened.setup || !opened.battleId) {
-              this.log?.(opened?.message || '无法在此格开战');
+              this.log?.(opened?.message || t('battle.scene.cannotOpenHere'));
               return false;
             }
             this.applyApiState?.(opened);
@@ -392,7 +412,7 @@
                   return resolved;
                 } catch (err) {
                   view.console?.error?.('[battle-interactive] resolveWorldCombat failed:', err);
-                  this.log?.(`战斗结算失败: ${err?.payload?.message || err?.message || ''}`);
+                  this.log?.(t('battle.scene.settleFailed', { message: err?.payload?.message || err?.message || '' }));
                   return null;
                 }
               },

@@ -23,6 +23,18 @@
     return null;
   })();
 
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasFrameRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -47,6 +59,10 @@
           return true;
         },
       });
+    }
+
+    t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     render(state = {}, options = {}) {
@@ -225,7 +241,7 @@
       if (flags.includeTutorialIntro) this.renderTutorialIntro(state, options);
       if (options.tutorialAdvisorDialogue && !flags.skipTutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
         options.tutorialAdvisorDialogue.message,
-        options.tutorialAdvisorDialogue.advisorName || '谋士',
+        options.tutorialAdvisorDialogue.advisorName || this.t('tutorial.advisorName'),
         { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
       );
       this.renderTutorialHighlight(options.tutorialHighlight || null);
@@ -248,7 +264,7 @@
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.tutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
         options.tutorialAdvisorDialogue.message,
-        options.tutorialAdvisorDialogue.advisorName || '谋士',
+        options.tutorialAdvisorDialogue.advisorName || this.t('tutorial.advisorName'),
         { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
       );
       else if (options.showAdvisor) this.renderAdvisorPanel(state);
@@ -286,7 +302,11 @@
         const done = route.filter((step) => step.revealed).length;
         const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);
         const remainingSeconds = this.getExplorerMissionRemainingSeconds(active);
-        this.drawText(`探索中 ${done}/${total}`, x + 12, y + 14, { size: 11, bold: true, color: '#ffe6b5' });
+        this.drawText(this.t('worldMap.exploreProgress', { done, total }), x + 12, y + 14, {
+          size: 11,
+          bold: true,
+          color: '#ffe6b5',
+        });
         this.drawText(`${remainingSeconds}s`, x + panelWidth - 12, y + 14, {
           size: 11,
           color: '#f0b45b',
@@ -301,8 +321,8 @@
         this.ctx.fillStyle = '#74d3a0';
         this.ctx.fillRect(barX, barY, Math.max(3, barW * progress), 4);
       } else {
-        this.drawText('点选地图行军', x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
-        this.drawText('选择目标后派出队伍', x + panelWidth - 12, y + 12, {
+        this.drawText(this.t('worldMap.marchHint.title'), x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
+        this.drawText(this.t('worldMap.marchHint.subtitle'), x + panelWidth - 12, y + 12, {
           size: 10,
           color: '#74d3a0',
           align: 'right',
@@ -312,7 +332,7 @@
       const resetH = 28;
       const resetX = Math.max(8, map.x + map.width - resetW - 12);
       const resetY = Math.max(map.y + 10, topBarBottom + 10);
-      this.drawButton(resetX, resetY, resetW, resetH, '回到本城', { size: 11, radius: 8 });
+      this.drawButton(resetX, resetY, resetW, resetH, this.t('worldMap.backToCity'), { size: 11, radius: 8 });
       this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
       return true;
     }
@@ -342,7 +362,7 @@
       const dockTop = this.height - 60 - (Number(this.bottomSafeArea) || 0);
       const x = Math.max(margin, this.width - width - margin);
       const y = Math.max(92, Math.min(dockTop - height - margin, this.height - height - margin));
-      this.drawButton(x, y, width, height, '重置账号', {
+      this.drawButton(x, y, width, height, this.t('worldMap.resetAccount'), {
         size: 11,
         radius: 8,
         active: false,
