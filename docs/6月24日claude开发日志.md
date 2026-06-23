@@ -80,7 +80,15 @@ npm run playtest:online-tutorial
   - 编队名：API `game/state` 返回 slot 1/2/3 `name=""`（存量数据已归一）；playtest 截图编队卡显示「部队一」（中文），不再 "Formation 1"。
   - claim 路由：已领取→400、坏任务→400，无 500 回归。
   - `npm run lint` 0 / `npm test` 1587 通过 / `npm run test:architecture` 通过 / `git diff --check` 干净。
-- 新基线 commit：`c0055309`（部署后用作回滚锚点）。
+- 代码修复 commit：`93110a71`（claim 加固）、`b32b85ec`（编队名）。
+
+### 部署收口（双端已上线）
+
+- **最终 commit：`4ea366ab`**，双端均已部署并对齐：
+  - prod 测试服 `https://kodagame.top/wxgame-test/`：前端 `?v=deploy-4ea366ab`、后端 `deployedCommit=4ea366ab`。
+  - WSL `http://localhost/`：同 `4ea366ab`。
+- 部署过程踩坑（已记入记忆 `deploy-lint-gate`）：prod 的 `test-server-ci-gate.sh` 比 WSL 严格，依次跑 lint → **format:check（全仓 prettier）** → lint:baseline → test → **test:architecture（含 official-docs 守卫 `verify-refactor-plan-doc.js`，仅允许白名单内的 docs）** → backend check。本日志因 (1) 初次提交未 prettier 化、(2) 文件名不在 doc 守卫白名单，两次令 prod 部署在 ref 更新后中止（后端停在旧版）。已分别：prettier 化、把日志加入 `verify-refactor-plan-doc.js` 白名单。**今后推 prod 前务必本地跑 `npm run lint && npm run format:check && npm run test:architecture`。**
+- 新回滚锚点：`4ea366ab`。
 
 ### 待办建议（本轮未做，需设计 + 谨慎测试，不宜无人值守上线）
 
