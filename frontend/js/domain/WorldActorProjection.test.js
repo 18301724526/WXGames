@@ -192,6 +192,31 @@ test('WorldActorProjection projects active combat encounters as hostile world ac
   assert.equal(actors[0].combatTarget.defender.soldiers, 40);
 });
 
+test('WorldActorProjection prefers a localized encounter nameKey over the raw name', () => {
+  const actors = WorldActorProjection.projectWorldActors({
+    combat: {
+      activeEncounters: [
+        {
+          id: 'hostile_force_capital_ridge',
+          status: 'active',
+          kind: 'hostileForce',
+          name: 'Frontier Patrol',
+          nameKey: 'world.combat.encounter.frontierPatrol',
+          q: 2,
+          r: -1,
+          defender: { soldiers: 40 },
+        },
+      ],
+    },
+  });
+
+  assert.equal(actors.length, 1);
+  assert.equal(actors[0].name, '');
+  assert.equal(actors[0].nameKey, 'world.combat.encounter.frontierPatrol');
+  assert.equal(actors[0].combatTarget.name, '');
+  assert.equal(actors[0].combatTarget.nameKey, 'world.combat.encounter.frontierPatrol');
+});
+
 test('WorldActorProjection exposes locale keys for unnamed hostile encounters', () => {
   const actors = WorldActorProjection.projectWorldActors({
     combat: {

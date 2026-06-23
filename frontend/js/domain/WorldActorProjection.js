@@ -86,8 +86,12 @@
     if (!encounter || typeof encounter !== 'object' || encounter.status !== 'active') return null;
     const current = normalizeCombatEncounterCoord(encounter);
     const id = encounter.id || `combat_${current.tileId}`;
-    const hasEncounterName = Boolean(String(encounter.name || '').trim());
+    // A localized nameKey from the backend wins over the raw (often English) name, so the
+    // renderer translates it; only fall back to showing the literal name when no key exists.
+    const encounterNameKey = String(encounter.nameKey || '').trim();
+    const hasEncounterName = !encounterNameKey && Boolean(String(encounter.name || '').trim());
     const displayName = hasEncounterName ? encounter.name : '';
+    const resolvedNameKey = encounterNameKey || (hasEncounterName ? '' : 'world.combat.hostileForce.title');
     return {
       id,
       actorId: id,
@@ -98,8 +102,8 @@
       animationId: 'move',
       name: displayName,
       label: displayName,
-      nameKey: hasEncounterName ? '' : 'world.combat.hostileForce.title',
-      labelKey: hasEncounterName ? '' : 'world.combat.hostileForce.title',
+      nameKey: resolvedNameKey,
+      labelKey: resolvedNameKey,
       current,
       target: current,
       origin: current,
@@ -109,7 +113,7 @@
         r: current.r,
         tileId: current.tileId,
         name: displayName,
-        nameKey: hasEncounterName ? '' : 'world.combat.hostileForce.title',
+        nameKey: resolvedNameKey,
         terrain: encounter.terrain || encounter.battleTarget?.tile?.terrain || '',
         defender: encounter.defender || encounter.battleTarget?.defender || null,
         battleTarget: encounter.battleTarget || null,
