@@ -7,6 +7,14 @@ const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
 const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
 const FORMATION_NAMES = ['Formation 1', 'Formation 2', 'Formation 3'];
+// Formations have no user-set name (the client never sends one), so the slot label is purely a
+// localized default rendered by the client. Persisting the English default ('Formation N') leaked
+// it into zh-CN UI, so store an empty name and let the client localize via military.formation.*.
+const DEFAULT_FORMATION_NAME_PATTERN = /^Formation \d+$/;
+function toStoredFormationName(rawName) {
+  const name = String(rawName || '').trim();
+  return DEFAULT_FORMATION_NAME_PATTERN.test(name) ? '' : name;
+}
 
 function advanceTutorialStep(tutorial = {}, nextStep = 0) {
   const step = Math.floor(Number(nextStep) || 0);
@@ -139,7 +147,7 @@ function createEmptyFormations() {
   const strengthPolicy = getFormationStrengthPolicy();
   return Array.from({ length: MAX_FORMATION_SLOTS }, (_, index) => ({
     slot: index + 1,
-    name: FORMATION_NAMES[index] || `Formation ${index + 1}`,
+    name: '',
     memberIds: [],
     maxMembers: MAX_FORMATION_MEMBERS,
     maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
@@ -165,7 +173,7 @@ function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
     }, strengthPolicy);
     bySlot.set(slot, {
       slot,
-      name: String(raw.name || FORMATION_NAMES[slot - 1] || `Formation ${slot}`).trim(),
+      name: toStoredFormationName(raw.name),
       memberIds,
       maxMembers: MAX_FORMATION_MEMBERS,
       maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
