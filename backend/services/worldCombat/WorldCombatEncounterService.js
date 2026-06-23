@@ -172,8 +172,7 @@ function normalizeCombatState(gameState = {}, now = new Date()) {
     recentReports,
     // Carry the active interactive battle session through normalization so it is
     // not dropped while re-seeding encounters (the session service writes/reads it).
-    session:
-      rawState.session && typeof rawState.session === 'object' ? rawState.session : null,
+    session: rawState.session && typeof rawState.session === 'object' ? rawState.session : null,
     updatedAt: rawState.updatedAt || now.toISOString(),
   };
   return gameState.worldCombat;
@@ -300,7 +299,10 @@ function buildEncounterBattleReport(
     FormationStrengthService.normalizeFormationSnapshot(snapshotBefore) || {};
   const attackerStart = Math.max(
     0,
-    toInteger(snapshotBeforeNormalized.soldiersRemaining, snapshotBeforeNormalized.soldiersCommitted),
+    toInteger(
+      snapshotBeforeNormalized.soldiersRemaining,
+      snapshotBeforeNormalized.soldiersCommitted,
+    ),
   );
   const attackerEnd = Math.max(0, toInteger(battle.attackerSnapshot?.soldiersRemaining, 0));
   const defenderStart = Math.max(

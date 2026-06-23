@@ -189,7 +189,11 @@ function buildBattleSetup(request = {}) {
 
 // Authoritatively simulate a previously-built setup with a recorded input stream.
 function simulateSetup(setup = {}, inputStream = [], options = {}) {
-  return BattleSimCore.simulate(setup, Array.isArray(inputStream) ? inputStream : [], options || {});
+  return BattleSimCore.simulate(
+    setup,
+    Array.isArray(inputStream) ? inputStream : [],
+    options || {},
+  );
 }
 
 module.exports = {

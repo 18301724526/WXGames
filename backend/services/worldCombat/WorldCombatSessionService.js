@@ -54,8 +54,8 @@ function findSourceMission(gameState = {}, { missionId, cityId, formationSlot } 
       if (!mission || mission.status !== 'idle') return false;
       const formation = mission.formation || {};
       return (
-        (formation.cityId || 'capital') === wantCity
-        && normalizeFormationSlot(formation.slot) === wantSlot
+        (formation.cityId || 'capital') === wantCity &&
+        normalizeFormationSlot(formation.slot) === wantSlot
       );
     }) || null
   );
@@ -79,10 +79,7 @@ function openSession(
 
   const existing = gameState.worldCombat.session;
   if (existing && existing.status === 'open') {
-    return failure(
-      'WORLD_COMBAT_SESSION_BUSY',
-      'An interactive battle is already in progress.',
-    );
+    return failure('WORLD_COMBAT_SESSION_BUSY', 'An interactive battle is already in progress.');
   }
 
   const encounter = WorldCombatEncounterService.getActiveEncounterAt(gameState, {
@@ -90,10 +87,7 @@ function openSession(
     r: targetR,
   });
   if (!encounter) {
-    return failure(
-      'WORLD_COMBAT_ENCOUNTER_NOT_FOUND',
-      'Combat encounter is no longer available.',
-    );
+    return failure('WORLD_COMBAT_ENCOUNTER_NOT_FOUND', 'Combat encounter is no longer available.');
   }
 
   const mission = findSourceMission(gameState, { missionId, cityId, formationSlot });
@@ -199,8 +193,7 @@ function resolveSession(
   // still settle the session and return a report for the client.
   let battleTargetEncounter = encounter;
   if (encounter) {
-    const defenderGid =
-      WorldCombatEncounterService.getDefenderGenerals(encounter)[0]?.gid || '';
+    const defenderGid = WorldCombatEncounterService.getDefenderGenerals(encounter)[0]?.gid || '';
     if (winner === 'attacker') {
       encounter.status = 'resolved';
       encounter.defender.soldiers = 0;
@@ -269,9 +262,7 @@ function resolveSession(
     result,
     report,
     winner,
-    encounter: encounter
-      ? WorldCombatEncounterService.getClientEncounter(encounter)
-      : null,
+    encounter: encounter ? WorldCombatEncounterService.getClientEncounter(encounter) : null,
     attackerSnapshot,
   };
 }

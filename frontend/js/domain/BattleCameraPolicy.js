@@ -80,25 +80,35 @@
     const py = Number(point.y) || 0;
     const worldX = before.scale ? (px - before.offsetX) / before.scale : 0;
     const worldY = before.scale ? (py - before.offsetY) / before.scale : 0;
-    const nextZoom = clampNumber((Number(camera.zoom) || MIN_ZOOM) * (Number(scaleDelta) || 1), MIN_ZOOM, MAX_ZOOM);
+    const nextZoom = clampNumber(
+      (Number(camera.zoom) || MIN_ZOOM) * (Number(scaleDelta) || 1),
+      MIN_ZOOM,
+      MAX_ZOOM,
+    );
     const zoomedW = (Number(fit.contentW) || 0) * nextZoom;
     const zoomedH = (Number(fit.contentH) || 0) * nextZoom;
     const centeredX = (Number(fit.stageX) || 0) + ((Number(fit.stageW) || 0) - zoomedW) / 2;
     const centeredY = (Number(fit.stageY) || 0) + ((Number(fit.stageH) || 0) - zoomedH) / 2;
     const nextScale = (Number(fit.scale) || 1) * nextZoom;
-    return clampCamera({
-      zoom: nextZoom,
-      offsetX: px - worldX * nextScale - centeredX,
-      offsetY: py - worldY * nextScale - centeredY,
-    }, fit);
+    return clampCamera(
+      {
+        zoom: nextZoom,
+        offsetX: px - worldX * nextScale - centeredX,
+        offsetY: py - worldY * nextScale - centeredY,
+      },
+      fit,
+    );
   }
 
   function panBy(camera = {}, fit = {}, dx = 0, dy = 0) {
-    return clampCamera({
-      zoom: clampNumber(camera.zoom, MIN_ZOOM, MAX_ZOOM),
-      offsetX: (Number(camera.offsetX) || 0) + (Number(dx) || 0),
-      offsetY: (Number(camera.offsetY) || 0) + (Number(dy) || 0),
-    }, fit);
+    return clampCamera(
+      {
+        zoom: clampNumber(camera.zoom, MIN_ZOOM, MAX_ZOOM),
+        offsetX: (Number(camera.offsetX) || 0) + (Number(dx) || 0),
+        offsetY: (Number(camera.offsetY) || 0) + (Number(dy) || 0),
+      },
+      fit,
+    );
   }
 
   const api = {
