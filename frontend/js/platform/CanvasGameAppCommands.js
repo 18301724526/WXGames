@@ -20,8 +20,8 @@
     }
   }
 
-  function t(key = '', params = {}, fallback = '') {
-    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+  function t(key = '', params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
   }
 
   function install(CanvasGameApp) {

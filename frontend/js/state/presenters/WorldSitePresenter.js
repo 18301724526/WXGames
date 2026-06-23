@@ -25,8 +25,8 @@
       return Math.floor(this.toNumber(value, fallback));
     }
 
-    static t(key = '', params = {}, fallback = '') {
-      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    static t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     static formatWorldSiteEffect(effects = {}) {

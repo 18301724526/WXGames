@@ -40,12 +40,18 @@
     return global.navigator?.language || global.navigator?.languages?.[0] || '';
   }
 
+  // t() runs in canvas render hot paths (hundreds of calls per frame), so avoid
+  // re-normalizing the locale on every call. activeLocale is already normalized by
+  // setLocale; the auto-detection path is memoized on its raw input.
+  let resolvedCache = { raw: null, value: '' };
   function getLocale(options = {}) {
     if (options.locale) return normalizeLocale(options.locale);
-    if (activeLocale) return normalizeLocale(activeLocale);
-    const globalLocale = global.__wxgameLocale || '';
-    if (globalLocale) return normalizeLocale(globalLocale);
-    return normalizeLocale(readStoredLocale() || readBrowserLocale());
+    if (activeLocale) return activeLocale;
+    const raw = global.__wxgameLocale || readStoredLocale() || readBrowserLocale() || '';
+    if (resolvedCache.raw === raw) return resolvedCache.value;
+    const value = normalizeLocale(raw);
+    resolvedCache = { raw, value };
+    return value;
   }
 
   function setLocale(locale = '') {
@@ -56,7 +62,9 @@
   }
 
   function interpolate(template = '', params = {}) {
-    return String(template || '').replace(/\{([a-zA-Z0-9_.-]+)\}/g, (match, key) => {
+    const str = String(template || '');
+    if (str.indexOf('{') === -1) return str;
+    return str.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (match, key) => {
       if (!Object.prototype.hasOwnProperty.call(params || {}, key)) return match;
       const value = params[key];
       return value === null || value === undefined ? '' : String(value);

@@ -14,8 +14,8 @@
   class CivilizationPresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
-    static t(key, params = {}, fallback = '') {
-      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    static t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     static toNumber(value, fallback = 0) {

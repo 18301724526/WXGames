@@ -24,8 +24,8 @@
   })();
 
   class MilitaryPresenter {
-    static t(key, params = {}, fallback = '') {
-      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    static t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     static toNumber(value, fallback = 0) {

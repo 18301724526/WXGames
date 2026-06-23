@@ -85,8 +85,8 @@
       return this.callDrawingSurface('truncateText', args);
     }
 
-    t(key = '', params = {}, fallback = '') {
-      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     renderMapCommandDock(state = {}, options = {}) {
