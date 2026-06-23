@@ -12,19 +12,19 @@
 
 ## 当日已完成并上线的工作（按提交）
 
-| commit | 做了什么 | 影响 | 如何测试 |
-|--------|---------|------|---------|
-| `4c913ba9` | 修 `check-shell-scripts` 在 Windows 选到 WSL bash 别名的问题（挑第一个真实存在的 bash 候选） | 仅本地 Windows 跑架构冒烟；Linux 服务器零影响 | `npm run test:architecture` |
-| `fe4e9304` | 修复命令处理器里 19 行中文乱码（UTF-8 被当 GBK）+ 被吃掉的 `${}` 插值 + `Reward claimed`→`领取成功` | 寻访/接纳/加点/领奖等浮动文字与日志；之前会显示乱码或 `[object Object]` | 单测 + 游戏里触发寻访/领奖 |
-| `3ac678ac` | 统一 45 个重复的 `t()` 包装器为委托单一实现 + `getLocale` 缓存（每帧热路径）+ 插值无占位符短路 | 全部走 `LocaleText.t` 的渲染/presenter；性能与一致性 | `npm test`、架构冒烟 |
-| `ec9bad2d` | AST 解析式 codemod 剥离 577 处内联中文 fallback | 目录成为 UI 文案唯一真相源 | `npm test` |
-| `afaa7845` | 新增「代码引用的 t() key 必须存在于目录」覆盖测试闸 | CI 防止 typo key 静默兜底 | `npm test`（自动跑） |
-| `3af17f3f`→`5b29a087` | i18n 迁移：247 行裸中文（名人战法/方针/教程/战斗状态/命令/长尾）全部接入目录，新增 ~200 key（中英对齐） | 全量 UI 文案可切语言；英文模式不再露中文 | `npm test` + 覆盖闸 |
-| `0156e763` | prune 失效的 eslint suppressions（重构删了带抑制的代码） | 修复测试服 pre-deploy gate（`npm run lint` 退出 2 会中止部署） | `npm run lint`（须退出 0） |
-| `b28eeb75` | 修「部署刷新后进入无军令战斗」：`playUnseenWorldCombatReports` 首次加载把已有战报标记为已看，只播会话期间新发生的 | 刷新/更新后不再回放历史战报；保留"游玩中战斗自动回放" | 单测 + 游戏里刷新页面观察 |
-| `3d4270ea` | 任务列表奖励从结构化 `reward.resources` 本地化（`粮食+120`），不再显示后端预拼的 `food+120 / none` | 任务面板奖励行 | 单测 + 游戏任务面板 |
-| `c35b3010` | 新增共享 `RewardText` 模块；领奖 toast、奖励揭示弹窗也走本地化 | 三处奖励显示统一本地化 | 单测 + 游戏领奖 |
-| `43404f07` | 敌对遭遇名经 `nameKey`（`world.combat.encounter.frontierPatrol`）本地化；后端附 nameKey，前端投影优先用 key | 行军 HUD 上的遭遇名（之前中文模式显示英文 "Frontier Patrol"） | 单测 + 游戏世界地图遇敌 |
+| commit                | 做了什么                                                                                                          | 影响                                                                    | 如何测试                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------- |
+| `4c913ba9`            | 修 `check-shell-scripts` 在 Windows 选到 WSL bash 别名的问题（挑第一个真实存在的 bash 候选）                      | 仅本地 Windows 跑架构冒烟；Linux 服务器零影响                           | `npm run test:architecture` |
+| `fe4e9304`            | 修复命令处理器里 19 行中文乱码（UTF-8 被当 GBK）+ 被吃掉的 `${}` 插值 + `Reward claimed`→`领取成功`               | 寻访/接纳/加点/领奖等浮动文字与日志；之前会显示乱码或 `[object Object]` | 单测 + 游戏里触发寻访/领奖  |
+| `3ac678ac`            | 统一 45 个重复的 `t()` 包装器为委托单一实现 + `getLocale` 缓存（每帧热路径）+ 插值无占位符短路                    | 全部走 `LocaleText.t` 的渲染/presenter；性能与一致性                    | `npm test`、架构冒烟        |
+| `ec9bad2d`            | AST 解析式 codemod 剥离 577 处内联中文 fallback                                                                   | 目录成为 UI 文案唯一真相源                                              | `npm test`                  |
+| `afaa7845`            | 新增「代码引用的 t() key 必须存在于目录」覆盖测试闸                                                               | CI 防止 typo key 静默兜底                                               | `npm test`（自动跑）        |
+| `3af17f3f`→`5b29a087` | i18n 迁移：247 行裸中文（名人战法/方针/教程/战斗状态/命令/长尾）全部接入目录，新增 ~200 key（中英对齐）           | 全量 UI 文案可切语言；英文模式不再露中文                                | `npm test` + 覆盖闸         |
+| `0156e763`            | prune 失效的 eslint suppressions（重构删了带抑制的代码）                                                          | 修复测试服 pre-deploy gate（`npm run lint` 退出 2 会中止部署）          | `npm run lint`（须退出 0）  |
+| `b28eeb75`            | 修「部署刷新后进入无军令战斗」：`playUnseenWorldCombatReports` 首次加载把已有战报标记为已看，只播会话期间新发生的 | 刷新/更新后不再回放历史战报；保留"游玩中战斗自动回放"                   | 单测 + 游戏里刷新页面观察   |
+| `3d4270ea`            | 任务列表奖励从结构化 `reward.resources` 本地化（`粮食+120`），不再显示后端预拼的 `food+120 / none`                | 任务面板奖励行                                                          | 单测 + 游戏任务面板         |
+| `c35b3010`            | 新增共享 `RewardText` 模块；领奖 toast、奖励揭示弹窗也走本地化                                                    | 三处奖励显示统一本地化                                                  | 单测 + 游戏领奖             |
+| `43404f07`            | 敌对遭遇名经 `nameKey`（`world.combat.encounter.frontierPatrol`）本地化；后端附 nameKey，前端投影优先用 key       | 行军 HUD 上的遭遇名（之前中文模式显示英文 "Frontier Patrol"）           | 单测 + 游戏世界地图遇敌     |
 
 全套门禁基线：`npm run lint`（0）、`npm test`（1587 通过）、`npm run test:architecture`（通过）。
 
@@ -73,4 +73,16 @@ npm run playtest:online-tutorial
 - 影响：全部 6 个编队名显示点中文化；存量数据经 normalize 修正。
 - 如何测：`npm test`；WSL 重跑 playtest 看编队截图为中文。
 
+### 验证结果（真跑确认）
 
+- 修复打包提交：`93110a71`（claim 加固）、`b32b85ec`（编队名）、`c0055309`（playtest 开关 + 本日志）。
+- WSL 部署 `c0055309` 后实跑确认：
+  - 编队名：API `game/state` 返回 slot 1/2/3 `name=""`（存量数据已归一）；playtest 截图编队卡显示「部队一」（中文），不再 "Formation 1"。
+  - claim 路由：已领取→400、坏任务→400，无 500 回归。
+  - `npm run lint` 0 / `npm test` 1587 通过 / `npm run test:architecture` 通过 / `git diff --check` 干净。
+- 新基线 commit：`c0055309`（部署后用作回滚锚点）。
+
+### 待办建议（本轮未做，需设计 + 谨慎测试，不宜无人值守上线）
+
+- **实体战斗（军令系统）暂无教程引导**：教程的"攻城"是占领无主空城（conquer/claimConquest），与世界地图上的敌对遭遇实体战斗（军令、回放）是两套。可考虑在 `scoutExploreStarted`→`firstCityDiscovered` 之间或之后，新增一段引导玩家发起一次实体战斗、认识军令按钮的步骤。属新增教程步骤（改 `TutorialFlowConfig` 步骤序列 + `TutorialGuidePhaseHighlights` + 后端步骤推进），需逐步真跑回归，建议有人值守时做。
+- **后端 `tasks/claim`/`MilitaryService` 的英文消息**（如 `"Formation N saved"`）仍是英文，但属于内部/日志消息，前端已有本地化覆盖，优先级低。
