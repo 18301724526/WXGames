@@ -85,6 +85,16 @@
       return LocaleText ? LocaleText.t(key, params) : key;
     }
 
+    // Localize the reward from the structured reward.resources the server sends, rather
+    // than the pre-baked English `task.rewardText` (e.g. "food+120 / knowledge+5" / "none").
+    formatTaskRewardText(task = {}) {
+      const resources = task.reward?.resources || {};
+      const parts = Object.keys(resources)
+        .filter((key) => Number(resources[key]) > 0)
+        .map((key) => `${this.t(`resource.${key}`)}+${resources[key]}`);
+      return parts.length ? parts.join(' / ') : this.t('task.reward.none');
+    }
+
     renderGuideTasks(state = {}, startY = 0) {
       return startY;
     }
@@ -331,7 +341,7 @@
           color: completed ? '#8ba494' : '#cbbd96',
           lineHeight: 15,
         });
-        this.drawText(this.truncateText(task.rewardText || this.t('task.reward.none'), listWidth - buttonWidth - 34, { size: 12, bold: true }), listX + 12, itemY + 76, {
+        this.drawText(this.truncateText(this.formatTaskRewardText(task), listWidth - buttonWidth - 34, { size: 12, bold: true }), listX + 12, itemY + 76, {
           size: 12,
           bold: true,
           color: completed ? '#79c79b' : (claimable ? '#ffd98a' : '#74d3a0'),

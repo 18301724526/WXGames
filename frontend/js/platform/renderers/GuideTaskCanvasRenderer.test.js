@@ -273,6 +273,18 @@ test('GuideTaskCanvasRenderer preserves disabled quick entry contracts', () => {
   assert.equal(host.calls.length, 0);
 });
 
+test('GuideTaskCanvasRenderer localizes structured rewards instead of raw rewardText', () => {
+  const host = createHost();
+  const renderer = new GuideTaskCanvasRenderer({ host });
+
+  assert.equal(
+    renderer.formatTaskRewardText({ reward: { resources: { food: 120, knowledge: 5 } }, rewardText: 'food+120 / knowledge+5' }),
+    '粮食+120 / 知识+5',
+  );
+  assert.equal(renderer.formatTaskRewardText({ reward: { resources: {} }, rewardText: 'none' }), '无奖励');
+  assert.equal(renderer.formatTaskRewardText({}), '无奖励');
+});
+
 test('CanvasGameRenderer exposes guide task rendering through facade', () => {
   class StubGuideTaskRenderer {
     constructor(options) {
