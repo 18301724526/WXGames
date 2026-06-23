@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class WorldMapStaticEntryRenderer {
     constructor(options = {}) {
@@ -54,6 +65,10 @@
       const helper = this.getTileMapGeometry();
       if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
       return TileCoord.normalizeCoord(tile);
+    }
+
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     getWorldTileImageAspect(assetPath = '') {
@@ -232,12 +247,19 @@
       });
       const drawn = this.drawWorldOverlayAsset(site.art, metrics, drawX, drawY, drawW, drawH, 1);
       if (!drawn) {
-        this.drawText(site.owner === 'player' ? 'P' : 'N', baseX, baseY - drawH * 0.42, {
-          size: 15,
-          color: site.owner === 'player' ? '#74d3a0' : '#f0b45b',
-          align: 'center',
-          baseline: 'middle',
-        });
+        this.drawText(
+          site.owner === 'player'
+            ? this.t('world.site.owner.playerShort')
+            : this.t('world.site.owner.neutralShort'),
+          baseX,
+          baseY - drawH * 0.42,
+          {
+            size: 15,
+            color: site.owner === 'player' ? '#74d3a0' : '#f0b45b',
+            align: 'center',
+            baseline: 'middle',
+          },
+        );
       }
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = 0.82;
@@ -250,11 +272,18 @@
       this.ctx.arc?.(drawX + drawW * 0.78, drawY + drawH * 0.78, Math.max(3, drawW * 0.035), 0, Math.PI * 2);
       this.ctx.fill?.();
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      this.drawText(this.truncateText(site.name || site.title || 'Site', 74, { size: 9 }), baseX, drawY + drawH + 11, {
-        size: 9,
-        color: '#f6e8c8',
-        align: 'center',
-      });
+      this.drawText(
+        this.truncateText(site.name || site.title || this.t('world.site.defaultName'), 74, {
+          size: 9,
+        }),
+        baseX,
+        drawY + drawH + 11,
+        {
+          size: 9,
+          color: '#f6e8c8',
+          align: 'center',
+        },
+      );
       if (options.addHitTarget !== false) {
         const coord = this.normalizeTileCoord(tile);
         this.addHitTarget(layout.hitRect, {

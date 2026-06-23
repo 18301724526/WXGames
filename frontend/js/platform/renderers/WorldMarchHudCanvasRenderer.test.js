@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 
 require('../../domain/TileMapGeometry');
 require('../../domain/WorldMarchSystem');
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../domain/LocaleText');
 require('../../state/UIStatePresenter');
 const WorldMarchHudCanvasRenderer = require('./WorldMarchHudCanvasRenderer');
 
@@ -619,6 +621,7 @@ test('WorldMarchHudCanvasRenderer hides stop command for idle parked actors', ()
 });
 
 test('WorldMarchHudCanvasRenderer renders selected combat actor attack flow', () => {
+  LocaleText.setLocale('zh-CN');
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });
   const combatTarget = {
@@ -654,6 +657,39 @@ test('WorldMarchHudCanvasRenderer renders selected combat actor attack flow', ()
   assert.equal(attack.action.targetQ, 2);
   assert.equal(attack.action.targetR, -1);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'returnWorldMarch'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1][4] === '进攻'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === '40 名士兵'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1][4] === 'Attack'), false);
+});
+
+test('WorldMarchHudCanvasRenderer resolves hostile fallback copy through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({}, {
+    selectedWorldActorId: 'hostile_force_unnamed',
+  }, [{
+    id: 'hostile_force_unnamed',
+    actorId: 'hostile_force_unnamed',
+    type: 'hostileForce',
+    status: 'idle',
+    current: { q: 2, r: -1, tileId: 'tile_2_-1' },
+    nameKey: 'world.combat.hostileForce.title',
+    combatTarget: {
+      encounterId: 'hostile_force_unnamed',
+      q: 2,
+      r: -1,
+      tileId: 'tile_2_-1',
+      nameKey: 'world.combat.hostileForce.title',
+      defender: { soldiers: 12 },
+    },
+  }], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1][4] === 'Attack'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === '12 soldiers'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === 'Hostile Force'), true);
+  LocaleText.setLocale('zh-CN');
 });
 
 test('WorldMarchHudCanvasRenderer carries combat encounter id through formation start actions', () => {

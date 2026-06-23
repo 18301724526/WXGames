@@ -86,6 +86,8 @@
     if (!encounter || typeof encounter !== 'object' || encounter.status !== 'active') return null;
     const current = normalizeCombatEncounterCoord(encounter);
     const id = encounter.id || `combat_${current.tileId}`;
+    const hasEncounterName = Boolean(String(encounter.name || '').trim());
+    const displayName = hasEncounterName ? encounter.name : '';
     return {
       id,
       actorId: id,
@@ -94,8 +96,10 @@
       status: 'idle',
       unitKey: encounter.unitKey || 'hostile_squad_default',
       animationId: 'move',
-      name: encounter.name || 'Hostile Force',
-      label: encounter.name || 'Hostile Force',
+      name: displayName,
+      label: displayName,
+      nameKey: hasEncounterName ? '' : 'world.combat.hostileForce.title',
+      labelKey: hasEncounterName ? '' : 'world.combat.hostileForce.title',
       current,
       target: current,
       origin: current,
@@ -104,7 +108,8 @@
         q: current.q,
         r: current.r,
         tileId: current.tileId,
-        name: encounter.name || 'Hostile Force',
+        name: displayName,
+        nameKey: hasEncounterName ? '' : 'world.combat.hostileForce.title',
         terrain: encounter.terrain || encounter.battleTarget?.tile?.terrain || '',
         defender: encounter.defender || encounter.battleTarget?.defender || null,
         battleTarget: encounter.battleTarget || null,

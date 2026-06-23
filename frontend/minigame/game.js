@@ -1,5 +1,6 @@
 require('../js/config/GameConfig');
 require('../js/config/FeatureFlags');
+require('../js/config/LocaleTextRegistry');
 require('../js/debug/ClientOperationLog');
 require('../js/config/FamousPortraitLayout');
 require('../js/shared/WorldMarchCoreAdapter');
@@ -27,6 +28,7 @@ require('../js/domain/WorldMapPickingModel');
 require('../js/domain/WorldMapInputIntent');
 require('../js/domain/WorldMapInputActionMap');
 require('../js/domain/DebugOverlaySnapshot');
+require('../js/domain/LocaleText');
 require('../js/config/AssetKeyRegistry');
 require('../js/config/TileMapAssetManifest');
 require('../js/config/UnitSpriteManifest');

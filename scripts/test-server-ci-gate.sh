@@ -42,6 +42,7 @@ npm run format:check
 
 echo "[test-server-ci-gate] check ESLint suppressions budget"
 mkdir -p tmp
+rm -f tmp/eslint-suppressions.generated.json tmp/eslint-suppressions.base.json
 npm run lint:baseline:ci
 if git cat-file -e main:eslint-suppressions.json 2>/dev/null; then
     git show main:eslint-suppressions.json > tmp/eslint-suppressions.base.json

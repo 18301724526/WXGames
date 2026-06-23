@@ -499,11 +499,6 @@
       "count": 2
     }
   },
-  "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
   "frontend/js/platform/renderers/WorldTileWaterCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 4

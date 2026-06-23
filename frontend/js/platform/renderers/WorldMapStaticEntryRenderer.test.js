@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../domain/LocaleText');
 const WorldMapStaticEntryRenderer = require('./WorldMapStaticEntryRenderer');
 
 function withRendererDependencyRegistry(dependencies = {}, callback = null) {
@@ -238,6 +240,30 @@ test('WorldMapStaticEntryRenderer uses dry template for water tiles and can supp
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileDryTemplate'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileBase'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget'), false);
+});
+
+test('WorldMapStaticEntryRenderer resolves fallback site text through active locale', () => {
+  LocaleText.setLocale('zh-CN');
+  const host = createHost({
+    getAsset() {
+      return null;
+    },
+  });
+  const renderer = new WorldMapStaticEntryRenderer({ host });
+  const entry = createEntry({
+    tile: {
+      site: {
+        id: 'unnamed-site',
+        art: 'site.png',
+        owner: 'neutral',
+      },
+    },
+  });
+
+  assert.equal(renderer.drawWorldTileSite(entry.tile, { scale: 1 }, {}, 192, 96, {}, { center: entry.center }), true);
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '中'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'truncateText' && call[1] === '地点'), true);
 });
 
 test('WorldMapStaticEntryRenderer draws terrain features from manifest without tile feature assets', () => {

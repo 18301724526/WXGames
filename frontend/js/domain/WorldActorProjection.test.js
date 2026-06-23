@@ -185,7 +185,30 @@ test('WorldActorProjection projects active combat encounters as hostile world ac
   assert.equal(actors[0].id, 'hostile_force_capital_ridge');
   assert.equal(actors[0].type, 'hostileForce');
   assert.equal(actors[0].unitKey, 'hostile_squad_default');
+  assert.equal(actors[0].name, 'Frontier Patrol');
+  assert.equal(actors[0].nameKey, '');
   assert.equal(actors[0].current.tileId, 'tile_2_-1');
   assert.equal(actors[0].combatTarget.encounterId, 'hostile_force_capital_ridge');
   assert.equal(actors[0].combatTarget.defender.soldiers, 40);
+});
+
+test('WorldActorProjection exposes locale keys for unnamed hostile encounters', () => {
+  const actors = WorldActorProjection.projectWorldActors({
+    combat: {
+      activeEncounters: [
+        {
+          id: 'hostile_force_unnamed',
+          status: 'active',
+          q: 1,
+          r: 0,
+          defender: { soldiers: 20 },
+        },
+      ],
+    },
+  });
+
+  assert.equal(actors.length, 1);
+  assert.equal(actors[0].name, '');
+  assert.equal(actors[0].nameKey, 'world.combat.hostileForce.title');
+  assert.equal(actors[0].combatTarget.nameKey, 'world.combat.hostileForce.title');
 });

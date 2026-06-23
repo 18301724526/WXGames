@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../domain/LocaleText');
 const WorldMapMilitaryViewRenderer = require('./WorldMapMilitaryViewRenderer');
 
 const DRAWING_WRAPPER_METHODS = [
@@ -121,6 +123,7 @@ function getCalledDrawingSurfaceMethods(calls, label) {
 }
 
 test('WorldMapMilitaryViewRenderer renders tile-map branch without clearing the map viewport', () => {
+  LocaleText.setLocale('zh-CN');
   const host = createHost({
     isWorldTileMapWaterAnimated() {
       return true;
@@ -146,6 +149,9 @@ test('WorldMapMilitaryViewRenderer renders tile-map branch without clearing the 
   assert.equal(host.calls.some((call) => call[0] === 'drawPanel' && call[4] === 40), true);
   assert.equal(host.calls.some((call) => call[0] === 'clearRect'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'resetWorldPan'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[5] === '回中'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '2 格'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[5] === 'Home'), false);
 });
 
 test('WorldMapMilitaryViewRenderer shows empty world copy when tile map is unavailable', () => {
@@ -168,13 +174,39 @@ test('WorldMapMilitaryViewRenderer shows empty world copy when tile map is unava
 });
 
 test('WorldMapMilitaryViewRenderer shows empty exploration copy without site targets', () => {
+  LocaleText.setLocale('zh-CN');
   const host = createHost();
   const renderer = new WorldMapMilitaryViewRenderer({ host });
 
   renderer.renderMilitaryWorldView({ territoryState: { territories: [] } }, 10, 20, 360, 300, {});
 
   assert.equal(host.calls.some((call) => call[0] === 'drawTextLines'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawTextLines' && call[1][0] === '派遣侦察队揭开外部世界。'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite'), false);
+});
+
+test('WorldMapMilitaryViewRenderer resolves world-view chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost({
+    presenter: {
+      buildTerritorySummaryViewState() {
+        return { text: {} };
+      },
+    },
+  });
+  const renderer = new WorldMapMilitaryViewRenderer({ host });
+
+  renderer.renderMilitaryWorldView({
+    territoryState: { worldMap: createTileMapView() },
+  }, 10, 20, 360, 300, {
+    territoryUiState: {},
+  });
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Unnamed polity'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '0/0 controlled'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[5] === 'Home'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '2 tiles'), true);
+  LocaleText.setLocale('zh-CN');
 });
 
 test('WorldMapMilitaryViewRenderer reads host presenter dynamically after proxy removal', () => {
