@@ -17,6 +17,7 @@ const officialDocPaths = [
   'docs/world-combat-interactive-architecture.md',
   'docs/server_environment_test_2026-06-22.md',
   'docs/6月22日开发日志.md',
+  'docs/6月23日开发日志.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
   'docs/config_registry_snapshot_2026-06-11.json',
@@ -85,6 +86,13 @@ const requiredText = {
     'selectedWorldMissionId',
     'combatEncounterId',
     'wxgame-test-api',
+  ],
+  'docs/6月23日开发日志.md': [
+    'BattleCanvasRenderer.getEntityBattleRenderContext',
+    'BattleCameraPolicy',
+    'drawEntityBattleBackground',
+    'drawEntityBattleField',
+    'battle camera',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',

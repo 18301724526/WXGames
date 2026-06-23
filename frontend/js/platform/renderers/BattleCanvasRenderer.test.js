@@ -311,6 +311,7 @@ function makeEntityRendererHost() {
     height: 844,
     ctx: {
       fillRect() {}, drawImage() {}, save() {}, restore() {}, translate() {}, scale() {},
+      beginPath() {}, rect() {}, clip() {},
       clearRect() {}, globalAlpha: 1,
     },
     getNow() { return 1000; },
@@ -326,6 +327,81 @@ function makeEntityRendererHost() {
   };
   return { host, hitTargets, calls };
 }
+
+test('renderEntityBattleOverlay keeps entity background and units in the same battle camera context', () => {
+  const prevCore = globalThis.BattleSimCore;
+  globalThis.BattleSimCore = { countOnField() { return [1, 0]; }, skillReady() { return false; } };
+  try {
+    const coverCalls = [];
+    const fillRects = [];
+    const clips = [];
+    const host = {
+      width: 390,
+      height: 844,
+      ctx: {
+        fillStyle: '',
+        globalAlpha: 1,
+        fillRect(x, y, width, height) { fillRects.push({ x, y, width, height }); },
+        drawImage() {},
+        save() {},
+        restore() {},
+        translate() {},
+        scale() {},
+        beginPath() {},
+        rect(x, y, width, height) { clips.push({ x, y, width, height }); },
+        clip() {},
+      },
+      getNow() { return 1000; },
+      setHitTargets() {},
+      addHitTarget() {},
+      drawCoverAsset(assetPath, x, y, width, height) {
+        coverCalls.push({ assetPath, x, y, width, height });
+        return true;
+      },
+      drawPanel() {},
+      drawText() {},
+      drawButton() {},
+      getAsset() { return null; },
+      truncateText(text) { return String(text || ''); },
+      measureTextWidth(text) { return String(text || '').length * 8; },
+    };
+    const renderer = new BattleCanvasRenderer({ host });
+    const unit = { id: 1, side: 0, kind: 'soldier', alive: true, x: 30, y: 40, state: 'advance' };
+    const battle = {
+      tick: 5,
+      result: null,
+      config: { tickHz: 20 },
+      squads: { A: { side: 0, generalId: 1, orderCdLeft: 0 } },
+      units: [unit],
+    };
+    renderer.renderEntityBattleOverlay({}, {
+      entityBattle: {
+        visible: true,
+        mode: 'interactive',
+        battle,
+        arena: { w: 100, h: 100 },
+        camera: { zoom: 2, offsetX: 10, offsetY: -20 },
+        selectedGid: 'A',
+        _rstate: {},
+      },
+    });
+
+    const background = coverCalls.find((call) => call.assetPath.includes('battlefield-forest-camp'));
+    assert.ok(background);
+    const unitMarker = fillRects.find((rect) => rect.width === 3 && rect.height === 3);
+    assert.ok(unitMarker);
+    const unitScreenX = unitMarker.x + 1.5;
+    const unitScreenY = unitMarker.y + 1.5;
+    const bgScaleX = background.width / 100;
+    const bgScaleY = background.height / 100;
+
+    assert.equal(Math.round((unitScreenX - background.x) / bgScaleX), unit.x);
+    assert.equal(Math.round((unitScreenY - background.y) / bgScaleY), unit.y);
+    assert.deepEqual(clips[0], { x: 0, y: 30, width: 390, height: 554 });
+  } finally {
+    globalThis.BattleSimCore = prevCore;
+  }
+});
 
 test('renderEntityBattleOverlay draws interactive 军令 controls as canvas hit targets', () => {
   const prevCore = globalThis.BattleSimCore;
@@ -392,5 +468,5 @@ test('frontend html loads battle helpers before the renderer', () => {
   assert.equal(floatingIndex > modelIndex, true);
   assert.equal(effectsIndex > floatingIndex, true);
   assert.equal(rendererIndex > effectsIndex, true);
-  assert.match(html, /BattleCanvasRenderer\.js\?v=entity-battle-camera-v1/);
+  assert.match(html, /BattleCanvasRenderer\.js\?v=entity-battle-render-context-v1/);
 });

@@ -631,40 +631,105 @@
       const entityBattle = options.entityBattle;
       if (!entityBattle || !entityBattle.visible || !entityBattle.battle) return;
       const layout = this.getEntityBattleLayout(entityBattle);
+      const renderContext = this.getEntityBattleRenderContext(entityBattle, layout);
       this.setHitTargets([]);
-      this.drawEntityBattleBackground(entityBattle);
-      this.drawEntityBattleField(entityBattle, layout);
+      this.drawEntityBattleBackground(entityBattle, layout, renderContext);
+      this.drawEntityBattleField(entityBattle, layout, renderContext);
       this.drawEntityBattleTopHud(entityBattle, layout);
       if (entityBattle.mode === 'interactive') this.drawEntityBattleControls(entityBattle, layout);
       else this.drawEntityReplayControls(entityBattle, layout);
       if (entityBattle.ended) this.drawEntityBattleResult(entityBattle, layout);
     }
 
-    drawEntityBattleBackground(entityBattle = {}) {
-      const path = entityBattle.bgPath || 'assets/art/battle/battlefield-forest-camp.png';
-      if (this.drawCoverAsset(path, 0, 0, this.width, this.height)) return;
-      if (!this.ctx) return;
-      this.ctx.fillStyle = '#0c1116';
-      this.ctx.fillRect(0, 0, this.width, this.height);
-    }
-
-    drawEntityBattleField(entityBattle = {}, layout = {}) {
-      const ctx = this.ctx;
-      if (!ctx) return;
-      const battle = entityBattle.battle;
+    getEntityBattleRenderContext(entityBattle = {}, layout = {}) {
       const arena = entityBattle.arena || { w: layout.W, h: layout.stageH };
-      // Camera: the pure policy owns fit + zoom/pan math; the renderer only reads
-      // the resulting transform. _viewFit is stashed for the input layer so it can
-      // map screen<->world for zoom-at-cursor / pan without recomputing layout.
       const stage = { x: 0, y: layout.stageTop, w: layout.W, h: layout.stageH };
+      const arenaW = Math.max(1, Number(arena.w) || layout.W || 1);
+      const arenaH = Math.max(1, Number(arena.h) || layout.stageH || 1);
       const fit = BattleCameraPolicy
-        ? BattleCameraPolicy.computeFit(arena, stage)
-        : { scale: Math.min(layout.W / (arena.w || layout.W), layout.stageH / (arena.h || layout.stageH)) || 1, contentW: 0, contentH: 0, stageX: 0, stageY: layout.stageTop, stageW: layout.W, stageH: layout.stageH };
+        ? BattleCameraPolicy.computeFit({ w: arenaW, h: arenaH }, stage)
+        : {
+          scale: Math.min(layout.W / arenaW, layout.stageH / arenaH) || 1,
+          contentW: arenaW * (Math.min(layout.W / arenaW, layout.stageH / arenaH) || 1),
+          contentH: arenaH * (Math.min(layout.W / arenaW, layout.stageH / arenaH) || 1),
+          stageX: 0,
+          stageY: layout.stageTop,
+          stageW: layout.W,
+          stageH: layout.stageH,
+        };
       entityBattle._viewFit = fit;
       const camera = entityBattle.camera || { zoom: 1, offsetX: 0, offsetY: 0 };
       const transform = BattleCameraPolicy
         ? BattleCameraPolicy.getViewTransform(camera, fit)
-        : { scale: fit.scale, offsetX: (layout.W - (arena.w || layout.W) * fit.scale) / 2, offsetY: layout.stageTop + (layout.stageH - (arena.h || layout.stageH) * fit.scale) / 2 };
+        : {
+          scale: fit.scale,
+          offsetX: (layout.W - arenaW * fit.scale) / 2,
+          offsetY: layout.stageTop + (layout.stageH - arenaH * fit.scale) / 2,
+        };
+      return {
+        layout,
+        arena: { ...arena, w: arenaW, h: arenaH },
+        stage,
+        fit,
+        camera,
+        transform,
+      };
+    }
+
+    withEntityBattleStageClip(renderContext = {}, draw = null) {
+      if (typeof draw !== 'function') return undefined;
+      const ctx = this.ctx;
+      const stage = renderContext.stage || {};
+      const canClip = ctx
+        && typeof ctx.save === 'function'
+        && typeof ctx.restore === 'function'
+        && typeof ctx.beginPath === 'function'
+        && typeof ctx.rect === 'function'
+        && typeof ctx.clip === 'function';
+      if (!canClip) return draw();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(stage.x, stage.y, stage.w, stage.h);
+      ctx.clip();
+      try {
+        return draw();
+      } finally {
+        ctx.restore();
+      }
+    }
+
+    drawEntityBattleBackground(entityBattle = {}, layout = {}, renderContext = null) {
+      const path = entityBattle.bgPath || 'assets/art/battle/battlefield-forest-camp.png';
+      const ctx = this.ctx;
+      if (!ctx) {
+        this.drawCoverAsset(path, 0, 0, this.width, this.height);
+        return;
+      }
+      ctx.fillStyle = '#0c1116';
+      ctx.fillRect(0, 0, this.width, this.height);
+      const context = renderContext || this.getEntityBattleRenderContext(entityBattle, layout);
+      const stage = context.stage || { x: 0, y: layout.stageTop || 0, w: layout.W || this.width, h: layout.stageH || this.height };
+      this.withEntityBattleStageClip(context, () => {
+        const scale = Number(context.transform?.scale) || 1;
+        const x = Number(context.transform?.offsetX) || 0;
+        const y = Number(context.transform?.offsetY) || 0;
+        const w = Math.max(1, (Number(context.arena?.w) || stage.w || this.width || 1) * scale);
+        const h = Math.max(1, (Number(context.arena?.h) || stage.h || this.height || 1) * scale);
+        if (this.drawCoverAsset(path, x, y, w, h)) return;
+        ctx.fillStyle = '#1d2119';
+        ctx.fillRect(stage.x, stage.y, stage.w, stage.h);
+      });
+    }
+
+    drawEntityBattleField(entityBattle = {}, layout = {}, renderContext = null) {
+      const ctx = this.ctx;
+      if (!ctx) return;
+      const battle = entityBattle.battle;
+      // Camera: the pure policy owns fit + zoom/pan math; the renderer only reads
+      // the resulting transform. _viewFit is stashed for the input layer so it can
+      // map screen<->world for zoom-at-cursor / pan without recomputing layout.
+      const context = renderContext || this.getEntityBattleRenderContext(entityBattle, layout);
+      const transform = context.transform;
       const scale = transform.scale;
       const offX = transform.offsetX;
       const offY = transform.offsetY;
@@ -672,63 +737,52 @@
       const base = (now / ENTITY_FRAME_MS) | 0;
       const rstate = entityBattle._rstate || (entityBattle._rstate = {});
       const units = battle.units || [];
-      // Clip to the stage so zoomed/panned sprites never spill into HUD/panel.
-      const canClip = typeof ctx.save === 'function'
-        && typeof ctx.restore === 'function'
-        && typeof ctx.beginPath === 'function'
-        && typeof ctx.rect === 'function'
-        && typeof ctx.clip === 'function';
-      if (canClip) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(stage.x, stage.y, stage.w, stage.h);
-        ctx.clip();
-      }
-      const draw = [];
-      for (let i = 0; i < units.length; i += 1) {
-        const u = units[i];
-        if (!u || !u.alive || u.left) continue;
-        const rs = rstate[u.id] || (rstate[u.id] = { fx: u.side === 0 ? 1 : -1, px: u.x });
-        if (u.x > rs.px + 0.05) rs.fx = 1;
-        else if (u.x < rs.px - 0.05) rs.fx = -1;
-        rs.px = u.x;
-        draw.push(u);
-      }
-      draw.sort((a, b) => a.y - b.y);
-      for (let j = 0; j < draw.length; j += 1) {
-        const d = draw[j];
-        const h = (d.kind === 'general' ? 46 : 16) * scale * ENTITY_SPRITE_SCALE;
-        const w = Math.round((h * 500) / 400);
-        const x = offX + d.x * scale;
-        const y = offY + d.y * scale;
-        const side = d.side === 0 ? 'player' : 'enemy';
-        const pose = ENTITY_STATE_POSE[d.state] || 'move';
-        const frameIdx = (base + (d.id % ENTITY_FRAMES)) % ENTITY_FRAMES;
-        const path = `assets/art/battle/units/${side}/${pose}/${String(frameIdx + 1).padStart(2, '0')}.png`;
-        const img = this.getAsset(path);
-        let drew = false;
-        if (img && (img.naturalWidth || img.width)) {
-          if (rstate[d.id].fx < 0) {
-            ctx.save();
-            ctx.translate(x, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(img, -w / 2, y - h, w, h);
-            ctx.restore();
-          } else {
-            ctx.drawImage(img, x - w / 2, y - h, w, h);
+      this.withEntityBattleStageClip(context, () => {
+        const draw = [];
+        for (let i = 0; i < units.length; i += 1) {
+          const u = units[i];
+          if (!u || !u.alive || u.left) continue;
+          const rs = rstate[u.id] || (rstate[u.id] = { fx: u.side === 0 ? 1 : -1, px: u.x });
+          if (u.x > rs.px + 0.05) rs.fx = 1;
+          else if (u.x < rs.px - 0.05) rs.fx = -1;
+          rs.px = u.x;
+          draw.push(u);
+        }
+        draw.sort((a, b) => a.y - b.y);
+        for (let j = 0; j < draw.length; j += 1) {
+          const d = draw[j];
+          const h = (d.kind === 'general' ? 46 : 16) * scale * ENTITY_SPRITE_SCALE;
+          const w = Math.round((h * 500) / 400);
+          const x = offX + d.x * scale;
+          const y = offY + d.y * scale;
+          const side = d.side === 0 ? 'player' : 'enemy';
+          const pose = ENTITY_STATE_POSE[d.state] || 'move';
+          const frameIdx = (base + (d.id % ENTITY_FRAMES)) % ENTITY_FRAMES;
+          const path = `assets/art/battle/units/${side}/${pose}/${String(frameIdx + 1).padStart(2, '0')}.png`;
+          const img = this.getAsset(path);
+          let drew = false;
+          if (img && (img.naturalWidth || img.width)) {
+            if (rstate[d.id].fx < 0) {
+              ctx.save();
+              ctx.translate(x, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(img, -w / 2, y - h, w, h);
+              ctx.restore();
+            } else {
+              ctx.drawImage(img, x - w / 2, y - h, w, h);
+            }
+            drew = true;
           }
-          drew = true;
+          if (!drew) {
+            ctx.fillStyle = d.side === 0 ? '#f0564b' : '#4a9bf0';
+            ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+          }
+          if (d.kind === 'general') {
+            ctx.fillStyle = d.side === 0 ? '#3fb950' : '#f0c000';
+            ctx.fillRect(x - 2, y - h - 6, 4, 4);
+          }
         }
-        if (!drew) {
-          ctx.fillStyle = d.side === 0 ? '#f0564b' : '#4a9bf0';
-          ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
-        }
-        if (d.kind === 'general') {
-          ctx.fillStyle = d.side === 0 ? '#3fb950' : '#f0c000';
-          ctx.fillRect(x - 2, y - h - 6, 4, 4);
-        }
-      }
-      if (canClip) ctx.restore();
+      });
     }
 
     drawEntityBattleTopHud(entityBattle = {}, layout = {}) {
