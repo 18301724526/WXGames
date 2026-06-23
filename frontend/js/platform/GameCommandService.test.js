@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const GameCommandService = require('./GameCommandService');
+const LocaleText = require('../domain/LocaleText');
 const CanvasGameApp = require('./CanvasGameApp');
 const UIStatePresenter = require('../state/UIStatePresenter');
 const TutorialGuideController = require('../tutorial/TutorialGuideController');
@@ -129,6 +130,28 @@ test('GameCommandService switchCity closes picker, calls API, and applies state'
     'applyApiState',
     { message: 'switched harbor', gameState: { activeCityId: 'harbor', currentTab: 'resources' } },
   ]);
+});
+
+test('GameCommandService resolves command fallback text through active locale', async () => {
+  const previousLocale = LocaleText.getLocale();
+  LocaleText.setLocale('en-US');
+  try {
+    const api = {
+      async switchCity(cityId) {
+        return { gameState: { activeCityId: cityId, currentTab: 'resources' } };
+      },
+    };
+    const { host, calls: hostCalls } = createCommandHost(api);
+    const localizedService = new GameCommandService({ host });
+
+    assert.equal(await localizedService.switchCity('harbor'), true);
+    assert.deepEqual(hostCalls.find(([name]) => name === 'showFloatingText'), [
+      'showFloatingText',
+      'City switched',
+    ]);
+  } finally {
+    LocaleText.setLocale(previousLocale);
+  }
 });
 
 test('CanvasGameApp keeps command facades and delegates to command service', async () => {

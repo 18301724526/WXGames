@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedUIStatePresenter = (() => {
     if (global.UIStatePresenter) return global.UIStatePresenter;
     if (typeof module !== 'undefined' && module.exports) {
@@ -23,6 +35,10 @@
 
     get presenter() {
       return this.host?.presenter;
+    }
+
+    t(key, params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     callDrawingSurface(method, args = []) {
@@ -108,9 +124,9 @@
         ids: [],
         filteredIds: [],
         isEmpty: true,
-        emptyText: '\u5f53\u524d\u65f6\u4ee3\u6682\u65e0\u53ef\u5efa\u9020\u5efa\u7b51',
+        emptyText: this.t('building.empty.all', {}, '当前时代暂无可建造建筑'),
         activeCategory: options.activeCategory || 'all',
-        categoryTabs: [{ id: 'all', label: '\u5168\u90e8', count: 0, active: true }],
+        categoryTabs: [{ id: 'all', label: this.t('building.category.all', {}, '全部'), count: 0, active: true }],
         cards: [],
         structureSignature: '[]',
       };
@@ -138,8 +154,8 @@
         inset: 'rgba(255, 231, 184, 0.1)',
       });
       this.drawIconCard(x + 14, startY + 14, 38, 38, 'assets/art/building-house-cutout.png');
-      this.drawText('建筑', x + 62, startY + 17, { size: 15, bold: true, color: '#ffe6b5' });
-      this.drawText('建造与升级', x + 62, startY + 38, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
+      this.drawText(this.t('building.panel.title', {}, '建筑'), x + 62, startY + 17, { size: 15, bold: true, color: '#ffe6b5' });
+      this.drawText(this.t('building.panel.subtitle', {}, '建造与升级'), x + 62, startY + 38, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
       this.drawLine(x + 16, startY + 60, x + width - 16, startY + 60, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
       const categoryTabs = Array.isArray(view.categoryTabs) ? view.categoryTabs : [];
       const categoryRowHeight = categoryTabs.length > 1 ? 32 : 0;
@@ -175,7 +191,9 @@
           const pendingActive = Boolean(pendingAction && pendingAction.buildingId);
           const isActionDisabled = Boolean(card.button.disabled || pendingActive);
           const buttonLabel = pendingMatches
-            ? (actionType === 'upgrade' ? '升级中' : '建造中')
+            ? (actionType === 'upgrade'
+              ? this.t('building.action.upgrading', {}, '升级中')
+              : this.t('building.action.building', {}, '建造中'))
             : card.button.label;
           const isMuted = Boolean(card.isMuted || card.button.disabled);
           this.drawPanel(x + 10, y, width - 20, rowHeight, {
@@ -203,16 +221,17 @@
           this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
           this.drawText(card.metaText || card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
 
-          this.drawBuildingInfoLine(card.currentEffectText || '当前效果：无', textX, y + 58, textWidth, { tone: 'current' });
-          this.drawBuildingInfoLine(card.nextEffectText || '下一级效果：无', textX, y + 77, x + width - 98, { tone: 'next' });
-          this.drawBuildingInfoLine(card.maintenanceText || '维护所需：无', textX, y + 96, x + width - 98, { tone: 'maintenance' });
-          this.drawBuildingInfoLine(card.cityImpactText || '城市影响：宜居压力平稳', textX, y + 115, x + width - 98, { tone: 'impact' });
+          const noneText = this.t('building.effect.none', {}, '无');
+          this.drawBuildingInfoLine(card.currentEffectText || this.t('building.effect.current', { effect: noneText }, '当前效果：无'), textX, y + 58, textWidth, { tone: 'current' });
+          this.drawBuildingInfoLine(card.nextEffectText || this.t('building.effect.next', { label: this.t('building.effect.nextLevel', {}, '下一级效果'), effect: noneText }, '下一级效果：无'), textX, y + 77, x + width - 98, { tone: 'next' });
+          this.drawBuildingInfoLine(card.maintenanceText || this.t('building.maintenance.none', {}, '维护所需：无'), textX, y + 96, x + width - 98, { tone: 'maintenance' });
+          this.drawBuildingInfoLine(card.cityImpactText || this.t('building.cityImpact', { pressure: this.t('building.habitability.stable', {}, '宜居压力平稳') }, '城市影响：宜居压力平稳'), textX, y + 115, x + width - 98, { tone: 'impact' });
 
           this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
             muted: isMuted,
             resources: state.resources || {},
           });
-          this.drawText(card.costTitle || '升级所需', buttonX, y + 58, {
+          this.drawText(card.costTitle || this.t('building.cost.upgrade', {}, '升级所需'), buttonX, y + 58, {
             size: 10,
             bold: true,
             color: 'rgba(255, 226, 177, 0.68)',
@@ -249,14 +268,14 @@
         const canPrev = pageIndex > 0;
         const canNext = pageIndex < pageCount - 1;
         const currentPage = pageIndex + 1;
-        this.drawButton(prevX, pagerY, buttonWidth, 24, '上一页', { disabled: !canPrev, size: 11, radius: 7 });
+        this.drawButton(prevX, pagerY, buttonWidth, 24, this.t('common.previousPage', {}, '上一页'), { disabled: !canPrev, size: 11, radius: 7 });
         this.drawText(`${currentPage}/${pageCount}`, x + width / 2, pagerY + 12, {
           size: 10,
           color: 'rgba(234, 234, 234, 0.62)',
           baseline: 'middle',
           align: 'center',
         });
-        this.drawButton(nextX, pagerY, buttonWidth, 24, '下一页', { disabled: !canNext, size: 11, radius: 7 });
+        this.drawButton(nextX, pagerY, buttonWidth, 24, this.t('common.nextPage', {}, '下一页'), { disabled: !canNext, size: 11, radius: 7 });
         this.addHitTarget({ x: prevX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: -1, disabled: !canPrev });
         this.addHitTarget({ x: nextX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: 1, disabled: !canNext });
       }
@@ -374,14 +393,23 @@
     }
 
     resourceShortName(resource) {
-      return {
+      const defaults = {
         food: '食物',
         wood: '木材',
         iron: '铁矿',
         knowledge: '知识',
         stone: '石料',
         metal: '铁矿',
-      }[resource] || resource;
+      };
+      const labelKeys = {
+        food: 'resource.food',
+        wood: 'resource.wood',
+        iron: 'resource.iron',
+        knowledge: 'resource.knowledge',
+        stone: 'resource.stone',
+        metal: 'resource.metal',
+      };
+      return this.t(labelKeys[resource], {}, defaults[resource] || resource);
     }
 
     resourceIconPath(resource) {
@@ -499,7 +527,7 @@
 
     drawBuildingCostChips(cost = {}, x, y, width, height, options = {}) {
       if (cost?.isMax) {
-        const text = cost?.text || '\u5df2\u6ee1\u7ea7';
+        const text = cost?.text || this.t('building.action.maxLevel', {}, '已满级');
         const fill = cost?.isMax ? 'rgba(60, 52, 46, 0.48)' : 'rgba(116, 211, 160, 0.12)';
         const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.1)' : 'rgba(116, 211, 160, 0.26)';
         this.drawPanel(x, y + 7, width, 24, { fill, stroke, radius: 7 });

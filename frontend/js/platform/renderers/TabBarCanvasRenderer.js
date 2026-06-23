@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class TabBarCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -15,6 +27,10 @@
 
     get presenter() {
       return this.host?.presenter;
+    }
+
+    t(key, params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     callDrawingSurface(method, args = []) {
@@ -60,11 +76,11 @@
       }
       const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
       const tabs = [
-        ['resources', '主页', 'assets/art/icon-home-cutout.png'],
-        ['tech', '科技', 'assets/art/icon-knowledge-cutout.webp'],
-        ['events', '事件', 'assets/art/icon-event-cutout.webp'],
-        ['famousPersons', '名人', 'assets/art/icon-scholar-cutout.webp'],
-        ['civilization', '文明', 'assets/art/icon-fire-cutout.webp'],
+        ['resources', this.t('tab.home', {}, '主页'), 'assets/art/icon-home-cutout.png'],
+        ['tech', this.t('tab.tech', {}, '科技'), 'assets/art/icon-knowledge-cutout.webp'],
+        ['events', this.t('tab.events', {}, '事件'), 'assets/art/icon-event-cutout.webp'],
+        ['famousPersons', this.t('tab.famousPersons', {}, '名人'), 'assets/art/icon-scholar-cutout.webp'],
+        ['civilization', this.t('tab.civilization', {}, '文明'), 'assets/art/icon-fire-cutout.webp'],
       ];
       const layout = this.getLayout();
       const x = layout.contentX;

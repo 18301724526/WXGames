@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS = {
     centerX: 420,
     centerY: 1800,
@@ -30,6 +42,10 @@
           return true;
         },
       });
+    }
+
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     disposeTutorialAdvisorSpine() {
@@ -77,7 +93,7 @@
           stroke: 'rgba(255, 218, 142, 0.28)',
           radius: 10,
         });
-        this.drawText('谋士', x + width / 2, y + height / 2, {
+        this.drawText(this.t('tutorial.advisorName', {}, '谋士'), x + width / 2, y + height / 2, {
           size: 15,
           bold: true,
           color: '#ffd98a',

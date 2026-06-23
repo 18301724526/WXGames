@@ -44,6 +44,17 @@
     }
     return null;
   })();
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -52,6 +63,10 @@
 
   function toInteger(value, fallback = 0) {
     return Math.floor(toNumber(value, fallback));
+  }
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
   }
 
   function getActorTargetCoordSource(actor = {}) {
@@ -163,8 +178,10 @@
       height: drawH + 26,
       priority: 20,
       kind: 'site',
-      label: site?.cityName || site?.naturalName || site?.name || site?.title || (site?.owner === 'player' ? '城池' : '地点'),
-      subtitle: site?.owner === 'player' ? '我方城池' : (site?.owner === 'neutral' ? '中立地点' : '世界地点'),
+      label: site?.cityName || site?.naturalName || site?.name || site?.title || (site?.owner === 'player' ? t('world.targetPicker.site.player') : t('world.targetPicker.site.neutral')),
+      subtitle: site?.owner === 'player'
+        ? t('world.targetPicker.site.playerSubtitle')
+        : (site?.owner === 'neutral' ? t('world.targetPicker.site.neutralSubtitle') : t('world.targetPicker.site.worldSubtitle')),
       action: {
         type: 'openWorldSite',
         siteId,
@@ -191,8 +208,8 @@
       height: size,
       priority: 10,
       kind: 'actor',
-      label: actor.formation?.label || actor.formation?.name || actor.name || actor.label || '部队',
-      subtitle: actor.status === 'active' ? '行军中' : '驻留部队',
+      label: actor.formation?.label || actor.formation?.name || actor.name || actor.label || t('world.targetPicker.actor.default'),
+      subtitle: actor.status === 'active' ? t('world.targetPicker.actor.activeSubtitle') : t('world.targetPicker.actor.idleSubtitle'),
       current,
       action: {
         type: 'selectWorldActor',
@@ -384,6 +401,7 @@
     resolveCandidates,
     resolveAction,
     targetSignature,
+    t,
   };
 
   global.WorldMapPickingModel = api;

@@ -3,15 +3,15 @@
   const TILE_ROOT = 'assets/art/tile-map/';
 
   const TERRAIN_ASSETS = {
-    capital: { label: 'Capital', path: `${TILE_ROOT}tile-terrain-plains.png` },
-    plains: { label: 'Plains', path: `${TILE_ROOT}tile-terrain-plains.png` },
-    forest: { label: 'Forest', path: `${TILE_ROOT}tile-terrain-plains.png`, feature: 'treeCluster', sourceTerrainPath: `${TILE_ROOT}tile-terrain-forest.png` },
-    hills: { label: 'Hills', path: `${TILE_ROOT}tile-terrain-plains.png`, overlayKey: 'terrain:hills', sourceTerrainPath: `${TILE_ROOT}tile-terrain-hills.png` },
-    mountain: { label: 'Mountain', path: `${TILE_ROOT}tile-terrain-plains.png`, feature: 'mountainRidge', sourceTerrainPath: `${TILE_ROOT}tile-terrain-mountain.png` },
-    waste: { label: 'Waste', path: `${TILE_ROOT}tile-terrain-plains.png`, overlayKey: 'terrain:waste', sourceTerrainPath: `${TILE_ROOT}tile-terrain-waste.png` },
-    desert: { label: 'Desert', path: `${TILE_ROOT}tile-terrain-desert.png` },
-    river: { label: 'River', path: `${TILE_ROOT}tile-terrain-river.png`, water: 'river' },
-    ocean: { label: 'Ocean', path: `${TILE_ROOT}ocean-template/tile-ocean-water-full.png`, water: 'ocean' },
+    capital: { label: 'Capital', labelKey: 'home.planning.terrain.capital', path: `${TILE_ROOT}tile-terrain-plains.png` },
+    plains: { label: 'Plains', labelKey: 'home.planning.terrain.plains', path: `${TILE_ROOT}tile-terrain-plains.png` },
+    forest: { label: 'Forest', labelKey: 'home.planning.terrain.forest', path: `${TILE_ROOT}tile-terrain-plains.png`, feature: 'treeCluster', sourceTerrainPath: `${TILE_ROOT}tile-terrain-forest.png` },
+    hills: { label: 'Hills', labelKey: 'home.planning.terrain.hills', path: `${TILE_ROOT}tile-terrain-plains.png`, overlayKey: 'terrain:hills', sourceTerrainPath: `${TILE_ROOT}tile-terrain-hills.png` },
+    mountain: { label: 'Mountain', labelKey: 'home.planning.terrain.mountain', path: `${TILE_ROOT}tile-terrain-plains.png`, feature: 'mountainRidge', sourceTerrainPath: `${TILE_ROOT}tile-terrain-mountain.png` },
+    waste: { label: 'Waste', labelKey: 'home.planning.terrain.waste', path: `${TILE_ROOT}tile-terrain-plains.png`, overlayKey: 'terrain:waste', sourceTerrainPath: `${TILE_ROOT}tile-terrain-waste.png` },
+    desert: { label: 'Desert', labelKey: 'home.planning.terrain.desert', path: `${TILE_ROOT}tile-terrain-desert.png` },
+    river: { label: 'River', labelKey: 'home.planning.terrain.river', path: `${TILE_ROOT}tile-terrain-river.png`, water: 'river' },
+    ocean: { label: 'Ocean', labelKey: 'home.planning.terrain.ocean', path: `${TILE_ROOT}ocean-template/tile-ocean-water-full.png`, water: 'ocean' },
   };
 
   const FEATURE_ASSETS = {

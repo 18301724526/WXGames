@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   var WorldMarchOptimisticState = global.WorldMarchOptimisticState;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchOptimisticState) {
     try {
@@ -6,6 +18,10 @@
     } catch (_error) {
       WorldMarchOptimisticState = null;
     }
+  }
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
   }
 
   function install(CanvasGameApp) {
@@ -17,7 +33,7 @@
               if (data) this.applyState(data);
               return data;
             } catch (error) {
-              this.log(error.payload?.message || error.message || '鎿嶄綔澶辫触');
+              this.log(error.payload?.message || error.message || t('command.action.failed', {}, '操作失败'));
               return null;
             }
           },
@@ -52,8 +68,8 @@
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-              this.showFloatingText(result.message || 'Famous person accepted');
-              this.log(result.message || 'Famous person accepted');
+              this.showFloatingText(result.message || t('command.famous.accepted', {}, '名人已接纳'));
+              this.log(result.message || t('command.famous.accepted', {}, '名人已接纳'));
               return true;
             } catch (error) {
               this.log(`鎺ョ撼澶辫触锟?{error.payload?.message || error.message}`);
@@ -70,8 +86,8 @@
               this.selectedFamousPersonId = '';
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-              this.showFloatingText(result.message || 'Candidate dismissed');
-              this.log(result.message || 'Candidate dismissed');
+              this.showFloatingText(result.message || t('command.famous.dismissed', {}, '候选人已放弃'));
+              this.log(result.message || t('command.famous.dismissed', {}, '候选人已放弃'));
               return true;
             } catch (error) {
               this.log(`鏀惧純澶辫触锟?{error.payload?.message || error.message}`);
@@ -523,8 +539,8 @@
             try {
               const result = await this.getGameApi().applyTalentPolicy(policyId);
               this.applyApiState(result);
-              this.showFloatingText(result.message || 'Policy applied');
-              this.log(result.message || 'Policy applied');
+              this.showFloatingText(result.message || t('command.policy.applied', {}, '方针已应用'));
+              this.log(result.message || t('command.policy.applied', {}, '方针已应用'));
               return true;
             } catch (error) {
               this.log(`鏂归拡澶辫触锟?{error.payload?.message || error.message}`);
@@ -535,7 +551,11 @@
 
       async advanceEra() {
             if (!this.canAdvanceEraNow()) {
-              this.log(this.state?.isCapitalCity === false ? 'Capital only' : this.canAdvanceEraByTutorial() ? 'Requirements not met' : 'Action locked');
+              this.log(this.state?.isCapitalCity === false
+                ? t('command.era.capitalOnly', {}, '只有主城可以推进时代')
+                : this.canAdvanceEraByTutorial()
+                  ? t('command.era.requirementsNotMet', {}, '条件未满足')
+                  : t('command.era.locked', {}, '操作未解锁'));
               this.renderMilitary();
               return false;
             }
@@ -545,7 +565,7 @@
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onEraAdvanced?.(result);
               this.log(`杩涘叆鏂伴樁娈碉細${result.message || this.state.currentEraName || ''}`);
-              this.showFloatingText(result.message || this.state.currentEraName || 'Entered next era');
+              this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}, '已进入下一时代'));
               return true;
             } catch (error) {
               this.log(`澶辫触锟?{error.payload?.message || error.message}`);
@@ -598,8 +618,8 @@
               }
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onExploreStarted?.(result);
-              this.showFloatingText(result.message || 'March started');
-              this.log(result.message || 'March started');
+              this.showFloatingText(result.message || t('command.worldMarch.started', {}, '行军已开始'));
+              this.log(result.message || t('command.worldMarch.started', {}, '行军已开始'));
               return true;
             } catch (error) {
               global.WorldMarchTrace?.error?.('app:startWorldMarch:error', {
@@ -607,7 +627,7 @@
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
               WorldMarchOptimisticState?.rollback?.(this, optimistic || '', { render: false });
-              this.log(`March failed: ${error.payload?.message || error.message}`);
+              this.log(t('command.worldMarch.failed', { message: error.payload?.message || error.message || '' }, `行军失败：${error.payload?.message || error.message || ''}`));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -630,8 +650,8 @@
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
                 after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
-              this.showFloatingText(result.message || 'Returning');
-              this.log(result.message || 'Returning');
+              this.showFloatingText(result.message || t('command.worldMarch.returning', {}, '正在返回'));
+              this.log(result.message || t('command.worldMarch.returning', {}, '正在返回'));
               return true;
             } catch (error) {
               global.WorldMarchTrace?.error?.('app:returnWorldMarch:error', {
@@ -640,7 +660,7 @@
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
               WorldMarchOptimisticState?.rollback?.(this, optimistic || missionId, { render: false });
-              this.log(`Return failed: ${error.payload?.message || error.message}`);
+              this.log(t('command.worldMarch.returnFailed', { message: error.payload?.message || error.message || '' }, `返回失败：${error.payload?.message || error.message || ''}`));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -660,8 +680,8 @@
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
                 after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
-              this.showFloatingText(result.message || 'Stopped');
-              this.log(result.message || 'Stopped');
+              this.showFloatingText(result.message || t('command.worldMarch.stopped', {}, '已停止'));
+              this.log(result.message || t('command.worldMarch.stopped', {}, '已停止'));
               return true;
             } catch (error) {
               global.WorldMarchTrace?.error?.('app:stopWorldMarch:error', {
@@ -669,7 +689,7 @@
                 message: error.payload?.message || error.message,
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
-              this.log(`Stop failed: ${error.payload?.message || error.message}`);
+              this.log(t('command.worldMarch.stopFailed', { message: error.payload?.message || error.message || '' }, `停止失败：${error.payload?.message || error.message || ''}`));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }

@@ -1547,6 +1547,110 @@ test('UIStatePresenter delegates battle scene view state while preserving facade
   assert.deepEqual(UIStatePresenter.getBattleTurnLines(battle.report.turns[0], { active: true, phase: 'cutin' }), ['霍去病列阵。', '霍去病发动战法 长驱直入。']);
 });
 
+test('UIStatePresenter resolves business module UI chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+
+  const homeState = {
+    gameDay: 3,
+    currentEra: 1,
+    resources: { food: 10, wood: 8, stone: 0, iron: 0, knowledge: 2 },
+    population: {
+      total: 5,
+      maxPop: 8,
+      capacity: { active: true, limitingSource: 'era', eraCap: 5, housingCap: 8 },
+    },
+    cityState: { cities: [{ id: 'capital', population: { total: 5 }, totalBuildings: 0 }] },
+  };
+  assert.equal(UIStatePresenter.buildResourceViewState(homeState).text.gameTime, 'Day 3');
+  assert.equal(
+    UIStatePresenter.buildResourceViewState(homeState).text.populationStatus,
+    'Population cannot grow further. Advance the era.',
+  );
+  assert.equal(UIStatePresenter.buildCitySwitcherViewState(homeState).options[0].tag, 'Subcity');
+
+  const buildingState = {
+    unlockedBuildings: ['house'],
+    buildings: { house: 0 },
+    buildingCosts: {},
+    buildingDefinitions: {
+      house: {
+        id: 'house',
+        name: 'House',
+        maxLevel: 2,
+        category: 'livelihood',
+        effects: { perLevel: { populationCap: 1 } },
+        ui: { effectText: [{ field: 'populationCapBonus', label: 'Population Cap' }] },
+      },
+    },
+    resources: {},
+  };
+  const buildingView = UIStatePresenter.buildBuildingViewState(buildingState, {}, buildingState.buildingDefinitions);
+  assert.equal(buildingView.categoryTabs.find((tab) => tab.id === 'all').label, 'All');
+  assert.equal(buildingView.cards[0].button.label, 'Build');
+  assert.equal(buildingView.cards[0].cost.text, 'Free build');
+
+  const techView = UIStatePresenter.buildTechViewState({
+    techs: {
+      points: 1,
+      eras: [{
+        era: 1,
+        techs: [{
+          id: 'farm-tech',
+          name: 'Agriculture',
+          available: true,
+          status: 'available',
+          unlockText: ['Farm'],
+          resourceEntrances: ['food'],
+        }],
+      }],
+    },
+  });
+  assert.equal(techView.text.title, 'Tech Tree');
+  assert.equal(techView.detail.statusLabel, 'Available');
+  assert.equal(techView.detail.effectRows[1].text, 'Food production');
+  assert.equal(techView.detail.unlockSummary.includes('Unlocks: Farm'), true);
+
+  const eventView = UIStatePresenter.buildEventViewState({
+    eventQueue: [{ id: 'event-1', type: 'regular', expiresAt: new Date(Date.now() + 61_000).toISOString() }],
+    eventHistory: [],
+  });
+  assert.match(eventView.pending.cards[0].hint, /left, expires automatically/);
+  assert.equal(eventView.history.emptyText, 'No event records');
+
+  const taskView = UIStatePresenter.buildTaskCenterViewState({ guideTasks: { visible: true, tasks: [] } });
+  assert.equal(taskView.tabs.find((tab) => tab.id === 'main').label, 'Main');
+  assert.equal(taskView.categories.main.emptyText, 'No main tasks');
+  assert.equal(UIStatePresenter.buildGuidebookViewState(homeState).title, 'Guide');
+
+  const militaryView = UIStatePresenter.buildMilitaryViewState({
+    military: { soldiers: 0, soldierCap: 0, trainingIntervalSeconds: 0 },
+    famousPersons: { people: [] },
+    territoryState: {},
+  });
+  assert.equal(militaryView.formations[0].name, 'Unit One');
+  assert.equal(militaryView.text.soldierTrainingText, 'Waiting for barracks');
+
+  const scoutView = UIStatePresenter.buildScoutControlViewState({
+    territoryState: { directions: [{ id: 'n', label: 'North' }], scoutMissions: [], maxActiveScouts: 1 },
+  });
+  assert.equal(scoutView.statusText, 'Choose a direction to send scouts; up to 1 scout teams can be out at once.');
+  assert.equal(scoutView.cells.find((cell) => cell.id === 'n').actionText, 'Send');
+
+  const battleView = UIStatePresenter.buildBattleSceneViewState({
+    report: {
+      result: 'victory',
+      attacker: { leaderName: 'Hero', soldiersStart: 10, soldiersEnd: 8 },
+      defender: { soldiersStart: 6, soldiersEnd: 0 },
+      turns: [],
+    },
+  });
+  assert.equal(battleView.resultText, 'Victory');
+  assert.equal(battleView.title, 'Hero Squad vs Defenders Squad');
+  assert.equal(UIStatePresenter.formatBattleStatusBadge({ key: 'poison', stacks: 2, turnsRemaining: 3 }).text, 'Poison x2 3 turns');
+
+  LocaleText.setLocale('zh-CN');
+});
+
 test('index.html loads focused state presenters before UIStatePresenter facade', () => {
   const htmlPath = path.resolve(__dirname, '../../index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');

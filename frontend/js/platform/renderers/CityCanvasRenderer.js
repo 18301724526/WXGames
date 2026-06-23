@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CityCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -77,6 +89,10 @@
       return this.callDrawingSurface('truncateText', args);
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     getActiveCitySummary(state = {}) {
       const cityState = state.cityState || {};
       const cities = Array.isArray(cityState.cities) ? cityState.cities : [];
@@ -86,12 +102,12 @@
       const site = territories.find((item) => item.id === activeCityId) || {};
       return {
         id: activeCityId,
-        name: city.name || site.cityName || site.naturalName || (activeCityId === 'capital' ? '首都' : '城市'),
-        tag: city.isCapital || activeCityId === 'capital' ? '主城' : '分城',
+        name: city.name || site.cityName || site.naturalName || (activeCityId === 'capital' ? this.t('shell.city.capital') : this.t('world.site.cityFallback')),
+        tag: city.isCapital || activeCityId === 'capital' ? this.t('home.city.main') : this.t('home.city.sub'),
         level: city.level || site.level || '',
         population: city.population || state.population || {},
         military: city.military || state.military || {},
-        terrainLabel: city.planning?.terrainLabel || city.terrainLabel || site.terrainLabel || '平原',
+        terrainLabel: city.planning?.terrainLabel || city.terrainLabel || site.terrainLabel || this.t('home.planning.terrain.plains'),
       };
     }
 
@@ -126,7 +142,7 @@
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
       if (!options.length) {
-        this.drawText('暂无城市', x + panelWidth / 2, y + 23, {
+        this.drawText(this.t('home.city.noCities'), x + panelWidth / 2, y + 23, {
           size: 13,
           color: '#cbbd96',
           align: 'center',
@@ -155,7 +171,7 @@
             radius: 2,
           });
         }
-        this.drawText(city.name || '未命名城市', itemX + 12, itemY + 8, {
+        this.drawText(city.name || this.t('home.city.unnamed'), itemX + 12, itemY + 8, {
           size: 13,
           bold: true,
           color: '#fff1cf',
@@ -214,15 +230,15 @@
         bold: true,
         color: '#ffe6b5',
       });
-      const meta = `${city.tag}${city.level ? ` · ${city.level}级` : ''} · ${city.terrainLabel}`;
+      const meta = `${city.tag}${city.level ? ` · ${this.t('home.city.level', { level: city.level })}` : ''} · ${city.terrainLabel}`;
       this.drawText(meta, x + 16, y + 40, { size: 11, color: '#cbbd96' });
       this.drawButton(x + width - closeSize - 10, y + 10, closeSize, closeSize, 'x', { size: 14, radius: 7 });
       this.addHitTarget({ x: x + width - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeCityManagement' });
 
       const tabs = [
-        { id: 'buildings', label: '建设' },
-        { id: 'people', label: '人才' },
-        { id: 'military', label: '军事' },
+        { id: 'buildings', label: this.t('home.city.tab.buildings') },
+        { id: 'people', label: this.t('home.city.tab.people') },
+        { id: 'military', label: this.t('home.city.tab.military') },
       ];
       const tabY = y + 64;
       const gap = 6;
@@ -261,12 +277,12 @@
       const available = Number(state.territoryState?.availableSoldiers ?? soldiers) || 0;
       const compactFormation = height < 232;
       this.drawAsset('assets/art/icon-soldier-cutout.webp', x + 16, y + 18, 38, 38);
-      this.drawText('驻军', x + 66, y + 17, { size: 16, bold: true, color: '#ffe6b5' });
-      this.drawText(`当前兵力 ${soldiers} · 可调兵力 ${available}`, x + 66, y + 42, { size: 12, color: '#cbbd96' });
+      this.drawText(this.t('home.city.military.garrison'), x + 66, y + 17, { size: 16, bold: true, color: '#ffe6b5' });
+      this.drawText(this.t('home.city.military.forceLine', { soldiers, available }), x + 66, y + 42, { size: 12, color: '#cbbd96' });
       const rows = [
-        { label: '行军', note: '从本城发起部队行动', disabled: true },
-        { label: '调动', note: '城市之间调配驻军', disabled: true },
-        { label: '驻守', note: '设置防守与巡逻队列', disabled: true },
+        { label: this.t('home.city.military.march'), note: this.t('home.city.military.marchNote'), disabled: true },
+        { label: this.t('home.city.military.transfer'), note: this.t('home.city.military.transferNote'), disabled: true },
+        { label: this.t('home.city.military.garrisonCommand'), note: this.t('home.city.military.garrisonNote'), disabled: true },
       ];
       const formationSectionHeight = compactFormation
         ? Math.min(80, Math.max(64, Math.floor(height * 0.34)))
@@ -287,7 +303,7 @@
         });
         this.drawText(row.label, x + 26, rowY + 7, { size: 13, bold: true, color: '#fff1cf' });
         this.drawText(row.note, x + 26, rowY + rowHeight - 13, { size: 9, color: 'rgba(234, 234, 234, 0.58)' });
-        this.drawButton(x + width - 82, rowY + Math.max(4, (rowHeight - 24) / 2), 58, 24, '待开放', { size: 10, radius: 7, disabled: true });
+        this.drawButton(x + width - 82, rowY + Math.max(4, (rowHeight - 24) / 2), 58, 24, this.t('home.city.military.pending'), { size: 10, radius: 7, disabled: true });
       });
 
       const formationView = this.presenter?.buildMilitaryViewState?.({
@@ -303,8 +319,8 @@
         const compactCardY = formationY + 24;
         const compactCardHeight = Math.max(38, y + height - compactCardY - 8);
         const compactCardWidth = Math.floor((formationWidth - compactGap * 2) / 3);
-        this.drawText('编队', formationX, formationY + 5, { size: 14, bold: true, color: '#ffe6b5' });
-        this.drawText('每队最多 5 名名人', formationX + 44, formationY + 7, { size: 10, color: '#cbbd96' });
+        this.drawText(this.t('home.city.formation.title'), formationX, formationY + 5, { size: 14, bold: true, color: '#ffe6b5' });
+        this.drawText(this.t('home.city.formation.maxMembers', { count: 5 }), formationX + 44, formationY + 7, { size: 10, color: '#cbbd96' });
         (formationView.formations || [{}, {}, {}]).slice(0, 3).forEach((formation, index) => {
           const cardX = formationX + index * (compactCardWidth + compactGap);
           const cardWidth = index === 2 ? formationX + formationWidth - cardX : compactCardWidth;
@@ -314,7 +330,7 @@
             stroke: count ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.14)',
             radius: 7,
           });
-          this.drawText(this.truncateText(formation.name || `部队${index + 1}`, cardWidth - 12, { size: 11, bold: true }), cardX + cardWidth / 2, compactCardY + 9, {
+          this.drawText(this.truncateText(formation.name || this.t('home.city.formation.defaultName', { index: index + 1 }), cardWidth - 12, { size: 11, bold: true }), cardX + cardWidth / 2, compactCardY + 9, {
             size: 11,
             bold: true,
             color: '#fff1cf',
@@ -345,7 +361,8 @@
     renderSubcityListPanel(state = {}, options = {}) {
       if (!this.presenter || typeof this.presenter.buildCitySwitcherViewState !== 'function') return;
       const view = this.presenter.buildCitySwitcherViewState(state);
-      const cities = (Array.isArray(view.options) ? view.options : []).filter((city) => city.id && city.id !== 'capital' && city.tag !== '主城' && city.tag !== '涓诲煄');
+      const mainCityLabel = this.t('home.city.main');
+      const cities = (Array.isArray(view.options) ? view.options : []).filter((city) => city.id && city.id !== 'capital' && city.tag !== mainCityLabel && city.tag !== '涓诲煄');
       const layout = this.getLayout();
       const panelWidth = Math.min(340, layout.contentWidth - 20);
       const itemHeight = 58;
@@ -372,13 +389,13 @@
       const closeSize = 28;
       const closeX = x + panelWidth - closeSize - 10;
       const closeY = y + 10;
-      this.drawText('分城管理', x + 16, y + 17, { size: 17, bold: true, color: '#ffe6b5' });
-      this.drawText(`${cities.length} 座分城`, x + 16, y + 41, { size: 11, color: '#cbbd96' });
+      this.drawText(this.t('home.city.subcityManagement'), x + 16, y + 17, { size: 17, bold: true, color: '#ffe6b5' });
+      this.drawText(this.t('home.city.subcityCount', { count: cities.length }), x + 16, y + 41, { size: 11, color: '#cbbd96' });
       this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeSubcityList' });
 
       if (!cities.length) {
-        this.drawText('暂无分城', x + panelWidth / 2, y + 96, {
+        this.drawText(this.t('home.city.noSubcities'), x + panelWidth / 2, y + 96, {
           size: 14,
           color: '#cbbd96',
           align: 'center',
@@ -397,7 +414,7 @@
           inset: 'rgba(255, 231, 184, 0.05)',
         });
         this.drawAsset('assets/art/world-site-city-cutout.png', itemX + 10, itemY + 10, 30, 30);
-        this.drawText(this.truncateText(city.name || '未命名分城', itemWidth - 108, { size: 14, bold: true }), itemX + 50, itemY + 9, {
+        this.drawText(this.truncateText(city.name || this.t('home.city.unnamedSubcity'), itemWidth - 108, { size: 14, bold: true }), itemX + 50, itemY + 9, {
           size: 14,
           bold: true,
           color: '#fff1cf',
@@ -406,7 +423,7 @@
           size: 10,
           color: 'rgba(234, 234, 234, 0.62)',
         });
-        this.drawButton(itemX + itemWidth - 72, itemY + 11, 60, 28, active ? '当前' : '跳转', {
+        this.drawButton(itemX + itemWidth - 72, itemY + 11, 60, 28, active ? this.t('home.city.current') : this.t('home.city.jump'), {
           size: 12,
           bold: !active,
           active: !active,

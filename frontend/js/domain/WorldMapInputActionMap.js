@@ -43,6 +43,17 @@
     }
     return null;
   })();
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const DEFAULT_ALLOWED_ACTIONS = Object.freeze([
     'openWorldSite',
@@ -79,6 +90,10 @@
 
   function toInteger(value, fallback = 0) {
     return Math.floor(toNumber(value, fallback));
+  }
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
   }
 
   function isActorPickingDiagEnabled() {
@@ -375,7 +390,7 @@
       tileId: displayCoord.tileId,
       known,
       terrain: known ? (knownTile.terrain || '') : '',
-      terrainLabel: known ? (knownTile.terrainLabel || knownTile.terrain || '') : '未知',
+      terrainLabel: known ? (knownTile.terrainLabel || knownTile.terrain || '') : t('world.march.target.unknownTerrain'),
       tile: knownTile,
     };
   }
@@ -390,7 +405,7 @@
       targetR: coord.r,
       known: Boolean(tile.known),
       terrain: tile.terrain || '',
-      terrainLabel: tile.terrainLabel || (tile.known ? tile.terrain || '' : '未知'),
+      terrainLabel: tile.terrainLabel || (tile.known ? tile.terrain || '' : t('world.march.target.unknownTerrain')),
       background: options.background !== false,
     };
   }
@@ -490,6 +505,7 @@
     resolveForegroundCandidates,
     resolveTapAction,
     shouldRouteTapThroughWorldMapRuntime,
+    t,
   };
 
   global.WorldMapInputActionMap = api;

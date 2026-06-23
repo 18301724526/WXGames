@@ -1,6 +1,22 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class BuildingPresenter {
     static POPULATION_PER_OFFICIAL = 100;
+
+    static t(key, params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
 
     static toNumber(value, fallback = 0) {
       const number = Number(value);
@@ -48,8 +64,8 @@
     }
 
     static getBuildingActionLabel(cost, level) {
-      if (cost === null) return '已满级';
-      return level > 0 ? '升级' : '建造';
+      if (cost === null) return this.t('building.action.maxLevel', {}, '已满级');
+      return level > 0 ? this.t('building.action.upgrade', {}, '升级') : this.t('building.action.build', {}, '建造');
     }
 
     static isBuildingOpenEnded(config = {}) {
@@ -78,12 +94,12 @@
     static getBuildingCategoryDefinitions(state = {}, buildingConfig = {}) {
       const source = state.buildingCategories || buildingConfig.categories || {};
       const fallback = {
-        agriculture: { label: '农业', order: 1 },
-        livelihood: { label: '民生', order: 2 },
-        production: { label: '生产', order: 3 },
-        culture: { label: '文化', order: 4 },
-        entertainment: { label: '娱乐', order: 5 },
-        military: { label: '军事', order: 6 },
+        agriculture: { label: this.t('building.category.agriculture', {}, '农业'), order: 1 },
+        livelihood: { label: this.t('building.category.livelihood', {}, '民生'), order: 2 },
+        production: { label: this.t('building.category.production', {}, '生产'), order: 3 },
+        culture: { label: this.t('building.category.culture', {}, '文化'), order: 4 },
+        entertainment: { label: this.t('building.category.entertainment', {}, '娱乐'), order: 5 },
+        military: { label: this.t('building.category.military', {}, '军事'), order: 6 },
       };
       return { ...fallback, ...(source && typeof source === 'object' ? source : {}) };
     }
@@ -108,7 +124,7 @@
         .filter((tab) => tab.count > 0)
         .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
       const tabs = [
-        { id: 'all', label: '全部', count: cards.length, active: activeCategory === 'all' },
+        { id: 'all', label: this.t('building.category.all', {}, '全部'), count: cards.length, active: activeCategory === 'all' },
         ...categoryTabs,
       ];
       const hasActive = tabs.some((tab) => tab.id === activeCategory && tab.count > 0);
@@ -120,8 +136,8 @@
     }
 
     static buildCostViewState(cost) {
-      if (cost === null) return { text: '已满级', parts: [], isMax: true };
-      if (!cost) return { text: '免费建造', parts: [], isMax: false };
+      if (cost === null) return { text: this.t('building.action.maxLevel', {}, '已满级'), parts: [], isMax: true };
+      if (!cost) return { text: this.t('building.cost.free', {}, '免费建造'), parts: [], isMax: false };
       const parts = ['wood', 'iron', 'stone', 'food', 'knowledge', 'metal']
         .filter((resource) => cost[resource])
         .map((resource) => ({
@@ -130,7 +146,7 @@
           text: this.formatResourceAmount(cost[resource]),
         }));
       return {
-        text: parts.length ? '' : '免费建造',
+        text: parts.length ? '' : this.t('building.cost.free', {}, '免费建造'),
         parts,
         isMax: false,
       };
@@ -179,16 +195,30 @@
       const delta = previous === null ? 0 : value - previous;
       if (template.field === 'populationCapBonus') {
         totalText = `${template.label} ${this.toDisplayPopulation(value)}`;
-        if (delta > 0) deltaText = `提升 ${this.toDisplayPopulation(delta)}`;
+        if (delta > 0) {
+          deltaText = this.t(
+            'building.effect.delta',
+            { value: this.toDisplayPopulation(delta) },
+            `提升 ${this.toDisplayPopulation(delta)}`,
+          );
+        }
       } else if (template.format === 'percent') {
-        totalText = `${template.label}效率 ${Math.round((1 + value) * 100)}%`;
+        totalText = this.t(
+          'building.effect.percentEfficiency',
+          { label: template.label, percent: Math.round((1 + value) * 100) },
+          `${template.label}效率 ${Math.round((1 + value) * 100)}%`,
+        );
         if (delta > 0) {
           const deltaPercent = delta * 100;
-          deltaText = `提升 ${deltaPercent < 1 ? '<1' : Math.round(deltaPercent)}%`;
+          const valueText = `${deltaPercent < 1 ? '<1' : Math.round(deltaPercent)}%`;
+          deltaText = this.t('building.effect.delta', { value: valueText }, `提升 ${valueText}`);
         }
       } else {
         totalText = `${template.label} ${this.formatCompactNumber(value, { floorSmall: false })}`;
-        if (delta > 0) deltaText = `提升 ${this.formatCompactNumber(delta, { floorSmall: false })}`;
+        if (delta > 0) {
+          const valueText = this.formatCompactNumber(delta, { floorSmall: false });
+          deltaText = this.t('building.effect.delta', { value: valueText }, `提升 ${valueText}`);
+        }
       }
       return deltaText ? `${totalText}（${deltaText}）` : totalText;
     }
@@ -205,15 +235,21 @@
       const previousCap = previous === null ? null : this.toInteger(soldierCaps[previous]);
       if (cap > 0) {
         const delta = previousCap === null ? 0 : cap - previousCap;
-        parts.push(delta > 0 ? `士兵容量 ${cap}（提升 ${delta}）` : `士兵容量 ${cap}`);
+        parts.push(delta > 0
+          ? this.t('building.military.soldierCapacityDelta', { cap, delta }, `士兵容量 ${cap}（提升 ${delta}）`)
+          : this.t('building.military.soldierCapacity', { cap }, `士兵容量 ${cap}`));
       }
       const interval = this.toInteger(intervals[currentLevel]);
       const previousInterval = previous === null ? null : this.toInteger(intervals[previous]);
       if (interval > 0) {
         const faster = previousInterval && previousInterval > interval ? previousInterval - interval : 0;
         const batchSize = this.toInteger(batchSizes[currentLevel], 1);
-        const batchText = batchSize > 1 ? `${interval}秒/${batchSize}兵` : `${interval}秒/人`;
-        parts.push(faster > 0 ? `训练速度 ${batchText}（加快 ${faster}秒）` : `训练速度 ${batchText}`);
+        const batchText = batchSize > 1
+          ? this.t('building.military.batchRate', { seconds: interval, batchSize }, `${interval}秒/${batchSize}兵`)
+          : this.t('building.military.personRate', { seconds: interval }, `${interval}秒/人`);
+        parts.push(faster > 0
+          ? this.t('building.military.trainingRateDelta', { rate: batchText, seconds: faster }, `训练速度 ${batchText}（加快 ${faster}秒）`)
+          : this.t('building.military.trainingRate', { rate: batchText }, `训练速度 ${batchText}`));
       }
       return parts;
     }
@@ -241,12 +277,12 @@
 
     static getResourceDisplayName(resource) {
       return {
-        food: '食物',
-        knowledge: '知识',
-        wood: '木材',
-        iron: '铁矿',
-        stone: '石料',
-        metal: '铁矿',
+        food: this.t('resource.food', {}, '粮食'),
+        knowledge: this.t('resource.knowledge', {}, '知识'),
+        wood: this.t('resource.wood', {}, '木材'),
+        iron: this.t('resource.iron', {}, '铁矿'),
+        stone: this.t('resource.stone', {}, '石料'),
+        metal: this.t('resource.metal', {}, '铁矿'),
       }[resource] || resource;
     }
 
@@ -258,26 +294,26 @@
 
     static formatHabitabilityPressure(value) {
       const pressure = this.toNumber(value);
-      if (pressure <= 0) return '宜居压力平稳';
-      if (pressure <= 1) return '宜居压力轻微';
-      if (pressure <= 2) return '宜居压力较高';
-      return '宜居压力沉重';
+      if (pressure <= 0) return this.t('building.habitability.stable', {}, '宜居压力平稳');
+      if (pressure <= 1) return this.t('building.habitability.light', {}, '宜居压力轻微');
+      if (pressure <= 2) return this.t('building.habitability.high', {}, '宜居压力较高');
+      return this.t('building.habitability.heavy', {}, '宜居压力沉重');
     }
 
     static formatHabitabilityPressureShort(value) {
       const pressure = this.toNumber(value);
-      if (pressure <= 0) return '平稳';
-      if (pressure <= 1) return '轻微';
-      if (pressure <= 2) return '较高';
-      return '沉重';
+      if (pressure <= 0) return this.t('building.habitability.short.stable', {}, '平稳');
+      if (pressure <= 1) return this.t('building.habitability.short.light', {}, '轻微');
+      if (pressure <= 2) return this.t('building.habitability.short.high', {}, '较高');
+      return this.t('building.habitability.short.heavy', {}, '沉重');
     }
 
     static formatBuildingScale(level = 0) {
       const currentLevel = this.toInteger(level);
-      if (currentLevel <= 0) return '未建造';
-      if (currentLevel <= 2) return '小';
-      if (currentLevel <= 4) return '中';
-      return '大';
+      if (currentLevel <= 0) return this.t('building.scale.unbuilt', {}, '未建造');
+      if (currentLevel <= 2) return this.t('building.scale.small', {}, '小');
+      if (currentLevel <= 4) return this.t('building.scale.medium', {}, '中');
+      return this.t('building.scale.large', {}, '大');
     }
 
     static formatMaintenanceRate(value) {
@@ -292,18 +328,25 @@
     static formatBuildingMaintenanceText(config = {}, level = 0) {
       const maintenance = config.maintenance || {};
       const currentLevel = this.toInteger(level);
-      if (currentLevel <= 0) return '维护所需：无';
+      if (currentLevel <= 0) return this.t('building.maintenance.none', {}, '维护所需：无');
       const parts = Object.entries(maintenance.perLevelPerMinute || {})
         .map(([resource, value]) => {
           const rate = this.formatMaintenanceRate(this.toNumber(value) * currentLevel);
           return rate ? `${this.getResourceDisplayName(resource)} ${rate}/s` : '';
         })
         .filter(Boolean);
-      return `维护所需：${parts.join('，') || '无'}`;
+      if (!parts.length) return this.t('building.maintenance.none', {}, '维护所需：无');
+      const inlineSeparator = this.t('common.inlineSeparator', {}, '，');
+      return this.t(
+        'building.maintenance.required',
+        { parts: parts.join(inlineSeparator) },
+        `维护所需：${parts.join('，')}`,
+      );
     }
 
     static formatBuildingCityImpactText(config = {}) {
-      return `城市影响：${this.formatHabitabilityPressure(config.maintenance?.habitabilityPressure)}`;
+      const pressure = this.formatHabitabilityPressure(config.maintenance?.habitabilityPressure);
+      return this.t('building.cityImpact', { pressure }, `城市影响：${pressure}`);
     }
 
     static getBuildingMilitaryLines(id, military = {}, buildingEffects = {}) {
@@ -315,8 +358,14 @@
       const batchSize = this.toInteger(military.trainingBatchSize, 1);
       const defense = this.toInteger((military.defense || 0) + (buildingEffects?.threatDefense || 0));
       return [
-        `士兵 ${soldiers}/${cap} · 防御 ${defense}`,
-        soldiers >= cap ? '训练已满' : `下一批 ${batchSize} 兵 · ${progress}/${interval}秒`,
+        this.t('building.military.line', { soldiers, cap, defense }, `士兵 ${soldiers}/${cap} · 防御 ${defense}`),
+        soldiers >= cap
+          ? this.t('building.military.trainingFull', {}, '训练已满')
+          : this.t(
+            'building.military.nextBatch',
+            { batchSize, progress, interval },
+            `下一批 ${batchSize} 兵 · ${progress}/${interval}秒`,
+          ),
       ];
     }
 
@@ -357,19 +406,23 @@
         || (step >= tutorialSteps.buildingsTabOpened && step < tutorialSteps.farmBuilt && id !== 'farm')
         || (step >= tutorialSteps.buildingsTabOpenedForLumbermill && step <= tutorialSteps.lumbermillBuilt && id !== 'lumbermill')
       ));
-      const isMax = cost === null || actionLabel === '已满级' || actionLabel === '宸叉弧绾?' || actionLabel === 'max';
+      const maxLevelLabel = this.t('building.action.maxLevel', {}, '已满级');
+      const isMax = cost === null || actionLabel === maxLevelLabel || actionLabel === '已满级' || actionLabel === '宸叉弧绾?' || actionLabel === 'max';
       const canAfford = this.canAffordCost(state.resources, cost);
       const disabledByCost = !isMax && !canAfford;
       const disabled = disabledByTutorial || isMax || disabledByCost;
       const maxLevel = this.toInteger(config.maxLevel);
       const nextLevel = isMax ? null : level + 1;
       const currentEffectSummary = state.buildingEffects?.byBuilding?.[id] || this.getBuildingEffectSummary(config, level);
-      const currentEffectText = this.formatBuildingEffectText(config, level, null, currentEffectSummary) || '无';
+      const noneText = this.t('building.effect.none', {}, '无');
+      const currentEffectText = this.formatBuildingEffectText(config, level, null, currentEffectSummary) || noneText;
       const nextEffectValue = nextLevel === null
-        ? '当前时代暂不可继续扩建'
-        : (this.formatBuildingEffectText(config, nextLevel, level) || '无');
-      const nextEffectLabel = level > 0 ? '下一级效果' : '建成后效果';
-      const effectText = currentEffectText === '无' ? '' : currentEffectText;
+        ? this.t('building.effect.expansionLocked', {}, '当前时代暂不可继续扩建')
+        : (this.formatBuildingEffectText(config, nextLevel, level) || noneText);
+      const nextEffectLabel = level > 0
+        ? this.t('building.effect.nextLevel', {}, '下一级效果')
+        : this.t('building.effect.afterBuilt', {}, '建成后效果');
+      const effectText = currentEffectText === noneText ? '' : currentEffectText;
       const militaryLines = this.getBuildingMilitaryLines(id, state.military, state.buildingEffects);
       const descText = config?.ui?.description || '';
 
@@ -379,28 +432,36 @@
         art: config.art || '',
         icon: config.icon || '',
         level,
-        levelText: `等级 ${level}`,
+        levelText: this.t('building.level', { level }, `等级 ${level}`),
         category: this.getBuildingCategory(config),
         maxLevel,
-        scaleText: `规模：${this.formatBuildingScale(level)}`,
-        metaText: `等级：${level}　规模：${this.formatBuildingScale(level)}`,
+        scaleText: this.t('building.scaleText', { scale: this.formatBuildingScale(level) }, `规模：${this.formatBuildingScale(level)}`),
+        metaText: this.t(
+          'building.meta',
+          { level, scale: this.formatBuildingScale(level) },
+          `等级：${level}　规模：${this.formatBuildingScale(level)}`,
+        ),
         isMuted: disabledByTutorial,
         effectText,
-        currentEffectText: `当前效果：${currentEffectText}`,
-        nextEffectText: `${nextEffectLabel}：${nextEffectValue}`,
+        currentEffectText: this.t('building.effect.current', { effect: currentEffectText }, `当前效果：${currentEffectText}`),
+        nextEffectText: this.t('building.effect.next', { label: nextEffectLabel, effect: nextEffectValue }, `${nextEffectLabel}：${nextEffectValue}`),
         maintenanceText: this.formatBuildingMaintenanceText(config, level),
         cityImpactText: this.formatBuildingCityImpactText(config),
-        costTitle: level > 0 ? '升级所需' : '建造所需',
+        costTitle: level > 0 ? this.t('building.cost.upgrade', {}, '升级所需') : this.t('building.cost.build', {}, '建造所需'),
         descText,
         militaryLines,
         button: {
           action: level ? 'upgrade' : 'build',
           disabled,
-          label: disabledByTutorial ? '引导中锁定' : disabledByCost ? '资源不足' : actionLabel,
+          label: disabledByTutorial
+            ? this.t('building.action.guideLocked', {}, '引导中锁定')
+            : disabledByCost
+              ? this.t('building.action.insufficientResources', {}, '资源不足')
+              : actionLabel,
         },
         cost: this.buildCostViewState(cost),
         structure: {
-          hasEffect: currentEffectText !== '无' || nextEffectValue !== '无',
+          hasEffect: currentEffectText !== noneText || nextEffectValue !== noneText,
           hasMilitary: Boolean(config.military),
           hasDescription: Boolean(descText),
           hasPlanning: true,
@@ -424,7 +485,9 @@
         ids: allCards.map((card) => card.id),
         filteredIds: cards.map((card) => card.id),
         isEmpty: cards.length === 0,
-        emptyText: allCards.length === 0 ? '当前时代暂无可建造建筑' : '当前分类暂无可建造建筑',
+        emptyText: allCards.length === 0
+          ? this.t('building.empty.all', {}, '当前时代暂无可建造建筑')
+          : this.t('building.empty.category', {}, '当前分类暂无可建造建筑'),
         activeCategory: resolvedActiveCategory,
         categoryTabs,
         cards,

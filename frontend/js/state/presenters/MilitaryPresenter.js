@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const FamousPersonPresenter = (() => {
     if (global.FamousPersonPresenter) return global.FamousPersonPresenter;
     if (typeof module !== 'undefined' && module.exports) {
@@ -12,6 +24,10 @@
   })();
 
   class MilitaryPresenter {
+    static t(key, params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     static toNumber(value, fallback = 0) {
       const number = Number(value);
       return Number.isFinite(number) ? number : fallback;
@@ -85,7 +101,11 @@
       const rawFormations = military.formations && typeof military.formations === 'object' ? military.formations : {};
       const cityFormations = Array.isArray(rawFormations[cityId]) ? rawFormations[cityId] : [];
       const maxFormationMembers = 5;
-      const formationNames = ['部队一', '部队二', '部队三'];
+      const formationNames = [
+        this.t('military.formation.default.1', {}, '部队一'),
+        this.t('military.formation.default.2', {}, '部队二'),
+        this.t('military.formation.default.3', {}, '部队三'),
+      ];
       const formations = [1, 2, 3].map((slot) => {
         const rawFormation = cityFormations.find((item) => Number(item?.slot) === slot) || cityFormations[slot - 1] || {};
         const memberIds = Array.isArray(rawFormation.memberIds) ? rawFormation.memberIds : [];
@@ -107,7 +127,7 @@
         return {
           slot,
           cityId,
-          name: rawFormation.name || formationNames[slot - 1] || `部队${slot}`,
+          name: rawFormation.name || formationNames[slot - 1] || this.t('military.formation.default', { slot }, `部队${slot}`),
           memberIds: members.map((member) => member.id),
           members,
           leader: members[0] || null,
@@ -121,16 +141,20 @@
       });
       const formationPeople = this.sortFamousPeopleForRoster(people).map((person) => this.buildFamousPersonCard(person));
 
-      let trainingText = `下一批 ${batchSize} 兵 · ${progress}/${interval} 秒`;
+      let trainingText = this.t(
+        'military.training.nextBatch',
+        { batchSize, progress, interval },
+        `下一批 ${batchSize} 兵 · ${progress}/${interval} 秒`,
+      );
       let trainingProgressWidth = interval > 0
         ? `${Math.max(0, Math.min(100, Math.floor((progress / interval) * 100)))}%`
         : '0%';
 
       if (soldiers >= cap && cap > 0) {
-        trainingText = '训练已满';
+        trainingText = this.t('military.training.full', {}, '训练已满');
         trainingProgressWidth = '100%';
       } else if (cap <= 0 || interval <= 0) {
-        trainingText = '等待兵营';
+        trainingText = this.t('military.training.waitBarracks', {}, '等待兵营');
         trainingProgressWidth = '0%';
       }
 
@@ -153,7 +177,11 @@
           maxMembers: maxFormationMembers,
           availableReserveSoldiers: soldiers,
           perMemberSoldierCap: 1000,
-          summary: `3 支部队 · 每队最多 ${maxFormationMembers} 名名人`,
+          summary: this.t(
+            'military.formation.summary',
+            { maxMembers: maxFormationMembers },
+            `3 支部队 · 每队最多 ${maxFormationMembers} 名名人`,
+          ),
         },
       };
     }
@@ -187,30 +215,52 @@
       const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
       const maxActiveScouts = Math.max(1, this.toInteger(territoryState.maxActiveScouts || 1));
 
-      let statusText = `选择方向派出侦察队；同一时间最多可有 ${maxActiveScouts} 支侦察队在外。`;
+      let statusText = this.t(
+        'military.scout.status.default',
+        { maxActiveScouts },
+        `选择方向派出侦察队；同一时间最多可有 ${maxActiveScouts} 支侦察队在外。`,
+      );
       if (readyCount > 0 && activeScouts.length > 0) {
-        statusText = `${readyCount} 份报告待查看，另有 ${activeScouts.length} 支侦察队仍在外。`;
+        statusText = this.t(
+          'military.scout.status.readyAndActive',
+          { readyCount, activeCount: activeScouts.length },
+          `${readyCount} 份报告待查看，另有 ${activeScouts.length} 支侦察队仍在外。`,
+        );
       } else if (readyCount > 0) {
-        statusText = `${readyCount} 份侦察报告待查看，你仍可继续派出侦察队。`;
+        statusText = this.t(
+          'military.scout.status.ready',
+          { readyCount },
+          `${readyCount} 份侦察报告待查看，你仍可继续派出侦察队。`,
+        );
       } else if (activeScouts.length > 1) {
-        statusText = `${activeScouts.length} 支侦察队在外行动，最早一支约 ${this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs))} 后返回。`;
+        const remaining = this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs));
+        statusText = this.t(
+          'military.scout.status.activeMany',
+          { activeCount: activeScouts.length, remaining },
+          `${activeScouts.length} 支侦察队在外行动，最早一支约 ${remaining} 后返回。`,
+        );
       } else if (activeScout) {
-        const label = directions.find((direction) => direction.id === activeScout.direction)?.label || '外部';
-        statusText = `${label}侦察中，预计 ${this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs))} 后返回。`;
+        const label = directions.find((direction) => direction.id === activeScout.direction)?.label || this.t('military.scout.direction.outside', {}, '外部');
+        const remaining = this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs));
+        statusText = this.t(
+          'military.scout.status.activeOne',
+          { direction: label, remaining },
+          `${label}侦察中，预计 ${remaining} 后返回。`,
+        );
       }
 
       const labels = new Map(directions.map((direction) => [direction.id, direction.label]));
       const order = [
-        ['nw', '西北'], ['n', '北'], ['ne', '东北'],
-        ['w', '西'], ['center', '本城'], ['e', '东'],
-        ['sw', '西南'], ['s', '南'], ['se', '东南'],
+        ['nw', this.t('military.scout.direction.nw', {}, '西北')], ['n', this.t('military.scout.direction.n', {}, '北')], ['ne', this.t('military.scout.direction.ne', {}, '东北')],
+        ['w', this.t('military.scout.direction.w', {}, '西')], ['center', this.t('military.scout.direction.center', {}, '本城')], ['e', this.t('military.scout.direction.e', {}, '东')],
+        ['sw', this.t('military.scout.direction.sw', {}, '西南')], ['s', this.t('military.scout.direction.s', {}, '南')], ['se', this.t('military.scout.direction.se', {}, '东南')],
       ];
       const cells = order.map(([id, fallbackLabel]) => {
         if (id === 'center') {
           return {
             type: 'center',
-            label: '城',
-            subLabel: '本城',
+            label: this.t('military.scout.centerLabel', {}, '城'),
+            subLabel: this.t('military.scout.direction.center', {}, '本城'),
           };
         }
         if (!labels.has(id)) return null;
@@ -225,9 +275,9 @@
             disabled: false,
             action: 'claim',
             actionValue: mission.id,
-            ariaLabel: `${label}侦察报告`,
+            ariaLabel: this.t('military.scout.reportAria', { direction: label }, `${label}侦察报告`),
             label,
-            actionText: '报告',
+            actionText: this.t('military.scout.report', {}, '报告'),
           };
         }
         if (mission) {
@@ -239,7 +289,7 @@
             disabled: true,
             action: '',
             actionValue: '',
-            ariaLabel: `${label}侦察中`,
+            ariaLabel: this.t('military.scout.activeAria', { direction: label }, `${label}侦察中`),
             label,
             actionText: this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(mission, nowMs)),
           };
@@ -253,9 +303,9 @@
             disabled: true,
             action: '',
             actionValue: '',
-            ariaLabel: `${label}侦察暂不可用`,
+            ariaLabel: this.t('military.scout.lockedAria', { direction: label }, `${label}侦察暂不可用`),
             label,
-            actionText: '等待',
+            actionText: this.t('military.scout.wait', {}, '等待'),
           };
         }
         return {
@@ -266,9 +316,9 @@
           disabled: false,
           action: 'scout',
           actionValue: id,
-          ariaLabel: `向${label}派出侦察`,
+          ariaLabel: this.t('military.scout.sendAria', { direction: label }, `向${label}派出侦察`),
           label,
-          actionText: '派出',
+          actionText: this.t('military.scout.send', {}, '派出'),
         };
       }).filter(Boolean);
 

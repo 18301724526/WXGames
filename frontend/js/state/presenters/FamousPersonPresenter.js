@@ -1,5 +1,21 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class FamousPersonPresenter {
+    static t(key, params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     static toNumber(value, fallback = 0) {
       const number = Number(value);
       return Number.isFinite(number) ? number : fallback;
@@ -10,7 +26,11 @@
     }
 
     static formatFamousPersonSource(source = {}) {
-      return source.label || { seek: '寻访', event: '事件投奔', postWar: '战后归附' }[source.type] || '未知来源';
+      return source.label || {
+        seek: this.t('famous.source.seek', {}, '寻访'),
+        event: this.t('famous.source.event', {}, '事件投奔'),
+        postWar: this.t('famous.source.postWar', {}, '战后归附'),
+      }[source.type] || this.t('famous.source.unknown', {}, '未知来源');
     }
 
     static getFamousPersonEffectLabels() {
@@ -49,14 +69,14 @@
 
     static getFamousPersonAttributeLabel(key = '') {
       return {
-        command: '统帅',
-        force: '武力',
-        intelligence: '智力',
-        strategy: '智力',
-        politics: '政治',
-        charisma: '魅力',
-        speed: '速度',
-      }[key] || key || '属性';
+        command: this.t('famous.attribute.command', {}, '统帅'),
+        force: this.t('famous.attribute.force', {}, '武力'),
+        intelligence: this.t('famous.attribute.intelligence', {}, '智力'),
+        strategy: this.t('famous.attribute.intelligence', {}, '智力'),
+        politics: this.t('famous.attribute.politics', {}, '政治'),
+        charisma: this.t('famous.attribute.charisma', {}, '魅力'),
+        speed: this.t('famous.attribute.speed', {}, '速度'),
+      }[key] || key || this.t('famous.attribute.title', {}, '六维');
     }
 
     static formatFamousPersonPercent(value, fallback = 0) {
@@ -211,10 +231,10 @@
     static getFamousPersonQualityInfo(quality = '') {
       const key = String(quality || 'common').trim() || 'common';
       const map = {
-        legendary: { key: 'legendary', label: '传奇', rank: 4, frame: 'gold' },
-        great: { key: 'great', label: '英杰', rank: 3, frame: 'purple' },
-        good: { key: 'good', label: '良才', rank: 2, frame: 'blue' },
-        common: { key: 'common', label: '一般', rank: 1, frame: 'white' },
+        legendary: { key: 'legendary', label: this.t('famous.quality.legendary', {}, '传奇'), rank: 4, frame: 'gold' },
+        great: { key: 'great', label: this.t('famous.quality.great', {}, '英杰'), rank: 3, frame: 'purple' },
+        good: { key: 'good', label: this.t('famous.quality.good', {}, '良才'), rank: 2, frame: 'blue' },
+        common: { key: 'common', label: this.t('famous.quality.common', {}, '一般'), rank: 1, frame: 'white' },
       };
       return map[key] || map.common;
     }
@@ -252,41 +272,58 @@
         .slice(0, 4)
         .map((item) => `${item.label}+${item.value}`)
         .join(' ');
-      return detail ? `自动成长 ${total} 点 · ${detail}` : `自动成长 ${total} 点`;
+      return detail
+        ? this.t('famous.growth.autoDetail', { total, detail }, `自动成长 ${total} 点 · ${detail}`)
+        : this.t('famous.growth.auto', { total }, `自动成长 ${total} 点`);
     }
 
     static buildFamousPersonCard(person = {}, options = {}) {
       const attrs = person.attributes || {};
       const roleLabels = {
-        military: '军事',
-        governance: '治理',
-        knowledge: '知识',
-        charisma: '魅力',
+        military: this.t('famous.role.military', {}, '军事'),
+        governance: this.t('famous.role.governance', {}, '治理'),
+        knowledge: this.t('famous.role.knowledge', {}, '知识'),
+        charisma: this.t('famous.role.charisma', {}, '魅力'),
       };
       const roles = Array.isArray(person.roles) && person.roles.length
         ? person.roles.map((role) => roleLabels[role] || role).join(' / ')
-        : (person.archetypeLabel || '人才');
+        : (person.archetypeLabel || this.t('famous.genericRole', {}, '人才'));
       const attributes = [
-        { key: 'command', label: '统帅', shortLabel: '统', value: this.toInteger(attrs.command) },
-        { key: 'force', label: '武力', shortLabel: '武', value: this.toInteger(attrs.force) },
-        { key: 'intelligence', label: '智力', shortLabel: '智', value: this.toInteger(attrs.intelligence ?? attrs.strategy) },
-        { key: 'politics', label: '政治', shortLabel: '政', value: this.toInteger(attrs.politics ?? attrs.governance) },
-        { key: 'charisma', label: '魅力', shortLabel: '魅', value: this.toInteger(attrs.charisma) },
-        { key: 'speed', label: '速度', shortLabel: '速', value: this.toInteger(attrs.speed) },
+        { key: 'command', label: this.t('famous.attribute.command', {}, '统帅'), shortLabel: this.t('famous.attribute.short.command', {}, '统'), value: this.toInteger(attrs.command) },
+        { key: 'force', label: this.t('famous.attribute.force', {}, '武力'), shortLabel: this.t('famous.attribute.short.force', {}, '武'), value: this.toInteger(attrs.force) },
+        { key: 'intelligence', label: this.t('famous.attribute.intelligence', {}, '智力'), shortLabel: this.t('famous.attribute.short.intelligence', {}, '智'), value: this.toInteger(attrs.intelligence ?? attrs.strategy) },
+        { key: 'politics', label: this.t('famous.attribute.politics', {}, '政治'), shortLabel: this.t('famous.attribute.short.politics', {}, '政'), value: this.toInteger(attrs.politics ?? attrs.governance) },
+        { key: 'charisma', label: this.t('famous.attribute.charisma', {}, '魅力'), shortLabel: this.t('famous.attribute.short.charisma', {}, '魅'), value: this.toInteger(attrs.charisma) },
+        { key: 'speed', label: this.t('famous.attribute.speed', {}, '速度'), shortLabel: this.t('famous.attribute.short.speed', {}, '速'), value: this.toInteger(attrs.speed) },
       ];
       const stats = attributes.map((item) => `${item.shortLabel}${item.value}`).join('  ');
       const abilities = this.getFamousPersonAbilities(person);
       const skills = abilities.length
         ? abilities.map((skill) => this.formatFamousPersonSkill(skill))
-        : ['暂无技能'];
+        : [this.t('famous.skill.none', {}, '暂无技能')];
       const skillDetails = abilities.length
         ? abilities.map((skill) => this.formatFamousPersonSkillDetail(skill))
-        : [{ id: 'none', name: '暂无技能', kindText: '技能', effectText: '暂无效果', meta: '', description: '', summary: '暂无技能' }];
+        : [{
+          id: 'none',
+          name: this.t('famous.skill.none', {}, '暂无技能'),
+          kindText: this.t('famous.skill.generic', {}, '技能'),
+          effectText: this.t('famous.skill.noEffect', {}, '暂无效果'),
+          meta: '',
+          description: '',
+          summary: this.t('famous.skill.none', {}, '暂无技能'),
+        }];
       const skillBadges = skillDetails.slice(0, 2).map((skill) => ({
         id: skill.id,
-        label: skill.kindText || '技能',
-        name: skill.name || '技能',
-        text: `${skill.kindText || '技能'}：${skill.name || '技能'}`,
+        label: skill.kindText || this.t('famous.skill.generic', {}, '技能'),
+        name: skill.name || this.t('famous.skill.generic', {}, '技能'),
+        text: this.t(
+          'famous.skill.badge',
+          {
+            kind: skill.kindText || this.t('famous.skill.generic', {}, '技能'),
+            name: skill.name || this.t('famous.skill.generic', {}, '技能'),
+          },
+          `${skill.kindText || '技能'}：${skill.name || '技能'}`,
+        ),
       }));
       const isCandidate = Boolean(options.candidate);
       const level = Math.max(1, this.toInteger(person.level, 1));
@@ -295,12 +332,22 @@
       const freeAttributePoints = Math.max(0, this.toInteger(person.freeAttributePoints, 0));
       const qualityInfo = this.getFamousPersonQualityInfo(person.quality);
       const growthText = !isCandidate
-        ? (nextLevelExperience > 0 ? `等级 ${level} · 经验 ${experience}/${nextLevelExperience}` : `等级 ${level}`)
+        ? (nextLevelExperience > 0
+          ? this.t(
+            'famous.growth.experience',
+            { level, experience, nextLevelExperience },
+            `等级 ${level} · 经验 ${experience}/${nextLevelExperience}`,
+          )
+          : this.t('famous.growth.level', { level }, `等级 ${level}`))
         : '';
       const nextAttributePointLevel = isCandidate ? null : this.getNextFamousAttributePointLevel(level);
-      const pointText = !isCandidate ? `可分配属性点 ${freeAttributePoints}` : '';
+      const pointText = !isCandidate
+        ? this.t('famous.pointText', { points: freeAttributePoints }, `可分配属性点 ${freeAttributePoints}`)
+        : '';
       const attributePointHint = !isCandidate
-        ? (freeAttributePoints > 0 ? `可分配 ${freeAttributePoints} 点` : `下次属性点：Lv.${nextAttributePointLevel}`)
+        ? (freeAttributePoints > 0
+          ? this.t('famous.attributePoint.available', { points: freeAttributePoints }, `可分配 ${freeAttributePoints} 点`)
+          : this.t('famous.attributePoint.next', { level: nextAttributePointLevel }, `下次属性点：Lv.${nextAttributePointLevel}`))
         : '';
       const autoGrowthText = !isCandidate ? this.formatFamousAutoGrowthText(person.autoAttributeGrowth, attributes) : '';
       const autoGrowthTotal = !isCandidate
@@ -316,8 +363,8 @@
         : [];
       return {
         id: person.id || '',
-        name: person.name || '无名之士',
-        title: person.title || person.archetypeLabel || '名人',
+        name: person.name || this.t('famous.unknown', {}, '无名之士'),
+        title: person.title || person.archetypeLabel || this.t('famous.genericTitle', {}, '名人'),
         quality: qualityInfo.key,
         qualityLabel: person.qualityLabel || qualityInfo.label,
         qualityRank: qualityInfo.rank,
@@ -341,7 +388,11 @@
         skillDetails,
         skillBadges,
         appearance: person.appearance && typeof person.appearance === 'object' ? person.appearance : null,
-        statusText: options.candidate ? '候选' : (person.status?.assigned === 'idle' ? '待命' : '已派遣'),
+        statusText: options.candidate
+          ? this.t('famous.status.candidate', {}, '候选')
+          : (person.status?.assigned === 'idle'
+            ? this.t('famous.status.idle', {}, '待命')
+            : this.t('famous.status.assigned', {}, '已派遣')),
         openDetailAction: isCandidate ? null : { type: 'openFamousPersonDetail', personId: person.id || '' },
       };
     }
@@ -354,22 +405,26 @@
       const candidateCount = this.toInteger(famous.candidateCount ?? candidates.length);
       const maxCandidates = this.toInteger(famous.maxCandidates, 3);
       const seekAvailable = Boolean(seek.available);
-      const seekText = seekAvailable ? '寻访' : '暂不可寻访';
+      const seekText = seekAvailable
+        ? this.t('famous.seek.available', {}, '寻访')
+        : this.t('famous.seek.unavailable', {}, '暂不可寻访');
       const sortedPeople = this.sortFamousPeopleForRoster(people).map((person) => this.buildFamousPersonCard(person));
       const selectedPersonId = String(options.selectedPersonId || '');
       const selectedPerson = selectedPersonId
         ? sortedPeople.find((person) => person.id === selectedPersonId) || null
         : null;
       return {
-        title: '名人',
-        subtitle: '按品质查看名人，点击头像查看详情与加点',
+        title: this.t('famous.title', {}, '名人'),
+        subtitle: this.t('famous.subtitle', {}, '按品质查看名人，点击头像查看详情与加点'),
         peopleCount: this.toInteger(famous.count ?? people.length),
         candidateCount,
         maxCandidates,
         seek: {
           available: seekAvailable,
           text: seekText,
-          message: seek.message || (seekAvailable ? '可以尝试寻访新的名人。' : `城邦时代后开放寻访。`),
+          message: seek.message || (seekAvailable
+            ? this.t('famous.seek.message.available', {}, '可以尝试寻访新的名人。')
+            : this.t('famous.seek.message.locked', {}, '城邦时代后开放寻访。')),
           count: this.toInteger(seek.count),
           action: { type: 'seekFamousPerson', disabled: !seekAvailable },
         },
@@ -380,7 +435,7 @@
           acceptAction: { type: 'acceptFamousPerson', candidateId: person.id },
           dismissAction: { type: 'dismissFamousPersonCandidate', candidateId: person.id },
         })),
-        emptyText: '暂无名人加入。线索出现后，可以在这里接纳新的领队与人才。',
+        emptyText: this.t('famous.empty', {}, '暂无名人加入。线索出现后，可以在这里接纳新的领队与人才。'),
       };
     }
   }

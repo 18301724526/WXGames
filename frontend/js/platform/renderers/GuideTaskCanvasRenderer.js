@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class GuideTaskCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -69,6 +81,10 @@
       return this.callDrawingSurface('wrapTextLimit', args);
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     renderGuideTasks(state = {}, startY = 0) {
       return startY;
     }
@@ -113,12 +129,12 @@
       const closeSize = 28;
       const closeX = x + panelWidth - closeSize - 10;
       const closeY = y + 10;
-      this.drawText(view.title || '攻略', x + 18, y + 18, { size: 18, bold: true, color: '#d5ffe8' });
+      this.drawText(view.title || this.t('guidebook.title'), x + 18, y + 18, { size: 18, bold: true, color: '#d5ffe8' });
       this.drawText(this.truncateText(view.subtitle || '', panelWidth - 76, { size: 12 }), x + 18, y + 44, {
         size: 12,
         color: '#9ccfaf',
       });
-      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.drawButton(closeX, closeY, closeSize, closeSize, this.t('common.close.short'), { size: 14, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeGuidebook' });
 
       const tabs = Array.isArray(view.categories) ? view.categories : [];
@@ -147,7 +163,7 @@
       });
 
       const active = view.activeCategory || {};
-      this.drawText(active.title || '城市规划', contentX + 14, contentY + 16, {
+      this.drawText(active.title || this.t('guidebook.planning.title'), contentX + 14, contentY + 16, {
         size: 15,
         bold: true,
         color: '#d5ffe8',
@@ -172,12 +188,15 @@
           stroke: 'rgba(116, 211, 160, 0.18)',
           radius: 9,
         });
-        this.drawText(`地理：${view.planning.terrainLabel}`, contentX + 26, planningY + 16, {
+        this.drawText(this.t('guidebook.planning.geography', { terrain: view.planning.terrainLabel || this.t('home.planning.terrain.plains') }), contentX + 26, planningY + 16, {
           size: 12,
           bold: true,
           color: '#fff1cf',
         });
-        this.drawText(`${view.planning.text.habitabilityStatus || '宜居度平稳'} · ${view.planning.text.populationGrowthStatus || '人口成长平稳'}`, contentX + 26, planningY + 36, {
+        this.drawText(this.t('guidebook.planning.statusLine', {
+          habitability: view.planning.text.habitabilityStatus || this.t('home.planning.habitabilityStatus', { label: this.t('home.planning.habitability.stable') }),
+          growth: view.planning.text.populationGrowthStatus || this.t('home.population.growth.steady'),
+        }), contentX + 26, planningY + 36, {
           size: 12,
           bold: true,
           color: '#74d3a0',
@@ -222,9 +241,9 @@
       const closeSize = 28;
       const closeX = x + panelWidth - closeSize - 10;
       const closeY = y + 10;
-      this.drawText('任务', x + 18, y + 18, { size: 18, bold: true, color: '#ffe6b5' });
-      this.drawText(`${view.summary?.claimableCount || 0} 个可领取`, x + 18, y + 44, { size: 12, color: '#cbbd96' });
-      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.drawText(this.t('task.center.title'), x + 18, y + 18, { size: 18, bold: true, color: '#ffe6b5' });
+      this.drawText(this.t('task.center.claimableCount', { count: view.summary?.claimableCount || 0 }), x + 18, y + 44, { size: 12, color: '#cbbd96' });
+      this.drawButton(closeX, closeY, closeSize, closeSize, this.t('common.close.short'), { size: 14, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeTaskCenter' });
 
       const tabs = Array.isArray(view.tabs) ? view.tabs : [];
@@ -270,7 +289,7 @@
           stroke: 'rgba(255, 226, 177, 0.1)',
           radius: 10,
         });
-        this.drawText(view.activeCategory?.emptyText || '暂无任务', listX + listWidth / 2, listY + 72, {
+        this.drawText(view.activeCategory?.emptyText || this.t('task.empty.main'), listX + listWidth / 2, listY + 72, {
           size: 14,
           color: '#aeb0b8',
           align: 'center',
@@ -301,7 +320,7 @@
           radius: 10,
           inset: 'rgba(255, 231, 184, 0.05)',
         });
-        this.drawText(this.truncateText(task.title || '任务', listWidth - 26, { size: 14, bold: true }), listX + 12, itemY + 10, {
+        this.drawText(this.truncateText(task.title || this.t('task.fallback.title'), listWidth - 26, { size: 14, bold: true }), listX + 12, itemY + 10, {
           size: 14,
           bold: true,
           color: completed ? '#aec9b8' : '#fff1cf',
@@ -312,12 +331,12 @@
           color: completed ? '#8ba494' : '#cbbd96',
           lineHeight: 15,
         });
-        this.drawText(this.truncateText(task.rewardText || '无奖励', listWidth - buttonWidth - 34, { size: 12, bold: true }), listX + 12, itemY + 76, {
+        this.drawText(this.truncateText(task.rewardText || this.t('task.reward.none'), listWidth - buttonWidth - 34, { size: 12, bold: true }), listX + 12, itemY + 76, {
           size: 12,
           bold: true,
           color: completed ? '#79c79b' : (claimable ? '#ffd98a' : '#74d3a0'),
         });
-        this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, task.actionLabel || (completed ? '已完成' : (claimable ? '领取' : '前往')), {
+        this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, task.actionLabel || (completed ? this.t('task.action.completed') : (claimable ? this.t('task.action.claim') : this.t('task.action.go'))), {
           disabled: buttonDisabled,
           active: !buttonDisabled,
           size: 12,

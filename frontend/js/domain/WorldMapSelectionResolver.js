@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const WORLD_ENTITY_ACTIONS = Object.freeze([
     'openWorldSite',
@@ -29,6 +40,10 @@
 
   function toInteger(value, fallback = 0) {
     return Math.floor(toNumber(value, fallback));
+  }
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
   }
 
   function parseTileId(tileId = '') {
@@ -94,16 +109,16 @@
   function getCandidateLabel(kind = '', action = {}, target = {}) {
     if (target.label) return String(target.label);
     if (action.label) return String(action.label);
-    if (kind === 'actor') return action.actorName || action.formationLabel || action.missionId || action.actorId || '部队';
-    if (kind === 'site') return action.siteName || action.cityName || action.name || action.siteId || action.cityId || '城池';
-    return action.type || '目标';
+    if (kind === 'actor') return action.actorName || action.formationLabel || action.missionId || action.actorId || t('world.targetPicker.actor.default');
+    if (kind === 'site') return action.siteName || action.cityName || action.name || action.siteId || action.cityId || t('world.targetPicker.site.player');
+    return action.type || t('world.targetPicker.kind.generic');
   }
 
   function getCandidateSubtitle(kind = '', action = {}, target = {}) {
     if (target.subtitle) return String(target.subtitle);
     if (action.subtitle) return String(action.subtitle);
-    if (kind === 'actor') return action.statusLabel || action.status || '行军单位';
-    if (kind === 'site') return action.ownerLabel || action.owner || '地点';
+    if (kind === 'actor') return action.statusLabel || action.status || t('world.targetPicker.actor.activeSubtitle');
+    if (kind === 'site') return action.ownerLabel || action.owner || t('world.targetPicker.site.neutral');
     return '';
   }
 
@@ -242,6 +257,7 @@
     normalizeCandidates,
     normalizeCoord,
     resolveCandidates,
+    t,
   };
 
   global.WorldMapSelectionResolver = api;

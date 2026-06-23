@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CivilizationCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -73,6 +85,10 @@
       return this.callDrawingSurface('wrapTextLimit', args);
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     renderCivilization(state = {}, startY = 210, panelHeight = 420, options = {}) {
       if (!this.presenter || typeof this.presenter.buildCivilizationViewState !== 'function') return;
       const view = this.presenter.buildCivilizationViewState(
@@ -133,10 +149,10 @@
       });
 
       const stats = [
-        { label: '人口', value: view.text.civOverviewPop, icon: 'assets/art/icon-population-cutout.webp' },
-        { label: '建筑', value: view.text.civOverviewBuildings, icon: 'assets/art/building-house-cutout.png' },
-        { label: '科技', value: view.text.civOverviewTechs, icon: 'assets/art/icon-science-cutout.webp' },
-        { label: '幸福度', value: view.text.civOverviewHappiness, icon: 'assets/art/icon-happiness-cutout.webp' },
+        { label: this.t('civilization.stat.population', {}, '人口'), value: view.text.civOverviewPop, icon: 'assets/art/icon-population-cutout.webp' },
+        { label: this.t('civilization.stat.buildings', {}, '建筑'), value: view.text.civOverviewBuildings, icon: 'assets/art/building-house-cutout.png' },
+        { label: this.t('civilization.stat.techs', {}, '科技'), value: view.text.civOverviewTechs, icon: 'assets/art/icon-science-cutout.webp' },
+        { label: this.t('civilization.stat.happiness', {}, '幸福度'), value: view.text.civOverviewHappiness, icon: 'assets/art/icon-happiness-cutout.webp' },
       ];
       const compactOverview = overviewHeight < 140;
       const statGap = 8;
@@ -178,7 +194,7 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      this.renderSectionHeader('时代进阶', eraX + 12, eraY + 14, '🔥');
+      this.renderSectionHeader(this.t('civilization.section.advance', {}, '时代进阶'), eraX + 12, eraY + 14, '🔥');
       this.drawAsset('assets/art/icon-food-cutout.webp', eraX + eraWidth / 2 - 42, eraY + 40, 38, 38);
       this.drawText(this.truncateText(view.text.eraTargetName, eraWidth - 112, { size: 15, bold: true }), eraX + eraWidth / 2 + 4, eraY + 59, {
         size: 15,
@@ -249,7 +265,7 @@
           stroke: 'rgba(255, 226, 177, 0.12)',
           radius: 10,
         });
-        this.renderSectionHeader('当前时代特性', x + 26, featureY + 14, '✓');
+        this.renderSectionHeader(this.t('civilization.section.features', {}, '当前时代特性'), x + 26, featureY + 14, '✓');
         const featureLineLimit = Math.max(1, Math.floor((featureHeight - 44) / 18));
         const featureLines = this.wrapTextLimit(view.text.featureDescription, width - 58, featureLineLimit, { size: 12 });
         this.drawTextLines(featureLines, x + 26, featureY + 44, {

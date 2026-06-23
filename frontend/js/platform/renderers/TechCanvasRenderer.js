@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const TechTreeLayoutModel = global.TechTreeLayoutModel || (typeof require !== 'undefined' ? require('./TechTreeLayoutModel') : null);
   const TechTreeCanvasRenderer = global.TechTreeCanvasRenderer || (typeof require !== 'undefined' ? require('./TechTreeCanvasRenderer') : null);
 
@@ -22,6 +34,10 @@
 
     get presenter() {
       return this.host?.presenter;
+    }
+
+    t(key, params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     get lastTechTreeScroll() {
@@ -198,7 +214,7 @@
         width: 1.5,
       });
       const titleWidth = Math.max(54, rect.width + 16);
-      this.drawText(this.truncateText(node.title || node.name || '科技', titleWidth, { size: 10, bold: true }), cx, rect.y + rect.height - 13, {
+      this.drawText(this.truncateText(node.title || node.name || this.t('tech.generic', {}, '科技'), titleWidth, { size: 10, bold: true }), cx, rect.y + rect.height - 13, {
         size: 11,
         bold: true,
         align: 'center',
@@ -226,21 +242,21 @@
       const contentRight = buttonX - 10;
       const contentWidth = Math.max(116, contentRight - textX);
       const titleWidth = Math.max(80, contentWidth);
-      this.drawText(this.truncateText(detail.title || '选择一个科技', titleWidth, { size: 15, bold: true }), textX, y + 14, {
+      this.drawText(this.truncateText(detail.title || this.t('tech.detail.emptyTitle', {}, '选择一个科技'), titleWidth, { size: 15, bold: true }), textX, y + 14, {
         size: 15,
         bold: true,
         color: '#ffe6b5',
       });
       const meta = selected
         ? [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · ')
-        : (detail.statusLabel || '未选择');
+        : (detail.statusLabel || this.t('tech.status.unselected', {}, '未选择'));
       this.drawText(this.truncateText(meta, contentWidth, { size: 10, bold: true }), textX, y + 36, {
         size: 10,
         bold: true,
         color: detail.canResearch ? '#74d3a0' : '#f0b45b',
       });
       const summaryWidth = Math.max(120, width - 24);
-      const summaryLines = this.wrapTextLimit(detail.summary || '点击科技节点查看效果。', summaryWidth, 1, { size: 10 });
+      const summaryLines = this.wrapTextLimit(detail.summary || this.t('tech.detail.emptySummary', {}, '点击科技节点查看效果。'), summaryWidth, 1, { size: 10 });
       this.drawTextLines(summaryLines, textX, y + 54, {
         size: 10,
         color: '#cbbd96',
@@ -252,21 +268,25 @@
         const infoWidth = width - 24;
         const rows = Array.isArray(detail.effectRows) && detail.effectRows.length
           ? detail.effectRows
-          : [{ label: '研究后', text: detail.unlockSummary || '选择一条文明发展方向。' }];
+          : [{ label: this.t('tech.row.afterResearch', {}, '研究后'), text: detail.unlockSummary || this.t('tech.detail.directionFallback', {}, '选择一条文明发展方向。') }];
         rows.slice(0, 2).forEach((row, index) => {
           const rowY = infoTop + index * 16;
-          this.drawText(`${row.label}：`, infoX, rowY, {
+          this.drawText(`${row.label}${this.t('common.labelSeparator', {}, '：')}`, infoX, rowY, {
             size: 10,
             bold: true,
             color: index === 0 ? '#d5ffe8' : '#f0b45b',
           });
-          this.drawText(this.truncateText(row.text || '无', infoWidth - 58, { size: 10 }), infoX + 58, rowY, {
+          this.drawText(this.truncateText(row.text || this.t('common.none', {}, '无'), infoWidth - 58, { size: 10 }), infoX + 58, rowY, {
             size: 10,
             color: '#cbbd96',
           });
         });
         const prerequisiteY = y + height - 18;
-        const prerequisiteText = `前置科技：${detail.prerequisiteText || '无'}`;
+        const prerequisiteText = this.t(
+          'tech.detail.prerequisite',
+          { text: detail.prerequisiteText || this.t('tech.noPrerequisite', {}, '无') },
+          `前置科技：${detail.prerequisiteText || '无'}`,
+        );
         this.drawText(this.truncateText(prerequisiteText, width - actionWidth - 42, { size: 10 }), infoX, prerequisiteY, { size: 10, color: '#aeb0b8' });
         this.drawText(this.truncateText(detail.pointsText || '', actionWidth + 8, { size: 10, bold: true }), buttonX + actionWidth / 2, prerequisiteY, {
           size: 10,
@@ -275,7 +295,7 @@
           align: 'center',
         });
       }
-      this.drawPrimaryActionButton(buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || '研究', {
+      this.drawPrimaryActionButton(buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || this.t('tech.action.research', {}, '研究'), {
         disabled: !detail.canResearch,
         size: 11,
         radius: 9,
@@ -335,7 +355,7 @@
         width: 1.5,
       });
       this.drawAsset(iconPath, x + 16, y + 19, iconSize, iconSize, 0.98);
-      this.drawText(this.truncateText(detail.title || '科技', panelWidth - 118, { size: 17, bold: true }), x + 84, y + 22, {
+      this.drawText(this.truncateText(detail.title || this.t('tech.generic', {}, '科技'), panelWidth - 118, { size: 17, bold: true }), x + 84, y + 22, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
@@ -348,7 +368,7 @@
       });
 
       let cursorY = y + 92;
-      const summaryLines = this.wrapTextLimit(detail.summary || '选择科技查看效果。', panelWidth - 32, 3, { size: 12 });
+      const summaryLines = this.wrapTextLimit(detail.summary || this.t('tech.detail.defaultSummary', {}, '选择科技查看效果。'), panelWidth - 32, 3, { size: 12 });
       this.drawTextLines(summaryLines, x + 16, cursorY, {
         size: 12,
         color: '#f6e8c8',
@@ -358,13 +378,13 @@
 
       const rows = Array.isArray(detail.effectRows) && detail.effectRows.length
         ? detail.effectRows
-        : [{ label: '研究后', text: detail.unlockSummary || '选择一条文明发展方向。' }];
+        : [{ label: this.t('tech.row.afterResearch', {}, '研究后'), text: detail.unlockSummary || this.t('tech.detail.directionFallback', {}, '选择一条文明发展方向。') }];
       rows.slice(0, 4).forEach((row) => {
-        const label = `${row.label}：`;
+        const label = `${row.label}${this.t('common.labelSeparator', {}, '：')}`;
         this.drawText(label, x + 16, cursorY, { size: 11, bold: true, color: '#f0b45b' });
         this.ctx.font = '700 11px sans-serif';
         const labelWidth = Math.max(58, this.ctx.measureText(label).width + 2);
-        const rowLines = this.wrapTextLimit(row.text || '无', panelWidth - 32 - labelWidth, 2, { size: 11 });
+        const rowLines = this.wrapTextLimit(row.text || this.t('common.none', {}, '无'), panelWidth - 32 - labelWidth, 2, { size: 11 });
         this.drawTextLines(rowLines, x + 16 + labelWidth, cursorY, {
           size: 11,
           color: '#cbbd96',
@@ -373,7 +393,11 @@
         cursorY += Math.max(18, rowLines.length * 15 + 4);
       });
 
-      const prereqText = `前置科技：${detail.prerequisiteText || '无'}`;
+      const prereqText = this.t(
+        'tech.detail.prerequisite',
+        { text: detail.prerequisiteText || this.t('tech.noPrerequisite', {}, '无') },
+        `前置科技：${detail.prerequisiteText || '无'}`,
+      );
       this.drawText(this.truncateText(prereqText, panelWidth - 32, { size: 11 }), x + 16, cursorY + 4, {
         size: 11,
         color: '#aeb0b8',
@@ -395,7 +419,7 @@
         bold: true,
         color: '#f0b45b',
       });
-      this.drawPrimaryActionButton(buttonX, buttonY, buttonW, buttonH, detail.buttonLabel || '研究', {
+      this.drawPrimaryActionButton(buttonX, buttonY, buttonW, buttonH, detail.buttonLabel || this.t('tech.action.research', {}, '研究'), {
         disabled: !detail.canResearch,
         size: 13,
         radius: 8,

@@ -23,6 +23,18 @@
     return null;
   })();
 
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -34,6 +46,10 @@
 
   function getTileMapManifest(options = {}) {
     return options.manifest || sharedTileMapManifest || {};
+  }
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
   }
 
   function getWorldTileId(q, r) {
@@ -83,7 +99,7 @@
 
   function normalizeTemplateAssets(templateAssets = []) {
     return templateAssets.map((asset) => ({
-      label: asset.label || '',
+      label: asset.labelKey ? t(asset.labelKey, asset.labelParams || {}, asset.label || '') : (asset.label || ''),
       key: asset.key || '',
       type: asset.templateType || '',
       asset: asset.path || '',
@@ -149,7 +165,7 @@
       q: coord.q,
       r: coord.r,
       terrain,
-      terrainLabel: terrainAsset.label || terrain,
+      terrainLabel: terrainAsset.labelKey ? t(terrainAsset.labelKey, {}, terrainAsset.label || terrain) : (terrainAsset.label || terrain),
       terrainAsset: terrainAsset.path || '',
       waterAsset: terrainAsset.water ? manifest.getWaterAsset?.(terrainAsset.water)?.path || '' : '',
       templateAssets: normalizeTemplateAssets(templateAssets),
@@ -175,6 +191,7 @@
   const WorldTileMapTileNormalizer = Object.freeze({
     toNumber,
     toInteger,
+    t,
     getTileMapManifest,
     getWorldTileId,
     normalizeCoord,

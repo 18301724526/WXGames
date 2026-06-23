@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const BattleCanvasModel = (() => {
     if (global.BattleCanvasModel) return global.BattleCanvasModel;
     if (typeof module !== 'undefined' && module.exports) {
@@ -62,15 +74,18 @@
   const ENTITY_FRAMES = 4;
   const ENTITY_FRAME_MS = 130;
   const ENTITY_SPRITE_SCALE = 2;
-  const ENTITY_ORDER_LABELS = [
-    ['advance', '前进'],
-    ['soldierAttack', '士兵出击'],
-    ['generalCharge', '武将出击'],
-    ['generalRetreat', '武将后退'],
-    ['defend', '防御'],
-    ['cover', '掩护'],
+  const ENTITY_ORDER_KEYS = [
+    ['advance', 'battle.entity.order.advance', '前进'],
+    ['soldierAttack', 'battle.entity.order.soldierAttack', '士兵出击'],
+    ['generalCharge', 'battle.entity.order.generalCharge', '武将出击'],
+    ['generalRetreat', 'battle.entity.order.generalRetreat', '武将后退'],
+    ['defend', 'battle.entity.order.defend', '防御'],
+    ['cover', 'battle.entity.order.cover', '掩护'],
   ];
-  const ENTITY_MASTER_LABELS = [['allOut', '全军出击'], ['allRetreat', '全军撤退']];
+  const ENTITY_MASTER_KEYS = [
+    ['allOut', 'battle.entity.master.allOut', '全军出击'],
+    ['allRetreat', 'battle.entity.master.allRetreat', '全军撤退'],
+  ];
 
   class BattleCanvasRenderer {
     constructor(options = {}) {
@@ -92,6 +107,10 @@
 
     get presenter() {
       return this.host?.presenter;
+    }
+
+    t(key, params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     callDrawingSurface(method, args = []) {
@@ -411,8 +430,10 @@
         inset: 'rgba(255, 231, 184, 0.06)',
       });
       const skillState = sideView.skillState || null;
-      const skillName = skillState?.skillName ? this.truncateText(skillState.skillName, panelWidth - 82, { size: 11, bold: true }) : '\u65e0\u6218\u6cd5';
-      const stateText = skillState?.stateText || '\u53ea\u666e\u653b';
+      const skillName = skillState?.skillName
+        ? this.truncateText(skillState.skillName, panelWidth - 82, { size: 11, bold: true })
+        : this.t('battle.skill.none', {}, '无战法');
+      const stateText = skillState?.stateText || this.t('battle.skill.basicOnly', {}, '只普攻');
       this.drawText(skillName, x + 10, y + 11, { size: 11, bold: true, color: skillState?.active ? '#ffe6b5' : '#cbbd96' });
       this.drawText(this.truncateText(stateText, 68, { size: 10, bold: true }), x + panelWidth - 10, y + 11, {
         size: 10,
@@ -426,13 +447,13 @@
     drawBattleStatusBadges(statuses = [], x = 0, y = 0, panelWidth = 140) {
       const list = Array.isArray(statuses) ? statuses : [];
       if (!list.length) {
-        this.drawText('\u72b6\u6001\uff1a\u65e0', x + 10, y + 42, { size: 11, color: '#8d8f99' });
+        this.drawText(this.t('battle.status.noneLine', {}, '状态：无'), x + 10, y + 42, { size: 11, color: '#8d8f99' });
         return;
       }
       let cursorX = x + 10;
       let cursorY = y + 40;
       list.slice(0, 4).forEach((status) => {
-        const label = this.truncateText(status.text || status.label || '\u72b6\u6001', 68, { size: 10, bold: true });
+        const label = this.truncateText(status.text || status.label || this.t('battle.status.default', {}, '状态'), 68, { size: 10, bold: true });
         const width = Math.min(74, Math.max(38, this.measureTextWidth(label, { size: 10, bold: true }) + 14));
         if (cursorX + width > x + panelWidth - 8) {
           cursorX = x + 10;
@@ -589,7 +610,7 @@
         stroke: 'rgba(255, 226, 177, 0.18)',
         radius: 10,
       });
-      const lines = view.logLines?.length ? view.logLines : ['\u53cc\u65b9\u5217\u9635\uff0c\u6218\u6597\u5373\u5c06\u5f00\u59cb\u3002'];
+      const lines = view.logLines?.length ? view.logLines : [this.t('battle.log.start', {}, '双方列阵，战斗即将开始。')];
       lines.slice(-4).forEach((line, index, list) => {
         this.drawText(this.truncateText(line, this.width - 56, { size: 12 }), 28, layout.logY + 14 + index * 24, {
           size: 12,
@@ -600,9 +621,9 @@
 
     drawBattleSceneButtons(view = {}) {
       const layout = this.getBattleSceneLayout(this.width, this.height);
-      this.drawButton(18, layout.buttonY, 88, 36, '\u8fd4\u56de', { size: 12, radius: 8 });
+      this.drawButton(18, layout.buttonY, 88, 36, this.t('common.back', {}, '返回'), { size: 12, radius: 8 });
       this.addHitTarget({ x: 18, y: layout.buttonY, width: 88, height: 36 }, { type: 'closeBattleScene' });
-      const primaryLabel = view.ended ? '\u5b8c\u6210' : '\u8df3\u8fc7';
+      const primaryLabel = view.ended ? this.t('common.done', {}, '完成') : this.t('common.skip', {}, '跳过');
       this.drawButton(this.width - 106, layout.buttonY, 88, 36, primaryLabel, { size: 12, radius: 8, active: true });
       this.addHitTarget({ x: this.width - 106, y: layout.buttonY, width: 88, height: 36 }, { type: view.ended ? 'closeBattleScene' : 'skipBattleScene' });
     }
@@ -795,10 +816,10 @@
         radius: 6,
       });
       const midY = 4 + (layout.hudH - 6) / 2;
-      this.drawText(`tick ${battle.tick || 0}`, 16, midY, { size: 11, color: '#58a6ff', baseline: 'middle' });
-      this.drawText(`我方 ${counts[0] || 0}`, 92, midY, { size: 11, color: '#3fb950', baseline: 'middle' });
-      this.drawText(`敌方 ${counts[1] || 0}`, 168, midY, { size: 11, color: '#f0c000', baseline: 'middle' });
-      this.drawText(entityBattle.status || '交战中…', layout.W - 16, midY, {
+      this.drawText(this.t('battle.entity.top.tick', { tick: battle.tick || 0 }, `tick ${battle.tick || 0}`), 16, midY, { size: 11, color: '#58a6ff', baseline: 'middle' });
+      this.drawText(this.t('battle.entity.top.allyCount', { count: counts[0] || 0 }, `我方 ${counts[0] || 0}`), 92, midY, { size: 11, color: '#3fb950', baseline: 'middle' });
+      this.drawText(this.t('battle.entity.top.enemyCount', { count: counts[1] || 0 }, `敌方 ${counts[1] || 0}`), 168, midY, { size: 11, color: '#f0c000', baseline: 'middle' });
+      this.drawText(entityBattle.status || this.t('battle.entity.status.fighting', {}, '交战中…'), layout.W - 16, midY, {
         size: 11,
         color: entityBattle.statusColor || '#d29922',
         align: 'right',
@@ -860,31 +881,31 @@
           action: { type: 'entityBattleSelectGeneral', gid },
         });
       });
-      y = this.drawEntityButtonRow('选将', genItems, x, y, maxW);
+      y = this.drawEntityButtonRow(this.t('battle.entity.row.selectGeneral', {}, '选将'), genItems, x, y, maxW);
 
       const sq = squads[entityBattle.selectedGid];
 
-      const orderItems = ENTITY_ORDER_LABELS.map((pair) => {
+      const orderItems = ENTITY_ORDER_KEYS.map((pair) => {
         const cd = sq ? (sq.orderCdLeft || 0) : 0;
         const labelCd = cd > 0 ? ` (${Math.ceil(cd / tickHz)}s)` : '';
         return {
-          label: pair[1] + labelCd,
+          label: this.t(pair[1], {}, pair[2]) + labelCd,
           disabled: disabled || cd > 0 || !sq,
           action: { type: 'entityBattleOrder', gid: entityBattle.selectedGid, order: pair[0] },
         };
       });
-      y = this.drawEntityButtonRow('单部队令', orderItems, x, y, maxW);
+      y = this.drawEntityButtonRow(this.t('battle.entity.row.singleOrder', {}, '单部队令'), orderItems, x, y, maxW);
 
-      const masterItems = ENTITY_MASTER_LABELS.map((pair) => {
+      const masterItems = ENTITY_MASTER_KEYS.map((pair) => {
         const used = battle.masterUsed && battle.masterUsed[0] && battle.masterUsed[0][pair[0]];
         return {
-          label: pair[1],
+          label: this.t(pair[1], {}, pair[2]),
           active: true,
           disabled: disabled || Boolean(used),
           action: { type: 'entityBattleMaster', order: pair[0] },
         };
       });
-      y = this.drawEntityButtonRow('全军总令', masterItems, x, y, maxW);
+      y = this.drawEntityButtonRow(this.t('battle.entity.row.masterOrder', {}, '全军总令'), masterItems, x, y, maxW);
 
       const gen = sq ? battle.units[sq.generalId] : null;
       const rageMax = battle.config && battle.config.rageMax;
@@ -892,28 +913,38 @@
       ((gen && gen.skills) || []).forEach((sk, idx) => {
         const ready = Core && typeof Core.skillReady === 'function' ? Core.skillReady(battle, gen, sk, idx) : false;
         const info = sk.kind === 'ultimate'
-          ? `怒${Math.floor(gen.rage || 0)}/${sk.rageCost || rageMax}`
-          : ((gen.skillCds && gen.skillCds[idx] > 0) ? `${Math.ceil(gen.skillCds[idx] / tickHz)}s` : '就绪');
+          ? this.t(
+            'battle.entity.skill.rage',
+            { rage: Math.floor(gen.rage || 0), cost: sk.rageCost || rageMax },
+            `怒${Math.floor(gen.rage || 0)}/${sk.rageCost || rageMax}`,
+          )
+          : ((gen.skillCds && gen.skillCds[idx] > 0)
+            ? `${Math.ceil(gen.skillCds[idx] / tickHz)}s`
+            : this.t('common.ready', {}, '就绪'));
         skillItems.push({
-          label: `${sk.name}[${info}]${sk.auto ? '·自' : ''}`,
+          label: `${sk.name}[${info}]${sk.auto ? this.t('battle.entity.skill.autoSuffix', {}, '·自') : ''}`,
           disabled: disabled || !ready,
           action: { type: 'entityBattleSkill', gid: entityBattle.selectedGid, skillId: sk.id },
         });
       });
-      if (!skillItems.length) skillItems.push({ label: '无技能', disabled: true });
-      this.drawEntityButtonRow('技能', skillItems, x, y, maxW);
+      if (!skillItems.length) skillItems.push({ label: this.t('battle.entity.skill.none', {}, '无技能'), disabled: true });
+      this.drawEntityButtonRow(this.t('battle.entity.row.skill', {}, '技能'), skillItems, x, y, maxW);
 
       // Bottom row (anchored): 自动 托管 toggle + 完成 (only after the battle ends).
       const bh = 28;
       const by = layout.H - bh - 8;
-      const autoLabel = `自动: ${entityBattle.auto ? '开' : '关'}`;
+      const autoLabel = this.t(
+        'battle.entity.auto',
+        { state: entityBattle.auto ? this.t('common.enabled', {}, '开') : this.t('common.disabled', {}, '关') },
+        `自动: ${entityBattle.auto ? '开' : '关'}`,
+      );
       const autoW = Math.max(72, this.measureTextWidth(autoLabel, { size: 12 }) + 18);
       this.drawButton(x, by, autoW, bh, autoLabel, { size: 12, radius: 6, active: Boolean(entityBattle.auto) });
       this.addHitTarget({ x, y: by, width: autoW, height: bh }, { type: 'entityBattleAuto' });
       if (entityBattle.ended) {
         const dw = 88;
         const dx = layout.W - dw - pad;
-        this.drawButton(dx, by, dw, bh, '完成', { size: 13, radius: 6, active: true });
+        this.drawButton(dx, by, dw, bh, this.t('common.done', {}, '完成'), { size: 13, radius: 6, active: true });
         this.addHitTarget({ x: dx, y: by, width: dw, height: bh }, { type: 'entityBattleDone' });
       }
     }
@@ -935,10 +966,10 @@
         baseline: 'middle',
       });
       const doneX = layout.W - bw - 12;
-      this.drawButton(doneX, by, bw, bh, '完成', { size: 13, radius: 8, active: true });
+      this.drawButton(doneX, by, bw, bh, this.t('common.done', {}, '完成'), { size: 13, radius: 8, active: true });
       this.addHitTarget({ x: doneX, y: by, width: bw, height: bh }, { type: 'entityBattleClose' });
       const backX = doneX - bw - 8;
-      this.drawButton(backX, by, bw, bh, '返回', { size: 13, radius: 8 });
+      this.drawButton(backX, by, bw, bh, this.t('common.back', {}, '返回'), { size: 13, radius: 8 });
       this.addHitTarget({ x: backX, y: by, width: bw, height: bh }, { type: 'entityBattleClose' });
     }
 
@@ -954,14 +985,16 @@
         total += n;
         parts.push(`${gid} ${n}`);
       });
-      return `${parts.join(' , ')}  (总 ${total})`;
+      return this.t('battle.entity.survivors', { parts: parts.join(' , '), total }, `${parts.join(' , ')}  (总 ${total})`);
     }
 
     drawEntityBattleResult(entityBattle = {}, layout = {}) {
       const winner = entityBattle.resultWinner;
       const win = winner === 'attacker';
       const draw = winner === 'draw';
-      const title = win ? '胜利' : (draw ? '平局' : '失败');
+      const title = win
+        ? this.t('battle.result.victory', {}, '胜利')
+        : (draw ? this.t('battle.result.draw', {}, '平局') : this.t('battle.result.defeat', {}, '失败'));
       const color = win ? '#3fb950' : (draw ? '#d29922' : '#f85149');
       const boxW = Math.min(layout.W - 40, 320);
       const boxH = 124;
@@ -974,9 +1007,21 @@
       });
       this.drawText(title, bx + boxW / 2, by + 22, { size: 20, bold: true, color, align: 'center', baseline: 'middle' });
       const result = entityBattle.serverResult || (entityBattle.battle && entityBattle.battle.result) || {};
-      this.drawText(`我方剩余: ${this.entityBattleSideSurvivors(entityBattle, 0, result)}`, bx + 14, by + 52, { size: 12, color: '#cbd5e1' });
-      this.drawText(`敌方剩余: ${this.entityBattleSideSurvivors(entityBattle, 1, result)}`, bx + 14, by + 74, { size: 12, color: '#cbd5e1' });
-      this.drawText(`用时 ${result.ticks || 0} tick · 指令 ${entityBattle.inputStreamLen || 0} 条 (后端权威重算)`, bx + 14, by + 98, { size: 10, color: '#8b98a5' });
+      this.drawText(this.t(
+        'battle.entity.survivorLine.ally',
+        { survivors: this.entityBattleSideSurvivors(entityBattle, 0, result) },
+        `我方剩余: ${this.entityBattleSideSurvivors(entityBattle, 0, result)}`,
+      ), bx + 14, by + 52, { size: 12, color: '#cbd5e1' });
+      this.drawText(this.t(
+        'battle.entity.survivorLine.enemy',
+        { survivors: this.entityBattleSideSurvivors(entityBattle, 1, result) },
+        `敌方剩余: ${this.entityBattleSideSurvivors(entityBattle, 1, result)}`,
+      ), bx + 14, by + 74, { size: 12, color: '#cbd5e1' });
+      this.drawText(this.t(
+        'battle.entity.result.audit',
+        { ticks: result.ticks || 0, commands: entityBattle.inputStreamLen || 0 },
+        `用时 ${result.ticks || 0} tick · 指令 ${entityBattle.inputStreamLen || 0} 条 (后端权威重算)`,
+      ), bx + 14, by + 98, { size: 10, color: '#8b98a5' });
     }
   }
 

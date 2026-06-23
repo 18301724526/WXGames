@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedFamousPortraitLayout = (() => {
     if (global.FamousPortraitLayout) return global.FamousPortraitLayout;
     if (typeof module !== 'undefined' && module.exports) {
@@ -128,6 +140,10 @@
 
     wrapTextLimit(...args) {
       return this.callDrawingSurface('wrapTextLimit', args);
+    }
+
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     static getFamousPortraitLayerLayout() {

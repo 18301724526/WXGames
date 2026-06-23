@@ -106,7 +106,7 @@
       const message = intro.messages?.[intro.step] || '';
       this.renderTutorialIntroSpotlight(target, message, {
         showAdvisor: true,
-        advisorName: intro.advisorName || '谋士',
+        advisorName: intro.advisorName,
       });
       if (intro.step === 'city' || intro.step === 'enter') this.renderTutorialIntroMarch(intro, unitTarget);
       return true;
@@ -318,7 +318,7 @@
         inset: 'rgba(255, 247, 214, 0.14)',
       });
       this.renderTutorialIntroFinger(rect.x + rect.width * 0.78, rect.y + rect.height * 0.88);
-      if (options.showAdvisor) this.renderTutorialIntroDialogue(message, options.advisorName || '谋士');
+      if (options.showAdvisor) this.renderTutorialIntroDialogue(message, options.advisorName);
       return true;
     }
 
@@ -375,11 +375,11 @@
       this.ctx.restore?.();
     }
 
-    renderTutorialIntroDialogue(message = '', advisorName = '谋士') {
+    renderTutorialIntroDialogue(message = '', advisorName) {
       return this.renderTutorialAdvisorDialogue(message, advisorName);
     }
 
-    renderTutorialAdvisorDialogue(message = '', advisorName = '谋士', options = {}) {
+    renderTutorialAdvisorDialogue(message = '', advisorName, options = {}) {
       return SharedTutorialAdvisorDialogueRenderer?.render?.(this, message, advisorName, options) || false;
     }
 

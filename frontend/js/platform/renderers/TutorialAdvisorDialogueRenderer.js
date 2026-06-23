@@ -1,4 +1,20 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+  }
+
   function resolveDependency(globalKey, modulePath) {
     if (global[globalKey]) return global[globalKey];
     if (typeof module !== 'undefined' && module.exports && typeof require === 'function') {
@@ -25,7 +41,7 @@
     });
   }
 
-  function renderContent(renderer = {}, layout = {}, message = '', advisorName = '谋士') {
+  function renderContent(renderer = {}, layout = {}, message = '', advisorName = t('tutorial.advisorName', {}, '谋士')) {
     const panel = layout.panel || {};
     const portrait = layout.portrait || {};
     renderer.renderTutorialIntroAdvisorPortrait?.(portrait.x, portrait.y, portrait.width, portrait.height);
@@ -46,7 +62,7 @@
       color: '#f7ecd0',
       lineHeight: 18,
     });
-    renderer.drawText('点击继续', panel.x + panel.width - 24, panel.y + panel.height - 17, {
+    renderer.drawText(t('tutorial.continue', {}, '点击继续'), panel.x + panel.width - 24, panel.y + panel.height - 17, {
       size: 11,
       color: 'rgba(255, 230, 181, 0.66)',
       align: 'right',
@@ -67,7 +83,7 @@
     return true;
   }
 
-  function render(renderer = {}, message = '', advisorName = '谋士', options = {}) {
+  function render(renderer = {}, message = '', advisorName = t('tutorial.advisorName', {}, '谋士'), options = {}) {
     if (!SharedTutorialIntroDialogueLayout) return false;
     const layout = buildLayout(renderer, options);
     const dialogueCtx = SharedTutorialDialogueLayer?.begin?.(renderer) || null;
