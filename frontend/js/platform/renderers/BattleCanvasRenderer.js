@@ -75,16 +75,16 @@
   const ENTITY_FRAME_MS = 130;
   const ENTITY_SPRITE_SCALE = 2;
   const ENTITY_ORDER_KEYS = [
-    ['advance', 'battle.entity.order.advance', '前进'],
-    ['soldierAttack', 'battle.entity.order.soldierAttack', '士兵出击'],
-    ['generalCharge', 'battle.entity.order.generalCharge', '武将出击'],
-    ['generalRetreat', 'battle.entity.order.generalRetreat', '武将后退'],
-    ['defend', 'battle.entity.order.defend', '防御'],
-    ['cover', 'battle.entity.order.cover', '掩护'],
+    ['advance', 'battle.entity.order.advance'],
+    ['soldierAttack', 'battle.entity.order.soldierAttack'],
+    ['generalCharge', 'battle.entity.order.generalCharge'],
+    ['generalRetreat', 'battle.entity.order.generalRetreat'],
+    ['defend', 'battle.entity.order.defend'],
+    ['cover', 'battle.entity.order.cover'],
   ];
   const ENTITY_MASTER_KEYS = [
-    ['allOut', 'battle.entity.master.allOut', '全军出击'],
-    ['allRetreat', 'battle.entity.master.allRetreat', '全军撤退'],
+    ['allOut', 'battle.entity.master.allOut'],
+    ['allRetreat', 'battle.entity.master.allRetreat'],
   ];
 
   class BattleCanvasRenderer {
@@ -889,7 +889,7 @@
         const cd = sq ? (sq.orderCdLeft || 0) : 0;
         const labelCd = cd > 0 ? ` (${Math.ceil(cd / tickHz)}s)` : '';
         return {
-          label: this.t(pair[1], {}, pair[2]) + labelCd,
+          label: this.t(pair[1]) + labelCd,
           disabled: disabled || cd > 0 || !sq,
           action: { type: 'entityBattleOrder', gid: entityBattle.selectedGid, order: pair[0] },
         };
@@ -899,7 +899,7 @@
       const masterItems = ENTITY_MASTER_KEYS.map((pair) => {
         const used = battle.masterUsed && battle.masterUsed[0] && battle.masterUsed[0][pair[0]];
         return {
-          label: this.t(pair[1], {}, pair[2]),
+          label: this.t(pair[1]),
           active: true,
           disabled: disabled || Boolean(used),
           action: { type: 'entityBattleMaster', order: pair[0] },

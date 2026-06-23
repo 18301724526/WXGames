@@ -48,11 +48,11 @@
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-              this.showFloatingText(result.message || '寻访完成');
-              this.log(result.message || '寻访完成');
+              this.showFloatingText(result.message || t('command.famous.seekComplete'));
+              this.log(result.message || t('command.famous.seekComplete'));
               return true;
             } catch (error) {
-              this.log(`寻访失败：${error.payload?.message || error.message}`);
+              this.log(t('command.famous.seekFailed', { message: error.payload?.message || error.message }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -72,7 +72,7 @@
               this.log(result.message || t('command.famous.accepted', {}));
               return true;
             } catch (error) {
-              this.log(`接纳失败：${error.payload?.message || error.message}`);
+              this.log(t('command.famous.acceptFailed', { message: error.payload?.message || error.message }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -90,7 +90,7 @@
               this.log(result.message || t('command.famous.dismissed', {}));
               return true;
             } catch (error) {
-              this.log(`放弃失败：${error.payload?.message || error.message}`);
+              this.log(t('command.famous.dismissFailed', { message: error.payload?.message || error.message }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -104,11 +104,11 @@
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = personId;
               this.selectedFamousPersonId = personId;
-              this.showFloatingText(result.message || '属性已提升');
-              this.log(result.message || '属性已提升');
+              this.showFloatingText(result.message || t('command.famous.attributeUpgraded'));
+              this.log(result.message || t('command.famous.attributeUpgraded'));
               return true;
             } catch (error) {
-              this.log(`加点失败：${error.payload?.message || error.message}`);
+              this.log(t('command.famous.attributePointFailed', { message: error.payload?.message || error.message }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -246,7 +246,7 @@
               delete draftAssignments[personId];
             } else {
               if (memberIds.length >= 5) {
-                this.showFloatingText('编队已满');
+                this.showFloatingText(t('command.formation.full'));
                 return false;
               }
               memberIds.push(personId);
@@ -294,13 +294,13 @@
             ) || 0));
             const input = typeof this.runtime?.requestTextInput === 'function'
               ? await this.runtime.requestTextInput({
-                title: '兵力',
-                message: '设置编队兵力',
+                title: t('command.formation.soldierTitle'),
+                message: t('command.formation.soldierPrompt'),
                 placeholder: '0',
                 value: String(current),
                 inputType: 'number',
               })
-              : global.prompt?.('兵力', String(current));
+              : global.prompt?.(t('command.formation.soldierTitle'), String(current));
             if (input === null || input === undefined || input === '') return false;
             return this.setArmyFormationSoldierDraft(personId, input);
           },
@@ -368,8 +368,8 @@
               this.applyApiState(result);
               this.closeArmyFormationEditor({ render: false });
               const tutorialHandled = this.tutorialController?.onArmyFormationSaved?.(result) === true;
-              this.showFloatingText(result.message || '编队已保存');
-              this.log(result.message || '编队已保存');
+              this.showFloatingText(result.message || t('command.formation.saved'));
+              this.log(result.message || t('command.formation.saved'));
               if (!tutorialHandled) {
                 this.tutorialController?.sync?.(this.tutorial);
                 this.tutorialController?.refreshCurrentHighlight?.();
@@ -377,7 +377,7 @@
               }
               return true;
             } catch (error) {
-              const message = error.payload?.message || error.message || '编队保存失败';
+              const message = error.payload?.message || error.message || t('command.formation.saveFailed');
               this.setArmyFormationEditor({ ...editor, saving: false }, { render: false });
               this.showFloatingText(message);
               this.log(message);
@@ -427,7 +427,7 @@
             this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
             try {
               this.applyApiState(result);
-              this.showFloatingText(action === 'upgrade' ? '升级成功' : '建造成功');
+              this.showFloatingText(action === 'upgrade' ? t('command.building.upgradeSuccess') : t('command.building.buildSuccess'));
               this.log(`Success: ${result?.message || ''}`);
               this.tutorialController?.sync?.(this.tutorial);
               this.maybeShowHouseBuiltAdvisor(action, buildingId);
@@ -445,7 +445,7 @@
           },
 
       showHouseBuiltAdvisorDialogue() {
-            const message = '民居已经建立起来了，族人终于有了稳定的居所。文明也向前迈出了一步。';
+            const message = t('command.house.builtAdvisor');
             this.state = {
               ...(this.state || {}),
               softGuide: {
@@ -460,7 +460,7 @@
             this.activeCommandPanel = '';
             this.activeEventId = null;
             this.tutorialHighlight = null;
-            this.tutorialAdvisorDialogue = { message, advisorName: '谋士', source: 'houseBuilt' };
+            this.tutorialAdvisorDialogue = { message, advisorName: t('tutorial.advisorName'), source: 'houseBuilt' };
             if (this.canvasShell) {
               this.canvasShell.showAdvisor = false;
               this.canvasShell.showCityManagement = false;
@@ -510,22 +510,22 @@
 
       async assignJob(job, delta) {
             if (!this.token && this.authStorage) {
-              this.log('请先登录');
+              this.log(t('command.auth.loginRequired'));
               return false;
             }
             try {
               const result = await this.getGameApi().assignJob(job, delta);
               if (result?.success === false) {
-                this.log(result.message || '人口分配失败');
+                this.log(result.message || t('command.job.assignFailed'));
                 const data = await this.getGameApi().getState?.();
                 if (data?.gameState) this.applyApiState(data);
                 return false;
               }
               this.applyApiState(result);
-              this.log(`人口分配 ${delta > 0 ? '+' : ''}${delta} ${job}`);
+              this.log(t('command.job.assigned', { delta: `${delta > 0 ? '+' : ''}${delta}`, job }));
               return true;
             } catch (error) {
-              this.log(`人口分配失败：${error.payload?.message || error.message}`);
+              this.log(t('command.job.assignFailedDetail', { message: error.payload?.message || error.message }));
               try {
                 const data = await this.getGameApi().getState?.();
                 if (data?.gameState) this.applyApiState(data);
@@ -543,7 +543,7 @@
               this.log(result.message || t('command.policy.applied', {}));
               return true;
             } catch (error) {
-              this.log(`方针失败：${error.payload?.message || error.message}`);
+              this.log(t('command.policy.failed', { message: error.payload?.message || error.message }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -564,11 +564,11 @@
               this.applyApiState(result);
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onEraAdvanced?.(result);
-              this.log(`进入新阶段：${result.message || this.state.currentEraName || ''}`);
+              this.log(t('command.era.entered', { message: result.message || this.state.currentEraName || '' }));
               this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}));
               return true;
             } catch (error) {
-              this.log(`失败：${error.payload?.message || error.message}`);
+              this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
               return false;
             } finally {
               this.renderMilitary();
@@ -714,11 +714,11 @@
                 };
                 this.renderCanvasSurface(this.state?.currentTab);
               }
-              this.showFloatingText(result.rewardText || result.message || '领取成功');
-              this.log(`奖励：${result.message || ''}`);
+              this.showFloatingText(result.rewardText || result.message || t('command.reward.claimed'));
+              this.log(t('command.reward.detail', { message: result.message || '' }));
               return true;
             } catch (error) {
-              this.log(`失败：${error.payload?.message || error.message}`);
+              this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -787,7 +787,7 @@
               }).catch((error) => this.log(error?.message || String(error)));
               return true;
             } catch (error) {
-              this.log(`失败：${error.payload?.message || error.message}`);
+              this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
