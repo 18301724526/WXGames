@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const PAGE_FACADE_METHODS = Object.freeze({
     clear(...args) {
       return this.delegateSurfaceRenderer('clear', args);
@@ -206,12 +222,12 @@
       const result = this.delegateCityRenderer('getActiveCitySummary', args);
       return result === undefined ? {
         id: 'capital',
-        name: '棣栭兘',
-        tag: '涓诲煄',
+        name: t('city.capitalName'),
+        tag: t('home.city.main'),
         level: '',
         population: {},
         military: {},
-        terrainLabel: '骞冲師',
+        terrainLabel: t('home.planning.terrain.plains'),
       } : result;
     },
 

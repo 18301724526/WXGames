@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const sharedWorldMarchSystem = (() => {
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
@@ -293,7 +309,7 @@
           id,
           x: toInteger(rawSite?.x ?? q),
           y: toInteger(rawSite?.y ?? r),
-          naturalName: rawSite?.naturalName || rawSite?.cityName || '绌哄煄',
+          naturalName: rawSite?.naturalName || rawSite?.cityName || t('worldSite.emptyCity'),
           cityName: rawSite?.cityName || null,
           type: rawSite?.type || 'town',
           owner: rawSite?.owner || 'neutral',

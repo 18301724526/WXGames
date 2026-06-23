@@ -1,4 +1,20 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
   class TerritoryController {
     static MIN_EXPEDITION_SOLDIERS = 100;
 
@@ -198,8 +214,8 @@
         const result = await callback();
         if (result) {
           this.onStateApplied(result);
-          this.onFloatingText(result.message || '疆域已更新');
-          this.onLog(`✔ ${result.message || '疆域已更新'}`);
+          this.onFloatingText(result.message || t('territory.updated'));
+          this.onLog(`✔ ${result.message || t('territory.updated')}`);
         }
       } finally {
         this.actionAdapter?.setLoading?.(button, false);

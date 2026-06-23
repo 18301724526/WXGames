@@ -22,7 +22,7 @@
           {
             kind: skill.kindText || renderer.t?.('famous.skill.generic', {}) || '技能',
             name: skill.name || renderer.t?.('famous.skill.generic', {}) || '技能',
-          }) || `${skill.kindText || '技能'}：${skill.name || '技能'}`,
+          }),
       }));
     const badgeHeight = options.badgeHeight || 22;
     const rowGap = options.rowGap || 5;

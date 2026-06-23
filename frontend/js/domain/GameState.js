@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   function normalizeTutorialState(apiResponse) {
     const tutorial = apiResponse && apiResponse.tutorial;
     return {
@@ -31,7 +47,7 @@
       isCapitalCity: gameState.isCapitalCity !== false,
       unlockedBuildings: gameState.unlockedBuildings || [],
       currentEra: Number.isFinite(gameState.currentEra) ? gameState.currentEra : 0,
-      currentEraName: gameState.currentEraName || '原始时代',
+      currentEraName: gameState.currentEraName || t('era.primitiveName'),
       currentEraDescription: gameState.currentEraDescription || '',
       softGuide: (apiResponse && apiResponse.softGuide) || null,
       guideTasks: (apiResponse && apiResponse.guideTasks) || gameState.guideTasks || { visible: false, tasks: [] },

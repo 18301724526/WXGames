@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const SharedWorldMarchSystem = (() => {
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
@@ -166,7 +182,7 @@
       if (options.tutorialAdvisorDialogue) {
         this.renderTutorialAdvisorDialogue(
           options.tutorialAdvisorDialogue.message,
-          options.tutorialAdvisorDialogue.advisorName || '谋士',
+          options.tutorialAdvisorDialogue.advisorName || t('tutorial.advisorName'),
           { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
         );
       } else if (options.showAdvisor) {

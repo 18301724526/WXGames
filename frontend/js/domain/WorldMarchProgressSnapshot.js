@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const SignatureHash = (() => {
     if (global.SignatureHash) return global.SignatureHash;
     if (typeof module !== 'undefined' && module.exports) {
@@ -470,7 +486,7 @@
 
   function getFormationLabel(formation = {}, fallbackSlot = 1) {
     const slot = Math.max(1, toInteger(formation.slot, fallbackSlot));
-    return formation.name || `部队${slot}`;
+    return formation.name || t('military.formation.default', { slot });
   }
 
   function normalizeFormation(formation = {}, origin = {}) {

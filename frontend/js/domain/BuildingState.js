@@ -1,4 +1,19 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   function getLevel(buildings, id) {
     const entry = buildings && buildings[id];
     if (!entry) return 0;
@@ -11,9 +26,9 @@
   }
 
   function getActionLabel(nextCost, level) {
-    if (!level) return '建造';
-    if (nextCost === null) return '已满级';
-    return '升级';
+    if (!level) return t('building.action.build');
+    if (nextCost === null) return t('building.action.maxLevel');
+    return t('building.action.upgrade');
   }
 
   const api = { getLevel, isBuilt, getActionLabel };

@@ -362,7 +362,7 @@
       if (!this.presenter || typeof this.presenter.buildCitySwitcherViewState !== 'function') return;
       const view = this.presenter.buildCitySwitcherViewState(state);
       const mainCityLabel = this.t('home.city.main');
-      const cities = (Array.isArray(view.options) ? view.options : []).filter((city) => city.id && city.id !== 'capital' && city.tag !== mainCityLabel && city.tag !== '涓诲煄');
+      const cities = (Array.isArray(view.options) ? view.options : []).filter((city) => city.id && city.id !== 'capital' && city.tag !== mainCityLabel && city.tag !== this.t('home.city.main'));
       const layout = this.getLayout();
       const panelWidth = Math.min(340, layout.contentWidth - 20);
       const itemHeight = 58;

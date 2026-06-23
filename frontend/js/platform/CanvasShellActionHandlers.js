@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
@@ -138,7 +154,7 @@
           }
           return opened;
         }
-        const message = `编队 ${slot} 功能待开放`;
+        const message = t('formation.slotPending', { slot });
         if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);
         else if (typeof game?.showFloatingText === 'function') game.showFloatingText(message);
         else this.log?.(message);
@@ -259,9 +275,9 @@
           username: game?.authStorage?.getUsername?.() || '',
         });
         if (result?.success) {
-          this.host?.showFloatingText?.(`操作日志已保存：${result.fileName}`);
+          this.host?.showFloatingText?.(t('opsLog.saved', { fileName: result.fileName }));
         } else {
-          this.host?.showFloatingText?.(result?.message || result?.error || '操作日志导出失败', { color: '#ffb86b' });
+          this.host?.showFloatingText?.(result?.message || result?.error || t('opsLog.exportFailed'), { color: '#ffb86b' });
         }
         return this.afterHandled(action);
       },

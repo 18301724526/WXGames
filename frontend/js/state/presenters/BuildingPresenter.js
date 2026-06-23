@@ -399,7 +399,7 @@
         || (step >= tutorialSteps.buildingsTabOpenedForLumbermill && step <= tutorialSteps.lumbermillBuilt && id !== 'lumbermill')
       ));
       const maxLevelLabel = this.t('building.action.maxLevel', {});
-      const isMax = cost === null || actionLabel === maxLevelLabel || actionLabel === '已满级' || actionLabel === '宸叉弧绾?' || actionLabel === 'max';
+      const isMax = cost === null || actionLabel === maxLevelLabel || actionLabel === 'max';
       const canAfford = this.canAffordCost(state.resources, cost);
       const disabledByCost = !isMax && !canAfford;
       const disabled = disabledByTutorial || isMax || disabledByCost;

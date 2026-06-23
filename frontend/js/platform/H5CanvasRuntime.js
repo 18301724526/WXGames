@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const H5CanvasViewport = global.H5CanvasViewport || (typeof require === 'function' ? require('./H5CanvasViewport') : null);
   const H5CanvasInputController = global.H5CanvasInputController || (typeof require === 'function' ? require('./H5CanvasInputController') : null);
 
@@ -415,7 +431,7 @@
 
     requestTextInput(options = {}) {
       if (typeof this.runtime.prompt !== 'function') return Promise.resolve(null);
-      const title = options.title || '输入';
+      const title = options.title || t('common.inputTitle');
       const message = options.message ? `${options.message}\n` : '';
       const placeholder = options.placeholder ? `\n${options.placeholder}` : '';
       const value = this.runtime.prompt(`${message}${title}${placeholder}`, options.value || '');

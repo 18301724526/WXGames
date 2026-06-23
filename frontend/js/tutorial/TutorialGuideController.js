@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const TutorialGuideStepPolicy = (() => {
     if (global.TutorialGuideStepPolicy) return global.TutorialGuideStepPolicy;
     if (typeof module !== 'undefined' && module.exports) {
@@ -256,7 +272,7 @@
       if (this.getCurrentStep() !== TUTORIAL_STEPS.eraAdvancedTo1) return false;
       return this.showSoftGuide(
         'task-center-button',
-        '火种已经越过最初的夜色。去任务里领取这份物资，我们就能准备第一块农田。',
+        t('tutorial.softGuide.claimSupplies'),
       );
     }
 

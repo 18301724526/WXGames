@@ -151,10 +151,10 @@
     renderer.drawText(renderer.t?.(
       'famous.detailMeta',
       {
-        quality: card.qualityLabel || renderer.t?.('famous.quality.common', {}) || '一般',
-        role: card.roleText || renderer.t?.('famous.genericRole', {}) || '人才',
-        status: card.statusText || renderer.t?.('famous.status.idle', {}) || '待命',
-      }) || `${card.qualityLabel || '一般'} · ${card.roleText || '人才'} · ${card.statusText || '待命'}`, textX, y + 61, {
+        quality: card.qualityLabel || renderer.t?.('famous.quality.common', {}),
+        role: card.roleText || renderer.t?.('famous.genericRole', {}),
+        status: card.statusText || renderer.t?.('famous.status.idle', {}),
+      }), textX, y + 61, {
       size: 10,
       color: style.text,
     });
@@ -400,7 +400,7 @@
     });
     renderer.drawText(renderer.t?.(
       'famous.summary',
-      { peopleCount: view.peopleCount, candidateCount: view.candidateCount, maxCandidates: view.maxCandidates }) || `已加入 ${view.peopleCount} 位 · 候选 ${view.candidateCount}/${view.maxCandidates}`, innerX + 12, cursorY + 10, {
+      { peopleCount: view.peopleCount, candidateCount: view.candidateCount, maxCandidates: view.maxCandidates }), innerX + 12, cursorY + 10, {
       size: 12,
       bold: true,
       color: '#ffd98a',

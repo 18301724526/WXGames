@@ -68,7 +68,7 @@
       const host = this.host || {};
       if (!buildingId) return false;
       if (host.tutorialController?.onBuildingAction?.(buildingId, action) === false) {
-        host.showFloatingText?.('请先按照引导建造第一处民居');
+        host.showFloatingText?.(t('guide.buildFirstHouseFirst'));
         host.tutorialController?.refreshCurrentHighlight?.();
         return false;
       }

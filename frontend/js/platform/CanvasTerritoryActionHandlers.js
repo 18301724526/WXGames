@@ -93,7 +93,7 @@
       id: String(candidate.id || action.siteId || action.cityId || action.territoryId || action.actorId || action.missionId || `target-${index}`),
       index,
       kind: candidate.kind || (action.type === 'selectWorldActor' ? 'actor' : 'site'),
-      label: String(candidate.label || action.actorName || action.siteName || action.cityName || action.siteId || action.actorId || '目标'),
+      label: String(candidate.label || action.actorName || action.siteName || action.cityName || action.siteId || action.actorId || this.t('common.target')),
       subtitle: String(candidate.subtitle || action.statusLabel || action.ownerLabel || ''),
       tileId: candidate.tileId || action.tileId || '',
       q: candidate.q,

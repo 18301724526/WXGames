@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
   const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
   const MARCH_DURATION_MS = 4800;
@@ -251,10 +267,10 @@
         enterStartedAt: this.enterStartedAt,
         enterDurationMs: ENTER_DURATION_MS,
         enterEndedAt: this.enterEndedAt,
-        advisorName: '谋士',
+        advisorName: t('tutorial.advisorName'),
         messages: {
-          city: '前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。点一下首都看看。',
-          enter: '让队伍入城整备。只要根基扎稳，这座首都会慢慢长成我们的核心。',
+          city: t('tutorial.intro.city'),
+          enter: t('tutorial.intro.enter'),
         },
       };
     }

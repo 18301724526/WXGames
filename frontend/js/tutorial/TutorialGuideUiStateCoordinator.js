@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const UI_STATE_METHODS = Object.freeze({
   clearBlockingCommandPanels() {
     const game = this.game || {};
@@ -17,7 +33,7 @@
   showSoftGuide(target, message) {
     const game = this.game || {};
     game.canvasShell?.hideTutorialHighlight?.();
-    const dialogue = { message, advisorName: '谋士', source: `softGuide:${target || 'tutorial'}` };
+    const dialogue = { message, advisorName: t('tutorial.advisorName'), source: `softGuide:${target || 'tutorial'}` };
     game.state = {
       ...(game.state || {}),
       softGuide: {

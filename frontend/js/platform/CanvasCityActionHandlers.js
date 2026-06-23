@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
@@ -260,7 +276,7 @@
         const game = this.getGameHost();
         const method = buildingAction === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding';
         if (game?.tutorialController?.onBuildingAction?.(action.buildingId, buildingAction) === false) {
-          game.showFloatingText?.('请先按照引导建造第一处民居');
+          game.showFloatingText?.(t('guide.buildFirstHouseFirst'));
           game.tutorialController?.refreshCurrentHighlight?.();
           return false;
         }

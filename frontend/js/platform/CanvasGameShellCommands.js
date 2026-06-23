@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -191,7 +207,7 @@ toggleArmyFormationMember(action = {}) {
       if (index >= 0) memberIds.splice(index, 1);
       else {
         if (memberIds.length >= 5) {
-          this.showFloatingText('每个编队最多 5 名名人');
+          this.showFloatingText(t('formation.maxMembersToast'));
           return false;
         }
         memberIds.push(personId);

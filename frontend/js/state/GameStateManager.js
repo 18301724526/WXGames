@@ -1,4 +1,20 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   class GameStateManager {
     constructor(initialState, options = {}) {
       this.state = initialState || {};
@@ -39,7 +55,7 @@
         ...(this.state.military || {}),
       };
       this.state.territoryState = {
-        polity: { name: null, capitalCityName: '首都', namePrompted: false },
+        polity: { name: null, capitalCityName: t('city.capitalName'), namePrompted: false },
         territories: [],
         warMissions: [],
         scoutMissions: [],
