@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const TileCoord = (() => {
     if (global.TileCoord) return global.TileCoord;
     try {
@@ -6,6 +18,10 @@
     } catch (error) {}
     return null;
   })();
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+  }
 
   function normalizeWorldMarchTarget(action = {}) {
     const q = Math.floor(Number(action.targetQ ?? action.q));
@@ -1014,8 +1030,10 @@
         this.host.openNaming?.({
           type: 'city',
           territoryId: action.territoryId,
-          title: 'Rename city',
-          message: site.cityName || site.naturalName || '',
+          title: t('world.site.rename.cityTitle'),
+          message: t('world.site.rename.currentName', {
+            name: site.cityName || site.naturalName || t('world.site.rename.unnamedCity'),
+          }),
         });
         return true;
       },

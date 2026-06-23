@@ -1,4 +1,20 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -46,10 +62,10 @@ openConfirmDialog(view = {}) {
         visible: true,
         kind: view.kind || 'generic',
         source: view.source || '',
-        title: view.title || '请确认',
+        title: view.title || t('shell.confirm.title'),
         message: view.message || '',
-        confirmLabel: view.confirmLabel || '确定',
-        cancelLabel: view.cancelLabel || '取消',
+        confirmLabel: view.confirmLabel || t('common.confirm'),
+        cancelLabel: view.cancelLabel || t('common.cancel'),
         submitting: Boolean(view.submitting),
       };
       this.showSettings = false;
@@ -70,10 +86,10 @@ openResetConfirm(options = {}) {
       return this.openConfirmDialog({
         kind: 'resetGame',
         source: options.source || '',
-        title: '重置游戏进度',
-        message: '当前账号的所有发展将回到初始状态。此操作不可撤销。',
-        confirmLabel: '确认重置',
-        cancelLabel: '取消',
+        title: t('shell.confirm.resetTitle'),
+        message: t('shell.confirm.resetMessage'),
+        confirmLabel: t('shell.confirm.resetConfirm'),
+        cancelLabel: t('common.cancel'),
       });
     },
 
@@ -179,7 +195,7 @@ showLoading(message = '') {
       this.loading = {
         visible: true,
         percentage: 0,
-        message: message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90',
+        message: message || t('shell.loading.defaultMessage'),
       };
       this.renderActive();
       return true;
@@ -219,7 +235,7 @@ async preloadAssets(onProgress = null, assetPaths = null) {
           ...progress,
           phase: progress.phase || 'assets:download',
           percentage,
-          message: progress.message || '\u6b63\u5728\u52a0\u8f7d\u6e38\u620f\u8d44\u6e90',
+          message: progress.message || t('shell.loading.assets'),
         });
       });
       const preloadPaths = assetPaths || this.renderer.getPreloadAssetPaths?.();
@@ -231,7 +247,7 @@ async preloadAssets(onProgress = null, assetPaths = null) {
         report?.({
           ...progress,
           percentage: Math.min(99, 65 + Math.round(prewarmPercentage * 0.34)),
-          message: progress.message || '\u6b63\u5728\u51c6\u5907\u5927\u5730\u56fe\u8d44\u6e90',
+          message: progress.message || t('shell.loading.worldMapAssets'),
         });
       });
       report?.({
@@ -242,7 +258,7 @@ async preloadAssets(onProgress = null, assetPaths = null) {
         percentage: 100,
         phase: 'assets:ready',
         status: 'complete',
-        message: '\u8d44\u6e90\u51c6\u5907\u5b8c\u6210',
+        message: t('shell.loading.assetsReady'),
       });
       return result;
     },
@@ -265,9 +281,9 @@ requestAuthInput(field) {
       const credentials = this.auth.credentials || {};
       const isPassword = field === 'password';
       Promise.resolve(this.runtime.requestTextInput({
-        title: isPassword ? '输入密码' : '输入用户名',
-        message: isPassword ? '' : '请输入用于登录的用户名',
-        placeholder: isPassword ? '密码' : '用户名',
+        title: isPassword ? t('shell.auth.inputPasswordTitle') : t('shell.auth.inputUsernameTitle'),
+        message: isPassword ? '' : t('shell.auth.inputUsernameMessage'),
+        placeholder: isPassword ? t('shell.login.password') : t('shell.login.username'),
         value: isPassword ? '' : (credentials.usernameValue || ''),
         maxLength: isPassword ? 64 : 32,
       })).then((value) => {
@@ -335,7 +351,7 @@ requestNamingInput() {
       const currentValue = this.naming.inputValue || '';
       if (!this.runtime || typeof this.runtime.requestTextInput !== 'function') return false;
       Promise.resolve(this.runtime.requestTextInput({
-        title: view.title || '命名',
+        title: view.title || t('shell.naming.title'),
         message: view.message || '',
         placeholder: view.placeholder || '',
         value: currentValue,

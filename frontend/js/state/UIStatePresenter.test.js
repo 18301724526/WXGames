@@ -13,6 +13,8 @@ const MilitaryPresenter = require('./presenters/MilitaryPresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
+require('../config/LocaleTextRegistry');
+const LocaleText = require('../domain/LocaleText');
 const BattleScenePresenter = require('./presenters/BattleScenePresenter');
 const WorldTileMapPresenter = require('./presenters/WorldTileMapPresenter');
 const ShellPresenter = require('./presenters/ShellPresenter');
@@ -1392,6 +1394,53 @@ test('UIStatePresenter delegates world site dialog view state while preserving f
   assert.equal(UIStatePresenter.formatWorldDuration(65), '1:05');
   assert.equal(UIStatePresenter.getWorldSiteMarchInfo(territories[3], territoryState), '行军耗时 1:30，已抵达待接管');
   assert.equal(UIStatePresenter.getWorldSiteDialogContentSignature(territories, territoryState, uiState), direct.signature);
+});
+
+test('UIStatePresenter resolves world site chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const site = {
+    id: 'tribe-camp',
+    status: 'discovered',
+    owner: 'tribe',
+    occupationMode: 'conquest',
+    naturalName: 'Camp',
+    defense: 80,
+    recommendedSoldiers: 120,
+    effects: { foodOutputMultiplier: 0.15 },
+    lastBattle: {
+      success: false,
+      leaderName: 'Ash',
+      casualties: 9,
+      report: { system: 'speed-basic-attack-v1', attacker: { speed: 12 }, defender: { speed: 8 } },
+    },
+    garrison: {
+      leader: {
+        name: '',
+        abilityKit: { abilities: [{ slot: 'activeSkill' }] },
+      },
+    },
+  };
+  const territoryState = { availableSoldiers: 200, famousPersons: { people: [] } };
+  const uiState = { selectedSiteId: 'tribe-camp', expeditionConfigSiteId: 'tribe-camp' };
+
+  const detail = UIStatePresenter.buildWorldSiteDetailViewState(site, territoryState, uiState);
+
+  assert.equal(detail.text.owner, 'Owned · Tribe');
+  assert.equal(detail.text.distance, 'Distance 0');
+  assert.equal(detail.text.scale, 'Scale 1');
+  assert.equal(detail.text.threat, 'Threat 0');
+  assert.equal(detail.text.defense, 'Defense 80');
+  assert.equal(detail.text.soldiers, 'Recommended 120 soldiers');
+  assert.equal(detail.text.summary, 'Food +15%');
+  assert.equal(detail.text.note, 'Previous conquest failed · led by Ash · lost 9 soldiers');
+  assert.equal(detail.text.battleReport[1], 'Speed: allies 12 / enemies 8');
+  assert.equal(detail.text.defenderLeader, 'Defender Unknown');
+  assert.equal(detail.text.defenderSkill, 'Enemy tactic Unknown tactic');
+  assert.equal(detail.action.buttons.find((button) => button.action === 'open-expedition').label, 'Conquer');
+  assert.equal(detail.action.hint, 'This area already has a force. Configure an expedition first.');
+  assert.equal(detail.action.expeditionConfig.fields.leader.label, 'Leader');
+  assert.equal(detail.action.expeditionConfig.buttons.launch.label, 'Depart');
+  LocaleText.setLocale('zh-CN');
 });
 
 test('UIStatePresenter keeps guided first empty city conquer action enabled with tutorial soldier grant', () => {

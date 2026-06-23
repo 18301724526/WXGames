@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class SystemCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -85,6 +97,10 @@
       return this.callDrawingSurface('wrapTextLimit', args);
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     renderLoginPanel(auth = {}) {
       const view = auth.view || {};
       if (!view.loginPanelVisible) return;
@@ -124,7 +140,7 @@
         inset: 'rgba(255, 231, 184, 0.14)',
       });
       this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 12, iconY + 12, 34, 34);
-      this.drawText('\u6587\u660e\u706b\u79cd', x + panelWidth / 2, y + 104, {
+      this.drawText(this.t('common.appName'), x + panelWidth / 2, y + 104, {
         size: 22,
         bold: true,
         color: '#ffe6b5',
@@ -160,8 +176,8 @@
         });
         this.addHitTarget({ x: inputX, y: fieldY, width: inputWidth, height: inputHeight }, { type: actionType });
       };
-      drawInput(usernameY, '\u7528\u6237\u540d', credentials.usernameValue || '', 'requestLoginUsername');
-      drawInput(passwordY, '\u5bc6\u7801', credentials.passwordValue || '', 'requestLoginPassword', true);
+      drawInput(usernameY, this.t('shell.login.username'), credentials.usernameValue || '', 'requestLoginUsername');
+      drawInput(passwordY, this.t('shell.login.password'), credentials.passwordValue || '', 'requestLoginPassword', true);
 
       const rememberY = passwordY + 54;
       const checkboxSize = 18;
@@ -179,7 +195,7 @@
           align: 'center',
         });
       }
-      this.drawText('\u8bb0\u4f4f\u8d26\u53f7', inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
+      this.drawText(this.t('shell.login.rememberAccount'), inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
         size: 13,
         color: '#cbbd96',
         baseline: 'middle',
@@ -187,7 +203,7 @@
       this.addHitTarget({ x: inputX, y: rememberY - 6, width: 112, height: 32 }, { type: 'toggleRememberPassword' });
 
       const loginY = y + panelHeight - 58;
-      this.drawButton(inputX, loginY, inputWidth, 40, '\u767b\u5f55', {
+      this.drawButton(inputX, loginY, inputWidth, 40, this.t('shell.login.submit'), {
         size: 14,
         bold: true,
         radius: 9,
@@ -248,12 +264,12 @@
         inset: 'rgba(255, 231, 184, 0.14)',
       });
       this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 10, iconY + 10, 32, 32);
-      this.drawText('\u6587\u660e\u706b\u79cd', iconX + iconSize + 14, y + 31, {
+      this.drawText(this.t('common.appName'), iconX + iconSize + 14, y + 31, {
         size: 19,
         bold: true,
         color: '#ffe6b5',
       });
-      this.drawText(loading.message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90', iconX + iconSize + 14, y + 58, {
+      this.drawText(loading.message || this.t('shell.loading.defaultMessage'), iconX + iconSize + 14, y + 58, {
         size: 12,
         color: '#cbbd96',
       });
@@ -311,16 +327,18 @@
         ctx.restore?.();
       }
 
-      this.drawText('网络连接不稳定', x + 76, y + 28, {
+      this.drawText(this.t('shell.network.title'), x + 76, y + 28, {
         size: 15,
         bold: true,
         color: '#ffe6b5',
       });
-      this.drawText(network.message || '正在重连中', x + 76, y + 54, {
+      this.drawText(network.message || this.t('shell.network.reconnecting'), x + 76, y + 54, {
         size: 12,
         color: '#cbbd96',
       });
-      const failText = Number(network.failureCount) > 0 ? `连续丢失 ${Number(network.failureCount)} 次心跳` : '';
+      const failText = Number(network.failureCount) > 0
+        ? this.t('shell.network.failureCount', { count: Number(network.failureCount) })
+        : '';
       if (failText) {
         this.drawText(failText, x + panelWidth / 2, y + 88, {
           size: 11,
@@ -345,7 +363,7 @@
         radius: 10,
       });
 
-      this.drawText('设置', x + panelWidth / 2, y + 18, {
+      this.drawText(this.t('shell.settings.title'), x + panelWidth / 2, y + 18, {
         size: 14,
         bold: true,
         color: '#ffd98a',
@@ -363,7 +381,7 @@
 
       const btnHeight = 36;
       const btnY1 = y + 38;
-      this.drawButton(x + 10, btnY1, panelWidth - 20, btnHeight, '重置游戏', {
+      this.drawButton(x + 10, btnY1, panelWidth - 20, btnHeight, this.t('shell.settings.resetGame'), {
         size: 12,
         radius: 8,
         active: false,
@@ -371,7 +389,7 @@
       this.addHitTarget({ x: x + 10, y: btnY1, width: panelWidth - 20, height: btnHeight }, { type: 'requestResetGame' });
 
       const btnY2 = btnY1 + btnHeight + 8;
-      this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, '\u5bfc\u51fa\u64cd\u4f5c\u65e5\u5fd7', {
+      this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, this.t('shell.settings.exportOperationLog'), {
         size: 12,
         radius: 8,
         active: false,
@@ -379,7 +397,7 @@
       this.addHitTarget({ x: x + 10, y: btnY2, width: panelWidth - 20, height: btnHeight }, { type: 'downloadClientOperationLog' });
 
       const btnY3 = btnY2 + btnHeight + 8;
-      this.drawButton(x + 10, btnY3, panelWidth - 20, btnHeight, '退出登录', {
+      this.drawButton(x + 10, btnY3, panelWidth - 20, btnHeight, this.t('shell.settings.logout'), {
         size: 12,
         radius: 8,
         active: false,
@@ -418,7 +436,7 @@
       });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
-      this.drawText(this.truncateText(dialog.title || '请确认', panelWidth - 48, { size: 18, bold: true }), x + panelWidth / 2, y + 34, {
+      this.drawText(this.truncateText(dialog.title || this.t('shell.confirm.title'), panelWidth - 48, { size: 18, bold: true }), x + panelWidth / 2, y + 34, {
         size: 18,
         bold: true,
         color: '#ffe6b5',
@@ -438,14 +456,14 @@
       const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
       const cancelX = x + 18;
       const confirmX = cancelX + buttonWidth + buttonGap;
-      this.drawButton(cancelX, buttonY, buttonWidth, 36, dialog.cancelLabel || '取消', {
+      this.drawButton(cancelX, buttonY, buttonWidth, 36, dialog.cancelLabel || this.t('common.cancel'), {
         size: 13,
         radius: 9,
         active: false,
       });
       this.addHitTarget({ x: cancelX, y: buttonY, width: buttonWidth, height: 36 }, submitting ? { type: 'blockCanvasModal' } : { type: 'closeConfirmDialog' });
 
-      this.drawButton(confirmX, buttonY, buttonWidth, 36, submitting ? '处理中' : (dialog.confirmLabel || '确定'), {
+      this.drawButton(confirmX, buttonY, buttonWidth, 36, submitting ? this.t('common.processing') : (dialog.confirmLabel || this.t('common.confirm')), {
         size: 13,
         bold: true,
         radius: 9,
@@ -471,7 +489,7 @@
         radius: 12,
       });
 
-      this.drawText('📜 最近请求日志', x + panelWidth / 2, y + 22, {
+      this.drawText(this.t('shell.logs.title'), x + panelWidth / 2, y + 22, {
         size: 16,
         bold: true,
         color: '#ffd98a',
@@ -513,7 +531,7 @@
       const displayLogs = logs.slice(0, maxItems);
 
       if (displayLogs.length === 0) {
-        this.drawText('暂无日志', listX + listWidth / 2, listY + listHeight / 2, {
+        this.drawText(this.t('common.log.empty'), listX + listWidth / 2, listY + listHeight / 2, {
           size: 12,
           color: '#888',
           align: 'center',
@@ -534,7 +552,7 @@
       }
 
       const clearBtnY = y + panelHeight - 48;
-      this.drawButton(x + 12, clearBtnY, panelWidth - 24, 36, '清空日志', {
+      this.drawButton(x + 12, clearBtnY, panelWidth - 24, 36, this.t('shell.logs.clear'), {
         size: 12,
         radius: 8,
         active: false,

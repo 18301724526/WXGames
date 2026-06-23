@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../domain/LocaleText');
 const SystemCanvasRenderer = require('./SystemCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
@@ -251,6 +253,33 @@ test('SystemCanvasRenderer preserves settings and logs actions', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'clearLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeLogs' && target.action.background === true), true);
+});
+
+test('SystemCanvasRenderer resolves system chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost({
+    drawTextLines(lines) { this.calls.push(['drawTextLines', lines]); },
+    wrapTextLimit(text) { return [String(text || '')]; },
+  });
+  const renderer = new SystemCanvasRenderer({ host });
+
+  renderer.renderLoginPanel({ view: { loginPanelVisible: true }, credentials: {} });
+  renderer.renderLoadingScreen({ visible: true, percentage: 12 });
+  renderer.renderNetworkOverlay({ status: 'reconnecting', failureCount: 2 });
+  renderer.renderSettingsPanel();
+  renderer.renderConfirmDialog({ visible: true, message: 'Reset?' });
+  renderer.renderLogsPanel([]);
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Civilization Spark'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Log In'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Preparing settlement resources'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Network connection is unstable'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '2 missed heartbeats'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Reset Game'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Confirm'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Recent Request Log'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'No logs'), true);
+  LocaleText.setLocale('zh-CN');
 });
 
 test('SystemCanvasRenderer renders reset confirmation as canvas actions', () => {

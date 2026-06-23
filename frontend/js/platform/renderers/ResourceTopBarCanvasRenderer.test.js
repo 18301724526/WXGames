@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../domain/LocaleText');
 const ResourceTopBarCanvasRenderer = require('./ResourceTopBarCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
@@ -201,6 +203,30 @@ test('ResourceTopBarCanvasRenderer preserves top bar resource and utility hit ta
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSettings'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCitySwitcher'), true);
+});
+
+test('ResourceTopBarCanvasRenderer resolves top bar chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost({
+    presenter: {
+      ...createHost().presenter,
+      buildCitySwitcherViewState() {
+        return { hidden: false, activeCityName: '' };
+      },
+    },
+  });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderTopBar({ population: { total: 12 } }, {});
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Primitive Era'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Population: 1200'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Advisor'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Logs'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Settings'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Capital'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Food'), true);
+  LocaleText.setLocale('zh-CN');
 });
 
 test('ResourceTopBarCanvasRenderer falls back when presenter resource view is unavailable', () => {

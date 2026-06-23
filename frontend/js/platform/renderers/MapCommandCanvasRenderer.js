@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class MapCommandCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -73,6 +85,10 @@
       return this.callDrawingSurface('truncateText', args);
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     renderMapCommandDock(state = {}, options = {}) {
       const layout = this.getLayout();
       const x = 0;
@@ -96,12 +112,12 @@
         this.ctx.fillRect(0, y + 1, width, 1);
       }
       const items = [
-        { id: 'tech', label: '科技', icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
-        { id: 'civilization', label: '文明', icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
-        { id: 'famousPersons', label: '名人', icon: 'assets/art/icon-scholar-cutout.webp', action: { type: 'openFamousPersons' } },
-        { id: 'tasks', label: '任务', icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' } },
-        { id: 'settings', label: '设置', glyph: '⚙', action: { type: 'openSettings' } },
-        { id: 'military', label: '军事', icon: 'assets/art/tech-military-cutout.png', action: { type: 'openCommandPanel', panel: 'military' } },
+        { id: 'tech', label: this.t('world.map.command.tech'), icon: 'assets/art/icon-knowledge-cutout.webp', action: { type: 'openCommandPanel', panel: 'tech' } },
+        { id: 'civilization', label: this.t('world.map.command.civilization'), icon: 'assets/art/icon-fire-cutout.webp', action: { type: 'openCommandPanel', panel: 'civilization' } },
+        { id: 'famousPersons', label: this.t('world.map.command.famousPersons'), icon: 'assets/art/icon-scholar-cutout.webp', action: { type: 'openFamousPersons' } },
+        { id: 'tasks', label: this.t('world.map.command.tasks'), icon: 'assets/art/icon-event-cutout.webp', action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' } },
+        { id: 'settings', label: this.t('world.map.command.settings'), glyph: '⚙', action: { type: 'openSettings' } },
+        { id: 'military', label: this.t('world.map.command.military'), icon: 'assets/art/tech-military-cutout.png', action: { type: 'openCommandPanel', panel: 'military' } },
       ].filter((item) => item.id !== 'military');
       const contentX = layout.contentX;
       const contentWidth = layout.contentWidth;
@@ -150,7 +166,7 @@
         radius: size / 2,
         inset: active ? 'rgba(255, 231, 184, 0.16)' : 'rgba(255, 231, 184, 0.06)',
       });
-      this.drawText('分城', x + size / 2, y + 26, {
+      this.drawText(this.t('world.map.command.subcity'), x + size / 2, y + 26, {
         size: 12,
         bold: true,
         color: active ? '#f0b45b' : '#aeb0b8',
@@ -169,7 +185,7 @@
         radius: size / 2,
         inset: active ? 'rgba(255, 231, 184, 0.16)' : 'rgba(255, 231, 184, 0.06)',
       });
-      this.drawText('事件', x + size / 2, y + 26, {
+      this.drawText(this.t('world.map.command.events'), x + size / 2, y + 26, {
         size: 12,
         bold: true,
         color: active ? '#f0b45b' : '#aeb0b8',
@@ -193,11 +209,11 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const titleByPanel = {
-        buildings: '建设',
-        military: '军事',
-        tech: '科技',
-        civilization: '文明',
-        events: '事件',
+        buildings: this.t('world.map.panel.buildings'),
+        military: this.t('world.map.panel.military'),
+        tech: this.t('world.map.panel.tech'),
+        civilization: this.t('world.map.panel.civilization'),
+        events: this.t('world.map.panel.events'),
       };
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeCommandPanel', background: true });
       this.drawPanel(x, y, width, panelHeight, {
@@ -217,7 +233,7 @@
       const closeSize = 28;
       const closeX = x + width - closeSize - 10;
       const closeY = y + 10;
-      this.drawText(titleByPanel[panel] || '面板', x + 16, y + 16, { size: 17, bold: true, color: '#ffe6b5' });
+      this.drawText(titleByPanel[panel] || this.t('world.map.panel.fallback'), x + 16, y + 16, { size: 17, bold: true, color: '#ffe6b5' });
       this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeCommandPanel' });
 

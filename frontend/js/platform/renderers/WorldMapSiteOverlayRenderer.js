@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedUIStatePresenter = (() => {
     if (global.UIStatePresenter) return global.UIStatePresenter;
     if (typeof module !== 'undefined' && module.exports) {
@@ -36,6 +48,10 @@
           return true;
         },
       });
+    }
+
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     getWorldSiteDialogPresenter() {
@@ -78,12 +94,12 @@
           return {
             kind: 'city-command',
             buttons: [
-              makeButton('\u5165\u57ce', 'enter-city', site.id),
-              makeButton('\u884c\u519b', 'march-city', site.id, { disabled: true, secondary: true }),
-              makeButton('\u8c03\u52a8', 'transfer-city', site.id, { disabled: true, secondary: true }),
-              makeButton('\u9a7b\u5b88', 'garrison-city', site.id, { disabled: true, secondary: true }),
-              makeButton('\u4f63\u5de5', 'labor-city', site.id, { secondary: true }),
-              makeButton('\u6539\u540d', 'rename-city', site.id, { secondary: true }),
+              makeButton(this.t('world.site.action.enterCity'), 'enter-city', site.id),
+              makeButton(this.t('world.site.action.marchCity'), 'march-city', site.id, { disabled: true, secondary: true }),
+              makeButton(this.t('world.site.action.transferCity'), 'transfer-city', site.id, { disabled: true, secondary: true }),
+              makeButton(this.t('world.site.action.garrisonCity'), 'garrison-city', site.id, { disabled: true, secondary: true }),
+              makeButton(this.t('world.site.action.laborCity'), 'labor-city', site.id, { secondary: true }),
+              makeButton(this.t('world.site.action.rename'), 'rename-city', site.id, { secondary: true }),
             ],
             hint: '',
             expeditionConfig: null,
@@ -91,7 +107,7 @@
         }
         return {
           kind: 'single',
-          buttons: [makeButton('\u7b49\u5f85\u4fa6\u5bdf', '', site.id, { disabled: true })],
+          buttons: [makeButton(this.t('world.site.action.waitScout'), '', site.id, { disabled: true })],
           hint: '',
           expeditionConfig: null,
         };
@@ -101,14 +117,14 @@
         visible: site.id === selectedSiteId,
         text: {
           name: site.cityName || site.naturalName || site.name || '',
-          status: site.status === 'occupied' ? '\u5df2\u63a7\u5236' : (site.status || ''),
-          owner: site.owner === 'player' ? '\u6211\u65b9' : (site.owner || ''),
-          distance: `\u8ddd ${site.originDistance ?? site.distance ?? 0}`,
-          scale: `\u89c4\u6a21 ${site.scale || 1}`,
-          threat: `\u5a01\u80c1 ${site.threat || 0}`,
+          status: site.status === 'occupied' ? this.t('world.site.status.occupied') : (site.status || ''),
+          owner: site.owner === 'player' ? this.t('world.site.owner.player') : (site.owner || ''),
+          distance: this.t('world.site.metric.distance', { value: site.originDistance ?? site.distance ?? 0 }),
+          scale: this.t('world.site.metric.scale', { value: site.scale || 1 }),
+          threat: this.t('world.site.metric.threat', { value: site.threat || 0 }),
           summary: site.summary || '',
-          defense: `\u9632\u5fa1 ${site.defense || 0}`,
-          soldiers: `\u5efa\u8bae ${site.recommendedSoldiers || 0} \u58eb\u5175`,
+          defense: this.t('world.site.metric.defense', { value: site.defense || 0 }),
+          soldiers: this.t('world.site.metric.recommendedSoldiers', { soldiers: site.recommendedSoldiers || 0 }),
         },
         action: makeAction(site),
       }));
@@ -145,7 +161,7 @@
           radius: primarySize / 2,
           inset: 'rgba(255, 248, 210, 0.22)',
         });
-        this.drawText(primary.label || '入城', primaryX + primarySize / 2, primaryY + primarySize / 2, {
+        this.drawText(primary.label || this.t('world.site.action.enterCity'), primaryX + primarySize / 2, primaryY + primarySize / 2, {
           size: 20,
           bold: true,
           color: '#ffe6b5',
@@ -221,7 +237,9 @@
       });
       const leaderOptions = config.fields?.leader?.options || [];
       const activeLeader = leaderOptions.find((option) => option.value === config.fields?.leader?.value) || leaderOptions[0] || null;
-      this.drawText(`领队 ${activeLeader?.label || '暂无可出征名人'}`, x + 12, y + 12, { size: 12, bold: true, color: '#f6e8c8' });
+      this.drawText(this.t('world.site.expedition.leaderPrefix', {
+        leader: activeLeader?.label || this.t('world.site.expedition.noLeader'),
+      }), x + 12, y + 12, { size: 12, bold: true, color: '#f6e8c8' });
       const leaderY = y + 34;
       const leaderButtonWidth = Math.max(82, Math.min(118, (width - 24 - 8 * Math.max(0, leaderOptions.length - 1)) / Math.max(1, Math.min(3, leaderOptions.length || 1))));
       leaderOptions.slice(0, 3).forEach((option, index) => {
@@ -240,13 +258,15 @@
           disabled: false,
         });
       });
-      this.drawText(`出征数量 ${config.fields?.soldiers?.value || 1}`, x + 12, y + 70, { size: 12, bold: true, color: '#f6e8c8' });
+      this.drawText(this.t('world.site.expedition.soldierCount', {
+        count: config.fields?.soldiers?.value || 1,
+      }), x + 12, y + 70, { size: 12, bold: true, color: '#f6e8c8' });
       this.drawText(config.note || '', x + 12, y + 92, { size: 10, color: '#aeb0b8' });
       const value = Number(config.fields?.soldiers?.value) || 1;
       const controlsY = y + 112;
       this.drawButton(x + 12, controlsY, 34, 28, '-', { size: 14, radius: 7, disabled: value <= 1 });
       this.drawButton(x + width - 46, controlsY, 34, 28, '+', { size: 14, radius: 7 });
-      this.drawButton(x + width - 132, controlsY, 78, 28, config.buttons?.launch?.label || '出发', {
+      this.drawButton(x + width - 132, controlsY, 78, 28, config.buttons?.launch?.label || this.t('world.site.action.launch'), {
         size: 12,
         radius: 7,
         disabled: config.disabled,
@@ -308,12 +328,12 @@
       });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
       const closeSize = 28;
-      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, '×', { size: 16, radius: 7 });
+      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, this.t('common.close.short'), { size: 16, radius: 7 });
       this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeWorldSite' });
 
       const selectedSite = territories.find((site) => site.id === detail.id) || {};
       this.drawAsset(selectedSite.art, x + 16, y + 20, 58, 58);
-      this.drawText(this.truncateText(detail.text.name || '地点', panelWidth - 112, { size: 17, bold: true }), x + 84, y + 22, {
+      this.drawText(this.truncateText(detail.text.name || this.t('world.site.defaultName'), panelWidth - 112, { size: 17, bold: true }), x + 84, y + 22, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
@@ -321,7 +341,7 @@
       this.drawText(`${detail.text.status} · ${detail.text.owner}`, x + 84, y + 50, { size: 11, color: '#aeb0b8' });
       this.drawText(`${detail.text.distance} · ${detail.text.scale} · ${detail.text.threat}`, x + 84, y + 68, { size: 11, color: '#aeb0b8' });
       let cursorY = y + 94;
-      const summaryLines = this.wrapTextLimit(detail.text.summary || '无', panelWidth - 32, 3, { size: 12 });
+      const summaryLines = this.wrapTextLimit(detail.text.summary || this.t('world.site.summary.none'), panelWidth - 32, 3, { size: 12 });
       this.drawTextLines(summaryLines, x + 16, cursorY, { size: 12, color: '#f6e8c8', lineHeight: 17 });
       cursorY += summaryLines.length * 17 + 12;
       this.drawText(`${detail.text.defense} · ${detail.text.soldiers}`, x + 16, cursorY, { size: 12, color: '#74d3a0' });
@@ -610,7 +630,7 @@
         radius: size / 2,
         inset: button.disabled || !button.action ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 248, 210, 0.24)',
       });
-      this.drawText(button.label || '入城', x + size / 2, y + size / 2, {
+      this.drawText(button.label || this.t('world.site.action.enterCity'), x + size / 2, y + size / 2, {
         size: Math.max(13, Math.floor(size * 0.27)),
         bold: true,
         color: button.disabled || !button.action ? '#8d8f99' : '#ffe6b5',
@@ -687,7 +707,7 @@
       const sideX = sideOnRight ? primaryX + primarySize + gap : primaryX - sideWidth - gap;
       const sideYRaw = primaryY + (primarySize - sideTotalHeight) / 2;
       const sideY = Math.max(topLimit + 8, Math.min(sideYRaw, bottomLimit - sideTotalHeight - 8));
-      const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || '城市';
+      const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || this.t('world.site.cityFallback');
       const renameWidth = renameButton ? 38 : 0;
       const titleWidth = this.measureTextWidth(title, { size: 12, bold: true });
       const badgeWidth = Math.min(190, Math.max(98, titleWidth + renameWidth + 30));
@@ -713,7 +733,7 @@
       if (renameButton) {
         const renameX = badgeX + badgeWidth - renameWidth - 7;
         const renameY = badgeY + 4;
-        this.drawText('改名', renameX + renameWidth / 2, badgeY + 12, {
+        this.drawText(this.t('world.site.action.rename'), renameX + renameWidth / 2, badgeY + 12, {
           size: 10,
           color: renameButton.disabled || !renameButton.action ? '#8d8f99' : '#74d3a0',
           baseline: 'middle',

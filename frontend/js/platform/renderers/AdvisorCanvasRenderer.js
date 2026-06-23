@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class AdvisorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -65,6 +77,10 @@
       return this.callDrawingSurface('wrapText', args);
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     renderAdvisor(state = {}) {
       if (!this.presenter) return;
       const view = this.presenter.buildAdvisorViewState(state.softGuide);
@@ -78,7 +94,7 @@
         stroke: 'rgba(240, 180, 91, 0.24)',
         radius: 10,
       });
-      this.drawText('顾问', x + 12, y + 13, { color: '#ffd98a', size: 14, bold: true });
+      this.drawText(this.t('shell.advisor.title'), x + 12, y + 13, { color: '#ffd98a', size: 14, bold: true });
       this.drawText(view.activeAdvisor.message, x + 64, y + 13, { color: '#f6e8c8', size: 12 });
     }
 
@@ -109,7 +125,7 @@
           radius: 5,
         });
       }
-      this.drawText('顾问', x + size / 2, y + 26, {
+      this.drawText(this.t('shell.advisor.title'), x + size / 2, y + 26, {
         size: 12,
         bold: true,
         color: hasAdvice ? '#f0b45b' : '#aeb0b8',
@@ -149,7 +165,7 @@
       const closeSize = 28;
       const closeX = x + panelWidth - closeSize - 10;
       const closeY = y + 10;
-      this.drawButton(closeX, closeY, closeSize, closeSize, '×', { size: 16, radius: 7 });
+      this.drawButton(closeX, closeY, closeSize, closeSize, this.t('common.close.short'), { size: 16, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeAdvisor' });
 
       const portraitSize = 64;
@@ -161,14 +177,14 @@
         radius: portraitSize / 2,
         inset: 'rgba(255, 231, 184, 0.14)',
       });
-      this.drawText('谋', x + panelWidth / 2, portraitY + portraitSize / 2, {
+      this.drawText(this.t('shell.advisor.icon'), x + panelWidth / 2, portraitY + portraitSize / 2, {
         size: 24,
         bold: true,
         color: '#ffe6b5',
         baseline: 'middle',
         align: 'center',
       });
-      this.drawText('顾问建议', x + panelWidth / 2, y + 102, {
+      this.drawText(this.t('shell.advisor.panelTitle'), x + panelWidth / 2, y + 102, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
@@ -187,7 +203,7 @@
       });
       const message = hasAdvice
         ? (view.text?.message || view.activeAdvisor.message)
-        : '当前暂无特别建议。保持资源增长、城市建设和地图侦察的节奏即可。';
+        : this.t('shell.advisor.emptyMessage');
       const lines = this.wrapText(message, messageWidth - 24, { size: 13 })
         .slice(0, 3);
       this.drawTextLines(lines, messageX + 12, messageY + 13, {
@@ -201,14 +217,14 @@
       const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
       const goX = x + 18;
       const dismissX = goX + buttonWidth + buttonGap;
-      this.drawButton(goX, buttonY, buttonWidth, 36, hasAdvice ? '前往处理' : '暂无目标', {
+      this.drawButton(goX, buttonY, buttonWidth, 36, hasAdvice ? this.t('shell.advisor.goToTarget') : this.t('shell.advisor.noTarget'), {
         size: 13,
         bold: true,
         radius: 9,
         disabled: !hasAdvice || Boolean(view.goButton?.disabled),
         active: hasAdvice && !view.goButton?.disabled,
       });
-      this.drawButton(dismissX, buttonY, buttonWidth, 36, '稍后再说', { size: 13, radius: 9 });
+      this.drawButton(dismissX, buttonY, buttonWidth, 36, this.t('shell.advisor.dismiss'), { size: 13, radius: 9 });
       this.addHitTarget(
         { x: goX, y: buttonY, width: buttonWidth, height: 36 },
         { type: 'goToAdvisorTarget', disabled: !hasAdvice || Boolean(view.goButton?.disabled) },

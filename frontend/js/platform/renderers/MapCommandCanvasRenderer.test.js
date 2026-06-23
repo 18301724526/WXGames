@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../domain/LocaleText');
 const MapCommandCanvasRenderer = require('./MapCommandCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
@@ -188,6 +190,24 @@ test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openTaskCenter' && target.action.source === 'taskIcon'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSettings'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('icon-knowledge')), true);
+});
+
+test('MapCommandCanvasRenderer resolves command chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost();
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  renderer.renderMapCommandDock({}, { activeCommandPanel: 'tech', showTaskCenter: true });
+  renderer.renderFloatingSubcityButton({}, { showSubcityList: true });
+  renderer.renderFloatingEventButton({}, { activeCommandPanel: 'events' });
+  renderer.renderMapCommandPanel({ militaryView: 'world' }, { activeCommandPanel: 'tech' });
+
+  ['Tech', 'Civilization', 'Famous', 'Tasks', 'Settings', 'Subcity', 'Events'].forEach((label) => {
+    assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === label), true);
+  });
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Tech'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'tech'), true);
+  LocaleText.setLocale('zh-CN');
 });
 
 test('MapCommandCanvasRenderer preserves floating map button contracts', () => {

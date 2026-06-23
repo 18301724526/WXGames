@@ -1,4 +1,20 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key = '', params = {}, fallback = '') {
+    return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+  }
+
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -60,7 +76,7 @@
             if (!this.naming.visible || typeof this.runtime.requestTextInput !== 'function') return;
             const view = this.naming.view || {};
             const value = await this.runtime.requestTextInput({
-              title: view.title || '鍛藉悕',
+              title: view.title || t('shell.naming.title'),
               message: view.message || '',
               placeholder: view.placeholder || '',
               value: this.naming.inputValue || '',
@@ -323,8 +339,10 @@
             this.openNaming({
               type: 'city',
               territoryId: prompt.territoryId,
-              title: 'Rename city',
-              message: `Current name: ${prompt.currentName || 'Unnamed city'}`,
+              title: t('world.site.rename.cityTitle'),
+              message: t('world.site.rename.currentName', {
+                name: prompt.currentName || t('world.site.rename.unnamedCity'),
+              }),
             });
             return null;
           },

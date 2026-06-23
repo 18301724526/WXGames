@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const SharedWorldMapRenderSnapshot = (() => {
     if (global.WorldMapRenderSnapshot) return global.WorldMapRenderSnapshot;
     if (typeof module !== 'undefined' && module.exports) {
@@ -650,6 +662,10 @@
       return SharedWorldTime?.getEpochNowMs?.(this) ?? Date.now();
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     getExplorerMissionRemainingSeconds(mission = {}, nowMs = this.getEpochNowMs()) {
       return SharedWorldTime?.getRemainingSeconds?.(mission, nowMs) ?? Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
     }
@@ -686,7 +702,7 @@
           this.ctx.stroke();
         }
       }
-      const message = options.loading?.message || '\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe';
+      const message = options.loading?.message || this.t('world.map.loading.default');
       const panelWidth = Math.min(260, map.width - 36);
       const panelHeight = 86;
       const x = map.x + (map.width - panelWidth) / 2;
@@ -703,7 +719,7 @@
         color: '#ffe6b5',
         align: 'center',
       });
-      this.drawText('\u5730\u56fe\u6570\u636e\u540c\u6b65\u540e\u4f1a\u81ea\u52a8\u663e\u793a', x + panelWidth / 2, y + 52, {
+      this.drawText(this.t('world.map.loading.syncHint'), x + panelWidth / 2, y + 52, {
         size: 11,
         color: '#cbbd96',
         align: 'center',

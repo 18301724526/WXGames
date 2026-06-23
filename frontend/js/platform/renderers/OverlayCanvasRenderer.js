@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class OverlayCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -79,6 +91,10 @@
 
     wrapTextLimit(...args) {
       return this.callDrawingSurface('wrapTextLimit', args);
+    }
+
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     buildResourceViewState(state = {}) {
@@ -162,7 +178,7 @@
       const closeSize = 28;
       const closeX = x + panelWidth - closeSize - 10;
       const closeY = y + 10;
-      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.drawButton(closeX, closeY, closeSize, closeSize, this.t('common.close.short'), { size: 14, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeNaming' });
 
       const iconSize = 58;
@@ -174,7 +190,7 @@
         radius: iconSize / 2,
         inset: 'rgba(255, 231, 184, 0.14)',
       });
-      this.drawText('城', x + panelWidth / 2, iconY + iconSize / 2, {
+      this.drawText(this.t('shell.naming.icon'), x + panelWidth / 2, iconY + iconSize / 2, {
         size: 22,
         bold: true,
         color: '#ffe6b5',
@@ -182,7 +198,7 @@
         align: 'center',
       });
 
-      this.drawText(this.truncateText(view.title || '命名', panelWidth - 84, { size: 17, bold: true }), x + panelWidth / 2, y + 98, {
+      this.drawText(this.truncateText(view.title || this.t('shell.naming.title'), panelWidth - 84, { size: 17, bold: true }), x + panelWidth / 2, y + 98, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
@@ -206,7 +222,7 @@
         radius: 9,
         inset: 'rgba(116, 211, 160, 0.08)',
       });
-      const displayValue = inputValue || view.placeholder || '请输入名称';
+      const displayValue = inputValue || view.placeholder || this.t('shell.naming.placeholder.default');
       this.drawText(this.truncateText(displayValue, inputWidth - 24, { size: 14 }), inputX + 12, inputY + 21, {
         size: 14,
         color: inputValue ? '#f6e8c8' : 'rgba(234, 234, 234, 0.48)',
@@ -219,8 +235,8 @@
       const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
       const cancelX = x + 18;
       const submitX = cancelX + buttonWidth + buttonGap;
-      this.drawButton(cancelX, buttonY, buttonWidth, 36, '取消', { size: 13, radius: 9 });
-      this.drawButton(submitX, buttonY, buttonWidth, 36, isSubmitting ? '提交中' : '确定', {
+      this.drawButton(cancelX, buttonY, buttonWidth, 36, this.t('common.cancel'), { size: 13, radius: 9 });
+      this.drawButton(submitX, buttonY, buttonWidth, 36, isSubmitting ? this.t('common.submit') : this.t('common.confirm'), {
         size: 13,
         bold: true,
         radius: 9,
@@ -343,7 +359,7 @@
         this.drawRewardParticle(cx, glowY, 94, (Math.PI * 2 * index) / 18 + now / 900, progress, index);
       }
 
-      this.drawText(reveal.title || '获得奖励', cx, y + 30, {
+      this.drawText(reveal.title || this.t('shell.reward.title'), cx, y + 30, {
         size: 20,
         bold: true,
         color: '#fff1cf',
@@ -372,7 +388,7 @@
 
       const buttonWidth = panelWidth - 44;
       const buttonY = y + panelHeight - 58;
-      this.drawButton(x + 22, buttonY, buttonWidth, 40, '收下', {
+      this.drawButton(x + 22, buttonY, buttonWidth, 40, this.t('shell.reward.accept'), {
         size: 14,
         bold: true,
         active: true,
@@ -400,7 +416,7 @@
       });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
-      this.drawText('资源详情', x + panelWidth / 2, y + 22, {
+      this.drawText(this.t('resource.details.title'), x + panelWidth / 2, y + 22, {
         size: 16,
         bold: true,
         color: '#ffd98a',
@@ -410,7 +426,7 @@
       const closeBtnSize = 28;
       const closeBtnX = x + panelWidth - closeBtnSize - 10;
       const closeBtnY = y + 10;
-      this.drawButton(closeBtnX, closeBtnY, closeBtnSize, closeBtnSize, 'x', {
+      this.drawButton(closeBtnX, closeBtnY, closeBtnSize, closeBtnSize, this.t('common.close.short'), {
         size: 14,
         radius: 6,
       });
@@ -418,38 +434,38 @@
 
       const cards = [
         {
-          label: '木材',
+          label: this.t('resource.wood'),
           icon: 'assets/art/icon-wood-cutout.webp',
           value: view.text.woodDetailValue,
-          lines: [`产出 ${view.text.woodDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.woodDetailRate })],
         },
         {
-          label: '铁矿',
+          label: this.t('resource.iron'),
           icon: 'assets/art/icon-iron-cutout.webp',
           value: view.text.ironDetailValue,
-          lines: [`产出 ${view.text.ironDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.ironDetailRate })],
         },
         {
-          label: '石料',
+          label: this.t('resource.stone'),
           icon: 'assets/art/icon-stone-cutout.webp',
           value: view.text.stoneDetailValue,
-          lines: [`产出 ${view.text.stoneDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.stoneDetailRate })],
         },
         {
-          label: '粮食',
+          label: this.t('resource.food'),
           icon: 'assets/art/icon-food-cutout.webp',
           value: view.text.foodDetailValue,
           lines: [
-            `产出 ${view.text.foodOutputRate}`,
-            `消耗 ${view.text.foodConsumptionRate}`,
-            `净增长 ${view.text.foodNetRate}`,
+            this.t('resource.production', { rate: view.text.foodOutputRate }),
+            this.t('resource.consumption', { rate: view.text.foodConsumptionRate }),
+            this.t('resource.netGrowth', { rate: view.text.foodNetRate }),
           ],
         },
         {
-          label: '知识',
+          label: this.t('resource.knowledge'),
           icon: 'assets/art/icon-knowledge-cutout.webp',
           value: view.text.knowledgeDetailValue,
-          lines: [`产出 ${view.text.knowledgeDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.knowledgeDetailRate })],
         },
       ];
 

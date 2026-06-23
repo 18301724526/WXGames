@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class H5UpdateRuntimeAdapter {
     constructor(runtime = global, options = {}) {
       this.runtime = runtime || {};
@@ -27,16 +39,24 @@
       return new H5UpdateRuntimeAdapter(runtime, options);
     }
 
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
+    }
+
     buildMessage(version) {
-      const lines = ['游戏有更新，需要重启后继续。'];
+      const lines = [this.t('shell.update.message')];
       const serverVersion = version?.serverVersion || version?.version || '';
       const localVersion = version?.localVersion || version?.previousVersion || '';
       const serverDeploymentId = version?.serverDeploymentId || version?.deploymentId || '';
       const localDeploymentId = version?.localDeploymentId || version?.previousDeploymentId || '';
-      if (serverVersion) lines.push(`服务器版本：${serverVersion}`);
-      if (localVersion) lines.push(`本地版本：${localVersion}`);
-      if (serverDeploymentId) lines.push(`服务器部署：${String(serverDeploymentId).slice(0, 12)}`);
-      if (localDeploymentId) lines.push(`本地部署：${String(localDeploymentId).slice(0, 12)}`);
+      if (serverVersion) lines.push(this.t('shell.update.serverVersion', { version: serverVersion }));
+      if (localVersion) lines.push(this.t('shell.update.localVersion', { version: localVersion }));
+      if (serverDeploymentId) {
+        lines.push(this.t('shell.update.serverDeployment', { deploymentId: String(serverDeploymentId).slice(0, 12) }));
+      }
+      if (localDeploymentId) {
+        lines.push(this.t('shell.update.localDeployment', { deploymentId: String(localDeploymentId).slice(0, 12) }));
+      }
       return lines.join('\n');
     }
 
@@ -252,14 +272,14 @@
       );
       ctx.fillRect(panelX + 22, dividerY, panelWidth - 44, 1);
 
-      this.drawText('发现新版本', contentX, titleY, {
+      this.drawText(this.t('shell.update.title'), contentX, titleY, {
         size: 22,
         bold: true,
         color: '#f6e8c8',
         align: 'center',
       });
 
-      const bodyLines = this.wrapText('游戏有更新，需要重新载入后继续。', panelWidth - 64, {
+      const bodyLines = this.wrapText(this.t('shell.update.body'), panelWidth - 64, {
         size: 15,
       });
       bodyLines.forEach((line, index) => {
@@ -277,10 +297,10 @@
       const serverDeploymentId = version?.serverDeploymentId || version?.deploymentId || '';
       const localDeploymentId = version?.localDeploymentId || version?.previousDeploymentId || '';
       [
-        serverVersion ? `服务器版本 ${serverVersion}` : '',
-        localVersion ? `本地版本 ${localVersion}` : '',
-        serverDeploymentId ? `服务器部署 ${String(serverDeploymentId).slice(0, 12)}` : '',
-        localDeploymentId ? `本地部署 ${String(localDeploymentId).slice(0, 12)}` : '',
+        serverVersion ? this.t('shell.update.serverVersion', { version: serverVersion }) : '',
+        localVersion ? this.t('shell.update.localVersion', { version: localVersion }) : '',
+        serverDeploymentId ? this.t('shell.update.serverDeployment', { deploymentId: String(serverDeploymentId).slice(0, 12) }) : '',
+        localDeploymentId ? this.t('shell.update.localDeployment', { deploymentId: String(localDeploymentId).slice(0, 12) }) : '',
       ].filter(Boolean).slice(0, 4).forEach((line, index) => {
         this.drawText(line, contentX, versionY + index * 20, {
           size: 14,
@@ -290,13 +310,13 @@
         });
       });
 
-      this.drawText('为保证资源与状态一致，点击按钮后立即重载。', contentX, noteY, {
+      this.drawText(this.t('shell.update.note'), contentX, noteY, {
         size: 13,
         color: '#b9a98a',
         align: 'center',
       });
 
-      this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, '立即更新');
+      this.drawButton(buttonX, buttonY, buttonWidth, buttonHeight, this.t('shell.update.reloadNow'));
       return true;
     }
 

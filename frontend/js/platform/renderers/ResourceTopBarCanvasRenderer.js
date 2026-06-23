@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class ResourceTopBarCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -59,6 +71,10 @@
 
     truncateText(...args) {
       return this.callDrawingSurface('truncateText', args);
+    }
+
+    t(key = '', params = {}, fallback = '') {
+      return LocaleText?.t?.(key, params, { fallback }) || fallback || key;
     }
 
     buildResourceViewState(state = {}) {
@@ -140,9 +156,9 @@
       });
 
       this.drawAsset('assets/art/icon-fire-cutout.webp', x + barPaddingX, statusTop + 4, 30, 30);
-      this.drawText(state.currentEraName || '原始时代', x + barPaddingX + 36, statusTop + 13, { size: 14, bold: true, color: '#d78332', baseline: 'middle' });
+      this.drawText(state.currentEraName || this.t('shell.topBar.eraFallback'), x + barPaddingX + 36, statusTop + 13, { size: 14, bold: true, color: '#d78332', baseline: 'middle' });
       this.drawText(
-        populationStatus || `人口：${populationScale}`,
+        populationStatus || this.t('shell.topBar.population', { population: populationScale }),
         x + barPaddingX + 36,
         statusTop + 31,
         {
@@ -154,33 +170,33 @@
       );
 
       const actionDefs = [];
-      if (!advisorView.hidden) actionDefs.push({ label: '顾问', width: 62 });
-      actionDefs.push({ label: '日志', width: 44 });
-      actionDefs.push({ label: '设置', width: 44 });
+      if (!advisorView.hidden) actionDefs.push({ id: 'advisor', label: this.t('shell.topBar.advisor'), width: 62 });
+      actionDefs.push({ id: 'logs', label: this.t('shell.topBar.logs'), width: 44 });
+      actionDefs.push({ id: 'settings', label: this.t('shell.topBar.settings'), width: 44 });
       let cursor = x + width - barPaddingX;
       actionDefs.slice().reverse().forEach((action, index) => {
         cursor -= action.width;
         const actionY = statusTop + 1;
-        const actionHeight = action.label === '顾问' ? statusHeight : 36;
+        const actionHeight = action.id === 'advisor' ? statusHeight : 36;
         this.drawButton(cursor, actionY, action.width, actionHeight, action.label, { size: 12, bold: true, active: false, radius: 18 });
-        if (action.label === '顾问') {
+        if (action.id === 'advisor') {
           this.drawText('谋', cursor + 14, statusTop + 20, { size: 12, bold: true, color: '#f0b45b', baseline: 'middle', align: 'center' });
           this.drawText('●', cursor + action.width - 10, statusTop + 20, { size: 7, color: '#74d3a0', baseline: 'middle', align: 'center' });
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openAdvisor' });
-        } else if (action.label === '日志') {
+        } else if (action.id === 'logs') {
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openLogs' });
-        } else if (action.label === '设置') {
+        } else if (action.id === 'settings') {
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openSettings' });
         }
         if (index < actionDefs.length - 1) cursor -= 6;
       });
 
       const resources = [
-        { label: '木材', value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' },
-        { label: '铁矿', value: resourceView.text.ironValue, rate: resourceView.text.ironRate, icon: 'assets/art/icon-iron-cutout.webp' },
-        { label: '石料', value: resourceView.text.stoneValue, rate: resourceView.text.stoneRate, icon: 'assets/art/icon-stone-cutout.webp' },
-        { label: '粮食', value: resourceView.text.foodValue, rate: resourceView.text.foodRate, icon: 'assets/art/icon-food-cutout.webp' },
-        { label: '知识', value: resourceView.text.knowledgeValue, rate: resourceView.text.knowledgeRate, icon: 'assets/art/icon-knowledge-cutout.webp' },
+        { label: this.t('resource.wood'), value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' },
+        { label: this.t('resource.iron'), value: resourceView.text.ironValue, rate: resourceView.text.ironRate, icon: 'assets/art/icon-iron-cutout.webp' },
+        { label: this.t('resource.stone'), value: resourceView.text.stoneValue, rate: resourceView.text.stoneRate, icon: 'assets/art/icon-stone-cutout.webp' },
+        { label: this.t('resource.food'), value: resourceView.text.foodValue, rate: resourceView.text.foodRate, icon: 'assets/art/icon-food-cutout.webp' },
+        { label: this.t('resource.knowledge'), value: resourceView.text.knowledgeValue, rate: resourceView.text.knowledgeRate, icon: 'assets/art/icon-knowledge-cutout.webp' },
       ];
       const compactResources = resources.length >= 5;
       const gap = compactResources ? 4 : 8;
@@ -232,7 +248,7 @@
           stroke: 'rgba(255, 225, 177, 0.14)',
           radius: 5,
         });
-        this.drawButton(triggerX, triggerY, triggerWidth, cityHeight, cityView.activeCityName || '首都', { size: 13, bold: true, active: true, radius: 8 });
+        this.drawButton(triggerX, triggerY, triggerWidth, cityHeight, cityView.activeCityName || this.t('shell.city.capital'), { size: 13, bold: true, active: true, radius: 8 });
         this.drawText('▾', triggerX + triggerWidth - 18, triggerY + 17, {
           size: 14,
           bold: true,
@@ -270,12 +286,12 @@
         this.ctx.fillRect(0, height - 1, width, 1);
       }
       const resources = [
-        { label: '粮食', value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
-        { label: '木材', value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
-        { label: '石料', value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
-        { label: '铁矿', value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
-        { label: '知识', value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
-        { label: '人口', value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
+        { label: this.t('resource.food'), value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
+        { label: this.t('resource.wood'), value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
+        { label: this.t('resource.stone'), value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
+        { label: this.t('resource.iron'), value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
+        { label: this.t('resource.knowledge'), value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
+        { label: this.t('resource.population'), value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
       ];
       const contentX = layout.contentX;
       const contentWidth = layout.contentWidth;

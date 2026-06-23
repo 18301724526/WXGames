@@ -8,6 +8,11 @@ test('LocaleTextRegistry resolves stable text keys by locale', () => {
   assert.equal(LocaleTextRegistry.getText('world.combat.attack'), '进攻');
   assert.equal(LocaleTextRegistry.getText('world.combat.attack', 'en-US'), 'Attack');
   assert.equal(LocaleTextRegistry.getText('world.map.tileCount', 'en'), '{count} tiles');
+  assert.equal(LocaleTextRegistry.getText('shell.advisor.panelTitle', 'en-US'), 'Advisor Advice');
+  assert.equal(
+    LocaleTextRegistry.getText('world.site.action.enterBattle', 'en-US'),
+    'Enter Battle',
+  );
 });
 
 test('LocaleTextRegistry keeps supported catalogs complete against zh-CN', () => {
