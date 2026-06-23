@@ -26,7 +26,7 @@
       stroke: style.stroke,
     });
     if (!portraitDrawn) {
-      renderer.drawText(String(card.name || renderer.t?.('famous.unknownInitial', {}, '名') || '名').slice(0, 1), x + width / 2, portraitY + portraitSize / 2, {
+      renderer.drawText(String(card.name || renderer.t?.('famous.unknownInitial', {}) || '名').slice(0, 1), x + width / 2, portraitY + portraitSize / 2, {
         size: 18,
         bold: true,
         color: style.text,
@@ -66,7 +66,7 @@
         align: 'center',
       });
     }
-    renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}, '无名之士') || '无名之士', width - 10, { size: 11, bold: true }), x + width / 2, y + height - 28, {
+    renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}) || '无名之士', width - 10, { size: 11, bold: true }), x + width / 2, y + height - 28, {
       size: 11,
       bold: true,
       color: '#fff1cf',
@@ -139,32 +139,30 @@
     });
     const textX = portraitX + portraitW + 12;
     const textWidth = width - portraitW - 38;
-    renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}, '无名之士') || '无名之士', textWidth, { size: 18, bold: true }), textX, y + 15, {
+    renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}) || '无名之士', textWidth, { size: 18, bold: true }), textX, y + 15, {
       size: 18,
       bold: true,
       color: '#fff1cf',
     });
-    renderer.drawText(renderer.truncateText(card.title || renderer.t?.('famous.genericTitle', {}, '名人') || '名人', textWidth, { size: 11 }), textX, y + 41, {
+    renderer.drawText(renderer.truncateText(card.title || renderer.t?.('famous.genericTitle', {}) || '名人', textWidth, { size: 11 }), textX, y + 41, {
       size: 11,
       color: '#cbbd96',
     });
     renderer.drawText(renderer.t?.(
       'famous.detailMeta',
       {
-        quality: card.qualityLabel || renderer.t?.('famous.quality.common', {}, '一般') || '一般',
-        role: card.roleText || renderer.t?.('famous.genericRole', {}, '人才') || '人才',
-        status: card.statusText || renderer.t?.('famous.status.idle', {}, '待命') || '待命',
-      },
-      `${card.qualityLabel || '一般'} · ${card.roleText || '人才'} · ${card.statusText || '待命'}`,
-    ) || `${card.qualityLabel || '一般'} · ${card.roleText || '人才'} · ${card.statusText || '待命'}`, textX, y + 61, {
+        quality: card.qualityLabel || renderer.t?.('famous.quality.common', {}) || '一般',
+        role: card.roleText || renderer.t?.('famous.genericRole', {}) || '人才',
+        status: card.statusText || renderer.t?.('famous.status.idle', {}) || '待命',
+      }) || `${card.qualityLabel || '一般'} · ${card.roleText || '人才'} · ${card.statusText || '待命'}`, textX, y + 61, {
       size: 10,
       color: style.text,
     });
-    renderer.drawText(card.growthText || renderer.t?.('famous.growth.level', { level: card.level || 1 }, `等级 ${card.level || 1}`) || `等级 ${card.level || 1}`, textX, y + 82, {
+    renderer.drawText(card.growthText || renderer.t?.('famous.growth.level', { level: card.level || 1 }) || `等级 ${card.level || 1}`, textX, y + 82, {
       size: 11,
       color: '#f4c86d',
     });
-    renderer.drawText(card.pointText || renderer.t?.('famous.pointText', { points: 0 }, '可分配属性点 0') || '可分配属性点 0', textX, y + 101, {
+    renderer.drawText(card.pointText || renderer.t?.('famous.pointText', { points: 0 }) || '可分配属性点 0', textX, y + 101, {
       size: 11,
       bold: true,
       color: Number(card.freeAttributePoints) > 0 ? '#f4c86d' : 'rgba(234, 234, 234, 0.62)',
@@ -189,12 +187,12 @@
     const attrX = x + 14;
     const attrY = y + headerH + 14;
     const attrWidth = Math.max(150, radarX - attrX - 12);
-    renderer.drawText(renderer.t?.('famous.attribute.title', {}, '六维') || '六维', attrX, attrY - 2, { size: 13, bold: true, color: '#ffe6b5' });
+    renderer.drawText(renderer.t?.('famous.attribute.title', {}) || '六维', attrX, attrY - 2, { size: 13, bold: true, color: '#ffe6b5' });
     const controlsHeight = renderer.drawFamousAttributePointControls(card, attrX, attrY + 18, attrWidth);
     if (!controlsHeight) renderReadOnlyAttributes(renderer, card, attrX, attrY, attrWidth);
 
     const skillY = Math.min(y + height - 92, y + headerH + 150);
-    renderer.drawText(renderer.t?.('famous.skill.title', {}, '技能') || '技能', x + 14, skillY, { size: 13, bold: true, color: '#ffe6b5' });
+    renderer.drawText(renderer.t?.('famous.skill.title', {}) || '技能', x + 14, skillY, { size: 13, bold: true, color: '#ffe6b5' });
     renderer.renderSkillBadges(card, x + 14, skillY + 20, width - 28, {
       cardId: card.id || '',
       badgeHeight: 24,
@@ -255,7 +253,7 @@
       frameHeight: portraitHeight,
     });
     if (!portraitDrawn) {
-      renderer.drawText(String(card.name || renderer.t?.('famous.unknownInitial', {}, '名') || '名').slice(0, 1), portraitX + portraitWidth / 2, portraitY + portraitHeight / 2, {
+      renderer.drawText(String(card.name || renderer.t?.('famous.unknownInitial', {}) || '名').slice(0, 1), portraitX + portraitWidth / 2, portraitY + portraitHeight / 2, {
         size: 18,
         bold: true,
         color: '#ffe6b5',
@@ -270,12 +268,12 @@
     const radarX = x + width - radarSize - 10 - actionPad;
     const radarY = y + (height - radarSize) / 2 + (candidate ? -3 : 0);
     const textWidth = Math.max(112, radarX - textX - 10);
-    renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}, '无名之士') || '无名之士', textWidth, { size: 15, bold: true }), textX, y + 13, {
+    renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}) || '无名之士', textWidth, { size: 15, bold: true }), textX, y + 13, {
       size: 15,
       bold: true,
       color: '#fff1cf',
     });
-    renderer.drawText(renderer.truncateText(card.title || renderer.t?.('famous.genericTitle', {}, '名人') || '名人', textWidth, { size: 10 }), textX, y + 35, {
+    renderer.drawText(renderer.truncateText(card.title || renderer.t?.('famous.genericTitle', {}) || '名人', textWidth, { size: 10 }), textX, y + 35, {
       size: 10,
       color: '#cbbd96',
     });
@@ -303,8 +301,8 @@
     });
     if (candidate) {
       const acceptX = x + width - buttonW - 10;
-      renderer.drawButton(acceptX, y + 30, buttonW, 28, renderer.t?.('famous.action.accept', {}, '接纳') || '接纳', { size: 12, bold: true, active: true, radius: 8 });
-      renderer.drawButton(acceptX, y + 70, buttonW, 28, renderer.t?.('famous.action.dismiss', {}, '放弃') || '放弃', { size: 12, radius: 8 });
+      renderer.drawButton(acceptX, y + 30, buttonW, 28, renderer.t?.('famous.action.accept', {}) || '接纳', { size: 12, bold: true, active: true, radius: 8 });
+      renderer.drawButton(acceptX, y + 70, buttonW, 28, renderer.t?.('famous.action.dismiss', {}) || '放弃', { size: 12, radius: 8 });
       renderer.addHitTarget({ x: acceptX, y: y + 30, width: buttonW, height: 28 }, card.acceptAction);
       renderer.addHitTarget({ x: acceptX, y: y + 70, width: buttonW, height: 28 }, card.dismissAction);
     }
@@ -319,7 +317,7 @@
     const nextX = x + width - buttonW;
     const canPrev = page > 0;
     const canNext = page < pages - 1;
-    renderer.drawButton(prevX, y, buttonW, buttonH, renderer.t?.('common.previousPage', {}, '上一页') || '上一页', { disabled: !canPrev, size: 11, radius: 7 });
+    renderer.drawButton(prevX, y, buttonW, buttonH, renderer.t?.('common.previousPage', {}) || '上一页', { disabled: !canPrev, size: 11, radius: 7 });
     renderer.drawText(`${page + 1}/${pages}`, x + width / 2, y + buttonH / 2, {
       size: 11,
       bold: true,
@@ -327,7 +325,7 @@
       baseline: 'middle',
       align: 'center',
     });
-    renderer.drawButton(nextX, y, buttonW, buttonH, renderer.t?.('common.nextPage', {}, '下一页') || '下一页', { disabled: !canNext, size: 11, radius: 7 });
+    renderer.drawButton(nextX, y, buttonW, buttonH, renderer.t?.('common.nextPage', {}) || '下一页', { disabled: !canNext, size: 11, radius: 7 });
     renderer.addHitTarget({ x: prevX, y, width: buttonW, height: buttonH }, { type: 'changeFamousPersonsPage', delta: -1, disabled: !canPrev });
     renderer.addHitTarget({ x: nextX, y, width: buttonW, height: buttonH }, { type: 'changeFamousPersonsPage', delta: 1, disabled: !canNext });
   }
@@ -368,12 +366,12 @@
     );
 
     const backW = 58;
-    renderer.drawButton(x + 12, y + 12, backW, 30, renderer.t?.('common.back', {}, '返回') || '返回', { size: 12, radius: 8 });
+    renderer.drawButton(x + 12, y + 12, backW, 30, renderer.t?.('common.back', {}) || '返回', { size: 12, radius: 8 });
     renderer.addHitTarget(
       { x: x + 12, y: y + 12, width: backW, height: 30 },
       selectedPerson ? { type: 'closeFamousPersonDetail' } : { type: 'closeFamousPersons' },
     );
-    renderer.drawText(view.title || renderer.t?.('famous.title', {}, '名人') || '名人', x + panelWidth / 2, y + 18, {
+    renderer.drawText(view.title || renderer.t?.('famous.title', {}) || '名人', x + panelWidth / 2, y + 18, {
       size: 18,
       bold: true,
       color: '#ffe6b5',
@@ -402,9 +400,7 @@
     });
     renderer.drawText(renderer.t?.(
       'famous.summary',
-      { peopleCount: view.peopleCount, candidateCount: view.candidateCount, maxCandidates: view.maxCandidates },
-      `已加入 ${view.peopleCount} 位 · 候选 ${view.candidateCount}/${view.maxCandidates}`,
-    ) || `已加入 ${view.peopleCount} 位 · 候选 ${view.candidateCount}/${view.maxCandidates}`, innerX + 12, cursorY + 10, {
+      { peopleCount: view.peopleCount, candidateCount: view.candidateCount, maxCandidates: view.maxCandidates }) || `已加入 ${view.peopleCount} 位 · 候选 ${view.candidateCount}/${view.maxCandidates}`, innerX + 12, cursorY + 10, {
       size: 12,
       bold: true,
       color: '#ffd98a',
@@ -415,7 +411,7 @@
     });
     const seekW = 82;
     const seekX = innerX + innerWidth - seekW - 10;
-    renderer.drawButton(seekX, cursorY + 14, seekW, 30, view.seek.text || renderer.t?.('famous.seek.available', {}, '寻访') || '寻访', {
+    renderer.drawButton(seekX, cursorY + 14, seekW, 30, view.seek.text || renderer.t?.('famous.seek.available', {}) || '寻访', {
       disabled: !view.seek.available,
       active: view.seek.available,
       size: 12,
@@ -427,7 +423,7 @@
 
     const candidates = Array.isArray(view.candidates) ? view.candidates : [];
     if (candidates.length) {
-      renderer.drawText(renderer.t?.('famous.section.candidates', {}, '候选') || '候选', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+      renderer.drawText(renderer.t?.('famous.section.candidates', {}) || '候选', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
       cursorY += 22;
       candidates.slice(0, 2).forEach((card) => {
         if (cursorY + 158 > y + panelHeight - 94) return;
@@ -436,7 +432,7 @@
     }
 
     const people = Array.isArray(view.people) ? view.people : [];
-    renderer.drawText(renderer.t?.('famous.section.joined', {}, '已加入') || '已加入', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+    renderer.drawText(renderer.t?.('famous.section.joined', {}) || '已加入', innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
     cursorY += 22;
     if (!people.length) {
       renderer.drawPanel(innerX, cursorY, innerWidth, 78, {

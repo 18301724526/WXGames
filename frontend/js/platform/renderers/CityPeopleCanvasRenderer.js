@@ -104,13 +104,13 @@
       this.drawLine(x + 10, y + 6, x + width - 10, y + 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
       this.drawLine(x + 10, y + panelHeight - 6, x + width - 10, y + panelHeight - 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
       this.drawIconCard(x + 14, y + 14, 38, 38, 'assets/art/icon-population-cutout.webp');
-      this.drawText(view.text.title || this.t('home.population.title', {}, '人才分配'), x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
-      this.drawText(view.text.subtitle || this.t('home.population.subtitle', {}, '核心岗位'), x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
+      this.drawText(view.text.title || this.t('home.population.title', {}), x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
+      this.drawText(view.text.subtitle || this.t('home.population.subtitle', {}), x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
       const policyButtonWidth = 58;
       const policyButtonHeight = 28;
       const policyButtonX = x + width - policyButtonWidth - 14;
       const policyButtonY = y + 18;
-      this.drawButton(policyButtonX, policyButtonY, policyButtonWidth, policyButtonHeight, this.t('home.population.policy', {}, '方针'), {
+      this.drawButton(policyButtonX, policyButtonY, policyButtonWidth, policyButtonHeight, this.t('home.population.policy', {}), {
         size: 12,
         bold: true,
         active: true,
@@ -123,9 +123,9 @@
       this.drawLine(x + 16, y + 56, x + width - 16, y + 56, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
 
       const stats = [
-        { icon: 'assets/art/icon-population-cutout.webp', label: this.t('home.population.people', {}, '人才'), value: String(view.text.total), color: '#74d3a0' },
-        { icon: 'assets/art/icon-population-cutout.webp', label: this.t('home.population.unassigned', {}, '待分配人才'), value: String(view.text.unassigned), color: '#74d3a0' },
-        { icon: 'assets/art/icon-happiness-cutout.webp', label: this.t('home.population.happiness', {}, '幸福度'), value: `${state.happiness || 100}%`, color: '#f9ca24' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: this.t('home.population.people', {}), value: String(view.text.total), color: '#74d3a0' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: this.t('home.population.unassigned', {}), value: String(view.text.unassigned), color: '#74d3a0' },
+        { icon: 'assets/art/icon-happiness-cutout.webp', label: this.t('home.population.happiness', {}), value: `${state.happiness || 100}%`, color: '#f9ca24' },
       ];
       const statWidth = Math.floor((width - 28) / 3);
       stats.forEach((stat, index) => {
@@ -145,19 +145,19 @@
         radius: 8,
         inset: 'rgba(116, 211, 160, 0.05)',
       });
-      const terrainLabel = planning.terrainLabel || this.t('home.planning.terrain.plains', {}, '平原');
-      this.drawText(this.t('home.planning.geography', { terrain: terrainLabel }, `地理 ${terrainLabel}`), x + 20, planningY + 12, {
+      const terrainLabel = planning.terrainLabel || this.t('home.planning.terrain.plains', {});
+      this.drawText(this.t('home.planning.geography', { terrain: terrainLabel }), x + 20, planningY + 12, {
         size: 11,
         bold: true,
         color: '#d5ffe8',
       });
-      this.drawText(`${planning.text?.habitabilityStatus || this.t('home.planning.habitabilityStatus', { label: this.t('home.planning.habitability.stable', {}, '平稳') }, '宜居度平稳')} \u00b7 ${planning.text?.populationGrowthStatus || this.t('home.population.growth.steady', {}, '人口成长平稳')}`, x + width - 20, planningY + 12, {
+      this.drawText(`${planning.text?.habitabilityStatus || this.t('home.planning.habitabilityStatus', { label: this.t('home.planning.habitability.stable', {}) })} \u00b7 ${planning.text?.populationGrowthStatus || this.t('home.population.growth.steady', {})}`, x + width - 20, planningY + 12, {
         size: 11,
         bold: true,
         color: '#74d3a0',
         align: 'right',
       });
-      this.drawText(this.truncateText(planning.text?.note || this.t('home.planning.terrainHint', {}, '保持建筑搭配，会让城市更稳定。'), width - 40, { size: 10 }), x + 20, planningY + 27, {
+      this.drawText(this.truncateText(planning.text?.note || this.t('home.planning.terrainHint', {}), width - 40, { size: 10 }), x + 20, planningY + 27, {
         size: 10,
         color: 'rgba(234, 234, 234, 0.62)',
       });
@@ -166,14 +166,14 @@
       jobs.forEach((job, index) => {
         const rowY = y + 156 + index * (jobRowHeight + jobRowGap);
         const jobLabel = {
-          farmer: this.t('home.job.farmer', {}, '农民'),
-          scholar: this.t('home.job.scholar', {}, '学者'),
-          craftsman: this.t('home.job.craftsman', {}, '工匠'),
+          farmer: this.t('home.job.farmer', {}),
+          scholar: this.t('home.job.scholar', {}),
+          craftsman: this.t('home.job.craftsman', {}),
         }[job.id] || job.id;
         const desc = {
-          farmer: this.t('home.job.farmerDesc', {}, '生产食物'),
-          scholar: this.t('home.job.scholarDesc', {}, '研究知识'),
-          craftsman: this.t('home.job.craftsmanDesc', {}, '钻研工艺'),
+          farmer: this.t('home.job.farmerDesc', {}),
+          scholar: this.t('home.job.scholarDesc', {}),
+          craftsman: this.t('home.job.craftsmanDesc', {}),
         }[job.id] || '';
         const icon = { farmer: 'assets/art/icon-farmer-cutout.webp', scholar: 'assets/art/icon-scholar-cutout.webp', craftsman: 'assets/art/icon-craftsman-cutout.webp' }[job.id];
         const jobPanelX = x + 7;

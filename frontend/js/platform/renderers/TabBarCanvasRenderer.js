@@ -76,11 +76,11 @@
       }
       const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
       const tabs = [
-        ['resources', this.t('tab.home', {}, '主页'), 'assets/art/icon-home-cutout.png'],
-        ['tech', this.t('tab.tech', {}, '科技'), 'assets/art/icon-knowledge-cutout.webp'],
-        ['events', this.t('tab.events', {}, '事件'), 'assets/art/icon-event-cutout.webp'],
-        ['famousPersons', this.t('tab.famousPersons', {}, '名人'), 'assets/art/icon-scholar-cutout.webp'],
-        ['civilization', this.t('tab.civilization', {}, '文明'), 'assets/art/icon-fire-cutout.webp'],
+        ['resources', this.t('tab.home', {}), 'assets/art/icon-home-cutout.png'],
+        ['tech', this.t('tab.tech', {}), 'assets/art/icon-knowledge-cutout.webp'],
+        ['events', this.t('tab.events', {}), 'assets/art/icon-event-cutout.webp'],
+        ['famousPersons', this.t('tab.famousPersons', {}), 'assets/art/icon-scholar-cutout.webp'],
+        ['civilization', this.t('tab.civilization', {}), 'assets/art/icon-fire-cutout.webp'],
       ];
       const layout = this.getLayout();
       const x = layout.contentX;

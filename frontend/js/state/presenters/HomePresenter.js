@@ -75,11 +75,11 @@
 
     static formatPopulationGrowthStatus(growthMultiplier = 1) {
       const multiplier = this.toNumber(growthMultiplier, 1);
-      if (multiplier <= 0.55) return this.t('home.population.growth.stalled', {}, '人口成长停滞');
-      if (multiplier < 0.9) return this.t('home.population.growth.slow', {}, '人口成长缓慢');
-      if (multiplier < 1.08) return this.t('home.population.growth.steady', {}, '人口成长平稳');
-      if (multiplier < 1.25) return this.t('home.population.growth.good', {}, '人口成长良好');
-      return this.t('home.population.growth.booming', {}, '人口成长旺盛');
+      if (multiplier <= 0.55) return this.t('home.population.growth.stalled', {});
+      if (multiplier < 0.9) return this.t('home.population.growth.slow', {});
+      if (multiplier < 1.08) return this.t('home.population.growth.steady', {});
+      if (multiplier < 1.25) return this.t('home.population.growth.good', {});
+      return this.t('home.population.growth.booming', {});
     }
 
     static buildResourceViewState(state = {}) {
@@ -146,10 +146,10 @@
           ironDetailRate: this.formatRate(ironRate),
           stoneDetailRate: this.formatRate(stoneRate),
           happinessValue: state.happiness || 100,
-          gameTime: this.t('home.gameDay', { day: state.gameDay || 1 }, `第 ${state.gameDay || 1} 天`),
+          gameTime: this.t('home.gameDay', { day: state.gameDay || 1 }),
           populationValue: this.toDisplayPopulation(populationTotal),
           populationStatus: populationAtEraCap
-            ? this.t('home.populationStatus.eraCap', {}, '人口已无法增长，请推进时代')
+            ? this.t('home.populationStatus.eraCap', {})
             : '',
         },
         classState: {
@@ -175,8 +175,8 @@
         planning.habitability ?? activeCity.habitability,
         0,
       );
-      const label = planning.habitabilityLabel || activeCity.habitabilityLabel || this.t('home.planning.habitability.stable', {}, '平稳');
-      const terrainLabel = planning.terrainLabel || activeCity.terrainLabel || this.t('home.planning.terrain.plains', {}, '平原');
+      const label = planning.habitabilityLabel || activeCity.habitabilityLabel || this.t('home.planning.habitability.stable', {});
+      const terrainLabel = planning.terrainLabel || activeCity.terrainLabel || this.t('home.planning.terrain.plains', {});
       const notes = Array.isArray(planning.habitabilityNotes) ? planning.habitabilityNotes : [];
       const growthMultiplier = this.toNumber(
         planning.populationGrowthMultiplier ?? activeCity.populationGrowthMultiplier ?? state.population?.growthMultiplier,
@@ -185,24 +185,24 @@
       return {
         terrainId: planning.terrainId || activeCity.terrain || 'plains',
         terrainLabel,
-        terrainSummary: planning.terrainSummary || this.t('home.planning.terrainSummary', {}, '适合均衡建设。'),
-        terrainHint: planning.terrainHint || this.t('home.planning.terrainHint', {}, '保持建筑搭配，会让城市更稳定。'),
+        terrainSummary: planning.terrainSummary || this.t('home.planning.terrainSummary', {}),
+        terrainHint: planning.terrainHint || this.t('home.planning.terrainHint', {}),
         habitability,
         habitabilityLabel: label,
         habitabilityTone: planning.habitabilityTone || 'neutral',
         populationGrowthMultiplier: growthMultiplier,
         habitabilitySummary: planning.habitabilitySummary
-          || this.t('home.planning.summary', { terrain: terrainLabel, label }, `${terrainLabel}城市规划${label}`),
+          || this.t('home.planning.summary', { terrain: terrainLabel, label }),
         habitabilityNotes: notes,
         text: {
           terrain: terrainLabel,
           habitability: `${habitability >= 0 ? '+' : ''}${habitability}`,
           habitabilityLabel: label,
-          habitabilityStatus: this.t('home.planning.habitabilityStatus', { label }, `宜居度${label}`),
+          habitabilityStatus: this.t('home.planning.habitabilityStatus', { label }),
           populationGrowthStatus: this.formatPopulationGrowthStatus(growthMultiplier),
           summary: planning.habitabilitySummary
-            || this.t('home.planning.summary', { terrain: terrainLabel, label }, `${terrainLabel}城市规划${label}`),
-          note: notes[0] || planning.terrainHint || this.t('home.planning.terrainHint', {}, '保持建筑搭配，会让城市更稳定。'),
+            || this.t('home.planning.summary', { terrain: terrainLabel, label }),
+          note: notes[0] || planning.terrainHint || this.t('home.planning.terrainHint', {}),
         },
       };
     }
@@ -234,8 +234,8 @@
         jobs,
         planning: this.buildCityPlanningViewState(state),
         text: {
-          title: this.t('home.population.title', {}, '人才分配'),
-          subtitle: this.t('home.population.subtitle', {}, '核心岗位'),
+          title: this.t('home.population.title', {}),
+          subtitle: this.t('home.population.subtitle', {}),
           total: totalOfficials,
           max: maxOfficials,
           unassigned,
@@ -257,12 +257,12 @@
         const population = this.toDisplayPopulation(officials);
         const buildings = this.toInteger(city.totalBuildings);
         const planning = city.planning || {};
-        const terrainLabel = planning.terrainLabel || city.terrainLabel || this.t('home.planning.terrain.plains', {}, '平原');
-        const habitabilityLabel = planning.habitabilityLabel || city.habitabilityLabel || this.t('home.planning.habitability.stable', {}, '平稳');
+        const terrainLabel = planning.terrainLabel || city.terrainLabel || this.t('home.planning.terrain.plains', {});
+        const habitabilityLabel = planning.habitabilityLabel || city.habitabilityLabel || this.t('home.planning.habitability.stable', {});
         return {
           id: city.id || '',
-          name: city.name || this.t('home.city.unnamed', {}, '未命名城市'),
-          tag: city.isCapital ? this.t('home.city.main', {}, '主城') : this.t('home.city.sub', {}, '分城'),
+          name: city.name || this.t('home.city.unnamed', {}),
+          tag: city.isCapital ? this.t('home.city.main', {}) : this.t('home.city.sub', {}),
           officials,
           population,
           buildings,
@@ -270,9 +270,7 @@
           habitabilityLabel,
           metaText: this.t(
             'home.city.meta',
-            { population, terrain: terrainLabel, habitability: habitabilityLabel },
-            `人口 ${population} · ${terrainLabel} · 宜居${habitabilityLabel}`,
-          ),
+            { population, terrain: terrainLabel, habitability: habitabilityLabel }),
           isActive,
         };
       });
@@ -280,9 +278,9 @@
       return {
         hidden,
         activeCityId,
-        activeCityName: activeCity?.name || this.t('shell.city.capital', {}, '首都'),
-        activeTerrainLabel: activeCity?.planning?.terrainLabel || activeCity?.terrainLabel || this.t('home.planning.terrain.plains', {}, '平原'),
-        activeHabitabilityLabel: activeCity?.planning?.habitabilityLabel || activeCity?.habitabilityLabel || this.t('home.planning.habitability.stable', {}, '平稳'),
+        activeCityName: activeCity?.name || this.t('shell.city.capital', {}),
+        activeTerrainLabel: activeCity?.planning?.terrainLabel || activeCity?.terrainLabel || this.t('home.planning.terrain.plains', {}),
+        activeHabitabilityLabel: activeCity?.planning?.habitabilityLabel || activeCity?.habitabilityLabel || this.t('home.planning.habitability.stable', {}),
         options,
         signature: JSON.stringify(options),
       };

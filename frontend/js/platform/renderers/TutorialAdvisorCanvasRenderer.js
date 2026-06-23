@@ -93,7 +93,7 @@
           stroke: 'rgba(255, 218, 142, 0.28)',
           radius: 10,
         });
-        this.drawText(this.t('tutorial.advisorName', {}, '谋士'), x + width / 2, y + height / 2, {
+        this.drawText(this.t('tutorial.advisorName', {}), x + width / 2, y + height / 2, {
           size: 15,
           bold: true,
           color: '#ffd98a',

@@ -54,12 +54,12 @@
 
     static getEventResourceLabel(resource) {
       return {
-        food: this.t('event.resource.food', {}, '食物'),
-        knowledge: this.t('event.resource.knowledge', {}, '知识'),
-        wood: this.t('event.resource.wood', {}, '木材'),
-        iron: this.t('event.resource.iron', {}, '铁矿'),
-        stone: this.t('event.resource.stone', {}, '石料'),
-        metal: this.t('event.resource.iron', {}, '铁矿'),
+        food: this.t('event.resource.food', {}),
+        knowledge: this.t('event.resource.knowledge', {}),
+        wood: this.t('event.resource.wood', {}),
+        iron: this.t('event.resource.iron', {}),
+        stone: this.t('event.resource.stone', {}),
+        metal: this.t('event.resource.iron', {}),
       }[resource] || resource;
     }
 
@@ -84,12 +84,12 @@
     static formatEventDuration(seconds) {
       const total = this.toInteger(seconds);
       if (total <= 0) return '';
-      if (total < 60) return this.t('event.duration.seconds', { seconds: total }, `${total}秒`);
+      if (total < 60) return this.t('event.duration.seconds', { seconds: total });
       const minutes = Math.floor(total / 60);
       const rest = total % 60;
       return rest
-        ? this.t('event.duration.minutesSeconds', { minutes, seconds: rest }, `${minutes}分${rest}秒`)
-        : this.t('event.duration.minutes', { minutes }, `${minutes}分钟`);
+        ? this.t('event.duration.minutesSeconds', { minutes, seconds: rest })
+        : this.t('event.duration.minutes', { minutes });
     }
 
     static formatEventBuffEffect(effect = {}) {
@@ -101,25 +101,19 @@
       if (effect.buffType === 'resourceMultiplier') {
         return this.t(
           'event.buff.resourceMultiplier',
-          { duration: durationParam, resource: this.getEventResourceLabel(effect.target), sign, percent: Math.round(value * 100) },
-          `${prefix}${this.getEventResourceLabel(effect.target)}产出 ${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`,
-        );
+          { duration: durationParam, resource: this.getEventResourceLabel(effect.target), sign, percent: Math.round(value * 100) });
       }
       if (effect.buffType === 'offlineEfficiencyBonus') {
         return this.t(
           'event.buff.offlineEfficiency',
-          { duration: durationParam, sign, percent: Math.round(value * 100) },
-          `${prefix}离线收益效率 ${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`,
-        );
+          { duration: durationParam, sign, percent: Math.round(value * 100) });
       }
       if (effect.buffType === 'happinessFlat') {
         return this.t(
           'event.buff.happiness',
-          { duration: durationParam, sign, value: this.formatCompactNumber(value, { floorSmall: false }) },
-          `${prefix}幸福度 ${value >= 0 ? '+' : ''}${this.formatCompactNumber(value, { floorSmall: false })}`,
-        );
+          { duration: durationParam, sign, value: this.formatCompactNumber(value, { floorSmall: false }) });
       }
-      return effect.label ? `${prefix}${effect.label}` : this.t('event.buff.temporary', { duration: durationParam }, `${prefix}临时加成`);
+      return effect.label ? `${prefix}${effect.label}` : this.t('event.buff.temporary', { duration: durationParam });
     }
 
     static formatEventEffect(effect = {}) {
@@ -129,7 +123,7 @@
         if (!value) return '';
         const sign = value > 0 ? '+' : '-';
         const amount = this.formatResourceAmount(Math.abs(value));
-        return this.t('event.effect.soldiers', { sign, amount }, `士兵 ${sign}${amount}`);
+        return this.t('event.effect.soldiers', { sign, amount });
       }
       if (effect.type === 'buff') return this.formatEventBuffEffect(effect);
       return '';
@@ -181,8 +175,8 @@
       const parts = [];
       const defense = Number(requirements.defense);
       const soldiers = Number(requirements.soldiers);
-      if (Number.isFinite(defense)) parts.push(this.t('event.requirement.defense', { value: this.formatResourceAmount(defense) }, `防御 ${this.formatResourceAmount(defense)}`));
-      if (Number.isFinite(soldiers)) parts.push(this.t('event.requirement.soldiers', { value: this.formatResourceAmount(soldiers) }, `士兵 ${this.formatResourceAmount(soldiers)}`));
+      if (Number.isFinite(defense)) parts.push(this.t('event.requirement.defense', { value: this.formatResourceAmount(defense) }));
+      if (Number.isFinite(soldiers)) parts.push(this.t('event.requirement.soldiers', { value: this.formatResourceAmount(soldiers) }));
       return parts.join('，');
     }
 
@@ -191,20 +185,20 @@
       const parts = [];
       const defense = Number(requirements.defense);
       const soldiers = Number(requirements.soldiers);
-      if (Number.isFinite(defense)) parts.push({ type: 'text', text: this.t('event.requirement.defense', { value: this.formatResourceAmount(defense) }, `防御 ${this.formatResourceAmount(defense)}`) });
+      if (Number.isFinite(defense)) parts.push({ type: 'text', text: this.t('event.requirement.defense', { value: this.formatResourceAmount(defense) }) });
       if (Number.isFinite(soldiers)) parts.push({ type: 'resource', resource: 'soldier', text: String(this.formatResourceAmount(soldiers)) });
       return parts;
     }
 
     static formatEventReward(reward) {
-      if (!reward) return this.t('event.completed', {}, '事件已完成');
+      if (!reward) return this.t('event.completed', {});
       const parts = [];
       if (reward.food) parts.push(this.formatEventResourcePart('food', reward.food));
       if (reward.knowledge) parts.push(this.formatEventResourcePart('knowledge', reward.knowledge));
       if (reward.wood) parts.push(this.formatEventResourcePart('wood', reward.wood));
       if (reward.iron || reward.metal) parts.push(this.formatEventResourcePart('iron', reward.iron || reward.metal));
       if (reward.stone) parts.push(this.formatEventResourcePart('stone', reward.stone));
-      return parts.join(' ') || this.t('event.completed', {}, '事件已完成');
+      return parts.join(' ') || this.t('event.completed', {});
     }
 
     static buildEventRewardParts(reward = {}) {
@@ -260,10 +254,10 @@
       const costText = this.getEventOptionCostText(option);
       const penaltyText = this.getEventOptionPenaltyText(option);
       return [
-        { label: this.t('event.row.requirement', {}, '需求'), text: requirementText || this.t('common.none', {}, '无'), tone: 'requirement', parts: this.buildEventRequirementParts(option.requirements), empty: !requirementText },
-        { label: this.t('event.row.reward', {}, '奖励'), text: rewardText || this.t('common.none', {}, '无'), tone: 'reward', parts: this.getEventOptionRewardParts(option), empty: !rewardText },
-        { label: this.t('event.row.cost', {}, '消耗'), text: costText || this.t('common.none', {}, '无'), tone: 'cost', parts: this.getEventOptionCostParts(option), empty: !costText },
-        { label: this.t('event.row.penalty', {}, '惩罚'), text: penaltyText || this.t('common.none', {}, '无'), tone: 'penalty', parts: this.getEventOptionPenaltyParts(option), empty: !penaltyText },
+        { label: this.t('event.row.requirement', {}), text: requirementText || this.t('common.none', {}), tone: 'requirement', parts: this.buildEventRequirementParts(option.requirements), empty: !requirementText },
+        { label: this.t('event.row.reward', {}), text: rewardText || this.t('common.none', {}), tone: 'reward', parts: this.getEventOptionRewardParts(option), empty: !rewardText },
+        { label: this.t('event.row.cost', {}), text: costText || this.t('common.none', {}), tone: 'cost', parts: this.getEventOptionCostParts(option), empty: !costText },
+        { label: this.t('event.row.penalty', {}), text: penaltyText || this.t('common.none', {}), tone: 'penalty', parts: this.getEventOptionPenaltyParts(option), empty: !penaltyText },
       ];
     }
 
@@ -293,14 +287,14 @@
     static getEventHint(event, nowMs = Date.now()) {
       const remaining = this.formatRemainingTime(event?.expiresAt, nowMs);
       if (event?.type === 'threat') {
-        if (!remaining) return this.t('event.hint.threatNoTime', {}, '超时将按失败处理');
-        return this.t('event.hint.threatTimed', { remaining }, `剩余 ${remaining}，超时将按失败处理`);
+        if (!remaining) return this.t('event.hint.threatNoTime', {});
+        return this.t('event.hint.threatTimed', { remaining });
       }
       if (event?.type === 'regular') {
-        if (!remaining) return this.t('event.hint.regularNoTime', {}, '超时将自动失效');
-        return this.t('event.hint.regularTimed', { remaining }, `剩余 ${remaining}，超时将自动失效`);
+        if (!remaining) return this.t('event.hint.regularNoTime', {});
+        return this.t('event.hint.regularTimed', { remaining });
       }
-      return this.t('event.hint.details', {}, '点击查看详情');
+      return this.t('event.hint.details', {});
     }
 
     static buildEventCardViewState(event = {}, nowMs = Date.now()) {
@@ -344,12 +338,12 @@
         },
         pending: {
           isEmpty: !pendingCards.length,
-          emptyText: this.t('event.empty.pending', {}, '暂无待处理事件'),
+          emptyText: this.t('event.empty.pending', {}),
           cards: pendingCards,
         },
         history: {
           isEmpty: !historyItems.length,
-          emptyText: this.t('event.empty.history', {}, '暂无事件记录'),
+          emptyText: this.t('event.empty.history', {}),
           items: historyItems,
         },
       };
@@ -362,7 +356,7 @@
         const rows = this.buildEventOptionRows(option);
         return {
           id: option.id || '',
-          label: option.label || this.t('event.action.handle', {}, '处理事件'),
+          label: option.label || this.t('event.action.handle', {}),
           preview: this.getEventOptionPreview(option),
           rows,
         };
@@ -370,7 +364,7 @@
       const firstOption = optionViews[0];
       const singleOptionPreview = optionViews.length === 1
         ? optionViews[0].preview
-        : this.t('event.option.choose', {}, '选择一种处理方式');
+        : this.t('event.option.choose', {});
       const expiryHint = ['threat', 'regular'].includes(eventData?.type)
         ? this.getEventHint(eventData, nowMs)
         : '';
@@ -378,15 +372,15 @@
       const metaRows = [];
       if (expiryHint) {
         metaRows.push({
-          label: this.t('event.row.deadline', {}, '时限'),
+          label: this.t('event.row.deadline', {}),
           text: expiryHint,
           tone: eventData?.type === 'threat' ? 'penalty' : 'time',
         });
       }
       if (optionViews.length > 1) {
         metaRows.push({
-          label: this.t('event.row.option', {}, '选项'),
-          text: this.t('event.option.choose', {}, '选择一种处理方式'),
+          label: this.t('event.row.option', {}),
+          text: this.t('event.option.choose', {}),
           tone: 'neutral',
         });
       }
@@ -402,7 +396,7 @@
         options: optionViews,
         claimButton: {
           optionId: firstOption?.id || '',
-          label: firstOption?.label || this.t('event.action.handle', {}, '处理事件'),
+          label: firstOption?.label || this.t('event.action.handle', {}),
           hidden: optionViews.length !== 1,
         },
         showModal: true,

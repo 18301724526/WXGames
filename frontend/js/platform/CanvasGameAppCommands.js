@@ -33,7 +33,7 @@
               if (data) this.applyState(data);
               return data;
             } catch (error) {
-              this.log(error.payload?.message || error.message || t('command.action.failed', {}, '操作失败'));
+              this.log(error.payload?.message || error.message || t('command.action.failed', {}));
               return null;
             }
           },
@@ -68,8 +68,8 @@
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-              this.showFloatingText(result.message || t('command.famous.accepted', {}, '名人已接纳'));
-              this.log(result.message || t('command.famous.accepted', {}, '名人已接纳'));
+              this.showFloatingText(result.message || t('command.famous.accepted', {}));
+              this.log(result.message || t('command.famous.accepted', {}));
               return true;
             } catch (error) {
               this.log(`接纳失败：${error.payload?.message || error.message}`);
@@ -86,8 +86,8 @@
               this.selectedFamousPersonId = '';
               if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-              this.showFloatingText(result.message || t('command.famous.dismissed', {}, '候选人已放弃'));
-              this.log(result.message || t('command.famous.dismissed', {}, '候选人已放弃'));
+              this.showFloatingText(result.message || t('command.famous.dismissed', {}));
+              this.log(result.message || t('command.famous.dismissed', {}));
               return true;
             } catch (error) {
               this.log(`放弃失败：${error.payload?.message || error.message}`);
@@ -539,8 +539,8 @@
             try {
               const result = await this.getGameApi().applyTalentPolicy(policyId);
               this.applyApiState(result);
-              this.showFloatingText(result.message || t('command.policy.applied', {}, '方针已应用'));
-              this.log(result.message || t('command.policy.applied', {}, '方针已应用'));
+              this.showFloatingText(result.message || t('command.policy.applied', {}));
+              this.log(result.message || t('command.policy.applied', {}));
               return true;
             } catch (error) {
               this.log(`方针失败：${error.payload?.message || error.message}`);
@@ -552,10 +552,10 @@
       async advanceEra() {
             if (!this.canAdvanceEraNow()) {
               this.log(this.state?.isCapitalCity === false
-                ? t('command.era.capitalOnly', {}, '只有主城可以推进时代')
+                ? t('command.era.capitalOnly', {})
                 : this.canAdvanceEraByTutorial()
-                  ? t('command.era.requirementsNotMet', {}, '条件未满足')
-                  : t('command.era.locked', {}, '操作未解锁'));
+                  ? t('command.era.requirementsNotMet', {})
+                  : t('command.era.locked', {}));
               this.renderMilitary();
               return false;
             }
@@ -565,7 +565,7 @@
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onEraAdvanced?.(result);
               this.log(`进入新阶段：${result.message || this.state.currentEraName || ''}`);
-              this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}, '已进入下一时代'));
+              this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}));
               return true;
             } catch (error) {
               this.log(`失败：${error.payload?.message || error.message}`);
@@ -618,8 +618,8 @@
               }
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onExploreStarted?.(result);
-              this.showFloatingText(result.message || t('command.worldMarch.started', {}, '行军已开始'));
-              this.log(result.message || t('command.worldMarch.started', {}, '行军已开始'));
+              this.showFloatingText(result.message || t('command.worldMarch.started', {}));
+              this.log(result.message || t('command.worldMarch.started', {}));
               return true;
             } catch (error) {
               global.WorldMarchTrace?.error?.('app:startWorldMarch:error', {
@@ -627,7 +627,7 @@
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
               WorldMarchOptimisticState?.rollback?.(this, optimistic || '', { render: false });
-              this.log(t('command.worldMarch.failed', { message: error.payload?.message || error.message || '' }, `行军失败：${error.payload?.message || error.message || ''}`));
+              this.log(t('command.worldMarch.failed', { message: error.payload?.message || error.message || '' }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -650,8 +650,8 @@
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
                 after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
-              this.showFloatingText(result.message || t('command.worldMarch.returning', {}, '正在返回'));
-              this.log(result.message || t('command.worldMarch.returning', {}, '正在返回'));
+              this.showFloatingText(result.message || t('command.worldMarch.returning', {}));
+              this.log(result.message || t('command.worldMarch.returning', {}));
               return true;
             } catch (error) {
               global.WorldMarchTrace?.error?.('app:returnWorldMarch:error', {
@@ -660,7 +660,7 @@
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
               WorldMarchOptimisticState?.rollback?.(this, optimistic || missionId, { render: false });
-              this.log(t('command.worldMarch.returnFailed', { message: error.payload?.message || error.message || '' }, `返回失败：${error.payload?.message || error.message || ''}`));
+              this.log(t('command.worldMarch.returnFailed', { message: error.payload?.message || error.message || '' }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }
@@ -680,8 +680,8 @@
                 result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
                 after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
-              this.showFloatingText(result.message || t('command.worldMarch.stopped', {}, '已停止'));
-              this.log(result.message || t('command.worldMarch.stopped', {}, '已停止'));
+              this.showFloatingText(result.message || t('command.worldMarch.stopped', {}));
+              this.log(result.message || t('command.worldMarch.stopped', {}));
               return true;
             } catch (error) {
               global.WorldMarchTrace?.error?.('app:stopWorldMarch:error', {
@@ -689,7 +689,7 @@
                 message: error.payload?.message || error.message,
                 payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
               });
-              this.log(t('command.worldMarch.stopFailed', { message: error.payload?.message || error.message || '' }, `停止失败：${error.payload?.message || error.message || ''}`));
+              this.log(t('command.worldMarch.stopFailed', { message: error.payload?.message || error.message || '' }));
               this.renderCanvasSurface(this.state?.currentTab);
               return false;
             }

@@ -91,9 +91,9 @@
 
     renderMilitarySubTabs(nav = {}, x, y, width) {
       const labels = {
-        army: this.t('military.tab.army', {}, '军队'),
-        scout: this.t('military.tab.scout', {}, '侦察'),
-        world: this.t('military.tab.world', {}, '世界'),
+        army: this.t('military.tab.army', {}),
+        scout: this.t('military.tab.scout', {}),
+        world: this.t('military.tab.world', {}),
       };
       const tabs = nav.views || [];
       const gap = 6;
@@ -128,19 +128,17 @@
       });
       this.drawAsset('assets/art/icon-soldier-cutout.webp', x + 16, y + 24, 58, 72);
       const textX = x + 88;
-      this.drawText(this.t('military.army.status', {}, '军队状态'), textX, y + 16, { size: 14, bold: true, color: '#f6e8c8' });
-      this.drawText(this.t('military.army.soldiers', { count: view.text?.soldierCount || '0/0' }, `士兵 ${view.text?.soldierCount || '0/0'}`), textX, y + 42, { size: 18, bold: true, color: '#74d3a0' });
-      this.drawText(this.t('military.army.defense', { defense: view.text?.militaryDefense ?? 0 }, `防御 ${view.text?.militaryDefense ?? 0}`), textX, y + 68, { size: 12, color: '#cbbd96' });
+      this.drawText(this.t('military.army.status', {}), textX, y + 16, { size: 14, bold: true, color: '#f6e8c8' });
+      this.drawText(this.t('military.army.soldiers', { count: view.text?.soldierCount || '0/0' }), textX, y + 42, { size: 18, bold: true, color: '#74d3a0' });
+      this.drawText(this.t('military.army.defense', { defense: view.text?.militaryDefense ?? 0 }), textX, y + 68, { size: 12, color: '#cbbd96' });
       this.drawText(this.t(
         'military.army.available',
-        { available: view.text?.availableSoldierCount ?? 0, onMission: view.text?.soldiersOnMission ?? 0 },
-        `可用 ${view.text?.availableSoldierCount ?? 0} · 出征中 ${view.text?.soldiersOnMission ?? 0}`,
-      ), textX, y + 88, {
+        { available: view.text?.availableSoldierCount ?? 0, onMission: view.text?.soldiersOnMission ?? 0 }), textX, y + 88, {
         size: 12,
         color: '#aeb0b8',
       });
       const progressY = y + cardHeight - 38;
-      this.drawText(view.text?.soldierTrainingText || this.t('military.training.waitBarracks', {}, '等待兵营'), x + 16, progressY - 18, { size: 12, color: '#cbbd96' });
+      this.drawText(view.text?.soldierTrainingText || this.t('military.training.waitBarracks', {}), x + 16, progressY - 18, { size: 12, color: '#cbbd96' });
       this.drawProgressBar(x + 16, progressY, width - 32, 12, parseFloat(view.training?.progressWidth || '0'));
       if (!hasFormationSpace) return;
       this.renderArmyFormationStrip(
@@ -171,7 +169,7 @@
             stroke: 'rgba(240, 180, 91, 0.34)',
             radius,
           });
-          this.drawText(String(person.name || this.t('military.formation.leader', {}, '主将')).slice(0, 1), x + width / 2, y + height / 2, {
+          this.drawText(String(person.name || this.t('military.formation.leader', {})).slice(0, 1), x + width / 2, y + height / 2, {
             size: Math.max(13, Math.min(20, width * 0.44)),
             bold: true,
             color: '#ffe6b5',
@@ -204,7 +202,7 @@
         radius: 7,
         inset: active ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
       });
-      const title = formation.name || this.t('military.formation.default', { slot: index + 1 }, `部队${index + 1}`);
+      const title = formation.name || this.t('military.formation.default', { slot: index + 1 });
       this.drawText(this.truncateText(title, width - 16, { size: 12, bold: true }), x + width / 2, y + 9, {
         size: 12,
         bold: true,
@@ -217,14 +215,14 @@
       const leaderY = y + 28;
       this.renderArmyFormationPortrait(leader, leaderX, leaderY, leaderSize, leaderSize, { radius: 5, scale: 1.42 });
       if (leader) {
-        this.drawText(this.truncateText(leader.name || this.t('military.formation.leader', {}, '主将'), leaderSize + 10, { size: 9, bold: true }), leaderX + leaderSize / 2, leaderY + leaderSize + 10, {
+        this.drawText(this.truncateText(leader.name || this.t('military.formation.leader', {}), leaderSize + 10, { size: 9, bold: true }), leaderX + leaderSize / 2, leaderY + leaderSize + 10, {
           size: 9,
           bold: true,
           color: '#ffe6b5',
           align: 'center',
         });
       } else {
-        this.drawText(this.t('military.formation.leader', {}, '主将'), leaderX + leaderSize / 2, leaderY + leaderSize + 10, {
+        this.drawText(this.t('military.formation.leader', {}), leaderX + leaderSize / 2, leaderY + leaderSize + 10, {
           size: 9,
           color: 'rgba(255, 230, 181, 0.58)',
           align: 'center',
@@ -254,7 +252,7 @@
         color: active ? '#74d3a0' : '#cbbd96',
         align: 'right',
       });
-      this.drawText(active ? this.t('military.formation.edit', {}, '点击调整') : this.t('military.formation.create', {}, '点击编制'), x + width / 2, y + height - 24, {
+      this.drawText(active ? this.t('military.formation.edit', {}) : this.t('military.formation.create', {}), x + width / 2, y + height - 24, {
         size: 10,
         color: active ? '#f0b45b' : 'rgba(234, 234, 234, 0.64)',
         align: 'center',
@@ -266,8 +264,8 @@
     }
 
     renderArmyFormationStrip(formations = [], x, y, width, height, meta = {}) {
-      this.drawText(this.t('military.formation.title', {}, '编队'), x + 2, y + 2, { size: 14, bold: true, color: '#ffe6b5' });
-      this.drawText(meta.summary || this.t('military.formation.summary', { maxMembers: meta.maxMembers || 5 }, '3 支部队 · 每队最多 5 名名人'), x + 48, y + 4, { size: 10, color: '#cbbd96' });
+      this.drawText(this.t('military.formation.title', {}), x + 2, y + 2, { size: 14, bold: true, color: '#ffe6b5' });
+      this.drawText(meta.summary || this.t('military.formation.summary', { maxMembers: meta.maxMembers || 5 }), x + 48, y + 4, { size: 10, color: '#cbbd96' });
       const cardGap = 8;
       const cardY = y + 24;
       const cardHeight = Math.max(108, height - 26);
@@ -279,7 +277,7 @@
           formations[index] || {
             slot: index + 1,
             cityId: meta.cityId,
-            name: this.t('military.formation.default', { slot: index + 1 }, `部队${index + 1}`),
+            name: this.t('military.formation.default', { slot: index + 1 }),
             members: [],
             maxMembers: meta.maxMembers || 5,
           },
@@ -329,8 +327,8 @@
         const cell = id === 'center'
           ? {
             type: 'center',
-            label: this.t('military.scout.centerLabel', {}, '城'),
-            subLabel: this.t('military.scout.direction.center', {}, '本城'),
+            label: this.t('military.scout.centerLabel', {}),
+            subLabel: this.t('military.scout.direction.center', {}),
           }
           : cellsById.get(id);
         if (!cell) return;
@@ -341,14 +339,14 @@
             radius: Math.min(22, cellSize / 2),
             inset: 'rgba(255, 231, 184, 0.12)',
           });
-          this.drawText(cell.label || this.t('military.scout.centerLabel', {}, '城'), cellX + cellSize / 2, cellY + cellSize / 2 - 7, {
+          this.drawText(cell.label || this.t('military.scout.centerLabel', {}), cellX + cellSize / 2, cellY + cellSize / 2 - 7, {
             size: 18,
             bold: true,
             color: '#f0b45b',
             baseline: 'middle',
             align: 'center',
           });
-          this.drawText(cell.subLabel || this.t('military.scout.direction.center', {}, '本城'), cellX + cellSize / 2, cellY + cellSize / 2 + 14, {
+          this.drawText(cell.subLabel || this.t('military.scout.direction.center', {}), cellX + cellSize / 2, cellY + cellSize / 2 + 14, {
             size: 10,
             color: '#a0a0a0',
             baseline: 'middle',
@@ -392,9 +390,9 @@
     }
 
     renderWorldReports(reports = [], x, y, width, maxHeight) {
-      this.drawText(this.t('military.scout.reportTitle', {}, '侦察报告'), x, y, { size: 13, bold: true, color: '#f6e8c8' });
+      this.drawText(this.t('military.scout.reportTitle', {}), x, y, { size: 13, bold: true, color: '#f6e8c8' });
       if (!reports.length) {
-        this.drawTextLines(this.wrapTextLimit(this.t('military.scout.reportEmpty', {}, '暂无侦察报告。派出侦察队后，外部世界会从这里开始显现。'), width, 2, { size: 11 }), x, y + 24, {
+        this.drawTextLines(this.wrapTextLimit(this.t('military.scout.reportEmpty', {}), width, 2, { size: 11 }), x, y + 24, {
           size: 11,
           color: '#aeb0b8',
           lineHeight: 15,
@@ -408,7 +406,7 @@
           stroke: 'rgba(240, 180, 91, 0.18)',
           radius: 9,
         });
-        this.drawText(this.truncateText(report.title || this.t('military.scout.reportTitle', {}, '侦察报告'), width - 20, { size: 12, bold: true }), x + 10, cursorY + 8, {
+        this.drawText(this.truncateText(report.title || this.t('military.scout.reportTitle', {}), width - 20, { size: 12, bold: true }), x + 10, cursorY + 8, {
           size: 12,
           bold: true,
           color: '#f6e8c8',
@@ -433,7 +431,7 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      this.renderSectionHeader(this.t('military.title', {}, '军事'), x + 14, startY + 14, '🛡️');
+      this.renderSectionHeader(this.t('military.title', {}), x + 14, startY + 14, '🛡️');
       const contentTop = this.renderMilitarySubTabs(nav, x + 12, startY + 42, width - 24);
       const viewY = contentTop;
       const viewHeight = Math.max(120, startY + panelHeight - viewY - 12);

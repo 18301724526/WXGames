@@ -41,7 +41,7 @@
     });
   }
 
-  function renderContent(renderer = {}, layout = {}, message = '', advisorName = t('tutorial.advisorName', {}, '谋士')) {
+  function renderContent(renderer = {}, layout = {}, message = '', advisorName = t('tutorial.advisorName', {})) {
     const panel = layout.panel || {};
     const portrait = layout.portrait || {};
     renderer.renderTutorialIntroAdvisorPortrait?.(portrait.x, portrait.y, portrait.width, portrait.height);
@@ -62,7 +62,7 @@
       color: '#f7ecd0',
       lineHeight: 18,
     });
-    renderer.drawText(t('tutorial.continue', {}, '点击继续'), panel.x + panel.width - 24, panel.y + panel.height - 17, {
+    renderer.drawText(t('tutorial.continue', {}), panel.x + panel.width - 24, panel.y + panel.height - 17, {
       size: 11,
       color: 'rgba(255, 230, 181, 0.66)',
       align: 'right',
@@ -83,7 +83,7 @@
     return true;
   }
 
-  function render(renderer = {}, message = '', advisorName = t('tutorial.advisorName', {}, '谋士'), options = {}) {
+  function render(renderer = {}, message = '', advisorName = t('tutorial.advisorName', {}), options = {}) {
     if (!SharedTutorialIntroDialogueLayout) return false;
     const layout = buildLayout(renderer, options);
     const dialogueCtx = SharedTutorialDialogueLayer?.begin?.(renderer) || null;

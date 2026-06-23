@@ -32,7 +32,7 @@
       return this.host?.state || {};
     }
 
-    getErrorMessage(error, fallback = t('command.action.failed', {}, '操作失败')) {
+    getErrorMessage(error, fallback = t('command.action.failed', {})) {
       return error?.payload?.message || error?.message || fallback;
     }
 
@@ -40,19 +40,19 @@
       const host = this.host || {};
       host.applyApiState?.(result);
       if (buildingId === 'farm' && action === 'build') {
-        host.showFloatingText?.(t('command.building.farmBuilt', {}, '农田建造成功'));
+        host.showFloatingText?.(t('command.building.farmBuilt', {}));
       } else if (buildingId === 'house' && action === 'build') {
-        host.showFloatingText?.(t('command.building.houseBuilt', {}, '民居建造成功'));
+        host.showFloatingText?.(t('command.building.houseBuilt', {}));
       } else if (buildingId === 'lumbermill' && action === 'build') {
-        host.showFloatingText?.(t('command.building.lumbermillBuilt', {}, '伐木场建造成功'));
+        host.showFloatingText?.(t('command.building.lumbermillBuilt', {}));
       } else {
         host.showFloatingText?.(
           action === 'upgrade'
-            ? t('command.building.upgradeSuccess', {}, '升级成功')
-            : t('command.building.buildSuccess', {}, '建造成功'),
+            ? t('command.building.upgradeSuccess', {})
+            : t('command.building.buildSuccess', {}),
         );
       }
-      host.log?.(t('command.success.detail', { message: result?.message || '' }, `成功：${result?.message || ''}`));
+      host.log?.(t('command.success.detail', { message: result?.message || '' }));
       return true;
     }
 
@@ -91,7 +91,7 @@
         await this.handleBuildingSuccess(result, normalizedAction, buildingId);
         return true;
       } catch (error) {
-        host.log?.(t('command.building.failed', { message: this.getErrorMessage(error) }, `建筑操作失败：${this.getErrorMessage(error)}`));
+        host.log?.(t('command.building.failed', { message: this.getErrorMessage(error) }));
         return false;
       } finally {
         host.setPendingBuildingAction?.(null);
@@ -117,11 +117,11 @@
         }
         if (host.canvasShell) host.canvasShell.selectedTechId = techId;
         if (host.canvasShell) host.canvasShell.techDetailOpen = false;
-        host.showFloatingText?.(result?.message || t('command.research.completed', {}, '研究完成'));
-        host.log?.(result?.message || t('command.research.completed', {}, '研究完成'));
+        host.showFloatingText?.(result?.message || t('command.research.completed', {}));
+        host.log?.(result?.message || t('command.research.completed', {}));
         return true;
       } catch (error) {
-        host.log?.(t('command.research.failed', { message: this.getErrorMessage(error) }, `研究失败：${this.getErrorMessage(error)}`));
+        host.log?.(t('command.research.failed', { message: this.getErrorMessage(error) }));
         host.renderCanvasSurface?.(this.getState()?.currentTab);
         return false;
       }
@@ -135,12 +135,12 @@
         host.closeCitySwitcher?.({ skipRender: true });
         const result = await this.getApi().switchCity(cityId);
         host.applyApiState?.(result);
-        const message = result?.message || t('command.city.switched', {}, '城市已切换');
+        const message = result?.message || t('command.city.switched', {});
         host.showFloatingText?.(message);
         host.log?.(message);
         return true;
       } catch (error) {
-        host.log?.(t('command.city.switchFailed', { message: this.getErrorMessage(error) }, `切换城市失败：${this.getErrorMessage(error)}`));
+        host.log?.(t('command.city.switchFailed', { message: this.getErrorMessage(error) }));
         host.renderCanvasSurface?.(this.getState()?.currentTab);
         return false;
       }

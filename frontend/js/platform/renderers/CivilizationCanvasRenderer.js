@@ -149,10 +149,10 @@
       });
 
       const stats = [
-        { label: this.t('civilization.stat.population', {}, '人口'), value: view.text.civOverviewPop, icon: 'assets/art/icon-population-cutout.webp' },
-        { label: this.t('civilization.stat.buildings', {}, '建筑'), value: view.text.civOverviewBuildings, icon: 'assets/art/building-house-cutout.png' },
-        { label: this.t('civilization.stat.techs', {}, '科技'), value: view.text.civOverviewTechs, icon: 'assets/art/icon-science-cutout.webp' },
-        { label: this.t('civilization.stat.happiness', {}, '幸福度'), value: view.text.civOverviewHappiness, icon: 'assets/art/icon-happiness-cutout.webp' },
+        { label: this.t('civilization.stat.population', {}), value: view.text.civOverviewPop, icon: 'assets/art/icon-population-cutout.webp' },
+        { label: this.t('civilization.stat.buildings', {}), value: view.text.civOverviewBuildings, icon: 'assets/art/building-house-cutout.png' },
+        { label: this.t('civilization.stat.techs', {}), value: view.text.civOverviewTechs, icon: 'assets/art/icon-science-cutout.webp' },
+        { label: this.t('civilization.stat.happiness', {}), value: view.text.civOverviewHappiness, icon: 'assets/art/icon-happiness-cutout.webp' },
       ];
       const compactOverview = overviewHeight < 140;
       const statGap = 8;
@@ -194,7 +194,7 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      this.renderSectionHeader(this.t('civilization.section.advance', {}, '时代进阶'), eraX + 12, eraY + 14, '🔥');
+      this.renderSectionHeader(this.t('civilization.section.advance', {}), eraX + 12, eraY + 14, '🔥');
       this.drawAsset('assets/art/icon-food-cutout.webp', eraX + eraWidth / 2 - 42, eraY + 40, 38, 38);
       this.drawText(this.truncateText(view.text.eraTargetName, eraWidth - 112, { size: 15, bold: true }), eraX + eraWidth / 2 + 4, eraY + 59, {
         size: 15,
@@ -265,7 +265,7 @@
           stroke: 'rgba(255, 226, 177, 0.12)',
           radius: 10,
         });
-        this.renderSectionHeader(this.t('civilization.section.features', {}, '当前时代特性'), x + 26, featureY + 14, '✓');
+        this.renderSectionHeader(this.t('civilization.section.features', {}), x + 26, featureY + 14, '✓');
         const featureLineLimit = Math.max(1, Math.floor((featureHeight - 44) / 18));
         const featureLines = this.wrapTextLimit(view.text.featureDescription, width - 58, featureLineLimit, { size: 12 });
         this.drawTextLines(featureLines, x + 26, featureY + 44, {

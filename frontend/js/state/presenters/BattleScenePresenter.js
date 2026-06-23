@@ -50,12 +50,12 @@
 
     static getBattleStatusLabel(status = {}) {
       const labels = {
-        shield: this.t('battle.status.shield', {}, '守御'),
-        armorBreak: this.t('battle.status.armorBreak', {}, '破甲'),
-        burn: this.t('battle.status.burn', {}, '灼烧'),
-        poison: this.t('battle.status.poison', {}, '中毒'),
+        shield: this.t('battle.status.shield', {}),
+        armorBreak: this.t('battle.status.armorBreak', {}),
+        burn: this.t('battle.status.burn', {}),
+        poison: this.t('battle.status.poison', {}),
       };
-      return status.label || labels[status.key] || status.key || this.t('battle.status.default', {}, '状态');
+      return status.label || labels[status.key] || status.key || this.t('battle.status.default', {});
     }
 
     static getBattleStatusTone(status = {}) {
@@ -85,7 +85,7 @@
       return {
         key,
         label,
-        text: `${label}${stacks > 1 ? ` x${stacks}` : ''}${turns > 0 ? ` ${this.t('battle.status.turns', { turns }, `${turns}回合`)}` : ''}`,
+        text: `${label}${stacks > 1 ? ` x${stacks}` : ''}${turns > 0 ? ` ${this.t('battle.status.turns', { turns })}` : ''}`,
         tone: this.getBattleStatusTone(status),
         turns,
         stacks,
@@ -127,10 +127,10 @@
         remaining,
         state,
         stateText: state === 'casting'
-          ? this.t('battle.skill.casting', {}, '正在释放')
+          ? this.t('battle.skill.casting', {})
           : (remaining > 0
-            ? this.t('battle.skill.cooldown', { remaining }, `冷却 ${remaining} 回合`)
-            : this.t('battle.skill.ready', {}, '可释放')),
+            ? this.t('battle.skill.cooldown', { remaining })
+            : this.t('battle.skill.ready', {})),
         active: isActiveSide,
       };
     }
@@ -181,10 +181,10 @@
           ? this.getBattleTurnSoldiers(activeTurn, 'defender', 'after', defenderFallback)
           : this.getBattleTurnSoldiers(activeTurn, 'defender', 'before', defenderFallback));
       const resultText = report.result === 'victory'
-        ? this.t('battle.result.victory', {}, '胜利')
+        ? this.t('battle.result.victory', {})
         : report.result === 'defeat'
-          ? this.t('battle.result.defeat', {}, '失败')
-          : this.t('battle.result.ongoing', {}, '交战中');
+          ? this.t('battle.result.defeat', {})
+          : this.t('battle.result.ongoing', {});
       const completedLogEnd = ended ? turns.length : turnIndex;
       const previousLines = turns.slice(Math.max(0, completedLogEnd - 3), completedLogEnd).flatMap((turn) => (
         this.getBattleTurnLines(turn)
@@ -209,16 +209,14 @@
         title: this.t(
           'battle.title.vs',
           {
-            attacker: this.t('battle.side.teamName', { name: report.attacker?.leaderName || this.t('battle.side.attackerFallback', {}, '己方') }, `${report.attacker?.leaderName || '己方'}队`),
-            defender: this.t('battle.side.teamName', { name: report.defender?.leaderName || report.defender?.name || this.t('battle.side.defenderFallback', {}, '守军') }, `${report.defender?.leaderName || report.defender?.name || '守军'}队`),
-          },
-          `${report.attacker?.leaderName || '己方'}队 vs ${report.defender?.leaderName || report.defender?.name || '守军'}队`,
-        ),
+            attacker: this.t('battle.side.teamName', { name: report.attacker?.leaderName || this.t('battle.side.attackerFallback', {}) }),
+            defender: this.t('battle.side.teamName', { name: report.defender?.leaderName || report.defender?.name || this.t('battle.side.defenderFallback', {}) }),
+          }),
         resultText,
         ended,
         map: report.visual?.map || {
           id: 'frontier-field',
-          name: this.t('battle.map.frontier', {}, '边境战场'),
+          name: this.t('battle.map.frontier', {}),
           background: 'assets/art/battle/battlefield-forest-camp.png',
           soldierSprites: {
             attacker: 'assets/art/battle/units/player',
@@ -233,8 +231,8 @@
         logLines: [...previousLines, ...activeLines, ...fallbackLines].filter(Boolean),
         attacker: {
           side: 'attacker',
-          name: this.t('battle.side.teamName', { name: report.attacker?.leaderName || this.t('battle.side.attackerFallback', {}, '己方') }, `${report.attacker?.leaderName || '己方'}队`),
-          leaderName: report.attacker?.leaderName || this.t('battle.leader.unnamed', {}, '无名领队'),
+          name: this.t('battle.side.teamName', { name: report.attacker?.leaderName || this.t('battle.side.attackerFallback', {}) }),
+          leaderName: report.attacker?.leaderName || this.t('battle.leader.unnamed', {}),
           leaderTitle: report.attacker?.leaderTitle || '',
           appearance: report.attacker?.appearance || {},
           sprite: report.visual?.map?.soldierSprites?.attacker || 'assets/art/battle/units/player',
@@ -247,9 +245,9 @@
         },
         defender: {
           side: 'defender',
-          name: this.t('battle.side.teamName', { name: report.defender?.leaderName || report.defender?.name || this.t('battle.side.defenderFallback', {}, '守军') }, `${report.defender?.leaderName || report.defender?.name || '守军'}队`),
-          leaderName: report.defender?.leaderName || report.defender?.name || this.t('battle.side.defenderFallback', {}, '守军'),
-          leaderTitle: report.defender?.leaderTitle || this.t('battle.side.defenderFallback', {}, '守军'),
+          name: this.t('battle.side.teamName', { name: report.defender?.leaderName || report.defender?.name || this.t('battle.side.defenderFallback', {}) }),
+          leaderName: report.defender?.leaderName || report.defender?.name || this.t('battle.side.defenderFallback', {}),
+          leaderTitle: report.defender?.leaderTitle || this.t('battle.side.defenderFallback', {}),
           appearance: report.defender?.appearance || {},
           sprite: report.visual?.map?.soldierSprites?.defender || 'assets/art/battle/units/enemy',
           speed: this.toInteger(report.defender?.speed),

@@ -37,10 +37,10 @@
 
     static buildTaskCenterViewState(state = {}, options = {}) {
       const fallbackTabs = [
-        { id: 'daily', label: this.t('task.daily', {}, '每日任务'), emptyText: this.t('task.empty.daily', {}, '暂无每日任务') },
-        { id: 'main', label: this.t('task.main', {}, '主线任务'), emptyText: this.t('task.empty.main', {}, '暂无主线任务') },
-        { id: 'season', label: this.t('task.season', {}, '赛季任务'), emptyText: this.t('task.empty.season', {}, '暂无赛季任务') },
-        { id: 'challenge', label: this.t('task.challenge', {}, '挑战任务'), emptyText: this.t('task.empty.challenge', {}, '暂无挑战任务') },
+        { id: 'daily', label: this.t('task.daily', {}), emptyText: this.t('task.empty.daily', {}) },
+        { id: 'main', label: this.t('task.main', {}), emptyText: this.t('task.empty.main', {}) },
+        { id: 'season', label: this.t('task.season', {}), emptyText: this.t('task.empty.season', {}) },
+        { id: 'challenge', label: this.t('task.challenge', {}), emptyText: this.t('task.empty.challenge', {}) },
       ];
       const source = state.taskCenter && typeof state.taskCenter === 'object'
         ? state.taskCenter
@@ -64,8 +64,8 @@
               ...task,
               category: task.category || tab.id,
               actionLabel: task.actionLabel || (completed
-                ? this.t('task.action.completed', {}, '已完成')
-                : (claimable ? this.t('task.action.claim', {}, '领取') : this.t('task.action.go', {}, '前往'))),
+                ? this.t('task.action.completed', {})
+                : (claimable ? this.t('task.action.claim', {}) : this.t('task.action.go', {}))),
               action: completed
                 ? null
                 : (claimable
@@ -109,33 +109,33 @@
       const fallbackCategories = [
         {
           id: 'resources',
-          label: this.t('guidebook.resources.label', {}, '资源'),
-          title: this.t('guidebook.resources.title', {}, '资源产出'),
-          lines: [this.t('guidebook.resources.line', {}, '粮食支撑人口，木材支撑建设，知识推动时代。')],
+          label: this.t('guidebook.resources.label', {}),
+          title: this.t('guidebook.resources.title', {}),
+          lines: [this.t('guidebook.resources.line', {})],
         },
         {
           id: 'planning',
-          label: this.t('guidebook.planning.label', {}, '规划'),
-          title: this.t('guidebook.planning.title', {}, '城市规划'),
-          lines: [this.t('guidebook.planning.line', {}, '宜居度来自建筑搭配与城市地理，不同城市适合不同建设方向。')],
+          label: this.t('guidebook.planning.label', {}),
+          title: this.t('guidebook.planning.title', {}),
+          lines: [this.t('guidebook.planning.line', {})],
         },
         {
           id: 'policy',
-          label: this.t('guidebook.policy.label', {}, '方针'),
-          title: this.t('guidebook.policy.title', {}, '人才方针'),
-          lines: [this.t('guidebook.policy.line', {}, '方针会按照当前已解锁职业重新分配人才。')],
+          label: this.t('guidebook.policy.label', {}),
+          title: this.t('guidebook.policy.title', {}),
+          lines: [this.t('guidebook.policy.line', {})],
         },
         {
           id: 'military',
-          label: this.t('guidebook.military.label', {}, '军事'),
-          title: this.t('guidebook.military.title', {}, '军事扩张'),
-          lines: [this.t('guidebook.military.line', {}, '兵营会训练士兵，侦察与占领会逐步打开更大的世界。')],
+          label: this.t('guidebook.military.label', {}),
+          title: this.t('guidebook.military.title', {}),
+          lines: [this.t('guidebook.military.line', {})],
         },
         {
           id: 'events',
-          label: this.t('guidebook.events.label', {}, '事件'),
-          title: this.t('guidebook.events.title', {}, '事件威胁'),
-          lines: [this.t('guidebook.events.line', {}, '普通事件提供机会，威胁事件考验城市守备。')],
+          label: this.t('guidebook.events.label', {}),
+          title: this.t('guidebook.events.title', {}),
+          lines: [this.t('guidebook.events.line', {})],
         },
       ];
       const sourceCategories = Array.isArray(state.guidebook?.categories) && state.guidebook.categories.length
@@ -157,7 +157,7 @@
       }));
       return {
         activeTab,
-        title: this.t('guidebook.title', {}, '攻略'),
+        title: this.t('guidebook.title', {}),
         subtitle: `${planning.terrainLabel} · ${planning.text.habitabilityStatus}`,
         planning,
         categories,

@@ -49,7 +49,7 @@
     }
 
     static buildCivilizationViewState(state = {}, tutorial = {}, options = {}) {
-      const eraName = state.currentEraName || this.t('civilization.era.fallback', {}, '原始时代');
+      const eraName = state.currentEraName || this.t('civilization.era.fallback', {});
       const progress = state.eraProgress || { percentage: 0, canAdvance: false, conditions: [] };
       const percentage = Math.max(0, Math.min(100, this.toNumber(progress.percentage)));
       const canAdvanceByTutorial = this.canAdvanceEraByTutorial(state, tutorial);
@@ -59,29 +59,29 @@
         && canAdvanceByTutorial
         && canOpenCivilizationTab;
 
-      let advanceLabel = this.t('civilization.advance.insufficient', {}, '条件不足，无法进阶');
+      let advanceLabel = this.t('civilization.advance.insufficient', {});
       if (state.isCapitalCity === false) {
-        advanceLabel = this.t('civilization.advance.subcity', {}, '分城跟随主城时代');
+        advanceLabel = this.t('civilization.advance.subcity', {});
       } else if (progress.canAdvance && !canAdvanceByTutorial) {
-        advanceLabel = this.t('civilization.advance.guideLocked', {}, '引导未解锁');
+        advanceLabel = this.t('civilization.advance.guideLocked', {});
       } else if (progress.canAdvance) {
-        advanceLabel = this.t('civilization.advance.ready', {}, '满足条件，可进阶');
+        advanceLabel = this.t('civilization.advance.ready', {});
       }
 
       return {
         text: {
           eraName,
           civOverviewEraName: eraName,
-          civOverviewDay: this.t('civilization.day', { day: state.gameDay || 1 }, `第 ${state.gameDay || 1} 天`),
+          civOverviewDay: this.t('civilization.day', { day: state.gameDay || 1 }),
           civOverviewPop: this.toDisplayPopulation(state.population?.total),
           civOverviewBuildings: this.toInteger(state.totalBuildings),
           civOverviewTechs: `${Object.keys(state.techs || {}).length}/0`,
           civOverviewHappiness: `${state.happiness || 100}%`,
-          eraProgressText: this.t('civilization.progress', { percentage }, `总进度 ${percentage}%`),
-          eraTargetName: progress.targetEraName || this.t('civilization.target.locked', {}, '时代未开放'),
+          eraProgressText: this.t('civilization.progress', { percentage }),
+          eraTargetName: progress.targetEraName || this.t('civilization.target.locked', {}),
           advanceLabel,
           featureDescription: state.currentEraDescription
-            || this.t('civilization.feature.default', { era: eraName }, `${eraName}：继续建设你的文明。`),
+            || this.t('civilization.feature.default', { era: eraName }),
         },
         progress: {
           percentage,
