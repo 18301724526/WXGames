@@ -11,6 +11,7 @@ const CONFIG = {
   resetAccount: process.env.PLAYTEST_RESET_ACCOUNT !== '0',
   headless: process.env.PLAYTEST_HEADLESS !== '0',
   maxActions: Number(process.env.PLAYTEST_MAX_ACTIONS || 72),
+  continueOnFailure: process.env.PLAYTEST_CONTINUE_ON_FAILURE === '1',
   viewportWidth: Number(process.env.PLAYTEST_VIEWPORT_WIDTH || 1365),
   viewportHeight: Number(process.env.PLAYTEST_VIEWPORT_HEIGHT || 768),
   outputRoot: process.env.PLAYTEST_OUTPUT_DIR || path.join('.local-logs', 'online-tutorial'),
@@ -1093,7 +1094,13 @@ async function clickTarget(page, label, state, target) {
   };
   verificationReports.push(report);
   if (!outcome.pass) {
-    throw createVerificationFailure(label, 'click did not produce the expected result', report);
+    // Opt-in (PLAYTEST_CONTINUE_ON_FAILURE=1): keep driving past a verification miss so a single
+    // run can capture the full tutorial trajectory (e.g. the later formation/battle/conquest steps)
+    // for manual review, instead of stopping at the first unexpected click outcome. Default stays
+    // strict (throws) so CI behaviour is unchanged.
+    if (!CONFIG.continueOnFailure) {
+      throw createVerificationFailure(label, 'click did not produce the expected result', report);
+    }
   }
   return {
     label,
