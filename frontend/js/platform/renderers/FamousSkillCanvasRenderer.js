@@ -5,7 +5,7 @@
       : (Array.isArray(card.skills)
         ? card.skills.map((skill) => ({
           name: skill,
-          kindText: renderer.t?.('famous.skill.generic', {}) || '技能',
+          kindText: renderer.t?.('famous.skill.generic', {}),
           effectText: '',
           meta: '',
           summary: skill,
@@ -15,13 +15,13 @@
       ? card.skillBadges
       : skillDetails.map((skill) => ({
         id: skill.id,
-        label: skill.kindText || renderer.t?.('famous.skill.generic', {}) || '技能',
-        name: skill.name || renderer.t?.('famous.skill.generic', {}) || '技能',
+        label: skill.kindText || renderer.t?.('famous.skill.generic', {}),
+        name: skill.name || renderer.t?.('famous.skill.generic', {}),
         text: renderer.t?.(
           'famous.skill.badge',
           {
-            kind: skill.kindText || renderer.t?.('famous.skill.generic', {}) || '技能',
-            name: skill.name || renderer.t?.('famous.skill.generic', {}) || '技能',
+            kind: skill.kindText || renderer.t?.('famous.skill.generic', {}),
+            name: skill.name || renderer.t?.('famous.skill.generic', {}),
           }),
       }));
     const badgeHeight = options.badgeHeight || 22;
@@ -34,7 +34,7 @@
         stroke: index === 0 ? 'rgba(116, 211, 160, 0.28)' : 'rgba(255, 217, 138, 0.28)',
         radius: 7,
       });
-      renderer.drawText(renderer.truncateText(badge.text || skill.name || renderer.t?.('famous.skill.generic', {}) || '技能', width - 16, { size: options.detail ? 11 : 10, bold: true }), x + (options.detail ? 10 : 8), badgeY + badgeHeight / 2, {
+      renderer.drawText(renderer.truncateText(badge.text || skill.name || renderer.t?.('famous.skill.generic', {}), width - 16, { size: options.detail ? 11 : 10, bold: true }), x + (options.detail ? 10 : 8), badgeY + badgeHeight / 2, {
         size: options.detail ? 11 : 10,
         bold: true,
         color: index === 0 ? '#bdf2cf' : '#ffe0a3',
@@ -59,7 +59,7 @@
     const width = Math.min(300, Math.max(238, renderer.width - 44));
     const lines = [
       skill.description
-        ? renderer.t?.('famous.skill.effectPrefix', { description: skill.description }) || `效果：${skill.description}`
+        ? renderer.t?.('famous.skill.effectPrefix', { description: skill.description })
         : '',
       skill.meta ? skill.meta : '',
     ].filter(Boolean);
@@ -79,8 +79,8 @@
       radius: 8,
       inset: 'rgba(255, 255, 255, 0.05)',
     });
-    const skillKind = skill.kindText || renderer.t?.('famous.skill.generic', {}) || '技能';
-    const skillName = skill.name || renderer.t?.('famous.skill.generic', {}) || '技能';
+    const skillKind = skill.kindText || renderer.t?.('famous.skill.generic', {});
+    const skillName = skill.name || renderer.t?.('famous.skill.generic', {});
     renderer.drawText(`${skillKind} · ${skillName}`, tooltipX + 14, tooltipY + 14, {
       size: 13,
       bold: true,
