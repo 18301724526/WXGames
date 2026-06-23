@@ -420,33 +420,52 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/tasks/claim', authMiddleware, (req, res) => {
-    const projection = loadProjection(repository, req.playerId);
-    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
-      planningContext: projection,
-    });
-    if (!gameState) {
-      return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
+    const runClaim = () => {
+      const projection = loadProjection(repository, req.playerId);
+      const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
+        planningContext: projection,
+      });
+      if (!gameState) {
+        return { statusCode: 404, payload: { error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' } };
+      }
+
+      const tutorial = syncEra2Tutorial(gameState, gameStateService);
+      EventService.maybeGenerateRegularEvent(gameState);
+      EventService.maybeGenerateThreatEvent(gameState);
+
+      const { taskId, category } = req.body || {};
+      const result = TaskCenterService.claimTask(gameState, taskId, category);
+      const nextTutorial = result.tutorial
+        ? TutorialService.normalizeTutorialState(result.tutorial)
+        : TutorialService.normalizeTutorialState(gameState.tutorial || tutorial);
+      gameState.tutorial = nextTutorial;
+      const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
+      EventService.maybeGenerateRegularEvent(gameState);
+      EventService.maybeGenerateThreatEvent(gameState);
+      repository.save(gameState);
+
+      return {
+        statusCode: result.success ? 200 : 400,
+        payload: { ...result, ...buildGameView(gameState, syncedTutorial, gameStateService, projection) },
+      };
+    };
+
+    // Mirror the /api/game/action contract: a concurrent save can raise a game-state revision
+    // conflict, which previously escaped this route as an unhandled 500. Retry once, then fall
+    // back to a clean 409 instead of crashing the request.
+    try {
+      const response = runClaim();
+      return res.status(response.statusCode).json(response.payload);
+    } catch (error) {
+      if (!isGameStateRevisionConflict(error)) throw error;
+      try {
+        const response = runClaim();
+        return res.status(response.statusCode).json(response.payload);
+      } catch (retryError) {
+        if (!isGameStateRevisionConflict(retryError)) throw retryError;
+        return res.status(409).json(buildRevisionConflictPayload(retryError));
+      }
     }
-
-    const tutorial = syncEra2Tutorial(gameState, gameStateService);
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-
-    const { taskId, category } = req.body || {};
-    const result = TaskCenterService.claimTask(gameState, taskId, category);
-    const nextTutorial = result.tutorial
-      ? TutorialService.normalizeTutorialState(result.tutorial)
-      : TutorialService.normalizeTutorialState(gameState.tutorial || tutorial);
-    gameState.tutorial = nextTutorial;
-    const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-    repository.save(gameState);
-
-    return res.status(result.success ? 200 : 400).json({
-      ...result,
-      ...buildGameView(gameState, syncedTutorial, gameStateService, projection),
-    });
   });
 
   app.post('/api/game/action', authMiddleware, (req, res) => {
