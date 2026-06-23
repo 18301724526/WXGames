@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const SharedRewardText = (() => {
+    if (global.RewardText) return global.RewardText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/RewardText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class GuideTaskCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -88,11 +100,8 @@
     // Localize the reward from the structured reward.resources the server sends, rather
     // than the pre-baked English `task.rewardText` (e.g. "food+120 / knowledge+5" / "none").
     formatTaskRewardText(task = {}) {
-      const resources = task.reward?.resources || {};
-      const parts = Object.keys(resources)
-        .filter((key) => Number(resources[key]) > 0)
-        .map((key) => `${this.t(`resource.${key}`)}+${resources[key]}`);
-      return parts.length ? parts.join(' / ') : this.t('task.reward.none');
+      if (SharedRewardText) return SharedRewardText.formatResources(task.reward?.resources);
+      return task.rewardText || this.t('task.reward.none');
     }
 
     renderGuideTasks(state = {}, startY = 0) {

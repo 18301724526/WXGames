@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const SharedRewardText = (() => {
+    if (global.RewardText) return global.RewardText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../domain/RewardText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class OverlayCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -371,7 +383,9 @@
         align: 'center',
       });
 
-      const rewardText = reveal.rewardText || '';
+      const rewardText = SharedRewardText && SharedRewardText.hasResources(reveal.resources)
+        ? SharedRewardText.formatResources(reveal.resources)
+        : (reveal.rewardText || '');
       const rewardLines = this.wrapTextLimit(rewardText, panelWidth - 58, 3, { size: 15, bold: true });
       this.drawPanel(x + 22, y + 96, panelWidth - 44, 72, {
         fill: 'rgba(11, 18, 14, 0.42)',

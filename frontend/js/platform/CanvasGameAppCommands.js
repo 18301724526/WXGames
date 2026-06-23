@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const SharedRewardText = (() => {
+    if (global.RewardText) return global.RewardText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../domain/RewardText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   var WorldMarchOptimisticState = global.WorldMarchOptimisticState;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchOptimisticState) {
     try {
@@ -714,7 +726,11 @@
                 };
                 this.renderCanvasSurface(this.state?.currentTab);
               }
-              this.showFloatingText(result.rewardText || result.message || t('command.reward.claimed'));
+              this.showFloatingText(
+                SharedRewardText && SharedRewardText.hasResources(result.rewardReveal?.resources)
+                  ? SharedRewardText.formatResources(result.rewardReveal.resources)
+                  : result.message || t('command.reward.claimed'),
+              );
               this.log(t('command.reward.detail', { message: result.message || '' }));
               return true;
             } catch (error) {
