@@ -208,14 +208,11 @@
   "frontend/js/platform/CanvasGameAppCommands.js": {
     "no-empty": {
       "count": 1
-    },
-    "no-unused-vars": {
-      "count": 9
     }
   },
   "frontend/js/platform/CanvasGameAppGuideUi.js": {
     "no-unused-vars": {
-      "count": 5
+      "count": 4
     }
   },
   "frontend/js/platform/CanvasGameAppInputRouter.js": {
