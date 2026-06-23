@@ -686,11 +686,11 @@ test('world combat encounter is seeded near capital and resolves when a formatio
   assert.equal(gameState.worldCombat.recentReports.length, 1);
   assert.equal(gameState.worldCombat.recentReports[0].report.mode, 'entity-battle');
   assert.equal(clientState.combat.recentReports.length, 1);
-  assert.equal(clientState.combat.activeEncounters.some((item) => item.id === encounter.id), resolvedEncounter.status === 'active');
+  assert.equal(resolvedEncounter.status, 'resolved');
+  assert.equal(clientState.combat.activeEncounters.some((item) => item.id === encounter.id), true);
+  assert.equal(clientState.combat.activeEncounters.find((item) => item.id === encounter.id).resolvedAt, null);
   assert.ok(resolvedMission.formationSnapshot.soldiersRemaining <= 180);
   WorldCombatEncounterService.normalizeCombatState(gameState, finishAt);
   const renormalizedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
-  if (renormalizedEncounter.status === 'resolved') {
-    assert.equal(renormalizedEncounter.defender.soldiers, 0);
-  }
+  assert.equal(renormalizedEncounter.status, 'active');
 });
