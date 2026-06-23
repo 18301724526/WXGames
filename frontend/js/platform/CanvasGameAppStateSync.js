@@ -34,9 +34,21 @@
             const reports = state?.worldExplorerState?.combat?.recentReports;
             if (!Array.isArray(reports) || !reports.length) return false;
             this.playedWorldCombatReportIds = this.playedWorldCombatReportIds || new Set();
+            // First sync of this session: the reports already present are history from
+            // before the page loaded, not battles that just happened. Mark them all seen
+            // without playing — otherwise every reload (e.g. the post-deploy update
+            // refresh) re-plays the newest historical report as an orderless replay.
+            if (!this.worldCombatReportsSeeded) {
+              for (const entry of reports) {
+                const seededId = entry?.id || entry?.report?.id || '';
+                if (seededId) this.playedWorldCombatReportIds.add(seededId);
+              }
+              this.worldCombatReportsSeeded = true;
+              return false;
+            }
             // recentReports is newest-first. Play only the newest unseen report
-            // and mark the rest seen, so a backlog (e.g. after a reload, or several
-            // battles between syncs) doesn't stack multiple battle scenes at once.
+            // and mark the rest seen, so a backlog (several battles between syncs)
+            // doesn't stack multiple battle scenes at once.
             let toPlay = null;
             for (const entry of reports) {
               const report = entry?.report || null;

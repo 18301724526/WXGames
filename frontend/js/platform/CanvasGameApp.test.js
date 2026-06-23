@@ -244,7 +244,7 @@ test('CanvasGameApp wires authority state refreshes from the sync service', () =
   ]);
 });
 
-test('CanvasGameAppStateSync plays unseen world combat reports once', () => {
+test('CanvasGameAppStateSync seeds reports on load and plays only newly arriving ones once', () => {
   class Host {}
   CanvasGameAppStateSync.install(Host);
   const calls = [];
@@ -268,24 +268,25 @@ test('CanvasGameAppStateSync plays unseen world combat reports once', () => {
     render() { calls.push(['render']); },
     startBattleScene(report) { calls.push(['battle', report.id]); return true; },
   });
-  const payload = {
+  const makePayload = (recentReports) => ({
     gameState: {
       currentTab: 'military',
-      worldExplorerState: {
-        combat: {
-          recentReports: [{
-            id: 'report-1',
-            report: { id: 'report-1', turns: [], summary: 'Resolved' },
-          }],
-        },
-      },
+      worldExplorerState: { combat: { recentReports } },
     },
-  };
+  });
+  const report1 = { id: 'report-1', report: { id: 'report-1', turns: [], summary: 'Resolved' } };
+  const report2 = { id: 'report-2', report: { id: 'report-2', turns: [], summary: 'Fresh' } };
 
-  host.applyState(payload);
-  host.applyState(payload);
+  // First sync: report-1 already exists (history from before load) -> seeded, not played.
+  host.applyState(makePayload([report1]));
+  assert.deepEqual(calls.filter((call) => call[0] === 'battle'), []);
 
-  assert.deepEqual(calls.filter((call) => call[0] === 'battle'), [['battle', 'report-1']]);
+  // A new battle (report-2, newest-first) arrives in a later sync -> played once, and not
+  // re-played on subsequent syncs; the seeded report-1 never plays.
+  host.applyState(makePayload([report2, report1]));
+  host.applyState(makePayload([report2, report1]));
+
+  assert.deepEqual(calls.filter((call) => call[0] === 'battle'), [['battle', 'report-2']]);
 });
 
 test('CanvasGameApp renders territory site selection through map-home city HUD', () => {
