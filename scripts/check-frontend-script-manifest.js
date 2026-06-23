@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const DEFAULT_REPO_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_FRONTEND_DIR = path.resolve(__dirname, '..', 'frontend');
 const REQUIRED_SCRIPTS = [
   'js/config/GameConfig.js',
@@ -29,6 +30,7 @@ const REQUIRED_ORDER_PAIRS = [
 
 function parseArgs(argv = process.argv.slice(2)) {
   const options = {
+    repoRoot: DEFAULT_REPO_ROOT,
     frontendDir: DEFAULT_FRONTEND_DIR,
     requireVersion: '',
   };
@@ -36,6 +38,9 @@ function parseArgs(argv = process.argv.slice(2)) {
     const arg = argv[index];
     if (arg === '--frontend-dir') {
       options.frontendDir = path.resolve(argv[index + 1] || '');
+      index += 1;
+    } else if (arg === '--repo-root') {
+      options.repoRoot = path.resolve(argv[index + 1] || '');
       index += 1;
     } else if (arg === '--require-version') {
       options.requireVersion = argv[index + 1] || '';
@@ -67,6 +72,19 @@ function getQueryVersion(src) {
   return new URLSearchParams(query).get('v') || '';
 }
 
+function resolveLocalAssetPath(srcPath, options = {}) {
+  const frontendDir = path.resolve(options.frontendDir || DEFAULT_FRONTEND_DIR);
+  const repoRoot = path.resolve(options.repoRoot || path.resolve(frontendDir, '..'));
+  const normalized = stripQuery(srcPath).replace(/\\/g, '/');
+  const baseDir = normalized.startsWith('shared/') ? repoRoot : frontendDir;
+  const resolved = path.resolve(baseDir, normalized);
+  const allowedRoot = normalized.startsWith('shared/') ? path.join(repoRoot, 'shared') : frontendDir;
+  if (!resolved.startsWith(allowedRoot + path.sep) && resolved !== allowedRoot) {
+    fail('script path escapes frontend directory', [srcPath]);
+  }
+  return resolved;
+}
+
 function extractStylesheets(html) {
   const links = [];
   const regex = /<link\b[^>]*>/gi;
@@ -91,6 +109,7 @@ function fail(message, detail = []) {
 }
 
 function checkManifest(options = {}) {
+  const repoRoot = options.repoRoot || DEFAULT_REPO_ROOT;
   const frontendDir = options.frontendDir || DEFAULT_FRONTEND_DIR;
   const indexHtml = path.join(frontendDir, 'index.html');
   const html = fs.readFileSync(indexHtml, 'utf8');
@@ -105,42 +124,39 @@ function checkManifest(options = {}) {
   const mismatchedVersion = [];
   const missingFiles = [];
 
-for (const src of localAssets) {
-  const scriptPath = stripQuery(src);
-  if (seen.has(scriptPath)) duplicates.push(scriptPath);
-  seen.add(scriptPath);
-  if (!/\?v=[^&]+/.test(src)) missingVersion.push(src);
-  if (options.requireVersion && getQueryVersion(src) !== options.requireVersion) {
-    mismatchedVersion.push(`${src} (expected v=${options.requireVersion})`);
+  for (const src of localAssets) {
+    const scriptPath = stripQuery(src);
+    if (seen.has(scriptPath)) duplicates.push(scriptPath);
+    seen.add(scriptPath);
+    if (!/\?v=[^&]+/.test(src)) missingVersion.push(src);
+    if (options.requireVersion && getQueryVersion(src) !== options.requireVersion) {
+      mismatchedVersion.push(`${src} (expected v=${options.requireVersion})`);
+    }
+    const resolved = resolveLocalAssetPath(scriptPath, { frontendDir, repoRoot });
+    if (!fs.existsSync(resolved)) missingFiles.push(scriptPath);
   }
-  const resolved = path.resolve(frontendDir, scriptPath);
-  if (!resolved.startsWith(frontendDir + path.sep) && resolved !== frontendDir) {
-    fail('script path escapes frontend directory', [src]);
-  }
-  if (!fs.existsSync(resolved)) missingFiles.push(scriptPath);
-}
 
-if (duplicates.length > 0) fail('duplicate local asset paths', duplicates);
-if (missingVersion.length > 0) fail('local assets missing cache-busting ?v=', missingVersion);
-if (mismatchedVersion.length > 0) fail('local assets do not use required cache-busting version', mismatchedVersion);
-if (missingFiles.length > 0) fail('local asset files missing on disk', missingFiles);
+  if (duplicates.length > 0) fail('duplicate local asset paths', duplicates);
+  if (missingVersion.length > 0) fail('local assets missing cache-busting ?v=', missingVersion);
+  if (mismatchedVersion.length > 0) fail('local assets do not use required cache-busting version', mismatchedVersion);
+  if (missingFiles.length > 0) fail('local asset files missing on disk', missingFiles);
 
-const orderPositions = REQUIRED_SCRIPTS.map((scriptPath) => ({
-  scriptPath,
-  index: scriptPaths.indexOf(scriptPath),
-}));
-const missingRequired = orderPositions.filter((entry) => entry.index < 0).map((entry) => entry.scriptPath);
-if (missingRequired.length > 0) fail('required scripts missing from index.html', missingRequired);
-for (const [before, after] of REQUIRED_ORDER_PAIRS) {
-  const beforeIndex = scriptPaths.indexOf(before);
-  const afterIndex = scriptPaths.indexOf(after);
-  if (beforeIndex < 0 || afterIndex < 0) continue;
-  if (beforeIndex > afterIndex) {
-    fail('required script order is invalid', [
-      `${before} should load before ${after}`,
-    ]);
+  const orderPositions = REQUIRED_SCRIPTS.map((scriptPath) => ({
+    scriptPath,
+    index: scriptPaths.indexOf(scriptPath),
+  }));
+  const missingRequired = orderPositions.filter((entry) => entry.index < 0).map((entry) => entry.scriptPath);
+  if (missingRequired.length > 0) fail('required scripts missing from index.html', missingRequired);
+  for (const [before, after] of REQUIRED_ORDER_PAIRS) {
+    const beforeIndex = scriptPaths.indexOf(before);
+    const afterIndex = scriptPaths.indexOf(after);
+    if (beforeIndex < 0 || afterIndex < 0) continue;
+    if (beforeIndex > afterIndex) {
+      fail('required script order is invalid', [
+        `${before} should load before ${after}`,
+      ]);
+    }
   }
-}
 
   return {
     localScriptCount: localScripts.length,
@@ -169,5 +185,6 @@ module.exports = {
   extractStylesheets,
   stripQuery,
   getQueryVersion,
+  resolveLocalAssetPath,
   checkManifest,
 };

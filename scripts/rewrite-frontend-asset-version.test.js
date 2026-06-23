@@ -12,10 +12,14 @@ const {
 } = require('./rewrite-frontend-asset-version');
 const {
   checkManifest,
+  resolveLocalAssetPath,
 } = require('./check-frontend-script-manifest');
 
 function makeTempFrontend() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wxgame-frontend-assets-'));
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wxgame-frontend-assets-'));
+  const root = path.join(repoRoot, 'frontend');
+  fs.mkdirSync(root, { recursive: true });
+  fs.mkdirSync(path.join(repoRoot, 'shared'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'config'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'debug'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'api'), { recursive: true });
@@ -40,7 +44,7 @@ function makeTempFrontend() {
   ].forEach((file) => {
     fs.writeFileSync(path.join(root, file), file.endsWith('.css') ? 'body{}' : 'window.__asset=1;');
   });
-  return root;
+  return { repoRoot, frontendDir: root };
 }
 
 function writeIndex(root, overrides = {}) {
@@ -98,22 +102,23 @@ test('rewriteHtmlAssetVersions updates local scripts and stylesheets only', () =
 });
 
 test('rewriteFrontendIndex and manifest guard require one deploy asset version', () => {
-  const root = makeTempFrontend();
-  writeIndex(root);
+  const { repoRoot, frontendDir } = makeTempFrontend();
+  writeIndex(frontendDir);
 
   const result = rewriteFrontendIndex({
-    frontendDir: root,
+    frontendDir,
     version: 'deploy-0123456789ab',
   });
   assert.equal(result.updated, 14);
 
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
   assert.match(html, /app\.js\?v=deploy-0123456789ab/);
   assert.match(html, /remote\.js\?v=old/);
 
   const manifest = checkManifest({
-    frontendDir: root,
+    repoRoot,
+    frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
   assert.equal(manifest.localScriptCount, 13);
@@ -121,11 +126,33 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
 });
 
 test('manifest guard rejects stale asset versions in published index', () => {
-  const root = makeTempFrontend();
-  writeIndex(root, { version: 'deploy-fresh', appVersion: 'stale' });
+  const { repoRoot, frontendDir } = makeTempFrontend();
+  writeIndex(frontendDir, { version: 'deploy-fresh', appVersion: 'stale' });
 
   assert.throws(() => checkManifest({
-    frontendDir: root,
+    repoRoot,
+    frontendDir,
     requireVersion: 'deploy-fresh',
   }), /local assets do not use required cache-busting version/);
+});
+
+test('manifest guard resolves deployed shared assets from repo shared directory', () => {
+  const { repoRoot, frontendDir } = makeTempFrontend();
+  writeIndex(frontendDir);
+  fs.writeFileSync(path.join(repoRoot, 'shared', 'battleSimCore.js'), 'window.BattleSimCore={};');
+  fs.writeFileSync(path.join(repoRoot, 'shared', 'battleAI.js'), 'window.BattleAI={};');
+  fs.appendFileSync(
+    path.join(frontendDir, 'index.html'),
+    '<script src="shared/battleSimCore.js?v=deploy-0123456789ab"></script>\n<script src="shared/battleAI.js?v=deploy-0123456789ab"></script>\n',
+  );
+
+  assert.equal(
+    resolveLocalAssetPath('shared/battleSimCore.js', { repoRoot, frontendDir }),
+    path.join(repoRoot, 'shared', 'battleSimCore.js'),
+  );
+  const manifest = checkManifest({
+    repoRoot,
+    frontendDir,
+  });
+  assert.equal(manifest.localScriptCount, 15);
 });
