@@ -263,6 +263,41 @@ test('GameAPI records replay correlation evidence in local operation logs', asyn
   assert.equal(responseEvent.payload.authority.status, 'accepted');
 });
 
+test('GameAPI surfaces an expected world-march decline without an alarming console error', async () => {
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request() {
+        return createResponse(400, {
+          success: false,
+          error: 'EXPLORE_ROUTE_BLOCKED',
+          message: 'Explorer route is blocked by ocean.',
+        });
+      },
+    },
+  });
+  const originalConsoleError = console.error;
+  const errorCalls = [];
+  console.error = (...args) => {
+    errorCalls.push(args);
+  };
+  let caught = null;
+  try {
+    await api.startWorldMarch({ targetQ: -3, targetR: 31, formationSlot: 1 });
+  } catch (error) {
+    caught = error;
+  } finally {
+    console.error = originalConsoleError;
+  }
+  // Still rejects (so the optimistic march rolls back), but tagged as an
+  // expected decline and never logged as a system failure.
+  assert.ok(caught, 'a 400 decline should still reject the promise');
+  assert.equal(caught.worldMarchDecline, 'EXPLORE_ROUTE_BLOCKED');
+  assert.equal(
+    errorCalls.some((call) => String(call[0]).includes('world march action failed')),
+    false,
+  );
+});
+
 test('GameAPI reports H5 load trace failures for 504 version checks', async () => {
   const calls = [];
   const api = new GameAPI('/api', null, {
