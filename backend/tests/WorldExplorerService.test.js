@@ -615,6 +615,32 @@ test('returned world march respects materialized home terrain when natural terra
   assert.equal(clientState.idleMissions[0].position.tileId, 'tile_-200_-15');
 });
 
+test('startWorldMarch clamps an ocean-blocked manual march to the coast instead of rejecting it', () => {
+  const now = new Date('2026-06-24T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  // Skip the tutorial empty-city guarantee so the route is not re-truncated to a guided site.
+  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  // Force an ocean tile three steps east of the capital, on the straight march route.
+  gameState.worldMap.tiles.push(
+    WorldMapService.createTile(gameState.worldMap.seed, 3, 0, now, {
+      terrain: 'ocean',
+      visibility: 'scouted',
+    }),
+  );
+
+  const started = WorldExplorerService.startWorldMarch(
+    gameState,
+    { targetQ: 5, targetR: 0, formationSlot: 1 },
+    now,
+  );
+
+  // The ocean-blocked march succeeds (no 400) and is clamped to the last land
+  // tile before the ocean at (3,0) rather than rejected.
+  assert.equal(started.success, true);
+  assert.equal(started.mission.route.at(-1).tileId, 'tile_2_0');
+  assert.equal(started.mission.route.some((step) => step.tileId === 'tile_3_0'), false);
+});
+
 test('world march client state does not expose retired ready reports', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();

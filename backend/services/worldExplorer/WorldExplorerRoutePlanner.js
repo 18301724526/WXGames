@@ -72,9 +72,16 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
   if (routeResult.error === 'EXPLORE_TARGET_TOO_FAR') {
     return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: 'Explore target is too far.' };
   }
-  if (routeResult.error === 'EXPLORE_ROUTE_BLOCKED') {
+  // A blocked route is clamped to the last traversable tile (the coast) instead
+  // of rejected: the formation marches the shortest distance up to the blocker
+  // and stops there. evaluateLinearMarchRoute already returns the traversable
+  // prefix as routeResult.route, so we reuse it. Only a route with zero
+  // traversable steps (the very first step is water) is reported as blocked,
+  // because the formation cannot advance toward the target at all.
+  if (routeResult.error === 'EXPLORE_ROUTE_BLOCKED' && !(routeResult.route || []).length) {
     return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
   }
+  const clampedToCoast = routeResult.error === 'EXPLORE_ROUTE_BLOCKED';
   const route = (routeResult.route || []).map((step) => ({
     q: step.q,
     r: step.r,
@@ -84,7 +91,14 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     revealedAt: null,
   }));
   const routeTarget = route.at(-1) || { q: origin.q, r: origin.r };
-  return { success: true, route, target: { q: routeTarget.q, r: routeTarget.r } };
+  return {
+    success: true,
+    ...(clampedToCoast
+      ? { clamped: true, blockedBy: 'ocean', blockedStep: routeResult.blockedStep || null }
+      : {}),
+    route,
+    target: { q: routeTarget.q, r: routeTarget.r },
+  };
 }
 
 function canTraverseRouteTile(seed, q, r, options = {}) {
