@@ -2,24 +2,40 @@
 
 本文档记录 2026-06-24 在测试分支 `codex/battle-core-test-server` 上由 Codex 接手后的开发与验证。Claude 开发日志仍保留历史过程；本日志用于维护 Codex 后续工作基线、验证结果、待办和上线注意事项。
 
+## 日志维护问题说明
+
+- 本日志最初没有随着每个修复阶段即时维护，晚间才集中回填，这是本日工作流的问题。
+- 因为日志不是实时写入，部分记录来自后续可核对凭据：Git 提交、`git diff`、测试命令输出、部署 hook 输出、用户复测反馈。后续接手时应优先以这些可核对凭据为准。
+- 已知需要更正的口径：海洋/水面点击行军 400 不能记录为“已修复”。此前日志把我的修复意图写成了最终状态，已在本文改为“当时判断 / 做过什么 / 用户复测仍复现 / 当前未关闭”。
+- 后续继续开发时，每完成一个定位、修复、测试或部署节点，都应立即追加日志，避免再出现“代码已改但过程凭据滞后补写”的情况。
+
 ## 晚间最新交接基线
 
 - 本地工作分支：`codex/fix-world-hud-ocean-march`。
 - 测试服部署分支：远端 `origin/codex/battle-core-test-server`。
-- 已部署到测试服并被用户验证过的基线：`ee89efda`（`tune tutorial advisor spine layout`）。
-- 用户最后复测结论：Spine “看不到/飞走”不是本次裁剪或缩放代码导致，实际是网络加载问题；资源加载完成后 Spine 正常出现。
+- 最新已部署到测试服的提交：`097a8fd7`（`docs: record handoff verification`），版本接口返回 `deployedCommit=097a8fd7e283b78a0dbcce0f9500823f7ff1873e`。
+- Spine 布局被用户验证过的基线：`ee89efda`（`tune tutorial advisor spine layout`）。用户复测结论是 Spine “看不到/飞走”不是本次裁剪或缩放代码导致，实际是网络加载问题；资源加载完成后 Spine 正常出现。
+- 海洋/水面点击行军 400 仍然复现：用户在 `deploy-ee89efda0017` 观察到 `GameAPI world march action failed`，请求体为 `action=startWorldMarch`、`mode=manual`、目标坐标示例 `targetQ=-25,targetR=0`，后端返回 `EXPLORE_ROUTE_BLOCKED` / `Explorer route is blocked by ocean.`。这说明此前海洋行军修复没有覆盖所有实际点击路径，不能记为已关闭。
 - 本轮交接目标：维护详细开发日志，把当前工作区里的代码、文档、测试治理内容统一提交并推送到远端，方便回到电脑后继续接手。
 
-## 今日已完成的主线工作
+## 今日工作记录
 
 ### 1. 新账号首次城市点击与海洋行军问题
 
 - 已定位并修复新账号第一次引导点击城市时，入城 HUD 偏离城市 actor 所在 tile 的问题。
-- 已定位海洋 tile 点击触发行军时报 `EXPLORE_ROUTE_BLOCKED` 的问题：客户端旧逻辑允许把不可通行海洋格作为手动行军目标发给后端，后端正确拒绝后形成 400。
-- 修复方向：
+- 海洋/水面行军问题的当时判断：
+  - 我当时认为根因是客户端允许把不可通行海洋格作为手动行军目标发给后端，后端权威校验正确拒绝后形成 400。
+  - 当时的目标是把“不可通行目标不应该发起手动行军”前移到客户端 domain / input policy 层，避免用户点击海洋时仍调用 `startWorldMarch`。
+- 当时做过的修复：
   - 城市 HUD 锚点回到 world map tile / actor 的统一坐标模型。
-  - 行军目标策略前移到客户端 domain 层，海洋/不可通行目标不再发起 `startWorldMarch`。
+  - 新增/接入 `WorldMarchRoutePolicy`、`shared/worldMarchCore`、`WorldMarchCoreAdapter`，把路线阻塞、海洋阻塞、目标坐标判定抽到可测逻辑里。
+  - 调整 `WorldExplorerRoutePlanner`、`CanvasTerritoryActionHandlers`、`WorldMapHitTargetFacade`、`WorldMapSiteOverlayRenderer`、`WorldMarchHudCanvasRenderer` 等相关路径，意图是在前端阻止不可通行目标继续发起手动行军。
   - 补了 world march route policy、hit target、site overlay、HUD 渲染等单测。
+- 当前真实状态：
+  - 城市 HUD 偏移问题按当时提交已处理。
+  - 海洋/水面点击行军问题未关闭。用户复测仍看到 `GameAPI.js?v=deploy-ee89efda0017:290 [GameAPI] world march action failed`，后端返回 `EXPLORE_ROUTE_BLOCKED`。
+  - 这个结果说明 `d7840e20` 的修复是不完整的：至少还有一个实际点击/手动行军入口绕过了新策略，或水面/海洋 tile 的前端可通行性识别与后端不一致。
+  - 后续不能只隐藏 console 400，也不能把后端拒绝改成成功；正确方向仍应是在前端所有手动行军入口统一复用同一 passability / route policy，并用测试覆盖用户复现路径。
 - 对应提交：`d7840e20`（`fix world march target blocking and city HUD anchoring`）。
 
 ### 2. Spine 出现导致 tile 大地图消失
@@ -119,7 +135,11 @@
 ## 下一步建议
 
 1. 回来后先核对本日志对应的最新提交是否已经部署到 `origin/codex/battle-core-test-server`。
-2. 在旧引导流程测试通过后，插入新的军营升级链路：
+2. 优先重新定位海洋/水面点击行军 400 的未覆盖入口：
+   - 用用户复现路径抓取前端点击入口、tile 类型、目标坐标、route policy 判定结果、最终 `startWorldMarch` payload。
+   - 对比前端 passability / route policy 与后端 `EXPLORE_ROUTE_BLOCKED` 判定，找出不一致处。
+   - 修复时要复用统一策略，不能只屏蔽 console 报错，也不能放宽后端权威校验。
+3. 在旧引导流程测试通过且海洋行军未关闭问题处理完后，插入新的军营升级链路：
    - 点击入城。
    - 点击建筑。
    - 升级军营。
@@ -130,8 +150,8 @@
    - 点击自动补兵。
    - 点击保存，保存后立即生效。
    - 进入派出侦查队流程。
-3. 补后端任务奖励 soldier payload 与前端领取表现测试。
-4. 对新增引导跑 H5 与小游戏两端的 tutorial smoke，重点看 overlay 不遮挡地图、Spine ready 不触发 world map cache invalidation。
+4. 补后端任务奖励 soldier payload 与前端领取表现测试。
+5. 对新增引导跑 H5 与小游戏两端的 tutorial smoke，重点看 overlay 不遮挡地图、Spine ready 不触发 world map cache invalidation。
 
 ## 早间接手基线（历史记录）
 
