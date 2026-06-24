@@ -162,22 +162,22 @@ test('entrypoints load shared world march core before march domain modules', () 
   const html = fs.readFileSync(path.join(rootDir, 'frontend/index.html'), 'utf8');
   const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
 
-  assert.ok(html.indexOf('WorldMarchCoreAdapter.js') >= 0, 'index.html should load WorldMarchCoreAdapter');
+  assert.ok(html.indexOf('shared/worldMarchCore.js') >= 0, 'index.html should load shared worldMarchCore');
   assert.ok(
-    html.indexOf('WorldMarchCoreAdapter.js') < html.indexOf('TileCoord.js'),
-    'index.html should load WorldMarchCoreAdapter before TileCoord',
+    html.indexOf('shared/worldMarchCore.js') < html.indexOf('TileCoord.js'),
+    'index.html should load shared worldMarchCore before TileCoord',
   );
   assert.ok(
-    html.indexOf('WorldMarchCoreAdapter.js') < html.indexOf('WorldMarchProgressSnapshot.js'),
-    'index.html should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
+    html.indexOf('shared/worldMarchCore.js') < html.indexOf('WorldMarchProgressSnapshot.js'),
+    'index.html should load shared worldMarchCore before WorldMarchProgressSnapshot',
   );
   assert.ok(
-    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") < minigame.indexOf("require('../js/domain/TileCoord')"),
-    'minigame should load WorldMarchCoreAdapter before TileCoord',
+    minigame.indexOf("require('../../shared/worldMarchCore')") < minigame.indexOf("require('../js/domain/TileCoord')"),
+    'minigame should load shared worldMarchCore before TileCoord',
   );
   assert.ok(
-    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") < minigame.indexOf("require('../js/domain/WorldMarchProgressSnapshot')"),
-    'minigame should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
+    minigame.indexOf("require('../../shared/worldMarchCore')") < minigame.indexOf("require('../js/domain/WorldMarchProgressSnapshot')"),
+    'minigame should load shared worldMarchCore before WorldMarchProgressSnapshot',
   );
   assert.ok(html.indexOf('WorldMarchGeometry.js') >= 0, 'index.html should load WorldMarchGeometry');
   assert.ok(

@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
 
 const WorldMarchCore = require('./worldMarchCore');
 
@@ -155,4 +158,48 @@ test('worldMarchCore moves fog reveal strength continuously inside a route step'
   assert.equal(middle.renderRevealSources[0].strength < late.renderRevealSources[0].strength, true);
   assert.notEqual(first.renderRevealSignature, middle.renderRevealSignature);
   assert.notEqual(middle.renderRevealSignature, late.renderRevealSignature);
+});
+
+function loadClassicScriptCore() {
+  const corePath = path.join(__dirname, 'worldMarchCore.js');
+  const source = fs.readFileSync(corePath, 'utf8');
+  // No `module`/`window` in the sandbox → exercises the classic-script branch
+  // that exposes the core on the global, the same way the H5 <script> tag does.
+  const context = vm.createContext({});
+  vm.runInContext(source, context, { filename: corePath });
+  return context.WorldMarchCore;
+}
+
+function toPlainJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+test('worldMarchCore exposes the same core as a classic browser <script> global', () => {
+  const browserCore = loadClassicScriptCore();
+  const nowMs = Date.parse('2026-06-06T00:00:01.500Z');
+
+  // Same public surface and identical behavior as the CommonJS require — this is
+  // the guard that replaces the old hand-copied inline browser fallback: the one
+  // canonical file now has to behave the same in both load modes.
+  assert.deepEqual(Object.keys(browserCore).sort(), Object.keys(WorldMarchCore).sort());
+  assert.deepEqual(
+    toPlainJson(browserCore.computeMarchState(createMission(), nowMs)),
+    toPlainJson(WorldMarchCore.computeMarchState(createMission(), nowMs)),
+  );
+  assert.deepEqual(
+    toPlainJson(
+      browserCore.evaluateLinearMarchRoute(
+        { q: 0, r: 0 },
+        { q: 3, r: 0 },
+        { maxLength: 16, canTraverse: (step) => step.q !== 2 },
+      ),
+    ),
+    toPlainJson(
+      WorldMarchCore.evaluateLinearMarchRoute(
+        { q: 0, r: 0 },
+        { q: 3, r: 0 },
+        { maxLength: 16, canTraverse: (step) => step.q !== 2 },
+      ),
+    ),
+  );
 });
