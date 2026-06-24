@@ -264,16 +264,6 @@ autoReplenishArmyFormation(action = {}) {
       return false;
     },
 
-confirmArmyFormationSoldiers(action = {}) {
-      const game = this.lastGame;
-      if (game && game !== this && typeof game.confirmArmyFormationSoldiers === 'function') {
-        const result = game.confirmArmyFormationSoldiers(action);
-        this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-        return result !== false;
-      }
-      return false;
-    },
-
 saveArmyFormation() {
       const game = this.lastGame;
       if (game && game !== this && typeof game.saveArmyFormation === 'function') {

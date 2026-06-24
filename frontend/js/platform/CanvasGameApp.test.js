@@ -135,7 +135,7 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
   assert.equal(await host.saveArmyFormation(), true);
   assert.deepEqual(calls, [
     ['renderCanvasSurface', 'buildings'],
-    ['setArmyFormation', 'capital', 1, ['fp-scout'], { 'fp-scout': 120 }],
+    ['setArmyFormation', 'capital', 1, ['fp-scout'], { 'fp-scout': 999 }],
     ['applyApiState', 22],
     ['onArmyFormationSaved', 22],
     ['showFloatingText', 'saved'],
@@ -143,7 +143,7 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
   ]);
 });
 
-test('autoReplenishArmyFormation drafts soldiers and confirm applies them to the saved formation payload', async () => {
+test('autoReplenishArmyFormation saves the visible draft soldier assignments without a separate confirm step', async () => {
   class Host {}
   CanvasGameAppCommands.install(Host);
   const calls = [];
@@ -189,8 +189,6 @@ test('autoReplenishArmyFormation drafts soldiers and confirm applies them to the
   assert.equal(host.autoReplenishArmyFormation(), true);
   assert.deepEqual(host.armyFormationEditor.soldierAssignments, { 'hero-1': 100, 'hero-2': 0 });
   assert.deepEqual(host.armyFormationEditor.soldierDraftAssignments, { 'hero-1': 350, 'hero-2': 350 });
-  assert.equal(host.confirmArmyFormationSoldiers(), true);
-  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { 'hero-1': 350, 'hero-2': 350 });
   assert.equal(await host.saveArmyFormation(), true);
   assert.deepEqual(calls.find((call) => call[0] === 'setArmyFormation'), [
     'setArmyFormation',

@@ -103,10 +103,6 @@ test('TutorialGuideController highlights the house build button when available',
       calls.push({ hideHighlight: true });
       return true;
     },
-    hideTutorialHighlight() {
-      calls.push({ hideHighlight: true });
-      return true;
-    },
   };
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseGuideReady },

@@ -240,27 +240,16 @@
         size: 10,
         color: '#cbbd96',
       });
-      const autoX = innerX + innerWidth - 128;
-      this.drawButton(autoX, autoY, 54, 24, this.t('military.formation.editor.replenish', {}), {
+      const autoX = innerX + innerWidth - 70;
+      this.drawButton(autoX, autoY, 60, 24, this.t('military.formation.editor.replenish', {}), {
         size: 10,
         radius: 7,
         active: true,
         disabled: selectedMembers.length <= 0 || editor.saving,
       });
       this.addHitTarget(
-        { x: autoX, y: autoY, width: 54, height: 24 },
+        { x: autoX, y: autoY, width: 60, height: 24 },
         selectedMembers.length <= 0 || editor.saving ? { type: 'blockCanvasModal' } : { type: 'autoReplenishArmyFormation' },
-      );
-      const confirmX = autoX + 62;
-      this.drawButton(confirmX, autoY, 62, 24, this.t('common.confirm', {}), {
-        size: 10,
-        radius: 7,
-        active: true,
-        disabled: selectedMembers.length <= 0 || editor.saving,
-      });
-      this.addHitTarget(
-        { x: confirmX, y: autoY, width: 62, height: 24 },
-        selectedMembers.length <= 0 || editor.saving ? { type: 'blockCanvasModal' } : { type: 'confirmArmyFormationSoldiers' },
       );
 
       const listTop = summaryY + 204;

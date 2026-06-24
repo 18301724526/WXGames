@@ -216,15 +216,6 @@
         return false;
       },
 
-      handle_confirmArmyFormationSoldiers(action) {
-        const game = this.getGameHost();
-        const target = game && game !== this.host ? game : this.host;
-        if (typeof target?.confirmArmyFormationSoldiers === 'function') {
-          return target.confirmArmyFormationSoldiers(action) !== false;
-        }
-        return false;
-      },
-
       handle_saveArmyFormation(action) {
         const game = this.getGameHost();
         const target = game && game !== this.host ? game : this.host;

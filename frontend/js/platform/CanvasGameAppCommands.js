@@ -345,24 +345,6 @@
             }, { render: true });
           },
 
-      confirmArmyFormationSoldiers() {
-            const editor = this.armyFormationEditor || {};
-            if (!editor.open || editor.saving) return false;
-            const memberIds = Array.isArray(editor.memberIds) ? editor.memberIds : [];
-            const cap = this.getArmyFormationSoldierCap(editor.cityId, editor.slot);
-            const soldierAssignments = this.normalizeArmyFormationAssignments(
-              editor.soldierDraftAssignments || editor.soldierAssignments || {},
-              memberIds,
-              cap,
-            );
-            this.showFloatingText?.('\u8865\u5175\u5df2\u786e\u8ba4');
-            return this.setArmyFormationEditor({
-              ...editor,
-              soldierAssignments,
-              soldierDraftAssignments: { ...soldierAssignments },
-            }, { render: true });
-          },
-
       async saveArmyFormation() {
             const editor = this.armyFormationEditor || {};
             if (!editor.open || editor.saving) return false;
@@ -370,7 +352,7 @@
             const slot = Math.max(1, Math.min(3, Number(editor.slot) || 1));
             const memberIds = (Array.isArray(editor.memberIds) ? editor.memberIds : []).slice(0, 5);
             const soldierAssignments = this.normalizeArmyFormationAssignments(
-              editor.soldierAssignments || {},
+              editor.soldierDraftAssignments || editor.soldierAssignments || {},
               memberIds,
               this.getArmyFormationSoldierCap(cityId, slot),
             );

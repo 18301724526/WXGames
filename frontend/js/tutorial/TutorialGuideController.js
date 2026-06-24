@@ -1,20 +1,5 @@
 (function (global) {
 
-  const LocaleText = (() => {
-    if (global.LocaleText) return global.LocaleText;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../domain/LocaleText');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
-  function t(key, params = {}) {
-    return LocaleText ? LocaleText.t(key, params) : key;
-  }
   const TutorialGuideStepPolicy = (() => {
     if (global.TutorialGuideStepPolicy) return global.TutorialGuideStepPolicy;
     if (typeof module !== 'undefined' && module.exports) {
@@ -39,6 +24,22 @@
     return null;
   })();
 
+  const SharedTutorialGuideFlowRegistry = (() => {
+    if (global.TutorialGuideFlowRegistry) return global.TutorialGuideFlowRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('./TutorialGuideFlowRegistry');
+    }
+    return null;
+  })();
+
+  const SharedTutorialGuideEventRegistry = (() => {
+    if (global.TutorialGuideEventRegistry) return global.TutorialGuideEventRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('./TutorialGuideEventRegistry');
+    }
+    return null;
+  })();
+
   const SharedTutorialGuideUiStateCoordinator = (() => {
     if (global.TutorialGuideUiStateCoordinator) return global.TutorialGuideUiStateCoordinator;
     if (typeof module !== 'undefined' && module.exports) {
@@ -58,6 +59,10 @@
       this.pendingAdvanceByStep = new Map();
       this.targetResolver = options.targetResolver
         || (SharedTutorialGuideTargetResolver ? new SharedTutorialGuideTargetResolver({ host: this }) : null);
+      this.flowRegistry = options.flowRegistry
+        || (SharedTutorialGuideFlowRegistry?.create ? SharedTutorialGuideFlowRegistry.create({ steps: TUTORIAL_STEPS }) : null);
+      this.eventRegistry = options.eventRegistry
+        || (SharedTutorialGuideEventRegistry?.create ? SharedTutorialGuideEventRegistry.create({ steps: TUTORIAL_STEPS }) : null);
     }
 
     getApi() {
@@ -89,32 +94,17 @@
       return TutorialGuideStepPolicy.canOpenTab(tabId, this.getStepPolicyContext());
     }
 
+    handleEvent(eventName, payload = {}) {
+      const result = this.eventRegistry?.handle?.(this, eventName, payload);
+      return result === undefined ? this.state : result;
+    }
+
     async onTabClicked(tabId) {
-      if (!this.canOpenTab(tabId)) return false;
-      if (tabId === 'buildings' && this.getCurrentStep() === TUTORIAL_STEPS.cityEntered) {
-        await this.advanceTo(TUTORIAL_STEPS.houseGuideReady);
-      }
-      if (tabId === 'civilization' && this.getCurrentStep() === TUTORIAL_STEPS.houseBuilt) {
-        await this.advanceTo(TUTORIAL_STEPS.civilizationTabOpened);
-      }
-      return true;
+      return this.handleEvent('tabClicked', { tabId });
     }
 
     async onCommandPanelOpened(panelId) {
-      const tabId = this.normalizePanelTab(panelId);
-      const allowed = await this.onTabClicked(tabId);
-      if (allowed === false) return false;
-      if (tabId === 'events' && this.getCurrentStep() === TUTORIAL_STEPS.eraAdvancedTo2) {
-        await this.advanceTo(TUTORIAL_STEPS.specialEventTabOpened);
-      }
-      if (tabId === 'buildings' && this.getCurrentStep() === TUTORIAL_STEPS.specialEventClaimed) {
-        await this.advanceTo(TUTORIAL_STEPS.buildingsTabOpenedForLumbermill);
-      }
-      if (tabId === 'tech' && this.getCurrentStep() === TUTORIAL_STEPS.famousSeekCompleted) {
-        await this.advanceTo(TUTORIAL_STEPS.finalTechOpened);
-      }
-      if (allowed !== false) this.refreshCurrentHighlight();
-      return allowed;
+      return this.handleEvent('commandPanelOpened', { panelId });
     }
 
     async advanceTo(step) {
@@ -136,14 +126,7 @@
     }
 
     async markCityEntered() {
-      if (this.isCompleted()) return this.state;
-      if (this.getCurrentStep() < TUTORIAL_STEPS.cityEntered) {
-        await this.advanceTo(TUTORIAL_STEPS.cityEntered);
-      }
-      if (this.getCurrentStep() < TUTORIAL_STEPS.houseGuideReady) {
-        return this.advanceTo(TUTORIAL_STEPS.houseGuideReady);
-      }
-      return this.state;
+      return this.handleEvent('cityEntered');
     }
 
     isHouseGuideActive() {
@@ -152,10 +135,7 @@
     }
 
     onBuildingAction(buildingId, action = 'build') {
-      if (this.isFarmGuideActive()) return action === 'build' && buildingId === 'farm';
-      if (this.isLumbermillGuideActive()) return action === 'build' && buildingId === 'lumbermill';
-      if (!this.isHouseGuideActive()) return true;
-      return action === 'build' && buildingId === 'house';
+      return this.handleEvent('buildingAction', { buildingId, action });
     }
 
     isFirstEraGuideActive() {
@@ -250,35 +230,12 @@
       return Boolean(this.game?.canvasShell?.rewardReveal || this.game?.rewardReveal);
     }
 
-
-
-
-
     onEraAdvanced(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      const step = this.getCurrentStep();
-      if (step >= TUTORIAL_STEPS.scoutFamousGranted && step < TUTORIAL_STEPS.scoutFormationSaved) {
-        return this.showSoftGuide(
-          'famous-persons-button',
-          '\u57ce\u90a6\u7684\u9053\u8def\u5df2\u7ecf\u6253\u5f00\uff0c\u4e00\u4f4d\u5584\u4e8e\u4fa6\u5bdf\u7684\u540d\u4eba\u52a0\u5165\u4e86\u6211\u4eec\u3002\u5148\u53bb\u540d\u4eba\u91cc\u770b\u770b\u4ed6\u7684\u5361\u7247\u3002',
-        );
-      }
-      if (step === TUTORIAL_STEPS.eraAdvancedTo2) {
-        return this.showSoftGuide(
-          'events-button',
-          '\u68ee\u6797\u8fb9\u7f18\u4f20\u6765\u4e86\u52a8\u9759\u3002\u5148\u53bb\u4e8b\u4ef6\u91cc\u770b\u4e00\u770b\uff0c\u628a\u6728\u6750\u5e26\u56de\u6765\u3002',
-        );
-      }
-      if (this.getCurrentStep() !== TUTORIAL_STEPS.eraAdvancedTo1) return false;
-      return this.showSoftGuide(
-        'task-center-button',
-        t('tutorial.softGuide.claimSupplies'),
-      );
+      return this.handleEvent('eraAdvanced', { result });
     }
 
     onTaskRewardClaimed(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      return this.getCurrentStep() >= TUTORIAL_STEPS.farmPrepReserved;
+      return this.handleEvent('taskRewardClaimed', { result });
     }
 
     getScoutFamousPersonId() {
@@ -385,143 +342,59 @@
     }
 
     async onFamousPersonsOpened() {
-      if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFamousGranted) {
-        return this.advanceTo(TUTORIAL_STEPS.famousPanelOpened);
-      }
-      if (this.getCurrentStep() === TUTORIAL_STEPS.manualTalentAssigned) {
-        return this.advanceTo(TUTORIAL_STEPS.famousSeekOpened);
-      }
-      return this.state;
+      return this.handleEvent('famousPersonsOpened');
     }
 
     async onTalentPolicyOpened() {
-      const step = this.getCurrentStep();
-      if (step === TUTORIAL_STEPS.polityNamed) {
-        await this.advanceTo(TUTORIAL_STEPS.talentPolicyOpened);
-      }
-      if (this.getCurrentStep() === TUTORIAL_STEPS.talentPolicyOpened) {
-        return this.advanceTo(TUTORIAL_STEPS.talentPolicyApplied);
-      }
-      return this.state;
+      return this.handleEvent('talentPolicyOpened');
     }
 
     onTalentPolicyApplied(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('tutorialStateChanged', { result });
     }
 
     onManualTalentAssigned(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('tutorialStateChanged', { result });
     }
 
     onFamousPersonSought(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('tutorialStateChanged', { result });
     }
 
     async onFamousPersonDetailOpened(personId = '') {
-      const scoutPersonId = this.getScoutFamousPersonId();
-      if (
-        this.getCurrentStep() === TUTORIAL_STEPS.famousPanelOpened
-        && (!scoutPersonId || String(personId || '') === scoutPersonId)
-      ) {
-        return this.advanceTo(TUTORIAL_STEPS.famousCardViewed);
-      }
-      return this.state;
+      return this.handleEvent('famousPersonDetailOpened', { personId });
     }
 
     async onArmyFormationOpened() {
-      if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed) {
-        return this.advanceTo(TUTORIAL_STEPS.formationPanelOpened);
-      }
-      return this.state;
+      return this.handleEvent('armyFormationOpened');
     }
 
     onArmyFormationSaved(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      const step = this.getCurrentStep();
-      if (step === TUTORIAL_STEPS.scoutFormationSaved || step === TUTORIAL_STEPS.scoutWorldPanelOpened) {
-        this.closeArmyFormationEditorEverywhere();
-        this.ensureMapHomeGuideVisible({ clearWorldMarchTarget: true });
-        this.refreshCurrentHighlight();
-        return true;
-      }
-      this.closeArmyFormationEditorEverywhere();
-      this.refreshCurrentHighlight();
-      return false;
+      return this.handleEvent('armyFormationSaved', { result });
     }
 
     async onMilitaryViewSwitched(view = '') {
-      if (view === 'world' && this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
-        return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
-      }
-      return this.state;
+      return this.handleEvent('militaryViewSwitched', { view });
     }
 
     onFamousPersonsClosed() {
-      const game = this.game || {};
-      const shell = game.canvasShell || null;
-      game.showFamousPersons = false;
-      game.famousPersonsPage = 0;
-      game.selectedFamousPersonId = '';
-      if (shell) {
-        shell.showFamousPersons = false;
-        shell.famousPersonsPage = 0;
-        shell.selectedFamousPersonId = '';
-      }
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('famousPersonsClosed');
     }
 
     onCityManagementOpened(tab = '') {
-      if (tab === 'people') {
-        return this.onTalentPolicyOpened();
-      }
-      if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed && tab === 'military') {
-        this.refreshCurrentHighlight();
-        return this.state;
-      }
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('cityManagementOpened', { tab });
     }
 
     async onWorldMarchTargetSelected() {
-      if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
-        return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
-      }
-      return this.state;
+      return this.handleEvent('worldMarchTargetSelected');
     }
 
     onExploreStarted(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('exploreStarted', { result });
     }
 
     async onAdvisorClosed() {
-      const game = this.game || {};
-      game.showAdvisor = false;
-      game.tutorialAdvisorDialogue = null;
-      if (game.canvasShell) {
-        game.canvasShell.showAdvisor = false;
-        game.canvasShell.tutorialAdvisorDialogue = null;
-      }
-      if (this.getCurrentStep() !== TUTORIAL_STEPS.finalTechOpened) {
-        this.refreshCurrentHighlight();
-        return this.state;
-      }
-      game.canvasShell?.hideTutorialHighlight?.();
-      game.state = {
-        ...(game.state || {}),
-        softGuide: null,
-      };
-      const result = await this.advanceTo(TUTORIAL_STEPS.completed);
-      this.refreshCurrentHighlight();
-      return result;
+      return this.handleEvent('advisorClosed');
     }
 
     getCanvasTarget(type, predicate = null) {
