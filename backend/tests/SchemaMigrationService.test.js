@@ -146,9 +146,7 @@ test('SchemaMigrationService steals a stale lock left by a crashed holder', () =
 
     assert.deepEqual(service.migrate().applied, ['001-create-unit-table']);
     assert.equal(
-      db
-        .prepare("SELECT name FROM sqlite_master WHERE name = 'unit_schema_migration'")
-        .get().name,
+      db.prepare("SELECT name FROM sqlite_master WHERE name = 'unit_schema_migration'").get().name,
       'unit_schema_migration',
     );
     // The lock is released after a successful migration, not left dangling.
