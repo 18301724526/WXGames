@@ -2,10 +2,34 @@ const crypto = require('node:crypto');
 
 const MIGRATION_STATUS_APPLIED = 'applied';
 const MIGRATION_LOCK_ID = 'schema-migration';
+// A migration here is a handful of near-instant ALTER TABLEs. If a lock row is
+// older than this, the holder almost certainly crashed mid-migration, so the
+// next startup is allowed to steal it instead of crash-looping forever.
+const DEFAULT_LOCK_TTL_MS = 30_000;
+// How long a loser of a genuine concurrent race waits for the live holder to
+// finish before giving up. Kept below the TTL so a live holder is waited on,
+// not stolen from.
+const DEFAULT_LOCK_MAX_WAIT_MS = 15_000;
+const DEFAULT_LOCK_RETRY_DELAY_MS = 200;
 
 function nowIso(now = new Date()) {
   const date = now instanceof Date ? now : new Date(now);
   return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
+}
+
+function toEpochMs(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : Date.now();
+}
+
+// Synchronous sleep so the migration startup path (better-sqlite3 is fully
+// synchronous) can wait for a concurrent holder without busy-spinning the CPU.
+function sleepSync(ms) {
+  const duration = Math.max(0, Math.floor(ms));
+  if (duration === 0) return;
+  const view = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.wait(view, 0, 0, duration);
 }
 
 function checksumMigration(migration) {
@@ -52,6 +76,14 @@ class SchemaMigrationService {
     this.db = db;
     this.migrations = migrations.map(normalizeMigration);
     this.now = options.now || (() => new Date());
+    this.sleep = options.sleep || sleepSync;
+    this.lockTtlMs = Number.isFinite(options.lockTtlMs) ? options.lockTtlMs : DEFAULT_LOCK_TTL_MS;
+    this.lockMaxWaitMs = Number.isFinite(options.lockMaxWaitMs)
+      ? options.lockMaxWaitMs
+      : DEFAULT_LOCK_MAX_WAIT_MS;
+    this.lockRetryDelayMs = Number.isFinite(options.lockRetryDelayMs)
+      ? options.lockRetryDelayMs
+      : DEFAULT_LOCK_RETRY_DELAY_MS;
   }
 
   initTables() {
@@ -116,24 +148,56 @@ class SchemaMigrationService {
     });
   }
 
-  acquireLock() {
-    const timestamp = nowIso(this.now());
+  tryInsertLock() {
     try {
       this.db
         .prepare('INSERT INTO schema_migration_locks (id, lockedAt) VALUES (?, ?)')
-        .run(MIGRATION_LOCK_ID, timestamp);
+        .run(MIGRATION_LOCK_ID, nowIso(this.now()));
+      return true;
     } catch (error) {
       if (String(error.message || '').includes('UNIQUE constraint failed')) {
-        const lock = this.db
-          .prepare('SELECT lockedAt FROM schema_migration_locks WHERE id = ?')
-          .get(MIGRATION_LOCK_ID);
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  // Compare-and-delete on the observed lockedAt so only one racer reclaims a
+  // given stale row; the loser's delete affects 0 rows and it falls back to the
+  // wait path against whoever won the steal.
+  stealStaleLock(staleLockedAt) {
+    this.db
+      .prepare('DELETE FROM schema_migration_locks WHERE id = ? AND lockedAt = ?')
+      .run(MIGRATION_LOCK_ID, staleLockedAt);
+  }
+
+  acquireLock() {
+    const startedMs = toEpochMs(this.now());
+    for (;;) {
+      if (this.tryInsertLock()) return;
+
+      const lock = this.db
+        .prepare('SELECT lockedAt FROM schema_migration_locks WHERE id = ?')
+        .get(MIGRATION_LOCK_ID);
+      // Lock vanished between the failed insert and this read — retry immediately.
+      if (!lock) continue;
+
+      const ageMs = toEpochMs(this.now()) - toEpochMs(lock.lockedAt);
+      if (ageMs >= this.lockTtlMs) {
+        // Holder is presumed crashed; reclaim and retry the insert.
+        this.stealStaleLock(lock.lockedAt);
+        continue;
+      }
+
+      if (toEpochMs(this.now()) - startedMs >= this.lockMaxWaitMs) {
         const conflict = new Error(
-          `Schema migration lock is already held since ${lock?.lockedAt || 'unknown'}`,
+          `Schema migration lock is already held since ${lock.lockedAt || 'unknown'}`,
         );
         conflict.code = 'SCHEMA_MIGRATION_LOCKED';
         throw conflict;
       }
-      throw error;
+
+      this.sleep(this.lockRetryDelayMs);
     }
   }
 
