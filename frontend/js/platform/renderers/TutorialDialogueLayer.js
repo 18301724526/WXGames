@@ -29,20 +29,23 @@
 
   function begin(renderer = {}) {
     const runtime = renderer.h5Runtime || null;
-    const canEnsureLayer = typeof renderer.ensureCanvasLayer === 'function'
-      || typeof runtime?.ensureLayerCanvas === 'function';
+    const canEnsureLayer =
+      typeof renderer.ensureCanvasLayer === 'function' ||
+      typeof runtime?.ensureLayerCanvas === 'function';
     if (!canEnsureLayer) return null;
     const layerRect = getLayerRect(renderer);
     const overrides = {
       pixelRatio: getPixelRatio(),
       rect: layerRect,
     };
-    const canvas = typeof renderer.ensureCanvasLayer === 'function'
-      ? renderer.ensureCanvasLayer(TUTORIAL_DIALOGUE_LAYER_NAME, overrides)
-      : runtime.ensureLayerCanvas(
-        TUTORIAL_DIALOGUE_LAYER_NAME,
-        CanvasLayerRegistry?.getLayerOptions?.(TUTORIAL_DIALOGUE_LAYER_NAME, overrides) || overrides,
-      );
+    const canvas =
+      typeof renderer.ensureCanvasLayer === 'function'
+        ? renderer.ensureCanvasLayer(TUTORIAL_DIALOGUE_LAYER_NAME, overrides)
+        : runtime.ensureLayerCanvas(
+            TUTORIAL_DIALOGUE_LAYER_NAME,
+            CanvasLayerRegistry?.getLayerOptions?.(TUTORIAL_DIALOGUE_LAYER_NAME, overrides) ||
+              overrides,
+          );
     const ctx = canvas?.getContext?.('2d') || null;
     if (!ctx) return null;
     runtime.setLayerVisible?.(TUTORIAL_DIALOGUE_LAYER_NAME, true);
