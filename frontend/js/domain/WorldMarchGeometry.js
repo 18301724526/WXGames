@@ -141,6 +141,8 @@
       terrain: target.terrain || '',
       terrainLabel: target.terrainLabel || '',
     };
+    if (target.marchDisabled !== undefined) result.marchDisabled = Boolean(target.marchDisabled);
+    if (target.marchDisabledReason) result.marchDisabledReason = target.marchDisabledReason;
     if (target.missionId || target.actorId) {
       result.missionId = target.missionId || target.actorId;
       result.actorId = target.actorId || target.missionId;

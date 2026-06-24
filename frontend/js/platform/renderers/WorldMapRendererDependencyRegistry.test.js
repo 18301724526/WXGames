@@ -14,6 +14,7 @@ test('WorldMapRendererDependencyRegistry owns dependency keys for the world map 
   assert.equal(definitions.worldMapRendererCompositionFactory.globalName, 'WorldMapRendererCompositionFactory');
   assert.equal(definitions.worldMapTileMapRenderer.globalName, 'WorldMapTileMapRenderer');
   assert.equal(definitions.worldActorCanvasRenderer.globalName, 'WorldActorCanvasRenderer');
+  assert.equal(definitions.worldMarchRoutePolicy.modulePath, '../../domain/WorldMarchRoutePolicy');
   assert.equal(definitions.tileMapAssetManifest.modulePath, '../../config/TileMapAssetManifest');
 });
 
@@ -63,6 +64,9 @@ test('WorldMapRendererDependencyRegistry loads before WorldMapCanvasRenderer in 
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');
 
   assert.ok(html.indexOf('WorldMapRendererDependencyRegistry.js') > -1);
+  assert.ok(html.indexOf('WorldMarchRoutePolicy.js') > -1);
+  assert.ok(html.indexOf('WorldMarchRoutePolicy.js') < html.indexOf('WorldMapHitTargetFacade.js'));
   assert.ok(html.indexOf('WorldMapRendererDependencyRegistry.js') < html.indexOf('WorldMapCanvasRenderer.js'));
+  assert.ok(miniGameEntry.indexOf('WorldMarchRoutePolicy') < miniGameEntry.indexOf('WorldMapHitTargetFacade'));
   assert.ok(miniGameEntry.indexOf('WorldMapRendererDependencyRegistry') < miniGameEntry.indexOf('WorldMapCanvasRenderer'));
 });

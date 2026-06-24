@@ -472,6 +472,8 @@
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
         if (action.terrain) nextTarget.terrain = action.terrain;
         if (action.terrainLabel) nextTarget.terrainLabel = action.terrainLabel;
+        if (action.marchDisabled !== undefined) nextTarget.marchDisabled = Boolean(action.marchDisabled);
+        if (action.marchDisabledReason) nextTarget.marchDisabledReason = action.marchDisabledReason;
         copyCombatTargetFields(nextTarget, action);
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
@@ -508,6 +510,8 @@
         const combatEncounterId = getCombatEncounterId(action, previousTarget);
         const missionId = combatEncounterId ? '' : getMarchMissionId(action, previousTarget, uiState);
         const actorId = missionId ? getWorldActorId(action, previousTarget, uiState) : '';
+        const samePreviousTarget = Number(previousTarget.q) === Number(target.q)
+          && Number(previousTarget.r) === Number(target.r);
         const nextTarget = {
           q: target.q,
           r: target.r,
@@ -519,6 +523,9 @@
         else if (previousTarget.known !== undefined) nextTarget.known = Boolean(previousTarget.known);
         if (action.terrain || previousTarget.terrain) nextTarget.terrain = action.terrain || previousTarget.terrain;
         if (action.terrainLabel || previousTarget.terrainLabel) nextTarget.terrainLabel = action.terrainLabel || previousTarget.terrainLabel;
+        if (action.marchDisabled !== undefined) nextTarget.marchDisabled = Boolean(action.marchDisabled);
+        else if (samePreviousTarget && previousTarget.marchDisabled !== undefined) nextTarget.marchDisabled = Boolean(previousTarget.marchDisabled);
+        if (action.marchDisabledReason || (samePreviousTarget && previousTarget.marchDisabledReason)) nextTarget.marchDisabledReason = action.marchDisabledReason || previousTarget.marchDisabledReason;
         copyCombatTargetFields(nextTarget, action, previousTarget);
         uiState.worldMarchTarget = nextTarget;
         uiState.selectedWorldActorId = '';
@@ -618,6 +625,7 @@
       },
 
       handle_startWorldMarch(action, meta = {}) {
+        if (action?.disabled) return true;
         const target = normalizeWorldMarchTarget(action);
         if (!target) return false;
         const uiState = this.getSharedTerritoryUiState();

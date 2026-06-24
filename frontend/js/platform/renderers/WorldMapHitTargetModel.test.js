@@ -160,6 +160,36 @@ test('WorldMapHitTargetModel creates march targets for in-frame tiles only', () 
   assert.equal(targets.find((target) => target.action.tileId === 'tile_1_0').action.inputSurface, 'worldMap');
 });
 
+test('WorldMapHitTargetModel marks blocked march tile targets without dropping picking evidence', () => {
+  const tileMapView = {
+    geometry,
+    tiles: [
+      { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', discovered: true },
+      { id: 'tile_1_0', q: 1, r: 0, terrain: 'ocean', terrainLabel: 'Ocean', discovered: true },
+    ],
+  };
+  const viewport = { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 };
+  const targets = WorldMapHitTargetModel.createWorldMarchTileHitTargets(
+    tileMapView,
+    viewport,
+    { x: 0, y: 0, width: 260, height: 220 },
+    {
+      ...createOptions(),
+      evaluateMarchTarget(tile) {
+        return tile.terrain === 'ocean'
+          ? { canMarch: false, reason: 'EXPLORE_ROUTE_BLOCKED' }
+          : { canMarch: true };
+      },
+    },
+  );
+
+  const ocean = targets.find((target) => target.action.targetQ === 1 && target.action.targetR === 0);
+  assert.equal(Boolean(ocean), true);
+  assert.equal(ocean.action.marchDisabled, true);
+  assert.equal(ocean.action.marchDisabledReason, 'EXPLORE_ROUTE_BLOCKED');
+  assert.equal(ocean.action.type, 'selectWorldMarchTarget');
+});
+
 test('WorldMapHitTargetModel derives action identity from stable x/y coordinates', () => {
   const tileMapView = {
     geometry,

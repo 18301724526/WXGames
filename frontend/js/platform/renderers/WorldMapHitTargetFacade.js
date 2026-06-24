@@ -44,6 +44,31 @@
         || {};
     }
 
+    getWorldMarchRoutePolicy() {
+      return global.WorldMarchRoutePolicy
+        || global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldMarchRoutePolicy')
+        || this.host?.constructor?.getWorldMarchRoutePolicy?.()
+        || null;
+    }
+
+    getGameState() {
+      return this.host?.lastGameState
+        || this.host?.lastWorldMarchState
+        || this.host?.state
+        || this.host?.lastGame?.state
+        || this.host?.host?.lastGameState
+        || this.host?.host?.lastWorldMarchState
+        || this.host?.host?.state
+        || this.host?.host?.lastGame?.state
+        || {};
+    }
+
+    evaluateMarchTarget(tile = {}, tileMapView = {}) {
+      const policy = this.getWorldMarchRoutePolicy();
+      if (!policy?.evaluateMarchTarget) return null;
+      return policy.evaluateMarchTarget(this.getGameState(), tile, { tileMapView });
+    }
+
     normalizeTileCoord(tile = {}) {
       const helper = this.getTileMapGeometry();
       if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
@@ -108,6 +133,7 @@
         const targets = hitTargetModel.createWorldMarchTileHitTargets(tileMapView, viewport, frame, {
           layoutModel: this.getWorldMapLayoutModel(),
           tileMapGeometry: this.getTileMapGeometry(),
+          evaluateMarchTarget: (tile, view) => this.evaluateMarchTarget(tile, view),
         });
         return this.registerHitTargets(targets);
       }
@@ -125,6 +151,8 @@
         ) return;
         const tileWidth = (Number(geometry.tileWidth) || 192) * (Number(viewport.scale) || 1) * 0.86;
         const tileHeight = (Number(geometry.tileHeight) || 96) * (Number(viewport.scale) || 1) * 0.86;
+        const marchCheck = this.evaluateMarchTarget(tile, tileMapView);
+        const marchDisabled = marchCheck?.canMarch === false;
         targets.push({
           rect: {
             x: center.x - tileWidth / 2,
@@ -140,6 +168,8 @@
             known: tile.visibility !== 'unknown' && tile.discovered !== false,
             terrain: tile.terrain || '',
             terrainLabel: tile.terrainLabel || tile.terrain || '',
+            marchDisabled,
+            marchDisabledReason: marchDisabled ? (marchCheck.reason || 'EXPLORE_ROUTE_BLOCKED') : '',
             background: true,
             inputSurface: 'worldMap',
           },

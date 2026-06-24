@@ -11,6 +11,7 @@
     tileMapAssetManifest: { globalName: 'TileMapAssetManifest', modulePath: '../../config/TileMapAssetManifest' },
     tileMapGeometry: { globalName: 'TileMapGeometry', modulePath: '../../domain/TileMapGeometry' },
     worldTime: { globalName: 'WorldTime', modulePath: '../../domain/WorldTime' },
+    worldMarchRoutePolicy: { globalName: 'WorldMarchRoutePolicy', modulePath: '../../domain/WorldMarchRoutePolicy' },
     unitSpriteManifest: { globalName: 'UnitSpriteManifest', modulePath: '../../config/UnitSpriteManifest' },
     worldActorCanvasRenderer: { globalName: 'WorldActorCanvasRenderer', modulePath: './WorldActorCanvasRenderer' },
     worldMarchHudCanvasRenderer: { globalName: 'WorldMarchHudCanvasRenderer', modulePath: './WorldMarchHudCanvasRenderer' },

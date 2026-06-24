@@ -17,6 +17,7 @@ require('../js/domain/WorldMarchOptimisticState');
 require('../js/domain/WorldActorProjection');
 require('../js/domain/WorldMarchGeometry');
 require('../js/domain/WorldMarchSystem');
+require('../js/domain/WorldMarchRoutePolicy');
 require('../js/domain/WorldMapVisibilityModel');
 require('../js/domain/WorldMapEntitySnapshot');
 require('../js/domain/WorldMapRenderSnapshot');

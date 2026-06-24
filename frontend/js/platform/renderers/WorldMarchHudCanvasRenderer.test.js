@@ -164,6 +164,33 @@ test('WorldMarchHudCanvasRenderer renders formation picker with start action', (
   assert.equal(start.rect.y + start.rect.height <= 84 + 696, true);
 });
 
+test('WorldMarchHudCanvasRenderer disables formation starts for blocked march target', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+  const previousLocale = LocaleText.getLocale();
+
+  try {
+    LocaleText.setLocale('en-US');
+    renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
+      worldMarchTarget: {
+        q: 1,
+        r: 0,
+        tileId: 'tile_1_0',
+        pickerOpen: true,
+        marchDisabled: true,
+        marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
+      },
+    }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+
+    const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
+    assert.equal(starts.length > 0, true);
+    assert.equal(starts.every((target) => target.action.disabled === true), true);
+    assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === 'Route blocked'), true);
+  } finally {
+    LocaleText.setLocale(previousLocale);
+  }
+});
+
 test('WorldMarchHudCanvasRenderer includes selected actor id in formation picker start actions', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });

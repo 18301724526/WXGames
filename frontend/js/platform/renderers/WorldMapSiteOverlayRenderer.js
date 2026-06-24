@@ -382,6 +382,36 @@
     }
 
     getWorldCityCommandAnchor(detail = {}, territories = [], state = {}, options = {}) {
+      const contextAnchor = this.getWorldSiteCanvasAnchor(detail.id, state, options);
+      if (contextAnchor) {
+        const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state, { isMapHome: true });
+        const layout = typeof this.getWorldMapLayerLayout === 'function'
+          ? this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true })
+          : {
+            map: {
+              x: 0,
+              y: topBarBottom,
+              width: this.width,
+              height: Math.max(160, this.height - topBarBottom - 64),
+            },
+          };
+        const scale = Number(contextAnchor.viewport?.scale || options.worldMapRuntimeContext?.viewport?.scale) || 1;
+        const geometry = contextAnchor.geometry || options.worldMapRuntimeContext?.geometry || options.worldMapRuntimeContext?.tileMapView?.geometry || {};
+        const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+        const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+        return {
+          map: layout?.map || null,
+          site: contextAnchor.site || territories.find((site) => site?.id === detail.id) || {},
+          siteLayout: contextAnchor,
+          tileCenter: contextAnchor.center,
+          tileWidth,
+          tileHeight,
+          anchorX: contextAnchor.center.x,
+          anchorY: contextAnchor.center.y,
+          titleY: contextAnchor.center.y - Math.max(34, tileHeight * 0.48),
+        };
+      }
+      if (options.worldMapRuntimeContext) return null;
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
       const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {

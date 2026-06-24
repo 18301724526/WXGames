@@ -24,6 +24,7 @@
     tileMapAssetManifest: getRendererDependency('tileMapAssetManifest'),
     tileMapGeometry: getRendererDependency('tileMapGeometry'),
     worldTime: getRendererDependency('worldTime'),
+    worldMarchRoutePolicy: getRendererDependency('worldMarchRoutePolicy'),
     unitSpriteManifest: getRendererDependency('unitSpriteManifest'),
     worldActorCanvasRenderer: getRendererDependency('worldActorCanvasRenderer'),
     worldMarchHudCanvasRenderer: getRendererDependency('worldMarchHudCanvasRenderer'),
@@ -182,6 +183,10 @@
 
     static getWorldTime() {
       return sharedDependencies.worldTime || null;
+    }
+
+    static getWorldMarchRoutePolicy() {
+      return sharedDependencies.worldMarchRoutePolicy || null;
     }
 
     static getTutorialIntroUnitRenderer() {

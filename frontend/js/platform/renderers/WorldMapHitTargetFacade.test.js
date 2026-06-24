@@ -143,11 +143,13 @@ test('WorldMapHitTargetFacade prefers registry dependencies over host constructo
     worldMapLayoutModel: registryLayoutModel,
     tileMapGeometry: registryGeometry,
     tileMapAssetManifest: registryManifest,
+    worldMarchRoutePolicy: { id: 'registry-route-policy' },
   }, () => {
     assert.equal(renderer.getWorldMapHitTargetModel(), registryHitTargetModel);
     assert.equal(renderer.getWorldMapLayoutModel(), registryLayoutModel);
     assert.equal(renderer.getTileMapGeometry(), registryGeometry);
     assert.equal(renderer.getTileMapAssetManifest(), registryManifest);
+    assert.equal(renderer.getWorldMarchRoutePolicy().id, 'registry-route-policy');
   });
   assert.equal(renderer.getWorldMapHitTargetModel(), fallbackHitTargetModel);
   assert.equal(renderer.getWorldMapLayoutModel(), fallbackLayoutModel);
@@ -228,6 +230,41 @@ test('WorldMapHitTargetFacade keeps fallback registration when model is unavaila
   assert.equal(renderer.addWorldMarchTileHitTargets(tileMapView, viewport, { x: 0, y: 0, width: 260, height: 220 }), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
+});
+
+test('WorldMapHitTargetFacade evaluates march targets from published renderer state', () => {
+  const state = {
+    activeCityId: 'capital',
+    territoryState: {
+      territories: [{ id: 'capital', q: 0, r: 0 }],
+    },
+  };
+  const host = createHost({
+    lastGameState: state,
+  });
+  const renderer = new WorldMapHitTargetFacade({ host });
+  const tileMapView = {
+    geometry,
+    tiles: [
+      { id: 'tile_0_0', q: 0, r: 0, terrain: 'plains', discovered: true },
+      { id: 'tile_1_0', q: 1, r: 0, terrain: 'ocean', discovered: true },
+    ],
+  };
+
+  withRendererDependencyRegistry({
+    worldMarchRoutePolicy: require('../../domain/WorldMarchRoutePolicy'),
+  }, () => {
+    assert.equal(renderer.addWorldMarchTileHitTargets(
+      tileMapView,
+      { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 },
+      { x: 0, y: 0, width: 260, height: 220 },
+    ), true);
+  });
+
+  const ocean = host.hitTargets.find((target) => target.action.targetQ === 1 && target.action.targetR === 0);
+  assert.equal(Boolean(ocean), true);
+  assert.equal(ocean.action.marchDisabled, true);
+  assert.equal(ocean.action.marchDisabledReason, 'EXPLORE_ROUTE_BLOCKED');
 });
 
 test('WorldMapHitTargetFacade fallback derives action identity from stable coordinates', () => {

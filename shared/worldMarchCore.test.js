@@ -73,6 +73,56 @@ test('worldMarchCore starts paths from mission.origin before mission.position', 
   assert.equal(path[1].tileId, 'tile_-1_0');
 });
 
+test('worldMarchCore builds wrapped manual routes with the same linear stepping contract', () => {
+  assert.deepEqual(
+    WorldMarchCore.getWrappedDelta(
+      { q: 511, r: 0 },
+      { q: -511, r: 0 },
+      { width: 1024, height: 1024, wrapping: true },
+    ),
+    { q: 2, r: 0 },
+  );
+
+  const route = WorldMarchCore.buildLinearMarchRoute(
+    { q: 0, r: 0 },
+    { q: 2, r: -1 },
+    { maxLength: 16, width: 1024, height: 1024, wrapping: true },
+  );
+
+  assert.equal(route.success, true);
+  assert.deepEqual(route.route, [
+    { q: 1, r: -1, step: 1, tileId: 'tile_1_-1' },
+    { q: 2, r: -1, step: 2, tileId: 'tile_2_-1' },
+  ]);
+  assert.deepEqual(route.target, { q: 2, r: -1, tileId: 'tile_2_-1' });
+});
+
+test('worldMarchCore evaluates blocked and too-far manual routes deterministically', () => {
+  const blocked = WorldMarchCore.evaluateLinearMarchRoute(
+    { q: 0, r: 0 },
+    { q: 3, r: 0 },
+    {
+      maxLength: 16,
+      canTraverse(step) {
+        return step.q !== 2;
+      },
+    },
+  );
+
+  assert.equal(blocked.success, false);
+  assert.equal(blocked.error, 'EXPLORE_ROUTE_BLOCKED');
+  assert.deepEqual(blocked.blockedStep, { q: 2, r: 0, step: 2, tileId: 'tile_2_0' });
+  assert.deepEqual(blocked.route, [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0' }]);
+
+  const tooFar = WorldMarchCore.evaluateLinearMarchRoute(
+    { q: 0, r: 0 },
+    { q: 17, r: 0 },
+    { maxLength: 16 },
+  );
+  assert.equal(tooFar.success, false);
+  assert.equal(tooFar.error, 'EXPLORE_TARGET_TOO_FAR');
+});
+
 test('worldMarchCore produces deterministic continuous position and route reveal data', () => {
   const nowMs = Date.parse('2026-06-06T00:00:15.000Z');
   const state = WorldMarchCore.computeMarchState(createMission(), nowMs);

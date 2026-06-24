@@ -1041,12 +1041,31 @@ test('CanvasTerritoryActionHandlers derives world march tile identity from targe
     targetQ: 4,
     targetR: -2,
     tileId: 'stale-renderer-tile',
+    marchDisabled: true,
+    marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
   }), true);
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
     q: 4,
     r: -2,
     tileId: 'tile_4_-2',
     pickerOpen: false,
+    marchDisabled: true,
+    marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
+  });
+
+  assert.equal(controller.handle_openWorldMarchFormationPicker({
+    type: 'openWorldMarchFormationPicker',
+    targetQ: 4,
+    targetR: -2,
+    tileId: 'stale-picker-tile',
+  }), true);
+  assert.deepEqual(host.territoryUiState.worldMarchTarget, {
+    q: 4,
+    r: -2,
+    tileId: 'tile_4_-2',
+    pickerOpen: true,
+    marchDisabled: true,
+    marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
   });
 
   assert.equal(controller.handle_openWorldMarchFormationPicker({

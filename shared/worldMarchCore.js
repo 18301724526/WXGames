@@ -67,6 +67,84 @@ function normalizeRoute(route = []) {
     .sort((a, b) => a.step - b.step);
 }
 
+function getWrappedDelta(from = {}, to = {}, options = {}) {
+  const start = normalizeCoord(from);
+  const end = normalizeCoord(to, start);
+  const width = toInteger(options.width ?? options.worldWidth, 0);
+  const height = toInteger(options.height ?? options.worldHeight, 0);
+  const wrapping = options.wrapping !== false;
+  const wrapAxis = (delta, size) => {
+    if (!wrapping || size <= 0 || Math.abs(delta) <= size / 2) return delta;
+    const wrapped = delta > 0 ? delta - size : delta + size;
+    return Math.abs(wrapped) < Math.abs(delta) ? wrapped : delta;
+  };
+  return {
+    q: wrapAxis(end.q - start.q, width),
+    r: wrapAxis(end.r - start.r, height),
+  };
+}
+
+function buildLinearMarchRoute(origin = {}, target = {}, options = {}) {
+  const start = normalizeCoord(origin);
+  const end = normalizeCoord(target, start);
+  const delta = getWrappedDelta(start, end, options);
+  const distance = Math.max(Math.abs(delta.q), Math.abs(delta.r));
+  const maxLength = toInteger(options.maxLength ?? options.maxManualRouteLength, 0);
+  if (distance <= 0) {
+    return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', route: [], target: end };
+  }
+  if (maxLength > 0 && distance > maxLength) {
+    return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', route: [], target: end };
+  }
+  const route = [];
+  let q = start.q;
+  let r = start.r;
+  let remainingQ = delta.q;
+  let remainingR = delta.r;
+  for (let step = 1; step <= distance; step += 1) {
+    const stepQ = Math.sign(remainingQ);
+    const stepR = Math.sign(remainingR);
+    q += stepQ;
+    r += stepR;
+    remainingQ -= stepQ;
+    remainingR -= stepR;
+    const coord = normalizeCoord({ q, r });
+    route.push({
+      q: coord.q,
+      r: coord.r,
+      step,
+      tileId: coord.tileId,
+    });
+  }
+  const routeTarget = route.at(-1) || end;
+  return {
+    success: true,
+    route,
+    target: normalizeCoord(routeTarget, end),
+    distance,
+  };
+}
+
+function evaluateLinearMarchRoute(origin = {}, target = {}, options = {}) {
+  const plan = buildLinearMarchRoute(origin, target, options);
+  if (!plan.success) return plan;
+  const canTraverse = typeof options.canTraverse === 'function'
+    ? options.canTraverse
+    : () => true;
+  for (const step of plan.route) {
+    if (!canTraverse(step)) {
+      return {
+        success: false,
+        error: 'EXPLORE_ROUTE_BLOCKED',
+        blockedStep: step,
+        route: plan.route.slice(0, Math.max(0, step.step - 1)),
+        target: plan.target,
+      };
+    }
+  }
+  return plan;
+}
+
 function hasCoordPair(source = {}) {
   if (!source || typeof source !== 'object') return false;
   const hasX = source.x !== undefined || source.q !== undefined;
@@ -439,6 +517,9 @@ module.exports = {
   tileId,
   normalizeCoord,
   normalizeRoute,
+  getWrappedDelta,
+  buildLinearMarchRoute,
+  evaluateLinearMarchRoute,
   getMissionPath,
   getMissionDurationMs,
   getMissionStepDurationMs,

@@ -225,6 +225,15 @@
       };
     }
 
+    isMarchTargetBlocked(target = {}) {
+      return Boolean(target.marchDisabled || target.blocked || target.disabled);
+    }
+
+    getMarchTargetBlockedText(target = {}) {
+      if (target.marchDisabledReason === 'EXPLORE_TARGET_TOO_FAR') return this.t('world.march.formation.targetTooFar');
+      return this.t('world.march.formation.routeBlocked');
+    }
+
     getWorldTargetPicker(uiState = {}) {
       const picker = uiState.worldTargetPicker || null;
       if (!picker || !Array.isArray(picker.candidates) || picker.candidates.length < 2) return null;
@@ -471,6 +480,8 @@
         known: target.known,
         terrain: target.terrain,
         terrainLabel: target.terrainLabel,
+        marchDisabled: Boolean(target.marchDisabled),
+        marchDisabledReason: target.marchDisabledReason || '',
         ...(target.combatEncounterId ? { combatEncounterId: target.combatEncounterId } : {}),
         ...(target.combatTarget ? { combatTarget: target.combatTarget } : {}),
       });
@@ -556,7 +567,8 @@
         const cardX = x + 12 + index * (cardW + gap);
         const empty = !this.formationHasMembers(formation);
         const busy = this.getFormationBusyInfo(formation, militaryState, state);
-        const disabled = empty || Boolean(busy);
+        const blocked = this.isMarchTargetBlocked(target);
+        const disabled = empty || Boolean(busy) || blocked;
         this.drawPanel(cardX, cardY, cardW, cardH, {
           fill: disabled ? 'rgba(41, 39, 32, 0.78)' : 'rgba(35, 49, 34, 0.84)',
           stroke: disabled ? 'rgba(255, 226, 177, 0.14)' : 'rgba(116, 211, 160, 0.44)',
@@ -589,7 +601,9 @@
             align: 'center',
           },
         );
-        const statusText = empty
+        const statusText = blocked
+          ? this.getMarchTargetBlockedText(target)
+          : empty
           ? this.t('world.march.formation.empty')
           : busy
             ? this.t('world.march.formation.busy')

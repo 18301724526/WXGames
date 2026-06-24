@@ -1,6 +1,7 @@
 const WorldMapService = require('../WorldMapService');
 const TerritoryService = require('../TerritoryService');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const WorldMarchCore = require('../../../shared/worldMarchCore');
 const {
   MAX_MANUAL_ROUTE_LENGTH,
   TUTORIAL_FIRST_SITE_GRANT_KEY,
@@ -40,9 +41,14 @@ function getExploreOrigin(gameState) {
 function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_SEED, options = {}) {
   const targetQ = toInteger(target?.q ?? target?.x, origin.q);
   const targetR = toInteger(target?.r ?? target?.y, origin.r);
-  const delta = WorldMapService.getWrappedDelta(origin, { q: targetQ, r: targetR });
-  const distance = Math.max(Math.abs(delta.q), Math.abs(delta.r));
-  if (distance <= 0) {
+  const routeResult = WorldMarchCore.evaluateLinearMarchRoute(origin, { q: targetQ, r: targetR }, {
+    maxLength: MAX_MANUAL_ROUTE_LENGTH,
+    width: WorldMapService.DEFAULT_WORLD_WIDTH,
+    height: WorldMapService.DEFAULT_WORLD_HEIGHT,
+    wrapping: true,
+    canTraverse: (step) => canTraverseRouteTile(seed, step.q, step.r, options),
+  });
+  if (routeResult.error === 'EXPLORE_TARGET_IS_ORIGIN') {
     // A formation already standing on a hostile encounter tile attacks it in
     // place: there is no travel, so engage on the spot via a single-step route
     // instead of rejecting the march as targeting its own origin.
@@ -63,33 +69,20 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     }
     return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: 'Explore target is already the origin.' };
   }
-  if (distance > MAX_MANUAL_ROUTE_LENGTH) {
+  if (routeResult.error === 'EXPLORE_TARGET_TOO_FAR') {
     return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: 'Explore target is too far.' };
   }
-  const route = [];
-  let q = origin.q;
-  let r = origin.r;
-  let remainingQ = delta.q;
-  let remainingR = delta.r;
-  for (let step = 1; step <= distance; step += 1) {
-    const stepQ = Math.sign(remainingQ);
-    const stepR = Math.sign(remainingR);
-    q += stepQ;
-    r += stepR;
-    remainingQ -= stepQ;
-    remainingR -= stepR;
-    if (!canTraverseRouteTile(seed, q, r, options)) {
-      return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
-    }
-    route.push({
-      q,
-      r,
-      step,
-      tileId: WorldMapService.getTileId(q, r),
-      revealed: false,
-      revealedAt: null,
-    });
+  if (routeResult.error === 'EXPLORE_ROUTE_BLOCKED') {
+    return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
   }
+  const route = (routeResult.route || []).map((step) => ({
+    q: step.q,
+    r: step.r,
+    step: step.step,
+    tileId: WorldMapService.getTileId(step.q, step.r),
+    revealed: false,
+    revealedAt: null,
+  }));
   const routeTarget = route.at(-1) || { q: origin.q, r: origin.r };
   return { success: true, route, target: { q: routeTarget.q, r: routeTarget.r } };
 }
