@@ -41,15 +41,44 @@ test('CanvasLayerRegistry defines the mature engine physical canvas stack', () =
   });
 
   const stack = CanvasLayerRegistry.getPhysicalLayerStack();
-  assert.deepEqual(stack.map((layer) => layer.key), ['worldMap', 'worldFog', 'worldActor', 'mainHud']);
-  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 1000]);
+  assert.deepEqual(stack.map((layer) => layer.key), [
+    'worldMap',
+    'worldFog',
+    'worldActor',
+    'mainHud',
+    'tutorialSpine',
+    'tutorialDialogue',
+  ]);
+  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 1000, 1001, 1002]);
   assert.equal(stack[0].cameraSpace, 'world');
   assert.equal(stack[1].cameraSpace, 'world-overlay');
   assert.equal(stack[2].cameraSpace, 'world-dynamic');
   assert.equal(stack[2].inputSurface, false);
   assert.equal(stack[3].cameraSpace, 'screen');
   assert.equal(stack[3].inputSurface, true);
+  assert.equal(stack[4].cameraSpace, 'screen-overlay');
+  assert.equal(stack[4].inputSurface, false);
+  assert.equal(stack[5].cameraSpace, 'screen-overlay');
+  assert.equal(stack[5].inputSurface, false);
   assert.equal(stack.filter((layer) => layer.inputSurface).length, 1);
+});
+
+test('CanvasLayerRegistry owns tutorial overlay layer options', () => {
+  assert.deepEqual(CanvasLayerRegistry.getLayerOptions('tutorialSpine', {
+    rect: { x: 24, y: 360, width: 160, height: 280 },
+  }), {
+    zIndex: 1001,
+    contextType: 'webgl',
+    pointerEvents: 'none',
+    rect: { x: 24, y: 360, width: 160, height: 280 },
+  });
+  assert.deepEqual(CanvasLayerRegistry.getLayerOptions('tutorialDialogue', {
+    rect: { x: 0, y: 0, width: 390, height: 693 },
+  }), {
+    zIndex: 1002,
+    pointerEvents: 'none',
+    rect: { x: 0, y: 0, width: 390, height: 693 },
+  });
 });
 
 test('CanvasLayerRegistry locks logical render queue and hit priority order', () => {

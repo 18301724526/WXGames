@@ -226,6 +226,43 @@ test('H5CanvasRuntime preserves the mature engine physical canvas stack styles',
   assert.equal(worldCanvas.style.pointerEvents, 'none');
 });
 
+test('H5CanvasRuntime clips fixed screen overlay layers to their declared rect', () => {
+  const document = createDocument();
+  const runtime = new H5CanvasRuntime({
+    document,
+    runtime: {
+      innerWidth: 390,
+      innerHeight: 844,
+      devicePixelRatio: 1,
+      addEventListener() {},
+    },
+  });
+
+  runtime.ensureCanvas();
+  const spineCanvas = runtime.ensureLayerCanvas('tutorialSpine', {
+    zIndex: 1001,
+    contextType: 'webgl',
+    rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+
+  assert.equal(spineCanvas.style.left, '18px');
+  assert.equal(spineCanvas.style.top, '119px');
+  assert.equal(spineCanvas.style.width, '108px');
+  assert.equal(spineCanvas.style.height, '240px');
+  assert.deepEqual(runtime.getLayerMetrics('tutorialSpine'), {
+    width: 108,
+    height: 240,
+    viewportWidth: 390,
+    viewportHeight: 693,
+    browserWidth: 390,
+    browserHeight: 844,
+    frameX: 0,
+    frameY: 75,
+    padding: 0,
+    rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+});
+
 test('H5CanvasRuntime browser dependencies load before the runtime script', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const viewportIndex = html.indexOf('js/platform/H5CanvasViewport.js');

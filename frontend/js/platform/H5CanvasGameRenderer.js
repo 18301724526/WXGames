@@ -32,6 +32,11 @@
       });
 
       this.h5Runtime = options.h5Runtime || null;
+      this.canvasLayerRegistry = options.canvasLayerRegistry || null;
+      this.ensureCanvasLayer = typeof options.ensureCanvasLayer === 'function' ? options.ensureCanvasLayer : null;
+      this.getCanvasLayerCanvas = typeof options.getCanvasLayerCanvas === 'function' ? options.getCanvasLayerCanvas : null;
+      this.getCanvasLayerMetrics = typeof options.getCanvasLayerMetrics === 'function' ? options.getCanvasLayerMetrics : null;
+      this.setCanvasLayerVisible = typeof options.setCanvasLayerVisible === 'function' ? options.setCanvasLayerVisible : null;
     }
 
     createImage(src) {

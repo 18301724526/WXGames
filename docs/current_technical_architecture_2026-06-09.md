@@ -43,6 +43,8 @@ backend config/domain/calculators
 | `worldFog` | 998 | `webgl` | `world-overlay` | no | optional visual plugin, gated by `FOG_OF_WAR_ENABLED` |
 | `worldActor` | 999 | `2d` | `world-dynamic` | no | units, march animation, actor hit-target source |
 | `mainHud` | 1000 | `2d` | `screen` | yes | HUD, panels, tutorial, feedback, input capture |
+| `tutorialSpine` | 1001 | `webgl` | `screen-overlay` | no | transparent tutorial Spine visual layer |
+| `tutorialDialogue` | 1002 | `2d` | `screen-overlay` | no | transparent tutorial dialogue visual layer |
 
 逻辑渲染队列 / Logical render queue:
 
@@ -66,6 +68,9 @@ mapBackground -> mapTile -> mapSite -> mapActor -> worldHud -> screenHud -> floa
 - The physical `worldMap` layer may publish `lastWorldTileMapContext` for later passes, but it must not draw actors, register actor hit targets, call `renderWorldMarchHud()`, or register formation-picker HUD targets.
 - The physical `worldActor` layer is the sole owner of world-coordinate actor drawing and actor hit-target source data. Runtime input still enters through `mainHud` and consumes the synchronized hit-target list.
 - The physical `mainHud` pass consumes the latest world-map / actor context and is the sole owner of map-home march command HUD drawing and command HUD hit targets.
+- Tutorial Spine animation is a registered transparent `tutorialSpine` physical layer. It must not be rendered through an unregistered full-frame canvas, an offscreen Spine canvas copied into `mainHud`, or any map/HUD clear strategy.
+- The `tutorialSpine` physical rect must be derived from the requested portrait rect and the loaded Spine skeleton bounds. Fixed view-focus constants or hardcoded crop dimensions are not allowed.
+- `tutorialDialogue` is a registered screen-overlay visual layer above `tutorialSpine`; it is not an input surface and must not replace `mainHud` hit-target ownership.
 - The map-home world viewport on `mainHud` is transparent by construction. HUD code may clear its whole frame for stale-pixel cleanup, but it must not call `clearRect(mapX, mapY, mapW, mapH)` or an equivalent map-viewport wipe as a business mechanism to reveal `worldMap`; see `docs/world_map_hud_transparency_contract_2026-06-19.md`.
 - Map-home layered rendering must separate visual layer validity from runtime hit-target preservation. `skipWorldMapLayer` and `preserveCanvas` may only be enabled from `WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(frameState)` when `visualLayerValid=true`; preserved hit targets (`hitTargetsPreserved=true`, `mapTargetCount=0`, or `sourceHitTargetCount=0`) are input-cache facts and must not prove that the baked `worldMap` layer can be reused.
 - Background world-map taps enter through `mainHud` coordinates. `WorldMapRuntime.getLayerPointFromHudPoint()` is the coordinate-space boundary: it converts HUD-space input into padded world-layer space and subtracts any temporary drag-layer transform before tile inference.

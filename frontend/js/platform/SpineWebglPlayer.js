@@ -34,10 +34,11 @@
       this.premultipliedAlpha = Boolean(options.premultipliedAlpha);
       this.background = options.background || null;
       this.fitPadding = Number(options.fitPadding ?? 1.08);
-      this.viewFocus = options.viewFocus || null;
       this.preserveDrawingBuffer = Boolean(options.preserveDrawingBuffer);
       this.onStatus = typeof options.onStatus === 'function' ? options.onStatus : null;
       this.onError = typeof options.onError === 'function' ? options.onError : null;
+      this.onBounds = typeof options.onBounds === 'function' ? options.onBounds : null;
+      this.lastBoundsSignature = '';
     }
 
     static isAvailable(spine = global.spine) {
@@ -99,7 +100,6 @@
         this.loop = options.loop !== false;
         this.premultipliedAlpha = Boolean(options.premultipliedAlpha ?? this.premultipliedAlpha);
         this.fitPadding = Number(options.fitPadding ?? this.fitPadding) || 1.08;
-        this.viewFocus = options.viewFocus || this.viewFocus;
         this.preserveDrawingBuffer = Boolean(options.preserveDrawingBuffer ?? this.preserveDrawingBuffer);
         this.targetFps = Number(options.targetFps ?? this.targetFps) || 0;
         this.frameIntervalMs = Number(options.frameIntervalMs)
@@ -136,6 +136,7 @@
         const skeletonData = skeletonJson.readSkeletonData(this.assetManager.get(this.jsonFile));
         this.skeleton = new this.spine.Skeleton(skeletonData);
         this.bounds = this.calculateSetupPoseBounds(this.skeleton);
+        this.emitBounds('setup');
         const animationStateData = new this.spine.AnimationStateData(skeletonData);
         animationStateData.defaultMix = 0;
         this.animationState = new this.spine.AnimationState(animationStateData);
@@ -157,6 +158,39 @@
       return { offset, size };
     }
 
+    getBoundsSummary() {
+      const offset = this.bounds?.offset || {};
+      const size = this.bounds?.size || {};
+      const x = Number(offset.x) || 0;
+      const y = Number(offset.y) || 0;
+      const width = Math.max(1, Number(size.x) || 1);
+      const height = Math.max(1, Number(size.y) || 1);
+      return {
+        x,
+        y,
+        width,
+        height,
+        centerX: x + width / 2,
+        centerY: y + height / 2,
+        aspectRatio: width / height,
+      };
+    }
+
+    emitBounds(reason = '') {
+      if (!this.onBounds || !this.bounds) return false;
+      const bounds = this.getBoundsSummary();
+      const signature = [
+        Math.round(bounds.x * 100),
+        Math.round(bounds.y * 100),
+        Math.round(bounds.width * 100),
+        Math.round(bounds.height * 100),
+      ].join(':');
+      if (signature === this.lastBoundsSignature) return false;
+      this.lastBoundsSignature = signature;
+      this.onBounds({ bounds, reason, player: this });
+      return true;
+    }
+
     resize() {
       if (!this.canvas || !this.gl || !this.mvp || !this.bounds) return false;
       const rect = this.canvas.getBoundingClientRect?.() || {};
@@ -175,16 +209,6 @@
       const bounds = this.bounds;
       const centerX = bounds.offset.x + bounds.size.x / 2;
       const centerY = bounds.offset.y + bounds.size.y / 2;
-      if (this.viewFocus) {
-        const focusCenterX = Number(this.viewFocus.centerX ?? centerX);
-        const focusCenterY = Number(this.viewFocus.centerY ?? centerY);
-        const requestedHeight = Number(this.viewFocus.height ?? this.viewFocus.worldHeight);
-        const viewHeight = Math.max(1, Number.isFinite(requestedHeight) ? requestedHeight : bounds.size.y * this.fitPadding);
-        const viewWidth = viewHeight * (viewport.width / Math.max(1, viewport.height));
-        this.mvp.ortho2d(focusCenterX - viewWidth / 2, focusCenterY - viewHeight / 2, viewWidth, viewHeight);
-        this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-        return true;
-      }
       const safeBoundsWidth = Math.max(1, bounds.size.x);
       const safeBoundsHeight = Math.max(1, bounds.size.y);
       const scale = Math.max(safeBoundsWidth / viewport.width, safeBoundsHeight / viewport.height) * this.fitPadding;

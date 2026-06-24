@@ -34,9 +34,27 @@
       inputSurface: true,
       role: 'screen-hud-input',
     }),
+    tutorialSpine: Object.freeze({
+      key: 'tutorialSpine',
+      zIndex: 1001,
+      contextType: 'webgl',
+      pointerEvents: 'none',
+      cameraSpace: 'screen-overlay',
+      inputSurface: false,
+      role: 'tutorial-spine-visual',
+    }),
+    tutorialDialogue: Object.freeze({
+      key: 'tutorialDialogue',
+      zIndex: 1002,
+      contextType: '2d',
+      pointerEvents: 'none',
+      cameraSpace: 'screen-overlay',
+      inputSurface: false,
+      role: 'tutorial-dialogue-visual',
+    }),
   });
 
-  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'mainHud']);
+  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'mainHud', 'tutorialSpine', 'tutorialDialogue']);
 
   const RENDER_QUEUE = Object.freeze([
     'worldPanel',

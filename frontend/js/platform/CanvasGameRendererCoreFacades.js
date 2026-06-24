@@ -327,11 +327,6 @@
       return result === undefined ? null : result;
     },
 
-    createTutorialSpineCanvas(...args) {
-      const result = this.delegateAssetRenderer('createTutorialSpineCanvas', args);
-      return result === undefined ? null : result;
-    },
-
     delegateWorldTileWaterRenderer(method, args = []) {
       const renderer = this.worldTileWaterRenderer;
       if (!renderer || typeof renderer[method] !== 'function') return undefined;

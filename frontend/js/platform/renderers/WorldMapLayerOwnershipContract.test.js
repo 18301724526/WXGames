@@ -18,6 +18,12 @@ const PRODUCTION_FILES = [
   'frontend/js/platform/renderers/WorldMapStaticLayerRenderer.js',
   'frontend/js/platform/renderers/WorldMapTileMapRenderer.js',
 ];
+const TUTORIAL_SPINE_FILES = [
+  'frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js',
+  'frontend/js/platform/SpineWebglPlayer.js',
+  'frontend/js/platform/renderers/CanvasAssetRenderer.js',
+  'frontend/js/platform/CanvasGameRendererCoreFacades.js',
+];
 
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
@@ -70,6 +76,25 @@ test('mainHud map-home world viewport stays transparent instead of clear-cutting
   assert.equal(source.includes('clearRect'), false);
   assert.equal(source.includes('this.drawPanel(x, y, width, height'), false);
   assert.equal(source.includes('hitTargetsOnly: skipWorldMapLayer'), true);
+});
+
+test('tutorial Spine uses a registered transparent layer and no detached canvas fallback', () => {
+  const registry = readProjectFile('frontend/js/platform/CanvasLayerRegistry.js');
+  const advisor = readProjectFile('frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js');
+
+  assert.equal(registry.includes('tutorialSpine'), true);
+  assert.equal(registry.includes("contextType: 'webgl'"), true);
+  assert.equal(registry.includes("pointerEvents: 'none'"), true);
+  assert.equal(advisor.includes("TUTORIAL_SPINE_LAYER_NAME = 'tutorialSpine'"), true);
+  assert.equal(advisor.includes('ensureTutorialSpineLayerCanvas'), true);
+  assert.equal(advisor.includes('fitSpineBoundsToRect'), true);
+
+  TUTORIAL_SPINE_FILES.forEach((file) => {
+    const source = readProjectFile(file);
+    assert.equal(source.includes('createTutorialSpineCanvas'), false, `${file} must not create detached Spine canvases`);
+    assert.equal(source.includes('TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS'), false, `${file} must not restore fixed Spine view focus`);
+    assert.equal(source.includes('viewFocus'), false, `${file} must not restore fixed Spine view focus`);
+  });
 });
 
 test('retired scout route cache API stays out of production renderers', () => {

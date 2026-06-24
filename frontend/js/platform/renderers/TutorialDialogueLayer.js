@@ -1,6 +1,17 @@
 (function (global) {
   const TUTORIAL_DIALOGUE_LAYER_NAME = 'tutorialDialogue';
-  const TUTORIAL_DIALOGUE_LAYER_Z_INDEX = 1001;
+
+  const CanvasLayerRegistry = (() => {
+    if (global.CanvasLayerRegistry) return global.CanvasLayerRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../CanvasLayerRegistry');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function getPixelRatio() {
     return Math.min(2, Math.max(1, Number(global.devicePixelRatio) || 1));
@@ -18,14 +29,20 @@
 
   function begin(renderer = {}) {
     const runtime = renderer.h5Runtime || null;
-    if (!runtime?.ensureLayerCanvas) return null;
+    const canEnsureLayer = typeof renderer.ensureCanvasLayer === 'function'
+      || typeof runtime?.ensureLayerCanvas === 'function';
+    if (!canEnsureLayer) return null;
     const layerRect = getLayerRect(renderer);
-    const canvas = runtime.ensureLayerCanvas(TUTORIAL_DIALOGUE_LAYER_NAME, {
-      contextType: '2d',
-      zIndex: TUTORIAL_DIALOGUE_LAYER_Z_INDEX,
+    const overrides = {
       pixelRatio: getPixelRatio(),
       rect: layerRect,
-    });
+    };
+    const canvas = typeof renderer.ensureCanvasLayer === 'function'
+      ? renderer.ensureCanvasLayer(TUTORIAL_DIALOGUE_LAYER_NAME, overrides)
+      : runtime.ensureLayerCanvas(
+        TUTORIAL_DIALOGUE_LAYER_NAME,
+        CanvasLayerRegistry?.getLayerOptions?.(TUTORIAL_DIALOGUE_LAYER_NAME, overrides) || overrides,
+      );
     const ctx = canvas?.getContext?.('2d') || null;
     if (!ctx) return null;
     runtime.setLayerVisible?.(TUTORIAL_DIALOGUE_LAYER_NAME, true);
@@ -65,7 +82,6 @@
 
   const api = {
     TUTORIAL_DIALOGUE_LAYER_NAME,
-    TUTORIAL_DIALOGUE_LAYER_Z_INDEX,
     begin,
     clear,
     withHostContext,

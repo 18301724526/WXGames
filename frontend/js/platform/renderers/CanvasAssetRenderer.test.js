@@ -328,12 +328,9 @@ test('CanvasAssetRenderer preserves work canvas creation and clipped canvas draw
   const renderer = new CanvasAssetRenderer({ host });
 
   const work = renderer.createTileWorkCanvas(12, 13);
-  const spine = renderer.createTutorialSpineCanvas(20, 21);
 
   assert.equal(work.width, 12);
   assert.equal(work.height, 13);
-  assert.equal(spine.width, 20);
-  assert.equal(typeof spine.addEventListener, 'function');
   assert.equal(renderer.drawCanvasClipped({ width: 100, height: 80 }, { x: 1, y: 2, width: 3, height: 4 }, 5, 6, 7, 8), true);
 });
 

@@ -608,36 +608,6 @@
       return canvas;
     }
 
-    createTutorialSpineCanvas(width, height) {
-      const safeWidth = Math.max(1, Math.floor(Number(width) || 1));
-      const safeHeight = Math.max(1, Math.floor(Number(height) || 1));
-      let canvas = null;
-      if (typeof global.OffscreenCanvas === 'function') {
-        try {
-          canvas = new global.OffscreenCanvas(safeWidth, safeHeight);
-        } catch (_) {
-          canvas = null;
-        }
-      }
-      if (!canvas && typeof OffscreenCanvas === 'function') {
-        try {
-          canvas = new OffscreenCanvas(safeWidth, safeHeight);
-        } catch (_) {
-          canvas = null;
-        }
-      }
-      if (!canvas) {
-        const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
-        if (doc?.createElement) canvas = doc.createElement('canvas');
-      }
-      if (!canvas) return null;
-      canvas.width = safeWidth;
-      canvas.height = safeHeight;
-      if (typeof canvas.addEventListener !== 'function') canvas.addEventListener = () => {};
-      if (typeof canvas.removeEventListener !== 'function') canvas.removeEventListener = () => {};
-      return canvas;
-    }
-
     drawCanvasClipped(sourceCanvas, sourceRect, x, y, width, height, alpha = 1) {
       if (!sourceCanvas || typeof this.ctx.drawImage !== 'function') return false;
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
