@@ -48,12 +48,12 @@
     return map;
   }
 
-  // Thin wrapper — the rule lives in shared/worldMarchPassability (C).
+  // Thin wrapper — the rule lives ONLY in shared/worldMarchPassability (C). No
+  // local terrain comparison: if C is unavailable we report "not blocked" rather
+  // than re-deriving the rule here (a second copy is exactly what we forbid).
   function isRouteTerrainBlocked(tile = null) {
-    if (WorldMarchPassability?.isTileMarchable) {
-      return !WorldMarchPassability.isTileMarchable(tile?.terrain, null);
-    }
-    return tile?.terrain === 'ocean';
+    if (!WorldMarchPassability?.isTileMarchable) return false;
+    return !WorldMarchPassability.isTileMarchable(tile?.terrain, null);
   }
 
   // D-LAYER: the frontend terrain oracle. It only knows DISCOVERED tiles; fog

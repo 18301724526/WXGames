@@ -456,6 +456,18 @@
         size: 10,
         color: intel.known ? '#74d3a0' : '#aeb0b8',
       });
+      // A-LAYER: consume the passability verdict (target.marchDisabled, decided by
+      // the single rule shared/worldMarchPassability and carried here via the
+      // hit-target + handler). A blocked target (e.g. visible ocean) shows the
+      // reason and offers NO march button and NO march hit-target; a marchable
+      // target gets the button. The rule is NOT re-derived here.
+      if (this.isMarchTargetBlocked(target)) {
+        this.drawText(this.getMarchTargetBlockedText(target), buttonRect.x, buttonRect.y + 21, {
+          size: 11,
+          color: '#d89a9a',
+        });
+        return true;
+      }
       this.drawButton(
         buttonRect.x,
         buttonRect.y,

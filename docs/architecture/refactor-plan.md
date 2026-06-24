@@ -59,18 +59,20 @@
 
 ## 4. 进度 / Status（每步更新这里）
 
-| 项                                          | 状态                    | 证据                                                                                           |
-| ------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
-| 架构标准文档                                | ✅ 完成                 | [module-pipeline-and-observability-standard.md](module-pipeline-and-observability-standard.md) |
-| 客户端 ECS 设计文档                         | ✅ 完成（设计，未实现） | [client-ecs-architecture.md](client-ecs-architecture.md)                                       |
-| 全项目审计                                  | ✅ 完成                 | 22 子系统，对抗式复核                                                                          |
-| **M1 服务端：passability C 模块**           | ✅ 完成                 | [shared/worldMarchPassability.js](../../shared/worldMarchPassability.js) + 8 单测              |
-| **M1 服务端：buildManualRoute→调 C**        | ✅ 完成                 | WorldExplorerRoutePlanner 改为 D 注入 + C 判定                                                 |
-| **M1 前端：route policy/按钮→消费 verdict** | ✅ 完成                 | WorldMarchRoutePolicy 瘦调用 C；已知海洋→canMarch=false→隐藏按钮                                |
-| **M1 部署 + 验证**                          | ✅ 完成                 | 部署 69e28734；拉取线上字节在 browser-mode VM 跑通：可见海洋→canMarch=false（按钮隐藏）         |
-| M0 ECS 基础设施                             | ⬜ 待办                 | —                                                                                              |
-| M1 客户端 ECS 化 passability                | ⬜ 待办（M0 后）        | —                                                                                              |
-| M2+ 其余子系统                              | ⬜ 待办                 | 见 §3                                                                                          |
+| 项                                          | 状态                    | 证据                                                                                               |
+| ------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| 架构标准文档                                | ✅ 完成                 | [module-pipeline-and-observability-standard.md](module-pipeline-and-observability-standard.md)     |
+| 客户端 ECS 设计文档                         | ✅ 完成（设计，未实现） | [client-ecs-architecture.md](client-ecs-architecture.md)                                           |
+| 全项目审计                                  | ✅ 完成                 | 22 子系统，对抗式复核                                                                              |
+| **M1 服务端：passability C 模块**           | ✅ 完成                 | [shared/worldMarchPassability.js](../../shared/worldMarchPassability.js) + 8 单测                  |
+| **M1 服务端：buildManualRoute→调 C**        | ✅ 完成                 | WorldExplorerRoutePlanner 改为 D 注入 + C 判定                                                     |
+| **M1 前端：route policy/按钮→消费 verdict** | ✅ 完成                 | WorldMarchRoutePolicy 瘦调用 C；已知海洋→canMarch=false→隐藏按钮                                   |
+| **M1 部署 + 验证**                          | ✅ 完成                 | 部署 69e28734；拉取线上字节在 browser-mode VM 跑通：可见海洋→canMarch=false（按钮隐藏）            |
+| **M1 真·按钮路径修复**                      | ✅ 完成                 | renderTargetHud 原来无条件画"行军"按钮(截图 bug)；改为消费 verdict：blocked→无按钮+提示；+回归测试 |
+| **M1 强制门禁（架构适应度函数）**           | ✅ 完成                 | worldMarchPassability.architecture.test.js：规则若重新散落到消费文件即构建失败                     |
+| M0 ECS 基础设施                             | ⬜ 待办                 | —                                                                                                  |
+| M1 客户端 ECS 化 passability                | ⬜ 待办（M0 后）        | —                                                                                                  |
+| M2+ 其余子系统                              | ⬜ 待办                 | 见 §3                                                                                              |
 
 ---
 
