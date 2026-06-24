@@ -4,6 +4,7 @@ require('../js/config/LocaleTextRegistry');
 require('../js/debug/ClientOperationLog');
 require('../js/config/FamousPortraitLayout');
 require('../../shared/worldMarchCore');
+require('../../shared/worldMarchPassability');
 require('../js/domain/TileCoord');
 require('../js/domain/WorldTopology');
 require('../js/domain/WorldChunkAddress');

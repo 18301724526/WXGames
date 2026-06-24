@@ -11,6 +11,19 @@
     return null;
   })();
 
+  // C-LAYER rules: the single place the "can I march onto this tile" rule lives.
+  const WorldMarchPassability = (() => {
+    if (global.WorldMarchPassability) return global.WorldMarchPassability;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/worldMarchPassability');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const MAX_MANUAL_ROUTE_LENGTH = 16;
 
   function normalizeCoord(coord = {}, fallback = {}) {
@@ -35,8 +48,23 @@
     return map;
   }
 
+  // Thin wrapper — the rule lives in shared/worldMarchPassability (C).
   function isRouteTerrainBlocked(tile = null) {
+    if (WorldMarchPassability?.isTileMarchable) {
+      return !WorldMarchPassability.isTileMarchable(tile?.terrain, null);
+    }
     return tile?.terrain === 'ocean';
+  }
+
+  // D-LAYER: the frontend terrain oracle. It only knows DISCOVERED tiles; fog
+  // tiles report 'unknown' so the shared rule treats them optimistically and the
+  // authoritative backend settles them.
+  function frontendTerrainOracle(knownTiles) {
+    const unknown = WorldMarchPassability?.TERRAIN_UNKNOWN || 'unknown';
+    return (q, r) => {
+      const tile = knownTiles.get(getTileKey({ q, r }));
+      return tile && tile.terrain ? tile.terrain : unknown;
+    };
   }
 
   function getMarchOrigin(state = {}, options = {}) {
@@ -71,25 +99,41 @@
     const coord = normalizeCoord(target);
     const origin = getMarchOrigin(state, { ...options, target });
     const knownTiles = getKnownTileMap(options.tileMapView || state.territoryState?.worldMap || {});
-    const routeResult = WorldMarchCore?.evaluateLinearMarchRoute
-      ? WorldMarchCore.evaluateLinearMarchRoute(origin, coord, {
-          maxLength: options.maxLength || MAX_MANUAL_ROUTE_LENGTH,
-          width: options.worldWidth || 1024,
-          height: options.worldHeight || 1024,
-          wrapping: options.wrapping !== false,
-          canTraverse: (step) => !isRouteTerrainBlocked(knownTiles.get(getTileKey(step))),
-        })
-      : { success: true, route: [] };
-    if (routeResult.success) {
-      return { canMarch: true, reason: '', origin, target: coord, route: routeResult.route || [] };
+    if (!WorldMarchPassability?.evaluateMarch) {
+      return {
+        canMarch: true,
+        reason: '',
+        origin,
+        target: coord,
+        route: [],
+        blockedStep: null,
+        hasUnknownOnRoute: false,
+      };
     }
-    return {
-      canMarch: false,
-      reason: routeResult.error || 'EXPLORE_ROUTE_BLOCKED',
-      blockedStep: routeResult.blockedStep || null,
+    // The passability DECISION lives in shared/worldMarchPassability (C). This
+    // A/B layer only injects the frontend terrain oracle (D) and consumes the
+    // verdict — no terrain rule of its own.
+    const verdict = WorldMarchPassability.evaluateMarch({
       origin,
       target: coord,
-      route: routeResult.route || [],
+      getTileTerrain: frontendTerrainOracle(knownTiles),
+      unit: options.unit || null,
+      maxLength: options.maxLength || MAX_MANUAL_ROUTE_LENGTH,
+      worldWidth: options.worldWidth || 1024,
+      worldHeight: options.worldHeight || 1024,
+      wrapping: options.wrapping !== false,
+      trace: global.WorldMarchTrace,
+      corr: options.corr || '',
+    });
+    return {
+      canMarch: verdict.canMarch,
+      reason: verdict.reason || '',
+      blocked: verdict.blocked,
+      blockedStep: verdict.blocked?.atTile || null,
+      hasUnknownOnRoute: verdict.hasUnknownOnRoute,
+      origin: verdict.origin,
+      target: verdict.target,
+      route: verdict.route || [],
     };
   }
 

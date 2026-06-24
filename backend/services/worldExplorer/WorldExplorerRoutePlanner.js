@@ -1,7 +1,8 @@
 const WorldMapService = require('../WorldMapService');
 const TerritoryService = require('../TerritoryService');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
-const WorldMarchCore = require('../../../shared/worldMarchCore');
+const WorldMarchPassability = require('../../../shared/worldMarchPassability');
+const WorldExplorerTrace = require('./WorldExplorerTrace');
 const {
   MAX_MANUAL_ROUTE_LENGTH,
   TUTORIAL_FIRST_SITE_GRANT_KEY,
@@ -38,20 +39,43 @@ function getExploreOrigin(gameState) {
   };
 }
 
+// D-LAYER: the backend terrain oracle. It knows every tile — a persisted tile if
+// one exists, otherwise the seed-generated terrain — and is injected into the
+// shared passability rule (C). It does no judging; it only returns terrain.
+function backendTerrainOracle(seed, options = {}) {
+  const gameState = options.gameState || null;
+  const now = options.now || new Date();
+  return (q, r) => {
+    if (gameState) {
+      const existing = getExistingWorldTileById(gameState, q, r, now);
+      if (existing) return existing.terrain;
+    }
+    return WorldMapService.chooseTerrain(seed, q, r);
+  };
+}
+
 function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_SEED, options = {}) {
   const targetQ = toInteger(target?.q ?? target?.x, origin.q);
   const targetR = toInteger(target?.r ?? target?.y, origin.r);
-  const routeResult = WorldMarchCore.evaluateLinearMarchRoute(origin, { q: targetQ, r: targetR }, {
+  // The "can this army march onto / across these tiles" decision lives in ONE
+  // place: shared/worldMarchPassability (C). Backend supplies the authoritative
+  // terrain oracle; the rule, the verdict, and the trace come from C.
+  const verdict = WorldMarchPassability.evaluateMarch({
+    origin,
+    target: { q: targetQ, r: targetR },
+    getTileTerrain: backendTerrainOracle(seed, options),
+    unit: options.unit || null,
     maxLength: MAX_MANUAL_ROUTE_LENGTH,
-    width: WorldMapService.DEFAULT_WORLD_WIDTH,
-    height: WorldMapService.DEFAULT_WORLD_HEIGHT,
+    worldWidth: WorldMapService.DEFAULT_WORLD_WIDTH,
+    worldHeight: WorldMapService.DEFAULT_WORLD_HEIGHT,
     wrapping: true,
-    canTraverse: (step) => canTraverseRouteTile(seed, step.q, step.r, options),
+    trace: WorldExplorerTrace,
+    corr: options.clientSequence || options.requestId || '',
   });
-  if (routeResult.error === 'EXPLORE_TARGET_IS_ORIGIN') {
-    // A formation already standing on a hostile encounter tile attacks it in
-    // place: there is no travel, so engage on the spot via a single-step route
-    // instead of rejecting the march as targeting its own origin.
+
+  // In-place combat: a formation standing on a hostile encounter tile attacks it
+  // without travelling, so engage on the spot instead of rejecting as origin.
+  if (verdict.reason === 'EXPLORE_TARGET_IS_ORIGIN') {
     if (options.combatEncounter) {
       return {
         success: true,
@@ -69,20 +93,16 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     }
     return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: 'Explore target is already the origin.' };
   }
-  if (routeResult.error === 'EXPLORE_TARGET_TOO_FAR') {
+  if (verdict.reason === 'EXPLORE_TARGET_TOO_FAR') {
     return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: 'Explore target is too far.' };
   }
-  // A blocked route is clamped to the last traversable tile (the coast) instead
-  // of rejected: the formation marches the shortest distance up to the blocker
-  // and stops there. evaluateLinearMarchRoute already returns the traversable
-  // prefix as routeResult.route, so we reuse it. Only a route with zero
-  // traversable steps (the very first step is water) is reported as blocked,
-  // because the formation cannot advance toward the target at all.
-  if (routeResult.error === 'EXPLORE_ROUTE_BLOCKED' && !(routeResult.route || []).length) {
+  if (!verdict.canMarch) {
+    // Authoritative block: the straight route to the target crosses impassable
+    // water. The client already hides the march button for tiles it can see are
+    // blocked; this rejects the fog case it could not predict.
     return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
   }
-  const clampedToCoast = routeResult.error === 'EXPLORE_ROUTE_BLOCKED';
-  const route = (routeResult.route || []).map((step) => ({
+  const route = verdict.route.map((step) => ({
     q: step.q,
     r: step.r,
     step: step.step,
@@ -91,23 +111,14 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     revealedAt: null,
   }));
   const routeTarget = route.at(-1) || { q: origin.q, r: origin.r };
-  return {
-    success: true,
-    ...(clampedToCoast
-      ? { clamped: true, blockedBy: 'ocean', blockedStep: routeResult.blockedStep || null }
-      : {}),
-    route,
-    target: { q: routeTarget.q, r: routeTarget.r },
-  };
+  return { success: true, route, target: { q: routeTarget.q, r: routeTarget.r } };
 }
 
+// Thin wrapper kept for the public contract and other callers. The rule itself
+// lives in shared/worldMarchPassability (C); this only supplies the backend D.
 function canTraverseRouteTile(seed, q, r, options = {}) {
-  const gameState = options.gameState || null;
-  if (gameState) {
-    const existing = getExistingWorldTileById(gameState, q, r, options.now || new Date());
-    if (existing) return existing.terrain !== 'ocean';
-  }
-  return WorldMapService.chooseTerrain(seed, q, r) !== 'ocean';
+  const terrain = backendTerrainOracle(seed, options)(q, r);
+  return WorldMarchPassability.isTileMarchable(terrain, options.unit || null);
 }
 
 function getStepDirection(from = {}, to = {}) {
