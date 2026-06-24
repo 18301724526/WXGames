@@ -539,6 +539,7 @@ function getClientEncounter(encounter = {}) {
     kind: encounter.kind || 'hostileForce',
     status: encounter.status || 'active',
     name: encounter.name || 'Hostile Force',
+    nameKey: encounter.nameKey || '',
     q,
     r,
     tileId,
