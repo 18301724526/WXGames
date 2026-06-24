@@ -1,6 +1,52 @@
 const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget');
+const { SchemaMigrationService } = require('../services/SchemaMigrationService');
 const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
+
+const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
+  ['revision', 'revision INTEGER DEFAULT 0'],
+  ['tutorial', 'tutorial TEXT'],
+  ['saveMetadata', 'saveMetadata TEXT'],
+  ['softGuideState', 'softGuideState TEXT'],
+  ['talentPolicies', 'talentPolicies TEXT'],
+  ['famousPeople', 'famousPeople TEXT'],
+  ['famousPersonState', 'famousPersonState TEXT'],
+  ['taskProgress', 'taskProgress TEXT'],
+  ['military', 'military TEXT'],
+  ['regularEventState', 'regularEventState TEXT'],
+  ['activeBuffs', 'activeBuffs TEXT'],
+  ['threatEventState', 'threatEventState TEXT'],
+  ['polity', 'polity TEXT'],
+  ['territories', 'territories TEXT'],
+  ['worldMap', 'worldMap TEXT'],
+  ['worldCombat', 'worldCombat TEXT'],
+  ['activeCityId', 'activeCityId TEXT'],
+  ['cities', 'cities TEXT'],
+  ['scoutedCoordinates', 'scoutedCoordinates TEXT'],
+  ['scoutState', 'scoutState TEXT'],
+  ['exploreMissions', 'exploreMissions TEXT'],
+  ['worldMarchClientReports', 'worldMarchClientReports TEXT'],
+  ['worldMarchVerification', 'worldMarchVerification TEXT'],
+  ['worldAi', 'worldAi TEXT'],
+  ['warMissions', 'warMissions TEXT'],
+  ['scoutReports', 'scoutReports TEXT'],
+]);
+
+function createGameStateSchemaMigrations() {
+  return [{
+    id: '001-game-states-compat-columns',
+    description: 'Backfill compatibility columns that predate the schema_migrations ledger.',
+    statements: GAME_STATE_COMPAT_COLUMNS.map(([, definition]) => `ALTER TABLE game_states ADD COLUMN ${definition}`),
+    apply(db) {
+      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
+      for (const [name, definition] of GAME_STATE_COMPAT_COLUMNS) {
+        if (!columns.has(name)) {
+          db.prepare(`ALTER TABLE game_states ADD COLUMN ${definition}`).run();
+        }
+      }
+    },
+  }];
+}
 
 class GameStateRepository {
   constructor(db) {
@@ -80,86 +126,7 @@ class GameStateRepository {
     `);
     this.spawnAuthority.init();
     this.worldMapAuthority.init();
-
-    const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
-    if (!columns.some((column) => column.name === 'revision')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN revision INTEGER DEFAULT 0').run();
-    }
-    if (!columns.some((column) => column.name === 'tutorial')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN tutorial TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'saveMetadata')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN saveMetadata TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'softGuideState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN softGuideState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'talentPolicies')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN talentPolicies TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'famousPeople')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN famousPeople TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'famousPersonState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN famousPersonState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'taskProgress')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN taskProgress TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'military')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN military TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'regularEventState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN regularEventState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'activeBuffs')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN activeBuffs TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'threatEventState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN threatEventState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'polity')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN polity TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'territories')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN territories TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldMap')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMap TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldCombat')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldCombat TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'activeCityId')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN activeCityId TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'cities')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN cities TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'scoutedCoordinates')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutedCoordinates TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'scoutState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'exploreMissions')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN exploreMissions TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldMarchClientReports')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMarchClientReports TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldMarchVerification')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMarchVerification TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldAi')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldAi TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'warMissions')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN warMissions TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'scoutReports')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutReports TEXT').run();
-    }
+    new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
   }
 

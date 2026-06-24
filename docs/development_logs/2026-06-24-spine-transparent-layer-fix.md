@@ -45,6 +45,12 @@ The tutorial advisor placement now uses the hand-tuned 430px-wide 9:16 baseline 
 
 These values are centralized in `TutorialAdvisorSpineLayoutConfig` and projected onto the active game frame. The tuner `previewClipRect` remains a diagnostic readout only; production code does not store or consume it. Physical clipping is still derived from the actual Spine skeleton bounds plus padding, while scale and position stay under the independent view transform.
 
+## Runtime Verification Note
+
+After deploying the tuned layout, the advisor briefly looked missing during user verification. Follow-up observation confirmed this was a network/resource-loading delay rather than a layout, clipping, or scale regression. Once the Spine resource finished loading, the advisor appeared in the expected screen area.
+
+Do not compensate for a transient missing animation by changing `targetRect`, `viewScale`, offsets, or physical clip policy. If this symptom returns, first inspect asset load timing, network errors, and the static-image fallback path.
+
 ## Non-Goals
 
 - No map/HUD clear strategy was introduced.

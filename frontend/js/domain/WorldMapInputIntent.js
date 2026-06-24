@@ -353,7 +353,7 @@
 
   function getSerializableSizeBytes(intent = {}) {
     const json = JSON.stringify(toSerializable(intent));
-    if (typeof Buffer !== 'undefined') return Buffer.byteLength(json, 'utf8');
+    if (global.Buffer?.byteLength) return global.Buffer.byteLength(json, 'utf8');
     if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(json).length;
     return json.length;
   }

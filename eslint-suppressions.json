@@ -138,9 +138,6 @@
     }
   },
   "frontend/js/domain/WorldMapInputIntent.js": {
-    "no-undef": {
-      "count": 1
-    },
     "no-unused-vars": {
       "count": 1
     }

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   ALLOWED_RESIDUALS,
+  resolveAuditProxy,
   validateAuditReport,
 } = require('./check-backend-security-audit');
 
@@ -45,4 +46,15 @@ test('backend security audit blocks unexpected or newly fixable vulnerabilities'
     }),
     /allowed residual now has a fix/,
   );
+});
+
+test('backend security audit resolves explicit proxy before platform fallback', () => {
+  assert.equal(
+    resolveAuditProxy({
+      NPM_AUDIT_PROXY: 'http://127.0.0.1:7897',
+      HTTPS_PROXY: 'http://ignored.example',
+    }, 'linux'),
+    'http://127.0.0.1:7897',
+  );
+  assert.equal(resolveAuditProxy({}, 'linux'), '');
 });

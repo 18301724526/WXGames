@@ -29,6 +29,27 @@ test('GameStateRepository persists task progress with the game state', () => {
   db.close();
 });
 
+test('GameStateRepository records schema migration ledger during init', () => {
+  const db = new Database(':memory:');
+  try {
+    const repository = new GameStateRepository(db);
+    repository.init();
+
+    const rows = db.prepare('SELECT id, status FROM schema_migrations ORDER BY id').all();
+    assert.deepEqual(rows, [{
+      id: '001-game-states-compat-columns',
+      status: 'applied',
+    }]);
+
+    const secondRepository = new GameStateRepository(db);
+    secondRepository.init();
+    const count = db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count;
+    assert.equal(count, 1);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository increments revision and rejects stale expected revisions', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
