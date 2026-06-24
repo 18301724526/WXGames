@@ -101,6 +101,21 @@
   - 不要把 tuner 的 `previewClipRect` 固化为生产裁剪矩形。
 - 下一轮新增引导时，必须走 `TutorialGuideFlowRegistry` / `TutorialGuideEventRegistry`，不要在 controller 或 renderer 里继续堆 step if 分支。
 
+## 晚间提交前验证
+
+- `node --check`：
+  - `backend/services/SchemaMigrationService.js`
+  - `backend/repositories/GameStateRepository.js`
+  - `backend/services/authService.js`
+  - `scripts/check-backend-security-audit.js`
+  - `frontend/js/domain/WorldMapInputIntent.js`
+- `node --test backend/tests/SchemaMigrationService.test.js backend/tests/GameStateRepository.test.js backend/tests/AuthServiceBotAccounts.test.js scripts/check-backend-security-audit.test.js`：通过，`39 pass`。
+- `git diff --check`：通过。
+- `npm run format:check`：通过。
+- `npm run lint`：通过。
+- `npm run test:architecture`：通过，`1107 pass`；包含 backend security audit guard，允许残留仍只有 `xlsx:high`。
+- staged diff 最终只包含 14 个真实变更文件；早前状态里出现的行尾刷新噪音未进入提交。
+
 ## 下一步建议
 
 1. 回来后先核对本日志对应的最新提交是否已经部署到 `origin/codex/battle-core-test-server`。
