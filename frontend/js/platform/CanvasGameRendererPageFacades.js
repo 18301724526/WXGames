@@ -672,11 +672,6 @@
       return result === undefined ? false : result;
     },
 
-    getTutorialAdvisorSpineFrame(...args) {
-      const result = this.delegateTutorialRenderer('getTutorialAdvisorSpineFrame', args);
-      return result === undefined ? null : result;
-    },
-
     renderMilitary(...args) {
       const result = this.delegateMilitaryRenderer('renderMilitary', args);
       return result === undefined ? false : result;

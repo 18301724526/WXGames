@@ -658,6 +658,106 @@ test('TutorialAdvisorCanvasRenderer renders advisor spine through registered cli
   }
 });
 
+test('TutorialAdvisorCanvasRenderer refreshes ready spine without invalidating world map caches', () => {
+  const calls = [];
+  const previousSpinePlayer = global.SpineWebglPlayer;
+  class FakeSpinePlayer {
+    constructor(options) {
+      this.status = 'loading';
+      calls.push(['construct', options]);
+    }
+
+    load() {
+      return true;
+    }
+
+    dispose() {}
+  }
+  FakeSpinePlayer.isAvailable = () => true;
+  try {
+    global.SpineWebglPlayer = FakeSpinePlayer;
+    const canvas = { style: {} };
+    const renderer = new TutorialAdvisorCanvasRenderer({
+      host: {
+        h5Runtime: {
+          width: 390,
+          height: 693,
+          ensureLayerCanvas() {
+            return canvas;
+          },
+          getLayerMetrics() {
+            return { width: 120, height: 240 };
+          },
+          setLayerVisible() {},
+        },
+        width: 390,
+        height: 693,
+        handleAssetsChanged() {
+          calls.push(['handleAssetsChanged']);
+        },
+        requestOverlayRenderFrame() {
+          calls.push(['requestOverlayRenderFrame']);
+        },
+      },
+    });
+
+    assert.equal(renderer.renderTutorialAdvisorSpineLayer(12, 44, 120, 240), true);
+    calls.find((call) => call[0] === 'construct')[1].onStatus({ status: 'ready' });
+
+    assert.equal(calls.some((call) => call[0] === 'requestOverlayRenderFrame'), true);
+    assert.equal(calls.some((call) => call[0] === 'handleAssetsChanged'), false);
+  } finally {
+    global.SpineWebglPlayer = previousSpinePlayer;
+  }
+});
+
+test('TutorialAdvisorCanvasRenderer never falls back to asset invalidation for ready spine', () => {
+  const calls = [];
+  const previousSpinePlayer = global.SpineWebglPlayer;
+  class FakeSpinePlayer {
+    constructor(options) {
+      calls.push(['construct', options]);
+    }
+
+    load() {
+      return true;
+    }
+
+    dispose() {}
+  }
+  FakeSpinePlayer.isAvailable = () => true;
+  try {
+    global.SpineWebglPlayer = FakeSpinePlayer;
+    const renderer = new TutorialAdvisorCanvasRenderer({
+      host: {
+        h5Runtime: {
+          width: 390,
+          height: 693,
+          ensureLayerCanvas() {
+            return { style: {} };
+          },
+          getLayerMetrics() {
+            return { width: 120, height: 240 };
+          },
+          setLayerVisible() {},
+        },
+        width: 390,
+        height: 693,
+        handleAssetsChanged() {
+          calls.push(['handleAssetsChanged']);
+        },
+      },
+    });
+
+    assert.equal(renderer.renderTutorialAdvisorSpineLayer(12, 44, 120, 240), true);
+    calls.find((call) => call[0] === 'construct')[1].onStatus({ status: 'ready' });
+
+    assert.equal(calls.some((call) => call[0] === 'handleAssetsChanged'), false);
+  } finally {
+    global.SpineWebglPlayer = previousSpinePlayer;
+  }
+});
+
 test('TutorialAdvisorCanvasRenderer keeps runtime fallback inside registered spine layer contract', () => {
   const calls = [];
   const previousSpinePlayer = global.SpineWebglPlayer;

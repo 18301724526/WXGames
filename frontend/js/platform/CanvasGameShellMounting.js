@@ -173,6 +173,7 @@ createRenderer(canvas) {
         getCanvasLayerCanvas: this.getCanvasLayerCanvas?.bind(this),
         getCanvasLayerMetrics: this.getCanvasLayerMetrics?.bind(this),
         setCanvasLayerVisible: this.setCanvasLayerVisible?.bind(this),
+        requestOverlayRenderFrame: this.requestOverlayRenderFrame?.bind(this),
         assetCache: sharedAssetCache,
         assetMetricsCache: sharedAssetMetricsCache,
         worldTileMaskCache: sharedWorldTileMaskCache,

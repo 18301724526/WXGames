@@ -8,7 +8,17 @@ When the tutorial advisor Spine animation appeared, the tile map could disappear
 
 The tutorial advisor Spine renderer created a WebGL visual surface outside the registered physical canvas stack. That surface could occupy the full game frame above `worldMap` and `worldActor`, so WebView canvas compositing could hide the tile map even though the map layer was still alive and populated.
 
-This was not a world-map cache invalidation issue and not a case for adding map clear or repaint workarounds.
+Follow-up inspection found a second active failure mode: when the registered Spine layer reached `ready`, the advisor renderer called the generic asset-change hook. That hook is correct for shared PNG/JPG assets, but it invalidates world-map tile caches and schedules a render. In the map-home runtime path, a same-frame render can hit stale baked-layer metadata or throttling while the shell still uses the frame-state result to drive `worldMap` visibility. The visible symptom is the physical `worldMap` canvas being hidden or left without a committed redraw while the background remains visible.
+
+The deterministic chain is:
+
+1. Tutorial advisor Spine becomes ready.
+2. `TutorialAdvisorCanvasRenderer` calls generic `handleAssetsChanged()`.
+3. The main renderer invalidates world tile caches and schedules a shell render.
+4. `CanvasGameShell.renderReadOnly()` evaluates the runtime map frame while the baked layer is stale or inside the frame throttle window.
+5. `setWorldMapLayerVisible(false)` can hide the map layer, exposing the background image.
+
+This was not fixed by adding map clear strategies. The fix keeps Spine as an independent transparent layer and prevents it from owning world-map cache or visibility policy.
 
 ## Fix
 
@@ -20,19 +30,25 @@ This was not a world-map cache invalidation issue and not a case for adding map 
 - Removed fixed Spine `viewFocus` support from `SpineWebglPlayer`.
 - Added skeleton-bounds reporting from `SpineWebglPlayer` and fitted the physical `tutorialSpine` rect from the requested portrait rect plus actual Spine bounds.
 - Kept player input ownership on `mainHud`; tutorial overlay layers use `pointer-events: none`.
+- Retired the remaining `getTutorialAdvisorSpineFrame` facade/fallback path so Spine cannot be treated as a frame source drawn back into the HUD canvas.
+- Changed Spine `ready` handling to request a narrow overlay render frame when available, and never invoke the generic asset-change hook that invalidates world-map caches.
+- Hardened map-home rendering so an invalid baked world-map layer forces a runtime redraw and cannot be hidden by a same-frame throttle race.
 
 ## Non-Goals
 
 - No map/HUD clear strategy was introduced.
 - No full-screen Spine overlay was retained.
 - No hardcoded Spine crop rectangle or fixed view-focus constant was retained.
+- No Spine readiness callback is allowed to invalidate world-map tile caches.
 
 ## Regression Coverage
 
 - `CanvasLayerRegistry.test.js` verifies tutorial overlay layer registration and stack order.
 - `H5CanvasRuntime.test.js` verifies fixed overlay rect clipping and metrics.
 - `TutorialCanvasRenderer.test.js` verifies registered clipped Spine layer creation, skeleton-bounds rect fitting, and runtime fallback registry options.
-- `WorldMapLayerOwnershipContract.test.js` rejects detached Spine canvas fallback and fixed view-focus restoration.
+- `TutorialCanvasRenderer.test.js` verifies Spine readiness requests an overlay render frame without calling `handleAssetsChanged()`, and does not fall back to asset invalidation when no render callback is injected.
+- `CanvasGameShell.test.js` verifies stale baked world-map backing stores force a redraw instead of hiding the world-map layer.
+- `WorldMapLayerOwnershipContract.test.js` rejects detached Spine canvas fallback, retired Spine frame fallbacks, and fixed view-focus restoration.
 
 ## Verification
 
@@ -46,6 +62,17 @@ node --test frontend/js/platform/CanvasLayerRegistry.test.js frontend/js/platfor
 ```
 
 Result: 56 focused tests passed.
+
+Follow-up verification:
+
+```powershell
+node --test frontend/js/platform/renderers/TutorialCanvasRenderer.test.js
+node --test frontend/js/platform/CanvasGameShell.test.js
+node --test frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js
+npm run test:architecture
+```
+
+Result: focused tests passed, and architecture smoke passed with 1107 tests.
 
 ## Risk And Rollback
 

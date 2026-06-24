@@ -92,6 +92,7 @@ test('tutorial Spine uses a registered transparent layer and no detached canvas 
   TUTORIAL_SPINE_FILES.forEach((file) => {
     const source = readProjectFile(file);
     assert.equal(source.includes('createTutorialSpineCanvas'), false, `${file} must not create detached Spine canvases`);
+    assert.equal(source.includes('getTutorialAdvisorSpineFrame'), false, `${file} must not keep retired Spine frame fallbacks`);
     assert.equal(source.includes('TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS'), false, `${file} must not restore fixed Spine view focus`);
     assert.equal(source.includes('viewFocus'), false, `${file} must not restore fixed Spine view focus`);
   });

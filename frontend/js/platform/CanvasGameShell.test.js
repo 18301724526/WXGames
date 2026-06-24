@@ -1162,7 +1162,7 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
   assert.equal(shell.renderReadOnly(state, 'military'), true);
 
   assert.deepEqual(calls, [
-    ['renderRuntimeWorldMap', 'military', false],
+    ['renderRuntimeWorldMap', 'military', true],
     ['visible', true],
     ['render', true, false],
   ]);
@@ -1246,6 +1246,84 @@ test('CanvasGameShell does not skip map layer when hit targets are preserved but
     ['renderRuntimeWorldMap'],
     ['visible', false],
     ['render', false, false, undefined],
+  ]);
+});
+
+test('CanvasGameShell forces world map redraw instead of hiding an invalid baked layer', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+  };
+  const runtime = {
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+    bakedLayerState: {
+      epoch: 1,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    },
+    getBakedLayerState() {
+      return this.bakedLayerState;
+    },
+    isMapBakeDirty() {
+      return false;
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.getCanvasLayerBackingStoreState = () => ({
+    epoch: 2,
+    width: 300,
+    height: 200,
+    pixelRatio: 1,
+    reason: 'resize',
+  });
+  shell.getCanvasLayerMetrics = () => ({ width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 });
+  shell.setWorldMapLayerVisible = (visible) => {
+    calls.push(['visible', visible]);
+    return true;
+  };
+  shell.renderRuntimeWorldMap = (renderState, options) => {
+    calls.push(['renderRuntimeWorldMap', Boolean(options.force)]);
+    runtime.bakedLayerState = {
+      epoch: 2,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    };
+    return true;
+  };
+  shell.worldMapRenderer = {};
+  shell.worldMapRuntime = runtime;
+  shell.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+  };
+
+  assert.equal(shell.renderReadOnly(state, 'military'), true);
+
+  assert.deepEqual(calls, [
+    ['renderRuntimeWorldMap', true],
+    ['visible', true],
+    ['render', true, false],
   ]);
 });
 

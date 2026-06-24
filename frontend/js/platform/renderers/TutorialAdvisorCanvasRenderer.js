@@ -69,16 +69,6 @@
 
     renderTutorialIntroAdvisorPortrait(x, y, width, height) {
       if (this.renderTutorialAdvisorSpineLayer(x, y, width, height)) return true;
-      const spineFrame = this.getTutorialAdvisorSpineFrame();
-      if (spineFrame && typeof this.ctx.drawImage === 'function') {
-        this.ctx.save?.();
-        this.ctx.beginPath?.();
-        this.ctx.rect?.(x, y, width, height);
-        this.ctx.clip?.();
-        this.drawTutorialAdvisorImageCover(spineFrame, 0, 0, spineFrame.width, spineFrame.height, x, y, width, height);
-        this.ctx.restore?.();
-        return true;
-      }
       const image = this.getAsset('assets/art/spine/tutorial/advisor/tutorial_advisor.png');
       this.ctx.save?.();
       this.ctx.beginPath?.();
@@ -227,7 +217,9 @@
           else runtime.setLayerVisible?.(TUTORIAL_SPINE_LAYER_NAME, false);
         },
         onStatus: (event = {}) => {
-          if (event.status === 'ready') this.handleAssetsChanged();
+          if (event.status === 'ready') {
+            if (typeof this.requestOverlayRenderFrame === 'function') this.requestOverlayRenderFrame();
+          }
         },
       });
       this.tutorialAdvisorSpine = { canvas, player, mode: 'layer', targetRect, layerRect };
@@ -276,14 +268,6 @@
       }
       this.ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, dx, dy, targetW, targetH);
       return true;
-    }
-
-    getTutorialAdvisorSpineFrame() {
-      if (this.tutorialAdvisorSpineFailed) return null;
-      const existing = this.tutorialAdvisorSpine;
-      if (existing?.mode === 'layer') return null;
-      if (existing?.player?.status === 'ready' && existing.canvas) return existing.canvas;
-      return null;
     }
   }
 

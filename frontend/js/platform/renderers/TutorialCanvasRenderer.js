@@ -76,11 +76,6 @@
       return result === undefined ? false : result;
     }
 
-    getTutorialAdvisorSpineFrame(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('getTutorialAdvisorSpineFrame', args);
-      return result === undefined ? null : result;
-    }
-
     renderTutorialIntro(state = {}, options = {}) {
       const intro = options.tutorialIntro || null;
       if (!intro?.active || !this.ctx) {

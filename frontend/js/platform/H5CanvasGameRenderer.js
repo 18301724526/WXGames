@@ -37,6 +37,9 @@
       this.getCanvasLayerCanvas = typeof options.getCanvasLayerCanvas === 'function' ? options.getCanvasLayerCanvas : null;
       this.getCanvasLayerMetrics = typeof options.getCanvasLayerMetrics === 'function' ? options.getCanvasLayerMetrics : null;
       this.setCanvasLayerVisible = typeof options.setCanvasLayerVisible === 'function' ? options.setCanvasLayerVisible : null;
+      this.requestOverlayRenderFrame = typeof options.requestOverlayRenderFrame === 'function'
+        ? options.requestOverlayRenderFrame
+        : null;
     }
 
     createImage(src) {

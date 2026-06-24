@@ -162,6 +162,10 @@ requestRenderAnimationFrame(action = {}) {
       return true;
     },
 
+requestOverlayRenderFrame() {
+      return this.requestRenderAnimationFrame({ type: 'overlayRenderFrame' });
+    },
+
 startTransitionTimer() {
       if (this.transitionTimer || !this.runtime?.setInterval) return false;
       this.transitionTimer = this.runtime.setInterval(() => {
@@ -541,13 +545,15 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
        };
       let worldMapLayerRendered = false;
       let worldMapFrameState = null;
+      let worldMapLayerVisible = false;
       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
-         worldMapLayerRendered = this.shouldRenderRuntimeWorldMap(state, renderOptions)
+         const hasValidWorldMapLayer = this.hasValidBakedWorldMapLayer?.() !== false;
+         worldMapLayerRendered = (this.shouldRenderRuntimeWorldMap(state, renderOptions) || !hasValidWorldMapLayer)
            ? this.renderRuntimeWorldMap(state, {
              ...renderOptions,
-             force: renderOptions.force,
+             force: renderOptions.force || !hasValidWorldMapLayer,
            }) !== false
-           : this.hasValidBakedWorldMapLayer?.() !== false;
+           : hasValidWorldMapLayer;
          const bakedLayerValidity = typeof this.getWorldMapBakedLayerValidity === 'function'
            ? this.getWorldMapBakedLayerValidity()
            : null;
@@ -560,6 +566,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
          worldMapLayerRendered = WorldMapRuntimeRenderPolicy?.canSkipWorldMapLayer
            ? WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(worldMapFrameState)
            : Boolean(worldMapLayerRendered);
+         worldMapLayerVisible = Boolean(worldMapLayerRendered || worldMapFrameState?.visualLayerValid);
          const runtimeRenderResult = global.CodexWorldMapDiag?.summarizeRenderResult?.(
            this.lastWorldMapLayerRenderResult || this.worldMapRenderer?.lastWorldMapLayerRenderResult || null,
          );
@@ -578,6 +585,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
          });
        } else {
          worldMapLayerRendered = this.renderWorldMapLayer(state, renderOptions) !== false;
+         worldMapLayerVisible = Boolean(worldMapLayerRendered);
          const directRenderResult = global.CodexWorldMapDiag?.summarizeRenderResult?.(
            this.lastWorldMapLayerRenderResult || this.worldMapRenderer?.lastWorldMapLayerRenderResult || null,
          );
@@ -594,7 +602,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
            renderResult: directRenderResult,
          });
       }
-      this.setWorldMapLayerVisible(worldMapLayerRendered);
+      this.setWorldMapLayerVisible(worldMapLayerVisible);
       const refreshedTutorialHighlight = typeof this.refreshTutorialHighlightTarget === 'function'
         ? this.refreshTutorialHighlightTarget(this.tutorialHighlight)
         : this.tutorialHighlight;
