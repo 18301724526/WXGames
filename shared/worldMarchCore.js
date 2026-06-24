@@ -128,9 +128,7 @@ function buildLinearMarchRoute(origin = {}, target = {}, options = {}) {
 function evaluateLinearMarchRoute(origin = {}, target = {}, options = {}) {
   const plan = buildLinearMarchRoute(origin, target, options);
   if (!plan.success) return plan;
-  const canTraverse = typeof options.canTraverse === 'function'
-    ? options.canTraverse
-    : () => true;
+  const canTraverse = typeof options.canTraverse === 'function' ? options.canTraverse : () => true;
   for (const step of plan.route) {
     if (!canTraverse(step)) {
       return {

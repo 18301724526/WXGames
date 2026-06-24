@@ -29,7 +29,8 @@
     (Array.isArray(tileMapView?.tiles) ? tileMapView.tiles : []).forEach((tile) => {
       if (!tile || typeof tile !== 'object') return;
       const coord = normalizeCoord(tile);
-      if (Number.isFinite(Number(coord.q)) && Number.isFinite(Number(coord.r))) map.set(coord.tileId, tile);
+      if (Number.isFinite(Number(coord.q)) && Number.isFinite(Number(coord.r)))
+        map.set(coord.tileId, tile);
     });
     return map;
   }
@@ -44,18 +45,25 @@
     const target = options.target || null;
     if (target?.missionId || target?.actorId) {
       const missionId = target.missionId || target.actorId;
-      const missions = state.worldExplorerState?.missions || state.worldExplorerState?.exploreMissions || [];
-      const mission = (Array.isArray(missions) ? missions : [])
-        .find((item) => item?.id === missionId || item?.missionId === missionId) || null;
-      if (mission) return normalizeCoord(mission.position || mission.target || mission.origin || {});
+      const missions =
+        state.worldExplorerState?.missions || state.worldExplorerState?.exploreMissions || [];
+      const mission =
+        (Array.isArray(missions) ? missions : []).find(
+          (item) => item?.id === missionId || item?.missionId === missionId,
+        ) || null;
+      if (mission)
+        return normalizeCoord(mission.position || mission.target || mission.origin || {});
     }
     const activeCityId = state.activeCityId || state.cityState?.activeCityId || 'capital';
     const territories = state.territoryState?.territories || state.territories || [];
-    const territory = (Array.isArray(territories) ? territories : [])
-      .find((item) => item?.id === activeCityId || item?.territoryId === activeCityId)
-      || (Array.isArray(territories) ? territories : []).find((item) => item?.id === 'capital')
-      || null;
-    const worldOrigin = state.territoryState?.worldMap?.origin || state.territoryState?.worldMap?.worldOrigin || null;
+    const territory =
+      (Array.isArray(territories) ? territories : []).find(
+        (item) => item?.id === activeCityId || item?.territoryId === activeCityId,
+      ) ||
+      (Array.isArray(territories) ? territories : []).find((item) => item?.id === 'capital') ||
+      null;
+    const worldOrigin =
+      state.territoryState?.worldMap?.origin || state.territoryState?.worldMap?.worldOrigin || null;
     return normalizeCoord(territory || worldOrigin || {});
   }
 
@@ -65,12 +73,12 @@
     const knownTiles = getKnownTileMap(options.tileMapView || state.territoryState?.worldMap || {});
     const routeResult = WorldMarchCore?.evaluateLinearMarchRoute
       ? WorldMarchCore.evaluateLinearMarchRoute(origin, coord, {
-        maxLength: options.maxLength || MAX_MANUAL_ROUTE_LENGTH,
-        width: options.worldWidth || 1024,
-        height: options.worldHeight || 1024,
-        wrapping: options.wrapping !== false,
-        canTraverse: (step) => !isRouteTerrainBlocked(knownTiles.get(getTileKey(step))),
-      })
+          maxLength: options.maxLength || MAX_MANUAL_ROUTE_LENGTH,
+          width: options.worldWidth || 1024,
+          height: options.worldHeight || 1024,
+          wrapping: options.wrapping !== false,
+          canTraverse: (step) => !isRouteTerrainBlocked(knownTiles.get(getTileKey(step))),
+        })
       : { success: true, route: [] };
     if (routeResult.success) {
       return { canMarch: true, reason: '', origin, target: coord, route: routeResult.route || [] };

@@ -48,16 +48,20 @@ test('WorldMarchCoreAdapter exposes the shared core in classic browser script mo
     toPlainJson(sharedCore.computeMarchState(createMission(), nowMs)),
   );
   assert.deepEqual(
-    toPlainJson(browserCore.evaluateLinearMarchRoute(
-      { q: 0, r: 0 },
-      { q: 3, r: 0 },
-      { maxLength: 16, canTraverse: (step) => step.q !== 2 },
-    )),
-    toPlainJson(sharedCore.evaluateLinearMarchRoute(
-      { q: 0, r: 0 },
-      { q: 3, r: 0 },
-      { maxLength: 16, canTraverse: (step) => step.q !== 2 },
-    )),
+    toPlainJson(
+      browserCore.evaluateLinearMarchRoute(
+        { q: 0, r: 0 },
+        { q: 3, r: 0 },
+        { maxLength: 16, canTraverse: (step) => step.q !== 2 },
+      ),
+    ),
+    toPlainJson(
+      sharedCore.evaluateLinearMarchRoute(
+        { q: 0, r: 0 },
+        { q: 3, r: 0 },
+        { maxLength: 16, canTraverse: (step) => step.q !== 2 },
+      ),
+    ),
   );
 });
 

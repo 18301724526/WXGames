@@ -34,11 +34,13 @@ test('WorldMarchRoutePolicy derives origin from an idle selected mission before 
   const state = {
     activeCityId: 'capital',
     worldExplorerState: {
-      missions: [{
-        id: 'idle-1',
-        status: 'idle',
-        position: { q: 4, r: -2 },
-      }],
+      missions: [
+        {
+          id: 'idle-1',
+          status: 'idle',
+          position: { q: 4, r: -2 },
+        },
+      ],
     },
     territoryState: {
       territories: [{ id: 'capital', q: 0, r: 0 }],
