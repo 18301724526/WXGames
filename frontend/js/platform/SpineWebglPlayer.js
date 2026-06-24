@@ -26,6 +26,9 @@
       this.logicalHeight = Number(options.logicalHeight) || 0;
       this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || Infinity;
       this.viewportRect = options.viewportRect || null;
+      this.viewScale = Math.max(0.01, Number(options.viewScale) || 1);
+      this.viewOffsetX = Number(options.viewOffsetX) || 0;
+      this.viewOffsetY = Number(options.viewOffsetY) || 0;
       this.assetBase = '';
       this.jsonFile = '';
       this.atlasFile = '';
@@ -109,6 +112,9 @@
         this.logicalHeight = Number(options.logicalHeight) || this.logicalHeight;
         this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || this.maxDevicePixelRatio || Infinity;
         this.viewportRect = options.viewportRect || this.viewportRect || null;
+        this.viewScale = Math.max(0.01, Number(options.viewScale ?? this.viewScale) || 1);
+        this.viewOffsetX = Number(options.viewOffsetX ?? this.viewOffsetX) || 0;
+        this.viewOffsetY = Number(options.viewOffsetY ?? this.viewOffsetY) || 0;
         this.background = options.background ?? this.background;
         this.assetManager = new this.spine.webgl.AssetManager(this.context, this.assetBase);
         this.assetManager.loadText(this.jsonFile);
@@ -211,10 +217,16 @@
       const centerY = bounds.offset.y + bounds.size.y / 2;
       const safeBoundsWidth = Math.max(1, bounds.size.x);
       const safeBoundsHeight = Math.max(1, bounds.size.y);
-      const scale = Math.max(safeBoundsWidth / viewport.width, safeBoundsHeight / viewport.height) * this.fitPadding;
+      const visualScale = Math.max(0.01, Number(this.viewScale) || 1);
+      const scale = (
+        Math.max(safeBoundsWidth / viewport.width, safeBoundsHeight / viewport.height)
+        * this.fitPadding
+      ) / visualScale;
       const viewWidth = viewport.width * Math.max(scale, 0.0001);
       const viewHeight = viewport.height * Math.max(scale, 0.0001);
-      this.mvp.ortho2d(centerX - viewWidth / 2, centerY - viewHeight / 2, viewWidth, viewHeight);
+      const viewCenterX = centerX - (Number(this.viewOffsetX) || 0) * scale;
+      const viewCenterY = centerY + (Number(this.viewOffsetY) || 0) * scale;
+      this.mvp.ortho2d(viewCenterX - viewWidth / 2, viewCenterY - viewHeight / 2, viewWidth, viewHeight);
       this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
       return true;
     }
@@ -237,6 +249,19 @@
 
     setViewportRect(rect = null) {
       this.viewportRect = rect || null;
+      return true;
+    }
+
+    setViewTransform(options = {}) {
+      if (options.viewportRect !== undefined) this.viewportRect = options.viewportRect || null;
+      if (options.fitPadding !== undefined) {
+        this.fitPadding = Number(options.fitPadding) || this.fitPadding || 1.08;
+      }
+      if (options.viewScale !== undefined) {
+        this.viewScale = Math.max(0.01, Number(options.viewScale) || 1);
+      }
+      if (options.viewOffsetX !== undefined) this.viewOffsetX = Number(options.viewOffsetX) || 0;
+      if (options.viewOffsetY !== undefined) this.viewOffsetY = Number(options.viewOffsetY) || 0;
       return true;
     }
 

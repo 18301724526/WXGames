@@ -12,6 +12,28 @@
   })();
 
   const TUTORIAL_ADVISOR_SPINE_ALPHA = 1;
+  const TutorialAdvisorSpineLayoutConfig = (() => {
+    if (global.TutorialAdvisorSpineLayoutConfig) return global.TutorialAdvisorSpineLayoutConfig;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./TutorialAdvisorSpineLayoutConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const TUTORIAL_ADVISOR_SPINE_DEFAULT_VIEW = Object.freeze({
+    fitPadding: 1,
+    viewScale: 1,
+    viewOffsetX: 0,
+    viewOffsetY: 0,
+  });
+  const TUTORIAL_ADVISOR_SPINE_DEFAULT_CLIP = Object.freeze({
+    mode: 'autoFromSkeletonBounds',
+    clipPadding: 0,
+  });
   const TUTORIAL_SPINE_LAYER_NAME = 'tutorialSpine';
 
   const CanvasLayerRegistry = (() => {
@@ -121,28 +143,89 @@
       return rect;
     }
 
-    fitSpineBoundsToRect(rect = {}, bounds = null) {
-      const base = this.normalizeSpineLayerRect(rect.x, rect.y, rect.width, rect.height);
+    areSpineLayerRectsEqual(left = {}, right = {}) {
+      return Math.round(Number(left?.x) || 0) === Math.round(Number(right?.x) || 0)
+        && Math.round(Number(left?.y) || 0) === Math.round(Number(right?.y) || 0)
+        && Math.round(Number(left?.width) || 0) === Math.round(Number(right?.width) || 0)
+        && Math.round(Number(left?.height) || 0) === Math.round(Number(right?.height) || 0);
+    }
+
+    getTutorialAdvisorLayoutOptions() {
+      const runtime = this.h5Runtime || null;
+      return {
+        width: Number(runtime?.width || this.width) || 0,
+        height: Number(runtime?.height || this.height) || 0,
+      };
+    }
+
+    getTutorialAdvisorSpineViewOptions(overrides = {}) {
+      const source = {
+        ...TUTORIAL_ADVISOR_SPINE_DEFAULT_VIEW,
+        ...(TutorialAdvisorSpineLayoutConfig?.getAdvisorSpineView?.(this.getTutorialAdvisorLayoutOptions()) || {}),
+        ...(this.tutorialAdvisorSpineView || {}),
+        ...(overrides || {}),
+      };
+      return {
+        fitPadding: Number(source.fitPadding) || TUTORIAL_ADVISOR_SPINE_DEFAULT_VIEW.fitPadding,
+        viewScale: Math.max(0.01, Number(source.viewScale) || TUTORIAL_ADVISOR_SPINE_DEFAULT_VIEW.viewScale),
+        viewOffsetX: Number(source.viewOffsetX) || 0,
+        viewOffsetY: Number(source.viewOffsetY) || 0,
+      };
+    }
+
+    getTutorialAdvisorSpineClipOptions(overrides = {}) {
+      const source = {
+        ...TUTORIAL_ADVISOR_SPINE_DEFAULT_CLIP,
+        ...(TutorialAdvisorSpineLayoutConfig?.getAdvisorSpineClip?.(this.getTutorialAdvisorLayoutOptions()) || {}),
+        ...(this.tutorialAdvisorSpineClip || {}),
+        ...(overrides || {}),
+      };
+      return {
+        mode: source.mode || TUTORIAL_ADVISOR_SPINE_DEFAULT_CLIP.mode,
+        clipPadding: Math.max(0, Number(source.clipPadding) || 0),
+      };
+    }
+
+    getSpineViewportRect(clipRect = {}, targetRect = {}) {
+      const clip = this.normalizeSpineLayerRect(clipRect.x, clipRect.y, clipRect.width, clipRect.height);
+      const target = this.normalizeSpineLayerRect(targetRect.x, targetRect.y, targetRect.width, targetRect.height);
+      return {
+        x: target.x - clip.x,
+        y: target.y - clip.y,
+        width: target.width,
+        height: target.height,
+      };
+    }
+
+    deriveSpineClipRect(targetRect = {}, bounds = null, options = {}) {
+      const base = this.normalizeSpineLayerRect(targetRect.x, targetRect.y, targetRect.width, targetRect.height);
       const aspectRatio = Number(bounds?.aspectRatio || bounds?.width / Math.max(1, bounds?.height));
-      if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return base;
+      const clipPadding = Math.max(0, Number(options.clipPadding) || 0);
+      const withPadding = (rect = {}) => this.normalizeSpineLayerRect(
+        rect.x - clipPadding,
+        rect.y - clipPadding,
+        rect.width + clipPadding * 2,
+        rect.height + clipPadding * 2,
+      );
+      if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return withPadding(base);
       const baseAspect = base.width / Math.max(1, base.height);
-      if (Math.abs(baseAspect - aspectRatio) < 0.015) return base;
+      if (Math.abs(baseAspect - aspectRatio) < 0.015) return withPadding(base);
       if (baseAspect > aspectRatio) {
         const nextWidth = Math.max(1, Math.round(base.height * aspectRatio));
-        return {
+        return withPadding({
           x: base.x + Math.max(0, Math.round((base.width - nextWidth) / 2)),
           y: base.y,
           width: Math.min(base.width, nextWidth),
           height: base.height,
-        };
+        });
       }
       const nextHeight = Math.max(1, Math.round(base.width / aspectRatio));
-      return {
+      return withPadding({
         x: base.x,
         y: base.y + Math.max(0, Math.round((base.height - nextHeight) / 2)),
         width: base.width,
         height: Math.min(base.height, nextHeight),
-      };
+      });
     }
 
     ensureTutorialSpineLayerCanvas(rect = {}) {
@@ -168,48 +251,57 @@
     renderTutorialAdvisorSpineLayer(x, y, width, height) {
       const runtime = this.h5Runtime || null;
       const targetRect = this.normalizeSpineLayerRect(x, y, width, height);
-      const currentBounds = this.tutorialAdvisorSpine?.player?.getBoundsSummary?.() || null;
-      const fittedRect = this.fitSpineBoundsToRect(targetRect, currentBounds);
-      const layer = this.ensureTutorialSpineLayerCanvas(fittedRect);
+      const currentBounds = this.tutorialAdvisorSpine?.bounds
+        || this.tutorialAdvisorSpine?.player?.getBoundsSummary?.()
+        || null;
+      const clipOptions = this.getTutorialAdvisorSpineClipOptions();
+      const clipRect = this.deriveSpineClipRect(targetRect, currentBounds, clipOptions);
+      let existing = this.tutorialAdvisorSpine;
+      if (existing?.mode === 'layer' && !this.areSpineLayerRectsEqual(existing.layerRect, clipRect)) {
+        existing.player?.dispose?.();
+        this.tutorialAdvisorSpine = null;
+        existing = null;
+      }
+      const layer = this.ensureTutorialSpineLayerCanvas(clipRect);
       if (!layer) return false;
       const { canvas, layerRect, pixelRatio } = layer;
       if (!canvas) return false;
       if (canvas.style) canvas.style.opacity = String(TUTORIAL_ADVISOR_SPINE_ALPHA);
       if (typeof this.setCanvasLayerVisible === 'function') this.setCanvasLayerVisible(TUTORIAL_SPINE_LAYER_NAME, true);
       else runtime.setLayerVisible?.(TUTORIAL_SPINE_LAYER_NAME, true);
-      const metrics = runtime.getLayerMetrics?.(TUTORIAL_SPINE_LAYER_NAME) || {};
-      const logicalWidth = metrics.width || layerRect.width;
-      const logicalHeight = metrics.height || layerRect.height;
-      const existing = this.tutorialAdvisorSpine;
-      if (existing?.mode === 'layer' && existing?.player && existing.canvas === canvas) {
-        existing.player.logicalWidth = logicalWidth;
-        existing.player.logicalHeight = logicalHeight;
-        existing.player.maxDevicePixelRatio = pixelRatio;
-        existing.targetRect = targetRect;
-        existing.layerRect = layerRect;
-        existing.player.resize?.();
-        return existing.player.status === 'ready' || existing.player.status === 'loading';
+      const viewportRect = this.getSpineViewportRect(layerRect, targetRect);
+      const viewOptions = this.getTutorialAdvisorSpineViewOptions();
+      const logicalWidth = targetRect.width;
+      const logicalHeight = targetRect.height;
+      const active = this.tutorialAdvisorSpine;
+      if (active?.mode === 'layer' && active?.player && active.canvas === canvas) {
+        active.player.logicalWidth = logicalWidth;
+        active.player.logicalHeight = logicalHeight;
+        active.player.maxDevicePixelRatio = pixelRatio;
+        active.player.setViewTransform?.({ ...viewOptions, viewportRect });
+        active.targetRect = targetRect;
+        active.layerRect = layerRect;
+        active.viewportRect = viewportRect;
+        active.player.resize?.();
+        return active.player.status === 'ready' || active.player.status === 'loading';
       }
       existing?.player?.dispose?.();
       const player = new global.SpineWebglPlayer({
         canvas,
         runtime: global,
         background: null,
-        fitPadding: 1,
+        ...viewOptions,
         targetFps: 60,
         logicalWidth,
         logicalHeight,
+        viewportRect,
         maxDevicePixelRatio: pixelRatio,
         premultipliedAlpha: false,
         preserveDrawingBuffer: false,
         onBounds: (event = {}) => {
-          const nextRect = this.fitSpineBoundsToRect(this.tutorialAdvisorSpine?.targetRect || targetRect, event.bounds);
-          const nextLayer = this.ensureTutorialSpineLayerCanvas(nextRect);
-          if (!nextLayer || this.tutorialAdvisorSpine?.canvas !== nextLayer.canvas) return;
-          this.tutorialAdvisorSpine.layerRect = nextLayer.layerRect;
-          player.logicalWidth = nextLayer.layerRect.width;
-          player.logicalHeight = nextLayer.layerRect.height;
-          player.resize?.();
+          if (!this.tutorialAdvisorSpine || this.tutorialAdvisorSpine.player !== player) return;
+          this.tutorialAdvisorSpine.bounds = event.bounds || null;
+          if (typeof this.requestOverlayRenderFrame === 'function') this.requestOverlayRenderFrame();
         },
         onError: () => {
           this.tutorialAdvisorSpineFailed = true;
@@ -222,7 +314,7 @@
           }
         },
       });
-      this.tutorialAdvisorSpine = { canvas, player, mode: 'layer', targetRect, layerRect };
+      this.tutorialAdvisorSpine = { canvas, player, mode: 'layer', targetRect, layerRect, viewportRect };
       const loaded = player.load({
         assetBase: 'assets/art/spine/tutorial/advisor/',
         jsonFile: 'tutorial_advisor.json',
@@ -231,9 +323,11 @@
         loop: true,
         alpha: true,
         antialias: true,
+        ...viewOptions,
         targetFps: 60,
         logicalWidth,
         logicalHeight,
+        viewportRect,
         maxDevicePixelRatio: pixelRatio,
         preserveDrawingBuffer: false,
       });

@@ -34,21 +34,34 @@ This was not fixed by adding map clear strategies. The fix keeps Spine as an ind
 - Changed Spine `ready` handling to request a narrow overlay render frame when available, and never invoke the generic asset-change hook that invalidates world-map caches.
 - Hardened map-home rendering so an invalid baked world-map layer forces a runtime redraw and cannot be hidden by a same-frame throttle race.
 
+## Advisor Tuning Follow-Up
+
+The tutorial advisor placement now uses the hand-tuned 430px-wide 9:16 baseline supplied from `frontend/tools/tutorial-spine-tuner.html`:
+
+- `targetRect`: `{ x: 0, y: 433, width: 158, height: 330 }`
+- `view`: `{ viewScale: 1.41, viewOffsetX: 2, viewOffsetY: 85, fitPadding: 1 }`
+- `clip`: `{ mode: 'autoFromSkeletonBounds', clipPadding: 4 }`
+- `dialogueLeft`: `126`
+
+These values are centralized in `TutorialAdvisorSpineLayoutConfig` and projected onto the active game frame. The tuner `previewClipRect` remains a diagnostic readout only; production code does not store or consume it. Physical clipping is still derived from the actual Spine skeleton bounds plus padding, while scale and position stay under the independent view transform.
+
 ## Non-Goals
 
 - No map/HUD clear strategy was introduced.
 - No full-screen Spine overlay was retained.
 - No hardcoded Spine crop rectangle or fixed view-focus constant was retained.
 - No Spine readiness callback is allowed to invalidate world-map tile caches.
+- No tuner `previewClipRect` is allowed to become a production crop rectangle.
 
 ## Regression Coverage
 
 - `CanvasLayerRegistry.test.js` verifies tutorial overlay layer registration and stack order.
 - `H5CanvasRuntime.test.js` verifies fixed overlay rect clipping and metrics.
 - `TutorialCanvasRenderer.test.js` verifies registered clipped Spine layer creation, skeleton-bounds rect fitting, and runtime fallback registry options.
+- `TutorialCanvasRenderer.test.js` verifies the tuned advisor baseline, responsive projection, and independent view transform.
 - `TutorialCanvasRenderer.test.js` verifies Spine readiness requests an overlay render frame without calling `handleAssetsChanged()`, and does not fall back to asset invalidation when no render callback is injected.
 - `CanvasGameShell.test.js` verifies stale baked world-map backing stores force a redraw instead of hiding the world-map layer.
-- `WorldMapLayerOwnershipContract.test.js` rejects detached Spine canvas fallback, retired Spine frame fallbacks, and fixed view-focus restoration.
+- `WorldMapLayerOwnershipContract.test.js` rejects detached Spine canvas fallback, retired Spine frame fallbacks, fixed view-focus restoration, and tuner preview crop rectangles in production runtime files.
 
 ## Verification
 

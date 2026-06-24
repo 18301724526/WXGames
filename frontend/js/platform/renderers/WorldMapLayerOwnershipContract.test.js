@@ -20,6 +20,7 @@ const PRODUCTION_FILES = [
 ];
 const TUTORIAL_SPINE_FILES = [
   'frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js',
+  'frontend/js/platform/renderers/TutorialAdvisorSpineLayoutConfig.js',
   'frontend/js/platform/SpineWebglPlayer.js',
   'frontend/js/platform/renderers/CanvasAssetRenderer.js',
   'frontend/js/platform/CanvasGameRendererCoreFacades.js',
@@ -87,7 +88,9 @@ test('tutorial Spine uses a registered transparent layer and no detached canvas 
   assert.equal(registry.includes("pointerEvents: 'none'"), true);
   assert.equal(advisor.includes("TUTORIAL_SPINE_LAYER_NAME = 'tutorialSpine'"), true);
   assert.equal(advisor.includes('ensureTutorialSpineLayerCanvas'), true);
-  assert.equal(advisor.includes('fitSpineBoundsToRect'), true);
+  assert.equal(advisor.includes('deriveSpineClipRect'), true);
+  assert.equal(advisor.includes('getSpineViewportRect'), true);
+  assert.equal(advisor.includes('TutorialAdvisorSpineLayoutConfig'), true);
 
   TUTORIAL_SPINE_FILES.forEach((file) => {
     const source = readProjectFile(file);
@@ -95,6 +98,7 @@ test('tutorial Spine uses a registered transparent layer and no detached canvas 
     assert.equal(source.includes('getTutorialAdvisorSpineFrame'), false, `${file} must not keep retired Spine frame fallbacks`);
     assert.equal(source.includes('TUTORIAL_ADVISOR_SPINE_VIEW_FOCUS'), false, `${file} must not restore fixed Spine view focus`);
     assert.equal(source.includes('viewFocus'), false, `${file} must not restore fixed Spine view focus`);
+    assert.equal(source.includes('previewClipRect'), false, `${file} must not hardcode tuner preview crop rectangles`);
   });
 });
 

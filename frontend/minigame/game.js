@@ -93,6 +93,7 @@ require('../js/platform/renderers/FamousCanvasRenderer');
 require('../js/platform/renderers/TechCanvasRenderer');
 require('../js/platform/renderers/BattleCanvasRenderer');
 require('../js/platform/renderers/CanvasBattleFacade');
+require('../js/platform/renderers/TutorialAdvisorSpineLayoutConfig');
 require('../js/platform/renderers/TutorialAdvisorCanvasRenderer');
 require('../js/platform/renderers/TutorialCanvasRenderer');
 require('../js/platform/renderers/BuildingCanvasRenderer');

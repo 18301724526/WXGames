@@ -29,15 +29,18 @@
 
   const SharedTutorialIntroDialogueLayout = resolveDependency('TutorialIntroDialogueLayout', './TutorialIntroDialogueLayout');
   const SharedTutorialDialogueLayer = resolveDependency('TutorialDialogueLayer', './TutorialDialogueLayer');
-  const DEFAULT_DIALOGUE_LEFT = 96;
+  const DEFAULT_DIALOGUE_LEFT = 126;
 
   function buildLayout(renderer = {}, options = {}) {
-    return SharedTutorialIntroDialogueLayout.buildDialogueLayout({
+    const layoutOptions = {
       width: renderer.width,
       height: renderer.height,
       bottomSafeArea: renderer.bottomSafeArea,
       layout: renderer.getLayout(),
-      dialogueLeft: Number(options.dialogueLeft) || DEFAULT_DIALOGUE_LEFT,
+    };
+    if (options.dialogueLeft !== undefined) layoutOptions.dialogueLeft = Number(options.dialogueLeft) || DEFAULT_DIALOGUE_LEFT;
+    return SharedTutorialIntroDialogueLayout.buildDialogueLayout({
+      ...layoutOptions,
     });
   }
 
