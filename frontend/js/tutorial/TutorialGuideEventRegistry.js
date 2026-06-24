@@ -32,12 +32,20 @@
   }
 
   function getSteps(host, fallback = {}) {
-    return host?.constructor?.TUTORIAL_STEPS || TutorialGuideStepPolicy?.TUTORIAL_STEPS || fallback || {};
+    return (
+      host?.constructor?.TUTORIAL_STEPS || TutorialGuideStepPolicy?.TUTORIAL_STEPS || fallback || {}
+    );
   }
 
   function syncFromResult(host, payload = {}) {
-    if (payload && typeof payload === 'object' && ('tutorial' in payload || 'gameState' in payload)) {
-      host.sync?.(payload.tutorial || payload.gameState?.tutorial || host.game?.tutorial || host.state);
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      ('tutorial' in payload || 'gameState' in payload)
+    ) {
+      host.sync?.(
+        payload.tutorial || payload.gameState?.tutorial || host.game?.tutorial || host.state,
+      );
     }
     return host.state;
   }
@@ -62,7 +70,8 @@
       },
 
       commandPanelOpened: async (host, payload = {}) => {
-        const tabId = host.normalizePanelTab?.(payload.panelId || payload.tabId || payload.panel || '') || '';
+        const tabId =
+          host.normalizePanelTab?.(payload.panelId || payload.tabId || payload.panel || '') || '';
         const allowed = await host.handleEvent?.('tabClicked', { tabId });
         if (allowed === false) return false;
         if (tabId === 'events' && getStep(host) === steps.eraAdvancedTo2) {
@@ -93,7 +102,8 @@
         const buildingId = payload.buildingId || '';
         const action = payload.action || 'build';
         if (host.isFarmGuideActive?.()) return action === 'build' && buildingId === 'farm';
-        if (host.isLumbermillGuideActive?.()) return action === 'build' && buildingId === 'lumbermill';
+        if (host.isLumbermillGuideActive?.())
+          return action === 'build' && buildingId === 'lumbermill';
         if (!host.isHouseGuideActive?.()) return true;
         return action === 'build' && buildingId === 'house';
       },
@@ -102,22 +112,25 @@
         syncFromResult(host, payload.result || payload);
         const step = getStep(host);
         if (step >= steps.scoutFamousGranted && step < steps.scoutFormationSaved) {
-          return host.showSoftGuide?.(
-            'famous-persons-button',
-            '\u57ce\u90a6\u7684\u9053\u8def\u5df2\u7ecf\u6253\u5f00\uff0c\u4e00\u4f4d\u5584\u4e8e\u4fa6\u5bdf\u7684\u540d\u4eba\u52a0\u5165\u4e86\u6211\u4eec\u3002\u5148\u53bb\u540d\u4eba\u91cc\u770b\u770b\u4ed6\u7684\u5361\u7247\u3002',
-          ) || false;
+          return (
+            host.showSoftGuide?.(
+              'famous-persons-button',
+              '\u57ce\u90a6\u7684\u9053\u8def\u5df2\u7ecf\u6253\u5f00\uff0c\u4e00\u4f4d\u5584\u4e8e\u4fa6\u5bdf\u7684\u540d\u4eba\u52a0\u5165\u4e86\u6211\u4eec\u3002\u5148\u53bb\u540d\u4eba\u91cc\u770b\u770b\u4ed6\u7684\u5361\u7247\u3002',
+            ) || false
+          );
         }
         if (step === steps.eraAdvancedTo2) {
-          return host.showSoftGuide?.(
-            'events-button',
-            '\u68ee\u6797\u8fb9\u7f18\u4f20\u6765\u4e86\u52a8\u9759\u3002\u5148\u53bb\u4e8b\u4ef6\u91cc\u770b\u4e00\u770b\uff0c\u628a\u6728\u6750\u5e26\u56de\u6765\u3002',
-          ) || false;
+          return (
+            host.showSoftGuide?.(
+              'events-button',
+              '\u68ee\u6797\u8fb9\u7f18\u4f20\u6765\u4e86\u52a8\u9759\u3002\u5148\u53bb\u4e8b\u4ef6\u91cc\u770b\u4e00\u770b\uff0c\u628a\u6728\u6750\u5e26\u56de\u6765\u3002',
+            ) || false
+          );
         }
         if (step !== steps.eraAdvancedTo1) return false;
-        return host.showSoftGuide?.(
-          'task-center-button',
-          t('tutorial.softGuide.claimSupplies'),
-        ) || false;
+        return (
+          host.showSoftGuide?.('task-center-button', t('tutorial.softGuide.claimSupplies')) || false
+        );
       },
 
       taskRewardClaimed: (host, payload = {}) => {
@@ -155,19 +168,16 @@
         const personId = payload.personId || '';
         const scoutPersonId = host.getScoutFamousPersonId?.() || '';
         if (
-          getStep(host) === steps.famousPanelOpened
-          && (!scoutPersonId || String(personId || '') === scoutPersonId)
+          getStep(host) === steps.famousPanelOpened &&
+          (!scoutPersonId || String(personId || '') === scoutPersonId)
         ) {
           return host.advanceTo?.(steps.famousCardViewed) || host.state;
         }
         return host.state;
       },
 
-      armyFormationOpened: (host) => advanceIf(
-        host,
-        () => getStep(host) === steps.famousCardViewed,
-        steps.formationPanelOpened,
-      ),
+      armyFormationOpened: (host) =>
+        advanceIf(host, () => getStep(host) === steps.famousCardViewed, steps.formationPanelOpened),
 
       armyFormationSaved: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
@@ -216,11 +226,12 @@
         return host.state;
       },
 
-      worldMarchTargetSelected: (host) => advanceIf(
-        host,
-        () => getStep(host) === steps.scoutFormationSaved,
-        steps.scoutWorldPanelOpened,
-      ),
+      worldMarchTargetSelected: (host) =>
+        advanceIf(
+          host,
+          () => getStep(host) === steps.scoutFormationSaved,
+          steps.scoutWorldPanelOpened,
+        ),
 
       exploreStarted: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);

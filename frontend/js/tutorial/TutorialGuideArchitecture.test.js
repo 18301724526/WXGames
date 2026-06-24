@@ -32,10 +32,19 @@ function getMethodBody(source, methodName) {
 test('TutorialGuidePhaseHighlights stays a thin flow-registry installer', () => {
   const source = readSource('TutorialGuidePhaseHighlights.js');
 
-  assert.ok(lineCount(source) <= 40, 'phase highlight installer should not grow tutorial flow logic');
+  assert.ok(
+    lineCount(source) <= 40,
+    'phase highlight installer should not grow tutorial flow logic',
+  );
   assert.match(source, /TutorialGuideFlowRegistry/);
-  assert.doesNotMatch(source, /isFirstEraGuideActive|isEra2GuideActive|isScoutFormationGuideActive/);
-  assert.doesNotMatch(source, /isScoutExploreGuideActive|isFirstCityGuideActive|isPostNamingSystemGuideActive/);
+  assert.doesNotMatch(
+    source,
+    /isFirstEraGuideActive|isEra2GuideActive|isScoutFormationGuideActive/,
+  );
+  assert.doesNotMatch(
+    source,
+    /isScoutExploreGuideActive|isFirstCityGuideActive|isPostNamingSystemGuideActive/,
+  );
   assert.doesNotMatch(source, /showBuildingGuide|showSoftGuide|claimTaskReward|openFamousPersons/);
 });
 
@@ -67,7 +76,11 @@ test('TutorialGuideController legacy event methods stay handleEvent adapters', (
   adapters.forEach(([methodName, eventName]) => {
     const body = getMethodBody(source, methodName);
     assert.match(body, new RegExp(`return this\\.handleEvent\\('${eventName}'`), methodName);
-    assert.doesNotMatch(body, /TUTORIAL_STEPS|getCurrentStep\(|advanceTo\(|sync\(|showSoftGuide\(/, methodName);
+    assert.doesNotMatch(
+      body,
+      /TUTORIAL_STEPS|getCurrentStep\(|advanceTo\(|sync\(|showSoftGuide\(/,
+      methodName,
+    );
   });
 });
 

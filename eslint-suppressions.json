@@ -536,11 +536,6 @@
       "count": 2
     }
   },
-  "frontend/js/tutorial/TutorialGuideController.test.js": {
-    "no-dupe-keys": {
-      "count": 1
-    }
-  },
   "frontend/js/ui/H5UpdateRuntimeAdapter.js": {
     "no-unused-vars": {
       "count": 2
