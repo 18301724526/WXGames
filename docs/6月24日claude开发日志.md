@@ -90,6 +90,14 @@ npm run playtest:online-tutorial
 - 部署过程踩坑（已记入记忆 `deploy-lint-gate`）：prod 的 `test-server-ci-gate.sh` 比 WSL 严格，依次跑 lint → **format:check（全仓 prettier）** → lint:baseline → test → **test:architecture（含 official-docs 守卫 `verify-refactor-plan-doc.js`，仅允许白名单内的 docs）** → backend check。本日志因 (1) 初次提交未 prettier 化、(2) 文件名不在 doc 守卫白名单，两次令 prod 部署在 ref 更新后中止（后端停在旧版）。已分别：prettier 化、把日志加入 `verify-refactor-plan-doc.js` 白名单。**今后推 prod 前务必本地跑 `npm run lint && npm run format:check && npm run test:architecture`。**
 - 新回滚锚点：`4ea366ab`。
 
+### 修复 3：遭遇名仍显示 "Frontier Patrol"（真跑复测发现 B 修复不完整）
+
+- 现象：部署后世界地图遇敌 HUD 仍显示英文 "Frontier Patrol"（中文应为「边境巡逻队」）。此前的 nameKey 修复（43404f07）只改了后端遭遇对象与前端投影，**漏了发给客户端的 DTO**。
+- 根因：`WorldCombatEncounterService.getClientEncounter()` 组装客户端遭遇对象时只带 `name`、**没带 `nameKey`**，所以前端收到的遭遇没有 key，只能显示英文 name。（教训：B 当时只过单测、没真跑到遇敌界面，故未发现。）
+- 修法：`getClientEncounter` 加 `nameKey: encounter.nameKey || ''` 透传。`normalizeCombatState` 已给每个遭遇补 nameKey（含存量数据走 fallback），故新老遭遇客户端均带 key，前端经 `world.combat.encounter.frontierPatrol` 本地化为「边境巡逻队」。
+- 验证：本地 `getClientState` 复现确认全新 + 存量遭遇均带 nameKey；新增 `backend/tests/WorldCombatEncounterService.test.js` 守回归；部署后 API 复查遭遇带 nameKey + 真跑遇敌界面确认中文。
+- 教训补充：i18n 修复必须**真跑到对应界面**确认，且要检查**客户端 DTO 投影**是否带上 key 字段(只改后端模型/前端投影不够)。
+
 ### 待办建议（本轮未做，需设计 + 谨慎测试，不宜无人值守上线）
 
 - **实体战斗（军令系统）暂无教程引导**：教程的"攻城"是占领无主空城（conquer/claimConquest），与世界地图上的敌对遭遇实体战斗（军令、回放）是两套。可考虑在 `scoutExploreStarted`→`firstCityDiscovered` 之间或之后，新增一段引导玩家发起一次实体战斗、认识军令按钮的步骤。属新增教程步骤（改 `TutorialFlowConfig` 步骤序列 + `TutorialGuidePhaseHighlights` + 后端步骤推进），需逐步真跑回归，建议有人值守时做。
