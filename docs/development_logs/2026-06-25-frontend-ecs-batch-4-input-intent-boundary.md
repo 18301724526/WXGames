@@ -5,14 +5,14 @@
 | Field                  | Value                                              |
 | ---------------------- | -------------------------------------------------- |
 | Batch                  | `4. Input Intent Boundary`                         |
-| State                  | `Ready for Migration Owner Review`                 |
+| State                  | `Completed`                                        |
 | Runtime behavior scope | Covered-mode input routing only                    |
 | ECS resolver           | `frontend/js/ecs/input/InputIntentResolver.js`     |
 | Intent vocabulary      | `frontend/js/ecs/input/InputIntent.js`             |
 | Legacy bridge helper   | `CanvasModeOwnershipBridge.resolveInputIntent`     |
 | Runtime bundle         | `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`  |
 | Blocking guard         | `scripts/check-frontend-ecs-input-intent-spine.js` |
-| Last updated           | `2026-06-26 01:02:16 +08:00`                       |
+| Last updated           | `2026-06-26 01:24:26 +08:00`                       |
 
 ## Decision
 
@@ -133,9 +133,6 @@ documented inline in the guard.
 
 ## Review Result
 
-Batch 4 is `Ready for Migration Owner Review`. It must not be marked `Completed`
-until migration owner review confirms the input intent vocabulary/resolver, the
-bridge pass-through, the regenerated runtime bundle loading policy, the
-router physical-adapter conversion, and the input-intent spine blocking guard.
-Batch 5 (Panel/Modal Ownership) may not start until a separate completion commit
-records Batch 4 review sign-off.
+Batch 4 is `Completed` after migration owner review by `codex/external-review` at `2026-06-26 01:24:26 +08:00`. The review confirmed the input intent vocabulary/resolver (pure, kind-aware), the bridge `resolveInputIntent` pass-through (null fallback, no new source-of-truth fields), the regenerated runtime bundle (`esbuild@0.23.1`), the count-preserving router physical-adapter conversion (guard reports current 30 = baseline 30, 0 violations), and the scoped input-intent spine blocking guard. Scope was confirmed clean (no tutorial, panel/modal, renderer/`getHitTarget`, or gameplay ownership migrated). The judgment call to leave the gesture/tap tech-tree/world-map fall-through on the Batch-3 snapshot helpers was accepted as Batch 6 / domain-sealing territory (world-map runtime readiness, not a pure mode decision).
+
+Batch 5 (Panel/Modal Ownership) may start after this completion commit reaches the server branch.
