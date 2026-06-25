@@ -50,15 +50,15 @@
 
 ## Batch 1 Checklist
 
-| Step                                | Status           | Updated At                   | Evidence                                                                                                                          |
-| ----------------------------------- | ---------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 1-1. ECS core ADR                   | Ready for Review | `2026-06-25 17:25:16 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-batch-1-core-adr.md` selects `bitecs` and records Batch 1 non-goals                |
-| 1-2. ECS core blocking guard        | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/check-frontend-ecs-core-guard.js` blocks local ECS core primitives and non-`bitecs` ECS packages                         |
-| 1-3. Guard tests                    | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/check-frontend-ecs-core-guard.test.js` covers scan scope, allowed imports, blocked local core patterns, and CLI behavior |
-| 1-4. Architecture smoke integration | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/run-architecture-smoke.js` runs the ECS core guard as a blocking gate                                                    |
-| 1-5. Progress document update       | Ready for Review | `2026-06-25 17:25:16 +08:00` | This document records Batch 1 artifacts, commands, status, and review blocker                                                     |
-| 1-6. Commit and server branch push  | Pending          | `2026-06-25 17:25:16 +08:00` | Waiting for implementation commit, server push, deploy hook, and health check evidence                                            |
-| 1-7. Migration owner review         | Pending          | `2026-06-25 17:25:16 +08:00` | Batch 1 must stay `Ready for Migration Owner Review` until `codex/external-review` signs off                                      |
+| Step                                | Status           | Updated At                   | Evidence                                                                                                                                       |
+| ----------------------------------- | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-1. ECS core ADR                   | Ready for Review | `2026-06-25 17:25:16 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-batch-1-core-adr.md` selects `bitecs` and records Batch 1 non-goals                             |
+| 1-2. ECS core blocking guard        | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/check-frontend-ecs-core-guard.js` blocks local ECS core primitives and non-`bitecs` ECS packages                                      |
+| 1-3. Guard tests                    | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/check-frontend-ecs-core-guard.test.js` covers scan scope, allowed imports, blocked local core patterns, and CLI behavior              |
+| 1-4. Architecture smoke integration | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/run-architecture-smoke.js` runs the ECS core guard as a blocking gate                                                                 |
+| 1-5. Progress document update       | Ready for Review | `2026-06-25 17:25:16 +08:00` | This document records Batch 1 artifacts, commands, status, and review blocker                                                                  |
+| 1-6. Commit and server branch push  | Ready for Review | `2026-06-25 17:46:26 +08:00` | Commit `22bf9106` reached the server branch; refactor test server deploy was manually completed with the same wrapper after push-side HTTP 504 |
+| 1-7. Migration owner review         | Pending          | `2026-06-25 17:25:16 +08:00` | Batch 1 must stay `Ready for Migration Owner Review` until `codex/external-review` signs off                                                   |
 
 ## Verification Commands
 
@@ -124,6 +124,11 @@ Required owner sign-off record:
 | Refactor test server deploy hook                    | Incomplete over push     | Health stayed on deployed commit `048531425993ba7d6502cde3f2a53be6810a55cc` after the 504, while `/www/wwwroot/h5-refactor-worktree` had been refreshed to the new checkout; no successful deploy record was written by the push-side hook                       |
 | Refactor test server manual deploy                  | Completed                | Ran the same refactor wrapper as `www`: `REPO_GIT_DIR=/home/git/wxgame.git bash scripts/deploy-refactor-tutorial-server.sh codex/refactor-tutorial-guide-architecture`; gate passed lint, format, tests, architecture smoke, backend syntax, and manifest checks |
 | Refactor test server health                         | Passed                   | `http://47.116.32.216/wxgame-refactor-api/health` returned `status: ok`, deployed commit `b345476557adb7fbc0aa287c606484b73ba79222`, deployedAt `2026-06-25T07:57:40Z`, and deploymentId `5b461b9c46ce8d33`                                                      |
+| `github codex/refactor-tutorial-guide-architecture` | Failed                   | HTTPS remote was used (`https://github.com/18301724526/WXGames.git`). Push failed with `schannel: failed to receive handshake, SSL/TLS connection failed`; credentials and remote URL were not changed                                                           |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `22bf9106` | Initial push returned HTTP 504 after about five minutes, but `git ls-remote origin refs/heads/codex/refactor-tutorial-guide-architecture` resolved to `22bf910653dd2503ea98d12f9557d900c60ca12b`; local tracking was refreshed with `git fetch`                  |
+| Refactor test server deploy hook                    | Incomplete over push     | Health stayed on deployed commit `1c190fa87c3d897869d20666d575f77c77f7172d` after the 504; the server branch had the new commit but no successful deploy record had been written by the push-side hook                                                           |
+| Refactor test server manual deploy                  | Completed                | Ran the same refactor wrapper as `www`: `REPO_GIT_DIR=/home/git/wxgame.git bash scripts/deploy-refactor-tutorial-server.sh codex/refactor-tutorial-guide-architecture`; gate passed lint, format, tests, architecture smoke, backend syntax, and manifest checks |
+| Refactor test server health                         | Passed                   | `http://47.116.32.216/wxgame-refactor-api/health` returned `status: ok`, deployed commit `22bf910653dd2503ea98d12f9557d900c60ca12b`, deployedAt `2026-06-25T09:46:04Z`, and deploymentId `bea2ce6afb3fa219`                                                      |
 | `github codex/refactor-tutorial-guide-architecture` | Failed                   | HTTPS remote was used (`https://github.com/18301724526/WXGames.git`). Push failed with `schannel: failed to receive handshake, SSL/TLS connection failed`; credentials and remote URL were not changed                                                           |
 
 Permission root cause:
