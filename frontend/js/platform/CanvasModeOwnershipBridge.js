@@ -376,6 +376,16 @@
       resolveConfirmDialogCallback(type, ...args) {
         return resolveModalCallback(this, 'modal:confirmDialog', type, ...args);
       },
+
+      // rewardReveal-specific wrappers (pure presentation; no callbacks). The
+      // subtype literal lives here so host call sites stay one-line.
+      openRewardRevealModal(state) {
+        return openModal(this, 'modal:rewardReveal', state) || state;
+      },
+
+      closeRewardRevealOwner() {
+        return closeModal(this, 'modal:rewardReveal');
+      },
     });
     return true;
   }

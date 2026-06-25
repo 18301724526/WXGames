@@ -702,10 +702,7 @@
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onTaskRewardClaimed?.(result);
               if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
-                this.rewardReveal = {
-                  ...result.rewardReveal,
-                  createdAt: this.runtime?.now?.() || Date.now(),
-                };
+                this.rewardReveal = typeof this.openRewardRevealModal === 'function' ? this.openRewardRevealModal({ ...result.rewardReveal, createdAt: this.runtime?.now?.() || Date.now() }) : { ...result.rewardReveal, createdAt: this.runtime?.now?.() || Date.now() };
                 this.renderCanvasSurface(this.state?.currentTab);
               }
               this.showFloatingText(

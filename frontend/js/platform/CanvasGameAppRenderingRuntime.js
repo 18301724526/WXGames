@@ -601,6 +601,7 @@
             this.showFamousPersons = false;
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             this.activeCommandPanel = '';
+            if (typeof this.closeRewardRevealOwner === 'function') this.closeRewardRevealOwner();
             this.rewardReveal = null;
             this.famousPersonsPage = 0;
             this.selectedFamousPersonId = '';

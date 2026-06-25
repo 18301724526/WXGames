@@ -195,3 +195,22 @@ test('CanvasModeOwnershipBridge confirmDialog wrappers seal state and resolve co
   host.resolveConfirmDialogCallback('onCancel'); // callbacks cleared on close -> inert
   assert.equal(cancelled, 0);
 });
+
+test('CanvasModeOwnershipBridge rewardReveal wrappers seal presentation state', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+
+  const reveal = host.openRewardRevealModal({
+    title: 'Reward',
+    resources: { gold: 5 },
+    createdAt: 1,
+  });
+  assert.equal(host.isModalOpen('modal:rewardReveal'), true);
+  assert.deepEqual(reveal, { title: 'Reward', resources: { gold: 5 }, createdAt: 1 });
+  assert.equal(host.getModalPayload('modal:rewardReveal').title, 'Reward');
+
+  host.closeRewardRevealOwner();
+  assert.equal(host.isModalOpen('modal:rewardReveal'), false);
+  assert.equal(host.getModalPayload('modal:rewardReveal'), null);
+});

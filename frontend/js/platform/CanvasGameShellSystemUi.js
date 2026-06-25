@@ -37,10 +37,7 @@ showFloatingText(text, options = {}) {
 
 showRewardReveal(reveal) {
       if (!reveal) return false;
-      this.rewardReveal = {
-        ...reveal,
-        createdAt: this.now(),
-      };
+      this.rewardReveal = typeof this.openRewardRevealModal === 'function' ? this.openRewardRevealModal({ ...reveal, createdAt: this.now() }) : { ...reveal, createdAt: this.now() };
       this.tutorialHighlight = null;
       this.startFloatTimer();
       this.renderActive();
@@ -49,6 +46,7 @@ showRewardReveal(reveal) {
 
 closeRewardReveal() {
       const hadReveal = Boolean(this.rewardReveal);
+      if (typeof this.closeRewardRevealOwner === 'function') this.closeRewardRevealOwner();
       this.rewardReveal = null;
       if (hadReveal) {
         this.renderActive();

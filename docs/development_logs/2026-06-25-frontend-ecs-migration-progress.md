@@ -2,14 +2,14 @@
 
 ## Current Status
 
-| Field                  | Value                                         |
-| ---------------------- | --------------------------------------------- |
-| Branch                 | `codex/refactor-tutorial-guide-architecture`  |
-| Current batch          | `5. Panel/Modal Ownership (slice 5a)`         |
-| Batch state            | `Slice 5a (naming + confirmDialog) Completed` |
-| Runtime code migration | Mode ownership bridge only                    |
-| ECS dependency         | `bitecs@0.4.0` installed exactly              |
-| Last updated           | `2026-06-26 04:01:40 +08:00`                  |
+| Field                  | Value                                        |
+| ---------------------- | -------------------------------------------- |
+| Branch                 | `codex/refactor-tutorial-guide-architecture` |
+| Current batch          | `5. Panel/Modal Ownership (slice 5b)`        |
+| Batch state            | `Slice 5b: rewardReveal Ready for Review`    |
+| Runtime code migration | Mode ownership bridge only                   |
+| ECS dependency         | `bitecs@0.4.0` installed exactly             |
+| Last updated           | `2026-06-26 04:30:14 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -224,6 +224,7 @@ Required owner sign-off record:
 | `codex/external-review` | `2026-06-26 01:24:26 +08:00` | Passed   | Batch 4 input intent boundary accepted: pure kind-aware resolver, bridge pass-through with null fallback, `esbuild@0.23.1` bundle, count-preserving router adapters (guard 30 = baseline 30), scope clean; the gesture/tap fall-through deferred to Batch 6 was accepted.                                                                                                                     |
 | `codex/external-review` | `2026-06-26 02:59:52 +08:00` | Passed   | Batch 5 slice 5a (naming) modal ownership accepted: ECS modal owner + token registry, bridge naming wrappers (no shadowing), per-host owner with `this.naming` mirror, seal enforced by the existing mode-ownership-spine guard; the HIGH closeNamingModal collision + LOW mirror fixes were accepted.                                                                                        |
 | `codex/external-review` | `2026-06-26 04:01:40 +08:00` | Passed   | Batch 5 slice 5a confirmDialog modal ownership accepted: owner-sourced state with `this.confirmDialog` mirror, bridge wrappers (no shadowing), kind-dispatch preserved, registry wired resolve-if-present, critical reset flow unchanged; mode-ownership-spine guard 0 violations. Slice 5a (naming + confirmDialog) is complete.                                                             |
+| Pending                 | -                            | Pending  | Batch 5 slice 5b rewardReveal modal ownership implementation complete and verified locally; awaits migration owner review.                                                                                                                                                                                                                                                                    |
 
 ## Push / Deploy Evidence
 
@@ -287,3 +288,5 @@ Batch 4 (Input Intent Boundary) is `Completed` after migration owner review. Bat
 Batch 5 (Panel/Modal Ownership) planning is recorded in the operating plan as first-window deliverables across slices 5a-5d, with slice 5a (`naming` + `confirmDialog`) approved for the first round and the owner-holds-token callback strategy. Slice 5a implementation is being scoped against the slice-5a mapping (the ECS modal owner needs a serializable JS-side payload store because bitECS components are numeric-only; neither `naming` nor `confirmDialog` stores closures today; demoting the legacy fields to owner-derived mirrors spans about twenty files including hot UI paths).
 
 Batch 5 slice 5a (naming) is implemented and `Ready for Migration Owner Review`: the ECS modal owner (`ModalWorld`) + app-side callback registry + bridge modal API are in place, the eight App/Shell naming write sites route through the owner with `this.naming` as the read-only mirror, and the seal is enforced by the existing mode-ownership-spine guard (0 violations). An adversarial review caught and fixed a `closeNamingModal` name collision (renamed the owner wrapper to `closeNamingOwner`, added a non-shadow regression test) and a submit-`finally` mirror staleness. Verified: `npm run test:architecture` 1185 tests, lint, format, and `git diff --check` all pass. Slice 5a (naming) is `Completed` after migration owner sign-off at `2026-06-26 02:59:52 +08:00` (deployed commit `dd01f381`). The confirmDialog sub-step is now implemented and `Ready for Migration Owner Review`: confirmDialog state is owned by the modal owner with `this.confirmDialog` as the mirror, kind-dispatch is kept for the reset continuation, and the callback registry is wired as resolve-if-present (a future closure-continuation modal will be its first heavy use). Verified: `npm run test:architecture` 1186 tests, mode-ownership-spine guard 0 violations, lint (after pruning a stale suppression), format, and `git diff --check`; adversarial review clean. Once confirmDialog is signed off, slice 5a (naming + confirmDialog) is complete; Batch 5 is not Completed until its remaining slices (5b-5d) are signed off.
+
+Batch 5 slice 5b (event + rewardReveal) was split into rewardReveal first, then event. The `rewardReveal` sub-step is implemented and `Ready for Migration Owner Review`: rewardReveal is now owner-sourced with `this.rewardReveal` as the read-only mirror, sealed via two pure-presentation bridge wrappers and eight single-line owner-routed write sites across six files; readers stay on the mirror. Verified: `npm run test:architecture` 1187 tests, mode-ownership-spine guard 0 violations, lint, format, and `git diff --check`; adversarial review clean. The `event` (`activeEventId`) sub-step is next (~19 files; `EventController`’s own claim-cursor `activeEventId` stays out of scope). Batch 5 is not Completed until its slices are signed off.
