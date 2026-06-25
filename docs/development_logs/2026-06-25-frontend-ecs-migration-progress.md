@@ -6,23 +6,23 @@
 | --- | --- |
 | Branch | `codex/refactor-tutorial-guide-architecture` |
 | Current batch | `0A. Mode and Bridge Inventory` |
-| Batch state | `Ready for Migration Owner Review` |
+| Batch state | `Completed` |
 | Runtime code migration | Not started |
 | ECS dependency | Not introduced |
-| Last updated | `2026-06-25 13:19:30 +08:00` |
+| Last updated | `2026-06-25 14:01:38 +08:00` |
 
 ## Batch 0A Checklist
 
 | Step | Status | Completed At | Evidence |
 | --- | --- | --- | --- |
-| 0A-1. Produce mode boolean inventory | Ready for review | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md` |
-| 0A-2. Produce bridge inventory | Ready for review | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-bridge-shrink-baseline.md` |
-| 0A-3. Deploy mode ownership report-only guard | Ready for review | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-mode-ownership.js` |
-| 0A-4. Deploy bridge shrink report-only guard | Ready for review | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-bridge-shrink.js` |
-| 0A-5. Migration owner review | Pending | Pending | Requires owner sign-off before 0A can be marked completed |
-| 0A-6. Update progress document | Ready for review | `2026-06-25 13:14:11 +08:00` | This file |
-| 0A-7. Update operating plan | Ready for review | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` |
-| 0A-8. Commit and dual-remote push | Server branch pushed, deployment blocked by server permission, GitHub blocked by TLS | `2026-06-25 13:19:30 +08:00` | Commit `d4919fde` pushed to server `origin`; GitHub HTTPS push failed with Schannel and OpenSSL TLS errors; server deploy hook failed at npm permission step |
+| 0A-1. Produce mode boolean inventory | Completed | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md` |
+| 0A-2. Produce bridge inventory | Completed | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-bridge-shrink-baseline.md` |
+| 0A-3. Deploy mode ownership report-only guard | Completed | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-mode-ownership.js` |
+| 0A-4. Deploy bridge shrink report-only guard | Completed | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-bridge-shrink.js` |
+| 0A-5. Migration owner review | Completed | `2026-06-25 14:01:38 +08:00` | `codex/external-review` approved the 0A baseline for completion |
+| 0A-6. Update progress document | Completed | `2026-06-25 14:01:38 +08:00` | This file records 0A as completed after review |
+| 0A-7. Update operating plan | Completed | `2026-06-25 14:01:38 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records 0A as completed |
+| 0A-8. Commit and server branch push | Pending completion commit push | Pending | 0A officially ends after commit `docs: mark 0A as completed after migration owner review` is pushed to `origin/codex/refactor-tutorial-guide-architecture` |
 
 ## Report-Only Guard Baseline
 
@@ -48,13 +48,13 @@ Executed before commit/push:
 
 ## Review Gate
 
-0A is not marked completed in this document because migration owner review has not happened yet.
+0A is marked completed in this document because migration owner review passed.
 
 Required owner sign-off record:
 
 | Reviewer | Review Time | Decision | Notes |
 | --- | --- | --- | --- |
-| Pending migration owner | Pending | Pending | Confirm inventory coverage, role classification quality, and baseline usefulness before 0B starts |
+| `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review. |
 
 ## Push / Deploy Evidence
 
@@ -66,8 +66,6 @@ Required owner sign-off record:
 
 ## Next Step
 
-After migration owner sign-off:
+0A officially ends after this completion commit is pushed to `origin/codex/refactor-tutorial-guide-architecture`.
 
-1. Update this document and the operating plan from `Ready for Migration Owner Review` to `Completed`.
-2. Commit that review-status update separately.
-3. Start `0B. Authority, Input, Literal, Duplicate Inventory`.
+After that push succeeds, start `0B. Authority, Input, Literal, Duplicate Inventory`.
