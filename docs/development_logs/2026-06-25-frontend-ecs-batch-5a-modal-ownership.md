@@ -6,12 +6,12 @@
 | ----------------- | -------------------------------------------------------------------- |
 | Batch             | `5. Panel/Modal Ownership`                                           |
 | Slice             | `5a (naming + confirmDialog)`                                        |
-| State             | naming `Completed`; confirmDialog `Ready for Migration Owner Review` |
+| State | `Completed` (naming + confirmDialog) |
 | ECS modal owner   | `frontend/js/ecs/mode/ModalWorld.js`                                 |
 | Callback registry | `frontend/js/platform/ModalCallbackRegistry.js`                      |
 | Bridge surface    | `CanvasModeOwnershipBridge` modal API + wrappers                     |
 | Seal enforced by  | existing `check-frontend-ecs-mode-ownership-spine.js`                |
-| Last updated      | `2026-06-26 03:32:16 +08:00`                                         |
+| Last updated | `2026-06-26 04:01:40 +08:00` |
 
 ## Decision
 
@@ -126,4 +126,4 @@ The `confirmDialog` sub-step is next and reuses this foundation. Batch 5 slices 
 
 ## confirmDialog Review Result
 
-`confirmDialog` sealing is `Ready for Migration Owner Review`. A three-lens adversarial review (reset-flow behavior, seal+mirror+no-shadowing, scope/purity/guard) returned all three lenses clean. Verified: `npm run test:architecture` `1186` tests, mode-ownership-spine guard 0 violations, lint (after pruning the stale suppression), format, and `git diff --check` all pass. With `confirmDialog` signed off, slice 5a (naming + confirmDialog) is complete.
+`confirmDialog` sealing is `Completed` after migration owner review by `codex/external-review` at `2026-06-26 04:01:40 +08:00` (Passed). The three-lens adversarial review returned all lenses clean; the review confirmed state sealing, the bridge wrappers (no shadowing), the preserved kind-dispatch + resolve-if-present registry wiring, the unchanged async reset flow, and the pruned stale suppression. With both `naming` and `confirmDialog` signed off, **slice 5a (naming + confirmDialog) is Completed**. Batch 5 slices 5b (`event`/`rewardReveal`), 5c (`targetPicker`), and 5d (`blockingPanel`) reuse this modal-owner foundation; Batch 6 may not start until Batch 5 is complete.

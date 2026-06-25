@@ -2,14 +2,14 @@
 
 ## Current Status
 
-| Field                  | Value                                                        |
-| ---------------------- | ------------------------------------------------------------ |
-| Branch                 | `codex/refactor-tutorial-guide-architecture`                 |
-| Current batch          | `5. Panel/Modal Ownership (slice 5a)`                        |
-| Batch state            | `Slice 5a: naming Completed, confirmDialog Ready for Review` |
-| Runtime code migration | Mode ownership bridge only                                   |
-| ECS dependency         | `bitecs@0.4.0` installed exactly                             |
-| Last updated           | `2026-06-26 03:32:16 +08:00`                                 |
+| Field                  | Value                                         |
+| ---------------------- | --------------------------------------------- |
+| Branch                 | `codex/refactor-tutorial-guide-architecture`  |
+| Current batch          | `5. Panel/Modal Ownership (slice 5a)`         |
+| Batch state            | `Slice 5a (naming + confirmDialog) Completed` |
+| Runtime code migration | Mode ownership bridge only                    |
+| ECS dependency         | `bitecs@0.4.0` installed exactly              |
+| Last updated           | `2026-06-26 04:01:40 +08:00`                  |
 
 ## Batch 0A Checklist
 
@@ -223,7 +223,7 @@ Required owner sign-off record:
 | `codex/external-review` | `2026-06-25 23:02:25 +08:00` | Passed   | Batch 3 mode ownership spine accepted: the singleton ECS mode entity is approved as the first runtime ECS owner; `CanvasModeOwnershipBridge.js` is accepted as a narrow temporary bridge; the mode spine guard blocks legacy mode-decision growth while allowing owner/bridge/vocabulary paths; the generated IIFE runtime bundle is accepted until a broader frontend build pipeline exists. |
 | `codex/external-review` | `2026-06-26 01:24:26 +08:00` | Passed   | Batch 4 input intent boundary accepted: pure kind-aware resolver, bridge pass-through with null fallback, `esbuild@0.23.1` bundle, count-preserving router adapters (guard 30 = baseline 30), scope clean; the gesture/tap fall-through deferred to Batch 6 was accepted.                                                                                                                     |
 | `codex/external-review` | `2026-06-26 02:59:52 +08:00` | Passed   | Batch 5 slice 5a (naming) modal ownership accepted: ECS modal owner + token registry, bridge naming wrappers (no shadowing), per-host owner with `this.naming` mirror, seal enforced by the existing mode-ownership-spine guard; the HIGH closeNamingModal collision + LOW mirror fixes were accepted.                                                                                        |
-| Pending                 | -                            | Pending  | Batch 5 slice 5a confirmDialog modal ownership implementation complete and verified locally; awaits migration owner review.                                                                                                                                                                                                                                                                   |
+| `codex/external-review` | `2026-06-26 04:01:40 +08:00` | Passed   | Batch 5 slice 5a confirmDialog modal ownership accepted: owner-sourced state with `this.confirmDialog` mirror, bridge wrappers (no shadowing), kind-dispatch preserved, registry wired resolve-if-present, critical reset flow unchanged; mode-ownership-spine guard 0 violations. Slice 5a (naming + confirmDialog) is complete.                                                             |
 
 ## Push / Deploy Evidence
 
