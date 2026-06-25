@@ -6,12 +6,12 @@
 | ----------------- | ----------------------------------------------------- |
 | Batch             | `5. Panel/Modal Ownership`                            |
 | Slice             | `5a (naming sealed; confirmDialog next sub-step)`     |
-| State             | `Ready for Migration Owner Review`                    |
+| State             | `Completed`                                           |
 | ECS modal owner   | `frontend/js/ecs/mode/ModalWorld.js`                  |
 | Callback registry | `frontend/js/platform/ModalCallbackRegistry.js`       |
 | Bridge surface    | `CanvasModeOwnershipBridge` modal API + wrappers      |
 | Seal enforced by  | existing `check-frontend-ecs-mode-ownership-spine.js` |
-| Last updated      | `2026-06-26 02:44:35 +08:00`                          |
+| Last updated      | `2026-06-26 02:59:52 +08:00`                          |
 
 ## Decision
 
@@ -111,8 +111,6 @@ Local verification passed:
 
 ## Review Result
 
-Slice 5a-naming is `Ready for Migration Owner Review`. It must not be marked
-`Completed` until migration owner review confirms the modal owner + registry, the
-bridge naming wrappers, the per-host owner + mirror approach, and that the seal is
-enforced by the existing mode-spine guard. The `confirmDialog` sub-step and Batch 5
-slices 5b-5d remain gated behind their own sealed slices.
+Slice 5a-naming is `Completed` after migration owner review by `codex/external-review` at `2026-06-26 02:59:52 +08:00` (Passed). The review confirmed the modal owner + callback registry, the bridge naming wrappers (no method shadowing), the per-host owner + `this.naming` mirror approach, the eight rerouted App/Shell write sites, and that the seal is enforced by the existing mode-ownership-spine guard (0 violations). The adversarial-review fixes (the `closeNamingModal` collision and the submit-`finally` mirror) were accepted.
+
+The `confirmDialog` sub-step is next and reuses this foundation. Batch 5 slices 5b-5d remain gated behind their own sealed slices; Batch 6 may not start until Batch 5 is complete.
