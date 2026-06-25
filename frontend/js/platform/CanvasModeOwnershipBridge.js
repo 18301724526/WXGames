@@ -176,6 +176,12 @@
     return deriveModeFacts(host);
   }
 
+  function resolveInputIntent(host, physicalIntent) {
+    const snapshot = getModeSnapshot(host);
+    if (!snapshot || !EcsModeRuntime?.resolveInputIntent) return null;
+    return EcsModeRuntime.resolveInputIntent(physicalIntent, snapshot);
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -218,6 +224,10 @@
         const facts = getFallbackModeFacts(this);
         return facts.techTreeActive && !facts.techTreeBlockingOverlayActive;
       },
+
+      resolveInputIntent(physicalIntent) {
+        return resolveInputIntent(this, physicalIntent);
+      },
     });
     return true;
   }
@@ -230,6 +240,7 @@
     install,
     refreshModeSnapshot,
     resolveBaseModeKey,
+    resolveInputIntent,
   };
 
   global.CanvasModeOwnershipBridge = api;

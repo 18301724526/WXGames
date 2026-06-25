@@ -1,7 +1,7 @@
 'use strict';
 
 const MANIFEST_VERSION = 'ecs-boundary-manifest-v1';
-const BATCH = '3. Mode Ownership Spine';
+const BATCH = '4. Input Intent Boundary';
 
 function freezeList(values) {
   return Object.freeze(Array.from(values));
@@ -88,6 +88,7 @@ const RUNTIME_LOADING_POLICY = freezeRecord({
     'frontend/js/ecs/core/**',
     'frontend/js/ecs/registry/**',
     'frontend/js/ecs/mode/**',
+    'frontend/js/ecs/input/**',
   ]),
 });
 

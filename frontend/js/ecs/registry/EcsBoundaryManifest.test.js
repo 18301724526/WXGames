@@ -13,6 +13,7 @@ test('EcsBoundaryManifest declares the reviewed Batch 2 owner vocabulary', () =>
       'frontend/js/ecs/core/**',
       'frontend/js/ecs/registry/**',
       'frontend/js/ecs/mode/**',
+      'frontend/js/ecs/input/**',
     ],
   });
   assert.deepEqual(EcsBoundaryManifest.ownerRoles, [

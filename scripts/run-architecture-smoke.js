@@ -15,6 +15,10 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/ecs/mode/ModeWorld.js',
   'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
+  'frontend/js/ecs/input/InputIntent.js',
+  'frontend/js/ecs/input/InputIntent.test.js',
+  'frontend/js/ecs/input/InputIntentResolver.js',
+  'frontend/js/ecs/input/InputIntentResolver.test.js',
   'frontend/js/config/FeatureFlags.js',
   'frontend/js/config/FeatureFlags.test.js',
   'frontend/js/config/LocaleTextRegistry.js',
@@ -366,6 +370,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/check-frontend-ecs-mode-ownership-spine.js',
   'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
+  'scripts/check-frontend-ecs-input-intent-spine.js',
+  'scripts/check-frontend-ecs-input-intent-spine.test.js',
   'scripts/build-frontend-ecs-runtime.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
@@ -384,6 +390,8 @@ const TEST_FILES = Object.freeze([
   'frontend/js/ecs/core/EcsCoreBoundary.test.js',
   'frontend/js/ecs/registry/EcsBoundaryManifest.test.js',
   'frontend/js/ecs/mode/ModeWorld.test.js',
+  'frontend/js/ecs/input/InputIntent.test.js',
+  'frontend/js/ecs/input/InputIntentResolver.test.js',
   'frontend/js/platform/CanvasLayerRegistry.test.js',
   'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.test.js',
@@ -540,6 +548,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
+  'scripts/check-frontend-ecs-input-intent-spine.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -621,6 +630,9 @@ function main() {
   ]);
   run('frontend ECS mode ownership spine blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-mode-ownership-spine.js',
+  ]);
+  run('frontend ECS input intent spine blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-input-intent-spine.js',
   ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',

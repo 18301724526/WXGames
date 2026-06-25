@@ -1953,6 +1953,123 @@ var EcsModeRuntime = (() => {
     },
   });
 
+  // frontend/js/ecs/input/InputIntent.js
+  var require_InputIntent = __commonJS({
+    'frontend/js/ecs/input/InputIntent.js'(exports, module) {
+      'use strict';
+      var INTENT_KINDS = Object.freeze({
+        DRAG: 'drag',
+        GESTURE: 'gesture',
+        TAP: 'tap',
+      });
+      var INTENT_PHASES = Object.freeze({
+        START: 'start',
+        MOVE: 'move',
+        END: 'end',
+        CANCEL: 'cancel',
+      });
+      var INPUT_ROUTES = Object.freeze({
+        ENTITY_BATTLE: 'entity-battle',
+        TECH_TREE: 'tech-tree',
+        WORLD_MAP: 'world-map',
+        CITY: 'city',
+      });
+      var KIND_VALUES = Object.freeze(Object.values(INTENT_KINDS));
+      var ROUTE_VALUES = Object.freeze(Object.values(INPUT_ROUTES));
+      function toFiniteNumber(value) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+      }
+      function normalizePointer(pointer) {
+        if (!pointer || typeof pointer !== 'object') return null;
+        return Object.freeze({ x: toFiniteNumber(pointer.x), y: toFiniteNumber(pointer.y) });
+      }
+      function normalizeGesture(gesture) {
+        if (!gesture || typeof gesture !== 'object') return null;
+        return Object.freeze({
+          type: String(gesture.type || ''),
+          phase: gesture.phase ? String(gesture.phase) : '',
+        });
+      }
+      function createPhysicalIntent(input = {}) {
+        return Object.freeze({
+          kind: String(input.kind || ''),
+          phase: input.phase ? String(input.phase) : '',
+          pointer: normalizePointer(input.pointer),
+          gesture: normalizeGesture(input.gesture),
+        });
+      }
+      function createRoutedIntent(input = {}) {
+        return Object.freeze({
+          route: String(input.route || ''),
+          kind: input.kind ? String(input.kind) : '',
+          action:
+            input.action && typeof input.action === 'object'
+              ? Object.freeze({ ...input.action })
+              : null,
+        });
+      }
+      function isCoveredRoute(route) {
+        return ROUTE_VALUES.includes(route);
+      }
+      var api = Object.freeze({
+        INTENT_KINDS,
+        INTENT_PHASES,
+        INPUT_ROUTES,
+        KIND_VALUES,
+        ROUTE_VALUES,
+        createPhysicalIntent,
+        createRoutedIntent,
+        isCoveredRoute,
+      });
+      if (typeof globalThis !== 'undefined') globalThis.EcsInputIntent = api;
+      if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    },
+  });
+
+  // frontend/js/ecs/input/InputIntentResolver.js
+  var require_InputIntentResolver = __commonJS({
+    'frontend/js/ecs/input/InputIntentResolver.js'(exports, module) {
+      'use strict';
+      var ModeResolver = (() => {
+        if (typeof __require === 'function') return require_ModeResolver();
+        return globalThis.EcsModeResolver;
+      })();
+      var InputIntent = (() => {
+        if (typeof __require === 'function') return require_InputIntent();
+        return globalThis.EcsInputIntent;
+      })();
+      var { INPUT_ROUTES, INTENT_KINDS, createRoutedIntent } = InputIntent || {};
+      var { isEntityBattleActive, canRouteTechTree, canRouteWorldMap } = ModeResolver || {};
+      function prefersWorldBeforeTech(kind) {
+        return kind === INTENT_KINDS.GESTURE;
+      }
+      function routeForSnapshot(snapshot = {}, kind = '') {
+        if (isEntityBattleActive(snapshot)) return INPUT_ROUTES.ENTITY_BATTLE;
+        if (prefersWorldBeforeTech(kind)) {
+          if (canRouteWorldMap(snapshot)) return INPUT_ROUTES.WORLD_MAP;
+          if (canRouteTechTree(snapshot)) return INPUT_ROUTES.TECH_TREE;
+        } else {
+          if (canRouteTechTree(snapshot)) return INPUT_ROUTES.TECH_TREE;
+          if (canRouteWorldMap(snapshot)) return INPUT_ROUTES.WORLD_MAP;
+        }
+        return INPUT_ROUTES.CITY;
+      }
+      function resolveInputIntent(physicalIntent = {}, snapshot = null) {
+        if (!snapshot) return null;
+        const kind = String(physicalIntent.kind || '');
+        const route = routeForSnapshot(snapshot, kind);
+        return createRoutedIntent({ route, kind });
+      }
+      var api = Object.freeze({
+        resolveInputIntent,
+        routeForSnapshot,
+      });
+      if (typeof globalThis !== 'undefined') globalThis.EcsInputIntentResolver = api;
+      if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    },
+  });
+
   // frontend/js/ecs/mode/EcsModeRuntimeEntry.js
   var require_EcsModeRuntimeEntry = __commonJS({
     'frontend/js/ecs/mode/EcsModeRuntimeEntry.js'(exports, module) {
@@ -1960,12 +2077,16 @@ var EcsModeRuntime = (() => {
       var ModeComponents = require_ModeComponents();
       var ModeResolver = require_ModeResolver();
       var ModeWorld = require_ModeWorld();
+      var InputIntent = require_InputIntent();
+      var InputIntentResolver = require_InputIntentResolver();
       var EcsModeRuntime = Object.freeze({
         ...ModeKeys,
         ...ModeResolver,
         ...ModeWorld,
+        ...InputIntentResolver,
         ModeComponents,
-        version: 'ecs-mode-runtime-batch-3',
+        InputIntent,
+        version: 'ecs-mode-runtime-batch-4',
       });
       if (typeof globalThis !== 'undefined') {
         globalThis.EcsModeRuntime = EcsModeRuntime;

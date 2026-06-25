@@ -78,3 +78,32 @@ test('CanvasModeOwnershipBridge preserves tech panel routing exception', () => {
   assert.equal(installedHost.refreshModeSnapshot().techTreeBlockingOverlayActive, true);
   assert.equal(installedHost.canRouteModeTechTree(), false);
 });
+
+test('CanvasModeOwnershipBridge resolves covered-mode input intents from the snapshot', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+
+  const worldHost = Object.assign(new Host(), {
+    state: { currentTab: 'military', militaryView: 'world' },
+    mapHomeActive: true,
+  });
+  assert.equal(worldHost.resolveInputIntent({ kind: 'drag' }).route, 'world-map');
+  assert.equal(worldHost.resolveInputIntent({ kind: 'gesture' }).route, 'world-map');
+
+  const techHost = Object.assign(new Host(), { activeTab: 'tech', activeCommandPanel: 'tech' });
+  assert.equal(techHost.resolveInputIntent({ kind: 'drag' }).route, 'tech-tree');
+
+  const battleHost = Object.assign(new Host(), { entityBattle: { visible: true } });
+  assert.equal(battleHost.resolveInputIntent({ kind: 'drag' }).route, 'entity-battle');
+
+  const cityHost = Object.assign(new Host(), {
+    state: { currentTab: 'resources', militaryView: 'army' },
+  });
+  assert.equal(cityHost.resolveInputIntent({ kind: 'drag' }).route, 'city');
+
+  // The free-function form on the public api takes the host explicitly.
+  assert.equal(
+    CanvasModeOwnershipBridge.resolveInputIntent(worldHost, { kind: 'drag' }).route,
+    'world-map',
+  );
+});

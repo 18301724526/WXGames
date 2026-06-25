@@ -338,7 +338,8 @@ shouldBlockTutorialInput(point = {}) {
 
     handleDrag(phase, point, event) {
       if (!this.inputEnabled || !this.renderer) return false;
-      if (this.isEntityBattleActive()) {
+      const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'drag', phase, pointer: point }) : null;
+      if (routedInput ? routedInput.route === 'entity-battle' : this.isEntityBattleActive()) {
         return this.actionController?.handle?.({ type: 'entityBattleDrag', phase, pointer: point }, { event }) || false;
       }
       if (this.isTutorialInputActive()) {
@@ -420,7 +421,8 @@ shouldBlockTutorialInput(point = {}) {
 handleGesture(gesture, event) {
       if (!this.inputEnabled || !this.renderer) return false;
       if (this.isTutorialInputActive()) return this.blockTutorialCanvasInput(event);
-      if (this.isEntityBattleActive()) {
+      const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'gesture', gesture }) : null;
+      if (routedInput ? routedInput.route === 'entity-battle' : this.isEntityBattleActive()) {
         const handled = this.actionController?.handle?.({ type: 'entityBattleZoom', gesture }, { event }) || false;
         if (handled && event?.preventDefault) event.preventDefault();
         if (handled && event?.stopPropagation) event.stopPropagation();

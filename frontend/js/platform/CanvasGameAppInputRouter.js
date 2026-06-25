@@ -26,13 +26,17 @@
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
       handleDrag(phase, point = {}) {
-            if (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible) {
+            const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'drag', phase, pointer: point }) : null;
+            const routedInputRoute = routedInput && routedInput.route;
+            if (routedInputRoute ? routedInputRoute === 'entity-battle' : (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible)) {
               return this.actionController?.handle?.({ type: 'entityBattleDrag', phase, pointer: point }) || false;
             }
-            if (typeof this.canRouteModeTechTree === 'function' ? this.canRouteModeTechTree() : this.activeTab === 'tech') {
+            if (routedInputRoute ? routedInputRoute === 'tech-tree' : (typeof this.canRouteModeTechTree === 'function' ? this.canRouteModeTechTree() : this.activeTab === 'tech')) {
               return this.actionController?.handle?.({ type: 'techTreeDrag', phase, pointer: point }) || false;
             }
-            if (typeof this.canRouteModeWorldMap === 'function') {
+            if (routedInputRoute) {
+              if (routedInputRoute !== 'world-map') return false;
+            } else if (typeof this.canRouteModeWorldMap === 'function') {
               if (!this.canRouteModeWorldMap()) return false;
             } else if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
             if (
@@ -70,7 +74,9 @@
           },
 
       handleGesture(gesture) {
-            if (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible) {
+            const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'gesture', gesture }) : null;
+            const routedInputRoute = routedInput && routedInput.route;
+            if (routedInputRoute ? routedInputRoute === 'entity-battle' : (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible)) {
               return this.actionController?.handle?.({ type: 'entityBattleZoom', gesture }) || false;
             }
             const worldMapGestureHandled = this.handleWorldMapGesture(gesture);
@@ -83,7 +89,11 @@
 
       handleWorldMapGesture(gesture = {}) {
             if (gesture?.type !== 'pinchZoom') return false;
-            if (typeof this.canRouteModeWorldMap === 'function') {
+            const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'gesture', gesture }) : null;
+            const routedInputRoute = routedInput && routedInput.route;
+            if (routedInputRoute) {
+              if (routedInputRoute !== 'world-map') return false;
+            } else if (typeof this.canRouteModeWorldMap === 'function') {
               if (!this.canRouteModeWorldMap()) return false;
             } else if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
             if (!this.isWorldMapHomeActive() || this.hasBlockingOverlayOpen()) return false;
