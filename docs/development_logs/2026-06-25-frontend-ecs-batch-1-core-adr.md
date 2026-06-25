@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready for Migration Owner Review.
+Completed after migration owner review.
 
 Batch 1 does not migrate runtime behavior, does not install an ECS dependency, and does not create component, system, or mode skeleton code.
 
@@ -13,6 +13,7 @@ The frontend ECS migration will use the external npm package `bitecs` as the ECS
 Approved import surfaces for future batches:
 
 - `bitecs`
+- `bitecs/legacy`
 - `bitecs/serialization`
 
 The project must not implement a local ECS core. Entity IDs, component storage, query primitives, system scheduling, world lifecycle, and serialization primitives must come from the approved external core or from thin project adapters around that external core.
@@ -29,7 +30,8 @@ Relevant facts from source review:
 - bitECS is a JavaScript/TypeScript ECS library focused on data-oriented game development.
 - The documented model uses numeric entities, flexible component storage, and query-driven systems.
 - The package name is `bitecs`.
-- The package exports the main core surface and a `serialization` subpath.
+- The installed `bitecs@0.4.0` package exports the main core surface, a `legacy` subpath, and a `serialization` subpath.
+- The planned Batch 2 boundary API names `defineComponent`, `defineQuery`, `enterQuery`, `exitQuery`, and `Types` are provided by `bitecs/legacy` in version `0.4.0`.
 
 Batch 2 must pin the exact dependency version in `package.json` and `package-lock.json` when the ECS boundary skeleton begins. If the npm-published package differs materially from the reviewed upstream package metadata, Batch 2 must update this ADR before installing the dependency.
 
@@ -44,6 +46,17 @@ The project is migrating because ownership is already too scattered to safely ex
 - It leaves component storage policy to the project, which matters for H5 and minigame constraints.
 - It supports serialization as a package-level concern instead of forcing the project to invent that layer early.
 - It allows the migration to focus on ownership boundaries rather than core data-structure design.
+
+Other ECS libraries are not selected in this migration window because they either push the project toward class/object-oriented entity ownership, a heavier engine-specific runtime model, or a broader application-state framework than the current canvas/minigame boundary needs. Choosing them now would expand the migration surface before old owners are retired. The current decision is intentionally narrow: keep the ECS primitive layer external, small, and reachable only through the project boundary.
+
+## Exit Strategy
+
+Batch 2 fixes the replacement seam before gameplay migration starts:
+
+- Production code may touch `bitecs`, `bitecs/legacy`, or future approved `bitecs` surfaces only through `frontend/js/ecs/core/EcsCoreBoundary.js`.
+- If `bitecs@0.4.0` becomes unmaintained, unsafe, or incompatible with H5/minigame constraints, the replacement path is to update that boundary and its tests first, then update this ADR.
+- Gameplay systems, component families, mode ownership, and snapshots must depend on the project boundary vocabulary, not on package-specific imports.
+- Direct package imports outside the boundary are blocked by the Batch 2 boundary skeleton guard.
 
 ## Non-Goals
 
@@ -67,7 +80,7 @@ The guard is blocking and scans production source under:
 
 It excludes tests, vendor code, docs, baselines, and dependencies.
 
-The guard allows future imports from `bitecs` and `bitecs/serialization`.
+The guard allows future imports from `bitecs`, `bitecs/legacy`, and `bitecs/serialization`.
 
 The guard blocks:
 

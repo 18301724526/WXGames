@@ -8,7 +8,7 @@ const PACKAGE_DEPENDENCY_SECTIONS = Object.freeze([
   'peerDependencies',
   'optionalDependencies',
 ]);
-const ALLOWED_ECS_IMPORTS = Object.freeze(['bitecs', 'bitecs/serialization']);
+const ALLOWED_ECS_IMPORTS = Object.freeze(['bitecs', 'bitecs/legacy', 'bitecs/serialization']);
 const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /(^|\/)node_modules\//,
   /(^|\/)vendor\//,

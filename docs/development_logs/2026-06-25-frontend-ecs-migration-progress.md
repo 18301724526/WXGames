@@ -5,11 +5,11 @@
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
-| Current batch          | `1. ECS Core ADR and Gate`                   |
-| Batch state            | `Completed`                                  |
+| Current batch          | `2. ECS Boundary Skeleton`                   |
+| Batch state            | `Ready for Migration Owner Review`           |
 | Runtime code migration | Not started                                  |
-| ECS dependency         | Not introduced                               |
-| Last updated           | `2026-06-25 18:33:08 +08:00`                 |
+| ECS dependency         | `bitecs@0.4.0` installed exactly             |
+| Last updated           | `2026-06-25 19:22:38 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -34,6 +34,7 @@
 | Input branch guard       |            14 |                      203 findings | No, report-only | `node scripts/report-frontend-ecs-input-branch.js --summary`       |
 | Literal duplicate guard  |           213 |                    10417 findings | No, report-only | `node scripts/report-frontend-ecs-literal-duplicate.js --summary`  |
 | ECS core guard           |           218 |                      0 violations | Yes, blocking   | `node scripts/check-frontend-ecs-core-guard.js`                    |
+| ECS boundary guard       |           222 |                      0 violations | Yes, blocking   | `node scripts/check-frontend-ecs-boundary-skeleton.js`             |
 
 ## Batch 0B Checklist
 
@@ -59,6 +60,25 @@
 | 1-5. Progress document update       | Completed | `2026-06-25 18:33:08 +08:00` | This document records Batch 1 artifacts, commands, status, and review blocker                                                                  |
 | 1-6. Commit and server branch push  | Completed | `2026-06-25 18:33:08 +08:00` | Commit `22bf9106` reached the server branch; refactor test server deploy was manually completed with the same wrapper after push-side HTTP 504 |
 | 1-7. Migration owner review         | Completed | `2026-06-25 18:33:08 +08:00` | `codex/external-review` approved Batch 1 for completion                                                                                        |
+
+## Batch 2 Checklist
+
+| Step                                | Status           | Updated At                   | Evidence                                                                                                                                              |
+| ----------------------------------- | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2-1. Exact ECS dependency pin       | Ready for Review | `2026-06-25 19:22:38 +08:00` | `package.json` and `package-lock.json` pin `bitecs` to exact version `0.4.0`; `npm ls bitecs` resolves `bitecs@0.4.0`                                 |
+| 2-2. ECS core boundary skeleton     | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/core/EcsCoreBoundary.js` is the only production boundary touching `bitecs`; it forwards approved primitives without local core logic |
+| 2-3. ECS manifest skeleton          | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/registry/EcsBoundaryManifest.js` declares owner roles, component families, mode keys, snapshot keys, and bridge lifecycle policy     |
+| 2-4. Boundary documentation         | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/README.md` states Batch 2 is a Node/CommonJS architecture boundary and is not loaded by H5 or minigame entrypoints                   |
+| 2-5. Boundary blocking guard        | Ready for Review | `2026-06-25 19:22:38 +08:00` | `scripts/check-frontend-ecs-boundary-skeleton.js` blocks direct `bitecs` imports outside the boundary, ECS reverse dependencies, and runtime loading  |
+| 2-6. Guard and skeleton tests       | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/**/*.test.js` and `scripts/check-frontend-ecs-boundary-skeleton.test.js` cover boundary exports, manifest facts, and guard behavior  |
+| 2-7. Architecture smoke integration | Ready for Review | `2026-06-25 19:22:38 +08:00` | `scripts/run-architecture-smoke.js` checks new ECS files/tests and runs the boundary guard as blocking                                                |
+| 2-8. Commit and server branch push  | Ready for Review | `2026-06-25 19:22:38 +08:00` | Batch 2 implementation commit and push evidence must be recorded before migration owner review; status remains `Ready for Migration Owner Review`     |
+
+Batch 2 notes:
+
+- `bitecs@0.4.0` exposes the planned `defineComponent`, `Types`, `defineQuery`, `enterQuery`, and `exitQuery` API through the official `bitecs/legacy` export. This surface is allowed only inside `frontend/js/ecs/core/EcsCoreBoundary.js`.
+- `bitecs/serialization` remains an approved external ECS surface in the Batch 1 ADR, but Batch 2 code does not import it yet.
+- `frontend/index.html` and `frontend/minigame/game.js` are not modified and do not load `frontend/js/ecs`.
 
 ## Verification Commands
 
@@ -91,9 +111,34 @@ Executed for Batch 1 before this progress entry:
 - `npm run test:architecture`
 - `git diff --check`
 
+Executed for Batch 2 before this progress entry:
+
+- `npm ls bitecs`
+- `node --test frontend/js/ecs/**/*.test.js`
+- `node --test scripts/check-frontend-ecs-boundary-skeleton.test.js`
+- `node --test scripts/check-frontend-ecs-core-guard.test.js`
+- `node scripts/check-frontend-ecs-core-guard.js`
+- `node scripts/check-frontend-ecs-core-guard.js --json`
+- `node scripts/check-frontend-ecs-boundary-skeleton.js`
+- `node scripts/check-frontend-ecs-boundary-skeleton.js --json`
+- `npm run format:check`
+- `npm run test:architecture`
+
+Batch 2 local verification result:
+
+- `npm ls bitecs`: passed, resolved `bitecs@0.4.0`.
+- ECS skeleton tests: passed, 7 tests.
+- Boundary guard tests: passed, 8 tests.
+- ECS core guard: passed, 0 violations.
+- ECS boundary guard: passed, 0 violations across 222 scanned files.
+- `npm run format:check`: passed.
+- `npm run test:architecture`: passed, 1140 tests and all architecture guards.
+
 ## Review Gate
 
 0A, 0B, and Batch 1 are marked completed in this document because migration owner review passed.
+
+Batch 2 is `Ready for Migration Owner Review`. It must not be marked `Completed` until review passes and a separate completion commit records the reviewer and review time.
 
 Required owner sign-off record:
 
@@ -102,6 +147,7 @@ Required owner sign-off record:
 | `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed   | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review.                               |
 | `codex/external-review` | `2026-06-25 16:43:55 +08:00` | Passed   | 0B renderer authority, input branch, and literal/duplicate baselines are accepted for completion. Batch 1 may start after this completion commit reaches the server branch.                                                                                                                                                                            |
 | `codex/external-review` | `2026-06-25 18:33:08 +08:00` | Passed   | Batch 1 ADR, blocking guard, guard tests, architecture smoke integration, no-runtime-change scope, and no-dependency-install scope are accepted. Review follow-ups for Batch 2: ADR should add why other ECS libraries were not selected, define a bitECS maintenance/exit strategy, and pin an exact `bitecs` version when installing the dependency. |
+| `pending`               | `pending`                    | Pending  | Batch 2 first implementation is ready for migration owner review. It installs exact `bitecs@0.4.0`, adds the ECS boundary skeleton, adds the boundary blocking guard, updates Batch 1 ADR follow-ups, and does not migrate runtime behavior.                                                                                                           |
 
 ## Push / Deploy Evidence
 
@@ -144,4 +190,4 @@ Permission root cause:
 
 0B is officially complete after migration owner review. Batch 1 started after this completion commit reached the server branch.
 
-Batch 1 is officially complete after migration owner review. Batch 2 may start after this completion commit reaches the server branch.
+Batch 1 is officially complete after migration owner review. Batch 2 first implementation is ready for migration owner review after its implementation commit reaches the server branch.

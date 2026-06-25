@@ -40,12 +40,14 @@ test('ECS core guard scans production source roots and excludes tests/vendor', (
 
 test('ECS core guard allows approved bitecs imports', () => {
   assert.equal(isAllowedEcsImport('bitecs'), true);
+  assert.equal(isAllowedEcsImport('bitecs/legacy'), true);
   assert.equal(isAllowedEcsImport('bitecs/serialization'), true);
 
   const violations = findEcsCoreViolationsInText(
     'frontend/js/domain/EcsBoundary.js',
     [
       "import { createWorld, defineComponent } from 'bitecs';",
+      "const legacy = require('bitecs/legacy');",
       "const serialization = require('bitecs/serialization');",
       'const createWorldTiles = () => [];',
       'const system = game.system;',

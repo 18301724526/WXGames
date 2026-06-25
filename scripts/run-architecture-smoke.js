@@ -4,6 +4,10 @@ const path = require('node:path');
 
 const CHECK_FILES = Object.freeze([
   'frontend/js/config/GameConfig.js',
+  'frontend/js/ecs/core/EcsCoreBoundary.js',
+  'frontend/js/ecs/core/EcsCoreBoundary.test.js',
+  'frontend/js/ecs/registry/EcsBoundaryManifest.js',
+  'frontend/js/ecs/registry/EcsBoundaryManifest.test.js',
   'frontend/js/config/FeatureFlags.js',
   'frontend/js/config/FeatureFlags.test.js',
   'frontend/js/config/LocaleTextRegistry.js',
@@ -349,6 +353,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
   'scripts/check-frontend-ecs-core-guard.js',
   'scripts/check-frontend-ecs-core-guard.test.js',
+  'scripts/check-frontend-ecs-boundary-skeleton.js',
+  'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
   'scripts/rewrite-frontend-asset-version.test.js',
@@ -363,6 +369,8 @@ const CHECK_FILES = Object.freeze([
 ]);
 
 const TEST_FILES = Object.freeze([
+  'frontend/js/ecs/core/EcsCoreBoundary.test.js',
+  'frontend/js/ecs/registry/EcsBoundaryManifest.test.js',
   'frontend/js/platform/CanvasLayerRegistry.test.js',
   'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.test.js',
@@ -516,6 +524,7 @@ const TEST_FILES = Object.freeze([
   'scripts/report-frontend-ecs-mode-ownership.test.js',
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
   'scripts/check-frontend-ecs-core-guard.test.js',
+  'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -591,6 +600,9 @@ function main() {
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);
   run('frontend ECS core blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-core-guard.js',
+  ]);
+  run('frontend ECS boundary skeleton blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-boundary-skeleton.js',
   ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',

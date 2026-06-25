@@ -304,3 +304,39 @@ Batch 1 acceptance owner:
 - Batch 1 moved from `Ready for Migration Owner Review` to `Completed` after `codex/external-review` reviewed the ADR, guard behavior, architecture smoke integration, and progress records at `2026-06-25 18:33:08 +08:00`.
 - Batch 1 review follow-ups for Batch 2: add why other ECS libraries were not selected, add a bitECS maintenance/exit strategy, and pin an exact `bitecs` version when installing the dependency.
 - Batch 2 may start after the Batch 1 completed commit reaches the server branch.
+
+Batch 2 first-window deliverables:
+
+- Exact ECS dependency pin: `bitecs@0.4.0` in `package.json` and `package-lock.json`.
+- ECS core boundary: only `frontend/js/ecs/core/EcsCoreBoundary.js` may import external ECS package surfaces.
+- ECS boundary manifest: owner roles, component families, mode keys, snapshot keys, and bridge lifecycle policy.
+- Boundary blocking guard: prevent direct ECS package imports outside the boundary, reverse dependencies from ECS skeleton to platform/runtime layers, runtime entrypoint loading, and runtime objects in ECS skeleton files.
+
+Batch 2 allowed ECS external surfaces:
+
+| Surface                | Status   | Notes                                                                                                                  |
+| ---------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `bitecs`               | Approved | Core world/entity/system composition primitives; only `frontend/js/ecs/core/EcsCoreBoundary.js` may import it          |
+| `bitecs/legacy`        | Approved | `bitecs@0.4.0` provides `defineComponent`, `Types`, `defineQuery`, `enterQuery`, and `exitQuery` here; boundary only   |
+| `bitecs/serialization` | Approved | ADR-approved future serialization surface; no Batch 2 runtime import yet and any future use must go through a boundary |
+| Other `bitecs/*`       | Blocked  | Any additional subpath requires ADR update and guard update                                                            |
+
+Batch 2 execution checklist:
+
+| Step                                | Status           | Artifact / Gate                                                                        | Acceptance Standard                                                                                                             |
+| ----------------------------------- | ---------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 2-1. Exact ECS dependency pin       | Ready for Review | `package.json`, `package-lock.json`                                                    | `npm ls bitecs` resolves exact `bitecs@0.4.0`; dependency version is not ranged                                                 |
+| 2-2. ECS core boundary skeleton     | Ready for Review | `frontend/js/ecs/core/EcsCoreBoundary.js`                                              | Only boundary imports `bitecs`; it forwards approved primitives without project-owned entity/component/query/system storage     |
+| 2-3. ECS manifest skeleton          | Ready for Review | `frontend/js/ecs/registry/EcsBoundaryManifest.js`                                      | Manifest declares reviewed owner roles, component families, mode keys, snapshot keys, and bridge lifecycle policy               |
+| 2-4. Boundary documentation         | Ready for Review | `frontend/js/ecs/README.md`                                                            | Document states ECS skeleton is Node/CommonJS architecture boundary and not part of H5/minigame loading chain                   |
+| 2-5. Boundary blocking guard        | Ready for Review | `scripts/check-frontend-ecs-boundary-skeleton.js`                                      | Guard blocks direct ECS package imports outside boundary, ECS reverse dependencies, runtime loading, and runtime object storage |
+| 2-6. Guard and skeleton tests       | Ready for Review | `frontend/js/ecs/**/*.test.js`, `scripts/check-frontend-ecs-boundary-skeleton.test.js` | Tests cover boundary exports, manifest validation, scan scope, allow/block behavior, package pinning, formats, and unknown args |
+| 2-7. Architecture smoke integration | Ready for Review | `scripts/run-architecture-smoke.js`                                                    | Architecture smoke checks ECS skeleton files/tests and runs the boundary skeleton guard as blocking                             |
+| 2-8. Commit and server branch push  | Ready for Review | git history and server remote                                                          | Batch 2 first implementation commit is pushed; deploy/health and GitHub HTTPS results are recorded in progress                  |
+
+Batch 2 acceptance owner:
+
+- Migration owner: project main engineer or explicitly assigned architecture owner.
+- Batch 2 first implementation may only be marked `Ready for Migration Owner Review`.
+- Batch 2 can be marked `Completed` only in a separate commit after `codex/external-review` or the assigned migration owner reviews the dependency pin, boundary skeleton, guard behavior, no-runtime-loading scope, and progress records.
+- Batch 3 must not start until the Batch 2 completed commit reaches the server branch.
