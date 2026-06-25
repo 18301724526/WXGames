@@ -9,7 +9,7 @@
 | Batch state            | `Ready for Migration Owner Review`                   |
 | Runtime code migration | Not started                                          |
 | ECS dependency         | Not introduced                                       |
-| Last updated           | `2026-06-25 15:34:26 +08:00`                         |
+| Last updated           | `2026-06-25 15:57:47 +08:00`                         |
 
 ## Batch 0A Checklist
 
@@ -36,16 +36,16 @@
 
 ## Batch 0B Checklist
 
-| Step                                 | Status           | Updated At                   | Evidence                                                                                        |
-| ------------------------------------ | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| 0B-1. Renderer authority report      | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md`               |
-| 0B-2. Input branch report            | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`                     |
-| 0B-3. Literal / duplicate report     | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`                |
-| 0B-4. Guard tests                    | Ready for Review | `2026-06-25 15:34:26 +08:00` | New `node:test` coverage for renderer authority, input branch, and literal duplicate guards     |
-| 0B-5. Architecture smoke integration | Ready for Review | `2026-06-25 15:34:26 +08:00` | `scripts/run-architecture-smoke.js` runs all 0A and 0B report-only guards with `--summary`      |
-| 0B-6. Progress document update       | Ready for Review | `2026-06-25 15:34:26 +08:00` | This document records 0B commands, artifacts, status, and review blocker                        |
-| 0B-7. Operating plan update          | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records the 0B gate |
-| 0B-8. Commit and push                | Pending          | -                            | Will be recorded after local validation, commit, and remote push                                |
+| Step                                 | Status           | Updated At                   | Evidence                                                                                                                                       |
+| ------------------------------------ | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0B-1. Renderer authority report      | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md`                                                              |
+| 0B-2. Input branch report            | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`                                                                    |
+| 0B-3. Literal / duplicate report     | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`                                                               |
+| 0B-4. Guard tests                    | Ready for Review | `2026-06-25 15:34:26 +08:00` | New `node:test` coverage for renderer authority, input branch, and literal duplicate guards                                                    |
+| 0B-5. Architecture smoke integration | Ready for Review | `2026-06-25 15:34:26 +08:00` | `scripts/run-architecture-smoke.js` runs all 0A and 0B report-only guards with `--summary`                                                     |
+| 0B-6. Progress document update       | Ready for Review | `2026-06-25 15:34:26 +08:00` | This document records 0B commands, artifacts, status, and review blocker                                                                       |
+| 0B-7. Operating plan update          | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records the 0B gate                                                |
+| 0B-8. Commit and push                | Ready for Review | `2026-06-25 15:57:47 +08:00` | Commit `b3454765` reached the server branch; refactor test server deploy was manually completed with the same wrapper after push-side HTTP 504 |
 
 ## Verification Commands
 
@@ -81,19 +81,24 @@ Required owner sign-off record:
 
 ## Push / Deploy Evidence
 
-| Remote / Hook                                       | Result                   | Evidence                                                                                                                                                                                                                                                |
-| --------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `d4919fde` | Server accepted `8aa553d9..d4919fde`                                                                                                                                                                                                                    |
-| Refactor test server deploy hook                    | Failed after checkout    | Hook checked out `d4919fde`, then `npm` failed with `EACCES: permission denied, rmdir '/www/wwwroot/h5-refactor-worktree/node_modules/.bin'`                                                                                                            |
-| `github codex/refactor-tutorial-guide-architecture` | Failed                   | HTTPS remote was used. Schannel reported `failed to receive handshake`; OpenSSL retry reported `unexpected eof while reading`                                                                                                                           |
-| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `87876c1a` | Remote branch resolved to `87876c1a6e37ace396759201c503a9aeb3f21a2f` after the push timeout; local branch is aligned with `origin`                                                                                                                      |
-| Refactor test server permission repair              | Completed                | Root-owned ignored dependency directories were removed and `/www/wwwroot/h5-refactor-worktree` plus `/opt/wxgame-refactor/.wxgame` were restored to `www:www`; `node_modules`, `node_modules/.bin`, and `backend/node_modules` now resolve as `www:www` |
-| Refactor test server deploy                         | Completed                | `/opt/wxgame-refactor/.wxgame/current-deploy.json` records environment `refactor-test`, branch `codex/refactor-tutorial-guide-architecture`, commit `87876c1a6e37ace396759201c503a9aeb3f21a2f`, deployed at `2026-06-25T06:24:43Z`                      |
-| Refactor test server health                         | Passed                   | `http://47.116.32.216/wxgame-refactor-api/health` returned `status: ok` and deployed commit `87876c1a6e37ace396759201c503a9aeb3f21a2f`                                                                                                                  |
-| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `8ebedeb4` | Deploy hook ran the full test-server gate: `npm run format:check`, `npm test`, `npm run test:architecture`, backend syntax check, and frontend manifest check                                                                                           |
-| Runtime backend permission repair                   | Completed                | `/opt/wxgame-refactor/backend/node_modules` was also root-owned from an earlier root install; it was removed and recreated by `www` during deploy                                                                                                       |
-| Root PM2 refactor process cleanup                   | Completed                | Root-owned `wxgame-refactor-server` and `wxgame-refactor-world-worker` were removed from root PM2 because they occupied port `3003`; `www` PM2 now owns the refactor server and worker                                                                  |
-| Refactor test server final deploy                   | Completed                | Deploy script completed successfully for `8ebedeb48d7ea3220ee35233f084a24e3a270761`; PM2 listener confirmed port `3003`, worker confirmed online, and health returned `status: ok` with deployedAt `2026-06-25T06:53:04Z`                               |
+| Remote / Hook                                       | Result                   | Evidence                                                                                                                                                                                                                                                         |
+| --------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `d4919fde` | Server accepted `8aa553d9..d4919fde`                                                                                                                                                                                                                             |
+| Refactor test server deploy hook                    | Failed after checkout    | Hook checked out `d4919fde`, then `npm` failed with `EACCES: permission denied, rmdir '/www/wwwroot/h5-refactor-worktree/node_modules/.bin'`                                                                                                                     |
+| `github codex/refactor-tutorial-guide-architecture` | Failed                   | HTTPS remote was used. Schannel reported `failed to receive handshake`; OpenSSL retry reported `unexpected eof while reading`                                                                                                                                    |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `87876c1a` | Remote branch resolved to `87876c1a6e37ace396759201c503a9aeb3f21a2f` after the push timeout; local branch is aligned with `origin`                                                                                                                               |
+| Refactor test server permission repair              | Completed                | Root-owned ignored dependency directories were removed and `/www/wwwroot/h5-refactor-worktree` plus `/opt/wxgame-refactor/.wxgame` were restored to `www:www`; `node_modules`, `node_modules/.bin`, and `backend/node_modules` now resolve as `www:www`          |
+| Refactor test server deploy                         | Completed                | `/opt/wxgame-refactor/.wxgame/current-deploy.json` records environment `refactor-test`, branch `codex/refactor-tutorial-guide-architecture`, commit `87876c1a6e37ace396759201c503a9aeb3f21a2f`, deployed at `2026-06-25T06:24:43Z`                               |
+| Refactor test server health                         | Passed                   | `http://47.116.32.216/wxgame-refactor-api/health` returned `status: ok` and deployed commit `87876c1a6e37ace396759201c503a9aeb3f21a2f`                                                                                                                           |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `8ebedeb4` | Deploy hook ran the full test-server gate: `npm run format:check`, `npm test`, `npm run test:architecture`, backend syntax check, and frontend manifest check                                                                                                    |
+| Runtime backend permission repair                   | Completed                | `/opt/wxgame-refactor/backend/node_modules` was also root-owned from an earlier root install; it was removed and recreated by `www` during deploy                                                                                                                |
+| Root PM2 refactor process cleanup                   | Completed                | Root-owned `wxgame-refactor-server` and `wxgame-refactor-world-worker` were removed from root PM2 because they occupied port `3003`; `www` PM2 now owns the refactor server and worker                                                                           |
+| Refactor test server final deploy                   | Completed                | Deploy script completed successfully for `8ebedeb48d7ea3220ee35233f084a24e3a270761`; PM2 listener confirmed port `3003`, worker confirmed online, and health returned `status: ok` with deployedAt `2026-06-25T06:53:04Z`                                        |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `b3454765` | Initial push returned HTTP 504 after about five minutes, but `git ls-remote origin refs/heads/codex/refactor-tutorial-guide-architecture` resolved to `b345476557adb7fbc0aa287c606484b73ba79222`; local tracking was refreshed with `git fetch`                  |
+| Refactor test server deploy hook                    | Incomplete over push     | Health stayed on deployed commit `048531425993ba7d6502cde3f2a53be6810a55cc` after the 504, while `/www/wwwroot/h5-refactor-worktree` had been refreshed to the new checkout; no successful deploy record was written by the push-side hook                       |
+| Refactor test server manual deploy                  | Completed                | Ran the same refactor wrapper as `www`: `REPO_GIT_DIR=/home/git/wxgame.git bash scripts/deploy-refactor-tutorial-server.sh codex/refactor-tutorial-guide-architecture`; gate passed lint, format, tests, architecture smoke, backend syntax, and manifest checks |
+| Refactor test server health                         | Passed                   | `http://47.116.32.216/wxgame-refactor-api/health` returned `status: ok`, deployed commit `b345476557adb7fbc0aa287c606484b73ba79222`, deployedAt `2026-06-25T07:57:40Z`, and deploymentId `5b461b9c46ce8d33`                                                      |
+| `github codex/refactor-tutorial-guide-architecture` | Failed                   | HTTPS remote was used (`https://github.com/18301724526/WXGames.git`). Push failed with `schannel: failed to receive handshake, SSL/TLS connection failed`; credentials and remote URL were not changed                                                           |
 
 Permission root cause:
 
@@ -108,4 +113,4 @@ Permission root cause:
 
 0A is officially complete on the server branch after deploy commit `8ebedeb48d7ea3220ee35233f084a24e3a270761`.
 
-0B is now ready for migration owner review once the commit/push/deploy evidence is recorded. It must not be marked `Completed` until migration owner review signs off in a separate commit.
+0B is ready for migration owner review. It must not be marked `Completed` until migration owner review signs off in a separate commit.
