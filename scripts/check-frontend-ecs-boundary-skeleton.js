@@ -16,6 +16,12 @@ const BLOCKED_ECS_DEPENDENCY_SEGMENTS = Object.freeze([
   'vendor',
 ]);
 const RUNTIME_ENTRY_FILES = Object.freeze(['frontend/index.html', 'frontend/minigame/game.js']);
+const APPROVED_RUNTIME_ECS_LOADS = Object.freeze([
+  'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
+]);
+const GENERATED_ECS_RUNTIME_FILES = Object.freeze([
+  'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
+]);
 const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /(^|\/)node_modules\//,
   /(^|\/)vendor\//,
@@ -124,6 +130,11 @@ function resolveRelativeSpecifier(fromFile, specifier) {
   );
 }
 
+function withJsExtension(filePath = '') {
+  const normalized = normalizePath(filePath);
+  return /\.[a-z0-9]+$/i.test(normalized) ? normalized : `${normalized}.js`;
+}
+
 function isBlockedEcsDependency(fromFile, specifier) {
   if (!isRelativeSpecifier(specifier)) return false;
   const resolved = resolveRelativeSpecifier(fromFile, specifier);
@@ -134,12 +145,26 @@ function isBlockedEcsDependency(fromFile, specifier) {
 }
 
 function isRuntimeEntryLoadingEcs(fromFile, specifier) {
+  return Boolean(resolveRuntimeEcsLoad(fromFile, specifier));
+}
+
+function resolveRuntimeEcsLoad(fromFile, specifier) {
   const normalized = normalizePath(stripQueryAndHash(specifier));
-  if (normalized.includes('frontend/js/ecs') || normalized.includes('/js/ecs/')) return true;
+  if (!normalized) return '';
   if (isRelativeSpecifier(normalized)) {
-    return resolveRelativeSpecifier(fromFile, normalized).startsWith(ECS_ROOT);
+    const resolved = withJsExtension(resolveRelativeSpecifier(fromFile, normalized));
+    return resolved.startsWith(ECS_ROOT) ? resolved : '';
   }
-  return normalized.startsWith('js/ecs/') || normalized.startsWith('./js/ecs/');
+  if (normalized.startsWith('frontend/js/ecs/')) return withJsExtension(normalized);
+  if (normalized.startsWith('/js/ecs/')) return withJsExtension(`frontend${normalized}`);
+  if (normalized.startsWith('js/ecs/')) return withJsExtension(`frontend/${normalized}`);
+  if (normalized.startsWith('./js/ecs/')) return withJsExtension(`frontend/${normalized.slice(2)}`);
+  return '';
+}
+
+function isApprovedRuntimeEcsLoad(fromFile, specifier) {
+  const resolved = resolveRuntimeEcsLoad(fromFile, specifier);
+  return APPROVED_RUNTIME_ECS_LOADS.includes(resolved);
 }
 
 function isSkippableLine(line = '') {
@@ -157,6 +182,16 @@ function makeViolation({ file, line = 1, kind, symbol, evidence, note }) {
       .replace(/\s+/g, ' '),
     note,
   };
+}
+
+function isGeneratedEcsRuntimeFile(filePath = '') {
+  return GENERATED_ECS_RUNTIME_FILES.includes(normalizePath(filePath));
+}
+
+function shouldSkipRuntimeObjectViolation(filePath = '', kind = '', line = '') {
+  if (isGeneratedEcsRuntimeFile(filePath)) return true;
+  if (kind === 'class-instance-reference' && /\bnew\s+Error\b/.test(line)) return true;
+  return false;
 }
 
 function findBoundaryViolationsInText(filePath, text = '') {
@@ -210,7 +245,8 @@ function findBoundaryViolationsInText(filePath, text = '') {
 
       if (
         RUNTIME_ENTRY_FILES.includes(normalized) &&
-        isRuntimeEntryLoadingEcs(normalized, specifier)
+        isRuntimeEntryLoadingEcs(normalized, specifier) &&
+        !isApprovedRuntimeEcsLoad(normalized, specifier)
       ) {
         violations.push(
           makeViolation({
@@ -219,7 +255,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
             kind: 'runtime-entry-loads-ecs',
             symbol: specifier,
             evidence: line,
-            note: 'Batch 2 ECS skeleton must not be loaded by H5 or minigame runtime entrypoints',
+            note: 'H5 and minigame entrypoints may load only approved ECS runtime bundles, not core, registry, or raw mode files',
           }),
         );
       }
@@ -228,6 +264,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
     if (!isEcsProductionFile(normalized)) return;
     RUNTIME_OBJECT_PATTERNS.forEach(({ kind, symbol, pattern }) => {
       if (!pattern.test(line)) return;
+      if (shouldSkipRuntimeObjectViolation(normalized, kind, line)) return;
       violations.push(
         makeViolation({
           file: normalized,
@@ -245,6 +282,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
     for (const match of String(text || '').matchAll(HTML_SCRIPT_PATTERN)) {
       const specifier = match[1] || '';
       if (!isRuntimeEntryLoadingEcs(normalized, specifier)) continue;
+      if (isApprovedRuntimeEcsLoad(normalized, specifier)) continue;
       const prefix = String(text || '').slice(0, match.index);
       const line = prefix.split(/\r?\n/).length;
       violations.push(
@@ -254,7 +292,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
           kind: 'runtime-entry-loads-ecs',
           symbol: specifier,
           evidence: match[0],
-          note: 'Batch 2 ECS skeleton must not be loaded by H5 or minigame runtime entrypoints',
+          note: 'H5 and minigame entrypoints may load only approved ECS runtime bundles, not core, registry, or raw mode files',
         }),
       );
     }
@@ -330,6 +368,7 @@ function scanEcsBoundarySkeleton(options = {}) {
     nonEcsSourceFilesScanned: nonEcsSourceFiles.length,
     allowedBitecsImportFiles: ALLOWED_BITECS_IMPORT_FILES,
     allowedBitecsImports: ALLOWED_BITECS_IMPORTS,
+    approvedRuntimeEcsLoads: APPROVED_RUNTIME_ECS_LOADS,
     violations,
     summary: buildSummary(violations),
   };
@@ -387,6 +426,7 @@ if (require.main === module) {
 module.exports = {
   ALLOWED_BITECS_IMPORT_FILES,
   ALLOWED_BITECS_IMPORTS,
+  APPROVED_RUNTIME_ECS_LOADS,
   BLOCKED_ECS_DEPENDENCY_SEGMENTS,
   ECS_ROOT,
   PRODUCTION_SOURCE_ROOTS,
@@ -394,12 +434,16 @@ module.exports = {
   buildSummary,
   findBoundaryViolationsInText,
   findPackageVersionViolations,
+  isApprovedRuntimeEcsLoad,
   isAllowedBitecsImportFile,
   isBlockedEcsDependency,
   isEcsProductionFile,
+  isGeneratedEcsRuntimeFile,
   isProductionSourceFile,
   isRuntimeEntryLoadingEcs,
   parseFormat,
   renderText,
+  resolveRuntimeEcsLoad,
   scanEcsBoundarySkeleton,
+  shouldSkipRuntimeObjectViolation,
 };

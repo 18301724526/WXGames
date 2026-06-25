@@ -14,6 +14,8 @@ const REQUIRED_SCRIPTS = [
   'js/platform/CanvasLayerRegistry.js',
   'js/platform/CanvasActionDispatchRegistry.js',
   'js/platform/CanvasActionDispatcher.js',
+  'js/ecs/runtime/EcsModeRuntimeBundle.js',
+  'js/platform/CanvasModeOwnershipBridge.js',
   'js/platform/CanvasGameShell.js',
   'app.js',
   'auth.js',
@@ -22,6 +24,9 @@ const REQUIRED_SCRIPTS = [
 const REQUIRED_ORDER_PAIRS = [
   ['js/state/UIStatePresenterDelegates.js', 'js/state/UIStatePresenter.js'],
   ['js/platform/CanvasActionDispatchRegistry.js', 'js/platform/CanvasActionDispatcher.js'],
+  ['js/ecs/runtime/EcsModeRuntimeBundle.js', 'js/platform/CanvasModeOwnershipBridge.js'],
+  ['js/platform/CanvasModeOwnershipBridge.js', 'js/platform/CanvasGameApp.js'],
+  ['js/platform/CanvasModeOwnershipBridge.js', 'js/platform/CanvasGameShell.js'],
   ['js/platform/CanvasLayerRegistry.js', 'js/platform/CanvasGameShell.js'],
   ['js/ui/H5AuthStorageAdapter.js', 'js/ui/H5ShellAdapter.js'],
   ['js/api/GameAPI.js', 'js/ui/H5ShellAdapter.js'],

@@ -131,6 +131,7 @@ require('../js/platform/CanvasFamousActionHandlers');
 require('../js/platform/CanvasShellActionHandlers');
 require('../js/platform/CanvasActionController');
 require('../js/platform/GameCommandService');
+require('../js/ecs/runtime/EcsModeRuntimeBundle');
 require('../js/platform/CanvasGameAppStateSync');
 require('../js/platform/CanvasGameAppRenderPolicy');
 require('../js/platform/CanvasGameAppRenderScheduler');
@@ -141,6 +142,7 @@ require('../js/platform/CanvasGameAppBattleScene');
 require('../js/platform/CanvasGameAppCommands');
 require('../js/platform/CanvasGameAppGuideUi');
 require('../js/platform/CanvasGameAppInputRouter');
+require('../js/platform/CanvasModeOwnershipBridge');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();

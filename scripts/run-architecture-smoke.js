@@ -8,6 +8,13 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/ecs/core/EcsCoreBoundary.test.js',
   'frontend/js/ecs/registry/EcsBoundaryManifest.js',
   'frontend/js/ecs/registry/EcsBoundaryManifest.test.js',
+  'frontend/js/ecs/mode/EcsModeRuntimeEntry.js',
+  'frontend/js/ecs/mode/ModeComponents.js',
+  'frontend/js/ecs/mode/ModeKeys.js',
+  'frontend/js/ecs/mode/ModeResolver.js',
+  'frontend/js/ecs/mode/ModeWorld.js',
+  'frontend/js/ecs/mode/ModeWorld.test.js',
+  'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
   'frontend/js/config/FeatureFlags.js',
   'frontend/js/config/FeatureFlags.test.js',
   'frontend/js/config/LocaleTextRegistry.js',
@@ -64,6 +71,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.test.js',
   'frontend/js/platform/CanvasGameShellWorldMapRuntime.js',
   'frontend/js/platform/CanvasGameShell.test.js',
+  'frontend/js/platform/CanvasModeOwnershipBridge.js',
+  'frontend/js/platform/CanvasModeOwnershipBridge.test.js',
   'frontend/js/platform/CanvasGameAppInputRouter.js',
   'frontend/js/platform/CanvasGameApp.js',
   'frontend/js/platform/CanvasGameApp.test.js',
@@ -355,6 +364,9 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-ecs-boundary-skeleton.js',
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
+  'scripts/check-frontend-ecs-mode-ownership-spine.js',
+  'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
+  'scripts/build-frontend-ecs-runtime.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
   'scripts/rewrite-frontend-asset-version.test.js',
@@ -371,6 +383,7 @@ const CHECK_FILES = Object.freeze([
 const TEST_FILES = Object.freeze([
   'frontend/js/ecs/core/EcsCoreBoundary.test.js',
   'frontend/js/ecs/registry/EcsBoundaryManifest.test.js',
+  'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/platform/CanvasLayerRegistry.test.js',
   'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/CanvasGameShellWorldMapRuntimePolicy.test.js',
@@ -400,6 +413,7 @@ const TEST_FILES = Object.freeze([
   'frontend/tools/ops-console.test.js',
   'frontend/js/platform/renderers/CanvasPreloadAssetManifest.test.js',
   'frontend/js/platform/CanvasGameShell.test.js',
+  'frontend/js/platform/CanvasModeOwnershipBridge.test.js',
   'frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js',
   'frontend/js/domain/WorldMapVisibilityModel.test.js',
   'frontend/js/domain/WorldMapEntitySnapshot.test.js',
@@ -525,6 +539,7 @@ const TEST_FILES = Object.freeze([
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
   'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
+  'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -603,6 +618,9 @@ function main() {
   ]);
   run('frontend ECS boundary skeleton blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-boundary-skeleton.js',
+  ]);
+  run('frontend ECS mode ownership spine blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-mode-ownership-spine.js',
   ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',

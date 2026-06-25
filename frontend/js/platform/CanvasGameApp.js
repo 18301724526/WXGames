@@ -39,6 +39,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppInputRouter) {
     CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
   }
+  var CanvasModeOwnershipBridge = global.CanvasModeOwnershipBridge;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipBridge) {
+    CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+  }
 
   class CanvasGameApp {
     constructor(options = {}) {
@@ -243,6 +247,7 @@
     CanvasGameAppBattleScene,
     CanvasGameAppCommands,
     CanvasGameAppGuideUi,
+    CanvasModeOwnershipBridge,
     CanvasGameAppInputRouter,
   ].forEach((module) => module?.install?.(CanvasGameApp));
 

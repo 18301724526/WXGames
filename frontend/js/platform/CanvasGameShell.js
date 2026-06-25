@@ -35,6 +35,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellInputRouter) {
     CanvasGameShellInputRouter = require('./CanvasGameShellInputRouter');
   }
+  var CanvasModeOwnershipBridge = global.CanvasModeOwnershipBridge;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipBridge) {
+    CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+  }
   var CanvasGameShellCommands = global.CanvasGameShellCommands;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellCommands) {
     CanvasGameShellCommands = require('./CanvasGameShellCommands');
@@ -318,6 +322,7 @@ static mount(game, options = {}) {
 
   [
     CanvasGameShellMounting,
+    CanvasModeOwnershipBridge,
     CanvasGameShellInputRouter,
     CanvasGameShellCommands,
     CanvasGameShellGuideUi,

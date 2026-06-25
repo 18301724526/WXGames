@@ -5,7 +5,16 @@ const EcsBoundaryManifest = require('./EcsBoundaryManifest');
 
 test('EcsBoundaryManifest declares the reviewed Batch 2 owner vocabulary', () => {
   assert.equal(EcsBoundaryManifest.version, 'ecs-boundary-manifest-v1');
-  assert.equal(EcsBoundaryManifest.runtimeLoading, 'node-commonjs-architecture-boundary-only');
+  assert.deepEqual(EcsBoundaryManifest.runtimeLoading, {
+    core: 'node-commonjs-architecture-boundary-only',
+    registry: 'node-commonjs-architecture-boundary-only',
+    approvedRuntimeSurfaces: ['frontend/js/ecs/runtime/EcsModeRuntimeBundle.js'],
+    forbiddenRuntimeSurfaces: [
+      'frontend/js/ecs/core/**',
+      'frontend/js/ecs/registry/**',
+      'frontend/js/ecs/mode/**',
+    ],
+  });
   assert.deepEqual(EcsBoundaryManifest.ownerRoles, [
     'externalEcsCore',
     'componentSchema',

@@ -123,6 +123,7 @@ handlePointerMove(point) {
     },
 
 hasBlockingOverlayOpen() {
+      if (typeof this.isModeBlockingOverlayOpen === 'function') return this.isModeBlockingOverlayOpen();
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -146,6 +147,7 @@ hasBlockingOverlayOpen() {
     },
 
 isEntityBattleActive() {
+      if (typeof this.isModeEntityBattleActive === 'function') return this.isModeEntityBattleActive();
       return Boolean((this.entityBattle || this.lastGame?.entityBattle)?.visible);
     },
 
@@ -185,6 +187,8 @@ getTechTreeHitAction(point = {}) {
     },
 
 isTechTreeInteractionOpen() {
+      const snapshot = typeof this.getModeSnapshot === 'function' ? this.getModeSnapshot() : null;
+      if (snapshot) return snapshot.baseModeKey === 'techTree' || snapshot.canRouteTechTree || this.activeCommandPanel === 'tech';
       return Boolean(this.getActiveTab() === 'tech' || this.activeCommandPanel === 'tech');
     },
 
@@ -212,8 +216,9 @@ hasBlockingOverlayExceptTechTree() {
     },
 
 canRouteTechTreeInteraction(action = null) {
+      const snapshot = typeof this.getModeSnapshot === 'function' ? this.getModeSnapshot() : null;
       if (!this.isTechTreeInteractionOpen()) return false;
-      if (this.hasBlockingOverlayExceptTechTree()) return false;
+      if (snapshot ? !snapshot.canRouteTechTree : this.hasBlockingOverlayExceptTechTree()) return false;
       if (action && !this.isTechTreeDragAction(action)) return false;
       return true;
     },
@@ -441,6 +446,7 @@ handleGesture(gesture, event) {
 handleWorldMapGesture(gesture = {}, event) {
       if (gesture?.type !== 'pinchZoom') return false;
       if (this.isTutorialInputActive()) return false;
+      if (typeof this.canRouteModeWorldMap === 'function' && !this.canRouteModeWorldMap()) return false;
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       const state = this.lastGame?.state || {};

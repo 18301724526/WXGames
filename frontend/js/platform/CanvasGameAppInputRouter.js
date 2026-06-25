@@ -26,13 +26,15 @@
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
       handleDrag(phase, point = {}) {
-            if (this.entityBattle?.visible) {
+            if (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible) {
               return this.actionController?.handle?.({ type: 'entityBattleDrag', phase, pointer: point }) || false;
             }
-            if (this.activeTab === 'tech') {
+            if (typeof this.canRouteModeTechTree === 'function' ? this.canRouteModeTechTree() : this.activeTab === 'tech') {
               return this.actionController?.handle?.({ type: 'techTreeDrag', phase, pointer: point }) || false;
             }
-            if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
+            if (typeof this.canRouteModeWorldMap === 'function') {
+              if (!this.canRouteModeWorldMap()) return false;
+            } else if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
             if (
               this.isWorldMapHomeActive()
               && !this.hasBlockingOverlayOpen()
@@ -45,6 +47,7 @@
           },
 
       hasBlockingOverlayOpen() {
+            if (typeof this.isModeBlockingOverlayOpen === 'function') return this.isModeBlockingOverlayOpen();
             return Boolean(this.showResourceDetails
               || this.showCitySwitcher
               || this.showSubcityList
@@ -67,18 +70,22 @@
           },
 
       handleGesture(gesture) {
-            if (this.entityBattle?.visible) {
+            if (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible) {
               return this.actionController?.handle?.({ type: 'entityBattleZoom', gesture }) || false;
             }
             const worldMapGestureHandled = this.handleWorldMapGesture(gesture);
             if (worldMapGestureHandled) return true;
-            if (this.activeTab !== 'tech' || this.hasBlockingOverlayOpen()) return false;
+            if (typeof this.canRouteModeTechTree === 'function') {
+              if (!this.canRouteModeTechTree()) return false;
+            } else if (this.activeTab !== 'tech' || this.hasBlockingOverlayOpen()) return false;
             return this.actionController?.handle?.({ type: 'techTreeZoom', gesture }) || false;
           },
 
       handleWorldMapGesture(gesture = {}) {
             if (gesture?.type !== 'pinchZoom') return false;
-            if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
+            if (typeof this.canRouteModeWorldMap === 'function') {
+              if (!this.canRouteModeWorldMap()) return false;
+            } else if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
             if (!this.isWorldMapHomeActive() || this.hasBlockingOverlayOpen()) return false;
             const coordinator = this.ensureWorldMapRuntimeCoordinator();
             const runtime = coordinator?.getMapRuntime?.();

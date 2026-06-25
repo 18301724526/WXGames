@@ -25,6 +25,7 @@ function makeTempFrontend() {
   fs.mkdirSync(path.join(root, 'js', 'api'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'ui'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'state'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'js', 'ecs', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'platform'), { recursive: true });
   [
     'style.css',
@@ -35,9 +36,11 @@ function makeTempFrontend() {
     'js/ui/H5ShellAdapter.js',
     'js/state/UIStatePresenterDelegates.js',
     'js/state/UIStatePresenter.js',
+    'js/ecs/runtime/EcsModeRuntimeBundle.js',
     'js/platform/CanvasLayerRegistry.js',
     'js/platform/CanvasActionDispatchRegistry.js',
     'js/platform/CanvasActionDispatcher.js',
+    'js/platform/CanvasModeOwnershipBridge.js',
     'js/platform/CanvasGameShell.js',
     'app.js',
     'auth.js',
@@ -64,9 +67,11 @@ function writeIndex(root, overrides = {}) {
   <script src="js/ui/H5ShellAdapter.js?v=${version}"></script>
   <script src="js/state/UIStatePresenterDelegates.js?v=${version}"></script>
   <script src="js/state/UIStatePresenter.js?v=${version}"></script>
+  <script src="js/ecs/runtime/EcsModeRuntimeBundle.js?v=${version}"></script>
   <script src="js/platform/CanvasLayerRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatchRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatcher.js?v=${version}"></script>
+  <script src="js/platform/CanvasModeOwnershipBridge.js?v=${version}"></script>
   <script src="js/platform/CanvasGameShell.js?v=${version}"></script>
   <script src="app.js?v=${overrides.appVersion || version}"></script>
   <script src="auth.js?v=${version}"></script>
@@ -109,7 +114,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 14);
+  assert.equal(result.updated, 16);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -121,7 +126,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 13);
+  assert.equal(manifest.localScriptCount, 15);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -154,5 +159,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 15);
+  assert.equal(manifest.localScriptCount, 17);
 });

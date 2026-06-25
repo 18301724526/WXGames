@@ -1,7 +1,7 @@
 'use strict';
 
 const MANIFEST_VERSION = 'ecs-boundary-manifest-v1';
-const BATCH = '2. ECS Boundary Skeleton';
+const BATCH = '3. Mode Ownership Spine';
 
 function freezeList(values) {
   return Object.freeze(Array.from(values));
@@ -80,6 +80,17 @@ const BRIDGE_LIFECYCLE_POLICY = freezeRecord({
   extensionRequiredFields: freezeList(['reason', 'newRetirementDate', 'owner', 'blockingGuard']),
 });
 
+const RUNTIME_LOADING_POLICY = freezeRecord({
+  core: 'node-commonjs-architecture-boundary-only',
+  registry: 'node-commonjs-architecture-boundary-only',
+  approvedRuntimeSurfaces: freezeList(['frontend/js/ecs/runtime/EcsModeRuntimeBundle.js']),
+  forbiddenRuntimeSurfaces: freezeList([
+    'frontend/js/ecs/core/**',
+    'frontend/js/ecs/registry/**',
+    'frontend/js/ecs/mode/**',
+  ]),
+});
+
 function findDuplicates(values = []) {
   const seen = Object.create(null);
   const duplicates = Object.create(null);
@@ -123,7 +134,7 @@ function validateEcsBoundaryManifest(manifest = EcsBoundaryManifest) {
 const EcsBoundaryManifest = freezeRecord({
   version: MANIFEST_VERSION,
   batch: BATCH,
-  runtimeLoading: 'node-commonjs-architecture-boundary-only',
+  runtimeLoading: RUNTIME_LOADING_POLICY,
   ownerRoles: OWNER_ROLES,
   componentFamilies: COMPONENT_FAMILIES,
   modeKeys: MODE_KEYS,

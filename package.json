@@ -22,6 +22,7 @@
     "package:code:list": "node scripts/package-game-code.js --dry-run",
     "profile:h5-performance": "node scripts/profile-h5-performance.js",
     "profile:h5-phone-sim": "node scripts/profile-h5-performance.js --phone-sim",
+    "build:ecs-runtime": "node scripts/build-frontend-ecs-runtime.js",
     "lint": "eslint . --suppressions-location eslint-suppressions.json",
     "lint:fix": "eslint . --fix --suppressions-location eslint-suppressions.json",
     "lint:baseline": "eslint . --suppress-all --suppressions-location eslint-suppressions.json",
@@ -42,6 +43,7 @@
   },
   "homepage": "https://github.com/18301724526/WXGames#readme",
   "devDependencies": {
+    "esbuild": "0.23.1",
     "eslint": "^9.39.4",
     "playwright": "^1.60.0",
     "pngjs": "^7.0.0",

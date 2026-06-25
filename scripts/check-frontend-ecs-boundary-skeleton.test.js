@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const {
   findBoundaryViolationsInText,
+  isApprovedRuntimeEcsLoad,
   isBlockedEcsDependency,
   isEcsProductionFile,
   isProductionSourceFile,
@@ -123,7 +124,7 @@ test('ECS boundary skeleton guard blocks runtime object references in ECS produc
   );
 });
 
-test('ECS boundary skeleton guard blocks H5 and minigame entrypoint loading', () => {
+test('ECS boundary skeleton guard allows only the approved runtime bundle in entrypoints', () => {
   assert.equal(
     isRuntimeEntryLoadingEcs('frontend/index.html', 'js/ecs/core/EcsCoreBoundary.js'),
     true,
@@ -133,8 +134,27 @@ test('ECS boundary skeleton guard blocks H5 and minigame entrypoint loading', ()
     true,
   );
   assert.equal(
+    isApprovedRuntimeEcsLoad(
+      'frontend/index.html',
+      'js/ecs/runtime/EcsModeRuntimeBundle.js?v=frontend-ecs-mode-runtime-v1',
+    ),
+    true,
+  );
+  assert.equal(
+    isApprovedRuntimeEcsLoad('frontend/minigame/game.js', '../js/ecs/runtime/EcsModeRuntimeBundle'),
+    true,
+  );
+  assert.equal(
     isRuntimeEntryLoadingEcs('frontend/index.html', 'js/platform/CanvasGameApp.js'),
     false,
+  );
+
+  assert.deepEqual(
+    findBoundaryViolationsInText(
+      'frontend/index.html',
+      '<script src="js/ecs/runtime/EcsModeRuntimeBundle.js?v=frontend-ecs-mode-runtime-v1"></script>',
+    ),
+    [],
   );
 
   const h5Violations = findBoundaryViolationsInText(
@@ -148,6 +168,24 @@ test('ECS boundary skeleton guard blocks H5 and minigame entrypoint loading', ()
 
   assert.equal(h5Violations[0].kind, 'runtime-entry-loads-ecs');
   assert.equal(minigameViolations[0].kind, 'runtime-entry-loads-ecs');
+});
+
+test('ECS boundary skeleton guard skips runtime object checks in generated bundles', () => {
+  assert.deepEqual(
+    findBoundaryViolationsInText(
+      'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
+      'const world = new Map();\nconst bytes = new Uint8Array(4);',
+    ),
+    [],
+  );
+
+  assert.deepEqual(
+    findBoundaryViolationsInText(
+      'frontend/js/ecs/mode/ModeComponents.js',
+      "throw new Error('missing primitive');",
+    ),
+    [],
+  );
 });
 
 test('ECS boundary skeleton guard scans a temporary repo and enforces package pin', () =>
