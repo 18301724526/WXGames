@@ -10,6 +10,19 @@
     }
     return null;
   })();
+  // C-LAYER rule, so the HUD can ask "is this tile marchable" directly instead of
+  // trusting a flag that upstream layers may or may not have plumbed through.
+  const WorldMarchPassability = (() => {
+    if (global.WorldMarchPassability) return global.WorldMarchPassability;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../../shared/worldMarchPassability');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const sharedUIStatePresenter = (() => {
     if (global.UIStatePresenter) return global.UIStatePresenter;
     if (typeof module !== 'undefined' && module.exports) {
@@ -226,7 +239,15 @@
     }
 
     isMarchTargetBlocked(target = {}) {
-      return Boolean(target.marchDisabled || target.blocked || target.disabled);
+      if (target.marchDisabled || target.blocked || target.disabled) return true;
+      // Bypass-proof: a selected non-combat tile whose OWN terrain is impassable
+      // per the single rule (shared/worldMarchPassability) offers no march, even
+      // if no upstream layer plumbed a marchDisabled flag.
+      if (!target.combatEncounterId && target.terrain && WorldMarchPassability?.isTileMarchable
+        && !WorldMarchPassability.isTileMarchable(target.terrain, null)) {
+        return true;
+      }
+      return false;
     }
 
     getMarchTargetBlockedText(target = {}) {

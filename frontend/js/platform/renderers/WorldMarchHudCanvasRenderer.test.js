@@ -151,6 +151,32 @@ test('WorldMarchHudCanvasRenderer offers no march button for a blocked (e.g. oce
   assert.equal(host.calls.some((c) => c[0] === 'drawText' && c[1][0] === blockedText), true);
 });
 
+test('WorldMarchHudCanvasRenderer blocks an ocean target even with no upstream marchDisabled flag', () => {
+  const host = createHost();
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({}, {
+    worldMarchTarget: {
+      q: 2,
+      r: 0,
+      tileId: 'tile_2_0',
+      known: true,
+      terrain: 'ocean',
+      terrainLabel: '海洋',
+      // No marchDisabled flag — simulates a selection path that skipped it, or a
+      // stale upstream. The HUD must still refuse the march for an ocean tile.
+    },
+  }, [], {
+    originX: 100,
+    originY: 100,
+    panX: 0,
+    panY: 0,
+    scale: 0.5,
+  }, { stepX: 96, stepY: 48 }, { x: 0, y: 84, width: 390, height: 696 });
+
+  assert.equal(host.hitTargets.some((t) => t.action.type === 'openWorldMarchFormationPicker'), false);
+});
+
 test('WorldMarchHudCanvasRenderer renders overlapping world target picker actions', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });
