@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `2. ECS Boundary Skeleton`                   |
-| Batch state            | `Ready for Migration Owner Review`           |
+| Batch state            | `Completed`                                  |
 | Runtime code migration | Not started                                  |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-25 19:45:34 +08:00`                 |
+| Last updated           | `2026-06-25 20:16:29 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -65,14 +65,14 @@
 
 | Step                                | Status           | Updated At                   | Evidence                                                                                                                                              |
 | ----------------------------------- | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2-1. Exact ECS dependency pin       | Ready for Review | `2026-06-25 19:22:38 +08:00` | `package.json` and `package-lock.json` pin `bitecs` to exact version `0.4.0`; `npm ls bitecs` resolves `bitecs@0.4.0`                                 |
-| 2-2. ECS core boundary skeleton     | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/core/EcsCoreBoundary.js` is the only production boundary touching `bitecs`; it forwards approved primitives without local core logic |
-| 2-3. ECS manifest skeleton          | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/registry/EcsBoundaryManifest.js` declares owner roles, component families, mode keys, snapshot keys, and bridge lifecycle policy     |
-| 2-4. Boundary documentation         | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/README.md` states Batch 2 is a Node/CommonJS architecture boundary and is not loaded by H5 or minigame entrypoints                   |
-| 2-5. Boundary blocking guard        | Ready for Review | `2026-06-25 19:22:38 +08:00` | `scripts/check-frontend-ecs-boundary-skeleton.js` blocks direct `bitecs` imports outside the boundary, ECS reverse dependencies, and runtime loading  |
-| 2-6. Guard and skeleton tests       | Ready for Review | `2026-06-25 19:22:38 +08:00` | `frontend/js/ecs/**/*.test.js` and `scripts/check-frontend-ecs-boundary-skeleton.test.js` cover boundary exports, manifest facts, and guard behavior  |
-| 2-7. Architecture smoke integration | Ready for Review | `2026-06-25 19:22:38 +08:00` | `scripts/run-architecture-smoke.js` checks new ECS files/tests and runs the boundary guard as blocking                                                |
-| 2-8. Commit and server branch push  | Ready for Review | `2026-06-25 19:45:34 +08:00` | Commit `08acdf88` reached the server branch; refactor test server manual deploy completed and health confirmed deployed commit `08acdf88`             |
+| 2-1. Exact ECS dependency pin       | Completed | `2026-06-25 20:16:29 +08:00` | `package.json` and `package-lock.json` pin `bitecs` to exact version `0.4.0`; `npm ls bitecs` resolves `bitecs@0.4.0`                                 |
+| 2-2. ECS core boundary skeleton     | Completed | `2026-06-25 20:16:29 +08:00` | `frontend/js/ecs/core/EcsCoreBoundary.js` is the only production boundary touching `bitecs`; it forwards approved primitives without local core logic |
+| 2-3. ECS manifest skeleton          | Completed | `2026-06-25 20:16:29 +08:00` | `frontend/js/ecs/registry/EcsBoundaryManifest.js` declares owner roles, component families, mode keys, snapshot keys, and bridge lifecycle policy     |
+| 2-4. Boundary documentation         | Completed | `2026-06-25 20:16:29 +08:00` | `frontend/js/ecs/README.md` states Batch 2 is a Node/CommonJS architecture boundary and is not loaded by H5 or minigame entrypoints                   |
+| 2-5. Boundary blocking guard        | Completed | `2026-06-25 20:16:29 +08:00` | `scripts/check-frontend-ecs-boundary-skeleton.js` blocks direct `bitecs` imports outside the boundary, ECS reverse dependencies, and runtime loading  |
+| 2-6. Guard and skeleton tests       | Completed | `2026-06-25 20:16:29 +08:00` | `frontend/js/ecs/**/*.test.js` and `scripts/check-frontend-ecs-boundary-skeleton.test.js` cover boundary exports, manifest facts, and guard behavior  |
+| 2-7. Architecture smoke integration | Completed | `2026-06-25 20:16:29 +08:00` | `scripts/run-architecture-smoke.js` checks new ECS files/tests and runs the boundary guard as blocking                                                |
+| 2-8. Commit and server branch push  | Completed | `2026-06-25 20:16:29 +08:00` | Commit `08acdf88` reached the server branch; refactor test server manual deploy completed and health confirmed deployed commit `08acdf88`             |
 
 Batch 2 notes:
 
@@ -138,7 +138,7 @@ Batch 2 local verification result:
 
 0A, 0B, and Batch 1 are marked completed in this document because migration owner review passed.
 
-Batch 2 is `Ready for Migration Owner Review`. It must not be marked `Completed` until review passes and a separate completion commit records the reviewer and review time.
+Batch 2 is `Completed` after migration owner review. Batch 3 may start after the Batch 2 completed commit reaches the server branch.
 
 Required owner sign-off record:
 
@@ -147,7 +147,7 @@ Required owner sign-off record:
 | `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed   | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review.                               |
 | `codex/external-review` | `2026-06-25 16:43:55 +08:00` | Passed   | 0B renderer authority, input branch, and literal/duplicate baselines are accepted for completion. Batch 1 may start after this completion commit reaches the server branch.                                                                                                                                                                            |
 | `codex/external-review` | `2026-06-25 18:33:08 +08:00` | Passed   | Batch 1 ADR, blocking guard, guard tests, architecture smoke integration, no-runtime-change scope, and no-dependency-install scope are accepted. Review follow-ups for Batch 2: ADR should add why other ECS libraries were not selected, define a bitECS maintenance/exit strategy, and pin an exact `bitecs` version when installing the dependency. |
-| `pending`               | `pending`                    | Pending  | Batch 2 first implementation is ready for migration owner review. It installs exact `bitecs@0.4.0`, adds the ECS boundary skeleton, adds the boundary blocking guard, updates Batch 1 ADR follow-ups, and does not migrate runtime behavior.                                                                                                           |
+| `codex/external-review` | `2026-06-25 20:16:29 +08:00` | Passed   | Batch 2 dependency pin, ECS core boundary, manifest skeleton, boundary blocking guard, no-runtime-loading scope, H5/minigame entrypoint safety, ADR follow-up updates, and progress records are accepted for completion.                                                                                                                               |
 
 ## Push / Deploy Evidence
 
@@ -195,4 +195,4 @@ Permission root cause:
 
 0B is officially complete after migration owner review. Batch 1 started after this completion commit reached the server branch.
 
-Batch 1 is officially complete after migration owner review. Batch 2 first implementation is ready for migration owner review after its implementation commit reaches the server branch.
+Batch 1 is officially complete after migration owner review. Batch 2 is officially complete after migration owner review. Batch 3 may start after the Batch 2 completed commit reaches the server branch.
