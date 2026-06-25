@@ -244,22 +244,21 @@ Literal / duplicate inventory rows must use this schema:
 
 0B execution checklist:
 
-| Step                                 | Status           | Artifact / Gate                                                                   | Acceptance Standard                                                                                  |
-| ------------------------------------ | ---------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 0B-1. Renderer authority report      | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md` | Every finding has file, line, surface, target, access, role, evidence, and note                      |
-| 0B-2. Input branch report            | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`       | Mode, panel, tutorial, action, and runtime-route branches are classified                             |
-| 0B-3. Literal / duplicate report     | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`  | Literal and duplicate candidates are grouped by kind, role, and owner candidate                      |
-| 0B-4. Guard tests                    | Ready for Review | `scripts/report-frontend-ecs-*-authority/input/literal*.test.js`                  | New report-only guards have scan scope, classification, format, and unknown-argument coverage        |
-| 0B-5. Architecture smoke integration | Ready for Review | `scripts/run-architecture-smoke.js`                                               | Architecture smoke runs all 0A and 0B report-only guards with `--summary`                            |
-| 0B-6. Progress document update       | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md`             | Progress records 0B artifacts, commands, status, and review blocker                                  |
-| 0B-7. Operating plan update          | Ready for Review | this document                                                                     | 0B checklist and completion gate are recorded                                                        |
-| 0B-8. Commit and server branch push  | Pending          | git history and server remote                                                     | 0B implementation commit is pushed; deploy evidence and GitHub HTTPS result are recorded in progress |
+| Step                                 | Status    | Artifact / Gate                                                                   | Acceptance Standard                                                                                  |
+| ------------------------------------ | --------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 0B-1. Renderer authority report      | Completed | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md` | Every finding has file, line, surface, target, access, role, evidence, and note                      |
+| 0B-2. Input branch report            | Completed | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`       | Mode, panel, tutorial, action, and runtime-route branches are classified                             |
+| 0B-3. Literal / duplicate report     | Completed | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`  | Literal and duplicate candidates are grouped by kind, role, and owner candidate                      |
+| 0B-4. Guard tests                    | Completed | `scripts/report-frontend-ecs-*-authority/input/literal*.test.js`                  | New report-only guards have scan scope, classification, format, and unknown-argument coverage        |
+| 0B-5. Architecture smoke integration | Completed | `scripts/run-architecture-smoke.js`                                               | Architecture smoke runs all 0A and 0B report-only guards with `--summary`                            |
+| 0B-6. Progress document update       | Completed | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md`             | Progress records 0B artifacts, commands, status, and review blocker                                  |
+| 0B-7. Operating plan update          | Completed | this document                                                                     | 0B checklist and completion gate are recorded                                                        |
+| 0B-8. Commit and server branch push  | Completed | git history and server remote                                                     | 0B implementation commit is pushed; deploy evidence and GitHub HTTPS result are recorded in progress |
 
 0B acceptance owner:
 
 - Migration owner: project main engineer or explicitly assigned architecture owner.
-- 0B must remain `Ready for Migration Owner Review` until the inventory documents and report-only guard data are reviewed.
-- 0B may move to `Completed` only in a separate post-review commit.
-- Batch 1 may not start until the 0B completed commit has reached the server branch.
+- 0B moved from `Ready for Migration Owner Review` to `Completed` after `codex/external-review` reviewed the inventory documents and recorded sign-off at `2026-06-25 16:43:55 +08:00` in the progress document.
+- Batch 1 may start after the 0B completed commit reaches the server branch.
 
-Only after these inventories exist and 0B is reviewed should the project start sealing ownership batches.
+0B is completed. Batch 1 may start after the completion commit reaches the server branch.

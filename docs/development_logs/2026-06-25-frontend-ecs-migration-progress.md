@@ -6,10 +6,10 @@
 | ---------------------- | ---------------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture`         |
 | Current batch          | `0B. Authority, Input, Literal, Duplicate Inventory` |
-| Batch state            | `Ready for Migration Owner Review`                   |
+| Batch state            | `Completed`                                          |
 | Runtime code migration | Not started                                          |
 | ECS dependency         | Not introduced                                       |
-| Last updated           | `2026-06-25 15:57:47 +08:00`                         |
+| Last updated           | `2026-06-25 16:43:55 +08:00`                         |
 
 ## Batch 0A Checklist
 
@@ -36,16 +36,16 @@
 
 ## Batch 0B Checklist
 
-| Step                                 | Status           | Updated At                   | Evidence                                                                                                                                       |
-| ------------------------------------ | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0B-1. Renderer authority report      | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md`                                                              |
-| 0B-2. Input branch report            | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`                                                                    |
-| 0B-3. Literal / duplicate report     | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`                                                               |
-| 0B-4. Guard tests                    | Ready for Review | `2026-06-25 15:34:26 +08:00` | New `node:test` coverage for renderer authority, input branch, and literal duplicate guards                                                    |
-| 0B-5. Architecture smoke integration | Ready for Review | `2026-06-25 15:34:26 +08:00` | `scripts/run-architecture-smoke.js` runs all 0A and 0B report-only guards with `--summary`                                                     |
-| 0B-6. Progress document update       | Ready for Review | `2026-06-25 15:34:26 +08:00` | This document records 0B commands, artifacts, status, and review blocker                                                                       |
-| 0B-7. Operating plan update          | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records the 0B gate                                                |
-| 0B-8. Commit and push                | Ready for Review | `2026-06-25 15:57:47 +08:00` | Commit `b3454765` reached the server branch; refactor test server deploy was manually completed with the same wrapper after push-side HTTP 504 |
+| Step                                 | Status    | Updated At                   | Evidence                                                                                                                                       |
+| ------------------------------------ | --------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0B-1. Renderer authority report      | Completed | `2026-06-25 16:43:55 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md`                                                              |
+| 0B-2. Input branch report            | Completed | `2026-06-25 16:43:55 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`                                                                    |
+| 0B-3. Literal / duplicate report     | Completed | `2026-06-25 16:43:55 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`                                                               |
+| 0B-4. Guard tests                    | Completed | `2026-06-25 16:43:55 +08:00` | New `node:test` coverage for renderer authority, input branch, and literal duplicate guards                                                    |
+| 0B-5. Architecture smoke integration | Completed | `2026-06-25 16:43:55 +08:00` | `scripts/run-architecture-smoke.js` runs all 0A and 0B report-only guards with `--summary`                                                     |
+| 0B-6. Progress document update       | Completed | `2026-06-25 16:43:55 +08:00` | This document records 0B commands, artifacts, status, and migration owner review completion                                                    |
+| 0B-7. Operating plan update          | Completed | `2026-06-25 16:43:55 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records 0B completed                                               |
+| 0B-8. Commit and push                | Completed | `2026-06-25 16:43:55 +08:00` | Commit `b3454765` reached the server branch; refactor test server deploy was manually completed with the same wrapper after push-side HTTP 504 |
 
 ## Verification Commands
 
@@ -71,13 +71,14 @@ Executed before commit/push:
 
 ## Review Gate
 
-0A is marked completed in this document because migration owner review passed.
+0A and 0B are marked completed in this document because migration owner review passed.
 
 Required owner sign-off record:
 
 | Reviewer                | Review Time                  | Decision | Notes                                                                                                                                                                                                                                                                                                                    |
 | ----------------------- | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed   | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review. |
+| `codex/external-review` | `2026-06-25 16:43:55 +08:00` | Passed   | 0B renderer authority, input branch, and literal/duplicate baselines are accepted for completion. Batch 1 may start after this completion commit reaches the server branch.                                                                                                                                              |
 
 ## Push / Deploy Evidence
 
@@ -113,4 +114,4 @@ Permission root cause:
 
 0A is officially complete on the server branch after deploy commit `8ebedeb48d7ea3220ee35233f084a24e3a270761`.
 
-0B is ready for migration owner review. It must not be marked `Completed` until migration owner review signs off in a separate commit.
+0B is officially complete after migration owner review. Batch 1 may start after this completion commit reaches the server branch.
