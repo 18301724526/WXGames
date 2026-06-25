@@ -40,15 +40,19 @@ function collectFiles(root, files = []) {
 
 function countBranchTokens(lines = []) {
   return lines.reduce((count, line) => {
-    const matches = String(line || '').match(/\bif\s*\(|\belse\s+if\s*\(|\bswitch\s*\(|\bcase\b|\?\s*[^.:]/g);
+    const matches = String(line || '').match(
+      /\bif\s*\(|\belse\s+if\s*\(|\bswitch\s*\(|\bcase\b|\?\s*[^.:]/g,
+    );
     return count + (matches ? matches.length : 0);
   }, 0);
 }
 
 function collectFieldNames(lines = []) {
   const fields = new Set();
-  const fieldPattern = /\bthis\.([A-Za-z_$][\w$]*)\s*(?:=|\+=|-=|\*=|\/=|%=|\|\|=|&&=|\?\?=|\+\+|--)/g;
-  const mirrorPattern = /\b(?:canvasShell|shell|game|host|target|lastGame)\.([A-Za-z_$][\w$]*)\s*(?:=|\+=|-=|\*=|\/=|%=|\|\|=|&&=|\?\?=|\+\+|--)/g;
+  const fieldPattern =
+    /\bthis\.([A-Za-z_$][\w$]*)\s*(?:=|\+=|-=|\*=|\/=|%=|\|\|=|&&=|\?\?=|\+\+|--)/g;
+  const mirrorPattern =
+    /\b(?:canvasShell|shell|game|host|target|lastGame)\.([A-Za-z_$][\w$]*)\s*(?:=|\+=|-=|\*=|\/=|%=|\|\|=|&&=|\?\?=|\+\+|--)/g;
   lines.forEach((line) => {
     for (const match of String(line || '').matchAll(fieldPattern)) fields.add(match[1]);
     for (const match of String(line || '').matchAll(mirrorPattern)) fields.add(match[1]);
@@ -122,39 +126,48 @@ function findBridgeCandidatesInText(filePath, text = '') {
     const objectAssign = line.match(/Object\.assign\(\s*([A-Za-z_$][\w$.]*)\.prototype\s*,\s*{/);
     if (objectAssign) {
       const end = findRangeEnd(lines, index);
-      candidates.push(buildCandidate({
-        bridge: `${objectAssign[1]}.prototype`,
-        file: normalized,
-        line: index + 1,
-        surface: 'Object.assign prototype installer',
-        lines: lines.slice(index, end + 1),
-        note: 'prototype augmentation surface',
-      }));
+      candidates.push(
+        buildCandidate({
+          bridge: `${objectAssign[1]}.prototype`,
+          file: normalized,
+          line: index + 1,
+          surface: 'Object.assign prototype installer',
+          lines: lines.slice(index, end + 1),
+          note: 'prototype augmentation surface',
+        }),
+      );
     }
 
     const directPrototype = line.match(/([A-Za-z_$][\w$.]*)\.prototype\.([A-Za-z_$][\w$]*)\s*=/);
     if (directPrototype) {
-      candidates.push(buildCandidate({
-        bridge: `${directPrototype[1]}.prototype.${directPrototype[2]}`,
-        file: normalized,
-        line: index + 1,
-        surface: 'direct prototype assignment',
-        lines: lines.slice(index, Math.min(lines.length, index + 20)),
-        note: 'direct prototype method bridge candidate',
-      }));
+      candidates.push(
+        buildCandidate({
+          bridge: `${directPrototype[1]}.prototype.${directPrototype[2]}`,
+          file: normalized,
+          line: index + 1,
+          surface: 'direct prototype assignment',
+          lines: lines.slice(index, Math.min(lines.length, index + 20)),
+          note: 'direct prototype method bridge candidate',
+        }),
+      );
     }
   });
 
-  if (BRIDGE_FILE_NAME_PATTERN.test(path.basename(normalized)) && /(?:install|prototype|Facade|Bridge|ActionHandlers|Object\.assign)/.test(text)) {
-    candidates.push(buildCandidate({
-      bridge: path.basename(normalized, '.js'),
-      file: normalized,
-      line: 1,
-      surface: 'facade/bridge file surface',
-      lines,
-      role: 'adapter',
-      note: 'file-level bridge/facade candidate',
-    }));
+  if (
+    BRIDGE_FILE_NAME_PATTERN.test(path.basename(normalized)) &&
+    /(?:install|prototype|Facade|Bridge|ActionHandlers|Object\.assign)/.test(text)
+  ) {
+    candidates.push(
+      buildCandidate({
+        bridge: path.basename(normalized, '.js'),
+        file: normalized,
+        line: 1,
+        surface: 'facade/bridge file surface',
+        lines,
+        role: 'adapter',
+        note: 'file-level bridge/facade candidate',
+      }),
+    );
   }
 
   return candidates;
@@ -200,7 +213,9 @@ function scanBridgeShrink(options = {}) {
 }
 
 function escapeMarkdownCell(value) {
-  return String(value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(value ?? '')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
 function renderSummary(report) {
@@ -240,7 +255,9 @@ function renderMarkdown(report) {
     '| --- | --- | ---: | --- | --- | --- | ---: | --- | --- | --- |',
   );
   report.candidates.forEach((candidate) => {
-    lines.push(`| \`${escapeMarkdownCell(candidate.bridge)}\` | ${escapeMarkdownCell(candidate.file)} | ${candidate.line} | ${escapeMarkdownCell(candidate.surface)} | ${escapeMarkdownCell(candidate.fields.join(', '))} | ${escapeMarkdownCell(candidate.methods.join(', '))} | ${candidate.branchCount} | ${escapeMarkdownCell(candidate.role)} | ${escapeMarkdownCell(candidate.retirementTarget)} | ${escapeMarkdownCell(candidate.note)} |`);
+    lines.push(
+      `| \`${escapeMarkdownCell(candidate.bridge)}\` | ${escapeMarkdownCell(candidate.file)} | ${candidate.line} | ${escapeMarkdownCell(candidate.surface)} | ${escapeMarkdownCell(candidate.fields.join(', '))} | ${escapeMarkdownCell(candidate.methods.join(', '))} | ${candidate.branchCount} | ${escapeMarkdownCell(candidate.role)} | ${escapeMarkdownCell(candidate.retirementTarget)} | ${escapeMarkdownCell(candidate.note)} |`,
+    );
   });
   return `${lines.join('\n')}\n`;
 }

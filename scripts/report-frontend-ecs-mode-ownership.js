@@ -71,8 +71,13 @@ function isMeaningfulExactSymbolUsage(line = '', symbol = '') {
   const text = String(line || '');
   const escaped = escapeRegExp(symbol);
   const dottedStringOnly = new RegExp(`['"][^'"]*\\.${escaped}\\.[^'"]*['"]`);
-  const propertyOrBareIdentifier = new RegExp(`(?:\\bthis\\.|\\b[A-Za-z_$][\\w$]*\\.|\\b${escaped}\\b|['"]${escaped}['"])`);
-  if (dottedStringOnly.test(text) && !propertyOrBareIdentifier.test(text.replace(dottedStringOnly, ''))) {
+  const propertyOrBareIdentifier = new RegExp(
+    `(?:\\bthis\\.|\\b[A-Za-z_$][\\w$]*\\.|\\b${escaped}\\b|['"]${escaped}['"])`,
+  );
+  if (
+    dottedStringOnly.test(text) &&
+    !propertyOrBareIdentifier.test(text.replace(dottedStringOnly, ''))
+  ) {
     return false;
   }
   return true;
@@ -83,7 +88,9 @@ function isShowBooleanLikeUsage(line = '', symbol = '') {
   const methodPattern = new RegExp(`(^|[.\\s])${escaped}\\s*(?:\\?\\.)?\\(`);
   if (methodPattern.test(line)) return false;
 
-  const writePattern = new RegExp(`(?:\\bthis|\\b[A-Za-z_$][\\w$]*|\\])?\\.?${escaped}\\s*(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)`);
+  const writePattern = new RegExp(
+    `(?:\\bthis|\\b[A-Za-z_$][\\w$]*|\\])?\\.?${escaped}\\s*(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)`,
+  );
   const objectPropertyPattern = new RegExp(`(^|[^A-Za-z0-9_$])${escaped}\\s*:`);
   if (writePattern.test(line) || objectPropertyPattern.test(line)) return true;
 
@@ -98,7 +105,9 @@ function countSymbolOccurrences(line = '', symbol = '') {
 function isWriteLine(line = '', symbol = '') {
   const escaped = escapeRegExp(symbol);
   const assignment = '(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)';
-  const propertyWrite = new RegExp(`(?:^|[^A-Za-z0-9_$])(?:this|[A-Za-z_$][\\w$]*|\\])\\.${escaped}\\s*${assignment}`);
+  const propertyWrite = new RegExp(
+    `(?:^|[^A-Za-z0-9_$])(?:this|[A-Za-z_$][\\w$]*|\\])\\.${escaped}\\s*${assignment}`,
+  );
   return propertyWrite.test(line);
 }
 
@@ -126,14 +135,20 @@ function classifyRole(filePath = '', line = '', access = 'read') {
   if (/frontend\/js\/platform\/renderers\//.test(normalized)) return 'consumer';
   if (/frontend\/js\/state\//.test(normalized)) return 'adapter';
   if (/frontend\/js\/tutorial\//.test(normalized)) return 'adapter';
-  if (/frontend\/js\/platform\/.*(InputRouter|Action|Handlers|Commands|Controller|Shell|App)/.test(normalized)) return 'adapter';
+  if (
+    /frontend\/js\/platform\/.*(InputRouter|Action|Handlers|Commands|Controller|Shell|App)/.test(
+      normalized,
+    )
+  )
+    return 'adapter';
   return 'consumer';
 }
 
 function noteForFinding(filePath = '', line = '', symbol = '', access = 'read', role = 'consumer') {
   if (role === 'source-of-truth') return 'legacy owner candidate';
   if (role === 'mirror') return 'legacy mirror candidate';
-  if (role === 'unknown' && (access === 'write' || access === 'read-write')) return 'write outside known owner/mirror path';
+  if (role === 'unknown' && (access === 'write' || access === 'read-write'))
+    return 'write outside known owner/mirror path';
   if (symbol.startsWith('show')) return 'show* modal/panel flag candidate';
   if (/renderers\//.test(normalizePath(filePath))) return 'renderer consumes mode/panel state';
   if (/\b(canvasShell|shell|lastGame)\./.test(line)) return 'cross-object state synchronization';
@@ -214,7 +229,9 @@ function scanModeOwnership(options = {}) {
 }
 
 function escapeMarkdownCell(value) {
-  return String(value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(value ?? '')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
 function renderSummary(report) {
@@ -227,8 +244,12 @@ function renderSummary(report) {
     'by symbol:',
   ];
   report.summary.bySymbol.forEach((entry) => {
-    const roles = Object.entries(entry.roles).map(([key, value]) => `${key}=${value}`).join(', ');
-    const access = Object.entries(entry.access).map(([key, value]) => `${key}=${value}`).join(', ');
+    const roles = Object.entries(entry.roles)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(', ');
+    const access = Object.entries(entry.access)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(', ');
     lines.push(`- ${entry.symbol}: ${entry.findings} (${roles}; ${access})`);
   });
   return `${lines.join('\n')}\n`;
@@ -247,7 +268,9 @@ function renderMarkdown(report) {
   ];
   report.summary.bySymbol.forEach((entry) => {
     const writes = (entry.access.write || 0) + (entry.access['read-write'] || 0);
-    lines.push(`| \`${escapeMarkdownCell(entry.symbol)}\` | ${entry.findings} | ${entry.roles['source-of-truth'] || 0} | ${entry.roles.mirror || 0} | ${entry.roles.adapter || 0} | ${entry.roles.consumer || 0} | ${entry.roles.unknown || 0} | ${writes} |`);
+    lines.push(
+      `| \`${escapeMarkdownCell(entry.symbol)}\` | ${entry.findings} | ${entry.roles['source-of-truth'] || 0} | ${entry.roles.mirror || 0} | ${entry.roles.adapter || 0} | ${entry.roles.consumer || 0} | ${entry.roles.unknown || 0} | ${writes} |`,
+    );
   });
   lines.push(
     '',
@@ -257,7 +280,9 @@ function renderMarkdown(report) {
     '| --- | --- | ---: | --- | --- | --- | --- |',
   );
   report.findings.forEach((finding) => {
-    lines.push(`| \`${escapeMarkdownCell(finding.symbol)}\` | ${escapeMarkdownCell(finding.file)} | ${finding.line} | ${escapeMarkdownCell(finding.role)} | ${escapeMarkdownCell(finding.access)} | \`${escapeMarkdownCell(finding.evidence)}\` | ${escapeMarkdownCell(finding.note)} |`);
+    lines.push(
+      `| \`${escapeMarkdownCell(finding.symbol)}\` | ${escapeMarkdownCell(finding.file)} | ${finding.line} | ${escapeMarkdownCell(finding.role)} | ${escapeMarkdownCell(finding.access)} | \`${escapeMarkdownCell(finding.evidence)}\` | ${escapeMarkdownCell(finding.note)} |`,
+    );
   });
   return `${lines.join('\n')}\n`;
 }

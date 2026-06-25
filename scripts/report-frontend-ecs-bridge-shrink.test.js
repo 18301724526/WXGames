@@ -17,7 +17,10 @@ const {
 test('bridge shrink report scans production frontend sources only', () => {
   assert.equal(isProductionFrontendSource('frontend/js/platform/CanvasGameAppCommands.js'), true);
   assert.equal(isProductionFrontendSource('frontend/js/vendor/spine-3.8/spine-webgl.js'), false);
-  assert.equal(isProductionFrontendSource('frontend/js/platform/CanvasGameAppCommands.test.js'), false);
+  assert.equal(
+    isProductionFrontendSource('frontend/js/platform/CanvasGameAppCommands.test.js'),
+    false,
+  );
   assert.equal(isProductionFrontendSource('backend/services/GameStateService.js'), false);
 });
 
@@ -30,7 +33,10 @@ test('bridge shrink report counts branches and extracts fields and methods', () 
   ];
   assert.equal(countBranchTokens(lines), 1);
   assert.deepEqual(collectFieldNames(lines), ['activeEventId', 'showTaskCenter']);
-  assert.deepEqual(collectMethodNames(['    openPanel() {', 'function installFoo() {}']), ['installFoo', 'openPanel']);
+  assert.deepEqual(collectMethodNames(['    openPanel() {', 'function installFoo() {}']), [
+    'installFoo',
+    'openPanel',
+  ]);
 });
 
 test('bridge shrink report detects prototype and file-level surfaces', () => {
@@ -45,10 +51,22 @@ test('bridge shrink report detects prototype and file-level surfaces', () => {
     'Renderer.prototype.delegate = function delegate() { if (this.host) return true; };',
   ].join('\n');
 
-  const candidates = findBridgeCandidatesInText('frontend/js/platform/CanvasGameAppCommands.js', source);
-  assert.equal(candidates.some((candidate) => candidate.surface === 'Object.assign prototype installer'), true);
-  assert.equal(candidates.some((candidate) => candidate.surface === 'direct prototype assignment'), true);
-  assert.equal(candidates.some((candidate) => candidate.surface === 'facade/bridge file surface'), true);
+  const candidates = findBridgeCandidatesInText(
+    'frontend/js/platform/CanvasGameAppCommands.js',
+    source,
+  );
+  assert.equal(
+    candidates.some((candidate) => candidate.surface === 'Object.assign prototype installer'),
+    true,
+  );
+  assert.equal(
+    candidates.some((candidate) => candidate.surface === 'direct prototype assignment'),
+    true,
+  );
+  assert.equal(
+    candidates.some((candidate) => candidate.surface === 'facade/bridge file surface'),
+    true,
+  );
 });
 
 test('bridge shrink report can scan a temporary repo baseline', () => {
@@ -56,13 +74,22 @@ test('bridge shrink report can scan a temporary repo baseline', () => {
   try {
     fs.mkdirSync(path.join(repoRoot, 'frontend', 'js', 'platform'), { recursive: true });
     fs.mkdirSync(path.join(repoRoot, 'frontend', 'js', 'vendor'), { recursive: true });
-    fs.writeFileSync(path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameAppCommands.js'), [
-      'Object.assign(CanvasGameApp.prototype, {',
-      '  saveFormation() { if (this.armyFormationEditor) return true; },',
-      '});',
-    ].join('\n'));
-    fs.writeFileSync(path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameAppCommands.test.js'), 'Object.assign(Test.prototype, {});\n');
-    fs.writeFileSync(path.join(repoRoot, 'frontend', 'js', 'vendor', 'ignored.js'), 'Object.assign(Vendor.prototype, {});\n');
+    fs.writeFileSync(
+      path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameAppCommands.js'),
+      [
+        'Object.assign(CanvasGameApp.prototype, {',
+        '  saveFormation() { if (this.armyFormationEditor) return true; },',
+        '});',
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameAppCommands.test.js'),
+      'Object.assign(Test.prototype, {});\n',
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'frontend', 'js', 'vendor', 'ignored.js'),
+      'Object.assign(Vendor.prototype, {});\n',
+    );
 
     const report = scanBridgeShrink({ repoRoot });
     assert.equal(report.filesScanned, 1);

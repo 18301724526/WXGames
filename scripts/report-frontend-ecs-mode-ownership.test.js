@@ -21,10 +21,10 @@ test('mode ownership report scans production frontend sources only', () => {
 });
 
 test('mode ownership report detects explicit mode symbols and boolean-like show flags', () => {
-  assert.deepEqual(extractModeSymbols('this.activeTab = "military"; this.showTaskCenter = true;').sort(), [
-    'activeTab',
-    'showTaskCenter',
-  ]);
+  assert.deepEqual(
+    extractModeSymbols('this.activeTab = "military"; this.showTaskCenter = true;').sort(),
+    ['activeTab', 'showTaskCenter'],
+  );
   assert.deepEqual(extractModeSymbols("'shell.naming.title': 'Name',"), []);
   assert.deepEqual(extractModeSymbols('this.showFloatingText("saved");'), []);
   assert.deepEqual(extractModeSymbols('showSoftGuide(target, message) { return false; }'), []);
@@ -32,16 +32,28 @@ test('mode ownership report detects explicit mode symbols and boolean-like show 
 
 test('mode ownership report classifies reads and writes', () => {
   assert.equal(classifyAccess('this.activeTab = nextTab;', 'activeTab'), 'write');
-  assert.equal(classifyAccess('this.activeTab = state.currentTab || this.activeTab;', 'activeTab'), 'read-write');
-  assert.equal(classifyAccess('const activeTab = requestedTab || state.currentTab;', 'activeTab'), 'read');
-  assert.equal(classifyAccess('if (options.activeTab === "military") return;', 'activeTab'), 'read');
+  assert.equal(
+    classifyAccess('this.activeTab = state.currentTab || this.activeTab;', 'activeTab'),
+    'read-write',
+  );
+  assert.equal(
+    classifyAccess('const activeTab = requestedTab || state.currentTab;', 'activeTab'),
+    'read',
+  );
+  assert.equal(
+    classifyAccess('if (options.activeTab === "military") return;', 'activeTab'),
+    'read',
+  );
 });
 
 test('mode ownership report emits finding rows with role and note', () => {
-  const findings = findModeOwnershipInText('frontend/js/platform/CanvasGameApp.js', [
-    'this.activeTab = "resources";',
-    'if (this.activeTab === "military") this.showTaskCenter = false;',
-  ].join('\n'));
+  const findings = findModeOwnershipInText(
+    'frontend/js/platform/CanvasGameApp.js',
+    [
+      'this.activeTab = "resources";',
+      'if (this.activeTab === "military") this.showTaskCenter = false;',
+    ].join('\n'),
+  );
 
   assert.equal(findings.length, 3);
   assert.equal(findings[0].symbol, 'activeTab');
@@ -55,9 +67,18 @@ test('mode ownership report can scan a temporary repo baseline', () => {
   try {
     fs.mkdirSync(path.join(repoRoot, 'frontend', 'js', 'platform'), { recursive: true });
     fs.mkdirSync(path.join(repoRoot, 'frontend', 'js', 'vendor'), { recursive: true });
-    fs.writeFileSync(path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'), 'this.activeTab = "resources";\n');
-    fs.writeFileSync(path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.test.js'), 'this.activeTab = "test";\n');
-    fs.writeFileSync(path.join(repoRoot, 'frontend', 'js', 'vendor', 'ignored.js'), 'this.activeTab = "vendor";\n');
+    fs.writeFileSync(
+      path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.js'),
+      'this.activeTab = "resources";\n',
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'frontend', 'js', 'platform', 'CanvasGameApp.test.js'),
+      'this.activeTab = "test";\n',
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'frontend', 'js', 'vendor', 'ignored.js'),
+      'this.activeTab = "vendor";\n',
+    );
 
     const report = scanModeOwnership({ repoRoot });
     assert.equal(report.filesScanned, 1);
