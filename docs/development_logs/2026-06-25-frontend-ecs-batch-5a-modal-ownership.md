@@ -2,16 +2,16 @@
 
 ## Status
 
-| Field             | Value                                                                |
-| ----------------- | -------------------------------------------------------------------- |
-| Batch             | `5. Panel/Modal Ownership`                                           |
-| Slice             | `5a (naming + confirmDialog)`                                        |
-| State | `Completed` (naming + confirmDialog) |
-| ECS modal owner   | `frontend/js/ecs/mode/ModalWorld.js`                                 |
-| Callback registry | `frontend/js/platform/ModalCallbackRegistry.js`                      |
-| Bridge surface    | `CanvasModeOwnershipBridge` modal API + wrappers                     |
-| Seal enforced by  | existing `check-frontend-ecs-mode-ownership-spine.js`                |
-| Last updated | `2026-06-26 04:01:40 +08:00` |
+| Field             | Value                                                 |
+| ----------------- | ----------------------------------------------------- |
+| Batch             | `5. Panel/Modal Ownership`                            |
+| Slice             | `5a (naming + confirmDialog)`                         |
+| State             | `Completed` (naming + confirmDialog)                  |
+| ECS modal owner   | `frontend/js/ecs/mode/ModalWorld.js`                  |
+| Callback registry | `frontend/js/platform/ModalCallbackRegistry.js`       |
+| Bridge surface    | `CanvasModeOwnershipBridge` modal API + wrappers      |
+| Seal enforced by  | existing `check-frontend-ecs-mode-ownership-spine.js` |
+| Last updated      | `2026-06-26 04:01:40 +08:00`                          |
 
 ## Decision
 
