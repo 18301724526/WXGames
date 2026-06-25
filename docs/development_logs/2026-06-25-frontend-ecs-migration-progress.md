@@ -5,11 +5,11 @@
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
-| Current batch          | `4. Input Intent Boundary`                   |
-| Batch state            | `Completed`                                  |
+| Current batch          | `5. Panel/Modal Ownership (slice 5a)`        |
+| Batch state            | `Plan recorded; slice 5a in design`          |
 | Runtime code migration | Mode ownership bridge only                   |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 01:24:26 +08:00`                 |
+| Last updated           | `2026-06-26 01:54:01 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -281,3 +281,5 @@ Batch 1 is officially complete after migration owner review. Batch 2 is official
 Batch 3 is `Completed` after migration owner review. Batch 4 (Input Intent Boundary) may start after this completion commit reaches the server branch.
 
 Batch 4 (Input Intent Boundary) is `Completed` after migration owner review. Batch 5 (Panel/Modal Ownership) may start after this completion commit reaches the server branch.
+
+Batch 5 (Panel/Modal Ownership) planning is recorded in the operating plan as first-window deliverables across slices 5a-5d, with slice 5a (`naming` + `confirmDialog`) approved for the first round and the owner-holds-token callback strategy. Slice 5a implementation is being scoped against the slice-5a mapping (the ECS modal owner needs a serializable JS-side payload store because bitECS components are numeric-only; neither `naming` nor `confirmDialog` stores closures today; demoting the legacy fields to owner-derived mirrors spans about twenty files including hot UI paths).

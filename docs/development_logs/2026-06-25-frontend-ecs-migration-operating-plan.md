@@ -435,3 +435,66 @@ Batch 4 acceptance owner:
 - Implementation, unit/behavior tests, the scoped blocking guard, the manifest/smoke wiring, and the regenerated runtime bundle are complete and verified locally (`npm run test:architecture`, `npm run lint`, and `npm run format:check` all pass; the input-intent spine guard reports 0 violations against the 0B baseline). The batch is now `Ready for Migration Owner Review`.
 - Batch 4 moved from `Ready for Migration Owner Review` to `Completed` after `codex/external-review` signed off at `2026-06-26 01:24:26 +08:00` (Batch 4 Passed).
 - Batch 5 (Panel/Modal Ownership) may start after this Batch 4 completion commit reaches the server branch.
+
+Batch 5 first-window deliverables:
+
+Batch 5 seals the covered modal subtypes (`naming`, `event`, `rewardReveal`, `confirmDialog`, `targetPicker`, `blockingPanel`) so the ECS modal owner — not app/shell fields — is their source of truth. It is delivered in slices; each slice ends sealed (old field read-only mirrored, owner authoritative, guard blocks legacy growth). This plan records all slices; only slice 5a is implemented in the first round.
+
+- ECS modal owner: extend the mode entity with modal subtype open/close authority plus a serializable payload per subtype (ids, text, resource lists), declared under `frontend/js/ecs/` and shipped through the existing generated runtime bundle.
+- Modal command API: `openModal(subtype, payload)` / `closeModal(subtype)` on the ECS owner, exposed through `CanvasModeOwnershipBridge`; legacy modal writes route through it and the legacy field becomes a read-only mirror updated from the owner.
+- Modal callback registry: non-serializable callbacks (e.g. `confirmDialog.onConfirm`) are not stored in the ECS owner. The owner holds a serializable modal token; an app-side registry resolves the token to the callback, keeping `frontend/js/ecs/**` pure and boundary-guard-clean.
+- Panel/modal blocking guard: a guard scoped to the `panel` branch kind in command-handler and input-router surfaces, diffing against the 0B input-branch baseline, blocks net-new legacy modal source-of-truth writes outside the approved modal owner/bridge for sealed subtypes.
+
+Batch 5 slicing:
+
+| Slice | Modal subtypes            | Legacy source-of-truth fields                                            | Notes                                                                                                    |
+| ----- | ------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| 5a    | `naming`, `confirmDialog` | `naming.visible` + payload; `confirmDialog.visible` + config/callback    | First round. Simplest single-flag modals; proves the owner + token-callback pattern at low blast radius. |
+| 5b    | `event`, `rewardReveal`   | `activeEventId`; `rewardReveal` payload                                  | Game-flow modals; gated separately.                                                                      |
+| 5c    | `targetPicker`            | `territoryUiState.worldTargetPicker` / `worldMarchTarget.pickerOpen`     | World-march coupled; gated separately.                                                                   |
+| 5d    | `blockingPanel`           | aggregate of ~14 `show*` / `activeCommandPanel` / `techDetailOpen` flags | Largest; may fold into per-domain sealing. Gated separately.                                             |
+
+Batch 5 callback ownership:
+
+The ECS modal owner stores only serializable modal state: presence, subtype, and a frozen payload of ids/text/resource lists, plus a `token` string. Imperative continuations (confirm/cancel callbacks, focus refs) live in an app-side registry keyed by `token`. `openModal` mints a token and registers the callback; `closeModal`/resolve looks it up and clears it. This keeps `frontend/js/ecs/**` free of closures/DOM (boundary guard) while making the owner authoritative for open/close plus payload.
+
+Batch 5 approved runtime ECS surfaces:
+
+| Surface                                             | Status                    | Notes                                                                                             |
+| --------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------- |
+| ECS modal owner module(s) under `frontend/js/ecs/`  | Owner source only         | Pure modal state + token; bundled, not directly H5/minigame-loaded                                |
+| `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`   | Approved runtime artifact | Regenerated to expose the modal owner API                                                         |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js` | Temporary bridge          | Exposes `openModal`/`closeModal`; the app-side token-callback registry lives in platform, not ECS |
+
+Batch 5 scope control:
+
+Batch 5 does not:
+
+- migrate renderer reads of modal state to snapshots (Batch 6); renderers keep reading the legacy read-only mirror this batch
+- migrate tutorial flow, input intent (Batch 4, done), or world-map/gameplay domain state
+- store non-serializable callbacks or DOM refs inside `frontend/js/ecs/**`
+
+Slices 5b-5d remain report-only until their own sealed slice runs. Only the subtypes sealed in a completed slice are blocked from legacy source-of-truth growth.
+
+Batch 5 slice 5a execution checklist:
+
+| Step                                        | Status  | Artifact / Gate                                               | Acceptance Standard                                                                                     |
+| ------------------------------------------- | ------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 5a-1. Modal owner state + token             | Planned | ECS modal owner module                                        | naming/confirmDialog open/close + serializable payload + token are owned in the ECS entity, pure/frozen |
+| 5a-2. Modal callback registry               | Planned | app-side registry in platform                                 | token -> callback registry resolves confirmDialog continuations without storing closures in ECS         |
+| 5a-3. Runtime bundle regeneration           | Planned | `scripts/build-frontend-ecs-runtime.js`, runtime bundle       | bundle regenerated by exact `esbuild@0.23.1` and exposes the modal owner API                            |
+| 5a-4. Bridge open/close helpers             | Planned | `CanvasModeOwnershipBridge.js`                                | `openModal`/`closeModal` route writes to the owner; legacy `naming`/`confirmDialog` become read mirrors |
+| 5a-5. Route naming + confirmDialog writes   | Planned | naming/confirmDialog write sites                              | the source of truth for naming + confirmDialog is the ECS owner; app/shell fields are mirrors           |
+| 5a-6. Panel/modal blocking guard (5a scope) | Planned | `scripts/check-frontend-ecs-modal-ownership-spine.js`         | net-new naming/confirmDialog legacy source-of-truth writes outside the owner/bridge fail the gate       |
+| 5a-7. Guard and behavior tests              | Planned | guard test plus owner/registry/bridge tests                   | open/close, token-callback resolution, and mirror sync are covered; existing modal tests stay green     |
+| 5a-8. Manifest and architecture smoke       | Planned | `EcsBoundaryManifest.js`, `scripts/run-architecture-smoke.js` | modal owner surfaces declared; smoke runs the new guard + tests as blocking                             |
+| 5a-9. Progress and batch document update    | Planned | progress doc and Batch 5 batch doc                            | slice 5a documented as Ready for Review, not Completed                                                  |
+| 5a-10. Commit and server branch push        | Pending | git history and server remote                                 | slice 5a implementation commit reaches the server branch                                                |
+| 5a-11. Migration owner review               | Pending | progress document                                             | `codex/external-review` signs off before slice 5a can be marked Completed                               |
+
+Batch 5 acceptance owner:
+
+- Migration owner: project main engineer or explicitly assigned architecture owner.
+- Batch 5 is delivered in slices 5a-5d; the migration owner approved planning all slices and executing slice 5a (`naming` + `confirmDialog`) first, with the owner-holds-token callback strategy.
+- Each slice may move to `Ready for Migration Owner Review` only after its owner/registry/bridge wiring, scoped guard, and tests are complete and verified, and to `Completed` only after `codex/external-review` signs off on that slice.
+- Batch 6 (Snapshot Boundary) may not start until the Batch 5 slices required by the sequencing rule are completed and recorded.
