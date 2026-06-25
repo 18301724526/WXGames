@@ -22,7 +22,10 @@ async function build() {
   });
   const source = await fs.readFile(outfile, 'utf8');
   const config = (await prettier.resolveConfig(outfile)) || {};
-  const formatted = await prettier.format(source, { ...config, filepath: outfile });
+  const formatted = await prettier.format(`/* eslint-disable */\n${source}`, {
+    ...config,
+    filepath: outfile,
+  });
   await fs.writeFile(outfile, formatted);
   console.log(
     `[build-frontend-ecs-runtime] wrote ${path.relative(repoRoot, outfile).replace(/\\/g, '/')}`,

@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../ecs/mode/EcsModeRuntimeEntry');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
