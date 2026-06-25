@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - codex/battle-core-test-server
+      - codex/refactor-tutorial-guide-architecture
   pull_request:
     branches:
       - codex/battle-core-test-server
+      - codex/refactor-tutorial-guide-architecture
 
 jobs:
   test-server-gate:

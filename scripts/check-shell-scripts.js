@@ -6,6 +6,7 @@ const repoRoot = path.join(__dirname, '..');
 const SHELL_SCRIPTS = Object.freeze([
   'deploy.sh',
   'scripts/deploy-test-server.sh',
+  'scripts/deploy-refactor-tutorial-server.sh',
   'scripts/pre-deploy-gate.sh',
   'scripts/prepare-test-server-runtime.sh',
   'scripts/test-server-ci-gate.sh',

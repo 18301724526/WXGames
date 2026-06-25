@@ -3,8 +3,7 @@ set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 BARE_REPO_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
-WORK_TREE="/www/wwwroot/h5"
-BRANCH="main"
+MAIN_WORK_TREE="/www/wwwroot/h5"
 
 clear_git_local_env() {
     while IFS= read -r var_name; do
@@ -12,14 +11,31 @@ clear_git_local_env() {
     done < <(git rev-parse --local-env-vars)
 }
 
-while read -r _oldrev _newrev refname; do
-    current_branch="${refname#refs/heads/}"
-    if [ "$current_branch" != "$BRANCH" ]; then
-        continue
-    fi
+deploy_ref() {
+    local branch="$1"
+    local work_tree="$2"
+    local deploy_entry="$3"
 
     clear_git_local_env
-    mkdir -p "$WORK_TREE"
-    git --git-dir="$BARE_REPO_DIR" --work-tree="$WORK_TREE" checkout -f "$BRANCH"
-    REPO_GIT_DIR="$BARE_REPO_DIR" WORK_TREE="$WORK_TREE" bash "$WORK_TREE/deploy.sh" "$BRANCH"
+    mkdir -p "$work_tree"
+    git --git-dir="$BARE_REPO_DIR" --work-tree="$work_tree" checkout -f "$branch"
+    REPO_GIT_DIR="$BARE_REPO_DIR" WORK_TREE="$work_tree" bash "$work_tree/$deploy_entry" "$branch"
+}
+
+while read -r _oldrev _newrev refname; do
+    current_branch="${refname#refs/heads/}"
+    case "$current_branch" in
+        main)
+            deploy_ref "$current_branch" "$MAIN_WORK_TREE" "deploy.sh"
+            ;;
+        codex/battle-core-test-server)
+            deploy_ref "$current_branch" "/www/wwwroot/h5-test-worktree" "scripts/deploy-test-server.sh"
+            ;;
+        codex/refactor-tutorial-guide-architecture)
+            deploy_ref "$current_branch" "/www/wwwroot/h5-refactor-worktree" "scripts/deploy-refactor-tutorial-server.sh"
+            ;;
+        *)
+            continue
+            ;;
+    esac
 done

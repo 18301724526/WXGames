@@ -15,6 +15,7 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
   assert.deepEqual(SHELL_SCRIPTS, [
     'deploy.sh',
     'scripts/deploy-test-server.sh',
+    'scripts/deploy-refactor-tutorial-server.sh',
     'scripts/pre-deploy-gate.sh',
     'scripts/prepare-test-server-runtime.sh',
     'scripts/test-server-ci-gate.sh',
@@ -27,6 +28,22 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
     'scripts/rotate-production-secrets.sh',
     'scripts/install-ops-agent-pm2.sh',
   ]);
+});
+
+test('refactor tutorial test server keeps isolated runtime surfaces', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const script = fs.readFileSync(path.join(repoRoot, 'scripts', 'deploy-refactor-tutorial-server.sh'), 'utf8');
+
+  assert.match(script, /codex\/refactor-tutorial-guide-architecture/);
+  assert.match(script, /WORK_TREE="\$\{WORK_TREE:-\/www\/wwwroot\/h5-refactor-worktree\}"/);
+  assert.match(script, /FRONTEND_PUBLIC_DIR="\$\{FRONTEND_PUBLIC_DIR:-\/www\/wwwroot\/h5-refactor\}"/);
+  assert.match(script, /BACKEND_DIR="\$\{BACKEND_DIR:-\/opt\/wxgame-refactor\/backend\}"/);
+  assert.match(script, /DEPLOY_STATE_DIR="\$\{DEPLOY_STATE_DIR:-\/opt\/wxgame-refactor\/\.wxgame\}"/);
+  assert.match(script, /PORT="\$\{PORT:-3003\}"/);
+  assert.match(script, /PM2_APP_NAME="\$\{PM2_APP_NAME:-wxgame-refactor-server\}"/);
+  assert.match(script, /WORLD_WORKER_PM2_NAME="\$\{WORLD_WORKER_PM2_NAME:-wxgame-refactor-world-worker\}"/);
+  assert.match(script, /FRONTEND_API_BASE="\$\{FRONTEND_API_BASE:-\/wxgame-refactor-api\}"/);
+  assert.match(script, /FRONTEND_ENVIRONMENT_LABEL="\$\{FRONTEND_ENVIRONMENT_LABEL:-TUTORIAL REFACTOR\}"/);
 });
 
 test('shell script guard can find bash in PATH or Git for Windows fallback', () => {

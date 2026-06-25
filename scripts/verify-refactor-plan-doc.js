@@ -16,6 +16,7 @@ const officialDocPaths = [
   'docs/world_map_hud_transparency_contract_2026-06-19.md',
   'docs/world-combat-interactive-architecture.md',
   'docs/server_environment_test_2026-06-22.md',
+  'docs/server_environment_refactor_tutorial_2026-06-25.md',
   'docs/6月22日开发日志.md',
   'docs/6月23日开发日志.md',
   'docs/6月24日claude开发日志.md',
@@ -81,6 +82,14 @@ const requiredText = {
     '/wxgame-test-api/',
     'wxgame-test-server',
     'scripts/test-server-ci-gate.sh',
+  ],
+  'docs/server_environment_refactor_tutorial_2026-06-25.md': [
+    'WXGame Refactor Tutorial Test Server Environment Report',
+    'codex/refactor-tutorial-guide-architecture',
+    '/wxgame-refactor/',
+    '/wxgame-refactor-api/',
+    'wxgame-refactor-server',
+    'scripts/deploy-refactor-tutorial-server.sh',
   ],
   'docs/6月22日开发日志.md': [
     'hostile_force_capital_ridge',
