@@ -9,7 +9,7 @@
 | Batch state | `Ready for Migration Owner Review` |
 | Runtime code migration | Not started |
 | ECS dependency | Not introduced |
-| Last updated | `2026-06-25 13:18:18 +08:00` |
+| Last updated | `2026-06-25 13:19:30 +08:00` |
 
 ## Batch 0A Checklist
 
@@ -22,7 +22,7 @@
 | 0A-5. Migration owner review | Pending | Pending | Requires owner sign-off before 0A can be marked completed |
 | 0A-6. Update progress document | Ready for review | `2026-06-25 13:14:11 +08:00` | This file |
 | 0A-7. Update operating plan | Ready for review | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` |
-| 0A-8. Commit and dual-remote push | Partially pushed, deployment blocked by server permission | `2026-06-25 13:18:18 +08:00` | Commit `8aa553d9` pushed to server `origin`; GitHub HTTPS push failed with TLS handshake error; server deploy hook failed at npm permission step |
+| 0A-8. Commit and dual-remote push | Server branch pushed, deployment blocked by server permission, GitHub blocked by TLS | `2026-06-25 13:19:30 +08:00` | Commit `d4919fde` pushed to server `origin`; GitHub HTTPS push failed with Schannel and OpenSSL TLS errors; server deploy hook failed at npm permission step |
 
 ## Report-Only Guard Baseline
 
@@ -60,9 +60,9 @@ Required owner sign-off record:
 
 | Remote / Hook | Result | Evidence |
 | --- | --- | --- |
-| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `8aa553d9` | Server accepted `ca27a093..8aa553d9` |
-| Refactor test server deploy hook | Failed after checkout | Hook checked out `8aa553d9`, then `npm` failed with `EACCES: permission denied, rmdir '/www/wwwroot/h5-refactor-worktree/node_modules/.bin'` |
-| `github codex/refactor-tutorial-guide-architecture` | Failed | HTTPS remote was used, but Git reported `schannel: failed to receive handshake, SSL/TLS connection failed` |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `d4919fde` | Server accepted `8aa553d9..d4919fde` |
+| Refactor test server deploy hook | Failed after checkout | Hook checked out `d4919fde`, then `npm` failed with `EACCES: permission denied, rmdir '/www/wwwroot/h5-refactor-worktree/node_modules/.bin'` |
+| `github codex/refactor-tutorial-guide-architecture` | Failed | HTTPS remote was used. Schannel reported `failed to receive handshake`; OpenSSL retry reported `unexpected eof while reading` |
 
 ## Next Step
 
