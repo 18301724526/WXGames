@@ -2,14 +2,14 @@
 
 ## Current Status
 
-| Field                  | Value                                        |
-| ---------------------- | -------------------------------------------- |
-| Branch                 | `codex/refactor-tutorial-guide-architecture` |
-| Current batch          | `0A. Mode and Bridge Inventory`              |
-| Batch state            | `Completed`                                  |
-| Runtime code migration | Not started                                  |
-| ECS dependency         | Not introduced                               |
-| Last updated           | `2026-06-25 14:53:09 +08:00`                 |
+| Field                  | Value                                                |
+| ---------------------- | ---------------------------------------------------- |
+| Branch                 | `codex/refactor-tutorial-guide-architecture`         |
+| Current batch          | `0B. Authority, Input, Literal, Duplicate Inventory` |
+| Batch state            | `Ready for Migration Owner Review`                   |
+| Runtime code migration | Not started                                          |
+| ECS dependency         | Not introduced                                       |
+| Last updated           | `2026-06-25 15:34:26 +08:00`                         |
 
 ## Batch 0A Checklist
 
@@ -26,10 +26,26 @@
 
 ## Report-Only Guard Baseline
 
-| Guard                | Files Scanned |             Findings / Candidates | Blocking?       | Command                                                        |
-| -------------------- | ------------: | --------------------------------: | --------------- | -------------------------------------------------------------- |
-| Mode ownership guard |           213 |          960 findings, 25 symbols | No, report-only | `node scripts/report-frontend-ecs-mode-ownership.js --summary` |
-| Bridge shrink guard  |           213 | 39 candidates, 1911 branch tokens | No, report-only | `node scripts/report-frontend-ecs-bridge-shrink.js --summary`  |
+| Guard                    | Files Scanned |             Findings / Candidates | Blocking?       | Command                                                            |
+| ------------------------ | ------------: | --------------------------------: | --------------- | ------------------------------------------------------------------ |
+| Mode ownership guard     |           213 |          960 findings, 25 symbols | No, report-only | `node scripts/report-frontend-ecs-mode-ownership.js --summary`     |
+| Bridge shrink guard      |           213 | 39 candidates, 1911 branch tokens | No, report-only | `node scripts/report-frontend-ecs-bridge-shrink.js --summary`      |
+| Renderer authority guard |            97 |                      315 findings | No, report-only | `node scripts/report-frontend-ecs-renderer-authority.js --summary` |
+| Input branch guard       |            14 |                      203 findings | No, report-only | `node scripts/report-frontend-ecs-input-branch.js --summary`       |
+| Literal duplicate guard  |           213 |                    10417 findings | No, report-only | `node scripts/report-frontend-ecs-literal-duplicate.js --summary`  |
+
+## Batch 0B Checklist
+
+| Step                                 | Status           | Updated At                   | Evidence                                                                                        |
+| ------------------------------------ | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| 0B-1. Renderer authority report      | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md`               |
+| 0B-2. Input branch report            | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`                     |
+| 0B-3. Literal / duplicate report     | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`                |
+| 0B-4. Guard tests                    | Ready for Review | `2026-06-25 15:34:26 +08:00` | New `node:test` coverage for renderer authority, input branch, and literal duplicate guards     |
+| 0B-5. Architecture smoke integration | Ready for Review | `2026-06-25 15:34:26 +08:00` | `scripts/run-architecture-smoke.js` runs all 0A and 0B report-only guards with `--summary`      |
+| 0B-6. Progress document update       | Ready for Review | `2026-06-25 15:34:26 +08:00` | This document records 0B commands, artifacts, status, and review blocker                        |
+| 0B-7. Operating plan update          | Ready for Review | `2026-06-25 15:34:26 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records the 0B gate |
+| 0B-8. Commit and push                | Pending          | -                            | Will be recorded after local validation, commit, and remote push                                |
 
 ## Verification Commands
 
@@ -42,6 +58,13 @@ Executed before this progress entry:
 
 Executed before commit/push:
 
+- `node --test scripts/report-frontend-ecs-renderer-authority.test.js`
+- `node --test scripts/report-frontend-ecs-input-branch.test.js`
+- `node --test scripts/report-frontend-ecs-literal-duplicate.test.js`
+- `node scripts/report-frontend-ecs-renderer-authority.js --summary`
+- `node scripts/report-frontend-ecs-input-branch.js --summary`
+- `node scripts/report-frontend-ecs-literal-duplicate.js --summary`
+- `npm run format:check`
 - `npm run test:architecture`
 - `git diff --check`
 - `git status --short`
@@ -85,4 +108,4 @@ Permission root cause:
 
 0A is officially complete on the server branch after deploy commit `8ebedeb48d7ea3220ee35233f084a24e3a270761`.
 
-Next migration work may start `0B. Authority, Input, Literal, Duplicate Inventory`.
+0B is now ready for migration owner review once the commit/push/deploy evidence is recorded. It must not be marked `Completed` until migration owner review signs off in a separate commit.

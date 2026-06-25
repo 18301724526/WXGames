@@ -594,6 +594,18 @@ function main() {
     'scripts/report-frontend-ecs-bridge-shrink.js',
     '--summary',
   ]);
+  run('frontend ECS renderer authority report-only guard', process.execPath, [
+    'scripts/report-frontend-ecs-renderer-authority.js',
+    '--summary',
+  ]);
+  run('frontend ECS input branch report-only guard', process.execPath, [
+    'scripts/report-frontend-ecs-input-branch.js',
+    '--summary',
+  ]);
+  run('frontend ECS literal duplicate report-only guard', process.execPath, [
+    'scripts/report-frontend-ecs-literal-duplicate.js',
+    '--summary',
+  ]);
   run('backend security audit guard', process.execPath, ['scripts/check-backend-security-audit.js']);
   run('frontend script manifest guard', process.execPath, ['scripts/check-frontend-script-manifest.js']);
   run('shell script syntax guard', process.execPath, ['scripts/check-shell-scripts.js']);

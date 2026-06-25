@@ -222,4 +222,44 @@ Bridge inventory rows must use this schema:
 - Input branch inventory: mode/panel/tutorial checks inside input routers and action dispatch paths.
 - Literal/duplicate inventory: magic numbers, action strings, API paths, asset paths, repeated helper logic.
 
-Only after these inventories exist should the project start sealing ownership batches.
+0B record formats:
+
+Renderer authority inventory rows must use this schema:
+
+| File              | Line | Surface                                  | Target                                                   | Access                 | Role                                          | Evidence           | Note   |
+| ----------------- | ---- | ---------------------------------------- | -------------------------------------------------------- | ---------------------- | --------------------------------------------- | ------------------ | ------ |
+| `path/to/file.js` | `1`  | `renderer` / `render-runtime` / pipeline | `host` / `shell` / `state` / `controller` / `self-cache` | `write` / `read-write` | `authority-write` / `cache` / `write-through` | short code context | reason |
+
+Input branch inventory rows must use this schema:
+
+| File              | Line | Surface                                        | Branch Kind                                      | Symbols     | Action Type   | Evidence          | Note   |
+| ----------------- | ---- | ---------------------------------------------- | ------------------------------------------------ | ----------- | ------------- | ----------------- | ------ |
+| `path/to/file.js` | `1`  | `input-router` / `action-dispatch` / `command` | `mode` / `panel` / `tutorial` / `action` / route | symbol list | action string | condition context | reason |
+
+Literal / duplicate inventory rows must use this schema:
+
+| Kind                        | Key        | File              | Line | Role                                                           | Evidence           | Owner Candidate | Note   |
+| --------------------------- | ---------- | ----------------- | ---- | -------------------------------------------------------------- | ------------------ | --------------- | ------ |
+| literal or duplicate family | normalized | `path/to/file.js` | `1`  | `registry-owned` / `runtime-candidate` / `duplicate-candidate` | short code context | owner candidate | reason |
+
+0B execution checklist:
+
+| Step                                 | Status           | Artifact / Gate                                                                   | Acceptance Standard                                                                                  |
+| ------------------------------------ | ---------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 0B-1. Renderer authority report      | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-0b-renderer-authority-baseline.md` | Every finding has file, line, surface, target, access, role, evidence, and note                      |
+| 0B-2. Input branch report            | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md`       | Mode, panel, tutorial, action, and runtime-route branches are classified                             |
+| 0B-3. Literal / duplicate report     | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-0b-literal-duplicate-baseline.md`  | Literal and duplicate candidates are grouped by kind, role, and owner candidate                      |
+| 0B-4. Guard tests                    | Ready for Review | `scripts/report-frontend-ecs-*-authority/input/literal*.test.js`                  | New report-only guards have scan scope, classification, format, and unknown-argument coverage        |
+| 0B-5. Architecture smoke integration | Ready for Review | `scripts/run-architecture-smoke.js`                                               | Architecture smoke runs all 0A and 0B report-only guards with `--summary`                            |
+| 0B-6. Progress document update       | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md`             | Progress records 0B artifacts, commands, status, and review blocker                                  |
+| 0B-7. Operating plan update          | Ready for Review | this document                                                                     | 0B checklist and completion gate are recorded                                                        |
+| 0B-8. Commit and server branch push  | Pending          | git history and server remote                                                     | 0B implementation commit is pushed; deploy evidence and GitHub HTTPS result are recorded in progress |
+
+0B acceptance owner:
+
+- Migration owner: project main engineer or explicitly assigned architecture owner.
+- 0B must remain `Ready for Migration Owner Review` until the inventory documents and report-only guard data are reviewed.
+- 0B may move to `Completed` only in a separate post-review commit.
+- Batch 1 may not start until the 0B completed commit has reached the server branch.
+
+Only after these inventories exist and 0B is reviewed should the project start sealing ownership batches.
