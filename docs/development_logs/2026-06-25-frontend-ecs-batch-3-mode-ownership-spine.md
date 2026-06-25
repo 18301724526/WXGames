@@ -5,13 +5,13 @@
 | Field                  | Value                                                |
 | ---------------------- | ---------------------------------------------------- |
 | Batch                  | `3. Mode Ownership Spine`                            |
-| State                  | `Ready for Migration Owner Review`                   |
+| State                  | `Completed`                                          |
 | Runtime behavior scope | Mode ownership bridge only                           |
 | ECS owner              | `frontend/js/ecs/mode/ModeWorld.js`                  |
 | Legacy bridge          | `frontend/js/platform/CanvasModeOwnershipBridge.js`  |
 | Runtime bundle         | `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`    |
 | Blocking guard         | `scripts/check-frontend-ecs-mode-ownership-spine.js` |
-| Last updated           | `2026-06-25 21:01:23 +08:00`                         |
+| Last updated           | `2026-06-25 23:02:25 +08:00`                         |
 
 ## Decision
 
@@ -119,11 +119,13 @@ Any new mode/panel/tutorial decision growth in legacy app/shell/renderer/input p
 | Rollback?                         | Remove runtime bundle loading, remove bridge installation from App/Shell, restore input router checks to legacy helpers, and rerun guards to ensure no mixed unguarded owner remains. |
 | Next bridge to retire?            | `CanvasModeOwnershipBridge.js` must shrink in Batches 4 and 5 as input intent and concrete modal owners move out of legacy fields.                                                    |
 
-## Review Blockers
+## Review Result
 
-Batch 3 is not `Completed` yet. It requires migration owner review of:
+Batch 3 is `Completed` after migration owner review by `codex/external-review` at `2026-06-25 23:02:25 +08:00`. The review confirmed:
 
-- whether the singleton mode entity is the correct first runtime ECS owner
-- whether `CanvasModeOwnershipBridge` is narrow enough for a temporary bridge
-- whether the Batch 3 guard correctly allows owner/bridge/vocabulary growth while blocking legacy growth
-- whether loading the generated IIFE bundle is acceptable for H5 and minigame until a broader frontend build pipeline exists
+- the singleton mode entity is accepted as the correct first runtime ECS owner
+- `CanvasModeOwnershipBridge` is accepted as a narrow temporary bridge
+- the Batch 3 guard correctly allows owner/bridge/vocabulary growth while blocking legacy growth
+- loading the generated IIFE bundle is accepted for H5 and minigame until a broader frontend build pipeline exists
+
+Batch 4 (Input Intent Boundary) may start after this completion commit reaches the server branch.

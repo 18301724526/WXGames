@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `3. Mode Ownership Spine`                    |
-| Batch state            | `Ready for Migration Owner Review`           |
+| Batch state            | `Completed`                                  |
 | Runtime code migration | Mode ownership bridge only                   |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-25 21:01:23 +08:00`                 |
+| Last updated           | `2026-06-25 23:02:25 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -83,18 +83,18 @@ Batch 2 notes:
 
 ## Batch 3 Checklist
 
-| Step                                    | Status           | Updated At                   | Evidence                                                                                                                                                                     |
-| --------------------------------------- | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 3-1. Mode ECS owner modules             | Ready for Review | `2026-06-25 21:01:23 +08:00` | `frontend/js/ecs/mode/ModeKeys.js`, `ModeComponents.js`, `ModeResolver.js`, `ModeWorld.js`, and `EcsModeRuntimeEntry.js` create the singleton mode owner and frozen snapshot |
-| 3-2. Generated runtime bundle           | Ready for Review | `2026-06-25 21:01:23 +08:00` | `scripts/build-frontend-ecs-runtime.js` builds `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js` with exact `esbuild@0.23.1`                                                 |
-| 3-3. Legacy mode bridge                 | Ready for Review | `2026-06-25 21:01:23 +08:00` | `frontend/js/platform/CanvasModeOwnershipBridge.js` reads legacy app/shell fields as ingress facts and exposes mode snapshot helpers                                         |
-| 3-4. App/Shell centralized mode routing | Ready for Review | `2026-06-25 21:01:23 +08:00` | `CanvasGameAppInputRouter.js` and `CanvasGameShellInputRouter.js` prefer mode snapshot helpers for blocking overlay, entity battle, world map, and tech-tree route decisions |
-| 3-5. H5/minigame runtime loading        | Ready for Review | `2026-06-25 21:01:23 +08:00` | `frontend/index.html` and `frontend/minigame/game.js` load only the generated ECS mode runtime bundle plus `CanvasModeOwnershipBridge.js`                                    |
-| 3-6. Blocking guards                    | Ready for Review | `2026-06-25 21:01:23 +08:00` | `scripts/check-frontend-ecs-mode-ownership-spine.js` blocks legacy mode-decision growth; boundary guard now allows only the approved runtime bundle                          |
-| 3-7. Guard and behavior tests           | Ready for Review | `2026-06-25 21:01:23 +08:00` | Mode world, bridge, boundary guard, mode spine guard, script manifest, and App/Shell focused tests pass locally                                                              |
-| 3-8. Progress / operating plan update   | Ready for Review | `2026-06-25 21:01:23 +08:00` | This document and `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` record Batch 3 as Ready for Review                                             |
-| 3-9. Commit and server branch push      | Pending          | -                            | Final verification passed; commit and `git push origin codex/refactor-tutorial-guide-architecture` are pending                                                               |
-| 3-10. Migration owner review            | Pending          | -                            | Batch 3 may not be marked Completed until `codex/external-review` signs off                                                                                                  |
+| Step                                    | Status    | Updated At                   | Evidence                                                                                                                                                                                                                        |
+| --------------------------------------- | --------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3-1. Mode ECS owner modules             | Completed | `2026-06-25 21:01:23 +08:00` | `frontend/js/ecs/mode/ModeKeys.js`, `ModeComponents.js`, `ModeResolver.js`, `ModeWorld.js`, and `EcsModeRuntimeEntry.js` create the singleton mode owner and frozen snapshot                                                    |
+| 3-2. Generated runtime bundle           | Completed | `2026-06-25 21:01:23 +08:00` | `scripts/build-frontend-ecs-runtime.js` builds `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js` with exact `esbuild@0.23.1`                                                                                                    |
+| 3-3. Legacy mode bridge                 | Completed | `2026-06-25 21:01:23 +08:00` | `frontend/js/platform/CanvasModeOwnershipBridge.js` reads legacy app/shell fields as ingress facts and exposes mode snapshot helpers                                                                                            |
+| 3-4. App/Shell centralized mode routing | Completed | `2026-06-25 21:01:23 +08:00` | `CanvasGameAppInputRouter.js` and `CanvasGameShellInputRouter.js` prefer mode snapshot helpers for blocking overlay, entity battle, world map, and tech-tree route decisions                                                    |
+| 3-5. H5/minigame runtime loading        | Completed | `2026-06-25 21:01:23 +08:00` | `frontend/index.html` and `frontend/minigame/game.js` load only the generated ECS mode runtime bundle plus `CanvasModeOwnershipBridge.js`                                                                                       |
+| 3-6. Blocking guards                    | Completed | `2026-06-25 21:01:23 +08:00` | `scripts/check-frontend-ecs-mode-ownership-spine.js` blocks legacy mode-decision growth; boundary guard now allows only the approved runtime bundle                                                                             |
+| 3-7. Guard and behavior tests           | Completed | `2026-06-25 21:01:23 +08:00` | Mode world, bridge, boundary guard, mode spine guard, script manifest, and App/Shell focused tests pass locally                                                                                                                 |
+| 3-8. Progress / operating plan update   | Completed | `2026-06-25 21:01:23 +08:00` | This document and `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` record Batch 3 as Completed                                                                                                       |
+| 3-9. Commit and server branch push      | Completed | `2026-06-25 23:02:25 +08:00` | Implementation commits `8969451a` and `51d3b265` reached the server branch; refactor test server manual deploy passed the gate and health returned `status: ok` with deployed commit `51d3b2657a35dfac2b206b3bfbe9761c03f4bf2d` |
+| 3-10. Migration owner review            | Completed | `2026-06-25 23:02:25 +08:00` | `codex/external-review` signed off the Batch 3 mode ownership spine; this completion commit marks Batch 3 as Completed                                                                                                          |
 
 Batch 3 notes:
 
@@ -191,17 +191,17 @@ Batch 3 local verification result so far:
 
 Batch 2 is `Completed` after migration owner review.
 
-Batch 3 is `Ready for Migration Owner Review`. It must not be marked `Completed` until migration owner review signs off.
+Batch 3 is `Completed` after migration owner review.
 
 Required owner sign-off record:
 
-| Reviewer                | Review Time                  | Decision | Notes                                                                                                                                                                                                                                                                                                                                                  |
-| ----------------------- | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed   | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review.                               |
-| `codex/external-review` | `2026-06-25 16:43:55 +08:00` | Passed   | 0B renderer authority, input branch, and literal/duplicate baselines are accepted for completion. Batch 1 may start after this completion commit reaches the server branch.                                                                                                                                                                            |
-| `codex/external-review` | `2026-06-25 18:33:08 +08:00` | Passed   | Batch 1 ADR, blocking guard, guard tests, architecture smoke integration, no-runtime-change scope, and no-dependency-install scope are accepted. Review follow-ups for Batch 2: ADR should add why other ECS libraries were not selected, define a bitECS maintenance/exit strategy, and pin an exact `bitecs` version when installing the dependency. |
-| `codex/external-review` | `2026-06-25 20:16:29 +08:00` | Passed   | Batch 2 dependency pin, ECS core boundary, manifest skeleton, boundary blocking guard, no-runtime-loading scope, H5/minigame entrypoint safety, ADR follow-up updates, and progress records are accepted for completion.                                                                                                                               |
-| Pending                 | -                            | Pending  | Batch 3 mode ownership spine awaits migration owner review.                                                                                                                                                                                                                                                                                            |
+| Reviewer                | Review Time                  | Decision | Notes                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------- | ---------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed   | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review.                                                                      |
+| `codex/external-review` | `2026-06-25 16:43:55 +08:00` | Passed   | 0B renderer authority, input branch, and literal/duplicate baselines are accepted for completion. Batch 1 may start after this completion commit reaches the server branch.                                                                                                                                                                                                                   |
+| `codex/external-review` | `2026-06-25 18:33:08 +08:00` | Passed   | Batch 1 ADR, blocking guard, guard tests, architecture smoke integration, no-runtime-change scope, and no-dependency-install scope are accepted. Review follow-ups for Batch 2: ADR should add why other ECS libraries were not selected, define a bitECS maintenance/exit strategy, and pin an exact `bitecs` version when installing the dependency.                                        |
+| `codex/external-review` | `2026-06-25 20:16:29 +08:00` | Passed   | Batch 2 dependency pin, ECS core boundary, manifest skeleton, boundary blocking guard, no-runtime-loading scope, H5/minigame entrypoint safety, ADR follow-up updates, and progress records are accepted for completion.                                                                                                                                                                      |
+| `codex/external-review` | `2026-06-25 23:02:25 +08:00` | Passed   | Batch 3 mode ownership spine accepted: the singleton ECS mode entity is approved as the first runtime ECS owner; `CanvasModeOwnershipBridge.js` is accepted as a narrow temporary bridge; the mode spine guard blocks legacy mode-decision growth while allowing owner/bridge/vocabulary paths; the generated IIFE runtime bundle is accepted until a broader frontend build pipeline exists. |
 
 ## Push / Deploy Evidence
 
@@ -251,4 +251,4 @@ Permission root cause:
 
 Batch 1 is officially complete after migration owner review. Batch 2 is officially complete after migration owner review.
 
-Batch 3 is ready for migration owner review after final verification, commit, and server branch push. Batch 4 must not start until Batch 3 is marked Completed by a separate review completion commit.
+Batch 3 is `Completed` after migration owner review. Batch 4 (Input Intent Boundary) may start after this completion commit reaches the server branch.
