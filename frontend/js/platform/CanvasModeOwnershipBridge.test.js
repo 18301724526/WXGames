@@ -107,3 +107,65 @@ test('CanvasModeOwnershipBridge resolves covered-mode input intents from the sna
     'world-map',
   );
 });
+
+test('CanvasModeOwnershipBridge owns modal open/close/update + token callbacks', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+
+  const opened = host.openModal('modal:naming', {
+    visible: true,
+    view: { title: 'T' },
+    inputValue: '',
+  });
+  assert.equal(host.isModalOpen('modal:naming'), true);
+  assert.deepEqual(opened, { visible: true, view: { title: 'T' }, inputValue: '' });
+
+  host.updateModalPayload('modal:naming', { inputValue: 'abc' });
+  assert.equal(host.getModalPayload('modal:naming').inputValue, 'abc');
+
+  host.closeModal('modal:naming');
+  assert.equal(host.isModalOpen('modal:naming'), false);
+  assert.equal(host.getModalPayload('modal:naming'), null);
+
+  // confirmDialog-style token callback (forward-looking; naming has none).
+  let confirmed = 0;
+  host.openModal(
+    'modal:confirmDialog',
+    { visible: true, kind: 'resetGame' },
+    { onConfirm: () => (confirmed += 1) },
+  );
+  host.resolveModalCallback('modal:confirmDialog', 'onConfirm');
+  assert.equal(confirmed, 1);
+  host.closeModal('modal:confirmDialog');
+  host.resolveModalCallback('modal:confirmDialog', 'onConfirm'); // cleared on close -> inert
+  assert.equal(confirmed, 1);
+
+  // naming-specific wrappers used by the App/Shell host methods
+  const mirror = host.openNamingModal({ visible: true, view: { title: 'N' }, inputValue: '' });
+  assert.equal(host.isModalOpen('modal:naming'), true);
+  assert.equal(mirror.visible, true);
+  host.updateNamingPayload({ inputValue: 'z' });
+  assert.equal(host.getModalPayload('modal:naming').inputValue, 'z');
+  host.closeNamingOwner();
+  assert.equal(host.isModalOpen('modal:naming'), false);
+});
+
+test('CanvasModeOwnershipBridge install does not shadow a host closeNamingModal full-close', () => {
+  class Host {}
+  // Legacy full-close like CanvasGameAppGuideUi.closeNamingModal (reset + render).
+  Object.assign(Host.prototype, {
+    closeNamingModal() {
+      this.naming = { visible: false };
+      this.__fullClosed = true;
+    },
+  });
+  // Bridge installs AFTER the legacy mixin (matches CanvasGameApp install order)
+  // and must NOT overwrite closeNamingModal with an owner-only close.
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  host.closeNamingModal();
+  assert.equal(host.__fullClosed, true);
+  assert.equal(host.naming.visible, false);
+  assert.equal(typeof host.closeNamingOwner, 'function');
+});

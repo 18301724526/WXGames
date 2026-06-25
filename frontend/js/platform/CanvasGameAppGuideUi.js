@@ -22,13 +22,8 @@
             const view = this.presenter.buildNamingPromptViewState(prompt);
             this.activeNamingPrompt = prompt;
             this.activeNamingPromptKey = view.key;
-            this.naming = {
-              visible: true,
-              view,
-              prompt,
-              inputValue: '',
-              submitting: false,
-            };
+            const namingState = { visible: true, view, prompt, inputValue: '', submitting: false };
+            this.naming = typeof this.openNamingModal === 'function' ? this.openNamingModal(namingState) : namingState;
               this.showResourceDetails = false;
               this.showCitySwitcher = false;
               this.showSubcityList = false;
@@ -44,13 +39,8 @@
       closeNaming() {
             this.activeNamingPrompt = null;
             this.activeNamingPromptKey = null;
-            this.naming = {
-              visible: false,
-              view: null,
-              prompt: null,
-              inputValue: '',
-              submitting: false,
-            };
+            if (typeof this.closeNamingOwner === 'function') this.closeNamingOwner();
+            this.naming = { visible: false, view: null, prompt: null, inputValue: '', submitting: false };
             if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
             this.render();
           },
@@ -83,7 +73,8 @@
               maxLength: view.maxLength || 12,
             });
             if (value === null || value === undefined || !this.naming.visible) return;
-            this.naming.inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
+            const inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
+            this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ inputValue }) : { ...this.naming, inputValue };
             if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
             this.render();
             this.scheduleTutorialHighlightRefresh(0);
@@ -98,7 +89,7 @@
             const name = String(inputName ?? this.naming.inputValue ?? '').trim();
             if (!prompt.type || !name) return;
             let tutorialHandledView = false;
-            this.naming.submitting = true;
+            this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ submitting: true }) : { ...this.naming, submitting: true };
             if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
             this.render();
             try {
@@ -115,7 +106,7 @@
             } catch (error) {
               this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
             } finally {
-              this.naming.submitting = false;
+              this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ submitting: false }) : { ...this.naming, submitting: false }; if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
               if (!tutorialHandledView) this.renderCanvasSurface(this.state?.currentTab);
             }
           },

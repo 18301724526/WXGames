@@ -302,12 +302,8 @@ requestAuthInput(field) {
     },
 
 openNaming(view = {}) {
-      this.naming = {
-        visible: true,
-        view,
-        inputValue: '',
-        submitting: false,
-      };
+      const namingState = { visible: true, view, inputValue: '', submitting: false };
+      this.naming = typeof this.openNamingModal === 'function' ? this.openNamingModal(namingState) : namingState;
       this.showSettings = false;
       this.showLogs = false;
       this.showResourceDetails = false;
@@ -323,12 +319,8 @@ openNaming(view = {}) {
     },
 
 closeNaming() {
-      this.naming = {
-        visible: false,
-        view: null,
-        inputValue: '',
-        submitting: false,
-      };
+      if (typeof this.closeNamingOwner === 'function') this.closeNamingOwner();
+      this.naming = { visible: false, view: null, inputValue: '', submitting: false };
       this.renderActive();
       return true;
     },
@@ -338,10 +330,8 @@ getNamingName() {
     },
 
 setNamingSubmitting(isSubmitting) {
-      this.naming = {
-        ...this.naming,
-        submitting: Boolean(isSubmitting),
-      };
+      const submitting = Boolean(isSubmitting);
+      this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ submitting }) : { ...this.naming, submitting };
       this.renderActive();
     },
 
@@ -359,10 +349,8 @@ requestNamingInput() {
       })).then((value) => {
         if (value === null || value === undefined || !this.naming?.visible) return;
         const maxLength = Number(view.maxLength) || 12;
-        this.naming = {
-          ...this.naming,
-          inputValue: String(value).trim().slice(0, maxLength),
-        };
+        const inputValue = String(value).trim().slice(0, maxLength);
+        this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ inputValue }) : { ...this.naming, inputValue };
         this.renderActive();
         const game = this.getCanvasGameHost?.() || this.lastGame || null;
         const refresh = () => game?.tutorialController?.refreshCurrentHighlight?.();

@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const ModalCallbackRegistry = (() => {
+    if (global.ModalCallbackRegistry) return global.ModalCallbackRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalCallbackRegistry');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function isTruthy(value) {
     return Boolean(value);
   }
@@ -182,6 +194,76 @@
     return EcsModeRuntime.resolveInputIntent(physicalIntent, snapshot);
   }
 
+  function getModalWorldApi() {
+    return EcsModeRuntime && EcsModeRuntime.ModalWorld ? EcsModeRuntime.ModalWorld : null;
+  }
+
+  function ensureModalOwner(host) {
+    const ModalWorld = getModalWorldApi();
+    if (!ModalWorld) return null;
+    if (!host.__ecsModalOwner) host.__ecsModalOwner = ModalWorld.createModalWorld();
+    if (!host.__modalCallbacks && ModalCallbackRegistry) {
+      host.__modalCallbacks = ModalCallbackRegistry.createModalCallbackRegistry();
+    }
+    return host.__ecsModalOwner;
+  }
+
+  // Open a covered modal subtype: the owner becomes the source of truth, mints a
+  // token, and (for subtypes with continuations) registers callbacks by token.
+  // Returns the frozen owner payload the host uses as its read-only mirror, or
+  // null when the runtime is unavailable so the host keeps its legacy field.
+  function openModal(host, subtype, payload = {}, callbacks = null) {
+    const ModalWorld = getModalWorldApi();
+    if (!ModalWorld || !ensureModalOwner(host)) return null;
+    host.__ecsModalOwner = ModalWorld.openModal(host.__ecsModalOwner, subtype, payload);
+    if (callbacks && host.__modalCallbacks) {
+      host.__modalCallbacks.register(
+        ModalWorld.getModalToken(host.__ecsModalOwner, subtype),
+        callbacks,
+      );
+    }
+    return ModalWorld.getModalPayload(host.__ecsModalOwner, subtype);
+  }
+
+  function updateModalPayload(host, subtype, patch = {}) {
+    const ModalWorld = getModalWorldApi();
+    if (!ModalWorld || !host.__ecsModalOwner) return null;
+    host.__ecsModalOwner = ModalWorld.updateModalPayload(host.__ecsModalOwner, subtype, patch);
+    return ModalWorld.getModalPayload(host.__ecsModalOwner, subtype);
+  }
+
+  function closeModal(host, subtype) {
+    const ModalWorld = getModalWorldApi();
+    if (!ModalWorld || !host.__ecsModalOwner) return null;
+    if (host.__modalCallbacks) {
+      host.__modalCallbacks.clear(ModalWorld.getModalToken(host.__ecsModalOwner, subtype));
+    }
+    host.__ecsModalOwner = ModalWorld.closeModal(host.__ecsModalOwner, subtype);
+    return null;
+  }
+
+  function getModalPayload(host, subtype) {
+    const ModalWorld = getModalWorldApi();
+    if (!ModalWorld || !host.__ecsModalOwner) return null;
+    return ModalWorld.getModalPayload(host.__ecsModalOwner, subtype);
+  }
+
+  function isModalOpen(host, subtype) {
+    const ModalWorld = getModalWorldApi();
+    if (!ModalWorld || !host.__ecsModalOwner) return false;
+    return ModalWorld.isModalOpen(host.__ecsModalOwner, subtype);
+  }
+
+  function resolveModalCallback(host, subtype, action, ...args) {
+    const ModalWorld = getModalWorldApi();
+    if (!ModalWorld || !host.__ecsModalOwner || !host.__modalCallbacks) return undefined;
+    return host.__modalCallbacks.resolve(
+      ModalWorld.getModalToken(host.__ecsModalOwner, subtype),
+      action,
+      ...args,
+    );
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -228,19 +310,66 @@
       resolveInputIntent(physicalIntent) {
         return resolveInputIntent(this, physicalIntent);
       },
+
+      openModal(subtype, payload, callbacks) {
+        return openModal(this, subtype, payload, callbacks);
+      },
+
+      updateModalPayload(subtype, patch) {
+        return updateModalPayload(this, subtype, patch);
+      },
+
+      closeModal(subtype) {
+        return closeModal(this, subtype);
+      },
+
+      getModalPayload(subtype) {
+        return getModalPayload(this, subtype);
+      },
+
+      isModalOpen(subtype) {
+        return isModalOpen(this, subtype);
+      },
+
+      resolveModalCallback(subtype, action, ...args) {
+        return resolveModalCallback(this, subtype, action, ...args);
+      },
+
+      // Naming-specific convenience wrappers. The subtype literal and the legacy
+      // mirror fallback live here (the bridge is an approved owner path) so the
+      // host call sites stay one-line and do not grow legacy `naming` references.
+      openNamingModal(state) {
+        return openModal(this, 'modal:naming', state) || state;
+      },
+
+      closeNamingOwner() {
+        return closeModal(this, 'modal:naming');
+      },
+
+      updateNamingPayload(patch) {
+        return (
+          updateModalPayload(this, 'modal:naming', patch) || { ...(this.naming || {}), ...patch }
+        );
+      },
     });
     return true;
   }
 
   const api = {
+    closeModal,
     collectModalKeys,
     deriveModeFacts,
+    getModalPayload,
     getModeSnapshot,
     hasBlockingOverlayExceptTechTree,
     install,
+    isModalOpen,
+    openModal,
     refreshModeSnapshot,
     resolveBaseModeKey,
     resolveInputIntent,
+    resolveModalCallback,
+    updateModalPayload,
   };
 
   global.CanvasModeOwnershipBridge = api;

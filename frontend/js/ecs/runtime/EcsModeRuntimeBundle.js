@@ -1953,6 +1953,80 @@ var EcsModeRuntime = (() => {
     },
   });
 
+  // frontend/js/ecs/mode/ModalWorld.js
+  var require_ModalWorld = __commonJS({
+    'frontend/js/ecs/mode/ModalWorld.js'(exports, module) {
+      'use strict';
+      function freezePayload(payload) {
+        return Object.freeze({ ...(payload && typeof payload === 'object' ? payload : {}) });
+      }
+      function createModalWorld() {
+        return Object.freeze({ entries: Object.freeze({}), tokenSeq: 0 });
+      }
+      function normalizeSubtype(subtype) {
+        return String(subtype || '');
+      }
+      function withEntry(world, key, entry, tokenSeq) {
+        const base = world && typeof world === 'object' ? world : createModalWorld();
+        const entries = Object.freeze({ ...(base.entries || {}), [key]: Object.freeze(entry) });
+        return Object.freeze({
+          entries,
+          tokenSeq: tokenSeq != null ? tokenSeq : base.tokenSeq || 0,
+        });
+      }
+      function getEntry(world, subtype) {
+        return (world && world.entries && world.entries[normalizeSubtype(subtype)]) || null;
+      }
+      function openModal(world, subtype, payload = {}) {
+        const base = world && typeof world === 'object' ? world : createModalWorld();
+        const key = normalizeSubtype(subtype);
+        const tokenSeq = (base.tokenSeq || 0) + 1;
+        const token = `${key}#${tokenSeq}`;
+        return withEntry(
+          base,
+          key,
+          { visible: true, token, payload: freezePayload(payload) },
+          tokenSeq,
+        );
+      }
+      function updateModalPayload(world, subtype, patch = {}) {
+        const prev = getEntry(world, subtype);
+        if (!prev || !prev.visible)
+          return world && typeof world === 'object' ? world : createModalWorld();
+        const key = normalizeSubtype(subtype);
+        const payload = freezePayload({ ...prev.payload, ...patch });
+        return withEntry(world, key, { visible: true, token: prev.token, payload });
+      }
+      function closeModal(world, subtype) {
+        const key = normalizeSubtype(subtype);
+        return withEntry(world, key, { visible: false, token: '', payload: Object.freeze({}) });
+      }
+      function isModalOpen(world, subtype) {
+        return Boolean(getEntry(world, subtype)?.visible);
+      }
+      function getModalPayload(world, subtype) {
+        const entry = getEntry(world, subtype);
+        return entry && entry.visible ? entry.payload : null;
+      }
+      function getModalToken(world, subtype) {
+        const entry = getEntry(world, subtype);
+        return entry && entry.visible ? entry.token : '';
+      }
+      var api = Object.freeze({
+        closeModal,
+        createModalWorld,
+        getEntry,
+        getModalPayload,
+        getModalToken,
+        isModalOpen,
+        openModal,
+        updateModalPayload,
+      });
+      if (typeof globalThis !== 'undefined') globalThis.EcsModalWorld = api;
+      if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    },
+  });
+
   // frontend/js/ecs/input/InputIntent.js
   var require_InputIntent = __commonJS({
     'frontend/js/ecs/input/InputIntent.js'(exports, module) {
@@ -2077,6 +2151,7 @@ var EcsModeRuntime = (() => {
       var ModeComponents = require_ModeComponents();
       var ModeResolver = require_ModeResolver();
       var ModeWorld = require_ModeWorld();
+      var ModalWorld = require_ModalWorld();
       var InputIntent = require_InputIntent();
       var InputIntentResolver = require_InputIntentResolver();
       var EcsModeRuntime = Object.freeze({
@@ -2085,8 +2160,9 @@ var EcsModeRuntime = (() => {
         ...ModeWorld,
         ...InputIntentResolver,
         ModeComponents,
+        ModalWorld,
         InputIntent,
-        version: 'ecs-mode-runtime-batch-4',
+        version: 'ecs-mode-runtime-batch-5a',
       });
       if (typeof globalThis !== 'undefined') {
         globalThis.EcsModeRuntime = EcsModeRuntime;
