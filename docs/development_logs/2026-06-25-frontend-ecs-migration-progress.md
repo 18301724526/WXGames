@@ -63,8 +63,8 @@
 
 ## Batch 2 Checklist
 
-| Step                                | Status           | Updated At                   | Evidence                                                                                                                                              |
-| ----------------------------------- | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Step                                | Status    | Updated At                   | Evidence                                                                                                                                              |
+| ----------------------------------- | --------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2-1. Exact ECS dependency pin       | Completed | `2026-06-25 20:16:29 +08:00` | `package.json` and `package-lock.json` pin `bitecs` to exact version `0.4.0`; `npm ls bitecs` resolves `bitecs@0.4.0`                                 |
 | 2-2. ECS core boundary skeleton     | Completed | `2026-06-25 20:16:29 +08:00` | `frontend/js/ecs/core/EcsCoreBoundary.js` is the only production boundary touching `bitecs`; it forwards approved primitives without local core logic |
 | 2-3. ECS manifest skeleton          | Completed | `2026-06-25 20:16:29 +08:00` | `frontend/js/ecs/registry/EcsBoundaryManifest.js` declares owner roles, component families, mode keys, snapshot keys, and bridge lifecycle policy     |

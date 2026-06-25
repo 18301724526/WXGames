@@ -323,8 +323,8 @@ Batch 2 allowed ECS external surfaces:
 
 Batch 2 execution checklist:
 
-| Step                                | Status           | Artifact / Gate                                                                        | Acceptance Standard                                                                                                             |
-| ----------------------------------- | ---------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Step                                | Status    | Artifact / Gate                                                                        | Acceptance Standard                                                                                                             |
+| ----------------------------------- | --------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | 2-1. Exact ECS dependency pin       | Completed | `package.json`, `package-lock.json`                                                    | `npm ls bitecs` resolves exact `bitecs@0.4.0`; dependency version is not ranged                                                 |
 | 2-2. ECS core boundary skeleton     | Completed | `frontend/js/ecs/core/EcsCoreBoundary.js`                                              | Only boundary imports `bitecs`; it forwards approved primitives without project-owned entity/component/query/system storage     |
 | 2-3. ECS manifest skeleton          | Completed | `frontend/js/ecs/registry/EcsBoundaryManifest.js`                                      | Manifest declares reviewed owner roles, component families, mode keys, snapshot keys, and bridge lifecycle policy               |
