@@ -274,7 +274,9 @@
       },
 
       handle_closeConfirmDialog(action) {
-        const closed = this.getSystemUiHost()?.closeConfirmDialog?.();
+        const uiHost = this.getSystemUiHost();
+        uiHost?.resolveConfirmDialogCallback?.('onCancel', action);
+        const closed = uiHost?.closeConfirmDialog?.();
         return closed !== false;
       },
 
@@ -282,6 +284,7 @@
         const uiHost = this.getSystemUiHost();
         const dialog = uiHost?.confirmDialog || {};
         if (dialog.visible && dialog.kind && dialog.kind !== 'resetGame') return false;
+        uiHost?.resolveConfirmDialogCallback?.('onConfirm', action);
         uiHost?.setConfirmDialogSubmitting?.(true);
         const result = this.getGameHost()?.resetGame?.({ confirmed: true, source: action.source || dialog.source || '' });
         const applyResetView = (success) => {

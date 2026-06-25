@@ -2,14 +2,14 @@
 
 ## Current Status
 
-| Field                  | Value                                        |
-| ---------------------- | -------------------------------------------- |
-| Branch                 | `codex/refactor-tutorial-guide-architecture` |
-| Current batch          | `5. Panel/Modal Ownership (slice 5a)`        |
-| Batch state            | `Slice 5a (naming) Completed`                |
-| Runtime code migration | Mode ownership bridge only                   |
-| ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 02:59:52 +08:00`                 |
+| Field                  | Value                                                        |
+| ---------------------- | ------------------------------------------------------------ |
+| Branch                 | `codex/refactor-tutorial-guide-architecture`                 |
+| Current batch          | `5. Panel/Modal Ownership (slice 5a)`                        |
+| Batch state            | `Slice 5a: naming Completed, confirmDialog Ready for Review` |
+| Runtime code migration | Mode ownership bridge only                                   |
+| ECS dependency         | `bitecs@0.4.0` installed exactly                             |
+| Last updated           | `2026-06-26 03:32:16 +08:00`                                 |
 
 ## Batch 0A Checklist
 
@@ -223,6 +223,7 @@ Required owner sign-off record:
 | `codex/external-review` | `2026-06-25 23:02:25 +08:00` | Passed   | Batch 3 mode ownership spine accepted: the singleton ECS mode entity is approved as the first runtime ECS owner; `CanvasModeOwnershipBridge.js` is accepted as a narrow temporary bridge; the mode spine guard blocks legacy mode-decision growth while allowing owner/bridge/vocabulary paths; the generated IIFE runtime bundle is accepted until a broader frontend build pipeline exists. |
 | `codex/external-review` | `2026-06-26 01:24:26 +08:00` | Passed   | Batch 4 input intent boundary accepted: pure kind-aware resolver, bridge pass-through with null fallback, `esbuild@0.23.1` bundle, count-preserving router adapters (guard 30 = baseline 30), scope clean; the gesture/tap fall-through deferred to Batch 6 was accepted.                                                                                                                     |
 | `codex/external-review` | `2026-06-26 02:59:52 +08:00` | Passed   | Batch 5 slice 5a (naming) modal ownership accepted: ECS modal owner + token registry, bridge naming wrappers (no shadowing), per-host owner with `this.naming` mirror, seal enforced by the existing mode-ownership-spine guard; the HIGH closeNamingModal collision + LOW mirror fixes were accepted.                                                                                        |
+| Pending                 | -                            | Pending  | Batch 5 slice 5a confirmDialog modal ownership implementation complete and verified locally; awaits migration owner review.                                                                                                                                                                                                                                                                   |
 
 ## Push / Deploy Evidence
 
@@ -285,4 +286,4 @@ Batch 4 (Input Intent Boundary) is `Completed` after migration owner review. Bat
 
 Batch 5 (Panel/Modal Ownership) planning is recorded in the operating plan as first-window deliverables across slices 5a-5d, with slice 5a (`naming` + `confirmDialog`) approved for the first round and the owner-holds-token callback strategy. Slice 5a implementation is being scoped against the slice-5a mapping (the ECS modal owner needs a serializable JS-side payload store because bitECS components are numeric-only; neither `naming` nor `confirmDialog` stores closures today; demoting the legacy fields to owner-derived mirrors spans about twenty files including hot UI paths).
 
-Batch 5 slice 5a (naming) is implemented and `Ready for Migration Owner Review`: the ECS modal owner (`ModalWorld`) + app-side callback registry + bridge modal API are in place, the eight App/Shell naming write sites route through the owner with `this.naming` as the read-only mirror, and the seal is enforced by the existing mode-ownership-spine guard (0 violations). An adversarial review caught and fixed a `closeNamingModal` name collision (renamed the owner wrapper to `closeNamingOwner`, added a non-shadow regression test) and a submit-`finally` mirror staleness. Verified: `npm run test:architecture` 1185 tests, lint, format, and `git diff --check` all pass. Slice 5a (naming) is `Completed` after migration owner sign-off at `2026-06-26 02:59:52 +08:00` (deployed commit `dd01f381`). confirmDialog is the next sub-step (reusing the modal-owner foundation); Batch 5 is not Completed until its slices are signed off.
+Batch 5 slice 5a (naming) is implemented and `Ready for Migration Owner Review`: the ECS modal owner (`ModalWorld`) + app-side callback registry + bridge modal API are in place, the eight App/Shell naming write sites route through the owner with `this.naming` as the read-only mirror, and the seal is enforced by the existing mode-ownership-spine guard (0 violations). An adversarial review caught and fixed a `closeNamingModal` name collision (renamed the owner wrapper to `closeNamingOwner`, added a non-shadow regression test) and a submit-`finally` mirror staleness. Verified: `npm run test:architecture` 1185 tests, lint, format, and `git diff --check` all pass. Slice 5a (naming) is `Completed` after migration owner sign-off at `2026-06-26 02:59:52 +08:00` (deployed commit `dd01f381`). The confirmDialog sub-step is now implemented and `Ready for Migration Owner Review`: confirmDialog state is owned by the modal owner with `this.confirmDialog` as the mirror, kind-dispatch is kept for the reset continuation, and the callback registry is wired as resolve-if-present (a future closure-continuation modal will be its first heavy use). Verified: `npm run test:architecture` 1186 tests, mode-ownership-spine guard 0 violations, lint (after pruning a stale suppression), format, and `git diff --check`; adversarial review clean. Once confirmDialog is signed off, slice 5a (naming + confirmDialog) is complete; Batch 5 is not Completed until its remaining slices (5b-5d) are signed off.

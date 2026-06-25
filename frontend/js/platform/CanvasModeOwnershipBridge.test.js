@@ -169,3 +169,29 @@ test('CanvasModeOwnershipBridge install does not shadow a host closeNamingModal 
   assert.equal(host.naming.visible, false);
   assert.equal(typeof host.closeNamingOwner, 'function');
 });
+
+test('CanvasModeOwnershipBridge confirmDialog wrappers seal state and resolve continuations', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+
+  let confirmed = 0;
+  let cancelled = 0;
+  const mirror = host.openConfirmDialogModal(
+    { visible: true, kind: 'resetGame', title: 'Reset?' },
+    { onConfirm: () => (confirmed += 1), onCancel: () => (cancelled += 1) },
+  );
+  assert.equal(host.isModalOpen('modal:confirmDialog'), true);
+  assert.equal(mirror.kind, 'resetGame');
+
+  host.updateConfirmDialogPayload({ submitting: true });
+  assert.equal(host.getModalPayload('modal:confirmDialog').submitting, true);
+
+  host.resolveConfirmDialogCallback('onConfirm');
+  assert.equal(confirmed, 1);
+
+  host.closeConfirmDialogOwner();
+  assert.equal(host.isModalOpen('modal:confirmDialog'), false);
+  host.resolveConfirmDialogCallback('onCancel'); // callbacks cleared on close -> inert
+  assert.equal(cancelled, 0);
+});

@@ -58,7 +58,7 @@ closeRewardReveal() {
     },
 
 openConfirmDialog(view = {}) {
-      this.confirmDialog = {
+      const dialog = {
         visible: true,
         kind: view.kind || 'generic',
         source: view.source || '',
@@ -68,6 +68,7 @@ openConfirmDialog(view = {}) {
         cancelLabel: view.cancelLabel || t('common.cancel'),
         submitting: Boolean(view.submitting),
       };
+      this.confirmDialog = typeof this.openConfirmDialogModal === 'function' ? this.openConfirmDialogModal(dialog, { onConfirm: view.onConfirm || null, onCancel: view.onCancel || null }) : dialog;
       this.showSettings = false;
       this.showLogs = false;
       this.showResourceDetails = false;
@@ -94,6 +95,7 @@ openResetConfirm(options = {}) {
     },
 
 closeConfirmDialog() {
+      if (typeof this.closeConfirmDialogOwner === 'function') this.closeConfirmDialogOwner();
       const hadDialog = Boolean(this.confirmDialog?.visible);
       this.confirmDialog = null;
       if (hadDialog) this.renderActive();
@@ -102,10 +104,7 @@ closeConfirmDialog() {
 
 setConfirmDialogSubmitting(isSubmitting) {
       if (!this.confirmDialog?.visible) return false;
-      this.confirmDialog = {
-        ...this.confirmDialog,
-        submitting: Boolean(isSubmitting),
-      };
+      this.confirmDialog = typeof this.updateConfirmDialogPayload === 'function' ? this.updateConfirmDialogPayload({ submitting: Boolean(isSubmitting) }) : { ...this.confirmDialog, submitting: Boolean(isSubmitting) };
       this.renderActive();
       return true;
     },

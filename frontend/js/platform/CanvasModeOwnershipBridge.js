@@ -351,6 +351,31 @@
           updateModalPayload(this, 'modal:naming', patch) || { ...(this.naming || {}), ...patch }
         );
       },
+
+      // confirmDialog-specific wrappers: the subtype literal, the legacy mirror
+      // fallback, and the callbacks plumbing live here (approved bridge path).
+      // confirmDialog keeps kind-dispatch for its continuation; the registry is
+      // wired (resolve-if-present) and stays ready for a closure-continuation modal.
+      openConfirmDialogModal(state, callbacks) {
+        return openModal(this, 'modal:confirmDialog', state, callbacks) || state;
+      },
+
+      closeConfirmDialogOwner() {
+        return closeModal(this, 'modal:confirmDialog');
+      },
+
+      updateConfirmDialogPayload(patch) {
+        return (
+          updateModalPayload(this, 'modal:confirmDialog', patch) || {
+            ...(this.confirmDialog || {}),
+            ...patch,
+          }
+        );
+      },
+
+      resolveConfirmDialogCallback(type, ...args) {
+        return resolveModalCallback(this, 'modal:confirmDialog', type, ...args);
+      },
     });
     return true;
   }

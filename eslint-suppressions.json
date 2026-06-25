@@ -274,7 +274,7 @@
   },
   "frontend/js/platform/CanvasShellActionHandlers.js": {
     "no-unused-vars": {
-      "count": 6
+      "count": 5
     }
   },
   "frontend/js/platform/CanvasTerritoryActionHandlers.js": {

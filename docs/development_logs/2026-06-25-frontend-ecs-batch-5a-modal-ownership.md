@@ -2,16 +2,16 @@
 
 ## Status
 
-| Field             | Value                                                 |
-| ----------------- | ----------------------------------------------------- |
-| Batch             | `5. Panel/Modal Ownership`                            |
-| Slice             | `5a (naming sealed; confirmDialog next sub-step)`     |
-| State             | `Completed`                                           |
-| ECS modal owner   | `frontend/js/ecs/mode/ModalWorld.js`                  |
-| Callback registry | `frontend/js/platform/ModalCallbackRegistry.js`       |
-| Bridge surface    | `CanvasModeOwnershipBridge` modal API + wrappers      |
-| Seal enforced by  | existing `check-frontend-ecs-mode-ownership-spine.js` |
-| Last updated      | `2026-06-26 02:59:52 +08:00`                          |
+| Field             | Value                                                                |
+| ----------------- | -------------------------------------------------------------------- |
+| Batch             | `5. Panel/Modal Ownership`                                           |
+| Slice             | `5a (naming + confirmDialog)`                                        |
+| State             | naming `Completed`; confirmDialog `Ready for Migration Owner Review` |
+| ECS modal owner   | `frontend/js/ecs/mode/ModalWorld.js`                                 |
+| Callback registry | `frontend/js/platform/ModalCallbackRegistry.js`                      |
+| Bridge surface    | `CanvasModeOwnershipBridge` modal API + wrappers                     |
+| Seal enforced by  | existing `check-frontend-ecs-mode-ownership-spine.js`                |
+| Last updated      | `2026-06-26 03:32:16 +08:00`                                         |
 
 ## Decision
 
@@ -106,7 +106,7 @@ Local verification passed:
 - `npm run build:ecs-runtime` (esbuild `0.23.1`)
 - `npm run lint`
 - `npm run format:check`
-- `npm run test:architecture` passed with `1185` tests and all architecture guards
+- `npm run test:architecture` passed with `1186` tests and all architecture guards
 - `git diff --check`
 
 ## Review Result
@@ -114,3 +114,16 @@ Local verification passed:
 Slice 5a-naming is `Completed` after migration owner review by `codex/external-review` at `2026-06-26 02:59:52 +08:00` (Passed). The review confirmed the modal owner + callback registry, the bridge naming wrappers (no method shadowing), the per-host owner + `this.naming` mirror approach, the eight rerouted App/Shell write sites, and that the seal is enforced by the existing mode-ownership-spine guard (0 violations). The adversarial-review fixes (the `closeNamingModal` collision and the submit-`finally` mirror) were accepted.
 
 The `confirmDialog` sub-step is next and reuses this foundation. Batch 5 slices 5b-5d remain gated behind their own sealed slices; Batch 6 may not start until Batch 5 is complete.
+
+## confirmDialog Sub-step
+
+`confirmDialog` is sealed the same way as `naming`, with the migration-owner-approved adjustment that it KEEPS `kind`-dispatch for its continuation (the `kind: 'resetGame'` string is itself a serializable continuation handle) and WIRES the callback registry as resolve-if-present rather than restructuring the critical async game-reset flow.
+
+- confirmDialog is Shell-only. Its three write sites (`openConfirmDialog`, `closeConfirmDialog`, `setConfirmDialogSubmitting` in `CanvasGameShellSystemUi.js`) now route through the owner via four bridge wrappers (`openConfirmDialogModal`, `closeConfirmDialogOwner`, `updateConfirmDialogPayload`, `resolveConfirmDialogCallback`); `this.confirmDialog` becomes the owner-derived mirror, single-line writes.
+- `handle_confirmResetGame` and `handle_closeConfirmDialog` (`CanvasShellActionHandlers.js`) resolve `onConfirm`/`onCancel` through the registry if present (capital-D wrapper, so the `'modal:confirmDialog'` literal stays in the approved bridge path and the guard count does not grow). `openResetConfirm` registers no callbacks, so the reset stays kind-dispatched and the resolves are no-ops in production; a unit test proves the register -> resolve -> clear lifecycle for a future closure-continuation modal.
+- The robust async resetGame handler (submitting toggle, `getGameHost().resetGame`, applyResetView, promise/finalize/catch) is unchanged.
+- `handle_closeConfirmDialog` now uses its previously-unused `action` param, so a stale `no-unused-vars` suppression was pruned (`CanvasShellActionHandlers.js` 6 -> 5).
+
+## confirmDialog Review Result
+
+`confirmDialog` sealing is `Ready for Migration Owner Review`. A three-lens adversarial review (reset-flow behavior, seal+mirror+no-shadowing, scope/purity/guard) returned all three lenses clean. Verified: `npm run test:architecture` `1186` tests, mode-ownership-spine guard 0 violations, lint (after pruning the stale suppression), format, and `git diff --check` all pass. With `confirmDialog` signed off, slice 5a (naming + confirmDialog) is complete.
