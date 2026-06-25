@@ -347,6 +347,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/report-frontend-ecs-mode-ownership.test.js',
   'scripts/report-frontend-ecs-bridge-shrink.js',
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
+  'scripts/check-frontend-ecs-core-guard.js',
+  'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
   'scripts/rewrite-frontend-asset-version.test.js',
@@ -513,6 +515,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-retired-legacy-code.test.js',
   'scripts/report-frontend-ecs-mode-ownership.test.js',
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
+  'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -586,6 +589,9 @@ function main() {
   run('stable block manifest guard', process.execPath, ['scripts/check-stable-blocks.js']);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);
+  run('frontend ECS core blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-core-guard.js',
+  ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',
     '--summary',

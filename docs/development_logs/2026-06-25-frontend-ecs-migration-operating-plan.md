@@ -262,3 +262,45 @@ Literal / duplicate inventory rows must use this schema:
 - Batch 1 may start after the 0B completed commit reaches the server branch.
 
 0B is completed. Batch 1 may start after the completion commit reaches the server branch.
+
+Batch 1 first-window deliverables:
+
+- ECS core ADR: confirm the external ECS core choice and explain why the project must not build its own core.
+- ECS core blocking guard: prevent local entity/component/query/system core implementation before any runtime migration starts.
+- Architecture smoke integration: the guard must run as blocking, not report-only.
+
+Batch 1 record format:
+
+ECS core guard violation rows must use this schema:
+
+| File              | Line | Kind             | Symbol             | Evidence           | Note             |
+| ----------------- | ---- | ---------------- | ------------------ | ------------------ | ---------------- |
+| `path/to/file.js` | `1`  | violation family | matched core token | short code context | ownership reason |
+
+Batch 1 allowed ECS core surfaces:
+
+| Surface                | Status   | Notes                                                                  |
+| ---------------------- | -------- | ---------------------------------------------------------------------- |
+| `bitecs`               | Approved | Dependency may be added in Batch 2 when the boundary skeleton starts   |
+| `bitecs/serialization` | Approved | Serialization surface may be used only through the Batch 2 boundary    |
+| Local ECS core files   | Blocked  | Files such as `ECSCore.js`, `EntityStore.js`, or `QueryEngine.js` fail |
+| Other ECS packages     | Blocked  | Any ECS core package other than `bitecs` requires a new ADR            |
+
+Batch 1 execution checklist:
+
+| Step                                | Status           | Artifact / Gate                                                       | Acceptance Standard                                                                                           |
+| ----------------------------------- | ---------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 1-1. ECS core ADR                   | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-batch-1-core-adr.md`   | ADR selects `bitecs`, names approved import surfaces, and states Batch 1 non-goals                            |
+| 1-2. ECS core blocking guard        | Ready for Review | `scripts/check-frontend-ecs-core-guard.js`                            | Guard blocks local ECS core primitives and non-`bitecs` ECS core dependencies while allowing approved imports |
+| 1-3. Guard tests                    | Ready for Review | `scripts/check-frontend-ecs-core-guard.test.js`                       | Tests cover scan scope, allow/block behavior, dependency drift, and unknown CLI arguments                     |
+| 1-4. Architecture smoke integration | Ready for Review | `scripts/run-architecture-smoke.js`                                   | Architecture smoke runs the ECS core guard as a blocking gate                                                 |
+| 1-5. Progress document update       | Ready for Review | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md` | Progress records Batch 1 commands, artifacts, status, and review blocker                                      |
+| 1-6. Commit and server branch push  | Ready for Review | git history and server remote                                         | Implementation commit is pushed and deploy/health evidence is recorded                                        |
+| 1-7. Migration owner review         | Pending          | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md` | `codex/external-review` must sign off before Batch 1 can become Completed                                     |
+
+Batch 1 acceptance owner:
+
+- Migration owner: project main engineer or explicitly assigned architecture owner.
+- Batch 1 first implementation must remain `Ready for Migration Owner Review`.
+- Batch 1 can move to `Completed` only after `codex/external-review` reviews the ADR, guard behavior, architecture smoke integration, and progress records.
+- Batch 2 must not start until a separate completion commit marks Batch 1 as completed after review.
