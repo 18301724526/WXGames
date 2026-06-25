@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `1. ECS Core ADR and Gate`                   |
-| Batch state            | `Ready for Migration Owner Review`           |
+| Batch state            | `Completed`                                  |
 | Runtime code migration | Not started                                  |
 | ECS dependency         | Not introduced                               |
-| Last updated           | `2026-06-25 17:25:16 +08:00`                 |
+| Last updated           | `2026-06-25 18:33:08 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -50,15 +50,15 @@
 
 ## Batch 1 Checklist
 
-| Step                                | Status           | Updated At                   | Evidence                                                                                                                                       |
-| ----------------------------------- | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1-1. ECS core ADR                   | Ready for Review | `2026-06-25 17:25:16 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-batch-1-core-adr.md` selects `bitecs` and records Batch 1 non-goals                             |
-| 1-2. ECS core blocking guard        | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/check-frontend-ecs-core-guard.js` blocks local ECS core primitives and non-`bitecs` ECS packages                                      |
-| 1-3. Guard tests                    | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/check-frontend-ecs-core-guard.test.js` covers scan scope, allowed imports, blocked local core patterns, and CLI behavior              |
-| 1-4. Architecture smoke integration | Ready for Review | `2026-06-25 17:25:16 +08:00` | `scripts/run-architecture-smoke.js` runs the ECS core guard as a blocking gate                                                                 |
-| 1-5. Progress document update       | Ready for Review | `2026-06-25 17:25:16 +08:00` | This document records Batch 1 artifacts, commands, status, and review blocker                                                                  |
-| 1-6. Commit and server branch push  | Ready for Review | `2026-06-25 17:46:26 +08:00` | Commit `22bf9106` reached the server branch; refactor test server deploy was manually completed with the same wrapper after push-side HTTP 504 |
-| 1-7. Migration owner review         | Pending          | `2026-06-25 17:25:16 +08:00` | Batch 1 must stay `Ready for Migration Owner Review` until `codex/external-review` signs off                                                   |
+| Step                                | Status    | Updated At                   | Evidence                                                                                                                                       |
+| ----------------------------------- | --------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-1. ECS core ADR                   | Completed | `2026-06-25 18:33:08 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-batch-1-core-adr.md` selects `bitecs` and records Batch 1 non-goals                             |
+| 1-2. ECS core blocking guard        | Completed | `2026-06-25 18:33:08 +08:00` | `scripts/check-frontend-ecs-core-guard.js` blocks local ECS core primitives and non-`bitecs` ECS packages                                      |
+| 1-3. Guard tests                    | Completed | `2026-06-25 18:33:08 +08:00` | `scripts/check-frontend-ecs-core-guard.test.js` covers scan scope, allowed imports, blocked local core patterns, and CLI behavior              |
+| 1-4. Architecture smoke integration | Completed | `2026-06-25 18:33:08 +08:00` | `scripts/run-architecture-smoke.js` runs the ECS core guard as a blocking gate                                                                 |
+| 1-5. Progress document update       | Completed | `2026-06-25 18:33:08 +08:00` | This document records Batch 1 artifacts, commands, status, and review blocker                                                                  |
+| 1-6. Commit and server branch push  | Completed | `2026-06-25 18:33:08 +08:00` | Commit `22bf9106` reached the server branch; refactor test server deploy was manually completed with the same wrapper after push-side HTTP 504 |
+| 1-7. Migration owner review         | Completed | `2026-06-25 18:33:08 +08:00` | `codex/external-review` approved Batch 1 for completion                                                                                        |
 
 ## Verification Commands
 
@@ -93,17 +93,15 @@ Executed for Batch 1 before this progress entry:
 
 ## Review Gate
 
-0A and 0B are marked completed in this document because migration owner review passed.
-
-Batch 1 is not completed yet. It is `Ready for Migration Owner Review`; Batch 2 cannot start until a separate post-review completion commit marks Batch 1 as completed.
+0A, 0B, and Batch 1 are marked completed in this document because migration owner review passed.
 
 Required owner sign-off record:
 
-| Reviewer                | Review Time                  | Decision | Notes                                                                                                                                                                                                                                                                                                                    |
-| ----------------------- | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed   | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review. |
-| `codex/external-review` | `2026-06-25 16:43:55 +08:00` | Passed   | 0B renderer authority, input branch, and literal/duplicate baselines are accepted for completion. Batch 1 may start after this completion commit reaches the server branch.                                                                                                                                              |
-| Pending                 | Pending                      | Pending  | Batch 1 ADR and blocking ECS core guard await migration owner review.                                                                                                                                                                                                                                                    |
+| Reviewer                | Review Time                  | Decision | Notes                                                                                                                                                                                                                                                                                                                                                  |
+| ----------------------- | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `codex/external-review` | `2026-06-25 14:01:38 +08:00` | Passed   | Guard data matched inventory documents; report-only behavior, architecture smoke integration, baseline format, and operating-plan status were accepted. Two minor findings remain review follow-ups: inspect unknown writes for missed source-of-truth owners, and clean bridge false positives during 0B/manual review.                               |
+| `codex/external-review` | `2026-06-25 16:43:55 +08:00` | Passed   | 0B renderer authority, input branch, and literal/duplicate baselines are accepted for completion. Batch 1 may start after this completion commit reaches the server branch.                                                                                                                                                                            |
+| `codex/external-review` | `2026-06-25 18:33:08 +08:00` | Passed   | Batch 1 ADR, blocking guard, guard tests, architecture smoke integration, no-runtime-change scope, and no-dependency-install scope are accepted. Review follow-ups for Batch 2: ADR should add why other ECS libraries were not selected, define a bitECS maintenance/exit strategy, and pin an exact `bitecs` version when installing the dependency. |
 
 ## Push / Deploy Evidence
 
@@ -144,6 +142,6 @@ Permission root cause:
 
 0A is officially complete on the server branch after deploy commit `8ebedeb48d7ea3220ee35233f084a24e3a270761`.
 
-0B is officially complete after migration owner review. Batch 1 may start after this completion commit reaches the server branch.
+0B is officially complete after migration owner review. Batch 1 started after this completion commit reached the server branch.
 
-Batch 1 is ready for migration owner review after the implementation commit is pushed and server/deploy evidence is recorded.
+Batch 1 is officially complete after migration owner review. Batch 2 may start after this completion commit reaches the server branch.
