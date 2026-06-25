@@ -5,11 +5,11 @@
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
-| Current batch          | `3. Mode Ownership Spine`                    |
-| Batch state            | `Completed`                                  |
+| Current batch          | `4. Input Intent Boundary`                   |
+| Batch state            | `Planning (docs only, no code)`              |
 | Runtime code migration | Mode ownership bridge only                   |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-25 23:02:25 +08:00`                 |
+| Last updated           | `2026-06-25 23:29:18 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -202,6 +202,7 @@ Required owner sign-off record:
 | `codex/external-review` | `2026-06-25 18:33:08 +08:00` | Passed   | Batch 1 ADR, blocking guard, guard tests, architecture smoke integration, no-runtime-change scope, and no-dependency-install scope are accepted. Review follow-ups for Batch 2: ADR should add why other ECS libraries were not selected, define a bitECS maintenance/exit strategy, and pin an exact `bitecs` version when installing the dependency.                                        |
 | `codex/external-review` | `2026-06-25 20:16:29 +08:00` | Passed   | Batch 2 dependency pin, ECS core boundary, manifest skeleton, boundary blocking guard, no-runtime-loading scope, H5/minigame entrypoint safety, ADR follow-up updates, and progress records are accepted for completion.                                                                                                                                                                      |
 | `codex/external-review` | `2026-06-25 23:02:25 +08:00` | Passed   | Batch 3 mode ownership spine accepted: the singleton ECS mode entity is approved as the first runtime ECS owner; `CanvasModeOwnershipBridge.js` is accepted as a narrow temporary bridge; the mode spine guard blocks legacy mode-decision growth while allowing owner/bridge/vocabulary paths; the generated IIFE runtime bundle is accepted until a broader frontend build pipeline exists. |
+| Pending                 | -                            | Pending  | Batch 4 input intent boundary plan approved; implementation and review pending.                                                                                                                                                                                                                                                                                                               |
 
 ## Push / Deploy Evidence
 
@@ -252,3 +253,5 @@ Permission root cause:
 Batch 1 is officially complete after migration owner review. Batch 2 is officially complete after migration owner review.
 
 Batch 3 is `Completed` after migration owner review. Batch 4 (Input Intent Boundary) may start after this completion commit reaches the server branch.
+
+Batch 4 planning is recorded in the operating plan as first-window deliverables. Implementation has not started; this step updates planning documents only and changes no Batch 4 code.

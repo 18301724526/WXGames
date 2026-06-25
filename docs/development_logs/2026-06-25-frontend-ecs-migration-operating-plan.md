@@ -379,3 +379,59 @@ Batch 3 acceptance owner:
 - Migration owner: project main engineer or explicitly assigned architecture owner.
 - Batch 3 moved from `Ready for Migration Owner Review` to `Completed` after `codex/external-review` confirmed the ECS mode owner, legacy bridge contract, runtime bundle loading policy, and mode spine blocking guard at `2026-06-25 23:02:25 +08:00`.
 - Batch 4 may start after this Batch 3 completion commit reaches the server branch.
+
+Batch 4 first-window deliverables:
+
+- Input intent vocabulary: a normalized, serializable physical-intent shape (kind, phase, pointer, gesture) and a routed-intent shape (route plus optional action descriptor), declared in `frontend/js/ecs/input/InputIntent.js`.
+- Pure input intent resolver: `frontend/js/ecs/input/InputIntentResolver.js` maps `(physicalIntent, modeSnapshot)` to a routed intent for covered modes (entity battle, tech tree, world map, city) using `ModeResolver` routing booleans only, with no host or DOM reads.
+- Runtime exposure: extend `frontend/js/ecs/mode/EcsModeRuntimeEntry.js` and regenerate `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js` with exact `esbuild@0.23.1` so the input intent API ships inside the single approved runtime bundle.
+- Input intent bridge helper: `frontend/js/platform/CanvasModeOwnershipBridge.js` exposes `resolveInputIntent(physicalIntent)` that reads the ECS mode snapshot and calls the resolver; routers stop reading raw mode fields for covered routes.
+- Router physical adapters: `CanvasGameAppInputRouter.js` and `CanvasGameShellInputRouter.js` produce physical intents and execute resolver decisions for covered modes while preserving legacy fallback behavior.
+- Input intent blocking guard: after Batch 4, new mode and runtime-route decision growth in input-router surfaces outside approved intent/bridge paths fails the architecture gate.
+
+Batch 4 scope control:
+
+Batch 4 does not migrate:
+
+- concrete modal payload ownership for naming/event/reward/confirm/target-picker panels (Batch 5)
+- tutorial flow or tutorial input-gating ownership (tutorial domain batch)
+- renderer snapshot contracts (Batch 6) or `getHitTarget` hit-testing
+- gameplay domain state
+
+Old mode and panel fields remain bridge ingress facts. Panel and tutorial input branches stay report-only in this batch.
+
+Batch 4 approved runtime ECS surfaces:
+
+| Surface                                                        | Status                    | Notes                                                                                                  |
+| -------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `frontend/js/ecs/input/**`                                     | Owner source only         | Intent vocabulary and resolver; may be bundled; must not be directly loaded by H5/minigame             |
+| `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`              | Approved runtime artifact | Regenerated to expose the mode plus input intent API                                                   |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`            | Temporary bridge          | May expose `resolveInputIntent`; no new source-of-truth fields or business branches                    |
+| `CanvasGameAppInputRouter.js`, `CanvasGameShellInputRouter.js` | Physical adapters         | Produce physical intents and execute resolver routes; no inline mode/route decisions for covered modes |
+
+Batch 4 execution checklist:
+
+| Step                                     | Status  | Artifact / Gate                                                             | Acceptance Standard                                                                                                           |
+| ---------------------------------------- | ------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 4-1. Input intent vocabulary             | Planned | `frontend/js/ecs/input/InputIntent.js`                                      | Physical and routed intent shapes are frozen, serializable, and declared once                                                 |
+| 4-2. Input intent resolver               | Planned | `frontend/js/ecs/input/InputIntentResolver.js`                              | Resolver is pure, reads only the mode snapshot, and covers entity-battle/tech-tree/world-map/city routes                      |
+| 4-3. Resolver unit tests                 | Planned | `frontend/js/ecs/input/**/*.test.js`                                        | Tests cover the intent x snapshot decision matrix and fallbacks                                                               |
+| 4-4. Runtime bundle regeneration         | Planned | `scripts/build-frontend-ecs-runtime.js`, `EcsModeRuntimeBundle.js`          | Bundle is regenerated by exact `esbuild@0.23.1` and exposes the input intent API                                              |
+| 4-5. Bridge resolve helper               | Planned | `frontend/js/platform/CanvasModeOwnershipBridge.js`                         | `resolveInputIntent` reads the snapshot and calls the resolver without new source-of-truth fields                             |
+| 4-6. App input router adapter            | Planned | `frontend/js/platform/CanvasGameAppInputRouter.js`                          | Covered-mode drag/gesture/tap routing goes through the resolver; legacy fallback preserved                                    |
+| 4-7. Shell input router adapter          | Planned | `frontend/js/platform/CanvasGameShellInputRouter.js`                        | Covered-mode routing goes through the resolver without migrating tutorial or panel ownership                                  |
+| 4-8. Input intent blocking guard         | Planned | `scripts/check-frontend-ecs-input-intent-spine.js`                          | Guard diffs input-router mode and runtime-route branches against the 0B baseline and blocks new growth outside approved paths |
+| 4-9. Guard and behavior tests            | Planned | guard test plus router adapter tests                                        | Guard scope, allow/block behavior, and router-to-resolver wiring are covered                                                  |
+| 4-10. Manifest and boundary guard update | Planned | `EcsBoundaryManifest.js`, `scripts/check-frontend-ecs-boundary-skeleton.js` | `frontend/js/ecs/input/**` is owner-source-only and not directly loaded by H5/minigame                                        |
+| 4-11. Architecture smoke integration     | Planned | `scripts/run-architecture-smoke.js`                                         | Smoke runs the input intent guard and new tests as blocking                                                                   |
+| 4-12. Progress and batch document update | Planned | progress doc and Batch 4 batch doc                                          | Batch 4 is documented as Ready for Review, not Completed                                                                      |
+| 4-13. Commit and server branch push      | Pending | git history and server remote                                               | Implementation commit reaches `origin/codex/refactor-tutorial-guide-architecture`                                             |
+| 4-14. Migration owner review             | Pending | progress document                                                           | `codex/external-review` signs off before Batch 4 can be marked Completed                                                      |
+
+Batch 4 acceptance owner:
+
+- Migration owner: project main engineer or explicitly assigned architecture owner.
+- Batch 4 plan was approved on `2026-06-25`; the design is grounded in the post-Batch-3 input routers and the 0B input-branch baseline, not designed in the abstract. The guard scope is matched to migrate input-router mode and runtime-route branches while leaving panel and tutorial branches report-only.
+- Implementation has not started. This entry records the plan only; no Batch 4 code is changed yet.
+- Batch 4 may move from planning to `Ready for Migration Owner Review` only after the resolver, bridge helper, router adapters, scoped guard, and tests are complete and verified.
+- Batch 5 (Panel/Modal Ownership) may not start until a separate Batch 4 completion commit records review sign-off.
