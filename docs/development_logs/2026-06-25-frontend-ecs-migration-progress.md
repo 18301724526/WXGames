@@ -9,20 +9,20 @@
 | Batch state            | `Completed`                                  |
 | Runtime code migration | Not started                                  |
 | ECS dependency         | Not introduced                               |
-| Last updated           | `2026-06-25 14:01:38 +08:00`                 |
+| Last updated           | `2026-06-25 14:27:43 +08:00`                 |
 
 ## Batch 0A Checklist
 
-| Step                                          | Status                         | Completed At                 | Evidence                                                                                                                                                   |
-| --------------------------------------------- | ------------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0A-1. Produce mode boolean inventory          | Completed                      | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md`                                                                              |
-| 0A-2. Produce bridge inventory                | Completed                      | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-bridge-shrink-baseline.md`                                                                               |
-| 0A-3. Deploy mode ownership report-only guard | Completed                      | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-mode-ownership.js`                                                                                                            |
-| 0A-4. Deploy bridge shrink report-only guard  | Completed                      | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-bridge-shrink.js`                                                                                                             |
-| 0A-5. Migration owner review                  | Completed                      | `2026-06-25 14:01:38 +08:00` | `codex/external-review` approved the 0A baseline for completion                                                                                            |
-| 0A-6. Update progress document                | Completed                      | `2026-06-25 14:01:38 +08:00` | This file records 0A as completed after review                                                                                                             |
-| 0A-7. Update operating plan                   | Completed                      | `2026-06-25 14:01:38 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records 0A as completed                                                        |
-| 0A-8. Commit and server branch push           | Pending completion commit push | Pending                      | 0A officially ends after commit `docs: mark 0A as completed after migration owner review` is pushed to `origin/codex/refactor-tutorial-guide-architecture` |
+| Step                                          | Status    | Completed At                 | Evidence                                                                                                                                                                                          |
+| --------------------------------------------- | --------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0A-1. Produce mode boolean inventory          | Completed | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md`                                                                                                                     |
+| 0A-2. Produce bridge inventory                | Completed | `2026-06-25 13:14:11 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-0a-bridge-shrink-baseline.md`                                                                                                                      |
+| 0A-3. Deploy mode ownership report-only guard | Completed | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-mode-ownership.js`                                                                                                                                                   |
+| 0A-4. Deploy bridge shrink report-only guard  | Completed | `2026-06-25 13:14:11 +08:00` | `scripts/report-frontend-ecs-bridge-shrink.js`                                                                                                                                                    |
+| 0A-5. Migration owner review                  | Completed | `2026-06-25 14:01:38 +08:00` | `codex/external-review` approved the 0A baseline for completion                                                                                                                                   |
+| 0A-6. Update progress document                | Completed | `2026-06-25 14:01:38 +08:00` | This file records 0A as completed after review                                                                                                                                                    |
+| 0A-7. Update operating plan                   | Completed | `2026-06-25 14:01:38 +08:00` | `docs/development_logs/2026-06-25-frontend-ecs-migration-operating-plan.md` records 0A as completed                                                                                               |
+| 0A-8. Commit and server branch push           | Completed | `2026-06-25 14:27:43 +08:00` | Completion and deploy-gate formatting commits were pushed to `origin/codex/refactor-tutorial-guide-architecture`; refactor test server deployed commit `87876c1a6e37ace396759201c503a9aeb3f21a2f` |
 
 ## Report-Only Guard Baseline
 
@@ -58,14 +58,25 @@ Required owner sign-off record:
 
 ## Push / Deploy Evidence
 
-| Remote / Hook                                       | Result                   | Evidence                                                                                                                                     |
-| --------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `d4919fde` | Server accepted `8aa553d9..d4919fde`                                                                                                         |
-| Refactor test server deploy hook                    | Failed after checkout    | Hook checked out `d4919fde`, then `npm` failed with `EACCES: permission denied, rmdir '/www/wwwroot/h5-refactor-worktree/node_modules/.bin'` |
-| `github codex/refactor-tutorial-guide-architecture` | Failed                   | HTTPS remote was used. Schannel reported `failed to receive handshake`; OpenSSL retry reported `unexpected eof while reading`                |
+| Remote / Hook                                       | Result                   | Evidence                                                                                                                                                                                                                                                |
+| --------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `d4919fde` | Server accepted `8aa553d9..d4919fde`                                                                                                                                                                                                                    |
+| Refactor test server deploy hook                    | Failed after checkout    | Hook checked out `d4919fde`, then `npm` failed with `EACCES: permission denied, rmdir '/www/wwwroot/h5-refactor-worktree/node_modules/.bin'`                                                                                                            |
+| `github codex/refactor-tutorial-guide-architecture` | Failed                   | HTTPS remote was used. Schannel reported `failed to receive handshake`; OpenSSL retry reported `unexpected eof while reading`                                                                                                                           |
+| `origin codex/refactor-tutorial-guide-architecture` | Pushed commit `87876c1a` | Remote branch resolved to `87876c1a6e37ace396759201c503a9aeb3f21a2f` after the push timeout; local branch is aligned with `origin`                                                                                                                      |
+| Refactor test server permission repair              | Completed                | Root-owned ignored dependency directories were removed and `/www/wwwroot/h5-refactor-worktree` plus `/opt/wxgame-refactor/.wxgame` were restored to `www:www`; `node_modules`, `node_modules/.bin`, and `backend/node_modules` now resolve as `www:www` |
+| Refactor test server deploy                         | Completed                | `/opt/wxgame-refactor/.wxgame/current-deploy.json` records environment `refactor-test`, branch `codex/refactor-tutorial-guide-architecture`, commit `87876c1a6e37ace396759201c503a9aeb3f21a2f`, deployed at `2026-06-25T06:24:43Z`                      |
+| Refactor test server health                         | Passed                   | `http://47.116.32.216/wxgame-refactor-api/health` returned `status: ok` and deployed commit `87876c1a6e37ace396759201c503a9aeb3f21a2f`                                                                                                                  |
+
+Permission root cause:
+
+- Earlier dependency installation ran as `root` inside the isolated refactor worktree, leaving ignored dependency directories owned by `root:root`.
+- The deploy checkout uses `git clean -fd`, which does not remove ignored directories such as `node_modules`.
+- The deploy gate later runs as `www`; `npm ci` attempted to remove `/www/wwwroot/h5-refactor-worktree/node_modules/.bin` and failed with `EACCES`.
+- The server-side repair removed the polluted dependency directories and restored ownership of the refactor worktree and deploy state directory to `www:www`.
 
 ## Next Step
 
-0A officially ends after this completion commit is pushed to `origin/codex/refactor-tutorial-guide-architecture`.
+0A is officially complete on the server branch after deploy commit `87876c1a6e37ace396759201c503a9aeb3f21a2f`.
 
-After that push succeeds, start `0B. Authority, Input, Literal, Duplicate Inventory`.
+Next migration work may start `0B. Authority, Input, Literal, Duplicate Inventory`.

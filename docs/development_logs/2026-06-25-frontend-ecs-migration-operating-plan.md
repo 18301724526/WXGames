@@ -199,22 +199,22 @@ Bridge inventory rows must use this schema:
 
 0A execution checklist:
 
-| Step                                   | Status                         | Artifact / Gate                                                               | Acceptance Standard                                                                                             |
-| -------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 0A-1. Mode boolean inventory           | Completed                      | `docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md` | Every finding has file, line, role, access, evidence, and note                                                  |
-| 0A-2. Bridge inventory                 | Completed                      | `docs/development_logs/2026-06-25-frontend-ecs-0a-bridge-shrink-baseline.md`  | Every bridge candidate has owner surface, fields, methods, branch count, and retirement target placeholder      |
-| 0A-3. Mode ownership report-only guard | Completed                      | `scripts/report-frontend-ecs-mode-ownership.js`                               | Guard scans current code and exits 0 with historical findings                                                   |
-| 0A-4. Bridge shrink report-only guard  | Completed                      | `scripts/report-frontend-ecs-bridge-shrink.js`                                | Guard scans current code and exits 0 with historical findings                                                   |
-| 0A-5. Migration owner review           | Completed                      | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md`         | `codex/external-review` passed review at `2026-06-25 14:01:38 +08:00`                                           |
-| 0A-6. Progress document update         | Completed                      | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md`         | Status records 0A as completed after owner review                                                               |
-| 0A-7. Operating plan update            | Completed                      | this document                                                                 | 0A status and artifacts are recorded as completed without starting 0B early                                     |
-| 0A-8. Commit and server branch push    | Pending completion commit push | git history and server remote                                                 | 0A officially ends after the completion commit is pushed to `origin/codex/refactor-tutorial-guide-architecture` |
+| Step                                   | Status    | Artifact / Gate                                                               | Acceptance Standard                                                                                                                 |
+| -------------------------------------- | --------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 0A-1. Mode boolean inventory           | Completed | `docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md` | Every finding has file, line, role, access, evidence, and note                                                                      |
+| 0A-2. Bridge inventory                 | Completed | `docs/development_logs/2026-06-25-frontend-ecs-0a-bridge-shrink-baseline.md`  | Every bridge candidate has owner surface, fields, methods, branch count, and retirement target placeholder                          |
+| 0A-3. Mode ownership report-only guard | Completed | `scripts/report-frontend-ecs-mode-ownership.js`                               | Guard scans current code and exits 0 with historical findings                                                                       |
+| 0A-4. Bridge shrink report-only guard  | Completed | `scripts/report-frontend-ecs-bridge-shrink.js`                                | Guard scans current code and exits 0 with historical findings                                                                       |
+| 0A-5. Migration owner review           | Completed | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md`         | `codex/external-review` passed review at `2026-06-25 14:01:38 +08:00`                                                               |
+| 0A-6. Progress document update         | Completed | `docs/development_logs/2026-06-25-frontend-ecs-migration-progress.md`         | Status records 0A as completed after owner review                                                                                   |
+| 0A-7. Operating plan update            | Completed | this document                                                                 | 0A status and artifacts are recorded as completed without starting 0B early                                                         |
+| 0A-8. Commit and server branch push    | Completed | git history and server remote                                                 | Completion and deploy-gate formatting commits were pushed; refactor test server deployed `87876c1a6e37ace396759201c503a9aeb3f21a2f` |
 
 0A acceptance owner:
 
 - Migration owner: project main engineer or explicitly assigned architecture owner.
 - 0A moved from `Ready for migration owner review` to `Completed` after `codex/external-review` reviewed the inventory documents and recorded sign-off in the progress document.
-- 0B cannot start until the 0A completion commit is pushed to `origin/codex/refactor-tutorial-guide-architecture`.
+- 0B can start after the server branch has deployed `87876c1a6e37ace396759201c503a9aeb3f21a2f`.
 
 0B second-window deliverables:
 
