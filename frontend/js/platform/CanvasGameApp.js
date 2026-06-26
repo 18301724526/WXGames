@@ -154,7 +154,6 @@
           this.worldActorQueuedRenderOptions = null;
           this.lastWorldActorAnimationRenderAt = 0;
           this.tileMapWaterTimer = null;
-          this.activeEventId = null;
           this.territoryUiState = {
             selectedSiteId: '',
             worldMarchTarget: null,

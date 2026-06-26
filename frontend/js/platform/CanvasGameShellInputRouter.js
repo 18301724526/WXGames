@@ -151,7 +151,7 @@ hasBlockingOverlayOpen() {
         || confirmDialogOpen
         || this.activeCommandPanel
         || this.techDetailOpen
-        || this.activeEventId
+        || this.isEventSnapshotOpen?.()
         || namingOpen
         || battleScene?.visible
         || this.isEntityBattleActive()
@@ -232,7 +232,7 @@ hasBlockingOverlayExceptTechTree() {
         || confirmDialogOpen
         || (this.activeCommandPanel && this.activeCommandPanel !== 'tech')
         || this.techDetailOpen
-        || this.activeEventId
+        || this.isEventSnapshotOpen?.()
         || namingOpen
         || battleScene?.visible
         || this.isEntityBattleActive()

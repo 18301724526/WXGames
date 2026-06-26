@@ -147,12 +147,11 @@
       shell.selectedFamousPersonId = '';
       changed = true;
     }
-    if (game.activeEventId) {
-      game.activeEventId = null;
+    if (game.isEventSnapshotOpen?.()) {
+      game.closeEventSnapshot?.();
       changed = true;
-    }
-    if (shell?.activeEventId) {
-      shell.activeEventId = null;
+    } else if (shell?.isEventSnapshotOpen?.()) {
+      shell.closeEventSnapshot?.();
       changed = true;
     }
     if (changed) {
@@ -169,13 +168,12 @@
     game.activeCityManagementTab = 'buildings';
     game.showSubcityList = false;
     game.activeCommandPanel = '';
-    game.activeEventId = null;
+    game.closeEventSnapshot?.();
     if (game.canvasShell) {
       game.canvasShell.showCityManagement = true;
       game.canvasShell.activeCityManagementTab = 'buildings';
       game.canvasShell.showSubcityList = false;
       game.canvasShell.activeCommandPanel = '';
-      game.canvasShell.activeEventId = null;
     }
     return true;
   },
@@ -184,12 +182,11 @@
     const game = this.game || {};
     game.showCityManagement = false;
     game.activeCommandPanel = 'buildings';
-    game.activeEventId = null;
+    game.closeEventSnapshot?.();
     game.showTaskCenter = false;
     if (game.canvasShell) {
       game.canvasShell.showCityManagement = false;
       game.canvasShell.activeCommandPanel = 'buildings';
-      game.canvasShell.activeEventId = null;
       game.canvasShell.showTaskCenter = false;
     }
     return true;
@@ -234,7 +231,6 @@
       showFamousPersons: false,
       showSubcityList: false,
       activeCommandPanel: '',
-      activeEventId: null,
     };
     if (game.state) {
       setIfChanged(game.state, 'currentTab', 'military');
@@ -244,6 +240,10 @@
     setIfChanged(game, 'militaryView', 'world');
     Object.entries(patch).forEach(([key, value]) => setIfChanged(game, key, value));
     if (shell) Object.entries(patch).forEach(([key, value]) => setIfChanged(shell, key, value));
+    if (game.isEventSnapshotOpen?.()) {
+      game.closeEventSnapshot?.();
+      changed = true;
+    }
     if (game.territoryUiState) {
       setIfChanged(game.territoryUiState, 'selectedSiteId', '');
       setIfChanged(game.territoryUiState, 'worldMarchTarget', null);

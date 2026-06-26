@@ -282,6 +282,20 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
     },
     activeTab: 'buildings',
     canvasShell: shell,
+    __eventSnapshot: null,
+    openEventSnapshot(eventId) {
+      this.__eventSnapshot = eventId ? { eventId, visible: true } : null;
+      return eventId;
+    },
+    closeEventSnapshot() {
+      this.__eventSnapshot = null;
+    },
+    getEventSnapshot() {
+      return this.__eventSnapshot;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(this.__eventSnapshot);
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
@@ -328,7 +342,7 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openEvent', eventId: 'evt_settlement_forest_001' });
 
-  game.activeEventId = 'evt_settlement_forest_001';
+  game.openEventSnapshot('evt_settlement_forest_001');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, {
     type: 'claimEvent',
@@ -337,8 +351,7 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   });
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.specialEventClaimed });
-  game.activeEventId = null;
-  game.canvasShell.activeEventId = null;
+  game.closeEventSnapshot();
   game.state.currentTab = 'events';
   shell.activeCommandPanel = 'events';
   assert.equal(controller.refreshCurrentHighlight(), true);

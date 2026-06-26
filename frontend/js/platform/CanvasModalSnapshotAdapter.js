@@ -2,6 +2,7 @@
   const NAMING_MODAL_KEY = 'modal:naming';
   const CONFIRM_DIALOG_MODAL_KEY = 'modal:confirmDialog';
   const REWARD_REVEAL_MODAL_KEY = 'modal:rewardReveal';
+  const EVENT_MODAL_KEY = 'modal:event';
 
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
@@ -58,6 +59,14 @@
 
   function getRewardRevealSnapshotFromRendererSnapshot(snapshot = null) {
     return getModalPayloadSnapshot(null, REWARD_REVEAL_MODAL_KEY, snapshot);
+  }
+
+  function getEventSnapshot(host, snapshot = null) {
+    return getModalPayloadSnapshot(host, EVENT_MODAL_KEY, snapshot);
+  }
+
+  function getEventSnapshotFromRendererSnapshot(snapshot = null) {
+    return getModalPayloadSnapshot(null, EVENT_MODAL_KEY, snapshot);
   }
 
   function getNamingPrompt(host, snapshot = null) {
@@ -146,6 +155,21 @@
     return Boolean(getRewardRevealSnapshot(host, snapshot)?.visible);
   }
 
+  // event modal: the payload carries the scalar eventId. openEventSnapshot returns
+  // the eventId so call sites keep `const id = host.openEventSnapshot(x) || x`.
+  function openEventSnapshot(host, eventId) {
+    openModalPayload(host, EVENT_MODAL_KEY, { eventId });
+    return eventId;
+  }
+
+  function closeEventSnapshot(host) {
+    return closeModalPayload(host, EVENT_MODAL_KEY);
+  }
+
+  function isEventSnapshotOpen(host, snapshot = null) {
+    return Boolean(getEventSnapshot(host, snapshot)?.visible);
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -220,21 +244,41 @@
       isRewardRevealSnapshotOpen(snapshot = null) {
         return isRewardRevealSnapshotOpen(this, snapshot);
       },
+
+      openEventSnapshot(eventId) {
+        return openEventSnapshot(this, eventId);
+      },
+
+      closeEventSnapshot() {
+        return closeEventSnapshot(this);
+      },
+
+      getEventSnapshot(snapshot = null) {
+        return getEventSnapshot(this, snapshot);
+      },
+
+      isEventSnapshotOpen(snapshot = null) {
+        return isEventSnapshotOpen(this, snapshot);
+      },
     });
     return true;
   }
 
   const api = {
     CONFIRM_DIALOG_MODAL_KEY,
+    EVENT_MODAL_KEY,
     NAMING_MODAL_KEY,
     REWARD_REVEAL_MODAL_KEY,
     collectRelatedHosts,
     closeConfirmDialogSnapshot,
+    closeEventSnapshot,
     closeModalPayload,
     closeNamingSnapshot,
     closeRewardRevealSnapshot,
     getConfirmDialogSnapshot,
     getConfirmDialogSnapshotFromRendererSnapshot,
+    getEventSnapshot,
+    getEventSnapshotFromRendererSnapshot,
     getOpenModalHost,
     getModalPayloadSnapshot,
     getNamingInputValue,
@@ -245,9 +289,11 @@
     getRewardRevealSnapshotFromRendererSnapshot,
     install,
     isConfirmDialogSnapshotOpen,
+    isEventSnapshotOpen,
     isNamingSnapshotOpen,
     isRewardRevealSnapshotOpen,
     openConfirmDialogSnapshot,
+    openEventSnapshot,
     openModalPayload,
     openNamingSnapshot,
     openRewardRevealSnapshot,

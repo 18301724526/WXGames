@@ -92,7 +92,7 @@
     const game = getStateHost(host);
     const keys = [];
     if (isAnyModalOpen(host, 'modal:naming')) keys.push('modal:naming');
-    if (isTruthy(host?.activeEventId) || isTruthy(game?.activeEventId)) keys.push('modal:event');
+    if (isAnyModalOpen(host, 'modal:event')) keys.push('modal:event');
     if (isAnyModalOpen(host, 'modal:rewardReveal')) keys.push('modal:rewardReveal');
     if (isAnyModalOpen(host, 'modal:confirmDialog')) keys.push('modal:confirmDialog');
     const territoryUiState =
@@ -148,8 +148,7 @@
       (isTruthy(host?.activeCommandPanel) && host.activeCommandPanel !== 'tech') ||
       isTruthy(host?.techDetailOpen) ||
       isTruthy(game?.techDetailOpen) ||
-      isTruthy(host?.activeEventId) ||
-      isTruthy(game?.activeEventId) ||
+      isAnyModalOpen(host, 'modal:event') ||
       isAnyModalOpen(host, 'modal:naming') ||
       isTruthy(battleSnapshot?.battleScene?.visible) ||
       isTruthy(host?.entityBattle?.visible) ||
@@ -296,38 +295,6 @@
       action,
       ...args,
     );
-  }
-
-  function collectEventMirrorTargets(host) {
-    if (!host || typeof host !== 'object') return [];
-    const game = host.getCanvasGameHost?.() || host.lastGame || host;
-    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
-    return [host, game, shell].filter(
-      (target, index, targets) =>
-        target && typeof target === 'object' && targets.indexOf(target) === index,
-    );
-  }
-
-  function syncEventMirrors(host, eventId = null) {
-    const mirrorValue = eventId ?? null;
-    collectEventMirrorTargets(host).forEach((target) => {
-      target.activeEventId = mirrorValue;
-    });
-    return mirrorValue;
-  }
-
-  function openEventModal(host, eventId) {
-    const mirrorValue = syncEventMirrors(host, eventId);
-    if (mirrorValue === null) return mirrorValue;
-    const payload = openModal(host, 'modal:event', { eventId: mirrorValue }) || {
-      eventId: mirrorValue,
-    };
-    return payload?.eventId ?? mirrorValue;
-  }
-
-  function closeEventOwner(host) {
-    closeModal(host, 'modal:event');
-    return syncEventMirrors(host, null);
   }
 
   function resolveTerritoryUiState(host, uiState = null) {
@@ -648,16 +615,6 @@
         return resolveModalCallback(this, subtype, action, ...args);
       },
 
-      // event-specific wrappers: payload stores `eventId` so the modal owner
-      // stays separate from EventController's same-named claim cursor field.
-      openEventModal(eventId) {
-        return openEventModal(this, eventId);
-      },
-
-      closeEventOwner() {
-        return closeEventOwner(this);
-      },
-
       // targetPicker-specific wrappers own the two picker modal shapes while
       // leaving non-picker world-march target state to the world-march domain.
       openWorldTargetPickerOwner(uiState, picker) {
@@ -693,7 +650,6 @@
     closeBlockingPanelOwner,
     closeBlockingPanelsOwner,
     closeModal,
-    closeEventOwner,
     closeTargetPickerOwner,
     collectModalKeys,
     buildRendererSnapshot,
@@ -705,7 +661,6 @@
     install,
     isModalOpen,
     openBlockingPanelOwner,
-    openEventModal,
     openModal,
     openWorldMarchFormationPickerOwner,
     openWorldTargetPickerOwner,

@@ -396,6 +396,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
       const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
       const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
+      const snapshotEvent = this.getEventSnapshot?.(rendererSnapshot) || null;
       logActorPickingDiag('shell:buildRenderOptions:territoryUiState', {
         activeTab,
         input: summarizeActorPickingUiState(territoryUiState),
@@ -448,7 +449,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         pendingBuildingAction: this.pendingBuildingAction || this.lastGame?.pendingBuildingAction || null,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
-        activeEventId: this.activeEventId,
+        activeEventId: snapshotEvent?.eventId ?? null,
         territoryUiState: resolvedTerritoryUiState,
         ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
         ...((this.lastGame?.entityBattle || this.entityBattle) ? { entityBattle: this.lastGame?.entityBattle || this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),

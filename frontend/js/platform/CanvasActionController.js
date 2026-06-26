@@ -182,7 +182,7 @@
       CLOSEABLE_PANELS.forEach((key) => {
         if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
       });
-      if (!keep.has('activeEventId')) { this.host?.closeEventOwner?.(); if ('activeEventId' in this.host) this.host.activeEventId = null; }
+      if (!keep.has('activeEventId')) this.host?.closeEventSnapshot?.();
     }
 
     closePanelsOn(target, except = []) {
@@ -192,7 +192,7 @@
       CLOSEABLE_PANELS.forEach((key) => {
         if (!keep.has(key) && key in target) target[key] = key === 'activeCommandPanel' ? '' : false;
       });
-      if (!keep.has('activeEventId')) { target.closeEventOwner?.(); if ('activeEventId' in target) target.activeEventId = null; }
+      if (!keep.has('activeEventId')) target.closeEventSnapshot?.();
     }
 
     closePanelsEverywhere(except = []) {

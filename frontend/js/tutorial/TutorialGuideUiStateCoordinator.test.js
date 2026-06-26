@@ -14,6 +14,15 @@ test('TutorialGuideUiStateCoordinator installs UI state helper methods', () => {
 });
 
 test('TutorialGuideUiStateCoordinator keeps house guide visibility sync on game and shell', () => {
+  const eventStore = { snapshot: { eventId: 'evt', visible: true } };
+  const eventSnapshotMock = {
+    closeEventSnapshot() {
+      eventStore.snapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(eventStore.snapshot);
+    },
+  };
   class Controller {
     constructor() {
       this.game = {
@@ -21,13 +30,13 @@ test('TutorialGuideUiStateCoordinator keeps house guide visibility sync on game 
         activeCityManagementTab: '',
         showSubcityList: true,
         activeCommandPanel: 'events',
-        activeEventId: 'evt',
+        ...eventSnapshotMock,
         canvasShell: {
           showCityManagement: false,
           activeCityManagementTab: '',
           showSubcityList: true,
           activeCommandPanel: 'events',
-          activeEventId: 'evt',
+          ...eventSnapshotMock,
         },
       };
     }
@@ -41,6 +50,7 @@ test('TutorialGuideUiStateCoordinator keeps house guide visibility sync on game 
   assert.equal(controller.game.showCityManagement, true);
   assert.equal(controller.game.activeCityManagementTab, 'buildings');
   assert.equal(controller.game.activeCommandPanel, '');
+  assert.equal(controller.game.isEventSnapshotOpen(), false);
   assert.equal(controller.game.canvasShell.showCityManagement, true);
   assert.equal(controller.game.canvasShell.activeCityManagementTab, 'buildings');
   assert.equal(controller.game.canvasShell.activeCommandPanel, '');

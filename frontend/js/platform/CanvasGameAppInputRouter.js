@@ -78,7 +78,7 @@
               || confirmDialogOpen
               || this.activeCommandPanel
               || this.techDetailOpen
-              || this.activeEventId
+              || this.isEventSnapshotOpen?.()
               || namingOpen
               || battleScene?.visible
               || this.entityBattle?.visible

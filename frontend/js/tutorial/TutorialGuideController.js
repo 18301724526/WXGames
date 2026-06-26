@@ -284,8 +284,7 @@
     }
 
     getActiveEventId() {
-      return this.game?.canvasShell?.activeEventId
-        || this.game?.activeEventId
+      return this.game?.getEventSnapshot?.()?.eventId
         || this.game?.eventController?.activeEventId
         || '';
     }
@@ -472,7 +471,7 @@
       setIfChanged(game, 'showSubcityList', false);
       setIfChanged(game, 'showTaskCenter', false);
       setIfChanged(game, 'showFamousPersons', false);
-      setIfChanged(game, 'activeEventId', null);
+      game.closeEventSnapshot?.();
       this.closeArmyFormationEditorEverywhere();
       mergeUiState(game, 'territoryUiState', {
         selectedSiteId: '',
@@ -508,7 +507,7 @@
         setIfChanged(shell, 'showSubcityList', false);
         setIfChanged(shell, 'showTaskCenter', false);
         setIfChanged(shell, 'showFamousPersons', false);
-        setIfChanged(shell, 'activeEventId', null);
+        shell.closeEventSnapshot?.();
         mergeUiState(shell, 'territoryUiState', {
           selectedSiteId: '',
           ...(clearWorldMarchTarget ? {

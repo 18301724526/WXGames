@@ -289,7 +289,7 @@ enterCity(action = {}) {
       this.activeCityManagementTab = tab;
       this.showSubcityList = false;
       this.activeCommandPanel = '';
-      this.activeEventId = null;
+      this.closeEventSnapshot?.();
       this.renderActive();
       return true;
     },
@@ -300,7 +300,7 @@ openCityManagement(action = {}) {
       this.activeCityManagementTab = tab;
       this.showSubcityList = false;
       this.activeCommandPanel = '';
-      this.activeEventId = null;
+      this.closeEventSnapshot?.();
       this.renderActive();
       return true;
     },
@@ -340,7 +340,7 @@ resetForCanvasTabSwitch() {
       this.techDetailOpen = false;
       this.techTreeDragStart = null;
       this.buildingTransition = null;
-      this.activeEventId = null;
+      this.closeEventSnapshot?.();
       this.showGuidebook = false;
       this.showFamousPersons = false;
       this.showCityManagement = false;
@@ -363,7 +363,7 @@ resetLocalViewToResources(options = {}) {
       this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
-      this.activeEventId = null;
+      this.closeEventSnapshot?.();
       this.territoryUiState = {
         ...(this.territoryUiState || {}),
         selectedSiteId: '',

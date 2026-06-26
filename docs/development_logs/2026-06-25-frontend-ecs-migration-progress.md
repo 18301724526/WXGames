@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `8. Bridge Retirement`                       |
-| Batch state            | `8C Ready for Migration Owner Review`        |
-| Runtime code migration | RewardReveal mirror removed; snapshot-owned  |
+| Batch state            | `8D Ready for Migration Owner Review`        |
+| Runtime code migration | Event mirror removed; snapshot-owned         |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 21:03:46 +08:00`                 |
+| Last updated           | `2026-06-26 23:38:10 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -205,6 +205,18 @@ Batch 7A notes:
 | 8C-5. Guard upgrade                                             | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | New `scripts/check-frontend-ecs-rewardreveal-mirror-retirement.js` forbids rewardReveal mirror reads/writes and retired wrapper names; guard reports 0 violations       |
 | 8C-6. Behavior and guard tests                                  | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | Focused tests cover owner snapshot open/close, renderer options, city reward grant, tutorial reads, and guard behavior                                                  |
 | 8C-7. Progress / operating plan / batch document                | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | This document, the operating plan, and the 8C batch doc record Ready for Review, not Completed                                                                          |
+
+## Batch 8D Checklist
+
+| Step                                                             | Status                           | Updated At                   | Evidence                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------- | -------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8D-1. Delete App/Shell activeEventId mirror fields               | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | Removed App and Shell constructor initialization of `this.activeEventId`                                                                                                                                                      |
+| 8D-2. Remove event bridge wrappers                               | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | Deleted `openEventModal` / `closeEventOwner` (+ syncEventMirrors/collectEventMirrorTargets) from `CanvasModeOwnershipBridge.js`                                                                                               |
+| 8D-3. Route activeEventId reads/writes through renderer snapshot | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | Action handlers, commands, resets, input routers, render runtimes, and the tutorial layer use `CanvasModalSnapshotAdapter` event helpers; 2-way/3-way closes collapse to one `closeEventSnapshot()` (snapshot merge fans out) |
+| 8D-4. Preserve EventController cursor + control-flow token       | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | `EventController.activeEventId` cursor untouched; `closePanels(['activeEventId'])` keep-set string token preserved                                                                                                            |
+| 8D-5. Guard upgrade (extended)                                   | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | New `scripts/check-frontend-ecs-event-mirror-retirement.js` adds setIfChanged + patch-key detection and excludes EventController.js; guard reports 0 violations                                                               |
+| 8D-6. Behavior and guard tests                                   | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | Snapshot fan-out, cursor untouched, retired-wrapper absence; full `npm test` 1684/0                                                                                                                                           |
+| 8D-7. Progress / operating plan / batch document                 | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | This document, the operating plan, and the 8D batch doc record Ready for Review, not Completed                                                                                                                                |
 
 ## Verification Commands
 

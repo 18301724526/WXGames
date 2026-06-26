@@ -100,7 +100,7 @@
           .find((item) => item.id === action.eventId);
         if (!eventData) return false;
         this.closePanels(['activeEventId']);
-        const eventId = this.host.openEventModal?.(action.eventId) || action.eventId;
+        const eventId = this.host.openEventSnapshot?.(action.eventId) || action.eventId;
         const controller = this.getEventController();
         controller?.open?.(eventId);
         const handled = this.afterHandled(action);
@@ -109,7 +109,7 @@
       },
 
       handle_closeEvent(action) {
-        this.host.closeEventOwner?.();
+        this.host.closeEventSnapshot?.();
         const controller = this.getEventController();
         controller?.close?.();
         return this.afterHandled(action);
@@ -151,7 +151,7 @@
       handle_selectCity(action) {
         this.host.showCitySwitcher = false;
         this.host.showSubcityList = false;
-        this.host.activeEventId = null;
+        this.host.closeEventSnapshot?.();
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
           return this.finalizeForwarded(forwarded, () => this.afterHandled(action));
@@ -165,7 +165,7 @@
           return await game.switchCity(action.cityId);
         }
         this.host.showCitySwitcher = false;
-        this.host.activeEventId = null;
+        this.host.closeEventSnapshot?.();
         await this.runAction(() => this.host.api.switchCity(action.cityId));
         return true;
       },
@@ -175,7 +175,7 @@
         if (!cityId) return false;
         this.host.showSubcityList = false;
         this.host.activeCommandPanel = '';
-        this.host.activeEventId = null;
+        this.host.closeEventSnapshot?.();
         this.openWorldSiteLocally(cityId);
         this.centerWorldMapOnSite(cityId);
         const selectAction = { ...action, type: 'selectCity', cityId };
@@ -227,7 +227,7 @@
         if (!cityId) return false;
         this.host.showSubcityList = false;
         this.host.activeCommandPanel = '';
-        this.host.activeEventId = null;
+        this.host.closeEventSnapshot?.();
         const game = this.getGameHost();
         const result = typeof game?.enterCity === 'function'
           ? game.enterCity(cityId, { tab: action.tab || 'buildings' })
@@ -387,7 +387,7 @@
 
       async claimEvent(action) {
         const controller = this.getEventController();
-        this.host.activeEventId = null;
+        this.host.closeEventSnapshot?.();
         controller?.close?.();
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
@@ -424,9 +424,7 @@
         }
         const nextTutorial = result?.tutorial || game?.tutorial || game?.state?.tutorial || null;
         if (nextTutorial) game?.tutorialController?.sync?.(nextTutorial);
-        this.host.activeEventId = null;
-        if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = null;
-        if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = null;
+        this.host.closeEventSnapshot?.();
         this.getEventController()?.close?.();
         if (result?.rewardReveal) {
           if (!this.host.showRewardReveal?.(result.rewardReveal)) this.host.openRewardRevealSnapshot?.(result.rewardReveal);

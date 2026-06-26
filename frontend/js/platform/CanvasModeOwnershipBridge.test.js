@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 test('CanvasModeOwnershipBridge derives world map mode facts from legacy fields', () => {
   const host = {
@@ -227,45 +228,50 @@ test('CanvasModeOwnershipBridge does not install retired rewardReveal owner wrap
   assert.equal(typeof host.closeRewardRevealOwner, 'undefined');
 });
 
-test('CanvasModeOwnershipBridge event wrappers sync mirrors without touching EventController cursor', () => {
+test('CanvasModeOwnershipBridge does not install retired event owner wrappers', () => {
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
   const host = new Host();
-  const shell = { activeEventId: null };
-  const game = {
-    activeEventId: null,
-    canvasShell: shell,
-    eventController: { activeEventId: 'claim-cursor' },
-  };
-  host.getCanvasGameHost = () => game;
 
-  assert.equal(host.openEventModal('event-1'), 'event-1');
-  assert.equal(host.isModalOpen('modal:event'), true);
-  assert.deepEqual(host.getModalPayload('modal:event'), { eventId: 'event-1' });
-  assert.equal(host.activeEventId, 'event-1');
-  assert.equal(game.activeEventId, 'event-1');
-  assert.equal(shell.activeEventId, 'event-1');
+  assert.equal(typeof host.openEventModal, 'undefined');
+  assert.equal(typeof host.closeEventOwner, 'undefined');
+  assert.equal(typeof CanvasModeOwnershipBridge.openEventModal, 'undefined');
+  assert.equal(typeof CanvasModeOwnershipBridge.closeEventOwner, 'undefined');
+});
+
+test('CanvasModeOwnershipBridge event snapshot fans out without touching EventController cursor', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const shell = new Host();
+  const game = new Host();
+  game.canvasShell = shell;
+  shell.lastGame = game;
+  game.eventController = { activeEventId: 'claim-cursor' };
+
+  // Opening on ANY one related host fans the snapshot out to all of them.
+  assert.equal(shell.openEventSnapshot('event-1'), 'event-1');
+  assert.equal(shell.isEventSnapshotOpen(), true);
+  assert.equal(game.isEventSnapshotOpen(), true);
+  assert.deepEqual(shell.getEventSnapshot(), { eventId: 'event-1', visible: true });
+  assert.deepEqual(game.getEventSnapshot(), { eventId: 'event-1', visible: true });
   assert.equal(game.eventController.activeEventId, 'claim-cursor');
 
-  host.closeEventOwner();
-  assert.equal(host.isModalOpen('modal:event'), false);
-  assert.equal(host.activeEventId, null);
-  assert.equal(game.activeEventId, null);
-  assert.equal(shell.activeEventId, null);
+  shell.closeEventSnapshot();
+  assert.equal(shell.isEventSnapshotOpen(), false);
+  assert.equal(game.isEventSnapshotOpen(), false);
   assert.equal(game.eventController.activeEventId, 'claim-cursor');
 });
 
-test('CanvasModeOwnershipBridge event wrappers preserve falsy but non-null event ids', () => {
+test('CanvasModeOwnershipBridge event snapshot preserves falsy but non-null event ids', () => {
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
-  const game = { activeEventId: null };
-  host.getCanvasGameHost = () => game;
 
-  assert.equal(host.openEventModal(0), 0);
-  assert.deepEqual(host.getModalPayload('modal:event'), { eventId: 0 });
-  assert.equal(host.activeEventId, 0);
-  assert.equal(game.activeEventId, 0);
+  assert.equal(host.openEventSnapshot(0), 0);
+  assert.deepEqual(host.getEventSnapshot(), { eventId: 0, visible: true });
+  assert.equal(host.isEventSnapshotOpen(), true);
 });
 
 test('CanvasModeOwnershipBridge targetPicker wrappers own picker payload and territory mirrors', () => {
@@ -389,6 +395,7 @@ test('CanvasModeOwnershipBridge closeBlockingPanelsOwner keeps except panel and 
 test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirrors', () => {
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
   const shell = {
     showTaskCenter: true,
@@ -403,7 +410,7 @@ test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirr
     report: { id: 'report-1' },
     turnIndex: 0,
   });
-  host.openEventModal('event-1');
+  host.openEventSnapshot('event-1');
   host.openBlockingPanelOwner('showTaskCenter', true);
 
   const snapshot = host.buildRendererSnapshot({

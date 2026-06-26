@@ -28,7 +28,7 @@
               this.showCitySwitcher = false;
               this.showSubcityList = false;
               this.showCityManagement = false;
-              this.activeEventId = null;
+              this.closeEventSnapshot?.();
               this.showFamousPersons = false;
               this.activeCommandPanel = '';
               this.render();
@@ -283,13 +283,12 @@
             this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
             this.showSubcityList = false;
             this.activeCommandPanel = '';
-            this.activeEventId = null;
+            this.closeEventSnapshot?.();
             if (this.canvasShell) {
               this.canvasShell.showCityManagement = true;
               this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
               this.canvasShell.showSubcityList = false;
               this.canvasShell.activeCommandPanel = '';
-              this.canvasShell.activeEventId = null;
             }
             return this.renderCanvasSurface(this.state?.currentTab);
           },

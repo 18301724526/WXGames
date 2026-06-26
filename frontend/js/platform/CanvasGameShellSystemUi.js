@@ -78,7 +78,7 @@ openConfirmDialog(view = {}) {
       this.showAdvisor = false;
       this.showFamousPersons = false;
       this.activeCommandPanel = '';
-      this.activeEventId = null;
+      this.closeEventSnapshot?.();
       this.renderActive();
       return true;
     },
@@ -311,7 +311,7 @@ openNaming(view = {}) {
       this.showAdvisor = false;
       this.showFamousPersons = false;
       this.activeCommandPanel = '';
-      this.activeEventId = null;
+      this.closeEventSnapshot?.();
       this.renderActive();
       return true;
     },

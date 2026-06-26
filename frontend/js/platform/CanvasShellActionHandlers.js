@@ -370,7 +370,7 @@
 
       handle_goToAdvisorTarget(action, meta = {}) {
         this.host.showAdvisor = false;
-        this.host.activeEventId = null;
+        this.host.closeEventSnapshot?.();
         const game = this.getGameHost();
         if (game && game !== this.host) game.showAdvisor = false;
         const result = typeof game?.goToAdvisorTarget === 'function'

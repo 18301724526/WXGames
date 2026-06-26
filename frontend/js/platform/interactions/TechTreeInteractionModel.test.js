@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 
 const TechTreeInteractionModel = require('./TechTreeInteractionModel');
 const CanvasActionController = require('../CanvasActionController');
-const CanvasModeOwnershipBridge = require('../CanvasModeOwnershipBridge');
 const GameAPI = require('../../api/GameAPI');
 
 function createHost() {
@@ -423,19 +422,31 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
 test('CanvasActionController syncs opened event id across shell and game hosts', () => {
   const calls = [];
   const ownerCalls = [];
+  // Shared snapshot store: opening/closing on any related host fans out to all,
+  // mirroring the modal owner merge in CanvasModeOwnershipBridge.
+  const eventStore = { snapshot: null };
+  const eventSnapshotMock = {
+    openEventSnapshot(eventId) {
+      ownerCalls.push(['openEventSnapshot', eventId]);
+      eventStore.snapshot = eventId ? { eventId, visible: true } : null;
+      return eventId;
+    },
+    closeEventSnapshot() {
+      ownerCalls.push(['closeEventSnapshot']);
+      eventStore.snapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(eventStore.snapshot);
+    },
+    getEventSnapshot() {
+      return eventStore.snapshot;
+    },
+  };
   const shell = {
-    activeEventId: null,
+    ...eventSnapshotMock,
     activeCommandPanel: 'events',
     showTaskCenter: true,
     state: { eventQueue: [{ id: 'event-1' }] },
-    openEventModal(eventId) {
-      ownerCalls.push(['openEventModal', eventId]);
-      return CanvasModeOwnershipBridge.openEventModal(this, eventId);
-    },
-    closeEventOwner() {
-      ownerCalls.push(['closeEventOwner']);
-      return CanvasModeOwnershipBridge.closeEventOwner(this);
-    },
     getCanvasGameHost() {
       return game;
     },
@@ -445,7 +456,7 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
     },
   };
   const game = {
-    activeEventId: null,
+    ...eventSnapshotMock,
     canvasShell: shell,
     state: { eventQueue: [{ id: 'event-1' }] },
   };
@@ -453,28 +464,35 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
 
   assert.equal(controller.handle_openEvent({ type: 'openEvent', eventId: 'event-1' }), true);
 
-  assert.equal(shell.activeEventId, 'event-1');
-  assert.equal(game.activeEventId, 'event-1');
-  assert.equal(game.canvasShell.activeEventId, 'event-1');
+  assert.equal(shell.isEventSnapshotOpen(), true);
+  assert.equal(game.isEventSnapshotOpen(), true);
+  assert.equal(game.canvasShell.isEventSnapshotOpen(), true);
+  assert.equal(shell.getEventSnapshot().eventId, 'event-1');
   assert.equal(shell.activeCommandPanel, '');
   assert.equal(shell.showTaskCenter, false);
-  assert.deepEqual(ownerCalls, [['openEventModal', 'event-1']]);
+  assert.deepEqual(ownerCalls, [['openEventSnapshot', 'event-1']]);
   assert.deepEqual(calls, [['render']]);
 
   assert.equal(controller.handle_closeEvent({ type: 'closeEvent' }), true);
-  assert.equal(shell.activeEventId, null);
-  assert.equal(game.activeEventId, null);
-  assert.equal(game.canvasShell.activeEventId, null);
-  assert.deepEqual(ownerCalls, [['openEventModal', 'event-1'], ['closeEventOwner']]);
+  assert.equal(shell.isEventSnapshotOpen(), false);
+  assert.equal(game.isEventSnapshotOpen(), false);
+  assert.equal(game.canvasShell.isEventSnapshotOpen(), false);
+  assert.deepEqual(ownerCalls, [['openEventSnapshot', 'event-1'], ['closeEventSnapshot']]);
 });
 
 test('CanvasActionController refreshes lumbermill guide after event reward claim', async () => {
   const calls = [];
   const tutorial = { completed: false, currentStep: 13 };
+  const eventStore = { snapshot: { eventId: 'evt_settlement_forest_001', visible: true } };
   const shell = {
-    activeEventId: 'evt_settlement_forest_001',
     activeCommandPanel: 'events',
     state: { eventQueue: [{ id: 'evt_settlement_forest_001' }] },
+    closeEventSnapshot() {
+      eventStore.snapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(eventStore.snapshot);
+    },
     eventController: {
       open(eventId) {
         calls.push(['openEvent', eventId]);
@@ -505,8 +523,13 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
     },
   };
   const game = {
-    activeEventId: 'evt_settlement_forest_001',
     canvasShell: shell,
+    closeEventSnapshot() {
+      eventStore.snapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(eventStore.snapshot);
+    },
     tutorialController: {
       sync(nextTutorial) {
         calls.push(['syncTutorial', nextTutorial.currentStep]);
@@ -529,8 +552,8 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
     optionId: 'opt_collect_wood',
   }), true);
 
-  assert.equal(shell.activeEventId, null);
-  assert.equal(game.activeEventId, null);
+  assert.equal(shell.isEventSnapshotOpen(), false);
+  assert.equal(game.isEventSnapshotOpen(), false);
   assert.deepEqual(calls, [
     ['closeEvent'],
     ['openEvent', 'evt_settlement_forest_001'],
@@ -545,19 +568,22 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
 test('CanvasActionController opens task center above city management after lumbermill guide', () => {
   const calls = [];
   const ownerCalls = [];
+  const eventStore = { snapshot: { eventId: 'event-1', visible: true } };
   const shell = {
     showTaskCenter: false,
     showCityManagement: true,
     showSubcityList: true,
     activeCommandPanel: 'capital',
-    activeEventId: 'event-1',
     activeTaskCenterTab: '',
     getCanvasGameHost() {
       return game;
     },
-    closeEventOwner() {
-      ownerCalls.push(['shellCloseEventOwner']);
-      return CanvasModeOwnershipBridge.closeEventOwner(this);
+    closeEventSnapshot() {
+      ownerCalls.push(['shellCloseEventSnapshot']);
+      eventStore.snapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(eventStore.snapshot);
     },
     render() {
       calls.push(['render']);
@@ -569,12 +595,14 @@ test('CanvasActionController opens task center above city management after lumbe
     showCityManagement: true,
     showSubcityList: true,
     activeCommandPanel: 'capital',
-    activeEventId: 'event-1',
     activeTaskCenterTab: '',
     canvasShell: shell,
-    closeEventOwner() {
-      ownerCalls.push(['gameCloseEventOwner']);
-      return CanvasModeOwnershipBridge.closeEventOwner(this);
+    closeEventSnapshot() {
+      ownerCalls.push(['gameCloseEventSnapshot']);
+      eventStore.snapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(eventStore.snapshot);
     },
     tutorialController: {
       refreshCurrentHighlight() {
@@ -594,11 +622,11 @@ test('CanvasActionController opens task center above city management after lumbe
   assert.equal(game.showSubcityList, false);
   assert.equal(shell.activeCommandPanel, '');
   assert.equal(game.activeCommandPanel, '');
-  assert.equal(shell.activeEventId, null);
-  assert.equal(game.activeEventId, null);
+  assert.equal(shell.isEventSnapshotOpen(), false);
+  assert.equal(game.isEventSnapshotOpen(), false);
   assert.equal(shell.activeTaskCenterTab, 'main');
   assert.equal(game.activeTaskCenterTab, 'main');
-  assert.deepEqual(ownerCalls, [['shellCloseEventOwner'], ['gameCloseEventOwner']]);
+  assert.deepEqual(ownerCalls, [['shellCloseEventSnapshot'], ['gameCloseEventSnapshot']]);
   assert.deepEqual(calls, [['render'], ['refreshCurrentHighlight']]);
 });
 

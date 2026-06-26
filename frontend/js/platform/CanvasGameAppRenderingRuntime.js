@@ -138,6 +138,7 @@
             const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
             const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
             const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
+            const snapshotEvent = this.getEventSnapshot?.(rendererSnapshot) || null;
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
@@ -169,7 +170,7 @@
               pendingBuildingAction: this.pendingBuildingAction || this.canvasShell?.pendingBuildingAction || null,
               ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
               ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
-              activeEventId: this.activeEventId,
+              activeEventId: snapshotEvent?.eventId ?? null,
               territoryUiState: this.territoryUiState,
               ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
               ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
@@ -603,7 +604,7 @@
             this.showCitySwitcher = false;
             this.showSubcityList = false;
             this.showCityManagement = false;
-            this.activeEventId = null;
+            this.closeEventSnapshot?.();
             this.showTaskCenter = false;
             this.showGuidebook = false;
             this.showFamousPersons = false;
@@ -647,7 +648,7 @@
             this.techTreeZoom = 1;
             this.techDetailOpen = false;
             this.techTreeDragStart = null;
-            this.activeEventId = null;
+            this.closeEventSnapshot?.();
             this.territoryUiState = {
               ...(this.territoryUiState || {}),
               selectedSiteId: '',
@@ -749,7 +750,7 @@
             if (this.canvasShell) this.canvasShell.techDetailOpen = false;
             if (this.canvasShell) this.canvasShell.techTreeZoom = 1;
             this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
-            this.activeEventId = null;
+            this.closeEventSnapshot?.();
             this.renderMilitaryView();
             this.renderCanvasSurface(this.state.currentTab);
             if (this.skipNextSoftGuideRender) {

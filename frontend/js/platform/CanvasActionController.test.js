@@ -8,7 +8,7 @@ test('CanvasActionController closePanels routes blockingPanel owner before mirro
   const host = {
     showSettings: true,
     activeCommandPanel: 'events',
-    activeEventId: 'event-1',
+    __eventSnapshot: { eventId: 'event-1', visible: true },
     closeBlockingPanelsOwner(except) {
       calls.push([
         'closeBlockingPanelsOwner',
@@ -17,8 +17,12 @@ test('CanvasActionController closePanels routes blockingPanel owner before mirro
         this.activeCommandPanel,
       ]);
     },
-    closeEventOwner() {
-      calls.push(['closeEventOwner', this.activeEventId]);
+    closeEventSnapshot() {
+      calls.push(['closeEventSnapshot', this.__eventSnapshot?.eventId ?? null]);
+      this.__eventSnapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(this.__eventSnapshot);
     },
   };
   const controller = new CanvasActionController({ host });
@@ -27,11 +31,11 @@ test('CanvasActionController closePanels routes blockingPanel owner before mirro
 
   assert.deepEqual(calls, [
     ['closeBlockingPanelsOwner', [], true, 'events'],
-    ['closeEventOwner', 'event-1'],
+    ['closeEventSnapshot', 'event-1'],
   ]);
   assert.equal(host.showSettings, false);
   assert.equal(host.activeCommandPanel, '');
-  assert.equal(host.activeEventId, null);
+  assert.equal(host.isEventSnapshotOpen(), false);
 });
 
 test('CanvasActionController closePanelsEverywhere routes owner close across host, game, and shell', () => {

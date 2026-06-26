@@ -131,7 +131,13 @@ test('building action delegates to building controller and always clears pending
 test('event claim closes event state, syncs tutorial, and exposes reward reveal fallback', async () => {
   const calls = [];
   const game = {
-    activeEventId: 'event-1',
+    __eventSnapshot: { eventId: 'event-1', visible: true },
+    closeEventSnapshot() {
+      this.__eventSnapshot = null;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(this.__eventSnapshot);
+    },
     canvasShell: null,
     tutorialController: {
       sync(tutorial) {
@@ -143,7 +149,14 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
     },
   };
   const host = {
-    activeEventId: 'event-1',
+    __eventSnapshot: { eventId: 'event-1', visible: true },
+    closeEventSnapshot() {
+      this.__eventSnapshot = null;
+      game.closeEventSnapshot();
+    },
+    isEventSnapshotOpen() {
+      return Boolean(this.__eventSnapshot);
+    },
     lastGame: game,
     state: { eventQueue: [{ id: 'event-1' }] },
     eventController: {
@@ -182,8 +195,8 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
     optionId: 'collect',
   }), true);
 
-  assert.equal(host.activeEventId, null);
-  assert.equal(game.activeEventId, null);
+  assert.equal(host.isEventSnapshotOpen(), false);
+  assert.equal(game.isEventSnapshotOpen(), false);
   assert.deepEqual(host.getRewardRevealSnapshot(), { title: 'Wood', items: [{ id: 'wood', amount: 5 }] });
   assert.deepEqual(calls, [
     ['close'],

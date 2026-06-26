@@ -382,22 +382,22 @@ test('CanvasGameApp shows tutorial spine advisor dialogue after first house buil
   app.showCityManagement = true;
   app.showSubcityList = true;
   app.activeCommandPanel = 'capital';
-  app.activeEventId = 'event-1';
+  app.openEventSnapshot('event-1');
   app.canvasShell = {
     showCityManagement: true,
     showSubcityList: true,
     activeCommandPanel: 'capital',
-    activeEventId: 'event-1',
   };
   app.renderCanvasSurface = (tab) => calls.push(['renderCanvasSurface', tab]);
 
+  assert.equal(app.isEventSnapshotOpen(), true);
   assert.equal(app.maybeShowHouseBuiltAdvisor('build', 'house'), true);
 
   assert.equal(app.showAdvisor, false);
   assert.equal(app.showCityManagement, false);
   assert.equal(app.showSubcityList, false);
   assert.equal(app.activeCommandPanel, '');
-  assert.equal(app.activeEventId, null);
+  assert.equal(app.isEventSnapshotOpen(), false);
   assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
   assert.equal(app.tutorialAdvisorDialogue.advisorName, '谋士');
   assert.match(app.tutorialAdvisorDialogue.message, /民居已经建立起来/);
@@ -405,7 +405,6 @@ test('CanvasGameApp shows tutorial spine advisor dialogue after first house buil
   assert.equal(app.canvasShell.showCityManagement, false);
   assert.equal(app.canvasShell.showSubcityList, false);
   assert.equal(app.canvasShell.activeCommandPanel, '');
-  assert.equal(app.canvasShell.activeEventId, null);
   assert.equal(app.state.softGuide.target, 'tab-civilization');
   assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
 });
@@ -454,11 +453,10 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   };
   app.showCityManagement = true;
   app.activeCommandPanel = 'capital';
-  app.activeEventId = 'event-1';
+  app.openEventSnapshot('event-1');
   app.canvasShell = {
     showCityManagement: true,
     activeCommandPanel: 'capital',
-    activeEventId: 'event-1',
     renderReadOnly() {
       calls.push(['renderReadOnly', Boolean(app.pendingTutorialAdvisorDialogue)]);
     },
@@ -493,7 +491,7 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   assert.equal(app.showCityManagement, false);
   assert.equal(app.canvasShell.showCityManagement, false);
   assert.equal(app.canvasShell.activeCommandPanel, '');
-  assert.equal(app.canvasShell.activeEventId, null);
+  assert.equal(app.isEventSnapshotOpen(), false);
   assert.equal(app.canvasShell.tutorialHighlight, null);
   assert.equal(calls.some(([name]) => name === 'refreshCurrentHighlight'), false);
   assert.deepEqual(

@@ -397,6 +397,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-confirm-dialog-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-rewardreveal-mirror-retirement.js',
   'scripts/check-frontend-ecs-rewardreveal-mirror-retirement.test.js',
+  'scripts/check-frontend-ecs-event-mirror-retirement.js',
+  'scripts/check-frontend-ecs-event-mirror-retirement.test.js',
   'scripts/build-frontend-ecs-runtime.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
@@ -587,6 +589,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-confirm-dialog-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-rewardreveal-mirror-retirement.test.js',
+  'scripts/check-frontend-ecs-event-mirror-retirement.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -692,6 +695,9 @@ function main() {
   ]);
   run('frontend ECS rewardReveal mirror retirement blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-rewardreveal-mirror-retirement.js',
+  ]);
+  run('frontend ECS event mirror retirement blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-event-mirror-retirement.js',
   ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',

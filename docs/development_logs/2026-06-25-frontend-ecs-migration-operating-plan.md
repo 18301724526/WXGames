@@ -740,3 +740,42 @@ Batch 8C scope control:
 - Do not add new rewardReveal-specific bridge wrappers.
 - Do not keep `this.rewardReveal` as a compatibility fallback.
 - Do not mark 8C Completed before migration owner sign-off.
+
+## Batch 8D Event Mirror Removal Deliverables
+
+Batch 8D deletes the next sealed modal mirror: App/Shell `this.activeEventId`
+(the 3-way host/game/canvasShell mirror). The source of truth remains the ECS
+modal owner entry for `modal:event` (payload `{ eventId }`); renderer-facing
+state is derived through the renderer snapshot boundary. `EventController`'s own
+`activeEventId` claim cursor is a separate concern and stays untouched.
+
+Batch 8D approved runtime surfaces:
+
+| Surface                                                                                        | Status                           | Notes                                                                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/js/platform/CanvasModalSnapshotAdapter.js`                                           | Ready for Migration Owner Review | Adds event helpers (openEventSnapshot/closeEventSnapshot/getEventSnapshot/isEventSnapshotOpen) reading `snapshot.modal['modal:event']`                                                       |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`                                            | Ready for Migration Owner Review | openEventModal/closeEventOwner wrappers + syncEventMirrors removed; mode facts detect `modal:event` via `isAnyModalOpen`; the snapshot merge fans a single open/close across host+game+shell |
+| `frontend/js/platform/CanvasCityActionHandlers.js`                                             | Ready for Migration Owner Review | Event open/close + the 3-way afterEventClaimed close route through the snapshot adapter                                                                                                      |
+| `frontend/js/platform/CanvasActionController.js`                                               | Ready for Migration Owner Review | closePanels/closePanelsOn use `closeEventSnapshot()`; the `'activeEventId'` keep-set string token is preserved as a control-flow key                                                         |
+| `frontend/js/tutorial/TutorialGuideController.js` / `TutorialGuideUiStateCoordinator.js`       | Ready for Migration Owner Review | setIfChanged + patch-key mirror writes migrated to `closeEventSnapshot()`; reads use `getEventSnapshot()`/`isEventSnapshotOpen()` keeping the EventController cursor fallback                |
+| `frontend/js/platform/CanvasGameAppRenderingRuntime.js` / `CanvasGameShellRenderingRuntime.js` | Ready for Migration Owner Review | Render options emit `activeEventId` only from `getEventSnapshot()?.eventId`                                                                                                                  |
+| `scripts/check-frontend-ecs-event-mirror-retirement.js`                                        | Ready for Migration Owner Review | Blocks host-prefixed `activeEventId` mirror access + retired wrappers + the `setIfChanged(...,'activeEventId',...)` and `activeEventId: null` patch-key idioms; excludes EventController.js  |
+
+Batch 8D execution checklist:
+
+| Step                                               | Status                           | Artifact / Gate                                                       | Acceptance Standard                                                                                                   |
+| -------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 8D-1. Delete activeEventId mirror fields           | Ready for Migration Owner Review | `CanvasGameApp.js`, `CanvasGameShell.js`                              | No constructor `this.activeEventId` field remains                                                                     |
+| 8D-2. Delete activeEventId mirror write/read sites | Ready for Migration Owner Review | action handlers, commands, reset paths, input routers, tutorial layer | No App/Shell `activeEventId` mirror accesses remain; 2-way/3-way closes collapse to one `closeEventSnapshot()`        |
+| 8D-3. Delete event bridge wrappers                 | Ready for Migration Owner Review | `CanvasModeOwnershipBridge.js`                                        | `openEventModal` / `closeEventOwner` (and sync helpers) removed                                                       |
+| 8D-4. Snapshot-renderer migration                  | Ready for Migration Owner Review | App/Shell rendering runtimes                                          | `activeEventId` render option emitted only from `snapshot.modal['modal:event']` payload                               |
+| 8D-5. Guard upgrade                                | Ready for Migration Owner Review | event retirement guard, architecture smoke                            | Extended guard (mirror + setIfChanged + patch-key) reports 0 violations and is wired into `npm run test:architecture` |
+| 8D-6. Behavior and guard tests                     | Ready for Migration Owner Review | bridge/city/action-controller/command/tutorial tests                  | Snapshot open/close fan-out, EventController cursor untouched, retired-wrapper absence; full `npm test` green         |
+| 8D-7. Progress / operating plan / batch doc        | Ready for Migration Owner Review | progress doc, operating plan, 8D batch doc                            | 8D documented as Ready for Review, not Completed                                                                      |
+
+Batch 8D scope control:
+
+- Do not delete targetPicker or blockingPanel mirrors in this slice.
+- Do not route `EventController.activeEventId` (the claim cursor) through the modal owner.
+- Do not keep `this.activeEventId` as a compatibility fallback.
+- Do not mark 8D Completed before migration owner sign-off.

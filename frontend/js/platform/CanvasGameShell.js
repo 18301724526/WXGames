@@ -173,7 +173,6 @@ constructor(options = {}) {
       this.worldMapPinchDragging = false;
       this.tileMapWaterTimer = null;
       this.networkOverlayTimer = null;
-      this.activeEventId = null;
       this.territoryUiState = {};
       this.auth = {
         view: {

@@ -452,7 +452,7 @@
             this.showCityManagement = false;
             this.showSubcityList = false;
             this.activeCommandPanel = '';
-            this.activeEventId = null;
+            this.closeEventSnapshot?.();
             this.tutorialHighlight = null;
             this.tutorialAdvisorDialogue = { message, advisorName: t('tutorial.advisorName'), source: 'houseBuilt' };
             if (this.canvasShell) {
@@ -460,7 +460,6 @@
               this.canvasShell.showCityManagement = false;
               this.canvasShell.showSubcityList = false;
               this.canvasShell.activeCommandPanel = '';
-              this.canvasShell.activeEventId = null;
               this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
               this.canvasShell.tutorialHighlight = null;
             }
@@ -736,11 +735,10 @@
               this.closeCitySwitcher({ skipRender: true });
               this.showSubcityList = false;
               this.activeCommandPanel = '';
-              this.activeEventId = null;
+              this.closeEventSnapshot?.();
               if (this.canvasShell) {
                 this.canvasShell.showSubcityList = false;
                 this.canvasShell.activeCommandPanel = '';
-                this.canvasShell.activeEventId = null;
               }
               if (targetCityId !== currentCityId) {
                 const result = await this.getGameApi().switchCity(targetCityId);
