@@ -5,12 +5,12 @@
 | Field            | Value                                                                                    |
 | ---------------- | ---------------------------------------------------------------------------------------- |
 | Batch            | `5. Panel/Modal Ownership`                                                               |
-| Slice            | `5b (rewardReveal sealed; event Ready for Review)`                                       |
-| State            | `event Ready for Migration Owner Review`                                                 |
+| Slice            | `5b (rewardReveal + event sealed)`                                                       |
+| State            | `Completed`                                                                              |
 | ECS modal owner  | `frontend/js/ecs/mode/ModalWorld.js` (reused)                                            |
 | Bridge surface   | `openRewardRevealModal` / `closeRewardRevealOwner`; `openEventModal` / `closeEventOwner` |
 | Seal enforced by | existing `check-frontend-ecs-mode-ownership-spine.js`                                    |
-| Last updated     | `2026-06-26 11:41:20 +08:00`                                                             |
+| Last updated     | `2026-06-26 13:59:23 +08:00`                                                             |
 
 ## Decision
 
@@ -89,4 +89,4 @@ The event lighter pass keeps behavior scoped to canonical event open/close and c
 
 ## Review Result
 
-`event` sealing is `Ready for Migration Owner Review` after the approved lighter design implementation. It must not be marked `Completed` until migration owner review confirms the bridge wrappers, canonical open/close routing, central closePanels owner-close routing, host/game/canvasShell mirror sync, scattered legacy mirror clear scope, and `EventController.activeEventId` claim-cursor isolation. Slices 5c/5d remain gated behind their own sealed slices.
+`event` sealing is `Completed` after migration owner sign-off on `2026-06-26 13:59:23 +08:00`. The review accepted the approved lighter design implementation: bridge wrappers, canonical open/close routing, central closePanels owner-close routing, host/game/canvasShell mirror sync, scattered legacy mirror clear scope, and `EventController.activeEventId` claim-cursor isolation. Implementation commit `58a77bbf` was pushed to `origin/codex/refactor-tutorial-guide-architecture`; slices 5c/5d remain gated behind their own sealed slices.
