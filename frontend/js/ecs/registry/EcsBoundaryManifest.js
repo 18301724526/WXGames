@@ -1,7 +1,7 @@
 'use strict';
 
 const MANIFEST_VERSION = 'ecs-boundary-manifest-v1';
-const BATCH = '4. Input Intent Boundary';
+const BATCH = '6A. Snapshot Boundary Scaffold';
 
 function freezeList(values) {
   return Object.freeze(Array.from(values));
@@ -65,6 +65,7 @@ const SNAPSHOT_KEYS = freezeList([
   'BattleSnapshot',
   'TutorialSnapshot',
   'DebugSnapshot',
+  'RendererSnapshot',
 ]);
 
 const BRIDGE_LIFECYCLE_POLICY = freezeRecord({
@@ -89,6 +90,7 @@ const RUNTIME_LOADING_POLICY = freezeRecord({
     'frontend/js/ecs/registry/**',
     'frontend/js/ecs/mode/**',
     'frontend/js/ecs/input/**',
+    'frontend/js/ecs/snapshot/**',
   ]),
 });
 

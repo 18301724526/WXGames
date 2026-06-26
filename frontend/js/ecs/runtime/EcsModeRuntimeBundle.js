@@ -2144,6 +2144,151 @@ var EcsModeRuntime = (() => {
     },
   });
 
+  // frontend/js/ecs/snapshot/RendererSnapshotBoundary.js
+  var require_RendererSnapshotBoundary = __commonJS({
+    'frontend/js/ecs/snapshot/RendererSnapshotBoundary.js'(exports, module) {
+      'use strict';
+      var SCHEMA = 'renderer-snapshot-v1';
+      var MODAL_SUBTYPES = Object.freeze([
+        'modal:naming',
+        'modal:event',
+        'modal:rewardReveal',
+        'modal:confirmDialog',
+        'modal:targetPicker',
+        'modal:blockingPanel',
+      ]);
+      var PANEL_KEYS = Object.freeze([
+        'showSettings',
+        'showLogs',
+        'showResourceDetails',
+        'showCitySwitcher',
+        'showSubcityList',
+        'showCityManagement',
+        'showAdvisor',
+        'showTaskCenter',
+        'showGuidebook',
+        'showFamousPersons',
+        'activeCommandPanel',
+        'techDetailOpen',
+      ]);
+      var PANEL_DEFAULTS = Object.freeze({
+        showSettings: false,
+        showLogs: false,
+        showResourceDetails: false,
+        showCitySwitcher: false,
+        showSubcityList: false,
+        showCityManagement: false,
+        showAdvisor: false,
+        showTaskCenter: false,
+        showGuidebook: false,
+        showFamousPersons: false,
+        activeCommandPanel: '',
+        techDetailOpen: false,
+      });
+      var MODE_DEFAULTS = Object.freeze({
+        baseModeId: 0,
+        baseModeKey: 'city',
+        modalMask: 0,
+        modalKeys: Object.freeze([]),
+        tutorialActive: false,
+        debugActive: false,
+        blockingOverlayActive: false,
+        techTreeBlockingOverlayActive: false,
+        entityBattleActive: false,
+        worldMapHomeActive: false,
+        techTreeActive: false,
+        formationEditorActive: false,
+        topCaptureModeId: 0,
+        topCaptureModeKey: 'city',
+        canRouteWorldMap: false,
+        canRouteTechTree: false,
+      });
+      function cloneSerializable(value) {
+        if (typeof value === 'function' || typeof value === 'undefined') return null;
+        if (value == null) return null;
+        if (Array.isArray(value))
+          return Object.freeze(value.map((item) => cloneSerializable(item)));
+        if (typeof value === 'object') {
+          const copy = {};
+          Object.keys(value)
+            .sort()
+            .forEach((key) => {
+              const next = value[key];
+              if (typeof next === 'function' || typeof next === 'undefined') return;
+              copy[key] = cloneSerializable(next);
+            });
+          return Object.freeze(copy);
+        }
+        return value;
+      }
+      function readEntry(modalWorld, subtype) {
+        return (modalWorld && modalWorld.entries && modalWorld.entries[subtype]) || null;
+      }
+      function buildModalSnapshot(modalWorld = null) {
+        const modal = {};
+        MODAL_SUBTYPES.forEach((subtype) => {
+          const entry = readEntry(modalWorld, subtype);
+          const open = Boolean(entry?.visible);
+          modal[subtype] = Object.freeze({
+            open,
+            token: open ? String(entry.token || '') : '',
+            payload: open ? cloneSerializable(entry.payload || {}) : null,
+          });
+        });
+        return Object.freeze(modal);
+      }
+      function normalizePanelValue(panelKey, value) {
+        if (panelKey === 'activeCommandPanel') return String(value || '');
+        return Boolean(value);
+      }
+      function buildPanelSnapshot(panelFacts = {}) {
+        const panel = {};
+        PANEL_KEYS.forEach((panelKey) => {
+          const value = Object.prototype.hasOwnProperty.call(panelFacts, panelKey)
+            ? panelFacts[panelKey]
+            : PANEL_DEFAULTS[panelKey];
+          panel[panelKey] = normalizePanelValue(panelKey, value);
+        });
+        return Object.freeze(panel);
+      }
+      function buildModeSnapshot(modeFacts = null) {
+        const source = modeFacts && typeof modeFacts === 'object' ? modeFacts : {};
+        const mode = {};
+        Object.keys(MODE_DEFAULTS).forEach((key) => {
+          const value = Object.prototype.hasOwnProperty.call(source, key)
+            ? source[key]
+            : MODE_DEFAULTS[key];
+          mode[key] = cloneSerializable(value);
+        });
+        return Object.freeze(mode);
+      }
+      function buildRendererSnapshot(facts = {}) {
+        return Object.freeze({
+          schema: SCHEMA,
+          modal: buildModalSnapshot(facts.modalWorld || null),
+          panel: buildPanelSnapshot(facts.panel || {}),
+          mode: buildModeSnapshot(facts.mode || null),
+        });
+      }
+      function isRendererSnapshot(value) {
+        return Boolean(
+          value && value.schema === SCHEMA && value.modal && value.panel && value.mode,
+        );
+      }
+      var api = Object.freeze({
+        MODAL_SUBTYPES,
+        MODE_DEFAULTS,
+        PANEL_DEFAULTS,
+        PANEL_KEYS,
+        SCHEMA,
+        buildRendererSnapshot,
+        isRendererSnapshot,
+      });
+      if (typeof globalThis !== 'undefined') globalThis.EcsRendererSnapshotBoundary = api;
+      if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    },
+  });
+
   // frontend/js/ecs/mode/EcsModeRuntimeEntry.js
   var require_EcsModeRuntimeEntry = __commonJS({
     'frontend/js/ecs/mode/EcsModeRuntimeEntry.js'(exports, module) {
@@ -2154,6 +2299,7 @@ var EcsModeRuntime = (() => {
       var ModalWorld = require_ModalWorld();
       var InputIntent = require_InputIntent();
       var InputIntentResolver = require_InputIntentResolver();
+      var RendererSnapshotBoundary = require_RendererSnapshotBoundary();
       var EcsModeRuntime = Object.freeze({
         ...ModeKeys,
         ...ModeResolver,
@@ -2161,8 +2307,9 @@ var EcsModeRuntime = (() => {
         ...InputIntentResolver,
         ModeComponents,
         ModalWorld,
+        RendererSnapshotBoundary,
         InputIntent,
-        version: 'ecs-mode-runtime-batch-5a',
+        version: 'ecs-mode-runtime-batch-6a',
       });
       if (typeof globalThis !== 'undefined') {
         globalThis.EcsModeRuntime = EcsModeRuntime;

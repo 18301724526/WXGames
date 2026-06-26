@@ -52,6 +52,7 @@ test('mode ownership spine guard parses 0A markdown findings', () => {
 test('mode ownership spine guard allows approved owner and bridge paths', () => {
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/mode/ModeWorld.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/runtime/EcsModeRuntimeBundle.js'), true);
+  assert.equal(isApprovedGrowthPath('frontend/js/ecs/snapshot/RendererSnapshotBoundary.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModeOwnershipBridge.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/registry/EcsBoundaryManifest.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameShellInputRouter.js'), false);

@@ -502,3 +502,42 @@ Batch 5 acceptance owner:
 - Slice 5c (`targetPicker`) is `Completed` after migration owner sign-off at `2026-06-26 14:47:06 +08:00`: canonical `worldTargetPicker` and `worldMarchTarget.pickerOpen` modal opens route through `CanvasModeOwnershipBridge` wrappers into `modal:targetPicker`, while non-picker world-march target state and scattered null clears stay legacy/domain behavior. A dedicated `scripts/check-frontend-ecs-target-picker-ownership.js` blocking guard prevents non-owner picker opens outside the approved bridge path and is wired into architecture smoke. Verified locally with `npm run test:architecture` 1195 tests, targetPicker ownership guard 0 violations, mode-ownership-spine guard 0 violations, lint, format, and `git diff --check`. Slice 5d (`blockingPanel`) may start and remains gated behind its own sealed slice.
 - Slice 5d (`blockingPanel`) is `Completed` after migration owner sign-off at `2026-06-26 15:34:13 +08:00`: the lighter umbrella owner routes canonical shell/city/famous blocking-panel opens through `CanvasModeOwnershipBridge` wrappers into `modal:blockingPanel`, while business state such as tabs, selected tech, and famous-person paging remains domain-owned. Central closePanels paths close the owner before legacy mirror clearing. A dedicated `scripts/check-frontend-ecs-blocking-panel-ownership.js` blocking guard prevents non-owner canonical opens outside the bridge, grandfathers existing 0A baseline opens and tutorial coordinator scattered opens, and is wired into architecture smoke. Verified with targeted owner/action/guard tests, blockingPanel ownership guard 0 violations, mode-ownership-spine guard 0 violations, `npm run lint`, `npm run format:check`, `npm run test:architecture` 1209 tests, and `git diff --check`.
 - Batch 5 is fully `Completed`; Batch 6 (`Snapshot Boundary`) may start after the Batch 5 completion commit reaches the server branch.
+
+Batch 6A first-window deliverables:
+
+Batch 6A establishes the renderer snapshot boundary scaffold without migrating broad renderer read paths. The snapshot contract covers only Batch 5 sealed modal/panel read facts plus whitelisted mode-routing facts. Existing direct renderer reads are inventoried and grandfathered; later Batch 6 sub-slices should migrate one reader group at a time and reduce that baseline.
+
+Batch 6A approved runtime ECS surfaces:
+
+| Surface                                                    | Status                    | Notes                                                                                              |
+| ---------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`     | Owner source only         | Pure frozen snapshot builder for sealed Batch 5 modal/panel facts and whitelisted mode facts       |
+| `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`          | Approved runtime artifact | Regenerated to expose `RendererSnapshotBoundary` inside the single H5/minigame ECS runtime bundle  |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`        | Temporary bridge          | Adds null-safe `buildRendererSnapshot` / `getRendererSnapshot` read-only helpers                   |
+| `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` | Blocking guard            | Blocks new direct renderer reads of covered sealed fields beyond the Batch 6A grandfather baseline |
+
+Batch 6A scope control:
+
+Batch 6A does not:
+
+- migrate existing renderer readers to consume the snapshot
+- migrate task tabs, selected tech, famous-person paging/detail, world-march target contents, or other gameplay/domain state
+- migrate `getHitTarget`, renderer caches, hit-target authority, or world-map picking authority
+- add any raw ECS runtime script outside `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`
+
+Batch 6A execution checklist:
+
+| Step                                              | Status                           | Artifact / Gate                                            | Acceptance Standard                                                                                   |
+| ------------------------------------------------- | -------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 6A-1. Snapshot boundary module                    | Ready for Migration Owner Review | `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`     | Frozen serializable `renderer-snapshot-v1`; sealed modal/panel facts only; no domain-state payloads   |
+| 6A-2. Runtime bundle regeneration                 | Ready for Migration Owner Review | `EcsModeRuntimeEntry.js`, `EcsModeRuntimeBundle.js`        | Boundary exposed through the existing generated runtime bundle                                        |
+| 6A-3. Bridge read-only helper                     | Ready for Migration Owner Review | `CanvasModeOwnershipBridge.js`                             | `buildRendererSnapshot` / `getRendererSnapshot` are null-safe and do not create source-of-truth state |
+| 6A-4. Renderer snapshot boundary guard            | Ready for Migration Owner Review | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` | Current direct reads are grandfathered; new direct covered reads outside approved paths are blocked   |
+| 6A-5. Guard, bridge, boundary, and manifest tests | Ready for Migration Owner Review | targeted `node --test` suite                               | Snapshot contract, guard baseline, manifest, and bridge helper behavior are covered                   |
+| 6A-6. Architecture smoke integration              | Ready for Migration Owner Review | `scripts/run-architecture-smoke.js`                        | Smoke runs the new guard and tests as blocking                                                        |
+| 6A-7. Progress and batch document update          | Ready for Migration Owner Review | progress doc and Batch 6A batch doc                        | 6A documented as Ready for Review, not Completed                                                      |
+
+Batch 6A acceptance owner:
+
+- Migration owner: project main engineer or explicitly assigned architecture owner.
+- 6A may move to `Completed` only after migration owner sign-off. Until then it remains `Ready for Migration Owner Review`.

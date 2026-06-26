@@ -198,6 +198,12 @@
     return EcsModeRuntime && EcsModeRuntime.ModalWorld ? EcsModeRuntime.ModalWorld : null;
   }
 
+  function getRendererSnapshotBoundaryApi() {
+    return EcsModeRuntime && EcsModeRuntime.RendererSnapshotBoundary
+      ? EcsModeRuntime.RendererSnapshotBoundary
+      : null;
+  }
+
   function ensureModalOwner(host) {
     const ModalWorld = getModalWorldApi();
     if (!ModalWorld) return null;
@@ -463,6 +469,43 @@
     return null;
   }
 
+  function buildRendererPanelFacts(host) {
+    const game = host?.getCanvasGameHost?.() || getStateHost(host);
+    const shell = game?.canvasShell || host?.canvasShell || host?.lastGame?.canvasShell || null;
+    const source = shell || game || host || {};
+    return {
+      showSettings: isTruthy(source.showSettings),
+      showLogs: isTruthy(source.showLogs),
+      showResourceDetails: isTruthy(source.showResourceDetails),
+      showCitySwitcher: isTruthy(source.showCitySwitcher),
+      showSubcityList: isTruthy(source.showSubcityList),
+      showCityManagement: isTruthy(source.showCityManagement),
+      showAdvisor: isTruthy(source.showAdvisor),
+      showTaskCenter: isTruthy(source.showTaskCenter),
+      showGuidebook: isTruthy(source.showGuidebook),
+      showFamousPersons: isTruthy(source.showFamousPersons),
+      activeCommandPanel: String(source.activeCommandPanel || ''),
+      techDetailOpen: isTruthy(source.techDetailOpen),
+    };
+  }
+
+  function buildRendererSnapshot(host, options = {}) {
+    const RendererSnapshotBoundary = getRendererSnapshotBoundaryApi();
+    if (!host || !RendererSnapshotBoundary?.buildRendererSnapshot) return null;
+    const mode = options.mode || getModeSnapshot(host) || getFallbackModeFacts(host);
+    const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
+      modalWorld: host.__ecsModalOwner || null,
+      panel: buildRendererPanelFacts(host),
+      mode,
+    });
+    host.__ecsRendererSnapshot = snapshot;
+    return snapshot;
+  }
+
+  function getRendererSnapshot(host) {
+    return host?.__ecsRendererSnapshot || buildRendererSnapshot(host) || null;
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -508,6 +551,14 @@
 
       resolveInputIntent(physicalIntent) {
         return resolveInputIntent(this, physicalIntent);
+      },
+
+      buildRendererSnapshot(options = {}) {
+        return buildRendererSnapshot(this, options);
+      },
+
+      getRendererSnapshot() {
+        return getRendererSnapshot(this);
       },
 
       openModal(subtype, payload, callbacks) {
@@ -634,9 +685,11 @@
     closeEventOwner,
     closeTargetPickerOwner,
     collectModalKeys,
+    buildRendererSnapshot,
     deriveModeFacts,
     getModalPayload,
     getModeSnapshot,
+    getRendererSnapshot,
     hasBlockingOverlayExceptTechTree,
     install,
     isModalOpen,

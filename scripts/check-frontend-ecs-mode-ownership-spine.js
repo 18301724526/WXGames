@@ -6,6 +6,7 @@ const { scanModeOwnership } = require('./report-frontend-ecs-mode-ownership');
 const BASELINE_PATH = 'docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md';
 const APPROVED_MODE_OWNER_PATHS = Object.freeze([
   'frontend/js/ecs/mode/',
+  'frontend/js/ecs/snapshot/',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
 ]);
 const APPROVED_MODE_BRIDGE_PATHS = Object.freeze([

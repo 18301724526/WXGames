@@ -14,6 +14,7 @@ test('EcsBoundaryManifest declares the reviewed Batch 2 owner vocabulary', () =>
       'frontend/js/ecs/registry/**',
       'frontend/js/ecs/mode/**',
       'frontend/js/ecs/input/**',
+      'frontend/js/ecs/snapshot/**',
     ],
   });
   assert.deepEqual(EcsBoundaryManifest.ownerRoles, [
@@ -56,6 +57,7 @@ test('EcsBoundaryManifest locks snapshot keys and bridge lifecycle policy', () =
     'BattleSnapshot',
     'TutorialSnapshot',
     'DebugSnapshot',
+    'RendererSnapshot',
   ]);
   assert.equal(EcsBoundaryManifest.bridgeLifecyclePolicy.maxLifetimeBatches, 2);
   assert.equal(EcsBoundaryManifest.bridgeLifecyclePolicy.maxLifetimeDays, 14);

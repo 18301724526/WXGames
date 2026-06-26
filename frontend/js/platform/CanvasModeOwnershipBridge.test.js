@@ -373,3 +373,57 @@ test('CanvasModeOwnershipBridge closeBlockingPanelsOwner keeps except panel and 
   assert.equal(host.isModalOpen('modal:blockingPanel'), false);
   assert.equal(host.showTaskCenter, false);
 });
+
+test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirrors', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  const shell = {
+    showTaskCenter: true,
+    activeCommandPanel: 'tech',
+    techDetailOpen: false,
+    selectedTechId: 'tech-1',
+  };
+  const game = { canvasShell: shell, showTaskCenter: false, activeCommandPanel: '' };
+  host.getCanvasGameHost = () => game;
+  host.openEventModal('event-1');
+  host.openBlockingPanelOwner('showTaskCenter', true);
+
+  const snapshot = host.buildRendererSnapshot({
+    mode: {
+      baseModeKey: 'techTree',
+      modalKeys: ['modal:event', 'modal:blockingPanel'],
+      selectedTechId: 'tech-1',
+    },
+  });
+
+  assert.equal(snapshot.schema, 'renderer-snapshot-v1');
+  assert.equal(Object.isFrozen(snapshot), true);
+  assert.deepEqual(snapshot.modal['modal:event'].payload, { eventId: 'event-1' });
+  assert.equal(snapshot.modal['modal:blockingPanel'].payload.panelKey, 'showTaskCenter');
+  assert.equal(snapshot.panel.showTaskCenter, true);
+  assert.equal(snapshot.panel.activeCommandPanel, 'tech');
+  assert.equal(snapshot.panel.selectedTechId, undefined);
+  assert.equal(snapshot.mode.baseModeKey, 'techTree');
+  assert.equal(snapshot.mode.selectedTechId, undefined);
+  assert.equal(host.getRendererSnapshot(), snapshot);
+
+  assert.equal(CanvasModeOwnershipBridge.getRendererSnapshot(host), snapshot);
+});
+
+test('CanvasModeOwnershipBridge renderer snapshot helper is null-safe without runtime boundary', () => {
+  const previousRuntime = global.EcsModeRuntime;
+  delete require.cache[require.resolve('./CanvasModeOwnershipBridge')];
+  global.EcsModeRuntime = { ...previousRuntime, RendererSnapshotBoundary: null };
+  const bridge = require('./CanvasModeOwnershipBridge');
+  const host = {};
+
+  try {
+    assert.equal(bridge.buildRendererSnapshot(host), null);
+    assert.equal(bridge.getRendererSnapshot(host), null);
+  } finally {
+    global.EcsModeRuntime = previousRuntime;
+    delete require.cache[require.resolve('./CanvasModeOwnershipBridge')];
+    require('./CanvasModeOwnershipBridge');
+  }
+});

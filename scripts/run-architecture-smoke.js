@@ -16,6 +16,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/ecs/mode/ModalWorld.js',
   'frontend/js/ecs/mode/ModalWorld.test.js',
+  'frontend/js/ecs/snapshot/RendererSnapshotBoundary.js',
+  'frontend/js/ecs/snapshot/RendererSnapshotBoundary.test.js',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
   'frontend/js/ecs/input/InputIntent.js',
   'frontend/js/ecs/input/InputIntent.test.js',
@@ -381,6 +383,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-target-picker-ownership.test.js',
   'scripts/check-frontend-ecs-blocking-panel-ownership.js',
   'scripts/check-frontend-ecs-blocking-panel-ownership.test.js',
+  'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
+  'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/build-frontend-ecs-runtime.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
@@ -400,6 +404,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/ecs/registry/EcsBoundaryManifest.test.js',
   'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/ecs/mode/ModalWorld.test.js',
+  'frontend/js/ecs/snapshot/RendererSnapshotBoundary.test.js',
   'frontend/js/ecs/input/InputIntent.test.js',
   'frontend/js/ecs/input/InputIntentResolver.test.js',
   'frontend/js/platform/CanvasLayerRegistry.test.js',
@@ -563,6 +568,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
   'scripts/check-frontend-ecs-target-picker-ownership.test.js',
   'scripts/check-frontend-ecs-blocking-panel-ownership.test.js',
+  'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -653,6 +659,9 @@ function main() {
   ]);
   run('frontend ECS blockingPanel ownership blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-blocking-panel-ownership.js',
+  ]);
+  run('frontend ECS renderer snapshot boundary blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
   ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',
