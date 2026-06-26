@@ -143,6 +143,7 @@ require('../js/platform/CanvasGameAppCommands');
 require('../js/platform/CanvasGameAppGuideUi');
 require('../js/platform/CanvasGameAppInputRouter');
 require('../js/platform/CanvasModeOwnershipBridge');
+require('../js/platform/CanvasModalSnapshotAdapter');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();

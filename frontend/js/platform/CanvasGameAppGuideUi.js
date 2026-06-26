@@ -23,7 +23,7 @@
             this.activeNamingPrompt = prompt;
             this.activeNamingPromptKey = view.key;
             const namingState = { visible: true, view, prompt, inputValue: '', submitting: false };
-            this.naming = typeof this.openNamingModal === 'function' ? this.openNamingModal(namingState) : namingState;
+            this.openNamingSnapshot?.(namingState);
               this.showResourceDetails = false;
               this.showCitySwitcher = false;
               this.showSubcityList = false;
@@ -31,7 +31,6 @@
               this.activeEventId = null;
               this.showFamousPersons = false;
               this.activeCommandPanel = '';
-              if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
               this.render();
               this.scheduleTutorialHighlightRefresh(80);
           },
@@ -39,9 +38,7 @@
       closeNaming() {
             this.activeNamingPrompt = null;
             this.activeNamingPromptKey = null;
-            if (typeof this.closeNamingOwner === 'function') this.closeNamingOwner();
-            this.naming = { visible: false, view: null, prompt: null, inputValue: '', submitting: false };
-            if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
+            this.closeNamingSnapshot?.();
             this.render();
           },
 
@@ -63,19 +60,19 @@
           },
 
       async requestNamingInput() {
-            if (!this.naming.visible || typeof this.runtime.requestTextInput !== 'function') return;
-            const view = this.naming.view || {};
+            const naming = this.getNamingSnapshot?.() || null;
+            if (!naming?.visible || typeof this.runtime.requestTextInput !== 'function') return;
+            const view = naming.view || {};
             const value = await this.runtime.requestTextInput({
               title: view.title || t('shell.naming.title'),
               message: view.message || '',
               placeholder: view.placeholder || '',
-              value: this.naming.inputValue || '',
+              value: naming.inputValue || '',
               maxLength: view.maxLength || 12,
             });
-            if (value === null || value === undefined || !this.naming.visible) return;
+            if (value === null || value === undefined || !this.isNamingSnapshotOpen?.()) return;
             const inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
-            this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ inputValue }) : { ...this.naming, inputValue };
-            if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
+            this.updateNamingSnapshot?.({ inputValue });
             this.render();
             this.scheduleTutorialHighlightRefresh(0);
           },
@@ -85,12 +82,12 @@
           },
 
       async submitNamingValue(inputName = null) {
-            const prompt = this.activeNamingPrompt || this.naming.prompt || {};
-            const name = String(inputName ?? this.naming.inputValue ?? '').trim();
+            const naming = this.getNamingSnapshot?.() || null;
+            const prompt = this.activeNamingPrompt || naming?.prompt || {};
+            const name = String(inputName ?? naming?.inputValue ?? '').trim();
             if (!prompt.type || !name) return;
             let tutorialHandledView = false;
-            this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ submitting: true }) : { ...this.naming, submitting: true };
-            if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
+            this.updateNamingSnapshot?.({ submitting: true });
             this.render();
             try {
               const api = this.getGameApi();
@@ -106,7 +103,7 @@
             } catch (error) {
               this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
             } finally {
-              this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ submitting: false }) : { ...this.naming, submitting: false }; if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
+              this.updateNamingSnapshot?.({ submitting: false });
               if (!tutorialHandledView) this.renderCanvasSurface(this.state?.currentTab);
             }
           },

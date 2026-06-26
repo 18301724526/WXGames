@@ -300,7 +300,7 @@ requestAuthInput(field) {
 
 openNaming(view = {}) {
       const namingState = { visible: true, view, inputValue: '', submitting: false };
-      this.naming = typeof this.openNamingModal === 'function' ? this.openNamingModal(namingState) : namingState;
+      this.openNamingSnapshot?.(namingState);
       this.showSettings = false;
       this.showLogs = false;
       this.showResourceDetails = false;
@@ -316,26 +316,26 @@ openNaming(view = {}) {
     },
 
 closeNaming() {
-      if (typeof this.closeNamingOwner === 'function') this.closeNamingOwner();
-      this.naming = { visible: false, view: null, inputValue: '', submitting: false };
+      this.closeNamingSnapshot?.();
       this.renderActive();
       return true;
     },
 
 getNamingName() {
-      return String(this.naming?.inputValue || '').trim();
+      return this.getNamingInputValue?.() || '';
     },
 
 setNamingSubmitting(isSubmitting) {
       const submitting = Boolean(isSubmitting);
-      this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ submitting }) : { ...this.naming, submitting };
+      this.updateNamingSnapshot?.({ submitting });
       this.renderActive();
     },
 
 requestNamingInput() {
-      if (!this.naming?.visible) return false;
-      const view = this.naming.view || {};
-      const currentValue = this.naming.inputValue || '';
+      const naming = this.getNamingSnapshot?.() || null;
+      if (!naming?.visible) return false;
+      const view = naming.view || {};
+      const currentValue = naming.inputValue || '';
       if (!this.runtime || typeof this.runtime.requestTextInput !== 'function') return false;
       Promise.resolve(this.runtime.requestTextInput({
         title: view.title || t('shell.naming.title'),
@@ -344,10 +344,10 @@ requestNamingInput() {
         value: currentValue,
         maxLength: view.maxLength || 12,
       })).then((value) => {
-        if (value === null || value === undefined || !this.naming?.visible) return;
+        if (value === null || value === undefined || !this.isNamingSnapshotOpen?.()) return;
         const maxLength = Number(view.maxLength) || 12;
         const inputValue = String(value).trim().slice(0, maxLength);
-        this.naming = typeof this.updateNamingPayload === 'function' ? this.updateNamingPayload({ inputValue }) : { ...this.naming, inputValue };
+        this.updateNamingSnapshot?.({ inputValue });
         this.renderActive();
         const game = this.getCanvasGameHost?.() || this.lastGame || null;
         const refresh = () => game?.tutorialController?.refreshCurrentHighlight?.();

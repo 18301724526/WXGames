@@ -127,6 +127,9 @@ hasBlockingOverlayOpen() {
       const battleScene = typeof this.getRendererSnapshot === 'function'
         ? this.getRendererSnapshot()?.battle?.battleScene
         : null;
+      const namingOpen = typeof this.isNamingSnapshotOpen === 'function'
+        ? this.isNamingSnapshotOpen()
+        : false;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -143,7 +146,7 @@ hasBlockingOverlayOpen() {
         || this.activeCommandPanel
         || this.techDetailOpen
         || this.activeEventId
-        || this.naming.visible
+        || namingOpen
         || battleScene?.visible
         || this.isEntityBattleActive()
         || this.rewardReveal);
@@ -199,6 +202,9 @@ hasBlockingOverlayExceptTechTree() {
       const battleScene = typeof this.getRendererSnapshot === 'function'
         ? this.getRendererSnapshot()?.battle?.battleScene
         : null;
+      const namingOpen = typeof this.isNamingSnapshotOpen === 'function'
+        ? this.isNamingSnapshotOpen()
+        : false;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -215,7 +221,7 @@ hasBlockingOverlayExceptTechTree() {
         || (this.activeCommandPanel && this.activeCommandPanel !== 'tech')
         || this.techDetailOpen
         || this.activeEventId
-        || this.naming.visible
+        || namingOpen
         || battleScene?.visible
         || this.isEntityBattleActive()
         || this.rewardReveal);

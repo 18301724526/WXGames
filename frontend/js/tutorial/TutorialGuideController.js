@@ -322,9 +322,9 @@
     }
 
     isNamingOpen(type = '', territoryId = '') {
+      const namingPrompt = this.game?.getNamingSnapshot?.()?.prompt || null;
       const prompt = this.game?.activeNamingPrompt
-        || this.game?.naming?.prompt
-        || this.game?.canvasShell?.naming?.prompt
+        || namingPrompt
         || this.game?.state?.territoryState?.namingPrompt
         || null;
       if (!prompt) return false;
@@ -334,11 +334,7 @@
     }
 
     getNamingInputValue() {
-      return String(
-        this.game?.naming?.inputValue
-          || this.game?.canvasShell?.naming?.inputValue
-          || '',
-      ).trim();
+      return this.game?.getNamingInputValue?.() || '';
     }
 
     async onFamousPersonsOpened() {

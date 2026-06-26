@@ -31,6 +31,16 @@
     return host?.lastGame || host;
   }
 
+  function collectRelatedHosts(host) {
+    if (!host || typeof host !== 'object') return [];
+    const game = host.getCanvasGameHost?.() || host.lastGame || host;
+    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
+    return [host, game, shell].filter(
+      (target, index, targets) =>
+        target && typeof target === 'object' && targets.indexOf(target) === index,
+    );
+  }
+
   function readBattleDomainSnapshot(host) {
     const BattleDomainOwner = getBattleDomainOwnerApi();
     const owner =
@@ -81,8 +91,7 @@
   function collectModalKeys(host) {
     const game = getStateHost(host);
     const keys = [];
-    if (isTruthy(host?.naming?.visible) || isTruthy(game?.naming?.visible))
-      keys.push('modal:naming');
+    if (isAnyModalOpen(host, 'modal:naming')) keys.push('modal:naming');
     if (isTruthy(host?.activeEventId) || isTruthy(game?.activeEventId)) keys.push('modal:event');
     if (isTruthy(host?.rewardReveal) || isTruthy(game?.rewardReveal))
       keys.push('modal:rewardReveal');
@@ -143,8 +152,7 @@
       isTruthy(game?.techDetailOpen) ||
       isTruthy(host?.activeEventId) ||
       isTruthy(game?.activeEventId) ||
-      isTruthy(host?.naming?.visible) ||
-      isTruthy(game?.naming?.visible) ||
+      isAnyModalOpen(host, 'modal:naming') ||
       isTruthy(battleSnapshot?.battleScene?.visible) ||
       isTruthy(host?.entityBattle?.visible) ||
       isTruthy(game?.entityBattle?.visible) ||
@@ -277,6 +285,10 @@
     const ModalWorld = getModalWorldApi();
     if (!ModalWorld || !host.__ecsModalOwner) return false;
     return ModalWorld.isModalOpen(host.__ecsModalOwner, subtype);
+  }
+
+  function isAnyModalOpen(host, subtype) {
+    return collectRelatedHosts(host).some((target) => isModalOpen(target, subtype));
   }
 
   function resolveModalCallback(host, subtype, action, ...args) {
@@ -526,12 +538,28 @@
     };
   }
 
+  function buildRendererModalWorld(host) {
+    const entries = {};
+    let tokenSeq = 0;
+    collectRelatedHosts(host).forEach((target) => {
+      const modalWorld = target.__ecsModalOwner || null;
+      if (!modalWorld?.entries) return;
+      tokenSeq = Math.max(tokenSeq, Number(modalWorld.tokenSeq) || 0);
+      Object.entries(modalWorld.entries).forEach(([subtype, entry]) => {
+        if (!entry) return;
+        const previous = entries[subtype] || null;
+        if (!previous || (!previous.visible && entry.visible)) entries[subtype] = entry;
+      });
+    });
+    return Object.freeze({ entries: Object.freeze(entries), tokenSeq });
+  }
+
   function buildRendererSnapshot(host, options = {}) {
     const RendererSnapshotBoundary = getRendererSnapshotBoundaryApi();
     if (!host || !RendererSnapshotBoundary?.buildRendererSnapshot) return null;
     const mode = options.mode || getModeSnapshot(host) || getFallbackModeFacts(host);
     const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
-      modalWorld: host.__ecsModalOwner || null,
+      modalWorld: buildRendererModalWorld(host),
       panel: buildRendererPanelFacts(host),
       mode,
       battle: buildRendererBattleFacts(host),
@@ -621,23 +649,6 @@
 
       resolveModalCallback(subtype, action, ...args) {
         return resolveModalCallback(this, subtype, action, ...args);
-      },
-
-      // Naming-specific convenience wrappers. The subtype literal and the legacy
-      // mirror fallback live here (the bridge is an approved owner path) so the
-      // host call sites stay one-line and do not grow legacy `naming` references.
-      openNamingModal(state) {
-        return openModal(this, 'modal:naming', state) || state;
-      },
-
-      closeNamingOwner() {
-        return closeModal(this, 'modal:naming');
-      },
-
-      updateNamingPayload(patch) {
-        return (
-          updateModalPayload(this, 'modal:naming', patch) || { ...(this.naming || {}), ...patch }
-        );
       },
 
       // confirmDialog-specific wrappers: the subtype literal, the legacy mirror

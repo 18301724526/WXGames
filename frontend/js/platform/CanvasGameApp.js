@@ -35,6 +35,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppGuideUi) {
     CanvasGameAppGuideUi = require('./CanvasGameAppGuideUi');
   }
+  var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
+    CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+  }
   var CanvasGameAppInputRouter = global.CanvasGameAppInputRouter;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppInputRouter) {
     CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
@@ -152,13 +156,6 @@
           this.lastWorldActorAnimationRenderAt = 0;
           this.tileMapWaterTimer = null;
           this.activeEventId = null;
-          this.naming = {
-            visible: false,
-            view: null,
-            prompt: null,
-            inputValue: '',
-            submitting: false,
-          };
           this.territoryUiState = {
             selectedSiteId: '',
             worldMarchTarget: null,
@@ -245,8 +242,9 @@
     CanvasGameWorldActorAnimationRuntime,
     CanvasGameAppBattleScene,
     CanvasGameAppCommands,
-    CanvasGameAppGuideUi,
     CanvasModeOwnershipBridge,
+    CanvasModalSnapshotAdapter,
+    CanvasGameAppGuideUi,
     CanvasGameAppInputRouter,
   ].forEach((module) => module?.install?.(CanvasGameApp));
 

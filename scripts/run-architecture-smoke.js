@@ -83,6 +83,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/CanvasGameShell.test.js',
   'frontend/js/platform/CanvasModeOwnershipBridge.js',
   'frontend/js/platform/CanvasModeOwnershipBridge.test.js',
+  'frontend/js/platform/CanvasModalSnapshotAdapter.js',
+  'frontend/js/platform/CanvasModalSnapshotAdapter.test.js',
   'frontend/js/platform/ModalCallbackRegistry.js',
   'frontend/js/platform/ModalCallbackRegistry.test.js',
   'frontend/js/platform/CanvasGameAppInputRouter.js',
@@ -389,6 +391,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.js',
   'scripts/check-frontend-ecs-battle-domain-owner.test.js',
+  'scripts/check-frontend-ecs-naming-mirror-retirement.js',
+  'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
   'scripts/build-frontend-ecs-runtime.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
@@ -443,6 +447,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/platform/CanvasGameShell.test.js',
   'frontend/js/platform/CanvasActionController.test.js',
   'frontend/js/platform/CanvasModeOwnershipBridge.test.js',
+  'frontend/js/platform/CanvasModalSnapshotAdapter.test.js',
   'frontend/js/platform/ModalCallbackRegistry.test.js',
   'frontend/js/platform/renderers/WorldFogCanvasRenderer.test.js',
   'frontend/js/domain/WorldMapVisibilityModel.test.js',
@@ -575,6 +580,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-blocking-panel-ownership.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.test.js',
+  'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -671,6 +677,9 @@ function main() {
   ]);
   run('frontend ECS battle domain owner blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-battle-domain-owner.js',
+  ]);
+  run('frontend ECS naming mirror retirement blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-naming-mirror-retirement.js',
   ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',

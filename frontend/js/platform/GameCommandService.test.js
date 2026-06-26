@@ -502,7 +502,7 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   );
 });
 
-test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highlight refresh', () => {
+test('CanvasGameApp openNaming writes owner snapshot before delayed tutorial highlight refresh', () => {
   const calls = [];
   const timers = [];
   const app = new CanvasGameApp({
@@ -534,14 +534,14 @@ test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highli
       },
     },
   });
-  app.canvasShell = { naming: { visible: false } };
+  app.canvasShell = {};
   app.render = () => calls.push(['render']);
 
   app.openNaming({ type: 'city', territoryId: 'site_1' });
 
-  assert.equal(app.naming.visible, true);
-  assert.equal(app.naming.prompt.territoryId, 'site_1');
-  assert.equal(app.canvasShell.naming, app.naming);
+  const naming = app.getRendererSnapshot().modal['modal:naming'].payload;
+  assert.equal(naming.visible, true);
+  assert.equal(naming.prompt.territoryId, 'site_1');
   assert.deepEqual(calls, [['render'], ['setTimeout', 80]]);
 
   timers[0]();
@@ -575,19 +575,18 @@ test('CanvasGameApp refreshes tutorial highlight after naming input is filled', 
       },
     },
   });
-  app.naming = {
+  app.openNamingSnapshot({
     visible: true,
     view: { title: 'Name', maxLength: 12 },
     inputValue: '',
     submitting: false,
-  };
-  app.canvasShell = { naming: app.naming };
-  app.render = () => calls.push(['render', app.naming.inputValue]);
+  });
+  app.canvasShell = {};
+  app.render = () => calls.push(['render', app.getNamingInputValue()]);
 
   await app.requestNamingInput();
 
-  assert.equal(app.naming.inputValue, 'River League');
-  assert.equal(app.canvasShell.naming, app.naming);
+  assert.equal(app.getRendererSnapshot().modal['modal:naming'].payload.inputValue, 'River League');
   assert.deepEqual(calls, [
     ['requestTextInput'],
     ['render', 'River League'],

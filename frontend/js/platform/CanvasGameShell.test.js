@@ -21,6 +21,7 @@ const SHELL_MODULES = [
   'CanvasGameShellWorldMapRuntime',
   'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameShellRenderingRuntime',
+  'CanvasModalSnapshotAdapter',
   'CanvasGameShellSystemUi',
 ];
 
@@ -240,21 +241,21 @@ test('CanvasGameShell refreshes tutorial highlight after naming input is filled'
     },
   });
   shell.lastGame = game;
-  shell.naming = {
+  shell.openNamingSnapshot({
     visible: true,
     view: { title: 'Name city', maxLength: 12 },
     inputValue: '',
     submitting: false,
-  };
+  });
   shell.renderActive = () => {
-    calls.push(['renderActive', shell.naming.inputValue]);
+    calls.push(['renderActive', shell.getNamingInputValue()]);
     return true;
   };
 
   assert.equal(shell.requestNamingInput(), true);
   await Promise.resolve();
 
-  assert.equal(shell.naming.inputValue, 'River City');
+  assert.equal(shell.getRendererSnapshot().modal['modal:naming'].payload.inputValue, 'River City');
   assert.deepEqual(calls, [
     ['requestTextInput'],
     ['renderActive', 'River City'],

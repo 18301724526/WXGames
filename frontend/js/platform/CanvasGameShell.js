@@ -39,6 +39,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipBridge) {
     CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
   }
+  var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
+    CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+  }
   var CanvasGameShellCommands = global.CanvasGameShellCommands;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellCommands) {
     CanvasGameShellCommands = require('./CanvasGameShellCommands');
@@ -171,12 +175,6 @@ constructor(options = {}) {
       this.networkOverlayTimer = null;
       this.activeEventId = null;
       this.territoryUiState = {};
-      this.naming = {
-        visible: false,
-        view: null,
-        inputValue: '',
-        submitting: false,
-      };
       this.auth = {
         view: {
           loginPanelVisible: false,
@@ -322,6 +320,7 @@ static mount(game, options = {}) {
   [
     CanvasGameShellMounting,
     CanvasModeOwnershipBridge,
+    CanvasModalSnapshotAdapter,
     CanvasGameShellInputRouter,
     CanvasGameShellCommands,
     CanvasGameShellGuideUi,

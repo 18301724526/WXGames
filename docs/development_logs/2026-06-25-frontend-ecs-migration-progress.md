@@ -5,11 +5,11 @@
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
-| Current batch          | `7. Domain Area Sealing`                     |
-| Batch state            | `7B Ready for Migration Owner Review`        |
-| Runtime code migration | BattleScene mirror removed; snapshot-owned   |
+| Current batch          | `8. Bridge Retirement`                       |
+| Batch state            | `8A Ready for Migration Owner Review`        |
+| Runtime code migration | Naming mirror removed; snapshot-owned        |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 17:18:00 +08:00`                 |
+| Last updated           | `2026-06-26 18:19:04 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -160,15 +160,27 @@ Batch 7A notes:
 
 ## Batch 7B Checklist
 
-| Step                                             | Status                           | Updated At                   | Evidence                                                                                                                                    |
-| ------------------------------------------------ | -------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 7B-1. Renderer options snapshot source           | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | App/Shell render options pass `battleScene` only from `getRendererSnapshot().battle.battleScene`                                            |
-| 7B-2. App replay flow snapshot reads             | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `CanvasGameAppBattleScene.js` uses `getBattleSceneSession()` for replay turn duration, advance, skip, animation, and close checks           |
-| 7B-3. App/Shell mirror deletion                  | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | App/Shell constructor `this.battleScene = null` removed; Shell `startBattleScene` / `closeBattleScene` forward to `lastGame` without mirror |
-| 7B-4. App-to-Shell sync removal                  | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `syncBattleSceneToShell()` removed; bridge reads `lastGame.__ecsBattleDomainOwner` instead of shell/app mirrors                             |
-| 7B-5. Guard upgrade                              | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `scripts/check-frontend-ecs-battle-domain-owner.js` forbids App/Shell `battleScene` mirror reads/writes and reports 0 violations            |
-| 7B-6. Snapshot-only evidence                     | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `CanvasModeOwnershipBridge.test.js` ignores removed mirrors; `CanvasGameShell.test.js` reads battle render options from owner snapshot only |
-| 7B-7. Progress / operating plan / batch document | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | This document, the operating plan, and the 7B batch doc record Ready for Review, not Completed                                              |
+| Step                                             | Status    | Updated At                   | Evidence                                                                                                                                    |
+| ------------------------------------------------ | --------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7B-1. Renderer options snapshot source           | Completed | `2026-06-26 18:09:12 +08:00` | App/Shell render options pass `battleScene` only from `getRendererSnapshot().battle.battleScene`                                            |
+| 7B-2. App replay flow snapshot reads             | Completed | `2026-06-26 18:09:12 +08:00` | `CanvasGameAppBattleScene.js` uses `getBattleSceneSession()` for replay turn duration, advance, skip, animation, and close checks           |
+| 7B-3. App/Shell mirror deletion                  | Completed | `2026-06-26 18:09:12 +08:00` | App/Shell constructor `this.battleScene = null` removed; Shell `startBattleScene` / `closeBattleScene` forward to `lastGame` without mirror |
+| 7B-4. App-to-Shell sync removal                  | Completed | `2026-06-26 18:09:12 +08:00` | `syncBattleSceneToShell()` removed; bridge reads `lastGame.__ecsBattleDomainOwner` instead of shell/app mirrors                             |
+| 7B-5. Guard upgrade                              | Completed | `2026-06-26 18:09:12 +08:00` | `scripts/check-frontend-ecs-battle-domain-owner.js` forbids App/Shell `battleScene` mirror reads/writes and reports 0 violations            |
+| 7B-6. Snapshot-only evidence                     | Completed | `2026-06-26 18:09:12 +08:00` | `CanvasModeOwnershipBridge.test.js` ignores removed mirrors; `CanvasGameShell.test.js` reads battle render options from owner snapshot only |
+| 7B-7. Progress / operating plan / batch document | Completed | `2026-06-26 18:09:12 +08:00` | 7B is completed after migration owner sign-off and pushed at commit `3db83d51`                                                              |
+
+## Batch 8A Checklist
+
+| Step                                               | Status                           | Updated At                   | Evidence                                                                                                                                   |
+| -------------------------------------------------- | -------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 8A-1. Delete App/Shell naming mirror fields        | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | Removed constructor initialization and all App/Shell `this.naming` / `canvasShell.naming` production accesses                              |
+| 8A-2. Remove naming bridge wrappers                | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | Deleted `openNamingModal`, `closeNamingOwner`, and `updateNamingPayload` from `CanvasModeOwnershipBridge.js`                               |
+| 8A-3. Route naming reads through renderer snapshot | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | Render/input/tutorial paths read `snapshot.modal['modal:naming']` through `CanvasModalSnapshotAdapter` and generic modal owner APIs        |
+| 8A-4. Retire renderer fallback                     | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | App/Shell render options pass `naming` only from the snapshot-derived naming payload; no compatibility fallback remains                    |
+| 8A-5. Guard upgrade                                | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | New `scripts/check-frontend-ecs-naming-mirror-retirement.js` forbids naming mirror reads/writes and retired wrapper names; guard reports 0 |
+| 8A-6. Behavior and guard tests                     | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | Focused tests cover owner snapshot reads, shell-to-app owner updates, renderer options, tutorial reads, and guard behavior                 |
+| 8A-7. Progress / operating plan / batch document   | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | This document, the operating plan, and the 8A batch doc record Ready for Review, not Completed                                             |
 
 ## Verification Commands
 
@@ -375,4 +387,6 @@ Batch 6A (`Snapshot Boundary Scaffold`) is `Completed` after migration owner sig
 
 Batch 7A (`Battle Domain Owner`) is `Completed` after migration owner sign-off and push at commit `2818aab8`: `BattleDomainOwner` owns frozen `battle-domain-v1` overlay/session facts for replay `battleScene` and interactive/replay `entityBattle`, `RendererSnapshotBoundary` emits `snapshot.battle`, and canonical battle open/update/close paths write the owner while preserving compatibility mirrors. No Battle open/close wrappers were added to `CanvasModeOwnershipBridge.js`; Battle sync uses the existing renderer snapshot path. 7B cleanup target is App-side `this.battleScene`, with deletion order recorded in the 7A batch doc.
 
-Batch 7B (`BattleScene Mirror Removal`) is `Ready for Migration Owner Review`: App/Shell `this.battleScene` replay overlay mirrors were deleted, renderer options now pass `battleScene` only from `getRendererSnapshot().battle.battleScene`, App replay flow reads owner snapshot via `getBattleSceneSession()`, and App-to-Shell `battleScene` mirror sync was removed. The battle domain guard now forbids App/Shell `battleScene` mirror reads/writes and reports 0 violations. `entityBattle` remains the live mutable compatibility mirror for a later Battle slice.
+Batch 7B (`BattleScene Mirror Removal`) is `Completed` after migration owner sign-off and push at commit `3db83d51`: App/Shell `this.battleScene` replay overlay mirrors were deleted, renderer options now pass `battleScene` only from `getRendererSnapshot().battle.battleScene`, App replay flow reads owner snapshot via `getBattleSceneSession()`, and App-to-Shell `battleScene` mirror sync was removed. The battle domain guard now forbids App/Shell `battleScene` mirror reads/writes and reports 0 violations. `entityBattle` remains the live mutable compatibility mirror for a later Battle slice.
+
+Batch 8A (`Naming Mirror Removal`) is `Ready for Migration Owner Review`: App/Shell `this.naming` mirrors and App-to-Shell `canvasShell.naming` sync were removed, `openNamingModal` / `closeNamingOwner` / `updateNamingPayload` were deleted from `CanvasModeOwnershipBridge.js`, render/input/tutorial readers now go through `snapshot.modal['modal:naming']` via `CanvasModalSnapshotAdapter`, and the dedicated naming mirror retirement guard reports 0 violations. Verified: targeted Node suite 157 tests, naming/render-snapshot/mode/input/battle/blockingPanel/targetPicker guards 0 violations, `npm run lint`, `npm run format:check`, `npm run test:architecture` 1240 tests, and `git diff --check`. Batch 8A is not marked Completed until migration owner sign-off.

@@ -55,6 +55,9 @@
             const battleScene = typeof this.getRendererSnapshot === 'function'
               ? this.getRendererSnapshot()?.battle?.battleScene
               : null;
+            const namingOpen = typeof this.isNamingSnapshotOpen === 'function'
+              ? this.isNamingSnapshotOpen()
+              : false;
             return Boolean(this.showResourceDetails
               || this.showCitySwitcher
               || this.showSubcityList
@@ -70,7 +73,7 @@
               || this.activeCommandPanel
               || this.techDetailOpen
               || this.activeEventId
-              || this.naming?.visible
+              || namingOpen
               || battleScene?.visible
               || this.entityBattle?.visible
               || this.rewardReveal);

@@ -17,6 +17,28 @@ test('CanvasModeOwnershipBridge derives world map mode facts from legacy fields'
 });
 
 test('CanvasModeOwnershipBridge maps scattered modal fields to modal mode keys', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  host.openModal('modal:naming', { visible: true, view: { title: 'Name' } });
+  Object.assign(host, {
+    showTaskCenter: true,
+    confirmDialog: { visible: true },
+    lastGame: {
+      state: { currentTab: 'resources', militaryView: 'army' },
+      rewardReveal: { rewardText: '+1' },
+    },
+  });
+
+  assert.deepEqual(CanvasModeOwnershipBridge.collectModalKeys(host), [
+    'modal:naming',
+    'modal:rewardReveal',
+    'modal:confirmDialog',
+    'modal:blockingPanel',
+  ]);
+});
+
+test('CanvasModeOwnershipBridge ignores retired naming mirrors when mapping modal keys', () => {
   const host = {
     showTaskCenter: true,
     naming: { visible: true },
@@ -28,7 +50,6 @@ test('CanvasModeOwnershipBridge maps scattered modal fields to modal mode keys',
   };
 
   assert.deepEqual(CanvasModeOwnershipBridge.collectModalKeys(host), [
-    'modal:naming',
     'modal:rewardReveal',
     'modal:confirmDialog',
     'modal:blockingPanel',
@@ -141,33 +162,19 @@ test('CanvasModeOwnershipBridge owns modal open/close/update + token callbacks',
   host.resolveModalCallback('modal:confirmDialog', 'onConfirm'); // cleared on close -> inert
   assert.equal(confirmed, 1);
 
-  // naming-specific wrappers used by the App/Shell host methods
-  const mirror = host.openNamingModal({ visible: true, view: { title: 'N' }, inputValue: '' });
-  assert.equal(host.isModalOpen('modal:naming'), true);
-  assert.equal(mirror.visible, true);
-  host.updateNamingPayload({ inputValue: 'z' });
-  assert.equal(host.getModalPayload('modal:naming').inputValue, 'z');
-  host.closeNamingOwner();
-  assert.equal(host.isModalOpen('modal:naming'), false);
+  assert.equal(typeof host.openNamingModal, 'undefined');
+  assert.equal(typeof host.updateNamingPayload, 'undefined');
+  assert.equal(typeof host.closeNamingOwner, 'undefined');
 });
 
-test('CanvasModeOwnershipBridge install does not shadow a host closeNamingModal full-close', () => {
+test('CanvasModeOwnershipBridge does not install retired naming owner wrappers', () => {
   class Host {}
-  // Legacy full-close like CanvasGameAppGuideUi.closeNamingModal (reset + render).
-  Object.assign(Host.prototype, {
-    closeNamingModal() {
-      this.naming = { visible: false };
-      this.__fullClosed = true;
-    },
-  });
-  // Bridge installs AFTER the legacy mixin (matches CanvasGameApp install order)
-  // and must NOT overwrite closeNamingModal with an owner-only close.
   CanvasModeOwnershipBridge.install(Host);
   const host = new Host();
-  host.closeNamingModal();
-  assert.equal(host.__fullClosed, true);
-  assert.equal(host.naming.visible, false);
-  assert.equal(typeof host.closeNamingOwner, 'function');
+
+  assert.equal(typeof host.openNamingModal, 'undefined');
+  assert.equal(typeof host.closeNamingOwner, 'undefined');
+  assert.equal(typeof host.updateNamingPayload, 'undefined');
 });
 
 test('CanvasModeOwnershipBridge confirmDialog wrappers seal state and resolve continuations', () => {

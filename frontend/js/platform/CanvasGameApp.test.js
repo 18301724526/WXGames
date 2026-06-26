@@ -14,6 +14,7 @@ const APP_MODULES = [
   'CanvasGameAppRenderingRuntime',
   'CanvasGameAppBattleScene',
   'CanvasGameAppCommands',
+  'CanvasModalSnapshotAdapter',
   'CanvasGameAppGuideUi',
   'CanvasGameAppInputRouter',
 ];

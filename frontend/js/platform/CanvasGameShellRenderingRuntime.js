@@ -393,6 +393,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const battleSnapshot = rendererSnapshot?.battle || {};
       const snapshotBattleScene = battleSnapshot.battleScene || null;
       const snapshotEntityBattle = battleSnapshot.entityBattle || null;
+      const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
       logActorPickingDiag('shell:buildRenderOptions:territoryUiState', {
         activeTab,
         input: summarizeActorPickingUiState(territoryUiState),
@@ -450,7 +451,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
         ...((this.lastGame?.entityBattle || this.entityBattle) ? { entityBattle: this.lastGame?.entityBattle || this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
         tabLocks: this.getTabLocks(state),
-        naming: this.naming,
+        naming: snapshotNaming,
         auth: this.auth,
         loading: this.loading,
         network: this.networkState,

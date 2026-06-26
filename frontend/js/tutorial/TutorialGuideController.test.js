@@ -148,6 +148,21 @@ test('TutorialGuideController guides first era advancement and task reward claim
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt },
     state: { currentTab: 'resources' },
     canvasShell: shell,
+    __namingSnapshot: null,
+    getNamingSnapshot() {
+      return this.__namingSnapshot;
+    },
+    getNamingInputValue() {
+      return String(this.__namingSnapshot?.inputValue || '').trim();
+    },
+    openNamingSnapshot(payload) {
+      this.__namingSnapshot = { ...(payload || {}), visible: true };
+      return this.__namingSnapshot;
+    },
+    updateNamingSnapshot(patch) {
+      this.__namingSnapshot = { ...(this.__namingSnapshot || {}), ...(patch || {}) };
+      return this.__namingSnapshot;
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
@@ -709,6 +724,21 @@ test('TutorialGuideController guides first empty city occupation and naming', ()
       },
     },
     canvasShell: shell,
+    __namingSnapshot: null,
+    getNamingSnapshot() {
+      return this.__namingSnapshot;
+    },
+    getNamingInputValue() {
+      return String(this.__namingSnapshot?.inputValue || '').trim();
+    },
+    openNamingSnapshot(payload) {
+      this.__namingSnapshot = { ...(payload || {}), visible: true };
+      return this.__namingSnapshot;
+    },
+    updateNamingSnapshot(patch) {
+      this.__namingSnapshot = { ...(this.__namingSnapshot || {}), ...(patch || {}) };
+      return this.__namingSnapshot;
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
@@ -732,21 +762,21 @@ test('TutorialGuideController guides first empty city occupation and naming', ()
   controller.sync({ ...game.tutorial, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityOccupied });
   game.state.territoryState.territories[1].status = 'occupied';
   game.state.territoryState.namingPrompt = { type: 'city', territoryId: siteId };
-  game.naming = { prompt: { type: 'city', territoryId: siteId }, inputValue: '' };
+  game.openNamingSnapshot({ prompt: { type: 'city', territoryId: siteId }, inputValue: '' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'requestNamingInput' });
 
-  game.naming.inputValue = 'River City';
+  game.updateNamingSnapshot({ inputValue: 'River City' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'submitNaming' });
 
   controller.sync({ ...game.tutorial, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityNamed });
   game.state.territoryState.namingPrompt = { type: 'polity' };
-  game.naming = { prompt: { type: 'polity' }, inputValue: '' };
+  game.openNamingSnapshot({ prompt: { type: 'polity' }, inputValue: '' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'requestNamingInput' });
 
-  game.naming.inputValue = 'River League';
+  game.updateNamingSnapshot({ inputValue: 'River League' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'submitNaming' });
 });

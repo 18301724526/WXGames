@@ -12,6 +12,7 @@ const APPROVED_MODE_OWNER_PATHS = Object.freeze([
 ]);
 const APPROVED_MODE_BRIDGE_PATHS = Object.freeze([
   'frontend/js/platform/CanvasModeOwnershipBridge.js',
+  'frontend/js/platform/CanvasModalSnapshotAdapter.js',
   'frontend/js/platform/CanvasGameAppBattleScene.js',
   'frontend/js/platform/CanvasGameAppRenderingRuntime.js',
   'frontend/js/platform/CanvasGameShellRenderingRuntime.js',

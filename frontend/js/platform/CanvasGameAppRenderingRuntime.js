@@ -73,7 +73,6 @@
               if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') this.canvasShell.activeBuildingCategory = this.activeBuildingCategory;
               if (this.canvasShell && typeof this.canvasShell.famousPersonsPage !== 'undefined') this.famousPersonsPage = this.canvasShell.famousPersonsPage;
               if (this.canvasShell && typeof this.canvasShell.selectedFamousPersonId !== 'undefined') this.selectedFamousPersonId = this.canvasShell.selectedFamousPersonId;
-              if (this.canvasShell && typeof this.canvasShell.naming !== 'undefined') this.canvasShell.naming = this.naming;
               this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
               if (
                 !this.pendingTutorialAdvisorDialogue
@@ -136,6 +135,7 @@
             const battleSnapshot = rendererSnapshot?.battle || {};
             const snapshotBattleScene = battleSnapshot.battleScene || null;
             const snapshotEntityBattle = battleSnapshot.entityBattle || null;
+            const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
@@ -171,7 +171,7 @@
               territoryUiState: this.territoryUiState,
               ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
               ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
-              naming: this.naming,
+              naming: snapshotNaming,
               tutorialIntro: this.tutorialIntro || null,
               tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
               tutorialHighlight: null,
