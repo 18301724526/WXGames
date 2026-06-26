@@ -296,6 +296,77 @@
     return syncEventMirrors(host, null);
   }
 
+  function resolveTerritoryUiState(host, uiState = null) {
+    if (uiState && typeof uiState === 'object') return uiState;
+    const game = host?.getCanvasGameHost?.() || host?.lastGame || host;
+    const territoryController = host?.territoryController || game?.territoryController || null;
+    return (
+      territoryController?.uiState ||
+      host?.territoryUiState ||
+      game?.territoryUiState ||
+      territoryController?.getUiState?.() ||
+      {}
+    );
+  }
+
+  function collectTerritoryMirrorTargets(host) {
+    if (!host || typeof host !== 'object') return [];
+    const game = host.getCanvasGameHost?.() || host.lastGame || host;
+    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
+    const territoryController = host.territoryController || game?.territoryController || null;
+    return [host, game, shell, territoryController].filter(
+      (target, index, targets) =>
+        target && typeof target === 'object' && targets.indexOf(target) === index,
+    );
+  }
+
+  function syncTerritoryUiStateMirror(host, uiState) {
+    const game = host?.getCanvasGameHost?.() || host?.lastGame || host;
+    const territoryController = host?.territoryController || game?.territoryController || null;
+    collectTerritoryMirrorTargets(host, uiState).forEach((target) => {
+      if (target === territoryController || 'uiState' in target) {
+        target.uiState = uiState;
+      } else {
+        target.territoryUiState = uiState;
+      }
+    });
+    return uiState;
+  }
+
+  function openWorldTargetPickerOwner(host, uiState, picker) {
+    if (!picker) return null;
+    const mirror = syncTerritoryUiStateMirror(host, resolveTerritoryUiState(host, uiState));
+    mirror.worldTargetPicker = picker;
+    mirror.worldMarchTarget = null;
+    const payload = openModal(host, 'modal:targetPicker', {
+      pickerKind: 'worldTargetPicker',
+      picker,
+    });
+    return payload?.picker || picker;
+  }
+
+  function openWorldMarchFormationPickerOwner(host, uiState, target) {
+    if (!target) return null;
+    const mirror = syncTerritoryUiStateMirror(host, resolveTerritoryUiState(host, uiState));
+    mirror.worldMarchTarget = { ...target, pickerOpen: true };
+    mirror.worldTargetPicker = null;
+    const payload = openModal(host, 'modal:targetPicker', {
+      pickerKind: 'worldMarchFormation',
+      target: mirror.worldMarchTarget,
+    });
+    return payload?.target || mirror.worldMarchTarget;
+  }
+
+  function closeTargetPickerOwner(host, uiState = null) {
+    closeModal(host, 'modal:targetPicker');
+    const mirror = syncTerritoryUiStateMirror(host, resolveTerritoryUiState(host, uiState));
+    mirror.worldTargetPicker = null;
+    if (mirror.worldMarchTarget?.pickerOpen) {
+      mirror.worldMarchTarget = { ...mirror.worldMarchTarget, pickerOpen: false };
+    }
+    return mirror;
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -428,6 +499,20 @@
       closeEventOwner() {
         return closeEventOwner(this);
       },
+
+      // targetPicker-specific wrappers own the two picker modal shapes while
+      // leaving non-picker world-march target state to the world-march domain.
+      openWorldTargetPickerOwner(uiState, picker) {
+        return openWorldTargetPickerOwner(this, uiState, picker);
+      },
+
+      openWorldMarchFormationPickerOwner(uiState, target) {
+        return openWorldMarchFormationPickerOwner(this, uiState, target);
+      },
+
+      closeTargetPickerOwner(uiState) {
+        return closeTargetPickerOwner(this, uiState);
+      },
     });
     return true;
   }
@@ -435,6 +520,7 @@
   const api = {
     closeModal,
     closeEventOwner,
+    closeTargetPickerOwner,
     collectModalKeys,
     deriveModeFacts,
     getModalPayload,
@@ -444,6 +530,8 @@
     isModalOpen,
     openEventModal,
     openModal,
+    openWorldMarchFormationPickerOwner,
+    openWorldTargetPickerOwner,
     refreshModeSnapshot,
     resolveBaseModeKey,
     resolveInputIntent,

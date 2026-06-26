@@ -277,14 +277,6 @@
       "count": 5
     }
   },
-  "frontend/js/platform/CanvasTerritoryActionHandlers.js": {
-    "no-empty": {
-      "count": 1
-    },
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
   "frontend/js/platform/DebugOverlayRegistry.js": {
     "no-unused-vars": {
       "count": 2

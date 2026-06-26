@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const CanvasTerritoryActionHandlers = require('./CanvasTerritoryActionHandlers');
 const CanvasActionController = require('./CanvasActionController');
+const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
 
 class HostController {
   constructor(host) {
@@ -73,6 +74,7 @@ class HostController {
 }
 
 CanvasTerritoryActionHandlers.install(HostController);
+CanvasModeOwnershipBridge.install(HostController);
 
 test('CanvasTerritoryActionHandlers installs world-site compatibility methods', () => {
   const calls = [];
@@ -285,8 +287,17 @@ test('CanvasTerritoryActionHandlers refreshes world march UI before start comman
 
 test('CanvasTerritoryActionHandlers opens and resolves world target picker candidates', () => {
   const calls = [];
+  const ownerCalls = [];
   const host = {
     territoryUiState: {},
+    openWorldTargetPickerOwner(uiState, picker) {
+      ownerCalls.push(['openWorldTargetPickerOwner', picker.candidates.length]);
+      return CanvasModeOwnershipBridge.openWorldTargetPickerOwner(this, uiState, picker);
+    },
+    closeTargetPickerOwner(uiState) {
+      ownerCalls.push(['closeTargetPickerOwner']);
+      return CanvasModeOwnershipBridge.closeTargetPickerOwner(this, uiState);
+    },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
@@ -309,6 +320,7 @@ test('CanvasTerritoryActionHandlers opens and resolves world target picker candi
 
   assert.equal(host.territoryUiState.worldTargetPicker.candidates.length, 2);
   assert.equal(host.territoryUiState.selectedSiteId, '');
+  assert.deepEqual(ownerCalls, [['openWorldTargetPickerOwner', 2]]);
 
   assert.equal(controller.handle_chooseWorldTarget({
     type: 'chooseWorldTarget',
@@ -317,6 +329,7 @@ test('CanvasTerritoryActionHandlers opens and resolves world target picker candi
 
   assert.equal(host.territoryUiState.worldTargetPicker, null);
   assert.equal(host.territoryUiState.selectedWorldActorId, 'march-1');
+  assert.deepEqual(ownerCalls, [['openWorldTargetPickerOwner', 2], ['closeTargetPickerOwner']]);
   assert.deepEqual(calls.map((call) => call[0] === 'render' ? call : [call[0]]), [
     ['render', 'openWorldTargetPicker'],
     ['refreshWorldMap'],
@@ -363,6 +376,7 @@ test('CanvasTerritoryActionHandlers forwards selected world mission id on start 
 
 test('CanvasTerritoryActionHandlers preserves selected world actor id through target and picker handoff', async () => {
   const calls = [];
+  const ownerCalls = [];
   const game = {
     territoryUiState: { selectedWorldActorId: 'march-1', selectedWorldMissionId: 'march-1' },
     state: { activeCityId: 'capital' },
@@ -374,6 +388,14 @@ test('CanvasTerritoryActionHandlers preserves selected world actor id through ta
   const host = {
     territoryUiState: game.territoryUiState,
     lastGame: game,
+    openWorldMarchFormationPickerOwner(uiState, target) {
+      ownerCalls.push(['openWorldMarchFormationPickerOwner', target.missionId]);
+      return CanvasModeOwnershipBridge.openWorldMarchFormationPickerOwner(this, uiState, target);
+    },
+    closeTargetPickerOwner(uiState) {
+      ownerCalls.push(['closeTargetPickerOwner']);
+      return CanvasModeOwnershipBridge.closeTargetPickerOwner(this, uiState);
+    },
     renderCanvasAction() {},
     requestWorldMapRenderAnimationFrame() {},
   };
@@ -393,6 +415,8 @@ test('CanvasTerritoryActionHandlers preserves selected world actor id through ta
     targetR: -2,
   }), true);
   assert.equal(host.territoryUiState.worldMarchTarget.missionId, 'march-1');
+  assert.equal(host.territoryUiState.worldMarchTarget.pickerOpen, true);
+  assert.deepEqual(ownerCalls, [['openWorldMarchFormationPickerOwner', 'march-1']]);
 
   assert.equal(await controller.handle_startWorldMarch({
     type: 'startWorldMarch',
@@ -401,6 +425,10 @@ test('CanvasTerritoryActionHandlers preserves selected world actor id through ta
     formationSlot: 1,
   }), true);
   assert.equal(calls[0][1].missionId, 'march-1');
+  assert.deepEqual(ownerCalls, [
+    ['openWorldMarchFormationPickerOwner', 'march-1'],
+    ['closeTargetPickerOwner'],
+  ]);
 });
 
 test('CanvasTerritoryActionHandlers carries combat encounter id into world march options', async () => {

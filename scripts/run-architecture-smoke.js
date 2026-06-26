@@ -376,6 +376,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
   'scripts/check-frontend-ecs-input-intent-spine.js',
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
+  'scripts/check-frontend-ecs-target-picker-ownership.js',
+  'scripts/check-frontend-ecs-target-picker-ownership.test.js',
   'scripts/build-frontend-ecs-runtime.js',
   'scripts/check-frontend-script-manifest.js',
   'scripts/rewrite-frontend-asset-version.js',
@@ -555,6 +557,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
+  'scripts/check-frontend-ecs-target-picker-ownership.test.js',
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
@@ -639,6 +642,9 @@ function main() {
   ]);
   run('frontend ECS input intent spine blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-input-intent-spine.js',
+  ]);
+  run('frontend ECS targetPicker ownership blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-target-picker-ownership.js',
   ]);
   run('frontend ECS mode ownership report-only guard', process.execPath, [
     'scripts/report-frontend-ecs-mode-ownership.js',

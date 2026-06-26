@@ -255,3 +255,53 @@ test('CanvasModeOwnershipBridge event wrappers preserve falsy but non-null event
   assert.equal(host.activeEventId, 0);
   assert.equal(game.activeEventId, 0);
 });
+
+test('CanvasModeOwnershipBridge targetPicker wrappers own picker payload and territory mirrors', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  const shell = { territoryUiState: {} };
+  const territoryController = { uiState: {} };
+  const game = { canvasShell: shell, territoryController, territoryUiState: {} };
+  host.getCanvasGameHost = () => game;
+
+  const picker = {
+    tileId: 'tile_0_0',
+    candidates: [
+      { id: 'capital', action: { type: 'openWorldSite', siteId: 'capital' } },
+      { id: 'march-1', action: { type: 'selectWorldActor', actorId: 'march-1' } },
+    ],
+  };
+  assert.equal(host.openWorldTargetPickerOwner(territoryController.uiState, picker), picker);
+  assert.equal(host.isModalOpen('modal:targetPicker'), true);
+  assert.deepEqual(host.getModalPayload('modal:targetPicker'), {
+    pickerKind: 'worldTargetPicker',
+    picker,
+  });
+  assert.equal(host.territoryUiState, territoryController.uiState);
+  assert.equal(game.territoryUiState, territoryController.uiState);
+  assert.equal(shell.territoryUiState, territoryController.uiState);
+  assert.equal(territoryController.uiState.worldTargetPicker, picker);
+  assert.equal(territoryController.uiState.worldMarchTarget, null);
+
+  const formationTarget = { q: 2, r: -1, tileId: 'tile_2_-1', missionId: 'march-1' };
+  const openedTarget = host.openWorldMarchFormationPickerOwner(
+    territoryController.uiState,
+    formationTarget,
+  );
+  assert.deepEqual(openedTarget, { ...formationTarget, pickerOpen: true });
+  assert.deepEqual(host.getModalPayload('modal:targetPicker'), {
+    pickerKind: 'worldMarchFormation',
+    target: openedTarget,
+  });
+  assert.equal(territoryController.uiState.worldTargetPicker, null);
+  assert.deepEqual(territoryController.uiState.worldMarchTarget, openedTarget);
+
+  host.closeTargetPickerOwner(territoryController.uiState);
+  assert.equal(host.isModalOpen('modal:targetPicker'), false);
+  assert.equal(territoryController.uiState.worldTargetPicker, null);
+  assert.deepEqual(territoryController.uiState.worldMarchTarget, {
+    ...formationTarget,
+    pickerOpen: false,
+  });
+});

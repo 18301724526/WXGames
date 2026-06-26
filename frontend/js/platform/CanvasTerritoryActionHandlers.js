@@ -15,7 +15,19 @@
     if (global.TileCoord) return global.TileCoord;
     try {
       if (typeof require === 'function') return require('../domain/TileCoord');
-    } catch (error) {}
+    } catch (_error) {
+      // Optional dependency in browser bundles.
+    }
+    return null;
+  })();
+
+  const CanvasModeOwnershipBridge = (() => {
+    if (global.CanvasModeOwnershipBridge) return global.CanvasModeOwnershipBridge;
+    try {
+      if (typeof require === 'function') return require('./CanvasModeOwnershipBridge');
+    } catch (_error) {
+      // Optional bridge in standalone handler tests.
+    }
     return null;
   })();
 
@@ -197,6 +209,29 @@
       // Ignore diagnostic preference lookup failures.
     }
     return payload;
+  }
+
+  function openWorldTargetPickerOwner(host, uiState, picker) {
+    if (typeof host?.openWorldTargetPickerOwner === 'function') {
+      return host.openWorldTargetPickerOwner(uiState, picker);
+    }
+    return CanvasModeOwnershipBridge?.openWorldTargetPickerOwner?.(host, uiState, picker) || null;
+  }
+
+  function openWorldMarchFormationPickerOwner(host, uiState, target) {
+    if (typeof host?.openWorldMarchFormationPickerOwner === 'function') {
+      return host.openWorldMarchFormationPickerOwner(uiState, target);
+    }
+    return CanvasModeOwnershipBridge?.openWorldMarchFormationPickerOwner?.(host, uiState, target) || null;
+  }
+
+  function closeTargetPickerOwner(host, uiState) {
+    if (typeof host?.closeTargetPickerOwner === 'function') return host.closeTargetPickerOwner(uiState);
+    uiState.worldTargetPicker = null;
+    if (uiState.worldMarchTarget?.pickerOpen) {
+      uiState.worldMarchTarget = { ...uiState.worldMarchTarget, pickerOpen: false };
+    }
+    return uiState;
   }
 
   function install(CanvasActionController) {
@@ -516,7 +551,6 @@
           q: target.q,
           r: target.r,
           tileId: target.tileId,
-          pickerOpen: true,
         };
         assignMarchMissionTarget(nextTarget, missionId, actorId);
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
@@ -527,10 +561,11 @@
         else if (samePreviousTarget && previousTarget.marchDisabled !== undefined) nextTarget.marchDisabled = Boolean(previousTarget.marchDisabled);
         if (action.marchDisabledReason || (samePreviousTarget && previousTarget.marchDisabledReason)) nextTarget.marchDisabledReason = action.marchDisabledReason || previousTarget.marchDisabledReason;
         copyCombatTargetFields(nextTarget, action, previousTarget);
-        uiState.worldMarchTarget = nextTarget;
+        const openedTarget = openWorldMarchFormationPickerOwner(this.host, uiState, nextTarget);
+        if (!openedTarget) return false;
+        uiState.worldMarchTarget = openedTarget;
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
-        uiState.worldTargetPicker = null;
         const handled = this.refreshWorldMarchLayer(action);
         this.refreshWorldMarchTutorialHighlight();
         return handled;
@@ -538,10 +573,10 @@
 
       handle_closeWorldMarchHud(action) {
         const uiState = this.getSharedTerritoryUiState();
+        closeTargetPickerOwner(this.host, uiState);
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
-        uiState.worldTargetPicker = null;
         const handled = this.refreshWorldMarchLayer(action);
         this.refreshWorldMarchTutorialHighlight();
         return handled;
@@ -594,8 +629,7 @@
         const game = this.getGameHost();
         game?.territoryController?.closeSiteDialog?.({ render: false });
         const uiState = this.getSharedTerritoryUiState();
-        uiState.worldTargetPicker = picker;
-        uiState.worldMarchTarget = null;
+        if (!openWorldTargetPickerOwner(this.host, uiState, picker)) return false;
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
         uiState.selectedSiteId = '';
@@ -612,7 +646,7 @@
           || null;
         const nextAction = candidate?.action || action.action || null;
         if (!nextAction?.type || nextAction.type === 'chooseWorldTarget') return false;
-        uiState.worldTargetPicker = null;
+        closeTargetPickerOwner(this.host, uiState);
         if (typeof this.handle === 'function') return this.handle(nextAction, meta);
         const handler = this[`handle_${nextAction.type}`];
         return typeof handler === 'function' ? handler.call(this, nextAction, meta) : false;
@@ -620,7 +654,7 @@
 
       handle_closeWorldTargetPicker(action) {
         const uiState = this.getSharedTerritoryUiState();
-        uiState.worldTargetPicker = null;
+        closeTargetPickerOwner(this.host, uiState);
         return this.refreshWorldMarchLayer(action);
       },
 
@@ -654,10 +688,10 @@
         };
         const result = run();
         if (result !== false) {
+          closeTargetPickerOwner(this.host, uiState);
           uiState.worldMarchTarget = null;
           uiState.selectedWorldActorId = '';
           uiState.selectedWorldMissionId = '';
-          uiState.worldTargetPicker = null;
           this.refreshWorldMarchLayer(action);
           this.refreshWorldMarchTutorialHighlight();
         }
@@ -952,7 +986,7 @@
         return this.finalize(run());
       },
 
-      handle_closeBattleScene(action) {
+      handle_closeBattleScene(_action) {
         const game = this.getGameHost();
         const closed = typeof game?.closeBattleScene === 'function'
           ? game.closeBattleScene()
@@ -960,7 +994,7 @@
         return closed !== false;
       },
 
-      handle_skipBattleScene(action) {
+      handle_skipBattleScene(_action) {
         const game = this.getGameHost();
         const skipped = typeof game?.skipBattleScene === 'function'
           ? game.skipBattleScene()
