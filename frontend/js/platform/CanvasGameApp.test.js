@@ -1350,7 +1350,7 @@ test('CanvasGameApp routes battleScene replay overlay through battle domain owne
   assert.equal(app.__ecsBattleDomainOwner.schema, 'battle-domain-v1');
   assert.equal(app.__ecsBattleDomainOwner.battleScene.report.id, 'report-owner');
   assert.equal(app.getRendererSnapshot().battle.battleScene.report.id, 'report-owner');
-  assert.equal(app.battleScene.report.id, 'report-owner');
+  assert.equal(Object.prototype.hasOwnProperty.call(app, 'battleScene'), false);
   assert.deepEqual(calls.at(-1), ['render', 'report-owner', 0]);
 
   app.now = () => 250;

@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `7. Domain Area Sealing`                     |
-| Batch state            | `7A Ready for Migration Owner Review`        |
-| Runtime code migration | Battle domain owner scaffold only            |
+| Batch state            | `7B Ready for Migration Owner Review`        |
+| Runtime code migration | BattleScene mirror removed; snapshot-owned   |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 16:35:30 +08:00`                 |
+| Last updated           | `2026-06-26 17:18:00 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -142,21 +142,33 @@ Batch 6A notes:
 
 ## Batch 7A Checklist
 
-| Step                                             | Status                           | Updated At                   | Evidence                                                                                                                                 |
-| ------------------------------------------------ | -------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 7A-1. Battle domain owner                        | Ready for Migration Owner Review | `2026-06-26 16:35:30 +08:00` | `frontend/js/ecs/domain/BattleDomainOwner.js` owns frozen `battle-domain-v1` overlay/session facts                                       |
-| 7A-2. Runtime and snapshot exposure              | Ready for Migration Owner Review | `2026-06-26 16:35:30 +08:00` | `EcsModeRuntimeEntry.js` exports `BattleDomainOwner`; `RendererSnapshotBoundary` emits `snapshot.battle`                                 |
-| 7A-3. Canonical battle adapter routing           | Ready for Migration Owner Review | `2026-06-26 16:35:30 +08:00` | `CanvasGameAppBattleScene.js` writes owner on battleScene/entityBattle open, update, and close while preserving compatibility mirrors    |
-| 7A-4. Snapshot path without new bridge wrappers  | Ready for Migration Owner Review | `2026-06-26 16:35:30 +08:00` | `CanvasModeOwnershipBridge.js` only extends existing `buildRendererSnapshot` facts; no `openBattle*Owner` / `closeBattle*Owner` wrappers |
-| 7A-5. Battle domain owner guard                  | Ready for Migration Owner Review | `2026-06-26 16:35:30 +08:00` | `scripts/check-frontend-ecs-battle-domain-owner.js` blocks new canonical battle writes outside approved owner/adapter paths              |
-| 7A-6. 7B mirror cleanup plan                     | Ready for Migration Owner Review | `2026-06-26 16:35:30 +08:00` | 7B target is App-side `this.battleScene`; cleanup order is recorded in the 7A batch doc                                                  |
-| 7A-7. Progress / operating plan / batch document | Ready for Migration Owner Review | `2026-06-26 16:35:30 +08:00` | This document, the operating plan, and the 7A batch doc record Ready for Review, not Completed                                           |
+| Step                                             | Status    | Updated At                   | Evidence                                                                                                                                 |
+| ------------------------------------------------ | --------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 7A-1. Battle domain owner                        | Completed | `2026-06-26 17:18:00 +08:00` | `frontend/js/ecs/domain/BattleDomainOwner.js` owns frozen `battle-domain-v1` overlay/session facts                                       |
+| 7A-2. Runtime and snapshot exposure              | Completed | `2026-06-26 17:18:00 +08:00` | `EcsModeRuntimeEntry.js` exports `BattleDomainOwner`; `RendererSnapshotBoundary` emits `snapshot.battle`                                 |
+| 7A-3. Canonical battle adapter routing           | Completed | `2026-06-26 17:18:00 +08:00` | `CanvasGameAppBattleScene.js` writes owner on battleScene/entityBattle open, update, and close while preserving compatibility mirrors    |
+| 7A-4. Snapshot path without new bridge wrappers  | Completed | `2026-06-26 17:18:00 +08:00` | `CanvasModeOwnershipBridge.js` only extends existing `buildRendererSnapshot` facts; no `openBattle*Owner` / `closeBattle*Owner` wrappers |
+| 7A-5. Battle domain owner guard                  | Completed | `2026-06-26 17:18:00 +08:00` | `scripts/check-frontend-ecs-battle-domain-owner.js` blocks new canonical battle writes outside approved owner/adapter paths              |
+| 7A-6. 7B mirror cleanup plan                     | Completed | `2026-06-26 17:18:00 +08:00` | 7B target is App-side `this.battleScene`; cleanup order is recorded in the 7A batch doc                                                  |
+| 7A-7. Progress / operating plan / batch document | Completed | `2026-06-26 17:18:00 +08:00` | 7A signed off and pushed at commit `2818aab8`                                                                                            |
 
 Batch 7A notes:
 
 - 7A does not migrate BattleSimCore, AI stepping, camera math, renderer drawing, timers, or server resolve behavior.
 - `entityBattle` keeps its live mutable mirror in 7A because current rendering and input paths still depend on scratch fields such as `_viewFit` and `_rstate`.
 - 7B must delete App-side `this.battleScene`; this mirror deletion target is not deferred to Batch 8.
+
+## Batch 7B Checklist
+
+| Step                                             | Status                           | Updated At                   | Evidence                                                                                                                                    |
+| ------------------------------------------------ | -------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7B-1. Renderer options snapshot source           | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | App/Shell render options pass `battleScene` only from `getRendererSnapshot().battle.battleScene`                                            |
+| 7B-2. App replay flow snapshot reads             | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `CanvasGameAppBattleScene.js` uses `getBattleSceneSession()` for replay turn duration, advance, skip, animation, and close checks           |
+| 7B-3. App/Shell mirror deletion                  | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | App/Shell constructor `this.battleScene = null` removed; Shell `startBattleScene` / `closeBattleScene` forward to `lastGame` without mirror |
+| 7B-4. App-to-Shell sync removal                  | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `syncBattleSceneToShell()` removed; bridge reads `lastGame.__ecsBattleDomainOwner` instead of shell/app mirrors                             |
+| 7B-5. Guard upgrade                              | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `scripts/check-frontend-ecs-battle-domain-owner.js` forbids App/Shell `battleScene` mirror reads/writes and reports 0 violations            |
+| 7B-6. Snapshot-only evidence                     | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | `CanvasModeOwnershipBridge.test.js` ignores removed mirrors; `CanvasGameShell.test.js` reads battle render options from owner snapshot only |
+| 7B-7. Progress / operating plan / batch document | Ready for Migration Owner Review | `2026-06-26 17:18:00 +08:00` | This document, the operating plan, and the 7B batch doc record Ready for Review, not Completed                                              |
 
 ## Verification Commands
 
@@ -361,4 +373,6 @@ Batch 5 slice 5d (`blockingPanel`) is `Completed` after migration owner sign-off
 
 Batch 6A (`Snapshot Boundary Scaffold`) is `Completed` after migration owner sign-off at `2026-06-26 16:05:54 +08:00`: the renderer snapshot contract is versioned as `renderer-snapshot-v1`, modal snapshot reads come directly from `ModalWorld` owner entries, the bridge exposes null-safe read-only snapshot helpers, and `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` blocks new direct renderer reads beyond the 139-read baseline. Verified: targeted snapshot/bridge/guard/manifest tests (33 tests), renderer snapshot boundary guard 0 violations (139 baseline / 139 current), mode-spine/blockingPanel/targetPicker guards 0 violations, `npm run lint`, `npm run format:check`, `npm run test:architecture` 1219 tests, and `git diff --check`. Batch 7 (`Domain Area Sealing`) may start after this completion commit reaches the server branch; the first renderer-reader follow-up must include at least one mirror deletion if Batch 6B/6C is resumed before Batch 7 implementation.
 
-Batch 7A (`Battle Domain Owner`) is `Ready for Migration Owner Review`: `BattleDomainOwner` owns frozen `battle-domain-v1` overlay/session facts for replay `battleScene` and interactive/replay `entityBattle`, `RendererSnapshotBoundary` emits `snapshot.battle`, and canonical battle open/update/close paths write the owner while preserving compatibility mirrors. No Battle open/close wrappers were added to `CanvasModeOwnershipBridge.js`; Battle sync uses the existing renderer snapshot path. Dedicated guard `scripts/check-frontend-ecs-battle-domain-owner.js` blocks new canonical writes outside approved paths. 7B cleanup target is App-side `this.battleScene`, with deletion order recorded in the 7A batch doc.
+Batch 7A (`Battle Domain Owner`) is `Completed` after migration owner sign-off and push at commit `2818aab8`: `BattleDomainOwner` owns frozen `battle-domain-v1` overlay/session facts for replay `battleScene` and interactive/replay `entityBattle`, `RendererSnapshotBoundary` emits `snapshot.battle`, and canonical battle open/update/close paths write the owner while preserving compatibility mirrors. No Battle open/close wrappers were added to `CanvasModeOwnershipBridge.js`; Battle sync uses the existing renderer snapshot path. 7B cleanup target is App-side `this.battleScene`, with deletion order recorded in the 7A batch doc.
+
+Batch 7B (`BattleScene Mirror Removal`) is `Ready for Migration Owner Review`: App/Shell `this.battleScene` replay overlay mirrors were deleted, renderer options now pass `battleScene` only from `getRendererSnapshot().battle.battleScene`, App replay flow reads owner snapshot via `getBattleSceneSession()`, and App-to-Shell `battleScene` mirror sync was removed. The battle domain guard now forbids App/Shell `battleScene` mirror reads/writes and reports 0 violations. `entityBattle` remains the live mutable compatibility mirror for a later Battle slice.

@@ -52,6 +52,9 @@
 
       hasBlockingOverlayOpen() {
             if (typeof this.isModeBlockingOverlayOpen === 'function') return this.isModeBlockingOverlayOpen();
+            const battleScene = typeof this.getRendererSnapshot === 'function'
+              ? this.getRendererSnapshot()?.battle?.battleScene
+              : null;
             return Boolean(this.showResourceDetails
               || this.showCitySwitcher
               || this.showSubcityList
@@ -68,7 +71,7 @@
               || this.techDetailOpen
               || this.activeEventId
               || this.naming?.visible
-              || this.battleScene?.visible
+              || battleScene?.visible
               || this.entityBattle?.visible
               || this.rewardReveal);
           },

@@ -124,6 +124,9 @@ handlePointerMove(point) {
 
 hasBlockingOverlayOpen() {
       if (typeof this.isModeBlockingOverlayOpen === 'function') return this.isModeBlockingOverlayOpen();
+      const battleScene = typeof this.getRendererSnapshot === 'function'
+        ? this.getRendererSnapshot()?.battle?.battleScene
+        : null;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -141,7 +144,7 @@ hasBlockingOverlayOpen() {
         || this.techDetailOpen
         || this.activeEventId
         || this.naming.visible
-        || this.battleScene?.visible
+        || battleScene?.visible
         || this.isEntityBattleActive()
         || this.rewardReveal);
     },
@@ -193,6 +196,9 @@ isTechTreeInteractionOpen() {
     },
 
 hasBlockingOverlayExceptTechTree() {
+      const battleScene = typeof this.getRendererSnapshot === 'function'
+        ? this.getRendererSnapshot()?.battle?.battleScene
+        : null;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -210,7 +216,7 @@ hasBlockingOverlayExceptTechTree() {
         || this.techDetailOpen
         || this.activeEventId
         || this.naming.visible
-        || this.battleScene?.visible
+        || battleScene?.visible
         || this.isEntityBattleActive()
         || this.rewardReveal);
     },

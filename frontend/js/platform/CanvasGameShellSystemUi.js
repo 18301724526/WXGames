@@ -393,17 +393,15 @@ stopNetworkOverlayTimer() {
 
 startBattleScene(report = null) {
       if (!report) return false;
-      this.battleScene = {
-        visible: true,
-        report,
-        turnIndex: 0,
-      };
-      return this.renderActive();
+      return typeof this.lastGame?.startBattleScene === 'function'
+        ? this.lastGame.startBattleScene(report) !== false
+        : false;
     },
 
 closeBattleScene() {
-      this.battleScene = null;
-      return this.renderActive();
+      return typeof this.lastGame?.closeBattleScene === 'function'
+        ? this.lastGame.closeBattleScene() !== false
+        : false;
     }
     });
     return true;

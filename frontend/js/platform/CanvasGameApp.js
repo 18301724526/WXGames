@@ -115,8 +115,7 @@
           this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
           this.activeCommandPanel = '';
           this.rewardReveal = null;
-          this.battleScene = null;
-          this.battleSceneTimer = null;
+          this.battleReplayTurnTimer = null;
           this.battleAnimationTimer = null;
           this.tutorialHighlight = null;
           this.tutorialIntro = options.tutorialIntro || null;

@@ -5,6 +5,7 @@ const path = require('node:path');
 
 require('../domain/WorldTime');
 require('../domain/WorldMarchProgressSnapshot');
+const EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../domain/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
@@ -706,6 +707,30 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   const options = shell.buildRenderOptions('military', {});
 
   assert.equal(options.now, 4321.25);
+});
+
+test('CanvasGameShell reads battleScene render options from owner snapshot only', () => {
+  const shell = new CanvasGameShell({
+    runtime: {
+      now() {
+        return 1234;
+      },
+    },
+  });
+  shell.lastGame = {
+    state: { currentTab: 'military', militaryView: 'army' },
+    tutorial: {},
+    __ecsBattleDomainOwner: EcsModeRuntime.BattleDomainOwner.openBattleScene(null, {
+      visible: true,
+      report: { id: 'snapshot-report' },
+      turnIndex: 0,
+    }),
+  };
+  shell.battleScene = { visible: true, report: { id: 'removed-shell-mirror' }, turnIndex: 0 };
+
+  const options = shell.buildRenderOptions('military', {});
+
+  assert.equal(options.battleScene.report.id, 'snapshot-report');
 });
 
 test('CanvasGameShell treats tutorial advisor dialogue as a blocking overlay', () => {

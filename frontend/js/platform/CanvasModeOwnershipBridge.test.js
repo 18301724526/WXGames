@@ -422,6 +422,12 @@ test('CanvasModeOwnershipBridge exposes battle facts only through read-only snap
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
   const host = new Host();
+  const owner = global.EcsModeRuntime.BattleDomainOwner.openBattleScene(null, {
+    visible: true,
+    report: { id: 'owner-report' },
+    turnIndex: 0,
+  });
+  host.lastGame = { __ecsBattleDomainOwner: owner };
 
   const forbiddenWrapperNames = [
     'openBattleSceneOwner',
@@ -435,11 +441,22 @@ test('CanvasModeOwnershipBridge exposes battle facts only through read-only snap
     assert.equal(typeof CanvasModeOwnershipBridge[name], 'undefined');
   });
 
-  host.battleScene = { visible: true, report: { id: 'legacy-report' }, turnIndex: 0 };
   const snapshot = host.buildRendererSnapshot();
 
   assert.equal(snapshot.battle.activeOverlay, 'battleScene');
-  assert.deepEqual(snapshot.battle.battleScene.report, { id: 'legacy-report' });
+  assert.deepEqual(snapshot.battle.battleScene.report, { id: 'owner-report' });
+});
+
+test('CanvasModeOwnershipBridge ignores removed battleScene mirrors for renderer snapshots', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  host.battleScene = { visible: true, report: { id: 'removed-mirror' }, turnIndex: 0 };
+
+  const snapshot = host.buildRendererSnapshot();
+
+  assert.equal(snapshot.battle.activeOverlay, 'none');
+  assert.equal(snapshot.battle.battleScene, null);
 });
 
 test('CanvasModeOwnershipBridge renderer snapshot helper is null-safe without runtime boundary', () => {

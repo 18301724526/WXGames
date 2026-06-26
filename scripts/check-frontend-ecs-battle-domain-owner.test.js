@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const {
+  findBattleSceneMirrorAccessInText,
   findBattleDomainWritesInText,
   isApprovedPath,
   isGrandfatheredPath,
@@ -32,7 +33,7 @@ test('battle domain owner guard allows approved owner and canonical adapter path
   assert.equal(isApprovedPath('frontend/js/ecs/domain/BattleDomainOwner.js'), true);
   assert.equal(isApprovedPath('frontend/js/platform/CanvasGameAppBattleScene.js'), true);
   assert.equal(isApprovedPath('frontend/js/platform/CanvasGameAppRenderingRuntime.js'), false);
-  assert.equal(isGrandfatheredPath('frontend/js/platform/CanvasGameShellSystemUi.js'), true);
+  assert.equal(isGrandfatheredPath('frontend/js/platform/CanvasGameShellSystemUi.js'), false);
 });
 
 test('battle domain owner guard blocks non-owner canonical writes', () => {
@@ -41,13 +42,34 @@ test('battle domain owner guard blocks non-owner canonical writes', () => {
     [
       'this.battleScene = { visible: true };',
       'canvasShell.entityBattle = session;',
-      'const readOnly = this.battleScene;',
+      'const readOnly = this.entityBattle;',
     ].join('\n'),
   );
 
   assert.deepEqual(
     findings.map((finding) => finding.symbol),
-    ['battleScene', 'entityBattle'],
+    ['entityBattle'],
+  );
+});
+
+test('battle domain owner guard blocks removed battleScene mirror reads and writes', () => {
+  const findings = findBattleSceneMirrorAccessInText(
+    'frontend/js/platform/CanvasGameAppRenderingRuntime.js',
+    [
+      'this.battleScene = { visible: true };',
+      'const removed = this.battleScene;',
+      'const shellRemoved = lastGame?.battleScene?.visible;',
+      'const localBattleScene = snapshot.battle.battleScene;',
+    ].join('\n'),
+  );
+
+  assert.deepEqual(
+    findings.map((finding) => [finding.symbol, finding.access]),
+    [
+      ['battleScene', 'write'],
+      ['battleScene', 'read'],
+      ['battleScene', 'read'],
+    ],
   );
 });
 
@@ -75,11 +97,12 @@ test('battle domain owner guard scans production frontend files', () =>
     );
 
     const report = scanBattleDomainOwner({ repoRoot });
-    assert.equal(report.summary.totalViolations, 1);
-    assert.equal(
-      report.violations[0].file,
+    assert.equal(report.summary.totalViolations, 3);
+    assert.deepEqual(report.violations.map((violation) => violation.file).sort(), [
+      'frontend/js/platform/CanvasGameAppBattleScene.js',
       'frontend/js/platform/CanvasGameAppRenderingRuntime.js',
-    );
+      'frontend/js/platform/CanvasGameShellSystemUi.js',
+    ]);
   }));
 
 test('battle domain owner guard rejects unknown CLI flags', () => {

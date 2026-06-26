@@ -43,14 +43,11 @@
             return this.getBattleBaseTurnDurationMs() + (isSkill ? this.getBattleSkillCutInDurationMs() : 0);
           },
 
-      getCurrentBattleTurnDurationMs(scene = this.battleScene) {
-            const turns = scene?.report?.turns || [];
-            const index = Math.max(0, Math.min(turns.length, Number(scene?.turnIndex) || 0));
+      getCurrentBattleTurnDurationMs(scene = null) {
+            const currentScene = scene || this.getBattleSceneSession();
+            const turns = currentScene?.report?.turns || [];
+            const index = Math.max(0, Math.min(turns.length, Number(currentScene?.turnIndex) || 0));
             return this.getBattleTurnDurationMs(index < turns.length ? turns[index] : null);
-          },
-
-      syncBattleSceneToShell() {
-            if (this.canvasShell) this.canvasShell.battleScene = this.battleScene;
           },
 
       syncEntityBattleToShell() {
@@ -66,7 +63,7 @@
             if (!BattleDomainOwner?.createBattleDomainOwner) return null;
             if (!this.__ecsBattleDomainOwner) {
               this.__ecsBattleDomainOwner = BattleDomainOwner.createBattleDomainOwner({
-                battleScene: this.battleScene,
+                battleScene: null,
                 entityBattle: this.entityBattle,
               });
             }
@@ -80,20 +77,34 @@
             return owner ? BattleDomainOwner.getBattleDomainSnapshot(owner) : null;
           },
 
+      invalidateRendererSnapshot() {
+            this.__ecsRendererSnapshot = null;
+            if (this.canvasShell) this.canvasShell.__ecsRendererSnapshot = null;
+          },
+
+      getBattleSceneSession() {
+            const snapshot = typeof this.getRendererSnapshot === 'function'
+              ? this.getRendererSnapshot()
+              : null;
+            return snapshot?.battle?.battleScene || null;
+          },
+
       openBattleSceneDomain(scene) {
             const BattleDomainOwner = this.getBattleDomainOwnerApi();
             const owner = this.ensureBattleDomainOwner();
-            if (!BattleDomainOwner?.openBattleScene || !owner) return scene;
+            if (!BattleDomainOwner?.openBattleScene || !owner) return null;
             this.__ecsBattleDomainOwner = BattleDomainOwner.openBattleScene(owner, scene);
-            return this.__ecsBattleDomainOwner.battleScene || scene;
+            this.invalidateRendererSnapshot();
+            return this.getBattleSceneSession();
           },
 
       updateBattleSceneDomain(patchOrScene = {}) {
             const BattleDomainOwner = this.getBattleDomainOwnerApi();
             const owner = this.ensureBattleDomainOwner();
-            if (!BattleDomainOwner?.updateBattleScene || !owner) return this.battleScene;
+            if (!BattleDomainOwner?.updateBattleScene || !owner) return null;
             this.__ecsBattleDomainOwner = BattleDomainOwner.updateBattleScene(owner, patchOrScene);
-            return this.__ecsBattleDomainOwner.battleScene;
+            this.invalidateRendererSnapshot();
+            return this.getBattleSceneSession();
           },
 
       closeBattleSceneDomain() {
@@ -101,6 +112,7 @@
             const owner = this.ensureBattleDomainOwner();
             if (!BattleDomainOwner?.closeBattleScene || !owner) return null;
             this.__ecsBattleDomainOwner = BattleDomainOwner.closeBattleScene(owner);
+            this.invalidateRendererSnapshot();
             return null;
           },
 
@@ -109,6 +121,7 @@
             const owner = this.ensureBattleDomainOwner();
             if (!BattleDomainOwner?.openEntityBattle || !owner) return session;
             this.__ecsBattleDomainOwner = BattleDomainOwner.openEntityBattle(owner, session);
+            this.invalidateRendererSnapshot();
             return this.__ecsBattleDomainOwner.entityBattle || session;
           },
 
@@ -117,6 +130,7 @@
             const owner = this.ensureBattleDomainOwner();
             if (!BattleDomainOwner?.updateEntityBattle || !owner) return this.entityBattle;
             this.__ecsBattleDomainOwner = BattleDomainOwner.updateEntityBattle(owner, patchOrSession);
+            this.invalidateRendererSnapshot();
             return this.__ecsBattleDomainOwner.entityBattle;
           },
 
@@ -125,6 +139,7 @@
             const owner = this.ensureBattleDomainOwner();
             if (!BattleDomainOwner?.closeEntityBattle || !owner) return null;
             this.__ecsBattleDomainOwner = BattleDomainOwner.closeEntityBattle(owner);
+            this.invalidateRendererSnapshot();
             return null;
           },
 
@@ -542,7 +557,7 @@
                 view.console?.error?.('[battle-replay] entity overlay failed, using legacy scene:', err);
               }
             }
-            this.battleScene = {
+            const battleScene = {
               visible: true,
               report,
               turnIndex: 0,
@@ -550,9 +565,7 @@
               turnStartedAt: this.now(),
               turnDurationMs: this.getBattleTurnDurationMs(report.turns?.[0] || null),
             };
-            this.openBattleSceneDomain(this.battleScene);
-            this.canvasShell?.startBattleScene?.(report);
-            this.syncBattleSceneToShell();
+            if (!this.openBattleSceneDomain(battleScene)) return false;
             this.startBattleSceneTimer();
             this.startBattleAnimationTimer();
             this.renderCanvasSurface(this.state?.currentTab || 'military');
@@ -560,14 +573,14 @@
           },
 
       stopBattleSceneTimer() {
-            if (!this.battleSceneTimer) return;
-            if (typeof this.scheduler?.clearTimeout === 'function') this.scheduler.clearTimeout(this.battleSceneTimer);
-            else if (typeof this.runtime?.clearTimeout === 'function') this.runtime.clearTimeout(this.battleSceneTimer);
-            else if (typeof clearTimeout === 'function') clearTimeout(this.battleSceneTimer);
-            else if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleSceneTimer);
-            else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleSceneTimer);
-            else if (typeof clearInterval === 'function') clearInterval(this.battleSceneTimer);
-            this.battleSceneTimer = null;
+            if (!this.battleReplayTurnTimer) return;
+            if (typeof this.scheduler?.clearTimeout === 'function') this.scheduler.clearTimeout(this.battleReplayTurnTimer);
+            else if (typeof this.runtime?.clearTimeout === 'function') this.runtime.clearTimeout(this.battleReplayTurnTimer);
+            else if (typeof clearTimeout === 'function') clearTimeout(this.battleReplayTurnTimer);
+            else if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleReplayTurnTimer);
+            else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleReplayTurnTimer);
+            else if (typeof clearInterval === 'function') clearInterval(this.battleReplayTurnTimer);
+            this.battleReplayTurnTimer = null;
           },
 
       stopBattleAnimationTimer() {
@@ -587,14 +600,14 @@
             if (!setIntervalFn) return false;
             this.battleAnimationTimer = timerHost
               ? setIntervalFn.call(timerHost, () => {
-                if (!this.battleScene?.visible) {
+                if (!this.getBattleSceneSession()?.visible) {
                   this.stopBattleAnimationTimer();
                   return;
                 }
                 this.renderAnimationFrame(this.state?.currentTab || 'military');
               }, this.getAnimationFrameMs())
               : setIntervalFn(() => {
-                if (!this.battleScene?.visible) {
+                if (!this.getBattleSceneSession()?.visible) {
                   this.stopBattleAnimationTimer();
                   return;
                 }
@@ -604,21 +617,21 @@
           },
 
       advanceBattleSceneTurn() {
-            if (!this.battleScene?.visible) {
+            const battleScene = this.getBattleSceneSession();
+            if (!battleScene?.visible) {
               this.stopBattleSceneTimer();
               return false;
             }
-            const turns = this.battleScene.report?.turns || [];
-            if (this.battleScene.turnIndex < turns.length) {
-              const nextTurnIndex = this.battleScene.turnIndex + 1;
-              this.battleScene = {
-                ...this.battleScene,
+            const turns = battleScene.report?.turns || [];
+            if (battleScene.turnIndex < turns.length) {
+              const nextTurnIndex = battleScene.turnIndex + 1;
+              const nextBattleScene = {
+                ...battleScene,
                 turnIndex: nextTurnIndex,
                 turnStartedAt: this.now(),
                 turnDurationMs: this.getBattleTurnDurationMs(nextTurnIndex < turns.length ? turns[nextTurnIndex] : null),
               };
-              this.updateBattleSceneDomain(this.battleScene);
-              this.syncBattleSceneToShell();
+              this.updateBattleSceneDomain(nextBattleScene);
               this.renderAnimationFrame(this.state?.currentTab || 'military');
               this.startBattleSceneTimer();
               return true;
@@ -635,7 +648,7 @@
               : (typeof this.runtime?.setTimeout === 'function' ? this.runtime : null);
             const setTimeoutFn = timerHost?.setTimeout || (typeof setTimeout === 'function' ? setTimeout : null);
             if (!setTimeoutFn) return false;
-            this.battleSceneTimer = timerHost
+            this.battleReplayTurnTimer = timerHost
               ? setTimeoutFn.call(timerHost, () => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs())
               : setTimeoutFn(() => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs());
             return true;
@@ -645,22 +658,20 @@
             this.stopBattleSceneTimer();
             this.stopBattleAnimationTimer();
             this.closeBattleSceneDomain();
-            this.battleScene = null;
-            this.canvasShell?.closeBattleScene?.();
             this.renderCanvasSurface(this.state?.currentTab || 'military');
             return true;
           },
 
       skipBattleScene() {
-            if (!this.battleScene?.visible) return false;
-            const turns = this.battleScene.report?.turns || [];
-            this.battleScene = {
-              ...this.battleScene,
+            const battleScene = this.getBattleSceneSession();
+            if (!battleScene?.visible) return false;
+            const turns = battleScene.report?.turns || [];
+            const nextBattleScene = {
+              ...battleScene,
               turnIndex: turns.length,
               turnStartedAt: this.now(),
             };
-            this.updateBattleSceneDomain(this.battleScene);
-            this.syncBattleSceneToShell();
+            this.updateBattleSceneDomain(nextBattleScene);
             this.stopBattleSceneTimer();
             this.stopBattleAnimationTimer();
             this.renderCanvasSurface(this.state?.currentTab || 'military');

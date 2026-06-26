@@ -169,7 +169,7 @@
               ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
               activeEventId: this.activeEventId,
               territoryUiState: this.territoryUiState,
-              ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : (this.battleScene ? { battleScene: this.battleScene } : {})),
+              ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
               ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
               naming: this.naming,
               tutorialIntro: this.tutorialIntro || null,

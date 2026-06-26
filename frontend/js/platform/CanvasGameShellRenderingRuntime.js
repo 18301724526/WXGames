@@ -447,7 +447,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
         territoryUiState: resolvedTerritoryUiState,
-        ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : ((this.lastGame?.battleScene || this.battleScene) ? { battleScene: this.lastGame?.battleScene || this.battleScene } : {})),
+        ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
         ...((this.lastGame?.entityBattle || this.entityBattle) ? { entityBattle: this.lastGame?.entityBattle || this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
         tabLocks: this.getTabLocks(state),
         naming: this.naming,

@@ -6,12 +6,12 @@
 | ---------------- | --------------------------------------------------- |
 | Batch            | `7. Domain Area Sealing`                            |
 | Slice            | `7A (battle domain owner)`                          |
-| State            | `Ready for Migration Owner Review`                  |
+| State            | `Completed`                                         |
 | Owner            | `frontend/js/ecs/domain/BattleDomainOwner.js`       |
 | Snapshot path    | `RendererSnapshotBoundary` emits `snapshot.battle`  |
 | Guard            | `scripts/check-frontend-ecs-battle-domain-owner.js` |
 | Runtime exposure | `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`   |
-| Last updated     | `2026-06-26 16:35:30 +08:00`                        |
+| Last updated     | `2026-06-26 17:18:00 +08:00`                        |
 
 ## Decision
 
@@ -79,3 +79,8 @@ Executed before Ready-for-Review docs:
 Result: targeted tests passed, all listed ownership/snapshot guards reported 0
 violations, lint/format passed, architecture smoke passed, and whitespace checks
 passed.
+
+## Completion
+
+Batch 7A was signed off and marked `Completed` at commit `2818aab8`. Batch 7B
+starts from the recorded cleanup target: delete App-side `this.battleScene`.

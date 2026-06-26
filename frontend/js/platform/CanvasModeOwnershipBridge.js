@@ -31,8 +31,22 @@
     return host?.lastGame || host;
   }
 
+  function readBattleDomainSnapshot(host) {
+    const BattleDomainOwner = getBattleDomainOwnerApi();
+    const owner =
+      host?.__ecsBattleDomainOwner ||
+      host?.lastGame?.__ecsBattleDomainOwner ||
+      host?.getCanvasGameHost?.()?.__ecsBattleDomainOwner ||
+      null;
+    if (BattleDomainOwner?.getBattleDomainSnapshot && owner) {
+      return BattleDomainOwner.getBattleDomainSnapshot(owner);
+    }
+    return null;
+  }
+
   function resolveBaseModeKey(host) {
     const game = getStateHost(host);
+    const battleSnapshot = readBattleDomainSnapshot(host);
     const activeTab =
       game?.state?.currentTab ||
       game?.activeTab ||
@@ -53,8 +67,7 @@
     if (activeTab === 'tech') return 'techTree';
     if (isTruthy(host?.armyFormationEditor?.open) || isTruthy(game?.armyFormationEditor?.open))
       return 'formationEditor';
-    if (isTruthy(host?.battleScene?.visible) || isTruthy(game?.battleScene?.visible))
-      return 'battle';
+    if (isTruthy(battleSnapshot?.battleScene?.visible)) return 'battle';
     if (
       activeTab === 'resources' ||
       activeTab === 'buildings' ||
@@ -108,6 +121,7 @@
 
   function hasBlockingOverlayExceptTechTree(host) {
     const game = getStateHost(host);
+    const battleSnapshot = readBattleDomainSnapshot(host);
     return Boolean(
       isTruthy(host?.showSettings) ||
       isTruthy(host?.showLogs) ||
@@ -131,8 +145,7 @@
       isTruthy(game?.activeEventId) ||
       isTruthy(host?.naming?.visible) ||
       isTruthy(game?.naming?.visible) ||
-      isTruthy(host?.battleScene?.visible) ||
-      isTruthy(game?.battleScene?.visible) ||
+      isTruthy(battleSnapshot?.battleScene?.visible) ||
       isTruthy(host?.entityBattle?.visible) ||
       isTruthy(game?.entityBattle?.visible) ||
       isTruthy(host?.rewardReveal) ||
@@ -497,25 +510,19 @@
 
   function buildRendererBattleFacts(host) {
     const BattleDomainOwner = getBattleDomainOwnerApi();
-    if (BattleDomainOwner?.getBattleDomainSnapshot && host?.__ecsBattleDomainOwner) {
-      return BattleDomainOwner.getBattleDomainSnapshot(host.__ecsBattleDomainOwner);
-    }
+    const battleSnapshot = readBattleDomainSnapshot(host);
+    if (battleSnapshot) return battleSnapshot;
     const game = host?.getCanvasGameHost?.() || getStateHost(host);
     const shell = game?.canvasShell || host?.canvasShell || host?.lastGame?.canvasShell || null;
-    const battleScene = game?.battleScene || shell?.battleScene || host?.battleScene || null;
     const entityBattle = game?.entityBattle || shell?.entityBattle || host?.entityBattle || null;
     if (BattleDomainOwner?.createBattleDomainOwner) {
-      return BattleDomainOwner.createBattleDomainOwner({ battleScene, entityBattle });
+      return BattleDomainOwner.createBattleDomainOwner({ battleScene: null, entityBattle });
     }
     return {
       schema: 'battle-domain-v1',
-      battleScene,
+      battleScene: null,
       entityBattle,
-      activeOverlay: entityBattle?.visible
-        ? 'entityBattle'
-        : battleScene?.visible
-          ? 'battleScene'
-          : 'none',
+      activeOverlay: entityBattle?.visible ? 'entityBattle' : 'none',
     };
   }
 
