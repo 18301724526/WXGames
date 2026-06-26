@@ -6,11 +6,11 @@
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Batch            | `5. Panel/Modal Ownership`                                                                                             |
 | Slice            | `5d (blockingPanel)`                                                                                                   |
-| State            | `Ready for Migration Owner Review`                                                                                     |
+| State            | `Completed`                                                                                                            |
 | ECS modal owner  | `frontend/js/ecs/mode/ModalWorld.js` (reused)                                                                          |
 | Bridge surface   | `openBlockingPanelOwner` / `closeBlockingPanelOwner` / `closeBlockingPanelsOwner`                                      |
 | Seal enforced by | `scripts/check-frontend-ecs-blocking-panel-ownership.js` plus architecture smoke and the existing mode ownership guard |
-| Last updated     | `2026-06-26 15:18:32 +08:00`                                                                                           |
+| Last updated     | `2026-06-26 15:34:13 +08:00`                                                                                           |
 
 ## Decision
 
@@ -51,7 +51,7 @@ Slice 5d does not:
 | Guard preventing old-path growth? | `scripts/check-frontend-ecs-blocking-panel-ownership.js` blocks direct canonical opens outside the bridge, grandfathers 0A baseline opens, and explicitly grandfathers tutorial coordinator scattered opens while allowing legacy clears. |
 | Behavior tests?                   | Bridge blockingPanel wrapper tests, CanvasActionController close-order tests, shell/city/famous owner-call tests, and the dedicated guard tests.                                                                                          |
 | Rollback?                         | Restore direct canonical handler writes for covered opens, remove blockingPanel wrappers/tests/guard wiring, and drop this batch doc.                                                                                                     |
-| Batch 5 status?                   | Slice 5d is `Ready for Migration Owner Review`. Batch 5 is not `Completed` until review signs off this slice and a separate completion commit records it.                                                                                 |
+| Batch 5 status?                   | Slice 5d is `Completed` after migration owner sign-off. Batch 5 is fully `Completed`; Batch 6 may start after this completion commit reaches the server branch.                                                                           |
 
 ## Verification
 
@@ -69,7 +69,9 @@ All full gate commands passed before the Ready-for-Review commit was pushed.
 
 ## Review Result
 
-`blockingPanel` sealing is `Ready for Migration Owner Review`. It must not be marked
-`Completed` until migration owner review confirms the umbrella owner semantics,
+`blockingPanel` sealing is `Completed` after migration owner sign-off on
+`2026-06-26 15:34:13 +08:00`. The review accepted the lighter umbrella owner,
 bridge mirror sync, canonical handler scope, central close order, dedicated guard
-scope, and explicit grandfathering of tutorial coordinator scattered opens.
+scope, explicit grandfathering of tutorial coordinator scattered opens, and the
+deferred renderer/tutorial read migration. Batch 5 is complete; Batch 6 may start
+after this completion commit reaches the server branch.
