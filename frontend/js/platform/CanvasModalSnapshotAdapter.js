@@ -1,5 +1,6 @@
 (function (global) {
   const NAMING_MODAL_KEY = 'modal:naming';
+  const CONFIRM_DIALOG_MODAL_KEY = 'modal:confirmDialog';
 
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
@@ -38,8 +39,16 @@
     return getModalPayloadSnapshot(host, NAMING_MODAL_KEY, snapshot);
   }
 
+  function getConfirmDialogSnapshot(host, snapshot = null) {
+    return getModalPayloadSnapshot(host, CONFIRM_DIALOG_MODAL_KEY, snapshot);
+  }
+
   function getNamingSnapshotFromRendererSnapshot(snapshot = null) {
     return getModalPayloadSnapshot(null, NAMING_MODAL_KEY, snapshot);
+  }
+
+  function getConfirmDialogSnapshotFromRendererSnapshot(snapshot = null) {
+    return getModalPayloadSnapshot(null, CONFIRM_DIALOG_MODAL_KEY, snapshot);
   }
 
   function getNamingPrompt(host, snapshot = null) {
@@ -93,11 +102,42 @@
     return closeModalPayload(host, NAMING_MODAL_KEY);
   }
 
+  function openConfirmDialogSnapshot(host, payload = {}, callbacks = null) {
+    return openModalPayload(host, CONFIRM_DIALOG_MODAL_KEY, payload, callbacks);
+  }
+
+  function updateConfirmDialogSnapshot(host, patch = {}) {
+    return updateModalPayload(host, CONFIRM_DIALOG_MODAL_KEY, patch);
+  }
+
+  function closeConfirmDialogSnapshot(host) {
+    return closeModalPayload(host, CONFIRM_DIALOG_MODAL_KEY);
+  }
+
+  function isConfirmDialogSnapshotOpen(host, snapshot = null) {
+    return Boolean(getConfirmDialogSnapshot(host, snapshot)?.visible);
+  }
+
+  function resolveConfirmDialogSnapshotCallback(host, type, ...args) {
+    const target = getOpenModalHost(host, CONFIRM_DIALOG_MODAL_KEY) || host;
+    return typeof target?.resolveModalCallback === 'function'
+      ? target.resolveModalCallback(CONFIRM_DIALOG_MODAL_KEY, type, ...args)
+      : undefined;
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
       closeNamingSnapshot() {
         return closeNamingSnapshot(this);
+      },
+
+      closeConfirmDialogSnapshot() {
+        return closeConfirmDialogSnapshot(this);
+      },
+
+      getConfirmDialogSnapshot(snapshot = null) {
+        return getConfirmDialogSnapshot(this, snapshot);
       },
 
       getNamingSnapshot(snapshot = null) {
@@ -116,6 +156,10 @@
         return isNamingSnapshotOpen(this, snapshot);
       },
 
+      isConfirmDialogSnapshotOpen(snapshot = null) {
+        return isConfirmDialogSnapshotOpen(this, snapshot);
+      },
+
       getNamingInputValue(snapshot = null) {
         return getNamingInputValue(this, snapshot);
       },
@@ -127,15 +171,31 @@
       updateNamingSnapshot(patch = {}) {
         return updateNamingSnapshot(this, patch);
       },
+
+      openConfirmDialogSnapshot(payload = {}, callbacks = null) {
+        return openConfirmDialogSnapshot(this, payload, callbacks);
+      },
+
+      updateConfirmDialogSnapshot(patch = {}) {
+        return updateConfirmDialogSnapshot(this, patch);
+      },
+
+      resolveConfirmDialogSnapshotCallback(type, ...args) {
+        return resolveConfirmDialogSnapshotCallback(this, type, ...args);
+      },
     });
     return true;
   }
 
   const api = {
+    CONFIRM_DIALOG_MODAL_KEY,
     NAMING_MODAL_KEY,
     collectRelatedHosts,
+    closeConfirmDialogSnapshot,
     closeModalPayload,
     closeNamingSnapshot,
+    getConfirmDialogSnapshot,
+    getConfirmDialogSnapshotFromRendererSnapshot,
     getOpenModalHost,
     getModalPayloadSnapshot,
     getNamingInputValue,
@@ -143,10 +203,14 @@
     getNamingSnapshot,
     getNamingSnapshotFromRendererSnapshot,
     install,
+    isConfirmDialogSnapshotOpen,
     isNamingSnapshotOpen,
+    openConfirmDialogSnapshot,
     openModalPayload,
     openNamingSnapshot,
     readModalEntry,
+    resolveConfirmDialogSnapshotCallback,
+    updateConfirmDialogSnapshot,
     updateModalPayload,
     updateNamingSnapshot,
   };

@@ -58,6 +58,9 @@
             const namingOpen = typeof this.isNamingSnapshotOpen === 'function'
               ? this.isNamingSnapshotOpen()
               : false;
+            const confirmDialogOpen = typeof this.isConfirmDialogSnapshotOpen === 'function'
+              ? this.isConfirmDialogSnapshotOpen()
+              : false;
             return Boolean(this.showResourceDetails
               || this.showCitySwitcher
               || this.showSubcityList
@@ -69,7 +72,7 @@
               || this.showGuidebook
               || this.showFamousPersons
               || this.armyFormationEditor?.open
-              || this.confirmDialog?.visible
+              || confirmDialogOpen
               || this.activeCommandPanel
               || this.techDetailOpen
               || this.activeEventId

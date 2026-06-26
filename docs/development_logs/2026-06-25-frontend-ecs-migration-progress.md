@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `8. Bridge Retirement`                       |
-| Batch state            | `8A Ready for Migration Owner Review`        |
-| Runtime code migration | Naming mirror removed; snapshot-owned        |
+| Batch state            | `8B Ready for Migration Owner Review`        |
+| Runtime code migration | ConfirmDialog mirror removed; snapshot-owned |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 18:19:04 +08:00`                 |
+| Last updated           | `2026-06-26 18:39:03 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -181,6 +181,18 @@ Batch 7A notes:
 | 8A-5. Guard upgrade                                | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | New `scripts/check-frontend-ecs-naming-mirror-retirement.js` forbids naming mirror reads/writes and retired wrapper names; guard reports 0 |
 | 8A-6. Behavior and guard tests                     | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | Focused tests cover owner snapshot reads, shell-to-app owner updates, renderer options, tutorial reads, and guard behavior                 |
 | 8A-7. Progress / operating plan / batch document   | Ready for Migration Owner Review | `2026-06-26 18:19:04 +08:00` | This document, the operating plan, and the 8A batch doc record Ready for Review, not Completed                                             |
+
+## Batch 8B Checklist
+
+| Step                                                      | Status                           | Updated At                   | Evidence                                                                                                                                                             |
+| --------------------------------------------------------- | -------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8B-1. Delete App/Shell confirmDialog mirror fields        | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | Removed Shell constructor initialization and all App/Shell `this.confirmDialog` / `canvasShell.confirmDialog` production accesses                                    |
+| 8B-2. Remove confirmDialog bridge wrappers                | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | Deleted `openConfirmDialogModal`, `closeConfirmDialogOwner`, `updateConfirmDialogPayload`, and `resolveConfirmDialogCallback` from `CanvasModeOwnershipBridge.js`    |
+| 8B-3. Route confirmDialog reads through renderer snapshot | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | Render/input/action-handler paths read `snapshot.modal['modal:confirmDialog']` through `CanvasModalSnapshotAdapter` and generic modal owner APIs                     |
+| 8B-4. Preserve generic callback registry path             | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | Confirm callbacks resolve through `resolveConfirmDialogSnapshotCallback()`, which delegates to generic `resolveModalCallback('modal:confirmDialog', ...)`            |
+| 8B-5. Guard upgrade                                       | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | New `scripts/check-frontend-ecs-confirm-dialog-mirror-retirement.js` forbids confirmDialog mirror reads/writes and retired wrapper names; guard reports 0 violations |
+| 8B-6. Behavior and guard tests                            | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | Focused tests cover snapshot reads, submitting updates, callback resolve, renderer options, reset action source, and guard behavior                                  |
+| 8B-7. Progress / operating plan / batch document          | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | This document, the operating plan, and the 8B batch doc record Ready for Review, not Completed                                                                       |
 
 ## Verification Commands
 
@@ -390,3 +402,5 @@ Batch 7A (`Battle Domain Owner`) is `Completed` after migration owner sign-off a
 Batch 7B (`BattleScene Mirror Removal`) is `Completed` after migration owner sign-off and push at commit `3db83d51`: App/Shell `this.battleScene` replay overlay mirrors were deleted, renderer options now pass `battleScene` only from `getRendererSnapshot().battle.battleScene`, App replay flow reads owner snapshot via `getBattleSceneSession()`, and App-to-Shell `battleScene` mirror sync was removed. The battle domain guard now forbids App/Shell `battleScene` mirror reads/writes and reports 0 violations. `entityBattle` remains the live mutable compatibility mirror for a later Battle slice.
 
 Batch 8A (`Naming Mirror Removal`) is `Ready for Migration Owner Review`: App/Shell `this.naming` mirrors and App-to-Shell `canvasShell.naming` sync were removed, `openNamingModal` / `closeNamingOwner` / `updateNamingPayload` were deleted from `CanvasModeOwnershipBridge.js`, render/input/tutorial readers now go through `snapshot.modal['modal:naming']` via `CanvasModalSnapshotAdapter`, and the dedicated naming mirror retirement guard reports 0 violations. Verified: targeted Node suite 157 tests, naming/render-snapshot/mode/input/battle/blockingPanel/targetPicker guards 0 violations, `npm run lint`, `npm run format:check`, `npm run test:architecture` 1240 tests, and `git diff --check`. Batch 8A is not marked Completed until migration owner sign-off.
+
+Batch 8B (`ConfirmDialog Mirror Removal`) is `Ready for Migration Owner Review`: App/Shell `this.confirmDialog` mirrors were removed, `openConfirmDialogModal` / `closeConfirmDialogOwner` / `updateConfirmDialogPayload` / `resolveConfirmDialogCallback` were deleted from `CanvasModeOwnershipBridge.js`, render/input/action-handler readers now go through `snapshot.modal['modal:confirmDialog']` via `CanvasModalSnapshotAdapter`, and the dedicated confirmDialog mirror retirement guard reports 0 violations. Verified: targeted Node suite 173 tests, confirmDialog/naming/render-snapshot/mode/input/battle/blockingPanel/targetPicker guards 0 violations, `npm run lint`, `npm run format:check`, `npm run test:architecture` 1248 tests, and `git diff --check`. Batch 8B is not marked Completed until migration owner sign-off.

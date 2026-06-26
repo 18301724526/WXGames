@@ -429,14 +429,15 @@ test('confirm reset executes reset after canvas confirmation', async () => {
   };
   const host = {
     lastGame: game,
-    confirmDialog: { visible: true, kind: 'resetGame', source: 'settings' },
+    getConfirmDialogSnapshot() {
+      return { visible: true, kind: 'resetGame', source: 'settings' };
+    },
     setConfirmDialogSubmitting(value) {
       calls.push(['submitting', value]);
       return true;
     },
     closeConfirmDialog() {
       calls.push(['closeConfirmDialog']);
-      this.confirmDialog = null;
       return true;
     },
     resetLocalViewToResources(options) {

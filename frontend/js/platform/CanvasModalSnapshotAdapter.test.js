@@ -58,3 +58,55 @@ test('CanvasModalSnapshotAdapter routes shell updates to the open naming owner h
   assert.equal(shell.isModalOpen('modal:naming'), false);
   assert.equal(shell.getNamingInputValue(), 'River League');
 });
+
+test('CanvasModalSnapshotAdapter reads and updates confirmDialog through modal snapshot', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const shell = new Host();
+
+  shell.openConfirmDialogSnapshot(
+    { visible: true, kind: 'resetGame', source: 'settings', submitting: false },
+    { onConfirm: () => true },
+  );
+
+  assert.deepEqual(shell.getConfirmDialogSnapshot(), {
+    visible: true,
+    kind: 'resetGame',
+    source: 'settings',
+    submitting: false,
+  });
+  assert.equal(
+    CanvasModalSnapshotAdapter.getConfirmDialogSnapshotFromRendererSnapshot(
+      shell.getRendererSnapshot(),
+    ).kind,
+    'resetGame',
+  );
+
+  shell.updateConfirmDialogSnapshot({ submitting: true });
+
+  assert.equal(shell.getConfirmDialogSnapshot().submitting, true);
+  assert.equal(shell.getRendererSnapshot().modal['modal:confirmDialog'].payload.submitting, true);
+});
+
+test('CanvasModalSnapshotAdapter resolves confirmDialog callbacks on the open owner host', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const game = new Host();
+  const shell = new Host();
+  game.canvasShell = shell;
+  shell.lastGame = game;
+  let confirmed = 0;
+
+  shell.openConfirmDialogSnapshot(
+    { visible: true, kind: 'resetGame', source: 'settings' },
+    { onConfirm: () => (confirmed += 1) },
+  );
+
+  game.resolveConfirmDialogSnapshotCallback('onConfirm');
+  shell.closeConfirmDialogSnapshot();
+  game.resolveConfirmDialogSnapshotCallback('onConfirm');
+
+  assert.equal(confirmed, 1);
+});

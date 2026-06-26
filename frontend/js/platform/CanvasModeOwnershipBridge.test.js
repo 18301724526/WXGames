@@ -21,9 +21,9 @@ test('CanvasModeOwnershipBridge maps scattered modal fields to modal mode keys',
   CanvasModeOwnershipBridge.install(Host);
   const host = new Host();
   host.openModal('modal:naming', { visible: true, view: { title: 'Name' } });
+  host.openModal('modal:confirmDialog', { visible: true, kind: 'resetGame' });
   Object.assign(host, {
     showTaskCenter: true,
-    confirmDialog: { visible: true },
     lastGame: {
       state: { currentTab: 'resources', militaryView: 'army' },
       rewardReveal: { rewardText: '+1' },
@@ -39,15 +39,17 @@ test('CanvasModeOwnershipBridge maps scattered modal fields to modal mode keys',
 });
 
 test('CanvasModeOwnershipBridge ignores retired naming mirrors when mapping modal keys', () => {
-  const host = {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = Object.assign(new Host(), {
     showTaskCenter: true,
     naming: { visible: true },
-    confirmDialog: { visible: true },
     lastGame: {
       state: { currentTab: 'resources', militaryView: 'army' },
       rewardReveal: { rewardText: '+1' },
     },
-  };
+  });
+  host.openModal('modal:confirmDialog', { visible: true, kind: 'resetGame' });
 
   assert.deepEqual(CanvasModeOwnershipBridge.collectModalKeys(host), [
     'modal:rewardReveal',
@@ -177,29 +179,41 @@ test('CanvasModeOwnershipBridge does not install retired naming owner wrappers',
   assert.equal(typeof host.updateNamingPayload, 'undefined');
 });
 
-test('CanvasModeOwnershipBridge confirmDialog wrappers seal state and resolve continuations', () => {
+test('CanvasModeOwnershipBridge does not install retired confirmDialog owner wrappers', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+
+  assert.equal(typeof host.openConfirmDialogModal, 'undefined');
+  assert.equal(typeof host.closeConfirmDialogOwner, 'undefined');
+  assert.equal(typeof host.updateConfirmDialogPayload, 'undefined');
+  assert.equal(typeof host.resolveConfirmDialogCallback, 'undefined');
+});
+
+test('CanvasModeOwnershipBridge generic modal APIs seal confirmDialog continuations', () => {
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
   const host = new Host();
 
   let confirmed = 0;
   let cancelled = 0;
-  const mirror = host.openConfirmDialogModal(
+  const payload = host.openModal(
+    'modal:confirmDialog',
     { visible: true, kind: 'resetGame', title: 'Reset?' },
     { onConfirm: () => (confirmed += 1), onCancel: () => (cancelled += 1) },
   );
   assert.equal(host.isModalOpen('modal:confirmDialog'), true);
-  assert.equal(mirror.kind, 'resetGame');
+  assert.equal(payload.kind, 'resetGame');
 
-  host.updateConfirmDialogPayload({ submitting: true });
+  host.updateModalPayload('modal:confirmDialog', { submitting: true });
   assert.equal(host.getModalPayload('modal:confirmDialog').submitting, true);
 
-  host.resolveConfirmDialogCallback('onConfirm');
+  host.resolveModalCallback('modal:confirmDialog', 'onConfirm');
   assert.equal(confirmed, 1);
 
-  host.closeConfirmDialogOwner();
+  host.closeModal('modal:confirmDialog');
   assert.equal(host.isModalOpen('modal:confirmDialog'), false);
-  host.resolveConfirmDialogCallback('onCancel'); // callbacks cleared on close -> inert
+  host.resolveModalCallback('modal:confirmDialog', 'onCancel'); // callbacks cleared on close -> inert
   assert.equal(cancelled, 0);
 });
 

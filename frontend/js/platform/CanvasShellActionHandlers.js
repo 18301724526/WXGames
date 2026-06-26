@@ -291,16 +291,16 @@
 
       handle_closeConfirmDialog(action) {
         const uiHost = this.getSystemUiHost();
-        uiHost?.resolveConfirmDialogCallback?.('onCancel', action);
+        uiHost?.resolveConfirmDialogSnapshotCallback?.('onCancel', action);
         const closed = uiHost?.closeConfirmDialog?.();
         return closed !== false;
       },
 
       handle_confirmResetGame(action) {
         const uiHost = this.getSystemUiHost();
-        const dialog = uiHost?.confirmDialog || {};
+        const dialog = uiHost?.getConfirmDialogSnapshot?.() || {};
         if (dialog.visible && dialog.kind && dialog.kind !== 'resetGame') return false;
-        uiHost?.resolveConfirmDialogCallback?.('onConfirm', action);
+        uiHost?.resolveConfirmDialogSnapshotCallback?.('onConfirm', action);
         uiHost?.setConfirmDialogSubmitting?.(true);
         const result = this.getGameHost()?.resetGame?.({ confirmed: true, source: action.source || dialog.source || '' });
         const applyResetView = (success) => {

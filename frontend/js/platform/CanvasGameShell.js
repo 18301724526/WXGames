@@ -202,7 +202,6 @@ constructor(options = {}) {
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
       this.rewardReveal = null;
-      this.confirmDialog = null;
       this.mapHomeActive = false;
       this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
       this.guideController = options.guideController || null;

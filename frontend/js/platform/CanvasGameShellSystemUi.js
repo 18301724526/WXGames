@@ -66,7 +66,10 @@ openConfirmDialog(view = {}) {
         cancelLabel: view.cancelLabel || t('common.cancel'),
         submitting: Boolean(view.submitting),
       };
-      this.confirmDialog = typeof this.openConfirmDialogModal === 'function' ? this.openConfirmDialogModal(dialog, { onConfirm: view.onConfirm || null, onCancel: view.onCancel || null }) : dialog;
+      this.openConfirmDialogSnapshot?.(dialog, {
+        onConfirm: view.onConfirm || null,
+        onCancel: view.onCancel || null,
+      });
       this.showSettings = false;
       this.showLogs = false;
       this.showResourceDetails = false;
@@ -93,16 +96,15 @@ openResetConfirm(options = {}) {
     },
 
 closeConfirmDialog() {
-      if (typeof this.closeConfirmDialogOwner === 'function') this.closeConfirmDialogOwner();
-      const hadDialog = Boolean(this.confirmDialog?.visible);
-      this.confirmDialog = null;
+      const hadDialog = this.isConfirmDialogSnapshotOpen?.() === true;
+      this.closeConfirmDialogSnapshot?.();
       if (hadDialog) this.renderActive();
       return hadDialog;
     },
 
 setConfirmDialogSubmitting(isSubmitting) {
-      if (!this.confirmDialog?.visible) return false;
-      this.confirmDialog = typeof this.updateConfirmDialogPayload === 'function' ? this.updateConfirmDialogPayload({ submitting: Boolean(isSubmitting) }) : { ...this.confirmDialog, submitting: Boolean(isSubmitting) };
+      if (!this.isConfirmDialogSnapshotOpen?.()) return false;
+      this.updateConfirmDialogSnapshot?.({ submitting: Boolean(isSubmitting) });
       this.renderActive();
       return true;
     },

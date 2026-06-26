@@ -95,8 +95,7 @@
     if (isTruthy(host?.activeEventId) || isTruthy(game?.activeEventId)) keys.push('modal:event');
     if (isTruthy(host?.rewardReveal) || isTruthy(game?.rewardReveal))
       keys.push('modal:rewardReveal');
-    if (isTruthy(host?.confirmDialog?.visible) || isTruthy(game?.confirmDialog?.visible))
-      keys.push('modal:confirmDialog');
+    if (isAnyModalOpen(host, 'modal:confirmDialog')) keys.push('modal:confirmDialog');
     const territoryUiState =
       host?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || {};
     if (
@@ -146,7 +145,7 @@
       isTruthy(host?.showFamousPersons) ||
       isTruthy(host?.armyFormationEditor?.open) ||
       isTruthy(game?.armyFormationEditor?.open) ||
-      isTruthy(host?.confirmDialog?.visible) ||
+      isAnyModalOpen(host, 'modal:confirmDialog') ||
       (isTruthy(host?.activeCommandPanel) && host.activeCommandPanel !== 'tech') ||
       isTruthy(host?.techDetailOpen) ||
       isTruthy(game?.techDetailOpen) ||
@@ -649,31 +648,6 @@
 
       resolveModalCallback(subtype, action, ...args) {
         return resolveModalCallback(this, subtype, action, ...args);
-      },
-
-      // confirmDialog-specific wrappers: the subtype literal, the legacy mirror
-      // fallback, and the callbacks plumbing live here (approved bridge path).
-      // confirmDialog keeps kind-dispatch for its continuation; the registry is
-      // wired (resolve-if-present) and stays ready for a closure-continuation modal.
-      openConfirmDialogModal(state, callbacks) {
-        return openModal(this, 'modal:confirmDialog', state, callbacks) || state;
-      },
-
-      closeConfirmDialogOwner() {
-        return closeModal(this, 'modal:confirmDialog');
-      },
-
-      updateConfirmDialogPayload(patch) {
-        return (
-          updateModalPayload(this, 'modal:confirmDialog', patch) || {
-            ...(this.confirmDialog || {}),
-            ...patch,
-          }
-        );
-      },
-
-      resolveConfirmDialogCallback(type, ...args) {
-        return resolveModalCallback(this, 'modal:confirmDialog', type, ...args);
       },
 
       // rewardReveal-specific wrappers (pure presentation; no callbacks). The

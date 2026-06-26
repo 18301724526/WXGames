@@ -661,3 +661,43 @@ Batch 8A scope control:
 - Do not add new naming-specific bridge wrappers.
 - Do not keep `this.naming` as compatibility fallback.
 - Do not mark 8A Completed before migration owner sign-off.
+
+## Batch 8B ConfirmDialog Mirror Removal Deliverables
+
+Batch 8B deletes the next sealed modal mirror: App/Shell
+`this.confirmDialog`. The source of truth remains the ECS modal owner entry for
+`modal:confirmDialog`; renderer-facing state is derived through the renderer
+snapshot boundary.
+
+Batch 8B approved runtime surfaces:
+
+| Surface                                                          | Status                           | Notes                                                                                                                              |
+| ---------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/js/platform/CanvasModalSnapshotAdapter.js`             | Ready for Migration Owner Review | Adds confirmDialog helpers that read `snapshot.modal['modal:confirmDialog']` and route open/update/close through generic modal API |
+| `frontend/js/platform/CanvasGameShellSystemUi.js`                | Ready for Migration Owner Review | Shell confirm open/update/close uses snapshot adapter helpers; no `this.confirmDialog` mirror writes remain                        |
+| `frontend/js/platform/CanvasShellActionHandlers.js`              | Ready for Migration Owner Review | Reset confirm reads snapshot and resolves callbacks through snapshot adapter/generic modal callback API                            |
+| `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          | Ready for Migration Owner Review | App render options pass `confirmDialog` only from snapshot-derived payload                                                         |
+| `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        | Ready for Migration Owner Review | Shell render options pass `confirmDialog` only from snapshot-derived payload                                                       |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`              | Ready for Migration Owner Review | ConfirmDialog-specific wrappers removed; mode facts detect `modal:confirmDialog` from modal owner entries                          |
+| `scripts/check-frontend-ecs-confirm-dialog-mirror-retirement.js` | Ready for Migration Owner Review | Blocks App/Shell/tutorial/input confirmDialog mirror reads/writes and retired wrapper names                                        |
+
+Batch 8B execution checklist:
+
+| Step                                          | Status                           | Artifact / Gate                                    | Acceptance Standard                                                                                                               |
+| --------------------------------------------- | -------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 8B-1. Delete confirmDialog mirror fields      | Ready for Migration Owner Review | `CanvasGameShell.js`                               | No constructor `this.confirmDialog` field remains                                                                                 |
+| 8B-2. Delete confirmDialog mirror write sites | Ready for Migration Owner Review | Shell system UI module                             | No App/Shell `this.confirmDialog` or `canvasShell.confirmDialog` production accesses remain                                       |
+| 8B-3. Delete confirmDialog bridge wrappers    | Ready for Migration Owner Review | `CanvasModeOwnershipBridge.js`                     | `openConfirmDialogModal`, `closeConfirmDialogOwner`, `updateConfirmDialogPayload`, and `resolveConfirmDialogCallback` are removed |
+| 8B-4. Snapshot-renderer migration             | Ready for Migration Owner Review | App/Shell rendering runtimes                       | `confirmDialog` render option is emitted only from `snapshot.modal['modal:confirmDialog']` payload                                |
+| 8B-5. Action/input migration                  | Ready for Migration Owner Review | input routers, `CanvasShellActionHandlers.js`      | Blocking overlay and reset confirm logic use snapshot adapter helpers; callback resolve uses generic modal callback API           |
+| 8B-6. Guard and smoke integration             | Ready for Migration Owner Review | confirmDialog retirement guard, architecture smoke | Guard reports 0 violations and is wired into `npm run test:architecture`                                                          |
+| 8B-7. Progress / operating plan / batch doc   | Ready for Migration Owner Review | progress doc, operating plan, 8B batch doc         | 8B documented as Ready for Review, not Completed                                                                                  |
+
+Batch 8B scope control:
+
+- Do not delete rewardReveal, event, targetPicker, or blockingPanel mirrors in
+  this slice.
+- Do not add new confirmDialog-specific bridge wrappers.
+- Do not keep `this.confirmDialog` as compatibility fallback.
+- Do not remove generic `ModalCallbackRegistry` or generic modal callback API.
+- Do not mark 8B Completed before migration owner sign-off.

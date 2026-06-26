@@ -136,6 +136,7 @@
             const snapshotBattleScene = battleSnapshot.battleScene || null;
             const snapshotEntityBattle = battleSnapshot.entityBattle || null;
             const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
+            const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
@@ -177,7 +178,7 @@
               tutorialHighlight: null,
               loading: this.loading,
               network: this.networkState,
-              confirmDialog: this.confirmDialog || this.canvasShell?.confirmDialog || null,
+              confirmDialog: snapshotConfirmDialog,
             });
             const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
               || this.territoryController?.uiState?.tileMapWaterAnimated);

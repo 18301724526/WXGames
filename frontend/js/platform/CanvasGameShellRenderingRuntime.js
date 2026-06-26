@@ -394,6 +394,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const snapshotBattleScene = battleSnapshot.battleScene || null;
       const snapshotEntityBattle = battleSnapshot.entityBattle || null;
       const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
+      const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
       logActorPickingDiag('shell:buildRenderOptions:territoryUiState', {
         activeTab,
         input: summarizeActorPickingUiState(territoryUiState),
@@ -455,7 +456,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         auth: this.auth,
         loading: this.loading,
         network: this.networkState,
-        confirmDialog: this.confirmDialog,
+        confirmDialog: snapshotConfirmDialog,
         floatingTexts: this.getFloatingTextView(),
         tutorialIntro: this.lastGame?.tutorialIntro || this.tutorialIntro || null,
         tutorialAdvisorDialogue: this.lastGame?.tutorialAdvisorDialogue || this.tutorialAdvisorDialogue || null,

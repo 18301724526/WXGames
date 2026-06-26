@@ -130,6 +130,9 @@ hasBlockingOverlayOpen() {
       const namingOpen = typeof this.isNamingSnapshotOpen === 'function'
         ? this.isNamingSnapshotOpen()
         : false;
+      const confirmDialogOpen = typeof this.isConfirmDialogSnapshotOpen === 'function'
+        ? this.isConfirmDialogSnapshotOpen()
+        : false;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -142,7 +145,7 @@ hasBlockingOverlayOpen() {
         || this.showTaskCenter
         || this.showGuidebook
         || this.armyFormationEditor?.open
-        || this.confirmDialog?.visible
+        || confirmDialogOpen
         || this.activeCommandPanel
         || this.techDetailOpen
         || this.activeEventId
@@ -205,6 +208,9 @@ hasBlockingOverlayExceptTechTree() {
       const namingOpen = typeof this.isNamingSnapshotOpen === 'function'
         ? this.isNamingSnapshotOpen()
         : false;
+      const confirmDialogOpen = typeof this.isConfirmDialogSnapshotOpen === 'function'
+        ? this.isConfirmDialogSnapshotOpen()
+        : false;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -217,7 +223,7 @@ hasBlockingOverlayExceptTechTree() {
         || this.showTaskCenter
         || this.showGuidebook
         || this.armyFormationEditor?.open
-        || this.confirmDialog?.visible
+        || confirmDialogOpen
         || (this.activeCommandPanel && this.activeCommandPanel !== 'tech')
         || this.techDetailOpen
         || this.activeEventId
