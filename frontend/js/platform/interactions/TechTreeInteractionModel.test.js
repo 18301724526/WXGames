@@ -602,6 +602,45 @@ test('CanvasActionController opens task center above city management after lumbe
   assert.deepEqual(calls, [['render'], ['refreshCurrentHighlight']]);
 });
 
+test('CanvasActionController mirrors city management open to the game host', () => {
+  const calls = [];
+  const shell = {
+    showCityManagement: false,
+    activeCityManagementTab: '',
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  };
+  const game = {
+    showCityManagement: false,
+    activeCityManagementTab: '',
+    canvasShell: shell,
+    tutorialController: {
+      onCityManagementOpened(tab) {
+        calls.push(['onCityManagementOpened', tab]);
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+  };
+  const controller = new CanvasActionController({ host: shell });
+
+  assert.equal(
+    controller.handle_openCityManagement({ type: 'openCityManagement', tab: 'people' }),
+    true,
+  );
+
+  assert.equal(shell.showCityManagement, true);
+  assert.equal(game.showCityManagement, true);
+  assert.equal(shell.activeCityManagementTab, 'people');
+  assert.equal(game.activeCityManagementTab, 'people');
+});
+
 test('CanvasActionController closes command panel after switching military view', () => {
   const calls = [];
   const shell = {

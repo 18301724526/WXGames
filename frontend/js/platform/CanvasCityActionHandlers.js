@@ -36,21 +36,34 @@
     return true;
   }
 
+  // Open a blocking panel on the host AND mirror it to the game host + canvasShell,
+  // matching how the close handlers clear the mirror. On a bridge host the host's
+  // own openBlockingPanelOwner already syncs all three, so the extra calls are
+  // idempotent; on a bridge-less fallback host they restore the dropped propagation.
+  function openBlockingPanelEverywhere(host, game, panelKey, value = true) {
+    openBlockingPanelOwner(host, panelKey, value);
+    if (game && game !== host) openBlockingPanelOwner(game, panelKey, value);
+    if (game?.canvasShell && game.canvasShell !== host) {
+      openBlockingPanelOwner(game.canvasShell, panelKey, value);
+    }
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
       handle_openCityManagement(action) {
         const tab = action.tab || 'buildings';
-        this.host.activeCityManagementTab = tab;
-        openBlockingPanelOwner(this.host, 'showCityManagement', true);
-        this.closePanels(['showCityManagement']);
         const game = this.getGameHost();
+        this.host.activeCityManagementTab = tab;
         if (game && game !== this.host) game.activeCityManagementTab = tab;
+        openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
+        this.closePanels(['showCityManagement']);
         const handled = this.afterHandled(action);
         const result = game?.tutorialController?.onCityManagementOpened?.(tab);
         const refreshAfterTutorialAdvance = () => {
           this.host.activeCityManagementTab = tab;
           if (game && game !== this.host) game.activeCityManagementTab = tab;
+          openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
           game?.tutorialController?.refreshCurrentHighlight?.();
         };
         if (result && typeof result.then === 'function') {
@@ -107,11 +120,7 @@
           || (this.host?.hasClaimableMainTask?.() ? 'main' : this.host.activeTaskCenterTab)
           || 'main';
         const game = this.closePanelsEverywhere(['showTaskCenter']);
-        openBlockingPanelOwner(this.host, 'showTaskCenter', true);
-        if (game && game !== this.host) openBlockingPanelOwner(game, 'showTaskCenter', true);
-        if (game?.canvasShell && game.canvasShell !== this.host) {
-          openBlockingPanelOwner(game.canvasShell, 'showTaskCenter', true);
-        }
+        openBlockingPanelEverywhere(this.host, game, 'showTaskCenter');
         this.host.activeTaskCenterTab = tab;
         if (game && game !== this.host) {
           game.activeTaskCenterTab = tab;
@@ -225,13 +234,13 @@
           : Promise.resolve(this.selectCity({ ...action, cityId })).then((allowed) => {
             if (allowed === false) return false;
             this.host.activeCityManagementTab = action.tab || 'buildings';
-            openBlockingPanelOwner(this.host, 'showCityManagement', true);
+            openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
             return true;
           });
         return this.finalize(Promise.resolve(result).then((allowed) => {
           if (allowed !== false) {
             this.host.activeCityManagementTab = action.tab || 'buildings';
-            openBlockingPanelOwner(this.host, 'showCityManagement', true);
+            openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
             this.afterHandled(action);
             const tab = action.tab || 'buildings';
             game?.tutorialController?.onCityManagementOpened?.(tab);
