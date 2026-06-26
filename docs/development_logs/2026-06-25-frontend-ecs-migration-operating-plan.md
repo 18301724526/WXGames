@@ -527,17 +527,24 @@ Batch 6A does not:
 
 Batch 6A execution checklist:
 
-| Step                                              | Status                           | Artifact / Gate                                            | Acceptance Standard                                                                                   |
-| ------------------------------------------------- | -------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| 6A-1. Snapshot boundary module                    | Ready for Migration Owner Review | `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`     | Frozen serializable `renderer-snapshot-v1`; sealed modal/panel facts only; no domain-state payloads   |
-| 6A-2. Runtime bundle regeneration                 | Ready for Migration Owner Review | `EcsModeRuntimeEntry.js`, `EcsModeRuntimeBundle.js`        | Boundary exposed through the existing generated runtime bundle                                        |
-| 6A-3. Bridge read-only helper                     | Ready for Migration Owner Review | `CanvasModeOwnershipBridge.js`                             | `buildRendererSnapshot` / `getRendererSnapshot` are null-safe and do not create source-of-truth state |
-| 6A-4. Renderer snapshot boundary guard            | Ready for Migration Owner Review | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` | Current direct reads are grandfathered; new direct covered reads outside approved paths are blocked   |
-| 6A-5. Guard, bridge, boundary, and manifest tests | Ready for Migration Owner Review | targeted `node --test` suite                               | Snapshot contract, guard baseline, manifest, and bridge helper behavior are covered                   |
-| 6A-6. Architecture smoke integration              | Ready for Migration Owner Review | `scripts/run-architecture-smoke.js`                        | Smoke runs the new guard and tests as blocking                                                        |
-| 6A-7. Progress and batch document update          | Ready for Migration Owner Review | progress doc and Batch 6A batch doc                        | 6A documented as Ready for Review, not Completed                                                      |
+| Step                                              | Status    | Artifact / Gate                                            | Acceptance Standard                                                                                   |
+| ------------------------------------------------- | --------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 6A-1. Snapshot boundary module                    | Completed | `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`     | Frozen serializable `renderer-snapshot-v1`; sealed modal/panel facts only; no domain-state payloads   |
+| 6A-2. Runtime bundle regeneration                 | Completed | `EcsModeRuntimeEntry.js`, `EcsModeRuntimeBundle.js`        | Boundary exposed through the existing generated runtime bundle                                        |
+| 6A-3. Bridge read-only helper                     | Completed | `CanvasModeOwnershipBridge.js`                             | `buildRendererSnapshot` / `getRendererSnapshot` are null-safe and do not create source-of-truth state |
+| 6A-4. Renderer snapshot boundary guard            | Completed | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` | Current direct reads are grandfathered; new direct covered reads outside approved paths are blocked   |
+| 6A-5. Guard, bridge, boundary, and manifest tests | Completed | targeted `node --test` suite                               | Snapshot contract, guard baseline, manifest, and bridge helper behavior are covered                   |
+| 6A-6. Architecture smoke integration              | Completed | `scripts/run-architecture-smoke.js`                        | Smoke runs the new guard and tests as blocking                                                        |
+| 6A-7. Progress and batch document update          | Completed | progress doc and Batch 6A batch doc                        | 6A documented as Completed after migration owner sign-off                                             |
 
 Batch 6A acceptance owner:
 
 - Migration owner: project main engineer or explicitly assigned architecture owner.
-- 6A may move to `Completed` only after migration owner sign-off. Until then it remains `Ready for Migration Owner Review`.
+- 6A moved to `Completed` after migration owner sign-off at `2026-06-26 16:05:54 +08:00` (Batch 6A Passed).
+
+Batch 6A review result:
+
+- Batch 6A (`Snapshot Boundary Scaffold`) is `Completed` after migration owner sign-off at `2026-06-26 16:05:54 +08:00`.
+- Accepted: `renderer-snapshot-v1` contract, owner-direct modal reads, bridge read-only API, dedicated guard with 139 baseline / 139 current / 0 violations, mode-spine guard 0 violations, and 1219-test architecture smoke.
+- Follow-up condition: 6B/6C renderer-reader sub-slices must include mirror retire targets. The first 6B sub-slice must delete at least one mirror and migrate its renderer readers to the snapshot.
+- Batch 7 (`Domain Area Sealing`) may start after the 6A completion commit reaches the server branch.

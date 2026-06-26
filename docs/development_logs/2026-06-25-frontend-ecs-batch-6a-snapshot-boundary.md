@@ -6,12 +6,12 @@
 | ----------------- | ------------------------------------------------------------------------------------- |
 | Batch             | `6. Snapshot Boundary`                                                                |
 | Slice             | `6A (renderer snapshot scaffold)`                                                     |
-| State             | `Ready for Migration Owner Review`                                                    |
+| State             | `Completed`                                                                           |
 | Snapshot boundary | `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`                                |
 | Bridge surface    | `buildRendererSnapshot(host, options = {})` / `getRendererSnapshot(host)`             |
 | Guard             | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js`                            |
 | Runtime exposure  | `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js` (single approved generated runtime) |
-| Last updated      | `2026-06-26 15:52:52 +08:00`                                                          |
+| Last updated      | `2026-06-26 16:05:54 +08:00`                                                          |
 
 ## Decision
 
@@ -53,7 +53,7 @@ Later Batch 6 sub-slices should reduce this table one group at a time.
 | Guard preventing old-path growth? | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` blocks new direct renderer reads of covered sealed modal/panel facts outside the approved snapshot paths.      |
 | Behavior tests?                   | Snapshot boundary tests, bridge snapshot helper tests, guard tests, manifest test, and architecture smoke integration.                                                    |
 | Rollback?                         | Remove the snapshot boundary module, bridge helpers, guard wiring, runtime export, generated bundle change, and this batch doc; no renderer reader migration is involved. |
-| Batch 6 status?                   | 6A is `Ready for Migration Owner Review`; Batch 6 is not Completed.                                                                                                       |
+| Batch 6 status?                   | 6A is `Completed` after migration owner sign-off; Batch 6 scaffold is complete.                                                                                           |
 
 ## Guard Baseline
 
@@ -162,3 +162,14 @@ Local verification before the Ready-for-Review commit:
   returns `null` when the runtime/boundary is unavailable.
 - The guard baseline shows 139 existing direct renderer reads across 78 file+symbol
   rows; those reads are grandfathered until later Batch 6 sub-slices migrate them.
+
+## Review Result
+
+Batch 6A is `Completed` after migration owner sign-off on
+`2026-06-26 16:05:54 +08:00`. The review accepted the v1 snapshot
+contract, owner-direct modal reads, bridge read-only API, dedicated guard, and
+1219-test validation.
+
+Follow-up condition for the next renderer-reader work: each 6B/6C sub-slice must
+include a mirror retire target, and the first 6B sub-slice must delete at least
+one mirror while migrating its renderer readers to the snapshot.
