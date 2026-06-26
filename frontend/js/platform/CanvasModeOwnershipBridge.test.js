@@ -274,14 +274,27 @@ test('CanvasModeOwnershipBridge event snapshot preserves falsy but non-null even
   assert.equal(host.isEventSnapshotOpen(), true);
 });
 
-test('CanvasModeOwnershipBridge targetPicker wrappers own picker payload and territory mirrors', () => {
+test('CanvasModeOwnershipBridge does not install retired target picker wrappers', () => {
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
   const host = new Host();
-  const shell = { territoryUiState: {} };
-  const territoryController = { uiState: {} };
-  const game = { canvasShell: shell, territoryController, territoryUiState: {} };
-  host.getCanvasGameHost = () => game;
+
+  assert.equal(typeof host.openWorldTargetPickerOwner, 'undefined');
+  assert.equal(typeof host.openWorldMarchFormationPickerOwner, 'undefined');
+  assert.equal(typeof host.closeTargetPickerOwner, 'undefined');
+  assert.equal(typeof CanvasModeOwnershipBridge.openWorldTargetPickerOwner, 'undefined');
+  assert.equal(typeof CanvasModeOwnershipBridge.openWorldMarchFormationPickerOwner, 'undefined');
+  assert.equal(typeof CanvasModeOwnershipBridge.closeTargetPickerOwner, 'undefined');
+});
+
+test('CanvasModeOwnershipBridge targetPicker snapshot fans out across related hosts', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const shell = new Host();
+  const game = new Host();
+  game.canvasShell = shell;
+  shell.lastGame = game;
 
   const picker = {
     tileId: 'tile_0_0',
@@ -290,38 +303,36 @@ test('CanvasModeOwnershipBridge targetPicker wrappers own picker payload and ter
       { id: 'march-1', action: { type: 'selectWorldActor', actorId: 'march-1' } },
     ],
   };
-  assert.equal(host.openWorldTargetPickerOwner(territoryController.uiState, picker), picker);
-  assert.equal(host.isModalOpen('modal:targetPicker'), true);
-  assert.deepEqual(host.getModalPayload('modal:targetPicker'), {
+
+  // Opening on ANY one related host fans the snapshot out to all of them, and the
+  // territoryUiState mirror is no longer touched.
+  assert.deepEqual(shell.openTargetPickerSnapshot({ pickerKind: 'worldTargetPicker', picker }), {
     pickerKind: 'worldTargetPicker',
     picker,
   });
-  assert.equal(host.territoryUiState, territoryController.uiState);
-  assert.equal(game.territoryUiState, territoryController.uiState);
-  assert.equal(shell.territoryUiState, territoryController.uiState);
-  assert.equal(territoryController.uiState.worldTargetPicker, picker);
-  assert.equal(territoryController.uiState.worldMarchTarget, null);
+  assert.equal(shell.isTargetPickerSnapshotOpen(), true);
+  assert.equal(game.isTargetPickerSnapshotOpen(), true);
+  assert.deepEqual(
+    CanvasModeOwnershipBridge.collectModalKeys(shell).includes('modal:targetPicker'),
+    true,
+  );
+  assert.deepEqual(shell.getTargetPickerSnapshot(), {
+    pickerKind: 'worldTargetPicker',
+    picker,
+    visible: true,
+  });
 
   const formationTarget = { q: 2, r: -1, tileId: 'tile_2_-1', missionId: 'march-1' };
-  const openedTarget = host.openWorldMarchFormationPickerOwner(
-    territoryController.uiState,
-    formationTarget,
-  );
-  assert.deepEqual(openedTarget, { ...formationTarget, pickerOpen: true });
-  assert.deepEqual(host.getModalPayload('modal:targetPicker'), {
+  shell.openTargetPickerSnapshot({ pickerKind: 'worldMarchFormation', target: formationTarget });
+  assert.deepEqual(game.getTargetPickerSnapshot(), {
     pickerKind: 'worldMarchFormation',
-    target: openedTarget,
+    target: formationTarget,
+    visible: true,
   });
-  assert.equal(territoryController.uiState.worldTargetPicker, null);
-  assert.deepEqual(territoryController.uiState.worldMarchTarget, openedTarget);
 
-  host.closeTargetPickerOwner(territoryController.uiState);
-  assert.equal(host.isModalOpen('modal:targetPicker'), false);
-  assert.equal(territoryController.uiState.worldTargetPicker, null);
-  assert.deepEqual(territoryController.uiState.worldMarchTarget, {
-    ...formationTarget,
-    pickerOpen: false,
-  });
+  shell.closeTargetPickerSnapshot();
+  assert.equal(shell.isTargetPickerSnapshotOpen(), false);
+  assert.equal(game.isTargetPickerSnapshotOpen(), false);
 });
 
 test('CanvasModeOwnershipBridge blockingPanel wrappers own umbrella payload and mirrors', () => {

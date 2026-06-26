@@ -3,7 +3,19 @@ const assert = require('node:assert/strict');
 
 const TechTreeInteractionModel = require('./TechTreeInteractionModel');
 const CanvasActionController = require('../CanvasActionController');
+const CanvasModeOwnershipBridge = require('../CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('../CanvasModalSnapshotAdapter');
 const GameAPI = require('../../api/GameAPI');
+
+// A modal-capable host carries the bridge + snapshot-adapter helpers so the
+// targetPicker modal routes through the owner snapshot (Batch 8E).
+class ModalHost {}
+CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModalSnapshotAdapter.install(ModalHost);
+
+function makeModalHost(fields = {}) {
+  return Object.assign(new ModalHost(), fields);
+}
 
 function createHost() {
   const calls = [];
@@ -823,7 +835,7 @@ test('CanvasActionController advances tutorial after selecting a world march tar
       },
     },
   };
-  const host = {
+  const host = makeModalHost({
     territoryUiState: game.territoryUiState,
     lastGame: game,
     renderCanvasAction(action) {
@@ -834,7 +846,7 @@ test('CanvasActionController advances tutorial after selecting a world march tar
       calls.push(['requestWorldMapRenderAnimationFrame', options]);
       return true;
     },
-  };
+  });
   const controller = new CanvasActionController({ host, awaitAsync: true });
 
   const handled = await controller.handle_selectWorldMarchTarget({
@@ -849,8 +861,8 @@ test('CanvasActionController advances tutorial after selecting a world march tar
     q: 3,
     r: -2,
     tileId: 'tile_3_-2',
-    pickerOpen: false,
   });
+  assert.equal(host.isTargetPickerSnapshotOpen(), false);
   assert.equal(host.territoryUiState.selectedWorldActorId, '');
   assert.equal(host.territoryUiState.selectedSiteId, '');
   assert.deepEqual(calls, [
@@ -866,7 +878,7 @@ test('CanvasActionController advances tutorial after selecting a world march tar
 
 test('CanvasActionController refreshes world map layer after world march HUD changes', async () => {
   const calls = [];
-  const shell = {
+  const shell = makeModalHost({
     territoryUiState: {},
     renderCanvasAction(action) {
       calls.push(['renderCanvasAction', action.type]);
@@ -879,7 +891,7 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     getCanvasGameHost() {
       return game;
     },
-  };
+  });
   const game = {
     canvasShell: shell,
     territoryUiState: shell.territoryUiState,
@@ -920,11 +932,13 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     q: 2,
     r: -1,
     tileId: 'tile_2_-1',
-    pickerOpen: true,
   });
+  assert.equal(shell.isTargetPickerSnapshotOpen(), true);
+  assert.equal(shell.getTargetPickerSnapshot()?.pickerKind, 'worldMarchFormation');
 
   assert.equal(controller.handle_closeWorldMarchHud({ type: 'closeWorldMarchHud' }), true);
   assert.equal(shell.territoryUiState.worldMarchTarget, null);
+  assert.equal(shell.isTargetPickerSnapshotOpen(), false);
 
   assert.equal(controller.handle_selectWorldActor({
     type: 'selectWorldActor',
@@ -988,7 +1002,7 @@ test('CanvasActionController writes world march selection into territory control
       },
     },
   };
-  const host = {
+  const host = makeModalHost({
     territoryUiState: {},
     lastGame: game,
     renderCanvasAction(action) {
@@ -999,7 +1013,7 @@ test('CanvasActionController writes world march selection into territory control
       calls.push(['requestWorldMapRenderAnimationFrame', options]);
       return true;
     },
-  };
+  });
   const controller = new CanvasActionController({ host, awaitAsync: true });
 
   assert.equal(await controller.handle_selectWorldMarchTarget({
@@ -1014,7 +1028,6 @@ test('CanvasActionController writes world march selection into territory control
     q: 5,
     r: -3,
     tileId: 'tile_5_-3',
-    pickerOpen: false,
   });
   assert.equal(controllerUiState.selectedSiteId, '');
   assert.equal(controllerUiState.selectedWorldActorId, '');

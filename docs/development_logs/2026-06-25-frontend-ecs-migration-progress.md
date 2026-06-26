@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `8. Bridge Retirement`                       |
-| Batch state            | `8D Ready for Migration Owner Review`        |
-| Runtime code migration | Event mirror removed; snapshot-owned         |
+| Batch state            | `8E Ready for Migration Owner Review`        |
+| Runtime code migration | TargetPicker mirror removed; snapshot-owned  |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 23:38:10 +08:00`                 |
+| Last updated           | `2026-06-27 01:09:27 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -217,6 +217,25 @@ Batch 7A notes:
 | 8D-5. Guard upgrade (extended)                                   | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | New `scripts/check-frontend-ecs-event-mirror-retirement.js` adds setIfChanged + patch-key detection and excludes EventController.js; guard reports 0 violations                                                               |
 | 8D-6. Behavior and guard tests                                   | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | Snapshot fan-out, cursor untouched, retired-wrapper absence; full `npm test` 1684/0                                                                                                                                           |
 | 8D-7. Progress / operating plan / batch document                 | Ready for Migration Owner Review | `2026-06-26 23:38:10 +08:00` | This document, the operating plan, and the 8D batch doc record Ready for Review, not Completed                                                                                                                                |
+
+## Batch 8E Checklist
+
+| Step                                                         | Status                           | Updated At                   | Evidence                                                                                                                                                                              |
+| ------------------------------------------------------------ | -------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8E-1. Delete picker mirror fields                            | Ready for Migration Owner Review | `2026-06-27 01:09:27 +08:00` | Removed `worldTargetPicker` seed + vestigial clears from `TerritoryController`; `pickerOpen` peeled off `worldMarchTarget`                                                            |
+| 8E-2. Remove picker bridge wrappers                          | Ready for Migration Owner Review | `2026-06-27 01:09:27 +08:00` | Deleted the 3 picker wrappers + dead syncTerritoryUiStateMirror/resolveTerritoryUiState/collectTerritoryMirrorTargets                                                                 |
+| 8E-3. Route picker reads/writes through the owner (Option B) | Ready for Migration Owner Review | `2026-06-27 01:09:27 +08:00` | Action handlers open/close via the snapshot adapter; the picker is threaded to the HUD as a dedicated `options.targetPicker` render option; territoryUiState carries no picker fields |
+| 8E-4. Tutorial gate + domain normalizers                     | Ready for Migration Owner Review | `2026-06-27 01:09:27 +08:00` | `isWorldMarchFormationPickerOpen` reads the owner snapshot; the two domain normalizers stopped copying `pickerOpen`; world-march domain data untouched                                |
+| 8E-5. Guard upgrade + reconcile                              | Ready for Migration Owner Review | `2026-06-27 01:09:27 +08:00` | New `check-frontend-ecs-target-picker-mirror-retirement.js` (0 violations); existing ownership guard reconciled; both wired into the smoke                                            |
+| 8E-6. Behavior and guard tests                               | Ready for Migration Owner Review | `2026-06-27 01:09:27 +08:00` | Snapshot fan-out + render threading + tutorial gate; full `npm test` 1686/0                                                                                                           |
+| 8E-7. Progress / operating plan / batch document             | Ready for Migration Owner Review | `2026-06-27 01:09:27 +08:00` | This document, the operating plan, and the 8E batch doc record Ready for Review, not Completed                                                                                        |
+
+> Review note: the pre-existing `check-frontend-ecs-target-picker-ownership.js`
+> required picker opens to route through the now-deleted bridge wrappers, so its
+> invariant became obsolete. An adversarial review flagged it as
+> self-contradictory, so it was removed (with its test and smoke wiring). The new
+> `check-frontend-ecs-target-picker-mirror-retirement.js` is the single
+> authoritative seal for targetPicker.
 
 ## Verification Commands
 

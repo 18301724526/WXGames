@@ -6,6 +6,7 @@ const path = require('node:path');
 const CanvasTerritoryActionHandlers = require('./CanvasTerritoryActionHandlers');
 const CanvasActionController = require('./CanvasActionController');
 const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 class HostController {
   constructor(host) {
@@ -71,10 +72,26 @@ class HostController {
     this.host.requestWorldMapRenderAnimationFrame?.({ force: true, invalidateWorldTileView: false });
     return true;
   }
+
+  renderDragFrame(action) {
+    return this.afterHandled(action);
+  }
 }
 
 CanvasTerritoryActionHandlers.install(HostController);
 CanvasModeOwnershipBridge.install(HostController);
+CanvasModalSnapshotAdapter.install(HostController);
+
+// A modal-capable host carries the bridge + snapshot-adapter helpers so action
+// handlers can route the targetPicker modal through the owner (Batch 8E). Tests
+// build plain host literals and wrap them so openModal/getRendererSnapshot exist.
+class ModalHost {}
+CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModalSnapshotAdapter.install(ModalHost);
+
+function makeModalHost(fields = {}) {
+  return Object.assign(new ModalHost(), fields);
+}
 
 test('CanvasTerritoryActionHandlers installs world-site compatibility methods', () => {
   const calls = [];
@@ -142,7 +159,7 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
       },
     },
   };
-  const host = {
+  const host = makeModalHost({
     territoryUiState: game.territoryUiState,
     lastGame: game,
     renderCanvasAction(action) {
@@ -151,7 +168,7 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     requestWorldMapRenderAnimationFrame(options) {
       calls.push(['refreshWorldMap', options]);
     },
-  };
+  });
   const controller = new HostController(host);
 
   assert.equal(await controller.handle_selectWorldMarchTarget({
@@ -163,20 +180,24 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     q: 4,
     r: -2,
     tileId: 'tile_4_-2',
-    pickerOpen: false,
   });
+  // Selecting a single target leaves no picker modal open.
+  assert.equal(host.isTargetPickerSnapshotOpen(), false);
 
   assert.equal(controller.handle_openWorldMarchFormationPicker({
     type: 'openWorldMarchFormationPicker',
     targetQ: 4,
     targetR: -2,
   }), true);
+  // The domain target stays in territoryUiState WITHOUT a pickerOpen flag; the
+  // formation-picker modal state lives only in the owner snapshot.
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
     q: 4,
     r: -2,
     tileId: 'tile_4_-2',
-    pickerOpen: true,
   });
+  assert.equal(host.isTargetPickerSnapshotOpen(), true);
+  assert.equal(host.getTargetPickerSnapshot()?.pickerKind, 'worldMarchFormation');
 
   assert.equal(await controller.handle_startWorldMarch({
     type: 'startWorldMarch',
@@ -185,6 +206,8 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     formationSlot: 2,
   }), true);
   assert.equal(host.territoryUiState.worldMarchTarget, null);
+  // Launching the march consumes the target and closes the formation picker.
+  assert.equal(host.isTargetPickerSnapshotOpen(), false);
 
   assert.equal(await controller.handle_stopWorldMarch({
     type: 'stopWorldMarch',
@@ -234,7 +257,7 @@ test('CanvasTerritoryActionHandlers refreshes world march UI before start comman
   });
   const game = {
     territoryUiState: {
-      worldMarchTarget: { q: 4, r: -2, tileId: 'tile_4_-2', pickerOpen: true },
+      worldMarchTarget: { q: 4, r: -2, tileId: 'tile_4_-2' },
     },
     state: { activeCityId: 'capital' },
     startWorldMarch(options) {
@@ -285,26 +308,53 @@ test('CanvasTerritoryActionHandlers refreshes world march UI before start comman
   assert.equal(await handled, true);
 });
 
+test('CanvasTerritoryActionHandlers dismisses an open target picker when a map drag starts', () => {
+  const host = makeModalHost({
+    territoryUiState: {},
+    territoryController: {
+      closeSiteDialog() {},
+      startWorldDrag() {},
+      moveWorldDrag() {},
+      endWorldDrag() {},
+    },
+    renderCanvasAction() {},
+    requestWorldMapRenderAnimationFrame() {},
+  });
+  const controller = new HostController(host);
+
+  assert.equal(
+    controller.handle_openWorldTargetPicker({
+      type: 'openWorldTargetPicker',
+      q: 0,
+      r: 0,
+      tileId: 'tile_0_0',
+      candidates: [
+        { id: 'capital', kind: 'site', label: 'Capital', action: { type: 'openWorldSite', siteId: 'capital' } },
+        { id: 'march-1', kind: 'actor', label: 'Scout A', action: { type: 'selectWorldActor', actorId: 'march-1' } },
+      ],
+    }),
+    true,
+  );
+  assert.equal(host.isTargetPickerSnapshotOpen(), true);
+
+  // Regression (Batch 8E): starting a map drag must dismiss an open target picker.
+  // The TerritoryController mirror-clear that used to do this was removed, so the
+  // handler must close the owner snapshot explicitly.
+  controller.handle_worldMapDrag({ type: 'worldMapDrag', phase: 'start', pointer: { x: 5, y: 5 } });
+  assert.equal(host.isTargetPickerSnapshotOpen(), false);
+});
+
 test('CanvasTerritoryActionHandlers opens and resolves world target picker candidates', () => {
   const calls = [];
-  const ownerCalls = [];
-  const host = {
+  const host = makeModalHost({
     territoryUiState: {},
-    openWorldTargetPickerOwner(uiState, picker) {
-      ownerCalls.push(['openWorldTargetPickerOwner', picker.candidates.length]);
-      return CanvasModeOwnershipBridge.openWorldTargetPickerOwner(this, uiState, picker);
-    },
-    closeTargetPickerOwner(uiState) {
-      ownerCalls.push(['closeTargetPickerOwner']);
-      return CanvasModeOwnershipBridge.closeTargetPickerOwner(this, uiState);
-    },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
     requestWorldMapRenderAnimationFrame(options) {
       calls.push(['refreshWorldMap', options]);
     },
-  };
+  });
   const controller = new HostController(host);
 
   assert.equal(controller.handle_openWorldTargetPicker({
@@ -318,18 +368,20 @@ test('CanvasTerritoryActionHandlers opens and resolves world target picker candi
     ],
   }), true);
 
-  assert.equal(host.territoryUiState.worldTargetPicker.candidates.length, 2);
+  // The picker candidate list lives ONLY in the owner snapshot, not on uiState.
+  assert.equal(host.territoryUiState.worldTargetPicker, undefined);
+  const pickerSnap = host.getTargetPickerSnapshot();
+  assert.equal(pickerSnap?.pickerKind, 'worldTargetPicker');
+  assert.equal(pickerSnap.picker.candidates.length, 2);
   assert.equal(host.territoryUiState.selectedSiteId, '');
-  assert.deepEqual(ownerCalls, [['openWorldTargetPickerOwner', 2]]);
 
   assert.equal(controller.handle_chooseWorldTarget({
     type: 'chooseWorldTarget',
     targetId: 'march-1',
   }), true);
 
-  assert.equal(host.territoryUiState.worldTargetPicker, null);
+  assert.equal(host.isTargetPickerSnapshotOpen(), false);
   assert.equal(host.territoryUiState.selectedWorldActorId, 'march-1');
-  assert.deepEqual(ownerCalls, [['openWorldTargetPickerOwner', 2], ['closeTargetPickerOwner']]);
   assert.deepEqual(calls.map((call) => call[0] === 'render' ? call : [call[0]]), [
     ['render', 'openWorldTargetPicker'],
     ['refreshWorldMap'],
@@ -376,7 +428,6 @@ test('CanvasTerritoryActionHandlers forwards selected world mission id on start 
 
 test('CanvasTerritoryActionHandlers preserves selected world actor id through target and picker handoff', async () => {
   const calls = [];
-  const ownerCalls = [];
   const game = {
     territoryUiState: { selectedWorldActorId: 'march-1', selectedWorldMissionId: 'march-1' },
     state: { activeCityId: 'capital' },
@@ -385,20 +436,12 @@ test('CanvasTerritoryActionHandlers preserves selected world actor id through ta
       return Promise.resolve(true);
     },
   };
-  const host = {
+  const host = makeModalHost({
     territoryUiState: game.territoryUiState,
     lastGame: game,
-    openWorldMarchFormationPickerOwner(uiState, target) {
-      ownerCalls.push(['openWorldMarchFormationPickerOwner', target.missionId]);
-      return CanvasModeOwnershipBridge.openWorldMarchFormationPickerOwner(this, uiState, target);
-    },
-    closeTargetPickerOwner(uiState) {
-      ownerCalls.push(['closeTargetPickerOwner']);
-      return CanvasModeOwnershipBridge.closeTargetPickerOwner(this, uiState);
-    },
     renderCanvasAction() {},
     requestWorldMapRenderAnimationFrame() {},
-  };
+  });
   const controller = new HostController(host);
 
   assert.equal(await controller.handle_selectWorldMarchTarget({
@@ -415,8 +458,11 @@ test('CanvasTerritoryActionHandlers preserves selected world actor id through ta
     targetR: -2,
   }), true);
   assert.equal(host.territoryUiState.worldMarchTarget.missionId, 'march-1');
-  assert.equal(host.territoryUiState.worldMarchTarget.pickerOpen, true);
-  assert.deepEqual(ownerCalls, [['openWorldMarchFormationPickerOwner', 'march-1']]);
+  // The march-formation modal flag lives in the owner snapshot, not on the target.
+  assert.equal(host.territoryUiState.worldMarchTarget.pickerOpen, undefined);
+  assert.equal(host.isTargetPickerSnapshotOpen(), true);
+  assert.equal(host.getTargetPickerSnapshot()?.pickerKind, 'worldMarchFormation');
+  assert.equal(host.getTargetPickerSnapshot()?.target?.missionId, 'march-1');
 
   assert.equal(await controller.handle_startWorldMarch({
     type: 'startWorldMarch',
@@ -425,10 +471,7 @@ test('CanvasTerritoryActionHandlers preserves selected world actor id through ta
     formationSlot: 1,
   }), true);
   assert.equal(calls[0][1].missionId, 'march-1');
-  assert.deepEqual(ownerCalls, [
-    ['openWorldMarchFormationPickerOwner', 'march-1'],
-    ['closeTargetPickerOwner'],
-  ]);
+  assert.equal(host.isTargetPickerSnapshotOpen(), false);
 });
 
 test('CanvasTerritoryActionHandlers carries combat encounter id into world march options', async () => {
@@ -1076,7 +1119,6 @@ test('CanvasTerritoryActionHandlers derives world march tile identity from targe
     q: 4,
     r: -2,
     tileId: 'tile_4_-2',
-    pickerOpen: false,
     marchDisabled: true,
     marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
   });
@@ -1091,7 +1133,6 @@ test('CanvasTerritoryActionHandlers derives world march tile identity from targe
     q: 4,
     r: -2,
     tileId: 'tile_4_-2',
-    pickerOpen: true,
     marchDisabled: true,
     marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
   });
@@ -1106,7 +1147,6 @@ test('CanvasTerritoryActionHandlers derives world march tile identity from targe
     q: 5,
     r: -3,
     tileId: 'tile_5_-3',
-    pickerOpen: true,
   });
 
   assert.equal(await controller.handle_startWorldMarch({

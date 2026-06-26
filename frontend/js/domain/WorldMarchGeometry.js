@@ -136,7 +136,6 @@
       q: coord.q,
       r: coord.r,
       tileId: coord.tileId,
-      pickerOpen: Boolean(target.pickerOpen),
       known: target.known === undefined ? undefined : Boolean(target.known),
       terrain: target.terrain || '',
       terrainLabel: target.terrainLabel || '',

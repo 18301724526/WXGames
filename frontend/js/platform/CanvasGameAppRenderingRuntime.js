@@ -139,6 +139,7 @@
             const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
             const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
             const snapshotEvent = this.getEventSnapshot?.(rendererSnapshot) || null;
+            const snapshotTargetPicker = this.getTargetPickerSnapshot?.(rendererSnapshot) || null;
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
@@ -172,6 +173,7 @@
               ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
               activeEventId: snapshotEvent?.eventId ?? null,
               territoryUiState: this.territoryUiState,
+              targetPicker: snapshotTargetPicker,
               ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
               ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
               naming: snapshotNaming,
@@ -207,6 +209,7 @@
               activeTab: homeView.activeTab,
               isMapHome: homeView.isMapHome,
               territoryUiState: territoryUiState || this.territoryUiState || {},
+              targetPicker: this.getTargetPickerSnapshot?.() || null,
               tutorial: this.tutorialController?.state || this.tutorial || {},
               tutorialIntro: this.tutorialIntro || null,
               tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,

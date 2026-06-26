@@ -145,12 +145,11 @@ test('WorldMarchSystem maps fog screen points back to axial tile coordinates', (
 
 test('WorldMarchSystem delegates geometry facade behavior', () => {
   assert.deepEqual(WorldMarchSystem.getMarchTargetUiState({
-    worldMarchTarget: { q: '2', r: '-1', pickerOpen: true },
+    worldMarchTarget: { q: '2', r: '-1' },
   }), {
     q: 2,
     r: -1,
     tileId: 'tile_2_-1',
-    pickerOpen: true,
     known: undefined,
     terrain: '',
     terrainLabel: '',

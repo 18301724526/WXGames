@@ -45,7 +45,7 @@ test('WorldMapRenderSnapshot normalizes frame, viewport, ui, and march actors', 
     height: 300,
     uiState: {
       selectedSiteId: 'capital',
-      worldMarchTarget: { q: 1, r: 0, pickerOpen: true },
+      worldMarchTarget: { q: 1, r: 0 },
     },
   }, {
     nowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
@@ -111,14 +111,12 @@ test('WorldMapRenderSnapshot canonicalizes march target identity through stable 
     q: 90,
     r: 90,
     tileId: 'legacy-target',
-    pickerOpen: true,
   });
 
   assert.deepEqual(target, {
     q: 3,
     r: -2,
     tileId: 'tile_3_-2',
-    pickerOpen: true,
     known: undefined,
     terrain: '',
     terrainLabel: '',

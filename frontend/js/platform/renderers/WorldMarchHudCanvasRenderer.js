@@ -234,8 +234,9 @@
       return this.t('world.march.formation.routeBlocked');
     }
 
-    getWorldTargetPicker(uiState = {}) {
-      const picker = uiState.worldTargetPicker || null;
+    getWorldTargetPicker(targetPicker = null) {
+      if (!targetPicker || targetPicker.pickerKind !== 'worldTargetPicker') return null;
+      const picker = targetPicker.picker || null;
       if (!picker || !Array.isArray(picker.candidates) || picker.candidates.length < 2) return null;
       return picker;
     }
@@ -691,10 +692,11 @@
       return true;
     }
 
-    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}) {
+    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}, targetPicker = null) {
       const selectedActorId = uiState.selectedWorldActorId || '';
       const selectedActor = selectedActorId ? actors.find((actor) => actor.id === selectedActorId || actor.missionId === selectedActorId) : null;
-      const picker = this.getWorldTargetPicker(uiState);
+      const picker = this.getWorldTargetPicker(targetPicker);
+      const formationPickerOpen = Boolean(targetPicker && targetPicker.pickerKind === 'worldMarchFormation');
       const target = WorldMarchSystem?.getMarchTargetUiState?.(uiState);
       logActorPickingDiag('hud:renderWorldMarchHud', {
         signature: [
@@ -702,7 +704,7 @@
           Array.isArray(actors) ? actors.length : 0,
           Boolean(selectedActor),
           picker ? 'picker' : '',
-          target?.pickerOpen ? 'formation' : '',
+          formationPickerOpen ? 'formation' : '',
           Boolean(target),
         ].join('|'),
         selectedWorldActorId: selectedActorId,
@@ -711,10 +713,10 @@
           selectedSiteId: uiState.selectedSiteId || '',
           hasWorldMarchTarget: Boolean(uiState.worldMarchTarget),
           worldMarchTargetTileId: uiState.worldMarchTarget?.tileId || '',
-          worldMarchTargetPickerOpen: Boolean(uiState.worldMarchTarget?.pickerOpen),
-          hasWorldTargetPicker: Boolean(uiState.worldTargetPicker),
-          worldTargetPickerCandidates: Array.isArray(uiState.worldTargetPicker?.candidates)
-            ? uiState.worldTargetPicker.candidates.length
+          worldMarchTargetPickerOpen: formationPickerOpen,
+          hasWorldTargetPicker: Boolean(picker),
+          worldTargetPickerCandidates: Array.isArray(picker?.candidates)
+            ? picker.candidates.length
             : 0,
         },
         actorsCount: Array.isArray(actors) ? actors.length : 0,
@@ -731,13 +733,13 @@
           missionId: selectedActor.missionId || '',
           status: selectedActor.status || '',
         } : null,
-        earlyReturnReason: picker ? 'world-target-picker' : (target?.pickerOpen ? 'formation-picker' : ''),
+        earlyReturnReason: picker ? 'world-target-picker' : (formationPickerOpen ? 'formation-picker' : ''),
         notMatchedReason: selectedActor
           ? ''
           : (!(Array.isArray(actors) && actors.length) ? 'actors-empty' : 'no-id-actorId-missionId-match'),
       });
       if (picker) return this.renderWorldTargetPicker(picker, viewport, geometry, frame);
-      if (target?.pickerOpen) return this.renderFormationPicker(state, target, frame);
+      if (formationPickerOpen && target) return this.renderFormationPicker(state, target, frame);
       if (selectedActor) {
         return this.isCombatActor(selectedActor)
           ? this.renderCombatActorHud(selectedActor, viewport, geometry, frame)

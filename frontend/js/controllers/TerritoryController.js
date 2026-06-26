@@ -34,7 +34,6 @@
         worldMarchTarget: null,
         selectedWorldActorId: '',
         selectedWorldMissionId: '',
-        worldTargetPicker: null,
         worldPanX: 0,
         worldPanY: 0,
         expeditionConfigSiteId: '',
@@ -102,7 +101,6 @@
       this.uiState.worldMarchTarget = null;
       this.uiState.selectedWorldActorId = '';
       this.uiState.selectedWorldMissionId = '';
-      this.uiState.worldTargetPicker = null;
       const current = this.getWorldPan();
       const position = this.getPointerPosition(pointer);
       this.dragState = {
@@ -134,7 +132,6 @@
       this.uiState.worldMarchTarget = null;
       this.uiState.selectedWorldActorId = '';
       this.uiState.selectedWorldMissionId = '';
-      this.uiState.worldTargetPicker = null;
       this.onRenderRequested();
     }
 
@@ -143,7 +140,6 @@
       this.uiState.worldMarchTarget = null;
       this.uiState.selectedWorldActorId = '';
       this.uiState.selectedWorldMissionId = '';
-      this.uiState.worldTargetPicker = null;
       this.clearExpeditionDraft({ render: false });
       if (options.render !== false) this.onRenderRequested();
     }

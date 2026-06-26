@@ -779,3 +779,45 @@ Batch 8D scope control:
 - Do not route `EventController.activeEventId` (the claim cursor) through the modal owner.
 - Do not keep `this.activeEventId` as a compatibility fallback.
 - Do not mark 8D Completed before migration owner sign-off.
+
+## Batch 8E Target Picker Mirror Removal Deliverables
+
+Batch 8E deletes the next sealed modal mirror: the targetPicker state nested in
+`territoryUiState` (`worldTargetPicker` + the `pickerOpen` flag on
+`worldMarchTarget`). The source of truth becomes the ECS modal owner entry for
+`modal:targetPicker` (structured payload `{ pickerKind, picker|target }`). The
+migration owner chose **Option B (snapshot-direct)**: `territoryUiState` carries
+zero picker fields and consumers read the owner. World-march DOMAIN data on
+`worldMarchTarget` (coords/route/mission/combat) is untouched.
+
+Batch 8E approved runtime surfaces:
+
+| Surface                                                                                                          | Status                           | Notes                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/js/platform/CanvasModalSnapshotAdapter.js`                                                             | Ready for Migration Owner Review | Adds targetPicker helpers (structured payload discriminated by pickerKind)                                                                     |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`                                                              | Ready for Migration Owner Review | The 3 picker wrappers + dead territory-mirror helpers removed; collectModalKeys uses `isAnyModalOpen('modal:targetPicker')`                    |
+| `frontend/js/platform/CanvasTerritoryActionHandlers.js`                                                          | Ready for Migration Owner Review | Open/close via the snapshot adapter; chooseWorldTarget re-sources candidates from the owner; domain teardowns kept                             |
+| `frontend/js/controllers/TerritoryController.js`                                                                 | Ready for Migration Owner Review | worldTargetPicker seed + vestigial clears removed; worldMarchTarget domain kept; guard-excluded                                                |
+| render runtimes + `renderers/*` (`CanvasFrameRenderer`/`HudOverlayCanvasRenderer`/`WorldMarchHudCanvasRenderer`) | Ready for Migration Owner Review | Picker threaded as a dedicated `options.targetPicker`; HUD reads the option, dispatch keys on pickerKind                                       |
+| `frontend/js/domain/WorldMarchGeometry.js` / `WorldMapRenderSnapshot.js`                                         | Ready for Migration Owner Review | Stopped copying `pickerOpen` off the domain target                                                                                             |
+| `frontend/js/tutorial/TutorialGuideController.js`                                                                | Ready for Migration Owner Review | `isWorldMarchFormationPickerOpen` reads the owner snapshot                                                                                     |
+| `scripts/check-frontend-ecs-target-picker-mirror-retirement.js`                                                  | Ready for Migration Owner Review | Blocks the 3 wrappers + worldTargetPicker/pickerOpen mirror writes; allows domain/labels/options.targetPicker; excludes TerritoryController.js |
+
+Batch 8E execution checklist:
+
+| Step                                         | Status                           | Artifact / Gate                                     | Acceptance Standard                                                                  |
+| -------------------------------------------- | -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 8E-1. Delete picker mirror fields            | Ready for Migration Owner Review | `TerritoryController.js`                            | No `worldTargetPicker` field/seed remains; `worldMarchTarget` keeps no `pickerOpen`  |
+| 8E-2. Delete picker mirror write/read sites  | Ready for Migration Owner Review | territory action handlers, renderers, tutorial      | territoryUiState carries no picker fields; candidates re-sourced from the owner      |
+| 8E-3. Delete picker bridge wrappers          | Ready for Migration Owner Review | `CanvasModeOwnershipBridge.js`                      | The 3 wrappers + dead territory-mirror helpers removed                               |
+| 8E-4. Snapshot-renderer migration (Option B) | Ready for Migration Owner Review | render runtimes, HUD renderer chain                 | Picker delivered via `options.targetPicker`, never via territoryUiState              |
+| 8E-5. Guard upgrade + reconcile              | Ready for Migration Owner Review | new retirement guard + existing ownership guard     | New guard reports 0; ownership guard reconciled (no contradiction); wired into smoke |
+| 8E-6. Behavior and guard tests               | Ready for Migration Owner Review | bridge/territory/renderer/tutorial/normalizer tests | Snapshot open/close + render threading + tutorial gate; full `npm test` green        |
+| 8E-7. Progress / operating plan / batch doc  | Ready for Migration Owner Review | progress doc, operating plan, 8E batch doc          | 8E documented as Ready for Review, not Completed                                     |
+
+Batch 8E scope control:
+
+- Do not delete or alter world-march DOMAIN worldMarchTarget data (coords/route/combat).
+- Do not delete the blockingPanel mirror in this slice (8F).
+- Do not keep any targetPicker field on territoryUiState as a compatibility fallback.
+- Do not mark 8E Completed before migration owner sign-off.

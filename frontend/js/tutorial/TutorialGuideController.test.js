@@ -636,6 +636,7 @@ test('TutorialGuideController guides scout formation into map march and claim', 
       return true;
     },
   };
+  let targetPickerSnapshot = null;
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFormationSaved },
     state: {
@@ -649,6 +650,13 @@ test('TutorialGuideController guides scout formation into map march and claim', 
     militaryView: 'world',
     mapHomeActive: false,
     canvasShell: shell,
+    // Batch 8E: the formation-picker modal state lives in the owner snapshot.
+    isTargetPickerSnapshotOpen() {
+      return Boolean(targetPickerSnapshot);
+    },
+    getTargetPickerSnapshot() {
+      return targetPickerSnapshot;
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
@@ -669,15 +677,17 @@ test('TutorialGuideController guides scout formation into map march and claim', 
   assert.equal(game.mapHomeActive, true);
   assert.equal(game.state.currentTab, 'military');
 
-  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: false };
+  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1' };
   shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
+  targetPickerSnapshot = null;
   await controller.onWorldMarchTargetSelected();
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.scoutWorldPanelOpened);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldMarchFormationPicker' });
 
-  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true };
+  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1' };
   shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
+  targetPickerSnapshot = { pickerKind: 'worldMarchFormation', target: game.territoryUiState.worldMarchTarget, visible: true };
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'startWorldMarch', formationSlot: 1 });
 

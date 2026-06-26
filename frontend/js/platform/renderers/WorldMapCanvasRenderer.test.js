@@ -173,8 +173,8 @@ test('WorldMapCanvasRenderer renders world march formation picker through HUD fa
   const renderer = new WorldMapCanvasRenderer({ host });
 
   renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
-    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0', pickerOpen: true },
-  }, [], { scale: 1 }, {}, { x: 10, y: 90, width: 360, height: 300 });
+    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0' },
+  }, [], { scale: 1 }, {}, { x: 10, y: 90, width: 360, height: 300 }, { pickerKind: 'worldMarchFormation', target: { q: 1, r: 0, tileId: 'tile_1_0' } });
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeWorldMarchHud'), true);

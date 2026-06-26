@@ -81,10 +81,10 @@
       return state;
     }
 
-    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}) {
+    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}, targetPicker = null) {
       if (!this.worldMarchHudRenderer?.renderWorldMarchHud) return false;
       this.publishWorldMarchHudState(state);
-      return this.worldMarchHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame);
+      return this.worldMarchHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame, targetPicker);
     }
 
     getNearestWorldTileAtPoint(point = {}, tileMapView = {}, viewport = {}) {

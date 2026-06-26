@@ -397,6 +397,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
       const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
       const snapshotEvent = this.getEventSnapshot?.(rendererSnapshot) || null;
+      const snapshotTargetPicker = this.getTargetPickerSnapshot?.(rendererSnapshot) || null;
       logActorPickingDiag('shell:buildRenderOptions:territoryUiState', {
         activeTab,
         input: summarizeActorPickingUiState(territoryUiState),
@@ -407,7 +408,8 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
           territoryUiState?.selectedWorldActorId || '',
           resolvedTerritoryUiState?.selectedWorldActorId || '',
           Boolean(resolvedTerritoryUiState?.worldMarchTarget),
-          Boolean(resolvedTerritoryUiState?.worldTargetPicker),
+          Boolean(snapshotTargetPicker),
+          snapshotTargetPicker?.pickerKind || '',
         ].join('|'),
       });
       return {
@@ -451,6 +453,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: snapshotEvent?.eventId ?? null,
         territoryUiState: resolvedTerritoryUiState,
+        targetPicker: snapshotTargetPicker,
         ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
         ...((this.lastGame?.entityBattle || this.entityBattle) ? { entityBattle: this.lastGame?.entityBattle || this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
         tabLocks: this.getTabLocks(state),
@@ -527,7 +530,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
           options.territoryUiState?.selectedWorldActorId || '',
           territoryUiState?.selectedWorldActorId || '',
           Boolean(territoryUiState?.worldMarchTarget),
-          Boolean(territoryUiState?.worldTargetPicker),
+          this.isTargetPickerSnapshotOpen?.() ? '1' : '',
         ].join('|'),
       });
       const defaultForceMapHome = (activeTab === 'military' && Boolean(this.mapHomeActive || this.lastGame?.mapHomeActive))

@@ -21,12 +21,12 @@
     return null;
   })();
 
-  const CanvasModeOwnershipBridge = (() => {
-    if (global.CanvasModeOwnershipBridge) return global.CanvasModeOwnershipBridge;
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
     try {
-      if (typeof require === 'function') return require('./CanvasModeOwnershipBridge');
+      if (typeof require === 'function') return require('./CanvasModalSnapshotAdapter');
     } catch (_error) {
-      // Optional bridge in standalone handler tests.
+      // Optional adapter in standalone handler tests.
     }
     return null;
   })();
@@ -211,33 +211,28 @@
     return payload;
   }
 
-  function openWorldTargetPickerOwner(host, uiState, picker) {
-    if (typeof host?.openWorldTargetPickerOwner === 'function') {
-      return host.openWorldTargetPickerOwner(uiState, picker);
+  function openTargetPickerSnapshot(host, payload) {
+    if (typeof host?.openTargetPickerSnapshot === 'function') {
+      return host.openTargetPickerSnapshot(payload);
     }
-    return CanvasModeOwnershipBridge?.openWorldTargetPickerOwner?.(host, uiState, picker) || null;
+    return CanvasModalSnapshotAdapter?.openTargetPickerSnapshot?.(host, payload) || null;
   }
 
-  function openWorldMarchFormationPickerOwner(host, uiState, target) {
-    if (typeof host?.openWorldMarchFormationPickerOwner === 'function') {
-      return host.openWorldMarchFormationPickerOwner(uiState, target);
-    }
-    return CanvasModeOwnershipBridge?.openWorldMarchFormationPickerOwner?.(host, uiState, target) || null;
+  function closeTargetPickerSnapshot(host) {
+    if (typeof host?.closeTargetPickerSnapshot === 'function') return host.closeTargetPickerSnapshot();
+    return CanvasModalSnapshotAdapter?.closeTargetPickerSnapshot?.(host) || null;
   }
 
-  function closeTargetPickerOwner(host, uiState) {
-    if (typeof host?.closeTargetPickerOwner === 'function') return host.closeTargetPickerOwner(uiState);
-    uiState.worldTargetPicker = null;
-    if (uiState.worldMarchTarget?.pickerOpen) {
-      uiState.worldMarchTarget = { ...uiState.worldMarchTarget, pickerOpen: false };
-    }
-    return uiState;
+  function getTargetPickerSnapshot(host) {
+    if (typeof host?.getTargetPickerSnapshot === 'function') return host.getTargetPickerSnapshot();
+    return CanvasModalSnapshotAdapter?.getTargetPickerSnapshot?.(host) || null;
   }
 
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
       openWorldSiteLocally(siteId) {
+        closeTargetPickerSnapshot(this.host);
         const territory = this.getTerritoryController();
         if (territory?.openSiteDialog) {
           territory.openSiteDialog(siteId);
@@ -245,12 +240,10 @@
         }
         this.host.territoryUiState = this.host.territoryUiState || {};
         this.host.territoryUiState.selectedSiteId = siteId;
-        this.host.territoryUiState.worldTargetPicker = null;
         const game = this.getGameHost();
         if (game && game !== this.host) {
           game.territoryUiState = game.territoryUiState || {};
           game.territoryUiState.selectedSiteId = siteId;
-          game.territoryUiState.worldTargetPicker = null;
         }
         return true;
       },
@@ -501,7 +494,6 @@
           q: target.q,
           r: target.r,
           tileId: target.tileId,
-          pickerOpen: false,
         };
         assignMarchMissionTarget(nextTarget, missionId, actorId);
         if (action.known !== undefined) nextTarget.known = Boolean(action.known);
@@ -514,7 +506,7 @@
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
         uiState.selectedSiteId = '';
-        uiState.worldTargetPicker = null;
+        closeTargetPickerSnapshot(this.host);
         uiState.expeditionConfigSiteId = '';
         logActorPickingDiag('territory:selectWorldMarchTarget:afterWrite', {
           tapTraceId,
@@ -561,9 +553,11 @@
         else if (samePreviousTarget && previousTarget.marchDisabled !== undefined) nextTarget.marchDisabled = Boolean(previousTarget.marchDisabled);
         if (action.marchDisabledReason || (samePreviousTarget && previousTarget.marchDisabledReason)) nextTarget.marchDisabledReason = action.marchDisabledReason || previousTarget.marchDisabledReason;
         copyCombatTargetFields(nextTarget, action, previousTarget);
-        const openedTarget = openWorldMarchFormationPickerOwner(this.host, uiState, nextTarget);
-        if (!openedTarget) return false;
-        uiState.worldMarchTarget = openedTarget;
+        uiState.worldMarchTarget = nextTarget;
+        openTargetPickerSnapshot(this.host, {
+          pickerKind: 'worldMarchFormation',
+          target: nextTarget,
+        });
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
         const handled = this.refreshWorldMarchLayer(action);
@@ -573,7 +567,7 @@
 
       handle_closeWorldMarchHud(action) {
         const uiState = this.getSharedTerritoryUiState();
-        closeTargetPickerOwner(this.host, uiState);
+        closeTargetPickerSnapshot(this.host);
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
@@ -604,7 +598,7 @@
         uiState.selectedWorldMissionId = missionId;
         uiState.worldMarchTarget = null;
         uiState.selectedSiteId = '';
-        uiState.worldTargetPicker = null;
+        closeTargetPickerSnapshot(this.host);
         logActorPickingDiag('territory:selectWorldActor:afterWrite', {
           tapTraceId,
           action: summarizeActorPickingAction(action),
@@ -629,7 +623,10 @@
         const game = this.getGameHost();
         game?.territoryController?.closeSiteDialog?.({ render: false });
         const uiState = this.getSharedTerritoryUiState();
-        if (!openWorldTargetPickerOwner(this.host, uiState, picker)) return false;
+        if (!openTargetPickerSnapshot(this.host, { pickerKind: 'worldTargetPicker', picker })) return false;
+        // The candidate picker supersedes any pending march target (domain clear
+        // formerly performed by the retired bridge wrapper).
+        uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
         uiState.selectedSiteId = '';
@@ -638,23 +635,21 @@
       },
 
       handle_chooseWorldTarget(action, meta = {}) {
-        const uiState = this.getSharedTerritoryUiState();
-        const picker = uiState.worldTargetPicker || {};
+        const picker = getTargetPickerSnapshot(this.host)?.picker || {};
         const candidates = Array.isArray(picker.candidates) ? picker.candidates : [];
         const candidate = candidates.find((item) => String(item.id) === String(action.targetId || action.id || ''))
           || candidates[Math.max(0, Math.floor(Number(action.index) || 0))]
           || null;
         const nextAction = candidate?.action || action.action || null;
         if (!nextAction?.type || nextAction.type === 'chooseWorldTarget') return false;
-        closeTargetPickerOwner(this.host, uiState);
+        closeTargetPickerSnapshot(this.host);
         if (typeof this.handle === 'function') return this.handle(nextAction, meta);
         const handler = this[`handle_${nextAction.type}`];
         return typeof handler === 'function' ? handler.call(this, nextAction, meta) : false;
       },
 
       handle_closeWorldTargetPicker(action) {
-        const uiState = this.getSharedTerritoryUiState();
-        closeTargetPickerOwner(this.host, uiState);
+        closeTargetPickerSnapshot(this.host);
         return this.refreshWorldMarchLayer(action);
       },
 
@@ -688,7 +683,7 @@
         };
         const result = run();
         if (result !== false) {
-          closeTargetPickerOwner(this.host, uiState);
+          closeTargetPickerSnapshot(this.host);
           uiState.worldMarchTarget = null;
           uiState.selectedWorldActorId = '';
           uiState.selectedWorldMissionId = '';
@@ -711,7 +706,7 @@
         if (result !== false) {
           this.getSharedTerritoryUiState().selectedWorldActorId = '';
           this.getSharedTerritoryUiState().selectedWorldMissionId = '';
-          this.getSharedTerritoryUiState().worldTargetPicker = null;
+          closeTargetPickerSnapshot(this.host);
           this.refreshWorldMarchLayer(action);
           this.refreshWorldMarchTutorialHighlight();
         }
@@ -731,7 +726,7 @@
           if (result !== false) {
             this.getSharedTerritoryUiState().selectedWorldActorId = '';
             this.getSharedTerritoryUiState().selectedWorldMissionId = '';
-            this.getSharedTerritoryUiState().worldTargetPicker = null;
+            closeTargetPickerSnapshot(this.host);
             this.refreshWorldMarchLayer(action);
             this.refreshWorldMarchTutorialHighlight();
           }
@@ -775,6 +770,7 @@
             this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
           });
         }
+        closeTargetPickerSnapshot(this.host);
         const territory = this.getTerritoryController();
         if (territory?.openSiteDialog) {
           territory.openSiteDialog(siteId);
@@ -783,7 +779,6 @@
         }
         this.host.territoryUiState = this.host.territoryUiState || {};
         this.host.territoryUiState.selectedSiteId = siteId;
-        this.host.territoryUiState.worldTargetPicker = null;
         const handled = this.afterHandled(action);
         this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
         return handled;
@@ -823,6 +818,7 @@
         const pointer = action.pointer || {};
         if (territory) {
           if (action.phase === 'start') {
+            closeTargetPickerSnapshot(this.host);
             territory.closeSiteDialog?.({ render: false });
             territory.startWorldDrag?.(pointer);
           }
@@ -833,6 +829,7 @@
           const x = Number(pointer.x) || 0;
           const y = Number(pointer.y) || 0;
           if (action.phase === 'start') {
+            closeTargetPickerSnapshot(this.host);
             this.host.territoryUiState.selectedSiteId = '';
             this.host.territoryUiState.expeditionConfigSiteId = '';
             this.host.territoryUiState.expeditionSoldiers = '';

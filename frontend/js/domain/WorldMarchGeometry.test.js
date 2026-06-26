@@ -84,7 +84,6 @@ test('WorldMarchGeometry infers axial tiles and target UI state', () => {
     worldMarchTarget: {
       q: '3',
       r: '-2',
-      pickerOpen: true,
       known: false,
       terrain: 'plains',
       terrainLabel: 'Plains',
@@ -97,7 +96,6 @@ test('WorldMarchGeometry infers axial tiles and target UI state', () => {
     q: 3,
     r: -2,
     tileId: 'tile_3_-2',
-    pickerOpen: true,
     known: false,
     terrain: 'plains',
     terrainLabel: 'Plains',
@@ -114,7 +112,6 @@ test('WorldMarchGeometry normalizes march target UI state from stable x/y coordi
     worldMarchTarget: {
       x: '4',
       y: '-3',
-      pickerOpen: true,
       known: true,
       terrain: 'forest',
       terrainLabel: 'Forest',
@@ -123,7 +120,6 @@ test('WorldMarchGeometry normalizes march target UI state from stable x/y coordi
     q: 4,
     r: -3,
     tileId: 'tile_4_-3',
-    pickerOpen: true,
     known: true,
     terrain: 'forest',
     terrainLabel: 'Forest',

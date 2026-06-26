@@ -3,6 +3,7 @@
   const CONFIRM_DIALOG_MODAL_KEY = 'modal:confirmDialog';
   const REWARD_REVEAL_MODAL_KEY = 'modal:rewardReveal';
   const EVENT_MODAL_KEY = 'modal:event';
+  const TARGET_PICKER_MODAL_KEY = 'modal:targetPicker';
 
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
@@ -67,6 +68,14 @@
 
   function getEventSnapshotFromRendererSnapshot(snapshot = null) {
     return getModalPayloadSnapshot(null, EVENT_MODAL_KEY, snapshot);
+  }
+
+  function getTargetPickerSnapshot(host, snapshot = null) {
+    return getModalPayloadSnapshot(host, TARGET_PICKER_MODAL_KEY, snapshot);
+  }
+
+  function getTargetPickerSnapshotFromRendererSnapshot(snapshot = null) {
+    return getModalPayloadSnapshot(null, TARGET_PICKER_MODAL_KEY, snapshot);
   }
 
   function getNamingPrompt(host, snapshot = null) {
@@ -170,6 +179,24 @@
     return Boolean(getEventSnapshot(host, snapshot)?.visible);
   }
 
+  // targetPicker modal: the payload is a STRUCTURED object discriminated by
+  // pickerKind ('worldTargetPicker' carries `picker`, 'worldMarchFormation'
+  // carries `target`). openTargetPickerSnapshot returns the payload so call
+  // sites keep a truthy guard. The world-march DOMAIN target (coords/route/
+  // mission/combat) stays in territoryUiState -- only the modal flag moves here.
+  function openTargetPickerSnapshot(host, payload = {}) {
+    openModalPayload(host, TARGET_PICKER_MODAL_KEY, payload);
+    return payload;
+  }
+
+  function closeTargetPickerSnapshot(host) {
+    return closeModalPayload(host, TARGET_PICKER_MODAL_KEY);
+  }
+
+  function isTargetPickerSnapshotOpen(host, snapshot = null) {
+    return Boolean(getTargetPickerSnapshot(host, snapshot)?.visible);
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -260,6 +287,22 @@
       isEventSnapshotOpen(snapshot = null) {
         return isEventSnapshotOpen(this, snapshot);
       },
+
+      openTargetPickerSnapshot(payload = {}) {
+        return openTargetPickerSnapshot(this, payload);
+      },
+
+      closeTargetPickerSnapshot() {
+        return closeTargetPickerSnapshot(this);
+      },
+
+      getTargetPickerSnapshot(snapshot = null) {
+        return getTargetPickerSnapshot(this, snapshot);
+      },
+
+      isTargetPickerSnapshotOpen(snapshot = null) {
+        return isTargetPickerSnapshotOpen(this, snapshot);
+      },
     });
     return true;
   }
@@ -269,12 +312,14 @@
     EVENT_MODAL_KEY,
     NAMING_MODAL_KEY,
     REWARD_REVEAL_MODAL_KEY,
+    TARGET_PICKER_MODAL_KEY,
     collectRelatedHosts,
     closeConfirmDialogSnapshot,
     closeEventSnapshot,
     closeModalPayload,
     closeNamingSnapshot,
     closeRewardRevealSnapshot,
+    closeTargetPickerSnapshot,
     getConfirmDialogSnapshot,
     getConfirmDialogSnapshotFromRendererSnapshot,
     getEventSnapshot,
@@ -287,16 +332,20 @@
     getNamingSnapshotFromRendererSnapshot,
     getRewardRevealSnapshot,
     getRewardRevealSnapshotFromRendererSnapshot,
+    getTargetPickerSnapshot,
+    getTargetPickerSnapshotFromRendererSnapshot,
     install,
     isConfirmDialogSnapshotOpen,
     isEventSnapshotOpen,
     isNamingSnapshotOpen,
     isRewardRevealSnapshotOpen,
+    isTargetPickerSnapshotOpen,
     openConfirmDialogSnapshot,
     openEventSnapshot,
     openModalPayload,
     openNamingSnapshot,
     openRewardRevealSnapshot,
+    openTargetPickerSnapshot,
     readModalEntry,
     resolveConfirmDialogSnapshotCallback,
     updateConfirmDialogSnapshot,

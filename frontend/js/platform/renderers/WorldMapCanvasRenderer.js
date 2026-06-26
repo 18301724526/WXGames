@@ -584,9 +584,9 @@
       return this.worldMapActorHudRenderer.addWorldActorHitTargets(actors, viewport, geometry);
     }
 
-    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}) {
+    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}, targetPicker = null) {
       if (!this.worldMapActorHudRenderer?.renderWorldMarchHud) return false;
-      return this.worldMapActorHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame);
+      return this.worldMapActorHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame, targetPicker);
     }
 
     renderWorldMapActorLayer(state = {}, options = {}) {

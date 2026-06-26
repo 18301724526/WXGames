@@ -96,7 +96,7 @@
       const viewport = context?.viewport || renderSnapshot?.viewport || {};
       const geometry = context?.geometry || renderSnapshot?.geometry || context?.tileMapView?.geometry || {};
       const frame = context?.frame || renderSnapshot?.frame || {};
-      return this.renderWorldMarchHud(options.state || state, uiState, actors, viewport, geometry, frame);
+      return this.renderWorldMarchHud(options.state || state, uiState, actors, viewport, geometry, frame, options.targetPicker || null);
     }
 
     isCanvasDebugResetBlocked(options = {}) {

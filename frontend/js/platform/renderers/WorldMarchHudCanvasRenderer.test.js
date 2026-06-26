@@ -125,8 +125,9 @@ test('WorldMarchHudCanvasRenderer renders overlapping world target picker action
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
-  renderer.renderWorldMarchHud({}, {
-    worldTargetPicker: {
+  renderer.renderWorldMarchHud({}, {}, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, {
+    pickerKind: 'worldTargetPicker',
+    picker: {
       q: 0,
       r: 0,
       tileId: 'tile_0_0',
@@ -137,7 +138,7 @@ test('WorldMarchHudCanvasRenderer renders overlapping world target picker action
         { id: 'march-1', kind: 'actor', label: 'Scout A', subtitle: 'Idle', action: { type: 'selectWorldActor', actorId: 'march-1' } },
       ],
     },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+  });
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'chooseWorldTarget' && target.action.targetId === 'capital'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'chooseWorldTarget' && target.action.targetId === 'march-1'), true);
@@ -151,8 +152,8 @@ test('WorldMarchHudCanvasRenderer renders formation picker with start action', (
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
   renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   const empty = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 2);
@@ -176,11 +177,10 @@ test('WorldMarchHudCanvasRenderer disables formation starts for blocked march ta
         q: 1,
         r: 0,
         tileId: 'tile_1_0',
-        pickerOpen: true,
         marchDisabled: true,
         marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
       },
-    }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 1, r: 0, tileId: 'tile_1_0' } });
 
     const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
     assert.equal(starts.length > 0, true);
@@ -200,11 +200,10 @@ test('WorldMarchHudCanvasRenderer includes selected actor id in formation picker
       q: 2,
       r: -1,
       tileId: 'tile_2_-1',
-      pickerOpen: true,
       missionId: 'explore-idle',
       actorId: 'explore-idle',
     },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1', missionId: 'explore-idle', actorId: 'explore-idle' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(start.action.missionId, 'explore-idle');
@@ -221,8 +220,8 @@ test('WorldMarchHudCanvasRenderer disables busy formations in march picker', () 
       busyFormations: [{ cityId: 'capital', slot: 1, missionId: 'explore-1', status: 'active' }],
     },
   }, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
@@ -240,8 +239,8 @@ test('WorldMarchHudCanvasRenderer allows idle formations to march again', () => 
       busyFormations: [{ cityId: 'capital', slot: 1, missionId: 'explore-1', status: 'idle' }],
     },
   }, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
@@ -269,8 +268,8 @@ test('WorldMarchHudCanvasRenderer allows expired active manual marches to reuse 
       busyFormations: [{ cityId: 'capital', slot: 1, missionId: 'explore-1', status: 'active' }],
     },
   }, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
@@ -308,8 +307,8 @@ test('WorldMarchHudCanvasRenderer does not read formations from last game state 
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
   renderer.renderWorldMarchHud({ type: 'openWorldMarchFormationPicker' }, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
@@ -363,8 +362,8 @@ test('WorldMarchHudCanvasRenderer uses passed state as authoritative formation s
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
   renderer.renderWorldMarchHud(explicitState, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
   assert.equal(starts.length, 3);
@@ -492,8 +491,8 @@ test('WorldMarchHudCanvasRenderer does not fill activeCity-only state from host 
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
   renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(start.action.disabled, true);
@@ -520,8 +519,8 @@ test('WorldMarchHudCanvasRenderer falls back to shared presenter when host prese
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
   renderer.renderWorldMarchHud(state, {
-    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
   assert.equal(starts.find((target) => target.action.formationSlot === 1).action.disabled, false);
@@ -585,8 +584,8 @@ test('WorldMarchHudCanvasRenderer clamps HUD controls to the visible game viewpo
   host.calls.length = 0;
   host.hitTargets.length = 0;
   renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
-    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0', pickerOpen: true },
-  }, [], {}, {}, frame);
+    worldMarchTarget: { q: 1, r: 0, tileId: 'tile_1_0' },
+  }, [], {}, {}, frame, { pickerKind: 'worldMarchFormation', target: { q: 1, r: 0, tileId: 'tile_1_0' } });
 
   const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
   assert.equal(starts.length, 3);
@@ -728,11 +727,10 @@ test('WorldMarchHudCanvasRenderer carries combat encounter id through formation 
       q: 2,
       r: -1,
       tileId: 'tile_2_-1',
-      pickerOpen: true,
       combatEncounterId: 'hostile_force_capital_ridge',
       combatTarget: { encounterId: 'hostile_force_capital_ridge', defender: { soldiers: 40 } },
     },
-  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 });
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);

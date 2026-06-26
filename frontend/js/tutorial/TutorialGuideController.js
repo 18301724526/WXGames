@@ -272,7 +272,10 @@
     }
 
     isWorldMarchFormationPickerOpen() {
-      return Boolean(this.getWorldMarchTarget()?.pickerOpen);
+      return Boolean(
+        this.game?.isTargetPickerSnapshotOpen?.()
+          && this.game?.getTargetPickerSnapshot?.()?.pickerKind === 'worldMarchFormation',
+      );
     }
 
     isFamousPersonsOpen() {
