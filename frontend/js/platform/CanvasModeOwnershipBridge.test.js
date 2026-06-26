@@ -305,3 +305,71 @@ test('CanvasModeOwnershipBridge targetPicker wrappers own picker payload and ter
     pickerOpen: false,
   });
 });
+
+test('CanvasModeOwnershipBridge blockingPanel wrappers own umbrella payload and mirrors', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  const shell = { showSettings: false, activeCommandPanel: '', techDetailOpen: false };
+  const game = {
+    canvasShell: shell,
+    showSettings: false,
+    activeCommandPanel: '',
+    techDetailOpen: false,
+  };
+  host.getCanvasGameHost = () => game;
+
+  const settingsPayload = host.openBlockingPanelOwner('showSettings', true);
+  assert.equal(host.isModalOpen('modal:blockingPanel'), true);
+  assert.deepEqual(settingsPayload, {
+    panelKey: 'showSettings',
+    panelKind: 'settings',
+    value: true,
+  });
+  assert.equal(host.showSettings, true);
+  assert.equal(game.showSettings, true);
+  assert.equal(shell.showSettings, true);
+
+  host.closeBlockingPanelOwner('showSettings');
+  const commandPayload = host.openBlockingPanelOwner('activeCommandPanel', 'tech');
+  assert.deepEqual(commandPayload, {
+    panelKey: 'activeCommandPanel',
+    panelKind: 'commandPanel',
+    value: 'tech',
+  });
+  assert.equal(host.activeCommandPanel, 'tech');
+  assert.equal(game.activeCommandPanel, 'tech');
+  assert.equal(shell.activeCommandPanel, 'tech');
+  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, false);
+
+  host.openBlockingPanelOwner('showSettings', true);
+  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, true);
+
+  host.closeBlockingPanelOwner('showSettings');
+  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
+  assert.equal(host.showSettings, false);
+  assert.equal(game.showSettings, false);
+  assert.equal(shell.showSettings, false);
+});
+
+test('CanvasModeOwnershipBridge closeBlockingPanelsOwner keeps except panel and clears mirrors', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = Object.assign(new Host(), {
+    showTaskCenter: true,
+    showSettings: true,
+    activeCommandPanel: 'events',
+  });
+
+  host.openBlockingPanelOwner('showTaskCenter', true);
+  const kept = host.closeBlockingPanelsOwner(['showTaskCenter']);
+  assert.equal(host.isModalOpen('modal:blockingPanel'), true);
+  assert.equal(kept.panelKey, 'showTaskCenter');
+  assert.equal(host.showTaskCenter, true);
+  assert.equal(host.showSettings, false);
+  assert.equal(host.activeCommandPanel, '');
+
+  host.closeBlockingPanelsOwner();
+  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
+  assert.equal(host.showTaskCenter, false);
+});

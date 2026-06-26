@@ -178,6 +178,7 @@
 
     closePanels(except = []) {
       const keep = new Set(except);
+      this.host?.closeBlockingPanelsOwner?.(except);
       CLOSEABLE_PANELS.forEach((key) => {
         if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
       });
@@ -187,6 +188,7 @@
     closePanelsOn(target, except = []) {
       if (!target || target === this.host || typeof target !== 'object') return;
       const keep = new Set(except);
+      target.closeBlockingPanelsOwner?.(except);
       CLOSEABLE_PANELS.forEach((key) => {
         if (!keep.has(key) && key in target) target[key] = key === 'activeCommandPanel' ? '' : false;
       });

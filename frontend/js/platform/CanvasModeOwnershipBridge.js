@@ -367,6 +367,102 @@
     return mirror;
   }
 
+  const BLOCKING_PANEL_KINDS = Object.freeze({
+    showSettings: 'settings',
+    showLogs: 'logs',
+    showResourceDetails: 'resourceDetails',
+    showCitySwitcher: 'citySwitcher',
+    showSubcityList: 'subcityList',
+    showCityManagement: 'cityManagement',
+    showAdvisor: 'advisor',
+    showTaskCenter: 'taskCenter',
+    showGuidebook: 'guidebook',
+    showFamousPersons: 'famousPersons',
+    activeCommandPanel: 'commandPanel',
+    techDetailOpen: 'techDetail',
+  });
+
+  const BLOCKING_PANEL_KEYS = Object.freeze(Object.keys(BLOCKING_PANEL_KINDS));
+
+  function normalizeBlockingPanelValue(panelKey, value) {
+    if (panelKey === 'activeCommandPanel') return String(value || '');
+    return Boolean(value);
+  }
+
+  function isBlockingPanelOpenValue(panelKey, value) {
+    return panelKey === 'activeCommandPanel' ? Boolean(value) : Boolean(value);
+  }
+
+  function collectBlockingPanelMirrorTargets(host) {
+    if (!host || typeof host !== 'object') return [];
+    const game = host.getCanvasGameHost?.() || host.lastGame || host;
+    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
+    return [host, game, shell].filter(
+      (target, index, targets) =>
+        target && typeof target === 'object' && targets.indexOf(target) === index,
+    );
+  }
+
+  function writeBlockingPanelMirror(target, panelKey, value) {
+    if (!target || typeof target !== 'object') return;
+    target[panelKey] = normalizeBlockingPanelValue(panelKey, value);
+  }
+
+  function clearBlockingPanelMirror(target, panelKey) {
+    if (!target || typeof target !== 'object') return;
+    target[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
+  }
+
+  function syncBlockingPanelMirror(host, panelKey, value) {
+    collectBlockingPanelMirrorTargets(host).forEach((target) => {
+      writeBlockingPanelMirror(target, panelKey, value);
+    });
+    return normalizeBlockingPanelValue(panelKey, value);
+  }
+
+  function openBlockingPanelOwner(host, panelKey, value = true, _metadata = {}) {
+    if (!BLOCKING_PANEL_KINDS[panelKey]) return null;
+    const mirrorValue = syncBlockingPanelMirror(host, panelKey, value);
+    if (!isBlockingPanelOpenValue(panelKey, mirrorValue)) {
+      closeBlockingPanelOwner(host, panelKey);
+      return mirrorValue;
+    }
+    const payload = openModal(host, 'modal:blockingPanel', {
+      panelKey,
+      panelKind: BLOCKING_PANEL_KINDS[panelKey],
+      value: mirrorValue,
+    });
+    return (
+      payload || {
+        panelKey,
+        panelKind: BLOCKING_PANEL_KINDS[panelKey],
+        value: mirrorValue,
+      }
+    );
+  }
+
+  function closeBlockingPanelOwner(host, panelKey) {
+    if (!BLOCKING_PANEL_KINDS[panelKey]) return null;
+    closeModal(host, 'modal:blockingPanel');
+    collectBlockingPanelMirrorTargets(host).forEach((target) => {
+      clearBlockingPanelMirror(target, panelKey);
+    });
+    return panelKey === 'activeCommandPanel' ? '' : false;
+  }
+
+  function closeBlockingPanelsOwner(host, except = []) {
+    const keep = new Set(Array.isArray(except) ? except : []);
+    const targets = collectBlockingPanelMirrorTargets(host);
+    BLOCKING_PANEL_KEYS.forEach((panelKey) => {
+      if (keep.has(panelKey)) return;
+      targets.forEach((target) => clearBlockingPanelMirror(target, panelKey));
+    });
+    const payload = getModalPayload(host, 'modal:blockingPanel');
+    if (payload?.panelKey && keep.has(payload.panelKey)) return payload;
+    closeModal(host, 'modal:blockingPanel');
+    return null;
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -513,11 +609,27 @@
       closeTargetPickerOwner(uiState) {
         return closeTargetPickerOwner(this, uiState);
       },
+
+      // blockingPanel wrappers own the umbrella modal open/close signal while
+      // keeping panel-specific business state in its legacy domain owner.
+      openBlockingPanelOwner(panelKey, value = true, metadata = {}) {
+        return openBlockingPanelOwner(this, panelKey, value, metadata);
+      },
+
+      closeBlockingPanelOwner(panelKey) {
+        return closeBlockingPanelOwner(this, panelKey);
+      },
+
+      closeBlockingPanelsOwner(except = []) {
+        return closeBlockingPanelsOwner(this, except);
+      },
     });
     return true;
   }
 
   const api = {
+    closeBlockingPanelOwner,
+    closeBlockingPanelsOwner,
     closeModal,
     closeEventOwner,
     closeTargetPickerOwner,
@@ -528,6 +640,7 @@
     hasBlockingOverlayExceptTechTree,
     install,
     isModalOpen,
+    openBlockingPanelOwner,
     openEventModal,
     openModal,
     openWorldMarchFormationPickerOwner,

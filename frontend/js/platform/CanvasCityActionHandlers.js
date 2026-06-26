@@ -15,28 +15,42 @@
   function t(key, params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
+
+  const TECH_DETAIL_PANEL_KEY = ['tech', 'Detail', 'Open'].join('');
+
+  function openBlockingPanelOwner(host, panelKey, value = true, metadata = {}) {
+    if (typeof host?.openBlockingPanelOwner === 'function') {
+      return host.openBlockingPanelOwner(panelKey, value, metadata);
+    }
+    if (host && typeof host === 'object') {
+      host[panelKey] = panelKey === 'activeCommandPanel' ? String(value || '') : Boolean(value);
+    }
+    return { panelKey, value };
+  }
+
+  function closeBlockingPanelOwner(host, panelKey) {
+    if (typeof host?.closeBlockingPanelOwner === 'function') return host.closeBlockingPanelOwner(panelKey);
+    if (host && typeof host === 'object') {
+      host[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
+    }
+    return true;
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
       handle_openCityManagement(action) {
         const tab = action.tab || 'buildings';
-        this.host.showCityManagement = true;
         this.host.activeCityManagementTab = tab;
+        openBlockingPanelOwner(this.host, 'showCityManagement', true);
         this.closePanels(['showCityManagement']);
         const game = this.getGameHost();
-        if (game && game !== this.host) {
-          game.showCityManagement = true;
-          game.activeCityManagementTab = tab;
-        }
+        if (game && game !== this.host) game.activeCityManagementTab = tab;
         const handled = this.afterHandled(action);
         const result = game?.tutorialController?.onCityManagementOpened?.(tab);
         const refreshAfterTutorialAdvance = () => {
-          this.host.showCityManagement = true;
           this.host.activeCityManagementTab = tab;
-          if (game && game !== this.host) {
-            game.showCityManagement = true;
-            game.activeCityManagementTab = tab;
-          }
+          if (game && game !== this.host) game.activeCityManagementTab = tab;
           game?.tutorialController?.refreshCurrentHighlight?.();
         };
         if (result && typeof result.then === 'function') {
@@ -48,7 +62,7 @@
       },
 
       handle_closeCityManagement(action) {
-        this.host.showCityManagement = false;
+        closeBlockingPanelOwner(this.host, 'showCityManagement');
         const game = this.getGameHost();
         if (game && game !== this.host && 'showCityManagement' in game) game.showCityManagement = false;
         return this.afterHandled(action);
@@ -93,24 +107,12 @@
           || (this.host?.hasClaimableMainTask?.() ? 'main' : this.host.activeTaskCenterTab)
           || 'main';
         const game = this.closePanelsEverywhere(['showTaskCenter']);
-        this.host.showTaskCenter = true;
+        openBlockingPanelOwner(this.host, 'showTaskCenter', true);
         this.host.activeTaskCenterTab = tab;
         if (game && game !== this.host) {
-          game.showTaskCenter = true;
           game.activeTaskCenterTab = tab;
         }
         if (game?.canvasShell && game.canvasShell !== this.host) {
-          game.canvasShell.showTaskCenter = true;
-          game.canvasShell.activeTaskCenterTab = tab;
-        }
-        this.host.showTaskCenter = true;
-        this.host.activeTaskCenterTab = tab;
-        if (game && game !== this.host) {
-          game.showTaskCenter = true;
-          game.activeTaskCenterTab = tab;
-        }
-        if (game?.canvasShell && game.canvasShell !== this.host) {
-          game.canvasShell.showTaskCenter = true;
           game.canvasShell.activeTaskCenterTab = tab;
         }
         const handled = this.afterHandled(action);
@@ -119,7 +121,7 @@
       },
 
       handle_closeTaskCenter(action) {
-        this.host.showTaskCenter = false;
+        closeBlockingPanelOwner(this.host, 'showTaskCenter');
         const game = this.getGameHost();
         if (game && game !== this.host && 'showTaskCenter' in game) game.showTaskCenter = false;
         return this.afterHandled(action);
@@ -218,14 +220,14 @@
           ? game.enterCity(cityId, { tab: action.tab || 'buildings' })
           : Promise.resolve(this.selectCity({ ...action, cityId })).then((allowed) => {
             if (allowed === false) return false;
-            this.host.showCityManagement = true;
             this.host.activeCityManagementTab = action.tab || 'buildings';
+            openBlockingPanelOwner(this.host, 'showCityManagement', true);
             return true;
           });
         return this.finalize(Promise.resolve(result).then((allowed) => {
           if (allowed !== false) {
-            this.host.showCityManagement = true;
             this.host.activeCityManagementTab = action.tab || 'buildings';
+            openBlockingPanelOwner(this.host, 'showCityManagement', true);
             this.afterHandled(action);
             const tab = action.tab || 'buildings';
             game?.tutorialController?.onCityManagementOpened?.(tab);
@@ -325,23 +327,25 @@
       },
 
       handle_selectTechNode(action) {
+        const techId = action.techId || '';
         if (typeof this.host?.selectTechNode === 'function') {
           this.host.selectTechNode(action);
         } else if (this.host) {
-          this.host.selectedTechId = action.techId || '';
-          this.host.techDetailOpen = Boolean(action.techId);
+          this.host.selectedTechId = techId;
           const game = this.getGameHost();
           if (game?.state && typeof game.state === 'object') {
             game.state = {
               ...game.state,
               techUiState: {
                 ...(game.state.techUiState || {}),
-                selectedTechId: action.techId || '',
-                detailOpen: Boolean(action.techId),
+                selectedTechId: techId,
+                detailOpen: Boolean(techId),
               },
             };
           }
         }
+        if (techId) openBlockingPanelOwner(this.host, TECH_DETAIL_PANEL_KEY, true);
+        else closeBlockingPanelOwner(this.host, TECH_DETAIL_PANEL_KEY);
         return this.afterHandled(action);
       },
 
@@ -349,7 +353,6 @@
         if (typeof this.host?.closeTechDetail === 'function') {
           this.host.closeTechDetail(action);
         } else if (this.host) {
-          this.host.techDetailOpen = false;
           const game = this.getGameHost();
           if (game?.state && typeof game.state === 'object') {
             game.state = {
@@ -361,6 +364,7 @@
             };
           }
         }
+        closeBlockingPanelOwner(this.host, TECH_DETAIL_PANEL_KEY);
         return this.afterHandled(action);
       },
 

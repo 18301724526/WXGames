@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasFamousActionHandlers = require('./CanvasFamousActionHandlers');
+const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
 
 class HostController {
   constructor(host) {
@@ -87,6 +88,15 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
     },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
+    },
+    openBlockingPanelOwner(panelKey, value) {
+      return CanvasModeOwnershipBridge.openBlockingPanelOwner(this, panelKey, value);
+    },
+    closeBlockingPanelOwner(panelKey) {
+      return CanvasModeOwnershipBridge.closeBlockingPanelOwner(this, panelKey);
+    },
+    closeBlockingPanelsOwner(except) {
+      return CanvasModeOwnershipBridge.closeBlockingPanelsOwner(this, except);
     },
   };
   const controller = new HostController(host);

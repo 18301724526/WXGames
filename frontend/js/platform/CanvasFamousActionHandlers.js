@@ -1,13 +1,30 @@
 (function (global) {
+  function openBlockingPanelOwner(host, panelKey, value = true, metadata = {}) {
+    if (typeof host?.openBlockingPanelOwner === 'function') {
+      return host.openBlockingPanelOwner(panelKey, value, metadata);
+    }
+    if (host && typeof host === 'object') {
+      host[panelKey] = panelKey === 'activeCommandPanel' ? String(value || '') : Boolean(value);
+    }
+    return { panelKey, value };
+  }
+
+  function closeBlockingPanelOwner(host, panelKey) {
+    if (typeof host?.closeBlockingPanelOwner === 'function') return host.closeBlockingPanelOwner(panelKey);
+    if (host && typeof host === 'object') {
+      host[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
+    }
+    return true;
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
       handle_openFamousPersons(action) {
-        this.host.showFamousPersons = true;
+        openBlockingPanelOwner(this.host, 'showFamousPersons', true);
         this.host.famousPersonsPage = 0;
         this.host.selectedFamousPersonId = '';
         const game = this.getGameHost();
-        if (game && game !== this.host && 'showFamousPersons' in game) game.showFamousPersons = true;
         if (game && game !== this.host && 'famousPersonsPage' in game) game.famousPersonsPage = 0;
         if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
         this.host.renderer?.clearFamousSkillTooltip?.();
@@ -22,7 +39,7 @@
       },
 
       handle_closeFamousPersons(action) {
-        this.host.showFamousPersons = false;
+        closeBlockingPanelOwner(this.host, 'showFamousPersons');
         this.host.famousPersonsPage = 0;
         this.host.selectedFamousPersonId = '';
         const game = this.getGameHost();

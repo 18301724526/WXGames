@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasCityActionHandlers = require('./CanvasCityActionHandlers');
+const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
 
 class HostController {
   constructor(host) {
@@ -203,6 +204,76 @@ test('task center tab switch preserves historical custom category values', () =>
   assert.equal(host.activeTaskCenterTab, 'seasonal');
   assert.equal(game.activeTaskCenterTab, 'seasonal');
   assert.deepEqual(calls, [['render', 'switchTaskCenterTab']]);
+});
+
+test('city blocking panels route task center and tech detail through owner wrappers', () => {
+  const calls = [];
+  const shell = {};
+  const game = {
+    canvasShell: shell,
+    state: { techUiState: {} },
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refresh']);
+      },
+    },
+  };
+  const host = {
+    activeTaskCenterTab: 'main',
+    selectedTechId: '',
+    lastGame: game,
+    openBlockingPanelOwner(panelKey, value) {
+      calls.push(['openOwner', panelKey, value]);
+      return CanvasModeOwnershipBridge.openBlockingPanelOwner(this, panelKey, value);
+    },
+    closeBlockingPanelOwner(panelKey) {
+      calls.push(['closeOwner', panelKey]);
+      return CanvasModeOwnershipBridge.closeBlockingPanelOwner(this, panelKey);
+    },
+    closeBlockingPanelsOwner(except) {
+      calls.push(['closePanelsOwner', except.join(',')]);
+      return CanvasModeOwnershipBridge.closeBlockingPanelsOwner(this, except);
+    },
+    getModalPayload(subtype) {
+      return CanvasModeOwnershipBridge.getModalPayload(this, subtype);
+    },
+    isModalOpen(subtype) {
+      return CanvasModeOwnershipBridge.isModalOpen(this, subtype);
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_openTaskCenter({ type: 'openTaskCenter', tab: 'seasonal' }), true);
+  assert.equal(host.showTaskCenter, true);
+  assert.equal(game.showTaskCenter, true);
+  assert.equal(shell.showTaskCenter, true);
+  assert.equal(host.activeTaskCenterTab, 'seasonal');
+  assert.deepEqual(host.getModalPayload('modal:blockingPanel'), {
+    panelKey: 'showTaskCenter',
+    panelKind: 'taskCenter',
+    value: true,
+  });
+
+  assert.equal(controller.handle_selectTechNode({ type: 'selectTechNode', techId: 'writing' }), true);
+  assert.equal(host.techDetailOpen, true);
+  assert.equal(game.techDetailOpen, true);
+  assert.equal(shell.techDetailOpen, true);
+  assert.equal(host.selectedTechId, 'writing');
+  assert.equal(game.state.techUiState.selectedTechId, 'writing');
+  assert.deepEqual(host.getModalPayload('modal:blockingPanel'), {
+    panelKey: 'techDetailOpen',
+    panelKind: 'techDetail',
+    value: true,
+  });
+
+  assert.equal(controller.handle_closeTechDetail({ type: 'closeTechDetail' }), true);
+  assert.equal(host.techDetailOpen, false);
+  assert.equal(game.techDetailOpen, false);
+  assert.equal(shell.techDetailOpen, false);
+  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
 });
 
 test('entrypoints load city action handlers before CanvasActionController', () => {

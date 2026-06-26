@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasShellActionHandlers = require('./CanvasShellActionHandlers');
+const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
 
 class HostController {
   constructor(host) {
@@ -340,6 +341,78 @@ test('downloadClientOperationLog reports concrete local save failure', () => {
     ['download'],
     ['float', 'CLIENT_OPERATION_LOG_DOWNLOAD_UNSUPPORTED', '#ffb86b'],
     ['render', 'downloadClientOperationLog'],
+  ]);
+});
+
+test('shell blocking panel actions route canonical opens through owner wrappers', async () => {
+  const calls = [];
+  const game = {
+    tutorialController: {
+      refreshCurrentHighlight() {
+        calls.push(['refresh']);
+      },
+    },
+  };
+  const host = {
+    showSettings: false,
+    showLogs: false,
+    activeCommandPanel: '',
+    lastGame: game,
+    runtime: {
+      setTimeout(callback) {
+        calls.push(['timeout']);
+        callback();
+      },
+    },
+    openBlockingPanelOwner(panelKey, value) {
+      calls.push(['openOwner', panelKey, value]);
+      return CanvasModeOwnershipBridge.openBlockingPanelOwner(this, panelKey, value);
+    },
+    closeBlockingPanelOwner(panelKey) {
+      calls.push(['closeOwner', panelKey]);
+      return CanvasModeOwnershipBridge.closeBlockingPanelOwner(this, panelKey);
+    },
+    closeBlockingPanelsOwner(except) {
+      calls.push(['closePanelsOwner', except.join(',')]);
+      return CanvasModeOwnershipBridge.closeBlockingPanelsOwner(this, except);
+    },
+    getModalPayload(subtype) {
+      return CanvasModeOwnershipBridge.getModalPayload(this, subtype);
+    },
+    isModalOpen(subtype) {
+      return CanvasModeOwnershipBridge.isModalOpen(this, subtype);
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+  };
+  const controller = new HostController(host);
+
+  assert.equal(controller.handle_openSettings({ type: 'openSettings' }), true);
+  assert.equal(host.showSettings, true);
+  assert.equal(host.isModalOpen('modal:blockingPanel'), true);
+
+  assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), true);
+  assert.equal(host.activeCommandPanel, 'tech');
+  assert.deepEqual(host.getModalPayload('modal:blockingPanel'), {
+    panelKey: 'activeCommandPanel',
+    panelKind: 'commandPanel',
+    value: 'tech',
+  });
+
+  assert.equal(controller.handle_closeCommandPanel({ type: 'closeCommandPanel' }), true);
+  assert.equal(host.activeCommandPanel, '');
+  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
+  assert.deepEqual(calls.map((call) => call[0]), [
+    'openOwner',
+    'render',
+    'openOwner',
+    'render',
+    'refresh',
+    'timeout',
+    'refresh',
+    'closeOwner',
+    'render',
   ]);
 });
 

@@ -15,6 +15,21 @@
   function t(key, params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
+
+  function openBlockingPanelOwner(host, panelKey, value = true, metadata = {}) {
+    if (typeof host?.openBlockingPanelOwner === 'function') {
+      return host.openBlockingPanelOwner(panelKey, value, metadata);
+    }
+    if (host && typeof host === 'object') host[panelKey] = panelKey === 'activeCommandPanel' ? String(value || '') : Boolean(value);
+    return { panelKey, value };
+  }
+
+  function closeBlockingPanelOwner(host, panelKey) {
+    if (typeof host?.closeBlockingPanelOwner === 'function') return host.closeBlockingPanelOwner(panelKey);
+    if (host && typeof host === 'object') host[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
+    return true;
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
@@ -70,23 +85,24 @@
       },
 
       handle_openResourceDetails(action) {
-        this.host.showResourceDetails = true;
+        openBlockingPanelOwner(this.host, 'showResourceDetails', true);
         this.closePanels(['showResourceDetails']);
         return this.afterHandled(action);
       },
 
       handle_closeResourceDetails(action) {
-        this.host.showResourceDetails = false;
+        closeBlockingPanelOwner(this.host, 'showResourceDetails');
         return this.afterHandled(action);
       },
 
       handle_openCommandPanel(action) {
         const panel = String(action.panel || '');
         if (!panel) return false;
-        this.host.activeCommandPanel = this.host.activeCommandPanel === panel ? '' : panel;
-        this.closePanels(this.host.activeCommandPanel ? ['activeCommandPanel'] : []);
+        const nextPanel = this.host.activeCommandPanel === panel ? '' : panel;
+        openBlockingPanelOwner(this.host, 'activeCommandPanel', nextPanel);
+        this.closePanels(nextPanel ? ['activeCommandPanel'] : []);
         const game = this.getGameHost();
-        const openedPanel = this.host.activeCommandPanel;
+        const openedPanel = nextPanel;
         const tutorialResult = openedPanel && typeof game?.tutorialController?.onCommandPanelOpened === 'function'
           ? game.tutorialController.onCommandPanelOpened(openedPanel)
           : true;
@@ -102,7 +118,7 @@
       },
 
       handle_closeCommandPanel(action) {
-        this.host.activeCommandPanel = '';
+        closeBlockingPanelOwner(this.host, 'activeCommandPanel');
         return this.afterHandled(action);
       },
 
@@ -118,24 +134,24 @@
       },
 
       handle_openCitySwitcher(action) {
-        this.host.showCitySwitcher = !this.host.showCitySwitcher;
+        openBlockingPanelOwner(this.host, 'showCitySwitcher', !this.host.showCitySwitcher);
         this.closePanels(['showCitySwitcher']);
         return this.afterHandled(action);
       },
 
       handle_closeCitySwitcher(action) {
-        this.host.showCitySwitcher = false;
+        closeBlockingPanelOwner(this.host, 'showCitySwitcher');
         return this.afterHandled(action);
       },
 
       handle_openSubcityList(action) {
-        this.host.showSubcityList = !this.host.showSubcityList;
+        openBlockingPanelOwner(this.host, 'showSubcityList', !this.host.showSubcityList);
         this.closePanels(this.host.showSubcityList ? ['showSubcityList'] : []);
         return this.afterHandled(action);
       },
 
       handle_closeSubcityList(action) {
-        this.host.showSubcityList = false;
+        closeBlockingPanelOwner(this.host, 'showSubcityList');
         return this.afterHandled(action);
       },
 
@@ -226,13 +242,13 @@
       },
 
       handle_openSettings(action) {
-        this.host.showSettings = true;
+        openBlockingPanelOwner(this.host, 'showSettings', true);
         this.closePanels(['showSettings']);
         return this.afterHandled(action);
       },
 
       handle_closeSettings(action) {
-        this.host.showSettings = false;
+        closeBlockingPanelOwner(this.host, 'showSettings');
         return this.afterHandled(action);
       },
 
@@ -305,13 +321,13 @@
       },
 
       handle_openLogs(action) {
-        this.host.showLogs = true;
+        openBlockingPanelOwner(this.host, 'showLogs', true);
         this.closePanels(['showLogs']);
         return this.afterHandled(action);
       },
 
       handle_closeLogs(action) {
-        this.host.showLogs = false;
+        closeBlockingPanelOwner(this.host, 'showLogs');
         this.getGameHost()?.closeRequestLogs?.();
         return this.afterHandled(action);
       },
@@ -320,18 +336,18 @@
         const game = this.getGameHost();
         if (Array.isArray(game?.requestLogs)) game.requestLogs = [];
         if (typeof game?.clearRequestLogs === 'function') game.clearRequestLogs();
-        this.host.showLogs = true;
+        openBlockingPanelOwner(this.host, 'showLogs', true);
         return this.afterHandled(action);
       },
 
       handle_openAdvisor(action) {
-        this.host.showAdvisor = true;
+        openBlockingPanelOwner(this.host, 'showAdvisor', true);
         this.closePanels(['showAdvisor']);
         return this.afterHandled(action);
       },
 
       handle_closeAdvisor(action) {
-        this.host.showAdvisor = false;
+        closeBlockingPanelOwner(this.host, 'showAdvisor');
         this.host.tutorialAdvisorDialogue = null;
         this.host.renderer?.clearTutorialAdvisorDialogue?.();
         const game = this.getGameHost();
@@ -376,14 +392,14 @@
       },
 
       handle_openGuidebook(action) {
-        this.host.showGuidebook = true;
         this.host.activeGuidebookTab = action.tab || this.host.activeGuidebookTab || 'planning';
+        openBlockingPanelOwner(this.host, 'showGuidebook', true);
         this.closePanels(['showGuidebook']);
         return this.afterHandled(action);
       },
 
       handle_closeGuidebook(action) {
-        this.host.showGuidebook = false;
+        closeBlockingPanelOwner(this.host, 'showGuidebook');
         return this.afterHandled(action);
       },
 
