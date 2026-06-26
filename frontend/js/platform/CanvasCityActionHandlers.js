@@ -108,6 +108,10 @@
           || 'main';
         const game = this.closePanelsEverywhere(['showTaskCenter']);
         openBlockingPanelOwner(this.host, 'showTaskCenter', true);
+        if (game && game !== this.host) openBlockingPanelOwner(game, 'showTaskCenter', true);
+        if (game?.canvasShell && game.canvasShell !== this.host) {
+          openBlockingPanelOwner(game.canvasShell, 'showTaskCenter', true);
+        }
         this.host.activeTaskCenterTab = tab;
         if (game && game !== this.host) {
           game.activeTaskCenterTab = tab;
