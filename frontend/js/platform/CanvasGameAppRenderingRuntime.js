@@ -130,6 +130,12 @@
                   || null,
                 preserveCanvas: worldMapLayerRendered,
               };
+            const rendererSnapshot = typeof this.buildRendererSnapshot === 'function'
+              ? this.buildRendererSnapshot()
+              : null;
+            const battleSnapshot = rendererSnapshot?.battle || {};
+            const snapshotBattleScene = battleSnapshot.battleScene || null;
+            const snapshotEntityBattle = battleSnapshot.entityBattle || null;
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
@@ -163,8 +169,8 @@
               ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
               activeEventId: this.activeEventId,
               territoryUiState: this.territoryUiState,
-              ...(this.battleScene ? { battleScene: this.battleScene } : {}),
-              ...(this.entityBattle ? { entityBattle: this.entityBattle } : {}),
+              ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : (this.battleScene ? { battleScene: this.battleScene } : {})),
+              ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
               naming: this.naming,
               tutorialIntro: this.tutorialIntro || null,
               tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,

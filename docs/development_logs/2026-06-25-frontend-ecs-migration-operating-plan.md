@@ -548,3 +548,43 @@ Batch 6A review result:
 - Accepted: `renderer-snapshot-v1` contract, owner-direct modal reads, bridge read-only API, dedicated guard with 139 baseline / 139 current / 0 violations, mode-spine guard 0 violations, and 1219-test architecture smoke.
 - Follow-up condition: 6B/6C renderer-reader sub-slices must include mirror retire targets. The first 6B sub-slice must delete at least one mirror and migrate its renderer readers to the snapshot.
 - Batch 7 (`Domain Area Sealing`) may start after the 6A completion commit reaches the server branch.
+
+## Batch 7A First-Window Deliverables
+
+Batch 7A establishes the Battle domain owner without migrating gameplay. The
+owner covers only battle overlay/session facts: replay `battleScene` and
+interactive/replay `entityBattle`.
+
+Batch 7A approved runtime ECS surfaces:
+
+| Surface                                                | Status                   | Notes                                                                                        |
+| ------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------- |
+| `frontend/js/ecs/domain/BattleDomainOwner.js`          | Owner source only        | Pure frozen `battle-domain-v1` owner for battle overlay/session facts                        |
+| `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js` | Snapshot boundary        | Emits `snapshot.battle` alongside existing modal/panel/mode facts                            |
+| `frontend/js/platform/CanvasGameAppBattleScene.js`     | Canonical adapter        | Routes battleScene/entityBattle open/update/close through the owner while preserving mirrors |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`    | Read-only snapshot facts | No Battle open/close wrappers; only existing `buildRendererSnapshot` / `getRendererSnapshot` |
+| `scripts/check-frontend-ecs-battle-domain-owner.js`    | Blocking guard           | Blocks new canonical battle writes outside approved owner/snapshot/canonical adapter paths   |
+
+Batch 7A execution checklist:
+
+| Step                                        | Status                           | Artifact / Gate                                 | Acceptance Standard                                                                  |
+| ------------------------------------------- | -------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 7A-1. Battle domain owner                   | Ready for Migration Owner Review | `BattleDomainOwner.js`                          | Frozen serializable `battle-domain-v1`; battleScene/entityBattle facts only          |
+| 7A-2. Snapshot path                         | Ready for Migration Owner Review | `RendererSnapshotBoundary.js`, generated bundle | `snapshot.battle` available through the existing renderer snapshot path              |
+| 7A-3. Canonical battle adapter routing      | Ready for Migration Owner Review | `CanvasGameAppBattleScene.js`                   | Canonical battle open/update/close write owner and preserve legacy mirrors           |
+| 7A-4. No new bridge wrappers                | Ready for Migration Owner Review | `CanvasModeOwnershipBridge.js`                  | No `openBattle*Owner` / `closeBattle*Owner`; only read-only snapshot fact collection |
+| 7A-5. Battle ownership guard and tests      | Ready for Migration Owner Review | `check-frontend-ecs-battle-domain-owner.js`     | Guard blocks new non-owner canonical writes and is wired into architecture smoke     |
+| 7A-6. 7B cleanup plan                       | Ready for Migration Owner Review | 7A batch doc                                    | 7B target is App-side `this.battleScene`; deletion order and expected files recorded |
+| 7A-7. Progress / operating plan / batch doc | Ready for Migration Owner Review | progress doc, operating plan, 7A batch doc      | 7A documented as Ready for Review, not Completed                                     |
+
+Batch 7A scope control:
+
+- Do not migrate BattleSimCore, AI stepping, camera math, renderer drawing, timers, or server resolve.
+- Do not add Battle open/close wrappers to `CanvasModeOwnershipBridge.js`.
+- Do not defer the 7B mirror deletion target to Batch 8.
+
+Batch 7B cleanup target:
+
+- Delete App-side `this.battleScene` mirror.
+- Migration order: render options read only `getRendererSnapshot().battle.battleScene`, replay runtime reads move to an owner snapshot helper, App-to-Shell `battleScene` mirror sync is removed or snapshot-derived, constructor initialization is deleted, then the guard forbids App-side `this.battleScene` reads/writes.
+- Estimated surface: 5-7 files. `this.entityBattle` remains a later Battle sub-slice because it carries live mutable sim/session state.

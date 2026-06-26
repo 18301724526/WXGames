@@ -2203,6 +2203,12 @@ var EcsModeRuntime = (() => {
         canRouteWorldMap: false,
         canRouteTechTree: false,
       });
+      var BATTLE_DEFAULTS = Object.freeze({
+        schema: 'battle-domain-v1',
+        battleScene: null,
+        entityBattle: null,
+        activeOverlay: 'none',
+      });
       function cloneSerializable(value) {
         if (typeof value === 'function' || typeof value === 'undefined') return null;
         if (value == null) return null;
@@ -2262,12 +2268,22 @@ var EcsModeRuntime = (() => {
         });
         return Object.freeze(mode);
       }
+      function buildBattleSnapshot(battleFacts = null) {
+        if (!battleFacts || typeof battleFacts !== 'object') return BATTLE_DEFAULTS;
+        return Object.freeze({
+          schema: String(battleFacts.schema || BATTLE_DEFAULTS.schema),
+          battleScene: cloneSerializable(battleFacts.battleScene || null),
+          entityBattle: cloneSerializable(battleFacts.entityBattle || null),
+          activeOverlay: String(battleFacts.activeOverlay || BATTLE_DEFAULTS.activeOverlay),
+        });
+      }
       function buildRendererSnapshot(facts = {}) {
         return Object.freeze({
           schema: SCHEMA,
           modal: buildModalSnapshot(facts.modalWorld || null),
           panel: buildPanelSnapshot(facts.panel || {}),
           mode: buildModeSnapshot(facts.mode || null),
+          battle: buildBattleSnapshot(facts.battle || null),
         });
       }
       function isRendererSnapshot(value) {
@@ -2276,6 +2292,7 @@ var EcsModeRuntime = (() => {
         );
       }
       var api = Object.freeze({
+        BATTLE_DEFAULTS,
         MODAL_SUBTYPES,
         MODE_DEFAULTS,
         PANEL_DEFAULTS,
@@ -2285,6 +2302,118 @@ var EcsModeRuntime = (() => {
         isRendererSnapshot,
       });
       if (typeof globalThis !== 'undefined') globalThis.EcsRendererSnapshotBoundary = api;
+      if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    },
+  });
+
+  // frontend/js/ecs/domain/BattleDomainOwner.js
+  var require_BattleDomainOwner = __commonJS({
+    'frontend/js/ecs/domain/BattleDomainOwner.js'(exports, module) {
+      'use strict';
+      var SCHEMA = 'battle-domain-v1';
+      function cloneSerializable(value, seen = []) {
+        if (typeof value === 'function' || typeof value === 'undefined') return null;
+        if (value == null) return null;
+        if (Array.isArray(value))
+          return Object.freeze(value.map((item) => cloneSerializable(item, seen)));
+        if (typeof value === 'object') {
+          if (seen.includes(value)) return null;
+          const nextSeen = seen.concat(value);
+          const copy = {};
+          Object.keys(value)
+            .sort()
+            .forEach((key) => {
+              const next = value[key];
+              if (typeof next === 'function' || typeof next === 'undefined') return;
+              copy[key] = cloneSerializable(next, nextSeen);
+            });
+          return Object.freeze(copy);
+        }
+        return value;
+      }
+      function normalizeBattleScene(scene = null) {
+        if (!scene || typeof scene !== 'object') return null;
+        return Object.freeze({
+          visible: scene.visible !== false,
+          report: cloneSerializable(scene.report || null),
+          turnIndex: Math.max(0, Number(scene.turnIndex) || 0),
+          startedAt: Number(scene.startedAt) || 0,
+          turnStartedAt: Number(scene.turnStartedAt) || 0,
+          turnDurationMs: Math.max(0, Number(scene.turnDurationMs) || 0),
+        });
+      }
+      function normalizeEntityBattle(session = null) {
+        if (!session || typeof session !== 'object') return null;
+        return cloneSerializable(session);
+      }
+      function activeOverlayFor(battleScene = null, entityBattle = null) {
+        if (entityBattle?.visible) return 'entityBattle';
+        if (battleScene?.visible) return 'battleScene';
+        return 'none';
+      }
+      function makeOwner({ battleScene = null, entityBattle = null } = {}) {
+        const normalizedBattleScene = normalizeBattleScene(battleScene);
+        const normalizedEntityBattle = normalizeEntityBattle(entityBattle);
+        return Object.freeze({
+          schema: SCHEMA,
+          battleScene: normalizedBattleScene,
+          entityBattle: normalizedEntityBattle,
+          activeOverlay: activeOverlayFor(normalizedBattleScene, normalizedEntityBattle),
+        });
+      }
+      function createBattleDomainOwner(initial = {}) {
+        return makeOwner(initial);
+      }
+      function ensureBattleDomainOwner(owner = null) {
+        return owner?.schema === SCHEMA ? owner : createBattleDomainOwner();
+      }
+      function openBattleScene(owner, scene) {
+        const base = ensureBattleDomainOwner(owner);
+        return makeOwner({ battleScene: scene, entityBattle: base.entityBattle });
+      }
+      function updateBattleScene(owner, patchOrScene = {}) {
+        const base = ensureBattleDomainOwner(owner);
+        const current = base.battleScene || {};
+        return makeOwner({
+          battleScene: { ...current, ...(patchOrScene || {}) },
+          entityBattle: base.entityBattle,
+        });
+      }
+      function closeBattleScene(owner) {
+        const base = ensureBattleDomainOwner(owner);
+        return makeOwner({ battleScene: null, entityBattle: base.entityBattle });
+      }
+      function openEntityBattle(owner, session) {
+        const base = ensureBattleDomainOwner(owner);
+        return makeOwner({ battleScene: base.battleScene, entityBattle: session });
+      }
+      function updateEntityBattle(owner, patchOrSession = {}) {
+        const base = ensureBattleDomainOwner(owner);
+        const current = base.entityBattle || {};
+        return makeOwner({
+          battleScene: base.battleScene,
+          entityBattle: { ...current, ...(patchOrSession || {}) },
+        });
+      }
+      function closeEntityBattle(owner) {
+        const base = ensureBattleDomainOwner(owner);
+        return makeOwner({ battleScene: base.battleScene, entityBattle: null });
+      }
+      function getBattleDomainSnapshot(owner) {
+        return ensureBattleDomainOwner(owner);
+      }
+      var api = Object.freeze({
+        SCHEMA,
+        closeBattleScene,
+        closeEntityBattle,
+        createBattleDomainOwner,
+        getBattleDomainSnapshot,
+        openBattleScene,
+        openEntityBattle,
+        updateBattleScene,
+        updateEntityBattle,
+      });
+      if (typeof globalThis !== 'undefined') globalThis.EcsBattleDomainOwner = api;
       if (typeof module !== 'undefined' && module.exports) module.exports = api;
     },
   });
@@ -2300,16 +2429,18 @@ var EcsModeRuntime = (() => {
       var InputIntent = require_InputIntent();
       var InputIntentResolver = require_InputIntentResolver();
       var RendererSnapshotBoundary = require_RendererSnapshotBoundary();
+      var BattleDomainOwner = require_BattleDomainOwner();
       var EcsModeRuntime = Object.freeze({
         ...ModeKeys,
         ...ModeResolver,
         ...ModeWorld,
         ...InputIntentResolver,
         ModeComponents,
+        BattleDomainOwner,
         ModalWorld,
         RendererSnapshotBoundary,
         InputIntent,
-        version: 'ecs-mode-runtime-batch-6a',
+        version: 'ecs-mode-runtime-batch-7a',
       });
       if (typeof globalThis !== 'undefined') {
         globalThis.EcsModeRuntime = EcsModeRuntime;

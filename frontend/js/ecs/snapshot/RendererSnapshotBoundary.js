@@ -60,6 +60,13 @@ const MODE_DEFAULTS = Object.freeze({
   canRouteTechTree: false,
 });
 
+const BATTLE_DEFAULTS = Object.freeze({
+  schema: 'battle-domain-v1',
+  battleScene: null,
+  entityBattle: null,
+  activeOverlay: 'none',
+});
+
 function cloneSerializable(value) {
   if (typeof value === 'function' || typeof value === 'undefined') return null;
   if (value == null) return null;
@@ -124,12 +131,23 @@ function buildModeSnapshot(modeFacts = null) {
   return Object.freeze(mode);
 }
 
+function buildBattleSnapshot(battleFacts = null) {
+  if (!battleFacts || typeof battleFacts !== 'object') return BATTLE_DEFAULTS;
+  return Object.freeze({
+    schema: String(battleFacts.schema || BATTLE_DEFAULTS.schema),
+    battleScene: cloneSerializable(battleFacts.battleScene || null),
+    entityBattle: cloneSerializable(battleFacts.entityBattle || null),
+    activeOverlay: String(battleFacts.activeOverlay || BATTLE_DEFAULTS.activeOverlay),
+  });
+}
+
 function buildRendererSnapshot(facts = {}) {
   return Object.freeze({
     schema: SCHEMA,
     modal: buildModalSnapshot(facts.modalWorld || null),
     panel: buildPanelSnapshot(facts.panel || {}),
     mode: buildModeSnapshot(facts.mode || null),
+    battle: buildBattleSnapshot(facts.battle || null),
   });
 }
 
@@ -138,6 +156,7 @@ function isRendererSnapshot(value) {
 }
 
 const api = Object.freeze({
+  BATTLE_DEFAULTS,
   MODAL_SUBTYPES,
   MODE_DEFAULTS,
   PANEL_DEFAULTS,

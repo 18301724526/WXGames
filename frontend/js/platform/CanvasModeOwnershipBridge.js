@@ -204,6 +204,12 @@
       : null;
   }
 
+  function getBattleDomainOwnerApi() {
+    return EcsModeRuntime && EcsModeRuntime.BattleDomainOwner
+      ? EcsModeRuntime.BattleDomainOwner
+      : null;
+  }
+
   function ensureModalOwner(host) {
     const ModalWorld = getModalWorldApi();
     if (!ModalWorld) return null;
@@ -489,6 +495,30 @@
     };
   }
 
+  function buildRendererBattleFacts(host) {
+    const BattleDomainOwner = getBattleDomainOwnerApi();
+    if (BattleDomainOwner?.getBattleDomainSnapshot && host?.__ecsBattleDomainOwner) {
+      return BattleDomainOwner.getBattleDomainSnapshot(host.__ecsBattleDomainOwner);
+    }
+    const game = host?.getCanvasGameHost?.() || getStateHost(host);
+    const shell = game?.canvasShell || host?.canvasShell || host?.lastGame?.canvasShell || null;
+    const battleScene = game?.battleScene || shell?.battleScene || host?.battleScene || null;
+    const entityBattle = game?.entityBattle || shell?.entityBattle || host?.entityBattle || null;
+    if (BattleDomainOwner?.createBattleDomainOwner) {
+      return BattleDomainOwner.createBattleDomainOwner({ battleScene, entityBattle });
+    }
+    return {
+      schema: 'battle-domain-v1',
+      battleScene,
+      entityBattle,
+      activeOverlay: entityBattle?.visible
+        ? 'entityBattle'
+        : battleScene?.visible
+          ? 'battleScene'
+          : 'none',
+    };
+  }
+
   function buildRendererSnapshot(host, options = {}) {
     const RendererSnapshotBoundary = getRendererSnapshotBoundaryApi();
     if (!host || !RendererSnapshotBoundary?.buildRendererSnapshot) return null;
@@ -497,6 +527,7 @@
       modalWorld: host.__ecsModalOwner || null,
       panel: buildRendererPanelFacts(host),
       mode,
+      battle: buildRendererBattleFacts(host),
     });
     host.__ecsRendererSnapshot = snapshot;
     return snapshot;

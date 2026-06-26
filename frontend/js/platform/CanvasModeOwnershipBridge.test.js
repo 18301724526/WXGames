@@ -386,6 +386,11 @@ test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirr
   };
   const game = { canvasShell: shell, showTaskCenter: false, activeCommandPanel: '' };
   host.getCanvasGameHost = () => game;
+  host.__ecsBattleDomainOwner = global.EcsModeRuntime.BattleDomainOwner.openBattleScene(null, {
+    visible: true,
+    report: { id: 'report-1' },
+    turnIndex: 0,
+  });
   host.openEventModal('event-1');
   host.openBlockingPanelOwner('showTaskCenter', true);
 
@@ -406,9 +411,35 @@ test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirr
   assert.equal(snapshot.panel.selectedTechId, undefined);
   assert.equal(snapshot.mode.baseModeKey, 'techTree');
   assert.equal(snapshot.mode.selectedTechId, undefined);
+  assert.equal(snapshot.battle.activeOverlay, 'battleScene');
+  assert.deepEqual(snapshot.battle.battleScene.report, { id: 'report-1' });
   assert.equal(host.getRendererSnapshot(), snapshot);
 
   assert.equal(CanvasModeOwnershipBridge.getRendererSnapshot(host), snapshot);
+});
+
+test('CanvasModeOwnershipBridge exposes battle facts only through read-only snapshot path', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+
+  const forbiddenWrapperNames = [
+    'openBattleSceneOwner',
+    'closeBattleSceneOwner',
+    'openEntityBattleOwner',
+    'closeEntityBattleOwner',
+  ];
+
+  forbiddenWrapperNames.forEach((name) => {
+    assert.equal(typeof Host.prototype[name], 'undefined');
+    assert.equal(typeof CanvasModeOwnershipBridge[name], 'undefined');
+  });
+
+  host.battleScene = { visible: true, report: { id: 'legacy-report' }, turnIndex: 0 };
+  const snapshot = host.buildRendererSnapshot();
+
+  assert.equal(snapshot.battle.activeOverlay, 'battleScene');
+  assert.deepEqual(snapshot.battle.battleScene.report, { id: 'legacy-report' });
 });
 
 test('CanvasModeOwnershipBridge renderer snapshot helper is null-safe without runtime boundary', () => {

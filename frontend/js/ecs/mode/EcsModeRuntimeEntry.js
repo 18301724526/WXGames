@@ -8,6 +8,7 @@ const ModalWorld = require('./ModalWorld');
 const InputIntent = require('../input/InputIntent');
 const InputIntentResolver = require('../input/InputIntentResolver');
 const RendererSnapshotBoundary = require('../snapshot/RendererSnapshotBoundary');
+const BattleDomainOwner = require('../domain/BattleDomainOwner');
 
 const EcsModeRuntime = Object.freeze({
   ...ModeKeys,
@@ -15,10 +16,11 @@ const EcsModeRuntime = Object.freeze({
   ...ModeWorld,
   ...InputIntentResolver,
   ModeComponents,
+  BattleDomainOwner,
   ModalWorld,
   RendererSnapshotBoundary,
   InputIntent,
-  version: 'ecs-mode-runtime-batch-6a',
+  version: 'ecs-mode-runtime-batch-7a',
 });
 
 if (typeof globalThis !== 'undefined') {

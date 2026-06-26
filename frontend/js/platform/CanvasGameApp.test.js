@@ -1319,3 +1319,76 @@ test('CanvasGameApp records compat async action dispatch before rejection', asyn
   assert.equal(actionEvent.action.type, 'externalWorldCommand');
   assert.equal(actionEvent.handled, 'promise');
 });
+
+test('CanvasGameApp routes battleScene replay overlay through battle domain owner snapshot', () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: {
+      render(_state, options) {
+        calls.push(['render', options.battleScene?.report?.id || '', options.battleScene?.turnIndex]);
+      },
+    },
+    scheduler: {
+      setTimeout() {
+        return 1;
+      },
+      clearTimeout() {},
+      setInterval() {
+        return 2;
+      },
+      clearInterval() {},
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+  });
+  app.now = () => 100;
+
+  assert.equal(app.startBattleScene({ id: 'report-owner', turns: [{ action: 'attack' }] }), true);
+
+  assert.equal(app.__ecsBattleDomainOwner.schema, 'battle-domain-v1');
+  assert.equal(app.__ecsBattleDomainOwner.battleScene.report.id, 'report-owner');
+  assert.equal(app.getRendererSnapshot().battle.battleScene.report.id, 'report-owner');
+  assert.equal(app.battleScene.report.id, 'report-owner');
+  assert.deepEqual(calls.at(-1), ['render', 'report-owner', 0]);
+
+  app.now = () => 250;
+  assert.equal(app.skipBattleScene(), true);
+  assert.equal(app.__ecsBattleDomainOwner.battleScene.turnIndex, 1);
+});
+
+test('CanvasGameApp records entityBattle owner facts while preserving live mirror object', () => {
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = {
+    createBattle() {
+      return { config: { tickHz: 20 }, squads: { g1: { side: 0, generalId: 'u1' } }, units: { u1: { skills: [] } } };
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: { render() {} },
+    scheduler: {
+      setInterval() {
+        return 1;
+      },
+      clearInterval() {},
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+  });
+  app.renderCanvasSurface = () => true;
+
+  try {
+    assert.equal(app.openEntityBattle({ setup: { sides: [{}, {}] }, battleId: 'battle-owner' }), true);
+    assert.equal(app.entityBattle.battleId, 'battle-owner');
+    assert.equal(app.__ecsBattleDomainOwner.entityBattle.battleId, 'battle-owner');
+    assert.notEqual(app.__ecsBattleDomainOwner.entityBattle, app.entityBattle);
+
+    app.entityBattleSelectGeneral('g1');
+    assert.equal(app.__ecsBattleDomainOwner.entityBattle.selectedGid, 'g1');
+  } finally {
+    global.BattleSimCore = previousCore;
+  }
+});

@@ -387,6 +387,12 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       });
       this.mapHomeActive = homeView.isMapHome;
       const resolvedTerritoryUiState = this.resolveTerritoryUiState(territoryUiState);
+      const rendererSnapshot = typeof this.buildRendererSnapshot === 'function'
+        ? this.buildRendererSnapshot()
+        : null;
+      const battleSnapshot = rendererSnapshot?.battle || {};
+      const snapshotBattleScene = battleSnapshot.battleScene || null;
+      const snapshotEntityBattle = battleSnapshot.entityBattle || null;
       logActorPickingDiag('shell:buildRenderOptions:territoryUiState', {
         activeTab,
         input: summarizeActorPickingUiState(territoryUiState),
@@ -441,8 +447,8 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: this.activeEventId,
         territoryUiState: resolvedTerritoryUiState,
-        ...((this.lastGame?.battleScene || this.battleScene) ? { battleScene: this.lastGame?.battleScene || this.battleScene } : {}),
-        ...((this.lastGame?.entityBattle || this.entityBattle) ? { entityBattle: this.lastGame?.entityBattle || this.entityBattle } : {}),
+        ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : ((this.lastGame?.battleScene || this.battleScene) ? { battleScene: this.lastGame?.battleScene || this.battleScene } : {})),
+        ...((this.lastGame?.entityBattle || this.entityBattle) ? { entityBattle: this.lastGame?.entityBattle || this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
         tabLocks: this.getTabLocks(state),
         naming: this.naming,
         auth: this.auth,
