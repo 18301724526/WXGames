@@ -264,6 +264,38 @@
     );
   }
 
+  function collectEventMirrorTargets(host) {
+    if (!host || typeof host !== 'object') return [];
+    const game = host.getCanvasGameHost?.() || host.lastGame || host;
+    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
+    return [host, game, shell].filter(
+      (target, index, targets) =>
+        target && typeof target === 'object' && targets.indexOf(target) === index,
+    );
+  }
+
+  function syncEventMirrors(host, eventId = null) {
+    const mirrorValue = eventId ?? null;
+    collectEventMirrorTargets(host).forEach((target) => {
+      target.activeEventId = mirrorValue;
+    });
+    return mirrorValue;
+  }
+
+  function openEventModal(host, eventId) {
+    const mirrorValue = syncEventMirrors(host, eventId);
+    if (mirrorValue === null) return mirrorValue;
+    const payload = openModal(host, 'modal:event', { eventId: mirrorValue }) || {
+      eventId: mirrorValue,
+    };
+    return payload?.eventId ?? mirrorValue;
+  }
+
+  function closeEventOwner(host) {
+    closeModal(host, 'modal:event');
+    return syncEventMirrors(host, null);
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -386,12 +418,23 @@
       closeRewardRevealOwner() {
         return closeModal(this, 'modal:rewardReveal');
       },
+
+      // event-specific wrappers: payload stores `eventId` so the modal owner
+      // stays separate from EventController's same-named claim cursor field.
+      openEventModal(eventId) {
+        return openEventModal(this, eventId);
+      },
+
+      closeEventOwner() {
+        return closeEventOwner(this);
+      },
     });
     return true;
   }
 
   const api = {
     closeModal,
+    closeEventOwner,
     collectModalKeys,
     deriveModeFacts,
     getModalPayload,
@@ -399,6 +442,7 @@
     hasBlockingOverlayExceptTechTree,
     install,
     isModalOpen,
+    openEventModal,
     openModal,
     refreshModeSnapshot,
     resolveBaseModeKey,

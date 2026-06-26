@@ -214,3 +214,44 @@ test('CanvasModeOwnershipBridge rewardReveal wrappers seal presentation state', 
   assert.equal(host.isModalOpen('modal:rewardReveal'), false);
   assert.equal(host.getModalPayload('modal:rewardReveal'), null);
 });
+
+test('CanvasModeOwnershipBridge event wrappers sync mirrors without touching EventController cursor', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  const shell = { activeEventId: null };
+  const game = {
+    activeEventId: null,
+    canvasShell: shell,
+    eventController: { activeEventId: 'claim-cursor' },
+  };
+  host.getCanvasGameHost = () => game;
+
+  assert.equal(host.openEventModal('event-1'), 'event-1');
+  assert.equal(host.isModalOpen('modal:event'), true);
+  assert.deepEqual(host.getModalPayload('modal:event'), { eventId: 'event-1' });
+  assert.equal(host.activeEventId, 'event-1');
+  assert.equal(game.activeEventId, 'event-1');
+  assert.equal(shell.activeEventId, 'event-1');
+  assert.equal(game.eventController.activeEventId, 'claim-cursor');
+
+  host.closeEventOwner();
+  assert.equal(host.isModalOpen('modal:event'), false);
+  assert.equal(host.activeEventId, null);
+  assert.equal(game.activeEventId, null);
+  assert.equal(shell.activeEventId, null);
+  assert.equal(game.eventController.activeEventId, 'claim-cursor');
+});
+
+test('CanvasModeOwnershipBridge event wrappers preserve falsy but non-null event ids', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = new Host();
+  const game = { activeEventId: null };
+  host.getCanvasGameHost = () => game;
+
+  assert.equal(host.openEventModal(0), 0);
+  assert.deepEqual(host.getModalPayload('modal:event'), { eventId: 0 });
+  assert.equal(host.activeEventId, 0);
+  assert.equal(game.activeEventId, 0);
+});

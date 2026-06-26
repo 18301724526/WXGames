@@ -72,29 +72,19 @@
         const eventData = (game?.state?.eventQueue || this.getState().eventQueue || [])
           .find((item) => item.id === action.eventId);
         if (!eventData) return false;
-        this.host.activeEventId = action.eventId;
-        if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = action.eventId;
-        if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = action.eventId;
         this.closePanels(['activeEventId']);
+        const eventId = this.host.openEventModal?.(action.eventId) || action.eventId;
         const controller = this.getEventController();
-        controller?.open?.(action.eventId);
-        this.host.activeEventId = action.eventId;
-        if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = action.eventId;
-        if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = action.eventId;
-        if (controller && 'activeEventId' in controller) controller.activeEventId = action.eventId;
+        controller?.open?.(eventId);
         const handled = this.afterHandled(action);
         game?.tutorialController?.refreshCurrentHighlight?.();
         return handled;
       },
 
       handle_closeEvent(action) {
-        this.host.activeEventId = null;
-        const game = this.getGameHost();
-        if (game && game !== this.host && 'activeEventId' in game) game.activeEventId = null;
-        if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = null;
+        this.host.closeEventOwner?.();
         const controller = this.getEventController();
         controller?.close?.();
-        if (controller && 'activeEventId' in controller) controller.activeEventId = null;
         return this.afterHandled(action);
       },
 
