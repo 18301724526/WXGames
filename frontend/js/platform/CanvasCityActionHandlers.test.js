@@ -5,6 +5,20 @@ const path = require('node:path');
 
 const CanvasCityActionHandlers = require('./CanvasCityActionHandlers');
 const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+
+// Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host
+// carries the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the
+// snapshot adapter (openBlockingPanelSnapshot/closeBlockingPanelsSnapshot/
+// isBlockingPanelSnapshotOpen/getCommandPanelValue) so the city handlers route
+// through the owner instead of host mirrors.
+class ModalHost {}
+CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModalSnapshotAdapter.install(ModalHost);
+
+function makeModalHost(fields = {}) {
+  return Object.assign(new ModalHost(), fields);
+}
 
 class HostController {
   constructor(host) {
@@ -30,29 +44,15 @@ class HostController {
 
   closePanels(except = []) {
     const keep = new Set(except);
-    [
-      'showCityManagement',
-      'showTaskCenter',
-      'showSubcityList',
-      'activeCommandPanel',
-    ].forEach((key) => {
-      if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
-    });
-    if (!keep.has('activeEventId') && 'activeEventId' in this.host) this.host.activeEventId = null;
+    this.host?.closeBlockingPanelsSnapshot?.(except);
+    if (!keep.has('activeEventId')) this.host?.closeEventSnapshot?.();
   }
 
   closePanelsOn(target, except = []) {
     if (!target || target === this.host || typeof target !== 'object') return;
     const keep = new Set(except);
-    [
-      'showCityManagement',
-      'showTaskCenter',
-      'showSubcityList',
-      'activeCommandPanel',
-    ].forEach((key) => {
-      if (!keep.has(key) && key in target) target[key] = key === 'activeCommandPanel' ? '' : false;
-    });
-    if (!keep.has('activeEventId') && 'activeEventId' in target) target.activeEventId = null;
+    target.closeBlockingPanelsSnapshot?.(except);
+    if (!keep.has('activeEventId')) target.closeEventSnapshot?.();
   }
 
   closePanelsEverywhere(except = []) {
@@ -227,10 +227,10 @@ test('task center tab switch preserves historical custom category values', () =>
   assert.deepEqual(calls, [['render', 'switchTaskCenterTab']]);
 });
 
-test('city blocking panels route task center and tech detail through owner wrappers', () => {
+test('city blocking panels route task center and tech detail through the snapshot owner', () => {
   const calls = [];
-  const shell = {};
-  const game = {
+  const shell = makeModalHost({});
+  const game = makeModalHost({
     canvasShell: shell,
     state: { techUiState: {} },
     tutorialController: {
@@ -238,63 +238,40 @@ test('city blocking panels route task center and tech detail through owner wrapp
         calls.push(['refresh']);
       },
     },
-  };
-  const host = {
+  });
+  const host = makeModalHost({
     activeTaskCenterTab: 'main',
     selectedTechId: '',
     lastGame: game,
-    openBlockingPanelOwner(panelKey, value) {
-      calls.push(['openOwner', panelKey, value]);
-      return CanvasModeOwnershipBridge.openBlockingPanelOwner(this, panelKey, value);
-    },
-    closeBlockingPanelOwner(panelKey) {
-      calls.push(['closeOwner', panelKey]);
-      return CanvasModeOwnershipBridge.closeBlockingPanelOwner(this, panelKey);
-    },
-    closeBlockingPanelsOwner(except) {
-      calls.push(['closePanelsOwner', except.join(',')]);
-      return CanvasModeOwnershipBridge.closeBlockingPanelsOwner(this, except);
-    },
-    getModalPayload(subtype) {
-      return CanvasModeOwnershipBridge.getModalPayload(this, subtype);
-    },
-    isModalOpen(subtype) {
-      return CanvasModeOwnershipBridge.isModalOpen(this, subtype);
-    },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
-  };
+  });
+  shell.lastGame = game;
   const controller = new HostController(host);
 
   assert.equal(controller.handle_openTaskCenter({ type: 'openTaskCenter', tab: 'seasonal' }), true);
-  assert.equal(host.showTaskCenter, true);
-  assert.equal(game.showTaskCenter, true);
-  assert.equal(shell.showTaskCenter, true);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
+  assert.equal(host.isModalOpen('modal:taskCenter'), true);
+  assert.equal(host.getRendererSnapshot().panel.showTaskCenter, true);
   assert.equal(host.activeTaskCenterTab, 'seasonal');
-  assert.deepEqual(host.getModalPayload('modal:blockingPanel'), {
-    panelKey: 'showTaskCenter',
-    panelKind: 'taskCenter',
-    value: true,
-  });
+  assert.equal(game.activeTaskCenterTab, 'seasonal');
+  assert.equal(shell.activeTaskCenterTab, 'seasonal');
 
   assert.equal(controller.handle_selectTechNode({ type: 'selectTechNode', techId: 'writing' }), true);
-  assert.equal(host.techDetailOpen, true);
-  assert.equal(game.techDetailOpen, true);
-  assert.equal(shell.techDetailOpen, true);
+  assert.equal(host.isBlockingPanelSnapshotOpen('techDetailOpen'), true);
+  assert.equal(host.isModalOpen('modal:techDetail'), true);
+  assert.equal(host.getRendererSnapshot().panel.techDetailOpen, true);
   assert.equal(host.selectedTechId, 'writing');
   assert.equal(game.state.techUiState.selectedTechId, 'writing');
-  assert.deepEqual(host.getModalPayload('modal:blockingPanel'), {
-    panelKey: 'techDetailOpen',
-    panelKind: 'techDetail',
-    value: true,
-  });
+  // Axis-3: opening tech detail does NOT sweep the other panels, so the task center
+  // opened above stays open.
+  assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
 
   assert.equal(controller.handle_closeTechDetail({ type: 'closeTechDetail' }), true);
-  assert.equal(host.techDetailOpen, false);
-  assert.equal(game.techDetailOpen, false);
-  assert.equal(shell.techDetailOpen, false);
-  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('techDetailOpen'), false);
+  assert.equal(host.isModalOpen('modal:techDetail'), false);
+  assert.equal(game.state.techUiState.detailOpen, false);
 });
 
 test('entrypoints load city action handlers before CanvasActionController', () => {

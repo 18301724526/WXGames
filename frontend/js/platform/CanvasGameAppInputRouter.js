@@ -64,20 +64,20 @@
             const rewardRevealOpen = typeof this.isRewardRevealSnapshotOpen === 'function'
               ? this.isRewardRevealSnapshotOpen()
               : false;
-            return Boolean(this.showResourceDetails
-              || this.showCitySwitcher
-              || this.showSubcityList
-              || this.showCityManagement
-              || this.showAdvisor
+            return Boolean(this.isBlockingPanelSnapshotOpen('showResourceDetails')
+              || this.isBlockingPanelSnapshotOpen('showCitySwitcher')
+              || this.isBlockingPanelSnapshotOpen('showSubcityList')
+              || this.isBlockingPanelSnapshotOpen('showCityManagement')
+              || this.isBlockingPanelSnapshotOpen('showAdvisor')
               || this.tutorialAdvisorDialogue
               || this.canvasShell?.tutorialAdvisorDialogue
-              || this.showTaskCenter
-              || this.showGuidebook
-              || this.showFamousPersons
+              || this.isBlockingPanelSnapshotOpen('showTaskCenter')
+              || this.isBlockingPanelSnapshotOpen('showGuidebook')
+              || this.isBlockingPanelSnapshotOpen('showFamousPersons')
               || this.armyFormationEditor?.open
               || confirmDialogOpen
-              || this.activeCommandPanel
-              || this.techDetailOpen
+              || this.getCommandPanelValue()
+              || this.isBlockingPanelSnapshotOpen('techDetailOpen')
               || this.isEventSnapshotOpen?.()
               || namingOpen
               || battleScene?.visible

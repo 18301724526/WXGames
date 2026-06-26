@@ -15,6 +15,27 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
 
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // Batch 8F: route blocking-panel closes through the snapshot owner (the host method
+  // when installed, else the module adapter) instead of the retired host-mirror fields.
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -69,15 +90,15 @@ openConfirmDialog(view = {}) {
         onConfirm: view.onConfirm || null,
         onCancel: view.onCancel || null,
       });
-      this.showSettings = false;
-      this.showLogs = false;
-      this.showResourceDetails = false;
-      this.showCitySwitcher = false;
-      this.showSubcityList = false;
-      this.showCityManagement = false;
-      this.showAdvisor = false;
-      this.showFamousPersons = false;
-      this.activeCommandPanel = '';
+      closeBlockingPanelSnapshot(this, 'showSettings');
+      closeBlockingPanelSnapshot(this, 'showLogs');
+      closeBlockingPanelSnapshot(this, 'showResourceDetails');
+      closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+      closeBlockingPanelSnapshot(this, 'showSubcityList');
+      closeBlockingPanelSnapshot(this, 'showCityManagement');
+      closeBlockingPanelSnapshot(this, 'showAdvisor');
+      closeBlockingPanelSnapshot(this, 'showFamousPersons');
+      closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       this.closeEventSnapshot?.();
       this.renderActive();
       return true;
@@ -302,15 +323,15 @@ requestAuthInput(field) {
 openNaming(view = {}) {
       const namingState = { visible: true, view, inputValue: '', submitting: false };
       this.openNamingSnapshot?.(namingState);
-      this.showSettings = false;
-      this.showLogs = false;
-      this.showResourceDetails = false;
-      this.showCitySwitcher = false;
-      this.showSubcityList = false;
-      this.showCityManagement = false;
-      this.showAdvisor = false;
-      this.showFamousPersons = false;
-      this.activeCommandPanel = '';
+      closeBlockingPanelSnapshot(this, 'showSettings');
+      closeBlockingPanelSnapshot(this, 'showLogs');
+      closeBlockingPanelSnapshot(this, 'showResourceDetails');
+      closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+      closeBlockingPanelSnapshot(this, 'showSubcityList');
+      closeBlockingPanelSnapshot(this, 'showCityManagement');
+      closeBlockingPanelSnapshot(this, 'showAdvisor');
+      closeBlockingPanelSnapshot(this, 'showFamousPersons');
+      closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       this.closeEventSnapshot?.();
       this.renderActive();
       return true;

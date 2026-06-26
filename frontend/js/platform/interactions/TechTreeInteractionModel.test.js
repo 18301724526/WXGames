@@ -360,8 +360,7 @@ test('CanvasActionController notifies tutorial when opening civilization command
       },
     },
   };
-  const host = {
-    activeCommandPanel: '',
+  const host = makeModalHost({
     getCanvasGameHost() {
       return game;
     },
@@ -369,12 +368,12 @@ test('CanvasActionController notifies tutorial when opening civilization command
       calls.push(['render']);
       return true;
     },
-  };
+  });
   const controller = new CanvasActionController({ host, awaitAsync: true });
 
   assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'civilization' }), true);
 
-  assert.equal(host.activeCommandPanel, 'civilization');
+  assert.equal(host.getCommandPanelValue(), 'civilization');
   assert.deepEqual(calls, [
     ['onCommandPanelOpened', 'civilization'],
     ['render'],
@@ -398,8 +397,7 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
       },
     },
   };
-  const host = {
-    showAdvisor: true,
+  const host = makeModalHost({
     tutorialAdvisorDialogue: { source: 'houseBuilt' },
     renderer: {
       clearTutorialAdvisorDialogue() {
@@ -413,13 +411,13 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
       calls.push(['render']);
       return true;
     },
-  };
+  });
+  host.openBlockingPanelSnapshot('showAdvisor', true);
   const controller = new CanvasActionController({ host, awaitAsync: true });
 
   assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
 
-  assert.equal(host.showAdvisor, false);
-  assert.equal(game.showAdvisor, false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showAdvisor'), false);
   assert.equal(host.tutorialAdvisorDialogue, null);
   assert.equal(game.tutorialAdvisorDialogue, null);
   assert.deepEqual(calls, [
@@ -454,10 +452,8 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
       return eventStore.snapshot;
     },
   };
-  const shell = {
+  const shell = makeModalHost({
     ...eventSnapshotMock,
-    activeCommandPanel: 'events',
-    showTaskCenter: true,
     state: { eventQueue: [{ id: 'event-1' }] },
     getCanvasGameHost() {
       return game;
@@ -466,12 +462,14 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
       calls.push(['render']);
       return true;
     },
-  };
+  });
   const game = {
     ...eventSnapshotMock,
     canvasShell: shell,
     state: { eventQueue: [{ id: 'event-1' }] },
   };
+  shell.openBlockingPanelSnapshot('activeCommandPanel', 'events');
+  shell.openBlockingPanelSnapshot('showTaskCenter', true);
   const controller = new CanvasActionController({ host: shell });
 
   assert.equal(controller.handle_openEvent({ type: 'openEvent', eventId: 'event-1' }), true);
@@ -480,8 +478,8 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
   assert.equal(game.isEventSnapshotOpen(), true);
   assert.equal(game.canvasShell.isEventSnapshotOpen(), true);
   assert.equal(shell.getEventSnapshot().eventId, 'event-1');
-  assert.equal(shell.activeCommandPanel, '');
-  assert.equal(shell.showTaskCenter, false);
+  assert.equal(shell.getCommandPanelValue(), '');
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showTaskCenter'), false);
   assert.deepEqual(ownerCalls, [['openEventSnapshot', 'event-1']]);
   assert.deepEqual(calls, [['render']]);
 
@@ -581,11 +579,7 @@ test('CanvasActionController opens task center above city management after lumbe
   const calls = [];
   const ownerCalls = [];
   const eventStore = { snapshot: { eventId: 'event-1', visible: true } };
-  const shell = {
-    showTaskCenter: false,
-    showCityManagement: true,
-    showSubcityList: true,
-    activeCommandPanel: 'capital',
+  const shell = makeModalHost({
     activeTaskCenterTab: '',
     getCanvasGameHost() {
       return game;
@@ -601,12 +595,8 @@ test('CanvasActionController opens task center above city management after lumbe
       calls.push(['render']);
       return true;
     },
-  };
-  const game = {
-    showTaskCenter: false,
-    showCityManagement: true,
-    showSubcityList: true,
-    activeCommandPanel: 'capital',
+  });
+  const game = makeModalHost({
     activeTaskCenterTab: '',
     canvasShell: shell,
     closeEventSnapshot() {
@@ -621,19 +611,23 @@ test('CanvasActionController opens task center above city management after lumbe
         calls.push(['refreshCurrentHighlight']);
       },
     },
-  };
+  });
+  // The bidirectional shell<->game link lets the owner fan the opens out to both.
+  shell.openBlockingPanelSnapshot('showCityManagement', true);
+  shell.openBlockingPanelSnapshot('showSubcityList', true);
+  shell.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
   const controller = new CanvasActionController({ host: shell });
 
   assert.equal(controller.handle_openTaskCenter({ type: 'openTaskCenter', tab: 'main' }), true);
 
-  assert.equal(shell.showTaskCenter, true);
-  assert.equal(game.showTaskCenter, true);
-  assert.equal(shell.showCityManagement, false);
-  assert.equal(game.showCityManagement, false);
-  assert.equal(shell.showSubcityList, false);
-  assert.equal(game.showSubcityList, false);
-  assert.equal(shell.activeCommandPanel, '');
-  assert.equal(game.activeCommandPanel, '');
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), false);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showSubcityList'), false);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showSubcityList'), false);
+  assert.equal(shell.getCommandPanelValue(), '');
+  assert.equal(game.getCommandPanelValue(), '');
   assert.equal(shell.isEventSnapshotOpen(), false);
   assert.equal(game.isEventSnapshotOpen(), false);
   assert.equal(shell.activeTaskCenterTab, 'main');
@@ -644,8 +638,7 @@ test('CanvasActionController opens task center above city management after lumbe
 
 test('CanvasActionController mirrors city management open to the game host', () => {
   const calls = [];
-  const shell = {
-    showCityManagement: false,
+  const shell = makeModalHost({
     activeCityManagementTab: '',
     getCanvasGameHost() {
       return game;
@@ -654,9 +647,8 @@ test('CanvasActionController mirrors city management open to the game host', () 
       calls.push(['render']);
       return true;
     },
-  };
-  const game = {
-    showCityManagement: false,
+  });
+  const game = makeModalHost({
     activeCityManagementTab: '',
     canvasShell: shell,
     tutorialController: {
@@ -667,7 +659,7 @@ test('CanvasActionController mirrors city management open to the game host', () 
         calls.push(['refreshCurrentHighlight']);
       },
     },
-  };
+  });
   const controller = new CanvasActionController({ host: shell });
 
   assert.equal(
@@ -675,16 +667,15 @@ test('CanvasActionController mirrors city management open to the game host', () 
     true,
   );
 
-  assert.equal(shell.showCityManagement, true);
-  assert.equal(game.showCityManagement, true);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(shell.activeCityManagementTab, 'people');
   assert.equal(game.activeCityManagementTab, 'people');
 });
 
 test('CanvasActionController closes command panel after switching military view', () => {
   const calls = [];
-  const shell = {
-    activeCommandPanel: 'military',
+  const shell = makeModalHost({
     getCanvasGameHost() {
       return game;
     },
@@ -692,9 +683,8 @@ test('CanvasActionController closes command panel after switching military view'
       calls.push(['render']);
       return true;
     },
-  };
-  const game = {
-    activeCommandPanel: 'military',
+  });
+  const game = makeModalHost({
     canvasShell: shell,
     switchMilitaryView(view) {
       calls.push(['switchMilitaryView', view]);
@@ -715,13 +705,14 @@ test('CanvasActionController closes command panel after switching military view'
         callback();
       },
     },
-  };
+  });
+  shell.openBlockingPanelSnapshot('activeCommandPanel', 'military');
   const controller = new CanvasActionController({ host: shell });
 
   assert.equal(controller.handle_switchMilitaryView({ type: 'switchMilitaryView', view: 'world' }), true);
 
-  assert.equal(shell.activeCommandPanel, '');
-  assert.equal(game.activeCommandPanel, '');
+  assert.equal(shell.getCommandPanelValue(), '');
+  assert.equal(game.getCommandPanelValue(), '');
   assert.deepEqual(calls, [
     ['switchMilitaryView', 'world'],
     ['onMilitaryViewSwitched', 'world'],

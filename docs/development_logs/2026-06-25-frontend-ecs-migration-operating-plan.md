@@ -821,3 +821,36 @@ Batch 8E scope control:
 - Do not delete the blockingPanel mirror in this slice (8F).
 - Do not keep any targetPicker field on territoryUiState as a compatibility fallback.
 - Do not mark 8E Completed before migration owner sign-off.
+
+## Batch 8F Blocking Panel Mirror Removal Deliverables
+
+Batch 8F is the FINAL Bridge-Retirement slice. It deletes the last sealed modal mirror —
+the `blockingPanel` umbrella and its 12 host fields (10 `show*` booleans + the
+`activeCommandPanel` string enum + `techDetailOpen`) — replacing them with one owned ECS
+modal subtype per panel (FULL per-panel model). It is the only slice touching the ECS
+mode-resolver core.
+
+Batch 8F approved runtime surfaces:
+
+| Surface                                                          | State                            | Note                                                                                                                |
+| ---------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `frontend/js/ecs/mode/ModeKeys.js` / `ModeResolver.js`           | Ready for Migration Owner Review | 12 subtypes added to the mask + CAPTURE_PRIORITY; BLOCKING_MODAL_KEYS adds 11 (commandPanel excluded)               |
+| `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`           | Ready for Migration Owner Review | MODAL_SUBTYPES gains the 12; PANEL_KEYS/PANEL_DEFAULTS unchanged (now DERIVED from the per-panel entries)           |
+| `frontend/js/platform/CanvasModalSnapshotAdapter.js`             | Ready for Migration Owner Review | Adds the `*BlockingPanelSnapshot` API (open/close/closeAll-except/isOpen/getCommandPanelValue/buildFacts)           |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`              | Ready for Migration Owner Review | `buildRendererPanelFacts` derives from the modal entries; 3 wrappers + mirror helpers removed                       |
+| `scripts/check-frontend-ecs-blocking-panel-mirror-retirement.js` | Ready for Migration Owner Review | Blocks mirror writes/reads + retired wrappers + patch idioms; receiver-agnostic writes; old ownership guard removed |
+
+Batch 8F execution checklist: see the Batch 8F Checklist in the migration-progress doc
+(8F-1…8F-7, all Ready for Migration Owner Review). Verification: full `npm test` 1701/0,
+architecture-smoke + both guards 0, lint + format clean, all LF; a 3-lens adversarial
+review confirmed zero behavior regressions (3 guard-soundness fixes applied).
+
+Batch 8F scope control:
+
+- Do not change out-of-scope DOMAIN state: `techUiState.detailOpen`, `selectedTechId`,
+  the `*Tab` cursors, the `armyFormationEditor` object, `territoryUiState`,
+  `tutorialAdvisorDialogue`.
+- Preserve the non-panel blocking signals (`tutorialAdvisorDialogue`,
+  `armyFormationEditor.open`) that the old umbrella folded in.
+- Preserve each subset reset's EXACT panel set (do not broaden to close-all).
+- Do not mark 8F Completed before migration owner sign-off.

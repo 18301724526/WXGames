@@ -16,36 +16,34 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
 
-  const TECH_DETAIL_PANEL_KEY = ['tech', 'Detail', 'Open'].join('');
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
-  function openBlockingPanelOwner(host, panelKey, value = true, metadata = {}) {
-    if (typeof host?.openBlockingPanelOwner === 'function') {
-      return host.openBlockingPanelOwner(panelKey, value, metadata);
+  // Batch 8F: route blocking-panel opens/closes through the snapshot owner (the host
+  // method when installed, else the module adapter). The owner resolves the game host
+  // + canvasShell from whichever host is passed, so the prior open-everywhere fan-out
+  // collapses to a single call.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    if (typeof host?.openBlockingPanelSnapshot === 'function') {
+      return host.openBlockingPanelSnapshot(panelKey, value);
     }
-    if (host && typeof host === 'object') {
-      host[panelKey] = panelKey === 'activeCommandPanel' ? String(value || '') : Boolean(value);
-    }
-    return { panelKey, value };
+    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
   }
 
-  function closeBlockingPanelOwner(host, panelKey) {
-    if (typeof host?.closeBlockingPanelOwner === 'function') return host.closeBlockingPanelOwner(panelKey);
-    if (host && typeof host === 'object') {
-      host[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
     }
-    return true;
-  }
-
-  // Open a blocking panel on the host AND mirror it to the game host + canvasShell,
-  // matching how the close handlers clear the mirror. On a bridge host the host's
-  // own openBlockingPanelOwner already syncs all three, so the extra calls are
-  // idempotent; on a bridge-less fallback host they restore the dropped propagation.
-  function openBlockingPanelEverywhere(host, game, panelKey, value = true) {
-    openBlockingPanelOwner(host, panelKey, value);
-    if (game && game !== host) openBlockingPanelOwner(game, panelKey, value);
-    if (game?.canvasShell && game.canvasShell !== host) {
-      openBlockingPanelOwner(game.canvasShell, panelKey, value);
-    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
   }
 
   function install(CanvasActionController) {
@@ -56,14 +54,14 @@
         const game = this.getGameHost();
         this.host.activeCityManagementTab = tab;
         if (game && game !== this.host) game.activeCityManagementTab = tab;
-        openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
+        openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
         this.closePanels(['showCityManagement']);
         const handled = this.afterHandled(action);
         const result = game?.tutorialController?.onCityManagementOpened?.(tab);
         const refreshAfterTutorialAdvance = () => {
           this.host.activeCityManagementTab = tab;
           if (game && game !== this.host) game.activeCityManagementTab = tab;
-          openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
+          openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
           game?.tutorialController?.refreshCurrentHighlight?.();
         };
         if (result && typeof result.then === 'function') {
@@ -75,9 +73,7 @@
       },
 
       handle_closeCityManagement(action) {
-        closeBlockingPanelOwner(this.host, 'showCityManagement');
-        const game = this.getGameHost();
-        if (game && game !== this.host && 'showCityManagement' in game) game.showCityManagement = false;
+        closeBlockingPanelSnapshot(this.host, 'showCityManagement');
         return this.afterHandled(action);
       },
 
@@ -120,7 +116,7 @@
           || (this.host?.hasClaimableMainTask?.() ? 'main' : this.host.activeTaskCenterTab)
           || 'main';
         const game = this.closePanelsEverywhere(['showTaskCenter']);
-        openBlockingPanelEverywhere(this.host, game, 'showTaskCenter');
+        openBlockingPanelSnapshot(this.host, 'showTaskCenter', true);
         this.host.activeTaskCenterTab = tab;
         if (game && game !== this.host) {
           game.activeTaskCenterTab = tab;
@@ -134,9 +130,7 @@
       },
 
       handle_closeTaskCenter(action) {
-        closeBlockingPanelOwner(this.host, 'showTaskCenter');
-        const game = this.getGameHost();
-        if (game && game !== this.host && 'showTaskCenter' in game) game.showTaskCenter = false;
+        closeBlockingPanelSnapshot(this.host, 'showTaskCenter');
         return this.afterHandled(action);
       },
 
@@ -149,8 +143,8 @@
       },
 
       handle_selectCity(action) {
-        this.host.showCitySwitcher = false;
-        this.host.showSubcityList = false;
+        closeBlockingPanelSnapshot(this.host, 'showCitySwitcher');
+        closeBlockingPanelSnapshot(this.host, 'showSubcityList');
         this.host.closeEventSnapshot?.();
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
@@ -164,7 +158,7 @@
         if (typeof game?.switchCity === 'function') {
           return await game.switchCity(action.cityId);
         }
-        this.host.showCitySwitcher = false;
+        closeBlockingPanelSnapshot(this.host, 'showCitySwitcher');
         this.host.closeEventSnapshot?.();
         await this.runAction(() => this.host.api.switchCity(action.cityId));
         return true;
@@ -173,8 +167,8 @@
       handle_jumpToSubcity(action) {
         const cityId = action.cityId || action.siteId || '';
         if (!cityId) return false;
-        this.host.showSubcityList = false;
-        this.host.activeCommandPanel = '';
+        closeBlockingPanelSnapshot(this.host, 'showSubcityList');
+        closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
         this.host.closeEventSnapshot?.();
         this.openWorldSiteLocally(cityId);
         this.centerWorldMapOnSite(cityId);
@@ -225,8 +219,8 @@
       performEnterCity(action) {
         const cityId = action.cityId || action.territoryId || action.siteId || '';
         if (!cityId) return false;
-        this.host.showSubcityList = false;
-        this.host.activeCommandPanel = '';
+        closeBlockingPanelSnapshot(this.host, 'showSubcityList');
+        closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
         this.host.closeEventSnapshot?.();
         const game = this.getGameHost();
         const result = typeof game?.enterCity === 'function'
@@ -234,13 +228,13 @@
           : Promise.resolve(this.selectCity({ ...action, cityId })).then((allowed) => {
             if (allowed === false) return false;
             this.host.activeCityManagementTab = action.tab || 'buildings';
-            openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
+            openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
             return true;
           });
         return this.finalize(Promise.resolve(result).then((allowed) => {
           if (allowed !== false) {
             this.host.activeCityManagementTab = action.tab || 'buildings';
-            openBlockingPanelEverywhere(this.host, game, 'showCityManagement');
+            openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
             this.afterHandled(action);
             const tab = action.tab || 'buildings';
             game?.tutorialController?.onCityManagementOpened?.(tab);
@@ -357,8 +351,7 @@
             };
           }
         }
-        if (techId) openBlockingPanelOwner(this.host, TECH_DETAIL_PANEL_KEY, true);
-        else closeBlockingPanelOwner(this.host, TECH_DETAIL_PANEL_KEY);
+        openBlockingPanelSnapshot(this.host, 'techDetailOpen', Boolean(techId));
         return this.afterHandled(action);
       },
 
@@ -377,7 +370,7 @@
             };
           }
         }
-        closeBlockingPanelOwner(this.host, TECH_DETAIL_PANEL_KEY);
+        closeBlockingPanelSnapshot(this.host, 'techDetailOpen');
         return this.afterHandled(action);
       },
 
@@ -440,7 +433,7 @@
       },
 
       handle_claimTaskReward(action) {
-        this.host.showTaskCenter = false;
+        closeBlockingPanelSnapshot(this.host, 'showTaskCenter');
         const forwarded = this.forward(action);
         if (forwarded !== undefined) {
           return this.finalizeForwarded(forwarded, () => this.afterHandled(action));
@@ -453,7 +446,7 @@
       },
 
       async claimTaskRewardDirect(action, legacyGuideTask) {
-        this.host.showTaskCenter = false;
+        closeBlockingPanelSnapshot(this.host, 'showTaskCenter');
         const result = await this.runAction(() => {
           const claim = this.host.api.claimTaskReward;
           if (typeof claim !== 'function') return { success: false };

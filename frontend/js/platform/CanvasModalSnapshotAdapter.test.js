@@ -137,3 +137,133 @@ test('CanvasModalSnapshotAdapter reads and updates rewardReveal through modal sn
   assert.equal(shell.isRewardRevealSnapshotOpen(), false);
   assert.equal(shell.getRewardRevealSnapshot(), null);
 });
+
+test('CanvasModalSnapshotAdapter opens and closes a boolean blocking panel as a modal subtype', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+
+  assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
+
+  host.openBlockingPanelSnapshot('showSettings', true);
+
+  assert.equal(host.isModalOpen('modal:settings'), true);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), true);
+  assert.equal(host.getRendererSnapshot().panel.showSettings, true);
+
+  host.closeBlockingPanelSnapshot('showSettings');
+
+  assert.equal(host.isModalOpen('modal:settings'), false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
+  assert.equal(host.getRendererSnapshot().panel.showSettings, false);
+});
+
+test('CanvasModalSnapshotAdapter routes a falsy openBlockingPanelSnapshot to CLOSE (Q6 toggle-via-open)', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+
+  // Open via truthy, then "open" with a falsy value must toggle it closed.
+  host.openBlockingPanelSnapshot('showCitySwitcher', true);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showCitySwitcher'), true);
+
+  host.openBlockingPanelSnapshot('showCitySwitcher', false);
+
+  assert.equal(host.isModalOpen('modal:citySwitcher'), false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showCitySwitcher'), false);
+  assert.equal(host.getRendererSnapshot().panel.showCitySwitcher, false);
+});
+
+test('CanvasModalSnapshotAdapter carries the activeCommandPanel string enum in the payload', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+
+  assert.equal(host.getCommandPanelValue(), '');
+  assert.equal(host.isBlockingPanelSnapshotOpen('activeCommandPanel'), false);
+
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
+
+  assert.equal(host.getCommandPanelValue(), 'tech');
+  assert.equal(host.isBlockingPanelSnapshotOpen('activeCommandPanel'), true);
+  assert.equal(host.getRendererSnapshot().panel.activeCommandPanel, 'tech');
+
+  // '' routes to close: getCommandPanelValue() back to '' and panel reads closed.
+  host.openBlockingPanelSnapshot('activeCommandPanel', '');
+
+  assert.equal(host.getCommandPanelValue(), '');
+  assert.equal(host.isBlockingPanelSnapshotOpen('activeCommandPanel'), false);
+  assert.equal(host.getRendererSnapshot().panel.activeCommandPanel, '');
+});
+
+test('CanvasModalSnapshotAdapter closeBlockingPanelsSnapshot keeps the excepted panel open', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+
+  host.openBlockingPanelSnapshot('showSettings', true);
+  host.openBlockingPanelSnapshot('showTaskCenter', true);
+  host.openBlockingPanelSnapshot('showGuidebook', true);
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'military');
+
+  host.closeBlockingPanelsSnapshot(['showTaskCenter']);
+
+  assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showGuidebook'), false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('activeCommandPanel'), false);
+  assert.equal(host.getCommandPanelValue(), '');
+
+  const panel = host.getRendererSnapshot().panel;
+  assert.equal(panel.showTaskCenter, true);
+  assert.equal(panel.showSettings, false);
+  assert.equal(panel.showGuidebook, false);
+  assert.equal(panel.activeCommandPanel, '');
+});
+
+test('CanvasModalSnapshotAdapter buildBlockingPanelFacts returns the flat-12 panel facts', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+
+  // All-closed baseline: 11 booleans false + activeCommandPanel ''.
+  assert.deepEqual(host.buildBlockingPanelFacts(), {
+    showSettings: false,
+    showLogs: false,
+    showResourceDetails: false,
+    showCitySwitcher: false,
+    showSubcityList: false,
+    showCityManagement: false,
+    showAdvisor: false,
+    showTaskCenter: false,
+    showGuidebook: false,
+    showFamousPersons: false,
+    activeCommandPanel: '',
+    techDetailOpen: false,
+  });
+
+  host.openBlockingPanelSnapshot('showLogs', true);
+  host.openBlockingPanelSnapshot('showFamousPersons', true);
+  host.openBlockingPanelSnapshot('techDetailOpen', true);
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
+
+  assert.deepEqual(host.buildBlockingPanelFacts(), {
+    showSettings: false,
+    showLogs: true,
+    showResourceDetails: false,
+    showCitySwitcher: false,
+    showSubcityList: false,
+    showCityManagement: false,
+    showAdvisor: false,
+    showTaskCenter: false,
+    showGuidebook: false,
+    showFamousPersons: true,
+    activeCommandPanel: 'capital',
+    techDetailOpen: true,
+  });
+});

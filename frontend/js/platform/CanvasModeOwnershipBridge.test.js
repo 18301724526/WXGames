@@ -24,8 +24,10 @@ test('CanvasModeOwnershipBridge maps scattered modal fields to modal mode keys',
   host.openModal('modal:naming', { visible: true, view: { title: 'Name' } });
   host.openModal('modal:confirmDialog', { visible: true, kind: 'resetGame' });
   host.openModal('modal:rewardReveal', { rewardText: '+1' });
+  // Batch 8F: the blocking panels are per-panel modal subtypes; opening the
+  // taskCenter panel surfaces 'modal:taskCenter', not the retired umbrella.
+  host.openModal('modal:taskCenter', {});
   Object.assign(host, {
-    showTaskCenter: true,
     lastGame: {
       state: { currentTab: 'resources', militaryView: 'army' },
     },
@@ -35,7 +37,7 @@ test('CanvasModeOwnershipBridge maps scattered modal fields to modal mode keys',
     'modal:naming',
     'modal:rewardReveal',
     'modal:confirmDialog',
-    'modal:blockingPanel',
+    'modal:taskCenter',
   ]);
 });
 
@@ -43,7 +45,6 @@ test('CanvasModeOwnershipBridge ignores retired naming mirrors when mapping moda
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
   const host = Object.assign(new Host(), {
-    showTaskCenter: true,
     naming: { visible: true },
     lastGame: {
       state: { currentTab: 'resources', militaryView: 'army' },
@@ -52,11 +53,12 @@ test('CanvasModeOwnershipBridge ignores retired naming mirrors when mapping moda
   });
   host.openModal('modal:confirmDialog', { visible: true, kind: 'resetGame' });
   host.openModal('modal:rewardReveal', { rewardText: '+1' });
+  host.openModal('modal:taskCenter', {});
 
   assert.deepEqual(CanvasModeOwnershipBridge.collectModalKeys(host), [
     'modal:rewardReveal',
     'modal:confirmDialog',
-    'modal:blockingPanel',
+    'modal:taskCenter',
   ]);
 });
 
@@ -74,34 +76,31 @@ test('CanvasModeOwnershipBridge installs snapshot helpers on legacy facades', ()
   assert.equal(snapshot.baseModeKey, 'worldMap');
   assert.equal(host.canRouteModeWorldMap(), true);
 
-  host.showGuidebook = true;
+  host.openModal('modal:guidebook', {});
   const blocked = host.refreshModeSnapshot();
   assert.equal(blocked.blockingOverlayActive, true);
   assert.equal(host.canRouteModeWorldMap(), false);
 });
 
 test('CanvasModeOwnershipBridge preserves tech panel routing exception', () => {
-  const host = {
-    activeTab: 'tech',
-    activeCommandPanel: 'tech',
-  };
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  const host = Object.assign(new Host(), { activeTab: 'tech' });
+  // commandPanel='tech' is a general blocking overlay but NOT a tech-tree-routing
+  // blocker (it IS tech-tree base access). techDetail/show-stars still block routing.
+  host.openModal('modal:commandPanel', { value: 'tech' });
 
   const facts = CanvasModeOwnershipBridge.deriveModeFacts(host);
-
   assert.equal(facts.baseModeKey, 'techTree');
   assert.equal(facts.blockingOverlayActive, true);
   assert.equal(facts.techTreeBlockingOverlayActive, false);
 
-  class Host {}
-  CanvasModeOwnershipBridge.install(Host);
-  const installedHost = Object.assign(new Host(), host);
+  assert.equal(host.isModeBlockingOverlayOpen(), true);
+  assert.equal(host.canRouteModeTechTree(), true);
 
-  assert.equal(installedHost.isModeBlockingOverlayOpen(), true);
-  assert.equal(installedHost.canRouteModeTechTree(), true);
-
-  installedHost.showSettings = true;
-  assert.equal(installedHost.refreshModeSnapshot().techTreeBlockingOverlayActive, true);
-  assert.equal(installedHost.canRouteModeTechTree(), false);
+  host.openModal('modal:settings', {});
+  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, true);
+  assert.equal(host.canRouteModeTechTree(), false);
 });
 
 test('CanvasModeOwnershipBridge resolves covered-mode input intents from the snapshot', () => {
@@ -335,86 +334,93 @@ test('CanvasModeOwnershipBridge targetPicker snapshot fans out across related ho
   assert.equal(game.isTargetPickerSnapshotOpen(), false);
 });
 
-test('CanvasModeOwnershipBridge blockingPanel wrappers own umbrella payload and mirrors', () => {
-  class Host {}
-  CanvasModeOwnershipBridge.install(Host);
-  const host = new Host();
-  const shell = { showSettings: false, activeCommandPanel: '', techDetailOpen: false };
-  const game = {
-    canvasShell: shell,
-    showSettings: false,
-    activeCommandPanel: '',
-    techDetailOpen: false,
-  };
-  host.getCanvasGameHost = () => game;
-
-  const settingsPayload = host.openBlockingPanelOwner('showSettings', true);
-  assert.equal(host.isModalOpen('modal:blockingPanel'), true);
-  assert.deepEqual(settingsPayload, {
-    panelKey: 'showSettings',
-    panelKind: 'settings',
-    value: true,
-  });
-  assert.equal(host.showSettings, true);
-  assert.equal(game.showSettings, true);
-  assert.equal(shell.showSettings, true);
-
-  host.closeBlockingPanelOwner('showSettings');
-  const commandPayload = host.openBlockingPanelOwner('activeCommandPanel', 'tech');
-  assert.deepEqual(commandPayload, {
-    panelKey: 'activeCommandPanel',
-    panelKind: 'commandPanel',
-    value: 'tech',
-  });
-  assert.equal(host.activeCommandPanel, 'tech');
-  assert.equal(game.activeCommandPanel, 'tech');
-  assert.equal(shell.activeCommandPanel, 'tech');
-  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, false);
-
-  host.openBlockingPanelOwner('showSettings', true);
-  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, true);
-
-  host.closeBlockingPanelOwner('showSettings');
-  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
-  assert.equal(host.showSettings, false);
-  assert.equal(game.showSettings, false);
-  assert.equal(shell.showSettings, false);
-});
-
-test('CanvasModeOwnershipBridge closeBlockingPanelsOwner keeps except panel and clears mirrors', () => {
-  class Host {}
-  CanvasModeOwnershipBridge.install(Host);
-  const host = Object.assign(new Host(), {
-    showTaskCenter: true,
-    showSettings: true,
-    activeCommandPanel: 'events',
-  });
-
-  host.openBlockingPanelOwner('showTaskCenter', true);
-  const kept = host.closeBlockingPanelsOwner(['showTaskCenter']);
-  assert.equal(host.isModalOpen('modal:blockingPanel'), true);
-  assert.equal(kept.panelKey, 'showTaskCenter');
-  assert.equal(host.showTaskCenter, true);
-  assert.equal(host.showSettings, false);
-  assert.equal(host.activeCommandPanel, '');
-
-  host.closeBlockingPanelsOwner();
-  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
-  assert.equal(host.showTaskCenter, false);
-});
-
-test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirrors', () => {
+test('CanvasModeOwnershipBridge derives panel facts + blocking from per-panel modal owners', () => {
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
-  const shell = {
-    showTaskCenter: true,
-    activeCommandPanel: 'tech',
-    techDetailOpen: false,
-    selectedTechId: 'tech-1',
-  };
-  const game = { canvasShell: shell, showTaskCenter: false, activeCommandPanel: '' };
+
+  host.openBlockingPanelSnapshot('showSettings', true);
+  assert.equal(host.isModalOpen('modal:settings'), true);
+  assert.equal(host.getRendererSnapshot().panel.showSettings, true);
+  assert.deepEqual(CanvasModeOwnershipBridge.collectModalKeys(host), ['modal:settings']);
+  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, true);
+
+  host.closeBlockingPanelSnapshot('showSettings');
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
+  assert.equal(host.getCommandPanelValue(), 'tech');
+  assert.equal(host.getRendererSnapshot().panel.activeCommandPanel, 'tech');
+  // commandPanel='tech' is a general overlay but NOT a tech-routing blocker.
+  assert.equal(host.refreshModeSnapshot().blockingOverlayActive, true);
+  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, false);
+
+  host.openBlockingPanelSnapshot('showSettings', true);
+  assert.equal(host.refreshModeSnapshot().techTreeBlockingOverlayActive, true);
+
+  host.closeBlockingPanelSnapshot('showSettings');
+  assert.equal(host.isModalOpen('modal:settings'), false);
+  assert.equal(host.getRendererSnapshot().panel.showSettings, false);
+});
+
+test('CanvasModeOwnershipBridge keeps commandPanel=tech and techDetail open simultaneously (Axis 3)', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+
+  // handle_openCommandPanel('tech') then handle_selectTechNode: the tech command
+  // panel and the techDetail popup provably coexist (the bug a single-panelKey owner
+  // would cause -- they overwrite each other in one slot).
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
+  host.openBlockingPanelSnapshot('techDetailOpen', true);
+
+  const panel = host.getRendererSnapshot().panel;
+  assert.equal(panel.activeCommandPanel, 'tech');
+  assert.equal(panel.techDetailOpen, true);
+
+  // commandPanel=tech is NOT a tech-routing blocker, but the techDetail popup IS,
+  // so while techDetail is open tech-tree routing is blocked.
+  assert.equal(host.refreshModeSnapshot().canRouteTechTree, false);
+
+  // closing the techDetail popup re-opens tech-tree routing while the tech command
+  // panel stays open and observable.
+  host.closeBlockingPanelSnapshot('techDetailOpen');
+  const panelAfter = host.getRendererSnapshot().panel;
+  assert.equal(panelAfter.activeCommandPanel, 'tech');
+  assert.equal(panelAfter.techDetailOpen, false);
+  assert.equal(host.refreshModeSnapshot().canRouteTechTree, true);
+});
+
+test('CanvasModeOwnershipBridge closeBlockingPanelsSnapshot keeps the except panel', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+
+  host.openBlockingPanelSnapshot('showTaskCenter', true);
+  host.openBlockingPanelSnapshot('showSettings', true);
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'events');
+
+  host.closeBlockingPanelsSnapshot(['showTaskCenter']);
+  assert.equal(host.isModalOpen('modal:taskCenter'), true);
+  assert.equal(host.isModalOpen('modal:settings'), false);
+  assert.equal(host.getCommandPanelValue(), '');
+  assert.equal(host.getRendererSnapshot().panel.showTaskCenter, true);
+
+  host.closeBlockingPanelsSnapshot();
+  assert.equal(host.isModalOpen('modal:taskCenter'), false);
+  assert.equal(host.getRendererSnapshot().panel.showTaskCenter, false);
+});
+
+test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed panels', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const host = new Host();
+  const shell = new Host();
+  const game = new Host();
+  game.canvasShell = shell;
+  shell.lastGame = game;
   host.getCanvasGameHost = () => game;
   host.__ecsBattleDomainOwner = global.EcsModeRuntime.BattleDomainOwner.openBattleScene(null, {
     visible: true,
@@ -422,12 +428,13 @@ test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirr
     turnIndex: 0,
   });
   host.openEventSnapshot('event-1');
-  host.openBlockingPanelOwner('showTaskCenter', true);
+  host.openBlockingPanelSnapshot('showTaskCenter', true);
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
 
   const snapshot = host.buildRendererSnapshot({
     mode: {
       baseModeKey: 'techTree',
-      modalKeys: ['modal:event', 'modal:blockingPanel'],
+      modalKeys: ['modal:event', 'modal:taskCenter', 'modal:commandPanel'],
       selectedTechId: 'tech-1',
     },
   });
@@ -435,7 +442,7 @@ test('CanvasModeOwnershipBridge builds renderer snapshots from owner-backed mirr
   assert.equal(snapshot.schema, 'renderer-snapshot-v1');
   assert.equal(Object.isFrozen(snapshot), true);
   assert.deepEqual(snapshot.modal['modal:event'].payload, { eventId: 'event-1' });
-  assert.equal(snapshot.modal['modal:blockingPanel'].payload.panelKey, 'showTaskCenter');
+  assert.deepEqual(snapshot.modal['modal:commandPanel'].payload, { value: 'tech' });
   assert.equal(snapshot.panel.showTaskCenter, true);
   assert.equal(snapshot.panel.activeCommandPanel, 'tech');
   assert.equal(snapshot.panel.selectedTechId, undefined);

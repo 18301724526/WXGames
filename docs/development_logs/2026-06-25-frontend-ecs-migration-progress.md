@@ -6,7 +6,7 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `8. Bridge Retirement`                       |
-| Batch state            | `8E Ready for Migration Owner Review`        |
+| Batch state            | `8F Ready for Migration Owner Review`        |
 | Runtime code migration | TargetPicker mirror removed; snapshot-owned  |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
 | Last updated           | `2026-06-27 01:09:27 +08:00`                 |
@@ -236,6 +236,23 @@ Batch 7A notes:
 > self-contradictory, so it was removed (with its test and smoke wiring). The new
 > `check-frontend-ecs-target-picker-mirror-retirement.js` is the single
 > authoritative seal for targetPicker.
+
+## Batch 8F Checklist
+
+| Step                                              | Status                           | Updated At   | Evidence                                                                                                                                                                |
+| ------------------------------------------------- | -------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8F-1. ECS core: 12 per-panel modal subtypes       | Ready for Migration Owner Review | `2026-06-27` | `modal:blockingPanel` split into 12 subtypes across ModeKeys/ModeResolver/RendererSnapshotBoundary/EcsBoundaryManifest; bundle regenerated; existing bit positions kept |
+| 8F-2. Adapter `*BlockingPanelSnapshot` API        | Ready for Migration Owner Review | `2026-06-27` | open/close/closeAll-except/isOpen/getCommandPanelValue/buildFacts; toggle-via-open (falsy routes to close); raw-string command value                                    |
+| 8F-3. Bridge source flip                          | Ready for Migration Owner Review | `2026-06-27` | `buildRendererPanelFacts` derives the flat-12 from the modal entries; 3 wrappers + mirror helpers removed; tutorialAdvisorDialogue/armyFormationEditor preserved        |
+| 8F-4. ~26-file consumer migration                 | Ready for Migration Owner Review | `2026-06-27` | Handlers/commands/runtimes/input-routers/ctors/tutorial/territory routed through the adapter; subset resets preserved; cross-host mirrors dropped; domain untouched     |
+| 8F-5. Guard upgrade                               | Ready for Migration Owner Review | `2026-06-27` | New `check-frontend-ecs-blocking-panel-mirror-retirement.js` (0 violations); old ownership guard removed; smoke rewired                                                 |
+| 8F-6. Behavior + guard tests + adversarial review | Ready for Migration Owner Review | `2026-06-27` | Axis-3 simultaneity test; full `npm test` 1701/0; 3-lens review (0 behavior regressions; 3 guard-soundness fixes applied)                                               |
+| 8F-7. Progress / operating plan / batch document  | Ready for Migration Owner Review | `2026-06-27` | This document, the operating plan, and the 8F batch doc record Ready for Review, not Completed                                                                          |
+
+> Plan gaps caught + fixed during execution: `tutorialAdvisorDialogue` /
+> `armyFormationEditor.open` (non-panel blocking signals) preserved as explicit terms;
+> `deriveModeFacts.techTreeActive` flipped off the raw `activeCommandPanel` mirror onto
+> the `modal:commandPanel` payload. 8F completes the Bridge Retirement batch.
 
 ## Verification Commands
 

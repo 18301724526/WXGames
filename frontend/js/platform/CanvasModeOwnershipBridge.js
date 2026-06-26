@@ -88,60 +88,59 @@
     return 'city';
   }
 
+  // Batch 8F: each blocking panel is its own owned modal subtype. The two non-panel
+  // signals the retired 'modal:blockingPanel' umbrella also folded in --
+  // tutorialAdvisorDialogue and armyFormationEditor.open -- are NOT panel subtypes;
+  // they are preserved as explicit terms in deriveModeFacts.blockingOverlayActive and
+  // hasBlockingOverlayExceptTechTree so blocking detection is unchanged.
   function collectModalKeys(host) {
-    const game = getStateHost(host);
     const keys = [];
     if (isAnyModalOpen(host, 'modal:naming')) keys.push('modal:naming');
     if (isAnyModalOpen(host, 'modal:event')) keys.push('modal:event');
     if (isAnyModalOpen(host, 'modal:rewardReveal')) keys.push('modal:rewardReveal');
     if (isAnyModalOpen(host, 'modal:confirmDialog')) keys.push('modal:confirmDialog');
     if (isAnyModalOpen(host, 'modal:targetPicker')) keys.push('modal:targetPicker');
-    if (
-      isTruthy(host?.showSettings) ||
-      isTruthy(host?.showLogs) ||
-      isTruthy(host?.showResourceDetails) ||
-      isTruthy(host?.showCitySwitcher) ||
-      isTruthy(host?.showSubcityList) ||
-      isTruthy(host?.showCityManagement) ||
-      isTruthy(host?.showAdvisor) ||
-      isTruthy(host?.tutorialAdvisorDialogue) ||
-      isTruthy(game?.tutorialAdvisorDialogue) ||
-      isTruthy(host?.showTaskCenter) ||
-      isTruthy(host?.showGuidebook) ||
-      isTruthy(host?.showFamousPersons) ||
-      isTruthy(host?.armyFormationEditor?.open) ||
-      isTruthy(game?.armyFormationEditor?.open) ||
-      isTruthy(host?.activeCommandPanel) ||
-      isTruthy(host?.techDetailOpen) ||
-      isTruthy(game?.techDetailOpen)
-    ) {
-      keys.push('modal:blockingPanel');
-    }
+    if (isAnyModalOpen(host, 'modal:settings')) keys.push('modal:settings');
+    if (isAnyModalOpen(host, 'modal:logs')) keys.push('modal:logs');
+    if (isAnyModalOpen(host, 'modal:resourceDetails')) keys.push('modal:resourceDetails');
+    if (isAnyModalOpen(host, 'modal:citySwitcher')) keys.push('modal:citySwitcher');
+    if (isAnyModalOpen(host, 'modal:subcityList')) keys.push('modal:subcityList');
+    if (isAnyModalOpen(host, 'modal:cityManagement')) keys.push('modal:cityManagement');
+    if (isAnyModalOpen(host, 'modal:advisor')) keys.push('modal:advisor');
+    if (isAnyModalOpen(host, 'modal:taskCenter')) keys.push('modal:taskCenter');
+    if (isAnyModalOpen(host, 'modal:guidebook')) keys.push('modal:guidebook');
+    if (isAnyModalOpen(host, 'modal:famousPersons')) keys.push('modal:famousPersons');
+    if (isAnyModalOpen(host, 'modal:commandPanel')) keys.push('modal:commandPanel');
+    if (isAnyModalOpen(host, 'modal:techDetail')) keys.push('modal:techDetail');
     return Array.from(new Set(keys));
   }
 
   function hasBlockingOverlayExceptTechTree(host) {
     const game = getStateHost(host);
     const battleSnapshot = readBattleDomainSnapshot(host);
+    // commandPanel blocks tech-tree routing only when it is NOT the tech panel (the
+    // 'tech' value IS tech-tree base access, not an overlay). techDetail still blocks
+    // (it is a popup layered above the tech tree). This preserves the exact prior
+    // semantics, now sourced from the per-panel modal entries instead of host mirrors.
+    const commandValue = String(getAnyModalPayload(host, 'modal:commandPanel')?.value || '');
     return Boolean(
-      isTruthy(host?.showSettings) ||
-      isTruthy(host?.showLogs) ||
-      isTruthy(host?.showResourceDetails) ||
-      isTruthy(host?.showCitySwitcher) ||
-      isTruthy(host?.showSubcityList) ||
-      isTruthy(host?.showCityManagement) ||
-      isTruthy(host?.showAdvisor) ||
+      isAnyModalOpen(host, 'modal:settings') ||
+      isAnyModalOpen(host, 'modal:logs') ||
+      isAnyModalOpen(host, 'modal:resourceDetails') ||
+      isAnyModalOpen(host, 'modal:citySwitcher') ||
+      isAnyModalOpen(host, 'modal:subcityList') ||
+      isAnyModalOpen(host, 'modal:cityManagement') ||
+      isAnyModalOpen(host, 'modal:advisor') ||
       isTruthy(host?.tutorialAdvisorDialogue) ||
       isTruthy(game?.tutorialAdvisorDialogue) ||
-      isTruthy(host?.showTaskCenter) ||
-      isTruthy(host?.showGuidebook) ||
-      isTruthy(host?.showFamousPersons) ||
+      isAnyModalOpen(host, 'modal:taskCenter') ||
+      isAnyModalOpen(host, 'modal:guidebook') ||
+      isAnyModalOpen(host, 'modal:famousPersons') ||
       isTruthy(host?.armyFormationEditor?.open) ||
       isTruthy(game?.armyFormationEditor?.open) ||
       isAnyModalOpen(host, 'modal:confirmDialog') ||
-      (isTruthy(host?.activeCommandPanel) && host.activeCommandPanel !== 'tech') ||
-      isTruthy(host?.techDetailOpen) ||
-      isTruthy(game?.techDetailOpen) ||
+      (Boolean(commandValue) && commandValue !== 'tech') ||
+      isAnyModalOpen(host, 'modal:techDetail') ||
       isAnyModalOpen(host, 'modal:event') ||
       isAnyModalOpen(host, 'modal:naming') ||
       isTruthy(battleSnapshot?.battleScene?.visible) ||
@@ -163,14 +162,26 @@
       modalKeys,
       tutorialActive: isTruthy(tutorialIntro?.active) || isTruthy(tutorialHighlight),
       debugActive: isTruthy(global.__actorPickingDiag) || isTruthy(global.__wxgameDebugMode),
-      blockingOverlayActive: modalKeys.length > 0 || isTruthy(entityBattle?.visible),
+      // Batch 8F: modalKeys now carries the 12 panel subtypes individually. The two
+      // non-panel signals the old umbrella also covered (tutorialAdvisorDialogue,
+      // armyFormationEditor.open) are ORed back in here so blockingOverlayActive is
+      // unchanged.
+      blockingOverlayActive:
+        modalKeys.length > 0 ||
+        isTruthy(entityBattle?.visible) ||
+        isTruthy(host?.tutorialAdvisorDialogue) ||
+        isTruthy(game?.tutorialAdvisorDialogue) ||
+        isTruthy(host?.armyFormationEditor?.open) ||
+        isTruthy(game?.armyFormationEditor?.open),
       techTreeBlockingOverlayActive: hasBlockingOverlayExceptTechTree(host),
       entityBattleActive: isTruthy(entityBattle?.visible),
       worldMapHomeActive:
         isTruthy(host?.mapHomeActive) ||
         isTruthy(game?.mapHomeActive) ||
         baseModeKey === 'worldMap',
-      techTreeActive: baseModeKey === 'techTree' || host?.activeCommandPanel === 'tech',
+      techTreeActive:
+        baseModeKey === 'techTree' ||
+        getAnyModalPayload(host, 'modal:commandPanel')?.value === 'tech',
       formationEditorActive:
         isTruthy(host?.armyFormationEditor?.open) || isTruthy(game?.armyFormationEditor?.open),
     };
@@ -281,6 +292,11 @@
     return collectRelatedHosts(host).some((target) => isModalOpen(target, subtype));
   }
 
+  function getAnyModalPayload(host, subtype) {
+    const openHost = collectRelatedHosts(host).find((target) => isModalOpen(target, subtype));
+    return openHost ? getModalPayload(openHost, subtype) : null;
+  }
+
   function resolveModalCallback(host, subtype, action, ...args) {
     const ModalWorld = getModalWorldApi();
     if (!ModalWorld || !host.__ecsModalOwner || !host.__modalCallbacks) return undefined;
@@ -291,119 +307,30 @@
     );
   }
 
-  const BLOCKING_PANEL_KINDS = Object.freeze({
-    showSettings: 'settings',
-    showLogs: 'logs',
-    showResourceDetails: 'resourceDetails',
-    showCitySwitcher: 'citySwitcher',
-    showSubcityList: 'subcityList',
-    showCityManagement: 'cityManagement',
-    showAdvisor: 'advisor',
-    showTaskCenter: 'taskCenter',
-    showGuidebook: 'guidebook',
-    showFamousPersons: 'famousPersons',
-    activeCommandPanel: 'commandPanel',
-    techDetailOpen: 'techDetail',
-  });
-
-  const BLOCKING_PANEL_KEYS = Object.freeze(Object.keys(BLOCKING_PANEL_KINDS));
-
-  function normalizeBlockingPanelValue(panelKey, value) {
-    if (panelKey === 'activeCommandPanel') return String(value || '');
-    return Boolean(value);
-  }
-
-  function isBlockingPanelOpenValue(panelKey, value) {
-    return panelKey === 'activeCommandPanel' ? Boolean(value) : Boolean(value);
-  }
-
-  function collectBlockingPanelMirrorTargets(host) {
-    if (!host || typeof host !== 'object') return [];
-    const game = host.getCanvasGameHost?.() || host.lastGame || host;
-    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
-    return [host, game, shell].filter(
-      (target, index, targets) =>
-        target && typeof target === 'object' && targets.indexOf(target) === index,
-    );
-  }
-
-  function writeBlockingPanelMirror(target, panelKey, value) {
-    if (!target || typeof target !== 'object') return;
-    target[panelKey] = normalizeBlockingPanelValue(panelKey, value);
-  }
-
-  function clearBlockingPanelMirror(target, panelKey) {
-    if (!target || typeof target !== 'object') return;
-    target[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
-  }
-
-  function syncBlockingPanelMirror(host, panelKey, value) {
-    collectBlockingPanelMirrorTargets(host).forEach((target) => {
-      writeBlockingPanelMirror(target, panelKey, value);
-    });
-    return normalizeBlockingPanelValue(panelKey, value);
-  }
-
-  function openBlockingPanelOwner(host, panelKey, value = true, _metadata = {}) {
-    if (!BLOCKING_PANEL_KINDS[panelKey]) return null;
-    const mirrorValue = syncBlockingPanelMirror(host, panelKey, value);
-    if (!isBlockingPanelOpenValue(panelKey, mirrorValue)) {
-      closeBlockingPanelOwner(host, panelKey);
-      return mirrorValue;
-    }
-    const payload = openModal(host, 'modal:blockingPanel', {
-      panelKey,
-      panelKind: BLOCKING_PANEL_KINDS[panelKey],
-      value: mirrorValue,
-    });
-    return (
-      payload || {
-        panelKey,
-        panelKind: BLOCKING_PANEL_KINDS[panelKey],
-        value: mirrorValue,
-      }
-    );
-  }
-
-  function closeBlockingPanelOwner(host, panelKey) {
-    if (!BLOCKING_PANEL_KINDS[panelKey]) return null;
-    closeModal(host, 'modal:blockingPanel');
-    collectBlockingPanelMirrorTargets(host).forEach((target) => {
-      clearBlockingPanelMirror(target, panelKey);
-    });
-    return panelKey === 'activeCommandPanel' ? '' : false;
-  }
-
-  function closeBlockingPanelsOwner(host, except = []) {
-    const keep = new Set(Array.isArray(except) ? except : []);
-    const targets = collectBlockingPanelMirrorTargets(host);
-    BLOCKING_PANEL_KEYS.forEach((panelKey) => {
-      if (keep.has(panelKey)) return;
-      targets.forEach((target) => clearBlockingPanelMirror(target, panelKey));
-    });
-    const payload = getModalPayload(host, 'modal:blockingPanel');
-    if (payload?.panelKey && keep.has(payload.panelKey)) return payload;
-    closeModal(host, 'modal:blockingPanel');
-    return null;
-  }
-
-  function buildRendererPanelFacts(host) {
-    const game = host?.getCanvasGameHost?.() || getStateHost(host);
-    const shell = game?.canvasShell || host?.canvasShell || host?.lastGame?.canvasShell || null;
-    const source = shell || game || host || {};
+  // Batch 8F: the single source-flip chokepoint. The flat-12 panel facts are now
+  // DERIVED from the per-panel modal entries (the owner is the source of truth)
+  // instead of read off a shell/game/host mirror. ~40 downstream renderer/runtime
+  // reads of snapshot.panel.showX keep working unchanged. buildRendererSnapshot
+  // passes the same modalWorld it builds so the panel facts and the modal block
+  // are guaranteed to agree.
+  function buildRendererPanelFacts(host, modalWorld) {
+    const world = modalWorld || buildRendererModalWorld(host);
+    const entries = (world && world.entries) || {};
+    const isOpen = (subtype) => Boolean(entries[subtype]?.visible);
+    const commandEntry = entries['modal:commandPanel'];
     return {
-      showSettings: isTruthy(source.showSettings),
-      showLogs: isTruthy(source.showLogs),
-      showResourceDetails: isTruthy(source.showResourceDetails),
-      showCitySwitcher: isTruthy(source.showCitySwitcher),
-      showSubcityList: isTruthy(source.showSubcityList),
-      showCityManagement: isTruthy(source.showCityManagement),
-      showAdvisor: isTruthy(source.showAdvisor),
-      showTaskCenter: isTruthy(source.showTaskCenter),
-      showGuidebook: isTruthy(source.showGuidebook),
-      showFamousPersons: isTruthy(source.showFamousPersons),
-      activeCommandPanel: String(source.activeCommandPanel || ''),
-      techDetailOpen: isTruthy(source.techDetailOpen),
+      showSettings: isOpen('modal:settings'),
+      showLogs: isOpen('modal:logs'),
+      showResourceDetails: isOpen('modal:resourceDetails'),
+      showCitySwitcher: isOpen('modal:citySwitcher'),
+      showSubcityList: isOpen('modal:subcityList'),
+      showCityManagement: isOpen('modal:cityManagement'),
+      showAdvisor: isOpen('modal:advisor'),
+      showTaskCenter: isOpen('modal:taskCenter'),
+      showGuidebook: isOpen('modal:guidebook'),
+      showFamousPersons: isOpen('modal:famousPersons'),
+      activeCommandPanel: commandEntry?.visible ? String(commandEntry.payload?.value || '') : '',
+      techDetailOpen: isOpen('modal:techDetail'),
     };
   }
 
@@ -445,9 +372,10 @@
     const RendererSnapshotBoundary = getRendererSnapshotBoundaryApi();
     if (!host || !RendererSnapshotBoundary?.buildRendererSnapshot) return null;
     const mode = options.mode || getModeSnapshot(host) || getFallbackModeFacts(host);
+    const modalWorld = buildRendererModalWorld(host);
     const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
-      modalWorld: buildRendererModalWorld(host),
-      panel: buildRendererPanelFacts(host),
+      modalWorld,
+      panel: buildRendererPanelFacts(host, modalWorld),
       mode,
       battle: buildRendererBattleFacts(host),
     });
@@ -537,27 +465,11 @@
       resolveModalCallback(subtype, action, ...args) {
         return resolveModalCallback(this, subtype, action, ...args);
       },
-
-      // blockingPanel wrappers own the umbrella modal open/close signal while
-      // keeping panel-specific business state in its legacy domain owner.
-      openBlockingPanelOwner(panelKey, value = true, metadata = {}) {
-        return openBlockingPanelOwner(this, panelKey, value, metadata);
-      },
-
-      closeBlockingPanelOwner(panelKey) {
-        return closeBlockingPanelOwner(this, panelKey);
-      },
-
-      closeBlockingPanelsOwner(except = []) {
-        return closeBlockingPanelsOwner(this, except);
-      },
     });
     return true;
   }
 
   const api = {
-    closeBlockingPanelOwner,
-    closeBlockingPanelsOwner,
     closeModal,
     collectModalKeys,
     buildRendererSnapshot,
@@ -568,7 +480,6 @@
     hasBlockingOverlayExceptTechTree,
     install,
     isModalOpen,
-    openBlockingPanelOwner,
     openModal,
     refreshModeSnapshot,
     resolveBaseModeKey,

@@ -11,6 +11,44 @@
     return null;
   })();
 
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // Batch 8F: route blocking-panel opens/closes/reads through the snapshot owner (the
+  // host method when installed, else the module adapter). The owner resolves the game
+  // host + canvasShell from whichever host is passed, so the prior cross-host mirror
+  // writes collapse to a single call. Toggle reads use isBlockingPanelSnapshotOpen so
+  // no host mirror is read.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    if (typeof host?.openBlockingPanelSnapshot === 'function') {
+      return host.openBlockingPanelSnapshot(panelKey, value);
+    }
+    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
+  }
+
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
+  function isBlockingPanelSnapshotOpen(host, panelKey) {
+    if (typeof host?.isBlockingPanelSnapshotOpen === 'function') {
+      return host.isBlockingPanelSnapshotOpen(panelKey);
+    }
+    return Boolean(CanvasModalSnapshotAdapter?.isBlockingPanelSnapshotOpen?.(host, panelKey));
+  }
+
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
@@ -24,13 +62,13 @@
             this.activeNamingPromptKey = view.key;
             const namingState = { visible: true, view, prompt, inputValue: '', submitting: false };
             this.openNamingSnapshot?.(namingState);
-              this.showResourceDetails = false;
-              this.showCitySwitcher = false;
-              this.showSubcityList = false;
-              this.showCityManagement = false;
+              closeBlockingPanelSnapshot(this, 'showResourceDetails');
+              closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+              closeBlockingPanelSnapshot(this, 'showSubcityList');
+              closeBlockingPanelSnapshot(this, 'showCityManagement');
               this.closeEventSnapshot?.();
-              this.showFamousPersons = false;
-              this.activeCommandPanel = '';
+              closeBlockingPanelSnapshot(this, 'showFamousPersons');
+              closeBlockingPanelSnapshot(this, 'activeCommandPanel');
               this.render();
               this.scheduleTutorialHighlightRefresh(80);
           },
@@ -265,37 +303,31 @@
           },
 
       toggleCitySwitcher() {
-            const target = this.canvasShell || this;
-            target.showCitySwitcher = !target.showCitySwitcher;
+            openBlockingPanelSnapshot(this, 'showCitySwitcher', !isBlockingPanelSnapshotOpen(this, 'showCitySwitcher'));
             this.renderCanvasSurface(this.state?.currentTab);
           },
 
       closeCitySwitcher(options = {}) {
-            const target = this.canvasShell || this;
-            target.showCitySwitcher = false;
+            closeBlockingPanelSnapshot(this, 'showCitySwitcher');
             if (options.skipRender) return true;
             this.renderCanvasSurface(this.state?.currentTab);
             return true;
           },
 
       openCityManagement(options = {}) {
-            this.showCityManagement = true;
+            openBlockingPanelSnapshot(this, 'showCityManagement', true);
             this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
-            this.showSubcityList = false;
-            this.activeCommandPanel = '';
+            closeBlockingPanelSnapshot(this, 'showSubcityList');
+            closeBlockingPanelSnapshot(this, 'activeCommandPanel');
             this.closeEventSnapshot?.();
             if (this.canvasShell) {
-              this.canvasShell.showCityManagement = true;
               this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
-              this.canvasShell.showSubcityList = false;
-              this.canvasShell.activeCommandPanel = '';
             }
             return this.renderCanvasSurface(this.state?.currentTab);
           },
 
       closeCityManagement() {
-            this.showCityManagement = false;
-            if (this.canvasShell) this.canvasShell.showCityManagement = false;
+            closeBlockingPanelSnapshot(this, 'showCityManagement');
             return this.renderCanvasSurface(this.state?.currentTab);
           },
 
@@ -372,18 +404,16 @@
             const target = this.activeAdvisor?.target || this.state?.softGuide?.target || null;
             if (target === 'task-center-button') {
               const action = { type: 'openTaskCenter', tab: 'main', source: 'advisor' };
-              this.showAdvisor = false;
-              if (this.canvasShell) this.canvasShell.showAdvisor = false;
+              closeBlockingPanelSnapshot(this, 'showAdvisor');
               this.canvasShell?.hideTutorialHighlight?.();
               if (this.canvasShell?.actionController?.handle_openTaskCenter) {
                 this.canvasShell.actionController.handle_openTaskCenter(action);
               } else if (this.actionController?.handle_openTaskCenter) {
                 this.actionController.handle_openTaskCenter(action);
               } else {
-                this.showTaskCenter = true;
+                openBlockingPanelSnapshot(this, 'showTaskCenter', true);
                 this.activeTaskCenterTab = 'main';
                 if (this.canvasShell) {
-                  this.canvasShell.showTaskCenter = true;
                   this.canvasShell.activeTaskCenterTab = 'main';
                 }
                 this.renderCanvasSurface(this.state?.currentTab);

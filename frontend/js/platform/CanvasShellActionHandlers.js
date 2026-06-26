@@ -16,18 +16,46 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
 
-  function openBlockingPanelOwner(host, panelKey, value = true, metadata = {}) {
-    if (typeof host?.openBlockingPanelOwner === 'function') {
-      return host.openBlockingPanelOwner(panelKey, value, metadata);
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
     }
-    if (host && typeof host === 'object') host[panelKey] = panelKey === 'activeCommandPanel' ? String(value || '') : Boolean(value);
-    return { panelKey, value };
+    return null;
+  })();
+
+  // Batch 8F: route blocking-panel opens/closes/reads through the snapshot owner (the
+  // host method when installed, else the module adapter) instead of the retired
+  // openBlockingPanelOwner host-mirror shim. Toggle/equality reads use the snapshot
+  // (isBlockingPanelSnapshotOpen / getCommandPanelValue) so no host mirror is read.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    if (typeof host?.openBlockingPanelSnapshot === 'function') {
+      return host.openBlockingPanelSnapshot(panelKey, value);
+    }
+    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
   }
 
-  function closeBlockingPanelOwner(host, panelKey) {
-    if (typeof host?.closeBlockingPanelOwner === 'function') return host.closeBlockingPanelOwner(panelKey);
-    if (host && typeof host === 'object') host[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
-    return true;
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
+  function isBlockingPanelSnapshotOpen(host, panelKey) {
+    if (typeof host?.isBlockingPanelSnapshotOpen === 'function') {
+      return host.isBlockingPanelSnapshotOpen(panelKey);
+    }
+    return Boolean(CanvasModalSnapshotAdapter?.isBlockingPanelSnapshotOpen?.(host, panelKey));
+  }
+
+  function getCommandPanelValue(host) {
+    if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();
+    return CanvasModalSnapshotAdapter?.getCommandPanelValue?.(host) || '';
   }
 
   function install(CanvasActionController) {
@@ -85,21 +113,21 @@
       },
 
       handle_openResourceDetails(action) {
-        openBlockingPanelOwner(this.host, 'showResourceDetails', true);
+        openBlockingPanelSnapshot(this.host, 'showResourceDetails', true);
         this.closePanels(['showResourceDetails']);
         return this.afterHandled(action);
       },
 
       handle_closeResourceDetails(action) {
-        closeBlockingPanelOwner(this.host, 'showResourceDetails');
+        closeBlockingPanelSnapshot(this.host, 'showResourceDetails');
         return this.afterHandled(action);
       },
 
       handle_openCommandPanel(action) {
         const panel = String(action.panel || '');
         if (!panel) return false;
-        const nextPanel = this.host.activeCommandPanel === panel ? '' : panel;
-        openBlockingPanelOwner(this.host, 'activeCommandPanel', nextPanel);
+        const nextPanel = getCommandPanelValue(this.host) === panel ? '' : panel;
+        openBlockingPanelSnapshot(this.host, 'activeCommandPanel', nextPanel);
         this.closePanels(nextPanel ? ['activeCommandPanel'] : []);
         const game = this.getGameHost();
         const openedPanel = nextPanel;
@@ -118,7 +146,7 @@
       },
 
       handle_closeCommandPanel(action) {
-        closeBlockingPanelOwner(this.host, 'activeCommandPanel');
+        closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
         return this.afterHandled(action);
       },
 
@@ -134,24 +162,24 @@
       },
 
       handle_openCitySwitcher(action) {
-        openBlockingPanelOwner(this.host, 'showCitySwitcher', !this.host.showCitySwitcher);
+        openBlockingPanelSnapshot(this.host, 'showCitySwitcher', !isBlockingPanelSnapshotOpen(this.host, 'showCitySwitcher'));
         this.closePanels(['showCitySwitcher']);
         return this.afterHandled(action);
       },
 
       handle_closeCitySwitcher(action) {
-        closeBlockingPanelOwner(this.host, 'showCitySwitcher');
+        closeBlockingPanelSnapshot(this.host, 'showCitySwitcher');
         return this.afterHandled(action);
       },
 
       handle_openSubcityList(action) {
-        openBlockingPanelOwner(this.host, 'showSubcityList', !this.host.showSubcityList);
-        this.closePanels(this.host.showSubcityList ? ['showSubcityList'] : []);
+        openBlockingPanelSnapshot(this.host, 'showSubcityList', !isBlockingPanelSnapshotOpen(this.host, 'showSubcityList'));
+        this.closePanels(isBlockingPanelSnapshotOpen(this.host, 'showSubcityList') ? ['showSubcityList'] : []);
         return this.afterHandled(action);
       },
 
       handle_closeSubcityList(action) {
-        closeBlockingPanelOwner(this.host, 'showSubcityList');
+        closeBlockingPanelSnapshot(this.host, 'showSubcityList');
         return this.afterHandled(action);
       },
 
@@ -242,13 +270,13 @@
       },
 
       handle_openSettings(action) {
-        openBlockingPanelOwner(this.host, 'showSettings', true);
+        openBlockingPanelSnapshot(this.host, 'showSettings', true);
         this.closePanels(['showSettings']);
         return this.afterHandled(action);
       },
 
       handle_closeSettings(action) {
-        closeBlockingPanelOwner(this.host, 'showSettings');
+        closeBlockingPanelSnapshot(this.host, 'showSettings');
         return this.afterHandled(action);
       },
 
@@ -321,13 +349,13 @@
       },
 
       handle_openLogs(action) {
-        openBlockingPanelOwner(this.host, 'showLogs', true);
+        openBlockingPanelSnapshot(this.host, 'showLogs', true);
         this.closePanels(['showLogs']);
         return this.afterHandled(action);
       },
 
       handle_closeLogs(action) {
-        closeBlockingPanelOwner(this.host, 'showLogs');
+        closeBlockingPanelSnapshot(this.host, 'showLogs');
         this.getGameHost()?.closeRequestLogs?.();
         return this.afterHandled(action);
       },
@@ -336,22 +364,21 @@
         const game = this.getGameHost();
         if (Array.isArray(game?.requestLogs)) game.requestLogs = [];
         if (typeof game?.clearRequestLogs === 'function') game.clearRequestLogs();
-        openBlockingPanelOwner(this.host, 'showLogs', true);
+        openBlockingPanelSnapshot(this.host, 'showLogs', true);
         return this.afterHandled(action);
       },
 
       handle_openAdvisor(action) {
-        openBlockingPanelOwner(this.host, 'showAdvisor', true);
+        openBlockingPanelSnapshot(this.host, 'showAdvisor', true);
         this.closePanels(['showAdvisor']);
         return this.afterHandled(action);
       },
 
       handle_closeAdvisor(action) {
-        closeBlockingPanelOwner(this.host, 'showAdvisor');
+        closeBlockingPanelSnapshot(this.host, 'showAdvisor');
         this.host.tutorialAdvisorDialogue = null;
         this.host.renderer?.clearTutorialAdvisorDialogue?.();
         const game = this.getGameHost();
-        if (game && game !== this.host) game.showAdvisor = false;
         if (game && typeof game === 'object') {
           game.tutorialAdvisorDialogue = null;
           if (game.canvasShell) game.canvasShell.tutorialAdvisorDialogue = null;
@@ -369,10 +396,9 @@
       },
 
       handle_goToAdvisorTarget(action, meta = {}) {
-        this.host.showAdvisor = false;
+        closeBlockingPanelSnapshot(this.host, 'showAdvisor');
         this.host.closeEventSnapshot?.();
         const game = this.getGameHost();
-        if (game && game !== this.host) game.showAdvisor = false;
         const result = typeof game?.goToAdvisorTarget === 'function'
           ? game.goToAdvisorTarget()
           : this.forward(action, meta);
@@ -393,13 +419,13 @@
 
       handle_openGuidebook(action) {
         this.host.activeGuidebookTab = action.tab || this.host.activeGuidebookTab || 'planning';
-        openBlockingPanelOwner(this.host, 'showGuidebook', true);
+        openBlockingPanelSnapshot(this.host, 'showGuidebook', true);
         this.closePanels(['showGuidebook']);
         return this.afterHandled(action);
       },
 
       handle_closeGuidebook(action) {
-        closeBlockingPanelOwner(this.host, 'showGuidebook');
+        closeBlockingPanelSnapshot(this.host, 'showGuidebook');
         return this.afterHandled(action);
       },
 

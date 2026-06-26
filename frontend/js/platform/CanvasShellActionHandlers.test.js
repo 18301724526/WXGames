@@ -5,6 +5,20 @@ const path = require('node:path');
 
 const CanvasShellActionHandlers = require('./CanvasShellActionHandlers');
 const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+
+// Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host
+// carries the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the
+// snapshot adapter (openBlockingPanelSnapshot/closeBlockingPanelsSnapshot/
+// isBlockingPanelSnapshotOpen/getCommandPanelValue) so the shell handlers route
+// through the owner instead of host mirrors.
+class ModalHost {}
+CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModalSnapshotAdapter.install(ModalHost);
+
+function makeModalHost(fields = {}) {
+  return Object.assign(new ModalHost(), fields);
+}
 
 class HostController {
   constructor(host) {
@@ -22,10 +36,8 @@ class HostController {
 
   closePanels(except = []) {
     const keep = new Set(except);
-    ['showSettings', 'showLogs', 'showAdvisor', 'activeCommandPanel'].forEach((key) => {
-      if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
-    });
-    if (!keep.has('activeEventId') && 'activeEventId' in this.host) this.host.activeEventId = null;
+    this.host?.closeBlockingPanelsSnapshot?.(except);
+    if (!keep.has('activeEventId')) this.host?.closeEventSnapshot?.();
   }
 
   forward() {
@@ -100,8 +112,7 @@ test('switch tab preserves page transition contract after delegated tab selectio
 
 test('advisor close clears dialogue across shell and game then resumes tutorial', async () => {
   const calls = [];
-  const game = {
-    showAdvisor: true,
+  const game = makeModalHost({
     tutorialAdvisorDialogue: { source: 'houseBuilt' },
     canvasShell: null,
     tutorialController: {
@@ -113,9 +124,8 @@ test('advisor close clears dialogue across shell and game then resumes tutorial'
         calls.push(['refresh']);
       },
     },
-  };
-  const host = {
-    showAdvisor: true,
+  });
+  const host = makeModalHost({
     tutorialAdvisorDialogue: { source: 'houseBuilt' },
     lastGame: game,
     renderer: {
@@ -126,13 +136,14 @@ test('advisor close clears dialogue across shell and game then resumes tutorial'
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
-  };
+  });
   game.canvasShell = host;
+  host.openBlockingPanelSnapshot('showAdvisor', true);
   const controller = new HostController(host);
 
   assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
-  assert.equal(host.showAdvisor, false);
-  assert.equal(game.showAdvisor, false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(host.isModalOpen('modal:advisor'), false);
   assert.equal(host.tutorialAdvisorDialogue, null);
   assert.equal(game.tutorialAdvisorDialogue, null);
   assert.deepEqual(calls, [['clear'], ['closed'], ['render', 'closeAdvisor'], ['refresh']]);
@@ -344,19 +355,16 @@ test('downloadClientOperationLog reports concrete local save failure', () => {
   ]);
 });
 
-test('shell blocking panel actions route canonical opens through owner wrappers', async () => {
+test('shell blocking panel actions route canonical opens through the snapshot owner', async () => {
   const calls = [];
-  const game = {
+  const game = makeModalHost({
     tutorialController: {
       refreshCurrentHighlight() {
         calls.push(['refresh']);
       },
     },
-  };
-  const host = {
-    showSettings: false,
-    showLogs: false,
-    activeCommandPanel: '',
+  });
+  const host = makeModalHost({
     lastGame: game,
     runtime: {
       setTimeout(callback) {
@@ -364,54 +372,33 @@ test('shell blocking panel actions route canonical opens through owner wrappers'
         callback();
       },
     },
-    openBlockingPanelOwner(panelKey, value) {
-      calls.push(['openOwner', panelKey, value]);
-      return CanvasModeOwnershipBridge.openBlockingPanelOwner(this, panelKey, value);
-    },
-    closeBlockingPanelOwner(panelKey) {
-      calls.push(['closeOwner', panelKey]);
-      return CanvasModeOwnershipBridge.closeBlockingPanelOwner(this, panelKey);
-    },
-    closeBlockingPanelsOwner(except) {
-      calls.push(['closePanelsOwner', except.join(',')]);
-      return CanvasModeOwnershipBridge.closeBlockingPanelsOwner(this, except);
-    },
-    getModalPayload(subtype) {
-      return CanvasModeOwnershipBridge.getModalPayload(this, subtype);
-    },
-    isModalOpen(subtype) {
-      return CanvasModeOwnershipBridge.isModalOpen(this, subtype);
-    },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
-  };
+  });
+  game.canvasShell = host;
   const controller = new HostController(host);
 
   assert.equal(controller.handle_openSettings({ type: 'openSettings' }), true);
-  assert.equal(host.showSettings, true);
-  assert.equal(host.isModalOpen('modal:blockingPanel'), true);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), true);
+  assert.equal(host.isModalOpen('modal:settings'), true);
 
   assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), true);
-  assert.equal(host.activeCommandPanel, 'tech');
-  assert.deepEqual(host.getModalPayload('modal:blockingPanel'), {
-    panelKey: 'activeCommandPanel',
-    panelKind: 'commandPanel',
-    value: 'tech',
-  });
+  assert.equal(host.getCommandPanelValue(), 'tech');
+  assert.equal(host.isModalOpen('modal:commandPanel'), true);
+  assert.deepEqual(host.getModalPayload('modal:commandPanel')?.value, 'tech');
+  // Axis-1 mutual exclusion: opening the command panel sweeps the settings panel.
+  assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
 
   assert.equal(controller.handle_closeCommandPanel({ type: 'closeCommandPanel' }), true);
-  assert.equal(host.activeCommandPanel, '');
-  assert.equal(host.isModalOpen('modal:blockingPanel'), false);
+  assert.equal(host.getCommandPanelValue(), '');
+  assert.equal(host.isModalOpen('modal:commandPanel'), false);
   assert.deepEqual(calls.map((call) => call[0]), [
-    'openOwner',
     'render',
-    'openOwner',
     'render',
     'refresh',
     'timeout',
     'refresh',
-    'closeOwner',
     'render',
   ]);
 });

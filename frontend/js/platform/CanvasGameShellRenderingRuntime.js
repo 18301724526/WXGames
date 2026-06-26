@@ -390,6 +390,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const rendererSnapshot = typeof this.buildRendererSnapshot === 'function'
         ? this.buildRendererSnapshot()
         : null;
+      const panel = this.getRendererSnapshot?.()?.panel || {};
       const battleSnapshot = rendererSnapshot?.battle || {};
       const snapshotBattleScene = battleSnapshot.battleScene || null;
       const snapshotEntityBattle = battleSnapshot.entityBattle || null;
@@ -418,19 +419,19 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         activeTab: homeView.activeTab,
         mode: 'hud',
         isMapHome: homeView.isMapHome,
-        showSettings: this.showSettings,
-        showLogs: this.showLogs,
-        showResourceDetails: this.showResourceDetails,
-        showCitySwitcher: this.showCitySwitcher,
-        showSubcityList: this.showSubcityList,
-        showCityManagement: this.showCityManagement,
+        showSettings: panel.showSettings,
+        showLogs: panel.showLogs,
+        showResourceDetails: panel.showResourceDetails,
+        showCitySwitcher: panel.showCitySwitcher,
+        showSubcityList: panel.showSubcityList,
+        showCityManagement: panel.showCityManagement,
         activeCityManagementTab: this.activeCityManagementTab,
-        showAdvisor: this.showAdvisor,
-        showTaskCenter: this.showTaskCenter,
+        showAdvisor: panel.showAdvisor,
+        showTaskCenter: panel.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
-        showGuidebook: this.showGuidebook,
+        showGuidebook: panel.showGuidebook,
         activeGuidebookTab: this.activeGuidebookTab,
-        showFamousPersons: this.showFamousPersons,
+        showFamousPersons: panel.showFamousPersons,
         famousPersonsPage: this.famousPersonsPage,
         selectedFamousPersonId: this.selectedFamousPersonId,
         armyFormationEditor: this.armyFormationEditor,
@@ -438,7 +439,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
           || this.worldMapRuntime?.lastTileMapContext
           || this.worldMapRenderer?.lastWorldTileMapContext
           || null,
-        activeCommandPanel: this.activeCommandPanel || '',
+        activeCommandPanel: panel.activeCommandPanel || '',
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
         buildingOffset: this.buildingOffset,
@@ -446,7 +447,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         techTreePanY: this.techTreePanY,
         techTreeZoom: this.getTechTreeZoom(),
         ...(this.selectedTechId ? { selectedTechId: this.selectedTechId } : {}),
-        techDetailOpen: this.techDetailOpen || Boolean(state.techUiState?.detailOpen),
+        techDetailOpen: panel.techDetailOpen || Boolean(state.techUiState?.detailOpen),
         activeBuildingCategory: this.activeBuildingCategory,
         pendingBuildingAction: this.pendingBuildingAction || this.lastGame?.pendingBuildingAction || null,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),

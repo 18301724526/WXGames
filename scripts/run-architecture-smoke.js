@@ -383,8 +383,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
   'scripts/check-frontend-ecs-input-intent-spine.js',
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
-  'scripts/check-frontend-ecs-blocking-panel-ownership.js',
-  'scripts/check-frontend-ecs-blocking-panel-ownership.test.js',
+  'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.js',
+  'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.js',
@@ -582,7 +582,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
-  'scripts/check-frontend-ecs-blocking-panel-ownership.test.js',
+  'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.test.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
@@ -675,8 +675,8 @@ function main() {
   run('frontend ECS input intent spine blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-input-intent-spine.js',
   ]);
-  run('frontend ECS blockingPanel ownership blocking guard', process.execPath, [
-    'scripts/check-frontend-ecs-blocking-panel-ownership.js',
+  run('frontend ECS blockingPanel mirror retirement blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.js',
   ]);
   run('frontend ECS renderer snapshot boundary blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',

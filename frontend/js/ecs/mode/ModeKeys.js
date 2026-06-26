@@ -15,7 +15,21 @@ const MODAL_MODE_KEYS = Object.freeze([
   'modal:rewardReveal',
   'modal:confirmDialog',
   'modal:targetPicker',
-  'modal:blockingPanel',
+  // Batch 8F: the single 'modal:blockingPanel' umbrella was split into one owned
+  // subtype per blocking panel. The 10 show-star booleans + the techDetail popup
+  // + the commandPanel string enum (payload-carrying) each get their own mask bit.
+  'modal:settings',
+  'modal:logs',
+  'modal:resourceDetails',
+  'modal:citySwitcher',
+  'modal:subcityList',
+  'modal:cityManagement',
+  'modal:advisor',
+  'modal:taskCenter',
+  'modal:guidebook',
+  'modal:famousPersons',
+  'modal:commandPanel',
+  'modal:techDetail',
 ]);
 
 const OVERLAY_MODE_KEYS = Object.freeze(['tutorial', 'debug']);
@@ -49,7 +63,22 @@ const CAPTURE_PRIORITY = Object.freeze([
   'modal:rewardReveal',
   'modal:event',
   'modal:targetPicker',
-  'modal:blockingPanel',
+  // Batch 8F: the blocking panels sit below the dialog modals and above the base
+  // modes, exactly where the retired 'modal:blockingPanel' umbrella sat. The 10
+  // show-star overlays rank above techDetail, which ranks above commandPanel so the
+  // techDetail popup wins capture over the tech command panel it overlays (Axis 3).
+  'modal:settings',
+  'modal:logs',
+  'modal:resourceDetails',
+  'modal:citySwitcher',
+  'modal:subcityList',
+  'modal:cityManagement',
+  'modal:advisor',
+  'modal:taskCenter',
+  'modal:guidebook',
+  'modal:famousPersons',
+  'modal:techDetail',
+  'modal:commandPanel',
   'battle',
   'formationEditor',
   'techTree',

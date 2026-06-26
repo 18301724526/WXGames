@@ -8,13 +8,27 @@ const ModeKeys = (() => {
 const { CAPTURE_PRIORITY, MODAL_BIT_BY_KEY, modeIdForKey, modeKeyForId, normalizeModeKey } =
   ModeKeys || {};
 
+// Batch 8F: 'modal:blockingPanel' was split per panel. The 10 show-star overlays
+// and the techDetail popup are unconditionally blocking. 'modal:commandPanel' is
+// intentionally absent: it blocks only when its value is non-'tech', a string-value
+// condition the bridge folds into facts.blockingOverlayActive (createModeSnapshot).
 const BLOCKING_MODAL_KEYS = Object.freeze([
   'modal:naming',
   'modal:event',
   'modal:rewardReveal',
   'modal:confirmDialog',
   'modal:targetPicker',
-  'modal:blockingPanel',
+  'modal:settings',
+  'modal:logs',
+  'modal:resourceDetails',
+  'modal:citySwitcher',
+  'modal:subcityList',
+  'modal:cityManagement',
+  'modal:advisor',
+  'modal:taskCenter',
+  'modal:guidebook',
+  'modal:famousPersons',
+  'modal:techDetail',
 ]);
 
 function readBool(value) {

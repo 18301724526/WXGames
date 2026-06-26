@@ -223,6 +223,17 @@
     return CanvasModalSnapshotAdapter?.closeTargetPickerSnapshot?.(host) || null;
   }
 
+  // Batch 8F: route blocking-panel closes through the snapshot owner (the host
+  // method when installed, else the module adapter). The owner fans out across the
+  // related hosts (host -> game -> canvasShell), so the prior cross-host mirror
+  // writes collapse to a single call.
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
   function getTargetPickerSnapshot(host) {
     if (typeof host?.getTargetPickerSnapshot === 'function') return host.getTargetPickerSnapshot();
     return CanvasModalSnapshotAdapter?.getTargetPickerSnapshot?.(host) || null;
@@ -741,9 +752,7 @@
         if (typeof game?.switchMilitaryView === 'function') {
           const switched = game.switchMilitaryView(action.view) !== false;
           if (switched) {
-            this.host.activeCommandPanel = '';
-            if (game && game !== this.host && 'activeCommandPanel' in game) game.activeCommandPanel = '';
-            if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeCommandPanel = '';
+            closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
             const result = game?.tutorialController?.onMilitaryViewSwitched?.(action.view || 'army');
             this.afterHandled(action);
             game?.tutorialController?.refreshCurrentHighlight?.();
@@ -754,7 +763,7 @@
           return switched;
         }
         const view = action.view || 'army';
-        this.host.activeCommandPanel = '';
+        closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
         this.host.militaryView = view;
         if (this.host.state) this.host.state = { ...this.host.state, militaryView: view };
         game?.tutorialController?.onMilitaryViewSwitched?.(view);

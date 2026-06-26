@@ -31,7 +31,7 @@ test('ModeResolver creates serializable snapshots with capture and routing facts
 test('ModeResolver keeps tech-tree routing separate from generic blocking overlays', () => {
   const snapshot = ModeResolver.createModeSnapshot({
     baseModeKey: 'techTree',
-    modalKeys: ['modal:blockingPanel'],
+    modalKeys: ['modal:commandPanel'],
     blockingOverlayActive: true,
     techTreeBlockingOverlayActive: false,
   });

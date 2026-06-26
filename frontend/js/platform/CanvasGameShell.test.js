@@ -1418,7 +1418,7 @@ test('CanvasGameShell routes map command tech tree drag through command panel hi
       return 'military';
     },
   };
-  shell.activeCommandPanel = 'tech';
+  shell.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
 
   assert.equal(shell.handleDrag('start', { x: 120, y: 420 }, {}), true);
   assert.equal(shell.handleDrag('move', { x: 150, y: 460 }, {}), true);
@@ -1471,7 +1471,7 @@ test('CanvasGameShell routes map command tech tree wheel zoom at tree hit target
       return 'military';
     },
   };
-  shell.activeCommandPanel = 'tech';
+  shell.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
 
   assert.equal(shell.handleGesture({ type: 'wheelZoom', scaleDelta: 1.1, centerX: 180, centerY: 520 }, event), true);
 
@@ -1504,7 +1504,6 @@ test('CanvasGameShell resolves guide targets in rendered hit order', () => {
 test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial', () => {
   const calls = [];
   const game = {
-    showFamousPersons: true,
     famousPersonsPage: 2,
     selectedFamousPersonId: 'fp-scout',
     tutorialController: {
@@ -1521,16 +1520,15 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
     },
   });
   shell.lastGame = game;
-  shell.showFamousPersons = true;
+  shell.openBlockingPanelSnapshot('showFamousPersons', true);
   shell.famousPersonsPage = 1;
   shell.selectedFamousPersonId = 'fp-scout';
 
   assert.equal(shell.closeFamousPersons(), true);
 
-  assert.equal(shell.showFamousPersons, false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.equal(shell.famousPersonsPage, 0);
   assert.equal(shell.selectedFamousPersonId, '');
-  assert.equal(game.showFamousPersons, false);
   assert.equal(game.famousPersonsPage, 0);
   assert.equal(game.selectedFamousPersonId, '');
   assert.deepEqual(calls, [['clearFamousSkillTooltip'], ['onFamousPersonsClosed']]);
@@ -1539,7 +1537,6 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
 test('CanvasGameShell action controller advances tutorial after closeFamousPersons tap', () => {
   const calls = [];
   const game = {
-    showFamousPersons: true,
     famousPersonsPage: 2,
     selectedFamousPersonId: 'fp-scout',
     tutorialController: {
@@ -1565,7 +1562,7 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
     },
   });
   shell.lastGame = game;
-  shell.showFamousPersons = true;
+  shell.openBlockingPanelSnapshot('showFamousPersons', true);
   shell.famousPersonsPage = 1;
   shell.selectedFamousPersonId = 'fp-scout';
   shell.renderActive = () => {
@@ -1575,8 +1572,7 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
 
   assert.equal(shell.actionController.handle({ type: 'closeFamousPersons' }), true);
 
-  assert.equal(shell.showFamousPersons, false);
-  assert.equal(game.showFamousPersons, false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.deepEqual(calls, [
     ['clearFamousSkillTooltip'],
     ['renderActive'],

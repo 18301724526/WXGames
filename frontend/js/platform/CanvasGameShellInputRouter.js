@@ -118,7 +118,7 @@ bindInput() {
 handlePointerMove(point) {
       if (!this.renderer || typeof this.renderer.setHoverPoint !== 'function') return false;
       const changed = this.renderer.setHoverPoint(point);
-      if (changed && this.showFamousPersons) this.renderActive();
+      if (changed && this.isBlockingPanelSnapshotOpen('showFamousPersons')) this.renderActive();
       return changed;
     },
 
@@ -136,21 +136,21 @@ hasBlockingOverlayOpen() {
       const rewardRevealOpen = typeof this.isRewardRevealSnapshotOpen === 'function'
         ? this.isRewardRevealSnapshotOpen()
         : false;
-      return Boolean(this.showSettings
-        || this.showLogs
-        || this.showResourceDetails
-        || this.showCitySwitcher
-        || this.showSubcityList
-        || this.showCityManagement
-        || this.showAdvisor
+      return Boolean(this.isBlockingPanelSnapshotOpen('showSettings')
+        || this.isBlockingPanelSnapshotOpen('showLogs')
+        || this.isBlockingPanelSnapshotOpen('showResourceDetails')
+        || this.isBlockingPanelSnapshotOpen('showCitySwitcher')
+        || this.isBlockingPanelSnapshotOpen('showSubcityList')
+        || this.isBlockingPanelSnapshotOpen('showCityManagement')
+        || this.isBlockingPanelSnapshotOpen('showAdvisor')
         || this.tutorialAdvisorDialogue
         || this.lastGame?.tutorialAdvisorDialogue
-        || this.showTaskCenter
-        || this.showGuidebook
+        || this.isBlockingPanelSnapshotOpen('showTaskCenter')
+        || this.isBlockingPanelSnapshotOpen('showGuidebook')
         || this.armyFormationEditor?.open
         || confirmDialogOpen
-        || this.activeCommandPanel
-        || this.techDetailOpen
+        || this.getCommandPanelValue()
+        || this.isBlockingPanelSnapshotOpen('techDetailOpen')
         || this.isEventSnapshotOpen?.()
         || namingOpen
         || battleScene?.visible
@@ -200,8 +200,8 @@ getTechTreeHitAction(point = {}) {
 
 isTechTreeInteractionOpen() {
       const snapshot = typeof this.getModeSnapshot === 'function' ? this.getModeSnapshot() : null;
-      if (snapshot) return snapshot.baseModeKey === 'techTree' || snapshot.canRouteTechTree || this.activeCommandPanel === 'tech';
-      return Boolean(this.getActiveTab() === 'tech' || this.activeCommandPanel === 'tech');
+      if (snapshot) return snapshot.baseModeKey === 'techTree' || snapshot.canRouteTechTree || this.getCommandPanelValue() === 'tech';
+      return Boolean(this.getActiveTab() === 'tech' || this.getCommandPanelValue() === 'tech');
     },
 
 hasBlockingOverlayExceptTechTree() {
@@ -217,21 +217,21 @@ hasBlockingOverlayExceptTechTree() {
       const rewardRevealOpen = typeof this.isRewardRevealSnapshotOpen === 'function'
         ? this.isRewardRevealSnapshotOpen()
         : false;
-      return Boolean(this.showSettings
-        || this.showLogs
-        || this.showResourceDetails
-        || this.showCitySwitcher
-        || this.showSubcityList
-        || this.showCityManagement
-        || this.showAdvisor
+      return Boolean(this.isBlockingPanelSnapshotOpen('showSettings')
+        || this.isBlockingPanelSnapshotOpen('showLogs')
+        || this.isBlockingPanelSnapshotOpen('showResourceDetails')
+        || this.isBlockingPanelSnapshotOpen('showCitySwitcher')
+        || this.isBlockingPanelSnapshotOpen('showSubcityList')
+        || this.isBlockingPanelSnapshotOpen('showCityManagement')
+        || this.isBlockingPanelSnapshotOpen('showAdvisor')
         || this.tutorialAdvisorDialogue
         || this.lastGame?.tutorialAdvisorDialogue
-        || this.showTaskCenter
-        || this.showGuidebook
+        || this.isBlockingPanelSnapshotOpen('showTaskCenter')
+        || this.isBlockingPanelSnapshotOpen('showGuidebook')
         || this.armyFormationEditor?.open
         || confirmDialogOpen
-        || (this.activeCommandPanel && this.activeCommandPanel !== 'tech')
-        || this.techDetailOpen
+        || (this.getCommandPanelValue() && this.getCommandPanelValue() !== 'tech')
+        || this.isBlockingPanelSnapshotOpen('techDetailOpen')
         || this.isEventSnapshotOpen?.()
         || namingOpen
         || battleScene?.visible

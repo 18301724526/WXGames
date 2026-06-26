@@ -15,16 +15,55 @@
   function t(key, params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
+
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // Batch 8F: route blocking-panel opens/closes/reads through the snapshot owner (the
+  // host method when installed, else the module adapter) instead of the retired
+  // host-mirror fields. The owner fans the write/read out across related hosts
+  // (game -> canvasShell), so the prior per-host duplicate writes collapse to one call.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    if (typeof host?.openBlockingPanelSnapshot === 'function') {
+      return host.openBlockingPanelSnapshot(panelKey, value);
+    }
+    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
+  }
+
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
+  function isBlockingPanelSnapshotOpen(host, panelKey) {
+    if (typeof host?.isBlockingPanelSnapshotOpen === 'function') {
+      return host.isBlockingPanelSnapshotOpen(panelKey);
+    }
+    return Boolean(CanvasModalSnapshotAdapter?.isBlockingPanelSnapshotOpen?.(host, panelKey));
+  }
+
+  function getCommandPanelValue(host) {
+    if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();
+    return CanvasModalSnapshotAdapter?.getCommandPanelValue?.(host) || '';
+  }
+
   const UI_STATE_METHODS = Object.freeze({
   clearBlockingCommandPanels() {
     const game = this.game || {};
     let changed = false;
-    if (game.activeCommandPanel) {
-      game.activeCommandPanel = '';
-      changed = true;
-    }
-    if (game.canvasShell?.activeCommandPanel) {
-      game.canvasShell.activeCommandPanel = '';
+    if (isBlockingPanelSnapshotOpen(game, 'activeCommandPanel')) {
+      closeBlockingPanelSnapshot(game, 'activeCommandPanel');
       changed = true;
     }
     return changed;
@@ -42,10 +81,9 @@
         message,
       },
     };
-    game.showAdvisor = false;
+    closeBlockingPanelSnapshot(game, 'showAdvisor');
     game.tutorialAdvisorDialogue = dialogue;
     if (game.canvasShell) {
-      game.canvasShell.showAdvisor = false;
       game.canvasShell.tutorialAdvisorDialogue = dialogue;
     }
     if (target !== 'tech-tree') this.clearBlockingCommandPanels();
@@ -117,28 +155,23 @@
     const game = this.game || {};
     const shell = game.canvasShell || null;
     let changed = false;
-    const closeIfOpen = (host, key, value = false) => {
-      if (host && host[key]) {
-        host[key] = value;
+    // Adapter writes fan out across related hosts (game -> canvasShell); read the
+    // snapshot BEFORE closing so the 'changed' re-render gate stays accurate.
+    const closeIfOpen = (key) => {
+      if (isBlockingPanelSnapshotOpen(game, key)) {
+        closeBlockingPanelSnapshot(game, key);
         changed = true;
       }
     };
-    if (game.activeCommandPanel && game.activeCommandPanel !== panelId) {
-      game.activeCommandPanel = '';
+    const activeCommandPanel = getCommandPanelValue(game);
+    if (activeCommandPanel && activeCommandPanel !== panelId) {
+      closeBlockingPanelSnapshot(game, 'activeCommandPanel');
       changed = true;
     }
-    if (shell?.activeCommandPanel && shell.activeCommandPanel !== panelId) {
-      shell.activeCommandPanel = '';
-      changed = true;
-    }
-    closeIfOpen(game, 'showCityManagement');
-    closeIfOpen(shell, 'showCityManagement');
-    closeIfOpen(game, 'showSubcityList');
-    closeIfOpen(shell, 'showSubcityList');
-    closeIfOpen(game, 'showTaskCenter');
-    closeIfOpen(shell, 'showTaskCenter');
-    closeIfOpen(game, 'showFamousPersons');
-    closeIfOpen(shell, 'showFamousPersons');
+    closeIfOpen('showCityManagement');
+    closeIfOpen('showSubcityList');
+    closeIfOpen('showTaskCenter');
+    closeIfOpen('showFamousPersons');
     if (game.selectedFamousPersonId) {
       game.selectedFamousPersonId = '';
       changed = true;
@@ -164,31 +197,23 @@
   ensureHouseGuideVisible() {
     if (!this.isHouseGuideActive()) return false;
     const game = this.game || {};
-    game.showCityManagement = true;
+    openBlockingPanelSnapshot(game, 'showCityManagement', true);
     game.activeCityManagementTab = 'buildings';
-    game.showSubcityList = false;
-    game.activeCommandPanel = '';
+    closeBlockingPanelSnapshot(game, 'showSubcityList');
+    closeBlockingPanelSnapshot(game, 'activeCommandPanel');
     game.closeEventSnapshot?.();
     if (game.canvasShell) {
-      game.canvasShell.showCityManagement = true;
       game.canvasShell.activeCityManagementTab = 'buildings';
-      game.canvasShell.showSubcityList = false;
-      game.canvasShell.activeCommandPanel = '';
     }
     return true;
   },
 
   ensureBuildingGuideVisible() {
     const game = this.game || {};
-    game.showCityManagement = false;
-    game.activeCommandPanel = 'buildings';
+    closeBlockingPanelSnapshot(game, 'showCityManagement');
+    openBlockingPanelSnapshot(game, 'activeCommandPanel', 'buildings');
     game.closeEventSnapshot?.();
-    game.showTaskCenter = false;
-    if (game.canvasShell) {
-      game.canvasShell.showCityManagement = false;
-      game.canvasShell.activeCommandPanel = 'buildings';
-      game.canvasShell.showTaskCenter = false;
-    }
+    closeBlockingPanelSnapshot(game, 'showTaskCenter');
     return true;
   },
 
@@ -223,14 +248,24 @@
       host[key] = value;
       changed = true;
     };
+    // Non-panel fields stay as raw mirrors; the 5 blocking panels route through the
+    // adapter (open showCityManagement, close the others). Read the snapshot BEFORE
+    // mutating so the 'changed' re-render gate stays accurate. Adapter writes fan out
+    // across related hosts (game -> shell), so this runs once on game.
     const patch = {
       mapHomeActive: true,
-      showCityManagement: true,
       activeCityManagementTab: 'people',
-      showTaskCenter: false,
-      showFamousPersons: false,
-      showSubcityList: false,
-      activeCommandPanel: '',
+    };
+    const openPanelIfChanged = (key, value) => {
+      const open = isBlockingPanelSnapshotOpen(game, key);
+      if (open === Boolean(value)) return;
+      openBlockingPanelSnapshot(game, key, value);
+      changed = true;
+    };
+    const closePanelIfChanged = (key) => {
+      if (!isBlockingPanelSnapshotOpen(game, key)) return;
+      closeBlockingPanelSnapshot(game, key);
+      changed = true;
     };
     if (game.state) {
       setIfChanged(game.state, 'currentTab', 'military');
@@ -240,6 +275,11 @@
     setIfChanged(game, 'militaryView', 'world');
     Object.entries(patch).forEach(([key, value]) => setIfChanged(game, key, value));
     if (shell) Object.entries(patch).forEach(([key, value]) => setIfChanged(shell, key, value));
+    openPanelIfChanged('showCityManagement', true);
+    closePanelIfChanged('showTaskCenter');
+    closePanelIfChanged('showFamousPersons');
+    closePanelIfChanged('showSubcityList');
+    closePanelIfChanged('activeCommandPanel');
     if (game.isEventSnapshotOpen?.()) {
       game.closeEventSnapshot?.();
       changed = true;

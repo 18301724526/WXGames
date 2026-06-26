@@ -19,6 +19,24 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     WorldMarchSystem = require('../domain/WorldMarchSystem');
   }
+  var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
+    try {
+      CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+    } catch (_error) {
+      CanvasModalSnapshotAdapter = null;
+    }
+  }
+  // Batch 8F: route blocking-panel closes through the snapshot owner (the host method
+  // when installed, else the module adapter) instead of writing the retired host
+  // mirrors. The owner fans out across related hosts so the prior canvasShell duplicate
+  // writes collapse to a single call on the primary host.
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     if (WorldMarchSystem?.hasActiveMission) {
       return WorldMarchSystem.hasActiveMission(state?.worldExplorerState || {}, options);
@@ -140,33 +158,34 @@
             const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
             const snapshotEvent = this.getEventSnapshot?.(rendererSnapshot) || null;
             const snapshotTargetPicker = this.getTargetPickerSnapshot?.(rendererSnapshot) || null;
+            const panel = this.getRendererSnapshot?.()?.panel || {};
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
               ...worldMapCompositionOptions,
-              showResourceDetails: this.showResourceDetails,
-              showCitySwitcher: this.showCitySwitcher,
-              showSubcityList: this.showSubcityList,
-              showCityManagement: this.showCityManagement,
+              showResourceDetails: panel.showResourceDetails,
+              showCitySwitcher: panel.showCitySwitcher,
+              showSubcityList: panel.showSubcityList,
+              showCityManagement: panel.showCityManagement,
               activeCityManagementTab: this.activeCityManagementTab,
-              showTaskCenter: this.showTaskCenter,
+              showTaskCenter: panel.showTaskCenter,
               activeTaskCenterTab: this.activeTaskCenterTab,
-              showGuidebook: this.showGuidebook,
+              showGuidebook: panel.showGuidebook,
               activeGuidebookTab: this.activeGuidebookTab,
-              showFamousPersons: this.showFamousPersons,
+              showFamousPersons: panel.showFamousPersons,
               famousPersonsPage: this.canvasShell?.famousPersonsPage ?? this.famousPersonsPage,
               selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
               armyFormationEditor: this.canvasShell && 'armyFormationEditor' in this.canvasShell
                 ? this.canvasShell.armyFormationEditor
                 : this.armyFormationEditor,
-              activeCommandPanel: this.activeCommandPanel || '',
+              activeCommandPanel: panel.activeCommandPanel || '',
               rewardReveal: snapshotRewardReveal,
               buildingOffset: this.buildingOffset,
               techTreePanX: this.techTreePanX,
               techTreePanY: this.techTreePanY,
               techTreeZoom: this.getTechTreeZoom(),
               selectedTechId: this.state?.techUiState?.selectedTechId || this.canvasShell?.selectedTechId || '',
-              techDetailOpen: this.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen || this.canvasShell?.techDetailOpen),
+              techDetailOpen: panel.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen),
               activeBuildingCategory: this.activeBuildingCategory,
               pendingBuildingAction: this.pendingBuildingAction || this.canvasShell?.pendingBuildingAction || null,
               ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
@@ -603,16 +622,16 @@
           },
 
       resetForCanvasTabSwitch() {
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.showSubcityList = false;
-            this.showCityManagement = false;
+            closeBlockingPanelSnapshot(this, 'showResourceDetails');
+            closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+            closeBlockingPanelSnapshot(this, 'showSubcityList');
+            closeBlockingPanelSnapshot(this, 'showCityManagement');
             this.closeEventSnapshot?.();
-            this.showTaskCenter = false;
-            this.showGuidebook = false;
-            this.showFamousPersons = false;
+            closeBlockingPanelSnapshot(this, 'showTaskCenter');
+            closeBlockingPanelSnapshot(this, 'showGuidebook');
+            closeBlockingPanelSnapshot(this, 'showFamousPersons');
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
-            this.activeCommandPanel = '';
+            closeBlockingPanelSnapshot(this, 'activeCommandPanel');
             this.closeRewardRevealSnapshot?.();
             this.famousPersonsPage = 0;
             this.selectedFamousPersonId = '';
@@ -624,9 +643,8 @@
             this.techTreePanX = 0;
             this.techTreePanY = 0;
             this.techTreeZoom = 1;
-            this.techDetailOpen = false;
+            closeBlockingPanelSnapshot(this, 'techDetailOpen');
             if (this.canvasShell) this.canvasShell.selectedTechId = '';
-            if (this.canvasShell) this.canvasShell.techDetailOpen = false;
             this.state = {
               ...this.state,
               techUiState: {
@@ -649,7 +667,7 @@
             this.techTreePanX = 0;
             this.techTreePanY = 0;
             this.techTreeZoom = 1;
-            this.techDetailOpen = false;
+            closeBlockingPanelSnapshot(this, 'techDetailOpen');
             this.techTreeDragStart = null;
             this.closeEventSnapshot?.();
             this.territoryUiState = {
@@ -664,15 +682,15 @@
               expeditionLeader: '',
             };
             this.territoryController?.closeSiteDialog?.({ render: false });
-            this.showResourceDetails = false;
-            this.showCitySwitcher = false;
-            this.showSubcityList = false;
-            this.showCityManagement = false;
-            this.showTaskCenter = false;
-            this.showGuidebook = false;
-            this.showFamousPersons = false;
+            closeBlockingPanelSnapshot(this, 'showResourceDetails');
+            closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+            closeBlockingPanelSnapshot(this, 'showSubcityList');
+            closeBlockingPanelSnapshot(this, 'showCityManagement');
+            closeBlockingPanelSnapshot(this, 'showTaskCenter');
+            closeBlockingPanelSnapshot(this, 'showGuidebook');
+            closeBlockingPanelSnapshot(this, 'showFamousPersons');
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
-            this.activeCommandPanel = '';
+            closeBlockingPanelSnapshot(this, 'activeCommandPanel');
             this.famousPersonsPage = 0;
             this.selectedFamousPersonId = '';
             this.renderer?.clearFamousSkillTooltip?.();
@@ -682,7 +700,6 @@
             this.pageTransition = null;
             this.buildingTransition = null;
             if (this.canvasShell) this.canvasShell.selectedTechId = '';
-            if (this.canvasShell) this.canvasShell.techDetailOpen = false;
             if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
             if (this.canvasShell) {
               this.canvasShell.territoryUiState = {
@@ -747,10 +764,9 @@
             this.techTreePanX = 0;
             this.techTreePanY = 0;
             this.techTreeZoom = 1;
-            this.techDetailOpen = false;
+            closeBlockingPanelSnapshot(this, 'techDetailOpen');
             this.techTreeDragStart = null;
             this.buildingTransition = null;
-            if (this.canvasShell) this.canvasShell.techDetailOpen = false;
             if (this.canvasShell) this.canvasShell.techTreeZoom = 1;
             this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
             this.closeEventSnapshot?.();

@@ -1,27 +1,31 @@
 (function (global) {
-  function openBlockingPanelOwner(host, panelKey, value = true, metadata = {}) {
-    if (typeof host?.openBlockingPanelOwner === 'function') {
-      return host.openBlockingPanelOwner(panelKey, value, metadata);
-    }
-    if (host && typeof host === 'object') {
-      host[panelKey] = panelKey === 'activeCommandPanel' ? String(value || '') : Boolean(value);
-    }
-    return { panelKey, value };
+  var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
+    CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
   }
 
-  function closeBlockingPanelOwner(host, panelKey) {
-    if (typeof host?.closeBlockingPanelOwner === 'function') return host.closeBlockingPanelOwner(panelKey);
-    if (host && typeof host === 'object') {
-      host[panelKey] = panelKey === 'activeCommandPanel' ? '' : false;
+  // Batch 8F: route blocking-panel opens/closes through the snapshot owner (the host
+  // method when installed, else the module adapter) instead of the retired
+  // openBlockingPanelOwner host-mirror shim.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    if (typeof host?.openBlockingPanelSnapshot === 'function') {
+      return host.openBlockingPanelSnapshot(panelKey, value);
     }
-    return true;
+    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
+  }
+
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
   }
 
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
       handle_openFamousPersons(action) {
-        openBlockingPanelOwner(this.host, 'showFamousPersons', true);
+        openBlockingPanelSnapshot(this.host, 'showFamousPersons', true);
         this.host.famousPersonsPage = 0;
         this.host.selectedFamousPersonId = '';
         const game = this.getGameHost();
@@ -39,11 +43,10 @@
       },
 
       handle_closeFamousPersons(action) {
-        closeBlockingPanelOwner(this.host, 'showFamousPersons');
+        closeBlockingPanelSnapshot(this.host, 'showFamousPersons');
         this.host.famousPersonsPage = 0;
         this.host.selectedFamousPersonId = '';
         const game = this.getGameHost();
-        if (game && game !== this.host && 'showFamousPersons' in game) game.showFamousPersons = false;
         if (game && game !== this.host && 'famousPersonsPage' in game) game.famousPersonsPage = 0;
         if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
         this.host.renderer?.clearFamousSkillTooltip?.();

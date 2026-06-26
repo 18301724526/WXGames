@@ -11,10 +11,10 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
         token: 'modal:event#1',
         payload: { eventId: 'event-1', ignored: undefined },
       },
-      'modal:blockingPanel': {
+      'modal:commandPanel': {
         visible: true,
-        token: 'modal:blockingPanel#2',
-        payload: { panelKey: 'activeCommandPanel', panelKind: 'commandPanel', value: 'tech' },
+        token: 'modal:commandPanel#2',
+        payload: { value: 'tech' },
       },
     },
   };
@@ -28,7 +28,7 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
     },
     mode: {
       baseModeKey: 'techTree',
-      modalKeys: ['modal:blockingPanel'],
+      modalKeys: ['modal:commandPanel'],
       canRouteTechTree: true,
     },
     battle: {
@@ -50,9 +50,7 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
     token: 'modal:event#1',
     payload: { eventId: 'event-1' },
   });
-  assert.deepEqual(snapshot.modal['modal:blockingPanel'].payload, {
-    panelKey: 'activeCommandPanel',
-    panelKind: 'commandPanel',
+  assert.deepEqual(snapshot.modal['modal:commandPanel'].payload, {
     value: 'tech',
   });
   assert.equal(snapshot.panel.showTaskCenter, true);

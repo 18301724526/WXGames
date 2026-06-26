@@ -15,6 +15,36 @@
   function t(key, params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
+
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // Batch 8F: route blocking-panel opens/closes through the snapshot owner (the host
+  // method when installed, else the module adapter) instead of the retired host-mirror
+  // fields.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    if (typeof host?.openBlockingPanelSnapshot === 'function') {
+      return host.openBlockingPanelSnapshot(panelKey, value);
+    }
+    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
+  }
+
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -62,7 +92,7 @@ selectBuildingCategory(action = {}) {
 selectTechNode(action = {}) {
       const techId = action.techId || '';
       this.selectedTechId = techId;
-      this.techDetailOpen = Boolean(techId);
+      openBlockingPanelSnapshot(this, 'techDetailOpen', Boolean(techId));
       if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
         this.lastGame.state = {
           ...this.lastGame.state,
@@ -77,7 +107,7 @@ selectTechNode(action = {}) {
     },
 
 closeTechDetail(action = {}) {
-      this.techDetailOpen = false;
+      closeBlockingPanelSnapshot(this, 'techDetailOpen');
       if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
         this.lastGame.state = {
           ...this.lastGame.state,
@@ -91,22 +121,21 @@ closeTechDetail(action = {}) {
     },
 
 openFamousPersons() {
-      this.showFamousPersons = true;
+      openBlockingPanelSnapshot(this, 'showFamousPersons', true);
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
-      this.showTaskCenter = false;
-      this.showGuidebook = false;
-      this.activeCommandPanel = '';
+      closeBlockingPanelSnapshot(this, 'showTaskCenter');
+      closeBlockingPanelSnapshot(this, 'showGuidebook');
+      closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       return true;
     },
 
 closeFamousPersons() {
-      this.showFamousPersons = false;
+      closeBlockingPanelSnapshot(this, 'showFamousPersons');
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       const game = this.lastGame || null;
       if (game && typeof game === 'object') {
-        if ('showFamousPersons' in game) game.showFamousPersons = false;
         if ('famousPersonsPage' in game) game.famousPersonsPage = 0;
         if ('selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
       }
@@ -285,10 +314,10 @@ enterCity(action = {}) {
       const cityId = action.cityId || action.territoryId || action.siteId || game?.state?.activeCityId || 'capital';
       const tab = action.tab || 'buildings';
       if (typeof game?.enterCity === 'function') return game.enterCity(cityId, { tab });
-      this.showCityManagement = true;
+      openBlockingPanelSnapshot(this, 'showCityManagement', true);
       this.activeCityManagementTab = tab;
-      this.showSubcityList = false;
-      this.activeCommandPanel = '';
+      closeBlockingPanelSnapshot(this, 'showSubcityList');
+      closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       this.closeEventSnapshot?.();
       this.renderActive();
       return true;
@@ -296,17 +325,17 @@ enterCity(action = {}) {
 
 openCityManagement(action = {}) {
       const tab = action.tab || 'buildings';
-      this.showCityManagement = true;
+      openBlockingPanelSnapshot(this, 'showCityManagement', true);
       this.activeCityManagementTab = tab;
-      this.showSubcityList = false;
-      this.activeCommandPanel = '';
+      closeBlockingPanelSnapshot(this, 'showSubcityList');
+      closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       this.closeEventSnapshot?.();
       this.renderActive();
       return true;
     },
 
 closeCityManagement() {
-      this.showCityManagement = false;
+      closeBlockingPanelSnapshot(this, 'showCityManagement');
       this.renderActive();
       return true;
     },
@@ -337,13 +366,13 @@ resetForCanvasTabSwitch() {
       this.techTreePanY = 0;
       this.techTreeZoom = 1;
       this.selectedTechId = '';
-      this.techDetailOpen = false;
+      closeBlockingPanelSnapshot(this, 'techDetailOpen');
       this.techTreeDragStart = null;
       this.buildingTransition = null;
       this.closeEventSnapshot?.();
-      this.showGuidebook = false;
-      this.showFamousPersons = false;
-      this.showCityManagement = false;
+      closeBlockingPanelSnapshot(this, 'showGuidebook');
+      closeBlockingPanelSnapshot(this, 'showFamousPersons');
+      closeBlockingPanelSnapshot(this, 'showCityManagement');
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
       this.closeRewardRevealSnapshot?.();
       this.famousPersonsPage = 0;
@@ -359,7 +388,7 @@ resetLocalViewToResources(options = {}) {
       this.techTreePanY = 0;
       this.techTreeZoom = 1;
       this.selectedTechId = '';
-      this.techDetailOpen = false;
+      closeBlockingPanelSnapshot(this, 'techDetailOpen');
       this.techTreeDragStart = null;
       this.pageTransition = null;
       this.buildingTransition = null;
@@ -373,16 +402,16 @@ resetLocalViewToResources(options = {}) {
         expeditionLeader: '',
       };
       this.clearWorldSiteHudSelection?.();
-      this.showResourceDetails = false;
-      this.showCitySwitcher = false;
-      this.showSubcityList = false;
-      this.showCityManagement = false;
-      this.showAdvisor = false;
-      this.showTaskCenter = false;
-      this.showGuidebook = false;
-      this.showFamousPersons = false;
+      closeBlockingPanelSnapshot(this, 'showResourceDetails');
+      closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+      closeBlockingPanelSnapshot(this, 'showSubcityList');
+      closeBlockingPanelSnapshot(this, 'showCityManagement');
+      closeBlockingPanelSnapshot(this, 'showAdvisor');
+      closeBlockingPanelSnapshot(this, 'showTaskCenter');
+      closeBlockingPanelSnapshot(this, 'showGuidebook');
+      closeBlockingPanelSnapshot(this, 'showFamousPersons');
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
-      this.activeCommandPanel = '';
+      closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();

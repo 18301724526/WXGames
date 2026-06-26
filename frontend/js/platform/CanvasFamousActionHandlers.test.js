@@ -5,6 +5,20 @@ const path = require('node:path');
 
 const CanvasFamousActionHandlers = require('./CanvasFamousActionHandlers');
 const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+
+// Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host
+// carries the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the
+// snapshot adapter (openBlockingPanelSnapshot/closeBlockingPanelsSnapshot/
+// isBlockingPanelSnapshotOpen/getCommandPanelValue) so the famous handlers can route
+// through the owner instead of host mirrors.
+class ModalHost {}
+CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModalSnapshotAdapter.install(ModalHost);
+
+function makeModalHost(fields = {}) {
+  return Object.assign(new ModalHost(), fields);
+}
 
 class HostController {
   constructor(host) {
@@ -17,10 +31,7 @@ class HostController {
   }
 
   closePanels(except = []) {
-    const keep = new Set(except);
-    ['showFamousPersons', 'showTaskCenter', 'activeCommandPanel'].forEach((key) => {
-      if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
-    });
+    this.host?.closeBlockingPanelsSnapshot?.(except);
   }
 
   forward() {
@@ -52,8 +63,7 @@ test('CanvasFamousActionHandlers installs famous compatibility methods', () => {
 
 test('open and close famous persons sync shell, game, renderer, and tutorial state', () => {
   const calls = [];
-  const game = {
-    showFamousPersons: false,
+  const game = makeModalHost({
     famousPersonsPage: 3,
     selectedFamousPersonId: 'fp-old',
     tutorialController: {
@@ -73,11 +83,8 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
         callback();
       },
     },
-  };
-  const host = {
-    showFamousPersons: false,
-    showTaskCenter: true,
-    activeCommandPanel: 'famous',
+  });
+  const host = makeModalHost({
     famousPersonsPage: 2,
     selectedFamousPersonId: 'fp-old',
     lastGame: game,
@@ -89,29 +96,25 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
-    openBlockingPanelOwner(panelKey, value) {
-      return CanvasModeOwnershipBridge.openBlockingPanelOwner(this, panelKey, value);
-    },
-    closeBlockingPanelOwner(panelKey) {
-      return CanvasModeOwnershipBridge.closeBlockingPanelOwner(this, panelKey);
-    },
-    closeBlockingPanelsOwner(except) {
-      return CanvasModeOwnershipBridge.closeBlockingPanelsOwner(this, except);
-    },
-  };
+  });
+  game.canvasShell = host;
+  // The famous open sweeps the other blocking panels (Axis-1): seed an open task
+  // center + command panel so the close-on-open is observable through the owner.
+  host.openBlockingPanelSnapshot('showTaskCenter', true);
+  host.openBlockingPanelSnapshot('activeCommandPanel', 'famous');
   const controller = new HostController(host);
 
   assert.equal(controller.handle_openFamousPersons({ type: 'openFamousPersons' }), true);
-  assert.equal(host.showFamousPersons, true);
-  assert.equal(game.showFamousPersons, true);
-  assert.equal(host.showTaskCenter, false);
-  assert.equal(host.activeCommandPanel, '');
+  assert.equal(host.isBlockingPanelSnapshotOpen('showFamousPersons'), true);
+  assert.equal(host.isModalOpen('modal:famousPersons'), true);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), false);
+  assert.equal(host.getCommandPanelValue(), '');
   assert.equal(host.famousPersonsPage, 0);
   assert.equal(host.selectedFamousPersonId, '');
 
   assert.equal(controller.handle_closeFamousPersons({ type: 'closeFamousPersons' }), true);
-  assert.equal(host.showFamousPersons, false);
-  assert.equal(game.showFamousPersons, false);
+  assert.equal(host.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
+  assert.equal(host.isModalOpen('modal:famousPersons'), false);
   assert.equal(game.famousPersonsPage, 0);
   assert.equal(game.selectedFamousPersonId, '');
   assert.deepEqual(calls, [

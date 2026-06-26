@@ -20,21 +20,17 @@
     CanvasShellActionHandlers = require('./CanvasShellActionHandlers');
   }
 
-  const CLOSEABLE_PANELS = [
-    'showSettings',
-    'showLogs',
-    'showResourceDetails',
-    'showCitySwitcher',
-    'showSubcityList',
-    'showCityManagement',
-    'showAdvisor',
-    'showTaskCenter',
-    'showGuidebook',
-    'showFamousPersons',
-    'armyFormationEditor',
-    'techDetailOpen',
-    'activeCommandPanel',
-  ];
+  // armyFormationEditor is the formation-editor object, NOT a blocking panel; the
+  // panel-close sweep historically also nulled it, so it stays here as an
+  // out-of-scope residual that closeBlockingPanelsSnapshot does not own.
+  const NON_PANEL_CLOSEABLE = ['armyFormationEditor'];
+
+  function closeNonPanelCloseables(target, keep) {
+    if (!target || typeof target !== 'object') return;
+    NON_PANEL_CLOSEABLE.forEach((key) => {
+      if (!keep.has(key) && key in target) target[key] = false;
+    });
+  }
 
   function isActorPickingDiagEnabled() {
     if (global.__actorPickingDiag === true) return true;
@@ -176,22 +172,23 @@
       if (target && typeof target === 'object') target[key] = value;
     }
 
+    // Batch 8F: the 12 blocking panels are closed through the snapshot owner
+    // (closeBlockingPanelsSnapshot honours the `except` keep-set for Axis-1 mutual
+    // exclusion). armyFormationEditor and the event modal are NOT blocking panels --
+    // they keep their own out-of-scope close paths (preserving the prior behavior
+    // where this sweep also nulled armyFormationEditor and closed the event).
     closePanels(except = []) {
       const keep = new Set(except);
-      this.host?.closeBlockingPanelsOwner?.(except);
-      CLOSEABLE_PANELS.forEach((key) => {
-        if (!keep.has(key) && key in this.host) this.host[key] = key === 'activeCommandPanel' ? '' : false;
-      });
+      this.host?.closeBlockingPanelsSnapshot?.(except);
+      closeNonPanelCloseables(this.host, keep);
       if (!keep.has('activeEventId')) this.host?.closeEventSnapshot?.();
     }
 
     closePanelsOn(target, except = []) {
       if (!target || target === this.host || typeof target !== 'object') return;
       const keep = new Set(except);
-      target.closeBlockingPanelsOwner?.(except);
-      CLOSEABLE_PANELS.forEach((key) => {
-        if (!keep.has(key) && key in target) target[key] = key === 'activeCommandPanel' ? '' : false;
-      });
+      target.closeBlockingPanelsSnapshot?.(except);
+      closeNonPanelCloseables(target, keep);
       if (!keep.has('activeEventId')) target.closeEventSnapshot?.();
     }
 

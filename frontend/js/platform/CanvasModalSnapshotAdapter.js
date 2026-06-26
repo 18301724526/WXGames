@@ -5,6 +5,30 @@
   const EVENT_MODAL_KEY = 'modal:event';
   const TARGET_PICKER_MODAL_KEY = 'modal:targetPicker';
 
+  // Batch 8F: per-panel blocking modal subtypes replace the retired single
+  // 'modal:blockingPanel' umbrella + the host-mirror fan-out. Each blocking panel
+  // owns one modal subtype; the renderer panel facts (snapshot.panel.showX) are
+  // DERIVED from these entries by the bridge. 'activeCommandPanel' carries its
+  // string enum in the payload value; the other 11 are open/closed only.
+  const BLOCKING_PANEL_SUBTYPE_BY_KEY = Object.freeze({
+    showSettings: 'modal:settings',
+    showLogs: 'modal:logs',
+    showResourceDetails: 'modal:resourceDetails',
+    showCitySwitcher: 'modal:citySwitcher',
+    showSubcityList: 'modal:subcityList',
+    showCityManagement: 'modal:cityManagement',
+    showAdvisor: 'modal:advisor',
+    showTaskCenter: 'modal:taskCenter',
+    showGuidebook: 'modal:guidebook',
+    showFamousPersons: 'modal:famousPersons',
+    activeCommandPanel: 'modal:commandPanel',
+    techDetailOpen: 'modal:techDetail',
+  });
+
+  const BLOCKING_PANEL_KEYS = Object.freeze(Object.keys(BLOCKING_PANEL_SUBTYPE_BY_KEY));
+
+  const COMMAND_PANEL_MODAL_KEY = 'modal:commandPanel';
+
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
     return typeof host?.getRendererSnapshot === 'function' ? host.getRendererSnapshot() : null;
@@ -197,6 +221,91 @@
     return Boolean(getTargetPickerSnapshot(host, snapshot)?.visible);
   }
 
+  // blocking-panel helpers ---------------------------------------------------
+  function blockingPanelSubtype(panelKey) {
+    return BLOCKING_PANEL_SUBTYPE_BY_KEY[panelKey] || '';
+  }
+
+  function normalizeBlockingPanelKeepSet(except) {
+    if (except instanceof Set) return except;
+    if (Array.isArray(except)) return new Set(except);
+    return new Set(except ? [except] : []);
+  }
+
+  // Open (or, for a falsy/empty value, close) a blocking panel. Preserves the
+  // retired openBlockingPanelOwner toggle contract: boolean panels open on a truthy
+  // value / close on falsy; activeCommandPanel opens on a non-empty string carried in
+  // the payload / closes on ''. Returns the normalized value so toggle call sites can
+  // keep `const next = host.openBlockingPanelSnapshot(key, !current)`.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    const subtype = blockingPanelSubtype(panelKey);
+    if (!subtype) return null;
+    if (panelKey === 'activeCommandPanel') {
+      const next = String(value || '');
+      if (!next) return closeBlockingPanelSnapshot(host, panelKey);
+      openModalPayload(host, subtype, { value: next });
+      return next;
+    }
+    if (!value) return closeBlockingPanelSnapshot(host, panelKey);
+    openModalPayload(host, subtype, {});
+    return true;
+  }
+
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    const subtype = blockingPanelSubtype(panelKey);
+    if (!subtype) return null;
+    return closeModalPayload(host, subtype);
+  }
+
+  // Close every blocking panel except the kept panelKeys (Axis-1 mutual exclusion).
+  // Closes across related hosts and rebuilds the renderer snapshot once (not per
+  // panel) so the umbrella close stays cheap. Does NOT touch armyFormationEditor or
+  // the event modal -- those are out of scope and stay on their owning close paths.
+  function closeBlockingPanelsSnapshot(host, except = []) {
+    const keep = normalizeBlockingPanelKeepSet(except);
+    BLOCKING_PANEL_KEYS.forEach((panelKey) => {
+      if (keep.has(panelKey)) return;
+      const subtype = BLOCKING_PANEL_SUBTYPE_BY_KEY[panelKey];
+      const target = getOpenModalHost(host, subtype);
+      if (target) target.closeModal(subtype);
+    });
+    collectRelatedHosts(host).forEach((relatedHost) => relatedHost.buildRendererSnapshot?.());
+    return null;
+  }
+
+  // The raw activeCommandPanel string ('', 'capital', 'tech', ...). Reads must keep
+  // the string so `=== 'tech'` / `!== 'tech'` carve-outs survive (a boolean-only
+  // isBlockingPanelSnapshotOpen would lose the tech-tree carve-out).
+  function getCommandPanelValue(host, snapshot = null) {
+    const entry = readModalEntry(getRendererSnapshot(host, snapshot), COMMAND_PANEL_MODAL_KEY);
+    return entry?.open ? String(entry.payload?.value || '') : '';
+  }
+
+  function isBlockingPanelSnapshotOpen(host, panelKey, snapshot = null) {
+    const subtype = blockingPanelSubtype(panelKey);
+    if (!subtype) return false;
+    if (panelKey === 'activeCommandPanel') return Boolean(getCommandPanelValue(host, snapshot));
+    const entry = readModalEntry(getRendererSnapshot(host, snapshot), subtype);
+    return Boolean(entry?.open);
+  }
+
+  // The flat-12 panel facts (showX booleans + the activeCommandPanel string +
+  // techDetailOpen) derived from the per-panel modal entries.
+  function buildBlockingPanelFacts(host, snapshot = null) {
+    const resolved = getRendererSnapshot(host, snapshot);
+    const facts = {};
+    BLOCKING_PANEL_KEYS.forEach((panelKey) => {
+      const subtype = BLOCKING_PANEL_SUBTYPE_BY_KEY[panelKey];
+      const entry = readModalEntry(resolved, subtype);
+      if (panelKey === 'activeCommandPanel') {
+        facts[panelKey] = entry?.open ? String(entry.payload?.value || '') : '';
+      } else {
+        facts[panelKey] = Boolean(entry?.open);
+      }
+    });
+    return facts;
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -303,16 +412,45 @@
       isTargetPickerSnapshotOpen(snapshot = null) {
         return isTargetPickerSnapshotOpen(this, snapshot);
       },
+
+      openBlockingPanelSnapshot(panelKey, value = true) {
+        return openBlockingPanelSnapshot(this, panelKey, value);
+      },
+
+      closeBlockingPanelSnapshot(panelKey) {
+        return closeBlockingPanelSnapshot(this, panelKey);
+      },
+
+      closeBlockingPanelsSnapshot(except = []) {
+        return closeBlockingPanelsSnapshot(this, except);
+      },
+
+      isBlockingPanelSnapshotOpen(panelKey, snapshot = null) {
+        return isBlockingPanelSnapshotOpen(this, panelKey, snapshot);
+      },
+
+      getCommandPanelValue(snapshot = null) {
+        return getCommandPanelValue(this, snapshot);
+      },
+
+      buildBlockingPanelFacts(snapshot = null) {
+        return buildBlockingPanelFacts(this, snapshot);
+      },
     });
     return true;
   }
 
   const api = {
+    BLOCKING_PANEL_SUBTYPE_BY_KEY,
+    COMMAND_PANEL_MODAL_KEY,
     CONFIRM_DIALOG_MODAL_KEY,
     EVENT_MODAL_KEY,
     NAMING_MODAL_KEY,
     REWARD_REVEAL_MODAL_KEY,
     TARGET_PICKER_MODAL_KEY,
+    buildBlockingPanelFacts,
+    closeBlockingPanelSnapshot,
+    closeBlockingPanelsSnapshot,
     collectRelatedHosts,
     closeConfirmDialogSnapshot,
     closeEventSnapshot,
@@ -320,6 +458,9 @@
     closeNamingSnapshot,
     closeRewardRevealSnapshot,
     closeTargetPickerSnapshot,
+    getCommandPanelValue,
+    isBlockingPanelSnapshotOpen,
+    openBlockingPanelSnapshot,
     getConfirmDialogSnapshot,
     getConfirmDialogSnapshotFromRendererSnapshot,
     getEventSnapshot,

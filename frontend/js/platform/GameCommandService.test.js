@@ -6,13 +6,23 @@ const LocaleText = require('../domain/LocaleText');
 const CanvasGameApp = require('./CanvasGameApp');
 const UIStatePresenter = require('../state/UIStatePresenter');
 const TutorialGuideController = require('../tutorial/TutorialGuideController');
+const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+
+// Batch 8F: techDetailOpen is now an ECS modal subtype owned through the snapshot
+// adapter, so the command host's canvasShell must carry the modal machinery
+// (openModal/getRendererSnapshot via the bridge + the snapshot helpers) for the
+// research close to route through. A bare {} shell would no-op the close.
+class CommandShellHost {}
+CanvasModeOwnershipBridge.install(CommandShellHost);
+CanvasModalSnapshotAdapter.install(CommandShellHost);
 
 function createCommandHost(api) {
   const calls = [];
   const host = {
     api,
     state: { activeCityId: 'capital', currentTab: 'resources', techUiState: { detailOpen: true } },
-    canvasShell: {},
+    canvasShell: new CommandShellHost(),
     pendingBuildingAction: null,
     closeCitySwitcher(options) {
       calls.push(['closeCitySwitcher', options]);
@@ -77,6 +87,8 @@ test('GameCommandService research applies API state and keeps selected tech UI s
     },
   };
   const { host, calls } = createCommandHost(api);
+  host.canvasShell.openBlockingPanelSnapshot('techDetailOpen', true);
+  assert.equal(host.canvasShell.isBlockingPanelSnapshotOpen('techDetailOpen'), true);
   const service = new GameCommandService({ host });
 
   assert.equal(await service.research('writing'), true);
@@ -84,7 +96,7 @@ test('GameCommandService research applies API state and keeps selected tech UI s
   assert.equal(host.state.techUiState.selectedTechId, 'writing');
   assert.equal(host.state.techUiState.detailOpen, false);
   assert.equal(host.canvasShell.selectedTechId, 'writing');
-  assert.equal(host.canvasShell.techDetailOpen, false);
+  assert.equal(host.canvasShell.isBlockingPanelSnapshotOpen('techDetailOpen'), false);
   assert.deepEqual(calls.find(([name]) => name === 'showFloatingText'), ['showFloatingText', 'researched writing']);
 });
 
@@ -337,9 +349,8 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
       },
     },
   });
-  app.showAdvisor = true;
+  app.openBlockingPanelSnapshot('showAdvisor', true);
   app.canvasShell = {
-    showAdvisor: true,
     hideTutorialHighlight() {
       calls.push(['hideTutorialHighlight']);
       return true;
@@ -358,8 +369,7 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
   app.activeAdvisor = { target: 'task-center-button' };
 
   assert.equal(app.goToAdvisorTarget(), true);
-  assert.equal(app.showAdvisor, false);
-  assert.equal(app.canvasShell.showAdvisor, false);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showAdvisor'), false);
   assert.equal(app.showTaskCenter, true);
   assert.equal(app.canvasShell.showTaskCenter, true);
   assert.equal(app.activeTaskCenterTab, 'main');
@@ -379,32 +389,25 @@ test('CanvasGameApp shows tutorial spine advisor dialogue after first house buil
     currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
   };
   app.tutorialController = new TutorialGuideController({ game: app });
-  app.showCityManagement = true;
-  app.showSubcityList = true;
-  app.activeCommandPanel = 'capital';
+  app.openBlockingPanelSnapshot('showCityManagement', true);
+  app.openBlockingPanelSnapshot('showSubcityList', true);
+  app.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
   app.openEventSnapshot('event-1');
-  app.canvasShell = {
-    showCityManagement: true,
-    showSubcityList: true,
-    activeCommandPanel: 'capital',
-  };
+  app.canvasShell = {};
   app.renderCanvasSurface = (tab) => calls.push(['renderCanvasSurface', tab]);
 
   assert.equal(app.isEventSnapshotOpen(), true);
   assert.equal(app.maybeShowHouseBuiltAdvisor('build', 'house'), true);
 
-  assert.equal(app.showAdvisor, false);
-  assert.equal(app.showCityManagement, false);
-  assert.equal(app.showSubcityList, false);
-  assert.equal(app.activeCommandPanel, '');
+  assert.equal(app.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showCityManagement'), false);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showSubcityList'), false);
+  assert.equal(app.getCommandPanelValue(), '');
   assert.equal(app.isEventSnapshotOpen(), false);
   assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
   assert.equal(app.tutorialAdvisorDialogue.advisorName, '谋士');
   assert.match(app.tutorialAdvisorDialogue.message, /民居已经建立起来/);
   assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
-  assert.equal(app.canvasShell.showCityManagement, false);
-  assert.equal(app.canvasShell.showSubcityList, false);
-  assert.equal(app.canvasShell.activeCommandPanel, '');
   assert.equal(app.state.softGuide.target, 'tab-civilization');
   assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
 });
@@ -451,12 +454,10 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
     calls.push(['refreshCurrentHighlight', Boolean(app.pendingTutorialAdvisorDialogue)]);
     return true;
   };
-  app.showCityManagement = true;
-  app.activeCommandPanel = 'capital';
+  app.openBlockingPanelSnapshot('showCityManagement', true);
+  app.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
   app.openEventSnapshot('event-1');
   app.canvasShell = {
-    showCityManagement: true,
-    activeCommandPanel: 'capital',
     renderReadOnly() {
       calls.push(['renderReadOnly', Boolean(app.pendingTutorialAdvisorDialogue)]);
     },
@@ -488,9 +489,8 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   assert.equal(app.pendingTutorialAdvisorDialogue, false);
   assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
   assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
-  assert.equal(app.showCityManagement, false);
-  assert.equal(app.canvasShell.showCityManagement, false);
-  assert.equal(app.canvasShell.activeCommandPanel, '');
+  assert.equal(app.isBlockingPanelSnapshotOpen('showCityManagement'), false);
+  assert.equal(app.getCommandPanelValue(), '');
   assert.equal(app.isEventSnapshotOpen(), false);
   assert.equal(app.canvasShell.tutorialHighlight, null);
   assert.equal(calls.some(([name]) => name === 'refreshCurrentHighlight'), false);

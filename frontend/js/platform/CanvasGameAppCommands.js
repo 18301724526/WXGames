@@ -32,6 +32,36 @@
     }
   }
 
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // Batch 8F: route blocking-panel opens/closes through the snapshot owner (the host
+  // method when installed, else the module adapter). The owner resolves the game host
+  // + canvasShell from whichever host is passed, so the prior cross-host mirror writes
+  // collapse to a single call.
+  function openBlockingPanelSnapshot(host, panelKey, value = true) {
+    if (typeof host?.openBlockingPanelSnapshot === 'function') {
+      return host.openBlockingPanelSnapshot(panelKey, value);
+    }
+    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
+  }
+
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
@@ -54,10 +84,9 @@
             try {
               const result = await this.getGameApi().seekFamousPerson(source);
               this.applyApiState(result);
-              this.showFamousPersons = true;
+              openBlockingPanelSnapshot(this, 'showFamousPersons', true);
               this.famousPersonsPage = 0;
               this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
               this.showFloatingText(result.message || t('command.famous.seekComplete'));
@@ -74,10 +103,9 @@
             try {
               const result = await this.getGameApi().acceptFamousPerson(candidateId);
               this.applyApiState(result);
-              this.showFamousPersons = true;
+              openBlockingPanelSnapshot(this, 'showFamousPersons', true);
               this.famousPersonsPage = 0;
               this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
               this.showFloatingText(result.message || t('command.famous.accepted', {}));
@@ -94,9 +122,8 @@
             try {
               const result = await this.getGameApi().dismissFamousPersonCandidate(candidateId);
               this.applyApiState(result);
-              this.showFamousPersons = true;
+              openBlockingPanelSnapshot(this, 'showFamousPersons', true);
               this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
               this.showFloatingText(result.message || t('command.famous.dismissed', {}));
               this.log(result.message || t('command.famous.dismissed', {}));
@@ -112,8 +139,7 @@
             try {
               const result = await this.getGameApi().assignFamousAttributePoint(personId, attribute);
               this.applyApiState(result);
-              this.showFamousPersons = true;
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
+              openBlockingPanelSnapshot(this, 'showFamousPersons', true);
               if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = personId;
               this.selectedFamousPersonId = personId;
               this.showFloatingText(result.message || t('command.famous.attributeUpgraded'));
@@ -448,18 +474,14 @@
                 message,
               },
             };
-            this.showAdvisor = false;
-            this.showCityManagement = false;
-            this.showSubcityList = false;
-            this.activeCommandPanel = '';
+            closeBlockingPanelSnapshot(this, 'showAdvisor');
+            closeBlockingPanelSnapshot(this, 'showCityManagement');
+            closeBlockingPanelSnapshot(this, 'showSubcityList');
+            closeBlockingPanelSnapshot(this, 'activeCommandPanel');
             this.closeEventSnapshot?.();
             this.tutorialHighlight = null;
             this.tutorialAdvisorDialogue = { message, advisorName: t('tutorial.advisorName'), source: 'houseBuilt' };
             if (this.canvasShell) {
-              this.canvasShell.showAdvisor = false;
-              this.canvasShell.showCityManagement = false;
-              this.canvasShell.showSubcityList = false;
-              this.canvasShell.activeCommandPanel = '';
               this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
               this.canvasShell.tutorialHighlight = null;
             }
@@ -733,18 +755,14 @@
                 || this.state?.cityState?.capitalCityId
                 || 'capital';
               this.closeCitySwitcher({ skipRender: true });
-              this.showSubcityList = false;
-              this.activeCommandPanel = '';
+              closeBlockingPanelSnapshot(this, 'showSubcityList');
+              closeBlockingPanelSnapshot(this, 'activeCommandPanel');
               this.closeEventSnapshot?.();
-              if (this.canvasShell) {
-                this.canvasShell.showSubcityList = false;
-                this.canvasShell.activeCommandPanel = '';
-              }
               if (targetCityId !== currentCityId) {
                 const result = await this.getGameApi().switchCity(targetCityId);
                 this.applyApiState(result);
               }
-              this.showCityManagement = true;
+              openBlockingPanelSnapshot(this, 'showCityManagement', true);
               this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
               this.territoryUiState = {
                 ...(this.territoryUiState || {}),
@@ -755,7 +773,6 @@
               };
               this.territoryController?.closeSiteDialog?.();
               if (this.canvasShell) {
-                this.canvasShell.showCityManagement = true;
                 this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
                 this.canvasShell.territoryUiState = {
                   ...(this.canvasShell.territoryUiState || {}),

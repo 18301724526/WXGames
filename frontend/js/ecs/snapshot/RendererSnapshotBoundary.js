@@ -2,13 +2,28 @@
 
 const SCHEMA = 'renderer-snapshot-v1';
 
+// Batch 8F: per-panel modal subtypes replace the single 'modal:blockingPanel'.
+// 'modal:commandPanel' carries the activeCommandPanel string in its payload; the
+// other 11 are open/closed only. PANEL_KEYS/PANEL_DEFAULTS below are unchanged --
+// the flat-12 panel block is now DERIVED from these entries, not from a host mirror.
 const MODAL_SUBTYPES = Object.freeze([
   'modal:naming',
   'modal:event',
   'modal:rewardReveal',
   'modal:confirmDialog',
   'modal:targetPicker',
-  'modal:blockingPanel',
+  'modal:settings',
+  'modal:logs',
+  'modal:resourceDetails',
+  'modal:citySwitcher',
+  'modal:subcityList',
+  'modal:cityManagement',
+  'modal:advisor',
+  'modal:taskCenter',
+  'modal:guidebook',
+  'modal:famousPersons',
+  'modal:commandPanel',
+  'modal:techDetail',
 ]);
 
 const PANEL_KEYS = Object.freeze([

@@ -48,6 +48,42 @@
     return null;
   })();
 
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // Batch 8F: route blocking-panel opens/closes/reads through the snapshot owner (the
+  // host method when installed, else the module adapter) instead of the retired
+  // host-mirror fields. The owner fans the write/read out across related hosts
+  // (game -> canvasShell), so the prior per-host duplicate writes collapse to one call
+  // and reads no longer OR a game mirror with a shell mirror.
+  function closeBlockingPanelSnapshot(host, panelKey) {
+    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
+      return host.closeBlockingPanelSnapshot(panelKey);
+    }
+    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
+  }
+
+  function isBlockingPanelSnapshotOpen(host, panelKey) {
+    if (typeof host?.isBlockingPanelSnapshotOpen === 'function') {
+      return host.isBlockingPanelSnapshotOpen(panelKey);
+    }
+    return Boolean(CanvasModalSnapshotAdapter?.isBlockingPanelSnapshotOpen?.(host, panelKey));
+  }
+
+  function getCommandPanelValue(host) {
+    if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();
+    return CanvasModalSnapshotAdapter?.getCommandPanelValue?.(host) || '';
+  }
+
   const TUTORIAL_STEPS = TutorialGuideStepPolicy.TUTORIAL_STEPS;
 
   class TutorialGuideController {
@@ -189,7 +225,7 @@
     }
 
     getActiveCommandPanel() {
-      return this.game?.canvasShell?.activeCommandPanel || this.game?.activeCommandPanel || '';
+      return getCommandPanelValue(this.game);
     }
 
     isCommandPanelOpen(panelId) {
@@ -203,11 +239,11 @@
     }
 
     isTaskCenterOpen() {
-      return Boolean(this.game?.showTaskCenter || this.game?.canvasShell?.showTaskCenter);
+      return isBlockingPanelSnapshotOpen(this.game, 'showTaskCenter');
     }
 
     isCityManagementOpen() {
-      return Boolean(this.game?.showCityManagement || this.game?.canvasShell?.showCityManagement);
+      return isBlockingPanelSnapshotOpen(this.game, 'showCityManagement');
     }
 
     isCityManagementTabOpen(tab = '') {
@@ -219,8 +255,7 @@
 
     isAdvisorOpen() {
       return Boolean(
-        this.game?.canvasShell?.showAdvisor
-        || this.game?.showAdvisor
+        isBlockingPanelSnapshotOpen(this.game, 'showAdvisor')
         || this.game?.canvasShell?.tutorialAdvisorDialogue
         || this.game?.tutorialAdvisorDialogue,
       );
@@ -279,7 +314,7 @@
     }
 
     isFamousPersonsOpen() {
-      return Boolean(this.game?.showFamousPersons || this.game?.canvasShell?.showFamousPersons);
+      return isBlockingPanelSnapshotOpen(this.game, 'showFamousPersons');
     }
 
     isFamousPersonDetailOpen() {
@@ -469,11 +504,19 @@
       setIfChanged(game, 'activeTab', 'military');
       setIfChanged(game, 'militaryView', 'world');
       setIfChanged(game, 'mapHomeActive', true);
-      setIfChanged(game, 'activeCommandPanel', '');
-      setIfChanged(game, 'showCityManagement', false);
-      setIfChanged(game, 'showSubcityList', false);
-      setIfChanged(game, 'showTaskCenter', false);
-      setIfChanged(game, 'showFamousPersons', false);
+      // Close the exact subset of blocking panels this reset cleared. Read the
+      // snapshot BEFORE closing so the 'changed' re-render gate stays accurate; the
+      // adapter close fans out across related hosts (game -> shell), so this runs once.
+      const closePanelIfChanged = (key) => {
+        if (!isBlockingPanelSnapshotOpen(game, key)) return;
+        closeBlockingPanelSnapshot(game, key);
+        changed = true;
+      };
+      closePanelIfChanged('activeCommandPanel');
+      closePanelIfChanged('showCityManagement');
+      closePanelIfChanged('showSubcityList');
+      closePanelIfChanged('showTaskCenter');
+      closePanelIfChanged('showFamousPersons');
       game.closeEventSnapshot?.();
       this.closeArmyFormationEditorEverywhere();
       mergeUiState(game, 'territoryUiState', {
@@ -505,11 +548,7 @@
       if (clearWorldMarchTarget) game.territoryController?.closeSiteDialog?.({ render: false });
       if (shell) {
         setIfChanged(shell, 'mapHomeActive', true);
-        setIfChanged(shell, 'activeCommandPanel', '');
-        setIfChanged(shell, 'showCityManagement', false);
-        setIfChanged(shell, 'showSubcityList', false);
-        setIfChanged(shell, 'showTaskCenter', false);
-        setIfChanged(shell, 'showFamousPersons', false);
+        // The 5 blocking-panel closes above fanned out to the shell via the adapter.
         shell.closeEventSnapshot?.();
         mergeUiState(shell, 'territoryUiState', {
           selectedSiteId: '',

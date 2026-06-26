@@ -2,6 +2,22 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialGuideUiStateCoordinator = require('./TutorialGuideUiStateCoordinator');
+const CanvasModeOwnershipBridge = require('../platform/CanvasModeOwnershipBridge');
+const CanvasModalSnapshotAdapter = require('../platform/CanvasModalSnapshotAdapter');
+
+// Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host carries
+// the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the snapshot
+// adapter (openBlockingPanelSnapshot/closeBlockingPanelSnapshot/
+// isBlockingPanelSnapshotOpen/getCommandPanelValue) so the coordinator can route
+// through the owner instead of host mirrors. The adapter fans writes out across related
+// hosts (game -> canvasShell), so a single open/close on game is observable on both.
+class ModalHost {}
+CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModalSnapshotAdapter.install(ModalHost);
+
+function makeModalHost(fields = {}) {
+  return Object.assign(new ModalHost(), fields);
+}
 
 test('TutorialGuideUiStateCoordinator installs UI state helper methods', () => {
   class Controller {}
@@ -25,33 +41,37 @@ test('TutorialGuideUiStateCoordinator keeps house guide visibility sync on game 
   };
   class Controller {
     constructor() {
-      this.game = {
-        showCityManagement: false,
+      const shell = makeModalHost({
         activeCityManagementTab: '',
-        showSubcityList: true,
-        activeCommandPanel: 'events',
         ...eventSnapshotMock,
-        canvasShell: {
-          showCityManagement: false,
-          activeCityManagementTab: '',
-          showSubcityList: true,
-          activeCommandPanel: 'events',
-          ...eventSnapshotMock,
-        },
-      };
+      });
+      const game = makeModalHost({
+        activeCityManagementTab: '',
+        ...eventSnapshotMock,
+        canvasShell: shell,
+      });
+      shell.lastGame = game;
+      // Seed the pre-guide state through the owner: subcity list open + the events
+      // command panel open, so the guide's close/open transitions are observable.
+      game.openBlockingPanelSnapshot('showSubcityList', true);
+      game.openBlockingPanelSnapshot('activeCommandPanel', 'events');
+      this.game = game;
     }
 
     isHouseGuideActive() { return true; }
   }
   TutorialGuideUiStateCoordinator.install(Controller);
   const controller = new Controller();
+  const game = controller.game;
+  const shell = game.canvasShell;
 
   assert.equal(controller.ensureHouseGuideVisible(), true);
-  assert.equal(controller.game.showCityManagement, true);
-  assert.equal(controller.game.activeCityManagementTab, 'buildings');
-  assert.equal(controller.game.activeCommandPanel, '');
-  assert.equal(controller.game.isEventSnapshotOpen(), false);
-  assert.equal(controller.game.canvasShell.showCityManagement, true);
-  assert.equal(controller.game.canvasShell.activeCityManagementTab, 'buildings');
-  assert.equal(controller.game.canvasShell.activeCommandPanel, '');
+  assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), true);
+  assert.equal(game.activeCityManagementTab, 'buildings');
+  assert.equal(game.isBlockingPanelSnapshotOpen('showSubcityList'), false);
+  assert.equal(game.getCommandPanelValue(), '');
+  assert.equal(game.isEventSnapshotOpen(), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
+  assert.equal(shell.activeCityManagementTab, 'buildings');
+  assert.equal(shell.getCommandPanelValue(), '');
 });

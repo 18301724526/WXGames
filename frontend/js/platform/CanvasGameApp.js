@@ -104,20 +104,12 @@
             currentTab: initialHome.activeTab,
             militaryView: initialHome.militaryView,
           };
-          this.showResourceDetails = false;
-          this.showCitySwitcher = false;
-          this.showSubcityList = false;
-          this.showCityManagement = false;
           this.activeCityManagementTab = 'buildings';
-          this.showTaskCenter = false;
           this.activeTaskCenterTab = 'main';
-          this.showGuidebook = false;
           this.activeGuidebookTab = 'planning';
-          this.showFamousPersons = false;
           this.famousPersonsPage = 0;
           this.selectedFamousPersonId = '';
           this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
-          this.activeCommandPanel = '';
           this.battleReplayTurnTimer = null;
           this.battleAnimationTimer = null;
           this.tutorialHighlight = null;
@@ -132,9 +124,7 @@
           this.techTreePanX = 0;
           this.techTreePanY = 0;
           this.techTreeZoom = 1;
-          this.techDetailOpen = false;
           if (this.canvasShell) this.canvasShell.selectedTechId = '';
-          if (this.canvasShell) this.canvasShell.techDetailOpen = false;
           this.state = {
             ...this.state,
             techUiState: {
