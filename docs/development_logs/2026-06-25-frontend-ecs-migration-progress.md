@@ -5,11 +5,11 @@
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
-| Current batch          | `5. Panel/Modal Ownership (slice 5c)`        |
-| Batch state            | `Slice 5c: targetPicker Ready for Review`    |
+| Current batch          | `5. Panel/Modal Ownership (slice 5d)`        |
+| Batch state            | `Slice 5c: targetPicker Completed; slice 5d may start` |
 | Runtime code migration | Mode ownership bridge only                   |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 14:22:55 +08:00`                 |
+| Last updated           | `2026-06-26 14:47:06 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -292,4 +292,4 @@ Batch 5 slice 5a (naming) is implemented and `Ready for Migration Owner Review`:
 
 Batch 5 slice 5b (event + rewardReveal) is `Completed` after migration owner sign-off at `2026-06-26 13:59:23 +08:00`. The `rewardReveal` sub-step is owner-sourced with `this.rewardReveal` as the read-only mirror, sealed via two pure-presentation bridge wrappers and eight single-line owner-routed write sites across six files; readers stay on the mirror. The `event` (`activeEventId`) sub-step uses the approved lighter approach: only canonical `handle_openEvent` / `handle_closeEvent` and central `closePanels` route through the modal owner; bridge wrappers sync host/game/canvasShell mirrors; scattered `activeEventId = null` legacy mirror clears stay untouched; `EventController.activeEventId` remains isolated as its claim cursor. Verified: `npm run test:architecture` 1189 tests, mode-ownership-spine guard 0 violations, lint, format, and `git diff --check`. Batch 5 is not Completed until its remaining slices are signed off; slice 5c (`targetPicker`) is next.
 
-Batch 5 slice 5c (`targetPicker`) is implemented and `Ready for Migration Owner Review`: the two canonical picker opens (`worldTargetPicker` list picker and `worldMarchTarget.pickerOpen` formation picker) route through `CanvasModeOwnershipBridge` wrappers into `modal:targetPicker`, with `territoryUiState` kept as the renderer/tutorial-facing mirror. Non-picker world-march target state and scattered null clears remain legacy mirror/domain behavior. A dedicated blocking guard, `scripts/check-frontend-ecs-target-picker-ownership.js`, blocks non-owner picker opens outside the approved bridge while allowing null mirror clears. Verified: `npm run test:architecture` 1195 tests, targetPicker ownership guard 0 violations, mode-ownership-spine guard 0 violations, lint, format, and `git diff --check`. Slice 5c is not `Completed` until migration owner review signs off.
+Batch 5 slice 5c (`targetPicker`) is `Completed` after migration owner sign-off at `2026-06-26 14:47:06 +08:00`: the two canonical picker opens (`worldTargetPicker` list picker and `worldMarchTarget.pickerOpen` formation picker) route through `CanvasModeOwnershipBridge` wrappers into `modal:targetPicker`, with `territoryUiState` kept as the renderer/tutorial-facing mirror. Non-picker world-march target state and scattered null clears remain legacy mirror/domain behavior. A dedicated blocking guard, `scripts/check-frontend-ecs-target-picker-ownership.js`, blocks non-owner picker opens outside the approved bridge while allowing null mirror clears. Verified: `npm run test:architecture` 1195 tests, targetPicker ownership guard 0 violations, mode-ownership-spine guard 0 violations, lint, format, and `git diff --check`. Slice 5d (`blockingPanel`) may start and remains gated behind its own sealed slice.

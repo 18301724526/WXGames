@@ -6,11 +6,11 @@
 | ---------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Batch            | `5. Panel/Modal Ownership`                                                                                        |
 | Slice            | `5c (targetPicker)`                                                                                               |
-| State            | `Ready for Migration Owner Review`                                                                                |
+| State            | `Completed`                                                                                                       |
 | ECS modal owner  | `frontend/js/ecs/mode/ModalWorld.js` (reused)                                                                     |
 | Bridge surface   | `openWorldTargetPickerOwner` / `openWorldMarchFormationPickerOwner` / `closeTargetPickerOwner`                    |
 | Seal enforced by | `scripts/check-frontend-ecs-target-picker-ownership.js` plus existing architecture smoke and mode ownership guard |
-| Last updated     | `2026-06-26 14:22:55 +08:00`                                                                                      |
+| Last updated     | `2026-06-26 14:47:06 +08:00`                                                                                      |
 
 ## Decision
 
@@ -36,7 +36,7 @@ Slice 5c does not:
 - chase scattered `worldTargetPicker = null` or `worldMarchTarget = null` clears;
   these stay legacy mirror clearing for navigation, drag, reset, and command cleanup
 - migrate renderer/tutorial reads off `territoryUiState`; that is Batch 6 snapshot work
-- start slice 5d `blockingPanel`
+- start slice 5d `blockingPanel` before migration owner review signs off
 
 ## Acceptance Answers
 
@@ -48,7 +48,7 @@ Slice 5c does not:
 | Guard preventing old-path growth? | `scripts/check-frontend-ecs-target-picker-ownership.js` blocks non-owner picker opens outside the approved bridge path while allowing legacy null mirror clears.   |
 | Behavior tests?                   | Bridge targetPicker wrapper tests, CanvasTerritoryActionHandlers owner-call tests, and the new targetPicker guard tests.                                           |
 | Rollback?                         | Restore direct canonical handler writes for `worldTargetPicker` and `pickerOpen: true`, remove the targetPicker bridge wrappers, and drop the dedicated guard.     |
-| Next subtype to seal?             | `blockingPanel` (5d), after migration owner review signs off this 5c implementation.                                                                               |
+| Next subtype to seal?             | `blockingPanel` (5d), after migration owner review signed off this 5c implementation.                                                                              |
 
 ## Verification
 
@@ -64,8 +64,8 @@ Local verification passed:
 
 ## Review Result
 
-`targetPicker` sealing is `Ready for Migration Owner Review`. It must not be marked
-`Completed` until migration owner review confirms the bridge wrappers, two picker
+`targetPicker` sealing is `Completed` after migration owner sign-off on
+`2026-06-26 14:47:06 +08:00`. The review accepted the bridge wrappers, two picker
 payload shapes, canonical handler routing, dedicated guard scope, preserved legacy
-mirror clear behavior, and deferred renderer/tutorial read migration. Slice 5d remains
-gated behind its own sealed slice.
+mirror clear behavior, and deferred renderer/tutorial read migration. Slice 5d may
+start and remains gated behind its own sealed slice.
