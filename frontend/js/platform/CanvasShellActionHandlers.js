@@ -125,7 +125,7 @@
       handle_closeRewardReveal(action) {
         const closed = typeof this.host?.closeRewardReveal === 'function'
           ? this.host.closeRewardReveal()
-          : (typeof this.host.closeRewardRevealOwner === 'function' && this.host.closeRewardRevealOwner(), this.host.rewardReveal = null, true);
+          : (this.host.closeRewardRevealSnapshot?.(), true);
         if (closed) {
           this.afterHandled(action);
           this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();

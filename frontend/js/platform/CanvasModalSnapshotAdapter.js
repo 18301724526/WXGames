@@ -1,6 +1,7 @@
 (function (global) {
   const NAMING_MODAL_KEY = 'modal:naming';
   const CONFIRM_DIALOG_MODAL_KEY = 'modal:confirmDialog';
+  const REWARD_REVEAL_MODAL_KEY = 'modal:rewardReveal';
 
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
@@ -49,6 +50,14 @@
 
   function getConfirmDialogSnapshotFromRendererSnapshot(snapshot = null) {
     return getModalPayloadSnapshot(null, CONFIRM_DIALOG_MODAL_KEY, snapshot);
+  }
+
+  function getRewardRevealSnapshot(host, snapshot = null) {
+    return getModalPayloadSnapshot(host, REWARD_REVEAL_MODAL_KEY, snapshot);
+  }
+
+  function getRewardRevealSnapshotFromRendererSnapshot(snapshot = null) {
+    return getModalPayloadSnapshot(null, REWARD_REVEAL_MODAL_KEY, snapshot);
   }
 
   function getNamingPrompt(host, snapshot = null) {
@@ -125,6 +134,18 @@
       : undefined;
   }
 
+  function openRewardRevealSnapshot(host, payload = {}) {
+    return openModalPayload(host, REWARD_REVEAL_MODAL_KEY, payload);
+  }
+
+  function closeRewardRevealSnapshot(host) {
+    return closeModalPayload(host, REWARD_REVEAL_MODAL_KEY);
+  }
+
+  function isRewardRevealSnapshotOpen(host, snapshot = null) {
+    return Boolean(getRewardRevealSnapshot(host, snapshot)?.visible);
+  }
+
   function install(TargetClass) {
     if (!TargetClass?.prototype) return false;
     Object.assign(TargetClass.prototype, {
@@ -183,6 +204,22 @@
       resolveConfirmDialogSnapshotCallback(type, ...args) {
         return resolveConfirmDialogSnapshotCallback(this, type, ...args);
       },
+
+      openRewardRevealSnapshot(payload = {}) {
+        return openRewardRevealSnapshot(this, payload);
+      },
+
+      closeRewardRevealSnapshot() {
+        return closeRewardRevealSnapshot(this);
+      },
+
+      getRewardRevealSnapshot(snapshot = null) {
+        return getRewardRevealSnapshot(this, snapshot);
+      },
+
+      isRewardRevealSnapshotOpen(snapshot = null) {
+        return isRewardRevealSnapshotOpen(this, snapshot);
+      },
     });
     return true;
   }
@@ -190,10 +227,12 @@
   const api = {
     CONFIRM_DIALOG_MODAL_KEY,
     NAMING_MODAL_KEY,
+    REWARD_REVEAL_MODAL_KEY,
     collectRelatedHosts,
     closeConfirmDialogSnapshot,
     closeModalPayload,
     closeNamingSnapshot,
+    closeRewardRevealSnapshot,
     getConfirmDialogSnapshot,
     getConfirmDialogSnapshotFromRendererSnapshot,
     getOpenModalHost,
@@ -202,12 +241,16 @@
     getNamingPrompt,
     getNamingSnapshot,
     getNamingSnapshotFromRendererSnapshot,
+    getRewardRevealSnapshot,
+    getRewardRevealSnapshotFromRendererSnapshot,
     install,
     isConfirmDialogSnapshotOpen,
     isNamingSnapshotOpen,
+    isRewardRevealSnapshotOpen,
     openConfirmDialogSnapshot,
     openModalPayload,
     openNamingSnapshot,
+    openRewardRevealSnapshot,
     readModalEntry,
     resolveConfirmDialogSnapshotCallback,
     updateConfirmDialogSnapshot,

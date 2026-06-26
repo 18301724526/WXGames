@@ -148,6 +148,14 @@ test('TutorialGuideController guides first era advancement and task reward claim
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt },
     state: { currentTab: 'resources' },
     canvasShell: shell,
+    __rewardRevealSnapshot: null,
+    isRewardRevealSnapshotOpen() {
+      return Boolean(this.__rewardRevealSnapshot);
+    },
+    openRewardRevealSnapshot(payload) {
+      this.__rewardRevealSnapshot = { ...(payload || {}), visible: true };
+      return this.__rewardRevealSnapshot;
+    },
     __namingSnapshot: null,
     getNamingSnapshot() {
       return this.__namingSnapshot;
@@ -211,7 +219,7 @@ test('TutorialGuideController guides first era advancement and task reward claim
   });
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.farmPrepReserved });
-  game.rewardReveal = { rewardText: '+10' };
+  game.openRewardRevealSnapshot({ rewardText: '+10' });
   assert.equal(controller.refreshCurrentHighlight(), false);
   assert.equal(calls.at(-1).hideHighlight, true);
 });

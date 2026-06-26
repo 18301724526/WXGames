@@ -345,8 +345,7 @@ resetForCanvasTabSwitch() {
       this.showFamousPersons = false;
       this.showCityManagement = false;
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
-      if (typeof this.closeRewardRevealOwner === 'function') this.closeRewardRevealOwner();
-      this.rewardReveal = null;
+      this.closeRewardRevealSnapshot?.();
       this.famousPersonsPage = 0;
       this.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();

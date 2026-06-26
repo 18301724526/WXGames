@@ -133,6 +133,9 @@ hasBlockingOverlayOpen() {
       const confirmDialogOpen = typeof this.isConfirmDialogSnapshotOpen === 'function'
         ? this.isConfirmDialogSnapshotOpen()
         : false;
+      const rewardRevealOpen = typeof this.isRewardRevealSnapshotOpen === 'function'
+        ? this.isRewardRevealSnapshotOpen()
+        : false;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -152,7 +155,7 @@ hasBlockingOverlayOpen() {
         || namingOpen
         || battleScene?.visible
         || this.isEntityBattleActive()
-        || this.rewardReveal);
+        || rewardRevealOpen);
     },
 
 isEntityBattleActive() {
@@ -211,6 +214,9 @@ hasBlockingOverlayExceptTechTree() {
       const confirmDialogOpen = typeof this.isConfirmDialogSnapshotOpen === 'function'
         ? this.isConfirmDialogSnapshotOpen()
         : false;
+      const rewardRevealOpen = typeof this.isRewardRevealSnapshotOpen === 'function'
+        ? this.isRewardRevealSnapshotOpen()
+        : false;
       return Boolean(this.showSettings
         || this.showLogs
         || this.showResourceDetails
@@ -230,7 +236,7 @@ hasBlockingOverlayExceptTechTree() {
         || namingOpen
         || battleScene?.visible
         || this.isEntityBattleActive()
-        || this.rewardReveal);
+        || rewardRevealOpen);
     },
 
 canRouteTechTreeInteraction(action = null) {
@@ -326,7 +332,7 @@ isTutorialAdvisorCloseActionAllowed(action = {}) {
 
 isTutorialActionAllowed(action = {}) {
       if (!action?.type || action.type === 'blockCanvasModal') return false;
-      if (this.rewardReveal && action.type === 'closeRewardReveal') return true;
+      if (this.isRewardRevealSnapshotOpen?.() && action.type === 'closeRewardReveal') return true;
       if (this.isTutorialAdvisorCloseActionAllowed(action)) return true;
       const targetAction = action.allowedAction || action;
       if (this.tutorialHighlight?.allowedAction

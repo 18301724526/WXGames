@@ -93,8 +93,7 @@
     const keys = [];
     if (isAnyModalOpen(host, 'modal:naming')) keys.push('modal:naming');
     if (isTruthy(host?.activeEventId) || isTruthy(game?.activeEventId)) keys.push('modal:event');
-    if (isTruthy(host?.rewardReveal) || isTruthy(game?.rewardReveal))
-      keys.push('modal:rewardReveal');
+    if (isAnyModalOpen(host, 'modal:rewardReveal')) keys.push('modal:rewardReveal');
     if (isAnyModalOpen(host, 'modal:confirmDialog')) keys.push('modal:confirmDialog');
     const territoryUiState =
       host?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || {};
@@ -155,8 +154,7 @@
       isTruthy(battleSnapshot?.battleScene?.visible) ||
       isTruthy(host?.entityBattle?.visible) ||
       isTruthy(game?.entityBattle?.visible) ||
-      isTruthy(host?.rewardReveal) ||
-      isTruthy(game?.rewardReveal),
+      isAnyModalOpen(host, 'modal:rewardReveal'),
     );
   }
 
@@ -648,16 +646,6 @@
 
       resolveModalCallback(subtype, action, ...args) {
         return resolveModalCallback(this, subtype, action, ...args);
-      },
-
-      // rewardReveal-specific wrappers (pure presentation; no callbacks). The
-      // subtype literal lives here so host call sites stay one-line.
-      openRewardRevealModal(state) {
-        return openModal(this, 'modal:rewardReveal', state) || state;
-      },
-
-      closeRewardRevealOwner() {
-        return closeModal(this, 'modal:rewardReveal');
       },
 
       // event-specific wrappers: payload stores `eventId` so the modal owner

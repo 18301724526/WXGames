@@ -227,7 +227,7 @@
     }
 
     isRewardRevealOpen() {
-      return Boolean(this.game?.canvasShell?.rewardReveal || this.game?.rewardReveal);
+      return Boolean(this.game?.isRewardRevealSnapshotOpen?.());
     }
 
     onEraAdvanced(result = {}) {

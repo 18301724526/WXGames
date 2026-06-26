@@ -61,6 +61,9 @@
             const confirmDialogOpen = typeof this.isConfirmDialogSnapshotOpen === 'function'
               ? this.isConfirmDialogSnapshotOpen()
               : false;
+            const rewardRevealOpen = typeof this.isRewardRevealSnapshotOpen === 'function'
+              ? this.isRewardRevealSnapshotOpen()
+              : false;
             return Boolean(this.showResourceDetails
               || this.showCitySwitcher
               || this.showSubcityList
@@ -79,7 +82,7 @@
               || namingOpen
               || battleScene?.visible
               || this.entityBattle?.visible
-              || this.rewardReveal);
+              || rewardRevealOpen);
           },
 
       handleGesture(gesture) {

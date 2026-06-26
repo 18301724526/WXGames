@@ -701,3 +701,42 @@ Batch 8B scope control:
 - Do not keep `this.confirmDialog` as compatibility fallback.
 - Do not remove generic `ModalCallbackRegistry` or generic modal callback API.
 - Do not mark 8B Completed before migration owner sign-off.
+
+## Batch 8C RewardReveal Mirror Removal Deliverables
+
+Batch 8C deletes the next sealed modal mirror: App/Shell `this.rewardReveal`.
+The source of truth remains the ECS modal owner entry for `modal:rewardReveal`;
+renderer-facing state is derived through the renderer snapshot boundary.
+`rewardReveal` is pure presentation, so it needs no callback registry wiring.
+
+Batch 8C approved runtime surfaces:
+
+| Surface                                                        | Status                           | Notes                                                                                                                               |
+| -------------------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/js/platform/CanvasModalSnapshotAdapter.js`           | Ready for Migration Owner Review | Adds rewardReveal helpers that read `snapshot.modal['modal:rewardReveal']` and route open/close through the generic modal API       |
+| `frontend/js/platform/CanvasGameShellSystemUi.js`              | Ready for Migration Owner Review | Shell reward reveal open/close and float-timer keep-alive use snapshot adapter helpers; no `this.rewardReveal` mirror writes remain |
+| `frontend/js/platform/CanvasGameAppCommands.js`                | Ready for Migration Owner Review | App task-reward grant opens the reveal through `openRewardRevealSnapshot`                                                           |
+| `frontend/js/platform/CanvasCityActionHandlers.js`             | Ready for Migration Owner Review | Event/task reward grants open or close the reveal through the snapshot adapter                                                      |
+| `frontend/js/platform/CanvasGameAppRenderingRuntime.js`        | Ready for Migration Owner Review | App render options pass `rewardReveal` only from the snapshot-derived payload                                                       |
+| `frontend/js/platform/CanvasGameShellRenderingRuntime.js`      | Ready for Migration Owner Review | Shell render options pass `rewardReveal` only from the snapshot-derived payload                                                     |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`            | Ready for Migration Owner Review | rewardReveal-specific wrappers removed; mode facts detect `modal:rewardReveal` from modal owner entries                             |
+| `scripts/check-frontend-ecs-rewardreveal-mirror-retirement.js` | Ready for Migration Owner Review | Blocks App/Shell/tutorial/input rewardReveal mirror reads/writes and retired wrapper names                                          |
+
+Batch 8C execution checklist:
+
+| Step                                              | Status                           | Artifact / Gate                                   | Acceptance Standard                                                                              |
+| ------------------------------------------------- | -------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 8C-1. Delete rewardReveal mirror fields           | Ready for Migration Owner Review | `CanvasGameApp.js`, `CanvasGameShell.js`          | No constructor `this.rewardReveal` field remains                                                 |
+| 8C-2. Delete rewardReveal mirror write/read sites | Ready for Migration Owner Review | Shell/App UI, city/shell handlers, input routers  | No App/Shell `this.rewardReveal` mirror accesses remain                                          |
+| 8C-3. Delete rewardReveal bridge wrappers         | Ready for Migration Owner Review | `CanvasModeOwnershipBridge.js`                    | `openRewardRevealModal` and `closeRewardRevealOwner` are removed                                 |
+| 8C-4. Snapshot-renderer migration                 | Ready for Migration Owner Review | App/Shell rendering runtimes                      | `rewardReveal` render option is emitted only from `snapshot.modal['modal:rewardReveal']` payload |
+| 8C-5. Action/input migration                      | Ready for Migration Owner Review | input routers, `TutorialGuideController.js`       | Blocking overlay and tutorial gate use `isRewardRevealSnapshotOpen()`                            |
+| 8C-6. Guard and smoke integration                 | Ready for Migration Owner Review | rewardReveal retirement guard, architecture smoke | Guard reports 0 violations and is wired into `npm run test:architecture`                         |
+| 8C-7. Progress / operating plan / batch doc       | Ready for Migration Owner Review | progress doc, operating plan, 8C batch doc        | 8C documented as Ready for Review, not Completed                                                 |
+
+Batch 8C scope control:
+
+- Do not delete event, targetPicker, or blockingPanel mirrors in this slice.
+- Do not add new rewardReveal-specific bridge wrappers.
+- Do not keep `this.rewardReveal` as a compatibility fallback.
+- Do not mark 8C Completed before migration owner sign-off.

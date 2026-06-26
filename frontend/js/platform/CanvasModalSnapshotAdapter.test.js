@@ -110,3 +110,30 @@ test('CanvasModalSnapshotAdapter resolves confirmDialog callbacks on the open ow
 
   assert.equal(confirmed, 1);
 });
+
+test('CanvasModalSnapshotAdapter reads and updates rewardReveal through modal snapshot', () => {
+  class Host {}
+  CanvasModeOwnershipBridge.install(Host);
+  CanvasModalSnapshotAdapter.install(Host);
+  const shell = new Host();
+
+  shell.openRewardRevealSnapshot({ title: 'Wood', resources: { gold: 5 }, createdAt: 1 });
+
+  assert.equal(shell.isRewardRevealSnapshotOpen(), true);
+  assert.deepEqual(shell.getRewardRevealSnapshot(), {
+    title: 'Wood',
+    resources: { gold: 5 },
+    createdAt: 1,
+    visible: true,
+  });
+  assert.equal(
+    CanvasModalSnapshotAdapter.getRewardRevealSnapshotFromRendererSnapshot(
+      shell.getRendererSnapshot(),
+    ).title,
+    'Wood',
+  );
+
+  shell.closeRewardRevealSnapshot();
+  assert.equal(shell.isRewardRevealSnapshotOpen(), false);
+  assert.equal(shell.getRewardRevealSnapshot(), null);
+});

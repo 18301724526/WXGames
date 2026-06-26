@@ -22,11 +22,11 @@ test('CanvasModeOwnershipBridge maps scattered modal fields to modal mode keys',
   const host = new Host();
   host.openModal('modal:naming', { visible: true, view: { title: 'Name' } });
   host.openModal('modal:confirmDialog', { visible: true, kind: 'resetGame' });
+  host.openModal('modal:rewardReveal', { rewardText: '+1' });
   Object.assign(host, {
     showTaskCenter: true,
     lastGame: {
       state: { currentTab: 'resources', militaryView: 'army' },
-      rewardReveal: { rewardText: '+1' },
     },
   });
 
@@ -50,6 +50,7 @@ test('CanvasModeOwnershipBridge ignores retired naming mirrors when mapping moda
     },
   });
   host.openModal('modal:confirmDialog', { visible: true, kind: 'resetGame' });
+  host.openModal('modal:rewardReveal', { rewardText: '+1' });
 
   assert.deepEqual(CanvasModeOwnershipBridge.collectModalKeys(host), [
     'modal:rewardReveal',
@@ -217,23 +218,13 @@ test('CanvasModeOwnershipBridge generic modal APIs seal confirmDialog continuati
   assert.equal(cancelled, 0);
 });
 
-test('CanvasModeOwnershipBridge rewardReveal wrappers seal presentation state', () => {
+test('CanvasModeOwnershipBridge does not install retired rewardReveal owner wrappers', () => {
   class Host {}
   CanvasModeOwnershipBridge.install(Host);
   const host = new Host();
 
-  const reveal = host.openRewardRevealModal({
-    title: 'Reward',
-    resources: { gold: 5 },
-    createdAt: 1,
-  });
-  assert.equal(host.isModalOpen('modal:rewardReveal'), true);
-  assert.deepEqual(reveal, { title: 'Reward', resources: { gold: 5 }, createdAt: 1 });
-  assert.equal(host.getModalPayload('modal:rewardReveal').title, 'Reward');
-
-  host.closeRewardRevealOwner();
-  assert.equal(host.isModalOpen('modal:rewardReveal'), false);
-  assert.equal(host.getModalPayload('modal:rewardReveal'), null);
+  assert.equal(typeof host.openRewardRevealModal, 'undefined');
+  assert.equal(typeof host.closeRewardRevealOwner, 'undefined');
 });
 
 test('CanvasModeOwnershipBridge event wrappers sync mirrors without touching EventController cursor', () => {

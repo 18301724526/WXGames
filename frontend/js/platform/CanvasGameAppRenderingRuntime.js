@@ -137,6 +137,7 @@
             const snapshotEntityBattle = battleSnapshot.entityBattle || null;
             const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
             const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
+            const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
             this.renderer.render(this.state, {
               activeTab: resolvedActiveTab,
               isMapHome: homeView.isMapHome,
@@ -157,7 +158,7 @@
                 ? this.canvasShell.armyFormationEditor
                 : this.armyFormationEditor,
               activeCommandPanel: this.activeCommandPanel || '',
-              rewardReveal: this.rewardReveal,
+              rewardReveal: snapshotRewardReveal,
               buildingOffset: this.buildingOffset,
               techTreePanX: this.techTreePanX,
               techTreePanY: this.techTreePanY,
@@ -608,8 +609,7 @@
             this.showFamousPersons = false;
             this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             this.activeCommandPanel = '';
-            if (typeof this.closeRewardRevealOwner === 'function') this.closeRewardRevealOwner();
-            this.rewardReveal = null;
+            this.closeRewardRevealSnapshot?.();
             this.famousPersonsPage = 0;
             this.selectedFamousPersonId = '';
             if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';

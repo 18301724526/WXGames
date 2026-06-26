@@ -37,7 +37,7 @@ showFloatingText(text, options = {}) {
 
 showRewardReveal(reveal) {
       if (!reveal) return false;
-      this.rewardReveal = typeof this.openRewardRevealModal === 'function' ? this.openRewardRevealModal({ ...reveal, createdAt: this.now() }) : { ...reveal, createdAt: this.now() };
+      this.openRewardRevealSnapshot?.({ ...reveal, createdAt: this.now() });
       this.tutorialHighlight = null;
       this.startFloatTimer();
       this.renderActive();
@@ -45,9 +45,8 @@ showRewardReveal(reveal) {
     },
 
 closeRewardReveal() {
-      const hadReveal = Boolean(this.rewardReveal);
-      if (typeof this.closeRewardRevealOwner === 'function') this.closeRewardRevealOwner();
-      this.rewardReveal = null;
+      const hadReveal = this.isRewardRevealSnapshotOpen?.() === true;
+      this.closeRewardRevealSnapshot?.();
       if (hadReveal) {
         this.renderActive();
         this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
@@ -130,7 +129,7 @@ startFloatTimer() {
       this.effectTimer = this.runtime.setInterval(() => {
         const changed = this.pruneFloatingTexts();
         const hasHighlight = Boolean(this.tutorialHighlight);
-        const hasReveal = Boolean(this.rewardReveal);
+        const hasReveal = this.isRewardRevealSnapshotOpen?.() === true;
         if (!this.floatingTexts.length && !hasHighlight && !hasReveal) {
           this.stopFloatTimer();
         }

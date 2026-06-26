@@ -416,7 +416,7 @@
         if (game?.canvasShell && game.canvasShell !== this.host) game.canvasShell.activeEventId = null;
         this.getEventController()?.close?.();
         if (result?.rewardReveal) {
-          if (!this.host.showRewardReveal?.(result.rewardReveal)) this.host.rewardReveal = typeof this.host.openRewardRevealModal === 'function' ? this.host.openRewardRevealModal(result.rewardReveal) : result.rewardReveal;
+          if (!this.host.showRewardReveal?.(result.rewardReveal)) this.host.openRewardRevealSnapshot?.(result.rewardReveal);
         }
         if (typeof this.host.hideGuideHighlight === 'function') this.host.hideGuideHighlight();
         else this.host.hideTutorialHighlight?.();
@@ -448,7 +448,8 @@
           if (typeof claim !== 'function') return { success: false };
           return claim.call(this.host.api, action.taskId, action.category || 'main');
         });
-        this.host.rewardReveal = result?.rewardReveal ? (typeof this.host.openRewardRevealModal === 'function' ? this.host.openRewardRevealModal(result.rewardReveal) : result.rewardReveal) : (typeof this.host.closeRewardRevealOwner === 'function' ? (this.host.closeRewardRevealOwner(), null) : null);
+        if (result?.rewardReveal) this.host.openRewardRevealSnapshot?.(result.rewardReveal);
+        else this.host.closeRewardRevealSnapshot?.();
         return true;
       },
 

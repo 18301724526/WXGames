@@ -161,6 +161,14 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
         };
       },
     },
+    __rewardRevealSnapshot: null,
+    openRewardRevealSnapshot(payload) {
+      this.__rewardRevealSnapshot = payload || null;
+      return this.__rewardRevealSnapshot;
+    },
+    getRewardRevealSnapshot() {
+      return this.__rewardRevealSnapshot;
+    },
     hideGuideHighlight() {
       calls.push(['hideGuideHighlight']);
     },
@@ -176,7 +184,7 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
 
   assert.equal(host.activeEventId, null);
   assert.equal(game.activeEventId, null);
-  assert.deepEqual(host.rewardReveal, { title: 'Wood', items: [{ id: 'wood', amount: 5 }] });
+  assert.deepEqual(host.getRewardRevealSnapshot(), { title: 'Wood', items: [{ id: 'wood', amount: 5 }] });
   assert.deepEqual(calls, [
     ['close'],
     ['open', 'event-1'],

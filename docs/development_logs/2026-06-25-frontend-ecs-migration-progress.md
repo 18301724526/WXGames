@@ -6,10 +6,10 @@
 | ---------------------- | -------------------------------------------- |
 | Branch                 | `codex/refactor-tutorial-guide-architecture` |
 | Current batch          | `8. Bridge Retirement`                       |
-| Batch state            | `8B Ready for Migration Owner Review`        |
-| Runtime code migration | ConfirmDialog mirror removed; snapshot-owned |
+| Batch state            | `8C Ready for Migration Owner Review`        |
+| Runtime code migration | RewardReveal mirror removed; snapshot-owned  |
 | ECS dependency         | `bitecs@0.4.0` installed exactly             |
-| Last updated           | `2026-06-26 18:39:03 +08:00`                 |
+| Last updated           | `2026-06-26 21:03:46 +08:00`                 |
 
 ## Batch 0A Checklist
 
@@ -193,6 +193,18 @@ Batch 7A notes:
 | 8B-5. Guard upgrade                                       | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | New `scripts/check-frontend-ecs-confirm-dialog-mirror-retirement.js` forbids confirmDialog mirror reads/writes and retired wrapper names; guard reports 0 violations |
 | 8B-6. Behavior and guard tests                            | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | Focused tests cover snapshot reads, submitting updates, callback resolve, renderer options, reset action source, and guard behavior                                  |
 | 8B-7. Progress / operating plan / batch document          | Ready for Migration Owner Review | `2026-06-26 18:39:03 +08:00` | This document, the operating plan, and the 8B batch doc record Ready for Review, not Completed                                                                       |
+
+## Batch 8C Checklist
+
+| Step                                                            | Status                           | Updated At                   | Evidence                                                                                                                                                                |
+| --------------------------------------------------------------- | -------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8C-1. Delete App/Shell rewardReveal mirror fields               | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | Removed App and Shell constructor initialization of `this.rewardReveal`                                                                                                 |
+| 8C-2. Remove rewardReveal bridge wrappers                       | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | Deleted `openRewardRevealModal` and `closeRewardRevealOwner` from `CanvasModeOwnershipBridge.js`                                                                        |
+| 8C-3. Route rewardReveal reads/writes through renderer snapshot | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | Shell/App open/close, render options, input routers, and tutorial gate use `CanvasModalSnapshotAdapter` rewardReveal helpers and `snapshot.modal['modal:rewardReveal']` |
+| 8C-4. Retire renderer fallback                                  | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | App/Shell render options pass `rewardReveal` only from the snapshot-derived payload; no mirror fallback remains                                                         |
+| 8C-5. Guard upgrade                                             | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | New `scripts/check-frontend-ecs-rewardreveal-mirror-retirement.js` forbids rewardReveal mirror reads/writes and retired wrapper names; guard reports 0 violations       |
+| 8C-6. Behavior and guard tests                                  | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | Focused tests cover owner snapshot open/close, renderer options, city reward grant, tutorial reads, and guard behavior                                                  |
+| 8C-7. Progress / operating plan / batch document                | Ready for Migration Owner Review | `2026-06-26 21:03:46 +08:00` | This document, the operating plan, and the 8C batch doc record Ready for Review, not Completed                                                                          |
 
 ## Verification Commands
 

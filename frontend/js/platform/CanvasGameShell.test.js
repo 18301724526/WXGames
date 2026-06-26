@@ -1926,7 +1926,7 @@ test('CanvasGameShell lets reward reveal close above tutorial highlight', () => 
       },
     },
   });
-  shell.rewardReveal = { rewardText: '+10' };
+  shell.openRewardRevealSnapshot({ rewardText: '+10' });
   shell.tutorialHighlight = {
     allowedAction: { type: 'buildBuilding', buildingId: 'farm' },
   };
