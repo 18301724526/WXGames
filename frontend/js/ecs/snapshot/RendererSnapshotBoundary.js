@@ -2,29 +2,18 @@
 
 const SCHEMA = 'renderer-snapshot-v1';
 
+const ModeKeys = (() => {
+  if (typeof require === 'function') return require('../mode/ModeKeys');
+  return globalThis.EcsModeKeys;
+})();
+
 // Batch 8F: per-panel modal subtypes replace the single 'modal:blockingPanel'.
 // 'modal:commandPanel' carries the activeCommandPanel string in its payload; the
 // other 11 are open/closed only. PANEL_KEYS/PANEL_DEFAULTS below are unchanged --
-// the flat-12 panel block is now DERIVED from these entries, not from a host mirror.
-const MODAL_SUBTYPES = Object.freeze([
-  'modal:naming',
-  'modal:event',
-  'modal:rewardReveal',
-  'modal:confirmDialog',
-  'modal:targetPicker',
-  'modal:settings',
-  'modal:logs',
-  'modal:resourceDetails',
-  'modal:citySwitcher',
-  'modal:subcityList',
-  'modal:cityManagement',
-  'modal:advisor',
-  'modal:taskCenter',
-  'modal:guidebook',
-  'modal:famousPersons',
-  'modal:commandPanel',
-  'modal:techDetail',
-]);
+// the flat-12 panel block is DERIVED from these entries, not from a host mirror.
+// The subtype list IS the canonical MODAL_MODE_KEYS (single source) so a newly
+// added modal subtype appears here automatically.
+const MODAL_SUBTYPES = ModeKeys.MODAL_MODE_KEYS;
 
 const PANEL_KEYS = Object.freeze([
   'showSettings',

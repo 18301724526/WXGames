@@ -1787,26 +1787,18 @@ var EcsModeRuntime = (() => {
         if (typeof __require === 'function') return require_ModeKeys();
         return globalThis.EcsModeKeys;
       })();
-      var { CAPTURE_PRIORITY, MODAL_BIT_BY_KEY, modeIdForKey, modeKeyForId, normalizeModeKey } =
-        ModeKeys || {};
-      var BLOCKING_MODAL_KEYS = Object.freeze([
-        'modal:naming',
-        'modal:event',
-        'modal:rewardReveal',
-        'modal:confirmDialog',
-        'modal:targetPicker',
-        'modal:settings',
-        'modal:logs',
-        'modal:resourceDetails',
-        'modal:citySwitcher',
-        'modal:subcityList',
-        'modal:cityManagement',
-        'modal:advisor',
-        'modal:taskCenter',
-        'modal:guidebook',
-        'modal:famousPersons',
-        'modal:techDetail',
-      ]);
+      var {
+        CAPTURE_PRIORITY,
+        MODAL_BIT_BY_KEY,
+        MODAL_MODE_KEYS,
+        modeIdForKey,
+        modeKeyForId,
+        normalizeModeKey,
+      } = ModeKeys || {};
+      var NON_BLOCKING_MODAL_KEYS = Object.freeze(['modal:commandPanel']);
+      var BLOCKING_MODAL_KEYS = Object.freeze(
+        (MODAL_MODE_KEYS || []).filter((key) => !NON_BLOCKING_MODAL_KEYS.includes(key)),
+      );
       function readBool(value) {
         return value === true || value === 1;
       }
@@ -2188,25 +2180,11 @@ var EcsModeRuntime = (() => {
     'frontend/js/ecs/snapshot/RendererSnapshotBoundary.js'(exports, module) {
       'use strict';
       var SCHEMA = 'renderer-snapshot-v1';
-      var MODAL_SUBTYPES = Object.freeze([
-        'modal:naming',
-        'modal:event',
-        'modal:rewardReveal',
-        'modal:confirmDialog',
-        'modal:targetPicker',
-        'modal:settings',
-        'modal:logs',
-        'modal:resourceDetails',
-        'modal:citySwitcher',
-        'modal:subcityList',
-        'modal:cityManagement',
-        'modal:advisor',
-        'modal:taskCenter',
-        'modal:guidebook',
-        'modal:famousPersons',
-        'modal:commandPanel',
-        'modal:techDetail',
-      ]);
+      var ModeKeys = (() => {
+        if (typeof __require === 'function') return require_ModeKeys();
+        return globalThis.EcsModeKeys;
+      })();
+      var MODAL_SUBTYPES = ModeKeys.MODAL_MODE_KEYS;
       var PANEL_KEYS = Object.freeze([
         'showSettings',
         'showLogs',

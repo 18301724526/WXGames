@@ -11,6 +11,10 @@ function freezeRecord(record) {
   return Object.freeze({ ...record });
 }
 
+// Single source: the mode-key vocabulary lives in ModeKeys.js. Derive it here
+// instead of re-typing the list so a new mode key cannot exist in one place only.
+const EcsModeKeys = require('../mode/ModeKeys');
+
 const OWNER_ROLES = freezeList([
   'externalEcsCore',
   'componentSchema',
@@ -39,33 +43,7 @@ const COMPONENT_FAMILIES = freezeList([
   'Snapshot',
 ]);
 
-const MODE_KEYS = freezeList([
-  'boot',
-  'city',
-  'worldMap',
-  'techTree',
-  'formationEditor',
-  'battle',
-  'modal:naming',
-  'modal:event',
-  'modal:rewardReveal',
-  'modal:confirmDialog',
-  'modal:targetPicker',
-  'modal:settings',
-  'modal:logs',
-  'modal:resourceDetails',
-  'modal:citySwitcher',
-  'modal:subcityList',
-  'modal:cityManagement',
-  'modal:advisor',
-  'modal:taskCenter',
-  'modal:guidebook',
-  'modal:famousPersons',
-  'modal:commandPanel',
-  'modal:techDetail',
-  'tutorial',
-  'debug',
-]);
+const MODE_KEYS = freezeList(EcsModeKeys.MODE_KEYS);
 
 const SNAPSHOT_KEYS = freezeList([
   'ShellSnapshot',

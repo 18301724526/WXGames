@@ -5,31 +5,18 @@ const ModeKeys = (() => {
   return globalThis.EcsModeKeys;
 })();
 
-const { CAPTURE_PRIORITY, MODAL_BIT_BY_KEY, modeIdForKey, modeKeyForId, normalizeModeKey } =
+const { CAPTURE_PRIORITY, MODAL_BIT_BY_KEY, MODAL_MODE_KEYS, modeIdForKey, modeKeyForId, normalizeModeKey } =
   ModeKeys || {};
 
-// Batch 8F: 'modal:blockingPanel' was split per panel. The 10 show-star overlays
-// and the techDetail popup are unconditionally blocking. 'modal:commandPanel' is
-// intentionally absent: it blocks only when its value is non-'tech', a string-value
-// condition the bridge folds into facts.blockingOverlayActive (createModeSnapshot).
-const BLOCKING_MODAL_KEYS = Object.freeze([
-  'modal:naming',
-  'modal:event',
-  'modal:rewardReveal',
-  'modal:confirmDialog',
-  'modal:targetPicker',
-  'modal:settings',
-  'modal:logs',
-  'modal:resourceDetails',
-  'modal:citySwitcher',
-  'modal:subcityList',
-  'modal:cityManagement',
-  'modal:advisor',
-  'modal:taskCenter',
-  'modal:guidebook',
-  'modal:famousPersons',
-  'modal:techDetail',
-]);
+// Batch 8F: 'modal:blockingPanel' was split per panel. Every modal subtype is
+// unconditionally blocking EXCEPT 'modal:commandPanel', which blocks only when its
+// value is non-'tech' (a string-value condition the bridge folds into
+// facts.blockingOverlayActive in createModeSnapshot). Derived from the canonical
+// MODAL_MODE_KEYS so a newly added modal is blocking-by-default with no second edit.
+const NON_BLOCKING_MODAL_KEYS = Object.freeze(['modal:commandPanel']);
+const BLOCKING_MODAL_KEYS = Object.freeze(
+  (MODAL_MODE_KEYS || []).filter((key) => !NON_BLOCKING_MODAL_KEYS.includes(key)),
+);
 
 function readBool(value) {
   return value === true || value === 1;
