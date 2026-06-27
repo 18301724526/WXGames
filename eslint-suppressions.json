@@ -317,12 +317,12 @@
   },
   "frontend/js/platform/renderers/CanvasAssetRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/CanvasFrameRenderer.js": {
     "no-unused-vars": {
-      "count": 3
+      "count": 2
     }
   },
   "frontend/js/platform/renderers/CanvasPreloadAssetManifest.js": {
@@ -331,11 +331,6 @@
     }
   },
   "frontend/js/platform/renderers/CanvasSurfaceHitTargets.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/renderers/CanvasSurfaceRenderer.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -357,7 +352,7 @@
   },
   "frontend/js/platform/renderers/HudOverlayCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/MapCommandCanvasRenderer.js": {
@@ -370,11 +365,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/renderers/TutorialAdvisorDialogueRenderer.js": {
     "no-unused-vars": {
       "count": 1
@@ -382,7 +372,7 @@
   },
   "frontend/js/platform/renderers/TutorialCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/WorldActorCanvasRenderer.js": {
@@ -437,7 +427,7 @@
   },
   "frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 7
+      "count": 6
     }
   },
   "frontend/js/platform/renderers/WorldMapLayoutModel.js": {
@@ -477,7 +467,7 @@
   },
   "frontend/js/platform/renderers/WorldTileWaterCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 4
+      "count": 3
     }
   },
   "frontend/js/state/UIStatePresenter.js": {
