@@ -36,8 +36,8 @@ touching code. Everything here is verified, not assumed.
    said blocking-panel = 5 files (really 13); said `GuideTaskCanvasRenderer` was a dead stub (really
    a live 376-line renderer); my own mojibake detector flagged 78 strings, 66 of which were
    legitimate Chinese it would have CORRUPTED — only 12 were real.
-5. **Full gate, green, before every commit:** `npm test` (expect **1699** pass — P1 Cluster 2
-   removed 2 fallback-pinning tests; was 1701) +
+5. **Full gate, green, before every commit:** `npm test` (expect **1703** pass — P1 removed 2
+   fallback-pinning tests, P3 added 4 GameStateManager tests; was 1701) +
    `node scripts/run-architecture-smoke.js` (exit 0) + `npm run lint` (exit 0) +
    **`npm run format:check`** (prettier, exit 0 — run `npx prettier --write .` on anything it flags) +
    `git diff --check` (clean). The **Edit tool writes CRLF; the repo is LF** (`.gitattributes * -text`)
@@ -192,9 +192,10 @@ file. Bump the `?v=` cache-buster on each edited file's `<script>` tag in index.
 
 ## 5. After P1 — the rest of the roadmap (from the program plan)
 
-**P1 + P2 done. NEXT TASK = P3 (triple-host mirror).** With P2 closed, all THREE
-duplicated-logic clusters the program named (tutorial-advance, coord/tileId, blocking-panel snapshot)
-are now single-source + guarded.
+**P1 + P2 done & deployed. P3 IN PROGRESS — Axis B done & deployed (`b3ce37f2`).** With P2 closed, all
+THREE duplicated-logic clusters the program named (tutorial-advance, coord/tileId, blocking-panel
+snapshot) are now single-source + guarded. **Deploy is now unblocked** (the multi-session stuck deploy
+was the `prettier --check` gate step — see §1.5).
 
 Each phase = remove/derive copies + a machine guard; gate-green per commit. Order by safety×leverage,
 riskiest god-file surgery last:
@@ -216,10 +217,32 @@ FamousPersonService → … → MilitaryService` require cycle. Guard `check-tut
   - NOT done (separate slices, NOT spreading-logic debt): `TutorialActionValidator` (~300-line
     god-validator → P4 god-file surgery), `TutorialGuideUiStateCoordinator` (frontend dual-host mirror →
     folds into P3).
-- **P3 — triple-host mirror** (decomposition §3.13, THE root of "fix one, break another"):
-  `game` / `canvasShell` / `lastGame` → one live-state source + selectors; thin host readers; kill
-  the Proxy-passthrough `host` god-object (it shows up in the fan-in as `host` / `host.ctx` /
-  `host.presenter`). Highest payoff for bug-locality; do after the surface is smaller.
+- **P3 — triple-host mirror IN PROGRESS** (decomposition §3.13, THE root of "fix one, break another").
+  Mapped via a 12-agent workflow (full result: `tasks/wg7dlbgr3.output`) + independent grep. **Verified
+  structure (NOT what the framing said):**
+  - The live-state mirror is rooted in **`CanvasGameShell extends CanvasGameApp`** (inheritance, NOT
+    composition) — `app` and `canvasShell` are TWO full CanvasGameApp-shaped instances mirroring state.
+    `frontend/app.js` (loaded at index.html:230) is a THIRD layer: a top App that holds a real
+    `GameStateManager` and `mount()`s a CanvasGameShell (passing itself as `lastGame`).
+  - **Axis B DONE** (`1d9a6e80` test + `b3ce37f2` refactor): `app.state ↔ stateManager.state` was an
+    independently hand-synced second copy (pre-seed in `CanvasGameAppStateSync` + reconcile copy in
+    `WorldMarchOptimisticState`, read only inside `GameStateManager.sync`). Made `sync(currentState,
+serverState, eraProgress)` STATELESS (reads the passed state = single source) and deleted both
+    hand-sync writes. Pinned by a new GameStateManager characterization test (the class had ZERO unit
+    tests before). Touches the live reconcile path — verify on the test server (state sync / world
+    march / tab switch) since unit tests can't cover live rendering.
+  - **Axis A NOT done (the inheritance root, riskiest):** ~15 mirror fields (loading, worldClock,
+    networkState, presenter, renderer, pendingBuildingAction, selectedTechId, territoryUiState, …) can
+    be collapsed by adding a getter+**setter** pair on the shell that proxies to `lastGame` (getter-ONLY
+    throws under `super()`'s assignment; the setter must no-op while `lastGame` is null during mount).
+    Proxy all fields → then the inheritance can be removed. Each step is runtime-critical, only partly
+    unit-tested → needs the live app to verify. `WorldMarchOptimisticState.reconcileState` still fans
+    `nextState` to `host.state` / `lastGame.state` / `canvasShell.state` (the Axis-A sync point).
+  - **Safer alternative first slice (not started):** 17 renderers hand-roll `new Proxy(this, {host})`
+    → collapse onto the canonical `WorldMapRendererHostBridge.createProxy(this)` (Rule-3 per renderer:
+    the canonical has a `worldTile*` special-case + function-binding the hand-rolled ones lack).
+  - `WorldMarchOptimisticState` is also a boundary violation (domain file mutating host + calling
+    render) — a controller disguised as domain; P4 or its own slice.
 - **P4 — god-file surgery** (decomposition §3, ranked): `gameRoutes.js` (511 lines, all-feature
   integration point), `GameStateNormalizer`↔`GameStateService` (overlapping ownership),
   `GameStateRepository` (40-col schema synced in 3 places → single schema source),
@@ -237,7 +260,7 @@ spreading kind; accept + track the contained kind.
 ## 6. Quick commands
 
 ```
-npm test                                   # 1699 pass (was 1701 before P1 Cluster 2)
+npm test                                   # 1703 pass (1701 → 1699 P1 → 1703 P3)
 node scripts/run-architecture-smoke.js     # all guards, exit 0
 npm run lint                               # exit 0
 git diff --check                           # clean (LF)
