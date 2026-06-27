@@ -2,6 +2,7 @@ const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigR
 const BuildingState = require('../domain/BuildingState');
 const TerritoryService = require('./TerritoryService');
 const { manualAdvance } = require('./tutorial/TutorialProgression');
+const { getTutorialScoutPersonId } = require('./tutorial/TutorialSelectors');
 const FormationStrengthService = require('./military/FormationStrengthService');
 
 const MAX_FORMATION_SLOTS = 3;
@@ -360,7 +361,7 @@ function setArmyFormation(gameState, payload = {}) {
   setCityMilitary(gameState, cityId, nextMilitary);
   if (reserveDelta > 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, createNegativeCost(resourceCost)));
   if (reserveDelta < 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
-  const scoutPersonId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
+  const scoutPersonId = getTutorialScoutPersonId(gameState);
   const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
     ? manualAdvance(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
     : gameState.tutorial;
