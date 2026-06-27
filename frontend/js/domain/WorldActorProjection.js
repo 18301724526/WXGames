@@ -25,10 +25,7 @@
 
   function coordKey(coord = {}) {
     if (!coord || typeof coord !== 'object') return '0:0';
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(coord).tileId;
-    const q = Number.isFinite(Number(coord.x ?? coord.q)) ? Math.floor(Number(coord.x ?? coord.q)) : 0;
-    const r = Number.isFinite(Number(coord.y ?? coord.r)) ? Math.floor(Number(coord.y ?? coord.r)) : 0;
-    return `tile_${q}_${r}`;
+    return TileCoord.normalizeCoord(coord).tileId;
   }
 
   function isSameCoord(a = {}, b = {}) {
@@ -76,10 +73,7 @@
   }
 
   function normalizeCombatEncounterCoord(encounter = {}) {
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(encounter);
-    const q = Number.isFinite(Number(encounter.q ?? encounter.x)) ? Math.floor(Number(encounter.q ?? encounter.x)) : 0;
-    const r = Number.isFinite(Number(encounter.r ?? encounter.y)) ? Math.floor(Number(encounter.r ?? encounter.y)) : 0;
-    return { q, r, tileId: `tile_${q}_${r}` };
+    return TileCoord.normalizeCoord(encounter);
   }
 
   function projectActorFromCombatEncounter(encounter = {}) {

@@ -78,20 +78,7 @@
   }
 
   function normalizeCoord(source = {}, fallback = {}) {
-    const normalized = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord(source, fallback)
-      : null;
-    const coord = normalized || (source && typeof source === 'object' ? source : {});
-    const base = fallback && typeof fallback === 'object' ? fallback : {};
-    const q = normalized ? normalized.x : toInteger(coord.x ?? coord.q, base.x ?? base.q ?? 0);
-    const r = normalized ? normalized.y : toInteger(coord.y ?? coord.r, base.y ?? base.r ?? 0);
-    return {
-      x: q,
-      y: r,
-      q,
-      r,
-      tileId: normalized?.tileId || TileCoord?.tileId?.(q, r) || `tile_${q}_${r}`,
-    };
+    return TileCoord.normalizeCoord(source, fallback);
   }
 
   function normalizeFloatCoord(source = {}, fallback = {}) {
@@ -103,9 +90,7 @@
       y: r,
       q,
       r,
-      tileId: Number.isInteger(q) && Number.isInteger(r)
-        ? (TileCoord?.tileId?.(q, r) || `tile_${q}_${r}`)
-        : `tile_${Math.floor(q)}_${Math.floor(r)}`,
+      tileId: TileCoord.tileId(q, r),
     };
   }
 
@@ -157,8 +142,7 @@
   }
 
   function getTileKey(tile = {}) {
-    const coord = normalizeCoord(tile);
-    return coord.tileId || `tile_${coord.q}_${coord.r}`;
+    return normalizeCoord(tile).tileId;
   }
 
   function isUnknownTile(tile = {}) {

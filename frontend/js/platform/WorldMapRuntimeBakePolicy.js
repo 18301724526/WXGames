@@ -56,18 +56,8 @@
     return Math.floor(toNumber(value, fallback));
   }
 
-  function tileId(x, y) {
-    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(x, y);
-    return `tile_${toInteger(x)}_${toInteger(y)}`;
-  }
-
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (sharedTileCoord?.normalizeCoord) return sharedTileCoord.normalizeCoord(coord, fallback);
-    const fallbackX = toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0);
-    const fallbackY = toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0);
-    const x = toInteger(coord.x !== undefined ? coord.x : coord.q, fallbackX);
-    const y = toInteger(coord.y !== undefined ? coord.y : coord.r, fallbackY);
-    return { q: x, r: y, tileId: tileId(x, y) };
+    return sharedTileCoord.normalizeCoord(coord, fallback);
   }
 
   function summarizeCoord(coord = {}, fallback = {}) {
