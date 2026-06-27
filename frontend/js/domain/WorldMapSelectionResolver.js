@@ -38,10 +38,6 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
-  function toInteger(value, fallback = 0) {
-    return Math.floor(toNumber(value, fallback));
-  }
-
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
@@ -54,7 +50,7 @@
       r: Number(match[2]),
       x: Number(match[1]),
       y: Number(match[2]),
-      tileId: `tile_${Number(match[1])}_${Number(match[2])}`,
+      tileId: TileCoord.tileId(Number(match[1]), Number(match[2])),
     };
   }
 
@@ -62,16 +58,7 @@
     const fromTileId = parseTileId(source.tileId || source.id || fallback.tileId || fallback.id || '');
     const hasAxis = source.x !== undefined || source.q !== undefined || fallback.x !== undefined || fallback.q !== undefined;
     if (!hasAxis && fromTileId) return fromTileId;
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
-    const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? fromTileId?.q ?? 0);
-    const y = toInteger(source.y ?? source.r, fallback.y ?? fallback.r ?? fromTileId?.r ?? 0);
-    return {
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: `tile_${x}_${y}`,
-    };
+    return TileCoord.normalizeCoord(source, fallback);
   }
 
   function hasCoordEvidence(source = {}) {

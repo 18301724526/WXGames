@@ -41,9 +41,7 @@
     const q = Math.floor(Number(action.targetQ ?? action.q));
     const r = Math.floor(Number(action.targetR ?? action.r));
     if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
-    const coord = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord({ x: q, y: r })
-      : { q, r, tileId: `tile_${q}_${r}` };
+    const coord = TileCoord.normalizeCoord({ x: q, y: r });
     return {
       q: coord.q,
       r: coord.r,
@@ -124,7 +122,7 @@
     const q = Math.floor(Number(action.q ?? action.targetQ ?? candidates[0]?.q));
     const r = Math.floor(Number(action.r ?? action.targetR ?? candidates[0]?.r));
     const coord = Number.isFinite(q) && Number.isFinite(r)
-      ? (TileCoord?.normalizeCoord ? TileCoord.normalizeCoord({ q, r, tileId: action.tileId }) : { q, r, tileId: action.tileId || `tile_${q}_${r}` })
+      ? TileCoord.normalizeCoord({ q, r, tileId: action.tileId })
       : { q: undefined, r: undefined, tileId: action.tileId || candidates[0]?.tileId || '' };
     return {
       tileId: coord.tileId || action.tileId || candidates[0]?.tileId || '',
