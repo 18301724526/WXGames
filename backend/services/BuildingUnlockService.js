@@ -1,4 +1,4 @@
-﻿const { EraConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
+const { EraConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
 const TechTreeService = require('./TechTreeService');
 
 function getUnlockedBuildings(currentEra, gameState = null) {

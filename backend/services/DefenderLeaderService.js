@@ -1,6 +1,7 @@
 const SkillGeneratorService = require('./SkillGeneratorService');
 const DefenderLeaderRandomAuthority = require('./defenderLeader/DefenderLeaderRandomAuthority');
 const { hashText } = require('../../shared/signatureHash');
+const { toInteger, clamp } = require('../../shared/numberUtils');
 
 const DEFENDER_LEADER_VERSION = 'defender-leader-v1';
 const APPEARANCE_VERSION = 'famous-portrait-v3.0';
@@ -58,22 +59,9 @@ const APPEARANCE_POOLS = Object.freeze({
   hair: Array.from({ length: 10 }, (_, index) => `fp-layer-v3-hair-${String(index + 1).padStart(2, '0')}.png`),
 });
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
 function sanitizeText(value, fallback = '') {
   const text = typeof value === 'string' ? value.trim() : '';
   return text || fallback;
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function createSeedRandom(seed) {

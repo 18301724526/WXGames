@@ -8,15 +8,8 @@ const {
   hashString,
   roll01,
 } = require('./WorldMapGenerationAuthority');
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
+const { toInteger } = require('../../../shared/numberUtils');
+const { clone } = require('../../../shared/objectUtils');
 
 function random01(seed, q, r, salt) {
   return roll01(seed, q, r, salt);

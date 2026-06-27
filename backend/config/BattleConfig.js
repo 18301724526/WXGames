@@ -1,4 +1,5 @@
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+const { clone } = require('../../shared/objectUtils');
 
 const CONFIG_VERSION = '1.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
@@ -97,10 +98,6 @@ const DEFAULT_DEFENDER_PROFILE = {
   speed: 42,
   morale: 100,
 };
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 function getFallbackLeader() {
   return clone(FALLBACK_LEADER);

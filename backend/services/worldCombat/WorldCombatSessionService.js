@@ -17,17 +17,10 @@
 const WorldCombatEncounterService = require('./WorldCombatEncounterService');
 const BattleSimService = require('../battle/BattleSimService');
 const FormationStrengthService = require('../military/FormationStrengthService');
+const { toInteger } = require('../../../shared/numberUtils');
+const { cloneIfObject } = require('../../../shared/objectUtils');
 
 const SCHEMA = 'world-combat-session-v1';
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
-
-function clone(value) {
-  return value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
-}
 
 function normalizeFormationSlot(value) {
   const slot = toInteger(value, 1);
@@ -129,7 +122,7 @@ function openSession(
     missionId: (mission && mission.id) || '',
     formation: formationRef,
     setup,
-    attackerSnapshot: clone(snapshot),
+    attackerSnapshot: cloneIfObject(snapshot),
     startedAt,
   };
 
@@ -151,10 +144,10 @@ function openSession(
     success: true,
     battleId,
     seed,
-    setup: clone(setup),
+    setup: cloneIfObject(setup),
     encounter: WorldCombatEncounterService.getClientEncounter(encounter),
     battleTarget: WorldCombatEncounterService.getClientEncounterBattleTarget(encounter),
-    session: clone(session),
+    session: cloneIfObject(session),
   };
 }
 

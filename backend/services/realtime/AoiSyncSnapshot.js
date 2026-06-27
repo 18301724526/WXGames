@@ -1,12 +1,8 @@
 const WorldMapService = require('../WorldMapService');
 const ServerTimelineSnapshot = require('./ServerTimelineSnapshot');
+const { toInteger } = require('../../../shared/numberUtils');
 
 const SCHEMA = 'aoi-sync-snapshot-v1';
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
 
 function normalizeRadius(value, fallback = 4) {
   return Math.max(0, Math.min(64, toInteger(value, fallback)));

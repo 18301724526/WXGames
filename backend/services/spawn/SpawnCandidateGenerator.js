@@ -5,11 +5,7 @@ const {
 } = require('./SpawnConstants');
 const { getCoordinateKey } = require('./SpawnScoring');
 const { hashString } = require('../../../shared/signatureHash');
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
+const { toInteger } = require('../../../shared/numberUtils');
 
 function createCandidateStream(options = {}) {
   const playerId = String(options.playerId || 'player');

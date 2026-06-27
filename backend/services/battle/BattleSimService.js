@@ -13,6 +13,7 @@
 // PLACEHOLDER. Real balance values should later move into the config registry.
 
 const BattleSimCore = require('../../../shared/battleSimCore');
+const { toNumber: num, clamp } = require('../../../shared/numberUtils');
 
 const SCHEMA = 'battle-sim-service-v1';
 
@@ -33,15 +34,6 @@ const DEFAULT_BALANCE = Object.freeze({
   },
   soldier: { hp: 20, atk: 6, def: 2, range: 12, moveSpeed: 70, atkSpeed: 12 },
 });
-
-function num(value, fallback = 0) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function clamp(v, lo, hi) {
-  return Math.max(lo, Math.min(hi, v));
-}
 
 function mergeBalance(config = {}) {
   return {

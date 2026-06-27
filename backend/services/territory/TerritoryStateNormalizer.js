@@ -106,7 +106,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
         ...createCapital(now, { origin }),
         cityName: typeof rawTerritory.cityName === 'string' && rawTerritory.cityName.trim()
           ? rawTerritory.cityName.trim().slice(0, MAX_NAME_LENGTH)
-          : '棣栭兘',
+          : '首都',
         discoveredAt: rawTerritory.discoveredAt || rawTerritory.scoutedAt || now,
         occupiedAt: rawTerritory.occupiedAt || now,
         lastBattle: rawTerritory.lastBattle || null,
@@ -141,7 +141,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
       y,
       naturalName: typeof rawTerritory.naturalName === 'string' && rawTerritory.naturalName.trim()
         ? rawTerritory.naturalName.trim()
-        : '鏈煡鍦扮偣',
+        : '未知地点',
       cityName: typeof rawTerritory.cityName === 'string' && rawTerritory.cityName.trim()
         ? rawTerritory.cityName.trim().slice(0, MAX_NAME_LENGTH)
         : null,

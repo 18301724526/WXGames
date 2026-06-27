@@ -3,6 +3,8 @@ const os = require('node:os');
 const path = require('node:path');
 const childProcess = require('node:child_process');
 
+const { nowIso } = require('../../shared/timeUtils');
+
 const DEFAULT_RUNTIME_STATE_DIR = '/opt/wxgame-workspace/.wxgame';
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const LOCAL_DEFAULT_DATA_DIR = path.join(REPO_ROOT, 'data', 'ops');
@@ -17,10 +19,6 @@ function sanitizeText(value, maxLength = 500) {
 
 function sanitizeCommandOutput(value, maxLength = 20000) {
   return String(value ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').trim().slice(0, maxLength);
-}
-
-function nowIso(now = new Date()) {
-  return now instanceof Date ? now.toISOString() : new Date(now).toISOString();
 }
 
 function joinRuntimePath(basePath, ...parts) {

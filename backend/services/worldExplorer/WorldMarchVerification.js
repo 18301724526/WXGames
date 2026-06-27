@@ -1,13 +1,9 @@
 const WorldMarchCore = require('../../../shared/worldMarchCore');
+const { toNumber } = require('../../../shared/numberUtils');
 
 const DEFAULT_JITTER_THRESHOLD_TILES = 0.75;
 const DEFAULT_DRIFT_THRESHOLD_TILES = 2;
 const MAX_REPORT_AGE_MS = 30000;
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 function toTimestamp(value, fallback = Number.NaN) {
   return WorldMarchCore.toTimestamp(value, fallback);

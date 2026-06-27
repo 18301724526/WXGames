@@ -1,4 +1,5 @@
 const { GameConfig } = require('../services/config/GameplayConfigRuntime');
+const { clamp } = require('../../shared/numberUtils');
 
 function calculateFoodConsumption(totalPopulation) {
   return (totalPopulation || 0) * GameConfig.resources.foodConsumptionPerPerson;
@@ -132,10 +133,6 @@ function calculateBuffedHappiness(effects, gameState) {
 
 function calculateOfflineEfficiencyBonus(gameState) {
   return getBuffBonus(gameState, 'offlineEfficiencyBonus');
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function calculatePopulationGrowthMultiplier(gameState = {}) {

@@ -19,11 +19,6 @@
       "count": 1
     }
   },
-  "backend/services/DefenderLeaderService.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/services/TaskDefinitionService.js": {
     "no-unused-vars": {
       "count": 1

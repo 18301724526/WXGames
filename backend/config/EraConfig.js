@@ -70,6 +70,7 @@ const ERA_ADVANCEMENT = {
 };
 
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+const { clone } = require('../../shared/objectUtils');
 
 const CONFIG_VERSION = '1.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
@@ -85,10 +86,6 @@ function getEraDescription(era) {
 
 function getAdvanceConfig(currentEra) {
   return ERA_ADVANCEMENT[currentEra] || null;
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 function raw() {

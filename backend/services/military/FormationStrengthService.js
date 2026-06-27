@@ -1,14 +1,10 @@
+const { toNonNegativeInteger } = require('../../../shared/numberUtils');
+
 const DEFAULT_FORMATION_POLICY = Object.freeze({
   perMemberSoldierCap: 1000,
   recruitmentCostPerSoldier: Object.freeze({ food: 1 }),
   soldierRefundRatio: 0.5,
 });
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.max(0, Math.floor(number));
-}
 
 function toRatio(value, fallback = 0) {
   const number = Number(value);
@@ -29,7 +25,7 @@ function normalizeResourceCost(cost = {}) {
 }
 
 function normalizePolicy(rawPolicy = {}) {
-  const cap = toInteger(
+  const cap = toNonNegativeInteger(
     rawPolicy.formationMemberSoldierCap
       ?? rawPolicy.perMemberSoldierCap
       ?? rawPolicy.maxSoldiersPerFormationMember,
@@ -58,14 +54,14 @@ function normalizeSoldierAssignments(assignments = {}, memberIds = [], policy = 
   memberIds.forEach((memberId) => {
     const id = String(memberId || '').trim();
     if (!id) return;
-    result[id] = Math.min(cap, toInteger(source[id], 0));
+    result[id] = Math.min(cap, toNonNegativeInteger(source[id], 0));
   });
   return result;
 }
 
 function sumAssignments(assignments = {}) {
   return Object.values(assignments && typeof assignments === 'object' ? assignments : {})
-    .reduce((sum, value) => sum + toInteger(value, 0), 0);
+    .reduce((sum, value) => sum + toNonNegativeInteger(value, 0), 0);
 }
 
 function normalizeFormationStrength(rawFormation = {}, policy = DEFAULT_FORMATION_POLICY) {
@@ -107,7 +103,7 @@ function validateRequestedAssignments(assignments = {}, memberIds = [], policy =
 }
 
 function scaleResourceCost(costPerSoldier = {}, soldiers = 0, ratio = 1, options = {}) {
-  const count = toInteger(soldiers, 0);
+  const count = toNonNegativeInteger(soldiers, 0);
   const multiplier = Math.max(0, Number(ratio) || 0);
   const round = options.round === 'floor' ? Math.floor : Math.ceil;
   const result = {};
@@ -125,7 +121,7 @@ function hasEnoughResources(resources = {}, cost = {}) {
 }
 
 function getAffordableSoldierCount(resources = {}, costPerSoldier = {}, maxSoldiers = Number.MAX_SAFE_INTEGER) {
-  const max = toInteger(maxSoldiers, 0);
+  const max = toNonNegativeInteger(maxSoldiers, 0);
   const entries = Object.entries(normalizeResourceCost(costPerSoldier));
   if (!entries.length) return max;
   return entries.reduce((limit, [key, amount]) => {
@@ -135,7 +131,7 @@ function getAffordableSoldierCount(resources = {}, costPerSoldier = {}, maxSoldi
 }
 
 function cloneAssignments(assignments = {}) {
-  return Object.fromEntries(Object.entries(assignments || {}).map(([key, value]) => [key, toInteger(value, 0)]));
+  return Object.fromEntries(Object.entries(assignments || {}).map(([key, value]) => [key, toNonNegativeInteger(value, 0)]));
 }
 
 function buildFormationSnapshot(formation = {}, options = {}) {
@@ -143,7 +139,7 @@ function buildFormationSnapshot(formation = {}, options = {}) {
   const memberIds = Array.isArray(formation.memberIds) ? formation.memberIds.map(String) : [];
   const assignments = cloneAssignments(formation.soldierAssignments || {});
   const members = memberIds.map((personId) => {
-    const soldiers = toInteger(assignments[personId], 0);
+    const soldiers = toNonNegativeInteger(assignments[personId], 0);
     return {
       personId,
       soldiersCommitted: soldiers,
@@ -169,11 +165,11 @@ function normalizeFormationSnapshot(rawSnapshot = null) {
     .map((member) => {
       const personId = String(member?.personId || member?.id || '').trim();
       if (!personId) return null;
-      const committed = toInteger(member.soldiersCommitted ?? member.soldiers ?? member.count, 0);
+      const committed = toNonNegativeInteger(member.soldiersCommitted ?? member.soldiers ?? member.count, 0);
       return {
         personId,
         soldiersCommitted: committed,
-        soldiersRemaining: Math.min(committed, toInteger(member.soldiersRemaining, committed)),
+        soldiersRemaining: Math.min(committed, toNonNegativeInteger(member.soldiersRemaining, committed)),
       };
     })
     .filter(Boolean);
@@ -196,7 +192,7 @@ function getSnapshotAssignments(snapshot = {}) {
   if (!normalized) return {};
   return Object.fromEntries(normalized.members.map((member) => [
     member.personId,
-    toInteger(member.soldiersRemaining, 0),
+    toNonNegativeInteger(member.soldiersRemaining, 0),
   ]));
 }
 
@@ -228,6 +224,6 @@ module.exports = {
   normalizeSoldierAssignments,
   scaleResourceCost,
   sumAssignments,
-  toInteger,
+  toInteger: toNonNegativeInteger,
   validateRequestedAssignments,
 };

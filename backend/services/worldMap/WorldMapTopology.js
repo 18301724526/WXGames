@@ -5,17 +5,10 @@ const {
   WORLD_TOPOLOGY_VERSION,
 } = require('./WorldMapConstants');
 
+const { toInteger } = require('../../../shared/numberUtils');
+
 const SCHEMA = 'world-map-topology-v1';
 const COORDINATE_SYSTEM = 'diamond-isometric-square';
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
-
-function toInteger(value, fallback = 0) {
-  return Math.floor(toNumber(value, fallback));
-}
 
 function toPositiveInteger(value, fallback = 1) {
   const number = toInteger(value, fallback);

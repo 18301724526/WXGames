@@ -1,4 +1,5 @@
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+const { clone } = require('../../shared/objectUtils');
 
 const CONFIG_VERSION = '1.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
@@ -412,10 +413,6 @@ const TECHS = TECH_ERAS.flatMap((eraConfig) => (
 ));
 
 const TECH_BY_ID = Object.fromEntries(TECHS.map((tech) => [tech.id, tech]));
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 function raw() {
   return clone({

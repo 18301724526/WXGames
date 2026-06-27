@@ -1,8 +1,5 @@
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
-
-function nowIso() {
-  return new Date().toISOString();
-}
+const { nowIso } = require('../../../shared/timeUtils');
 
 function createInitialTutorialState() {
   const tutorialSteps = TutorialFlowConfig.TUTORIAL_STEPS;

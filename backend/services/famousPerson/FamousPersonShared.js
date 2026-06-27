@@ -1,8 +1,6 @@
 const { hashText } = require('../../../shared/signatureHash');
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+const { toInteger } = require('../../../shared/numberUtils');
+const { clone } = require('../../../shared/objectUtils');
 
 function rollUnit(randomSource = null) {
   const value = Number(typeof randomSource === 'function' ? randomSource() : 0);
@@ -27,11 +25,6 @@ function createSeedRandom(seed) {
 function sanitizeText(value, fallback = '') {
   const text = typeof value === 'string' ? value.trim() : '';
   return text || fallback;
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
 function roundToNearestTen(value) {

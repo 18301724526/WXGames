@@ -1,4 +1,4 @@
-﻿const { BuildingConfig, TutorialFlowConfig } = require('../services/config/GameplayConfigRuntime');
+const { BuildingConfig, TutorialFlowConfig } = require('../services/config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
@@ -26,7 +26,7 @@ function validateBuild(gameState, tutorialState, buildingId) {
   }
   const cost = BuildingCostCalculator.getBuildCost(buildingId);
   if (!hasEnoughResources(gameState.resources, cost)) {
-    return { allowed: false, code: 'INSUFFICIENT_RESOURCES', message: '璧勬簮涓嶈冻' };
+    return { allowed: false, code: 'INSUFFICIENT_RESOURCES', message: '资源不足' };
   }
   return { allowed: true, cost };
 }
@@ -40,12 +40,12 @@ function validateUpgrade(gameState, tutorialState, buildingId) {
   }
   const currentLevel = BuildingState.getLevel(gameState.buildings, buildingId);
   if (!BuildingConfig.canUpgrade(buildingId, currentLevel)) {
-    return { allowed: false, code: 'MAX_LEVEL_REACHED', message: '宸茶揪鍒版渶楂樼骇' };
+    return { allowed: false, code: 'MAX_LEVEL_REACHED', message: '已达到最高级' };
   }
   const cost = BuildingCostCalculator.getUpgradeCost(buildingId, currentLevel);
-  if (!cost) return { allowed: false, code: 'MAX_LEVEL_REACHED', message: '宸茶揪鍒版渶楂樼骇' };
+  if (!cost) return { allowed: false, code: 'MAX_LEVEL_REACHED', message: '已达到最高级' };
   if (!hasEnoughResources(gameState.resources, cost)) {
-    return { allowed: false, code: 'INSUFFICIENT_RESOURCES', message: '璧勬簮涓嶈冻' };
+    return { allowed: false, code: 'INSUFFICIENT_RESOURCES', message: '资源不足' };
   }
   return { allowed: true, cost, currentLevel };
 }

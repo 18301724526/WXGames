@@ -1,4 +1,4 @@
-﻿const TutorialService = require('../services/TutorialService');
+const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
 const { EraConfig } = require('../services/config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
@@ -58,7 +58,7 @@ function welcomeSettlementResident(gameState, nextEra) {
 function execute(gameState, tutorial) {
   CityService.normalizeCities(gameState);
   if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) {
-    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '鍙湁涓诲煄鍙互鎺ㄥ姩鏂囨槑杩涢樁', tutorial };
+    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '只有主城可以推动文明进阶', tutorial };
   }
   const capital = CityService.getCapitalCity(gameState);
   const config = EraConfig.getAdvanceConfig(gameState.currentEra);

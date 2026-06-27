@@ -1,4 +1,5 @@
 const { normalizeSpawnAssignment } = require('../services/spawn/SpawnAssignment');
+const { toInteger } = require('../../shared/numberUtils');
 
 const DEFAULT_WORLD_ID = 'default';
 
@@ -8,11 +9,6 @@ function parseJson(value, fallback = null) {
   } catch (_) {
     return fallback;
   }
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
 function getTerritoryCoord(territory = {}) {

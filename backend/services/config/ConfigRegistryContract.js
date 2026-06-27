@@ -1,12 +1,10 @@
 const crypto = require('node:crypto');
 
+const { isPlainObject } = require('../../../shared/objectUtils');
+
 const DEFAULT_VERSION = '0.1.0';
 const DEFAULT_SCHEMA_VERSION = 1;
 const DEFAULT_HASH_LENGTH = 12;
-
-function isPlainObject(value) {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
 
 function sanitizeText(value, fallback = '') {
   if (typeof value === 'string') {

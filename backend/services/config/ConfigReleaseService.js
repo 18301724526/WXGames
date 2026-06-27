@@ -3,6 +3,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const ConfigPipeline = require('./ConfigPipeline');
+const { clone } = require('../../../shared/objectUtils');
+const { nowIso } = require('../../../shared/timeUtils');
 
 const RELEASE_HISTORY_SCHEMA = 'config-release-history-v1';
 const RELEASE_RECORD_SCHEMA = 'config-release-record-v1';
@@ -23,14 +25,6 @@ function joinRuntimePath(basePath, ...parts) {
 function sanitizeText(value, fallback = '') {
   const text = String(value ?? '').trim();
   return text || fallback;
-}
-
-function nowIso(now = new Date()) {
-  return now instanceof Date ? now.toISOString() : new Date(now).toISOString();
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 function stableStringify(value) {

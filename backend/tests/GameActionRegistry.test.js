@@ -228,7 +228,7 @@ test('returns a stable result for unknown actions', () => {
 
   assert.deepEqual(registry.execute({ action: 'missingAction', body: {} }), {
     success: false,
-    message: '鏈煡鎿嶄綔',
+    message: '未知操作',
     error: 'UNKNOWN_ACTION',
   });
 });

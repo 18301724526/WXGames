@@ -710,7 +710,7 @@ test('territory scout planner module owns scout origins and frontier target scor
     getScoutOrigin: () => ({
       cityId: 'capital',
       territoryId: 'capital',
-      name: '棣栭兘',
+      name: '首都',
       x: 0,
       y: 0,
     }),
@@ -722,8 +722,8 @@ test('territory scout planner module owns scout origins and frontier target scor
 
   const gameState = {
     territories: [
-      { id: 'capital', status: 'occupied', cityName: '棣栭兘', x: 0, y: 0 },
-      { id: 'frontier', status: 'occupied', naturalName: '鍓嶅摠', x: 2, y: 0 },
+      { id: 'capital', status: 'occupied', cityName: '首都', x: 0, y: 0 },
+      { id: 'frontier', status: 'occupied', naturalName: '前哨', x: 2, y: 0 },
       { id: 'occupied-east', status: 'discovered', x: 3, y: 0 },
     ],
     scoutedCoordinates: [{ x: 1, y: 0 }],

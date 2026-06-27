@@ -4,15 +4,8 @@ const {
   PLANNING_TERRAIN_BY_MAP_TERRAIN,
   SOLDIER_SCALE,
 } = require('./TerritoryConstants');
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
+const { toInteger } = require('../../../shared/numberUtils');
+const { clone } = require('../../../shared/objectUtils');
 
 function hasFiniteValue(value) {
   return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));

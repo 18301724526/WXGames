@@ -3,7 +3,7 @@ const crypto = require('node:crypto');
 const MIGRATION_STATUS_APPLIED = 'applied';
 const MIGRATION_LOCK_ID = 'schema-migration';
 
-function nowIso(now = new Date()) {
+function nowIsoSafe(now = new Date()) {
   const date = now instanceof Date ? now : new Date(now);
   return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
 }
@@ -117,7 +117,7 @@ class SchemaMigrationService {
   }
 
   acquireLock() {
-    const timestamp = nowIso(this.now());
+    const timestamp = nowIsoSafe(this.now());
     try {
       this.db
         .prepare('INSERT INTO schema_migration_locks (id, lockedAt) VALUES (?, ?)')
@@ -176,7 +176,7 @@ class SchemaMigrationService {
           migration.checksum,
           migration.description,
           MIGRATION_STATUS_APPLIED,
-          nowIso(this.now()),
+          nowIsoSafe(this.now()),
           Date.now() - startedAt,
         );
     });

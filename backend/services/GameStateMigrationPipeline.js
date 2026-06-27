@@ -1,19 +1,13 @@
+const { toNonNegativeInteger } = require('../../shared/numberUtils');
+const { isPlainObject } = require('../../shared/objectUtils');
+
 const LEGACY_SCHEMA_VERSION = 0;
 const CURRENT_SCHEMA_VERSION = 1;
 const SAVE_SCHEMA_NAME = 'game-state-save';
 
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
 function clonePlain(value) {
   if (value === undefined || value === null) return {};
   return JSON.parse(JSON.stringify(value));
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
 }
 
 function toIsoString(value = new Date()) {
@@ -25,9 +19,9 @@ function toIsoString(value = new Date()) {
 function getSaveSchemaVersion(state = {}) {
   if (!isPlainObject(state)) return LEGACY_SCHEMA_VERSION;
   const metadataVersion = state.saveMetadata?.schemaVersion;
-  if (Number.isFinite(Number(metadataVersion))) return toInteger(metadataVersion, LEGACY_SCHEMA_VERSION);
-  if (Number.isFinite(Number(state.schemaVersion))) return toInteger(state.schemaVersion, LEGACY_SCHEMA_VERSION);
-  if (Number.isFinite(Number(state.saveSchemaVersion))) return toInteger(state.saveSchemaVersion, LEGACY_SCHEMA_VERSION);
+  if (Number.isFinite(Number(metadataVersion))) return toNonNegativeInteger(metadataVersion, LEGACY_SCHEMA_VERSION);
+  if (Number.isFinite(Number(state.schemaVersion))) return toNonNegativeInteger(state.schemaVersion, LEGACY_SCHEMA_VERSION);
+  if (Number.isFinite(Number(state.saveSchemaVersion))) return toNonNegativeInteger(state.saveSchemaVersion, LEGACY_SCHEMA_VERSION);
   return LEGACY_SCHEMA_VERSION;
 }
 
@@ -37,8 +31,8 @@ function normalizeMigrationHistory(history = []) {
       if (!entry || typeof entry !== 'object') return null;
       return {
         id: String(entry.id || '').trim(),
-        fromVersion: toInteger(entry.fromVersion, LEGACY_SCHEMA_VERSION),
-        toVersion: toInteger(entry.toVersion, LEGACY_SCHEMA_VERSION),
+        fromVersion: toNonNegativeInteger(entry.fromVersion, LEGACY_SCHEMA_VERSION),
+        toVersion: toNonNegativeInteger(entry.toVersion, LEGACY_SCHEMA_VERSION),
         migratedAt: String(entry.migratedAt || '').trim(),
       };
     })
@@ -46,7 +40,7 @@ function normalizeMigrationHistory(history = []) {
 }
 
 function createSaveMetadata(options = {}) {
-  const schemaVersion = toInteger(options.schemaVersion, CURRENT_SCHEMA_VERSION);
+  const schemaVersion = toNonNegativeInteger(options.schemaVersion, CURRENT_SCHEMA_VERSION);
   return {
     schema: SAVE_SCHEMA_NAME,
     schemaVersion,
@@ -59,7 +53,7 @@ function normalizeSaveMetadata(metadata = {}, options = {}) {
   return {
     ...source,
     schema: SAVE_SCHEMA_NAME,
-    schemaVersion: toInteger(source.schemaVersion, toInteger(options.schemaVersion, CURRENT_SCHEMA_VERSION)),
+    schemaVersion: toNonNegativeInteger(source.schemaVersion, toNonNegativeInteger(options.schemaVersion, CURRENT_SCHEMA_VERSION)),
     migrations: normalizeMigrationHistory(source.migrations),
   };
 }
@@ -125,8 +119,8 @@ function normalizeMigrations(migrations = MIGRATIONS) {
       if (!migration || typeof migration.apply !== 'function') return null;
       return Object.freeze({
         id: String(migration.id || '').trim(),
-        fromVersion: toInteger(migration.fromVersion, LEGACY_SCHEMA_VERSION),
-        toVersion: toInteger(migration.toVersion, LEGACY_SCHEMA_VERSION),
+        fromVersion: toNonNegativeInteger(migration.fromVersion, LEGACY_SCHEMA_VERSION),
+        toVersion: toNonNegativeInteger(migration.toVersion, LEGACY_SCHEMA_VERSION),
         apply: migration.apply,
       });
     })
@@ -136,7 +130,7 @@ function normalizeMigrations(migrations = MIGRATIONS) {
 
 function createPipeline(migrations = MIGRATIONS, options = {}) {
   const orderedMigrations = normalizeMigrations(migrations);
-  const currentSchemaVersion = toInteger(options.currentSchemaVersion, CURRENT_SCHEMA_VERSION);
+  const currentSchemaVersion = toNonNegativeInteger(options.currentSchemaVersion, CURRENT_SCHEMA_VERSION);
 
   function getNextMigration(version) {
     return orderedMigrations.find((migration) => migration.fromVersion === version && migration.toVersion <= currentSchemaVersion) || null;

@@ -6,6 +6,7 @@ const FallbackBuildingConfig = require('../../config/BuildingConfig');
 const FallbackEraConfig = require('../../config/EraConfig');
 const FallbackTutorialFlowConfig = require('../../config/TutorialFlowConfig');
 const FallbackTechTreeConfig = require('../../config/TechTreeConfig');
+const { clone } = require('../../../shared/objectUtils');
 
 const GAMEPLAY_CONFIG_RUNTIME_SCHEMA = 'gameplay-config-runtime-v1';
 
@@ -13,10 +14,6 @@ let runtimeOptions = {};
 let initialized = false;
 let runtimeBundle = null;
 let runtimeStatus = null;
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 function toLevel(value) {
   const number = Number(value);

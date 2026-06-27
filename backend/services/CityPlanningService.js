@@ -1,4 +1,5 @@
 const BuildingState = require('../domain/BuildingState');
+const { toNumber, clamp } = require('../../shared/numberUtils');
 
 const TERRAIN_DEFINITIONS = {
   plains: {
@@ -45,15 +46,6 @@ const TERRAIN_DEFINITIONS = {
 
 const DEFAULT_TERRAIN_ID = 'plains';
 const VALID_TERRAIN_IDS = new Set(Object.keys(TERRAIN_DEFINITIONS));
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 function normalizeTerrainId(value) {
   const id = String(value || '').trim();

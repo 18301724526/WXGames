@@ -1,8 +1,5 @@
 const WorldMapService = require('./WorldMapService');
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+const { clone } = require('../../shared/objectUtils');
 
 function getMapBounds(territories) {
   const xs = territories.map((territory) => territory.x);

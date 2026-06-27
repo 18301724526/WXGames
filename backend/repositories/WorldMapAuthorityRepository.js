@@ -1,4 +1,5 @@
 const WorldMapService = require('../services/WorldMapService');
+const { toInteger } = require('../../shared/numberUtils');
 
 const DEFAULT_WORLD_ID = 'default';
 const DEFAULT_GENERATION_VERSION = 1;
@@ -10,11 +11,6 @@ function parseJson(value, fallback = null) {
   } catch (_) {
     return fallback;
   }
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
 }
 
 function getTileCoord(tile = {}) {

@@ -106,6 +106,7 @@ const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
 });
 
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+const { clone } = require('../../shared/objectUtils');
 
 const CONFIG_VERSION = '2.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
@@ -118,10 +119,6 @@ function createPhaseCompleted(currentStep) {
     era2: step >= TUTORIAL_STEPS.lumbermillBuilt,
     scoutFormation: step >= TUTORIAL_STEPS.scoutFormationSaved,
   };
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 function raw() {

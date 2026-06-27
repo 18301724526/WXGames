@@ -3,6 +3,8 @@ const BattleSimService = require('../battle/BattleSimService');
 const WorldMapService = require('../WorldMapService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const DefenderLeaderService = require('../DefenderLeaderService');
+const { toInteger } = require('../../../shared/numberUtils');
+const { cloneIfObject } = require('../../../shared/objectUtils');
 
 const SCHEMA = 'world-combat-encounters-v1';
 const ENCOUNTER_ID = 'hostile_force_capital_ridge';
@@ -14,15 +16,6 @@ const DEFAULT_FORCE = Object.freeze({
   threat: 1,
   scale: 1,
 });
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
-
-function clone(value) {
-  return value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
-}
 
 function getCapitalCoord(gameState = {}) {
   const capital =
@@ -54,7 +47,7 @@ function getTerrain(gameState = {}, q = 0, r = 0, now = new Date()) {
 
 function createDefenderLeader(encounter = {}, now = new Date()) {
   const rawLeader = encounter.defender?.leader || encounter.leader || null;
-  if (rawLeader && typeof rawLeader === 'object') return clone(rawLeader);
+  if (rawLeader && typeof rawLeader === 'object') return cloneIfObject(rawLeader);
   return DefenderLeaderService.createDefenderLeader(
     {
       id: encounter.id || ENCOUNTER_ID,
@@ -251,7 +244,7 @@ function getFamousPersonAttributes(gameState = {}, snapshot = {}) {
   return Object.fromEntries(
     (Array.isArray(snapshot.members) ? snapshot.members : []).map((member) => {
       const person = byId.get(String(member.personId)) || {};
-      return [member.personId, clone(person.attributes || {})];
+      return [member.personId, cloneIfObject(person.attributes || {})];
     }),
   );
 }
@@ -261,7 +254,7 @@ function getDefenderGenerals(encounter = {}) {
   return [
     {
       gid: leader.id || `${encounter.id}_leader`,
-      attributes: clone(leader.attributes || {}),
+      attributes: cloneIfObject(leader.attributes || {}),
       soldiers: Math.max(1, toInteger(encounter.defender?.soldiers, DEFAULT_FORCE.soldiers)),
     },
   ];
@@ -364,7 +357,7 @@ function buildEncounterBattleReport(
       soldiersEnd: victory ? 0 : defenderEnd,
       groupsStart: BattleService.getBattleVisualGroups(defenderStart),
       groupsEnd: BattleService.getBattleVisualGroups(victory ? 0 : defenderEnd),
-      appearance: clone(defenderLeader.appearance || {}),
+      appearance: cloneIfObject(defenderLeader.appearance || {}),
     },
     visual: {
       ...(report.visual || {}),
@@ -373,12 +366,12 @@ function buildEncounterBattleReport(
         mapTerrain: encounter.terrain,
       }),
     },
-    simulation: clone(battle.result || {}),
+    simulation: cloneIfObject(battle.result || {}),
     // Deterministic replay inputs so the client can render the entity battle in
     // the battle scene (battleSimCore.createBattle(setup) + step(inputStream)).
     replay: {
-      setup: clone(battle.setup || null),
-      inputStream: clone(battle.inputStream || []),
+      setup: cloneIfObject(battle.setup || null),
+      inputStream: cloneIfObject(battle.inputStream || []),
     },
   };
 }
@@ -515,7 +508,7 @@ function getClientEncounterBattleTarget(encounter = {}) {
           quality: encounter.defender.quality || '',
           threat: Math.max(0, toInteger(encounter.defender.threat, 0)),
           scale: Math.max(1, toInteger(encounter.defender.scale, 1)),
-          leader: clone(encounter.defender.leader || null),
+          leader: cloneIfObject(encounter.defender.leader || null),
           generatedAt: encounter.createdAt || null,
         }
       : null,
@@ -560,7 +553,7 @@ function getClientState(gameState = {}, now = new Date()) {
     activeEncounters: (state.encounters || [])
       .filter((encounter) => encounter.status === 'active')
       .map(getClientEncounter),
-    recentReports: (state.recentReports || []).map((entry) => clone(entry)),
+    recentReports: (state.recentReports || []).map((entry) => cloneIfObject(entry)),
     updatedAt: state.updatedAt || null,
   };
 }

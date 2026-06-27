@@ -1,5 +1,6 @@
 const WorldMapService = require('./WorldMapService');
 const { hashString } = require('../../shared/signatureHash');
+const { toInteger } = require('../../shared/numberUtils');
 
 const WORLD_AI_SCHEMA = 'world-ai-explorer-v1';
 const DEFAULT_AI_FACTION_ID = 'ai-frontier';
@@ -10,11 +11,6 @@ const DEFAULT_REVEAL_RADIUS = 0;
 const MAX_ADVANCE_STEPS = 6;
 const MAX_SYNC_TILES_PER_PASS = 64;
 const DIRECTION_SEQUENCE = Object.freeze(['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne']);
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
 
 function toTimestamp(value, fallback = 0) {
   if (value === null || value === undefined || value === '') return fallback;

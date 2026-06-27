@@ -1,4 +1,4 @@
-﻿const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
+const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
 const BuildingUnlockService = require('./BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
 const {

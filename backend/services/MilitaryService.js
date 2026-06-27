@@ -1,4 +1,4 @@
-﻿const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
+const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 const TerritoryService = require('./TerritoryService');
 const FormationStrengthService = require('./military/FormationStrengthService');

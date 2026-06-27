@@ -167,7 +167,7 @@ function createGameActionRegistry(overrides = {}) {
     execute(context = {}) {
       const action = context.action || context.body?.action || '';
       const handler = handlers.get(action);
-      if (!handler) return { success: false, message: '鏈煡鎿嶄綔', error: 'UNKNOWN_ACTION' };
+      if (!handler) return { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
       const body = {
         ...(context.body || {}),
         ...(context.planningContext ? { planningContext: context.planningContext } : {}),

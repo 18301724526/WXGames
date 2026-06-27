@@ -385,6 +385,10 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.js',
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
+  'scripts/check-duplicate-shared-helpers.js',
+  'scripts/check-duplicate-shared-helpers.test.js',
+  'scripts/check-source-encoding.js',
+  'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.js',
@@ -583,6 +587,8 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-mode-ownership-spine.test.js',
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
+  'scripts/check-duplicate-shared-helpers.test.js',
+  'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.test.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
@@ -677,6 +683,12 @@ function main() {
   ]);
   run('frontend ECS blockingPanel mirror retirement blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.js',
+  ]);
+  run('duplicate shared helpers blocking guard', process.execPath, [
+    'scripts/check-duplicate-shared-helpers.js',
+  ]);
+  run('source encoding blocking guard', process.execPath, [
+    'scripts/check-source-encoding.js',
   ]);
   run('frontend ECS renderer snapshot boundary blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',

@@ -7,16 +7,12 @@ const DEFAULT_SLOW_REQUEST_WARNING = 5;
 const DEFAULT_FRONTEND_LOAD_FAILURE_WARNING = 3;
 
 const PerformanceCapacityBudget = require('./PerformanceCapacityBudget');
+const { toNumber } = require('../../shared/numberUtils');
 
 const FRONTEND_LOAD_FAILURE_TYPES = new Set([
   'frontend_load_failure',
   'frontend_asset_failure',
 ]);
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 function round(value, digits = 3) {
   const factor = 10 ** digits;
