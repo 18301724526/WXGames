@@ -53,23 +53,11 @@
   }
 
   function getWorldTileId(q, r) {
-    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(q, r);
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
+    return sharedTileCoord.tileId(q, r);
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (sharedTileCoord?.normalizeCoord) return sharedTileCoord.normalizeCoord(coord, fallback);
-    const fallbackX = toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0);
-    const fallbackY = toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0);
-    const x = toInteger(coord.x !== undefined ? coord.x : coord.q, fallbackX);
-    const y = toInteger(coord.y !== undefined ? coord.y : coord.r, fallbackY);
-    return Object.freeze({
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: getWorldTileId(x, y),
-    });
+    return sharedTileCoord.normalizeCoord(coord, fallback);
   }
 
   function getMountainNeighborCount(tile = {}, siteById = new Map()) {

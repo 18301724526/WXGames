@@ -77,16 +77,7 @@
   }
 
   function normalizeCoord(source = {}, fallback = {}) {
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
-    const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
-    const y = toInteger(source.y ?? source.r, fallback.y ?? fallback.r ?? 0);
-    return {
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: `tile_${x}_${y}`,
-    };
+    return TileCoord.normalizeCoord(source, fallback);
   }
 
   function readStableAxis(source = {}, primaryKey = 'x', aliasKey = 'q', fallback = '') {

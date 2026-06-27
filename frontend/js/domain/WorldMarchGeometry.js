@@ -33,20 +33,11 @@
   }
 
   function tileId(q, r) {
-    return TileCoord?.tileId ? TileCoord.tileId(q, r) : `tile_${toInteger(q)}_${toInteger(r)}`;
+    return TileCoord.tileId(q, r);
   }
 
   function normalizeCoord(source = {}, fallback = {}) {
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
-    const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
-    const y = toInteger(source.y ?? source.r, fallback.y ?? fallback.r ?? 0);
-    return {
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: tileId(x, y),
-    };
+    return TileCoord.normalizeCoord(source, fallback);
   }
 
   function getViewportWorldOrigin(viewport = {}) {

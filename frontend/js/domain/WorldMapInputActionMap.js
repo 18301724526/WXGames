@@ -88,10 +88,6 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
-  function toInteger(value, fallback = 0) {
-    return Math.floor(toNumber(value, fallback));
-  }
-
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
@@ -156,16 +152,7 @@
   }
 
   function normalizeCoord(source = {}, fallback = {}) {
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source, fallback);
-    const x = toInteger(source.x ?? source.q, fallback.x ?? fallback.q ?? 0);
-    const y = toInteger(source.y ?? source.r, fallback.y ?? fallback.r ?? 0);
-    return {
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: `tile_${x}_${y}`,
-    };
+    return TileCoord.normalizeCoord(source, fallback);
   }
 
   function containsPoint(target = {}, point = {}) {
