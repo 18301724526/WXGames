@@ -15,26 +15,7 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
 
-  const CanvasModalSnapshotAdapter = (() => {
-    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('./CanvasModalSnapshotAdapter');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
-  // Batch 8F: route blocking-panel closes through the snapshot owner (the host method
-  // when installed, else the module adapter) instead of the retired host-mirror fields.
-  function closeBlockingPanelSnapshot(host, panelKey) {
-    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
-      return host.closeBlockingPanelSnapshot(panelKey);
-    }
-    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
-  }
+  const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
 
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;

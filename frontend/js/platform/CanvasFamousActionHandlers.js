@@ -1,25 +1,5 @@
 (function (global) {
-  var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
-  if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
-    CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
-  }
-
-  // Batch 8F: route blocking-panel opens/closes through the snapshot owner (the host
-  // method when installed, else the module adapter) instead of the retired
-  // openBlockingPanelOwner host-mirror shim.
-  function openBlockingPanelSnapshot(host, panelKey, value = true) {
-    if (typeof host?.openBlockingPanelSnapshot === 'function') {
-      return host.openBlockingPanelSnapshot(panelKey, value);
-    }
-    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
-  }
-
-  function closeBlockingPanelSnapshot(host, panelKey) {
-    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
-      return host.closeBlockingPanelSnapshot(panelKey);
-    }
-    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
-  }
+  const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
 
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;

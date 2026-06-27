@@ -389,6 +389,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-source-encoding.js',
   'scripts/check-source-encoding.test.js',
+  'scripts/check-frontend-blocking-panel-snapshot-calls.js',
+  'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.js',
@@ -589,6 +591,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-source-encoding.test.js',
+  'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.test.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
@@ -689,6 +692,9 @@ function main() {
   ]);
   run('source encoding blocking guard', process.execPath, [
     'scripts/check-source-encoding.js',
+  ]);
+  run('frontend blocking-panel snapshot calls blocking guard', process.execPath, [
+    'scripts/check-frontend-blocking-panel-snapshot-calls.js',
   ]);
   run('frontend ECS renderer snapshot boundary blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',

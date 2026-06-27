@@ -32,35 +32,7 @@
     }
   }
 
-  const CanvasModalSnapshotAdapter = (() => {
-    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('./CanvasModalSnapshotAdapter');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
-  // Batch 8F: route blocking-panel opens/closes through the snapshot owner (the host
-  // method when installed, else the module adapter). The owner resolves the game host
-  // + canvasShell from whichever host is passed, so the prior cross-host mirror writes
-  // collapse to a single call.
-  function openBlockingPanelSnapshot(host, panelKey, value = true) {
-    if (typeof host?.openBlockingPanelSnapshot === 'function') {
-      return host.openBlockingPanelSnapshot(panelKey, value);
-    }
-    return CanvasModalSnapshotAdapter?.openBlockingPanelSnapshot?.(host, panelKey, value) ?? null;
-  }
-
-  function closeBlockingPanelSnapshot(host, panelKey) {
-    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
-      return host.closeBlockingPanelSnapshot(panelKey);
-    }
-    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
-  }
+  const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;

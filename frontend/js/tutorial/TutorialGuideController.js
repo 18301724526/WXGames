@@ -60,24 +60,7 @@
     return null;
   })();
 
-  // Batch 8F: route blocking-panel opens/closes/reads through the snapshot owner (the
-  // host method when installed, else the module adapter) instead of the retired
-  // host-mirror fields. The owner fans the write/read out across related hosts
-  // (game -> canvasShell), so the prior per-host duplicate writes collapse to one call
-  // and reads no longer OR a game mirror with a shell mirror.
-  function closeBlockingPanelSnapshot(host, panelKey) {
-    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
-      return host.closeBlockingPanelSnapshot(panelKey);
-    }
-    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
-  }
-
-  function isBlockingPanelSnapshotOpen(host, panelKey) {
-    if (typeof host?.isBlockingPanelSnapshotOpen === 'function') {
-      return host.isBlockingPanelSnapshotOpen(panelKey);
-    }
-    return Boolean(CanvasModalSnapshotAdapter?.isBlockingPanelSnapshotOpen?.(host, panelKey));
-  }
+  const { closeBlockingPanelSnapshot, isBlockingPanelSnapshotOpen } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('../platform/CanvasBlockingPanelSnapshotCalls') : {});
 
   function getCommandPanelValue(host) {
     if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();

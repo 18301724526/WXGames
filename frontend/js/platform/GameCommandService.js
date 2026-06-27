@@ -11,30 +11,10 @@
     return null;
   })();
 
-  const CanvasModalSnapshotAdapter = (() => {
-    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('./CanvasModalSnapshotAdapter');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
+  const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
-  }
-
-  // Batch 8F: route the blocking-panel close through the snapshot owner (the host
-  // method when installed, else the module adapter) instead of the retired
-  // techDetailOpen host mirror.
-  function closeBlockingPanelSnapshot(host, panelKey) {
-    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
-      return host.closeBlockingPanelSnapshot(panelKey);
-    }
-    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
   }
 
   class GameCommandService {

@@ -19,24 +19,7 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     WorldMarchSystem = require('../domain/WorldMarchSystem');
   }
-  var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
-  if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
-    try {
-      CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
-    } catch (_error) {
-      CanvasModalSnapshotAdapter = null;
-    }
-  }
-  // Batch 8F: route blocking-panel closes through the snapshot owner (the host method
-  // when installed, else the module adapter) instead of writing the retired host
-  // mirrors. The owner fans out across related hosts so the prior canvasShell duplicate
-  // writes collapse to a single call on the primary host.
-  function closeBlockingPanelSnapshot(host, panelKey) {
-    if (typeof host?.closeBlockingPanelSnapshot === 'function') {
-      return host.closeBlockingPanelSnapshot(panelKey);
-    }
-    return CanvasModalSnapshotAdapter?.closeBlockingPanelSnapshot?.(host, panelKey) ?? null;
-  }
+  const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     if (WorldMarchSystem?.hasActiveMission) {
       return WorldMarchSystem.hasActiveMission(state?.worldExplorerState || {}, options);
