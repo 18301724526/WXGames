@@ -22,7 +22,10 @@
   const MAX_OBJECT_KEYS = 24;
   const MAX_DEPTH = 4;
   const DEFAULT_UPLOAD_REASON = 'manual-debug';
-  const TileCoord = (() => {
+  // Resolved at CALL time, not module-load time: this file loads at
+  // index.html:17, before TileCoord.js:24, so a load-time capture would be
+  // null in the browser. At record/summarize time TileCoord is always loaded.
+  function getTileCoord() {
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
@@ -32,20 +35,11 @@
       }
     }
     return null;
-  })();
+  }
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
-  }
-
-  function toInteger(value, fallback = 0) {
-    return Math.floor(toNumber(value, fallback));
-  }
-
-  function tileId(q, r) {
-    if (TileCoord?.tileId) return TileCoord.tileId(q, r);
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
   }
 
   function normalizeTileEvidence(source = {}) {
@@ -53,18 +47,14 @@
     const qValue = source.targetQ ?? source.q ?? source.x;
     const rValue = source.targetR ?? source.r ?? source.y;
     if (qValue === undefined || rValue === undefined) return null;
-    const coord = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord({
-        x: source.x ?? source.targetQ ?? source.q,
-        y: source.y ?? source.targetR ?? source.r,
-      })
-      : null;
-    const q = coord ? coord.x : toInteger(qValue);
-    const r = coord ? coord.y : toInteger(rValue);
+    const coord = getTileCoord().normalizeCoord({
+      x: source.x ?? source.targetQ ?? source.q,
+      y: source.y ?? source.targetR ?? source.r,
+    });
     return {
-      tileId: coord?.tileId || tileId(q, r),
-      targetQ: q,
-      targetR: r,
+      tileId: coord.tileId,
+      targetQ: coord.x,
+      targetR: coord.y,
     };
   }
 
