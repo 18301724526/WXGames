@@ -39,28 +39,19 @@
     return Math.floor(toNumber(value, fallback));
   }
 
-  function tileId(q, r) {
-    if (TileCoord?.tileId) return TileCoord.tileId(q, r);
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
-  }
-
   function normalizeTileEvidence(source = {}) {
     if (!source || typeof source !== 'object') return null;
     const qValue = source.targetQ ?? source.q ?? source.x;
     const rValue = source.targetR ?? source.r ?? source.y;
     if (qValue === undefined || rValue === undefined) return null;
-    const coord = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord({
-        x: source.x ?? source.targetQ ?? source.q,
-        y: source.y ?? source.targetR ?? source.r,
-      })
-      : null;
-    const q = coord ? coord.x : toInteger(qValue);
-    const r = coord ? coord.y : toInteger(rValue);
+    const coord = TileCoord.normalizeCoord({
+      x: source.x ?? source.targetQ ?? source.q,
+      y: source.y ?? source.targetR ?? source.r,
+    });
     return {
-      tileId: coord?.tileId || tileId(q, r),
-      targetQ: q,
-      targetR: r,
+      tileId: coord.tileId,
+      targetQ: coord.x,
+      targetR: coord.y,
     };
   }
 

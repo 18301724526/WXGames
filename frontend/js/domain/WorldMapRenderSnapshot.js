@@ -52,21 +52,8 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
-  function toInteger(value, fallback = 0) {
-    return Math.floor(toNumber(value, fallback));
-  }
-
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(coord, fallback);
-    const x = toInteger(coord.x ?? coord.q, fallback.x ?? fallback.q ?? 0);
-    const y = toInteger(coord.y ?? coord.r, fallback.y ?? fallback.r ?? 0);
-    return {
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: `tile_${x}_${y}`,
-    };
+    return TileCoord.normalizeCoord(coord, fallback);
   }
 
   function hashStep(hash, value) {
@@ -113,16 +100,14 @@
 
   function normalizeMarchTarget(target = null) {
     if (!target || typeof target !== 'object') return null;
-    const coord = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord(target)
-      : null;
-    const q = coord ? coord.x : toInteger(target.x ?? target.q, Number.NaN);
-    const r = coord ? coord.y : toInteger(target.y ?? target.r, Number.NaN);
+    const coord = TileCoord.normalizeCoord(target);
+    const q = coord.x;
+    const r = coord.y;
     if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
     const result = {
       q,
       r,
-      tileId: coord?.tileId || `tile_${q}_${r}`,
+      tileId: coord.tileId,
       known: target.known === undefined ? undefined : Boolean(target.known),
       terrain: target.terrain || '',
       terrainLabel: target.terrainLabel || '',
