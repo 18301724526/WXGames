@@ -140,8 +140,9 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
   });
   const renderer = new WorldMapTileMapRenderer({ host });
   const tileMapView = createTileMapView();
+  const state = { id: 'state-1' };
 
-  renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, { selectedSiteId: 'tile-1' }, { state: { id: 'state-1' } });
+  renderer.renderWorldTileMap(tileMapView, 10, 90, 360, 300, { selectedSiteId: 'tile-1' }, { state });
 
   assert.equal(renderer.lastWorldTileMapContext, host.lastWorldTileMapContext);
   assert.equal(host.lastWorldTileMapContext.tileMapView, tileMapView);
@@ -158,6 +159,8 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
     'addWorldMarchTileHitTargets',
     'addWorldTileSiteHitTargets',
   ]);
+  const marchTargetCall = host.calls.find((call) => call[0] === 'addWorldMarchTileHitTargets');
+  assert.equal(marchTargetCall[4].state, state);
   assert.equal(host.calls.some((call) => call[0] === 'ctxClip'), true);
 });
 

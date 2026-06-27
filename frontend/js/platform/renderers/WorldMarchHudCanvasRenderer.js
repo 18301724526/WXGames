@@ -382,70 +382,6 @@
       return this.getBusyFormationMap(state).get(`${cityId}:${slot}`) || null;
     }
 
-    // CODEX_TEMP_FORMATION_PICKER_DEBUG: remove after diagnosing the tutorial picker disabled state.
-    cloneFormationPickerDebugValue(value, fallback = null) {
-      if (value === undefined) return fallback;
-      try {
-        return JSON.parse(JSON.stringify(value));
-      } catch (_error) {
-        return fallback;
-      }
-    }
-
-    // CODEX_TEMP_FORMATION_PICKER_DEBUG: remove after diagnosing the tutorial picker disabled state.
-    logFormationPickerDebugSnapshot(state = {}, target = {}, militaryState = {}, view = {}, cards = []) {
-      if (typeof window === 'undefined') return;
-      const targetSummary = {
-        q: target.q,
-        r: target.r,
-        tileId: target.tileId || '',
-        known: target.known,
-        terrain: target.terrain || '',
-        terrainLabel: target.terrainLabel || '',
-        marchDisabled: Boolean(target.marchDisabled),
-        marchDisabledReason: target.marchDisabledReason || '',
-        blocked: Boolean(target.blocked),
-        disabled: Boolean(target.disabled),
-        missionId: target.missionId || '',
-        actorId: target.actorId || '',
-        combatEncounterId: target.combatEncounterId || '',
-      };
-      const signature = JSON.stringify({
-        target: targetSummary,
-        cards: cards.map((card) => ({
-          slot: card.slot,
-          cityId: card.cityId,
-          memberIds: card.memberIds,
-          memberCount: card.memberCount,
-          empty: card.empty,
-          busy: Boolean(card.busy),
-          blocked: card.blocked,
-          disabled: card.disabled,
-          statusText: card.statusText,
-        })),
-      });
-      const opened = this.__codexTempFormationPickerDebugOpen !== true;
-      const changed = this.__codexTempFormationPickerDebugSignature !== signature;
-      if (!opened && !changed) return;
-      this.__codexTempFormationPickerDebugOpen = true;
-      this.__codexTempFormationPickerDebugSignature = signature;
-      global.console?.log?.('[CODEX_TEMP_FORMATION_PICKER_DEBUG]', {
-        reason: opened ? 'opened' : 'changed',
-        at: new Date().toISOString(),
-        target: targetSummary,
-        rawTarget: this.cloneFormationPickerDebugValue(target, targetSummary),
-        cards,
-        formations: this.cloneFormationPickerDebugValue(view.formations, []),
-        militaryState: this.cloneFormationPickerDebugValue({
-          activeCityId: militaryState.activeCityId || state.activeCityId || state.cityState?.activeCityId || 'capital',
-          military: militaryState.military,
-          famousPersons: militaryState.famousPersons,
-          cityState: militaryState.cityState,
-        }, {}),
-        worldExplorerState: this.cloneFormationPickerDebugValue(state.worldExplorerState, {}),
-      });
-    }
-
     isCombatActor(actor = {}) {
       return Boolean(actor?.combatTarget || actor?.type === 'hostileForce' || actor?.kind === 'worldCombatEncounter');
     }
@@ -623,7 +559,6 @@
       const cardY = y + 38;
       const cardH = 84;
       const cardW = Math.floor((width - 24 - gap * 2) / 3);
-      const debugCards = [];
       [0, 1, 2].forEach((index) => {
         const formation = formations[index] || {
           slot: index + 1,
@@ -674,30 +609,6 @@
           : busy
             ? this.t('world.march.formation.busy')
             : this.t('world.march.formation.start');
-        debugCards.push({
-          slot: formation.slot || index + 1,
-          cityId: formation.cityId || militaryState.activeCityId || 'capital',
-          name: formation.name || '',
-          memberIds: Array.isArray(formation.memberIds) ? formation.memberIds.slice() : [],
-          memberCount: Number(formation.memberCount ?? formation.members?.length ?? 0),
-          members: Array.isArray(formation.members)
-            ? formation.members.map((member) => ({
-              id: member?.id || '',
-              name: member?.name || member?.displayName || '',
-            }))
-            : [],
-          soldiersAssigned: Number(formation.soldiersAssigned) || 0,
-          empty,
-          busy: busy ? {
-            missionId: busy.missionId || '',
-            status: busy.status || '',
-            slot: busy.slot,
-            cityId: busy.cityId || '',
-          } : null,
-          blocked,
-          disabled,
-          statusText,
-        });
         this.drawText(statusText, cardX + cardW / 2, cardY + 65, {
           size: 10,
           color: disabled ? '#8e918a' : '#f0b45b',
@@ -720,7 +631,6 @@
           disabled,
         });
       });
-      this.logFormationPickerDebugSnapshot(state, target, militaryState, view, debugCards);
       const closeSize = 26;
       this.drawButton(
         x + width - closeSize - 8,

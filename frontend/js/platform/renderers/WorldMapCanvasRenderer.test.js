@@ -1028,16 +1028,18 @@ test('WorldMapCanvasRenderer delegates hit-target helpers to split facade', () =
   const tileMapView = createTileMapView();
   const viewport = { scale: 1 };
   const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const options = { state: { id: 'state-1' } };
   const entries = [{ tile: tileMapView.tiles[0] }];
   const uiState = { selectedSiteId: 'capital' };
 
   assert.equal(renderer.addWorldTileSiteHitTargets(tileMapView, viewport, entries, uiState), 'site-targets-ok');
-  assert.equal(renderer.addWorldMarchTileHitTargets(tileMapView, viewport, frame), 'march-targets-ok');
+  assert.equal(renderer.addWorldMarchTileHitTargets(tileMapView, viewport, frame, options), 'march-targets-ok');
   assert.deepEqual(calls.map((call) => call[0]), ['site-targets', 'march-targets']);
   assert.equal(calls[0][1], tileMapView);
   assert.equal(calls[0][3], entries);
   assert.equal(calls[0][4], uiState);
   assert.equal(calls[1][3], frame);
+  assert.equal(calls[1][4], options);
 });
 
 test('WorldMapCanvasRenderer falls back for occupied city HUD when presenter is split out', () => {

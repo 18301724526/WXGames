@@ -122,8 +122,9 @@ test('WorldMapRuntimeRenderPipeline resets runtime render state when render is u
   assert.equal(host.lastMapDataSignature, '');
 });
 
-test('WorldMapRuntimeRenderPipeline publishes state only to the runtime host', () => {
+test('WorldMapRuntimeRenderPipeline does not publish renderer state mirrors', () => {
   const state = { id: 'authoritative-state' };
+  const retiredStateMirrorKeys = ['last' + 'GameState', 'last' + 'WorldMarchState'];
   const renderer = {
     worldMapRenderer: {},
     worldMapLayerRenderer: {},
@@ -140,14 +141,11 @@ test('WorldMapRuntimeRenderPipeline publishes state only to the runtime host', (
 
   assert.equal(RenderPipeline.render(host, { epochNowMs: 4321 }), true);
 
-  assert.equal(host.lastGameState, state);
-  assert.equal(host.lastWorldMarchState, state);
-  assert.equal(renderer.lastGameState, undefined);
-  assert.equal(renderer.lastWorldMarchState, undefined);
-  assert.equal(renderer.worldMapRenderer.lastGameState, undefined);
-  assert.equal(renderer.worldMapRenderer.lastWorldMarchState, undefined);
-  assert.equal(renderer.worldMapLayerRenderer.lastGameState, undefined);
-  assert.equal(renderer.worldMapLayerRenderer.lastWorldMarchState, undefined);
+  [host, renderer, renderer.worldMapRenderer, renderer.worldMapLayerRenderer].forEach((target) => {
+    retiredStateMirrorKeys.forEach((key) => {
+      assert.equal(Object.prototype.hasOwnProperty.call(target, key), false);
+    });
+  });
 });
 
 test('WorldMapRuntimeRenderPipeline renders a snapshot frame when baked layer is reusable', () => {

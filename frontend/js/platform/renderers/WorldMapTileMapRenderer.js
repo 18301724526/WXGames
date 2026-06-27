@@ -168,13 +168,13 @@
       });
     }
 
-    renderWorldTileMapHitTargets(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}) {
-      this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
+    renderWorldTileMapHitTargets(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}) {
+      this.addWorldMarchTileHitTargets(tileMapView, viewport, frame, options);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
       return true;
     }
 
-    renderWorldTileMapLayers(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}) {
+    renderWorldTileMapLayers(tileMapView = {}, viewport = {}, frame = {}, geometry = {}, visibleEntries = [], uiState = {}, options = {}) {
       if (!this.renderWorldTileWaterLayer(tileMapView, viewport, frame, visibleEntries)) {
         this.renderWorldTileWaterEntries(tileMapView, viewport, visibleEntries, this.getWorldTileWaterTimeMs());
       }
@@ -184,7 +184,7 @@
         });
       }
       this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
-      this.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
+      this.addWorldMarchTileHitTargets(tileMapView, viewport, frame, options);
       this.addWorldTileSiteHitTargets(tileMapView, viewport, visibleEntries, uiState);
       return true;
     }

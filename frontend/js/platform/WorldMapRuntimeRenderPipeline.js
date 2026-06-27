@@ -9,8 +9,7 @@
   }
 
   function publishStateToRenderer(host, state) {
-    host.lastGameState = state;
-    host.lastWorldMarchState = state;
+    return state;
   }
 
   function handleCannotRender(host, state) {

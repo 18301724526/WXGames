@@ -684,17 +684,12 @@ test('WorldMapLayerCanvasRenderer publishes actor overlay context without stale 
   const layerHost = {};
   const layerRenderer = { host: layerHost };
 
-  renderer.lastGameState = { id: 'stale-game' };
-  renderer.lastWorldMarchState = { id: 'stale-march' };
-
   assert.equal(renderer.publishWorldActorOverlayLayerContext(layerRenderer, context), true);
 
   assert.equal(layerRenderer.lastWorldTileMapContext, context);
   assert.equal(layerHost.lastWorldTileMapContext, context);
-  assert.equal(layerRenderer.lastGameState, undefined);
-  assert.equal(layerRenderer.lastWorldMarchState, undefined);
-  assert.equal(layerHost.lastGameState, undefined);
-  assert.equal(layerHost.lastWorldMarchState, undefined);
+  assert.deepEqual(Object.keys(layerRenderer).sort(), ['host', 'lastWorldTileMapContext']);
+  assert.deepEqual(Object.keys(layerHost).sort(), ['lastWorldTileMapContext']);
 });
 
 test('WorldMapLayerCanvasRenderer records actor overlay diagnostics from actual clear and draw canvases', () => {

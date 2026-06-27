@@ -604,8 +604,6 @@
         || null;
       if (target !== this) {
         target.lastWorldTileMapContext = layerContext;
-        target.lastGameState = state;
-        target.lastWorldMarchState = state;
       }
       if (target?.worldMapLayerRenderer?.renderWorldMapActorLayer) {
         return target.worldMapLayerRenderer.renderWorldMapActorLayer(state, {
@@ -626,9 +624,9 @@
       return this.worldMapActorHudRenderer.getEpochNowMs();
     }
 
-    addWorldMarchTileHitTargets(tileMapView = {}, viewport = {}, frame = {}) {
+    addWorldMarchTileHitTargets(tileMapView = {}, viewport = {}, frame = {}, options = {}) {
       if (!this.worldMapHitTargetFacade?.addWorldMarchTileHitTargets) return false;
-      return this.worldMapHitTargetFacade.addWorldMarchTileHitTargets(tileMapView, viewport, frame);
+      return this.worldMapHitTargetFacade.addWorldMarchTileHitTargets(tileMapView, viewport, frame, options);
     }
 
     renderWorldTileMap(tileMapView = {}, x, y, width, height, uiState = {}, options = {}) {

@@ -276,19 +276,17 @@ test('WorldMarchHudCanvasRenderer allows expired active manual marches to reuse 
   assert.equal(start.action.disabled, false);
 });
 
-test('WorldMarchHudCanvasRenderer does not read formations from last game state when action state is incomplete', () => {
+test('WorldMarchHudCanvasRenderer does not read formations from host state when action state is incomplete', () => {
   const host = createHost({
-    lastGame: {
-      state: {
-        activeCityId: 'capital',
-        military: {
-          formations: {
-            capital: [{ slot: 1, cityId: 'capital', name: '部队一', memberIds: ['fp-1'], maxMembers: 5 }],
-          },
+    state: {
+      activeCityId: 'capital',
+      military: {
+        formations: {
+          capital: [{ slot: 1, cityId: 'capital', name: '部队一', memberIds: ['fp-1'], maxMembers: 5 }],
         },
-        famousPersons: {
-          people: [{ id: 'fp-1', name: '孟隼' }],
-        },
+      },
+      famousPersons: {
+        people: [{ id: 'fp-1', name: '孟隼' }],
       },
     },
     presenter: {
@@ -337,7 +335,7 @@ test('WorldMarchHudCanvasRenderer uses passed state as authoritative formation s
   };
   const host = createHost({
     worldMapRenderer: {
-      lastWorldMarchState: staleState,
+      state: staleState,
     },
     presenter: {
       buildMilitaryViewState(state = {}) {
@@ -398,17 +396,12 @@ test('WorldMarchHudCanvasRenderer resolves only passed military state over stale
   };
   const host = createHost({
     host: {
-      lastGameState: hostHostState,
-      lastWorldMarchState: hostHostState,
-      lastGame: { state: hostHostState },
       state: hostHostState,
       worldMapRenderer: {
-        lastGameState: hostHostState,
-        lastWorldMarchState: hostHostState,
+        state: hostHostState,
       },
       worldMapLayerRenderer: {
-        lastGameState: hostHostState,
-        lastWorldMarchState: hostHostState,
+        state: hostHostState,
       },
     },
   });
@@ -416,8 +409,8 @@ test('WorldMarchHudCanvasRenderer resolves only passed military state over stale
 
   const resolved = renderer.resolveMilitaryState(explicitState);
 
-  assert.equal(host.host.lastGameState.__sentinelSource, 'hosthost');
-  assert.equal(host.host.worldMapLayerRenderer.lastWorldMarchState.__sentinelSource, 'hosthost');
+  assert.equal(host.host.state.__sentinelSource, 'hosthost');
+  assert.equal(host.host.worldMapLayerRenderer.state.__sentinelSource, 'hosthost');
   assert.equal(resolved.__sentinelSource, 'explicit');
 });
 
@@ -468,7 +461,7 @@ test('WorldMarchHudCanvasRenderer does not fill activeCity-only state from host 
     },
   };
   const host = createHost({
-    lastWorldMarchState: fullState,
+    state: fullState,
     presenter: {
       buildMilitaryViewState(state = {}) {
         const formation = state.military?.formations?.capital?.[0] || {};

@@ -34,22 +34,6 @@
       return this.host?.epochNowMs;
     }
 
-    get lastGameState() {
-      return this.host?.lastGameState;
-    }
-
-    set lastGameState(value) {
-      if (this.host) this.host.lastGameState = value;
-    }
-
-    get lastWorldMarchState() {
-      return this.host?.lastWorldMarchState;
-    }
-
-    set lastWorldMarchState(value) {
-      if (this.host) this.host.lastWorldMarchState = value;
-    }
-
     getEpochNowMs() {
       return sharedWorldTime?.getEpochNowMs?.(this) ?? Date.now();
     }
@@ -75,15 +59,8 @@
       return this.worldActorRenderer.addActorHitTargets(actors, viewport, geometry);
     }
 
-    publishWorldMarchHudState(state = {}) {
-      this.lastGameState = state;
-      this.lastWorldMarchState = state;
-      return state;
-    }
-
     renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}, targetPicker = null) {
       if (!this.worldMarchHudRenderer?.renderWorldMarchHud) return false;
-      this.publishWorldMarchHudState(state);
       return this.worldMarchHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame, targetPicker);
     }
 

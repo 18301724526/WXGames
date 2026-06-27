@@ -74,8 +74,9 @@ test('WorldMapActorHudRenderer delegates actor hit targets and snapshot actor re
   assert.equal(calls[0][1], snapshotActors);
 });
 
-test('WorldMapActorHudRenderer publishes march HUD state before rendering', () => {
+test('WorldMapActorHudRenderer passes explicit march HUD state without mirrors', () => {
   const calls = [];
+  const retiredStateMirrorKeys = ['last' + 'GameState', 'last' + 'WorldMarchState'];
   const hudRenderer = {
     renderWorldMarchHud(...args) {
       calls.push(['renderWorldMarchHud', ...args]);
@@ -96,10 +97,11 @@ test('WorldMapActorHudRenderer publishes march HUD state before rendering', () =
   const actors = [{ id: 'actor-1' }];
 
   assert.equal(renderer.renderWorldMarchHud(state, { selected: true }, actors, { scale: 1 }, {}, { x: 1 }), true);
-  assert.equal(host.lastGameState, state);
-  assert.equal(host.lastWorldMarchState, state);
-  assert.equal(hudRenderer.lastGameState, undefined);
-  assert.equal(hudRenderer.lastWorldMarchState, undefined);
+  [host, hudRenderer].forEach((target) => {
+    retiredStateMirrorKeys.forEach((key) => {
+      assert.equal(Object.prototype.hasOwnProperty.call(target, key), false);
+    });
+  });
   assert.equal(calls[0][1], state);
   assert.equal(calls[0][3], actors);
 });
@@ -123,23 +125,6 @@ test('WorldMapActorHudRenderer does not proxy unknown host properties after prox
   const renderer = new WorldMapActorHudRenderer({ host });
 
   assert.equal(renderer.someRandomProp, undefined);
-});
-
-test('WorldMapActorHudRenderer forwards march state reads and writes through host', () => {
-  const host = createHost();
-  const renderer = new WorldMapActorHudRenderer({ host });
-  const firstState = { id: 'first-state' };
-  const secondState = { id: 'second-state' };
-
-  renderer.lastGameState = firstState;
-  renderer.lastWorldMarchState = firstState;
-  assert.equal(host.lastGameState, firstState);
-  assert.equal(host.lastWorldMarchState, firstState);
-
-  host.lastGameState = secondState;
-  host.lastWorldMarchState = secondState;
-  assert.equal(renderer.lastGameState, secondState);
-  assert.equal(renderer.lastWorldMarchState, secondState);
 });
 
 test('WorldMapActorHudRenderer maps nearest world tile through march system', () => {

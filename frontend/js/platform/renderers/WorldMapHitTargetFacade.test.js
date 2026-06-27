@@ -232,16 +232,14 @@ test('WorldMapHitTargetFacade keeps fallback registration when model is unavaila
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
 });
 
-test('WorldMapHitTargetFacade evaluates march targets from published renderer state', () => {
+test('WorldMapHitTargetFacade evaluates march targets from explicit state', () => {
   const state = {
     activeCityId: 'capital',
     territoryState: {
       territories: [{ id: 'capital', q: 0, r: 0 }],
     },
   };
-  const host = createHost({
-    lastGameState: state,
-  });
+  const host = createHost();
   const renderer = new WorldMapHitTargetFacade({ host });
   const tileMapView = {
     geometry,
@@ -258,6 +256,7 @@ test('WorldMapHitTargetFacade evaluates march targets from published renderer st
       tileMapView,
       { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 },
       { x: 0, y: 0, width: 260, height: 220 },
+      { state },
     ), true);
   });
 
@@ -265,6 +264,68 @@ test('WorldMapHitTargetFacade evaluates march targets from published renderer st
   assert.equal(Boolean(ocean), true);
   assert.equal(ocean.action.marchDisabled, true);
   assert.equal(ocean.action.marchDisabledReason, 'EXPLORE_ROUTE_BLOCKED');
+});
+
+test('WorldMapHitTargetFacade uses explicit state over host state for march targets', () => {
+  const hostState = {
+    activeCityId: 'capital',
+    territoryState: {
+      territories: [{ id: 'capital', q: 0, r: 0 }],
+    },
+  };
+  const explicitState = {
+    activeCityId: 'capital',
+    territoryState: {
+      territories: [{ id: 'capital', q: 10, r: 10 }],
+    },
+  };
+  const host = createHost({
+    state: hostState,
+  });
+  const renderer = new WorldMapHitTargetFacade({ host });
+  const tileMapView = {
+    geometry,
+    tiles: [
+      { id: 'tile_11_10', q: 11, r: 10, terrain: 'plains', discovered: true },
+    ],
+  };
+
+  withRendererDependencyRegistry({
+    worldMarchRoutePolicy: require('../../domain/WorldMarchRoutePolicy'),
+  }, () => {
+    assert.equal(renderer.addWorldMarchTileHitTargets(
+      tileMapView,
+      { originX: 100, originY: 80, panX: 0, panY: 0, scale: 0.5 },
+      { x: -1000, y: -1000, width: 2200, height: 2200 },
+      { state: explicitState },
+    ), true);
+  });
+
+  const target = host.hitTargets.find((item) => item.action.type === 'selectWorldMarchTarget');
+  assert.equal(Boolean(target), true);
+  assert.equal(target.action.marchDisabled, false);
+  assert.equal(target.action.marchDisabledReason, '');
+});
+
+test('WorldMapHitTargetFacade production chain has no retired state mirrors or temp logs', () => {
+  const retiredStateMirrorKeys = ['last' + 'GameState', 'last' + 'WorldMarchState'];
+  const forbiddenFragments = [...retiredStateMirrorKeys, 'CODEX_' + 'TEMP'];
+  const sourceFiles = [
+    'WorldMapHitTargetFacade.js',
+    'WorldMapTileMapRenderer.js',
+    'WorldMapCanvasRenderer.js',
+    'WorldMapActorHudRenderer.js',
+    'WorldMarchHudCanvasRenderer.js',
+    '../WorldMapRuntimeRenderPipeline.js',
+    '../CanvasTerritoryActionHandlers.js',
+  ];
+
+  sourceFiles.forEach((sourceFile) => {
+    const source = fs.readFileSync(path.join(__dirname, sourceFile), 'utf8');
+    forbiddenFragments.forEach((fragment) => {
+      assert.equal(source.includes(fragment), false, sourceFile);
+    });
+  });
 });
 
 test('WorldMapHitTargetFacade fallback derives action identity from stable coordinates', () => {
