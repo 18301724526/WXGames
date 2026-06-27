@@ -395,6 +395,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
+  'scripts/check-renderer-host-bridge-single-source.js',
+  'scripts/check-renderer-host-bridge-single-source.test.js',
   'scripts/check-frontend-ecs-mode-vocab.js',
   'scripts/check-frontend-ecs-mode-vocab.test.js',
   'scripts/check-frontend-ecs-runtime-bundle-fresh.js',
@@ -602,6 +604,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-tutorial-advance-single-source.test.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
+  'scripts/check-renderer-host-bridge-single-source.test.js',
   'scripts/check-frontend-ecs-mode-vocab.test.js',
   'scripts/check-frontend-ecs-runtime-bundle-fresh.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
@@ -713,6 +716,9 @@ function main() {
   ]);
   run('frontend blocking-panel snapshot calls blocking guard', process.execPath, [
     'scripts/check-frontend-blocking-panel-snapshot-calls.js',
+  ]);
+  run('renderer host-bridge single-source blocking guard', process.execPath, [
+    'scripts/check-renderer-host-bridge-single-source.js',
   ]);
   run('frontend ECS mode vocab blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-mode-vocab.js',
