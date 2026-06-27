@@ -391,6 +391,10 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
+  'scripts/check-frontend-ecs-mode-vocab.js',
+  'scripts/check-frontend-ecs-mode-vocab.test.js',
+  'scripts/check-frontend-ecs-runtime-bundle-fresh.js',
+  'scripts/check-frontend-ecs-runtime-bundle-fresh.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.js',
@@ -592,6 +596,8 @@ const TEST_FILES = Object.freeze([
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
+  'scripts/check-frontend-ecs-mode-vocab.test.js',
+  'scripts/check-frontend-ecs-runtime-bundle-fresh.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-battle-domain-owner.test.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
@@ -695,6 +701,12 @@ function main() {
   ]);
   run('frontend blocking-panel snapshot calls blocking guard', process.execPath, [
     'scripts/check-frontend-blocking-panel-snapshot-calls.js',
+  ]);
+  run('frontend ECS mode vocab blocking guard', process.execPath, [
+    'scripts/check-frontend-ecs-mode-vocab.js',
+  ]);
+  run('frontend ECS runtime bundle freshness guard', process.execPath, [
+    'scripts/check-frontend-ecs-runtime-bundle-fresh.js',
   ]);
   run('frontend ECS renderer snapshot boundary blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',

@@ -7,8 +7,8 @@ const repoRoot = path.resolve(__dirname, '..');
 const entryPoint = path.join(repoRoot, 'frontend/js/ecs/mode/EcsModeRuntimeEntry.js');
 const outfile = path.join(repoRoot, 'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js');
 
-async function build() {
-  await esbuild.build({
+async function build({ write = true } = {}) {
+  const result = await esbuild.build({
     entryPoints: [entryPoint],
     outfile,
     bundle: true,
@@ -19,17 +19,21 @@ async function build() {
     sourcemap: false,
     legalComments: 'none',
     logLevel: 'silent',
+    write: false,
   });
-  const source = await fs.readFile(outfile, 'utf8');
+  const source = result.outputFiles[0].text;
   const config = (await prettier.resolveConfig(outfile)) || {};
   const formatted = await prettier.format(`/* eslint-disable */\n${source}`, {
     ...config,
     filepath: outfile,
   });
-  await fs.writeFile(outfile, formatted);
-  console.log(
-    `[build-frontend-ecs-runtime] wrote ${path.relative(repoRoot, outfile).replace(/\\/g, '/')}`,
-  );
+  if (write) {
+    await fs.writeFile(outfile, formatted);
+    console.log(
+      `[build-frontend-ecs-runtime] wrote ${path.relative(repoRoot, outfile).replace(/\\/g, '/')}`,
+    );
+  }
+  return formatted;
 }
 
 if (require.main === module) {
