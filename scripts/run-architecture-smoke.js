@@ -387,6 +387,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
   'scripts/check-duplicate-shared-helpers.js',
   'scripts/check-duplicate-shared-helpers.test.js',
+  'scripts/check-duplicate-coord-helpers.js',
+  'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-source-encoding.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.js',
@@ -594,6 +596,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-input-intent-spine.test.js',
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
   'scripts/check-duplicate-shared-helpers.test.js',
+  'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
   'scripts/check-frontend-ecs-mode-vocab.test.js',
@@ -695,6 +698,9 @@ function main() {
   ]);
   run('duplicate shared helpers blocking guard', process.execPath, [
     'scripts/check-duplicate-shared-helpers.js',
+  ]);
+  run('duplicate coord helpers blocking guard', process.execPath, [
+    'scripts/check-duplicate-coord-helpers.js',
   ]);
   run('source encoding blocking guard', process.execPath, [
     'scripts/check-source-encoding.js',
