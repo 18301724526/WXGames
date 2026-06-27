@@ -201,12 +201,6 @@
       host.lastGame.state = nextState;
     }
     host.state = nextState;
-    if (host.stateManager && typeof host.stateManager === 'object') {
-      host.stateManager.state = {
-        ...(host.stateManager.state || {}),
-        ...nextState,
-      };
-    }
     if (host.canvasShell && typeof host.canvasShell === 'object') {
       host.canvasShell.state = nextState;
     }

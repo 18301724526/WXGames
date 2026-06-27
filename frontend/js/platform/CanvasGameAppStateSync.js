@@ -227,16 +227,16 @@
               militaryView: localMilitaryView,
               forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
             });
-            if (this.stateManager && typeof this.stateManager === 'object') {
-              this.stateManager.state = {
-                ...(this.stateManager.state || {}),
-                ...(this.state || {}),
-                currentTab: homeView.activeTab,
-                militaryView: homeView.militaryView,
-              };
-            }
             this.state = this.stateManager?.sync
-              ? this.stateManager.sync(reconciledServerState, eraProgress)
+              ? this.stateManager.sync(
+                {
+                  ...(this.state || {}),
+                  currentTab: homeView.activeTab,
+                  militaryView: homeView.militaryView,
+                },
+                reconciledServerState,
+                eraProgress,
+              )
               : {
                 ...reconciledServerState,
                 currentTab: homeView.activeTab,

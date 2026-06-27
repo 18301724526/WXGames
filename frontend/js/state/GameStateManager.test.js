@@ -14,6 +14,7 @@ test('GameStateManager.sync merges server state and derives the canonical resour
   );
 
   const result = manager.sync(
+    { currentTab: 'military', resources: {}, population: {} },
     {
       currentEra: 3,
       currentEraName: 'Bronze',
@@ -44,12 +45,15 @@ test('GameStateManager.sync preserves the local currentTab over the server paylo
     { buildingState: makeBuildingState() },
   );
 
-  const result = manager.sync({
-    currentEra: 1,
-    currentTab: 'resources',
-    resources: {},
-    population: {},
-  });
+  const result = manager.sync(
+    { currentTab: 'worldMap', resources: {}, population: {} },
+    {
+      currentEra: 1,
+      currentTab: 'resources',
+      resources: {},
+      population: {},
+    },
+  );
 
   assert.equal(result.currentTab, 'worldMap');
 });
@@ -60,7 +64,10 @@ test('GameStateManager.sync applies default sub-state shapes (military/territory
     { buildingState: makeBuildingState() },
   );
 
-  const result = manager.sync({ currentEra: 0, resources: {}, population: {} });
+  const result = manager.sync(
+    { resources: {}, population: {} },
+    { currentEra: 0, resources: {}, population: {} },
+  );
 
   assert.equal(result.military.defensePerSoldier, 0.01);
   assert.equal(result.military.soldiers, 0);
@@ -84,7 +91,16 @@ test('GameStateManager.sync keeps existing sub-state values when the server omit
     { buildingState: makeBuildingState() },
   );
 
-  const result = manager.sync({ currentEra: 0, resources: {}, population: {} });
+  const result = manager.sync(
+    {
+      resources: {},
+      population: {},
+      talentPolicies: { a: 1 },
+      famousPersons: { p: 1 },
+      territoryState: { occupiedCount: 5 },
+    },
+    { currentEra: 0, resources: {}, population: {} },
+  );
 
   assert.deepEqual(result.talentPolicies, { a: 1 });
   assert.deepEqual(result.famousPersons, { p: 1 });
