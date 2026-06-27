@@ -49,16 +49,7 @@
   }
 
   function normalizeCoord(source = {}) {
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(source);
-    const x = toInteger(source.x ?? source.q, 0);
-    const y = toInteger(source.y ?? source.r, 0);
-    return Object.freeze({
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: `tile_${x}_${y}`,
-    });
+    return TileCoord.normalizeCoord(source);
   }
 
   function normalizeTileRecord(tile = {}, options = {}) {
