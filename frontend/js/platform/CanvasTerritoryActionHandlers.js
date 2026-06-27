@@ -21,6 +21,16 @@
     return null;
   })();
 
+  const WorldMarchRoutePolicy = (() => {
+    if (global.WorldMarchRoutePolicy) return global.WorldMarchRoutePolicy;
+    try {
+      if (typeof require === 'function') return require('../domain/WorldMarchRoutePolicy');
+    } catch (_error) {
+      // Optional dependency in standalone handler tests.
+    }
+    return null;
+  })();
+
   const CanvasModalSnapshotAdapter = (() => {
     if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
     try {
@@ -208,6 +218,183 @@
     } catch (_) {
       // Ignore diagnostic preference lookup failures.
     }
+    return payload;
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function cloneMarchDebugValue(value, fallback = null) {
+    if (value === undefined) return fallback;
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (_error) {
+      return fallback;
+    }
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function summarizeMarchDebugCoord(coord = {}) {
+    if (!coord || typeof coord !== 'object') return null;
+    const q = Number(coord.q ?? coord.x ?? coord.targetQ);
+    const r = Number(coord.r ?? coord.y ?? coord.targetR);
+    return {
+      q: Number.isFinite(q) ? q : null,
+      r: Number.isFinite(r) ? r : null,
+      tileId: coord.tileId || (Number.isFinite(q) && Number.isFinite(r) ? `${q},${r}` : ''),
+    };
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function summarizeMarchDebugTarget(target = {}) {
+    if (!target || typeof target !== 'object') return null;
+    return {
+      ...summarizeMarchDebugCoord(target),
+      known: target.known,
+      terrain: target.terrain || '',
+      terrainLabel: target.terrainLabel || '',
+      marchDisabled: target.marchDisabled,
+      marchDisabledReason: target.marchDisabledReason || '',
+      blocked: target.blocked,
+      disabled: target.disabled,
+      missionId: target.missionId || '',
+      actorId: target.actorId || '',
+      combatEncounterId: target.combatEncounterId || '',
+    };
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function summarizeMarchDebugAction(action = {}) {
+    return {
+      type: action?.type || '',
+      targetQ: action?.targetQ ?? action?.q,
+      targetR: action?.targetR ?? action?.r,
+      tileId: action?.tileId || '',
+      known: action?.known,
+      terrain: action?.terrain || '',
+      terrainLabel: action?.terrainLabel || '',
+      marchDisabled: action?.marchDisabled,
+      marchDisabledReason: action?.marchDisabledReason || '',
+      inputSurface: action?.inputSurface || '',
+      background: action?.background,
+      missionId: action?.missionId || '',
+      actorId: action?.actorId || '',
+      combatEncounterId: action?.combatEncounterId || '',
+    };
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function summarizeMarchDebugUiState(uiState = {}) {
+    return {
+      selectedWorldActorId: uiState?.selectedWorldActorId || '',
+      selectedWorldMissionId: uiState?.selectedWorldMissionId || '',
+      selectedSiteId: uiState?.selectedSiteId || '',
+      worldMarchTarget: summarizeMarchDebugTarget(uiState?.worldMarchTarget || {}),
+      hasWorldTargetPicker: Boolean(uiState?.worldTargetPicker),
+      worldTargetPickerCandidates: Array.isArray(uiState?.worldTargetPicker?.candidates)
+        ? uiState.worldTargetPicker.candidates.length
+        : 0,
+    };
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function summarizeMarchDebugRoute(route = {}) {
+    if (!route || typeof route !== 'object') return null;
+    const steps = Array.isArray(route.route) ? route.route : [];
+    return {
+      canMarch: route.canMarch,
+      reason: route.reason || '',
+      origin: summarizeMarchDebugCoord(route.origin),
+      target: summarizeMarchDebugCoord(route.target),
+      blockedStep: summarizeMarchDebugCoord(route.blockedStep),
+      routeLength: steps.length,
+      routeHead: steps.slice(0, 3).map(summarizeMarchDebugCoord),
+      routeTail: steps.slice(Math.max(0, steps.length - 3)).map(summarizeMarchDebugCoord),
+    };
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function summarizeMarchDebugState(state = {}, target = {}) {
+    const activeCityId = state.activeCityId || state.cityState?.activeCityId || 'capital';
+    const territories = Array.isArray(state.territoryState?.territories)
+      ? state.territoryState.territories
+      : (Array.isArray(state.territories) ? state.territories : []);
+    const activeTerritory = territories.find((item) => item?.id === activeCityId || item?.territoryId === activeCityId)
+      || null;
+    const capitalTerritory = territories.find((item) => item?.id === 'capital' || item?.territoryId === 'capital')
+      || null;
+    const worldMap = state.territoryState?.worldMap || {};
+    const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
+    const targetCoord = summarizeMarchDebugCoord(target);
+    const targetTile = targetCoord
+      ? tiles.find((tile) => {
+        const coord = summarizeMarchDebugCoord(tile);
+        return coord && Number(coord.q) === Number(targetCoord.q) && Number(coord.r) === Number(targetCoord.r);
+      }) || null
+      : null;
+    return {
+      activeCityId,
+      territoryCount: territories.length,
+      activeTerritory: summarizeMarchDebugCoord(activeTerritory),
+      capitalTerritory: summarizeMarchDebugCoord(capitalTerritory),
+      worldMapOrigin: summarizeMarchDebugCoord(worldMap.origin),
+      worldMapWorldOrigin: summarizeMarchDebugCoord(worldMap.worldOrigin),
+      tileCount: tiles.length,
+      targetTile: targetTile ? {
+        ...summarizeMarchDebugCoord(targetTile),
+        terrain: targetTile.terrain || '',
+        terrainLabel: targetTile.terrainLabel || '',
+        visibility: targetTile.visibility || '',
+        discovered: targetTile.discovered,
+      } : null,
+      worldExplorer: {
+        missions: Array.isArray(state.worldExplorerState?.missions) ? state.worldExplorerState.missions.length : 0,
+        busyFormations: Array.isArray(state.worldExplorerState?.busyFormations) ? state.worldExplorerState.busyFormations.length : 0,
+      },
+    };
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function evaluateMarchDebugRoute(state = {}, target = {}) {
+    if (!WorldMarchRoutePolicy?.evaluateMarchTarget) return null;
+    try {
+      return WorldMarchRoutePolicy.evaluateMarchTarget(state, target, {
+        tileMapView: state?.territoryState?.worldMap || {},
+      });
+    } catch (error) {
+      return {
+        canMarch: null,
+        reason: `debug-evaluate-error:${error?.message || error}`,
+      };
+    }
+  }
+
+  // CODEX_TEMP_MARCH_TARGET_DEBUG: remove after diagnosing tutorial march target state.
+  function logMarchTargetDebug(stage = '', detail = {}, options = {}) {
+    if (typeof window === 'undefined') return null;
+    const payload = {
+      at: new Date().toISOString(),
+      stage,
+      ...detail,
+    };
+    try {
+      const events = global.__codexTempMarchTargetDebugEvents || [];
+      const signature = options.signature || JSON.stringify({
+        stage,
+        action: detail.action,
+        target: detail.target,
+        previousTarget: detail.previousTarget,
+        nextTarget: detail.nextTarget,
+        currentRoute: detail.currentRoute,
+      });
+      global.__codexTempMarchTargetDebugLastSignatureByStage = global.__codexTempMarchTargetDebugLastSignatureByStage || {};
+      if (signature && global.__codexTempMarchTargetDebugLastSignatureByStage[stage] === signature) return null;
+      if (signature) global.__codexTempMarchTargetDebugLastSignatureByStage[stage] = signature;
+      events.push(payload);
+      while (events.length > 160) events.shift();
+      global.__codexTempMarchTargetDebugEvents = events;
+    } catch (_error) {
+      // Debug logging must never affect gameplay.
+    }
+    global.console?.log?.('[CODEX_TEMP_MARCH_TARGET_DEBUG]', payload);
     return payload;
   }
 
@@ -484,6 +671,15 @@
         const actorId = missionId ? getWorldActorId(action, {}, uiState) : '';
         const game = this.getGameHost();
         game?.territoryController?.closeSiteDialog?.({ render: false });
+        const currentState = this.getState();
+        const currentRoute = evaluateMarchDebugRoute(currentState, target);
+        logMarchTargetDebug('selectWorldMarchTarget:input', {
+          tapTraceId,
+          action: summarizeMarchDebugAction(action),
+          target: summarizeMarchDebugTarget(target),
+          currentRoute: summarizeMarchDebugRoute(currentRoute),
+          state: summarizeMarchDebugState(currentState, target),
+        });
         logActorPickingDiag('territory:selectWorldMarchTarget:beforeWrite', {
           tapTraceId,
           action: summarizeActorPickingAction(action),
@@ -503,6 +699,13 @@
         if (action.marchDisabledReason) nextTarget.marchDisabledReason = action.marchDisabledReason;
         copyCombatTargetFields(nextTarget, action);
         uiState.worldMarchTarget = nextTarget;
+        logMarchTargetDebug('selectWorldMarchTarget:afterWrite', {
+          tapTraceId,
+          action: summarizeMarchDebugAction(action),
+          nextTarget: summarizeMarchDebugTarget(nextTarget),
+          currentRoute: summarizeMarchDebugRoute(currentRoute),
+          uiState: summarizeMarchDebugUiState(uiState),
+        });
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
         uiState.selectedSiteId = '';
@@ -539,6 +742,8 @@
         const actorId = missionId ? getWorldActorId(action, previousTarget, uiState) : '';
         const samePreviousTarget = Number(previousTarget.q) === Number(target.q)
           && Number(previousTarget.r) === Number(target.r);
+        const currentState = this.getState();
+        const currentRoute = evaluateMarchDebugRoute(currentState, target);
         const nextTarget = {
           q: target.q,
           r: target.r,
@@ -553,7 +758,23 @@
         else if (samePreviousTarget && previousTarget.marchDisabled !== undefined) nextTarget.marchDisabled = Boolean(previousTarget.marchDisabled);
         if (action.marchDisabledReason || (samePreviousTarget && previousTarget.marchDisabledReason)) nextTarget.marchDisabledReason = action.marchDisabledReason || previousTarget.marchDisabledReason;
         copyCombatTargetFields(nextTarget, action, previousTarget);
+        logMarchTargetDebug('openWorldMarchFormationPicker:input', {
+          action: summarizeMarchDebugAction(action),
+          target: summarizeMarchDebugTarget(target),
+          previousTarget: summarizeMarchDebugTarget(previousTarget),
+          samePreviousTarget,
+          inheritedMarchDisabled: action.marchDisabled === undefined && samePreviousTarget && previousTarget.marchDisabled !== undefined,
+          inheritedMarchDisabledReason: !action.marchDisabledReason && samePreviousTarget && Boolean(previousTarget.marchDisabledReason),
+          nextTarget: summarizeMarchDebugTarget(nextTarget),
+          currentRoute: summarizeMarchDebugRoute(currentRoute),
+          state: summarizeMarchDebugState(currentState, target),
+        });
         uiState.worldMarchTarget = nextTarget;
+        logMarchTargetDebug('openWorldMarchFormationPicker:afterWrite', {
+          nextTarget: summarizeMarchDebugTarget(nextTarget),
+          currentRoute: summarizeMarchDebugRoute(currentRoute),
+          uiState: summarizeMarchDebugUiState(uiState),
+        });
         openTargetPickerSnapshot(this.host, {
           pickerKind: 'worldMarchFormation',
           target: nextTarget,
