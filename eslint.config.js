@@ -202,7 +202,6 @@ module.exports = [
   },
   {
     files: [
-      'backend/frontend-api-example.js',
       'scripts/p2-task-uploader-browser-verify.js',
       'scripts/playtest-*.js',
       'scripts/profile-h5-performance.js',

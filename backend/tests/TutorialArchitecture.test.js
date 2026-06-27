@@ -56,7 +56,6 @@ test('TutorialService facade preserves the legacy tutorial API', () => {
     'canAccessTab',
     'createInitialTutorialState',
     'ensureHouseGuideResources',
-    'ensureLumbermillGuideResources',
     'ensureScoutFamousPersonGrant',
     'getHouseGuideMinimumResources',
     'manualAdvance',

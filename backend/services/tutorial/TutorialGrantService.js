@@ -83,14 +83,9 @@ function ensureHouseGuideResources(gameState) {
   return changed;
 }
 
-function ensureLumbermillGuideResources() {
-  return false;
-}
-
 module.exports = {
   HOUSE_GUIDE_GRANT_KEY,
   ensureHouseGuideResources,
-  ensureLumbermillGuideResources,
   ensureScoutFamousPersonGrant,
   getHouseGuideMinimumResources,
 };

@@ -1,9 +1,4 @@
 {
-  "backend/frontend-api-example.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/routes/gameRoutes.js": {
     "no-empty": {
       "count": 1

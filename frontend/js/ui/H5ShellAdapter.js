@@ -24,7 +24,6 @@
       const gameModules = {
         mount(game) {
           registry.mountAuthMethods?.(game, moduleDeps);
-          registry.mountPopulationMethods?.(game, moduleDeps);
           registry.mountLogMethods?.(game, moduleDeps);
         },
       };
