@@ -14,10 +14,7 @@
   const MAX_MANUAL_ROUTE_LENGTH = 16;
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (WorldMarchCore?.normalizeCoord) return WorldMarchCore.normalizeCoord(coord, fallback);
-    const q = Math.floor(Number(coord.q ?? coord.x ?? fallback.q ?? fallback.x ?? 0));
-    const r = Math.floor(Number(coord.r ?? coord.y ?? fallback.r ?? fallback.y ?? 0));
-    return { q, r, tileId: `tile_${q}_${r}` };
+    return WorldMarchCore.normalizeCoord(coord, fallback);
   }
 
   function getTileKey(coord = {}) {

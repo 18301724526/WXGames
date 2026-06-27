@@ -27,17 +27,11 @@
   }
 
   function tileId(q, r) {
-    if (WorldMarchCore?.tileId) return WorldMarchCore.tileId(q, r);
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
+    return WorldMarchCore.tileId(q, r);
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (WorldMarchCore?.normalizeCoord) return WorldMarchCore.normalizeCoord(coord, fallback);
-    const source = coord && typeof coord === 'object' ? coord : {};
-    const base = fallback && typeof fallback === 'object' ? fallback : {};
-    const q = toInteger(source.q ?? source.x, base.q ?? base.x ?? 0);
-    const r = toInteger(source.r ?? source.y, base.r ?? base.y ?? 0);
-    return { q, r, tileId: tileId(q, r) };
+    return WorldMarchCore.normalizeCoord(coord, fallback);
   }
 
   function clonePlain(value) {
