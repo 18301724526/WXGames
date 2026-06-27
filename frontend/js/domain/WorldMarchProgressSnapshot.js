@@ -87,21 +87,15 @@
   }
 
   function tileId(q, r) {
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
+    return TileCoord.tileId(q, r);
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    const normalized = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord(coord, fallback)
-      : null;
-    const source = normalized || (coord && typeof coord === 'object' ? coord : {});
-    const base = fallback && typeof fallback === 'object' ? fallback : {};
-    const q = normalized ? normalized.x : toInteger(source.x ?? source.q, base.x ?? base.q ?? 0);
-    const r = normalized ? normalized.y : toInteger(source.y ?? source.r, base.y ?? base.r ?? 0);
+    const normalized = TileCoord.normalizeCoord(coord, fallback);
     return {
-      q,
-      r,
-      tileId: tileId(q, r),
+      q: normalized.x,
+      r: normalized.y,
+      tileId: normalized.tileId,
     };
   }
 

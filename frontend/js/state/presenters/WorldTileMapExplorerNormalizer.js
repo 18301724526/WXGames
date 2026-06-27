@@ -61,8 +61,7 @@
   }
 
   function getWorldTileId(q, r) {
-    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(q, r);
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
+    return sharedTileCoord.tileId(q, r);
   }
 
   function getEpochNowMs(options = {}) {
@@ -71,22 +70,11 @@
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    const normalized = sharedTileCoord?.normalizeCoord
-      ? sharedTileCoord.normalizeCoord(coord, fallback)
-      : null;
-    if (normalized) {
-      return {
-        q: normalized.q,
-        r: normalized.r,
-        tileId: normalized.tileId,
-      };
-    }
-    const q = toInteger(coord.x !== undefined ? coord.x : coord.q, toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0));
-    const r = toInteger(coord.y !== undefined ? coord.y : coord.r, toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0));
+    const normalized = sharedTileCoord.normalizeCoord(coord, fallback);
     return {
-      q,
-      r,
-      tileId: getWorldTileId(q, r),
+      q: normalized.q,
+      r: normalized.r,
+      tileId: normalized.tileId,
     };
   }
 
