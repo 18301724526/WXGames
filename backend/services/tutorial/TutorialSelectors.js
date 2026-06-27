@@ -30,7 +30,7 @@ function getTutorialScoutPersonId(gameState = {}) {
     : '';
 }
 
-function getFormationMembers(gameState = {}, payload = {}) {
+function getFormationSnapshot(gameState = {}, payload = {}) {
   const cityId = String(payload.cityId || gameState.activeCityId || 'capital').trim() || 'capital';
   const slot = Math.max(1, Math.min(3, Math.floor(Number(payload.formationSlot ?? payload.slot ?? 1) || 1)));
   const directFormations = gameState.military?.formations?.[cityId];
@@ -41,7 +41,16 @@ function getFormationMembers(gameState = {}, payload = {}) {
       ? cityFormations
       : [];
   const formation = formations.find((item) => Number(item?.slot) === slot) || formations[slot - 1] || null;
-  return Array.isArray(formation?.memberIds) ? formation.memberIds.map(String) : [];
+  return {
+    ...(formation && typeof formation === 'object' ? formation : {}),
+    cityId,
+    slot,
+    memberIds: Array.isArray(formation?.memberIds) ? formation.memberIds.map(String) : [],
+  };
+}
+
+function getFormationMembers(gameState = {}, payload = {}) {
+  return getFormationSnapshot(gameState, payload).memberIds;
 }
 
 function hasTutorialScoutFormation(gameState = {}, payload = {}) {
@@ -70,6 +79,7 @@ module.exports = {
   hasBuiltFarm,
   canAffordLumbermill,
   getTutorialScoutPersonId,
+  getFormationSnapshot,
   getFormationMembers,
   hasTutorialScoutFormation,
   getTutorialFirstEmptyCityId,

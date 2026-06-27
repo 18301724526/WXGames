@@ -1,36 +1,12 @@
 const TerritoryService = require('../TerritoryService');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const { getTutorialScoutPersonId, getFormationSnapshot } = require('../tutorial/TutorialSelectors');
 const {
   TUTORIAL_FIRST_SITE_GRANT_KEY,
-  toInteger,
 } = require('./WorldExplorerShared');
 
 function getTutorialSteps() {
   return TutorialFlowConfig.TUTORIAL_STEPS;
-}
-
-function getTutorialScoutPersonId(gameState = {}) {
-  const personId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
-  return personId ? String(personId) : '';
-}
-
-function getFormationSnapshot(gameState = {}, options = {}) {
-  const cityId = String(options.cityId || gameState.activeCityId || 'capital').trim() || 'capital';
-  const slot = Math.max(1, Math.min(3, toInteger(options.formationSlot ?? options.slot, 1)));
-  const directFormations = gameState.military?.formations?.[cityId];
-  const cityFormations = gameState.cities?.[cityId]?.military?.formations?.[cityId];
-  const formations = Array.isArray(directFormations)
-    ? directFormations
-    : Array.isArray(cityFormations)
-      ? cityFormations
-      : [];
-  const formation = formations.find((item) => Number(item?.slot) === slot) || formations[slot - 1] || null;
-  return {
-    ...(formation && typeof formation === 'object' ? formation : {}),
-    cityId,
-    slot,
-    memberIds: Array.isArray(formation?.memberIds) ? formation.memberIds.map(String) : [],
-  };
 }
 
 function validateTutorialFormation(gameState = {}, options = {}) {
@@ -93,8 +69,6 @@ function ensureTutorialFirstCityClaimSoldiers(gameState = {}) {
 }
 
 module.exports = {
-  getTutorialScoutPersonId,
-  getFormationSnapshot,
   validateTutorialFormation,
   ensureTutorialFirstCityClaimSoldiers,
 };
