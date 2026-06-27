@@ -196,11 +196,13 @@ riskiest god-file surgery last:
   TutorialService facade) to dodge the pre-existing `TutorialService → TutorialGrantService →
   FamousPersonService → … → MilitaryService` require cycle. Guard `check-tutorial-advance-single-source`
   bans `phaseCompleted:` construction outside `backend/services/tutorial/`.
+  - Also deduped the tutorial SELECTOR copies (commits `0519dcd5`, `73935fcf`): `getTutorialScoutPersonId`
+    (was inlined in WorldExplorerTutorial + MilitaryService) and `getFormationSnapshot` (duplicated
+    getFormationMembers' find-logic) now live only in `TutorialSelectors`; the scout-grant read
+    (`grants.scoutFamousPerson`) is single-source there. Backend tutorial is now fully deduped.
   - NOT done (separate slices, NOT spreading-logic debt): `TutorialActionValidator` (~300-line
     god-validator → P4 god-file surgery), `TutorialGuideUiStateCoordinator` (frontend dual-host mirror →
-    folds into P3). Minor contained dups left + tracked: `getTutorialScoutPersonId` (selector inlined in
-    WorldExplorerTutorial + MilitaryService vs canonical `TutorialSelectors`), `getFormationSnapshot`
-    (formation reader, not tutorial-advance).
+    folds into P3).
 - **P3 — triple-host mirror** (decomposition §3.13, THE root of "fix one, break another"):
   `game` / `canvasShell` / `lastGame` → one live-state source + selectors; thin host readers; kill
   the Proxy-passthrough `host` god-object (it shows up in the fan-in as `host` / `host.ctx` /
