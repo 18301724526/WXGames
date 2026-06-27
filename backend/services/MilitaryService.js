@@ -1,6 +1,7 @@
 const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
 const BuildingState = require('../domain/BuildingState');
 const TerritoryService = require('./TerritoryService');
+const { manualAdvance } = require('./tutorial/TutorialProgression');
 const FormationStrengthService = require('./military/FormationStrengthService');
 
 const MAX_FORMATION_SLOTS = 3;
@@ -14,22 +15,6 @@ const DEFAULT_FORMATION_NAME_PATTERN = /^Formation \d+$/;
 function toStoredFormationName(rawName) {
   const name = String(rawName || '').trim();
   return DEFAULT_FORMATION_NAME_PATTERN.test(name) ? '' : name;
-}
-
-function advanceTutorialStep(tutorial = {}, nextStep = 0) {
-  const step = Math.floor(Number(nextStep) || 0);
-  const currentStep = Math.floor(Number(tutorial.currentStep) || 0);
-  if (tutorial.completed || tutorial.disabled || step <= currentStep) return tutorial;
-  return {
-    ...tutorial,
-    currentStep: step,
-    phaseCompleted: {
-      ...(tutorial.phaseCompleted || {}),
-      ...TutorialFlowConfig.createPhaseCompleted(step),
-    },
-    completed: step >= TutorialFlowConfig.TUTORIAL_STEPS.completed,
-    updatedAt: new Date().toISOString(),
-  };
 }
 
 function getBarracksLevel(buildings) {
@@ -377,7 +362,7 @@ function setArmyFormation(gameState, payload = {}) {
   if (reserveDelta < 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
   const scoutPersonId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
   const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
-    ? advanceTutorialStep(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
+    ? manualAdvance(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
     : gameState.tutorial;
   gameState.tutorial = tutorial;
   return {
