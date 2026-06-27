@@ -26,16 +26,7 @@
   }
 
   function normalizeCoord(tile = {}, fallback = {}) {
-    if (TileCoord?.normalizeCoord) return TileCoord.normalizeCoord(tile, fallback);
-    const x = Math.floor(toNumber(tile.x ?? tile.q, fallback.x ?? fallback.q ?? 0));
-    const y = Math.floor(toNumber(tile.y ?? tile.r, fallback.y ?? fallback.r ?? 0));
-    return {
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: `tile_${x}_${y}`,
-    };
+    return TileCoord.normalizeCoord(tile, fallback);
   }
 
   function getViewportWorldOrigin(viewport = {}) {
@@ -149,7 +140,7 @@
   }
 
   function tileId(x, y) {
-    return TileCoord?.tileId ? TileCoord.tileId(x, y) : `tile_${Math.floor(toNumber(x))}_${Math.floor(toNumber(y))}`;
+    return TileCoord.tileId(x, y);
   }
 
   const TileMapGeometry = {
