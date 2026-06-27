@@ -114,7 +114,7 @@
   },
   "frontend/js/domain/WorldFogVisualSnapshot.js": {
     "no-unused-vars": {
-      "count": 3
+      "count": 2
     }
   },
   "frontend/js/domain/WorldInterestWindow.js": {
@@ -124,7 +124,7 @@
   },
   "frontend/js/domain/WorldMapEntitySnapshot.js": {
     "no-unused-vars": {
-      "count": 3
+      "count": 2
     }
   },
   "frontend/js/domain/WorldMapInputIntent.js": {

@@ -35,18 +35,6 @@
     return null;
   })();
 
-  const TileCoord = (() => {
-    if (global.TileCoord) return global.TileCoord;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('./TileCoord');
-      } catch (error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -57,23 +45,11 @@
   }
 
   function tileId(q, r) {
-    return VisibilityModel?.tileId?.(q, r) || `tile_${toInteger(q)}_${toInteger(r)}`;
+    return VisibilityModel.tileId(q, r);
   }
 
   function normalizeCoord(source = {}, fallback = {}) {
-    if (VisibilityModel?.normalizeCoord) return VisibilityModel.normalizeCoord(source, fallback);
-    const normalized = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord(source, fallback)
-      : null;
-    const coord = normalized || (source && typeof source === 'object' ? source : {});
-    const base = fallback && typeof fallback === 'object' ? fallback : {};
-    const q = normalized ? normalized.x : toInteger(coord.x ?? coord.q, base.x ?? base.q ?? 0);
-    const r = normalized ? normalized.y : toInteger(coord.y ?? coord.r, base.y ?? base.r ?? 0);
-    return {
-      q,
-      r,
-      tileId: tileId(q, r),
-    };
+    return VisibilityModel.normalizeCoord(source, fallback);
   }
 
   function hashStep(hash, value) {
