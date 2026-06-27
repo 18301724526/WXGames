@@ -194,11 +194,11 @@
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const targetQ = Number(action.targetQ ?? action.q);
     const targetR = Number(action.targetR ?? action.r);
-    const targetTileId = action.tileId || (Number.isFinite(targetQ) && Number.isFinite(targetR) ? `tile_${Math.floor(targetQ)}_${Math.floor(targetR)}` : '');
+    const targetTileId = action.tileId || (Number.isFinite(targetQ) && Number.isFinite(targetR) ? global.TileCoord.tileId(targetQ, targetR) : '');
     const targetTile = tiles.find((tile) => {
       const q = Number(tile?.q ?? tile?.x);
       const r = Number(tile?.r ?? tile?.y);
-      const id = tile?.tileId || tile?.id || (Number.isFinite(q) && Number.isFinite(r) ? `tile_${Math.floor(q)}_${Math.floor(r)}` : '');
+      const id = tile?.tileId || tile?.id || (Number.isFinite(q) && Number.isFinite(r) ? global.TileCoord.tileId(q, r) : '');
       if (targetTileId && id === targetTileId) return true;
       return Number.isFinite(q) && Number.isFinite(r)
         && Number.isFinite(targetQ) && Number.isFinite(targetR)
