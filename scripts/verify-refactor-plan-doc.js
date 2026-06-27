@@ -12,6 +12,7 @@ const officialDocPaths = [
   'docs/current_technical_architecture_2026-06-09.md',
   'docs/long_term_architecture_refactor_plan_2026-06-08.md',
   'docs/architecture_module_responsibility_index_2026-06-08.md',
+  'docs/project_decomposition_2026-06-27.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/world_map_hud_transparency_contract_2026-06-19.md',
   'docs/world-combat-interactive-architecture.md',
@@ -26,6 +27,12 @@ const officialDocPaths = [
 ];
 
 const requiredText = {
+  'docs/project_decomposition_2026-06-27.md': [
+    '项目完整分解报告',
+    '玩家能做什么',
+    '系统 / 子系统树',
+    '边界不清的',
+  ],
   'docs/current_gameplay_design_2026-06-09.md': [
     '后端权威 / Server Authority',
     '菱形等距 tile 世界地图',
