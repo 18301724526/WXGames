@@ -5,8 +5,14 @@ const ModeKeys = (() => {
   return globalThis.EcsModeKeys;
 })();
 
-const { CAPTURE_PRIORITY, MODAL_BIT_BY_KEY, MODAL_MODE_KEYS, modeIdForKey, modeKeyForId, normalizeModeKey } =
-  ModeKeys || {};
+const {
+  CAPTURE_PRIORITY,
+  MODAL_BIT_BY_KEY,
+  MODAL_MODE_KEYS,
+  modeIdForKey,
+  modeKeyForId,
+  normalizeModeKey,
+} = ModeKeys || {};
 
 // Batch 8F: 'modal:blockingPanel' was split per panel. Every modal subtype is
 // unconditionally blocking EXCEPT 'modal:commandPanel', which blocks only when its

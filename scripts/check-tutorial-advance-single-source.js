@@ -22,10 +22,7 @@ const ALLOWLIST_DIR_PREFIXES = Object.freeze(['backend/services/tutorial/']);
 // is preceded by `.` and never matches.
 const FORBIDDEN_PATTERN = /(^|[{,])\s*phaseCompleted\s*:/;
 
-const EXCLUDED_PATH_PATTERNS = Object.freeze([
-  /\.test\.js$/,
-  /(^|\/)node_modules\//,
-]);
+const EXCLUDED_PATH_PATTERNS = Object.freeze([/\.test\.js$/, /(^|\/)node_modules\//]);
 
 function normalizePath(filePath) {
   return String(filePath || '').replace(/\\/g, '/');

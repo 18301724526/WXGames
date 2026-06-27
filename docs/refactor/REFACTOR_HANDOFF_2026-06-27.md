@@ -23,7 +23,7 @@ touching code. Everything here is verified, not assumed.
 
 1. **One source of truth per concept** (state AND logic). Everywhere else REFERENCES it. Never a
    second mutable copy.
-2. **Remove/derive copies — do NOT just guard them.** A guarded copy still *looks* like a source,
+2. **Remove/derive copies — do NOT just guard them.** A guarded copy still _looks_ like a source,
    so a future reader/AI wires new logic into it or grows it in one place (the guard stays green if
    both copies move together), and the mirror disease spreads. The guard is the LOCK against
    re-introduction, NOT a substitute for deletion. (This was the user's mid-session correction —
@@ -68,16 +68,16 @@ touching code. Everything here is verified, not assumed.
 
 6 commits on branch `codex/refactor-tutorial-guide-architecture`, pushed to `private` (deploying):
 
-| commit | what |
-|---|---|
-| `2c518b15` | docs: 415-file decomposition |
-| `bd5761ab` | P0: helpers → shared single sources (numbers/objects/time) + fix 12 UTF8-as-GBK mojibake + strip 6 BOM + 2 guards |
-| `03b4b8d0` | P0: remove 3 verified-dead code sites |
-| `09e64367` | P1: blocking-panel snapshot wrappers 13 copies → 1 source + guard |
-| `953eabde` | P1: ECS mode-vocab drift guards (vocab-match + bundle-fresh) |
-| `74811aa9` | P1: derive the ECS vocab copies from ModeKeys (remove, not just guard) |
-| `6945f143`…`01b8a119` (13) | **P1 Cluster 2 DONE** — coord/tileId fallback single-source (see §4) |
-| `7e32401f`…`a7ed32ce` (4) | **P2 DONE** — tutorial-advance 3-copy single-source + guard (see §5) |
+| commit                     | what                                                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `2c518b15`                 | docs: 415-file decomposition                                                                                      |
+| `bd5761ab`                 | P0: helpers → shared single sources (numbers/objects/time) + fix 12 UTF8-as-GBK mojibake + strip 6 BOM + 2 guards |
+| `03b4b8d0`                 | P0: remove 3 verified-dead code sites                                                                             |
+| `09e64367`                 | P1: blocking-panel snapshot wrappers 13 copies → 1 source + guard                                                 |
+| `953eabde`                 | P1: ECS mode-vocab drift guards (vocab-match + bundle-fresh)                                                      |
+| `74811aa9`                 | P1: derive the ECS vocab copies from ModeKeys (remove, not just guard)                                            |
+| `6945f143`…`01b8a119` (13) | **P1 Cluster 2 DONE** — coord/tileId fallback single-source (see §4)                                              |
+| `7e32401f`…`a7ed32ce` (4)  | **P2 DONE** — tutorial-advance 3-copy single-source + guard (see §5)                                              |
 
 **Guards added this session** (the enforcement surface — extend, never bypass):
 `check-duplicate-shared-helpers` (now 8 helpers, backend), `check-source-encoding` (no BOM +
@@ -103,6 +103,7 @@ Outcome: the `tile_${x}_${y}` tileId format now lives in exactly **3 honest sour
 
 **Corrections the verification forced on the plan below (Rule 4 in action — the §4 plan as first
 written was wrong in 3 ways):**
+
 1. **Undercount.** The "~18 sites" was really 28 delegating wrappers + facade `normalizeTileCoord` +
    `coordKey` + inline runtime/trace builders = ~33 files / 38 `tile_${}`. The decomposition's own
    headline (`TileCoord(28，且各处有 fallback 副本)`) already disagreed with the 18.
@@ -152,6 +153,7 @@ Also remove now-orphaned local `toInteger`/`toNumber`/`tileId` IF unused (grep e
 use `toNumber` for non-coord math; leave those).
 
 **TRUE VARIANTS — do NOT collapse (different behavior, would break things):**
+
 - `WorldTopology.normalizeCoord` — adds world wrapping (worldWidth/Height/wrapped fields, `options` sig).
 - `WorldInterestWindow.normalizeCoord` / `createTileRect` — AOI/window semantics, `options` sig.
 - `WorldMarchRoutePolicy.normalizeCoord` — delegates WorldMarchCore, returns `{q,r,tileId}` with NO x/y.
@@ -194,7 +196,7 @@ riskiest god-file surgery last:
   copy had a real bug (wrong phaseCompleted thresholds: era2 keyed on era3AdvanceReady not lumbermillBuilt,
   scoutFormation never set) — now authoritative. Imported the leaf `tutorial/TutorialProgression` (NOT the
   TutorialService facade) to dodge the pre-existing `TutorialService → TutorialGrantService →
-  FamousPersonService → … → MilitaryService` require cycle. Guard `check-tutorial-advance-single-source`
+FamousPersonService → … → MilitaryService` require cycle. Guard `check-tutorial-advance-single-source`
   bans `phaseCompleted:` construction outside `backend/services/tutorial/`.
   - Also deduped the tutorial SELECTOR copies (commits `0519dcd5`, `73935fcf`): `getTutorialScoutPersonId`
     (was inlined in WorldExplorerTutorial + MilitaryService) and `getFormationSnapshot` (duplicated
@@ -231,5 +233,6 @@ git diff --check                           # clean (LF)
 npm run build:ecs-runtime                  # regenerate the ECS bundle after editing an ecs source
 git push private codex/refactor-tutorial-guide-architecture   # deploy (only when asked)
 ```
+
 Deploy verify: served `https://kodagame.top/wxgame-refactor/index.html` should reflect new `?v=`
 tags; deploy log is `/opt/wxgame-refactor/.wxgame/push-deploy.log` on `47.116.32.216` (SSH).

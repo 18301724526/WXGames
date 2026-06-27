@@ -14,7 +14,9 @@ const { build, outfile } = require('./build-frontend-ecs-runtime');
 // whitespace), so drift becomes a loud build failure instead of a runtime mystery.
 
 function normalize(text) {
-  return `${String(text).replace(/\r\n/g, '\n').replace(/[\s]+$/, '')}\n`;
+  return `${String(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/[\s]+$/, '')}\n`;
 }
 
 async function checkBundleFresh() {

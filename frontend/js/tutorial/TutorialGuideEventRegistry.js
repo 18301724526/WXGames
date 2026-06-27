@@ -27,7 +27,9 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
 
-  const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('../platform/CanvasBlockingPanelSnapshotCalls') : {});
+  const { closeBlockingPanelSnapshot } =
+    global.CanvasBlockingPanelSnapshotCalls ||
+    (typeof require !== 'undefined' ? require('../platform/CanvasBlockingPanelSnapshotCalls') : {});
 
   function getStep(host) {
     return Number(host?.getCurrentStep?.()) || 0;

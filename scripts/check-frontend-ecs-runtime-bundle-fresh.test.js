@@ -1,7 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { checkBundleFresh, normalize, renderText } = require('./check-frontend-ecs-runtime-bundle-fresh');
+const {
+  checkBundleFresh,
+  normalize,
+  renderText,
+} = require('./check-frontend-ecs-runtime-bundle-fresh');
 
 test('normalize collapses CRLF and trailing whitespace to a single LF', () => {
   assert.equal(normalize('a\r\nb\r\n'), 'a\nb\n');

@@ -12,63 +12,78 @@
 下列每个功能给出**端到端关键文件**（前端入口/处理器 → 渲染器/presenter → 后端 service/route/action）。
 
 ### 1.1 登录 / 账号 / 会话
-- 前端：`frontend/auth.js`（挂 login/logout/reset 到 host）、`frontend/js/api/GameAPI.js`、`frontend/js/ui/H5AuthStorageAdapter.js`（cf_* 凭据）、`frontend/js/ui/H5AuthRuntimeAdapter.js`、`frontend/js/platform/renderers/SystemCanvasRenderer.js`（登录面板）、`frontend/js/state/presenters/ShellPresenter.js`（auth 视图态）。
+
+- 前端：`frontend/auth.js`（挂 login/logout/reset 到 host）、`frontend/js/api/GameAPI.js`、`frontend/js/ui/H5AuthStorageAdapter.js`（cf\_\* 凭据）、`frontend/js/ui/H5AuthRuntimeAdapter.js`、`frontend/js/platform/renderers/SystemCanvasRenderer.js`（登录面板）、`frontend/js/state/presenters/ShellPresenter.js`（auth 视图态）。
 - 后端：`backend/routes/playerRoutes.js`（login/reset/whitelist）、`backend/services/authService.js`（白名单 + JWT + 单会话 + 离线收益）、`backend/config/SecurityConfig.js`、`backend/services/spawn/SpawnLifecycleService.js`（首次出生点 + 初始存档）。
 
 ### 1.2 城市管理 / 资源经济（核心循环）
+
 - 前端渲染：`CityCanvasRenderer.js`、`CityPeopleCanvasRenderer.js`、`ResourceTopBarCanvasRenderer.js`、`OverlayCanvasRenderer.js`（资源详情）；presenter：`HomePresenter.js`、`state/GameStateManager.js`、`domain/GameState.js`。
 - 后端：`routes/gameRoutes.js`（/state、/heartbeat）、`services/CityService.js`（多城权威 + 派生统计 + 离线收益）、`calculators/ResourceTickCalculator.js`（每秒经济数学）、`services/CityPlanningService.js`、`services/ClientGameStateAssembler.js`。
 
 ### 1.3 建造 / 升级建筑
+
 - 前端：`controllers/BuildingController.js`、`platform/GameCommandService.js`、`platform/CanvasCityActionHandlers.js`（build/upgrade handler）、渲染 `BuildingCanvasRenderer.js`、presenter `BuildingPresenter.js`、域 `domain/BuildingState.js`。
 - 后端：`routes/buildingRoutes.js`、`actions/BuildBuildingAction.js` → `services/BuildingActionService.js`、`validators/BuildingActionValidator.js`、`services/BuildingUnlockService.js`、`calculators/BuildingCostCalculator.js`/`BuildingEffectCalculator.js`、`domain/BuildingState.js`、`modules/Building*`、`config/BuildingConfig.js`。
 
 ### 1.4 人口 / 职业分配 + 民政政策
+
 - 前端：`CityPeopleCanvasRenderer.js`、presenter `HomePresenter.js`/`TalentPolicyPresenter.js`、`frontend/population.js`（已废空 stub）。
 - 后端：`actions/AssignPopulationAction.js`、`domain/Population.js`、`services/TalentPolicyService.js`、`calculators/ResourceTickCalculator.js`（人口增长/上限）。
 
 ### 1.5 推进时代（Advance Era）
+
 - 前端：`CivilizationCanvasRenderer.js`、presenter `CivilizationPresenter.js`、handler `CanvasCityActionHandlers.js`。
 - 后端：`actions/AdvanceEraAction.js`、`config/EraConfig.js`、`services/TechTreeService.js`（点数授予）、`services/EventService.js`（时代事件）、`services/TutorialService.js`、`modules/BuildingSystem.js`（硬编码时代条件 era1–6）。
 
 ### 1.6 科技树研究
+
 - 前端：`TechCanvasRenderer.js`、`TechTreeCanvasRenderer.js`、`TechTreeLayoutModel.js`、交互 `interactions/TechTreeInteractionModel.js`、presenter `TechPresenter.js`、命令 `GameCommandService.js`。
 - 后端：`services/TechTreeService.js`、`config/TechTreeConfig.js`、`services/BuildingUnlockService.js`（科技解锁建筑）。
 
 ### 1.7 事件系统（普通/威胁/定居特殊）
+
 - 前端：`controllers/EventController.js`、`EventCanvasRenderer.js`、presenter `EventPresenter.js`、域 `domain/RewardText.js`。
 - 后端：`actions/ClaimEventAction.js`、`services/EventService.js`、`domain/Event.js`、`calculators/EventRewardCalculator.js`；事件生成在 `gameRoutes.js` 每次变更请求后触发。
 
 ### 1.8 名人（招募/求贤/委任/技能/属性）
+
 - 前端：handler `CanvasFamousActionHandlers.js`、渲染 `FamousCanvasRenderer.js` + `FamousPanel/Portrait/Skill/Model` 子渲染、配置 `config/FamousPortraitLayout.js`、presenter `FamousPersonPresenter.js`。
 - 后端：`services/FamousPersonService.js` + `famousPerson/*`（Constants/Generator/Progression/Shared/RandomAuthority）、`services/SkillGeneratorService.js` + `skillGenerator/*`。
 
 ### 1.9 军队 / 阵型编辑器
+
 - 前端：`ArmyFormationEditorCanvasRenderer.js`、`MilitaryCanvasRenderer.js`、presenter `MilitaryPresenter.js`、命令在 `CanvasGameAppCommands.js`/`CanvasGameShellCommands.js`。
 - 后端：`services/MilitaryService.js`、`services/military/FormationStrengthService.js`。
 
 ### 1.10 世界地图探索 / 行军（World March）
+
 - 前端域：`domain/WorldMarch*`（System/ProgressSnapshot/Geometry/RoutePolicy/OptimisticState）、`domain/WorldMap*`（VisibilityModel/RenderSnapshot/EntitySnapshot/InputActionMap/PickingModel/SelectionResolver）、`shared/worldMarchCore.js`/`WorldMarchCoreAdapter.js`。
 - 前端运行时/渲染：`platform/WorldMapRuntime*`、`platform/WorldMapRuntimeCoordinator.js`、`CanvasGameShellWorldMap*`、`renderers/WorldMap*`（~30 文件）、`controllers/TerritoryController.js`、handler `CanvasTerritoryActionHandlers.js`。
 - 后端：`actions/TerritoryAction.js`、`services/WorldExplorerService.js` + `worldExplorer/*`、`services/WorldMapService.js` + `worldMap/*`、`services/WorldAiExplorerService.js`、`services/realtime/*`、`backend/world-worker.js`。
 
 ### 1.11 领地 / 侦察 / 征服
+
 - 前端：`MilitaryCanvasRenderer.js`（侦察 3x3 网格）、`WorldMapSiteOverlayRenderer.js`、presenter `WorldSitePresenter.js`、`TerritoryController.js`。
 - 后端：`services/TerritoryService.js` + `territory/*`（16+ 工厂）、`services/TerritoryClientAssembler.js`、`services/DefenderLeaderService.js`、`repositories/SpawnAuthorityRepository.js`/`WorldMapAuthorityRepository.js`。
 
 ### 1.12 世界战斗 / 战斗场景
+
 - 前端：`CanvasGameAppBattleScene.js`、渲染 `BattleCanvasRenderer.js` + `BattleCanvasModel/EffectRenderer/FloatingTextRenderer`、域 `domain/BattleCameraPolicy.js`、presenter `BattleScenePresenter.js`、`shared/battleSimCore.js`/`battleAI.js`。
 - 后端：`services/BattleService.js` + `battle/*`、`services/battle/BattleSimService.js`（新实体战）、`services/worldCombat/WorldCombatEncounterService.js`/`WorldCombatSessionService.js`。
 
 ### 1.13 任务中心
+
 - 前端：`GuideTaskCanvasRenderer.js`、presenter `TaskGuidePresenter.js`、`MapCommandCanvasRenderer.js`。
 - 后端：`services/TaskCenterService.js` + `taskCenter/*`、`services/TaskDefinitionService.js` + `taskDefinitions/*`、`routes/adminRoutes.js`（导入/回滚）。
 
 ### 1.14 新手引导 / 教程
+
 - 前端：`tutorial/TutorialGuideController.js` + `TutorialGuide*`（StepPolicy/TargetResolver/PhaseHighlights/FlowRegistry/EventRegistry/UiStateCoordinator）、`TutorialIntroOverlay.js`、渲染 `Tutorial*CanvasRenderer.js`、`SpineWebglPlayer.js`。
 - 后端：`services/TutorialService.js` → `TutorialProgressService.js` → `tutorial/*`、`config/TutorialFlowConfig.js`；并散落于 `worldExplorer/WorldExplorerTutorial.js`、`MilitaryService.js`、`TaskCenterService.js`。
 
 ### 1.15 设置 / 日志 / 运维
+
 - 前端：`frontend/logs.js`、`SystemCanvasRenderer.js`、`debug/ClientOperationLog.js`、`debug/H5LoadTrace.js`、`services/UpdateChecker.js`、`H5UpdateRuntimeAdapter.js`。
 - 后端：`routes/clientEventsRoutes.js`、`routes/opsRoutes.js`、`routes/metricsRoutes.js`、`services/logService.js`、`services/ObservabilityService.js`、`services/OpsControlService.js`/`OpsAuthService.js`、`ops-agent/*`。
 
@@ -186,19 +201,20 @@
 
 **后端精确扇入 TOP（被 N 个文件 require）：**
 
-| 扇入 | 文件 | 跨系统？ |
-|---:|---|---|
-| 27 | ★ `services/config/GameplayConfigRuntime.js` | 是（building/era/tech/tutorial/game 五域配置 + 域数学）|
-| 16 | ★ `services/WorldMapService.js`（483 行）| 是（领地/侦察/行军/出生/雾）|
-| 15 | `domain/BuildingState.js` | 否（建筑域内聚，好的高扇入）|
-| 14 | `services/territory/TerritoryConstants.js` | 否（常量，好的高扇入）|
-| 13 | ★ `services/CityService.js` | 是（经济/建筑/人口/事件/领地）|
-| 11 | `services/territory/TerritoryShared.js` | 否（共享规则）|
-| 10 | ★ `services/TutorialService.js` | 是（横切几乎所有功能）|
-| 9 | `services/config/ConfigRegistryContract.js` | 否（配置内聚）|
-| 7 | ★ `services/FamousPersonService.js` / `TerritoryService.js` / `military/FormationStrengthService.js` | 部分是 |
+| 扇入 | 文件                                                                                                 | 跨系统？                                                |
+| ---: | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+|   27 | ★ `services/config/GameplayConfigRuntime.js`                                                         | 是（building/era/tech/tutorial/game 五域配置 + 域数学） |
+|   16 | ★ `services/WorldMapService.js`（483 行）                                                            | 是（领地/侦察/行军/出生/雾）                            |
+|   15 | `domain/BuildingState.js`                                                                            | 否（建筑域内聚，好的高扇入）                            |
+|   14 | `services/territory/TerritoryConstants.js`                                                           | 否（常量，好的高扇入）                                  |
+|   13 | ★ `services/CityService.js`                                                                          | 是（经济/建筑/人口/事件/领地）                          |
+|   11 | `services/territory/TerritoryShared.js`                                                              | 否（共享规则）                                          |
+|   10 | ★ `services/TutorialService.js`                                                                      | 是（横切几乎所有功能）                                  |
+|    9 | `services/config/ConfigRegistryContract.js`                                                          | 否（配置内聚）                                          |
+|    7 | ★ `services/FamousPersonService.js` / `TerritoryService.js` / `military/FormationStrengthService.js` | 部分是                                                  |
 
 **前端高扇入（全局引用估算）：** `LocaleText/LocaleTextRegistry`(65，i18n，全功能但纯净)、`TileCoord`(28，且各处有 fallback 副本)、`WorldMarchSystem→WorldMarchProgressSnapshot`(823 行，行军/雾/渲染/输入)、`SignatureHash`(18，双端基建)、`UIStatePresenter`(13 presenter 的咽喉)、`CanvasModalSnapshotAdapter`(15，模态桥)。
+
 > 注：`numberUtils`(29)、`objectUtils`(19) 高扇入是**近期收口的共享工具**被广泛采用的证据，属"好的高扇入"。
 
 **最危险的 5 个枢纽**（高扇入 + 跨系统 + 自身臃肿/混乱）：
@@ -221,4 +237,5 @@
 **分层文件数**：backend-service 86 · client-renderer 67 · client-platform 54 · client-domain 47 · backend-domain 31 · backend-infra 24 · backend-config 20 · client-presenter 19 · client-ecs 15 · backend-route 10 · client-controller 8 · client-tutorial 8 · shared 6 · tool 6。
 
 **功能 → 触及文件数**（耦合广度）：世界地图/行军 **177** · 领地/侦察 103 · 世界战斗 96 · 城市管理 94 · 教程 86 · 建造 55 · 名人 53 · 科技 46 · 事件 43 · 任务中心 39 · 推进时代 35 · 阵型 30 · 登录 29 · 人口 21。
+
 > 世界地图/行军触及 177 个文件、教程触及 86 个文件——这两条"触手最长"的链路与 §5 指认的两大风险区完全吻合。

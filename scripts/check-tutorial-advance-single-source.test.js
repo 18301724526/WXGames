@@ -66,7 +66,11 @@ test('tutorial-advance guard scans backend production files, skipping tutorial d
   withTempRepo((repoRoot) => {
     writeFile(repoRoot, 'backend/services/Bad.js', '  phaseCompleted: { era2: true },\n');
     writeFile(repoRoot, 'backend/services/Good.js', 'const t = manualAdvance(tutorial, step);\n');
-    writeFile(repoRoot, 'backend/services/tutorial/TutorialState.js', '  phaseCompleted: createPhaseCompleted(step),\n');
+    writeFile(
+      repoRoot,
+      'backend/services/tutorial/TutorialState.js',
+      '  phaseCompleted: createPhaseCompleted(step),\n',
+    );
     writeFile(repoRoot, 'backend/services/Bad.test.js', '  phaseCompleted: { era2: true },\n');
 
     const report = scanTutorialAdvanceSingleSource({ repoRoot });

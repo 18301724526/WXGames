@@ -41,7 +41,11 @@
     return Boolean(adapter()?.isBlockingPanelSnapshotOpen?.(host, panelKey));
   }
 
-  const api = { openBlockingPanelSnapshot, closeBlockingPanelSnapshot, isBlockingPanelSnapshotOpen };
+  const api = {
+    openBlockingPanelSnapshot,
+    closeBlockingPanelSnapshot,
+    isBlockingPanelSnapshotOpen,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.CanvasBlockingPanelSnapshotCalls = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

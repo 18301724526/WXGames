@@ -87,7 +87,10 @@ function scanSourceEncoding({ repoRoot = process.cwd() } = {}) {
 }
 
 function renderText(report) {
-  const lines = ['[source-encoding] blocking gate', `violations: ${report.summary.totalViolations}`];
+  const lines = [
+    '[source-encoding] blocking gate',
+    `violations: ${report.summary.totalViolations}`,
+  ];
   for (const v of report.violations) lines.push(`  ${v.file}: ${v.kind} -- ${v.detail}`);
   lines.push(report.summary.totalViolations === 0 ? 'passed' : 'FAILED');
   return lines.join('\n');

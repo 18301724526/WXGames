@@ -28,7 +28,7 @@ function withTempRepo(callback) {
 }
 
 test('flags a UTF-8 BOM at the start of a source file', () => {
-  const buffer = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("const x = 1;\n")]);
+  const buffer = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('const x = 1;\n')]);
   const issues = findEncodingIssuesInBuffer('backend/Foo.js', buffer);
   assert.equal(issues.length, 1);
   assert.equal(issues[0].kind, 'bom');
@@ -48,9 +48,17 @@ test('passes clean UTF-8 with legitimate Chinese', () => {
 
 test('scans backend/frontend/shared and skips tests', () =>
   withTempRepo((repoRoot) => {
-    writeFile(repoRoot, 'backend/Bad.js', Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('const a = 1;\n')]));
+    writeFile(
+      repoRoot,
+      'backend/Bad.js',
+      Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('const a = 1;\n')]),
+    );
     writeFile(repoRoot, 'backend/Good.js', Buffer.from('const b = 2;\n', 'utf8'));
-    writeFile(repoRoot, 'backend/Bad.test.js', Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('test();\n')]));
+    writeFile(
+      repoRoot,
+      'backend/Bad.test.js',
+      Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('test();\n')]),
+    );
 
     const report = scanSourceEncoding({ repoRoot });
 

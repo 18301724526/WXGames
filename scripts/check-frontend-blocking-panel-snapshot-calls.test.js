@@ -36,27 +36,42 @@ test('flags a local re-definition of a blocking-panel wrapper', () => {
       'function isBlockingPanelSnapshotOpen(host, panelKey) {',
     ].join('\n'),
   );
-  assert.deepEqual(findings.map((f) => f.symbol), [
-    'openBlockingPanelSnapshot',
-    'closeBlockingPanelSnapshot',
-    'isBlockingPanelSnapshotOpen',
-  ]);
+  assert.deepEqual(
+    findings.map((f) => f.symbol),
+    ['openBlockingPanelSnapshot', 'closeBlockingPanelSnapshot', 'isBlockingPanelSnapshotOpen'],
+  );
 });
 
 test('allows referencing the single source via destructure (no def)', () => {
   const findings = findBlockingPanelDefsInText(
     'frontend/js/platform/Foo.js',
-    "const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || {};",
+    'const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || {};',
   );
   assert.deepEqual(findings, []);
 });
 
 test('scans frontend, allowlists the 2 canonical definers, skips tests', () =>
   withTempRepo((repoRoot) => {
-    writeFile(repoRoot, 'frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js', 'function openBlockingPanelSnapshot(h, k, v) {}\n');
-    writeFile(repoRoot, 'frontend/js/platform/CanvasModalSnapshotAdapter.js', 'function closeBlockingPanelSnapshot(h, k) {}\n');
-    writeFile(repoRoot, 'frontend/js/platform/Bad.js', 'function openBlockingPanelSnapshot(h, k, v) {}\n');
-    writeFile(repoRoot, 'frontend/js/platform/Bad.test.js', 'function isBlockingPanelSnapshotOpen(h, k) {}\n');
+    writeFile(
+      repoRoot,
+      'frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js',
+      'function openBlockingPanelSnapshot(h, k, v) {}\n',
+    );
+    writeFile(
+      repoRoot,
+      'frontend/js/platform/CanvasModalSnapshotAdapter.js',
+      'function closeBlockingPanelSnapshot(h, k) {}\n',
+    );
+    writeFile(
+      repoRoot,
+      'frontend/js/platform/Bad.js',
+      'function openBlockingPanelSnapshot(h, k, v) {}\n',
+    );
+    writeFile(
+      repoRoot,
+      'frontend/js/platform/Bad.test.js',
+      'function isBlockingPanelSnapshotOpen(h, k) {}\n',
+    );
 
     const report = scanBlockingPanelCalls({ repoRoot });
 

@@ -79,8 +79,13 @@ function scanBlockingPanelCalls({ repoRoot = process.cwd() } = {}) {
 }
 
 function renderText(report) {
-  const lines = ['[frontend-blocking-panel-snapshot-calls] blocking gate', `canonical: ${CANONICAL}`, `violations: ${report.summary.totalViolations}`];
-  for (const v of report.violations) lines.push(`  ${v.file}:${v.line} re-defines ${v.symbol} -- use ${CANONICAL}`);
+  const lines = [
+    '[frontend-blocking-panel-snapshot-calls] blocking gate',
+    `canonical: ${CANONICAL}`,
+    `violations: ${report.summary.totalViolations}`,
+  ];
+  for (const v of report.violations)
+    lines.push(`  ${v.file}:${v.line} re-defines ${v.symbol} -- use ${CANONICAL}`);
   lines.push(report.summary.totalViolations === 0 ? 'passed' : 'FAILED');
   return lines.join('\n');
 }

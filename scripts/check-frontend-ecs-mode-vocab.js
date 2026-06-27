@@ -40,7 +40,9 @@ const CANONICAL_PANEL_KEYS = Object.freeze([
 ]);
 
 function arrayEqual(a, b) {
-  return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i]);
+  return (
+    Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i])
+  );
 }
 
 function setEqual(a, b) {
@@ -53,21 +55,38 @@ function findVocabViolations(actual, canonical) {
   const push = (check, detail) => violations.push({ check, detail });
 
   if (!arrayEqual(actual.modeKeys, canonical.MODE_KEYS)) {
-    push('EcsBoundaryManifest.modeKeys', `must deep-equal ModeKeys.MODE_KEYS in order (got ${actual.modeKeys.length} keys vs ${canonical.MODE_KEYS.length})`);
+    push(
+      'EcsBoundaryManifest.modeKeys',
+      `must deep-equal ModeKeys.MODE_KEYS in order (got ${actual.modeKeys.length} keys vs ${canonical.MODE_KEYS.length})`,
+    );
   }
   if (!setEqual(actual.modalSubtypes, canonical.MODAL_MODE_KEYS)) {
-    push('RendererSnapshotBoundary.MODAL_SUBTYPES', `must be the same SET as ModeKeys.MODAL_MODE_KEYS (got ${actual.modalSubtypes.length} vs ${canonical.MODAL_MODE_KEYS.length})`);
+    push(
+      'RendererSnapshotBoundary.MODAL_SUBTYPES',
+      `must be the same SET as ModeKeys.MODAL_MODE_KEYS (got ${actual.modalSubtypes.length} vs ${canonical.MODAL_MODE_KEYS.length})`,
+    );
   }
-  const expectedBlocking = canonical.MODAL_MODE_KEYS.filter((k) => !NON_BLOCKING_MODAL_KEYS.includes(k));
+  const expectedBlocking = canonical.MODAL_MODE_KEYS.filter(
+    (k) => !NON_BLOCKING_MODAL_KEYS.includes(k),
+  );
   if (!setEqual(actual.blockingModalKeys, expectedBlocking)) {
-    push('ModeResolver.BLOCKING_MODAL_KEYS', `must equal MODAL_MODE_KEYS minus [${NON_BLOCKING_MODAL_KEYS.join(', ')}] (got ${actual.blockingModalKeys.length} vs ${expectedBlocking.length})`);
+    push(
+      'ModeResolver.BLOCKING_MODAL_KEYS',
+      `must equal MODAL_MODE_KEYS minus [${NON_BLOCKING_MODAL_KEYS.join(', ')}] (got ${actual.blockingModalKeys.length} vs ${expectedBlocking.length})`,
+    );
   }
   const baseAndModal = [...canonical.BASE_MODE_KEYS, ...canonical.MODAL_MODE_KEYS];
   if (!setEqual(canonical.CAPTURE_PRIORITY, baseAndModal)) {
-    push('ModeKeys.CAPTURE_PRIORITY', `must be a permutation of BASE+MODAL keys (got ${canonical.CAPTURE_PRIORITY.length} vs ${baseAndModal.length}) -- a base/modal key is missing or extra`);
+    push(
+      'ModeKeys.CAPTURE_PRIORITY',
+      `must be a permutation of BASE+MODAL keys (got ${canonical.CAPTURE_PRIORITY.length} vs ${baseAndModal.length}) -- a base/modal key is missing or extra`,
+    );
   }
   if (!arrayEqual(actual.panelKeys, CANONICAL_PANEL_KEYS)) {
-    push('RendererSnapshotBoundary.PANEL_KEYS', `must deep-equal the locked 12-panel list (got [${actual.panelKeys.join(', ')}])`);
+    push(
+      'RendererSnapshotBoundary.PANEL_KEYS',
+      `must deep-equal the locked 12-panel list (got [${actual.panelKeys.join(', ')}])`,
+    );
   }
   return violations;
 }
@@ -101,7 +120,10 @@ function scanModeVocab({ repoRoot = process.cwd() } = {}) {
 }
 
 function renderText(report) {
-  const lines = ['[frontend-ecs-mode-vocab] blocking gate', `violations: ${report.summary.totalViolations}`];
+  const lines = [
+    '[frontend-ecs-mode-vocab] blocking gate',
+    `violations: ${report.summary.totalViolations}`,
+  ];
   for (const v of report.violations) lines.push(`  ${v.check}: ${v.detail}`);
   lines.push(report.summary.totalViolations === 0 ? 'passed' : 'FAILED');
   return lines.join('\n');
