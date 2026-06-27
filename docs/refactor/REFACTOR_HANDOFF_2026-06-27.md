@@ -38,11 +38,22 @@ touching code. Everything here is verified, not assumed.
    legitimate Chinese it would have CORRUPTED — only 12 were real.
 5. **Full gate, green, before every commit:** `npm test` (expect **1699** pass — P1 Cluster 2
    removed 2 fallback-pinning tests; was 1701) +
-   `node scripts/run-architecture-smoke.js` (exit 0) + `npm run lint` (exit 0) + `git diff --check`
-   (clean). The **Edit tool writes CRLF; the repo is LF** (`.gitattributes * -text`) — normalize
-   every edited/new file: `sed -i 's/\r$//' <files>` or `git diff --check` fails.
-6. **Commit in clean logical units.** Push ONLY when asked: `git push private <branch>` →
-   auto-deploys to the refactor test server (detached; the pre-deploy gate is `npm run lint`).
+   `node scripts/run-architecture-smoke.js` (exit 0) + `npm run lint` (exit 0) +
+   **`npm run format:check`** (prettier, exit 0 — run `npx prettier --write .` on anything it flags) +
+   `git diff --check` (clean). The **Edit tool writes CRLF; the repo is LF** (`.gitattributes * -text`)
+   — normalize every edited/new file: `sed -i 's/\r$//' <files>` or `git diff --check` fails.
+   **DEPLOY-GATE TRAP (cost a multi-session stuck deploy):** the server gate
+   `scripts/test-server-ci-gate.sh` runs MORE than the above — `lint` → **`format:check`** →
+   `lint:baseline:check` (suppressions budget vs `main`) → `npm test` → `test:architecture`(=smoke) →
+   `npm run check --prefix backend` (`node --check server.js`). It aborts BEFORE the PM2 restart on
+   ANY failure, but `git push` still exits 0, so the ref lands while the server keeps serving the OLD
+   commit. The local `npm test`/smoke do NOT run prettier — so a green local run can still wedge the
+   deploy. Run `format:check` + the backend check locally before every push. See [[deploy-lint-gate]].
+6. **Commit in clean logical units** (`git add <explicit paths>` or `git add -u`, NEVER `git add -A` —
+   it sweeps untracked working files like `march-*.md` into the commit). Push ONLY when asked:
+   `git push private <branch>` → auto-deploys to the refactor test server (detached). Verify it LANDED
+   (not just that push exited 0): served `https://kodagame.top/wxgame-refactor/…` `?v=` flips to
+   `deploy-<commit>`; deploy log `/opt/wxgame-refactor/.wxgame/push-deploy.log` (SSH root, user holds pw).
 7. After deleting code, prune orphaned suppressions:
    `npx eslint . --prune-suppressions --suppressions-location eslint-suppressions.json`.
 
