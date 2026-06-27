@@ -96,8 +96,10 @@ mojibake denylist), `check-frontend-blocking-panel-snapshot-calls`, `check-front
 `check-frontend-ecs-runtime-bundle-fresh`, **`check-duplicate-coord-helpers`** (P1 Cluster 2: bans
 inline `tile_${...}` outside TileCoord/WorldMarchCoreAdapter/WorldMarchTrace),
 **`check-tutorial-advance-single-source`** (P2: bans `phaseCompleted:` construction outside
-`backend/services/tutorial/`). Dev tool: `scripts/scan-mojibake.ps1` (Windows GBK round-trip
-mojibake detector).
+`backend/services/tutorial/`),
+**`check-renderer-host-bridge-single-source`** (P3: bans inline `new Proxy(this,` under
+`frontend/js/platform/renderers/` — the host-bridge must be `WorldMapRendererHostBridge.createProxy`).
+Dev tool: `scripts/scan-mojibake.ps1` (Windows GBK round-trip mojibake detector).
 
 **Shared single sources created:** `shared/numberUtils.js`, `shared/objectUtils.js`,
 `shared/timeUtils.js`, `frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js`.
@@ -238,9 +240,26 @@ serverState, eraProgress)` STATELESS (reads the passed state = single source) an
     Proxy all fields → then the inheritance can be removed. Each step is runtime-critical, only partly
     unit-tested → needs the live app to verify. `WorldMarchOptimisticState.reconcileState` still fans
     `nextState` to `host.state` / `lastGame.state` / `canvasShell.state` (the Axis-A sync point).
-  - **Safer alternative first slice (not started):** 17 renderers hand-roll `new Proxy(this, {host})`
-    → collapse onto the canonical `WorldMapRendererHostBridge.createProxy(this)` (Rule-3 per renderer:
-    the canonical has a `worldTile*` special-case + function-binding the hand-rolled ones lack).
+  - **Renderer host-bridge slice DONE** (commits `e04c41e5` collapse + `398f0278` guard, NOT pushed):
+    the 17 renderers that hand-rolled `new Proxy(this, {host})` now all call the canonical
+    `WorldMapRendererHostBridge.createProxy(this)`. A 17-agent read-only map + independent grep
+    reconcile (Rule 4) classified them into 3 drifted variants (group 1 worldTile\*+conditional, only
+    a `Reflect.set` `receiver`-arg delta; group 2 no-worldTile, conditional SET = same as canonical;
+    group 3 unconditional-host SET) and proved EVERY per-file delta inert for actual usage: (a) no
+    renderer class defines an accessor setter → the receiver-arg delta is observationally identical;
+    (b) no `worldTile`-prefixed member is ever CALLED as a function (all are data caches/keys/flags) →
+    canonical's unbound-worldTile\* get never differs from the inline bound get; (c) the only
+    non-worldTile/non-`ctx` write through any proxy is TileMap's `lastWorldTileMapContext`, which
+    `publishWorldTileMapContext` ALSO writes to host explicitly, so it lands on host either way (`ctx`
+    is always `in host`; worldTile\* → host in both). **Rule-4 catch:** the TileMap map-agent flagged
+    RISKY on a false premise (mistook `getWorldTile*`/`renderWorldTile*` method names for the
+    `worldTile` prefix); the grep disproved it. Wiring resolves the bridge at CONSTRUCTOR time
+    (`global... || require(...)`), NOT IIFE-load time — CanvasSurface/CanvasAsset/WorldTileWater load
+    BEFORE the bridge in index.html, so a load-time capture would be the ClientOperationLog load-order
+    trap. Pinned by the full 1703 suite (every renderer `*.test.js` asserts host-routing) + the new
+    guard `check-renderer-host-bridge-single-source` (bans inline `new Proxy(this,` in `renderers/`).
+    Pruned the orphaned `no-unused-vars` suppressions (the inline traps' unused `receiver`). Still
+    needs a live render smoke (world map / fast-drag / fog / tutorial overlays) on the test server.
   - `WorldMarchOptimisticState` is also a boundary violation (domain file mutating host + calling
     render) — a controller disguised as domain; P4 or its own slice.
 - **P4 — god-file surgery** (decomposition §3, ranked): `gameRoutes.js` (511 lines, all-feature
