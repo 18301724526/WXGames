@@ -36,7 +36,8 @@ touching code. Everything here is verified, not assumed.
    said blocking-panel = 5 files (really 13); said `GuideTaskCanvasRenderer` was a dead stub (really
    a live 376-line renderer); my own mojibake detector flagged 78 strings, 66 of which were
    legitimate Chinese it would have CORRUPTED — only 12 were real.
-5. **Full gate, green, before every commit:** `npm test` (expect **1701** pass) +
+5. **Full gate, green, before every commit:** `npm test` (expect **1699** pass — P1 Cluster 2
+   removed 2 fallback-pinning tests; was 1701) +
    `node scripts/run-architecture-smoke.js` (exit 0) + `npm run lint` (exit 0) + `git diff --check`
    (clean). The **Edit tool writes CRLF; the repo is LF** (`.gitattributes * -text`) — normalize
    every edited/new file: `sed -i 's/\r$//' <files>` or `git diff --check` fails.
@@ -75,19 +76,49 @@ touching code. Everything here is verified, not assumed.
 | `09e64367` | P1: blocking-panel snapshot wrappers 13 copies → 1 source + guard |
 | `953eabde` | P1: ECS mode-vocab drift guards (vocab-match + bundle-fresh) |
 | `74811aa9` | P1: derive the ECS vocab copies from ModeKeys (remove, not just guard) |
+| `6945f143`…`01b8a119` (13) | **P1 Cluster 2 DONE** — coord/tileId fallback single-source (see §4) |
 
 **Guards added this session** (the enforcement surface — extend, never bypass):
 `check-duplicate-shared-helpers` (now 8 helpers, backend), `check-source-encoding` (no BOM +
 mojibake denylist), `check-frontend-blocking-panel-snapshot-calls`, `check-frontend-ecs-mode-vocab`,
-`check-frontend-ecs-runtime-bundle-fresh`. Dev tool: `scripts/scan-mojibake.ps1` (Windows GBK
-round-trip mojibake detector).
+`check-frontend-ecs-runtime-bundle-fresh`, **`check-duplicate-coord-helpers`** (P1 Cluster 2: bans
+inline `tile_${...}` outside TileCoord/WorldMarchCoreAdapter/WorldMarchTrace). Dev tool:
+`scripts/scan-mojibake.ps1` (Windows GBK round-trip mojibake detector).
 
 **Shared single sources created:** `shared/numberUtils.js`, `shared/objectUtils.js`,
 `shared/timeUtils.js`, `frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js`.
 
 ---
 
-## 4. NEXT TASK — P1 Cluster 2: coordinate / tileId fallbacks (the deferred RISKY one)
+## 4. DONE — P1 Cluster 2: coordinate / tileId fallbacks (the deferred RISKY one)
+
+**Status: COMPLETE** (commits `6945f143`…`01b8a119`, 13 commits, gate green per commit, NOT pushed).
+Outcome: the `tile_${x}_${y}` tileId format now lives in exactly **3 honest sources** —
+`TileCoord.js` (world-map canonical), `WorldMarchCoreAdapter.js` (march family), `WorldMarchTrace.js`
+(debug, deliberately non-floored). Down from **38 inline copies across ~33 files**. Locked by
+`scripts/check-duplicate-coord-helpers.js` (strict: bans `tile_${` outside those 3).
+
+**Corrections the verification forced on the plan below (Rule 4 in action — the §4 plan as first
+written was wrong in 3 ways):**
+1. **Undercount.** The "~18 sites" was really 28 delegating wrappers + facade `normalizeTileCoord` +
+   `coordKey` + inline runtime/trace builders = ~33 files / 38 `tile_${}`. The decomposition's own
+   headline (`TileCoord(28，且各处有 fallback 副本)`) already disagreed with the 18.
+2. **`ClientOperationLog` was NOT a clean collapse — it's a LOAD-ORDER TRAP** (loads index.html:17,
+   before TileCoord:24, load-time capture → `null` in browser → fallback was the LIVE path; Node
+   tests stayed green = false confidence). Fixed by converting to a **call-time** `getTileCoord()`
+   first, then collapsing (user-chosen option).
+3. **5 "collapse onto TileCoord" targets are march-shape RESHAPE wrappers** (`{q,r,tileId}`, no x/y,
+   test-pinned): VisibilityModel/EntitySnapshot/FogVisualSnapshot/ProgressSnapshot/ExplorerNormalizer.
+   A bare `TileCoord.normalizeCoord` swap changes the shape and breaks tests — KEPT the wrapper,
+   deleted only the dead inner fallback, routed the tileId format to the canonical.
+
+Decisions taken (user): **strict** single-source (route every kept wrapper/facade/variant tileId
+through the canonical so `tile_${}` survives in only 3 files); **ClientOperationLog** = lazy-capture
+then collapse. The 2 trap tests (`TileMapGeometry.test.js`, `WorldRevealStore.test.js`) that pinned
+the fallback via `require.cache` eviction were DELETED (TileCoord.test.js covers the canonical
+behavior) → test baseline 1701 → **1699**.
+
+The original plan (kept below for reference):
 
 This is correctness-critical (coordinate math). Go slow. Apply Rule 2 (derive/remove the copies,
 not just guard) and Rule 4 (verify each before touching).
@@ -145,6 +176,8 @@ file. Bump the `?v=` cache-buster on each edited file's `<script>` tag in index.
 
 ## 5. After P1 — the rest of the roadmap (from the program plan)
 
+**P1 is fully done (Cluster 2 closed §4). NEXT TASK = P2 (tutorial cross-cut).**
+
 Each phase = remove/derive copies + a machine guard; gate-green per commit. Order by safety×leverage,
 riskiest god-file surgery last:
 
@@ -174,7 +207,7 @@ spreading kind; accept + track the contained kind.
 ## 6. Quick commands
 
 ```
-npm test                                   # 1701 pass
+npm test                                   # 1699 pass (was 1701 before P1 Cluster 2)
 node scripts/run-architecture-smoke.js     # all guards, exit 0
 npm run lint                               # exit 0
 git diff --check                           # clean (LF)
