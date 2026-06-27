@@ -389,6 +389,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-duplicate-coord-helpers.js',
   'scripts/check-duplicate-coord-helpers.test.js',
+  'scripts/check-tutorial-advance-single-source.js',
+  'scripts/check-tutorial-advance-single-source.test.js',
   'scripts/check-source-encoding.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.js',
@@ -597,6 +599,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-duplicate-coord-helpers.test.js',
+  'scripts/check-tutorial-advance-single-source.test.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
   'scripts/check-frontend-ecs-mode-vocab.test.js',
@@ -701,6 +704,9 @@ function main() {
   ]);
   run('duplicate coord helpers blocking guard', process.execPath, [
     'scripts/check-duplicate-coord-helpers.js',
+  ]);
+  run('tutorial advance single-source blocking guard', process.execPath, [
+    'scripts/check-tutorial-advance-single-source.js',
   ]);
   run('source encoding blocking guard', process.execPath, [
     'scripts/check-source-encoding.js',
