@@ -77,13 +77,16 @@ touching code. Everything here is verified, not assumed.
 | `953eabde` | P1: ECS mode-vocab drift guards (vocab-match + bundle-fresh) |
 | `74811aa9` | P1: derive the ECS vocab copies from ModeKeys (remove, not just guard) |
 | `6945f143`…`01b8a119` (13) | **P1 Cluster 2 DONE** — coord/tileId fallback single-source (see §4) |
+| `7e32401f`…`a7ed32ce` (4) | **P2 DONE** — tutorial-advance 3-copy single-source + guard (see §5) |
 
 **Guards added this session** (the enforcement surface — extend, never bypass):
 `check-duplicate-shared-helpers` (now 8 helpers, backend), `check-source-encoding` (no BOM +
 mojibake denylist), `check-frontend-blocking-panel-snapshot-calls`, `check-frontend-ecs-mode-vocab`,
 `check-frontend-ecs-runtime-bundle-fresh`, **`check-duplicate-coord-helpers`** (P1 Cluster 2: bans
-inline `tile_${...}` outside TileCoord/WorldMarchCoreAdapter/WorldMarchTrace). Dev tool:
-`scripts/scan-mojibake.ps1` (Windows GBK round-trip mojibake detector).
+inline `tile_${...}` outside TileCoord/WorldMarchCoreAdapter/WorldMarchTrace),
+**`check-tutorial-advance-single-source`** (P2: bans `phaseCompleted:` construction outside
+`backend/services/tutorial/`). Dev tool: `scripts/scan-mojibake.ps1` (Windows GBK round-trip
+mojibake detector).
 
 **Shared single sources created:** `shared/numberUtils.js`, `shared/objectUtils.js`,
 `shared/timeUtils.js`, `frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js`.
@@ -176,16 +179,28 @@ file. Bump the `?v=` cache-buster on each edited file's `<script>` tag in index.
 
 ## 5. After P1 — the rest of the roadmap (from the program plan)
 
-**P1 is fully done (Cluster 2 closed §4). NEXT TASK = P2 (tutorial cross-cut).**
+**P1 + P2 done. NEXT TASK = P3 (triple-host mirror).** With P2 closed, all THREE
+duplicated-logic clusters the program named (tutorial-advance, coord/tileId, blocking-panel snapshot)
+are now single-source + guarded.
 
 Each phase = remove/derive copies + a machine guard; gate-green per commit. Order by safety×leverage,
 riskiest god-file surgery last:
 
-- **P2 — tutorial cross-cut** (decomposition §3.11): advance logic copied in 3 backend places
-  (`worldExplorer/WorldExplorerTutorial`, `MilitaryService`, `TaskCenterService`) → route through
-  `TutorialService` single entry + guard "no tutorial-advance outside TutorialService". 86-file
-  cross-cut; the biggest tutorial offenders are `TutorialActionValidator` (~300-line god-validator)
-  and the half-migrated `TutorialGuideUiStateCoordinator` (dual host mirror).
+- **P2 — tutorial cross-cut DONE** (commits `7e32401f`…`a7ed32ce`): the 3 drifted advance copies
+  (`MilitaryService.advanceTutorialStep`, `WorldExplorerTutorial.advanceTutorialStep` [imported by
+  WorldExplorerActions/Progression], `TaskCenterService` inline) collapsed onto the canonical
+  `TutorialProgression.manualAdvance`. Verified behavior-equivalent (cumulative `createPhaseCompleted`
+  makes the copies' merge == canonical replace; normalized inputs; steps ≤ completed); TaskCenterService's
+  copy had a real bug (wrong phaseCompleted thresholds: era2 keyed on era3AdvanceReady not lumbermillBuilt,
+  scoutFormation never set) — now authoritative. Imported the leaf `tutorial/TutorialProgression` (NOT the
+  TutorialService facade) to dodge the pre-existing `TutorialService → TutorialGrantService →
+  FamousPersonService → … → MilitaryService` require cycle. Guard `check-tutorial-advance-single-source`
+  bans `phaseCompleted:` construction outside `backend/services/tutorial/`.
+  - NOT done (separate slices, NOT spreading-logic debt): `TutorialActionValidator` (~300-line
+    god-validator → P4 god-file surgery), `TutorialGuideUiStateCoordinator` (frontend dual-host mirror →
+    folds into P3). Minor contained dups left + tracked: `getTutorialScoutPersonId` (selector inlined in
+    WorldExplorerTutorial + MilitaryService vs canonical `TutorialSelectors`), `getFormationSnapshot`
+    (formation reader, not tutorial-advance).
 - **P3 — triple-host mirror** (decomposition §3.13, THE root of "fix one, break another"):
   `game` / `canvasShell` / `lastGame` → one live-state source + selectors; thin host readers; kill
   the Proxy-passthrough `host` god-object (it shows up in the fan-in as `host` / `host.ctx` /
