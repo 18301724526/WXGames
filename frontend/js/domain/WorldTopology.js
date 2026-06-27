@@ -42,21 +42,15 @@
 
   function normalizeCoord(coord = {}, options = {}) {
     const size = normalizeWorldSize(options);
-    const normalized = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord(coord)
-      : {
-        x: Math.floor(toNumber(coord.x ?? coord.q, 0)),
-        y: Math.floor(toNumber(coord.y ?? coord.r, 0)),
-      };
+    const normalized = TileCoord.normalizeCoord(coord);
     const x = size.wrapping ? modulo(normalized.x, size.width) : normalized.x;
     const y = size.wrapping ? modulo(normalized.y, size.height) : normalized.y;
-    const tileId = TileCoord?.tileId ? TileCoord.tileId(x, y) : `tile_${x}_${y}`;
     return Object.freeze({
       x,
       y,
       q: x,
       r: y,
-      tileId,
+      tileId: TileCoord.tileId(x, y),
       worldWidth: size.width,
       worldHeight: size.height,
       wrapped: size.wrapping,

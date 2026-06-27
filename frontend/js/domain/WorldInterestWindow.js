@@ -59,20 +59,7 @@
   }
 
   function normalizeCoord(coord = {}, options = {}) {
-    if (WorldTopology?.normalizeCoord) return WorldTopology.normalizeCoord(coord, options);
-    const normalized = TileCoord?.normalizeCoord
-      ? TileCoord.normalizeCoord(coord)
-      : {
-        x: toInteger(coord.x ?? coord.q, 0),
-        y: toInteger(coord.y ?? coord.r, 0),
-      };
-    return Object.freeze({
-      x: normalized.x,
-      y: normalized.y,
-      q: normalized.x,
-      r: normalized.y,
-      tileId: normalized.tileId || `tile_${normalized.x}_${normalized.y}`,
-    });
+    return WorldTopology.normalizeCoord(coord, options);
   }
 
   function normalizeWindowOptions(options = {}) {
