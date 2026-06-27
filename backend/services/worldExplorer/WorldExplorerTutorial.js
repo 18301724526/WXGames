@@ -9,23 +9,6 @@ function getTutorialSteps() {
   return TutorialFlowConfig.TUTORIAL_STEPS;
 }
 
-function advanceTutorialStep(tutorial = {}, nextStep = 0) {
-  const TUTORIAL_STEPS = getTutorialSteps();
-  const step = Math.floor(Number(nextStep) || 0);
-  const currentStep = Math.floor(Number(tutorial.currentStep) || 0);
-  if (tutorial.completed || tutorial.disabled || step <= currentStep) return tutorial;
-  return {
-    ...tutorial,
-    currentStep: step,
-    phaseCompleted: {
-      ...(tutorial.phaseCompleted || {}),
-      ...TutorialFlowConfig.createPhaseCompleted(step),
-    },
-    completed: step >= TUTORIAL_STEPS.completed,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
 function getTutorialScoutPersonId(gameState = {}) {
   const personId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
   return personId ? String(personId) : '';
@@ -110,7 +93,6 @@ function ensureTutorialFirstCityClaimSoldiers(gameState = {}) {
 }
 
 module.exports = {
-  advanceTutorialStep,
   getTutorialScoutPersonId,
   getFormationSnapshot,
   validateTutorialFormation,

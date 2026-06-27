@@ -15,10 +15,10 @@ const {
   shouldGuaranteeTutorialEmptyCity,
 } = require('./WorldExplorerRoutePlanner');
 const {
-  advanceTutorialStep,
   validateTutorialFormation,
   ensureTutorialFirstCityClaimSoldiers,
 } = require('./WorldExplorerTutorial');
+const { manualAdvance } = require('../tutorial/TutorialProgression');
 const {
   AoiSyncSnapshot,
   CommandAuthorityContract,
@@ -290,7 +290,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   }
   setMissionCombatTarget(mission, combatTarget.encounter, now);
   if (routeResult.inPlace && combatTarget.encounter) WorldCombatEncounterService.resolveImmediateArrival(gameState, mission, targetInput, now);
-  gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
+  gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
   const result = {
     success: true,
     message: 'Explorer mission started.',
