@@ -50,10 +50,6 @@
             return this.getBattleTurnDurationMs(index < turns.length ? turns[index] : null);
           },
 
-      syncEntityBattleToShell() {
-            if (this.canvasShell) this.canvasShell.entityBattle = this.entityBattle;
-          },
-
       getBattleDomainOwnerApi() {
             return EcsModeRuntime?.BattleDomainOwner || null;
           },
@@ -218,7 +214,6 @@
               _rstate: {},
             };
             this.openEntityBattleDomain(this.entityBattle);
-            this.syncEntityBattleToShell();
             this.startEntityBattleTimer();
             this.renderCanvasSurface(this.state?.currentTab || 'military');
             return true;
@@ -279,7 +274,6 @@
             }
             if (battle && battle.result && !eb.ended) this.onEntityBattleEnd();
             this.updateEntityBattleDomain(eb);
-            this.syncEntityBattleToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
             return true;
           },
@@ -298,7 +292,6 @@
             if (!eb || eb.mode !== 'interactive' || eb.ended || (eb.battle && eb.battle.result)) return false;
             this.recordEntityInput(input);
             this.updateEntityBattleDomain(eb);
-            this.syncEntityBattleToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
             return true;
           },
@@ -308,7 +301,6 @@
             if (!eb) return false;
             eb.selectedGid = gid;
             this.updateEntityBattleDomain(eb);
-            this.syncEntityBattleToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
             return true;
           },
@@ -338,7 +330,6 @@
               });
             }
             this.updateEntityBattleDomain(eb);
-            this.syncEntityBattleToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
             return true;
           },
@@ -366,7 +357,6 @@
             }
             eb.camera = camera;
             this.updateEntityBattleDomain(eb);
-            this.syncEntityBattleToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
             return true;
           },
@@ -385,7 +375,6 @@
               eb.camera = Policy.panBy(eb.camera || Policy.createCamera(), fit, dx, dy);
               eb._dragLast = { x: px, y: py };
               this.updateEntityBattleDomain(eb);
-              this.syncEntityBattleToShell();
               this.renderAnimationFrame(this.state?.currentTab || 'military');
             }
             if (phase === 'end' || phase === 'cancel') eb._dragLast = null;
@@ -403,7 +392,6 @@
               eb.statusColor = win ? '#3fb950' : '#f85149';
               this.stopEntityBattleTimer();
               this.updateEntityBattleDomain(eb);
-              this.syncEntityBattleToShell();
               this.renderAnimationFrame(this.state?.currentTab || 'military');
               return;
             }
@@ -444,7 +432,6 @@
             eb.statusColor = win ? '#3fb950' : (draw ? '#d29922' : '#f85149');
             this.stopEntityBattleTimer();
             this.updateEntityBattleDomain(eb);
-            this.syncEntityBattleToShell();
             this.renderAnimationFrame(this.state?.currentTab || 'military');
           },
 
@@ -453,7 +440,6 @@
             this.stopEntityBattleTimer();
             this.closeEntityBattleDomain();
             this.entityBattle = null;
-            if (this.canvasShell) this.canvasShell.entityBattle = null;
             if (eb && typeof eb.onClose === 'function') {
               try { eb.onClose(); } catch (_e) { /* ignore */ }
             } else if (eb) {
