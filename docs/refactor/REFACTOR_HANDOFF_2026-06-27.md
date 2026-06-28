@@ -258,17 +258,28 @@ CanvasGameApp`) `this.state` — `GameStateManager.state` is just an Axis-B cach
     slot `getState()` reads, lastGame precedence). Observably identical (the 8 existing
     WorldMarchOptimisticState tests still pass). - **`canvasShell.worldClock` mirror removed** (`bdf64ade`): write-only; the shell resolves its clock via
     a `this.worldClock || runtime || lastGame` fallback chain over a shared singleton — the push was
-    redundant. - **REMAINING — do as ONE coordinated change THEN live-verify** (these are render-read-coupled +
-    interdependent, NOT statically safe, and `CanvasGameShell.test.js` has ~zero coverage of them):
-    `networkState` + `loading` (the shell renders its OWN copy at `CanvasGameShellRenderingRuntime`
-    `:463-464` and has its own `setNetworkState`/`showLoading` merge logic, so dropping the app→shell push
-    changes render timing), the ~7 per-render UI scalars (`CanvasGameAppRenderingRuntime:70-76` copied onto
-    canvasShell each frame), and the ~30 duplicated shell constructor fields + `extends CanvasGameApp`
-    itself. **Plan:** add getter+**setter** proxies on the shell (read→`lastGame`; setter falls back to a
-    local `__field` while `lastGame` is null during `super()` — getter-ONLY throws under super's assignment)
-    → delete the pushes/duplicate declarations → remove `extends` (shell composes/holds a host ref +
-    delegates inherited helpers) → add a guard banning a 2nd `extends CanvasGameApp` / 2nd state host → one
-    live smoke (state sync / world march / tab switch / tutorial overlays) + `?v=` bump + push.
+    redundant. - **REMAINING — read-proof map (workflow `w9z2wx0as` + own grep cross-check) split the ~19 mirrored
+    fields into 9 CLEAN (proxy-collapse is read-provably behavior-equivalent — NO live-verify needed) and 10
+    TANGLED (equivalence is NOT readable as-is; each needs a specific decouple-FIRST fix — these are the
+    structural findings, the exact "would-be-a-patch / needs-live-verify" spots).** Mechanism (validated): a
+    `HOST_PROXIED_FIELDS` list on `CanvasGameShell.prototype` defines getter/setter accessors that forward to
+    `this.lastGame` (the App owner) with a local `__hp_<field>` pre-mount fallback; per field also delete the
+    shell ctor declaration + the app↔shell sync writes. - **CLEAN — one read-proven commit each:** `pendingBuildingAction` DONE (`3ce5d964`); remaining
+    `buildingOffset`, `activeBuildingCategory`, `famousPersonsPage`, `selectedFamousPersonId`,
+    `armyFormationEditor`, `activeCityManagementTab`, `activeTaskCenterTab`, `entityBattle` (cross-check
+    each independently before adding it — do NOT trust the agent verdict blind). - **TANGLED — decouple FIRST, then they become CLEAN:** `pageTransition` (shell transition-timer expiry
+    clears only the shell slot, NO app writeback — make it symmetric + retire the dead app-side timer);
+    `buildingTransition` (clean alone but shares that same timer infra); `techTreeZoom`/`techTreePanX`/
+    `techTreePanY`/`techTreeDragStart` (SHELL is the live owner — a proxy to the App would INVERT ownership;
+    pan has no per-render sync and app-side resets don't mirror — pick the owner + add symmetric sync first);
+    `networkState` (value is collapse-clean but the push also carries a render SIDE EFFECT a getter/setter
+    cannot carry — separate the render trigger first); `loading` (genuinely dual-owned + a mount-hold where
+    the shell shows a loading overlay while app.loading is the hidden config — resolve dual ownership);
+    `territoryUiState` (triple ownership with a MERGE in the shell render path, not a single-slot read —
+    collapse the merge first); `tutorialHighlight` (SHELL is the live owner, reverse of the plan — flip the
+    ownership decision). - **Then:** once every field is single-owner, remove `extends CanvasGameApp` (shell holds a host ref +
+    delegates inherited helpers) → add a guard banning a 2nd `extends CanvasGameApp` / 2nd state host → ONE
+    final live smoke (state sync / world march / tab switch / tutorial overlays) + `?v=` bump + push.
   - **Renderer host-bridge slice DONE** (commits `e04c41e5` collapse + `398f0278` guard, NOT pushed):
     the 17 renderers that hand-rolled `new Proxy(this, {host})` now all call the canonical
     `WorldMapRendererHostBridge.createProxy(this)`. A 17-agent read-only map + independent grep
