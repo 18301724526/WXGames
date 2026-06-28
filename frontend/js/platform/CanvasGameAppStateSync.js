@@ -341,7 +341,10 @@
             if (this.worldClock) return this.worldClock;
             this.worldClock = SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
             if (this.runtime && typeof this.runtime === 'object' && this.worldClock) this.runtime.worldClock = this.worldClock;
-            if (this.canvasShell && typeof this.canvasShell === 'object' && this.worldClock) this.canvasShell.worldClock = this.worldClock;
+            // P3 Axis A: dropped the canvasShell.worldClock mirror (zero readers). The
+            // shell resolves the clock from its own constructor (shared singleton) and a
+            // this.runtime/lastGame fallback chain (CanvasGameShellRenderingRuntime:110),
+            // so this push was redundant.
             return this.worldClock;
           },
 
@@ -349,9 +352,7 @@
             const clock = this.ensureWorldClock?.();
             if (!clock || !payload || typeof payload !== 'object') return false;
             const synced = clock.updateFromPayload?.(payload) || false;
-            if (synced && this.canvasShell && typeof this.canvasShell === 'object') {
-              this.canvasShell.worldClock = clock;
-            }
+            // P3 Axis A: dropped the canvasShell.worldClock mirror (see ensureWorldClock).
             return synced;
           },
 
