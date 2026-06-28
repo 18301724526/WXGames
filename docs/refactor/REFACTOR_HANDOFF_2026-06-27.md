@@ -190,6 +190,16 @@ only because dead). Before collapsing each file, grep for callers that MUTATE th
 intact. Snapshot `{x,y,q,r,tileId}` for a few coords (incl. negative + alias-q/r) before/after each
 file. Bump the `?v=` cache-buster on each edited file's `<script>` tag in index.html.
 
+**Backend follow-up DONE** (`0b79e436`, `9b356646`, `e4361c87`): the §4 work was frontend-only,
+so the backend `tile_${}` copies were unguarded. `WorldMapShared.getTileId` (raw, re-exported as
+`WorldMapService.getTileId` and delegated to by the territory wrappers) was collapsed onto the
+floored `WorldMapTopology.getTileId` (the tile-identity owner); the two territory dead raw fallbacks
+were removed; and `check-duplicate-coord-helpers` was extended to scan `backend/services` + `shared`
+(allowlisting `WorldMapTopology.getTileId` + `shared/worldMarchCore.tileId`). Behavior-safe: tile ids
+are integer-by-contract (`parseTileId` only matches `-?\d+`). Out of scope by design (honest isolated
+variants, NOT request-path duplication): `gameRoutes.getTraceTileId` (deliberately non-floored trace),
+the one-off `cleanup-world-explorer-ready-state` script, and the `tile-map-lab` tool.
+
 ---
 
 ## 5. After P1 — the rest of the roadmap (from the program plan)
