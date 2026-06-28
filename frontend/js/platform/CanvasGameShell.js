@@ -131,11 +131,7 @@ constructor(options = {}) {
       this.floatTimer = null;
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
-      this.famousPersonsPage = 0;
-      this.selectedFamousPersonId = '';
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
-      this.buildingOffset = 0;
-      this.activeBuildingCategory = 'all';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeZoom = 1;
@@ -322,7 +318,14 @@ static mount(game, options = {}) {
   // local `__hp_<field>` fallback covers the window before mount() binds lastGame (during
   // super(), or unit tests with no host). Add a field here ONLY after its app<->shell
   // equivalence is read-proven AND its ctor declaration + sync writes are removed.
-  const HOST_PROXIED_FIELDS = ['pendingBuildingAction', 'activeCityManagementTab'];
+  const HOST_PROXIED_FIELDS = [
+    'pendingBuildingAction',
+    'activeCityManagementTab',
+    'buildingOffset',
+    'activeBuildingCategory',
+    'famousPersonsPage',
+    'selectedFamousPersonId',
+  ];
   HOST_PROXIED_FIELDS.forEach((field) => {
     const backing = `__hp_${field}`;
     Object.defineProperty(CanvasGameShell.prototype, field, {

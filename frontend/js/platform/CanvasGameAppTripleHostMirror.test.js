@@ -210,3 +210,20 @@ test('Axis A: activeCityManagementTab is host-proxied — shell forwards to the 
   assert.equal(host.activeCityManagementTab, 'military'); // write landed on host
   assert.equal(shell.activeCityManagementTab, host.activeCityManagementTab); // one cell
 });
+
+test('Axis A: per-render CLEAN scalars are host-proxied to the single owner', () => {
+  const fields = {
+    buildingOffset: 7,
+    activeBuildingCategory: 'military',
+    famousPersonsPage: 3,
+    selectedFamousPersonId: 'fp-x',
+  };
+  for (const [field, value] of Object.entries(fields)) {
+    const shell = Object.create(CanvasGameShell.prototype);
+    const host = {};
+    shell.lastGame = host;
+    shell[field] = value;
+    assert.equal(host[field], value, `${field}: write forwards to host`);
+    assert.equal(shell[field], value, `${field}: read forwards to host`);
+  }
+});
