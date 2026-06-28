@@ -194,10 +194,12 @@ file. Bump the `?v=` cache-buster on each edited file's `<script>` tag in index.
 
 ## 5. After P1 — the rest of the roadmap (from the program plan)
 
-**P1 + P2 done & deployed. P3 IN PROGRESS — Axis B done & deployed (`b3ce37f2`).** With P2 closed, all
-THREE duplicated-logic clusters the program named (tutorial-advance, coord/tileId, blocking-panel
-snapshot) are now single-source + guarded. **Deploy is now unblocked** (the multi-session stuck deploy
-was the `prettier --check` gate step — see §1.5).
+**P1 + P2 done & deployed. P3 IN PROGRESS — Axis B done & deployed (`b3ce37f2`); Axis A STARTED** (the two
+statically-isolatable mirrors collapsed: `setExplorer` `6a39bd29` + `canvasShell.worldClock` `bdf64ade`,
+characterization baseline `55c46ad4`; networkState/loading/inheritance remain — see below, they need the
+deferred live-verify). With P2 closed, all THREE duplicated-logic clusters the program named
+(tutorial-advance, coord/tileId, blocking-panel snapshot) are now single-source + guarded. **Deploy is now
+unblocked** (the multi-session stuck deploy was the `prettier --check` gate step — see §1.5).
 
 Each phase = remove/derive copies + a machine guard; gate-green per commit. Order by safety×leverage,
 riskiest god-file surgery last:
@@ -233,13 +235,30 @@ serverState, eraProgress)` STATELESS (reads the passed state = single source) an
     hand-sync writes. Pinned by a new GameStateManager characterization test (the class had ZERO unit
     tests before). Touches the live reconcile path — verify on the test server (state sync / world
     march / tab switch) since unit tests can't cover live rendering.
-  - **Axis A NOT done (the inheritance root, riskiest):** ~15 mirror fields (loading, worldClock,
-    networkState, presenter, renderer, pendingBuildingAction, selectedTechId, territoryUiState, …) can
-    be collapsed by adding a getter+**setter** pair on the shell that proxies to `lastGame` (getter-ONLY
-    throws under `super()`'s assignment; the setter must no-op while `lastGame` is null during mount).
-    Proxy all fields → then the inheritance can be removed. Each step is runtime-critical, only partly
-    unit-tested → needs the live app to verify. `WorldMarchOptimisticState.reconcileState` still fans
-    `nextState` to `host.state` / `lastGame.state` / `canvasShell.state` (the Axis-A sync point).
+  - **Axis A IN PROGRESS (the inheritance root, riskiest).** Re-mapped via a 5-agent read-only workflow +
+    independent grep (Rule 4). **Correction to the old framing:** `WorldMarchOptimisticState.reconcileState`
+    is PURE (returns a new state, no host writes); the real three-host fan-out was `setExplorer`
+    (`WorldMarchOptimisticState.js`), and the canonical live-state owner is the App's (`H5GameHost extends
+CanvasGameApp`) `this.state` — `GameStateManager.state` is just an Axis-B cache, and the shell's inherited
+    `this.state` is vestigial (every shell mixin reads `lastGame.state`; the shell never reads its own). - **Characterization baseline first** (`55c46ad4`, `CanvasGameAppTripleHostMirror.test.js`): the
+    three-host fan-out + the canvasShell networkState mirror had ZERO coverage. Tags MIRROR BASELINE
+    (debt to remove) vs READ CONTRACT (must survive) vs SINGLE OWNER (post-collapse). - **`setExplorer` collapsed to a single owner** (`6a39bd29`): it fanned one `nextState` into
+    host.state / lastGame.state / canvasShell.state. `canvasShell.state` is write-only (zero readers, rg)
+    and every caller runs in `CanvasGameAppCommands` with host=App, so it now writes ONLY the owner (the
+    slot `getState()` reads, lastGame precedence). Observably identical (the 8 existing
+    WorldMarchOptimisticState tests still pass). - **`canvasShell.worldClock` mirror removed** (`bdf64ade`): write-only; the shell resolves its clock via
+    a `this.worldClock || runtime || lastGame` fallback chain over a shared singleton — the push was
+    redundant. - **REMAINING — do as ONE coordinated change THEN live-verify** (these are render-read-coupled +
+    interdependent, NOT statically safe, and `CanvasGameShell.test.js` has ~zero coverage of them):
+    `networkState` + `loading` (the shell renders its OWN copy at `CanvasGameShellRenderingRuntime`
+    `:463-464` and has its own `setNetworkState`/`showLoading` merge logic, so dropping the app→shell push
+    changes render timing), the ~7 per-render UI scalars (`CanvasGameAppRenderingRuntime:70-76` copied onto
+    canvasShell each frame), and the ~30 duplicated shell constructor fields + `extends CanvasGameApp`
+    itself. **Plan:** add getter+**setter** proxies on the shell (read→`lastGame`; setter falls back to a
+    local `__field` while `lastGame` is null during `super()` — getter-ONLY throws under super's assignment)
+    → delete the pushes/duplicate declarations → remove `extends` (shell composes/holds a host ref +
+    delegates inherited helpers) → add a guard banning a 2nd `extends CanvasGameApp` / 2nd state host → one
+    live smoke (state sync / world march / tab switch / tutorial overlays) + `?v=` bump + push.
   - **Renderer host-bridge slice DONE** (commits `e04c41e5` collapse + `398f0278` guard, NOT pushed):
     the 17 renderers that hand-rolled `new Proxy(this, {host})` now all call the canonical
     `WorldMapRendererHostBridge.createProxy(this)`. A 17-agent read-only map + independent grep
