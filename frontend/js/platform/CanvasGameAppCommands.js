@@ -59,8 +59,6 @@
               openBlockingPanelSnapshot(this, 'showFamousPersons', true);
               this.famousPersonsPage = 0;
               this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
               this.showFloatingText(result.message || t('command.famous.seekComplete'));
               this.log(result.message || t('command.famous.seekComplete'));
               return true;
@@ -78,8 +76,6 @@
               openBlockingPanelSnapshot(this, 'showFamousPersons', true);
               this.famousPersonsPage = 0;
               this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
               this.showFloatingText(result.message || t('command.famous.accepted', {}));
               this.log(result.message || t('command.famous.accepted', {}));
               return true;
@@ -96,7 +92,6 @@
               this.applyApiState(result);
               openBlockingPanelSnapshot(this, 'showFamousPersons', true);
               this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
               this.showFloatingText(result.message || t('command.famous.dismissed', {}));
               this.log(result.message || t('command.famous.dismissed', {}));
               return true;
@@ -112,7 +107,6 @@
               const result = await this.getGameApi().assignFamousAttributePoint(personId, attribute);
               this.applyApiState(result);
               openBlockingPanelSnapshot(this, 'showFamousPersons', true);
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = personId;
               this.selectedFamousPersonId = personId;
               this.showFloatingText(result.message || t('command.famous.attributeUpgraded'));
               this.log(result.message || t('command.famous.attributeUpgraded'));
