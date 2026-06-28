@@ -56,6 +56,16 @@ test('coord-helper guard exempts the canonical + honest variant sources, tests a
   assert.equal(isScannableSource('frontend/js/domain/WorldMapPickingModel.js'), true);
   assert.equal(isScannableSource('frontend/js/domain/Foo.test.js'), false);
   assert.equal(isScannableSource('frontend/js/vendor/spine/x.js'), false);
+
+  // backend + shared scope (single-source extended beyond the frontend)
+  assert.ok(ALLOWLIST.includes('backend/services/worldMap/WorldMapTopology.js'));
+  assert.ok(ALLOWLIST.includes('shared/worldMarchCore.js'));
+  assert.equal(isScannableSource('backend/services/worldMap/WorldMapTopology.js'), false); // allowlisted canonical
+  assert.equal(isScannableSource('shared/worldMarchCore.js'), false); // allowlisted canonical
+  assert.equal(isScannableSource('backend/services/territory/TerritoryShared.js'), true); // in scope, scannable
+  assert.equal(isScannableSource('shared/numberUtils.js'), true); // in scope, scannable
+  assert.equal(isScannableSource('backend/routes/gameRoutes.js'), false); // out of scope: trace variant
+  assert.equal(isScannableSource('backend/scripts/cleanup-world-explorer-ready-state.js'), false); // out of scope: script
 });
 
 test('coord-helper guard scans frontend production files, skipping allowlist + tests', () =>

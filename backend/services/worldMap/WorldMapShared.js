@@ -17,7 +17,7 @@ function random01(seed, q, r, salt) {
 
 function getTileId(q, r) {
   // Single-sourced: the tile-id format lives in WorldMapTopology (the tile-identity owner,
-  // alongside getTileCanonicalKey/getCanonicalTileId). This was a raw `tile_${q}_${r}` copy;
+  // alongside getTileCanonicalKey/getCanonicalTileId). This was a raw inline tile-id copy;
   // tile ids are integer-by-contract (parseTileId only matches integers), so delegating to the
   // floored Topology form is behavior-safe and removes the same-folder raw/floored split.
   return WorldMapTopology.getTileId(q, r);

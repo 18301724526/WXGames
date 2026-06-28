@@ -2,21 +2,26 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // Blocking gate: the `tile_<x>_<y>` tileId string format has a single source of
-// truth. P1 Cluster 2 collapsed ~30 inline copies of this format down to three
-// honest sources; everything else must REFERENCE one of them (TileCoord.tileId /
-// TileCoord.normalizeCoord, or the march family's WorldMarchCore), never re-build
-// the `tile_${...}_${...}` literal. A re-introduced inline format -- the signature
-// of a copied coordinate normalizer -- turns the gate red and points the author at
-// the canonical module. This is the lock against the mirror disease re-spreading,
-// not a substitute for the (already done) deletion.
-const SOURCE_ROOTS = Object.freeze(['frontend/js']);
+// truth per layer. P1 Cluster 2 collapsed ~30 frontend inline copies; the backend
+// worldMap/territory copies were then collapsed onto WorldMapTopology.getTileId and
+// the dead territory fallbacks removed. Everything in scope must REFERENCE a canonical
+// source -- frontend: TileCoord.tileId / TileCoord.normalizeCoord; backend worldMap:
+// WorldMapTopology.getTileId; march family: WorldMarchCore.tileId -- never re-build the
+// `tile_${...}_${...}` literal. A re-introduced inline format -- the signature of a
+// copied coordinate normalizer -- turns the gate red and points the author at the
+// canonical. This is the lock against the mirror disease re-spreading, not a substitute
+// for the (already done) deletion. Out of scope by design: trace/debug variants
+// (deliberately non-floored, e.g. gameRoutes.getTraceTileId), one-off scripts, lab tools.
+const SOURCE_ROOTS = Object.freeze(['frontend/js', 'backend/services', 'shared']);
 const CANONICAL = 'frontend/js/domain/TileCoord.js';
 
 // Paths permitted to construct the `tile_<x>_<y>` format -- the honest variant sources:
 const ALLOWLIST = Object.freeze([
-  'frontend/js/domain/TileCoord.js', // canonical world-map tileId (TileCoord.tileId)
-  'frontend/js/shared/WorldMarchCoreAdapter.js', // march family source; loads before TileCoord
-  'frontend/js/debug/WorldMarchTrace.js', // debug trace keys, deliberately NON-floored
+  'frontend/js/domain/TileCoord.js', // frontend canonical world-map tileId (TileCoord.tileId)
+  'frontend/js/shared/WorldMarchCoreAdapter.js', // frontend march family source; loads before TileCoord
+  'frontend/js/debug/WorldMarchTrace.js', // frontend debug trace keys, deliberately NON-floored
+  'backend/services/worldMap/WorldMapTopology.js', // backend worldMap/territory canonical (getTileId)
+  'shared/worldMarchCore.js', // shared march family canonical (worldMarchCore.tileId)
 ]);
 
 // The tileId format: `tile_${...}_${...}`. Only ever appears as a tileId construction.
@@ -86,7 +91,7 @@ function scanDuplicateCoordHelpers(options = {}) {
     filesScanned: files.length,
     violations: findings.map((finding) => ({
       ...finding,
-      note: `inline tile_<x>_<y> format is duplicated coordinate logic; call ${CANONICAL.replace(/^.*\//, '')}.tileId / TileCoord.normalizeCoord (or WorldMarchCore for the march family) instead of re-building the literal`,
+      note: 'inline tile_<x>_<y> format is duplicated coordinate logic; reference a canonical tileId source (frontend TileCoord.tileId/normalizeCoord, backend WorldMapTopology.getTileId, or WorldMarchCore for the march family) instead of re-building the literal',
     })),
     summary: { totalViolations: findings.length },
   };

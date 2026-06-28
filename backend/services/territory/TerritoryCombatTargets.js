@@ -17,7 +17,7 @@ function createTerritoryCombatTargets(dependencies = {}) {
   function getTileId(q, r) {
     // Single source: WorldMapService.getTileId (= WorldMapTopology.getTileId). WorldMapService is
     // always injected here (TerritoryService builds this factory with it), so the old inline raw
-    // `tile_${q}_${r}` fallback was dead — removed (do not re-introduce a second format source).
+    // tile-id fallback was dead — removed (do not re-introduce a second format source).
     return WorldMapService.getTileId(q, r);
   }
 
