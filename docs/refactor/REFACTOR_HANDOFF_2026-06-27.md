@@ -264,10 +264,17 @@ CanvasGameApp`) `this.state` — `GameStateManager.state` is just an Axis-B cach
     structural findings, the exact "would-be-a-patch / needs-live-verify" spots).** Mechanism (validated): a
     `HOST_PROXIED_FIELDS` list on `CanvasGameShell.prototype` defines getter/setter accessors that forward to
     `this.lastGame` (the App owner) with a local `__hp_<field>` pre-mount fallback; per field also delete the
-    shell ctor declaration + the app↔shell sync writes. - **CLEAN — one read-proven commit each:** `pendingBuildingAction` DONE (`3ce5d964`); remaining
-    `buildingOffset`, `activeBuildingCategory`, `famousPersonsPage`, `selectedFamousPersonId`,
-    `armyFormationEditor`, `activeCityManagementTab`, `activeTaskCenterTab`, `entityBattle` (cross-check
-    each independently before adding it — do NOT trust the agent verdict blind). - **TANGLED — decouple FIRST, then they become CLEAN:** `pageTransition` (shell transition-timer expiry
+    shell ctor declaration + the app↔shell sync writes. - **CLEAN — 7 DONE (each independently grep-cross-checked, gate-green):** `pendingBuildingAction`
+    (`3ce5d964`), `activeCityManagementTab` (`cf4531c2`), `entityBattle` (`997ced47`, a dead mirror — no
+    proxy needed), and `buildingOffset` + `activeBuildingCategory` + `famousPersonsPage` +
+    `selectedFamousPersonId` (`12c18124`, the per-render scalar batch). NOTE: the scattered conditional
+    `canvasShell.<field> = ...` command mirrors for the `12c18124` batch are now INERT no-ops via the proxy
+    (single cell; not a 2nd source) — a safe cosmetic sweep remains to delete them. **Cross-check DOWNGRADES
+    (the agent's CLEAN was optimistic):** `activeTaskCenterTab` (reset at CanvasGameAppRenderingRuntime:680
+    sets app WITHOUT mirroring shell → a proxy makes that reset newly visible to the shell render = behavior
+    change; verify whether the shell reset runs in tandem before collapsing) and `armyFormationEditor`
+    (shell does `game.armyFormationEditor || this.armyFormationEditor` reads/writes in ~10 places — not a
+    simple single-slot) are effectively TANGLED — decouple/verify first, do NOT proxy blind. - **TANGLED — decouple FIRST, then they become CLEAN:** `pageTransition` (shell transition-timer expiry
     clears only the shell slot, NO app writeback — make it symmetric + retire the dead app-side timer);
     `buildingTransition` (clean alone but shares that same timer infra); `techTreeZoom`/`techTreePanX`/
     `techTreePanY`/`techTreeDragStart` (SHELL is the live owner — a proxy to the App would INVERT ownership;
