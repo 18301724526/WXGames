@@ -143,6 +143,7 @@ module.exports = {
   getDistanceFromCapital,
   getGenerationCoord,
   getTileCanonicalKey,
+  getTileId,
   getWrappedDistance,
   modulo,
   normalizeCoord,
