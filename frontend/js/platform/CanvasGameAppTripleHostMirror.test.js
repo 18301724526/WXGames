@@ -17,6 +17,7 @@ const assert = require('node:assert/strict');
 
 const WorldMarchOptimisticState = require('../domain/WorldMarchOptimisticState');
 const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
+const CanvasGameShell = require('./CanvasGameShell');
 
 function makeSeedState() {
   return {
@@ -172,4 +173,24 @@ test('Axis A baseline: applyConnectionState without a canvasShell mirror falls b
   // READ CONTRACT: with no shell mirror present, the host re-renders instead.
   assert.deepEqual(renders, ['military']);
   assert.equal(host.networkState.status, 'reconnecting');
+});
+
+// --- Part 3: shell host-proxied fields (P3 Axis A single-owner collapse) ----
+
+test('Axis A: pendingBuildingAction is host-proxied — shell reads/writes forward to the mounted host (single owner)', () => {
+  const shell = Object.create(CanvasGameShell.prototype);
+
+  // Pre-mount (lastGame unbound): behaves as a local cell, no host to forward to.
+  assert.equal(shell.pendingBuildingAction, undefined);
+  shell.pendingBuildingAction = { buildingId: 'x', action: 'build' };
+  assert.deepEqual(shell.pendingBuildingAction, { buildingId: 'x', action: 'build' });
+
+  // After mount binds the host, reads + writes go to the host's single slot — the shell keeps
+  // NO own copy (the old app<->shell mirror is gone).
+  const host = { pendingBuildingAction: null };
+  shell.lastGame = host;
+  assert.equal(shell.pendingBuildingAction, null); // now reads the host slot
+  shell.pendingBuildingAction = { buildingId: 'y', action: 'upgrade' };
+  assert.deepEqual(host.pendingBuildingAction, { buildingId: 'y', action: 'upgrade' }); // write landed on host
+  assert.equal(shell.pendingBuildingAction, host.pendingBuildingAction); // one cell
 });

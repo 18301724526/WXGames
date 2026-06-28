@@ -179,7 +179,6 @@ constructor(options = {}) {
         percentage: 0,
         message: '',
       };
-      this.pendingBuildingAction = null;
       this.networkState = {
         status: 'online',
         failureCount: 0,
@@ -317,6 +316,31 @@ static mount(game, options = {}) {
     CanvasGameShellRenderingRuntime,
     CanvasGameShellSystemUi,
   ].forEach((shellModule) => shellModule?.install?.(CanvasGameShell));
+
+  // P3 Axis A — host-proxied live-state fields. Each listed field has ONE owner: the mounted
+  // host (this.lastGame === the App). The shell keeps no own copy; reads/writes forward to the
+  // host, so there is a single storage cell (kills the app<->shell mirror for that field). A
+  // local `__hp_<field>` fallback covers the window before mount() binds lastGame (during
+  // super(), or unit tests with no host). Add a field here ONLY after its app<->shell
+  // equivalence is read-proven AND its ctor declaration + sync writes are removed.
+  const HOST_PROXIED_FIELDS = ['pendingBuildingAction'];
+  HOST_PROXIED_FIELDS.forEach((field) => {
+    const backing = `__hp_${field}`;
+    Object.defineProperty(CanvasGameShell.prototype, field, {
+      configurable: true,
+      get() {
+        if (this.lastGame && typeof this.lastGame === 'object') {
+          const value = this.lastGame[field];
+          return value === undefined ? this[backing] : value;
+        }
+        return this[backing];
+      },
+      set(value) {
+        if (this.lastGame && typeof this.lastGame === 'object') this.lastGame[field] = value;
+        else this[backing] = value;
+      },
+    });
+  });
 
   global.CanvasGameShell = CanvasGameShell;
   if (typeof module !== 'undefined' && module.exports) module.exports = CanvasGameShell;

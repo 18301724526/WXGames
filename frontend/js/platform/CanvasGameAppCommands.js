@@ -468,10 +468,9 @@
                 action: pending.action === 'upgrade' ? 'upgrade' : 'build',
               }
               : null;
+            // P3 Axis A: single owner — the shell reads pendingBuildingAction off the host via a
+            // host-proxied accessor, so the old app->shell mirror write is gone.
             this.pendingBuildingAction = nextPending;
-            if (this.canvasShell && typeof this.canvasShell === 'object') {
-              this.canvasShell.pendingBuildingAction = nextPending;
-            }
             if (options.render !== false) this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
             return true;
           },

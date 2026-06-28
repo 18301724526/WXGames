@@ -41,10 +41,9 @@ setPendingBuildingAction(pending = null, options = {}) {
           action: pending.action === 'upgrade' ? 'upgrade' : 'build',
         }
         : null;
+      // P3 Axis A: pendingBuildingAction is host-proxied — this assignment forwards to the host
+      // (the single owner), so the explicit lastGame mirror write is no longer needed.
       this.pendingBuildingAction = nextPending;
-      if (this.lastGame && typeof this.lastGame === 'object') {
-        this.lastGame.pendingBuildingAction = nextPending;
-      }
       if (options.render !== false) this.renderActive();
       return true;
     },
