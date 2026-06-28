@@ -155,8 +155,8 @@
               showGuidebook: panel.showGuidebook,
               activeGuidebookTab: this.activeGuidebookTab,
               showFamousPersons: panel.showFamousPersons,
-              famousPersonsPage: this.canvasShell?.famousPersonsPage ?? this.famousPersonsPage,
-              selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
+              famousPersonsPage: this.famousPersonsPage,
+              selectedFamousPersonId: this.selectedFamousPersonId,
               armyFormationEditor: this.canvasShell && 'armyFormationEditor' in this.canvasShell
                 ? this.canvasShell.armyFormationEditor
                 : this.armyFormationEditor,
@@ -577,28 +577,18 @@
             const delta = Number(action.delta) || 0;
             this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
             this.selectedFamousPersonId = '';
-            if (this.canvasShell && typeof this.canvasShell === 'object') {
-              this.canvasShell.famousPersonsPage = this.famousPersonsPage;
-              if ('selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-            }
             this.renderer?.clearFamousSkillTooltip?.();
             return this.renderCanvasSurface();
           },
 
       openFamousPersonDetail(action = {}) {
             this.selectedFamousPersonId = action.personId || '';
-            if (this.canvasShell && typeof this.canvasShell === 'object' && 'selectedFamousPersonId' in this.canvasShell) {
-              this.canvasShell.selectedFamousPersonId = this.selectedFamousPersonId;
-            }
             this.renderer?.clearFamousSkillTooltip?.();
             return this.renderCanvasSurface();
           },
 
       closeFamousPersonDetail() {
             this.selectedFamousPersonId = '';
-            if (this.canvasShell && typeof this.canvasShell === 'object' && 'selectedFamousPersonId' in this.canvasShell) {
-              this.canvasShell.selectedFamousPersonId = '';
-            }
             this.renderer?.clearFamousSkillTooltip?.();
             return this.renderCanvasSurface();
           },
