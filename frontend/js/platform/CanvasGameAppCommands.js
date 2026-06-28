@@ -744,7 +744,6 @@
               };
               this.territoryController?.closeSiteDialog?.();
               if (this.canvasShell) {
-                this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
                 this.canvasShell.territoryUiState = {
                   ...(this.canvasShell.territoryUiState || {}),
                   selectedSiteId: '',

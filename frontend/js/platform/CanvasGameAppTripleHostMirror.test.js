@@ -194,3 +194,19 @@ test('Axis A: pendingBuildingAction is host-proxied — shell reads/writes forwa
   assert.deepEqual(host.pendingBuildingAction, { buildingId: 'y', action: 'upgrade' }); // write landed on host
   assert.equal(shell.pendingBuildingAction, host.pendingBuildingAction); // one cell
 });
+
+test('Axis A: activeCityManagementTab is host-proxied — shell forwards to the mounted host (single owner)', () => {
+  const shell = Object.create(CanvasGameShell.prototype);
+
+  // Pre-mount: local cell.
+  shell.activeCityManagementTab = 'people';
+  assert.equal(shell.activeCityManagementTab, 'people');
+
+  // After mount: reads + writes go to the host's single slot.
+  const host = { activeCityManagementTab: 'buildings' };
+  shell.lastGame = host;
+  assert.equal(shell.activeCityManagementTab, 'buildings'); // reads host slot
+  shell.activeCityManagementTab = 'military';
+  assert.equal(host.activeCityManagementTab, 'military'); // write landed on host
+  assert.equal(shell.activeCityManagementTab, host.activeCityManagementTab); // one cell
+});

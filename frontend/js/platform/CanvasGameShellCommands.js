@@ -315,9 +315,6 @@ closeCityManagement() {
 switchCityManagementTab(tab = 'buildings') {
       const allowed = ['buildings', 'people', 'military'];
       this.activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
-      if (this.lastGame && typeof this.lastGame === 'object') {
-        this.lastGame.activeCityManagementTab = this.activeCityManagementTab;
-      }
       this.renderActive();
       return true;
     },

@@ -284,9 +284,6 @@
             closeBlockingPanelSnapshot(this, 'showSubcityList');
             closeBlockingPanelSnapshot(this, 'activeCommandPanel');
             this.closeEventSnapshot?.();
-            if (this.canvasShell) {
-              this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
-            }
             return this.renderCanvasSurface(this.state?.currentTab);
           },
 
@@ -298,7 +295,6 @@
       switchCityManagementTab(tab = 'buildings') {
             const allowed = ['buildings', 'people', 'military'];
             this.activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
-            if (this.canvasShell) this.canvasShell.activeCityManagementTab = this.activeCityManagementTab;
             return this.renderCanvasSurface(this.state?.currentTab);
           },
 
