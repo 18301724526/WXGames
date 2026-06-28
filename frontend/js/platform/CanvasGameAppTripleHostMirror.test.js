@@ -1,19 +1,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-// Characterization baseline for P3 "Axis A" — the triple-host live-state mirror
-// (host.state / lastGame.state / canvasShell.state, plus the sibling canvasShell
-// networkState mirror). See docs/refactor/REFACTOR_HANDOFF_2026-06-27.md section 5.
+// Characterization tests for P3 "Axis A" — collapsing the triple-host live-state
+// mirror (host.state / lastGame.state / canvasShell.state, plus sibling canvasShell
+// mirrors) to a single owner. See docs/refactor/REFACTOR_HANDOFF_2026-06-27.md §5.
 //
-// These tests PIN THE CURRENT, pre-collapse behavior so the Axis A collapse (single
-// state owner, `extends CanvasGameApp` removed) can be proven behavior-preserving.
-//   - Assertions tagged "MIRROR BASELINE" document the debt the collapse will REMOVE;
-//     they are EXPECTED to change when the mirror is collapsed to one owner.
-//   - Assertions tagged "READ CONTRACT" document behavior that MUST survive the
-//     collapse unchanged.
-// Until then, there is zero coverage of the three-host fan-out: the existing
-// WorldMarchOptimisticState.test.js host has only `state` (no lastGame/canvasShell),
-// and the existing CanvasGameAppStateSync heartbeat tests have no canvasShell.
+// Tags:
+//   - "SINGLE OWNER": behavior AFTER an Axis A collapse landed — exactly one state
+//     slot (the getState() read source) is written and the old mirror copies are
+//     gone. These guard against the mirror being re-introduced.
+//   - "READ CONTRACT": behavior that MUST hold regardless of the collapse.
+//   - "MIRROR BASELINE": a mirror NOT yet collapsed — pins current behavior so the
+//     eventual collapse can be proven behavior-preserving (expected to change then).
+// Part 1 (setExplorer) is collapsed. Part 2 (CanvasGameAppStateSync canvasShell
+// networkState mirror) is still a pre-collapse baseline.
 
 const WorldMarchOptimisticState = require('../domain/WorldMarchOptimisticState');
 const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
@@ -43,9 +43,9 @@ function makeOptimisticHost(slots = {}) {
   };
 }
 
-// --- Part 1: WorldMarchOptimisticState.setExplorer three-host fan-out --------
+// --- Part 1: WorldMarchOptimisticState.setExplorer single-owner write (COLLAPSED) ---
 
-test('Axis A baseline: a host-rooted optimistic march fans state to host.state AND canvasShell.state as one reference', () => {
+test('Axis A: a host-rooted optimistic march writes only the owner (host.state), not canvasShell.state', () => {
   const host = makeOptimisticHost({
     state: makeSeedState(),
     canvasShell: { state: { sentinel: 'stale-shell' } },
@@ -61,16 +61,17 @@ test('Axis A baseline: a host-rooted optimistic march fans state to host.state A
   assert.ok(pending, 'beginStart created an optimistic mission');
   assert.match(pending.mission.id, /^optimistic_manual_/);
 
-  // READ CONTRACT (must survive the collapse): the owner sees the new active mission.
+  // READ CONTRACT: the owner sees the new active mission.
   assert.equal(host.state.worldExplorerState.activeMission.id, pending.mission.id);
 
-  // MIRROR BASELINE (collapse removes this fan-out): canvasShell.state was overwritten
-  // with the SAME new object reference host.state points at.
-  assert.equal(host.canvasShell.state, host.state);
-  assert.equal(host.canvasShell.state.worldExplorerState.activeMission.id, pending.mission.id);
+  // SINGLE OWNER: canvasShell.state is no longer mirrored (write-only dead field
+  // removed). The shell reads the owner via lastGame.state; its own state field is
+  // left as the stale object it started with.
+  assert.notEqual(host.canvasShell.state, host.state);
+  assert.equal(host.canvasShell.state.sentinel, 'stale-shell');
 });
 
-test('Axis A baseline: with lastGame present, reads use lastGame.state precedence and all three host slots receive one reference', () => {
+test('Axis A: with lastGame present, setExplorer writes only the lastGame owner (write target == read source)', () => {
   const parkedMission = {
     id: 'march-parked',
     kind: 'worldExplore',
@@ -115,12 +116,12 @@ test('Axis A baseline: with lastGame present, reads use lastGame.state precedenc
   assert.ok(pending, 'beginStart read the parked mission via lastGame.state precedence');
   assert.equal(pending.mission.id, 'march-parked');
 
-  // MIRROR BASELINE: setExplorer writes the same nextState object into all three slots.
-  const fanned = host.lastGame.state;
-  assert.equal(host.lastGame.state, fanned);
-  assert.equal(host.state, fanned);
-  assert.equal(host.canvasShell.state, fanned);
-  assert.equal(fanned.worldExplorerState.activeMission.id, 'march-parked');
+  // SINGLE OWNER: only the owner (lastGame.state, the read source) is written; the
+  // vestigial host.state and canvasShell.state are left as their stale sentinels.
+  const owner = host.lastGame.state;
+  assert.equal(owner.worldExplorerState.activeMission.id, 'march-parked');
+  assert.equal(host.state.sentinel, 'stale-host');
+  assert.equal(host.canvasShell.state.sentinel, 'stale-shell');
 });
 
 // --- Part 2: CanvasGameAppStateSync sibling networkState mirror -------------

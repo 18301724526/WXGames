@@ -197,13 +197,17 @@
       ...(currentState || {}),
       worldExplorerState: explorer,
     };
-    if (host.lastGame && host.lastGame !== host && typeof host.lastGame === 'object') {
-      host.lastGame.state = nextState;
-    }
-    host.state = nextState;
-    if (host.canvasShell && typeof host.canvasShell === 'object') {
-      host.canvasShell.state = nextState;
-    }
+    // P3 Axis A — single live-state owner: write exactly the slot getState() reads
+    // (lastGame precedence). This previously fanned nextState into host.state,
+    // host.lastGame.state AND host.canvasShell.state. canvasShell.state was a
+    // write-only dead mirror (zero readers across frontend; the shell reads the
+    // owner via lastGame.state), and the host/lastGame split duplicated the same
+    // buffer. Collapsed to one write; observably identical on every real call path.
+    const owner =
+      host.lastGame && host.lastGame !== host && typeof host.lastGame === 'object'
+        ? host.lastGame
+        : host;
+    owner.state = nextState;
     return true;
   }
 
