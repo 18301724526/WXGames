@@ -50,9 +50,9 @@ Batch 4 does not migrate:
   are still built by the routers from hit-test results)
 - concrete modal payload ownership for naming/event/reward/confirm/target-picker
   panels (Batch 5)
-- tutorial flow or tutorial input-gating ownership (tutorial domain batch)
+- tutorial flow or tutorial input-gating ownership (tutorial scope batch)
 - renderer snapshot contracts (Batch 6) or `getHitTarget` hit-testing
-- gameplay domain state
+- gameplay serializable gameplay state
 
 Old mode and panel fields remain bridge ingress facts. Panel, tutorial, and
 action input branches stay report-only; only input-router `mode` and
@@ -133,6 +133,6 @@ documented inline in the guard.
 
 ## Review Result
 
-Batch 4 is `Completed` after migration owner review by `codex/external-review` at `2026-06-26 01:24:26 +08:00`. The review confirmed the input intent vocabulary/resolver (pure, kind-aware), the bridge `resolveInputIntent` pass-through (null fallback, no new source-of-truth fields), the regenerated runtime bundle (`esbuild@0.23.1`), the count-preserving router physical-adapter conversion (guard reports current 30 = baseline 30, 0 violations), and the scoped input-intent spine blocking guard. Scope was confirmed clean (no tutorial, panel/modal, renderer/`getHitTarget`, or gameplay ownership migrated). The judgment call to leave the gesture/tap tech-tree/world-map fall-through on the Batch-3 snapshot helpers was accepted as Batch 6 / domain-sealing territory (world-map runtime readiness, not a pure mode decision).
+Batch 4 is `Completed` after migration owner review by `codex/external-review` at `2026-06-26 01:24:26 +08:00`. The review confirmed the input intent vocabulary/resolver (pure, kind-aware), the bridge `resolveInputIntent` pass-through (null fallback, no new source-of-truth fields), the regenerated runtime bundle (`esbuild@0.23.1`), the count-preserving router physical-adapter conversion (guard reports current 30 = baseline 30, 0 violations), and the scoped input-intent spine blocking guard. Scope was confirmed clean (no tutorial, panel/modal, renderer/`getHitTarget`, or gameplay ownership migrated). The judgment call to leave the gesture/tap tech-tree/world-map fall-through on the Batch-3 snapshot helpers was accepted as Batch 6 / scope-sealing territory (world-map runtime readiness, not a pure mode decision).
 
 Batch 5 (Panel/Modal Ownership) may start after this completion commit reaches the server branch.

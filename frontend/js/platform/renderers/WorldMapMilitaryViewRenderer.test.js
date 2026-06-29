@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 require('../../config/LocaleTextRegistry');
-const LocaleText = require('../../domain/LocaleText');
+const LocaleText = require('../../ecs/resource/LocaleText');
 const WorldMapMilitaryViewRenderer = require('./WorldMapMilitaryViewRenderer');
 
 const DRAWING_WRAPPER_METHODS = [

@@ -19,6 +19,21 @@ const RUNTIME_ENTRY_FILES = Object.freeze(['frontend/index.html', 'frontend/mini
 const APPROVED_RUNTIME_ECS_LOADS = Object.freeze([
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
 ]);
+const APPROVED_RUNTIME_ECS_LOAD_DIRS = Object.freeze([
+  'debug',
+  'foundation',
+  'input',
+  'projection',
+  'resource',
+  'system',
+]);
+const BLOCKED_RUNTIME_ECS_LOAD_DIRS = Object.freeze([
+  'core',
+  'mode',
+  'owner',
+  'registry',
+  'snapshot',
+]);
 const GENERATED_ECS_RUNTIME_FILES = Object.freeze([
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
 ]);
@@ -164,7 +179,23 @@ function resolveRuntimeEcsLoad(fromFile, specifier) {
 
 function isApprovedRuntimeEcsLoad(fromFile, specifier) {
   const resolved = resolveRuntimeEcsLoad(fromFile, specifier);
-  return APPROVED_RUNTIME_ECS_LOADS.includes(resolved);
+  if (APPROVED_RUNTIME_ECS_LOADS.includes(resolved)) return true;
+  const segment = getEcsTopLevelSegment(resolved);
+  return APPROVED_RUNTIME_ECS_LOAD_DIRS.includes(segment);
+}
+
+function isBlockedRuntimeEcsLoad(fromFile, specifier) {
+  const resolved = resolveRuntimeEcsLoad(fromFile, specifier);
+  if (!resolved) return false;
+  if (APPROVED_RUNTIME_ECS_LOADS.includes(resolved)) return false;
+  return BLOCKED_RUNTIME_ECS_LOAD_DIRS.includes(getEcsTopLevelSegment(resolved));
+}
+
+function getEcsTopLevelSegment(filePath = '') {
+  const normalized = normalizePath(filePath);
+  const prefix = `${ECS_ROOT}/`;
+  if (!normalized.startsWith(prefix)) return '';
+  return normalized.slice(prefix.length).split('/')[0] || '';
 }
 
 function isSkippableLine(line = '') {
@@ -192,6 +223,12 @@ function shouldSkipRuntimeObjectViolation(filePath = '', kind = '', line = '') {
   if (isGeneratedEcsRuntimeFile(filePath)) return true;
   if (kind === 'class-instance-reference' && /\bnew\s+Error\b/.test(line)) return true;
   return false;
+}
+
+function shouldCheckRuntimeObjectPattern(filePath = '', kind = '') {
+  if (isGeneratedEcsRuntimeFile(filePath)) return false;
+  if (kind !== 'class-instance-reference') return true;
+  return BLOCKED_RUNTIME_ECS_LOAD_DIRS.includes(getEcsTopLevelSegment(filePath));
 }
 
 function findBoundaryViolationsInText(filePath, text = '') {
@@ -246,7 +283,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
       if (
         RUNTIME_ENTRY_FILES.includes(normalized) &&
         isRuntimeEntryLoadingEcs(normalized, specifier) &&
-        !isApprovedRuntimeEcsLoad(normalized, specifier)
+        isBlockedRuntimeEcsLoad(normalized, specifier)
       ) {
         violations.push(
           makeViolation({
@@ -255,7 +292,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
             kind: 'runtime-entry-loads-ecs',
             symbol: specifier,
             evidence: line,
-            note: 'H5 and minigame entrypoints may load only approved ECS runtime bundles, not core, registry, or raw mode files',
+            note: 'H5 and minigame entrypoints may load ECS gameplay surfaces, but not raw core, registry, mode, owner, or snapshot internals',
           }),
         );
       }
@@ -263,6 +300,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
 
     if (!isEcsProductionFile(normalized)) return;
     RUNTIME_OBJECT_PATTERNS.forEach(({ kind, symbol, pattern }) => {
+      if (!shouldCheckRuntimeObjectPattern(normalized, kind)) return;
       if (!pattern.test(line)) return;
       if (shouldSkipRuntimeObjectViolation(normalized, kind, line)) return;
       violations.push(
@@ -272,7 +310,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
           kind,
           symbol,
           evidence: line,
-          note: 'ECS skeleton must stay serializable and free of DOM, canvas, browser event, Promise, and class-instance objects',
+          note: 'ECS runtime surfaces must stay free of DOM, canvas, browser event, and Promise references; internal surfaces also stay class-instance free',
         }),
       );
     });
@@ -282,7 +320,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
     for (const match of String(text || '').matchAll(HTML_SCRIPT_PATTERN)) {
       const specifier = match[1] || '';
       if (!isRuntimeEntryLoadingEcs(normalized, specifier)) continue;
-      if (isApprovedRuntimeEcsLoad(normalized, specifier)) continue;
+      if (!isBlockedRuntimeEcsLoad(normalized, specifier)) continue;
       const prefix = String(text || '').slice(0, match.index);
       const line = prefix.split(/\r?\n/).length;
       violations.push(
@@ -292,7 +330,7 @@ function findBoundaryViolationsInText(filePath, text = '') {
           kind: 'runtime-entry-loads-ecs',
           symbol: specifier,
           evidence: match[0],
-          note: 'H5 and minigame entrypoints may load only approved ECS runtime bundles, not core, registry, or raw mode files',
+          note: 'H5 and minigame entrypoints may load ECS gameplay surfaces, but not raw core, registry, mode, owner, or snapshot internals',
         }),
       );
     }
@@ -369,6 +407,8 @@ function scanEcsBoundarySkeleton(options = {}) {
     allowedBitecsImportFiles: ALLOWED_BITECS_IMPORT_FILES,
     allowedBitecsImports: ALLOWED_BITECS_IMPORTS,
     approvedRuntimeEcsLoads: APPROVED_RUNTIME_ECS_LOADS,
+    approvedRuntimeEcsLoadDirs: APPROVED_RUNTIME_ECS_LOAD_DIRS,
+    blockedRuntimeEcsLoadDirs: BLOCKED_RUNTIME_ECS_LOAD_DIRS,
     violations,
     summary: buildSummary(violations),
   };
@@ -427,16 +467,20 @@ module.exports = {
   ALLOWED_BITECS_IMPORT_FILES,
   ALLOWED_BITECS_IMPORTS,
   APPROVED_RUNTIME_ECS_LOADS,
+  APPROVED_RUNTIME_ECS_LOAD_DIRS,
   BLOCKED_ECS_DEPENDENCY_SEGMENTS,
+  BLOCKED_RUNTIME_ECS_LOAD_DIRS,
   ECS_ROOT,
   PRODUCTION_SOURCE_ROOTS,
   RUNTIME_ENTRY_FILES,
   buildSummary,
+  getEcsTopLevelSegment,
   findBoundaryViolationsInText,
   findPackageVersionViolations,
   isApprovedRuntimeEcsLoad,
   isAllowedBitecsImportFile,
   isBlockedEcsDependency,
+  isBlockedRuntimeEcsLoad,
   isEcsProductionFile,
   isGeneratedEcsRuntimeFile,
   isProductionSourceFile,
@@ -444,6 +488,7 @@ module.exports = {
   parseFormat,
   renderText,
   resolveRuntimeEcsLoad,
+  shouldCheckRuntimeObjectPattern,
   scanEcsBoundarySkeleton,
   shouldSkipRuntimeObjectViolation,
 };

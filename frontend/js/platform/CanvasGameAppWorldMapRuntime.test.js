@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const CanvasGameAppWorldMapRuntime = require('./CanvasGameAppWorldMapRuntime');
 const CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
-const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
+const WorldMarchGeometry = require('../ecs/foundation/WorldMarchGeometry');
 
 test('CanvasGameAppWorldMapRuntime installs world map methods on app prototype', () => {
   class App {}

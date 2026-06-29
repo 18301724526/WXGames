@@ -15,7 +15,7 @@
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/TileCoord');
+        return require('../ecs/foundation/TileCoord');
       } catch (_error) {
         return null;
       }
@@ -27,7 +27,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldMarchSystem');
+        return require('../ecs/system/WorldMarchSystem');
       } catch (_error) {
         return null;
       }
@@ -39,7 +39,7 @@
     if (global.WorldClock) return global.WorldClock;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldClock');
+        return require('../ecs/foundation/WorldClock');
       } catch (_error) {
         return null;
       }

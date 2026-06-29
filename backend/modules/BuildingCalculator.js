@@ -1,5 +1,5 @@
 const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('./BuildingState');
 
 function normalizeLevel(value) {
   if (typeof value === 'number') return value;
@@ -13,7 +13,7 @@ function normalizeLevel(value) {
 class BuildingCalculator {
   /**
    * 获取建筑定义
-   * @param {string} buildingType 
+   * @param {string} buildingType
    * @returns {object|null}
    */
   static getBuildingDef(buildingType) {
@@ -22,8 +22,8 @@ class BuildingCalculator {
 
   /**
    * 计算建筑下一步成本
-   * @param {string} buildingType 
-   * @param {number|object} currentCount 
+   * @param {string} buildingType
+   * @param {number|object} currentCount
    * @returns {object|null} { food: xxx, knowledge: xxx }
    */
   static getBuildingCost(buildingType, currentCount) {
@@ -34,7 +34,7 @@ class BuildingCalculator {
 
   /**
    * 获取建筑解锁时代
-   * @param {string} buildingType 
+   * @param {string} buildingType
    * @returns {number}
    */
   static getBuildingUnlockEra(buildingType) {
@@ -43,8 +43,8 @@ class BuildingCalculator {
 
   /**
    * 检查资源是否足够
-   * @param {object} resources 
-   * @param {object} cost 
+   * @param {object} resources
+   * @param {object} cost
    * @returns {boolean}
    */
   static canAfford(resources, cost) {
@@ -57,8 +57,8 @@ class BuildingCalculator {
 
   /**
    * 扣除资源
-   * @param {object} resources 
-   * @param {object} cost 
+   * @param {object} resources
+   * @param {object} cost
    */
   static deductResources(resources, cost) {
     for (const [resource, amount] of Object.entries(cost)) {

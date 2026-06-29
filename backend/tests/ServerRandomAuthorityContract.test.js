@@ -5,7 +5,7 @@ const RandomAuthority = require('../services/random/ServerRandomAuthorityContrac
 
 test('ServerRandomAuthorityContract creates bounded server-owned roll metadata', () => {
   const roll = RandomAuthority.createRoll({
-    domain: 'territory',
+    scope: 'territory',
     action: 'scoutOutcome',
     subjectId: 'mission-1',
     seed: 'player-1',
@@ -17,7 +17,7 @@ test('ServerRandomAuthorityContract creates bounded server-owned roll metadata',
 
   assert.equal(roll.schema, RandomAuthority.SCHEMA);
   assert.equal(roll.authority, RandomAuthority.AUTHORITY);
-  assert.equal(roll.domain, 'territory');
+  assert.equal(roll.scope, 'territory');
   assert.equal(roll.action, 'scoutOutcome');
   assert.equal(roll.subjectId, 'mission-1');
   assert.equal(roll.seed, 'player-1');
@@ -30,7 +30,7 @@ test('ServerRandomAuthorityContract creates bounded server-owned roll metadata',
 test('ServerRandomAuthorityContract keeps injected random sources deterministic for tests', () => {
   const values = [0.12, 0.34, 0.56];
   const source = RandomAuthority.createRandomSource({
-    domain: 'territory',
+    scope: 'territory',
     action: 'scoutTemplate',
     subjectId: 'mission-2',
     seed: 'seed-2',
@@ -45,7 +45,7 @@ test('ServerRandomAuthorityContract keeps injected random sources deterministic 
   assert.deepEqual(source.authorityScope, {
     schema: RandomAuthority.SCHEMA,
     authority: RandomAuthority.AUTHORITY,
-    domain: 'territory',
+    scope: 'territory',
     action: 'scoutTemplate',
     subjectId: 'mission-2',
     seed: 'seed-2',
@@ -56,14 +56,14 @@ test('ServerRandomAuthorityContract keeps injected random sources deterministic 
 
 test('ServerRandomAuthorityContract rolls chance with explicit threshold and roll envelope', () => {
   const fail = RandomAuthority.rollChance(0.4, {
-    domain: 'territory',
+    scope: 'territory',
     action: 'scoutOutcome',
   }, {
     now: new Date('2026-06-09T00:02:00.000Z'),
     randomSource: () => 0.4,
   });
   const pass = RandomAuthority.rollChance(0.4, {
-    domain: 'territory',
+    scope: 'territory',
     action: 'scoutOutcome',
   }, {
     now: new Date('2026-06-09T00:02:00.000Z'),

@@ -99,10 +99,6 @@ function createHost(overrides = {}) {
       calls.push(['renderWorldTileStaticEntries', ...args]);
       return true;
     },
-    renderWorldTileFogMask(...args) {
-      calls.push(['renderWorldTileFogMask', ...args]);
-      return false;
-    },
     renderWorldActors(...args) {
       calls.push(['renderWorldActors', ...args]);
       return true;
@@ -155,7 +151,6 @@ test('WorldMapTileMapRenderer publishes context and renders layers in stable ord
   assert.deepEqual(host.calls.filter((call) => call[0].startsWith('renderWorld') || call[0].startsWith('addWorld')).map((call) => call[0]), [
     'renderWorldTileWaterLayer',
     'renderWorldTileStaticLayer',
-    'renderWorldTileFogMask',
     'addWorldMarchTileHitTargets',
     'addWorldTileSiteHitTargets',
   ]);

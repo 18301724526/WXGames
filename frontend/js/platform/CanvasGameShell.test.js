@@ -3,10 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-require('../domain/WorldTime');
-require('../domain/WorldMarchProgressSnapshot');
+require('../ecs/foundation/WorldTime');
+require('../ecs/system/WorldMarchProgressSnapshot');
+require('../ecs/projection/WorldMapVisibilityModel');
+require('../ecs/projection/WorldFogVisualSnapshot');
+require('../ecs/system/WorldMarchSystem');
 const EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
-const WorldMapRenderSnapshot = require('../domain/WorldMapRenderSnapshot');
+const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
@@ -569,7 +572,7 @@ test('CanvasGameShell mounts world fog as a WebGL layer when the feature flag is
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);
 });
 
-test('CanvasGameShell routes enabled fog rendering through the visual plugin registry', () => {
+test('CanvasGameShell routes enabled fog rendering through the ECS fog owner', () => {
   const shell = new CanvasGameShell({
     config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
   });
@@ -606,12 +609,6 @@ test('CanvasGameShell routes enabled fog rendering through the visual plugin reg
       viewport: renderSnapshot.viewport,
       geometry: tileMapView.geometry,
       frame: renderSnapshot.frame,
-    },
-    lastWorldFogContext: {
-      tileMapView,
-      viewport: renderSnapshot.viewport,
-      geometry: tileMapView.geometry,
-      frame: renderSnapshot.frame,
       entries: [],
     },
   };
@@ -620,24 +617,18 @@ test('CanvasGameShell routes enabled fog rendering through the visual plugin reg
     return true;
   };
 
-  assert.equal(shell.renderWorldFogLayer(), true);
+  assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), true);
 
   const renderCall = calls.find((call) => call[0] === 'renderWorldFog');
+  assert.equal(shell.getLastFogOwner().schema, 'fog-owner-v1');
   assert.equal(renderCall?.[1]?.fogVisualSnapshot?.schema, 'world-fog-visual-snapshot-v1');
   assert.equal(renderCall?.[1]?.entries.length, 2);
   assert.equal(renderCall?.[1]?.entries[0].tile.visible, true);
 });
 
-test('CanvasGameShell does not invoke visual fog plugins when fog is disabled', () => {
+test('CanvasGameShell does not invoke the ECS fog owner when fog is disabled', () => {
   const shell = new CanvasGameShell({});
   const calls = [];
-  const previousRegistry = global.WorldMapVisualPluginRegistry;
-  global.WorldMapVisualPluginRegistry = {
-    createRendererContext() {
-      calls.push(['createRendererContext']);
-      return null;
-    },
-  };
   shell.worldFogRenderer = {
     renderWorldFog() {
       calls.push(['renderWorldFog']);
@@ -648,20 +639,17 @@ test('CanvasGameShell does not invoke visual fog plugins when fog is disabled', 
     },
   };
   shell.worldMapRenderer = {
-    lastWorldFogContext: {
+    lastWorldTileMapContext: {
       tileMapView: { tiles: [] },
       viewport: { scale: 1 },
       frame: { x: 0, y: 0, width: 100, height: 100 },
     },
   };
 
-  try {
-    assert.equal(shell.renderWorldFogLayer(), false);
-  } finally {
-    global.WorldMapVisualPluginRegistry = previousRegistry;
-  }
+  assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), false);
 
   assert.deepEqual(calls, [['clear']]);
+  assert.equal(shell.getLastFogOwner?.(), null);
 });
 
 test('CanvasGameShell keeps debug overlays disabled by default', () => {
@@ -731,7 +719,7 @@ test('CanvasGameShell reads battleScene render options from owner snapshot only'
   shell.lastGame = {
     state: { currentTab: 'military', militaryView: 'army' },
     tutorial: {},
-    __ecsBattleDomainOwner: EcsModeRuntime.BattleDomainOwner.openBattleScene(null, {
+    __ecsBattleOwner: EcsModeRuntime.BattleOwner.openBattleScene(null, {
       visible: true,
       report: { id: 'snapshot-report' },
       turnIndex: 0,

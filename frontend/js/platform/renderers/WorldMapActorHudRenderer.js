@@ -3,7 +3,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('../../ecs/system/WorldMarchSystem');
       } catch (error) {
         return null;
       }
@@ -15,7 +15,7 @@
     if (global.WorldTime) return global.WorldTime;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldTime');
+        return require('../../ecs/foundation/WorldTime');
       } catch (error) {
         return null;
       }

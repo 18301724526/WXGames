@@ -22,14 +22,14 @@ wrappers. `modal:targetPicker` remains owned by `ModalWorld`; its payload is a
 
 targetPicker is the most entangled modal: its state was **nested inside
 `territoryUiState`** (`worldTargetPicker` + a `pickerOpen` flag fused onto the
-`worldMarchTarget` object, which also carries world-march DOMAIN data). The
+`worldMarchTarget` object, which also carries world-march SCOPE data). The
 migration owner chose **Option B (snapshot-direct)**: `territoryUiState` now
 carries ZERO picker-modal fields, and the picker state flows to consumers from the
 owner.
 
 - **Owner gets the modal state:** the whole `worldTargetPicker` candidate object
   and the `pickerOpen` flag move into the owner payload.
-- **`territoryUiState` keeps the domain:** `worldMarchTarget`'s
+- **`territoryUiState` keeps the scope:** `worldMarchTarget`'s
   coords/route/mission/actor/combat/known/terrain fields stay untouched; only the
   `pickerOpen` flag was peeled off.
 - **Renderer threading:** the render runtimes derive
@@ -39,14 +39,14 @@ owner.
   `WorldMarchHudCanvasRenderer.renderWorldMarchHud` chain. The HUD reads the picker
   off the option (not `territoryUiState`); the formation-picker dispatch keys on
   `pickerKind === 'worldMarchFormation'` instead of `target.pickerOpen`.
-- **Domain normalizers** (`WorldMarchGeometry.getMarchTargetUiState`,
+- **Scope normalizers** (`WorldMarchGeometry.getMarchTargetUiState`,
   `WorldMapRenderSnapshot.normalizeMarchTarget`) stopped copying `pickerOpen`.
 - **Tutorial gate** `isWorldMarchFormationPickerOpen` reads the owner
   (`isTargetPickerSnapshotOpen()` + `pickerKind === 'worldMarchFormation'`) — it
   reads the raw controller uiState, so it had to move to the owner regardless.
 - **Close semantics preserved:** closing the picker keeps `worldMarchTarget`
   (coords survive); `closeWorldMarchHud` / `startWorldMarch` / `selectWorldActor`
-  still drop `worldMarchTarget` (domain teardown). Same-looking writes, opposite
+  still drop `worldMarchTarget` (scope teardown). Same-looking writes, opposite
   intent — handled per-site.
 
 ## Removed Mirror Surface
@@ -74,7 +74,7 @@ declarations.
 guard. It forbids the three retired wrappers and the mirror writes
 `<host>.worldTargetPicker =` (including `= null`), `worldMarchTarget...pickerOpen =`,
 and `pickerOpen: true|false` modal-flag literals. It does not flag world-march
-domain `worldMarchTarget` access, locale labels, the `'modal:targetPicker'`
+scope `worldMarchTarget` access, locale labels, the `'modal:targetPicker'`
 declarations, or `options.targetPicker` reads. `TerritoryController.js` is
 path-excluded (it owns the territory uiState).
 

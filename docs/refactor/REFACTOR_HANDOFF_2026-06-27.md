@@ -140,7 +140,7 @@ The original plan (kept below for reference):
 This is correctness-critical (coordinate math). Go slow. Apply Rule 2 (derive/remove the copies,
 not just guard) and Rule 4 (verify each before touching).
 
-**Canonical:** `frontend/js/domain/TileCoord.js` (`global.TileCoord`) — exposes `normalizeCoord`,
+**Canonical:** `frontend/js/ecs/foundation/TileCoord.js` (`global.TileCoord`) — exposes `normalizeCoord`,
 `normalizeDelta`, `offset`, `equals`, `readCoordAxis`, `tileId`, `toInteger`, `toLegacy`, `toNumber`.
 Loaded at `index.html:24`, before every delegating consumer.
 
@@ -178,7 +178,7 @@ use `toNumber` for non-coord math; leave those).
 
 **Guard design:** new `scripts/check-duplicate-coord-helpers.js` (model on
 `check-duplicate-shared-helpers.js`), scoped `SOURCE_ROOTS=['frontend/js']`,
-canonical `frontend/js/domain/TileCoord.js`, forbid local `function normalizeCoord|tileId|getTileId|getCoordinateKey`,
+canonical `frontend/js/ecs/foundation/TileCoord.js`, forbid local `function normalizeCoord|tileId|getTileId|getCoordinateKey`,
 ALLOWLIST by path the canonical + the 5 true-variant owners (TileCoord, WorldTopology,
 WorldInterestWindow, WorldMarchRoutePolicy, WorldMarchCoreAdapter; the fractional fog variant has a
 distinct name `normalizeFloatCoord` so it isn't matched). Exclude `*.test.js`. Wire into the smoke gate.
@@ -307,8 +307,8 @@ CanvasGameApp`) `this.state` — `GameStateManager.state` is just an Axis-B cach
     guard `check-renderer-host-bridge-single-source` (bans inline `new Proxy(this,` in `renderers/`).
     Pruned the orphaned `no-unused-vars` suppressions (the inline traps' unused `receiver`). Still
     needs a live render smoke (world map / fast-drag / fog / tutorial overlays) on the test server.
-  - `WorldMarchOptimisticState` is also a boundary violation (domain file mutating host + calling
-    render) — a controller disguised as domain; P4 or its own slice.
+  - `WorldMarchOptimisticState` is also a boundary violation (scope file mutating host + calling
+    render) — a controller disguised as scope; P4 or its own slice.
 - **P4 — god-file surgery** (decomposition §3, ranked): `gameRoutes.js` (511 lines, all-feature
   integration point), `GameStateNormalizer`↔`GameStateService` (overlapping ownership),
   `GameStateRepository` (40-col schema synced in 3 places → single schema source),

@@ -1,4 +1,4 @@
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const TutorialService = require('./TutorialService');
 const BuildingActionService = require('./BuildingActionService');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');

@@ -115,7 +115,7 @@ test('famous person candidate generation consumes server random authority by def
   assert.deepEqual(candidate.source.randomAuthority, {
     schema: ServerRandomAuthorityContract.SCHEMA,
     authority: ServerRandomAuthorityContract.AUTHORITY,
-    domain: FamousPersonRandomAuthority.DOMAIN,
+    scope: FamousPersonRandomAuthority.SCOPE,
     action: FamousPersonRandomAuthority.DEFAULT_ACTION,
     subjectId: 'candidate:famous-authority:seek:capital',
     seed: 'famous-authority:seek:1780704000000:capital',

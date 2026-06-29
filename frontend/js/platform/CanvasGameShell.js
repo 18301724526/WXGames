@@ -82,7 +82,7 @@
   var SharedWorldClock = global.WorldClock;
   if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
     try {
-      SharedWorldClock = require('../domain/WorldClock');
+      SharedWorldClock = require('../ecs/foundation/WorldClock');
     } catch (error) {
       SharedWorldClock = null;
     }
@@ -265,7 +265,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         renderer: this.renderer || null,
         surface: this.renderer || null,
         worldMapRuntime: this.worldMapRuntime || this.worldMapRuntimeCoordinator?.getMapRuntime?.() || null,
-        visibilitySnapshot: this.worldMapRenderer?.lastWorldFogContext?.fogVisualSnapshot
+        visibilitySnapshot: this.getLastFogOwner?.()?.visibilitySnapshot
           || this.worldMapRenderer?.lastWorldTileMapContext?.visibilitySnapshot
           || null,
         inputTrace: this.lastDebugInputTrace || null,

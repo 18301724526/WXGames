@@ -164,7 +164,7 @@ function assertConfigRegistry(moduleApi, expected) {
   assert.deepEqual(validation.errors, []);
 }
 
-test('Core config domains expose registry metadata and validation', () => {
+test('Core config families expose registry metadata and validation', () => {
   assertConfigRegistry(GameConfig, {
     id: 'game-config',
     schema: 'game-config-registry',

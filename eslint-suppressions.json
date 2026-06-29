@@ -97,82 +97,82 @@
       "count": 1
     }
   },
-  "frontend/js/domain/TileMapGeometry.js": {
+  "frontend/js/ecs/foundation/TileMapGeometry.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "frontend/js/domain/WorldActorProjection.js": {
+  "frontend/js/ecs/projection/WorldActorProjection.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "frontend/js/domain/WorldChunkAddress.js": {
+  "frontend/js/ecs/foundation/WorldChunkAddress.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "frontend/js/domain/WorldFogVisualSnapshot.js": {
+  "frontend/js/ecs/projection/WorldFogVisualSnapshot.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "frontend/js/domain/WorldInterestWindow.js": {
+  "frontend/js/ecs/foundation/WorldInterestWindow.js": {
     "no-unused-vars": {
       "count": 3
     }
   },
-  "frontend/js/domain/WorldMapEntitySnapshot.js": {
+  "frontend/js/ecs/projection/WorldMapEntitySnapshot.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "frontend/js/domain/WorldMapInputIntent.js": {
+  "frontend/js/ecs/input/WorldMapInputIntent.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "frontend/js/domain/WorldMapPerformanceBudget.js": {
+  "frontend/js/ecs/projection/WorldMapPerformanceBudget.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "frontend/js/domain/WorldMapPickingModel.js": {
+  "frontend/js/ecs/input/WorldMapPickingModel.js": {
     "no-unused-vars": {
       "count": 3
     }
   },
-  "frontend/js/domain/WorldMapRenderSnapshot.js": {
+  "frontend/js/ecs/projection/WorldMapRenderSnapshot.js": {
     "no-unused-vars": {
       "count": 3
     }
   },
-  "frontend/js/domain/WorldMapSelectionResolver.js": {
+  "frontend/js/ecs/input/WorldMapSelectionResolver.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "frontend/js/domain/WorldMapVisibilityModel.js": {
+  "frontend/js/ecs/projection/WorldMapVisibilityModel.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "frontend/js/domain/WorldMarchGeometry.js": {
+  "frontend/js/ecs/foundation/WorldMarchGeometry.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "frontend/js/domain/WorldRevealStore.js": {
+  "frontend/js/ecs/resource/WorldRevealStore.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "frontend/js/domain/WorldTime.js": {
+  "frontend/js/ecs/foundation/WorldTime.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "frontend/js/domain/WorldTopology.js": {
+  "frontend/js/ecs/foundation/WorldTopology.js": {
     "no-unused-vars": {
       "count": 1
     }

@@ -61,7 +61,7 @@ test('world map generation authority owns deterministic server materialization r
 
   assert.equal(roll.schema, GenerationAuthority.SCHEMA);
   assert.equal(roll.authority, 'server');
-  assert.equal(roll.domain, 'worldMap');
+  assert.equal(roll.scope, 'worldMap');
   assert.equal(roll.mode, 'seeded-hash');
   assert.equal(roll.q, 'primary');
   assert.equal(roll.value, repeat.value);
@@ -377,7 +377,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
   assert.deepEqual(worldMap.generationAuthority, {
     schema: GenerationAuthority.SCHEMA,
     authority: 'server',
-    domain: 'worldMap',
+    scope: 'worldMap',
     mode: 'seeded-hash',
     action: 'worldMaterialization',
     subjectId: 'world-map',

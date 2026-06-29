@@ -88,7 +88,7 @@ EXACT panel subset (no broadening to close-all); rendering-runtime option-builde
 source `options.showX` from `getRendererSnapshot().panel`; input-router blocking-overlay
 reads flip to `isBlockingPanelSnapshotOpen` / `getCommandPanelValue` with the field set
 and tech carve-out preserved; constructor mirror initializers deleted; out-of-scope
-domain state (`techUiState.detailOpen`, `selectedTechId`, the `*Tab` cursors,
+serializable gameplay state (`techUiState.detailOpen`, `selectedTechId`, the `*Tab` cursors,
 `armyFormationEditor` object, `territoryUiState`) untouched.
 
 ## Guard upgrade

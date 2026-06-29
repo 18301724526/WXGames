@@ -88,13 +88,13 @@ const QUALITY_LABELS = Object.freeze({
   legendary: '传奇',
 });
 
-const ARCHETYPE_DOMAINS = Object.freeze({
-  commander: { domain: 'battle', battlePolicy: 'useBattleSkill' },
-  vanguard: { domain: 'battle', battlePolicy: 'useBattleSkill' },
-  strategist: { domain: 'battle', battlePolicy: 'useBattleSkill' },
-  governor: { domain: 'civil', battlePolicy: 'basicAttackOnly' },
-  charmer: { domain: 'civil', battlePolicy: 'basicAttackOnly' },
-  scout: { domain: 'hybrid', battlePolicy: 'useBattleSkill' },
+const ARCHETYPE_CATEGORIES = Object.freeze({
+  commander: { category: 'battle', battlePolicy: 'useBattleSkill' },
+  vanguard: { category: 'battle', battlePolicy: 'useBattleSkill' },
+  strategist: { category: 'battle', battlePolicy: 'useBattleSkill' },
+  governor: { category: 'civil', battlePolicy: 'basicAttackOnly' },
+  charmer: { category: 'civil', battlePolicy: 'basicAttackOnly' },
+  scout: { category: 'hybrid', battlePolicy: 'useBattleSkill' },
 });
 
 const ACTIVE_TEMPLATES = Object.freeze({
@@ -274,7 +274,7 @@ const SCOUT_TRAITS = Object.freeze([
 
 module.exports = {
   ACTIVE_TEMPLATES,
-  ARCHETYPE_DOMAINS,
+  ARCHETYPE_CATEGORIES,
   CIVIL_EFFECTS,
   CIVIL_TEMPLATES,
   EFFECT_LABELS,

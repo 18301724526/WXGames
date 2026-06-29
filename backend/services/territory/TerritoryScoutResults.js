@@ -189,7 +189,7 @@ function createTerritoryScoutResults(dependencies = {}) {
 
   function createTerritoryRandomSource(action, subjectId, options = {}) {
     return ServerRandomAuthorityContract.createRandomSource({
-      domain: 'territory',
+      scope: 'territory',
       action,
       subjectId,
       seed: options.seed || subjectId,
@@ -207,7 +207,7 @@ function createTerritoryScoutResults(dependencies = {}) {
     }
     const siteChance = Math.min(1, SCOUT_SITE_BASE_CHANCE + emptyStreak * SCOUT_SITE_CHANCE_STEP);
     const roll = ServerRandomAuthorityContract.rollChance(siteChance, {
-      domain: 'territory',
+      scope: 'territory',
       action: 'scoutOutcome',
       subjectId: options.subjectId || gameState.playerId || 'scout',
       seed: options.seed || gameState.playerId || 'territory',

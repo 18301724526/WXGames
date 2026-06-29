@@ -3,7 +3,7 @@
     if (global.WorldMapRenderSnapshot) return global.WorldMapRenderSnapshot;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMapRenderSnapshot');
+        return require('../../ecs/projection/WorldMapRenderSnapshot');
       } catch (error) {
         return null;
       }
@@ -15,7 +15,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('../../ecs/system/WorldMarchSystem');
       } catch (error) {
         return null;
       }
@@ -201,7 +201,6 @@
           addHitTargets: false,
         });
       }
-      this.host?.renderWorldTileFogMask?.(tileMapView, viewport, frame, visibleEntries);
       this.host?.addWorldMarchTileHitTargets?.(tileMapView, viewport, frame, options);
       this.host?.addWorldTileSiteHitTargets?.(tileMapView, viewport, visibleEntries, uiState);
       return true;
@@ -226,6 +225,7 @@
         }
         const visibleEntries = this.host?.getWorldTileRenderEntries?.(tileMapView, viewport, frame, geometry) || [];
         const visibilityActors = this.getWorldTileMapVisibilityActors(tileMapView, renderSnapshot, options);
+        context.entries = visibleEntries;
         context.visibilityActors = visibilityActors;
         context.actors = [];
         if (hitTargetsOnly) {

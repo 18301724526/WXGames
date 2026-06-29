@@ -84,7 +84,7 @@ test('targetPicker mirror retirement guard blocks the retired bridge wrappers', 
   );
 });
 
-test('targetPicker mirror retirement guard allows snapshot, domain, label, and ecs reads', () => {
+test('targetPicker mirror retirement guard allows snapshot, target, label, and ecs reads', () => {
   const findings = findTargetPickerMirrorRetirementViolationsInText(
     'frontend/js/platform/CanvasTerritoryActionHandlers.js',
     [

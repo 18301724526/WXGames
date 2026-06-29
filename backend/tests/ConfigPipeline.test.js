@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 
 const ConfigPipeline = require('../services/config/ConfigPipeline');
 
-test('ConfigPipeline builds a current snapshot for registered config domains', () => {
+test('ConfigPipeline builds a current snapshot for registered config families', () => {
   const snapshot = ConfigPipeline.buildCurrentSnapshot({ generatedAt: '2026-06-11T00:00:00.000Z' });
   const ids = snapshot.registries.map((registry) => registry.id).sort();
 

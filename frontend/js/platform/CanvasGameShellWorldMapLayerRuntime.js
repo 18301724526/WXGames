@@ -1,37 +1,33 @@
 (function (global) {
-  var WorldMapVisualPluginRegistryBase = global.WorldMapVisualPluginRegistry;
-  if (typeof module !== 'undefined' && module.exports && !WorldMapVisualPluginRegistryBase) {
+  var EcsModeRuntimeBase = global.EcsModeRuntime;
+  if (typeof module !== 'undefined' && module.exports && !EcsModeRuntimeBase) {
     try {
-      WorldMapVisualPluginRegistryBase = require('./WorldMapVisualPluginRegistry');
+      EcsModeRuntimeBase = require('../ecs/mode/EcsModeRuntimeEntry');
     } catch (_error) {
-      WorldMapVisualPluginRegistryBase = null;
-    }
-  }
-  var WorldMarchSystem = global.WorldMarchSystem;
-  if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
-    try {
-      WorldMarchSystem = require('../domain/WorldMarchSystem');
-    } catch (_error) {
-      WorldMarchSystem = null;
+      EcsModeRuntimeBase = null;
     }
   }
 
-  function buildLiveFogVisibilityActors(shell = {}, baseContext = {}, epochNowMs = Number.NaN) {
-    if (!WorldMarchSystem?.buildActors) {
-      return Array.isArray(baseContext.visibilityActors)
-        ? baseContext.visibilityActors
-        : (Array.isArray(baseContext.renderSnapshot?.actors) ? baseContext.renderSnapshot.actors : []);
+  function pickOption(options = {}, key = '') {
+    return options && Object.prototype.hasOwnProperty.call(options, key) ? options[key] : undefined;
+  }
+
+  function buildMilitaryRenderOptions(host = null, runtime = null, options = {}) {
+    const explicitUiState = pickOption(options, 'territoryUiState');
+    const runtimeUiState = explicitUiState || runtime?.getCameraUiState?.() || null;
+    if (typeof host?.buildRenderOptions === 'function') {
+      const renderOptions = host.buildRenderOptions('military', runtimeUiState, {
+        forceMapHome: true,
+      }) || {};
+      const { territoryUiState = runtimeUiState || {} } = renderOptions;
+      return {
+        ...renderOptions,
+        territoryUiState,
+      };
     }
-    const state = shell.lastGame?.state || shell.state || {};
-    const explorerState = state.worldExplorerState || {};
-    const fromExplorer = WorldMarchSystem.buildActors(explorerState, { nowMs: epochNowMs });
-    if (Array.isArray(fromExplorer) && fromExplorer.length) return fromExplorer;
-    const activeScouts = baseContext.tileMapView?.activeScouts || [];
-    const fromTileMap = WorldMarchSystem.buildActors({ missions: activeScouts }, { nowMs: epochNowMs });
-    if (Array.isArray(fromTileMap) && fromTileMap.length) return fromTileMap;
-    return Array.isArray(baseContext.visibilityActors)
-      ? baseContext.visibilityActors
-      : (Array.isArray(baseContext.renderSnapshot?.actors) ? baseContext.renderSnapshot.actors : []);
+    return {
+      territoryUiState: runtimeUiState || {},
+    };
   }
 
   function install(CanvasGameShell) {
@@ -137,55 +133,50 @@
         return Boolean(validity.valid);
       },
 
-      renderWorldFogLayer(context = null) {
+      createFogOwner(context = null, options = {}) {
+        const FogOwner = EcsModeRuntimeBase?.FogOwner || global.EcsModeRuntime?.FogOwner;
+        if (!FogOwner?.createFogOwner || !context) return null;
+        const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? context.epochNowMs;
+        const owner = FogOwner.createFogOwner({
+          ...(context || {}),
+          config: this.config,
+          epochNowMs,
+          state: options.state || this.lastGame?.state || this.state || {},
+          worldExplorerState: options.worldExplorerState
+            || this.lastGame?.state?.worldExplorerState
+            || this.state?.worldExplorerState
+            || {},
+        }, {
+          ...options,
+          epochNowMs,
+        });
+        this.__ecsFogOwner = owner;
+        return owner;
+      },
+
+      getLastFogOwner() {
+        return this.__ecsFogOwner || null;
+      },
+
+      renderWorldFogLayer(context = null, options = {}) {
         if (this.isFogOfWarEnabled?.() !== true) {
           this.worldFogRenderer?.clear?.();
           return false;
         }
         if (!this.worldFogRenderer?.renderWorldFog) return false;
-        const fogContext = context
-          || this.worldMapRenderer?.lastWorldFogContext
-          || this.worldMapRenderer?.lastWorldTileMapContext
-          || null;
-        if (!fogContext?.tileMapView || !fogContext?.viewport || !fogContext?.frame) {
+        if (!context?.tileMapView || !context?.viewport || !context?.frame) {
           this.worldFogRenderer.clear?.();
           return false;
         }
-        const visualRegistry = WorldMapVisualPluginRegistryBase || global.WorldMapVisualPluginRegistry;
-        const baseWorldContext = {
-          ...(this.worldMapRenderer?.lastWorldTileMapContext || {}),
-          ...(fogContext || {}),
-          config: this.config,
-          cacheHost: this,
-        };
-        const epochNowMs = this.getWorldEpochNowMs?.() ?? baseWorldContext.epochNowMs;
-        const liveVisibilityActors = buildLiveFogVisibilityActors(this, baseWorldContext, epochNowMs);
-        const visualContext = visualRegistry?.createRendererContext?.('worldFog', baseWorldContext, {
-          config: this.config,
-          cacheHost: this,
-        }) || null;
-        const liveBaseWorldContext = {
-          ...baseWorldContext,
-          epochNowMs,
-          visibilityActors: liveVisibilityActors,
-        };
-        const renderContext = visualContext ? {
-          ...liveBaseWorldContext,
-          ...visualContext,
-          epochNowMs,
-          actors: Array.isArray(baseWorldContext.actors) ? baseWorldContext.actors : [],
-          visibilityActors: liveVisibilityActors,
-          renderSnapshot: baseWorldContext.renderSnapshot || visualContext.renderSnapshot || null,
-          tileMapView: {
-            ...(baseWorldContext.tileMapView || {}),
-            ...(visualContext.tileMapView || {}),
-            sites: Array.isArray(baseWorldContext.tileMapView?.sites)
-              ? baseWorldContext.tileMapView.sites
-              : (Array.isArray(visualContext.tileMapView?.sites) ? visualContext.tileMapView.sites : []),
-          },
-        } : liveBaseWorldContext;
+        const owner = this.createFogOwner(context, options);
+        const FogOwner = EcsModeRuntimeBase?.FogOwner || global.EcsModeRuntime?.FogOwner;
+        const renderContext = FogOwner?.getFogRendererContext?.(owner) || null;
+        if (!renderContext) {
+          this.worldFogRenderer.clear?.();
+          return false;
+        }
         this.syncWorldMapRendererLayerMetrics();
-        return this.worldFogRenderer.renderWorldFog(renderContext || fogContext);
+        return this.worldFogRenderer.renderWorldFog(renderContext);
       },
 
       clearWorldMapLayerTransform() {
@@ -210,13 +201,10 @@
         if (!state) return false;
         this.syncWorldMapRendererLayerMetrics();
         const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-        const territoryUiState = options.territoryUiState
-          || runtime?.getCameraUiState?.()
-          || this.lastGame?.territoryController?.getUiState?.()
-          || this.territoryUiState
-          || {};
+        const baseOptions = buildMilitaryRenderOptions(this, runtime, options);
+        const { territoryUiState = {} } = baseOptions;
         const rendered = this.worldMapRenderer.renderWorldMapActorLayer(state, {
-          ...this.buildRenderOptions('military', territoryUiState),
+          ...baseOptions,
           ...options,
           epochNowMs: options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now(),
           activeTab: 'military',
@@ -243,16 +231,14 @@
         this.syncWorldMapRendererLayerMetrics();
         const state = this.lastGame.state;
         const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-        const territoryUiState = runtime?.getCameraUiState?.()
-          || this.lastGame?.territoryController?.getUiState?.()
-          || this.territoryUiState
-          || {};
+        const baseOptions = buildMilitaryRenderOptions(this, runtime, options);
+        const { territoryUiState = {} } = baseOptions;
         const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
           ? this.renderer.getTopBarBottom(state, { isMapHome: true })
           : 84;
         const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now();
         const rendered = this.worldMapRenderer.renderWorldMapSnapshotLayer(state, {
-          ...this.buildRenderOptions('military', territoryUiState),
+          ...baseOptions,
           epochNowMs,
           activeTab: 'military',
           isMapHome: true,
@@ -268,7 +254,7 @@
         if (!rendered) return false;
         const frameContext = this.worldMapRenderer.lastWorldTileMapContext || null;
         if (frameContext && runtime) runtime.lastTileMapContext = frameContext;
-        this.renderWorldFogLayer(frameContext);
+        this.renderWorldFogLayer(frameContext, { epochNowMs, state });
         this.renderWorldActorLayer({
           ...options,
           epochNowMs,

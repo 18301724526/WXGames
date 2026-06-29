@@ -224,14 +224,6 @@
       return result === undefined ? '' : result;
     },
 
-    renderWorldTileFogMask(...args) {
-      const renderer = this.worldMapRenderer;
-      const result = typeof renderer?.renderWorldTileFogMask === 'function'
-        ? renderer.renderWorldTileFogMask(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    },
-
     getWorldTileStaticCacheScale(...args) {
       const renderer = this.worldMapRenderer;
       const result = typeof renderer?.getWorldTileStaticCacheScale === 'function'
@@ -751,7 +743,6 @@
       getWorldTileDragCachePanRange: { configurable: true, writable: true, value: WORLD_MAP_FACADE_METHODS.getWorldTileDragCachePanRange },
       getWorldTileStaticDragCacheLayout: { configurable: true, writable: true, value: WORLD_MAP_FACADE_METHODS.getWorldTileStaticDragCacheLayout },
       getWorldTileStaticCacheKey: { configurable: true, writable: true, value: WORLD_MAP_FACADE_METHODS.getWorldTileStaticCacheKey },
-      renderWorldTileFogMask: { configurable: true, writable: true, value: WORLD_MAP_FACADE_METHODS.renderWorldTileFogMask },
       getWorldTileStaticCacheScale: { configurable: true, writable: true, value: WORLD_MAP_FACADE_METHODS.getWorldTileStaticCacheScale },
       getWorldTileStaticCachePixelBudget: { configurable: true, writable: true, value: WORLD_MAP_FACADE_METHODS.getWorldTileStaticCachePixelBudget },
       getWorldTileLayerCacheContext: { configurable: true, writable: true, value: WORLD_MAP_FACADE_METHODS.getWorldTileLayerCacheContext },

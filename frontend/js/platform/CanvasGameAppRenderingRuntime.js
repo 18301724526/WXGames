@@ -17,7 +17,7 @@
   }
   var WorldMarchSystem = global.WorldMarchSystem;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
-    WorldMarchSystem = require('../domain/WorldMarchSystem');
+    WorldMarchSystem = require('../ecs/system/WorldMarchSystem');
   }
   const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
   function hasActiveWorldExplorerMission(state = {}, options = {}) {

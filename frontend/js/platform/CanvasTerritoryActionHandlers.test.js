@@ -189,7 +189,7 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
     targetQ: 4,
     targetR: -2,
   }), true);
-  // The domain target stays in territoryUiState WITHOUT a pickerOpen flag; the
+  // The march target stays in territoryUiState WITHOUT a pickerOpen flag; the
   // formation-picker modal state lives only in the owner snapshot.
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
     q: 4,

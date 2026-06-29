@@ -1,4 +1,4 @@
-const EventDomain = require('../domain/Event');
+const EventCatalog = require('./event/EventCatalog');
 const EventRewardCalculator = require('../calculators/EventRewardCalculator');
 const MilitaryService = require('./MilitaryService');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
@@ -178,7 +178,7 @@ function countThreatEvents(gameState) {
 
 function selectTemplate(gameState) {
   const state = normalizeRegularEventState(gameState.regularEventState);
-  const available = EventDomain.REGULAR_EVENT_TEMPLATES.filter((template) => (gameState.currentEra || 0) >= template.minEra);
+  const available = EventCatalog.REGULAR_EVENT_TEMPLATES.filter((template) => (gameState.currentEra || 0) >= template.minEra);
   if (!available.length) return null;
   const fresh = available.filter((template) => !state.recentTemplateIds.includes(template.id));
   const pool = fresh.length ? fresh : available;
@@ -187,7 +187,7 @@ function selectTemplate(gameState) {
 
 function selectThreatTemplate(gameState) {
   const state = normalizeThreatEventState(gameState.threatEventState);
-  const available = EventDomain.THREAT_EVENT_TEMPLATES.filter((template) => (gameState.currentEra || 0) >= template.minEra);
+  const available = EventCatalog.THREAT_EVENT_TEMPLATES.filter((template) => (gameState.currentEra || 0) >= template.minEra);
   if (!available.length) return null;
   const fresh = available.filter((template) => !state.recentTemplateIds.includes(template.id));
   const pool = fresh.length ? fresh : available;
@@ -213,7 +213,7 @@ function maybeGenerateRegularEvent(gameState, now = new Date()) {
   const template = selectTemplate(gameState);
   if (!template) return null;
 
-  const event = EventDomain.createRegularEvent(template, now, state.generatedCount);
+  const event = EventCatalog.createRegularEvent(template, now, state.generatedCount);
   gameState.eventQueue = [...(gameState.eventQueue || []), event];
   gameState.regularEventState = {
     nextAt: new Date(now.getTime() + REGULAR_EVENT_INTERVAL_MS).toISOString(),
@@ -235,7 +235,7 @@ function maybeGenerateThreatEvent(gameState, now = new Date()) {
   const template = selectThreatTemplate(gameState);
   if (!template) return null;
 
-  const event = EventDomain.createThreatEvent(template, now, state.generatedCount);
+  const event = EventCatalog.createThreatEvent(template, now, state.generatedCount);
   gameState.eventQueue = [...(gameState.eventQueue || []), event];
   gameState.threatEventState = {
     nextAt: new Date(now.getTime() + THREAT_EVENT_INTERVAL_MS).toISOString(),
@@ -247,10 +247,10 @@ function maybeGenerateThreatEvent(gameState, now = new Date()) {
 }
 
 function generateSpecialEvent(gameState, toEra) {
-  if (toEra !== 2 || hasPendingEvent(gameState, EventDomain.SETTLEMENT_EVENT_ID)) {
+  if (toEra !== 2 || hasPendingEvent(gameState, EventCatalog.SETTLEMENT_EVENT_ID)) {
     return null;
   }
-  const event = EventDomain.createSettlementEvent();
+  const event = EventCatalog.createSettlementEvent();
   gameState.eventQueue = [...(gameState.eventQueue || []), event];
   return event;
 }
@@ -423,8 +423,8 @@ function claimEvent(gameState, eventId, optionId, now = new Date()) {
 }
 
 module.exports = {
-  SETTLEMENT_EVENT_ID: EventDomain.SETTLEMENT_EVENT_ID,
-  SETTLEMENT_OPTION_ID: EventDomain.SETTLEMENT_OPTION_ID,
+  SETTLEMENT_EVENT_ID: EventCatalog.SETTLEMENT_EVENT_ID,
+  SETTLEMENT_OPTION_ID: EventCatalog.SETTLEMENT_OPTION_ID,
   REGULAR_EVENT_INTERVAL_MS,
   THREAT_EVENT_INTERVAL_MS,
   REGULAR_EVENT_QUEUE_LIMIT,

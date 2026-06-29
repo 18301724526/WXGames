@@ -3,7 +3,7 @@
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/LocaleText');
+        return require('../ecs/resource/LocaleText');
       } catch (_error) {
         return null;
       }
@@ -15,7 +15,7 @@
     if (global.RewardText) return global.RewardText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/RewardText');
+        return require('../ecs/resource/RewardText');
       } catch (_error) {
         return null;
       }
@@ -26,7 +26,7 @@
   var WorldMarchOptimisticState = global.WorldMarchOptimisticState;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchOptimisticState) {
     try {
-      WorldMarchOptimisticState = require('../domain/WorldMarchOptimisticState');
+      WorldMarchOptimisticState = require('../ecs/system/WorldMarchOptimisticState');
     } catch (_error) {
       WorldMarchOptimisticState = null;
     }

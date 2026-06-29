@@ -69,7 +69,6 @@
         worldMapScoutRenderer: this.createInstance('worldMapScoutRenderer', 'worldMapScoutRendererClass', 'worldMapScoutRenderer', childHost),
         worldMapSiteOverlayRenderer: this.createInstance('worldMapSiteOverlayRenderer', 'worldMapSiteOverlayRendererClass', 'worldMapSiteOverlayRenderer', childHost),
         worldMapMilitaryViewRenderer: this.createInstance('worldMapMilitaryViewRenderer', 'worldMapMilitaryViewRendererClass', 'worldMapMilitaryViewRenderer', childHost),
-        worldMapFogMaskContextRenderer: this.createInstance('worldMapFogMaskContextRenderer', 'worldMapFogMaskContextRendererClass', 'worldMapFogMaskContextRenderer', childHost),
         worldMapTileMapRenderer: this.createInstance(
           'worldMapTileMapRenderer',
           'worldMapTileMapRendererClass',

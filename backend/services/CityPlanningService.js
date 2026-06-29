@@ -1,4 +1,4 @@
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const { toNumber, clamp } = require('../../shared/numberUtils');
 
 const TERRAIN_DEFINITIONS = {

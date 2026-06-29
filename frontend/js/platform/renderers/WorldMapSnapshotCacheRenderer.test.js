@@ -66,10 +66,6 @@ function createHost(overrides = {}) {
       calls.push(['getWorldTileRenderEntries', ...args]);
       return [{ tile: { id: 'tile-1' } }];
     },
-    renderWorldTileFogMask(...args) {
-      calls.push(['renderWorldTileFogMask', ...args]);
-      return true;
-    },
     drawWorldTileLayerCache(...args) {
       calls.push(['drawWorldTileLayerCache', ...args]);
       return true;
@@ -98,13 +94,13 @@ test('WorldMapSnapshotCacheRenderer prefers registry cache policy over host cons
   assert.equal(renderer.getWorldMapCachePolicy(), fallbackPolicy);
 });
 
-test('WorldMapSnapshotCacheRenderer redraws layered snapshot caches and fog mask', () => {
+test('WorldMapSnapshotCacheRenderer redraws layered snapshot caches only', () => {
   const host = createHost();
   const renderer = new WorldMapSnapshotCacheRenderer({ host });
 
   assert.equal(renderer.renderWorldTileSnapshotCache({ geometry: {} }, { originX: 10, originY: 20, panX: 1, panY: 2 }, { x: 0, y: 0, width: 100, height: 100 }), true);
   assert.equal(host.calls.filter((call) => call[0] === 'drawWorldTileLayerCache').length, 2);
-  assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileFogMask'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileFogMask'), false);
 });
 
 test('WorldMapSnapshotCacheRenderer redraws current water and static chunk caches', () => {

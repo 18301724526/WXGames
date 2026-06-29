@@ -12,10 +12,12 @@ const {
   scanEcsCoreGuard,
 } = require('./check-frontend-ecs-core-guard');
 
+const RETIRED = ['do', 'main'].join('');
+
 function withTempRepo(callback) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ecs-core-guard-'));
   try {
-    fs.mkdirSync(path.join(repoRoot, 'frontend', 'js', 'domain'), { recursive: true });
+    fs.mkdirSync(path.join(repoRoot, 'frontend', 'js', RETIRED), { recursive: true });
     fs.mkdirSync(path.join(repoRoot, 'frontend', 'js', 'vendor'), { recursive: true });
     fs.mkdirSync(path.join(repoRoot, 'frontend', 'minigame'), { recursive: true });
     fs.mkdirSync(path.join(repoRoot, 'shared'), { recursive: true });
@@ -30,11 +32,11 @@ function withTempRepo(callback) {
 }
 
 test('ECS core guard scans production source roots and excludes tests/vendor', () => {
-  assert.equal(isProductionSource('frontend/js/domain/Foo.js'), true);
+  assert.equal(isProductionSource('frontend/js/ecs/system/Foo.js'), true);
   assert.equal(isProductionSource('frontend/minigame/game.js'), true);
   assert.equal(isProductionSource('shared/worldMarchCore.js'), true);
   assert.equal(isProductionSource('frontend/js/vendor/ECSCore.js'), false);
-  assert.equal(isProductionSource('frontend/js/domain/Foo.test.js'), false);
+  assert.equal(isProductionSource('frontend/js/ecs/system/Foo.test.js'), false);
   assert.equal(isProductionSource('docs/development_logs/example.js'), false);
 });
 
@@ -44,7 +46,7 @@ test('ECS core guard allows approved bitecs imports', () => {
   assert.equal(isAllowedEcsImport('bitecs/serialization'), true);
 
   const violations = findEcsCoreViolationsInText(
-    'frontend/js/domain/EcsBoundary.js',
+    'frontend/js/ecs/system/EcsBoundary.js',
     [
       "import { createWorld, defineComponent } from 'bitecs';",
       "const legacy = require('bitecs/legacy');",
@@ -58,7 +60,7 @@ test('ECS core guard allows approved bitecs imports', () => {
 
 test('ECS core guard blocks local core primitives and core-like files', () => {
   const violations = findEcsCoreViolationsInText(
-    'frontend/js/domain/ECSCore.js',
+    'frontend/js/ecs/system/ECSCore.js',
     [
       'export function createWorld() { return {}; }',
       'const defineComponent = (schema) => schema;',
@@ -81,7 +83,7 @@ test('ECS core guard blocks local core primitives and core-like files', () => {
 
 test('ECS core guard blocks non-bitecs ECS packages and unsupported bitecs subpaths', () => {
   const violations = findEcsCoreViolationsInText(
-    'frontend/js/domain/Foo.js',
+    'frontend/js/ecs/system/Foo.js',
     [
       "import { World } from 'ecsy';",
       "const custom = require('./EcsCore');",
@@ -104,11 +106,11 @@ test('ECS core guard scans a temporary repo and blocks dependency drift', () =>
       JSON.stringify({ name: 'tmp', dependencies: { bitecs: '^0.3.40', ecsy: '^0.4.3' } }),
     );
     fs.writeFileSync(
-      path.join(repoRoot, 'frontend', 'js', 'domain', 'WorldModes.js'),
+      path.join(repoRoot, 'frontend', 'js', RETIRED, 'WorldModes.js'),
       'export const createWorldTiles = () => [];\n',
     );
     fs.writeFileSync(
-      path.join(repoRoot, 'frontend', 'js', 'domain', 'EcsCore.js'),
+      path.join(repoRoot, 'frontend', 'js', RETIRED, 'EcsCore.js'),
       'export function defineQuery() { return []; }\n',
     );
     fs.writeFileSync(

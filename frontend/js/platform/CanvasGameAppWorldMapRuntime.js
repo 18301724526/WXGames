@@ -8,6 +8,27 @@
     WorldMapRuntimeRenderPolicy = require('./WorldMapRuntimeRenderPolicy');
   }
 
+  function buildMilitaryRenderOptions(host = null, uiState = null, options = {}) {
+    if (typeof host?.buildRenderOptions === 'function') {
+      const renderOptions = host.buildRenderOptions('military', uiState, {
+        ...options,
+        forceMapHome: true,
+      }) || {};
+      const { territoryUiState = uiState || {} } = renderOptions;
+      return {
+        ...renderOptions,
+        territoryUiState,
+      };
+    }
+    return {
+      territoryUiState: uiState || {},
+    };
+  }
+
+  function resolveRuntimeUiState(runtime = null) {
+    return runtime?.getCameraUiState?.() || null;
+  }
+
   const WORLD_MAP_RUNTIME_METHODS = Object.freeze({
     getFrozenWorldMapWaterTimeMs() {
       return this.worldMapDragWaterTimeMs !== null
@@ -45,12 +66,14 @@
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       if (!runtime || !coordinator?.canRender?.(this.state)) return false;
-      const territoryUiState = runtime.getCameraUiState?.() || this.territoryUiState;
+      const renderOptions = buildMilitaryRenderOptions(this, resolveRuntimeUiState(runtime));
+      const { territoryUiState = {} } = renderOptions;
       const topBarBottom = typeof this.renderer.getTopBarBottom === 'function'
         ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
         : 84;
       const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
       const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+        ...renderOptions,
         epochNowMs,
         activeTab: 'military',
         isMapHome: true,
@@ -129,18 +152,27 @@
       if (!CoordinatorCtor) return null;
       this.worldMapRuntimeCoordinator = new CoordinatorCtor({
         host: this,
-        worldMapRuntime: this.worldMapRuntime,
-        useWorldMapRuntime: this.useWorldMapRuntime,
-        renderOnDrag: false,
-        getRenderer: () => this.renderer,
+          worldMapRuntime: this.worldMapRuntime,
+          useWorldMapRuntime: this.useWorldMapRuntime,
+          renderOnDrag: false,
+          getRenderer: () => this.renderer,
         getPresenter: () => this.presenter,
         getState: () => this.state || {},
         getLayerBackingStoreState: () => this.runtime?.getLayerBackingStoreState?.('worldMap') || null,
-        getBaseUiState: () => this.territoryController?.uiState
-          || this.territoryController?.getUiState?.()
-          || this.territoryUiState
-          || {},
-        getLocalUiState: () => this.territoryUiState || {},
+        getBaseUiState: () => {
+          const controllerState = this.territoryController?.uiState
+            || this.territoryController?.getUiState?.()
+            || null;
+          if (controllerState) return controllerState;
+          const renderOptions = buildMilitaryRenderOptions(this);
+          const { territoryUiState = {} } = renderOptions;
+          return territoryUiState;
+        },
+        getLocalUiState: () => {
+          const renderOptions = buildMilitaryRenderOptions(this);
+          const { territoryUiState = {} } = renderOptions;
+          return territoryUiState;
+        },
         getTerritoryController: () => this.territoryController,
         getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
           ? this.renderer.getTopBarBottom(state, { isMapHome: true })
@@ -213,9 +245,11 @@
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       if (!runtime || !this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function') return false;
-      const territoryUiState = runtime.getCameraUiState?.() || this.territoryUiState;
+      const renderOptions = buildMilitaryRenderOptions(this, resolveRuntimeUiState(runtime));
+      const { territoryUiState = {} } = renderOptions;
       const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now();
       const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+        ...renderOptions,
         epochNowMs,
         activeTab: 'military',
         isMapHome: true,

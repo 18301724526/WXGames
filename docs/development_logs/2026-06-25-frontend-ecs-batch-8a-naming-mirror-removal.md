@@ -79,7 +79,7 @@ Executed before Ready for Migration Owner Review:
   violations)
 - `node scripts/check-frontend-ecs-mode-ownership-spine.js` (0 violations)
 - `node scripts/check-frontend-ecs-input-intent-spine.js` (0 violations)
-- `node scripts/check-frontend-ecs-battle-domain-owner.js` (0 violations)
+- `node scripts/check-frontend-ecs-battle-owner.js` (0 violations)
 - `node scripts/check-frontend-ecs-blocking-panel-ownership.js` (0 violations)
 - `node scripts/check-frontend-ecs-target-picker-ownership.js` (0 violations)
 - `node scripts/check-frontend-script-manifest.js`

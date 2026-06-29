@@ -4,19 +4,19 @@
 
 | Field          | Value                                               |
 | -------------- | --------------------------------------------------- |
-| Batch          | `7. Domain Area Sealing`                            |
+| Batch          | `7. Retired Layer Sealing`                            |
 | Slice          | `7B (battleScene mirror removal)`                   |
 | State          | `Ready for Migration Owner Review`                  |
-| Owner          | `frontend/js/ecs/domain/BattleDomainOwner.js`       |
+| Owner          | `frontend/js/ecs/owner/BattleOwner.js`       |
 | Removed mirror | App/Shell `this.battleScene`                        |
 | Snapshot path  | `getRendererSnapshot().battle.battleScene`          |
-| Guard          | `scripts/check-frontend-ecs-battle-domain-owner.js` |
+| Guard          | `scripts/check-frontend-ecs-battle-owner.js` |
 | Last updated   | `2026-06-26 17:18:00 +08:00`                        |
 
 ## Decision
 
 Batch 7B removes the replay battle-scene mirror from App/Shell. The replay
-overlay source of truth is now `BattleDomainOwner`; renderer-facing `battleScene`
+overlay source of truth is now `BattleOwner`; renderer-facing `battleScene`
 is read through `getRendererSnapshot().battle.battleScene`.
 
 `entityBattle` remains a live mutable compatibility mirror for a later Battle
@@ -40,7 +40,7 @@ such as `_viewFit`, `_rstate`, camera state, and live sim fields.
 
 ## Guard Upgrade
 
-`scripts/check-frontend-ecs-battle-domain-owner.js` now forbids App/Shell
+`scripts/check-frontend-ecs-battle-owner.js` now forbids App/Shell
 `battleScene` mirror reads and writes. The guard no longer grandfathers
 `CanvasGameApp.js`, `CanvasGameShell.js`, or `CanvasGameShellSystemUi.js` for
 `battleScene`. `entityBattle` write growth remains guarded separately while its
@@ -50,8 +50,8 @@ live mutable mirror stays in scope for a later Battle slice.
 
 Executed before Ready-for-Review docs:
 
-- `node --test frontend/js/ecs/domain/BattleDomainOwner.test.js frontend/js/ecs/snapshot/RendererSnapshotBoundary.test.js frontend/js/platform/CanvasModeOwnershipBridge.test.js frontend/js/platform/CanvasGameApp.test.js frontend/js/platform/CanvasGameShell.test.js scripts/check-frontend-ecs-battle-domain-owner.test.js` (120 tests)
-- `node scripts/check-frontend-ecs-battle-domain-owner.js` (0 violations)
+- `node --test frontend/js/ecs/owner/BattleOwner.test.js frontend/js/ecs/snapshot/RendererSnapshotBoundary.test.js frontend/js/platform/CanvasModeOwnershipBridge.test.js frontend/js/platform/CanvasGameApp.test.js frontend/js/platform/CanvasGameShell.test.js scripts/check-frontend-ecs-battle-owner.test.js` (120 tests)
+- `node scripts/check-frontend-ecs-battle-owner.js` (0 violations)
 
 Full validation executed before review packet:
 

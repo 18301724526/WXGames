@@ -53,7 +53,7 @@ test('mode ownership spine guard allows approved owner and runtime paths', () =>
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/mode/ModeWorld.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/runtime/EcsModeRuntimeBundle.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/snapshot/RendererSnapshotBoundary.js'), true);
-  assert.equal(isApprovedGrowthPath('frontend/js/ecs/domain/BattleDomainOwner.js'), true);
+  assert.equal(isApprovedGrowthPath('frontend/js/ecs/owner/BattleOwner.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModeOwnershipRuntime.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModalSnapshotAdapter.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameAppBattleScene.js'), true);

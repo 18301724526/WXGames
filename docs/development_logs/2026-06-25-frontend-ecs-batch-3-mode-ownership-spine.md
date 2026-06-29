@@ -39,10 +39,10 @@ Batch 3 does not migrate:
 - physical input mapping into a full intent boundary
 - concrete modal payload ownership for naming/event/reward/confirm/target picker panels
 - renderer snapshot contracts
-- gameplay domain state
+- gameplay serializable gameplay state
 - tutorial flow ownership
 
-Those remain Batch 4, Batch 5, Batch 6, and later domain sealing work.
+Those remain Batch 4, Batch 5, Batch 6, and later scope sealing work.
 
 ## New Runtime Surfaces
 

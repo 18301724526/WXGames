@@ -49,7 +49,6 @@
     worldMapScoutRenderer: getRendererDependency('worldMapScoutRenderer'),
     worldMapSiteOverlayRenderer: getRendererDependency('worldMapSiteOverlayRenderer'),
     worldMapMilitaryViewRenderer: getRendererDependency('worldMapMilitaryViewRenderer'),
-    worldMapFogMaskContextRenderer: getRendererDependency('worldMapFogMaskContextRenderer'),
     worldMapTileMapRenderer: getRendererDependency('worldMapTileMapRenderer'),
     worldMapActorHudRenderer: getRendererDependency('worldMapActorHudRenderer'),
   });
@@ -155,10 +154,6 @@
 
     static getWorldMapMilitaryViewRenderer() {
       return sharedDependencies.worldMapMilitaryViewRenderer || null;
-    }
-
-    static getWorldMapFogMaskContextRenderer() {
-      return sharedDependencies.worldMapFogMaskContextRenderer || null;
     }
 
     static getWorldMapTileMapRenderer() {
@@ -552,11 +547,6 @@
     getWorldTileStaticCacheKey(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}, options = {}) {
       if (!this.worldMapCacheFacade?.getWorldTileStaticCacheKey) return '';
       return this.worldMapCacheFacade.getWorldTileStaticCacheKey(tileMapView, viewport, frame, entries, uiState, options);
-    }
-
-    renderWorldTileFogMask(tileMapView = {}, viewport = {}, frame = {}, entries = []) {
-      if (!this.worldMapFogMaskContextRenderer?.renderWorldTileFogMask) return false;
-      return this.worldMapFogMaskContextRenderer.renderWorldTileFogMask(tileMapView, viewport, frame, entries);
     }
 
     getWorldTileStaticCacheScale() {

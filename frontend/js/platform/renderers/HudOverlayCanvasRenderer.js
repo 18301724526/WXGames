@@ -4,7 +4,7 @@
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/LocaleText');
+        return require('../../ecs/resource/LocaleText');
       } catch (_error) {
         return null;
       }
@@ -19,7 +19,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('../../ecs/system/WorldMarchSystem');
       } catch (error) {
         return null;
       }

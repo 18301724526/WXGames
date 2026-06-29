@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-require('../../domain/TileMapGeometry');
-require('../../domain/WorldMarchSystem');
+require('../../ecs/foundation/TileMapGeometry');
+require('../../ecs/system/WorldMarchSystem');
 require('../../config/UnitSpriteManifest');
 const WorldActorCanvasRenderer = require('./WorldActorCanvasRenderer');
 

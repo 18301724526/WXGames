@@ -9,9 +9,9 @@
 
   const DEFINITIONS = freezeDefinitions({
     tileMapAssetManifest: { globalName: 'TileMapAssetManifest', modulePath: '../../config/TileMapAssetManifest' },
-    tileMapGeometry: { globalName: 'TileMapGeometry', modulePath: '../../domain/TileMapGeometry' },
-    worldTime: { globalName: 'WorldTime', modulePath: '../../domain/WorldTime' },
-    worldMarchRoutePolicy: { globalName: 'WorldMarchRoutePolicy', modulePath: '../../domain/WorldMarchRoutePolicy' },
+    tileMapGeometry: { globalName: 'TileMapGeometry', modulePath: '../../ecs/foundation/TileMapGeometry' },
+    worldTime: { globalName: 'WorldTime', modulePath: '../../ecs/foundation/WorldTime' },
+    worldMarchRoutePolicy: { globalName: 'WorldMarchRoutePolicy', modulePath: '../../ecs/system/WorldMarchRoutePolicy' },
     unitSpriteManifest: { globalName: 'UnitSpriteManifest', modulePath: '../../config/UnitSpriteManifest' },
     worldActorCanvasRenderer: { globalName: 'WorldActorCanvasRenderer', modulePath: './WorldActorCanvasRenderer' },
     worldMarchHudCanvasRenderer: { globalName: 'WorldMarchHudCanvasRenderer', modulePath: './WorldMarchHudCanvasRenderer' },
@@ -36,7 +36,6 @@
     worldMapScoutRenderer: { globalName: 'WorldMapScoutRenderer', modulePath: './WorldMapScoutRenderer' },
     worldMapSiteOverlayRenderer: { globalName: 'WorldMapSiteOverlayRenderer', modulePath: './WorldMapSiteOverlayRenderer' },
     worldMapMilitaryViewRenderer: { globalName: 'WorldMapMilitaryViewRenderer', modulePath: './WorldMapMilitaryViewRenderer' },
-    worldMapFogMaskContextRenderer: { globalName: 'WorldMapFogMaskContextRenderer', modulePath: './WorldMapFogMaskContextRenderer' },
     worldMapTileMapRenderer: { globalName: 'WorldMapTileMapRenderer', modulePath: './WorldMapTileMapRenderer' },
     worldMapActorHudRenderer: { globalName: 'WorldMapActorHudRenderer', modulePath: './WorldMapActorHudRenderer' },
   });

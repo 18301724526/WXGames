@@ -53,7 +53,7 @@ git pull origin codex/refactor-tutorial-guide-architecture
 
 ## Important Scope Notes
 
-Batch 3 does not migrate physical input intent, concrete modal payload ownership, renderer snapshots, gameplay domain state, or tutorial flow ownership.
+Batch 3 does not migrate physical input intent, concrete modal payload ownership, renderer snapshots, gameplay serializable gameplay state, or tutorial flow ownership.
 
 Old mode/panel fields still exist. They are read by `CanvasModeOwnershipBridge.js` as temporary ingress facts. Growth outside the ECS mode owner, generated bundle, bridge, or vocabulary manifest is blocked by the new mode spine guard.
 

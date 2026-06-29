@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 // Part 1 (setExplorer) is collapsed. Part 2 (CanvasGameAppStateSync canvasShell
 // networkState mirror) is still a pre-collapse baseline.
 
-const WorldMarchOptimisticState = require('../domain/WorldMarchOptimisticState');
+const WorldMarchOptimisticState = require('../ecs/system/WorldMarchOptimisticState');
 const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
 const CanvasGameShell = require('./CanvasGameShell');
 

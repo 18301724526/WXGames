@@ -1,7 +1,7 @@
 const BuildingCalculator = require('./BuildingCalculator');
 const BuildingValidator = require('./BuildingValidator');
 const BuildingEffects = require('./BuildingEffects');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('./BuildingState');
 
 /**
  * 建筑系统核心 - 整合校验、建造、效果计算
@@ -13,8 +13,8 @@ class BuildingSystem {
 
   /**
    * 执行建造
-   * @param {string} buildingType 
-   * @param {object} gameState 
+   * @param {string} buildingType
+   * @param {object} gameState
    * @returns {object} { success: boolean, message: string, cost?, errors?, buildingType?, newCount? }
    */
   build(buildingType, gameState) {
@@ -43,8 +43,8 @@ class BuildingSystem {
 
   /**
    * 获取建筑详细信息（用于 API 返回给前端展示）
-   * @param {string} buildingType 
-   * @param {object} gameState 
+   * @param {string} buildingType
+   * @param {object} gameState
    * @returns {object|null}
    */
   getBuildingInfo(buildingType, gameState) {
@@ -75,7 +75,7 @@ class BuildingSystem {
 
   /**
    * 获取所有建筑信息
-   * @param {object} gameState 
+   * @param {object} gameState
    * @returns {object[]}
    */
   getAllBuildingInfo(gameState) {
@@ -85,7 +85,7 @@ class BuildingSystem {
 
   /**
    * 计算所有建筑效果
-   * @param {object} gameState 
+   * @param {object} gameState
    * @returns {object}
    */
   calculateEffects(gameState) {
@@ -94,8 +94,8 @@ class BuildingSystem {
 
   /**
    * 获取时代进阶建筑条件
-   * @param {object} gameState 
-   * @param {number} targetEra 
+   * @param {object} gameState
+   * @param {number} targetEra
    * @returns {object} { totalBuildings, requiredBuildings, met }
    */
   getEraBuildingConditions(gameState, targetEra) {
@@ -125,7 +125,7 @@ class BuildingSystem {
 
   /**
    * 时代条件配置（内部辅助）
-   * @param {number} targetEra 
+   * @param {number} targetEra
    * @returns {object|null}
    */
   getEraConditionsConfig(targetEra) {

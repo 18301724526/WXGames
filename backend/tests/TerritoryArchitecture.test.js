@@ -169,7 +169,7 @@ test('territory combat targets module owns garrison and battle target contracts'
 
 test('server random authority contract owns backend random roll envelopes', () => {
   const roll = ServerRandomAuthorityContract.createRoll({
-    domain: 'territory',
+    scope: 'territory',
     action: 'scoutOutcome',
     subjectId: 'mission-1',
     seed: 'world-seed',
@@ -178,7 +178,7 @@ test('server random authority contract owns backend random roll envelopes', () =
     randomSource: () => 1.1,
   });
   const chance = ServerRandomAuthorityContract.rollChance(0.5, {
-    domain: 'territory',
+    scope: 'territory',
     action: 'scoutOutcome',
     subjectId: 'mission-1',
   }, {
@@ -188,7 +188,7 @@ test('server random authority contract owns backend random roll envelopes', () =
 
   assert.equal(roll.schema, ServerRandomAuthorityContract.SCHEMA);
   assert.equal(roll.authority, 'server');
-  assert.equal(roll.domain, 'territory');
+  assert.equal(roll.scope, 'territory');
   assert.equal(roll.action, 'scoutOutcome');
   assert.equal(roll.value, ServerRandomAuthorityContract.MAX_UNIT_ROLL);
   assert.match(roll.rollId, /^[a-f0-9]{16}$/);
@@ -217,7 +217,7 @@ test('defender leader generation consumes server random authority by default', (
   assert.deepEqual(leader.source.randomAuthority, {
     schema: ServerRandomAuthorityContract.SCHEMA,
     authority: ServerRandomAuthorityContract.AUTHORITY,
-    domain: DefenderLeaderRandomAuthority.DOMAIN,
+    scope: DefenderLeaderRandomAuthority.SCOPE,
     action: DefenderLeaderRandomAuthority.DEFAULT_ACTION,
     subjectId: 'leader:camp-authority:tribe',
     seed: 'defender:camp-authority:tribe:4:160',

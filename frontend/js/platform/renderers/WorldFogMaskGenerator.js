@@ -15,7 +15,7 @@
     if (global.WorldFogVisionModel) return global.WorldFogVisionModel;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldFogVisionModel');
+        return require('../../ecs/system/WorldFogVisionModel');
       } catch (error) {
         return null;
       }

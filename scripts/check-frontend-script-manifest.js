@@ -29,7 +29,7 @@ const REQUIRED_SCRIPTS = [
 
 const REQUIRED_ORDER_PAIRS = [
   ['js/state/UIStatePresenterDelegates.js', 'js/state/UIStatePresenter.js'],
-  ['js/debug/ActorPickingDiagnostics.js', 'js/domain/WorldMapInputActionMap.js'],
+  ['js/debug/ActorPickingDiagnostics.js', 'js/ecs/input/WorldMapInputActionMap.js'],
   ['js/debug/ActorPickingDiagnostics.js', 'js/platform/CanvasActionController.js'],
   ['js/debug/ActorPickingDiagnostics.js', 'js/ui/H5ActorPickingDiagnosticsAdapter.js'],
   ['js/debug/ClientOperationLog.js', 'js/ui/H5DebugDiagnosticsAdapter.js'],

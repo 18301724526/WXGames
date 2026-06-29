@@ -1030,9 +1030,9 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
     );
   });
   [
-    "require('../js/domain/WorldMapSelectionResolver')",
-    "require('../js/domain/WorldMapPickingModel')",
-    "require('../js/domain/WorldMapInputIntent')",
+    "require('../js/ecs/input/WorldMapSelectionResolver')",
+    "require('../js/ecs/input/WorldMapPickingModel')",
+    "require('../js/ecs/input/WorldMapInputIntent')",
     "require('../js/platform/WorldMapRuntimeBakePolicy')",
     "require('../js/platform/WorldMapRuntimeCameraPolicy')",
     "require('../js/platform/WorldMapRuntimeInputPolicy')",

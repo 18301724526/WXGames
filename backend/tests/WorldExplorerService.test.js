@@ -6,9 +6,9 @@ const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldMapService = require('../services/WorldMapService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
-require('../../frontend/js/domain/WorldTime');
-require('../../frontend/js/domain/WorldMarchProgressSnapshot');
-const WorldActorProjection = require('../../frontend/js/domain/WorldActorProjection');
+require('../../frontend/js/ecs/foundation/WorldTime');
+require('../../frontend/js/ecs/system/WorldMarchProgressSnapshot');
+const WorldActorProjection = require('../../frontend/js/ecs/projection/WorldActorProjection');
 
 function createTutorialExploreState() {
   const scoutPersonId = 'fp-tutorial-scout';

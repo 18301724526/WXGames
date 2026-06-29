@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-require('../../domain/TileMapGeometry');
+require('../../ecs/foundation/TileMapGeometry');
 const WorldMapLayoutModel = require('./WorldMapLayoutModel');
 const WorldMapHitTargetModel = require('./WorldMapHitTargetModel');
 const WorldMapHitTargetFacade = require('./WorldMapHitTargetFacade');
@@ -250,7 +250,7 @@ test('WorldMapHitTargetFacade evaluates march targets from explicit state', () =
   };
 
   withRendererDependencyRegistry({
-    worldMarchRoutePolicy: require('../../domain/WorldMarchRoutePolicy'),
+    worldMarchRoutePolicy: require('../../ecs/system/WorldMarchRoutePolicy'),
   }, () => {
     assert.equal(renderer.addWorldMarchTileHitTargets(
       tileMapView,
@@ -291,7 +291,7 @@ test('WorldMapHitTargetFacade uses explicit state over host state for march targ
   };
 
   withRendererDependencyRegistry({
-    worldMarchRoutePolicy: require('../../domain/WorldMarchRoutePolicy'),
+    worldMarchRoutePolicy: require('../../ecs/system/WorldMarchRoutePolicy'),
   }, () => {
     assert.equal(renderer.addWorldMarchTileHitTargets(
       tileMapView,

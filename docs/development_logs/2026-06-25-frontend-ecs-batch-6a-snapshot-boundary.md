@@ -34,7 +34,7 @@ The snapshot shape is:
 Batch 6A does not:
 
 - migrate renderer readers to consume the new snapshot yet
-- migrate gameplay/domain state such as task tabs, selected tech, famous-person
+- migrate gameplay/serializable gameplay state such as task tabs, selected tech, famous-person
   paging/detail, or world-march target contents
 - migrate `getHitTarget`, renderer caches, or hit-target authority
 - add a second raw ECS runtime script; H5/minigame continue to load only
@@ -49,7 +49,7 @@ Later Batch 6 sub-slices should reduce this table one group at a time.
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Old owner being retired?          | None in 6A; this is a scaffold slice. Existing renderer reads are inventoried and grandfathered, not migrated.                                                            |
 | New ECS owner?                    | `RendererSnapshotBoundary.js` owns the serializable renderer snapshot contract for sealed Batch 5 modal/panel facts.                                                      |
-| Legacy fields/methods remaining?  | `show*`, `activeCommandPanel`, `techDetailOpen`, modal mirrors, and domain state remain legacy renderer-facing fields until later Batch 6 reader sub-slices migrate them. |
+| Legacy fields/methods remaining?  | `show*`, `activeCommandPanel`, `techDetailOpen`, modal mirrors, and serializable gameplay state remain legacy renderer-facing fields until later Batch 6 reader sub-slices migrate them. |
 | Guard preventing old-path growth? | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` blocks new direct renderer reads of covered sealed modal/panel facts outside the approved snapshot paths.      |
 | Behavior tests?                   | Snapshot boundary tests, bridge snapshot helper tests, guard tests, manifest test, and architecture smoke integration.                                                    |
 | Rollback?                         | Remove the snapshot boundary module, bridge helpers, guard wiring, runtime export, generated bundle change, and this batch doc; no renderer reader migration is involved. |

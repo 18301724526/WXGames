@@ -45,7 +45,7 @@ The input branch report-only guard scanned 14 input/action production frontend f
 | Total findings           |   203 |
 | Input router findings    |   103 |
 | Command handler findings |    80 |
-| Domain input findings    |    14 |
+| Scope input findings    |    14 |
 | Action dispatch findings |     6 |
 
 | Branch Kind     | Findings | Review Meaning                             |

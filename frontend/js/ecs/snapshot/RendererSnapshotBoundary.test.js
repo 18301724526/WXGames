@@ -32,7 +32,7 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
       canRouteTechTree: true,
     },
     battle: {
-      schema: 'battle-domain-v1',
+      schema: 'battle-owner-v1',
       battleScene: { visible: true, report: { id: 'report-1' }, turnIndex: 0 },
       entityBattle: null,
       activeOverlay: 'battleScene',
@@ -57,7 +57,7 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
   assert.equal(snapshot.panel.activeCommandPanel, 'tech');
   assert.equal(snapshot.panel.techDetailOpen, true);
   assert.deepEqual(snapshot.battle, {
-    schema: 'battle-domain-v1',
+    schema: 'battle-owner-v1',
     battleScene: {
       report: { id: 'report-1' },
       turnIndex: 0,
@@ -69,7 +69,7 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot)).schema, 'renderer-snapshot-v1');
 });
 
-test('RendererSnapshotBoundary defaults covered panels and excludes domain state', () => {
+test('RendererSnapshotBoundary defaults covered panels and excludes raw gameplay state', () => {
   const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
     panel: {
       showFamousPersons: true,

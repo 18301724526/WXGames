@@ -1,4 +1,4 @@
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const { EraConfig, GameConfig } = require('./config/GameplayConfigRuntime');
 const CityService = require('./CityService');
 const GameStateNormalizer = require('./GameStateNormalizer');

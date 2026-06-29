@@ -3,7 +3,7 @@
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/LocaleText');
+        return require('../ecs/resource/LocaleText');
       } catch (_error) {
         return null;
       }
@@ -14,7 +14,7 @@
   const TileCoord = (() => {
     if (global.TileCoord) return global.TileCoord;
     try {
-      if (typeof require === 'function') return require('../domain/TileCoord');
+      if (typeof require === 'function') return require('../ecs/foundation/TileCoord');
     } catch (_error) {
       // Optional dependency in browser bundles.
     }
@@ -585,7 +585,7 @@
         game?.territoryController?.closeSiteDialog?.({ render: false });
         const uiState = this.getSharedTerritoryUiState();
         if (!openTargetPickerSnapshot(this.host, { pickerKind: 'worldTargetPicker', picker })) return false;
-        // The candidate picker supersedes any pending march target (domain clear
+        // The candidate picker supersedes any pending march target (state clear
         // formerly performed by the retired bridge wrapper).
         uiState.worldMarchTarget = null;
         uiState.selectedWorldActorId = '';

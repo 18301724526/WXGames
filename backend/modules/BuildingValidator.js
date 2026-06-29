@@ -1,5 +1,5 @@
 const BuildingCalculator = require('./BuildingCalculator');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('./BuildingState');
 
 const ERA_NAMES = ['原始', '农耕', '聚落', '城邦', '古典', '中世纪', '帝国'];
 
@@ -9,8 +9,8 @@ const ERA_NAMES = ['原始', '农耕', '聚落', '城邦', '古典', '中世纪'
 class BuildingValidator {
   /**
    * 校验建造请求
-   * @param {string} buildingType 
-   * @param {object} gameState 
+   * @param {string} buildingType
+   * @param {object} gameState
    * @returns {object} { valid: boolean, errors: [], cost: object|null }
    */
   static validateBuildRequest(buildingType, gameState) {

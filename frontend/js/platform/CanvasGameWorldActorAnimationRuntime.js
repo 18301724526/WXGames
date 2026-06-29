@@ -2,7 +2,7 @@
   var WorldMarchSystem = global.WorldMarchSystem;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     try {
-      WorldMarchSystem = require('../domain/WorldMarchSystem');
+      WorldMarchSystem = require('../ecs/system/WorldMarchSystem');
     } catch (error) {
       WorldMarchSystem = null;
     }

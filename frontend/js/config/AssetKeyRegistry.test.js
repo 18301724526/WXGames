@@ -35,20 +35,20 @@ test('AssetKeyRegistry can create extension registries without editing base defi
   const extended = AssetKeyRegistry.extend([
     {
       key: 'fx:test-spark',
-      domain: 'fx',
+      group: 'fx',
       path: 'assets/art/fx/test-spark.png',
       preloadGroups: ['battle'],
     },
     {
       key: 'ui:icon:food',
-      domain: 'ui',
+      group: 'ui',
       path: 'assets/art/icon-food-v2.webp',
       preloadGroups: ['base'],
     },
   ]);
 
   assert.equal(extended.getAssetPath('fx:test-spark'), 'assets/art/fx/test-spark.png');
-  assert.deepEqual(extended.getDomainAssetKeys('fx'), ['fx:test-spark']);
+  assert.deepEqual(extended.getGroupAssetKeys('fx'), ['fx:test-spark']);
   assert.deepEqual(extended.getPreloadAssetPaths('battle'), ['assets/art/fx/test-spark.png']);
   assert.equal(extended.getAssetPath('ui:icon:food'), 'assets/art/icon-food-v2.webp');
   assert.equal(AssetKeyRegistry.getAssetPath('ui:icon:food'), 'assets/art/icon-food-cutout.webp');

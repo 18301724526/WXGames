@@ -1,8 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../ecs/projection/WorldMapVisibilityModel');
+require('../ecs/projection/WorldFogVisualSnapshot');
+require('../ecs/system/WorldMarchSystem');
 const LayerRuntime = require('./CanvasGameShellWorldMapLayerRuntime');
-const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
+const WorldMarchGeometry = require('../ecs/foundation/WorldMarchGeometry');
 
 function createShell(overrides = {}) {
   class Shell {}
@@ -172,7 +175,7 @@ test('CanvasGameShellWorldMapLayerRuntime refreshes fog actors when map layer co
       },
     },
     worldMapRenderer: {
-      lastWorldFogContext: {
+      lastWorldTileMapContext: {
         actors: [],
         visibilityActors: [],
         tileMapView: { geometry: { tileWidth: 192 }, tiles: [{ id: 'tile_1_0', q: 1, r: 0 }] },
@@ -180,14 +183,11 @@ test('CanvasGameShellWorldMapLayerRuntime refreshes fog actors when map layer co
         frame: { x: 0, y: 0, width: 100, height: 100 },
         entries: [],
       },
-      lastWorldTileMapContext: {
-        actors: [],
-        visibilityActors: [],
-      },
     },
   });
 
-  assert.equal(shell.renderWorldFogLayer(), true);
+  assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), true);
+  assert.equal(shell.getLastFogOwner().schema, 'fog-owner-v1');
   const context = calls.find((call) => call[0] === 'renderWorldFog')?.[1];
   assert.equal(context.visibilityActors.length, 1);
   assert.equal(context.visibilityActors[0].current.q > 0, true);

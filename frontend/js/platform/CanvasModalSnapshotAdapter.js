@@ -204,8 +204,8 @@
   // targetPicker modal: the payload is a STRUCTURED object discriminated by
   // pickerKind ('worldTargetPicker' carries `picker`, 'worldMarchFormation'
   // carries `target`). openTargetPickerSnapshot returns the payload so call
-  // sites keep a truthy guard. The world-march DOMAIN target (coords/route/
-  // mission/combat) stays in territoryUiState -- only the modal flag moves here.
+  // sites keep a truthy guard. The world-march target facts (coords/route/
+  // mission/combat) stay in territoryUiState -- only the modal flag moves here.
   function openTargetPickerSnapshot(host, payload = {}) {
     openModalPayload(host, TARGET_PICKER_MODAL_KEY, payload);
     return payload;

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const RenderPipeline = require('./WorldMapRuntimeRenderPipeline');
-const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
+const WorldMarchGeometry = require('../ecs/foundation/WorldMarchGeometry');
 
 function createState() {
   return {

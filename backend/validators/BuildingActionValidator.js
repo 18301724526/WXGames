@@ -1,5 +1,5 @@
 const { BuildingConfig, TutorialFlowConfig } = require('../services/config/GameplayConfigRuntime');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
 

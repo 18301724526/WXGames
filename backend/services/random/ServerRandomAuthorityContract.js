@@ -2,7 +2,7 @@ const crypto = require('node:crypto');
 
 const SCHEMA = 'server-random-authority-v1';
 const AUTHORITY = 'server';
-const DEFAULT_DOMAIN = 'gameplay';
+const DEFAULT_SCOPE = 'gameplay';
 const DEFAULT_ACTION = 'roll';
 const RANDOM_SCALE = 1_000_000;
 const MAX_UNIT_ROLL = 0.999999;
@@ -40,7 +40,7 @@ function createScope(input = {}, options = {}) {
   return Object.freeze({
     schema: SCHEMA,
     authority: AUTHORITY,
-    domain: sanitizeText(input.domain ?? options.domain, DEFAULT_DOMAIN),
+    scope: sanitizeText(input.scope ?? options.scope, DEFAULT_SCOPE),
     action: sanitizeText(input.action ?? options.action, DEFAULT_ACTION),
     subjectId: sanitizeText(input.subjectId ?? options.subjectId),
     seed: sanitizeText(input.seed ?? options.seed),
@@ -54,7 +54,7 @@ function createRollId(roll) {
     .createHash('sha1')
     .update([
       roll.schema,
-      roll.domain,
+      roll.scope,
       roll.action,
       roll.subjectId,
       roll.seed,
@@ -105,7 +105,7 @@ function rollChance(chance, input = {}, options = {}) {
 module.exports = {
   AUTHORITY,
   DEFAULT_ACTION,
-  DEFAULT_DOMAIN,
+  DEFAULT_SCOPE,
   MAX_UNIT_ROLL,
   RANDOM_SCALE,
   SCHEMA,

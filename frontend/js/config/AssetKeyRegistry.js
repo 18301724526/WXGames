@@ -6,10 +6,10 @@
     return String(value || '').trim();
   }
 
-  function asset(key, domain, path, preloadGroups = [DEFAULT_PRELOAD_GROUP]) {
+  function asset(key, group, path, preloadGroups = [DEFAULT_PRELOAD_GROUP]) {
     return Object.freeze({
       key: normalizeKey(key),
-      domain: normalizeKey(domain || 'misc'),
+      group: normalizeKey(group || 'misc'),
       path: normalizeKey(path),
       preloadGroups: Object.freeze(Array.from(new Set((preloadGroups || []).map(normalizeKey).filter(Boolean)))),
     });
@@ -67,7 +67,7 @@
   function normalizeDefinition(definition = {}) {
     const normalized = asset(
       definition.key,
-      definition.domain || 'misc',
+      definition.group || 'misc',
       definition.path,
       Array.isArray(definition.preloadGroups) ? definition.preloadGroups : [],
     );
@@ -99,13 +99,13 @@
 
     const normalizedDefinitions = Object.freeze(orderedKeys.map((key) => definitionByKey.get(key)));
     const keys = Object.freeze(normalizedDefinitions.map((definition) => definition.key));
-    const domainKeys = new Map();
+    const groupKeys = new Map();
     const preloadKeys = new Map();
 
     normalizedDefinitions.forEach((definition) => {
-      const domainList = domainKeys.get(definition.domain) || [];
-      domainList.push(definition.key);
-      domainKeys.set(definition.domain, domainList);
+      const groupList = groupKeys.get(definition.group) || [];
+      groupList.push(definition.key);
+      groupKeys.set(definition.group, groupList);
 
       definition.preloadGroups.forEach((group) => {
         const groupList = preloadKeys.get(group) || [];
@@ -140,8 +140,8 @@
       return getAssetPaths(getPreloadAssetKeys(group));
     }
 
-    function getDomainAssetKeys(domain = '') {
-      return [...(domainKeys.get(normalizeKey(domain)) || [])];
+    function getGroupAssetKeys(group = '') {
+      return [...(groupKeys.get(normalizeKey(group)) || [])];
     }
 
     return Object.freeze({
@@ -153,7 +153,7 @@
       getAssetPaths,
       getPreloadAssetKeys,
       getPreloadAssetPaths,
-      getDomainAssetKeys,
+      getGroupAssetKeys,
     });
   }
 
@@ -172,7 +172,7 @@
     getAssetPaths: defaultRegistry.getAssetPaths,
     getPreloadAssetKeys: defaultRegistry.getPreloadAssetKeys,
     getPreloadAssetPaths: defaultRegistry.getPreloadAssetPaths,
-    getDomainAssetKeys: defaultRegistry.getDomainAssetKeys,
+    getGroupAssetKeys: defaultRegistry.getGroupAssetKeys,
   });
 
   global.AssetKeyRegistry = AssetKeyRegistry;

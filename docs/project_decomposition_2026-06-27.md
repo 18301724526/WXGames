@@ -18,18 +18,18 @@
 
 ### 1.2 城市管理 / 资源经济（核心循环）
 
-- 前端渲染：`CityCanvasRenderer.js`、`CityPeopleCanvasRenderer.js`、`ResourceTopBarCanvasRenderer.js`、`OverlayCanvasRenderer.js`（资源详情）；presenter：`HomePresenter.js`、`state/GameStateManager.js`、`domain/GameState.js`。
+- 前端渲染：`CityCanvasRenderer.js`、`CityPeopleCanvasRenderer.js`、`ResourceTopBarCanvasRenderer.js`、`OverlayCanvasRenderer.js`（资源详情）；presenter：`HomePresenter.js`、`state/GameStateManager.js`、`ECS/GameState.js`。
 - 后端：`routes/gameRoutes.js`（/state、/heartbeat）、`services/CityService.js`（多城权威 + 派生统计 + 离线收益）、`calculators/ResourceTickCalculator.js`（每秒经济数学）、`services/CityPlanningService.js`、`services/ClientGameStateAssembler.js`。
 
 ### 1.3 建造 / 升级建筑
 
-- 前端：`controllers/BuildingController.js`、`platform/GameCommandService.js`、`platform/CanvasCityActionHandlers.js`（build/upgrade handler）、渲染 `BuildingCanvasRenderer.js`、presenter `BuildingPresenter.js`、域 `domain/BuildingState.js`。
-- 后端：`routes/buildingRoutes.js`、`actions/BuildBuildingAction.js` → `services/BuildingActionService.js`、`validators/BuildingActionValidator.js`、`services/BuildingUnlockService.js`、`calculators/BuildingCostCalculator.js`/`BuildingEffectCalculator.js`、`domain/BuildingState.js`、`modules/Building*`、`config/BuildingConfig.js`。
+- 前端：`controllers/BuildingController.js`、`platform/GameCommandService.js`、`platform/CanvasCityActionHandlers.js`（build/upgrade handler）、渲染 `BuildingCanvasRenderer.js`、presenter `BuildingPresenter.js`、域 `ECS/BuildingState.js`。
+- 后端：`routes/buildingRoutes.js`、`actions/BuildBuildingAction.js` → `services/BuildingActionService.js`、`validators/BuildingActionValidator.js`、`services/BuildingUnlockService.js`、`calculators/BuildingCostCalculator.js`/`BuildingEffectCalculator.js`、`ECS/BuildingState.js`、`modules/Building*`、`config/BuildingConfig.js`。
 
 ### 1.4 人口 / 职业分配 + 民政政策
 
 - 前端：`CityPeopleCanvasRenderer.js`、presenter `HomePresenter.js`/`TalentPolicyPresenter.js`、`frontend/population.js`（已废空 stub）。
-- 后端：`actions/AssignPopulationAction.js`、`domain/Population.js`、`services/TalentPolicyService.js`、`calculators/ResourceTickCalculator.js`（人口增长/上限）。
+- 后端：`actions/AssignPopulationAction.js`、`ECS/Population.js`、`services/TalentPolicyService.js`、`calculators/ResourceTickCalculator.js`（人口增长/上限）。
 
 ### 1.5 推进时代（Advance Era）
 
@@ -43,8 +43,8 @@
 
 ### 1.7 事件系统（普通/威胁/定居特殊）
 
-- 前端：`controllers/EventController.js`、`EventCanvasRenderer.js`、presenter `EventPresenter.js`、域 `domain/RewardText.js`。
-- 后端：`actions/ClaimEventAction.js`、`services/EventService.js`、`domain/Event.js`、`calculators/EventRewardCalculator.js`；事件生成在 `gameRoutes.js` 每次变更请求后触发。
+- 前端：`controllers/EventController.js`、`EventCanvasRenderer.js`、presenter `EventPresenter.js`、域 `ECS/RewardText.js`。
+- 后端：`actions/ClaimEventAction.js`、`services/EventService.js`、`ECS/Event.js`、`calculators/EventRewardCalculator.js`；事件生成在 `gameRoutes.js` 每次变更请求后触发。
 
 ### 1.8 名人（招募/求贤/委任/技能/属性）
 
@@ -58,7 +58,7 @@
 
 ### 1.10 世界地图探索 / 行军（World March）
 
-- 前端域：`domain/WorldMarch*`（System/ProgressSnapshot/Geometry/RoutePolicy/OptimisticState）、`domain/WorldMap*`（VisibilityModel/RenderSnapshot/EntitySnapshot/InputActionMap/PickingModel/SelectionResolver）、`shared/worldMarchCore.js`/`WorldMarchCoreAdapter.js`。
+- 前端域：`ECS/WorldMarch*`（System/ProgressSnapshot/Geometry/RoutePolicy/OptimisticState）、`ECS/WorldMap*`（VisibilityModel/RenderSnapshot/EntitySnapshot/InputActionMap/PickingModel/SelectionResolver）、`shared/worldMarchCore.js`/`WorldMarchCoreAdapter.js`。
 - 前端运行时/渲染：`platform/WorldMapRuntime*`、`platform/WorldMapRuntimeCoordinator.js`、`CanvasGameShellWorldMap*`、`renderers/WorldMap*`（~30 文件）、`controllers/TerritoryController.js`、handler `CanvasTerritoryActionHandlers.js`。
 - 后端：`actions/TerritoryAction.js`、`services/WorldExplorerService.js` + `worldExplorer/*`、`services/WorldMapService.js` + `worldMap/*`、`services/WorldAiExplorerService.js`、`services/realtime/*`、`backend/world-worker.js`。
 
@@ -69,7 +69,7 @@
 
 ### 1.12 世界战斗 / 战斗场景
 
-- 前端：`CanvasGameAppBattleScene.js`、渲染 `BattleCanvasRenderer.js` + `BattleCanvasModel/EffectRenderer/FloatingTextRenderer`、域 `domain/BattleCameraPolicy.js`、presenter `BattleScenePresenter.js`、`shared/battleSimCore.js`/`battleAI.js`。
+- 前端：`CanvasGameAppBattleScene.js`、渲染 `BattleCanvasRenderer.js` + `BattleCanvasModel/EffectRenderer/FloatingTextRenderer`、域 `ECS/BattleCameraPolicy.js`、presenter `BattleScenePresenter.js`、`shared/battleSimCore.js`/`battleAI.js`。
 - 后端：`services/BattleService.js` + `battle/*`、`services/battle/BattleSimService.js`（新实体战）、`services/worldCombat/WorldCombatEncounterService.js`/`WorldCombatSessionService.js`。
 
 ### 1.13 任务中心
@@ -95,9 +95,9 @@
 文明火种
 ├── A. 后端权威逻辑 (backend/)
 │   ├── A1 动作分发层 (actions/, 6 文件) — 玩家动作路由 → service [GameActionRegistry 为总线]
-│   ├── A2 经济/建筑域 (calculators/ 4 + domain/BuildingState + modules/Building* 5) — 资源/成本/效果纯算
+│   ├── A2 经济/建筑域 (calculators/ 4 + ECS/BuildingState + modules/Building* 5) — 资源/成本/效果纯算
 │   ├── A3 城市经济服务 (CityService/CityPlanningService/ClientGameStateAssembler, ~4) — 多城权威 + 视图组装
-│   ├── A4 事件系统 (EventService + domain/Event + EventRewardCalculator, 3) — 事件生成/结算
+│   ├── A4 事件系统 (EventService + ECS/Event + EventRewardCalculator, 3) — 事件生成/结算
 │   ├── A5 时代/科技 (TechTreeService + config/EraConfig/TechTreeConfig + BuildingUnlockService, ~4)
 │   ├── A6 名人/技能生成 (famousPerson/* 5 + skillGenerator/* 6 + SkillGeneratorService/FamousPersonService) — ~13
 │   ├── A7 军队/阵型 (MilitaryService + military/FormationStrengthService, 2)
@@ -132,16 +132,16 @@
 │   ├── C5 世界地图渲染管线 (WorldMap* ~35 + WorldTileWater/WorldActor/WorldFog) — 最大子树
 │   └── C6 教程渲染 (Tutorial* 7 + Spine)
 │
-├── D. 客户端域/状态/presenter (domain/, state/)
+├── D. 客户端域/状态/presenter (ECS/, state/)
 │   ├── D1 世界地图域纯规则 (WorldMarch*/WorldMap*/Tile*/World{Clock,Time,Topology,Chunk}) — ~25
 │   ├── D2 i18n/本地化 (LocaleTextRegistry 1856行 + LocaleText + RewardText)
-│   ├── D3 状态容器 (GameStateManager + domain/GameState/BuildingState)
+│   ├── D3 状态容器 (GameStateManager + ECS/GameState/BuildingState)
 │   ├── D4 presenter 层 (UIStatePresenter + Delegates + presenters/* 13)
 │   └── D5 调试/遥测 (ClientOperationLog/CodexWorldMapDiag/H5LoadTrace/WorldMarchTrace/DebugOverlaySnapshot)
 │
 ├── E. ECS 模式/模态运行时 (ecs/, 14 文件)
 │   └── ModeKeys/ModeResolver/ModeWorld/ModeComponents + ModalWorld + RendererSnapshotBoundary
-│       + InputIntent* + BattleDomainOwner + EcsModeRuntimeBundle(生成产物 2502行)
+│       + InputIntent* + BattleOwner + EcsModeRuntimeBundle(生成产物 2502行)
 │
 ├── F. shared/ 纯规则 (4 文件)
 │   └── worldMarchCore / battleSimCore / battleAI / signatureHash
@@ -186,7 +186,7 @@
 ### 🟡 中度
 
 13. **跨 host 镜像普遍**（`game` vs `canvasShell` vs `lastGame`）— `openBlockingPanelSnapshot`/`closeBlockingPanelSnapshot` 在 **5 个非测试文件**逐字重复（已核验：CanvasCityActionHandlers / CanvasFamousActionHandlers / CanvasGameAppCommands / CanvasGameAppGuideUi / CanvasGameShellCommands）；actor-picking 诊断块在 ≥4 文件复制；阻塞遮罩 OR 链在 4 处。
-14. **`WorldMarchOptimisticState.js` 边界违规** — 居于 `domain/` 却直接 mutate host/canvasShell/stateManager 并调 render，实为伪装成域的 controller。
+14. **`WorldMarchOptimisticState.js` 边界违规** — 居于 `ECS/` 却直接 mutate host/canvasShell/stateManager 并调 render，实为伪装成域的 controller。
 15. **配置非叶子层** — `config/` reach 进 `services/config/GameplayConfigRuntime`；`GameplayConfigRuntime.js` 一文件 owns 5 个无关功能配置 + 域数学；`GameConfig.FOG_OF_WAR_ENABLED:true` 与 `FeatureFlags` 默认 `false` 冲突。
 16. **presenter 层样板重复** — 7 个 presenter 各自重声明 `t/toNumber/formatResourceAmount` 等；`ShellPresenter` 是 grab-bag 服务 6 个无关功能；`UIStatePresenter` 空壳 + 手维护 DELEGATE_METHODS 白名单。
 17. **目录聚类而非功能聚类** — `backend/frontend-api-example.js`（后端树里的死浏览器示例代码）、taskDefinitions 与 territory 仅靠目录绑一起。
@@ -205,7 +205,7 @@
 | ---: | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 |   27 | ★ `services/config/GameplayConfigRuntime.js`                                                         | 是（building/era/tech/tutorial/game 五域配置 + 域数学） |
 |   16 | ★ `services/WorldMapService.js`（483 行）                                                            | 是（领地/侦察/行军/出生/雾）                            |
-|   15 | `domain/BuildingState.js`                                                                            | 否（建筑域内聚，好的高扇入）                            |
+|   15 | `ECS/BuildingState.js`                                                                            | 否（建筑域内聚，好的高扇入）                            |
 |   14 | `services/territory/TerritoryConstants.js`                                                           | 否（常量，好的高扇入）                                  |
 |   13 | ★ `services/CityService.js`                                                                          | 是（经济/建筑/人口/事件/领地）                          |
 |   11 | `services/territory/TerritoryShared.js`                                                              | 否（共享规则）                                          |
@@ -224,9 +224,9 @@
 
 ## 5. 一句话体检结论
 
-**整体结构是"清晰的分层意图 + 重度横切污染"的混合体：纯规则（`shared/`、多数 `domain/` 与 `calculators/`）干净内聚，但每一条玩家功能链路都被三个反复出现的系统性缺陷拉穿——(1) 少数 god-file 充当全功能集成点（后端 `gameRoutes.js`/`GameStateNormalizer.js`/`GameStateRepository.js`/`GameActionRegistry.js`，前端 `CanvasGameShell`/`CanvasGameApp`/`GameAPI`/世界地图渲染 facade 群）；(2) 教程、行军 trace、坐标/tileId、阻塞面板快照、actor-picking 诊断等逻辑在 4–6 处复制粘贴且需手工同步；(3) `game`/`canvasShell`/`lastGame` 三宿主镜像与 Proxy 透传使"谁拥有这块状态"普遍不明。**
+**整体结构是"清晰的分层意图 + 重度横切污染"的混合体：纯规则（`shared/`、多数 `ECS/` 与 `calculators/`）干净内聚，但每一条玩家功能链路都被三个反复出现的系统性缺陷拉穿——(1) 少数 god-file 充当全功能集成点（后端 `gameRoutes.js`/`GameStateNormalizer.js`/`GameStateRepository.js`/`GameActionRegistry.js`，前端 `CanvasGameShell`/`CanvasGameApp`/`GameAPI`/世界地图渲染 facade 群）；(2) 教程、行军 trace、坐标/tileId、阻塞面板快照、actor-picking 诊断等逻辑在 4–6 处复制粘贴且需手工同步；(3) `game`/`canvasShell`/`lastGame` 三宿主镜像与 Proxy 透传使"谁拥有这块状态"普遍不明。**
 
-结构风险高度集中在三处：**世界地图/行军子系统**（横跨后端 worldMap/worldExplorer/realtime + 前端 domain/runtime/~35 渲染器，是全项目最大且耦合最深的子树）、**教程系统**（横切 6+ 文件、3 处重复推进逻辑、半迁移的双 host 镜像）、以及 **ECS Batch 8F 模态迁移**（词表四处同步 + 2502 行生成 bundle 漂移风险 + 旧 OR 链 fallback 未清）。
+结构风险高度集中在三处：**世界地图/行军子系统**（横跨后端 worldMap/worldExplorer/realtime + 前端 ECS/runtime/~35 渲染器，是全项目最大且耦合最深的子树）、**教程系统**（横切 6+ 文件、3 处重复推进逻辑、半迁移的双 host 镜像）、以及 **ECS Batch 8F 模态迁移**（词表四处同步 + 2502 行生成 bundle 漂移风险 + 旧 OR 链 fallback 未清）。
 
 **质量对齐计划的优先级建议**：先收口五大跨系统枢纽（§4★）的 fan-out → 再把三套复制逻辑（教程推进、坐标/tileId、阻塞面板快照）抽公共 util → 最后完成 Batch 8F 的单一所有权收敛并删除 §3.18 列出的死 stub。
 
@@ -234,7 +234,7 @@
 
 ## 附录：统计分布（来自 415 文件证据）
 
-**分层文件数**：backend-service 86 · client-renderer 67 · client-platform 54 · client-domain 47 · backend-domain 31 · backend-infra 24 · backend-config 20 · client-presenter 19 · client-ecs 15 · backend-route 10 · client-controller 8 · client-tutorial 8 · shared 6 · tool 6。
+**分层文件数**：backend-service 86 · client-renderer 67 · client-platform 54 · client-scope 47 · backend-scope 31 · backend-infra 24 · backend-config 20 · client-presenter 19 · client-ecs 15 · backend-route 10 · client-controller 8 · client-tutorial 8 · shared 6 · tool 6。
 
 **功能 → 触及文件数**（耦合广度）：世界地图/行军 **177** · 领地/侦察 103 · 世界战斗 96 · 城市管理 94 · 教程 86 · 建造 55 · 名人 53 · 科技 46 · 事件 43 · 任务中心 39 · 推进时代 35 · 阵型 30 · 登录 29 · 人口 21。
 

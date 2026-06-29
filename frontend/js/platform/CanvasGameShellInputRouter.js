@@ -3,7 +3,7 @@
     if (global.WorldMapInputActionMap) return global.WorldMapInputActionMap;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldMapInputActionMap');
+        return require('../ecs/input/WorldMapInputActionMap');
       } catch (_error) {
         return null;
       }

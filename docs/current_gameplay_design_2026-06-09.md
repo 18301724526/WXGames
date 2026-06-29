@@ -99,7 +99,7 @@
 
 - `backend/services/WorldMapService.js` 提供共享服务器 seed、tile reveal、scout reveal、terrain generation、canonical tile identity 和 client world map 输出。
 - `backend/services/WorldAiExplorerService.js` 已提供候选 AI 探索闭环：AI 自己揭开服务器地形，未接壤前不暴露给玩家；接壤后由服务端同步 AI 已解锁地形给玩家。
-- `frontend/js/domain/TileMapGeometry.js`、`WorldMarchGeometry.js` 和 renderer layout 使用 `(q-r, q+r)` 等距投影。
+- `frontend/js/ecs/foundation/TileMapGeometry.js`、`WorldMarchGeometry.js` 和 renderer layout 使用 `(q-r, q+r)` 等距投影。
 - `WorldMapRenderSnapshot`、`WorldMapEntitySnapshot`、`WorldMapPerformanceBudget` 已经把大地图结构推向 compact snapshot。
 
 待硬化：

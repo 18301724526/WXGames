@@ -9,11 +9,19 @@ test('EcsBoundaryManifest declares the reviewed Batch 2 owner vocabulary', () =>
     core: 'node-commonjs-architecture-boundary-only',
     registry: 'node-commonjs-architecture-boundary-only',
     approvedRuntimeSurfaces: ['frontend/js/ecs/runtime/EcsModeRuntimeBundle.js'],
+    approvedRuntimeSurfaceDirs: [
+      'frontend/js/ecs/debug/**',
+      'frontend/js/ecs/foundation/**',
+      'frontend/js/ecs/input/**',
+      'frontend/js/ecs/projection/**',
+      'frontend/js/ecs/resource/**',
+      'frontend/js/ecs/system/**',
+    ],
     forbiddenRuntimeSurfaces: [
       'frontend/js/ecs/core/**',
       'frontend/js/ecs/registry/**',
       'frontend/js/ecs/mode/**',
-      'frontend/js/ecs/input/**',
+      'frontend/js/ecs/owner/**',
       'frontend/js/ecs/snapshot/**',
     ],
   });
@@ -24,12 +32,11 @@ test('EcsBoundaryManifest declares the reviewed Batch 2 owner vocabulary', () =>
     'mode',
     'adapter',
     'registry',
-    'bridge',
   ]);
 });
 
 test('EcsBoundaryManifest includes required component families and modes', () => {
-  ['Auth', 'Network', 'Transition', 'Formation', 'Modal'].forEach((family) => {
+  ['Auth', 'Network', 'Transition', 'Formation', 'Modal', 'Fog'].forEach((family) => {
     assert.equal(EcsBoundaryManifest.componentFamilies.includes(family), true);
   });
 
@@ -47,7 +54,7 @@ test('EcsBoundaryManifest includes required component families and modes', () =>
   });
 });
 
-test('EcsBoundaryManifest locks snapshot keys and bridge lifecycle policy', () => {
+test('EcsBoundaryManifest locks snapshot keys and retires bridge owner policy', () => {
   assert.deepEqual(EcsBoundaryManifest.snapshotKeys, [
     'ShellSnapshot',
     'WorldMapSnapshot',
@@ -55,16 +62,16 @@ test('EcsBoundaryManifest locks snapshot keys and bridge lifecycle policy', () =
     'TechSnapshot',
     'FormationSnapshot',
     'BattleSnapshot',
+    'FogSnapshot',
     'TutorialSnapshot',
     'DebugSnapshot',
     'RendererSnapshot',
   ]);
-  assert.equal(EcsBoundaryManifest.bridgeLifecyclePolicy.maxLifetimeBatches, 2);
-  assert.equal(EcsBoundaryManifest.bridgeLifecyclePolicy.maxLifetimeDays, 14);
   assert.equal(
-    EcsBoundaryManifest.bridgeLifecyclePolicy.forbiddenWork.includes('newModeDecisions'),
-    true,
+    Object.prototype.hasOwnProperty.call(EcsBoundaryManifest, 'bridgeLifecyclePolicy'),
+    false,
   );
+  assert.equal(EcsBoundaryManifest.ownerRoles.includes('bridge'), false);
 });
 
 test('EcsBoundaryManifest validates duplicate-free registry facts', () => {
@@ -73,14 +80,15 @@ test('EcsBoundaryManifest validates duplicate-free registry facts', () => {
     EcsBoundaryManifest.validate({
       ...EcsBoundaryManifest,
       modeKeys: ['city', 'city'],
+      ownerRoles: [...EcsBoundaryManifest.ownerRoles, 'bridge'],
       bridgeLifecyclePolicy: { maxLifetimeBatches: 9, maxLifetimeDays: 99 },
     }),
     {
       ok: false,
       errors: [
         'modeKeys contains duplicate key: city',
-        'bridgeLifecyclePolicy.maxLifetimeBatches must stay at 2',
-        'bridgeLifecyclePolicy.maxLifetimeDays must stay at 14',
+        'bridgeLifecyclePolicy is retired; bridge is not an ECS owner role',
+        'ownerRoles must not include retired bridge',
       ],
     },
   );

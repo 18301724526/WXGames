@@ -669,31 +669,6 @@ test('WorldMapCanvasRenderer delegates military world view to split renderer', (
   assert.equal(calls[0][6], options);
 });
 
-test('WorldMapCanvasRenderer delegates fog mask context capture to split renderer', () => {
-  const calls = [];
-  const host = createHost();
-  const renderer = new WorldMapCanvasRenderer({
-    host,
-    worldMapFogMaskContextRenderer: {
-      renderWorldTileFogMask(...args) {
-        calls.push(['fog-mask', ...args]);
-        host.lastWorldFogContext = { tileMapView: args[0], viewport: args[1], frame: args[2], entries: args[3] };
-        return false;
-      },
-    },
-  });
-  const tileMapView = createTileMapView();
-  const viewport = { scale: 1 };
-  const frame = { x: 1, y: 2, width: 3, height: 4 };
-  const entries = [{ tile: tileMapView.tiles[0] }];
-
-  assert.equal(renderer.renderWorldTileFogMask(tileMapView, viewport, frame, entries), false);
-  assert.deepEqual(calls.map((call) => call[0]), ['fog-mask']);
-  assert.equal(calls[0][1], tileMapView);
-  assert.equal(calls[0][4], entries);
-  assert.equal(host.lastWorldFogContext.tileMapView, tileMapView);
-});
-
 test('WorldMapCanvasRenderer delegates tile-map frame orchestration to split renderer', () => {
   const calls = [];
   const renderer = new WorldMapCanvasRenderer({

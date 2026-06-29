@@ -6,7 +6,7 @@
   var WorldMarchSystem = global.WorldMarchSystem;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     try {
-      WorldMarchSystem = require('../domain/WorldMarchSystem');
+      WorldMarchSystem = require('../ecs/system/WorldMarchSystem');
     } catch (error) {
       WorldMarchSystem = null;
     }
@@ -144,7 +144,10 @@
             : null,
           showFpsOverlay: false,
         });
-        if (rendered) this.renderWorldFogLayer();
+        if (rendered) this.renderWorldFogLayer(this.worldMapRenderer.lastWorldTileMapContext || null, {
+          epochNowMs: baseOptions.epochNowMs ?? Date.now(),
+          state,
+        });
         if (rendered) this.lastWorldMapLayerRenderAt = this.now();
         return rendered;
       },

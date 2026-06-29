@@ -1,5 +1,5 @@
 const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('./BuildingState');
 
 /**
  * 建筑效果计算器 - 从配置读取倍率，不再硬编码

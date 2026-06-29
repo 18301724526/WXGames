@@ -1,4 +1,4 @@
-const Population = require('../domain/Population');
+const Population = require('../services/population/PopulationAssignment');
 const TutorialService = require('../services/TutorialService');
 const CityService = require('../services/CityService');
 

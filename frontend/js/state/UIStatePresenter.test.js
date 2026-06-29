@@ -14,7 +14,7 @@ const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
 require('../config/LocaleTextRegistry');
-const LocaleText = require('../domain/LocaleText');
+const LocaleText = require('../ecs/resource/LocaleText');
 const BattleScenePresenter = require('./presenters/BattleScenePresenter');
 const WorldTileMapPresenter = require('./presenters/WorldTileMapPresenter');
 const ShellPresenter = require('./presenters/ShellPresenter');

@@ -13,7 +13,7 @@ test('WorldMapRendererDependencyRegistry owns dependency keys for the world map 
   assert.equal(definitions.worldMapRendererCompositionFactory.globalName, 'WorldMapRendererCompositionFactory');
   assert.equal(definitions.worldMapTileMapRenderer.globalName, 'WorldMapTileMapRenderer');
   assert.equal(definitions.worldActorCanvasRenderer.globalName, 'WorldActorCanvasRenderer');
-  assert.equal(definitions.worldMarchRoutePolicy.modulePath, '../../domain/WorldMarchRoutePolicy');
+  assert.equal(definitions.worldMarchRoutePolicy.modulePath, '../../ecs/system/WorldMarchRoutePolicy');
   assert.equal(definitions.tileMapAssetManifest.modulePath, '../../config/TileMapAssetManifest');
 });
 

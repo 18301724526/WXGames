@@ -90,7 +90,7 @@ function classifySurface(filePath) {
   if (/ActionDispatcher\.js$|ActionDispatchRegistry\.js$/.test(basename)) return 'action-dispatch';
   if (/ActionController\.js$|ActionHandlers\.js$|Commands\.js$/.test(basename))
     return 'command-handler';
-  return 'domain-input';
+  return 'input-branch';
 }
 
 function extractSymbols(line = '') {

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-require('../../domain/TileMapGeometry');
+require('../../ecs/foundation/TileMapGeometry');
 const WorldMapLayoutModel = require('./WorldMapLayoutModel');
 const WorldMapLayoutFacade = require('./WorldMapLayoutFacade');
 

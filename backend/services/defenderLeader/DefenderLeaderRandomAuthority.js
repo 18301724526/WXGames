@@ -1,6 +1,6 @@
 const ServerRandomAuthorityContract = require('../random/ServerRandomAuthorityContract');
 
-const DOMAIN = 'defenderLeader';
+const SCOPE = 'defenderLeader';
 const DEFAULT_ACTION = 'leaderGeneration';
 
 function sanitizeText(value, fallback = '') {
@@ -34,7 +34,7 @@ function createLeaderRandomSource(territory = {}, options = {}) {
   const seed = sanitizeText(options.seed, createLeaderSeed(territory));
   const subjectId = sanitizeText(options.subjectId, createLeaderSubjectId(territory));
   return ServerRandomAuthorityContract.createRandomSource({
-    domain: DOMAIN,
+    scope: SCOPE,
     action: sanitizeText(options.action, DEFAULT_ACTION),
     subjectId,
     seed,
@@ -54,7 +54,7 @@ function createSourceMetadata(randomSource) {
   return {
     schema: scope.schema,
     authority: scope.authority,
-    domain: scope.domain,
+    scope: scope.scope,
     action: scope.action,
     subjectId: scope.subjectId,
     seed: scope.seed,
@@ -63,7 +63,7 @@ function createSourceMetadata(randomSource) {
 
 module.exports = {
   DEFAULT_ACTION,
-  DOMAIN,
+  SCOPE,
   createLeaderRandomSource,
   createLeaderSeed,
   createLeaderSubjectId,

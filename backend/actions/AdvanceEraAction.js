@@ -1,7 +1,7 @@
 const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
 const { EraConfig } = require('../services/config/GameplayConfigRuntime');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const CityService = require('../services/CityService');
 const TechTreeService = require('../services/TechTreeService');
 

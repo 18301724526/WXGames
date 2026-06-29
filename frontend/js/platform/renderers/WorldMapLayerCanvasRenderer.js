@@ -3,7 +3,7 @@
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/LocaleText');
+        return require('../../ecs/resource/LocaleText');
       } catch (_error) {
         return null;
       }
@@ -15,7 +15,7 @@
     if (global.WorldMapRenderSnapshot) return global.WorldMapRenderSnapshot;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMapRenderSnapshot');
+        return require('../../ecs/projection/WorldMapRenderSnapshot');
       } catch (error) {
         return null;
       }
@@ -27,7 +27,7 @@
     if (global.WorldTime) return global.WorldTime;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldTime');
+        return require('../../ecs/foundation/WorldTime');
       } catch (error) {
         return null;
       }
@@ -39,7 +39,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('../../ecs/system/WorldMarchSystem');
       } catch (error) {
         return null;
       }
@@ -333,10 +333,6 @@
 
     renderWorldScoutRoutes(...args) {
       return this.host?.renderWorldScoutRoutes?.(...args) || false;
-    }
-
-    renderWorldTileFogMask(...args) {
-      return this.host?.renderWorldTileFogMask?.(...args) || false;
     }
 
     renderWorldTileMap(...args) {
@@ -1228,9 +1224,7 @@
       };
       this.publishWorldMapSnapshotLayerContext(context);
       const visibleEntries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry);
-      if (typeof this.renderWorldTileFogMask === 'function') {
-        this.renderWorldTileFogMask(tileMapView, viewport, frame, visibleEntries);
-      }
+      context.entries = visibleEntries;
       this.worldTileWaterTimeOverride = options.waterTimeMs !== null
         && options.waterTimeMs !== undefined
         && Number.isFinite(Number(options.waterTimeMs))

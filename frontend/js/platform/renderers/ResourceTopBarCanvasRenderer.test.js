@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 require('../../config/LocaleTextRegistry');
-const LocaleText = require('../../domain/LocaleText');
+const LocaleText = require('../../ecs/resource/LocaleText');
 const ResourceTopBarCanvasRenderer = require('./ResourceTopBarCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 

@@ -53,7 +53,7 @@
 
 ### 第四阶段：输入意图契约
 
-- 新增纯 domain 模块 `WorldMapInputIntent`，产出 `world-map-input-intent-v1`。
+- 新增纯 ECS 模块 `WorldMapInputIntent`，产出 `world-map-input-intent-v1`。
 - `WorldMapInputIntent.toSerializable()` is a whitelist boundary for externally supplied intent-like objects: it re-summarizes points/action/target/picking/view/diagnostics and must not trust caller payloads or allow renderer/native event/tileMapView/thenable data into input evidence.
 - `WorldMapInputIntent` 的 action/target tile evidence 在存在 `targetQ/targetR` 或 `q/r` 时必须通过 `TileCoord` 生成 canonical `tileId`；caller-supplied 旧 `tileId` 只能作为无坐标证据时的摘要字段，不能覆盖坐标事实进入本地日志、API clientInput 或回放对账。
 - 每一次 `WorldMapRuntime.handleTap()` 在 action 分发前生成同一份 input intent，记录稳定 `inputId`、单调 `clientSequence`、HUD 坐标、layer 坐标、action 摘要、target identity、picking epoch/signature/counts、frame/viewport/camera 和小型诊断字段。
@@ -168,7 +168,7 @@
 
 必须通过：
 
-- `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapPerformanceBudget.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapInputAuthority.contract.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
+- `node --test frontend/js/ecs/input/WorldMapInputIntent.test.js frontend/js/ecs/projection/WorldMapPerformanceBudget.test.js frontend/js/ecs/input/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapInputAuthority.contract.test.js frontend/js/platform/WorldMapRuntimeHitTargetPolicy.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapRuntimeRenderPipeline.test.js`
 - `node --test frontend/js/platform/CanvasGameApp.test.js frontend/js/platform/CanvasGameShell.test.js frontend/js/platform/CanvasGameShellWorldMapDragRuntime.test.js frontend/js/platform/CanvasGameShellWorldMapLayerBridge.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js`
 - `node --test backend/tests/RealtimeAuthorityContract.test.js backend/tests/GameActionRegistry.test.js backend/tests/WorldExplorerService.test.js backend/tests/LogService.test.js backend/tests/CommandReplayCorrelation.test.js backend/tests/PerformanceCapacityBudget.test.js`
 - `node scripts/check-frontend-script-manifest.js`
@@ -193,4 +193,4 @@
 - 修复：`collectMapHomeWorldSiteHitTargets()` 增加 `collectHitTargets: false` 的 context-only 模式；Frame/HUD 在成功复用 runtime hit targets 后只刷新 `lastMapHomeWorldHudContext`，不重复注册 map hit targets；如果 runtime targets 不存在，则保留原注册路径作为 fallback。
 - 修复：world picker 坐标归一化不再让无坐标 command 默认落到 `tile_0_0`；候选只接受明确 tileId/q/r/coord/tile 这类世界坐标证据。
 - 回归测试覆盖：site+actor 仍打开 target picker；openWorldSite+enterCity 返回 topmost `enterCity`；picker candidates 不包含 HUD command；context-only 收集不注册重复地图 targets。
-- 验证：`node --test frontend/js/domain/WorldMapSelectionResolver.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js`，84 tests passed。
+- 验证：`node --test frontend/js/ecs/input/WorldMapSelectionResolver.test.js frontend/js/ecs/input/WorldMapInputActionMap.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js`，84 tests passed。

@@ -29,7 +29,7 @@ function withTempRepo(callback) {
 
 test('coord-helper guard flags an inline tile_<x>_<y> format construction', () => {
   const findings = findInlineTileIdFormatsInText(
-    'frontend/js/domain/Foo.js',
+    'frontend/js/ecs/foundation/Foo.js',
     ['function tileId(q, r) {', '  return `tile_${q}_${r}`;', '}'].join('\n'),
   );
   assert.equal(findings.length, 1);
@@ -38,7 +38,7 @@ test('coord-helper guard flags an inline tile_<x>_<y> format construction', () =
 
 test('coord-helper guard allows referencing TileCoord without re-building the format', () => {
   const findings = findInlineTileIdFormatsInText(
-    'frontend/js/domain/Foo.js',
+    'frontend/js/ecs/foundation/Foo.js',
     [
       'function tileId(q, r) { return TileCoord.tileId(q, r); }',
       'const coord = TileCoord.normalizeCoord(tile);',
@@ -49,12 +49,12 @@ test('coord-helper guard allows referencing TileCoord without re-building the fo
 });
 
 test('coord-helper guard exempts the canonical + honest variant sources, tests and vendor', () => {
-  assert.ok(ALLOWLIST.includes('frontend/js/domain/TileCoord.js'));
+  assert.ok(ALLOWLIST.includes('frontend/js/ecs/foundation/TileCoord.js'));
   assert.ok(ALLOWLIST.includes('frontend/js/shared/WorldMarchCoreAdapter.js'));
   assert.ok(ALLOWLIST.includes('frontend/js/debug/WorldMarchTrace.js'));
-  assert.equal(isScannableSource('frontend/js/domain/TileCoord.js'), false);
-  assert.equal(isScannableSource('frontend/js/domain/WorldMapPickingModel.js'), true);
-  assert.equal(isScannableSource('frontend/js/domain/Foo.test.js'), false);
+  assert.equal(isScannableSource('frontend/js/ecs/foundation/TileCoord.js'), false);
+  assert.equal(isScannableSource('frontend/js/ecs/input/WorldMapPickingModel.js'), true);
+  assert.equal(isScannableSource('frontend/js/ecs/foundation/Foo.test.js'), false);
   assert.equal(isScannableSource('frontend/js/vendor/spine/x.js'), false);
 
   // backend + shared scope (single-source extended beyond the frontend)
@@ -70,15 +70,15 @@ test('coord-helper guard exempts the canonical + honest variant sources, tests a
 
 test('coord-helper guard scans frontend production files, skipping allowlist + tests', () =>
   withTempRepo((repoRoot) => {
-    writeFile(repoRoot, 'frontend/js/domain/Bad.js', 'const id = `tile_${q}_${r}`;\n');
-    writeFile(repoRoot, 'frontend/js/domain/Good.js', 'const id = TileCoord.tileId(q, r);\n');
-    writeFile(repoRoot, 'frontend/js/domain/TileCoord.js', 'const id = `tile_${x}_${y}`;\n');
-    writeFile(repoRoot, 'frontend/js/domain/Bad.test.js', 'const id = `tile_${q}_${r}`;\n');
+    writeFile(repoRoot, 'frontend/js/ecs/foundation/Bad.js', 'const id = `tile_${q}_${r}`;\n');
+    writeFile(repoRoot, 'frontend/js/ecs/foundation/Good.js', 'const id = TileCoord.tileId(q, r);\n');
+    writeFile(repoRoot, 'frontend/js/ecs/foundation/TileCoord.js', 'const id = `tile_${x}_${y}`;\n');
+    writeFile(repoRoot, 'frontend/js/ecs/foundation/Bad.test.js', 'const id = `tile_${q}_${r}`;\n');
 
     const report = scanDuplicateCoordHelpers({ repoRoot });
 
     assert.equal(report.summary.totalViolations, 1);
-    assert.equal(report.violations[0].file, 'frontend/js/domain/Bad.js');
+    assert.equal(report.violations[0].file, 'frontend/js/ecs/foundation/Bad.js');
   }));
 
 test('coord-helper guard rejects unknown CLI flags', () => {

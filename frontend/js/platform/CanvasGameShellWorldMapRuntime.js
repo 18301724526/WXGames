@@ -102,7 +102,13 @@
         if (!options.snapshotOnly) this.clearWorldMapLayerTransform();
         const rendered = coordinator.render(state, options);
         this.worldMapRuntime = coordinator.getMapRuntime();
-        if (rendered) this.renderWorldFogLayer();
+        if (rendered) this.renderWorldFogLayer(this.worldMapRuntime?.getLastTileMapContext?.()
+          || this.worldMapRuntime?.lastTileMapContext
+          || this.worldMapRenderer?.lastWorldTileMapContext
+          || null, {
+          epochNowMs: options.epochNowMs,
+          state,
+        });
         return rendered;
       },
 

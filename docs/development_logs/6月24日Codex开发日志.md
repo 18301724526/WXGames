@@ -25,7 +25,7 @@
 - 已定位并修复新账号第一次引导点击城市时，入城 HUD 偏离城市 actor 所在 tile 的问题。
 - 海洋/水面行军问题的当时判断：
   - 我当时认为根因是客户端允许把不可通行海洋格作为手动行军目标发给后端，后端权威校验正确拒绝后形成 400。
-  - 当时的目标是把“不可通行目标不应该发起手动行军”前移到客户端 domain / input policy 层，避免用户点击海洋时仍调用 `startWorldMarch`。
+  - 当时的目标是把“不可通行目标不应该发起手动行军”前移到客户端 scope / input policy 层，避免用户点击海洋时仍调用 `startWorldMarch`。
 - 当时做过的修复：
   - 城市 HUD 锚点回到 world map tile / actor 的统一坐标模型。
   - 新增/接入 `WorldMarchRoutePolicy`、`shared/worldMarchCore`、`WorldMarchCoreAdapter`，把路线阻塞、海洋阻塞、目标坐标判定抽到可测逻辑里。
@@ -124,7 +124,7 @@
   - `backend/repositories/GameStateRepository.js`
   - `backend/services/authService.js`
   - `scripts/check-backend-security-audit.js`
-  - `frontend/js/domain/WorldMapInputIntent.js`
+  - `frontend/js/ecs/input/WorldMapInputIntent.js`
 - `node --test backend/tests/SchemaMigrationService.test.js backend/tests/GameStateRepository.test.js backend/tests/AuthServiceBotAccounts.test.js scripts/check-backend-security-audit.test.js`：通过，`39 pass`。
 - `git diff --check`：通过。
 - `npm run format:check`：通过。
@@ -202,7 +202,7 @@
   - `npm run format:check`：失败，发现 7 个既有文件未格式化：
     - `backend/calculators/BuildingCostCalculator.js`
     - `backend/calculators/BuildingEffectCalculator.js`
-    - `backend/domain/BuildingState.js`
+    - `backend/modules/BuildingState.js`
     - `backend/services/TutorialService.js`
     - `frontend/js/platform/CanvasGameAppRenderScheduler.test.js`
     - `frontend/js/platform/MiniGameCanvasRenderer.js`

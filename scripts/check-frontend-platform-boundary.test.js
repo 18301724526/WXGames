@@ -17,7 +17,7 @@ test('platform boundary guard allows explicit platform adapter files', () => {
 
 test('platform boundary guard flags browser globals in shared frontend modules', () => {
   const findings = findPlatformBoundaryFindingsInText(
-    'frontend/js/domain/Example.js',
+    'frontend/js/ecs/system/Example.js',
     `
       const value = global.localStorage.getItem('x');
       fetch('/api');
@@ -32,7 +32,7 @@ test('platform boundary guard flags browser globals in shared frontend modules',
 
 test('platform boundary guard ignores strings and comments', () => {
   const findings = findPlatformBoundaryFindingsInText(
-    'frontend/js/domain/Example.js',
+    'frontend/js/ecs/system/Example.js',
     `
       // global.localStorage.getItem('x')
       const label = "window.document";
@@ -44,11 +44,11 @@ test('platform boundary guard ignores strings and comments', () => {
 
 test('platform boundary guard compares findings against a baseline budget', () => {
   const findings = [
-    { file: 'frontend/js/domain/Example.js', symbol: 'browser-storage' },
-    { file: 'frontend/js/domain/Example.js', symbol: 'browser-storage' },
+    { file: 'frontend/js/ecs/system/Example.js', symbol: 'browser-storage' },
+    { file: 'frontend/js/ecs/system/Example.js', symbol: 'browser-storage' },
   ];
   const baseline = {
-    'frontend/js/domain/Example.js#browser-storage': 1,
+    'frontend/js/ecs/system/Example.js#browser-storage': 1,
   };
 
   assert.equal(findNewViolations(findings, baseline).length, 1);

@@ -3,7 +3,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldMarchSystem');
+        return require('../ecs/system/WorldMarchSystem');
       } catch (_error) {
         return null;
       }
@@ -14,7 +14,7 @@
     if (global.WorldMapInputActionMap) return global.WorldMapInputActionMap;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldMapInputActionMap');
+        return require('../ecs/input/WorldMapInputActionMap');
       } catch (_error) {
         return null;
       }
@@ -25,7 +25,7 @@
     if (global.WorldMapPickingModel) return global.WorldMapPickingModel;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldMapPickingModel');
+        return require('../ecs/input/WorldMapPickingModel');
       } catch (_error) {
         return null;
       }
@@ -36,7 +36,7 @@
     if (global.WorldMapInputIntent) return global.WorldMapInputIntent;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldMapInputIntent');
+        return require('../ecs/input/WorldMapInputIntent');
       } catch (_error) {
         return null;
       }

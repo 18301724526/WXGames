@@ -125,11 +125,11 @@ Then remove the 3 wrappers (`openBlockingPanelOwner` / `closeBlockingPanelOwner`
 
 ## Scope boundaries (do NOT migrate these)
 
-- **Panel-CONTENT cursors stay in domain state** (like EventController.activeEventId in
+- **Panel-CONTENT cursors stay in serializable gameplay state** (like EventController.activeEventId in
   8D): `selectedTechId`, `selectedFamousPersonId`, `famousPersonsPage`,
   `activeCityManagementTab`, `activeTaskCenterTab`, `activeGuidebookTab`. Only the
   visibility booleans + the `activeCommandPanel` string move to the owner.
-- **`techUiState.detailOpen` stays as domain** (the tech UI's own truth that the renderer
+- **`techUiState.detailOpen` stays as scope** (the tech UI's own truth that the renderer
   ORs at HudOverlayCanvasRenderer ~206 / CanvasFrameRenderer ~228). 8F retires only the
   host `techDetailOpen` mirror, not `techUiState.detailOpen`.
 

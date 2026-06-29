@@ -7,7 +7,7 @@ const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /\.contract\.test\.js$/,
   /(^|\/)vendor\//,
   /(^|\/)node_modules\//,
-  // TerritoryController owns the world-march DOMAIN target (worldMarchTarget) on
+  // TerritoryController owns the world-march target facts (worldMarchTarget) on
   // its uiState. Batch 8E removed its picker mirror seed/writes; the modal close
   // now routes through the action layer / owner. It is excluded the way
   // EventController.js was excluded from the event-mirror retirement guard.
@@ -78,7 +78,7 @@ function findTargetPickerMirrorRetirementViolationsInText(filePath, text = '') {
   // ?.worldTargetPicker)) carry no `=`, and the `pickerKind: 'worldTargetPicker'`
   // payload string is string-stripped, so neither is flagged.
   const mirrorPattern = /\.worldTargetPicker\s*=(?!=)/;
-  // the worldMarchTarget DOMAIN object must not carry a pickerOpen modal flag write.
+  // the worldMarchTarget facts object must not carry a pickerOpen modal flag write.
   const marchPickerOpenPattern = /\bworldMarchTarget(?:\??\.[A-Za-z0-9_$]+)*\.pickerOpen\s*=(?!=)/;
   // the modal-flag object literal `pickerOpen: true|false` (the open/closed signal
   // that now lives in the owner). `pickerOpen: Boolean(...)` reads are NOT matched.

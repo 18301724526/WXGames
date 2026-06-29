@@ -22,7 +22,6 @@ const OWNER_ROLES = freezeList([
   'mode',
   'adapter',
   'registry',
-  'bridge',
 ]);
 
 const COMPONENT_FAMILIES = freezeList([
@@ -41,6 +40,7 @@ const COMPONENT_FAMILIES = freezeList([
   'CommandIntent',
   'Animation',
   'Snapshot',
+  'Fog',
 ]);
 
 const MODE_KEYS = freezeList(EcsModeKeys.MODE_KEYS);
@@ -52,33 +52,29 @@ const SNAPSHOT_KEYS = freezeList([
   'TechSnapshot',
   'FormationSnapshot',
   'BattleSnapshot',
+  'FogSnapshot',
   'TutorialSnapshot',
   'DebugSnapshot',
   'RendererSnapshot',
 ]);
 
-const BRIDGE_LIFECYCLE_POLICY = freezeRecord({
-  maxLifetimeBatches: 2,
-  maxLifetimeDays: 14,
-  allowedWork: freezeList(['forwardLegacyPublicCalls', 'readOnlyFieldMirror', 'bootCompatibility']),
-  forbiddenWork: freezeList([
-    'newBusinessBranches',
-    'newSourceOfTruthFields',
-    'newModeDecisions',
-    'newRendererAuthority',
-  ]),
-  extensionRequiredFields: freezeList(['reason', 'newRetirementDate', 'owner', 'blockingGuard']),
-});
-
 const RUNTIME_LOADING_POLICY = freezeRecord({
   core: 'node-commonjs-architecture-boundary-only',
   registry: 'node-commonjs-architecture-boundary-only',
   approvedRuntimeSurfaces: freezeList(['frontend/js/ecs/runtime/EcsModeRuntimeBundle.js']),
+  approvedRuntimeSurfaceDirs: freezeList([
+    'frontend/js/ecs/debug/**',
+    'frontend/js/ecs/foundation/**',
+    'frontend/js/ecs/input/**',
+    'frontend/js/ecs/projection/**',
+    'frontend/js/ecs/resource/**',
+    'frontend/js/ecs/system/**',
+  ]),
   forbiddenRuntimeSurfaces: freezeList([
     'frontend/js/ecs/core/**',
     'frontend/js/ecs/registry/**',
     'frontend/js/ecs/mode/**',
-    'frontend/js/ecs/input/**',
+    'frontend/js/ecs/owner/**',
     'frontend/js/ecs/snapshot/**',
   ]),
 });
@@ -110,11 +106,11 @@ function validateEcsBoundaryManifest(manifest = EcsBoundaryManifest) {
     });
   });
 
-  if (manifest.bridgeLifecyclePolicy?.maxLifetimeBatches !== 2) {
-    errors.push('bridgeLifecyclePolicy.maxLifetimeBatches must stay at 2');
+  if (manifest.bridgeLifecyclePolicy !== undefined) {
+    errors.push('bridgeLifecyclePolicy is retired; bridge is not an ECS owner role');
   }
-  if (manifest.bridgeLifecyclePolicy?.maxLifetimeDays !== 14) {
-    errors.push('bridgeLifecyclePolicy.maxLifetimeDays must stay at 14');
+  if (manifest.ownerRoles?.includes('bridge')) {
+    errors.push('ownerRoles must not include retired bridge');
   }
 
   return Object.freeze({
@@ -131,7 +127,6 @@ const EcsBoundaryManifest = freezeRecord({
   componentFamilies: COMPONENT_FAMILIES,
   modeKeys: MODE_KEYS,
   snapshotKeys: SNAPSHOT_KEYS,
-  bridgeLifecyclePolicy: BRIDGE_LIFECYCLE_POLICY,
   validate: validateEcsBoundaryManifest,
 });
 

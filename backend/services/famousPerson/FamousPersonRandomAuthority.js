@@ -3,7 +3,7 @@ const {
   sanitizeText,
 } = require('./FamousPersonShared');
 
-const DOMAIN = 'famousPerson';
+const SCOPE = 'famousPerson';
 const DEFAULT_ACTION = 'candidateGeneration';
 
 function normalizeDate(now) {
@@ -34,7 +34,7 @@ function createCandidateRandomSource(gameState = {}, sourceType = 'seek', now = 
   const seed = sanitizeText(options.seed, createCandidateSeed(gameState, sourceType, now));
   const subjectId = sanitizeText(options.subjectId, createCandidateSubjectId(gameState, sourceType));
   return ServerRandomAuthorityContract.createRandomSource({
-    domain: DOMAIN,
+    scope: SCOPE,
     action: sanitizeText(options.action, DEFAULT_ACTION),
     subjectId,
     seed,
@@ -54,7 +54,7 @@ function createSourceMetadata(randomSource) {
   return {
     schema: scope.schema,
     authority: scope.authority,
-    domain: scope.domain,
+    scope: scope.scope,
     action: scope.action,
     subjectId: scope.subjectId,
     seed: scope.seed,
@@ -63,7 +63,7 @@ function createSourceMetadata(randomSource) {
 
 module.exports = {
   DEFAULT_ACTION,
-  DOMAIN,
+  SCOPE,
   createCandidateRandomSource,
   createCandidateSeed,
   createCandidateSubjectId,

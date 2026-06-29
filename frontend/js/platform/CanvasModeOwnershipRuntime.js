@@ -47,22 +47,22 @@
     return owner;
   }
 
-  function readBattleDomainSnapshot(host) {
-    const BattleDomainOwner = getBattleDomainOwnerApi();
+  function readBattleSnapshot(host) {
+    const BattleOwner = getBattleOwnerApi();
     const owner =
-      host?.__ecsBattleDomainOwner ||
-      host?.lastGame?.__ecsBattleDomainOwner ||
-      host?.getCanvasGameHost?.()?.__ecsBattleDomainOwner ||
+      host?.__ecsBattleOwner ||
+      host?.lastGame?.__ecsBattleOwner ||
+      host?.getCanvasGameHost?.()?.__ecsBattleOwner ||
       null;
-    if (BattleDomainOwner?.getBattleDomainSnapshot && owner) {
-      return BattleDomainOwner.getBattleDomainSnapshot(owner);
+    if (BattleOwner?.getBattleSnapshot && owner) {
+      return BattleOwner.getBattleSnapshot(owner);
     }
     return null;
   }
 
   function resolveBaseModeKey(host) {
     const game = getStateHost(host);
-    const battleSnapshot = readBattleDomainSnapshot(host);
+    const battleSnapshot = readBattleSnapshot(host);
     const activeTab =
       game?.state?.currentTab ||
       game?.activeTab ||
@@ -123,7 +123,7 @@
 
   function hasBlockingOverlayExceptTechTree(host) {
     const game = getStateHost(host);
-    const battleSnapshot = readBattleDomainSnapshot(host);
+    const battleSnapshot = readBattleSnapshot(host);
     // commandPanel blocks tech-tree routing only when it is NOT the tech panel (the
     // 'tech' value IS tech-tree base access, not an overlay). techDetail still blocks
     // (it is a popup layered above the tech tree). This preserves the exact prior
@@ -232,9 +232,9 @@
       : null;
   }
 
-  function getBattleDomainOwnerApi() {
-    return EcsModeRuntime && EcsModeRuntime.BattleDomainOwner
-      ? EcsModeRuntime.BattleDomainOwner
+  function getBattleOwnerApi() {
+    return EcsModeRuntime && EcsModeRuntime.BattleOwner
+      ? EcsModeRuntime.BattleOwner
       : null;
   }
 
@@ -348,17 +348,17 @@
   }
 
   function buildRendererBattleFacts(host) {
-    const BattleDomainOwner = getBattleDomainOwnerApi();
-    const battleSnapshot = readBattleDomainSnapshot(host);
+    const BattleOwner = getBattleOwnerApi();
+    const battleSnapshot = readBattleSnapshot(host);
     if (battleSnapshot) return battleSnapshot;
     const game = host?.getCanvasGameHost?.() || getStateHost(host);
     const shell = game?.canvasShell || host?.canvasShell || host?.lastGame?.canvasShell || null;
     const entityBattle = game?.entityBattle || shell?.entityBattle || host?.entityBattle || null;
-    if (BattleDomainOwner?.createBattleDomainOwner) {
-      return BattleDomainOwner.createBattleDomainOwner({ battleScene: null, entityBattle });
+    if (BattleOwner?.createBattleOwner) {
+      return BattleOwner.createBattleOwner({ battleScene: null, entityBattle });
     }
     return {
-      schema: 'battle-domain-v1',
+      schema: 'battle-owner-v1',
       battleScene: null,
       entityBattle,
       activeOverlay: entityBattle?.visible ? 'entityBattle' : 'none',

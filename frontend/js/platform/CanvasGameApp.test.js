@@ -57,7 +57,7 @@ test('html and minigame entries load CanvasGameApp modules before the facade', (
   });
 
   const optimisticHtmlPosition = html.indexOf('WorldMarchOptimisticState.js');
-  const optimisticMinigamePosition = minigame.indexOf("require('../js/domain/WorldMarchOptimisticState')");
+  const optimisticMinigamePosition = minigame.indexOf("require('../js/ecs/system/WorldMarchOptimisticState')");
   const syncHtmlPosition = html.indexOf('CanvasGameAppStateSync.js');
   const syncMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppStateSync')");
   const commandsHtmlPosition = html.indexOf('CanvasGameAppCommands.js');
@@ -1321,7 +1321,7 @@ test('CanvasGameApp records compat async action dispatch before rejection', asyn
   assert.equal(actionEvent.handled, 'promise');
 });
 
-test('CanvasGameApp routes battleScene replay overlay through battle domain owner snapshot', () => {
+test('CanvasGameApp routes battleScene replay overlay through battle owner snapshot', () => {
   const calls = [];
   const app = new CanvasGameApp({
     runtimeRequired: false,
@@ -1348,15 +1348,15 @@ test('CanvasGameApp routes battleScene replay overlay through battle domain owne
 
   assert.equal(app.startBattleScene({ id: 'report-owner', turns: [{ action: 'attack' }] }), true);
 
-  assert.equal(app.__ecsBattleDomainOwner.schema, 'battle-domain-v1');
-  assert.equal(app.__ecsBattleDomainOwner.battleScene.report.id, 'report-owner');
+  assert.equal(app.__ecsBattleOwner.schema, 'battle-owner-v1');
+  assert.equal(app.__ecsBattleOwner.battleScene.report.id, 'report-owner');
   assert.equal(app.getRendererSnapshot().battle.battleScene.report.id, 'report-owner');
   assert.equal(Object.prototype.hasOwnProperty.call(app, 'battleScene'), false);
   assert.deepEqual(calls.at(-1), ['render', 'report-owner', 0]);
 
   app.now = () => 250;
   assert.equal(app.skipBattleScene(), true);
-  assert.equal(app.__ecsBattleDomainOwner.battleScene.turnIndex, 1);
+  assert.equal(app.__ecsBattleOwner.battleScene.turnIndex, 1);
 });
 
 test('CanvasGameApp records entityBattle owner facts while preserving live mirror object', () => {
@@ -1384,11 +1384,11 @@ test('CanvasGameApp records entityBattle owner facts while preserving live mirro
   try {
     assert.equal(app.openEntityBattle({ setup: { sides: [{}, {}] }, battleId: 'battle-owner' }), true);
     assert.equal(app.entityBattle.battleId, 'battle-owner');
-    assert.equal(app.__ecsBattleDomainOwner.entityBattle.battleId, 'battle-owner');
-    assert.notEqual(app.__ecsBattleDomainOwner.entityBattle, app.entityBattle);
+    assert.equal(app.__ecsBattleOwner.entityBattle.battleId, 'battle-owner');
+    assert.notEqual(app.__ecsBattleOwner.entityBattle, app.entityBattle);
 
     app.entityBattleSelectGeneral('g1');
-    assert.equal(app.__ecsBattleDomainOwner.entityBattle.selectedGid, 'g1');
+    assert.equal(app.__ecsBattleOwner.entityBattle.selectedGid, 'g1');
   } finally {
     global.BattleSimCore = previousCore;
   }

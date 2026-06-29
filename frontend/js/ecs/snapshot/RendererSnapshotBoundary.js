@@ -65,7 +65,7 @@ const MODE_DEFAULTS = Object.freeze({
 });
 
 const BATTLE_DEFAULTS = Object.freeze({
-  schema: 'battle-domain-v1',
+  schema: 'battle-owner-v1',
   battleScene: null,
   entityBattle: null,
   activeOverlay: 'none',

@@ -1,5 +1,5 @@
 const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const TerritoryService = require('./TerritoryService');
 const { manualAdvance } = require('./tutorial/TutorialProgression');
 const { getTutorialScoutPersonId } = require('./tutorial/TutorialSelectors');

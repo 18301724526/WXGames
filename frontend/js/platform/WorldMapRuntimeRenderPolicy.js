@@ -2,7 +2,7 @@
   var SharedWorldClock = global.WorldClock;
   if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
     try {
-      SharedWorldClock = require('../domain/WorldClock');
+      SharedWorldClock = require('../ecs/foundation/WorldClock');
     } catch (_error) {
       SharedWorldClock = null;
     }
@@ -10,7 +10,7 @@
   var SharedWorldMarchSystem = global.WorldMarchSystem;
   if (typeof module !== 'undefined' && module.exports && !SharedWorldMarchSystem) {
     try {
-      SharedWorldMarchSystem = require('../domain/WorldMarchSystem');
+      SharedWorldMarchSystem = require('../ecs/system/WorldMarchSystem');
     } catch (_error) {
       SharedWorldMarchSystem = null;
     }

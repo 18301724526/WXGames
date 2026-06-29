@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 require('../config/LocaleTextRegistry');
-const LocaleText = require('../domain/LocaleText');
+const LocaleText = require('../ecs/resource/LocaleText');
 const H5UpdateRuntimeAdapter = require('./H5UpdateRuntimeAdapter');
 
 test('H5UpdateRuntimeAdapter preserves world march trace through forced reload URLs', () => {

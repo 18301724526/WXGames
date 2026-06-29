@@ -427,7 +427,7 @@ test('CanvasModeOwnershipRuntime builds renderer snapshots from owner-backed pan
   game.canvasShell = shell;
   shell.lastGame = game;
   host.getCanvasGameHost = () => game;
-  host.__ecsBattleDomainOwner = global.EcsModeRuntime.BattleDomainOwner.openBattleScene(null, {
+  host.__ecsBattleOwner = global.EcsModeRuntime.BattleOwner.openBattleScene(null, {
     visible: true,
     report: { id: 'report-1' },
     turnIndex: 0,
@@ -464,12 +464,12 @@ test('CanvasModeOwnershipRuntime exposes battle facts only through read-only sna
   class Host {}
   CanvasModeOwnershipRuntime.install(Host);
   const host = new Host();
-  const owner = global.EcsModeRuntime.BattleDomainOwner.openBattleScene(null, {
+  const owner = global.EcsModeRuntime.BattleOwner.openBattleScene(null, {
     visible: true,
     report: { id: 'owner-report' },
     turnIndex: 0,
   });
-  host.lastGame = { __ecsBattleDomainOwner: owner };
+  host.lastGame = { __ecsBattleOwner: owner };
 
   const forbiddenWrapperNames = [
     'openBattleSceneOwner',

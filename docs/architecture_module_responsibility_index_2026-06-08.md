@@ -45,7 +45,7 @@
 
 ## 1. 如何使用 / How To Use
 
-1. Find the target domain in the tables below.
+1. Find the target scope in the tables below.
 2. Check whether the module is `stable`, `candidate`, `active-refactor`, or `legacy`.
 3. If the module is stable, extend through the listed extension path instead of editing internals.
 4. If the module is legacy, prefer adding an adapter/new module and then shrinking legacy responsibilities.
@@ -163,7 +163,7 @@ Stable 晋升约定 / Stable Promotion Convention:
 - `AssetKeyRegistry.getAssetPaths(assetKeys, options)`
 - `AssetKeyRegistry.getPreloadAssetKeys(group)`
 - `AssetKeyRegistry.getPreloadAssetPaths(group)`
-- `AssetKeyRegistry.getDomainAssetKeys(domain)`
+- `AssetKeyRegistry.getGroupAssetKeys(group)`
 
 性能约束 / Performance Constraints:
 
@@ -266,7 +266,7 @@ P0 新增公开 API / Public API Added During P0:
 扩展方式 / Extension Path:
 
 - 只有跨 shell modules 共用的生命周期 helper 才能加到这里。
-- 具体功能行为应放到 shell module、domain 或 system 文件。
+- 具体功能行为应放到 shell module、scope 或 system 文件。
 - 新增 layer 必须先声明在 `CanvasLayerRegistry`。
 - `mainHud` is the screen/input layer; do not allocate it through `runtime.ensureLayerCanvas()`.
 - 调试覆盖层只通过 `DebugOverlayRegistry` 产出 snapshot，不在 shell 内拼字段。
@@ -636,7 +636,7 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/renderers/CanvasPreloadAssetManifest.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/TileCoord.js`
+### `frontend/js/ecs/foundation/TileCoord.js`
 
 状态 / Status: candidate
 
@@ -673,10 +673,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/TileCoord.test.js`
+- `node --test frontend/js/ecs/foundation/TileCoord.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldTopology.js`
+### `frontend/js/ecs/foundation/WorldTopology.js`
 
 状态 / Status: candidate
 
@@ -712,10 +712,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldTopology.test.js`
+- `node --test frontend/js/ecs/foundation/WorldTopology.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/TileMapGeometry.js`
+### `frontend/js/ecs/foundation/TileMapGeometry.js`
 
 状态 / Status: candidate
 
@@ -755,10 +755,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/TileMapGeometry.test.js`
+- `node --test frontend/js/ecs/foundation/TileMapGeometry.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldChunkAddress.js`
+### `frontend/js/ecs/foundation/WorldChunkAddress.js`
 
 状态 / Status: candidate
 
@@ -797,10 +797,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldChunkAddress.test.js`
+- `node --test frontend/js/ecs/foundation/WorldChunkAddress.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldInterestWindow.js`
+### `frontend/js/ecs/foundation/WorldInterestWindow.js`
 
 状态 / Status: candidate
 
@@ -834,10 +834,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldInterestWindow.test.js`
+- `node --test frontend/js/ecs/foundation/WorldInterestWindow.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldRevealStore.js`
+### `frontend/js/ecs/resource/WorldRevealStore.js`
 
 状态 / Status: candidate
 
@@ -874,16 +874,16 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldRevealStore.test.js`
+- `node --test frontend/js/ecs/resource/WorldRevealStore.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapVisibilityModel.js`
+### `frontend/js/ecs/projection/WorldMapVisibilityModel.js`
 
 状态 / Status: candidate
 
 负责 / Owns:
 
-- 世界地图 visibility/explored/controlled 的纯 domain snapshot
+- 世界地图 visibility/explored/controlled 的纯 ECS snapshot
 - 将 tile、mission reveal、active mission position 合并为可序列化 visibility arrays
 - 为后续 fog renderer、world map renderer、debug overlay 提供统一输入
 - 性能友好的紧凑数据结构 / compact arrays for large maps
@@ -922,16 +922,16 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapVisibilityModel.test.js frontend/js/domain/WorldMapEntitySnapshot.test.js frontend/js/domain/WorldFogVisualSnapshot.test.js`
+- `node --test frontend/js/ecs/projection/WorldMapVisibilityModel.test.js frontend/js/ecs/projection/WorldMapEntitySnapshot.test.js frontend/js/ecs/projection/WorldFogVisualSnapshot.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapEntitySnapshot.js`
+### `frontend/js/ecs/projection/WorldMapEntitySnapshot.js`
 
 状态 / Status: candidate
 
 负责 / Owns:
 
-- 世界地图 entities/components 的纯 domain snapshot
+- 世界地图 entities/components 的纯 ECS snapshot
 - 将 tiles、sites、missions、actors 归一化成稳定实体集合
 - 复用 `WorldMapVisibilityModel` 的 visibility snapshot
 - 为 renderer、action adapter、debug overlay、fog rebuild 提供共同输入
@@ -967,10 +967,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapVisibilityModel.test.js frontend/js/domain/WorldMapEntitySnapshot.test.js frontend/js/domain/WorldFogVisualSnapshot.test.js`
+- `node --test frontend/js/ecs/projection/WorldMapVisibilityModel.test.js frontend/js/ecs/projection/WorldMapEntitySnapshot.test.js frontend/js/ecs/projection/WorldFogVisualSnapshot.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapPerformanceBudget.js`
+### `frontend/js/ecs/projection/WorldMapPerformanceBudget.js`
 
 状态 / Status: candidate
 
@@ -1010,16 +1010,16 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapPerformanceBudget.test.js`
+- `node --test frontend/js/ecs/projection/WorldMapPerformanceBudget.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMarchProgressSnapshot.js`
+### `frontend/js/ecs/system/WorldMarchProgressSnapshot.js`
 
 状态 / Status: candidate
 
 负责 / Owns:
 
-- 世界地图行军 progress/arrival 的纯 domain snapshot
+- 世界地图行军 progress/arrival 的纯 ECS snapshot
 - 将 raw mission 归一化成 `missions`、兼容 `actors`、`arrivals` 三类扁平行；`actors` 只保留历史 facade 输出，不代表最终大地图可见 actor 合同
 - 统一手动行军抵达 `idle` 和随机探索抵达 `ready` 的结果语义
 - 为 `WorldActorProjection`、HUD、action adapter、debug overlay 提供可测试、可序列化的行军输入
@@ -1069,11 +1069,11 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMarchProgressSnapshot.test.js`
-- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `node --test frontend/js/ecs/system/WorldMarchProgressSnapshot.test.js`
+- `node --test frontend/js/ecs/projection/WorldActorProjection.test.js frontend/js/ecs/system/WorldMarchProgressSnapshot.test.js frontend/js/ecs/projection/WorldMapRenderSnapshot.test.js frontend/js/ecs/system/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldActorProjection.js` - 82 lines
+### `frontend/js/ecs/projection/WorldActorProjection.js` - 82 lines
 
 状态 / Status: candidate
 
@@ -1110,10 +1110,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `node --test frontend/js/ecs/projection/WorldActorProjection.test.js frontend/js/ecs/system/WorldMarchProgressSnapshot.test.js frontend/js/ecs/projection/WorldMapRenderSnapshot.test.js frontend/js/ecs/system/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMarchGeometry.js`
+### `frontend/js/ecs/foundation/WorldMarchGeometry.js`
 
 状态 / Status: candidate
 
@@ -1145,10 +1145,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js`
+- `node --test frontend/js/ecs/foundation/WorldMarchGeometry.test.js frontend/js/ecs/system/WorldMarchSystem.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMarchSystem.js` - 64 lines
+### `frontend/js/ecs/system/WorldMarchSystem.js` - 64 lines
 
 状态 / Status: candidate facade
 
@@ -1183,10 +1183,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchGeometry.test.js frontend/js/domain/WorldMarchSystem.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js`
+- `node --test frontend/js/ecs/projection/WorldActorProjection.test.js frontend/js/ecs/foundation/WorldMarchGeometry.test.js frontend/js/ecs/system/WorldMarchSystem.test.js frontend/js/ecs/system/WorldMarchProgressSnapshot.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapRenderSnapshot.js`
+### `frontend/js/ecs/projection/WorldMapRenderSnapshot.js`
 
 状态 / Status: candidate
 
@@ -1231,7 +1231,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldActorProjection.test.js frontend/js/domain/WorldMarchProgressSnapshot.test.js frontend/js/domain/WorldMapRenderSnapshot.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
+- `node --test frontend/js/ecs/projection/WorldActorProjection.test.js frontend/js/ecs/system/WorldMarchProgressSnapshot.test.js frontend/js/ecs/projection/WorldMapRenderSnapshot.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/renderers/WorldMapLayoutModel.js`
@@ -1440,7 +1440,7 @@ P0 新增公开 API / Public API Added During P0:
 
 当前依赖键 / Current Dependency Keys:
 
-- config/domain: `tileMapAssetManifest`, `tileMapGeometry`, `worldTime`, `unitSpriteManifest`
+- config/scope: `tileMapAssetManifest`, `tileMapGeometry`, `worldTime`, `unitSpriteManifest`
 - actor/HUD/tutorial renderers: `worldActorCanvasRenderer`, `worldMarchHudCanvasRenderer`, `tutorialIntroUnitRenderer`
 - composition: `worldMapRendererCompositionFactory`
 - host bridge: `worldMapRendererHostBridge`
@@ -2341,20 +2341,20 @@ P0 新增公开 API / Public API Added During P0:
 - 新 actor handoff rule 先扩展本模块。
 - 新 actor pixel drawing 仍扩展 `WorldActorCanvasRenderer`。
 - 新 march HUD visual/detail 仍扩展 `WorldMarchHudCanvasRenderer`。
-- 新 march domain calculation 仍扩展 `WorldMarchSystem` / domain snapshots。
+- 新 march ECS calculation 仍扩展 `WorldMarchSystem` / ECS snapshots。
 
 回归 / Regression:
 
 - `node --test frontend/js/platform/renderers/WorldMapActorHudRenderer.test.js frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js frontend/js/platform/renderers/WorldMapCanvasRenderer.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldFogVisualSnapshot.js`
+### `frontend/js/ecs/projection/WorldFogVisualSnapshot.js`
 
 状态 / Status: candidate
 
 负责 / Owns:
 
-- 战争迷雾 visual input contract 的纯 domain snapshot
+- 战争迷雾 visual input contract 的纯 ECS snapshot
 - 将 `WorldMapVisibilityModel` 的 visibility levels 映射成 renderer-safe fog mask levels
 - 消费 `WorldMapRenderSnapshot` 的 frame、viewport、geometry，不让 fog renderer 自己推导地图语义
 - 为旧 `WorldFogCanvasRenderer` 或后续替代 visual plugin 输出稳定 renderer context
@@ -2395,7 +2395,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapVisibilityModel.test.js frontend/js/domain/WorldMapEntitySnapshot.test.js frontend/js/domain/WorldFogVisualSnapshot.test.js`
+- `node --test frontend/js/ecs/projection/WorldMapVisibilityModel.test.js frontend/js/ecs/projection/WorldMapEntitySnapshot.test.js frontend/js/ecs/projection/WorldFogVisualSnapshot.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/WorldMapVisualPluginRegistry.js`
@@ -2408,7 +2408,7 @@ P0 新增公开 API / Public API Added During P0:
 - 通过 `FeatureFlags` 控制 visual plugin 是否启用
 - 默认声明 `worldFog` 插件，但 `FOG_OF_WAR_ENABLED` 为 false 时不产出 snapshot/context
 - 为 shell/runtime 提供 `createPluginSnapshot()` 和 `createRendererContext()` 的统一入口
-- 保持 visual plugin 分发逻辑在 platform 层，具体数据合同在 domain snapshot 层
+- 保持 visual plugin 分发逻辑在 platform 层，具体数据合同在 ECS snapshot 层
 
 公开 API / Public API:
 
@@ -2430,7 +2430,7 @@ P0 新增公开 API / Public API Added During P0:
 
 扩展方式 / Extension Path:
 
-- 新世界地图视觉系统先新增 plugin definition，再新增对应 domain snapshot/adapter。
+- 新世界地图视觉系统先新增 plugin definition，再新增对应 ECS snapshot/adapter。
 - feature-gated visual systems 必须在 registry 里声明 `feature`，默认关闭的系统不能分配图层或 renderer context。
 - 不要让 shell/runtime 直接 new 新视觉模块；通过 registry 获取 snapshot/context。
 
@@ -2440,7 +2440,7 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/CanvasGameShell.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/DebugOverlaySnapshot.js`
+### `frontend/js/ecs/debug/DebugOverlaySnapshot.js`
 
 状态 / Status: candidate
 
@@ -2481,7 +2481,7 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/DebugOverlaySnapshot.test.js`
+- `node --test frontend/js/ecs/debug/DebugOverlaySnapshot.test.js`
 - `npm run test:architecture`
 
 ### `frontend/js/platform/DebugOverlayRegistry.js`
@@ -2525,7 +2525,7 @@ P0 新增公开 API / Public API Added During P0:
 - `node --test frontend/js/platform/CanvasGameShell.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapPickingModel.js`
+### `frontend/js/ecs/input/WorldMapPickingModel.js`
 
 状态 / Status: candidate
 
@@ -2560,10 +2560,10 @@ P0 新增公开 API / Public API Added During P0:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js`
+- `node --test frontend/js/ecs/input/WorldMapPickingModel.test.js frontend/js/ecs/input/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapSelectionResolver.js`
+### `frontend/js/ecs/input/WorldMapSelectionResolver.js`
 
 Status: candidate
 
@@ -2599,10 +2599,10 @@ Extension Path:
 
 Regression:
 
-- `node --test frontend/js/domain/WorldMapSelectionResolver.test.js frontend/js/domain/WorldMapPickingModel.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`
+- `node --test frontend/js/ecs/input/WorldMapSelectionResolver.test.js frontend/js/ecs/input/WorldMapPickingModel.test.js frontend/js/ecs/input/WorldMapInputActionMap.test.js frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapInputIntent.js` - 337 lines
+### `frontend/js/ecs/input/WorldMapInputIntent.js` - 337 lines
 
 状态 / Status: candidate
 
@@ -2640,10 +2640,10 @@ Regression:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapInputIntent.test.js frontend/js/domain/WorldMapPerformanceBudget.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js backend/tests/CommandReplayCorrelation.test.js backend/tests/PerformanceCapacityBudget.test.js`
+- `node --test frontend/js/ecs/input/WorldMapInputIntent.test.js frontend/js/ecs/projection/WorldMapPerformanceBudget.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/CanvasTerritoryActionHandlers.test.js frontend/js/api/GameAPI.test.js backend/tests/CommandReplayCorrelation.test.js backend/tests/PerformanceCapacityBudget.test.js`
 - `npm run test:architecture`
 
-### `frontend/js/domain/WorldMapInputActionMap.js`
+### `frontend/js/ecs/input/WorldMapInputActionMap.js`
 
 状态 / Status: candidate
 
@@ -2695,7 +2695,7 @@ Regression:
 
 回归 / Regression:
 
-- `node --test frontend/js/domain/WorldMapSelectionResolver.test.js frontend/js/domain/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapInputAuthority.contract.test.js`
+- `node --test frontend/js/ecs/input/WorldMapSelectionResolver.test.js frontend/js/ecs/input/WorldMapInputActionMap.test.js frontend/js/platform/WorldMapRuntime.test.js frontend/js/platform/WorldMapInputAuthority.contract.test.js`
 - `npm run test:architecture`
 
 ### `backend/services/config/ConfigRegistryContract.js`
@@ -2729,7 +2729,7 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- New config domains consume this module through metadata/validation adapters instead of re-implementing version/hash rules.
+- New config families consume this module through metadata/validation adapters instead of re-implementing version/hash rules.
 - Automatic client update prompts should consume `compareRegistryVersions()` / `recommendVersionBump()` outputs.
 - Server-authoritative random-result boundaries stay in later P11 config/random modules; do not add random generation here.
 
@@ -2764,7 +2764,7 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- New config domains must expose `getRegistryMetadata()` / `validateRegistry()` and register a loader here.
+- New config families must expose `getRegistryMetadata()` / `validateRegistry()` and register a loader here.
 - Preview/publish/rollback workflow should consume this module instead of reimplementing registry comparison in routes or UI code.
 - Production config bundle loading and audit persistence should remain outside this pure pipeline boundary.
 
@@ -2838,7 +2838,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - Gameplay modules consume this bundle through `GameplayConfigRuntime`; keep loader output read-only and avoid adding gameplay-specific behavior here.
-- Bundle payload shape should follow registered config `raw()` outputs; new config domains must still register through `ConfigPipeline`.
+- Bundle payload shape should follow registered config `raw()` outputs; new config families must still register through `ConfigPipeline`.
 - Real rollback drills should verify the active release pointer, startup gate, bundle readiness, and gameplay consumption path together.
 
 回归 / Regression:
@@ -2873,7 +2873,7 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- New gameplay config domains should add registry coverage through `ConfigPipeline` first, then expose a dynamic facade here.
+- New gameplay config families should add registry coverage through `ConfigPipeline` first, then expose a dynamic facade here.
 - Gameplay services should import this facade instead of importing raw `backend/config/*` modules directly, except registry contract tests and this module's fallback boundary.
 - Rollback drills should verify active release pointer, startup gate, loader readiness, and representative gameplay reads through this facade.
 
@@ -3009,7 +3009,7 @@ Regression:
 职责 / Owns:
 
 - 后端权威随机数契约 / server-authoritative random roll contract
-- stable random roll envelope: `schema`, `authority`, `domain`, `action`, `subjectId`, `seed`, `sequence`, `serverTime`, `value`, `rollId`
+- stable random roll envelope: `schema`, `authority`, `scope`, `action`, `subjectId`, `seed`, `sequence`, `serverTime`, `value`, `rollId`
 - bounded unit roll normalization in `[0, 0.999999]`
 - injectable deterministic random source for tests while keeping default runtime entropy backend-owned
 - chance roll helper that records threshold and server authority metadata
@@ -3034,7 +3034,7 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- New random-result domains first declare a `domain`/`action` and consume this contract through a narrow service adapter.
+- New random-result scopes first declare a `scope`/`action` and consume this contract through a narrow service adapter.
 - Gameplay services decide what a successful roll means; this contract only owns random authority and bounded roll metadata.
 - Future audit/persistence can store roll envelopes without changing frontend contracts.
 
@@ -3050,7 +3050,7 @@ Status: candidate
 Owns:
 
 - world-map deterministic materialization authority
-- stable `domain: worldMap`, `authority: server`, and `mode: seeded-hash` roll metadata
+- stable `scope: worldMap`, `authority: server`, and `mode: seeded-hash` roll metadata
 - FNV-1a hash and normalized seed/key/salt handling for reproducible terrain, water, river, and scout-reveal branch rolls
 - compact `generationAuthority` metadata for persisted world maps
 - compatibility-preserving roll semantics for string and numeric stable keys
@@ -3059,7 +3059,7 @@ Public API:
 
 - `WorldMapGenerationAuthority.SCHEMA`
 - `WorldMapGenerationAuthority.AUTHORITY`
-- `WorldMapGenerationAuthority.DOMAIN`
+- `WorldMapGenerationAuthority.SCOPE`
 - `WorldMapGenerationAuthority.DETERMINISTIC_MODE`
 - `WorldMapGenerationAuthority.HASH_SCALE`
 - `WorldMapGenerationAuthority.normalizeSeed(seed, fallback)`
@@ -3146,14 +3146,14 @@ Status: candidate
 Owns:
 
 - famous-person candidate random authority adapter
-- stable `domain: famousPerson` and `action: candidateGeneration` scope values
+- stable `scope: famousPerson` and `action: candidateGeneration` scope values
 - candidate generation subject id and seed derivation from player/source/city/time
 - attaching compact random authority metadata to candidate `source.randomAuthority`
 - deterministic test injection by delegating to `ServerRandomAuthorityContract`
 
 Public API:
 
-- `FamousPersonRandomAuthority.DOMAIN`
+- `FamousPersonRandomAuthority.SCOPE`
 - `FamousPersonRandomAuthority.DEFAULT_ACTION`
 - `FamousPersonRandomAuthority.createCandidateRandomSource(gameState, sourceType, now, options)`
 - `FamousPersonRandomAuthority.createCandidateSeed(gameState, sourceType, now)`
@@ -3168,7 +3168,7 @@ Performance Constraints:
 
 Extension Path:
 
-- New famous-person random-result domains add a new action/scope here before changing gameplay services.
+- New famous-person random-result scopes add a new action/scope here before changing gameplay services.
 - Keep gameplay meaning in `FamousPersonService` / `FamousPersonGenerator`; this adapter only owns random authority metadata.
 - Do not reintroduce default `Math.random` in famous-person candidate generation paths.
 
@@ -3217,14 +3217,14 @@ Status: candidate
 Owns:
 
 - defender-leader random authority adapter
-- stable `domain: defenderLeader` and `action: leaderGeneration` scope values
+- stable `scope: defenderLeader` and `action: leaderGeneration` scope values
 - defender leader subject id and seed derivation from territory id/name, owner, threat, and defense
 - compact random authority metadata for generated defender leaders at `source.randomAuthority`
 - deterministic test injection by delegating to `ServerRandomAuthorityContract`
 
 Public API:
 
-- `DefenderLeaderRandomAuthority.DOMAIN`
+- `DefenderLeaderRandomAuthority.SCOPE`
 - `DefenderLeaderRandomAuthority.DEFAULT_ACTION`
 - `DefenderLeaderRandomAuthority.createLeaderRandomSource(territory, options)`
 - `DefenderLeaderRandomAuthority.createLeaderSeed(territory)`
@@ -3239,7 +3239,7 @@ Performance Constraints:
 
 Extension Path:
 
-- New defender-leader random-result domains add a new action/scope here before changing gameplay services.
+- New defender-leader random-result scopes add a new action/scope here before changing gameplay services.
 - Keep gameplay meaning in `DefenderLeaderService`; this adapter only owns random authority metadata.
 - Do not reintroduce default `Math.random` in defender-leader generation paths.
 
@@ -3255,7 +3255,7 @@ Status: candidate
 Owns:
 
 - skill/ability-kit random authority adapter
-- stable `domain: skillGenerator` and default `action: abilityKitGeneration` scope values
+- stable `scope: skillGenerator` and default `action: abilityKitGeneration` scope values
 - ability-kit seed and subject id derivation from source/archetype/quality
 - fallback random source creation for low-level skill generator helpers that still need a random unit roll
 - compact random authority metadata for generated ability kits through `randomAuthority`
@@ -3263,7 +3263,7 @@ Owns:
 
 Public API:
 
-- `SkillGeneratorRandomAuthority.DOMAIN`
+- `SkillGeneratorRandomAuthority.SCOPE`
 - `SkillGeneratorRandomAuthority.DEFAULT_ACTION`
 - `SkillGeneratorRandomAuthority.createAbilityKitSeed(input)`
 - `SkillGeneratorRandomAuthority.createAbilityKitSubjectId(input)`
@@ -3279,7 +3279,7 @@ Performance Constraints:
 
 Extension Path:
 
-- New skill random-result domains add a new action/scope here before changing skill generator services.
+- New skill random-result scopes add a new action/scope here before changing skill generator services.
 - Keep gameplay meaning in `SkillAbilityKitService` / `SkillAbilityFactory`; this adapter only owns random authority metadata.
 - Do not reintroduce default `Math.random` in skill generator paths.
 
@@ -3824,7 +3824,7 @@ Performance Constraints:
 Extension Path:
 
 - New battle config values enter this module first, then battle service/runtime tests.
-- Random battle rewards or drops must use `ServerRandomAuthorityContract` through a domain adapter before being consumed here.
+- Random battle rewards or drops must use `ServerRandomAuthorityContract` through a scope adapter before being consumed here.
 - Do not add battle simulation, report generation, route handling, or persistence writes here.
 
 Regression:
@@ -4046,7 +4046,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - 存档 schema 变更先进入 `GameStateMigrationPipeline`。
-- 新业务结构兼容优先进入对应 domain/service structural normalizer，本文件只做 orchestration。
+- 新业务结构兼容优先进入对应 module/service structural normalizer，本文件只做 orchestration。
 - 新的时间推进、AI、地图 reveal、任务 readiness、领土 bridging 不得塞回 `normalizeState()`；必须挂到显式 runtime advancement 入口或更下游的专责 runtime service。
 - DTO/projection、era progress、task center、reset response 不得调用会推进世界的入口。
 - 不要在这里加入 DB、route、renderer、网络调用。
@@ -5189,7 +5189,7 @@ Regression:
 - world map drag target selection and expedition launch/cancel orchestration
 - `TileCoord`-normalized world march target handoff: HUD `worldMarchTarget.tileId` is derived from `targetQ/targetR`, stale renderer/caller `action.tileId` cannot override it, and `startWorldMarch` forwards target coordinates without adding a top-level `tileId` authority field
 - battle scene close/skip action compatibility
-- installed legacy `handle_*` method names for the territory action domain
+- installed legacy `handle_*` method names for the territory action scope
 - forwarded territory/world-map action Promise normalization through `CanvasActionController.finalizeForwarded()`
 
 公开 API / Public API:
@@ -5200,7 +5200,7 @@ Regression:
 
 - 新 territory/world-site/world-march action 先扩展本模块，再让 `CanvasActionController` 只保留 facade/dispatch 行为。
 - 新 gameplay simulation 不进入本模块；本模块只负责 action-to-controller/API/UI-state orchestration。
-- 如果 action 属于 building/event/tech/famous/talent policy/shell domain，扩展对应 domain handler module。
+- 如果 action 属于 building/event/tech/famous/talent policy/shell scope，扩展对应 feature handler module。
 - 转发到 shell/app bridge 的 action 不能用同步布尔表达式判定 Promise；必须保留异步拒绝给 `action:error` 证据链。
 
 回归 / Regression:
@@ -5217,7 +5217,7 @@ Regression:
 - `CanvasActionController` city-management/event/task-center/city-selection action handlers
 - building and tech action forwarding plus local pending state sync
 - city enter/selection and task reward orchestration
-- installed legacy `handle_*` method names for the city action domain
+- installed legacy `handle_*` method names for the city action scope
 - forwarded city/building/event/task action Promise normalization through `CanvasActionController.finalizeForwarded()`
 
 公开 API / Public API:
@@ -5245,7 +5245,7 @@ Regression:
 - famous-person panel/detail/search action handlers
 - famous-person accept/dismiss/attribute/page action forwarding
 - tutorial refresh hooks for famous-person UI actions
-- installed legacy `handle_*` method names for the famous-person action domain
+- installed legacy `handle_*` method names for the famous-person action scope
 - forwarded famous-person action Promise normalization through `CanvasActionController.finalizeForwarded()`
 
 公开 API / Public API:
@@ -5299,7 +5299,7 @@ Regression:
 - shell/system/account/naming/advisor/guidebook/army-formation action handlers
 - tab switching, command panel, reward reveal, settings/logs/auth/reset/logout action orchestration
 - naming finalization helper behavior previously embedded in `CanvasActionController`
-- installed legacy `handle_*` method names for shell/system action domains
+- installed legacy `handle_*` method names for shell/system action scopes
 - forwarded shell/system action Promise normalization when delegating to the shell/app bridge
 
 公开 API / Public API:
@@ -5309,7 +5309,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - 新 shell/system/account/naming/advisor/guidebook action 先扩展本模块。
-- Domain gameplay actions stay in territory/city/famous/talent-policy handlers.
+- Scope gameplay actions stay in territory/city/famous/talent-policy handlers.
 - Do not add shell/system handlers directly to `CanvasActionController`.
 - If a shell/system action may return a Promise, success side effects must wait for resolution and rejection must remain observable by `CanvasActionController.handle()`.
 
@@ -5549,7 +5549,7 @@ Regression:
 扩展方式 / Extension Path:
 
 - 新 world-map runtime bridge behavior 先扩展 `WORLD_MAP_RUNTIME_METHODS` with focused tests。
-- World-map gameplay rules stay in world-map domain/systems/services.
+- World-map gameplay rules stay in world-map ECS/systems/services.
 - Renderer-layer drawing stays in world-map renderer modules.
 - Snapshot drag and refresh frames must pass the renderer's freshly published `lastWorldTileMapContext` into actor rendering before falling back to runtime cache.
 - Runtime tap Promise failures must stay rejected to callers and be observed by `CanvasGameAppInputRouter.observeAsyncActionResult()` for diagnostics.
@@ -5595,7 +5595,7 @@ Regression:
 - 新单 tile render/view-state 字段先扩展本模块，并同步 focused tests。
 - 新坐标语义先扩展 `TileCoord`，本模块只消费 stable coordinate contract，不再手写第二套 tile identity 规则。
 - Multi-tile map composition stays in `WorldTileMapPresenter`.
-- Gameplay visibility or exploration rules stay in domain/systems, not this normalizer.
+- Gameplay visibility or exploration rules stay in ECS/systems, not this normalizer.
 
 回归 / Regression:
 
@@ -5637,7 +5637,7 @@ Regression:
 - 新坐标语义先扩展 `TileCoord`，本模块只消费 stable coordinate contract，不再手写第二套 tile identity 规则。
 - New trace or diagnostic summaries in this module must use normalized coordinate identity, not raw payload `id` fallback chains.
 - Map-level composition stays in `WorldTileMapPresenter`.
-- Gameplay progression, march timing rules, or persistence DTO mapping stay in domain/client-state modules, not this normalizer.
+- Gameplay progression, march timing rules, or persistence DTO mapping stay in ECS/client-state modules, not this normalizer.
 
 回归 / Regression:
 
@@ -6248,7 +6248,7 @@ Regression:
 
 - current product positioning
 - platform principles
-- long-term retained product domains
+- long-term retained product scopes
 - account/season, performance, and update-experience product rules
 
 公开约定 / Public Contract:
@@ -6271,7 +6271,7 @@ Regression:
 
 负责 / Owns:
 
-- current gameplay loops and domain boundaries
+- current gameplay loops and feature boundaries
 - backend-authoritative command rules
 - current city/resource/building/technology/famous-person/world-map/exploration/battle/task/tutorial facts
 - flexible gameplay areas that must not be prematurely sealed
@@ -6283,7 +6283,7 @@ Regression:
 
 扩展方式 / Extension Path:
 
-- Gameplay additions update this file when they change a current domain boundary or stable/flexible classification.
+- Gameplay additions update this file when they change a current feature boundary or stable/flexible classification.
 
 回归 / Regression:
 
@@ -6450,7 +6450,7 @@ Regression:
 当前扩展方式 / Extension Path Now:
 
 - P1-004 后，新拆分 renderer/helper 优先消费 `WorldMapRenderSnapshot`。
-- P2-001 后，新 world map visuals 优先通过 `WorldMapVisualPluginRegistry` 注册，再消费自己的 domain snapshot。
+- P2-001 后，新 world map visuals 优先通过 `WorldMapVisualPluginRegistry` 注册，再消费自己的 ECS snapshot。
 - P3-001 后，新 world tile geometry/layout/cache math 先扩展 `WorldMapLayoutModel`，本文件只保留兼容委托。
 - P3-002 后，新 world-map 背景/site/march tile hit-target 数据先扩展 `WorldMapHitTargetModel`。
 - P3-003 后，新 cache key、pixel-budget layout choice、chunk prune policy 先扩展 `WorldMapCachePolicy`，本文件只负责 canvas/offscreen work。
@@ -7453,7 +7453,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 - New pure app render policy extends `CanvasGameAppRenderPolicy`.
 - New render timing or injected scheduler behavior extends `CanvasGameAppRenderScheduler`.
 - New world-map runtime bridge compatibility methods extend `CanvasGameAppWorldMapRuntimeBridge`.
-- New gameplay rules stay in domain/systems/services, not in this facade.
+- New gameplay rules stay in ECS/systems/services, not in this facade.
 - Avoid adding new direct world-map runtime or scheduling helper methods here.
 
 回归 / Regression:
@@ -7475,7 +7475,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 
 1. Keep as compatibility facade.
 2. Done: P10-001 moved dependency resolution and static method delegate installation into `UIStatePresenterDelegates`.
-3. Domain-specific helpers stay in `frontend/js/state/presenters/*`.
+3. Feature-specific helpers stay in `frontend/js/state/presenters/*`.
 
 当前扩展方式 / Extension Path Now:
 
@@ -7575,7 +7575,7 @@ These files are not "bad"; they are high-risk because they own too many responsi
 
 1. Done: P8-001 extracted tile/site/terrain/template/water/intel normalization to `WorldTileMapTileNormalizer`.
 2. Done: P8-002 extracted explorer mission normalization, mission merge/time derivation, planned tile/site filtering, and tile-id creation to `WorldTileMapExplorerNormalizer`.
-3. Future visibility/exploration state changes should land under P1 domain modules before this facade composes the view state.
+3. Future visibility/exploration state changes should land under P1 ECS modules before this facade composes the view state.
 
 当前扩展方式 / Extension Path Now:
 
@@ -7679,7 +7679,7 @@ Recommended first split sequence:
 | 2026-06-09 | Added `SkillGeneratorRandomAuthority` for P11-006 config/random hardening phase 6; skill ability-kit generation now consumes backend-authoritative random sources by default, exposes compact `randomAuthority` metadata, preserves deterministic injection for tests, and is included in `npm run test:architecture`. |
 | 2026-06-09 | Added registry metadata/validation for core backend config modules: `GameConfig`, `EraConfig`, `TutorialFlowConfig`, `BattleConfig`, and `TechTreeConfig`; `npm run test:architecture` now syntax-checks those config modules and `ConfigRegistryContract.test.js` verifies their registry contracts. |
 | 2026-06-09 | Removed remaining business-code `Math.random` usage by moving talent-policy custom policy ids to backend crypto entropy; `TalentPolicyService.test.js` is included in `npm run test:architecture`. |
-| 2026-06-09 | P11-006 is now documented as complete for current config/version/random hardening. Future chance/drop/generated-result domains must add explicit authority adapters when introduced. P3 renderer split modules remain `candidate` while their completed `done` plan status reflects implementation completion, not stable promotion. |
+| 2026-06-09 | P11-006 is now documented as complete for current config/version/random hardening. Future chance/drop/generated-result scopes must add explicit authority adapters when introduced. P3 renderer split modules remain `candidate` while their completed `done` plan status reflects implementation completion, not stable promotion. |
 | 2026-06-09 | Added `docs/production_engineering_roadmap_2026-06-09.md` as the P12 production-engineering authority, registered it in the official doc set, and documented the next CI/deploy/observability/backup/performance/security/config/stable-promotion/runbook guardrails. |
 | 2026-06-09 | Deleted the standalone `TalentPolicyCanvasRenderer` panel. Follow-up migration deleted the legacy frontend `openTalentPolicy` shortcut handler; city people/talent-policy UI is owned by `CityPeopleCanvasRenderer` inside city management. |
 | 2026-06-10 | Hardened the mature engine canvas layer contract: `CanvasLayerRegistry` now owns physical stack, logical render queue, and hit priority queue; `mainHud` is locked to the primary input canvas, while `worldMap` and optional `worldFog` remain non-input secondary layers. `H5CanvasRuntime.test.js` is now part of `npm run test:architecture`. |

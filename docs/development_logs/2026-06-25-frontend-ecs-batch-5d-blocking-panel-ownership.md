@@ -16,7 +16,7 @@
 
 Slice 5d uses the approved lighter umbrella design: `modal:blockingPanel` owns the
 open/close signal for blocking panels, but panel-specific business data remains in
-its legacy/domain owner. The owner payload stores only:
+its legacy feature owner. The owner payload stores only:
 
 - `panelKey`: the legacy mirror field, such as `showSettings`, `showTaskCenter`,
   `activeCommandPanel`, or `techDetailOpen`
@@ -47,7 +47,7 @@ Slice 5d does not:
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Old owner being retired?          | Canonical blocking-panel opens in shell/city/famous action handlers for resource details, command panel, city switcher, subcity list, settings, logs, advisor, guidebook, city management, task center, tech detail, and famous persons.  |
 | New ECS owner?                    | `frontend/js/ecs/mode/ModalWorld.js`, through `CanvasModeOwnershipBridge` blockingPanel wrappers.                                                                                                                                         |
-| Legacy fields/methods remaining?  | `show*`, `activeCommandPanel`, and `techDetailOpen` remain renderer/tutorial-facing mirrors; domain state remains in existing handlers/commands.                                                                                          |
+| Legacy fields/methods remaining?  | `show*`, `activeCommandPanel`, and `techDetailOpen` remain renderer/tutorial-facing mirrors; serializable gameplay state remains in existing handlers/commands.                                                                                          |
 | Guard preventing old-path growth? | `scripts/check-frontend-ecs-blocking-panel-ownership.js` blocks direct canonical opens outside the bridge, grandfathers 0A baseline opens, and explicitly grandfathers tutorial coordinator scattered opens while allowing legacy clears. |
 | Behavior tests?                   | Bridge blockingPanel wrapper tests, CanvasActionController close-order tests, shell/city/famous owner-call tests, and the dedicated guard tests.                                                                                          |
 | Rollback?                         | Restore direct canonical handler writes for covered opens, remove blockingPanel wrappers/tests/guard wiring, and drop this batch doc.                                                                                                     |

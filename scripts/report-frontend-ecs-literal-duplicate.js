@@ -60,7 +60,7 @@ function ownerCandidateFor(kind, filePath) {
   }
   if (/Input|Action|Command/.test(path.basename(normalized))) return 'input/action owner';
   if (kind === 'color' || kind === 'numeric') return 'config owner';
-  return 'domain owner';
+  return 'owner candidate';
 }
 
 function roleForFinding(kind, filePath, isDuplicate = false) {

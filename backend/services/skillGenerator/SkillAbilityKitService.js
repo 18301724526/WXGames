@@ -132,7 +132,7 @@ function normalizeScoutTrait(raw = {}) {
 function completeAbilitySlots(abilities = [], abilityArchetype, quality, meta, generatorInput) {
   const source = createSeedRandom(`${generatorInput.seed}:ability-kit-upgrade:${abilityArchetype}:${quality}`);
   const effectPool = generatorInput.availableEffectPool;
-  if (meta.domain === 'civil') {
+  if (meta.category === 'civil') {
     const rawPrimary = findCivilAbility(abilities, 'civilPrimary');
     const rawSecondary = findCivilAbility(
       abilities.filter((ability) => ability !== rawPrimary),
@@ -144,7 +144,7 @@ function completeAbilitySlots(abilities = [], abilityArchetype, quality, meta, g
       || createCivilAbility(abilityArchetype, 'civilSecondary', quality, source, effectPool);
     return [primary, secondary];
   }
-  if (meta.domain === 'hybrid') {
+  if (meta.category === 'hybrid') {
     const active = normalizeActiveAbility(findActiveAbility(abilities))
       || createActiveSkill('scout', quality, source, effectPool);
     const scoutTrait = normalizeScoutTrait(findAbilityBySlot(abilities, 'scoutTrait'))
@@ -171,10 +171,10 @@ function createAbilityKit(options = {}, randomSource = null) {
     });
   const randomAuthority = SkillGeneratorRandomAuthority.createSourceMetadata(source);
   const abilities = [];
-  if (meta.domain === 'civil') {
+  if (meta.category === 'civil') {
     abilities.push(createCivilAbility(abilityArchetype, 'civilPrimary', quality, source, generatorInput.availableEffectPool));
     abilities.push(createCivilAbility(abilityArchetype, 'civilSecondary', quality, source, generatorInput.availableEffectPool));
-  } else if (meta.domain === 'hybrid') {
+  } else if (meta.category === 'hybrid') {
     abilities.push(createActiveSkill('scout', quality, source, generatorInput.availableEffectPool));
     abilities.push(createScoutTrait(quality, source, generatorInput.availableEffectPool));
   } else {
@@ -186,7 +186,7 @@ function createAbilityKit(options = {}, randomSource = null) {
     archetype: abilityArchetype,
     quality,
     qualityLabel: getQualityLabel(quality),
-    domain: meta.domain,
+    category: meta.category,
     battlePolicy: meta.battlePolicy,
     source: generatorInput.source,
     seed: generatorInput.seed,
@@ -231,7 +231,7 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
     archetype: normalizeAbilityArchetype(abilityArchetype),
     quality: normalizeQuality(quality),
     qualityLabel: getQualityLabel(quality),
-    domain: meta.domain,
+    category: meta.category,
     battlePolicy: meta.battlePolicy,
     source: generatorInput.source,
     seed: generatorInput.seed,
@@ -278,7 +278,7 @@ function normalizeAbilityKit(raw = {}, options = {}) {
     archetype: abilityArchetype,
     quality,
     qualityLabel: getQualityLabel(quality),
-    domain: meta.domain,
+    category: meta.category,
     battlePolicy: meta.battlePolicy,
     source: generatorInput.source,
     seed: generatorInput.seed,

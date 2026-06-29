@@ -15,7 +15,7 @@
     if (global.TileMapGeometry) return global.TileMapGeometry;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileMapGeometry');
+        return require('../../ecs/foundation/TileMapGeometry');
       } catch (error) {
         return null;
       }

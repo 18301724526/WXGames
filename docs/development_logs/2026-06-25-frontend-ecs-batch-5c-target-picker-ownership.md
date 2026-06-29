@@ -15,7 +15,7 @@
 ## Decision
 
 Slice 5c seals the `targetPicker` modal subtype without migrating the whole world-march
-domain. The legacy UI has two picker-shaped modal surfaces:
+scope. The legacy UI has two picker-shaped modal surfaces:
 
 - `territoryUiState.worldTargetPicker`: the multi-candidate picker when an actor and
   site overlap on the map.
@@ -32,7 +32,7 @@ shape for renderers/tutorials.
 Slice 5c does not:
 
 - migrate non-picker `worldMarchTarget` selection state into modal ownership;
-  normal selected-target state remains owned by world-march/domain flow
+  normal selected-target state remains owned by world-march/scope flow
 - chase scattered `worldTargetPicker = null` or `worldMarchTarget = null` clears;
   these stay legacy mirror clearing for navigation, drag, reset, and command cleanup
 - migrate renderer/tutorial reads off `territoryUiState`; that is Batch 6 snapshot work

@@ -3,11 +3,18 @@ const assert = require('node:assert/strict');
 
 const {
   findRetiredFileOffenders,
+  findRetiredLayerImportOffendersInText,
+  findRetiredLayerPathOffenders,
+  findRetiredLayerTokenOffendersInText,
   findRetiredSymbolsInText,
   findRetiredSymbolOffenders,
   hasRetiredSymbol,
   isActiveProductionSource,
 } = require('./check-retired-legacy-code');
+
+const RETIRED = ['do', 'main'].join('');
+const RETIRED_UPPER = RETIRED.toUpperCase();
+const RETIRED_MODEL_TOKEN = `${'Do'}${'main'}`;
 
 test('retired legacy guard scans active production sources only', () => {
   assert.equal(isActiveProductionSource('frontend/js/platform/renderers/WorldMapCanvasRenderer.js'), true);
@@ -26,6 +33,56 @@ test('retired legacy guard blocks retired tracked files', () => {
   ], { exists: () => true }), [
     'frontend/js/platform/renderers/HomeCanvasRenderer.js',
     'frontend/js/state/presenters/WorldRadarPresenter.js',
+  ]);
+});
+
+test('retired legacy guard blocks retired layer paths', () => {
+  assert.deepEqual(findRetiredLayerPathOffenders([
+    `backend/${RETIRED}/BuildingState.js`,
+    `frontend/js/${RETIRED}/TileCoord.js`,
+    `frontend/js/ecs/${RETIRED}/Battle${RETIRED_MODEL_TOKEN}Owner.js`,
+    'backend/modules/BuildingState.js',
+  ], { exists: () => true }), [
+    `backend/${RETIRED}/BuildingState.js`,
+    `frontend/js/${RETIRED}/TileCoord.js`,
+    `frontend/js/ecs/${RETIRED}/Battle${RETIRED_MODEL_TOKEN}Owner.js`,
+  ]);
+});
+
+test('retired legacy guard blocks retired layer imports in active code', () => {
+  const offenders = findRetiredLayerImportOffendersInText(
+    'backend/services/CityService.js',
+    `const BuildingState = require('../${RETIRED}/BuildingState');\n`,
+  );
+  assert.deepEqual(offenders, [
+    {
+      file: 'backend/services/CityService.js',
+      line: 1,
+      evidence: `const BuildingState = require('../${RETIRED}/BuildingState');`,
+    },
+  ]);
+});
+
+test('retired legacy guard blocks retired layer tokens in active code', () => {
+  const offenders = findRetiredLayerTokenOffendersInText(
+    'backend/services/random/Bad.js',
+    [
+      `const DEFAULT_${RETIRED_UPPER} = 'gameplay';`,
+      `const scope = input.${RETIRED};`,
+      'const ok = input.scope;',
+    ].join('\n'),
+  );
+  assert.deepEqual(offenders, [
+    {
+      file: 'backend/services/random/Bad.js',
+      line: 1,
+      evidence: `const DEFAULT_${RETIRED_UPPER} = 'gameplay';`,
+    },
+    {
+      file: 'backend/services/random/Bad.js',
+      line: 2,
+      evidence: `const scope = input.${RETIRED};`,
+    },
   ]);
 });
 
