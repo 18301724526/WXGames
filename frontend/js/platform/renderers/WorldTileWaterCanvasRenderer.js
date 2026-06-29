@@ -94,6 +94,22 @@
       return this.analyzeAssetAlphaBounds(assetPath);
     }
 
+    // Host-provided pixel helpers (CanvasAssetRenderer). The retired WorldMapRendererHostBridge proxy
+    // forwarded these to the host; the host-bridge retirement added explicit delegators for the other
+    // host helpers but missed these three, so template water-mask generation threw and the mask +
+    // metrics caches were nulled. Restore them as explicit delegators (matching the pattern above).
+    isWorldTileTemplateWaterPixel(data, index) {
+      return this.host?.isWorldTileTemplateWaterPixel?.(data, index);
+    }
+
+    isOpaquePixel(data, index) {
+      return this.host?.isOpaquePixel?.(data, index);
+    }
+
+    measurePixelBounds(data, width, height, predicate) {
+      return this.host?.measurePixelBounds?.(data, width, height, predicate);
+    }
+
     getIsoTileSourceRect(assetPath = '') {
       return this.getWorldTileTemplateMetrics({ asset: assetPath });
     }
@@ -161,7 +177,7 @@
       ctx.putImageData(output, 0, 0);
       this.getMapCache('worldTileMaskMetricsCache').set(
         assetPath,
-        this.measurePixelBounds(output.data, width, height, this.isOpaquePixel),
+        this.measurePixelBounds(output.data, width, height, (data, index) => this.isOpaquePixel(data, index)),
       );
       return canvas;
     }
@@ -178,7 +194,7 @@
         probeCtx.drawImage(terrainImage, 0, 0);
         terrainData = probeCtx.getImageData(0, 0, width, height).data;
       }
-      const terrainBounds = this.measurePixelBounds(source.data, width, height, this.isOpaquePixel)
+      const terrainBounds = this.measurePixelBounds(source.data, width, height, (data, index) => this.isOpaquePixel(data, index))
         || this.getFallbackAssetMetrics(image);
       const output = ctx.createImageData(width, height);
       for (let py = 0; py < height; py += 1) {
@@ -195,7 +211,7 @@
       ctx.putImageData(output, 0, 0);
       this.getMapCache('worldTileMaskMetricsCache').set(
         assetPath,
-        this.measurePixelBounds(output.data, width, height, this.isOpaquePixel),
+        this.measurePixelBounds(output.data, width, height, (data, index) => this.isOpaquePixel(data, index)),
       );
       return canvas;
     }

@@ -35,12 +35,28 @@
     return host.getCanvasGameHost?.() || host.lastGame || host;
   }
 
+  // The modal owner DATA (__ecsModalOwner / the ModalWorld) is placed on the resolved owner host by
+  // CanvasModeOwnershipRuntime, but the modal METHODS (openModal/updateModalPayload/closeModal/
+  // resolveModalCallback) live on whichever host prototype installed them — that method resolves the
+  // owner internally and operates the BitECS ModalWorld. So mutations must be invoked on a host that
+  // actually carries the methods: prefer the owner host, fall back to the calling host. (The host-bridge
+  // retirement dropped this fallback, so a plain lastGame without the methods silently no-op'd the open
+  // and the ModalWorld was never created — leaving every blocking-panel fact false.)
+  function getModalMethodHost(host) {
+    const owner = getModalOwnerHost(host);
+    if (owner && typeof owner.openModal === 'function') return owner;
+    if (host && typeof host.openModal === 'function') return host;
+    return owner;
+  }
+
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
     const owner = getModalOwnerHost(host);
     return typeof owner?.getRendererSnapshot === 'function'
       ? owner.getRendererSnapshot()
-      : (typeof host?.getRendererSnapshot === 'function' ? host.getRendererSnapshot() : null);
+      : typeof host?.getRendererSnapshot === 'function'
+        ? host.getRendererSnapshot()
+        : null;
   }
 
   function readModalEntry(snapshot = null, subtype = '') {
@@ -113,7 +129,7 @@
   }
 
   function openModalPayload(host, subtype = '', payload = {}, callbacks = null) {
-    const target = getModalOwnerHost(host);
+    const target = getModalMethodHost(host);
     const result =
       typeof target?.openModal === 'function'
         ? target.openModal(subtype, payload, callbacks)
@@ -123,7 +139,7 @@
   }
 
   function updateModalPayload(host, subtype = '', patch = {}) {
-    const target = getModalOwnerHost(host);
+    const target = getModalMethodHost(host);
     const result =
       typeof target?.updateModalPayload === 'function'
         ? target.updateModalPayload(subtype, patch)
@@ -133,7 +149,7 @@
   }
 
   function closeModalPayload(host, subtype = '') {
-    const target = getModalOwnerHost(host);
+    const target = getModalMethodHost(host);
     const result = typeof target?.closeModal === 'function' ? target.closeModal(subtype) : null;
     refreshRendererSnapshot(host);
     return result;
@@ -168,7 +184,7 @@
   }
 
   function resolveConfirmDialogSnapshotCallback(host, type, ...args) {
-    const target = getModalOwnerHost(host);
+    const target = getModalMethodHost(host);
     return typeof target?.resolveModalCallback === 'function'
       ? target.resolveModalCallback(CONFIRM_DIALOG_MODAL_KEY, type, ...args)
       : undefined;
@@ -260,7 +276,7 @@
   // the event modal -- those are out of scope and stay on their owning close paths.
   function closeBlockingPanelsSnapshot(host, except = []) {
     const keep = normalizeBlockingPanelKeepSet(except);
-    const target = getModalOwnerHost(host);
+    const target = getModalMethodHost(host);
     BLOCKING_PANEL_KEYS.forEach((panelKey) => {
       if (keep.has(panelKey)) return;
       const subtype = BLOCKING_PANEL_SUBTYPE_BY_KEY[panelKey];
