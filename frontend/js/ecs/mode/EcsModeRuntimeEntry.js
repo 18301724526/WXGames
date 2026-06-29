@@ -4,7 +4,6 @@ const ModeKeys = require('./ModeKeys');
 const ModeComponents = require('./ModeComponents');
 const ModeResolver = require('./ModeResolver');
 const ModeWorld = require('./ModeWorld');
-const ModalWorld = require('./ModalWorld');
 const InputIntent = require('../input/InputIntent');
 const InputIntentResolver = require('../input/InputIntentResolver');
 const RendererSnapshotBoundary = require('../snapshot/RendererSnapshotBoundary');
@@ -21,10 +20,9 @@ const EcsModeRuntime = Object.freeze({
   FogProjection,
   WorldClock,
   WorldMapVisibilityModel,
-  ModalWorld,
   RendererSnapshotBoundary,
   InputIntent,
-  version: 'ecs-mode-runtime-batch-7c',
+  version: 'ecs-mode-runtime-modal-store-deshell-v1',
 });
 
 if (typeof globalThis !== 'undefined') {

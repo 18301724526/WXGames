@@ -93,11 +93,14 @@ function readEntry(modalWorld, subtype) {
   return (modalWorld && modalWorld.entries && modalWorld.entries[subtype]) || null;
 }
 
+// modalWorld is the read-only projection ModalStore.buildModalSnapshot() produces:
+// { entries: { '<subtype>': { open, token, payload } } }. Presence is the entry's
+// `open` flag (ModalStore omits closed subtypes, so a missing entry is closed).
 function buildModalSnapshot(modalWorld = null) {
   const modal = {};
   MODAL_SUBTYPES.forEach((subtype) => {
     const entry = readEntry(modalWorld, subtype);
-    const open = Boolean(entry?.visible);
+    const open = Boolean(entry?.open);
     modal[subtype] = Object.freeze({
       open,
       token: open ? String(entry.token || '') : '',

@@ -4,15 +4,17 @@ const assert = require('node:assert/strict');
 const RendererSnapshotBoundary = require('./RendererSnapshotBoundary');
 
 test('RendererSnapshotBoundary builds frozen serializable modal and panel snapshots', () => {
+  // modalWorld is the ModalStore.buildModalSnapshot() projection shape: presence is
+  // the entry's `open` flag (closed subtypes are absent).
   const modalWorld = {
     entries: {
       'modal:event': {
-        visible: true,
+        open: true,
         token: 'modal:event#1',
         payload: { eventId: 'event-1', ignored: undefined },
       },
       'modal:commandPanel': {
-        visible: true,
+        open: true,
         token: 'modal:commandPanel#2',
         payload: { value: 'tech' },
       },

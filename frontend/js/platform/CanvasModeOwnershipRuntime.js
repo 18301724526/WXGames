@@ -11,17 +11,21 @@
     return null;
   })();
 
-  const ModalCallbackRegistry = (() => {
-    if (global.ModalCallbackRegistry) return global.ModalCallbackRegistry;
+  const ModalStoreModule = (() => {
+    if (global.ModalStore) return global.ModalStore;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('./ModalCallbackRegistry');
+        return require('../state/ModalStore');
       } catch (_error) {
         return null;
       }
     }
     return null;
   })();
+
+  function getModalStore() {
+    return global.ModalStore || ModalStoreModule || null;
+  }
 
   const BattleStoreModule = (() => {
     if (global.BattleStore) return global.BattleStore;
@@ -47,20 +51,12 @@
     return host?.lastGame || host;
   }
 
+  // Modal truth lives in the global ModalStore, NOT on any host. This resolver only
+  // names the canonical game host so shell-rooted call sites (and the snapshot
+  // adapter) keep a single reference point; it never stores or migrates modal state.
   function getModalOwnerHost(host) {
     if (!host || typeof host !== 'object') return host;
-    const owner = host.getCanvasGameHost?.() || host.lastGame || host;
-    if (owner !== host && host.__ecsModalOwner && typeof owner === 'object') {
-      if (!owner.__ecsModalOwner) {
-        owner.__ecsModalOwner = host.__ecsModalOwner;
-        if (host.__modalCallbacks && !owner.__modalCallbacks) {
-          owner.__modalCallbacks = host.__modalCallbacks;
-        }
-      }
-      delete host.__ecsModalOwner;
-      delete host.__modalCallbacks;
-    }
-    return owner;
+    return host.getCanvasGameHost?.() || host.lastGame || host;
   }
 
   function readBattleSnapshot() {
@@ -231,77 +227,47 @@
     return EcsModeRuntime.resolveInputIntent(physicalIntent, snapshot);
   }
 
-  function getModalWorldApi() {
-    return EcsModeRuntime && EcsModeRuntime.ModalWorld ? EcsModeRuntime.ModalWorld : null;
-  }
-
   function getRendererSnapshotBoundaryApi() {
     return EcsModeRuntime && EcsModeRuntime.RendererSnapshotBoundary
       ? EcsModeRuntime.RendererSnapshotBoundary
       : null;
   }
 
-  function ensureModalOwner(host) {
-    const ModalWorld = getModalWorldApi();
-    if (!ModalWorld) return null;
-    const owner = getModalOwnerHost(host);
-    if (!owner || typeof owner !== 'object') return null;
-    if (!owner.__ecsModalOwner) owner.__ecsModalOwner = ModalWorld.createModalWorld();
-    if (!owner.__modalCallbacks && ModalCallbackRegistry) {
-      owner.__modalCallbacks = ModalCallbackRegistry.createModalCallbackRegistry();
-    }
-    return owner.__ecsModalOwner;
-  }
+  // Modal commands/queries are thin pass-throughs to the global ModalStore -- the
+  // single source of truth for modal presence + payload + token + continuations.
+  // The host argument is ignored for storage (kept only so the installed prototype
+  // methods read naturally as host.openModal(...)); when the store is unavailable
+  // (node-require fallback edge) the helpers degrade to inert no-ops.
 
-  // Open a covered modal subtype: the owner becomes the source of truth, mints a
-  // token, and (for subtypes with continuations) registers callbacks by token.
-  // Returns the frozen owner payload the host uses as its read-only mirror, or
-  // null when the runtime is unavailable so the host keeps its legacy field.
+  // Open a covered modal subtype: the store mints a token and (for subtypes with
+  // continuations) keeps callbacks on the entry. Returns the frozen payload.
   function openModal(host, subtype, payload = {}, callbacks = null) {
-    const ModalWorld = getModalWorldApi();
-    const owner = getModalOwnerHost(host);
-    if (!ModalWorld || !ensureModalOwner(owner)) return null;
-    owner.__ecsModalOwner = ModalWorld.openModal(owner.__ecsModalOwner, subtype, payload);
-    if (callbacks && owner.__modalCallbacks) {
-      owner.__modalCallbacks.register(
-        ModalWorld.getModalToken(owner.__ecsModalOwner, subtype),
-        callbacks,
-      );
-    }
-    return ModalWorld.getModalPayload(owner.__ecsModalOwner, subtype);
+    const ModalStore = getModalStore();
+    if (!ModalStore) return null;
+    ModalStore.openModal(subtype, payload, callbacks);
+    return ModalStore.getPayload(subtype);
   }
 
   function updateModalPayload(host, subtype, patch = {}) {
-    const ModalWorld = getModalWorldApi();
-    const owner = getModalOwnerHost(host);
-    if (!ModalWorld || !owner?.__ecsModalOwner) return null;
-    owner.__ecsModalOwner = ModalWorld.updateModalPayload(owner.__ecsModalOwner, subtype, patch);
-    return ModalWorld.getModalPayload(owner.__ecsModalOwner, subtype);
+    const ModalStore = getModalStore();
+    if (!ModalStore) return null;
+    return ModalStore.updateModalPayload(subtype, patch);
   }
 
   function closeModal(host, subtype) {
-    const ModalWorld = getModalWorldApi();
-    const owner = getModalOwnerHost(host);
-    if (!ModalWorld || !owner?.__ecsModalOwner) return null;
-    if (owner.__modalCallbacks) {
-      owner.__modalCallbacks.clear(ModalWorld.getModalToken(owner.__ecsModalOwner, subtype));
-    }
-    owner.__ecsModalOwner = ModalWorld.closeModal(owner.__ecsModalOwner, subtype);
-    return null;
+    const ModalStore = getModalStore();
+    if (!ModalStore) return null;
+    return ModalStore.closeModal(subtype);
   }
 
   function getModalPayload(host, subtype) {
-    const ModalWorld = getModalWorldApi();
-    const owner = getModalOwnerHost(host);
-    if (!ModalWorld || !owner?.__ecsModalOwner) return null;
-    return ModalWorld.getModalPayload(owner.__ecsModalOwner, subtype);
+    const ModalStore = getModalStore();
+    return ModalStore ? ModalStore.getPayload(subtype) : null;
   }
 
   function isModalOpen(host, subtype) {
-    const ModalWorld = getModalWorldApi();
-    const owner = getModalOwnerHost(host);
-    if (!ModalWorld || !owner?.__ecsModalOwner) return false;
-    return ModalWorld.isModalOpen(owner.__ecsModalOwner, subtype);
+    const ModalStore = getModalStore();
+    return ModalStore ? ModalStore.isOpen(subtype) : false;
   }
 
   function isAnyModalOpen(host, subtype) {
@@ -313,14 +279,9 @@
   }
 
   function resolveModalCallback(host, subtype, action, ...args) {
-    const ModalWorld = getModalWorldApi();
-    const owner = getModalOwnerHost(host);
-    if (!ModalWorld || !owner?.__ecsModalOwner || !owner.__modalCallbacks) return undefined;
-    return owner.__modalCallbacks.resolve(
-      ModalWorld.getModalToken(owner.__ecsModalOwner, subtype),
-      action,
-      ...args,
-    );
+    const ModalStore = getModalStore();
+    if (!ModalStore) return undefined;
+    return ModalStore.resolve(ModalStore.getToken(subtype), action, ...args);
   }
 
   // Batch 8F: the single source-flip chokepoint. The flat-12 panel facts are now
@@ -329,10 +290,10 @@
   // reads of snapshot.panel.showX keep working unchanged. buildRendererSnapshot
   // passes the same modalWorld it builds so the panel facts and the modal block
   // are guaranteed to agree.
-  function buildRendererPanelFacts(host, modalWorld) {
-    const world = modalWorld || buildRendererModalWorld(host);
+  function buildRendererPanelFacts(modalWorld) {
+    const world = modalWorld || buildRendererModalWorld();
     const entries = (world && world.entries) || {};
-    const isOpen = (subtype) => Boolean(entries[subtype]?.visible);
+    const isOpen = (subtype) => Boolean(entries[subtype]?.open);
     const commandEntry = entries['modal:commandPanel'];
     return {
       showSettings: isOpen('modal:settings'),
@@ -345,7 +306,7 @@
       showTaskCenter: isOpen('modal:taskCenter'),
       showGuidebook: isOpen('modal:guidebook'),
       showFamousPersons: isOpen('modal:famousPersons'),
-      activeCommandPanel: commandEntry?.visible ? String(commandEntry.payload?.value || '') : '',
+      activeCommandPanel: commandEntry?.open ? String(commandEntry.payload?.value || '') : '',
       techDetailOpen: isOpen('modal:techDetail'),
     };
   }
@@ -358,18 +319,20 @@
     return { battleScene: null, entityBattle: null, activeOverlay: 'none' };
   }
 
-  function buildRendererModalWorld(host) {
-    return getModalOwnerHost(host)?.__ecsModalOwner || null;
+  function buildRendererModalWorld() {
+    // ModalStore is the single source of truth for modal presence; no host needed.
+    const ModalStore = getModalStore();
+    return ModalStore ? ModalStore.buildModalSnapshot() : null;
   }
 
   function buildRendererSnapshot(host, options = {}) {
     const RendererSnapshotBoundary = getRendererSnapshotBoundaryApi();
     if (!host || !RendererSnapshotBoundary?.buildRendererSnapshot) return null;
     const mode = options.mode || getModeSnapshot(host) || getFallbackModeFacts(host);
-    const modalWorld = buildRendererModalWorld(host);
+    const modalWorld = buildRendererModalWorld();
     const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
       modalWorld,
-      panel: buildRendererPanelFacts(host, modalWorld),
+      panel: buildRendererPanelFacts(modalWorld),
       mode,
       battle: buildRendererBattleFacts(),
     });

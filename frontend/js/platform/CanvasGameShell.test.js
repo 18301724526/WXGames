@@ -12,9 +12,17 @@ require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
 const BattleStore = require('../state/BattleStore');
+const ModalStore = require('../state/ModalStore');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
+
+// Modal presence is a single global ModalStore (no per-host owner). Reset it before
+// each test so a blocking panel opened by one test cannot leak into another host's
+// routing decisions.
+test.beforeEach(() => {
+  ModalStore.closeAll();
+});
 
 const SHELL_MODULES = [
   'CanvasGameShellMounting',

@@ -2,8 +2,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
+const ModalStore = require('../state/ModalStore');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+
+// Modal truth is a single global ModalStore (no per-host owner); reset it before each
+// test so presence from a prior test does not leak across hosts.
+test.beforeEach(() => {
+  ModalStore.closeAll();
+});
 
 test('CanvasModalSnapshotAdapter reads naming from renderer snapshot modal owner', () => {
   class Host {}

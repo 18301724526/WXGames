@@ -3,8 +3,18 @@ const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const BattleStore = require('../state/BattleStore');
+const ModalStore = require('../state/ModalStore');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+
+// Modal truth is a single global ModalStore (no per-host owner), so each test starts
+// from a clean modal state -- the isolation the retired per-host __ecsModalOwner gave
+// for free. Battle overlays follow the same single-store reset pattern.
+test.beforeEach(() => {
+  ModalStore.closeAll();
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+});
 
 test('CanvasModeOwnershipRuntime derives world map mode facts from legacy fields', () => {
   const host = {
