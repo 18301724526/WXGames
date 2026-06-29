@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasGameApp = require('./CanvasGameApp');
+const BattleStore = require('../state/BattleStore');
 const CanvasGameAppCommands = require('./CanvasGameAppCommands');
 const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
 const CanvasGameShell = require('./CanvasGameShell');
@@ -1321,7 +1322,9 @@ test('CanvasGameApp records compat async action dispatch before rejection', asyn
   assert.equal(actionEvent.handled, 'promise');
 });
 
-test('CanvasGameApp routes battleScene replay overlay through battle owner snapshot', () => {
+test('CanvasGameApp routes battleScene replay overlay through BattleStore', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
   const calls = [];
   const app = new CanvasGameApp({
     runtimeRequired: false,
@@ -1348,18 +1351,21 @@ test('CanvasGameApp routes battleScene replay overlay through battle owner snaps
 
   assert.equal(app.startBattleScene({ id: 'report-owner', turns: [{ action: 'attack' }] }), true);
 
-  assert.equal(app.__ecsBattleOwner.schema, 'battle-owner-v1');
-  assert.equal(app.__ecsBattleOwner.battleScene.report.id, 'report-owner');
+  assert.equal(BattleStore.getActiveOverlay(), 'battleScene');
+  assert.equal(BattleStore.getBattleScene().report.id, 'report-owner');
   assert.equal(app.getRendererSnapshot().battle.battleScene.report.id, 'report-owner');
   assert.equal(Object.prototype.hasOwnProperty.call(app, 'battleScene'), false);
   assert.deepEqual(calls.at(-1), ['render', 'report-owner', 0]);
 
   app.now = () => 250;
   assert.equal(app.skipBattleScene(), true);
-  assert.equal(app.__ecsBattleOwner.battleScene.turnIndex, 1);
+  assert.equal(BattleStore.getBattleScene().turnIndex, 1);
+  BattleStore.closeBattleScene();
 });
 
-test('CanvasGameApp records entityBattle owner facts while preserving live mirror object', () => {
+test('CanvasGameApp publishes the live entityBattle session into BattleStore', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
   const previousCore = global.BattleSimCore;
   global.BattleSimCore = {
     createBattle() {
@@ -1384,12 +1390,15 @@ test('CanvasGameApp records entityBattle owner facts while preserving live mirro
   try {
     assert.equal(app.openEntityBattle({ setup: { sides: [{}, {}] }, battleId: 'battle-owner' }), true);
     assert.equal(app.entityBattle.battleId, 'battle-owner');
-    assert.equal(app.__ecsBattleOwner.entityBattle.battleId, 'battle-owner');
-    assert.notEqual(app.__ecsBattleOwner.entityBattle, app.entityBattle);
+    // BattleStore holds the SAME live session object the app steps -- not a copy.
+    assert.equal(BattleStore.getActiveOverlay(), 'entityBattle');
+    assert.equal(BattleStore.getEntityBattle(), app.entityBattle);
+    assert.equal(BattleStore.getEntityBattle().battleId, 'battle-owner');
 
     app.entityBattleSelectGeneral('g1');
-    assert.equal(app.__ecsBattleOwner.entityBattle.selectedGid, 'g1');
+    assert.equal(BattleStore.getEntityBattle().selectedGid, 'g1');
   } finally {
     global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
   }
 });

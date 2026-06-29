@@ -16,8 +16,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/ecs/mode/ModalWorld.js',
   'frontend/js/ecs/mode/ModalWorld.test.js',
-  'frontend/js/ecs/owner/BattleOwner.js',
-  'frontend/js/ecs/owner/BattleOwner.test.js',
+  'frontend/js/state/BattleStore.js',
+  'frontend/js/state/BattleStore.test.js',
   'frontend/js/ecs/projection/FogProjection.js',
   'frontend/js/ecs/projection/FogProjection.test.js',
   'frontend/js/ecs/snapshot/RendererSnapshotBoundary.js',
@@ -411,8 +411,6 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-runtime-bundle-fresh.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
-  'scripts/check-frontend-ecs-battle-owner.js',
-  'scripts/check-frontend-ecs-battle-owner.test.js',
   'scripts/check-frontend-ecs-fog-owner.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
@@ -445,7 +443,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/ecs/registry/EcsBoundaryManifest.test.js',
   'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/ecs/mode/ModalWorld.test.js',
-  'frontend/js/ecs/owner/BattleOwner.test.js',
+  'frontend/js/state/BattleStore.test.js',
   'frontend/js/ecs/snapshot/RendererSnapshotBoundary.test.js',
   'frontend/js/ecs/input/InputIntent.test.js',
   'frontend/js/ecs/input/InputIntentResolver.test.js',
@@ -619,7 +617,6 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-mode-vocab.test.js',
   'scripts/check-frontend-ecs-runtime-bundle-fresh.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
-  'scripts/check-frontend-ecs-battle-owner.test.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-confirm-dialog-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-rewardreveal-mirror-retirement.test.js',
@@ -743,9 +740,6 @@ function main() {
   ]);
   run('frontend ECS renderer snapshot boundary blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
-  ]);
-  run('frontend ECS battle owner blocking guard', process.execPath, [
-    'scripts/check-frontend-ecs-battle-owner.js',
   ]);
   run('frontend ECS fog owner blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-fog-owner.js',

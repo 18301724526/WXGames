@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
+const BattleStore = require('../state/BattleStore');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
@@ -117,8 +118,12 @@ test('CanvasModeOwnershipRuntime resolves covered-mode input intents from the sn
   const techHost = Object.assign(new Host(), { activeTab: 'tech', activeCommandPanel: 'tech' });
   assert.equal(techHost.resolveInputIntent({ kind: 'drag' }).route, 'tech-tree');
 
-  const battleHost = Object.assign(new Host(), { entityBattle: { visible: true } });
+  // entityBattle visibility is now sourced from BattleStore (single truth), not a host mirror.
+  BattleStore.closeBattleScene();
+  BattleStore.openEntityBattle({ visible: true });
+  const battleHost = new Host();
   assert.equal(battleHost.resolveInputIntent({ kind: 'drag' }).route, 'entity-battle');
+  BattleStore.closeEntityBattle();
 
   const cityHost = Object.assign(new Host(), {
     state: { currentTab: 'resources', militaryView: 'army' },
@@ -427,7 +432,8 @@ test('CanvasModeOwnershipRuntime builds renderer snapshots from owner-backed pan
   game.canvasShell = shell;
   shell.lastGame = game;
   host.getCanvasGameHost = () => game;
-  host.__ecsBattleOwner = global.EcsModeRuntime.BattleOwner.openBattleScene(null, {
+  BattleStore.closeEntityBattle();
+  BattleStore.openBattleScene({
     visible: true,
     report: { id: 'report-1' },
     turnIndex: 0,
@@ -458,18 +464,19 @@ test('CanvasModeOwnershipRuntime builds renderer snapshots from owner-backed pan
   assert.equal(host.getRendererSnapshot(), snapshot);
 
   assert.equal(CanvasModeOwnershipRuntime.getRendererSnapshot(host), snapshot);
+  BattleStore.closeBattleScene();
 });
 
-test('CanvasModeOwnershipRuntime exposes battle facts only through read-only snapshot path', () => {
+test('CanvasModeOwnershipRuntime exposes battle facts only through BattleStore-backed snapshot path', () => {
   class Host {}
   CanvasModeOwnershipRuntime.install(Host);
   const host = new Host();
-  const owner = global.EcsModeRuntime.BattleOwner.openBattleScene(null, {
+  BattleStore.closeEntityBattle();
+  BattleStore.openBattleScene({
     visible: true,
     report: { id: 'owner-report' },
     turnIndex: 0,
   });
-  host.lastGame = { __ecsBattleOwner: owner };
 
   const forbiddenWrapperNames = [
     'openBattleSceneOwner',
@@ -487,12 +494,15 @@ test('CanvasModeOwnershipRuntime exposes battle facts only through read-only sna
 
   assert.equal(snapshot.battle.activeOverlay, 'battleScene');
   assert.deepEqual(snapshot.battle.battleScene.report, { id: 'owner-report' });
+  BattleStore.closeBattleScene();
 });
 
-test('CanvasModeOwnershipRuntime ignores removed battleScene mirrors for renderer snapshots', () => {
+test('CanvasModeOwnershipRuntime ignores removed battleScene host mirrors for renderer snapshots', () => {
   class Host {}
   CanvasModeOwnershipRuntime.install(Host);
   const host = new Host();
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
   host.battleScene = { visible: true, report: { id: 'removed-mirror' }, turnIndex: 0 };
 
   const snapshot = host.buildRendererSnapshot();

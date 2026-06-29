@@ -8,9 +8,10 @@ require('../ecs/system/WorldMarchProgressSnapshot');
 require('../ecs/projection/WorldMapVisibilityModel');
 require('../ecs/projection/WorldFogVisualSnapshot');
 require('../ecs/system/WorldMarchSystem');
-const EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
+require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
+const BattleStore = require('../state/BattleStore');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
@@ -708,7 +709,7 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   assert.equal(options.now, 4321.25);
 });
 
-test('CanvasGameShell reads battleScene render options from owner snapshot only', () => {
+test('CanvasGameShell reads battleScene render options from BattleStore only', () => {
   const shell = new CanvasGameShell({
     runtime: {
       now() {
@@ -716,20 +717,22 @@ test('CanvasGameShell reads battleScene render options from owner snapshot only'
       },
     },
   });
+  BattleStore.closeEntityBattle();
+  BattleStore.openBattleScene({
+    visible: true,
+    report: { id: 'snapshot-report' },
+    turnIndex: 0,
+  });
   shell.lastGame = {
     state: { currentTab: 'military', militaryView: 'army' },
     tutorial: {},
-    __ecsBattleOwner: EcsModeRuntime.BattleOwner.openBattleScene(null, {
-      visible: true,
-      report: { id: 'snapshot-report' },
-      turnIndex: 0,
-    }),
   };
   shell.battleScene = { visible: true, report: { id: 'removed-shell-mirror' }, turnIndex: 0 };
 
   const options = shell.buildRenderOptions('military', {});
 
   assert.equal(options.battleScene.report.id, 'snapshot-report');
+  BattleStore.closeBattleScene();
 });
 
 test('CanvasGameShell treats tutorial advisor dialogue as a blocking overlay', () => {

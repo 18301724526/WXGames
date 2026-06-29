@@ -6,9 +6,10 @@ const { scanModeOwnership } = require('./report-frontend-ecs-mode-ownership');
 const BASELINE_PATH = 'docs/development_logs/2026-06-25-frontend-ecs-0a-mode-ownership-baseline.md';
 const APPROVED_MODE_OWNER_PATHS = Object.freeze([
   'frontend/js/ecs/mode/',
-  'frontend/js/ecs/owner/',
   'frontend/js/ecs/snapshot/',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
+  // Battle overlay truth moved out of the retired ecs/owner shell into a plain store.
+  'frontend/js/state/BattleStore.js',
 ]);
 const APPROVED_MODE_RUNTIME_PATHS = Object.freeze([
   'frontend/js/platform/CanvasModeOwnershipRuntime.js',

@@ -8,7 +8,6 @@ const ModalWorld = require('./ModalWorld');
 const InputIntent = require('../input/InputIntent');
 const InputIntentResolver = require('../input/InputIntentResolver');
 const RendererSnapshotBoundary = require('../snapshot/RendererSnapshotBoundary');
-const BattleOwner = require('../owner/BattleOwner');
 const FogProjection = require('../projection/FogProjection');
 const WorldClock = require('../foundation/WorldClock');
 const WorldMapVisibilityModel = require('../projection/WorldMapVisibilityModel');
@@ -19,7 +18,6 @@ const EcsModeRuntime = Object.freeze({
   ...ModeWorld,
   ...InputIntentResolver,
   ModeComponents,
-  BattleOwner,
   FogProjection,
   WorldClock,
   WorldMapVisibilityModel,

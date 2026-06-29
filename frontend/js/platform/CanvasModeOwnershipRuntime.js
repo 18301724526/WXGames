@@ -23,6 +23,22 @@
     return null;
   })();
 
+  const BattleStoreModule = (() => {
+    if (global.BattleStore) return global.BattleStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../state/BattleStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function getBattleStore() {
+    return global.BattleStore || BattleStoreModule || null;
+  }
+
   function isTruthy(value) {
     return Boolean(value);
   }
@@ -47,22 +63,14 @@
     return owner;
   }
 
-  function readBattleSnapshot(host) {
-    const BattleOwner = getBattleOwnerApi();
-    const owner =
-      host?.__ecsBattleOwner ||
-      host?.lastGame?.__ecsBattleOwner ||
-      host?.getCanvasGameHost?.()?.__ecsBattleOwner ||
-      null;
-    if (BattleOwner?.getBattleSnapshot && owner) {
-      return BattleOwner.getBattleSnapshot(owner);
-    }
-    return null;
+  function readBattleSnapshot() {
+    const store = getBattleStore();
+    return store ? store.getBattleFacts() : null;
   }
 
   function resolveBaseModeKey(host) {
     const game = getStateHost(host);
-    const battleSnapshot = readBattleSnapshot(host);
+    const battleSnapshot = readBattleSnapshot();
     const activeTab =
       game?.state?.currentTab ||
       game?.activeTab ||
@@ -123,7 +131,7 @@
 
   function hasBlockingOverlayExceptTechTree(host) {
     const game = getStateHost(host);
-    const battleSnapshot = readBattleSnapshot(host);
+    const battleSnapshot = readBattleSnapshot();
     // commandPanel blocks tech-tree routing only when it is NOT the tech panel (the
     // 'tech' value IS tech-tree base access, not an overlay). techDetail still blocks
     // (it is a popup layered above the tech tree). This preserves the exact prior
@@ -150,8 +158,7 @@
       isAnyModalOpen(host, 'modal:event') ||
       isAnyModalOpen(host, 'modal:naming') ||
       isTruthy(battleSnapshot?.battleScene?.visible) ||
-      isTruthy(host?.entityBattle?.visible) ||
-      isTruthy(game?.entityBattle?.visible) ||
+      isTruthy(battleSnapshot?.entityBattle?.visible) ||
       isAnyModalOpen(host, 'modal:rewardReveal'),
     );
   }
@@ -159,7 +166,9 @@
   function deriveModeFacts(host) {
     const game = getStateHost(host);
     const modalKeys = collectModalKeys(host);
-    const entityBattle = host?.entityBattle || game?.entityBattle || null;
+    // entityBattleActive (blocking logic, ModeState) sources from BattleStore -- the
+    // single source of truth for the live battle session -- not host/game mirrors.
+    const entityBattle = readBattleSnapshot()?.entityBattle || null;
     const tutorialIntro = game?.tutorialIntro || host?.tutorialIntro || null;
     const tutorialHighlight = host?.tutorialHighlight || game?.tutorialHighlight || null;
     const baseModeKey = resolveBaseModeKey(host);
@@ -230,10 +239,6 @@
     return EcsModeRuntime && EcsModeRuntime.RendererSnapshotBoundary
       ? EcsModeRuntime.RendererSnapshotBoundary
       : null;
-  }
-
-  function getBattleOwnerApi() {
-    return EcsModeRuntime && EcsModeRuntime.BattleOwner ? EcsModeRuntime.BattleOwner : null;
   }
 
   function ensureModalOwner(host) {
@@ -345,22 +350,12 @@
     };
   }
 
-  function buildRendererBattleFacts(host) {
-    const BattleOwner = getBattleOwnerApi();
-    const battleSnapshot = readBattleSnapshot(host);
-    if (battleSnapshot) return battleSnapshot;
-    const game = host?.getCanvasGameHost?.() || getStateHost(host);
-    const shell = game?.canvasShell || host?.canvasShell || host?.lastGame?.canvasShell || null;
-    const entityBattle = game?.entityBattle || shell?.entityBattle || host?.entityBattle || null;
-    if (BattleOwner?.createBattleOwner) {
-      return BattleOwner.createBattleOwner({ battleScene: null, entityBattle });
-    }
-    return {
-      schema: 'battle-owner-v1',
-      battleScene: null,
-      entityBattle,
-      activeOverlay: entityBattle?.visible ? 'entityBattle' : 'none',
-    };
+  function buildRendererBattleFacts() {
+    // BattleStore is the single source of truth for both overlays; the snapshot
+    // boundary clones these facts once into the read-only renderer snapshot.
+    const store = getBattleStore();
+    if (store) return store.getBattleFacts();
+    return { battleScene: null, entityBattle: null, activeOverlay: 'none' };
   }
 
   function buildRendererModalWorld(host) {
@@ -376,7 +371,7 @@
       modalWorld,
       panel: buildRendererPanelFacts(host, modalWorld),
       mode,
-      battle: buildRendererBattleFacts(host),
+      battle: buildRendererBattleFacts(),
     });
     host.__ecsRendererSnapshot = snapshot;
     return snapshot;

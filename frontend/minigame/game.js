@@ -17,6 +17,7 @@ require('../js/state/optimistic/MarchCommandBuilder');
 require('../js/state/optimistic/MarchPendingStore');
 require('../js/state/optimistic/MarchReconciler');
 require('../js/state/optimistic/index');
+require('../js/state/BattleStore');
 require('../js/ecs/projection/WorldActorProjection');
 require('../js/ecs/foundation/WorldMarchGeometry');
 require('../js/ecs/system/WorldMarchSystem');
