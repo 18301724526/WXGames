@@ -28,18 +28,21 @@ test('WorldMapVisibilityModel normalizes tile visibility into serializable array
 });
 
 test('WorldMapVisibilityModel canonicalizes tile identity through stable axes', () => {
-  assert.deepEqual(WorldMapVisibilityModel.normalizeCoord({
-    x: 4,
-    y: -2,
-    q: 99,
-    r: 99,
-    tileId: 'legacy-visibility',
-    id: 'legacy-id',
-  }), {
-    q: 4,
-    r: -2,
-    tileId: 'tile_4_-2',
-  });
+  assert.deepEqual(
+    WorldMapVisibilityModel.normalizeCoord({
+      x: 4,
+      y: -2,
+      q: 99,
+      r: 99,
+      tileId: 'legacy-visibility',
+      id: 'legacy-id',
+    }),
+    {
+      q: 4,
+      r: -2,
+      tileId: 'tile_4_-2',
+    },
+  );
 });
 
 test('WorldMapVisibilityModel merges x/y and legacy q/r shapes into one visibility entry', () => {
@@ -56,7 +59,10 @@ test('WorldMapVisibilityModel merges x/y and legacy q/r shapes into one visibili
   assert.deepEqual(snapshot.tileIds, ['tile_4_-2']);
   assert.deepEqual(snapshot.q, [4]);
   assert.deepEqual(snapshot.r, [-2]);
-  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_4_-2'), WorldMapVisibilityModel.LEVEL_CONTROLLED);
+  assert.equal(
+    WorldMapVisibilityModel.getLevel(snapshot, 'tile_4_-2'),
+    WorldMapVisibilityModel.LEVEL_CONTROLLED,
+  );
   assert.deepEqual(snapshot.counts, { unknown: 0, explored: 0, visible: 0, controlled: 1 });
 });
 
@@ -82,8 +88,14 @@ test('WorldMapVisibilityModel applies mission reveals without downgrading strong
     },
   });
 
-  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_1_0'), WorldMapVisibilityModel.LEVEL_CONTROLLED);
-  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_2_0'), WorldMapVisibilityModel.LEVEL_VISIBLE);
+  assert.equal(
+    WorldMapVisibilityModel.getLevel(snapshot, 'tile_1_0'),
+    WorldMapVisibilityModel.LEVEL_CONTROLLED,
+  );
+  assert.equal(
+    WorldMapVisibilityModel.getLevel(snapshot, 'tile_2_0'),
+    WorldMapVisibilityModel.LEVEL_VISIBLE,
+  );
   assert.equal(WorldMapVisibilityModel.isExplored(snapshot, 'tile_2_0'), true);
   assert.equal(WorldMapVisibilityModel.isVisible(snapshot, 'tile_2_0'), true);
 });
@@ -103,8 +115,14 @@ test('WorldMapVisibilityModel derives revealed mission visibility from coordinat
     },
   });
 
-  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_1_0'), WorldMapVisibilityModel.LEVEL_EXPLORED);
-  assert.equal(WorldMapVisibilityModel.getLevel(snapshot, 'tile_2_0'), WorldMapVisibilityModel.LEVEL_UNKNOWN);
+  assert.equal(
+    WorldMapVisibilityModel.getLevel(snapshot, 'tile_1_0'),
+    WorldMapVisibilityModel.LEVEL_EXPLORED,
+  );
+  assert.equal(
+    WorldMapVisibilityModel.getLevel(snapshot, 'tile_2_0'),
+    WorldMapVisibilityModel.LEVEL_UNKNOWN,
+  );
   assert.equal(JSON.stringify(snapshot).includes('legacy-route'), false);
 });
 
@@ -114,7 +132,7 @@ test('WorldMapVisibilityModel keeps signatures stable and data compact for large
     tiles.push({
       q: i,
       r: -i,
-      visibility: i % 10 === 0 ? 'controlled' : (i % 3 === 0 ? 'unknown' : 'scouted'),
+      visibility: i % 10 === 0 ? 'controlled' : i % 3 === 0 ? 'unknown' : 'scouted',
       discovered: i % 3 !== 0,
     });
   }
@@ -126,5 +144,63 @@ test('WorldMapVisibilityModel keeps signatures stable and data compact for large
   assert.equal(first.levels.length, 5000);
   assert.equal(first.signature, second.signature);
   assert.equal(Object.prototype.hasOwnProperty.call(first, 'entries'), false);
-  assert.equal(WorldMapVisibilityModel.getLevel(first, 'tile_10_-10'), WorldMapVisibilityModel.LEVEL_CONTROLLED);
+  assert.equal(
+    WorldMapVisibilityModel.getLevel(first, 'tile_10_-10'),
+    WorldMapVisibilityModel.LEVEL_CONTROLLED,
+  );
+});
+
+test('WorldMapVisibilityModel stores authoritative visibility in BitECS component arrays', () => {
+  const { FogVisibility, fogVisibilityQuery, createVisibilityWorld, runVisibilitySystem } =
+    WorldMapVisibilityModel;
+  const world = createVisibilityWorld();
+  runVisibilitySystem(world, {
+    worldMap: {
+      tiles: [
+        { q: 0, r: 0, visibility: 'controlled', siteId: 'capital' },
+        { q: 1, r: 0, visibility: 'scouted' },
+      ],
+    },
+  });
+
+  // The query is the ECS read path; the truth is in the component arrays, by entity id.
+  assert.equal(Array.from(fogVisibilityQuery(world.world)).length, 2);
+  const capital = world.byId.get('tile_0_0');
+  const scouted = world.byId.get('tile_1_0');
+  assert.equal(FogVisibility.level[capital], WorldMapVisibilityModel.LEVEL_CONTROLLED);
+  assert.equal(FogVisibility.level[scouted], WorldMapVisibilityModel.LEVEL_EXPLORED);
+  assert.equal(FogVisibility.q[capital], 0);
+  assert.equal(FogVisibility.r[scouted], 0);
+});
+
+test('WorldMapVisibilityModel system upgrades a tile in-component without downgrading', () => {
+  const { FogVisibility, createVisibilityWorld, runVisibilitySystem } = WorldMapVisibilityModel;
+  const world = createVisibilityWorld();
+  runVisibilitySystem(world, {
+    worldMap: { tiles: [{ q: 5, r: 5, visibility: 'controlled' }] },
+    worldExplorerState: {
+      activeMission: { status: 'active', position: { q: 5, r: 5 }, route: [] },
+    },
+  });
+  // The controlled tile (level 3) must not be downgraded to the mission's visible level (2).
+  const eid = world.byId.get('tile_5_5');
+  assert.equal(FogVisibility.level[eid], WorldMapVisibilityModel.LEVEL_CONTROLLED);
+});
+
+test('WorldMapVisibilityModel resets component entities between system runs', () => {
+  const { fogVisibilityQuery, createVisibilityWorld, runVisibilitySystem } =
+    WorldMapVisibilityModel;
+  const world = createVisibilityWorld();
+  runVisibilitySystem(world, {
+    worldMap: {
+      tiles: [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+        { q: 2, r: 0 },
+      ],
+    },
+  });
+  assert.equal(Array.from(fogVisibilityQuery(world.world)).length, 3);
+  runVisibilitySystem(world, { worldMap: { tiles: [{ q: 0, r: 0 }] } });
+  assert.equal(Array.from(fogVisibilityQuery(world.world)).length, 1);
 });

@@ -19,7 +19,6 @@ require('../js/ecs/projection/WorldActorProjection');
 require('../js/ecs/foundation/WorldMarchGeometry');
 require('../js/ecs/system/WorldMarchSystem');
 require('../js/ecs/system/WorldMarchRoutePolicy');
-require('../js/ecs/projection/WorldMapVisibilityModel');
 require('../js/ecs/projection/WorldMapEntitySnapshot');
 require('../js/ecs/projection/WorldMapRenderSnapshot');
 require('../js/ecs/projection/WorldMapPerformanceBudget');

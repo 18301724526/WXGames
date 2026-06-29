@@ -1,4 +1,47 @@
 (function (global) {
+  // Real BitECS module: per-tile fog visibility is the authoritative fact and lives in a
+  // `FogVisibility` component (TypedArray columns indexed by entity id). A named system
+  // (runVisibilitySystem) computes the level from world tiles + mission reveals and writes the
+  // component arrays; getVisibilitySnapshot is the read-only projection consumers use. This is
+  // the WorldClock pattern applied to fog visibility — bitecs is reached only via EcsCoreBoundary.
+  const EcsCoreBoundary = (() => {
+    if (global.EcsCoreBoundary) return global.EcsCoreBoundary;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../core/EcsCoreBoundary');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  if (!EcsCoreBoundary) {
+    throw new Error('WorldMapVisibilityModel requires EcsCoreBoundary and bitecs primitives');
+  }
+
+  const {
+    Types,
+    addComponent,
+    addEntity,
+    createWorld,
+    defineComponent,
+    defineQuery,
+    removeEntity,
+  } = EcsCoreBoundary;
+
+  if (
+    !Types ||
+    !defineComponent ||
+    !defineQuery ||
+    !createWorld ||
+    !addEntity ||
+    !addComponent ||
+    !removeEntity
+  ) {
+    throw new Error('WorldMapVisibilityModel requires the approved BitECS primitive surface');
+  }
+
   const SignatureHash = (() => {
     if (global.SignatureHash) return global.SignatureHash;
     if (typeof module !== 'undefined' && module.exports) {
@@ -40,6 +83,16 @@
     controlled: LEVEL_CONTROLLED,
   });
 
+  // Authoritative per-tile fog fact. One entity per (canonical) tile; values live here.
+  const FogVisibility = defineComponent({
+    q: Types.i32,
+    r: Types.i32,
+    level: Types.ui8,
+    intelLevel: Types.ui8,
+  });
+
+  const fogVisibilityQuery = defineQuery([FogVisibility]);
+
   function toNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -80,8 +133,11 @@
   function normalizeLevel(value, options = {}) {
     if (options.controlled) return LEVEL_CONTROLLED;
     if (Number.isFinite(Number(value))) return clampLevel(value);
-    const key = String(value || '').trim().toLowerCase();
-    if (Object.prototype.hasOwnProperty.call(LEVEL_BY_VISIBILITY, key)) return LEVEL_BY_VISIBILITY[key];
+    const key = String(value || '')
+      .trim()
+      .toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(LEVEL_BY_VISIBILITY, key))
+      return LEVEL_BY_VISIBILITY[key];
     if (options.discovered === false || options.visible === false) return LEVEL_UNKNOWN;
     return options.defaultLevel ?? LEVEL_EXPLORED;
   }
@@ -94,10 +150,10 @@
   function readTileVisibility(tile = {}, options = {}) {
     const coord = normalizeCoord(tile);
     const controlled = Boolean(
-      tile.controlled
-      || tile.visibility === 'controlled'
-      || tile.siteId === 'capital'
-      || tile.id === 'tile_0_0'
+      tile.controlled ||
+      tile.visibility === 'controlled' ||
+      tile.siteId === 'capital' ||
+      tile.id === 'tile_0_0',
     );
     const discovered = tile.discovered !== false;
     const level = normalizeLevel(tile.visibility, {
@@ -116,54 +172,51 @@
     };
   }
 
-  function createAccumulator(version = 0) {
+  function createVisibilityWorld() {
     return {
-      schema: 'world-map-visibility-v1',
-      version,
-      tileIds: [],
-      q: [],
-      r: [],
-      levels: [],
-      intelLevels: [],
-      indexById: Object.create(null),
-      counts: {
-        unknown: 0,
-        explored: 0,
-        visible: 0,
-        controlled: 0,
-      },
-      signature: '',
-      _hash: SignatureHash.FNV_OFFSET_BASIS,
+      world: createWorld(),
+      byId: new Map(),
+      order: [],
     };
   }
 
-  function countLevel(counts, level, delta) {
-    counts[levelName(level)] += delta;
+  let sharedVisibilityWorld = null;
+
+  function getSharedVisibilityWorld() {
+    if (!sharedVisibilityWorld) sharedVisibilityWorld = createVisibilityWorld();
+    return sharedVisibilityWorld;
   }
 
-  function upsert(accumulator, entry = {}) {
+  function resetVisibilityWorld(visWorld) {
+    const matches = fogVisibilityQuery(visWorld.world);
+    const eids = Array.from(matches);
+    for (let i = 0; i < eids.length; i += 1) removeEntity(visWorld.world, eids[i]);
+    visWorld.byId = new Map();
+    visWorld.order = [];
+    return visWorld;
+  }
+
+  // Component write: upsert one tile's visibility fact, never downgrading an existing entity.
+  function upsertTile(visWorld, entry = {}) {
     const id = String(entry.tileId || tileId(entry.q, entry.r));
     const level = clampLevel(entry.level);
     const intelLevel = clampLevel(entry.intelLevel, level);
-    const index = accumulator.indexById[id];
-    if (index !== undefined) {
-      if (level > accumulator.levels[index]) {
-        countLevel(accumulator.counts, accumulator.levels[index], -1);
-        accumulator.levels[index] = level;
-        countLevel(accumulator.counts, level, 1);
-      }
-      if (intelLevel > accumulator.intelLevels[index]) accumulator.intelLevels[index] = intelLevel;
-      return index;
+    const existing = visWorld.byId.get(id);
+    if (existing !== undefined) {
+      if (level > FogVisibility.level[existing]) FogVisibility.level[existing] = level;
+      if (intelLevel > FogVisibility.intelLevel[existing])
+        FogVisibility.intelLevel[existing] = intelLevel;
+      return existing;
     }
-    const nextIndex = accumulator.tileIds.length;
-    accumulator.indexById[id] = nextIndex;
-    accumulator.tileIds.push(id);
-    accumulator.q.push(toInteger(entry.q));
-    accumulator.r.push(toInteger(entry.r));
-    accumulator.levels.push(level);
-    accumulator.intelLevels.push(intelLevel);
-    countLevel(accumulator.counts, level, 1);
-    return nextIndex;
+    const eid = addEntity(visWorld.world);
+    addComponent(visWorld.world, FogVisibility, eid);
+    FogVisibility.q[eid] = toInteger(entry.q);
+    FogVisibility.r[eid] = toInteger(entry.r);
+    FogVisibility.level[eid] = level;
+    FogVisibility.intelLevel[eid] = intelLevel;
+    visWorld.byId.set(id, eid);
+    visWorld.order.push(eid);
+    return eid;
   }
 
   function getMissionList(worldExplorerState = {}, extraMissions = []) {
@@ -174,7 +227,9 @@
     (Array.isArray(extraMissions) ? extraMissions : []).forEach(append);
     (Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : []).forEach(append);
     append(worldExplorerState.activeMission);
-    (Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []).forEach(append);
+    (Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []).forEach(
+      append,
+    );
     return result;
   }
 
@@ -203,8 +258,12 @@
 
   function createMissionTileAliasMap(mission = {}) {
     const aliases = new Map();
-    (Array.isArray(mission.route) ? mission.route : []).forEach((step) => addCoordAliases(aliases, step));
-    (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) => addCoordAliases(aliases, tile));
+    (Array.isArray(mission.route) ? mission.route : []).forEach((step) =>
+      addCoordAliases(aliases, step),
+    );
+    (Array.isArray(mission.plannedTiles) ? mission.plannedTiles : []).forEach((tile) =>
+      addCoordAliases(aliases, tile),
+    );
     return aliases;
   }
 
@@ -224,13 +283,13 @@
     return revealed;
   }
 
-  function applyMissionVisibility(accumulator, mission = {}) {
-    if (!mission || typeof mission !== 'object') return accumulator;
+  function applyMissionVisibility(visWorld, mission = {}) {
+    if (!mission || typeof mission !== 'object') return visWorld;
     const revealedIds = createRevealedTileSet(mission);
     const applyCoord = (coord, level = LEVEL_EXPLORED) => {
       if (!coord || typeof coord !== 'object') return;
       const normalized = normalizeCoord(coord);
-      upsert(accumulator, {
+      upsertTile(visWorld, {
         tileId: normalized.tileId,
         q: normalized.q,
         r: normalized.r,
@@ -250,33 +309,80 @@
         applyCoord({ ...tile, ...normalized }, LEVEL_EXPLORED);
       }
     });
-    if (mission.position) applyCoord(mission.position, mission.status === 'active' ? LEVEL_VISIBLE : LEVEL_EXPLORED);
-    return accumulator;
+    if (mission.position)
+      applyCoord(mission.position, mission.status === 'active' ? LEVEL_VISIBLE : LEVEL_EXPLORED);
+    return visWorld;
   }
 
-  function finalizeSnapshot(accumulator) {
-    let hash = accumulator._hash;
-    for (let i = 0; i < accumulator.tileIds.length; i += 1) {
-      hash = hashStep(hash, accumulator.tileIds[i]);
-      hash = hashStep(hash, accumulator.levels[i]);
-      hash = hashStep(hash, accumulator.intelLevels[i]);
+  // Named system: rebuild the FogVisibility components for this frame from world tiles + missions.
+  function runVisibilitySystem(visWorld, input = {}, options = {}) {
+    resetVisibilityWorld(visWorld);
+    const territoryState = input.territoryState || {};
+    const worldMap = input.worldMap || territoryState.worldMap || {};
+    const tiles = Array.isArray(input.tiles)
+      ? input.tiles
+      : Array.isArray(worldMap.tiles)
+        ? worldMap.tiles
+        : [];
+    for (let i = 0; i < tiles.length; i += 1) {
+      upsertTile(visWorld, readTileVisibility(tiles[i], options));
     }
-    accumulator.signature = `${accumulator.version}:${accumulator.tileIds.length}:${hash.toString(16)}`;
-    delete accumulator._hash;
-    return accumulator;
+    const worldExplorerState = input.worldExplorerState || {};
+    getMissionList(worldExplorerState, input.missions).forEach((mission) =>
+      applyMissionVisibility(visWorld, mission),
+    );
+    return visWorld;
+  }
+
+  // Read-only projection: copy the component arrays into the serializable snapshot consumers use.
+  function getVisibilitySnapshot(visWorld, version = 0) {
+    const tileIds = [];
+    const q = [];
+    const r = [];
+    const levels = [];
+    const intelLevels = [];
+    const indexById = Object.create(null);
+    const counts = { unknown: 0, explored: 0, visible: 0, controlled: 0 };
+    let hash = SignatureHash.FNV_OFFSET_BASIS;
+    for (let i = 0; i < visWorld.order.length; i += 1) {
+      const eid = visWorld.order[i];
+      const tq = FogVisibility.q[eid];
+      const tr = FogVisibility.r[eid];
+      const id = tileId(tq, tr);
+      const level = clampLevel(FogVisibility.level[eid]);
+      const intelLevel = clampLevel(FogVisibility.intelLevel[eid], level);
+      indexById[id] = i;
+      tileIds.push(id);
+      q.push(tq);
+      r.push(tr);
+      levels.push(level);
+      intelLevels.push(intelLevel);
+      counts[levelName(level)] += 1;
+      hash = hashStep(hash, id);
+      hash = hashStep(hash, level);
+      hash = hashStep(hash, intelLevel);
+    }
+    return {
+      schema: 'world-map-visibility-v1',
+      version,
+      tileIds,
+      q,
+      r,
+      levels,
+      intelLevels,
+      indexById,
+      counts,
+      signature: `${version}:${tileIds.length}:${hash.toString(16)}`,
+    };
   }
 
   function createSnapshot(input = {}, options = {}) {
     const territoryState = input.territoryState || {};
     const worldMap = input.worldMap || territoryState.worldMap || {};
-    const tiles = Array.isArray(input.tiles) ? input.tiles : (Array.isArray(worldMap.tiles) ? worldMap.tiles : []);
-    const accumulator = createAccumulator(worldMap.version || input.version || 0);
-    for (let i = 0; i < tiles.length; i += 1) {
-      upsert(accumulator, readTileVisibility(tiles[i], options));
-    }
-    const worldExplorerState = input.worldExplorerState || {};
-    getMissionList(worldExplorerState, input.missions).forEach((mission) => applyMissionVisibility(accumulator, mission));
-    return finalizeSnapshot(accumulator);
+    const version = worldMap.version || input.version || 0;
+    const visWorld = getSharedVisibilityWorld();
+    runVisibilitySystem(visWorld, input, options);
+    return getVisibilitySnapshot(visWorld, version);
   }
 
   function getLevel(snapshot = {}, id = '') {
@@ -313,6 +419,11 @@
     LEVEL_VISIBLE,
     LEVEL_CONTROLLED,
     LEVEL_NAMES,
+    FogVisibility,
+    fogVisibilityQuery,
+    createVisibilityWorld,
+    runVisibilitySystem,
+    getVisibilitySnapshot,
     createSnapshot,
     getLevel,
     isExplored,

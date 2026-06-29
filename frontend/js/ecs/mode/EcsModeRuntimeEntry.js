@@ -11,6 +11,7 @@ const RendererSnapshotBoundary = require('../snapshot/RendererSnapshotBoundary')
 const BattleOwner = require('../owner/BattleOwner');
 const FogOwner = require('../owner/FogOwner');
 const WorldClock = require('../foundation/WorldClock');
+const WorldMapVisibilityModel = require('../projection/WorldMapVisibilityModel');
 
 const EcsModeRuntime = Object.freeze({
   ...ModeKeys,
@@ -21,10 +22,11 @@ const EcsModeRuntime = Object.freeze({
   BattleOwner,
   FogOwner,
   WorldClock,
+  WorldMapVisibilityModel,
   ModalWorld,
   RendererSnapshotBoundary,
   InputIntent,
-  version: 'ecs-mode-runtime-batch-7a',
+  version: 'ecs-mode-runtime-batch-7b',
 });
 
 if (typeof globalThis !== 'undefined') {

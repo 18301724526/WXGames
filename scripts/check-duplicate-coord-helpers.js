@@ -31,6 +31,9 @@ const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /\.test\.js$/,
   /(^|\/)node_modules\//,
   /(^|\/)vendor\//,
+  // Generated ECS runtime bundle: a derived artifact that bundles already-guarded canonical
+  // sources (e.g. ecs/foundation/TileCoord.js). The source files are guarded individually.
+  /(^|\/)ecs\/runtime\//,
 ]);
 
 function normalizePath(filePath) {
