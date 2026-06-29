@@ -19,6 +19,14 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     WorldMarchSystem = require('../ecs/system/WorldMarchSystem');
   }
+  var SharedWorldClock = global.WorldClock;
+  if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
+    try {
+      SharedWorldClock = require('../ecs/foundation/WorldClock');
+    } catch (_error) {
+      SharedWorldClock = null;
+    }
+  }
   const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     if (WorldMarchSystem?.hasActiveMission) {
@@ -316,7 +324,7 @@
 
       getWorldEpochNowMs() {
             const clock = this.worldClock || this.runtime?.worldClock || global.__WorldClockShared;
-            return clock?.getEpochNowMs?.(Date.now()) ?? Date.now();
+            return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
           },
 
       wait(ms = 0) {

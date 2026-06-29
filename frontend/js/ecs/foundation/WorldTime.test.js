@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const WorldClock = require('./WorldClock');
 const WorldTime = require('./WorldTime');
 
 test('WorldTime normalizes ISO, millisecond, and second epoch timestamps', () => {
@@ -26,16 +27,22 @@ test('WorldTime ignores performance.now values when resolving epoch now', () => 
 test('WorldTime prefers shared world clock over stale host render options', () => {
   const clockNowMs = new Date('2026-06-06T00:00:20.000Z').getTime();
   const staleMs = new Date('2026-06-06T00:00:04.000Z').getTime();
+  const clockWorld = WorldClock.createClockWorld({
+    runtime: {
+      performance: {
+        now() {
+          return 0;
+        },
+      },
+    },
+    serverTime: clockNowMs,
+  });
 
   assert.equal(WorldTime.getEpochNowMs({
     host: {
       lastRenderOptions: { epochNowMs: staleMs },
     },
-    worldClock: {
-      getEpochNowMs() {
-        return clockNowMs;
-      },
-    },
+    worldClock: clockWorld,
   }), clockNowMs);
 });
 

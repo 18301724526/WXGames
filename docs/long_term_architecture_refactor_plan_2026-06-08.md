@@ -54,14 +54,17 @@ When an exception happens, the commit or task note must say why the stable block
 
 ### 2.3 优先 ECS 风格模块，不急着上重型 ECS 框架 / Prefer ECS-Style Modules, Not A Heavy ECS Framework Yet
 
-The project should move toward ECS-like modularity:
+Status update: the older "ECS-lite first" guidance is obsolete. The accepted ECS
+core is `bitecs@0.4.0`, accessed only through `frontend/js/ecs/core/EcsCoreBoundary.js`
+or a generated runtime bundle that includes that boundary.
 
-- entities are plain IDs plus data
-- components are serializable data
-- systems read/write explicit component sets
-- render adapters consume snapshots
+A module is not accepted as ECS just because it lives under `frontend/js/ecs`.
+Accepted ECS state must use BitECS entity ids, `defineComponent` component
+storage, `defineQuery` reads, and named systems that mutate component arrays.
+Owner objects, snapshots, classes, and facades are compatibility surfaces or
+migration debt unless they wrap already-authoritative BitECS component state.
 
-Do not introduce a full third-party ECS framework before the current state ownership is cleaned up. The first phase should be an "ECS-lite" internal architecture so the team can stabilize contracts before adding framework dependency.
+The executable review plan is `docs/bit-ecs-review-pass-plan.md`.
 
 ### 2.4 功能开关是架构工具 / Feature Flags Are Architecture Tools
 

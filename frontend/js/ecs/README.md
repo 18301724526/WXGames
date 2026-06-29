@@ -1,9 +1,47 @@
 # Frontend ECS Boundary
 
-Batch 2 created a Node/CommonJS architecture boundary only. Batch 3 added the generated mode runtime surface: `runtime/EcsModeRuntimeBundle.js`. Gameplay/runtime logic that used to live under the retired frontend layer now belongs to focused ECS folders: `foundation/`, `system/`, `projection/`, `input/`, `resource/`, and `debug/`.
+This folder is not allowed to use "ECS" as a rename-only label.
 
-Runtime code may not import `bitecs` directly. Production access to the external ECS core goes through `core/EcsCoreBoundary.js`, which forwards the approved `bitecs@0.4.0` primitives without adding project-owned ECS storage, query, or scheduler logic.
+The accepted runtime ECS core is `bitecs@0.4.0`. Production code may access BitECS
+only through `core/EcsCoreBoundary.js` or through a generated runtime bundle that
+includes that boundary. Direct package imports outside the boundary are blocked.
 
-H5 and minigame entrypoints may load ECS gameplay surfaces from `foundation/`, `system/`, `projection/`, `input/`, `resource/`, and `debug/`. They must not load raw files from `core/`, `registry/`, `mode/`, `owner/`, or `snapshot/`.
+## What Counts As ECS
 
-The registry manifest declares reviewed owner roles, component families, mode keys, snapshot keys, and runtime loading policy. Bridge is retired as an ECS owner role.
+A module counts as real ECS only when its authoritative state follows this shape:
+
+- Entity identity is a BitECS entity id from `addEntity(world)`.
+- Authoritative data lives in `defineComponent(...)` component storage.
+- Reads use `defineQuery(...)` over a BitECS world.
+- Mutations happen in named systems that receive the world/scope and update
+  components.
+- Renderer/platform code receives projections or snapshots after systems run.
+
+## What Does Not Count
+
+These are not ECS completion criteria:
+
+- Moving a file under `frontend/js/ecs`.
+- Renaming a model to owner/snapshot/projection.
+- Storing authoritative state in classes, object graphs, host mirrors, shell
+  mirrors, `globalThis`, or renderer cache objects.
+- Wrapping old state with an adapter and calling it an ECS owner.
+
+Existing owner/snapshot/projection modules are compatibility or migration debt
+unless they satisfy the BitECS criteria above.
+
+## Current Real BitECS Example
+
+`foundation/WorldClock.js` is the first small accepted example:
+
+- `Clock` is a BitECS component.
+- `createClockWorld()` creates a BitECS world and a clock entity.
+- `runClockSyncSystem()` writes server sync facts into component storage.
+- `runClockAdvanceSystem()` advances derived epoch time from component storage.
+- `getClockSnapshot()` projects component state for compatibility consumers.
+- There is no `WorldClock` wrapper class. Old imports call BitECS system and
+  projection functions directly and store the real BitECS world handle.
+
+H5 and minigame do not load raw BitECS modules directly. They load
+`runtime/EcsModeRuntimeBundle.js`, which bundles the approved boundary and exposes
+the runtime surfaces such as `globalThis.WorldClock`.

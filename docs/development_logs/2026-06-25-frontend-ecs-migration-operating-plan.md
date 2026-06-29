@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The migration matrix defines the destination. This document defines how the project can move toward that destination without freezing all bug fixes and feature work for months.
+The migration matrix defines the destination. This document defines how the project can move toward that destination without freezing all bug fixes and feature work.
 
 This is still not a file-by-file implementation guide. It is an operating plan: ownership rules, sequencing rules, dual-track policy, acceptance gates, rollback policy, and stop-loss criteria.
 
@@ -10,24 +10,29 @@ This is still not a file-by-file implementation guide. It is an operating plan: 
 
 The current frontend cannot be treated as a clean ECS candidate. The migration must assume:
 
-- No ECS core dependency exists yet.
+- `bitecs@0.4.0` is installed and is the only accepted ECS core.
+- A file under `frontend/js/ecs` is not accepted as ECS until it uses BitECS
+  entity ids, components, queries, and systems for authoritative state.
 - Many state facts are mirrored across app, shell, canvas shell, last game, and state snapshots.
 - Prototype/mixin installation makes static dependency analysis incomplete.
 - Renderers often participate in hit-target generation and sometimes influence input behavior.
 - Mode checks are scattered across production files.
 - Temporary compatibility code can become permanent unless explicitly time-boxed.
 
-The operating plan therefore treats old-owner retirement as the main deliverable.
+The operating plan therefore treats real BitECS ownership as the main deliverable.
+Old-owner retirement is required, but it is not sufficient by itself.
 
 ## Migration Objective
 
-The target is not to make every file "use ECS". The target is to make every frontend responsibility have one declared owner and to make legacy owners unable to grow.
+The target is not to make every file "use ECS". The target is to make every
+frontend responsibility have one declared BitECS owner, with compatibility
+wrappers only after component/query/system ownership exists.
 
 Each migration batch must end in one of three states:
 
 | State       | Meaning                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------- |
-| Sealed      | Old owner retired or read-only mirrored, new ECS owner active, guards block old-path growth |
+| Sealed      | Old owner retired or read-only mirrored, new BitECS component/query/system owner active, guards block old-path growth |
 | Report-only | Old owner still active, but inventory and guard report exist                                |
 | Rolled back | New path disabled/removed, old behavior restored, no mixed ownership remains                |
 
@@ -39,18 +44,18 @@ Do not sequence by perceived bug priority. Sequence by dependency topology and a
 
 The order below is the required operating sequence:
 
-| Batch                                              | Goal                                                                              | Why It Comes Here                                                             | Expected Window   | Exit Criteria                                                             |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------- |
-| 0A. Mode and Bridge Inventory                      | Produce mode boolean and bridge/prototype inventory                               | These are the main infection sources and must be known first                  | 1 week            | Mode and bridge reports exist; old owners and mirrors are named           |
-| 0B. Authority, Input, Literal, Duplicate Inventory | Produce renderer authority, input branch, literal, and duplicate inventories      | Completes the baseline needed for guard rollout                               | 1-2 weeks         | Reports exist; new violations can be distinguished from historical debt   |
-| 1. ECS Core ADR and Gate                           | Confirm external ECS library and block self-built core                            | Prevent a second homegrown architecture                                       | 1 week            | ADR accepted; dependency added only after gate design exists              |
-| 2. ECS Boundary Skeleton                           | Establish component/system/mode naming and read-only bridge policy                | Gives all later batches a target vocabulary                                   | 1-2 weeks         | No gameplay migration yet; guards can recognize ECS owner paths           |
-| 3. Mode Ownership Spine                            | Create the single mode stack and modal subtype ownership                          | Mode booleans are the main spread vector                                      | 2-3 weeks         | New mode decisions cannot be added outside mode owner paths               |
-| 4. Input Intent Boundary                           | Route physical input through explicit intent and mode resolver                    | Input is where old mode logic keeps re-entering                               | 2 weeks           | Input routers become physical adapters for covered modes                  |
-| 5. Panel/Modal Ownership                           | Seal naming, event, reward reveal, confirm dialog, target picker, blocking panels | These are concrete old booleans and high-risk blockers                        | 2 weeks           | Covered modal subtypes no longer have app/shell as source of truth        |
-| 6. Snapshot Boundary                               | Make renderers consume explicit snapshots for covered modes                       | Renderer authority cannot be removed until snapshot contract exists           | 2 weeks           | Covered renderers cannot read authoritative mode/panel state directly     |
-| 7. Retired Layer Sealing                             | Migrate one scope area at a time                                                 | Feature-specific work must happen after global mode/input/snapshot paths exist | 10-20 weeks total | Each scope area ends sealed or rolled back                               |
-| 8. Bridge Retirement                               | Remove or shrink temporary facades and mirrors                                    | Prevent permanent compatibility mud                                           | 2-4 weeks         | Expired bridges fail guard; allowed bridges have active lifecycle records |
+| Batch                                              | Goal                                                                              | Why It Comes Here                                                             | Exit Criteria                                                             |
+| -------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 0A. Mode and Bridge Inventory                      | Produce mode boolean and bridge/prototype inventory                               | These are the main infection sources and must be known first                  | Mode and bridge reports exist; old owners and mirrors are named           |
+| 0B. Authority, Input, Literal, Duplicate Inventory | Produce renderer authority, input branch, literal, and duplicate inventories      | Completes the baseline needed for guard rollout                               | Reports exist; new violations can be distinguished from historical debt   |
+| 1. ECS Core ADR and Gate                           | Confirm external ECS library and block self-built core                            | Prevent a second homegrown architecture                                       | ADR accepted; dependency added only after gate design exists              |
+| 2. ECS Boundary Skeleton                           | Establish component/system/mode naming and read-only bridge policy                | Gives all later batches a target vocabulary                                   | No gameplay migration yet; guards can recognize ECS owner paths           |
+| 3. Mode Ownership Spine                            | Create the single mode stack and modal subtype ownership                          | Mode booleans are the main spread vector                                      | New mode decisions cannot be added outside mode owner paths               |
+| 4. Input Intent Boundary                           | Route physical input through explicit intent and mode resolver                    | Input is where old mode logic keeps re-entering                               | Input routers become physical adapters for covered modes                  |
+| 5. Panel/Modal Ownership                           | Seal naming, event, reward reveal, confirm dialog, target picker, blocking panels | These are concrete old booleans and high-risk blockers                        | Covered modal subtypes no longer have app/shell as source of truth        |
+| 6. Snapshot Boundary                               | Make renderers consume explicit snapshots for covered modes                       | Renderer authority cannot be removed until snapshot contract exists           | Covered renderers cannot read authoritative mode/panel state directly     |
+| 7. Retired Layer Sealing                           | Migrate one scope area at a time                                                  | Feature-specific work must happen after global mode/input/snapshot paths exist | Each scope area ends sealed or rolled back                                |
+| 8. Bridge Retirement                               | Remove or shrink temporary facades and mirrors                                    | Prevent permanent compatibility mud                                           | Expired bridges fail guard; allowed bridges have active lifecycle records |
 
 The batches are ordered, but batches 5-7 can repeat per scope area after the global spine is in place.
 
@@ -68,19 +73,12 @@ Batch 7 must not pick scope order by frustration level. Use dependency and blast
 
 If evidence shows a scope has a smaller sealed slice that can be completed without mixed ownership, it may be split, but the split must preserve the same dependency logic.
 
-## Expected Timeline
+## Quality Gate
 
-The complete frontend ECS migration is a multi-month program, not a short bugfix.
-
-| Scope                                                        | Expected Window |
-| ------------------------------------------------------------ | --------------- |
-| Inventory and baseline                                       | 2-3 weeks       |
-| Core ADR, boundary skeleton, mode/input/modal/snapshot spine | 8-12 weeks      |
-| Scope area sealing                                          | 10-20 weeks     |
-| Bridge retirement and stabilization                          | 2-4 weeks       |
-| Total migration program                                      | 24-36 weeks     |
-
-This timeline does not require feature work to stop for 24-36 weeks. It does require feature work to obey the dual-track policy and sealed-area rules during the migration window.
+The complete frontend ECS migration is not accepted by elapsed work or file
+movement. It is accepted only when migrated facts have one BitECS source of
+truth, tests inspect component/query/system behavior, and old writers are
+deleted or blocked.
 
 ## Dual-Track Policy
 
@@ -102,7 +100,7 @@ Every bridge must be time-boxed and tracked.
 
 | Rule           | Requirement                                                                                   |
 | -------------- | --------------------------------------------------------------------------------------------- |
-| Max lifetime   | Two migration batches or 14 calendar days                                                     |
+| Max lifetime   | Until the owning BitECS component/query/system slice is sealed                                 |
 | Allowed work   | Forward old public calls, mirror old fields read-only, preserve boot compatibility            |
 | Forbidden work | New business branches, new source-of-truth fields, new mode decisions, new renderer authority |
 | Extension      | Requires written exception, owner, new date, and a guard that blocks further growth           |
@@ -159,7 +157,7 @@ If any answer is missing, the batch is not sealed.
 The migration must pause for reassessment if any of these happen:
 
 - A batch ends with more mixed ownership than it started with.
-- A bridge passes its max lifetime without an exception and guard.
+- A bridge remains writable after its owning BitECS component/query/system slice is sealed.
 - A migrated area requires a new bug fix through the old source-of-truth path.
 - Performance smoke shows a material regression that cannot be isolated behind a single system.
 - New feature work adds mode/panel/camera state outside declared owners.
@@ -178,7 +176,7 @@ Pause does not mean abandon ECS. It means stop expanding scope until ownership i
 
 Before migrating gameplay behavior, produce the following report-only inventories:
 
-0A first-week deliverables:
+0A deliverables:
 
 - Mode boolean inventory: all `activeTab`, `militaryView`, `show*`, `entityBattle`, `techDetailOpen`, `armyFormationEditor`, `naming`, `rewardReveal`, `confirmDialog`, `activeEventId` owners and mirrors.
 - Bridge inventory: facade/mixin installers and prototype augmentation surfaces.

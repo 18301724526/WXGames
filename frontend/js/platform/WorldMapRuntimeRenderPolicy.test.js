@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const WorldClock = require('../ecs/foundation/WorldClock');
 const Policy = require('./WorldMapRuntimeRenderPolicy');
 
 function createState(status = 'active') {
@@ -46,17 +47,24 @@ test('WorldMapRuntimeRenderPolicy resolves snapshot render context', () => {
 });
 
 test('WorldMapRuntimeRenderPolicy resolves epoch from world clock when option is absent', () => {
-  const context = Policy.createRenderContext({
-    worldClock: {
-      getEpochNowMs() {
-        return 24680;
+  const epochNowMs = new Date('2026-06-15T00:00:24.680Z').getTime();
+  const clockWorld = WorldClock.createClockWorld({
+    runtime: {
+      performance: {
+        now() {
+          return 0;
+        },
       },
     },
+    serverTime: epochNowMs,
+  });
+  const context = Policy.createRenderContext({
+    worldClock: clockWorld,
   }, {
     dragging: false,
   });
 
-  assert.equal(context.renderOptions.epochNowMs, 24680);
+  assert.equal(context.renderOptions.epochNowMs, epochNowMs);
 });
 
 test('WorldMapRuntimeRenderPolicy preserves runtime throttling rules', () => {

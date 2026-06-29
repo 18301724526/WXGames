@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const WorldMapLayerCanvasRenderer = require('./WorldMapLayerCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 const WorldActorCanvasRenderer = require('./WorldActorCanvasRenderer');
+const WorldClock = require('../../ecs/foundation/WorldClock');
 
 function createCtx(calls = []) {
   return {
@@ -1231,15 +1232,21 @@ test('WorldMapLayerCanvasRenderer uses world clock instead of stale host epoch f
     uiState: {},
     viewport: { originX: 195, originY: 360, scale: 0.78 },
   };
+  const clockWorld = WorldClock.createClockWorld({
+    runtime: {
+      performance: {
+        now() {
+          return 0;
+        },
+      },
+    },
+    serverTime: startedAt + 5000,
+  });
   const host = createHost({
     epochNowMs: startedAt,
     lastRenderOptions: { epochNowMs: startedAt },
     lastWorldTileMapContext: actorContext,
-    worldClock: {
-      getEpochNowMs() {
-        return startedAt + 5000;
-      },
-    },
+    worldClock: clockWorld,
     renderWorldActors(actors) {
       host.calls.push(['renderWorldActors', actors]);
       return true;

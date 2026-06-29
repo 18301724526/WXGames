@@ -35,6 +35,7 @@ const REQUIRED_ORDER_PAIRS = [
   ['js/debug/ClientOperationLog.js', 'js/ui/H5DebugDiagnosticsAdapter.js'],
   ['js/debug/WorldMarchTrace.js', 'js/ui/H5DebugDiagnosticsAdapter.js'],
   ['js/debug/CodexWorldMapDiag.js', 'js/ui/H5DebugDiagnosticsAdapter.js'],
+  ['js/ecs/runtime/EcsModeRuntimeBundle.js', 'js/ecs/foundation/WorldTime.js'],
   ['js/ui/H5DebugDiagnosticsAdapter.js', 'js/ui/H5ShellAdapter.js'],
   ['js/ui/H5ActorPickingDiagnosticsAdapter.js', 'js/ui/H5ShellAdapter.js'],
   ['js/api/GameAPI.js', 'js/ui/H5GameApiTransportAdapter.js'],

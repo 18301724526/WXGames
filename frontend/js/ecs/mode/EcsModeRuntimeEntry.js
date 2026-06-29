@@ -10,6 +10,7 @@ const InputIntentResolver = require('../input/InputIntentResolver');
 const RendererSnapshotBoundary = require('../snapshot/RendererSnapshotBoundary');
 const BattleOwner = require('../owner/BattleOwner');
 const FogOwner = require('../owner/FogOwner');
+const WorldClock = require('../foundation/WorldClock');
 
 const EcsModeRuntime = Object.freeze({
   ...ModeKeys,
@@ -19,6 +20,7 @@ const EcsModeRuntime = Object.freeze({
   ModeComponents,
   BattleOwner,
   FogOwner,
+  WorldClock,
   ModalWorld,
   RendererSnapshotBoundary,
   InputIntent,

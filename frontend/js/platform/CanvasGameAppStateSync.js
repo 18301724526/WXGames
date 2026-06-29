@@ -351,14 +351,14 @@
       syncWorldClock(payload = {}) {
             const clock = this.ensureWorldClock?.();
             if (!clock || !payload || typeof payload !== 'object') return false;
-            const synced = clock.updateFromPayload?.(payload) || false;
+            const synced = SharedWorldClock?.updateFromPayload?.(clock, payload) || false;
             // P3 Axis A: dropped the canvasShell.worldClock mirror (see ensureWorldClock).
             return synced;
           },
 
       getWorldEpochNowMs() {
             const clock = this.ensureWorldClock?.();
-            return clock?.getEpochNowMs?.(Date.now()) ?? Date.now();
+            return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
           },
 
       applyConnectionState(status = {}) {

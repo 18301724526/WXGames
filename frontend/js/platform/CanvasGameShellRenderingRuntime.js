@@ -23,6 +23,14 @@
       ActorPickingDiagnostics = null;
     }
   }
+  var SharedWorldClock = global.WorldClock;
+  if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
+    try {
+      SharedWorldClock = require('../ecs/foundation/WorldClock');
+    } catch (_error) {
+      SharedWorldClock = null;
+    }
+  }
 
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     const explorer = state?.worldExplorerState || {};
@@ -74,7 +82,7 @@ now() {
 
 getWorldEpochNowMs() {
       const clock = this.worldClock || this.runtime?.worldClock || this.lastGame?.worldClock || global.__WorldClockShared;
-      return clock?.getEpochNowMs?.(Date.now()) ?? Date.now();
+      return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
     },
 
 getTabOrder() {

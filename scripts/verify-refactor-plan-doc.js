@@ -7,9 +7,11 @@ const repoRoot = path.resolve(__dirname, '..');
 const docsRoot = path.join(repoRoot, 'docs');
 
 const officialDocPaths = [
+  'docs/6月29日Codex to Claude交接文档.md',
   'docs/current_product_design_2026-06-09.md',
   'docs/current_gameplay_design_2026-06-09.md',
   'docs/current_technical_architecture_2026-06-09.md',
+  'docs/bit-ecs-review-pass-plan.md',
   'docs/long_term_architecture_refactor_plan_2026-06-08.md',
   'docs/architecture_module_responsibility_index_2026-06-08.md',
   'docs/project_decomposition_2026-06-27.md',
@@ -27,6 +29,14 @@ const officialDocPaths = [
 ];
 
 const requiredText = {
+  'docs/6月29日Codex to Claude交接文档.md': [
+    '状态 / Status: P0 first-read handoff',
+    'Claude 必须先读本交接文档，再读其他架构文档或开始改代码。',
+    '本次提交不是“全项目 ECS 已完成”',
+    '`bitecs@0.4.0` 是唯一允许的 ECS 核心',
+    '`getShared(options)` 返回真实 BitECS world handle',
+    '不能假装已经解决',
+  ],
   'docs/project_decomposition_2026-06-27.md': [
     '项目完整分解报告',
     '玩家能做什么',
@@ -49,6 +59,15 @@ const requiredText = {
     'Hit priority queue',
     'mainHud',
     'Production Engineering',
+  ],
+  'docs/bit-ecs-review-pass-plan.md': [
+    'The project uses `bitecs@0.4.0` as the only approved ECS core.',
+    'A wrapper is never accepted as the ECS implementation.',
+    'store the real BitECS world handle instead of a wrapper object.',
+    'Entity identity comes from BitECS `addEntity(world)`.',
+    'Authoritative state is stored in `defineComponent(...)` component arrays.',
+    '`frontend/js/ecs/foundation/WorldClock.js` is the small demonstration slice',
+    'No batch is accepted if it ends with two writable sources of truth.',
   ],
   'docs/current_product_design_2026-06-09.md': [
     '实时操作的 Civilization-like 策略经营游戏',
