@@ -18,7 +18,7 @@
   var WorldMarchOptimisticState = global.WorldMarchOptimisticState;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchOptimisticState) {
     try {
-      WorldMarchOptimisticState = require('../ecs/system/WorldMarchOptimisticState');
+      WorldMarchOptimisticState = require('../state/optimistic/index');
     } catch (_error) {
       WorldMarchOptimisticState = null;
     }

@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const WorldMarchOptimisticState = require('./WorldMarchOptimisticState');
+const WorldMarchOptimisticState = require('./index');
 const WorldMarchCore = require('../../../../shared/worldMarchCore');
 
 function makeMission(overrides = {}) {

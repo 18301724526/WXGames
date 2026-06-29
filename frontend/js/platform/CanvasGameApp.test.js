@@ -56,23 +56,23 @@ test('html and minigame entries load CanvasGameApp modules before the facade', (
     assert.equal(minigamePosition < facadeMinigamePosition, true, `${moduleName} should require before CanvasGameApp`);
   });
 
-  const optimisticHtmlPosition = html.indexOf('WorldMarchOptimisticState.js');
-  const optimisticMinigamePosition = minigame.indexOf("require('../js/ecs/system/WorldMarchOptimisticState')");
+  const optimisticHtmlPosition = html.indexOf('js/state/optimistic/index.js');
+  const optimisticMinigamePosition = minigame.indexOf("require('../js/state/optimistic/index')");
   const syncHtmlPosition = html.indexOf('CanvasGameAppStateSync.js');
   const syncMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppStateSync')");
   const commandsHtmlPosition = html.indexOf('CanvasGameAppCommands.js');
   const commandsMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppCommands')");
-  assert.notEqual(optimisticHtmlPosition, -1, 'WorldMarchOptimisticState.js should be loaded by index.html');
-  assert.notEqual(optimisticMinigamePosition, -1, 'WorldMarchOptimisticState should be required by minigame/game.js');
+  assert.notEqual(optimisticHtmlPosition, -1, 'state/optimistic/index.js should be loaded by index.html');
+  assert.notEqual(optimisticMinigamePosition, -1, 'state/optimistic/index should be required by minigame/game.js');
   assert.equal(
     optimisticHtmlPosition < syncHtmlPosition && optimisticHtmlPosition < commandsHtmlPosition,
     true,
-    'WorldMarchOptimisticState.js should load before CanvasGameApp state/command modules',
+    'state/optimistic/index.js should load before CanvasGameApp state/command modules',
   );
   assert.equal(
     optimisticMinigamePosition < syncMinigamePosition && optimisticMinigamePosition < commandsMinigamePosition,
     true,
-    'WorldMarchOptimisticState should require before CanvasGameApp state/command modules',
+    'state/optimistic/index should require before CanvasGameApp state/command modules',
   );
 });
 
