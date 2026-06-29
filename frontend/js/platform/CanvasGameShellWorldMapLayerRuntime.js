@@ -148,11 +148,12 @@
         return Boolean(validity.valid);
       },
 
-      createFogOwner(context = null, options = {}) {
-        const FogOwner = EcsModeRuntimeBase?.FogOwner || global.EcsModeRuntime?.FogOwner;
-        if (!FogOwner?.createFogOwner || !context) return null;
+      createFogProjection(context = null, options = {}) {
+        const FogProjection =
+          EcsModeRuntimeBase?.FogProjection || global.EcsModeRuntime?.FogProjection;
+        if (!FogProjection?.createFogProjection || !context) return null;
         const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? context.epochNowMs;
-        const owner = FogOwner.createFogOwner(
+        const projection = FogProjection.createFogProjection(
           {
             ...(context || {}),
             config: this.config,
@@ -169,12 +170,12 @@
             epochNowMs,
           },
         );
-        this.__ecsFogOwner = owner;
-        return owner;
+        this.__ecsFogProjection = projection;
+        return projection;
       },
 
-      getLastFogOwner() {
-        return this.__ecsFogOwner || null;
+      getLastFogProjection() {
+        return this.__ecsFogProjection || null;
       },
 
       renderWorldFogLayer(context = null, options = {}) {
@@ -187,9 +188,8 @@
           this.worldFogRenderer.clear?.();
           return false;
         }
-        const owner = this.createFogOwner(context, options);
-        const FogOwner = EcsModeRuntimeBase?.FogOwner || global.EcsModeRuntime?.FogOwner;
-        const renderContext = FogOwner?.getFogRendererContext?.(owner) || null;
+        const projection = this.createFogProjection(context, options);
+        const renderContext = projection?.rendererContext || null;
         if (!renderContext) {
           this.worldFogRenderer.clear?.();
           return false;

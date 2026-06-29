@@ -8,7 +8,7 @@ const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /(^|\/)node_modules\//,
 ]);
 const APPROVED_PATHS = Object.freeze([
-  'frontend/js/ecs/owner/FogOwner.js',
+  'frontend/js/ecs/projection/FogProjection.js',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
   'frontend/js/platform/CanvasGameShellWorldMapLayerRuntime.js',
 ]);

@@ -191,7 +191,7 @@ test('CanvasGameShellWorldMapLayerRuntime refreshes fog actors when map layer co
   });
 
   assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), true);
-  assert.equal(shell.getLastFogOwner().schema, 'fog-owner-v1');
+  assert.equal(shell.getLastFogProjection().schema, 'fog-projection-v1');
   const context = calls.find((call) => call[0] === 'renderWorldFog')?.[1];
   assert.equal(context.visibilityActors.length, 1);
   assert.equal(context.visibilityActors[0].current.q > 0, true);

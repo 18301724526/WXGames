@@ -265,7 +265,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         renderer: this.renderer || null,
         surface: this.renderer || null,
         worldMapRuntime: this.worldMapRuntime || this.worldMapRuntimeCoordinator?.getMapRuntime?.() || null,
-        visibilitySnapshot: this.getLastFogOwner?.()?.visibilitySnapshot
+        visibilitySnapshot: this.getLastFogProjection?.()?.visibilitySnapshot
           || this.worldMapRenderer?.lastWorldTileMapContext?.visibilitySnapshot
           || null,
         inputTrace: this.lastDebugInputTrace || null,

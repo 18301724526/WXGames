@@ -2446,11 +2446,11 @@ var EcsModeRuntime = (() => {
     },
   });
 
-  // frontend/js/ecs/owner/FogOwner.js
-  var require_FogOwner = __commonJS({
-    'frontend/js/ecs/owner/FogOwner.js'(exports, module) {
+  // frontend/js/ecs/projection/FogProjection.js
+  var require_FogProjection = __commonJS({
+    'frontend/js/ecs/projection/FogProjection.js'(exports, module) {
       'use strict';
-      var SCHEMA = 'fog-owner-v1';
+      var SCHEMA = 'fog-projection-v1';
       function cloneArray(value) {
         return Array.isArray(value) ? value.slice() : [];
       }
@@ -2528,7 +2528,7 @@ var EcsModeRuntime = (() => {
           options.visibilityOptions || options,
         );
       }
-      function createFogOwner(input = {}, options = {}) {
+      function createFogProjection(input = {}, options = {}) {
         const dependencies = resolveFogDependencies(options);
         const renderSnapshot = input.renderSnapshot || null;
         const tileMapView = input.tileMapView || renderSnapshot?.tileMapView || {};
@@ -2577,7 +2577,7 @@ var EcsModeRuntime = (() => {
           fogVisualSnapshot && dependencies.fogVisualSnapshot?.toRendererContext
             ? dependencies.fogVisualSnapshot.toRendererContext(fogVisualSnapshot, options)
             : null;
-        const owner = Object.freeze({
+        return Object.freeze({
           schema: SCHEMA,
           epochNowMs: resolveEpochNowMs(input, options),
           visibilitySnapshot,
@@ -2610,25 +2610,13 @@ var EcsModeRuntime = (() => {
             explicitEntries.length || rendererContext?.entries?.length || 0,
           ].join(':'),
         });
-        return owner;
-      }
-      function ensureFogOwner(owner = null) {
-        return owner?.schema === SCHEMA ? owner : createFogOwner();
-      }
-      function getFogSnapshot(owner = null) {
-        return ensureFogOwner(owner);
-      }
-      function getFogRendererContext(owner = null) {
-        return ensureFogOwner(owner).rendererContext || null;
       }
       var api = Object.freeze({
         SCHEMA,
-        createFogOwner,
-        getFogSnapshot,
-        getFogRendererContext,
+        createFogProjection,
         resolveFogDependencies,
       });
-      if (typeof globalThis !== 'undefined') globalThis.EcsFogOwner = api;
+      if (typeof globalThis !== 'undefined') globalThis.EcsFogProjection = api;
       if (typeof module !== 'undefined' && module.exports) module.exports = api;
     },
   });
@@ -3441,7 +3429,7 @@ var EcsModeRuntime = (() => {
       var InputIntentResolver = require_InputIntentResolver();
       var RendererSnapshotBoundary = require_RendererSnapshotBoundary();
       var BattleOwner = require_BattleOwner();
-      var FogOwner = require_FogOwner();
+      var FogProjection = require_FogProjection();
       var WorldClock = require_WorldClock();
       var WorldMapVisibilityModel = require_WorldMapVisibilityModel();
       var EcsModeRuntime = Object.freeze({
@@ -3451,13 +3439,13 @@ var EcsModeRuntime = (() => {
         ...InputIntentResolver,
         ModeComponents,
         BattleOwner,
-        FogOwner,
+        FogProjection,
         WorldClock,
         WorldMapVisibilityModel,
         ModalWorld,
         RendererSnapshotBoundary,
         InputIntent,
-        version: 'ecs-mode-runtime-batch-7b',
+        version: 'ecs-mode-runtime-batch-7c',
       });
       if (typeof globalThis !== 'undefined') {
         globalThis.EcsModeRuntime = EcsModeRuntime;

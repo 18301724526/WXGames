@@ -1,6 +1,11 @@
 'use strict';
 
-const SCHEMA = 'fog-owner-v1';
+// Fog render projection. PURE: given the per-frame inputs it computes the renderer
+// context + visibility snapshot fresh and returns them. It owns NO state (the old
+// FogOwner "owner" object was just this return value wrapped in ensure/get accessors).
+// Single responsibility: turn fog inputs -> renderer context. One file to read.
+
+const SCHEMA = 'fog-projection-v1';
 
 function cloneArray(value) {
   return Array.isArray(value) ? value.slice() : [];
@@ -78,7 +83,9 @@ function buildVisibilitySnapshot(
   );
 }
 
-function createFogOwner(input = {}, options = {}) {
+// Pure projection: inputs -> { schema, epochNowMs, visibilitySnapshot, fogVisualSnapshot,
+// rendererContext, signature }. The caller reads .rendererContext directly (no owner wrapper).
+function createFogProjection(input = {}, options = {}) {
   const dependencies = resolveFogDependencies(options);
   const renderSnapshot = input.renderSnapshot || null;
   const tileMapView = input.tileMapView || renderSnapshot?.tileMapView || {};
@@ -123,7 +130,7 @@ function createFogOwner(input = {}, options = {}) {
     fogVisualSnapshot && dependencies.fogVisualSnapshot?.toRendererContext
       ? dependencies.fogVisualSnapshot.toRendererContext(fogVisualSnapshot, options)
       : null;
-  const owner = Object.freeze({
+  return Object.freeze({
     schema: SCHEMA,
     epochNowMs: resolveEpochNowMs(input, options),
     visibilitySnapshot,
@@ -154,28 +161,13 @@ function createFogOwner(input = {}, options = {}) {
       explicitEntries.length || rendererContext?.entries?.length || 0,
     ].join(':'),
   });
-  return owner;
-}
-
-function ensureFogOwner(owner = null) {
-  return owner?.schema === SCHEMA ? owner : createFogOwner();
-}
-
-function getFogSnapshot(owner = null) {
-  return ensureFogOwner(owner);
-}
-
-function getFogRendererContext(owner = null) {
-  return ensureFogOwner(owner).rendererContext || null;
 }
 
 const api = Object.freeze({
   SCHEMA,
-  createFogOwner,
-  getFogSnapshot,
-  getFogRendererContext,
+  createFogProjection,
   resolveFogDependencies,
 });
 
-if (typeof globalThis !== 'undefined') globalThis.EcsFogOwner = api;
+if (typeof globalThis !== 'undefined') globalThis.EcsFogProjection = api;
 if (typeof module !== 'undefined' && module.exports) module.exports = api;

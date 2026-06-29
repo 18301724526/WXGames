@@ -620,7 +620,7 @@ test('CanvasGameShell routes enabled fog rendering through the ECS fog owner', (
   assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), true);
 
   const renderCall = calls.find((call) => call[0] === 'renderWorldFog');
-  assert.equal(shell.getLastFogOwner().schema, 'fog-owner-v1');
+  assert.equal(shell.getLastFogProjection().schema, 'fog-projection-v1');
   assert.equal(renderCall?.[1]?.fogVisualSnapshot?.schema, 'world-fog-visual-snapshot-v1');
   assert.equal(renderCall?.[1]?.entries.length, 2);
   assert.equal(renderCall?.[1]?.entries[0].tile.visible, true);
@@ -649,7 +649,7 @@ test('CanvasGameShell does not invoke the ECS fog owner when fog is disabled', (
   assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), false);
 
   assert.deepEqual(calls, [['clear']]);
-  assert.equal(shell.getLastFogOwner?.(), null);
+  assert.equal(shell.getLastFogProjection?.(), null);
 });
 
 test('CanvasGameShell keeps debug overlays disabled by default', () => {
