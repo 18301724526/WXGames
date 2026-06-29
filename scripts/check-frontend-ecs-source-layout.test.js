@@ -6,7 +6,6 @@ const path = require('node:path');
 
 const {
   findRetiredLayerReferencesInText,
-  isProductionFile,
   parseFormat,
   renderText,
   scanFrontendEcsSourceLayout,
@@ -48,7 +47,10 @@ test('frontend ECS source layout guard flags runtime imports and entry scripts',
       "import x from './ecs/World.js';",
     ].join('\n'),
   );
-  assert.deepEqual(findings.map((finding) => finding.kind), ['retired-import', 'retired-import']);
+  assert.deepEqual(
+    findings.map((finding) => finding.kind),
+    ['retired-import', 'retired-import'],
+  );
 });
 
 test('frontend ECS source layout guard flags retired owner symbols', () => {
@@ -60,14 +62,21 @@ test('frontend ECS source layout guard flags retired owner symbols', () => {
       'const ok = EcsBattleOwner.createBattleOwner();',
     ].join('\n'),
   );
-  assert.deepEqual(findings.map((finding) => finding.kind), ['retired-symbol', 'retired-symbol']);
+  assert.deepEqual(
+    findings.map((finding) => finding.kind),
+    ['retired-symbol', 'retired-symbol'],
+  );
 });
 
 test('frontend ECS source layout guard scans production frontend files and skips tests', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ecs-source-layout-'));
   writeFile(repoRoot, `frontend/js/${RETIRED}/Bad.js`, 'global.Bad = {};\n');
   writeFile(repoRoot, 'frontend/js/platform/Bad.js', `require('../${RETIRED}/Bad');\n`);
-  writeFile(repoRoot, 'frontend/js/platform/SymbolBad.js', `global.Bad = ${RETIRED_MODEL_TOKEN}Namespace;\n`);
+  writeFile(
+    repoRoot,
+    'frontend/js/platform/SymbolBad.js',
+    `global.Bad = ${RETIRED_MODEL_TOKEN}Namespace;\n`,
+  );
   writeFile(repoRoot, 'frontend/js/platform/Bad.test.js', `require('../${RETIRED}/Bad');\n`);
   writeFile(repoRoot, 'frontend/index.html', `<script src="js/${RETIRED}/Bad.js"></script>\n`);
   writeFile(repoRoot, 'frontend/js/ecs/system/Good.js', 'global.Good = {};\n');
@@ -75,7 +84,10 @@ test('frontend ECS source layout guard scans production frontend files and skips
   const report = scanFrontendEcsSourceLayout({ repoRoot });
 
   assert.equal(report.summary.totalViolations, 4);
-  assert.equal(report.violations.some((violation) => violation.file === 'frontend/js/platform/Bad.test.js'), false);
+  assert.equal(
+    report.violations.some((violation) => violation.file === 'frontend/js/platform/Bad.test.js'),
+    false,
+  );
   assert.equal(renderText(report).includes('frontend-ecs-source-layout'), true);
 });
 

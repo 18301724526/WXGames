@@ -131,27 +131,31 @@
   function containsPoint(target = {}, point = {}) {
     const x = Number(point.x);
     const y = Number(point.y);
-    return Boolean(Number.isFinite(x)
-      && Number.isFinite(y)
-      && x >= toNumber(target.x)
-      && x <= toNumber(target.x) + toNumber(target.width)
-      && y >= toNumber(target.y)
-      && y <= toNumber(target.y) + toNumber(target.height));
+    return Boolean(
+      Number.isFinite(x) &&
+      Number.isFinite(y) &&
+      x >= toNumber(target.x) &&
+      x <= toNumber(target.x) + toNumber(target.width) &&
+      y >= toNumber(target.y) &&
+      y <= toNumber(target.y) + toNumber(target.height),
+    );
   }
 
   function summarizeAction(action = {}) {
-    return action ? {
-      type: action.type || '',
-      actorId: action.actorId || '',
-      missionId: action.missionId || '',
-      tileId: action.tileId || '',
-      siteId: action.siteId || '',
-      targetQ: action.targetQ ?? action.q ?? null,
-      targetR: action.targetR ?? action.r ?? null,
-      inputSurface: action.inputSurface || '',
-      background: Boolean(action.background),
-      disabled: Boolean(action.disabled),
-    } : null;
+    return action
+      ? {
+          type: action.type || '',
+          actorId: action.actorId || '',
+          missionId: action.missionId || '',
+          tileId: action.tileId || '',
+          siteId: action.siteId || '',
+          targetQ: action.targetQ ?? action.q ?? null,
+          targetR: action.targetR ?? action.r ?? null,
+          inputSurface: action.inputSurface || '',
+          background: Boolean(action.background),
+          disabled: Boolean(action.disabled),
+        }
+      : null;
   }
 
   function summarizeHitTarget(target = {}, index = -1, point = {}) {
@@ -179,8 +183,11 @@
       targetCount: list.length,
       actorTargetCount: actorTargets.length,
       containsMatchCount: containsMatches.length,
-      containsActorCount: containsMatches.filter((target) => target.action?.type === 'selectWorldActor').length,
-      containsSiteCount: containsMatches.filter((target) => isWorldSiteAction(target.action)).length,
+      containsActorCount: containsMatches.filter(
+        (target) => target.action?.type === 'selectWorldActor',
+      ).length,
+      containsSiteCount: containsMatches.filter((target) => isWorldSiteAction(target.action))
+        .length,
       actorTargets: actorTargets.slice(0, 12),
       containsMatches: containsMatches.slice(0, 12),
     };
@@ -195,7 +202,8 @@
 
   function normalizeHitTarget(target = {}, options = {}) {
     const action = target?.action || null;
-    if (!action || !isAllowedAction(action, options.allowedActions || DEFAULT_ALLOWED_ACTIONS)) return null;
+    if (!action || !isAllowedAction(action, options.allowedActions || DEFAULT_ALLOWED_ACTIONS))
+      return null;
     const offsetX = toNumber(options.offsetX, 0);
     const offsetY = toNumber(options.offsetY, 0);
     return {
@@ -219,10 +227,12 @@
 
   function isRendererWorldSurfaceAction(action = {}) {
     if (!action?.type) return false;
-    return action.type === 'worldMapDrag'
-      || action.type === 'openWorldSite'
-      || action.type === 'selectWorldActor'
-      || (action.type === 'selectWorldMarchTarget' && action.background);
+    return (
+      action.type === 'worldMapDrag' ||
+      action.type === 'openWorldSite' ||
+      action.type === 'selectWorldActor' ||
+      (action.type === 'selectWorldMarchTarget' && action.background)
+    );
   }
 
   function isWorldMapSurfaceAction(action = {}) {
@@ -233,8 +243,10 @@
     if (!action) return true;
     if (action.disabled || action.type === 'blockCanvasModal') return false;
     if (isWorldMapSurfaceAction(action)) return isRendererWorldSurfaceAction(action);
-    return action.type === 'worldMapDrag'
-      || (action.type === 'selectWorldMarchTarget' && action.background);
+    return (
+      action.type === 'worldMapDrag' ||
+      (action.type === 'selectWorldMarchTarget' && action.background)
+    );
   }
 
   function getTopmostForegroundAction(point = {}, targets = [], predicate = null) {
@@ -259,8 +271,9 @@
 
   function resolveForegroundCandidates(point = {}, targets = [], options = {}) {
     if (!WorldMapSelectionResolver?.resolveCandidates) return null;
-    const candidates = getForegroundTargets(point, targets)
-      .filter((target) => WorldMapSelectionResolver.isWorldEntityAction?.(target.action));
+    const candidates = getForegroundTargets(point, targets).filter((target) =>
+      WorldMapSelectionResolver.isWorldEntityAction?.(target.action),
+    );
     if (candidates.length <= 1) return null;
     const normalized = WorldMapSelectionResolver.normalizeCandidates?.(candidates, {
       point,
@@ -268,12 +281,20 @@
     });
     if (!Array.isArray(normalized) || normalized.length <= 1) return null;
     return WorldMapSelectionResolver.createPickerAction
-      ? WorldMapSelectionResolver.createPickerAction(normalized, { point, tile: options.tile || {} })
-      : WorldMapSelectionResolver.resolveCandidates(normalized, { point, tile: options.tile || {} });
+      ? WorldMapSelectionResolver.createPickerAction(normalized, {
+          point,
+          tile: options.tile || {},
+        })
+      : WorldMapSelectionResolver.resolveCandidates(normalized, {
+          point,
+          tile: options.tile || {},
+        });
   }
 
   function getPriorityForegroundAction(point = {}, targets = [], options = {}) {
-    const priorities = Array.isArray(options.priorities) ? options.priorities : DEFAULT_PRIORITY_ACTIONS;
+    const priorities = Array.isArray(options.priorities)
+      ? options.priorities
+      : DEFAULT_PRIORITY_ACTIONS;
     for (const type of priorities) {
       for (let index = (Array.isArray(targets) ? targets.length : 0) - 1; index >= 0; index -= 1) {
         const target = targets[index];
@@ -307,10 +328,7 @@
   }
 
   function getContextFrame(context = {}) {
-    return context?.frame
-      || context?.renderSnapshot?.frame
-      || context?.viewport?.frame
-      || null;
+    return context?.frame || context?.renderSnapshot?.frame || context?.viewport?.frame || null;
   }
 
   function isPointInContextFrame(point = {}, context = {}) {
@@ -322,9 +340,11 @@
   function findKnownTile(tileMapView = {}, inferred = {}) {
     const coord = normalizeCoord(inferred);
     if (!Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r))) return null;
-    return (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).find((tile) => (
-      normalizeCoord(tile).tileId === coord.tileId
-    )) || null;
+    return (
+      (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []).find(
+        (tile) => normalizeCoord(tile).tileId === coord.tileId,
+      ) || null
+    );
   }
 
   function isKnownTile(tile = null) {
@@ -335,8 +355,7 @@
     const tileMapView = context?.tileMapView || context?.renderSnapshot?.tileMapView || null;
     const viewport = context?.viewport || context?.renderSnapshot?.viewport || null;
     const geometry = context?.geometry || tileMapView?.geometry || viewport?.geometry || null;
-    const axialMapper = options.screenPointToAxialTile
-      || WorldMarchSystem?.screenPointToAxialTile;
+    const axialMapper = options.screenPointToAxialTile || WorldMarchSystem?.screenPointToAxialTile;
     if (!tileMapView || !viewport || !geometry || typeof axialMapper !== 'function') return null;
     const inferred = axialMapper(point, viewport, geometry);
     const coord = normalizeCoord(inferred);
@@ -349,15 +368,18 @@
       r: displayCoord.r,
       tileId: displayCoord.tileId,
       known,
-      terrain: known ? (knownTile.terrain || '') : '',
-      terrainLabel: known ? (knownTile.terrainLabel || knownTile.terrain || '') : t('world.march.target.unknownTerrain'),
+      terrain: known ? knownTile.terrain || '' : '',
+      terrainLabel: known
+        ? knownTile.terrainLabel || knownTile.terrain || ''
+        : t('world.march.target.unknownTerrain'),
       tile: knownTile,
     };
   }
 
   function buildSelectWorldMarchTargetAction(tile = {}, options = {}) {
     const coord = normalizeCoord(tile);
-    if (!tile || !Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r))) return null;
+    if (!tile || !Number.isFinite(Number(coord.q)) || !Number.isFinite(Number(coord.r)))
+      return null;
     return {
       type: 'selectWorldMarchTarget',
       tileId: coord.tileId,
@@ -365,7 +387,9 @@
       targetR: coord.r,
       known: Boolean(tile.known),
       terrain: tile.terrain || '',
-      terrainLabel: tile.terrainLabel || (tile.known ? tile.terrain || '' : t('world.march.target.unknownTerrain')),
+      terrainLabel:
+        tile.terrainLabel ||
+        (tile.known ? tile.terrain || '' : t('world.march.target.unknownTerrain')),
       background: options.background !== false,
     };
   }
@@ -414,7 +438,9 @@
           reason = 'renderer-world-surface-background-disabled';
         } else {
           finalAction = getBackgroundMarchTargetAction(backgroundPoint, context, options);
-          reason = finalAction ? 'renderer-world-surface-background' : 'renderer-world-surface-background-miss';
+          reason = finalAction
+            ? 'renderer-world-surface-background'
+            : 'renderer-world-surface-background-miss';
         }
       } else {
         finalAction = action;
@@ -429,11 +455,13 @@
       rendererAction: summarizeAction(action),
       pickingAction: summarizeAction(pickingAction),
       finalAction: summarizeAction(finalAction),
-      pickingSnapshot: input.pickingSnapshot ? {
-        inputEpoch: input.pickingSnapshot.inputEpoch || 0,
-        signature: input.pickingSnapshot.signature || '',
-        counts: input.pickingSnapshot.counts || null,
-      } : null,
+      pickingSnapshot: input.pickingSnapshot
+        ? {
+            inputEpoch: input.pickingSnapshot.inputEpoch || 0,
+            signature: input.pickingSnapshot.signature || '',
+            counts: input.pickingSnapshot.counts || null,
+          }
+        : null,
       hitTargets: summarizeHitTargetsForTap(point, hitTargets),
     });
     return finalAction;

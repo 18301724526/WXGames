@@ -81,11 +81,20 @@
     const height = Math.max(1, toNumber(frameInput.height, 1));
     const scaleBasisWidth = toNumber(options.scaleBasisWidth, width);
     const scaleBasisHeight = toNumber(options.scaleBasisHeight, height);
-    const originX = options.originX !== undefined ? toNumber(options.originX, x + width * 0.5) : x + width * 0.5;
-    const originY = options.originY !== undefined ? toNumber(options.originY, y + height * 0.42) : y + height * 0.42;
-    const scale = Math.max(0.38, Math.min(0.78, Math.min(scaleBasisWidth / 520, scaleBasisHeight / 420)));
+    const originX =
+      options.originX !== undefined ? toNumber(options.originX, x + width * 0.5) : x + width * 0.5;
+    const originY =
+      options.originY !== undefined
+        ? toNumber(options.originY, y + height * 0.42)
+        : y + height * 0.42;
+    const scale = Math.max(
+      0.38,
+      Math.min(0.78, Math.min(scaleBasisWidth / 520, scaleBasisHeight / 420)),
+    );
     const geometry = options.geometry || tileMapView.geometry || {};
-    const worldOrigin = normalizeCoord(options.worldOrigin || tileMapView.origin || tileMapView.worldOrigin || {});
+    const worldOrigin = normalizeCoord(
+      options.worldOrigin || tileMapView.origin || tileMapView.worldOrigin || {},
+    );
     return {
       originX: Number.isFinite(originX) ? originX : x + width * 0.5,
       originY: Number.isFinite(originY) ? originY : y + height * 0.42,
@@ -113,7 +122,8 @@
       terrainLabel: target.terrainLabel || '',
     };
     if (target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId) {
-      result.combatEncounterId = target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId;
+      result.combatEncounterId =
+        target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId;
     }
     if (target.combatTarget && typeof target.combatTarget === 'object') {
       result.combatTarget = JSON.parse(JSON.stringify(target.combatTarget));
@@ -141,7 +151,8 @@
   }
 
   function buildMarchSnapshot(tileMapView = {}, options = {}) {
-    if (options.marchSnapshot && typeof options.marchSnapshot === 'object') return options.marchSnapshot;
+    if (options.marchSnapshot && typeof options.marchSnapshot === 'object')
+      return options.marchSnapshot;
     const missions = Array.isArray(tileMapView.activeScouts) ? tileMapView.activeScouts : [];
     const nowMs = options.nowMs ?? options.epochNowMs ?? options.serverNowMs;
     if (!MarchSnapshot?.createSnapshot) {
@@ -151,15 +162,22 @@
         missions: [],
         actors: [],
         arrivals: [],
-        indexById: { missions: Object.create(null), actors: Object.create(null), arrivals: Object.create(null) },
+        indexById: {
+          missions: Object.create(null),
+          actors: Object.create(null),
+          arrivals: Object.create(null),
+        },
         counts: { missions: missions.length, actors: 0, arrivals: 0, active: 0, idle: 0 },
         signature: `fallback:${missions.length}`,
       };
     }
-    return MarchSnapshot.createSnapshot({ missions }, {
-      nowMs,
-      signatureTimeBucketMs: options.signatureTimeBucketMs,
-    });
+    return MarchSnapshot.createSnapshot(
+      { missions },
+      {
+        nowMs,
+        signatureTimeBucketMs: options.signatureTimeBucketMs,
+      },
+    );
   }
 
   function createSnapshot(input = {}, options = {}) {
@@ -173,7 +191,8 @@
       inset: options.frameInset ?? input.frameInset ?? 1,
     };
     const geometry = options.geometry || tileMapView.geometry || {};
-    const viewport = options.viewport || normalizeViewport(tileMapView, frameInput, { ...options, geometry });
+    const viewport =
+      options.viewport || normalizeViewport(tileMapView, frameInput, { ...options, geometry });
     const frame = options.frame || normalizeFrame(frameInput);
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const sites = Array.isArray(tileMapView.sites) ? tileMapView.sites : [];
@@ -182,7 +201,9 @@
     const march = buildMarchSnapshot(tileMapView, options);
     const actors = ActorProjection?.projectWorldActors
       ? ActorProjection.projectWorldActors(march, options)
-      : (Array.isArray(march.actors) ? march.actors : []);
+      : Array.isArray(march.actors)
+        ? march.actors
+        : [];
     const flags = normalizeFlags(options);
     const ui = normalizeUiState(uiState);
     let hash = SignatureHash.FNV_OFFSET_BASIS;
@@ -256,7 +277,7 @@
       counts: snapshot.counts || {},
       march: MarchSnapshot?.toSerializable
         ? MarchSnapshot.toSerializable(snapshot.march || {})
-        : (snapshot.march || null),
+        : snapshot.march || null,
       signature: snapshot.signature || '',
     };
   }

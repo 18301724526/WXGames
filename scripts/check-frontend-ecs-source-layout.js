@@ -1,14 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SOURCE_ROOTS = Object.freeze([
-  'frontend/js',
-  'frontend/minigame',
-]);
-const ENTRY_FILES = Object.freeze([
-  'frontend/index.html',
-  'frontend/minigame/game.js',
-]);
+const SOURCE_ROOTS = Object.freeze(['frontend/js', 'frontend/minigame']);
+const ENTRY_FILES = Object.freeze(['frontend/index.html', 'frontend/minigame/game.js']);
 const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /\.test\.js$/,
   /(^|\/)vendor\//,
@@ -56,7 +50,10 @@ function isProductionFile(filePath = '') {
 function findRetiredLayerReferencesInText(filePath, text = '') {
   const normalized = normalizePath(filePath);
   const findings = [];
-  if (normalized.includes(RETIRED_PATH_SEGMENT) || normalized.startsWith(`frontend/js/${RETIRED_LAYER_NAME}/`)) {
+  if (
+    normalized.includes(RETIRED_PATH_SEGMENT) ||
+    normalized.startsWith(`frontend/js/${RETIRED_LAYER_NAME}/`)
+  ) {
     findings.push({
       file: normalized,
       line: 1,

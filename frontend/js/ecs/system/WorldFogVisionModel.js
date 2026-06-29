@@ -108,7 +108,9 @@
   }
 
   function getViewportOrigin(viewport = {}) {
-    return normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {});
+    return normalizeCoord(
+      viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {},
+    );
   }
 
   function getCoordScreenCenter(coord = {}, viewport = {}, geometryInput = {}) {
@@ -117,20 +119,28 @@
     const source = normalizeFloatCoord(coord);
     const scale = Math.max(0.05, toNumber(viewport.scale, 1));
     return {
-      x: toNumber(viewport.originX) + toNumber(viewport.panX) + ((source.q - origin.q) - (source.r - origin.r)) * geometry.stepX * scale,
-      y: toNumber(viewport.originY) + toNumber(viewport.panY) + ((source.q - origin.q) + (source.r - origin.r)) * geometry.stepY * scale,
+      x:
+        toNumber(viewport.originX) +
+        toNumber(viewport.panX) +
+        (source.q - origin.q - (source.r - origin.r)) * geometry.stepX * scale,
+      y:
+        toNumber(viewport.originY) +
+        toNumber(viewport.panY) +
+        (source.q - origin.q + (source.r - origin.r)) * geometry.stepY * scale,
     };
   }
 
   function getTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
-    if (TileMapGeometry?.getTileScreenCenter) return TileMapGeometry.getTileScreenCenter(tile, viewport, geometry);
+    if (TileMapGeometry?.getTileScreenCenter)
+      return TileMapGeometry.getTileScreenCenter(tile, viewport, geometry);
     return getCoordScreenCenter(normalizeCoord(tile), viewport, geometry);
   }
 
   function getTileDrawRect(center = {}, viewport = {}, geometryInput = {}) {
     const geometry = normalizeGeometry(geometryInput);
     const scale = Math.max(0.05, toNumber(viewport.scale, 1));
-    if (TileMapGeometry?.getTileDrawRect) return TileMapGeometry.getTileDrawRect(center, scale, geometry);
+    if (TileMapGeometry?.getTileDrawRect)
+      return TileMapGeometry.getTileDrawRect(center, scale, geometry);
     const width = geometry.tileWidth * scale;
     const height = geometry.tileHeight * scale;
     return {
@@ -148,7 +158,9 @@
   function isUnknownTile(tile = {}) {
     if (!tile || typeof tile !== 'object') return true;
     if (tile.discovered === false) return true;
-    return ['unknown', 'hidden', 'undiscovered'].includes(String(tile.visibility || '').toLowerCase());
+    return ['unknown', 'hidden', 'undiscovered'].includes(
+      String(tile.visibility || '').toLowerCase(),
+    );
   }
 
   function isExploredTile(tile = {}) {
@@ -163,7 +175,12 @@
 
   function isControlledTile(tile = {}) {
     const visibility = String(tile.visibility || '').toLowerCase();
-    return Boolean(tile.controlled || visibility === 'controlled' || tile.siteId === 'capital' || tile.terrain === 'capital');
+    return Boolean(
+      tile.controlled ||
+      visibility === 'controlled' ||
+      tile.siteId === 'capital' ||
+      tile.terrain === 'capital',
+    );
   }
 
   function normalizeEntry(tile = {}, viewport = {}, geometry = {}) {
@@ -220,7 +237,13 @@
     };
   }
 
-  function createTileSource(entry = {}, kind = 'visibleTile', viewport = {}, geometry = {}, overrides = {}) {
+  function createTileSource(
+    entry = {},
+    kind = 'visibleTile',
+    viewport = {},
+    geometry = {},
+    overrides = {},
+  ) {
     const tile = entry.tile || {};
     const coord = normalizeCoord(tile);
     const center = entry.center || getTileScreenCenter(coord, viewport, geometry);
@@ -248,12 +271,14 @@
     const status = String(site.status || '').toLowerCase();
     const hostileOwner = ['ai', 'enemy', 'neutral', 'npc', 'other'].includes(owner);
     const ownedStatus = ['occupied', 'controlled', 'owned'].includes(status);
-    return Boolean(site.isPlayerOwned || site.playerOwned || site.controlled)
-      || id === 'capital'
-      || type === 'capital'
-      || owner === 'player'
-      || owner === 'self'
-      || (ownedStatus && !hostileOwner);
+    return (
+      Boolean(site.isPlayerOwned || site.playerOwned || site.controlled) ||
+      id === 'capital' ||
+      type === 'capital' ||
+      owner === 'player' ||
+      owner === 'self' ||
+      (ownedStatus && !hostileOwner)
+    );
   }
 
   function collectCitySources(tileMapView = {}, entries = [], viewport = {}, geometry = {}) {
@@ -262,33 +287,40 @@
     const seen = new Set();
     const append = (site = {}, fallbackTile = null) => {
       if (!site || typeof site !== 'object' || !isCitySite(site)) return;
-      const directCoord = site.q !== undefined || site.r !== undefined || site.x !== undefined || site.y !== undefined
-        ? normalizeCoord(site)
-        : null;
-      const tileEntry = tileById.get(site.tileId || '')
-        || tileById.get(site.id || '')
-        || (directCoord ? tileById.get(directCoord.tileId) : null)
-        || fallbackTile
-        || null;
+      const directCoord =
+        site.q !== undefined || site.r !== undefined || site.x !== undefined || site.y !== undefined
+          ? normalizeCoord(site)
+          : null;
+      const tileEntry =
+        tileById.get(site.tileId || '') ||
+        tileById.get(site.id || '') ||
+        (directCoord ? tileById.get(directCoord.tileId) : null) ||
+        fallbackTile ||
+        null;
       const coord = directCoord || normalizeCoord(tileEntry?.tile || site);
       if (seen.has(coord.tileId)) return;
       seen.add(coord.tileId);
-      sources.push(createSource('city', coord, viewport, geometry, {
-        center: tileEntry?.center || getCoordScreenCenter(coord, viewport, geometry),
-        siteId: site.id || site.siteId || '',
-      }));
+      sources.push(
+        createSource('city', coord, viewport, geometry, {
+          center: tileEntry?.center || getCoordScreenCenter(coord, viewport, geometry),
+          siteId: site.id || site.siteId || '',
+        }),
+      );
     };
     (Array.isArray(tileMapView.sites) ? tileMapView.sites : []).forEach((site) => append(site));
     getFogEntries(tileMapView, entries, viewport, geometry).forEach((entry) => {
       const tile = entry.tile || {};
       if (!isControlledTile(tile) && !tile.site) return;
-      append(tile.site || {
-        id: tile.siteId || tile.id,
-        q: tile.q,
-        r: tile.r,
-        type: tile.terrain === 'capital' ? 'capital' : 'city',
-        owner: isControlledTile(tile) ? 'player' : '',
-      }, entry);
+      append(
+        tile.site || {
+          id: tile.siteId || tile.id,
+          q: tile.q,
+          r: tile.r,
+          type: tile.terrain === 'capital' ? 'capital' : 'city',
+          owner: isControlledTile(tile) ? 'player' : '',
+        },
+        entry,
+      );
     });
     return sources;
   }
@@ -296,13 +328,22 @@
   function collectUnitSources(context = {}, viewport = {}, geometry = {}) {
     const actors = Array.isArray(context.visibilityActors)
       ? context.visibilityActors
-      : (Array.isArray(context.actors)
-      ? context.actors
-      : (Array.isArray(context.renderSnapshot?.actors) ? context.renderSnapshot.actors : []));
+      : Array.isArray(context.actors)
+        ? context.actors
+        : Array.isArray(context.renderSnapshot?.actors)
+          ? context.renderSnapshot.actors
+          : [];
     return actors
       .map((actor) => {
         const current = actor?.current || actor?.position || actor?.target || null;
-        if (!current || (current.q === undefined && current.r === undefined && current.x === undefined && current.y === undefined)) return null;
+        if (
+          !current ||
+          (current.q === undefined &&
+            current.r === undefined &&
+            current.x === undefined &&
+            current.y === undefined)
+        )
+          return null;
         return createSource('unit', current, viewport, geometry, {
           actorId: actor.id || actor.missionId || '',
           status: actor.status || '',
@@ -321,10 +362,11 @@
 
   function getVisionHistorySourceRecords(context = {}) {
     const tileMapView = context.tileMapView || {};
-    const sources = tileMapView.visionHistory?.sources
-      || tileMapView.visionHistorySources
-      || context.renderSnapshot?.tileMapView?.visionHistory?.sources
-      || [];
+    const sources =
+      tileMapView.visionHistory?.sources ||
+      tileMapView.visionHistorySources ||
+      context.renderSnapshot?.tileMapView?.visionHistory?.sources ||
+      [];
     return Array.isArray(sources) ? sources : [];
   }
 
@@ -346,13 +388,16 @@
   function isRouteStepRevealed(step = {}, mission = {}) {
     if (step.revealed) return true;
     const id = normalizeCoord(step).tileId;
-    return (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : []).map(String).includes(id);
+    return (Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds : [])
+      .map(String)
+      .includes(id);
   }
 
   function getMissionRevealSources(mission = {}, actor = null) {
     const fromActor = Array.isArray(actor?.renderRevealSources) ? actor.renderRevealSources : [];
     if (fromActor.length) return fromActor;
-    if (Array.isArray(mission.renderRevealSources) && mission.renderRevealSources.length) return mission.renderRevealSources;
+    if (Array.isArray(mission.renderRevealSources) && mission.renderRevealSources.length)
+      return mission.renderRevealSources;
     if (WorldMarchSystem?.getRouteRenderRevealSources) {
       const nowMs = toNumber(mission.nowMs ?? mission.epochNowMs, Number.NaN);
       if (!Number.isFinite(nowMs)) return [];
@@ -371,13 +416,21 @@
     const sources = [];
     for (let index = 0; index <= steps; index += 1) {
       const t = index / steps;
-      sources.push(createSource('unit', {
-        q: start.q + (end.q - start.q) * t,
-        r: start.r + (end.r - start.r) * t,
-      }, viewport, geometry, {
-        source: 'routeHistory',
-        strength: Math.max(0, Math.min(1, toNumber(options.strength ?? 1, 1))),
-      }));
+      sources.push(
+        createSource(
+          'unit',
+          {
+            q: start.q + (end.q - start.q) * t,
+            r: start.r + (end.r - start.r) * t,
+          },
+          viewport,
+          geometry,
+          {
+            source: 'routeHistory',
+            strength: Math.max(0, Math.min(1, toNumber(options.strength ?? 1, 1))),
+          },
+        ),
+      );
     }
     return sources;
   }
@@ -385,14 +438,22 @@
   function collectRouteHistorySources(context = {}, viewport = {}, geometry = {}, options = {}) {
     const contextActors = Array.isArray(context.visibilityActors)
       ? context.visibilityActors
-      : (Array.isArray(context.actors) ? context.actors : []);
-    const actorByMissionId = new Map(contextActors
-      .map((actor) => [actor?.missionId || actor?.id || '', actor])
-      .filter(([id]) => id));
+      : Array.isArray(context.actors)
+        ? context.actors
+        : [];
+    const actorByMissionId = new Map(
+      contextActors
+        .map((actor) => [actor?.missionId || actor?.id || '', actor])
+        .filter(([id]) => id),
+    );
     const sources = [];
     getMissionList(context).forEach((mission) => {
       const route = (Array.isArray(mission.route) ? mission.route : [])
-        .map((step, index) => ({ ...normalizeCoord(step), step: toInteger(step.step, index + 1), revealed: isRouteStepRevealed(step, mission) }))
+        .map((step, index) => ({
+          ...normalizeCoord(step),
+          step: toInteger(step.step, index + 1),
+          revealed: isRouteStepRevealed(step, mission),
+        }))
         .sort((a, b) => a.step - b.step);
       let cursor = normalizeFloatCoord(mission.origin || mission.position || route[0] || {});
       const actor = actorByMissionId.get(mission.id || mission.missionId || '');
@@ -400,10 +461,12 @@
       if (revealSources.length) {
         revealSources.forEach((source) => {
           const coord = normalizeFloatCoord(source, cursor);
-          sources.push(...samplePathSources(cursor, coord, viewport, geometry, {
-            ...options,
-            strength: source.strength ?? 1,
-          }));
+          sources.push(
+            ...samplePathSources(cursor, coord, viewport, geometry, {
+              ...options,
+              strength: source.strength ?? 1,
+            }),
+          );
           if (toNumber(source.strength, 1) >= 1) cursor = coord;
         });
         return;
@@ -429,9 +492,11 @@
     };
     getVisionHistorySourceRecords(context).forEach((record) => {
       const kind = record.kind === 'city' ? 'city' : 'unit';
-      append(createSource(kind, record, viewport, geometry, {
-        source: 'visionHistory',
-      }));
+      append(
+        createSource(kind, record, viewport, geometry, {
+          source: 'visionHistory',
+        }),
+      );
     });
     collectRouteHistorySources(context, viewport, geometry, options).forEach(append);
     return [...byKey.values()];
@@ -440,19 +505,21 @@
   function collectSources(context = {}, options = {}) {
     const tileMapView = context.tileMapView || {};
     const viewport = context.viewport || {};
-    const geometry = normalizeGeometry(context.geometry || tileMapView.geometry || viewport.geometry || {});
+    const geometry = normalizeGeometry(
+      context.geometry || tileMapView.geometry || viewport.geometry || {},
+    );
     const entries = getFogEntries(tileMapView, context.entries, viewport, geometry);
     const visibleTileSources = [];
     entries.forEach((entry) => {
-      if (isVisibleTile(entry.tile)) visibleTileSources.push(createTileSource(entry, 'visibleTile', viewport, geometry));
+      if (isVisibleTile(entry.tile))
+        visibleTileSources.push(createTileSource(entry, 'visibleTile', viewport, geometry));
     });
     const citySources = collectCitySources(tileMapView, entries, viewport, geometry);
     const unitSources = collectUnitSources(context, viewport, geometry);
     const visionSources = [...citySources, ...unitSources];
     const visionHistorySources = collectVisionHistorySources(context, viewport, geometry, options);
-    const fallbackVisibleSources = options.useVisibleTileFallback === true && !visionSources.length
-      ? visibleTileSources
-      : [];
+    const fallbackVisibleSources =
+      options.useVisibleTileFallback === true && !visionSources.length ? visibleTileSources : [];
     return {
       entries,
       exploredSources: visionHistorySources,

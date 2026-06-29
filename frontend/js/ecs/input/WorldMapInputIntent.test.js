@@ -26,9 +26,7 @@ test('WorldMapInputIntent creates compact serializable tap intents', () => {
       inputEpoch: 5,
       signature: 'pick-sig-abc',
       counts: { sites: 2, actors: 1, targets: 3 },
-      targets: [
-        { action: { type: 'openWorldSite', siteId: 'capital' }, debugPayload: 'ignored' },
-      ],
+      targets: [{ action: { type: 'openWorldSite', siteId: 'capital' }, debugPayload: 'ignored' }],
     },
     context: {
       frame: { x: 0, y: 84, width: 390, height: 640 },
@@ -286,7 +284,12 @@ test('WorldMapInputIntent toSerializable sanitizes externally supplied intent ob
     targetQ: 3,
     targetR: -2,
   });
-  assert.deepEqual(serializable.target, { kind: 'tile', tileId: 'tile_3_-2', targetQ: 3, targetR: -2 });
+  assert.deepEqual(serializable.target, {
+    kind: 'tile',
+    tileId: 'tile_3_-2',
+    targetQ: 3,
+    targetR: -2,
+  });
   assert.deepEqual(serializable.picking, {
     schema: 'world-map-picking-snapshot-v1',
     inputEpoch: 12,

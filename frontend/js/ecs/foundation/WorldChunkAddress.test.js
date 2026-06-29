@@ -23,8 +23,14 @@ test('WorldChunkAddress maps stable tile coordinates into chunk addresses', () =
 });
 
 test('WorldChunkAddress wraps chunk addresses across every world edge', () => {
-  assert.equal(WorldChunkAddress.getChunkCoordForTile({ x: -1, y: -1 }, topology).chunkId, 'chunk_3_3');
-  assert.equal(WorldChunkAddress.normalizeChunkCoord({ chunkX: 4, chunkY: 4 }, topology).chunkId, 'chunk_0_0');
+  assert.equal(
+    WorldChunkAddress.getChunkCoordForTile({ x: -1, y: -1 }, topology).chunkId,
+    'chunk_3_3',
+  );
+  assert.equal(
+    WorldChunkAddress.normalizeChunkCoord({ chunkX: 4, chunkY: 4 }, topology).chunkId,
+    'chunk_0_0',
+  );
 });
 
 test('WorldChunkAddress exposes chunk bounds without assuming full world arrays', () => {
@@ -42,17 +48,18 @@ test('WorldChunkAddress exposes chunk bounds without assuming full world arrays'
 });
 
 test('WorldChunkAddress expands wrapped tile rects into unique chunk lists', () => {
-  const chunks = WorldChunkAddress.getChunksForTileRect({
-    minX: 14,
-    minY: 10,
-    maxX: 17,
-    maxY: 13,
-  }, topology);
+  const chunks = WorldChunkAddress.getChunksForTileRect(
+    {
+      minX: 14,
+      minY: 10,
+      maxX: 17,
+      maxY: 13,
+    },
+    topology,
+  );
 
-  assert.deepEqual(chunks.map((chunk) => chunk.chunkId), [
-    'chunk_0_0',
-    'chunk_3_0',
-    'chunk_0_3',
-    'chunk_3_3',
-  ]);
+  assert.deepEqual(
+    chunks.map((chunk) => chunk.chunkId),
+    ['chunk_0_0', 'chunk_3_0', 'chunk_0_3', 'chunk_3_3'],
+  );
 });

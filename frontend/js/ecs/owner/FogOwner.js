@@ -27,7 +27,11 @@ function resolveEpochNowMs(input = {}, options = {}) {
   return Number.isFinite(number) ? number : Number.NaN;
 }
 
-function buildVisibilityActors(input = {}, options = {}, dependencies = resolveFogDependencies(options)) {
+function buildVisibilityActors(
+  input = {},
+  options = {},
+  dependencies = resolveFogDependencies(options),
+) {
   if (Array.isArray(input.visibilityActors) && input.visibilityActors.length) {
     return input.visibilityActors;
   }
@@ -46,23 +50,32 @@ function buildVisibilityActors(input = {}, options = {}, dependencies = resolveF
   return [];
 }
 
-function buildVisibilitySnapshot(input = {}, options = {}, dependencies = resolveFogDependencies(options)) {
+function buildVisibilitySnapshot(
+  input = {},
+  options = {},
+  dependencies = resolveFogDependencies(options),
+) {
   if (input.visibilitySnapshot && typeof input.visibilitySnapshot === 'object') {
     return input.visibilitySnapshot;
   }
   if (!dependencies.visibilityModel?.createSnapshot) return null;
   const tileMapView = input.tileMapView || input.renderSnapshot?.tileMapView || {};
-  return dependencies.visibilityModel.createSnapshot({
-    territoryState: input.territoryState || input.state?.territoryState || {},
-    worldMap: {
-      ...(input.worldMap || input.state?.territoryState?.worldMap || tileMapView || {}),
-      tiles: Array.isArray(input.tiles)
-        ? input.tiles
-        : (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []),
+  return dependencies.visibilityModel.createSnapshot(
+    {
+      territoryState: input.territoryState || input.state?.territoryState || {},
+      worldMap: {
+        ...(input.worldMap || input.state?.territoryState?.worldMap || tileMapView || {}),
+        tiles: Array.isArray(input.tiles)
+          ? input.tiles
+          : Array.isArray(tileMapView.tiles)
+            ? tileMapView.tiles
+            : [],
+      },
+      worldExplorerState: input.worldExplorerState || input.state?.worldExplorerState || {},
+      missions: input.missions,
     },
-    worldExplorerState: input.worldExplorerState || input.state?.worldExplorerState || {},
-    missions: input.missions,
-  }, options.visibilityOptions || options);
+    options.visibilityOptions || options,
+  );
 }
 
 function createFogOwner(input = {}, options = {}) {
@@ -71,52 +84,69 @@ function createFogOwner(input = {}, options = {}) {
   const tileMapView = input.tileMapView || renderSnapshot?.tileMapView || {};
   const viewport = input.viewport || renderSnapshot?.viewport || {};
   const frame = input.frame || renderSnapshot?.frame || {};
-  const geometry = input.geometry || renderSnapshot?.geometry || tileMapView.geometry || viewport.geometry || {};
+  const geometry =
+    input.geometry || renderSnapshot?.geometry || tileMapView.geometry || viewport.geometry || {};
   const explicitEntries = cloneArray(input.entries);
-  const visibilitySnapshot = buildVisibilitySnapshot({
-    ...input,
-    tileMapView,
-    renderSnapshot,
-  }, options, dependencies);
-  const visibilityActors = buildVisibilityActors({
-    ...input,
-    tileMapView,
-    renderSnapshot,
-  }, options, dependencies);
-  const fogVisualSnapshot = dependencies.fogVisualSnapshot?.createSnapshot
-    ? dependencies.fogVisualSnapshot.createSnapshot({
+  const visibilitySnapshot = buildVisibilitySnapshot(
+    {
       ...input,
       tileMapView,
-      viewport,
-      frame,
-      geometry,
       renderSnapshot,
-      visibilitySnapshot,
-    }, options)
+    },
+    options,
+    dependencies,
+  );
+  const visibilityActors = buildVisibilityActors(
+    {
+      ...input,
+      tileMapView,
+      renderSnapshot,
+    },
+    options,
+    dependencies,
+  );
+  const fogVisualSnapshot = dependencies.fogVisualSnapshot?.createSnapshot
+    ? dependencies.fogVisualSnapshot.createSnapshot(
+        {
+          ...input,
+          tileMapView,
+          viewport,
+          frame,
+          geometry,
+          renderSnapshot,
+          visibilitySnapshot,
+        },
+        options,
+      )
     : null;
-  const rendererContext = fogVisualSnapshot && dependencies.fogVisualSnapshot?.toRendererContext
-    ? dependencies.fogVisualSnapshot.toRendererContext(fogVisualSnapshot, options)
-    : null;
+  const rendererContext =
+    fogVisualSnapshot && dependencies.fogVisualSnapshot?.toRendererContext
+      ? dependencies.fogVisualSnapshot.toRendererContext(fogVisualSnapshot, options)
+      : null;
   const owner = Object.freeze({
     schema: SCHEMA,
     epochNowMs: resolveEpochNowMs(input, options),
     visibilitySnapshot,
     fogVisualSnapshot,
-    rendererContext: rendererContext ? Object.freeze({
-      ...rendererContext,
-      entries: explicitEntries.length ? explicitEntries : cloneArray(rendererContext.entries),
-      geometry,
-      renderSnapshot,
-      epochNowMs: resolveEpochNowMs(input, options),
-      actors: cloneArray(input.actors),
-      visibilityActors,
-      tileMapView: {
-        ...(rendererContext.tileMapView || {}),
-        sites: Array.isArray(tileMapView.sites)
-          ? tileMapView.sites
-          : (Array.isArray(rendererContext.tileMapView?.sites) ? rendererContext.tileMapView.sites : []),
-      },
-    }) : null,
+    rendererContext: rendererContext
+      ? Object.freeze({
+          ...rendererContext,
+          entries: explicitEntries.length ? explicitEntries : cloneArray(rendererContext.entries),
+          geometry,
+          renderSnapshot,
+          epochNowMs: resolveEpochNowMs(input, options),
+          actors: cloneArray(input.actors),
+          visibilityActors,
+          tileMapView: {
+            ...(rendererContext.tileMapView || {}),
+            sites: Array.isArray(tileMapView.sites)
+              ? tileMapView.sites
+              : Array.isArray(rendererContext.tileMapView?.sites)
+                ? rendererContext.tileMapView.sites
+                : [],
+          },
+        })
+      : null,
     signature: [
       fogVisualSnapshot?.signature || '',
       visibilitySnapshot?.signature || '',

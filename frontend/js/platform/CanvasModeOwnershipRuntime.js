@@ -233,9 +233,7 @@
   }
 
   function getBattleOwnerApi() {
-    return EcsModeRuntime && EcsModeRuntime.BattleOwner
-      ? EcsModeRuntime.BattleOwner
-      : null;
+    return EcsModeRuntime && EcsModeRuntime.BattleOwner ? EcsModeRuntime.BattleOwner : null;
   }
 
   function ensureModalOwner(host) {

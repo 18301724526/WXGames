@@ -45,15 +45,15 @@ Later Batch 6 sub-slices should reduce this table one group at a time.
 
 ## Acceptance Answers
 
-| Question                          | Answer                                                                                                                                                                    |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Old owner being retired?          | None in 6A; this is a scaffold slice. Existing renderer reads are inventoried and grandfathered, not migrated.                                                            |
-| New ECS owner?                    | `RendererSnapshotBoundary.js` owns the serializable renderer snapshot contract for sealed Batch 5 modal/panel facts.                                                      |
+| Question                          | Answer                                                                                                                                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Old owner being retired?          | None in 6A; this is a scaffold slice. Existing renderer reads are inventoried and grandfathered, not migrated.                                                                           |
+| New ECS owner?                    | `RendererSnapshotBoundary.js` owns the serializable renderer snapshot contract for sealed Batch 5 modal/panel facts.                                                                     |
 | Legacy fields/methods remaining?  | `show*`, `activeCommandPanel`, `techDetailOpen`, modal mirrors, and serializable gameplay state remain legacy renderer-facing fields until later Batch 6 reader sub-slices migrate them. |
-| Guard preventing old-path growth? | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` blocks new direct renderer reads of covered sealed modal/panel facts outside the approved snapshot paths.      |
-| Behavior tests?                   | Snapshot boundary tests, bridge snapshot helper tests, guard tests, manifest test, and architecture smoke integration.                                                    |
-| Rollback?                         | Remove the snapshot boundary module, bridge helpers, guard wiring, runtime export, generated bundle change, and this batch doc; no renderer reader migration is involved. |
-| Batch 6 status?                   | 6A is `Completed` after migration owner sign-off; Batch 6 scaffold is complete.                                                                                           |
+| Guard preventing old-path growth? | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` blocks new direct renderer reads of covered sealed modal/panel facts outside the approved snapshot paths.                     |
+| Behavior tests?                   | Snapshot boundary tests, bridge snapshot helper tests, guard tests, manifest test, and architecture smoke integration.                                                                   |
+| Rollback?                         | Remove the snapshot boundary module, bridge helpers, guard wiring, runtime export, generated bundle change, and this batch doc; no renderer reader migration is involved.                |
+| Batch 6 status?                   | 6A is `Completed` after migration owner sign-off; Batch 6 scaffold is complete.                                                                                                          |
 
 ## Guard Baseline
 

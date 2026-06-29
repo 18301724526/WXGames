@@ -109,7 +109,9 @@
     (Array.isArray(extraMissions) ? extraMissions : []).forEach(append);
     (Array.isArray(worldExplorerState.missions) ? worldExplorerState.missions : []).forEach(append);
     append(worldExplorerState.activeMission);
-    (Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []).forEach(append);
+    (Array.isArray(worldExplorerState.idleMissions) ? worldExplorerState.idleMissions : []).forEach(
+      append,
+    );
     return result;
   }
 
@@ -150,16 +152,21 @@
       // Preserve the combat encounter linkage so clicking a hostile force
       // carries combatEncounterId through to startWorldMarch (otherwise the
       // attack is sent as a plain march and the backend rejects target==origin).
-      ...(actor.combatTarget ? {
-        combatTarget: actor.combatTarget,
-        combatEncounterId: actor.combatTarget.encounterId,
-      } : {}),
+      ...(actor.combatTarget
+        ? {
+            combatTarget: actor.combatTarget,
+            combatEncounterId: actor.combatTarget.encounterId,
+          }
+        : {}),
     };
   }
 
   function buildActors(worldExplorerState = {}, options = {}) {
     if (Array.isArray(options.actors)) return options.actors.map(normalizeActor);
-    if (WorldActorProjection?.projectWorldActors) return WorldActorProjection.projectWorldActors(worldExplorerState, options).map(normalizeActor);
+    if (WorldActorProjection?.projectWorldActors)
+      return WorldActorProjection.projectWorldActors(worldExplorerState, options).map(
+        normalizeActor,
+      );
     return [];
   }
 
@@ -173,14 +180,28 @@
     const territoryState = input.territoryState || {};
     const worldMap = input.worldMap || territoryState.worldMap || {};
     const worldExplorerState = input.worldExplorerState || {};
-    const visibility = input.visibilitySnapshot || VisibilityModel?.createSnapshot?.({
-      territoryState,
-      worldMap,
-      worldExplorerState,
-      missions: input.missions,
-    }, options) || null;
-    const rawTiles = Array.isArray(input.tiles) ? input.tiles : (Array.isArray(worldMap.tiles) ? worldMap.tiles : []);
-    const rawSites = Array.isArray(input.sites) ? input.sites : (Array.isArray(territoryState.territories) ? territoryState.territories : []);
+    const visibility =
+      input.visibilitySnapshot ||
+      VisibilityModel?.createSnapshot?.(
+        {
+          territoryState,
+          worldMap,
+          worldExplorerState,
+          missions: input.missions,
+        },
+        options,
+      ) ||
+      null;
+    const rawTiles = Array.isArray(input.tiles)
+      ? input.tiles
+      : Array.isArray(worldMap.tiles)
+        ? worldMap.tiles
+        : [];
+    const rawSites = Array.isArray(input.sites)
+      ? input.sites
+      : Array.isArray(territoryState.territories)
+        ? territoryState.territories
+        : [];
     const missions = getMissionList(worldExplorerState, input.missions).map(normalizeMission);
     const actors = buildActors(worldExplorerState, options);
     const tiles = new Array(rawTiles.length);
@@ -191,7 +212,10 @@
       for (let i = 0; i < items.length; i += 1) {
         hash = hashStep(hash, items[i].id);
         hash = hashStep(hash, items[i].status || items[i].terrain || items[i].tileId || '');
-        hash = hashStep(hash, items[i].visibilityLevel ?? items[i].revealedCount ?? items[i].remainingSeconds ?? '');
+        hash = hashStep(
+          hash,
+          items[i].visibilityLevel ?? items[i].revealedCount ?? items[i].remainingSeconds ?? '',
+        );
       }
     };
     feed(tiles);

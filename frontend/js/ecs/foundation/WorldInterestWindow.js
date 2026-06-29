@@ -65,22 +65,28 @@
   function normalizeWindowOptions(options = {}) {
     const radiusX = toPositiveInteger(options.radiusX ?? options.radius, DEFAULT_WINDOW.radiusX);
     const radiusY = toPositiveInteger(options.radiusY ?? options.radius, DEFAULT_WINDOW.radiusY);
-    const preloadRadiusX = Math.max(radiusX, toPositiveInteger(
-      options.preloadRadiusX ?? options.preloadRadius,
-      DEFAULT_WINDOW.preloadRadiusX,
-    ));
-    const preloadRadiusY = Math.max(radiusY, toPositiveInteger(
-      options.preloadRadiusY ?? options.preloadRadius,
-      DEFAULT_WINDOW.preloadRadiusY,
-    ));
-    const aoiRadiusX = Math.max(preloadRadiusX, toPositiveInteger(
-      options.aoiRadiusX ?? options.aoiRadius,
-      DEFAULT_WINDOW.aoiRadiusX,
-    ));
-    const aoiRadiusY = Math.max(preloadRadiusY, toPositiveInteger(
-      options.aoiRadiusY ?? options.aoiRadius,
-      DEFAULT_WINDOW.aoiRadiusY,
-    ));
+    const preloadRadiusX = Math.max(
+      radiusX,
+      toPositiveInteger(
+        options.preloadRadiusX ?? options.preloadRadius,
+        DEFAULT_WINDOW.preloadRadiusX,
+      ),
+    );
+    const preloadRadiusY = Math.max(
+      radiusY,
+      toPositiveInteger(
+        options.preloadRadiusY ?? options.preloadRadius,
+        DEFAULT_WINDOW.preloadRadiusY,
+      ),
+    );
+    const aoiRadiusX = Math.max(
+      preloadRadiusX,
+      toPositiveInteger(options.aoiRadiusX ?? options.aoiRadius, DEFAULT_WINDOW.aoiRadiusX),
+    );
+    const aoiRadiusY = Math.max(
+      preloadRadiusY,
+      toPositiveInteger(options.aoiRadiusY ?? options.aoiRadius, DEFAULT_WINDOW.aoiRadiusY),
+    );
     return Object.freeze({
       radiusX,
       radiusY,
@@ -91,13 +97,17 @@
     });
   }
 
-  function createTileRect(center = {}, radiusX = DEFAULT_WINDOW.radiusX, radiusY = DEFAULT_WINDOW.radiusY) {
+  function createTileRect(
+    center = {},
+    radiusX = DEFAULT_WINDOW.radiusX,
+    radiusY = DEFAULT_WINDOW.radiusY,
+  ) {
     const coord = TileCoord?.normalizeCoord
       ? TileCoord.normalizeCoord(center)
       : {
-        x: toInteger(center.x ?? center.q, 0),
-        y: toInteger(center.y ?? center.r, 0),
-      };
+          x: toInteger(center.x ?? center.q, 0),
+          y: toInteger(center.y ?? center.r, 0),
+        };
     const rx = toPositiveInteger(radiusX, DEFAULT_WINDOW.radiusX);
     const ry = toPositiveInteger(radiusY, DEFAULT_WINDOW.radiusY);
     return Object.freeze({
@@ -124,9 +134,21 @@
       ? WorldChunkAddress.normalizeTopologyOptions(options)
       : Object.freeze({ ...options });
     const normalizedCenter = normalizeCoord(center, options);
-    const visibleRect = createTileRect(normalizedCenter, windowOptions.radiusX, windowOptions.radiusY);
-    const preloadRect = createTileRect(normalizedCenter, windowOptions.preloadRadiusX, windowOptions.preloadRadiusY);
-    const aoiRect = createTileRect(normalizedCenter, windowOptions.aoiRadiusX, windowOptions.aoiRadiusY);
+    const visibleRect = createTileRect(
+      normalizedCenter,
+      windowOptions.radiusX,
+      windowOptions.radiusY,
+    );
+    const preloadRect = createTileRect(
+      normalizedCenter,
+      windowOptions.preloadRadiusX,
+      windowOptions.preloadRadiusY,
+    );
+    const aoiRect = createTileRect(
+      normalizedCenter,
+      windowOptions.aoiRadiusX,
+      windowOptions.aoiRadiusY,
+    );
     const visibleChunks = createChunkList(visibleRect, topology);
     const preloadChunks = createChunkList(preloadRect, topology);
     const aoiChunks = createChunkList(aoiRect, topology);
@@ -165,22 +187,25 @@
     const hasTopology = Boolean(interestWindow.topology);
     const coord = WorldTopology?.normalizeCoord
       ? WorldTopology.normalizeCoord(tile, interestWindow.topology || {})
-      : (TileCoord?.normalizeCoord
+      : TileCoord?.normalizeCoord
         ? TileCoord.normalizeCoord(tile)
         : {
-          x: toInteger(tile.x ?? tile.q, 0),
-          y: toInteger(tile.y ?? tile.r, 0),
-        });
+            x: toInteger(tile.x ?? tile.q, 0),
+            y: toInteger(tile.y ?? tile.r, 0),
+          };
     const topology = interestWindow.topology || {};
-    const wrapping = hasTopology && (topology.wrapping === undefined ? true : topology.wrapping !== false);
+    const wrapping =
+      hasTopology && (topology.wrapping === undefined ? true : topology.wrapping !== false);
     const xRanges = WorldChunkAddress?.getWrappedRanges
       ? WorldChunkAddress.getWrappedRanges(rect.minX, rect.maxX, topology.worldWidth, wrapping)
       : Object.freeze([Object.freeze({ start: toInteger(rect.minX), end: toInteger(rect.maxX) })]);
     const yRanges = WorldChunkAddress?.getWrappedRanges
       ? WorldChunkAddress.getWrappedRanges(rect.minY, rect.maxY, topology.worldHeight, wrapping)
       : Object.freeze([Object.freeze({ start: toInteger(rect.minY), end: toInteger(rect.maxY) })]);
-    return xRanges.some((range) => coord.x >= range.start && coord.x <= range.end)
-      && yRanges.some((range) => coord.y >= range.start && coord.y <= range.end);
+    return (
+      xRanges.some((range) => coord.x >= range.start && coord.x <= range.end) &&
+      yRanges.some((range) => coord.y >= range.start && coord.y <= range.end)
+    );
   }
 
   const WorldInterestWindow = Object.freeze({

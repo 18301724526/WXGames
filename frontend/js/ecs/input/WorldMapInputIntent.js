@@ -92,15 +92,19 @@
     const action = summarizeAction(options.action || null);
     const picking = summarizePicking(options.pickingSnapshot || null);
     const physical = summarizePoint(options.physicalPoint || options.point || {});
-    const layer = summarizePoint(options.layerPoint || options.physicalPoint || options.point || {});
-    const hash = stableHash(JSON.stringify({
-      source: options.source || 'worldMapRuntime',
-      sequence,
-      action,
-      picking,
-      physical,
-      layer,
-    }));
+    const layer = summarizePoint(
+      options.layerPoint || options.physicalPoint || options.point || {},
+    );
+    const hash = stableHash(
+      JSON.stringify({
+        source: options.source || 'worldMapRuntime',
+        sequence,
+        action,
+        picking,
+        physical,
+        layer,
+      }),
+    );
     return `wmi_${sequence || 'na'}_${hash}`.slice(0, 64);
   }
 
@@ -123,8 +127,10 @@
       const value = copyString(action[key]);
       if (value !== undefined) summary[key] = value;
     });
-    if (action.targetQ !== undefined || action.q !== undefined) summary.targetQ = toInteger(action.targetQ ?? action.q);
-    if (action.targetR !== undefined || action.r !== undefined) summary.targetR = toInteger(action.targetR ?? action.r);
+    if (action.targetQ !== undefined || action.q !== undefined)
+      summary.targetQ = toInteger(action.targetQ ?? action.q);
+    if (action.targetR !== undefined || action.r !== undefined)
+      summary.targetR = toInteger(action.targetR ?? action.r);
     const tile = normalizeTileEvidence(summary);
     if (tile) {
       summary.tileId = tile.tileId;
@@ -183,16 +189,11 @@
   }
 
   function getContextFrame(context = {}) {
-    return context?.frame
-      || context?.renderSnapshot?.frame
-      || context?.viewport?.frame
-      || null;
+    return context?.frame || context?.renderSnapshot?.frame || context?.viewport?.frame || null;
   }
 
   function getContextViewport(context = {}) {
-    return context?.viewport
-      || context?.renderSnapshot?.viewport
-      || null;
+    return context?.viewport || context?.renderSnapshot?.viewport || null;
   }
 
   function summarizeFrame(frame = null) {
@@ -260,8 +261,10 @@
     if (siteId !== undefined) summary.siteId = siteId;
     if (actorId !== undefined) summary.actorId = actorId;
     if (missionId !== undefined) summary.missionId = missionId;
-    if (target.targetQ !== undefined || target.q !== undefined) summary.targetQ = toInteger(target.targetQ ?? target.q);
-    if (target.targetR !== undefined || target.r !== undefined) summary.targetR = toInteger(target.targetR ?? target.r);
+    if (target.targetQ !== undefined || target.q !== undefined)
+      summary.targetQ = toInteger(target.targetQ ?? target.q);
+    if (target.targetR !== undefined || target.r !== undefined)
+      summary.targetR = toInteger(target.targetR ?? target.r);
     const tile = normalizeTileEvidence(summary);
     if (tile) {
       summary.tileId = tile.tileId;

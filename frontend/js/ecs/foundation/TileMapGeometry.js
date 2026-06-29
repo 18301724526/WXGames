@@ -87,12 +87,13 @@
   }
 
   function sortTilesForIsoDraw(tiles = []) {
-    return [...tiles].sort((a, b) => (
-      getIsoSortValue(a) - getIsoSortValue(b)
-      || normalizeCoord(a).y - normalizeCoord(b).y
-      || normalizeCoord(a).x - normalizeCoord(b).x
-      || String(a.id || '').localeCompare(String(b.id || ''))
-    ));
+    return [...tiles].sort(
+      (a, b) =>
+        getIsoSortValue(a) - getIsoSortValue(b) ||
+        normalizeCoord(a).y - normalizeCoord(b).y ||
+        normalizeCoord(a).x - normalizeCoord(b).x ||
+        String(a.id || '').localeCompare(String(b.id || '')),
+    );
   }
 
   function getBounds(tiles = [], options = {}) {
@@ -121,16 +122,24 @@
     const geometry = normalizeGeometry(options);
     const projected = projectTile(getRelativeCoord(tile, viewport), geometry);
     return {
-      x: toNumber(viewport.originX) + toNumber(viewport.panX) + projected.x * toNumber(viewport.scale, 1),
-      y: toNumber(viewport.originY) + toNumber(viewport.panY) + projected.y * toNumber(viewport.scale, 1),
+      x:
+        toNumber(viewport.originX) +
+        toNumber(viewport.panX) +
+        projected.x * toNumber(viewport.scale, 1),
+      y:
+        toNumber(viewport.originY) +
+        toNumber(viewport.panY) +
+        projected.y * toNumber(viewport.scale, 1),
     };
   }
 
   function screenPointToCoord(point = {}, viewport = {}, options = {}) {
     const geometry = normalizeGeometry(options);
     const scale = Math.max(0.0001, toNumber(viewport.scale, 1));
-    const localX = (toNumber(point.x) - toNumber(viewport.originX) - toNumber(viewport.panX)) / scale;
-    const localY = (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
+    const localX =
+      (toNumber(point.x) - toNumber(viewport.originX) - toNumber(viewport.panX)) / scale;
+    const localY =
+      (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
     const projectedXMinusY = localX / geometry.stepX;
     const projectedXPlusY = localY / geometry.stepY;
     const origin = getViewportWorldOrigin(viewport);

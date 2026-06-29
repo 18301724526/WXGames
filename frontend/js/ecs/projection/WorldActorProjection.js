@@ -85,7 +85,8 @@
     const encounterNameKey = String(encounter.nameKey || '').trim();
     const hasEncounterName = !encounterNameKey && Boolean(String(encounter.name || '').trim());
     const displayName = hasEncounterName ? encounter.name : '';
-    const resolvedNameKey = encounterNameKey || (hasEncounterName ? '' : 'world.combat.hostileForce.title');
+    const resolvedNameKey =
+      encounterNameKey || (hasEncounterName ? '' : 'world.combat.hostileForce.title');
     return {
       id,
       actorId: id,
@@ -134,12 +135,8 @@
 
   function projectWorldActors(input = {}, options = {}) {
     return [
-      ...getRows(input, options)
-      .map(projectActorFromProgress)
-        .filter(Boolean),
-      ...getCombatEncounters(input)
-        .map(projectActorFromCombatEncounter)
-        .filter(Boolean),
+      ...getRows(input, options).map(projectActorFromProgress).filter(Boolean),
+      ...getCombatEncounters(input).map(projectActorFromCombatEncounter).filter(Boolean),
     ];
   }
 

@@ -7,7 +7,8 @@ const THREAT_EVENT_TEMPLATES = [
   {
     id: 'border_probe',
     title: '边境试探',
-    description: '几名陌生猎人在边界徘徊，故意留下脚印和折断的枝条。族人们希望士兵出面，让他们明白这里已经有人守望。',
+    description:
+      '几名陌生猎人在边界徘徊，故意留下脚印和折断的枝条。族人们希望士兵出面，让他们明白这里已经有人守望。',
     icon: '🛡️',
     minEra: 4,
     options: [
@@ -70,7 +71,8 @@ const REGULAR_EVENT_TEMPLATES = [
   {
     id: 'harvest_sign',
     title: '丰收的预兆',
-    description: '田边的麦穗比往常更饱满，族人们讨论着该把这份好运立刻收进仓里，还是用一场小小庆祝鼓舞劳作。',
+    description:
+      '田边的麦穗比往常更饱满，族人们讨论着该把这份好运立刻收进仓里，还是用一场小小庆祝鼓舞劳作。',
     icon: '🌾',
     minEra: 2,
     options: [
@@ -86,7 +88,14 @@ const REGULAR_EVENT_TEMPLATES = [
         preview: '消耗 20 食物，5 分钟内食物产出 +20%',
         effects: [
           { type: 'resource', key: 'food', value: -20 },
-          { type: 'buff', buffType: 'resourceMultiplier', target: 'food', value: 0.2, durationSeconds: 300, label: '丰收庆祝' },
+          {
+            type: 'buff',
+            buffType: 'resourceMultiplier',
+            target: 'food',
+            value: 0.2,
+            durationSeconds: 300,
+            label: '丰收庆祝',
+          },
         ],
       },
     ],
@@ -138,7 +147,16 @@ const REGULAR_EVENT_TEMPLATES = [
         id: 'quiet_study',
         label: '安排静修',
         preview: '5 分钟内知识产出 +15%',
-        effects: [{ type: 'buff', buffType: 'resourceMultiplier', target: 'knowledge', value: 0.15, durationSeconds: 300, label: '静修时段' }],
+        effects: [
+          {
+            type: 'buff',
+            buffType: 'resourceMultiplier',
+            target: 'knowledge',
+            value: 0.15,
+            durationSeconds: 300,
+            label: '静修时段',
+          },
+        ],
       },
     ],
   },
@@ -155,7 +173,13 @@ const REGULAR_EVENT_TEMPLATES = [
         preview: '消耗 20 食物，5 分钟内离线收益效率 +10%',
         effects: [
           { type: 'resource', key: 'food', value: -20 },
-          { type: 'buff', buffType: 'offlineEfficiencyBonus', value: 0.1, durationSeconds: 300, label: '充分休整' },
+          {
+            type: 'buff',
+            buffType: 'offlineEfficiencyBonus',
+            value: 0.1,
+            durationSeconds: 300,
+            label: '充分休整',
+          },
         ],
       },
       {
@@ -185,7 +209,13 @@ const REGULAR_EVENT_TEMPLATES = [
         preview: '消耗 15 木材，5 分钟内幸福度 +5',
         effects: [
           { type: 'resource', key: 'wood', value: -15 },
-          { type: 'buff', buffType: 'happinessFlat', value: 5, durationSeconds: 300, label: '屋顶修缮' },
+          {
+            type: 'buff',
+            buffType: 'happinessFlat',
+            value: 5,
+            durationSeconds: 300,
+            label: '屋顶修缮',
+          },
         ],
       },
     ],
@@ -222,7 +252,8 @@ function createSettlementEvent() {
     type: 'special',
     status: 'pending',
     title: '森林低语',
-    description: '聚落的猎人在北边的森林边缘发现了一片从未涉足的林地。高大的橡树和笔直的松木排列如墙，阳光从树冠缝隙洒下，照亮了满地掉落的干燥枯枝。',
+    description:
+      '聚落的猎人在北边的森林边缘发现了一片从未涉足的林地。高大的橡树和笔直的松木排列如墙，阳光从树冠缝隙洒下，照亮了满地掉落的干燥枯枝。',
     icon: '🌲',
     options: [
       {

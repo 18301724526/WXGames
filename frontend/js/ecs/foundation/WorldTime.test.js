@@ -16,12 +16,15 @@ test('WorldTime normalizes ISO, millisecond, and second epoch timestamps', () =>
 test('WorldTime ignores performance.now values when resolving epoch now', () => {
   const epochMs = new Date('2026-06-06T00:00:04.000Z').getTime();
 
-  assert.equal(WorldTime.getEpochNowMs({
-    getNow() {
-      return 4321.25;
-    },
-    epochNowMs: epochMs,
-  }), epochMs);
+  assert.equal(
+    WorldTime.getEpochNowMs({
+      getNow() {
+        return 4321.25;
+      },
+      epochNowMs: epochMs,
+    }),
+    epochMs,
+  );
 });
 
 test('WorldTime prefers shared world clock over stale host render options', () => {
@@ -38,12 +41,15 @@ test('WorldTime prefers shared world clock over stale host render options', () =
     serverTime: clockNowMs,
   });
 
-  assert.equal(WorldTime.getEpochNowMs({
-    host: {
-      lastRenderOptions: { epochNowMs: staleMs },
-    },
-    worldClock: clockWorld,
-  }), clockNowMs);
+  assert.equal(
+    WorldTime.getEpochNowMs({
+      host: {
+        lastRenderOptions: { epochNowMs: staleMs },
+      },
+      worldClock: clockWorld,
+    }),
+    clockNowMs,
+  );
 });
 
 test('WorldTime does not treat short performance timestamps as epoch now', () => {
@@ -56,8 +62,14 @@ test('WorldTime treats timestamp-like remainingSeconds as absolute time', () => 
   const nowMs = new Date('2026-06-06T00:00:04.000Z').getTime();
   const nextStepSeconds = Math.floor(new Date('2026-06-06T00:00:10.000Z').getTime() / 1000);
 
-  assert.equal(WorldTime.getRemainingSeconds({
-    status: 'active',
-    remainingSeconds: nextStepSeconds,
-  }, nowMs), 6);
+  assert.equal(
+    WorldTime.getRemainingSeconds(
+      {
+        status: 'active',
+        remainingSeconds: nextStepSeconds,
+      },
+      nowMs,
+    ),
+    6,
+  );
 });

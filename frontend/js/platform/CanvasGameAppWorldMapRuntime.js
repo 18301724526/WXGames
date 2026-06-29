@@ -10,10 +10,11 @@
 
   function buildMilitaryRenderOptions(host = null, uiState = null, options = {}) {
     if (typeof host?.buildRenderOptions === 'function') {
-      const renderOptions = host.buildRenderOptions('military', uiState, {
-        ...options,
-        forceMapHome: true,
-      }) || {};
+      const renderOptions =
+        host.buildRenderOptions('military', uiState, {
+          ...options,
+          forceMapHome: true,
+        }) || {};
       const { territoryUiState = uiState || {} } = renderOptions;
       return {
         ...renderOptions,
@@ -31,17 +32,19 @@
 
   const WORLD_MAP_RUNTIME_METHODS = Object.freeze({
     getFrozenWorldMapWaterTimeMs() {
-      return this.worldMapDragWaterTimeMs !== null
-        && this.worldMapDragWaterTimeMs !== undefined
-        && Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+      return this.worldMapDragWaterTimeMs !== null &&
+        this.worldMapDragWaterTimeMs !== undefined &&
+        Number.isFinite(Number(this.worldMapDragWaterTimeMs))
         ? Number(this.worldMapDragWaterTimeMs)
         : this.now();
     },
 
     isWorldMapDragging() {
-      return this.worldMapDragWaterTimeMs !== null
-        && this.worldMapDragWaterTimeMs !== undefined
-        && Number.isFinite(Number(this.worldMapDragWaterTimeMs));
+      return (
+        this.worldMapDragWaterTimeMs !== null &&
+        this.worldMapDragWaterTimeMs !== undefined &&
+        Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+      );
     },
 
     isWorldMapDragCoolingDown() {
@@ -62,15 +65,17 @@
     },
 
     renderWorldMapSnapshotDragFrame() {
-      if (!this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function') return false;
+      if (!this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function')
+        return false;
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       if (!runtime || !coordinator?.canRender?.(this.state)) return false;
       const renderOptions = buildMilitaryRenderOptions(this, resolveRuntimeUiState(runtime));
       const { territoryUiState = {} } = renderOptions;
-      const topBarBottom = typeof this.renderer.getTopBarBottom === 'function'
-        ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
-        : 84;
+      const topBarBottom =
+        typeof this.renderer.getTopBarBottom === 'function'
+          ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
+          : 84;
       const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
       const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
         ...renderOptions,
@@ -99,28 +104,36 @@
         showFpsOverlay: false,
       });
       runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
-      const renderResult = this.renderer.lastWorldMapLayerRenderResult
-        || this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult
-        || null;
-      const frameState = runtime.getWorldMapFrameState?.({ renderResult, rendered })
-        || WorldMapRuntimeRenderPolicy?.createWorldMapFrameState?.(runtime, { renderResult, rendered })
-        || null;
+      const renderResult =
+        this.renderer.lastWorldMapLayerRenderResult ||
+        this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult ||
+        null;
+      const frameState =
+        runtime.getWorldMapFrameState?.({ renderResult, rendered }) ||
+        WorldMapRuntimeRenderPolicy?.createWorldMapFrameState?.(runtime, {
+          renderResult,
+          rendered,
+        }) ||
+        null;
       const compositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
-        ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions({
-          activeTab: 'military',
-          isMapHome: true,
-          territoryUiState,
-          network: this.networkState,
-        }, frameState || {})
+        ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions(
+            {
+              activeTab: 'military',
+              isMapHome: true,
+              territoryUiState,
+              network: this.networkState,
+            },
+            frameState || {},
+          )
         : {
-          activeTab: 'military',
-          isMapHome: true,
-          skipWorldMapLayer: true,
-          worldMapRuntimeHitTargets: Array.isArray(runtime.hitTargets) ? runtime.hitTargets : [],
-          preserveCanvas: true,
-          territoryUiState,
-          network: this.networkState,
-        };
+            activeTab: 'military',
+            isMapHome: true,
+            skipWorldMapLayer: true,
+            worldMapRuntimeHitTargets: Array.isArray(runtime.hitTargets) ? runtime.hitTargets : [],
+            preserveCanvas: true,
+            territoryUiState,
+            network: this.networkState,
+          };
       this.renderer.render(this.state, {
         ...compositionOptions,
         activeTab: 'military',
@@ -132,9 +145,8 @@
     },
 
     getWorldMapSnapshotRenderOptions(waterTimeMs = this.getFrozenWorldMapWaterTimeMs()) {
-      const hasWaterTimeMs = waterTimeMs !== null
-        && waterTimeMs !== undefined
-        && Number.isFinite(Number(waterTimeMs));
+      const hasWaterTimeMs =
+        waterTimeMs !== null && waterTimeMs !== undefined && Number.isFinite(Number(waterTimeMs));
       const resolvedWaterTimeMs = hasWaterTimeMs
         ? Number(waterTimeMs)
         : this.getFrozenWorldMapWaterTimeMs();
@@ -152,17 +164,17 @@
       if (!CoordinatorCtor) return null;
       this.worldMapRuntimeCoordinator = new CoordinatorCtor({
         host: this,
-          worldMapRuntime: this.worldMapRuntime,
-          useWorldMapRuntime: this.useWorldMapRuntime,
-          renderOnDrag: false,
-          getRenderer: () => this.renderer,
+        worldMapRuntime: this.worldMapRuntime,
+        useWorldMapRuntime: this.useWorldMapRuntime,
+        renderOnDrag: false,
+        getRenderer: () => this.renderer,
         getPresenter: () => this.presenter,
         getState: () => this.state || {},
-        getLayerBackingStoreState: () => this.runtime?.getLayerBackingStoreState?.('worldMap') || null,
+        getLayerBackingStoreState: () =>
+          this.runtime?.getLayerBackingStoreState?.('worldMap') || null,
         getBaseUiState: () => {
-          const controllerState = this.territoryController?.uiState
-            || this.territoryController?.getUiState?.()
-            || null;
+          const controllerState =
+            this.territoryController?.uiState || this.territoryController?.getUiState?.() || null;
           if (controllerState) return controllerState;
           const renderOptions = buildMilitaryRenderOptions(this);
           const { territoryUiState = {} } = renderOptions;
@@ -174,9 +186,10 @@
           return territoryUiState;
         },
         getTerritoryController: () => this.territoryController,
-        getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
-          ? this.renderer.getTopBarBottom(state, { isMapHome: true })
-          : 84),
+        getTopBarBottom: (state) =>
+          typeof this.renderer?.getTopBarBottom === 'function'
+            ? this.renderer.getTopBarBottom(state, { isMapHome: true })
+            : 84,
         getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
         getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
         getForceMapHome: () => this.mapHomeActive,
@@ -215,13 +228,17 @@
         militaryView: this.state?.militaryView || this.militaryView,
         forceMapHome: this.mapHomeActive,
       });
-      return Boolean(homeView.isMapHome && homeView.activeTab === 'military' && homeView.militaryView === 'world');
+      return Boolean(
+        homeView.isMapHome &&
+        homeView.activeTab === 'military' &&
+        homeView.militaryView === 'world',
+      );
     },
 
     renderRuntimeWorldMap(stateOrOptions = this.state, maybeOptions = null) {
       const hasExplicitState = maybeOptions !== null && maybeOptions !== undefined;
       const state = hasExplicitState ? stateOrOptions : this.state;
-      const options = hasExplicitState ? (maybeOptions || {}) : (stateOrOptions || {});
+      const options = hasExplicitState ? maybeOptions || {} : stateOrOptions || {};
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       if (!coordinator) return false;
       const rendered = coordinator.render(state || this.state, options);
@@ -232,7 +249,7 @@
     shouldRenderRuntimeWorldMap(stateOrOptions = this.state, maybeOptions = null) {
       const hasExplicitState = maybeOptions !== null && maybeOptions !== undefined;
       const state = hasExplicitState ? stateOrOptions : this.state;
-      const options = hasExplicitState ? (maybeOptions || {}) : (stateOrOptions || {});
+      const options = hasExplicitState ? maybeOptions || {} : stateOrOptions || {};
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
       if (!coordinator?.canRender?.(state || this.state)) return false;
@@ -244,7 +261,12 @@
     refreshWorldMapLayerFromSnapshot(options = {}) {
       const coordinator = this.ensureWorldMapRuntimeCoordinator();
       const runtime = coordinator?.getMapRuntime?.();
-      if (!runtime || !this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function') return false;
+      if (
+        !runtime ||
+        !this.renderer ||
+        typeof this.renderer.renderWorldMapSnapshotLayer !== 'function'
+      )
+        return false;
       const renderOptions = buildMilitaryRenderOptions(this, resolveRuntimeUiState(runtime));
       const { territoryUiState = {} } = renderOptions;
       const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now();
@@ -254,9 +276,10 @@
         activeTab: 'military',
         isMapHome: true,
         territoryUiState,
-        topBarBottom: typeof this.renderer.getTopBarBottom === 'function'
-          ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
-          : 84,
+        topBarBottom:
+          typeof this.renderer.getTopBarBottom === 'function'
+            ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
+            : 84,
         frameless: true,
         preserveOnMiss: true,
         reuseCachedWorldTileView: true,
@@ -277,9 +300,10 @@
         showFpsOverlay: false,
       });
       runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
-      const renderResult = this.renderer.lastWorldMapLayerRenderResult
-        || this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult
-        || null;
+      const renderResult =
+        this.renderer.lastWorldMapLayerRenderResult ||
+        this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult ||
+        null;
       if (renderResult?.drewFrame !== false) {
         runtime.hasBakedMapLayer = true;
         runtime.mapBakeDirty = false;
@@ -315,5 +339,6 @@
     install,
   };
   global.CanvasGameAppWorldMapRuntime = CanvasGameAppWorldMapRuntime;
-  if (typeof module !== 'undefined' && module.exports) module.exports = CanvasGameAppWorldMapRuntime;
+  if (typeof module !== 'undefined' && module.exports)
+    module.exports = CanvasGameAppWorldMapRuntime;
 })(typeof window !== 'undefined' ? window : globalThis);

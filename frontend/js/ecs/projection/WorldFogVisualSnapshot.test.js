@@ -35,15 +35,18 @@ test('WorldFogVisualSnapshot maps visibility levels into renderer-safe fog entri
       ],
     },
   });
-  const renderSnapshot = WorldMapRenderSnapshot.createSnapshot({
-    tileMapView,
-    x: 10,
-    y: 90,
-    width: 360,
-    height: 300,
-  }, {
-    nowMs: new Date('2026-06-08T00:00:00.000Z').getTime(),
-  });
+  const renderSnapshot = WorldMapRenderSnapshot.createSnapshot(
+    {
+      tileMapView,
+      x: 10,
+      y: 90,
+      width: 360,
+      height: 300,
+    },
+    {
+      nowMs: new Date('2026-06-08T00:00:00.000Z').getTime(),
+    },
+  );
 
   const snapshot = WorldFogVisualSnapshot.createSnapshot({ visibilitySnapshot, renderSnapshot });
   const entries = WorldFogVisualSnapshot.toRendererEntries(snapshot);
@@ -77,7 +80,9 @@ test('WorldFogVisualSnapshot produces a renderer context that does not trust raw
   const visibilitySnapshot = WorldMapVisibilityModel.createSnapshot({
     worldMap: {
       version: 12,
-      tiles: [{ id: 'tile_5_0', q: 5, r: 0, visibility: 'unknown', discovered: false, visible: false }],
+      tiles: [
+        { id: 'tile_5_0', q: 5, r: 0, visibility: 'unknown', discovered: false, visible: false },
+      ],
     },
   });
   const renderSnapshot = WorldMapRenderSnapshot.createSnapshot({
@@ -103,21 +108,25 @@ test('WorldFogVisualSnapshot canonicalizes fog identity and signatures through s
     version: 13,
     seed: 'fog-canonical',
     geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
-    tiles: [
-      { x: 3, y: -2, q: 90, r: 90, tileId: 'legacy-x', visibility: 'visible' },
-    ],
+    tiles: [{ x: 3, y: -2, q: 90, r: 90, tileId: 'legacy-x', visibility: 'visible' }],
   };
   const legacyShape = {
     ...xShape,
-    tiles: [
-      { q: 3, r: -2, tileId: 'legacy-q', visibility: 'visible' },
-    ],
+    tiles: [{ q: 3, r: -2, tileId: 'legacy-q', visibility: 'visible' }],
   };
   const xSnapshot = WorldFogVisualSnapshot.createSnapshot({
-    renderSnapshot: WorldMapRenderSnapshot.createSnapshot({ tileMapView: xShape, width: 520, height: 420 }),
+    renderSnapshot: WorldMapRenderSnapshot.createSnapshot({
+      tileMapView: xShape,
+      width: 520,
+      height: 420,
+    }),
   });
   const legacySnapshot = WorldFogVisualSnapshot.createSnapshot({
-    renderSnapshot: WorldMapRenderSnapshot.createSnapshot({ tileMapView: legacyShape, width: 520, height: 420 }),
+    renderSnapshot: WorldMapRenderSnapshot.createSnapshot({
+      tileMapView: legacyShape,
+      width: 520,
+      height: 420,
+    }),
   });
 
   assert.deepEqual(xSnapshot.tileIds, ['tile_3_-2']);
@@ -134,7 +143,7 @@ test('WorldFogVisualSnapshot keeps large-map data compact and signatures stable'
       id: `tile_${i}_0`,
       q: i,
       r: 0,
-      visibility: i % 8 === 0 ? 'visible' : (i % 3 === 0 ? 'unknown' : 'explored'),
+      visibility: i % 8 === 0 ? 'visible' : i % 3 === 0 ? 'unknown' : 'explored',
       discovered: i % 3 !== 0,
       visible: i % 8 === 0,
     });

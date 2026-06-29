@@ -27,7 +27,14 @@ function createContext() {
       geometry,
       sites: [{ id: 'capital', type: 'city', owner: 'player' }],
       tiles: [
-        { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', siteId: 'capital', site: { id: 'capital', type: 'city', owner: 'player' } },
+        {
+          id: 'tile_0_0',
+          q: 0,
+          r: 0,
+          terrain: 'capital',
+          siteId: 'capital',
+          site: { id: 'capital', type: 'city', owner: 'player' },
+        },
         { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
       ],
     },
@@ -49,23 +56,42 @@ test('WorldMapPickingModel builds stable site and actor targets from world conte
   assert.equal(snapshot.inputEpoch, 3);
   assert.equal(snapshot.counts.sites, 1);
   assert.equal(snapshot.counts.actors, 1);
-  assert.equal(snapshot.targets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'capital'), true);
-  assert.equal(snapshot.targets.some((target) => target.action.type === 'selectWorldActor' && target.action.actorId === 'actor-1'), true);
+  assert.equal(
+    snapshot.targets.some(
+      (target) => target.action.type === 'openWorldSite' && target.action.siteId === 'capital',
+    ),
+    true,
+  );
+  assert.equal(
+    snapshot.targets.some(
+      (target) => target.action.type === 'selectWorldActor' && target.action.actorId === 'actor-1',
+    ),
+    true,
+  );
 });
 
 test('WorldMapPickingModel derives site tile identity from stable x/y coordinates', () => {
   const context = createContext();
   context.tileMapView.sites = [{ id: 'frontier', type: 'town', owner: 'player' }];
   context.tileMapView.tiles = [
-    { x: '2', y: '-1', terrain: 'forest', siteId: 'frontier', site: { id: 'frontier', type: 'town', owner: 'player' } },
+    {
+      x: '2',
+      y: '-1',
+      terrain: 'forest',
+      siteId: 'frontier',
+      site: { id: 'frontier', type: 'town', owner: 'player' },
+    },
   ];
 
   const snapshot = PickingModel.createSnapshot(context, { inputEpoch: 4 });
   const siteTarget = snapshot.targets.find((target) => target.action.type === 'openWorldSite');
-  const resolvedAction = PickingModel.resolveAction({
-    x: siteTarget.x + siteTarget.width / 2,
-    y: siteTarget.y + siteTarget.height / 2,
-  }, snapshot);
+  const resolvedAction = PickingModel.resolveAction(
+    {
+      x: siteTarget.x + siteTarget.width / 2,
+      y: siteTarget.y + siteTarget.height / 2,
+    },
+    snapshot,
+  );
 
   assert.equal(siteTarget.action.siteId, 'frontier');
   assert.equal(siteTarget.action.tileId, 'tile_2_-1');
@@ -77,10 +103,22 @@ test('WorldMapPickingModel keeps picking signatures stable across x/y and q/r ti
   const stable = createContext();
   const legacy = createContext();
   stable.tileMapView.tiles = [
-    { x: 2, y: -1, terrain: 'forest', siteId: 'frontier', site: { id: 'frontier', type: 'town', owner: 'player' } },
+    {
+      x: 2,
+      y: -1,
+      terrain: 'forest',
+      siteId: 'frontier',
+      site: { id: 'frontier', type: 'town', owner: 'player' },
+    },
   ];
   legacy.tileMapView.tiles = [
-    { q: 2, r: -1, terrain: 'forest', siteId: 'frontier', site: { id: 'frontier', type: 'town', owner: 'player' } },
+    {
+      q: 2,
+      r: -1,
+      terrain: 'forest',
+      siteId: 'frontier',
+      site: { id: 'frontier', type: 'town', owner: 'player' },
+    },
   ];
   stable.tileMapView.sites = [{ id: 'frontier', type: 'town', owner: 'player' }];
   legacy.tileMapView.sites = [{ id: 'frontier', type: 'town', owner: 'player' }];
@@ -103,7 +141,14 @@ test('WorldMapPickingModel resolves world entities without renderer hit targets'
 test('WorldMapPickingModel opens a target picker for overlapping site and actor entities', () => {
   const context = createContext();
   context.tileMapView.tiles = [
-    { id: 'tile_1_0', q: 1, r: 0, terrain: 'capital', siteId: 'capital', site: { id: 'capital', type: 'city', owner: 'player' } },
+    {
+      id: 'tile_1_0',
+      q: 1,
+      r: 0,
+      terrain: 'capital',
+      siteId: 'capital',
+      site: { id: 'capital', type: 'city', owner: 'player' },
+    },
   ];
   context.actors = [
     {
@@ -120,6 +165,12 @@ test('WorldMapPickingModel opens a target picker for overlapping site and actor 
   assert.equal(action.type, 'openWorldTargetPicker');
   assert.equal(action.tileId, 'tile_1_0');
   assert.equal(action.candidates.length, 2);
-  assert.equal(action.candidates.some((candidate) => candidate.action.type === 'openWorldSite'), true);
-  assert.equal(action.candidates.some((candidate) => candidate.action.type === 'selectWorldActor'), true);
+  assert.equal(
+    action.candidates.some((candidate) => candidate.action.type === 'openWorldSite'),
+    true,
+  );
+  assert.equal(
+    action.candidates.some((candidate) => candidate.action.type === 'selectWorldActor'),
+    true,
+  );
 });

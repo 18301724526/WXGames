@@ -18,7 +18,7 @@ function createLargeTiles(count = 5000) {
       q: index,
       r: -index,
       terrain: index % 3 === 0 ? 'forest' : 'plains',
-      visibility: index % 11 === 0 ? 'controlled' : (index % 5 === 0 ? 'unknown' : 'scouted'),
+      visibility: index % 11 === 0 ? 'controlled' : index % 5 === 0 ? 'unknown' : 'scouted',
       discovered: index % 5 !== 0,
       siteId: index === 0 ? 'capital' : '',
     });
@@ -58,17 +58,29 @@ test('WorldMapPerformanceBudget accepts compact large world map snapshots', () =
   });
   render.toSerializable = () => WorldMapRenderSnapshot.toSerializable(render);
 
-  const report = WorldMapPerformanceBudget.combineReports([
-    WorldMapPerformanceBudget.checkVisibilitySnapshot(visibility),
-    WorldMapPerformanceBudget.checkEntitySnapshot(entity),
-    WorldMapPerformanceBudget.checkRenderSnapshot(render),
-  ], { scenario: 'large-world-map' });
+  const report = WorldMapPerformanceBudget.combineReports(
+    [
+      WorldMapPerformanceBudget.checkVisibilitySnapshot(visibility),
+      WorldMapPerformanceBudget.checkEntitySnapshot(entity),
+      WorldMapPerformanceBudget.checkRenderSnapshot(render),
+    ],
+    { scenario: 'large-world-map' },
+  );
 
   assert.equal(report.ok, true);
   assert.deepEqual(report.failedKeys, []);
-  assert.equal(report.checks.some((check) => check.key === 'visibility.no-entry-objects'), true);
-  assert.equal(report.checks.some((check) => check.key === 'entity.no-nested-entity-map'), true);
-  assert.equal(report.checks.some((check) => check.key === 'render.no-tile-copy-in-serializable'), true);
+  assert.equal(
+    report.checks.some((check) => check.key === 'visibility.no-entry-objects'),
+    true,
+  );
+  assert.equal(
+    report.checks.some((check) => check.key === 'entity.no-nested-entity-map'),
+    true,
+  );
+  assert.equal(
+    report.checks.some((check) => check.key === 'render.no-tile-copy-in-serializable'),
+    true,
+  );
   assert.equal(WorldMapPerformanceBudget.assertReport(report), report);
 });
 
@@ -166,24 +178,27 @@ test('WorldMapPerformanceBudget checks world-map input intent evidence budgets',
 });
 
 test('WorldMapPerformanceBudget fails renderer frame work that exceeds capacity budgets', () => {
-  const report = WorldMapPerformanceBudget.checkRendererFrameWork({
-    frame: { width: 200, height: 200 },
-    visibleEntries: Array.from({ length: 4 }, (_, index) => ({ id: `tile_${index}` })),
-    actors: [{ id: 'a' }, { id: 'b' }],
-    hitTargets: [{ id: 'target-1' }],
-    chunks: [
-      { entries: Array.from({ length: 3 }, (_, index) => ({ id: `chunk_a_${index}` })) },
-      { entries: Array.from({ length: 5 }, (_, index) => ({ id: `chunk_b_${index}` })) },
-    ],
-  }, {
-    ...WorldMapPerformanceBudget.DEFAULT_BUDGETS,
-    frameEntries: 3,
-    frameActors: 1,
-    frameHitTargets: 0,
-    framePixels: 10000,
-    activeChunks: 1,
-    chunkEntries: 4,
-  });
+  const report = WorldMapPerformanceBudget.checkRendererFrameWork(
+    {
+      frame: { width: 200, height: 200 },
+      visibleEntries: Array.from({ length: 4 }, (_, index) => ({ id: `tile_${index}` })),
+      actors: [{ id: 'a' }, { id: 'b' }],
+      hitTargets: [{ id: 'target-1' }],
+      chunks: [
+        { entries: Array.from({ length: 3 }, (_, index) => ({ id: `chunk_a_${index}` })) },
+        { entries: Array.from({ length: 5 }, (_, index) => ({ id: `chunk_b_${index}` })) },
+      ],
+    },
+    {
+      ...WorldMapPerformanceBudget.DEFAULT_BUDGETS,
+      frameEntries: 3,
+      frameActors: 1,
+      frameHitTargets: 0,
+      framePixels: 10000,
+      activeChunks: 1,
+      chunkEntries: 4,
+    },
+  );
 
   assert.equal(report.ok, false);
   assert.equal(report.failedKeys.includes('frame.entry-count'), true);

@@ -22,10 +22,7 @@
     return null;
   })();
 
-  const WORLD_ENTITY_ACTIONS = Object.freeze([
-    'openWorldSite',
-    'selectWorldActor',
-  ]);
+  const WORLD_ENTITY_ACTIONS = Object.freeze(['openWorldSite', 'selectWorldActor']);
   const WORLD_ENTITY_ACTION_SET = new Set(WORLD_ENTITY_ACTIONS);
   const KIND_PRIORITY = Object.freeze({
     site: 30,
@@ -55,8 +52,14 @@
   }
 
   function normalizeCoord(source = {}, fallback = {}) {
-    const fromTileId = parseTileId(source.tileId || source.id || fallback.tileId || fallback.id || '');
-    const hasAxis = source.x !== undefined || source.q !== undefined || fallback.x !== undefined || fallback.q !== undefined;
+    const fromTileId = parseTileId(
+      source.tileId || source.id || fallback.tileId || fallback.id || '',
+    );
+    const hasAxis =
+      source.x !== undefined ||
+      source.q !== undefined ||
+      fallback.x !== undefined ||
+      fallback.q !== undefined;
     if (!hasAxis && fromTileId) return fromTileId;
     return TileCoord.normalizeCoord(source, fallback);
   }
@@ -84,7 +87,15 @@
   }
 
   function getActionEntityId(action = {}) {
-    return action.siteId || action.territoryId || action.cityId || action.actorId || action.missionId || action.tileId || '';
+    return (
+      action.siteId ||
+      action.territoryId ||
+      action.cityId ||
+      action.actorId ||
+      action.missionId ||
+      action.tileId ||
+      ''
+    );
   }
 
   function inferKind(action = {}, target = {}) {
@@ -96,16 +107,33 @@
   function getCandidateLabel(kind = '', action = {}, target = {}) {
     if (target.label) return String(target.label);
     if (action.label) return String(action.label);
-    if (kind === 'actor') return action.actorName || action.formationLabel || action.missionId || action.actorId || t('world.targetPicker.actor.default');
-    if (kind === 'site') return action.siteName || action.cityName || action.name || action.siteId || action.cityId || t('world.targetPicker.site.player');
+    if (kind === 'actor')
+      return (
+        action.actorName ||
+        action.formationLabel ||
+        action.missionId ||
+        action.actorId ||
+        t('world.targetPicker.actor.default')
+      );
+    if (kind === 'site')
+      return (
+        action.siteName ||
+        action.cityName ||
+        action.name ||
+        action.siteId ||
+        action.cityId ||
+        t('world.targetPicker.site.player')
+      );
     return action.type || t('world.targetPicker.kind.generic');
   }
 
   function getCandidateSubtitle(kind = '', action = {}, target = {}) {
     if (target.subtitle) return String(target.subtitle);
     if (action.subtitle) return String(action.subtitle);
-    if (kind === 'actor') return action.statusLabel || action.status || t('world.targetPicker.actor.activeSubtitle');
-    if (kind === 'site') return action.ownerLabel || action.owner || t('world.targetPicker.site.neutral');
+    if (kind === 'actor')
+      return action.statusLabel || action.status || t('world.targetPicker.actor.activeSubtitle');
+    if (kind === 'site')
+      return action.ownerLabel || action.owner || t('world.targetPicker.site.neutral');
     return '';
   }
 
@@ -182,17 +210,24 @@
   }
 
   function sortCandidates(candidates = []) {
-    return candidates.slice().sort((a, b) => (
-      toNumber(b.priority, 0) - toNumber(a.priority, 0)
-      || (KIND_PRIORITY[b.kind] || 0) - (KIND_PRIORITY[a.kind] || 0)
-      || String(a.label || '').localeCompare(String(b.label || ''))
-    ));
+    return candidates
+      .slice()
+      .sort(
+        (a, b) =>
+          toNumber(b.priority, 0) - toNumber(a.priority, 0) ||
+          (KIND_PRIORITY[b.kind] || 0) - (KIND_PRIORITY[a.kind] || 0) ||
+          String(a.label || '').localeCompare(String(b.label || '')),
+      );
   }
 
   function normalizeCandidates(targets = [], options = {}) {
-    return sortCandidates(uniqueCandidates((Array.isArray(targets) ? targets : [])
-      .map((target, index) => createCandidate(target, index, options))
-      .filter(Boolean)));
+    return sortCandidates(
+      uniqueCandidates(
+        (Array.isArray(targets) ? targets : [])
+          .map((target, index) => createCandidate(target, index, options))
+          .filter(Boolean),
+      ),
+    );
   }
 
   function resolveSharedTile(candidates = [], fallback = {}) {

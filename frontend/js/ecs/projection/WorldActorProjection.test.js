@@ -30,15 +30,21 @@ function createMission(overrides = {}) {
 
 test('WorldActorProjection keeps returned-home idle missions out of world actors', () => {
   const nowMs = new Date('2026-06-06T00:00:45.000Z').getTime();
-  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
-    idleMissions: [createMission()],
-  }, { nowMs });
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot(
+    {
+      idleMissions: [createMission()],
+    },
+    { nowMs },
+  );
 
   const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
 
   assert.equal(snapshot.counts.missions, 1);
   assert.equal(snapshot.counts.idle, 1);
-  assert.equal(WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1').position.tileId, 'tile_0_0');
+  assert.equal(
+    WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1').position.tileId,
+    'tile_0_0',
+  );
   assert.deepEqual(actors, []);
 });
 
@@ -67,17 +73,22 @@ test('WorldActorProjection treats returned-home idle rows with stale tile ids as
 
 test('WorldActorProjection keeps away-from-home idle missions as parked world actors', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
-  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
-    idleMissions: [createMission({
-      origin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
-      target: { q: 2, r: 0, tileId: 'tile_2_0' },
-      position: { q: 2, r: 0, tileId: 'tile_2_0' },
-      route: [
-        { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
-        { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: true },
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot(
+    {
+      idleMissions: [
+        createMission({
+          origin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+          target: { q: 2, r: 0, tileId: 'tile_2_0' },
+          position: { q: 2, r: 0, tileId: 'tile_2_0' },
+          route: [
+            { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+            { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: true },
+          ],
+        }),
       ],
-    })],
-  }, { nowMs });
+    },
+    { nowMs },
+  );
 
   const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
 
@@ -90,16 +101,21 @@ test('WorldActorProjection keeps away-from-home idle missions as parked world ac
 
 test('WorldActorProjection renders active returning missions until they arrive home', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
-  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
-    missions: [createMission({
-      status: 'active',
-      position: { q: 2, r: 0, tileId: 'tile_2_0' },
-      startedAt: '2026-06-06T00:00:20.000Z',
-      nextStepAt: '2026-06-06T00:00:30.000Z',
-      completesAt: '2026-06-06T00:00:40.000Z',
-      completedAt: null,
-    })],
-  }, { nowMs });
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot(
+    {
+      missions: [
+        createMission({
+          status: 'active',
+          position: { q: 2, r: 0, tileId: 'tile_2_0' },
+          startedAt: '2026-06-06T00:00:20.000Z',
+          nextStepAt: '2026-06-06T00:00:30.000Z',
+          completesAt: '2026-06-06T00:00:40.000Z',
+          completedAt: null,
+        }),
+      ],
+    },
+    { nowMs },
+  );
 
   const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
 
@@ -110,23 +126,28 @@ test('WorldActorProjection renders active returning missions until they arrive h
 
 test('WorldActorProjection keeps expired active manual march visible when parked away from home', () => {
   const nowMs = new Date('2026-06-06T00:00:45.000Z').getTime();
-  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
-    missions: [createMission({
-      status: 'active',
-      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
-      homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
-      target: { q: 2, r: 0, tileId: 'tile_2_0' },
-      position: { q: 1, r: 0, tileId: 'tile_1_0' },
-      route: [
-        { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
-        { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: true },
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot(
+    {
+      missions: [
+        createMission({
+          status: 'active',
+          origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+          homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0', cityId: 'capital' },
+          target: { q: 2, r: 0, tileId: 'tile_2_0' },
+          position: { q: 1, r: 0, tileId: 'tile_1_0' },
+          route: [
+            { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: true },
+            { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: true },
+          ],
+          startedAt: '2026-06-06T00:00:20.000Z',
+          nextStepAt: '2026-06-06T00:00:40.000Z',
+          completesAt: '2026-06-06T00:00:40.000Z',
+          completedAt: null,
+        }),
       ],
-      startedAt: '2026-06-06T00:00:20.000Z',
-      nextStepAt: '2026-06-06T00:00:40.000Z',
-      completesAt: '2026-06-06T00:00:40.000Z',
-      completedAt: null,
-    })],
-  }, { nowMs });
+    },
+    { nowMs },
+  );
 
   const row = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
   const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
@@ -142,16 +163,21 @@ test('WorldActorProjection keeps expired active manual march visible when parked
 
 test('WorldActorProjection keeps expired active return-home mission hidden at home', () => {
   const nowMs = new Date('2026-06-06T00:00:45.000Z').getTime();
-  const snapshot = WorldMarchProgressSnapshot.createSnapshot({
-    missions: [createMission({
-      status: 'active',
-      position: { q: 1, r: 0, tileId: 'tile_1_0' },
-      startedAt: '2026-06-06T00:00:20.000Z',
-      nextStepAt: '2026-06-06T00:00:40.000Z',
-      completesAt: '2026-06-06T00:00:40.000Z',
-      completedAt: null,
-    })],
-  }, { nowMs });
+  const snapshot = WorldMarchProgressSnapshot.createSnapshot(
+    {
+      missions: [
+        createMission({
+          status: 'active',
+          position: { q: 1, r: 0, tileId: 'tile_1_0' },
+          startedAt: '2026-06-06T00:00:20.000Z',
+          nextStepAt: '2026-06-06T00:00:40.000Z',
+          completesAt: '2026-06-06T00:00:40.000Z',
+          completedAt: null,
+        }),
+      ],
+    },
+    { nowMs },
+  );
 
   const row = WorldMarchProgressSnapshot.getMission(snapshot, 'explore-1');
   const actors = WorldActorProjection.projectWorldActors(snapshot, { nowMs });
@@ -165,19 +191,21 @@ test('WorldActorProjection keeps expired active return-home mission hidden at ho
 test('WorldActorProjection projects active combat encounters as hostile world actors', () => {
   const actors = WorldActorProjection.projectWorldActors({
     combat: {
-      activeEncounters: [{
-        id: 'hostile_force_capital_ridge',
-        status: 'active',
-        kind: 'hostileForce',
-        name: 'Frontier Patrol',
-        q: 2,
-        r: -1,
-        tileId: 'tile_2_-1',
-        terrain: 'forest',
-        unitKey: 'hostile_squad_default',
-        defender: { soldiers: 40 },
-        battleTarget: { source: 'world-combat' },
-      }],
+      activeEncounters: [
+        {
+          id: 'hostile_force_capital_ridge',
+          status: 'active',
+          kind: 'hostileForce',
+          name: 'Frontier Patrol',
+          q: 2,
+          r: -1,
+          tileId: 'tile_2_-1',
+          terrain: 'forest',
+          unitKey: 'hostile_squad_default',
+          defender: { soldiers: 40 },
+          battleTarget: { source: 'world-combat' },
+        },
+      ],
     },
   });
 

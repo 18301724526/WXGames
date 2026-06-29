@@ -10,42 +10,46 @@ const WorldMarchGeometry = require('../ecs/foundation/WorldMarchGeometry');
 function createShell(overrides = {}) {
   class Shell {}
   LayerRuntime.install(Shell);
-  return Object.assign(new Shell(), {
-    buildRenderOptions() {
-      return { built: true };
-    },
-    config: {},
-    getCanvasLayerMetrics() {
-      return { width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 };
-    },
-    getWorldEpochNowMs() {
-      return 24680;
-    },
-    isFogOfWarEnabled() {
-      return false;
-    },
-    lastGame: {
-      state: { id: 'state-1' },
-    },
-    previewEnabled: true,
-    renderer: {
-      getTopBarBottom() {
-        return 91;
+  return Object.assign(
+    new Shell(),
+    {
+      buildRenderOptions() {
+        return { built: true };
+      },
+      config: {},
+      getCanvasLayerMetrics() {
+        return { width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 };
+      },
+      getWorldEpochNowMs() {
+        return 24680;
+      },
+      isFogOfWarEnabled() {
+        return false;
+      },
+      lastGame: {
+        state: { id: 'state-1' },
+      },
+      previewEnabled: true,
+      renderer: {
+        getTopBarBottom() {
+          return 91;
+        },
+      },
+      runtime: {
+        pixelRatio: 2,
+      },
+      territoryUiState: {},
+      worldMapDragWaterTimeMs: 123,
+      worldMapRenderer: {
+        height: 1,
+        renderWorldMapSnapshotLayer() {
+          return true;
+        },
+        width: 1,
       },
     },
-    runtime: {
-      pixelRatio: 2,
-    },
-    territoryUiState: {},
-    worldMapDragWaterTimeMs: 123,
-    worldMapRenderer: {
-      height: 1,
-      renderWorldMapSnapshotLayer() {
-        return true;
-      },
-      width: 1,
-    },
-  }, overrides);
+    overrides,
+  );
 }
 
 test('CanvasGameShellWorldMapLayerRuntime syncs map and fog metrics', () => {
@@ -271,11 +275,7 @@ test('CanvasGameShellWorldMapFrameRuntime invalidates bake when clearing non-mil
   });
 
   assert.equal(shell.renderWorldMapLayer(shell.lastGame.state, { activeTab: 'resources' }), false);
-  assert.deepEqual(calls, [
-    ['syncMetrics'],
-    ['clearAll'],
-    ['invalidateBake'],
-  ]);
+  assert.deepEqual(calls, [['syncMetrics'], ['clearAll'], ['invalidateBake']]);
 });
 
 test('CanvasGameShellWorldMapLayerRuntime refreshes snapshot layer and commits camera', () => {
@@ -302,7 +302,12 @@ test('CanvasGameShellWorldMapLayerRuntime refreshes snapshot layer and commits c
       return true;
     },
     renderWorldActorLayer(options) {
-      calls.push(['renderActor', options.state.id, options.territoryUiState.worldPanX, options.epochNowMs]);
+      calls.push([
+        'renderActor',
+        options.state.id,
+        options.territoryUiState.worldPanX,
+        options.epochNowMs,
+      ]);
       if (this.worldMapRuntimeCoordinator?.getMapRuntime) {
         this.worldMapRuntimeCoordinator.getMapRuntime().syncHitTargetsFromRenderer?.({
           preserveOnEmpty: options.preserveRuntimeHitTargetsOnEmpty === true,
@@ -321,7 +326,13 @@ test('CanvasGameShellWorldMapLayerRuntime refreshes snapshot layer and commits c
     },
     worldMapRenderer: {
       renderWorldMapSnapshotLayer(state, options) {
-        calls.push(['renderSnapshot', state.id, options.topBarBottom, options.waterTimeMs, options.epochNowMs]);
+        calls.push([
+          'renderSnapshot',
+          state.id,
+          options.topBarBottom,
+          options.waterTimeMs,
+          options.epochNowMs,
+        ]);
         return true;
       },
     },
@@ -430,7 +441,11 @@ test('CanvasGameShellWorldMapLayerRuntime keeps actor anchor on the dragged map 
         calls.push(['actorContextPan', context.viewport.panX, context.viewport.panY]);
         calls.push([
           'anchor',
-          WorldMarchGeometry.getTileScreenCenter({ q: 0, r: 0 }, context.viewport, context.geometry),
+          WorldMarchGeometry.getTileScreenCenter(
+            { q: 0, r: 0 },
+            context.viewport,
+            context.geometry,
+          ),
         ]);
         return true;
       },

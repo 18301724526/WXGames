@@ -45,11 +45,12 @@
   }
 
   function readFps(input = {}) {
-    const value = input.fps
-      ?? input.frameMetrics?.fps
-      ?? input.renderer?.currentFps
-      ?? input.surface?.currentFps
-      ?? null;
+    const value =
+      input.fps ??
+      input.frameMetrics?.fps ??
+      input.renderer?.currentFps ??
+      input.surface?.currentFps ??
+      null;
     const fps = toInteger(value, 0);
     let status = STATUS_UNKNOWN;
     if (fps >= 55) status = STATUS_OK;
@@ -62,7 +63,10 @@
       status,
       details: {
         fps,
-        sampleCount: Math.max(0, toInteger(input.renderer?.fpsSamples?.length ?? input.surface?.fpsSamples?.length, 0)),
+        sampleCount: Math.max(
+          0,
+          toInteger(input.renderer?.fpsSamples?.length ?? input.surface?.fpsSamples?.length, 0),
+        ),
       },
     };
   }
@@ -74,8 +78,16 @@
     const mapBakeDirty = Boolean(runtime.mapBakeDirty);
     const status = !hasRuntime
       ? STATUS_UNKNOWN
-      : (!hasBakedMapLayer || mapBakeDirty ? STATUS_WARN : STATUS_OK);
-    const value = !hasRuntime ? 'missing' : (!hasBakedMapLayer ? 'unbaked' : (mapBakeDirty ? 'dirty' : 'clean'));
+      : !hasBakedMapLayer || mapBakeDirty
+        ? STATUS_WARN
+        : STATUS_OK;
+    const value = !hasRuntime
+      ? 'missing'
+      : !hasBakedMapLayer
+        ? 'unbaked'
+        : mapBakeDirty
+          ? 'dirty'
+          : 'clean';
     return {
       key: 'worldMapBake',
       label: 'Map Bake',
@@ -95,7 +107,11 @@
   }
 
   function readVisibility(input = {}) {
-    const snapshot = input.visibilitySnapshot || input.entitySnapshot?.visibility || input.fogVisualSnapshot || null;
+    const snapshot =
+      input.visibilitySnapshot ||
+      input.entitySnapshot?.visibility ||
+      input.fogVisualSnapshot ||
+      null;
     const counts = snapshot?.counts || {};
     const hasSnapshot = Boolean(snapshot);
     return {
@@ -117,7 +133,8 @@
 
   function readInputTrace(input = {}) {
     const trace = input.inputTrace || {};
-    const action = input.lastInputAction || input.action || trace.lastAction || trace.action || null;
+    const action =
+      input.lastInputAction || input.action || trace.lastAction || trace.action || null;
     const point = input.lastInputPoint || trace.lastPoint || null;
     return {
       key: 'inputTrace',
@@ -178,7 +195,9 @@
     accumulator.labels.push(row.label || key);
     accumulator.values.push(String(row.value ?? ''));
     accumulator.statuses.push(status);
-    accumulator.details.push(row.details && typeof row.details === 'object' ? { ...row.details } : {});
+    accumulator.details.push(
+      row.details && typeof row.details === 'object' ? { ...row.details } : {},
+    );
     accumulator.counts.total += 1;
     countStatus(accumulator.counts, status);
     accumulator._hash = hashStep(accumulator._hash, key);
@@ -194,7 +213,9 @@
   }
 
   function createSnapshot(input = {}, options = {}) {
-    const overlayKeys = normalizeOverlayKeys(options.overlayKeys || options.enabledOverlayKeys || DEFAULT_OVERLAY_KEYS);
+    const overlayKeys = normalizeOverlayKeys(
+      options.overlayKeys || options.enabledOverlayKeys || DEFAULT_OVERLAY_KEYS,
+    );
     const accumulator = createAccumulator();
     overlayKeys.forEach((key) => {
       const builder = ROW_BUILDERS[key];
@@ -232,7 +253,9 @@
       labels: Array.isArray(snapshot.labels) ? [...snapshot.labels] : [],
       values: Array.isArray(snapshot.values) ? [...snapshot.values] : [],
       statuses: Array.isArray(snapshot.statuses) ? [...snapshot.statuses] : [],
-      details: Array.isArray(snapshot.details) ? snapshot.details.map((detail) => ({ ...(detail || {}) })) : [],
+      details: Array.isArray(snapshot.details)
+        ? snapshot.details.map((detail) => ({ ...(detail || {}) }))
+        : [],
       indexByKey: { ...(snapshot.indexByKey || {}) },
       counts: { ...(snapshot.counts || {}) },
       signature: snapshot.signature || '',

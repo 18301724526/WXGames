@@ -39,7 +39,10 @@ test('TileCoord prefers stable x/y over q/r when both are present', () => {
 
 test('TileCoord keeps explicit legacy tile ids only when requested', () => {
   assert.equal(TileCoord.normalizeCoord({ x: 1, y: 2, tileId: 'legacy' }).tileId, 'tile_1_2');
-  assert.equal(TileCoord.normalizeCoord({ x: 1, y: 2, tileId: 'legacy' }, {}, { preserveTileId: true }).tileId, 'legacy');
+  assert.equal(
+    TileCoord.normalizeCoord({ x: 1, y: 2, tileId: 'legacy' }, {}, { preserveTileId: true }).tileId,
+    'legacy',
+  );
 });
 
 test('TileCoord offsets and compares coordinates through the stable axes', () => {

@@ -74,19 +74,21 @@
   function extractClockPayloadTime(payload = {}) {
     if (!payload || typeof payload !== 'object') return {};
     return {
-      serverTime: payload.serverTime
-        ?? payload.authority?.serverTime
-        ?? payload.authority?.command?.serverTime
-        ?? payload.timeline?.serverTime
-        ?? payload.details?.serverTime
-        ?? payload.details?.timeline?.serverTime
-        ?? payload.gameState?.serverTime
-        ?? payload.state?.serverTime,
-      serverNowMs: payload.nowMs
-        ?? payload.timeline?.nowMs
-        ?? payload.details?.timeline?.nowMs
-        ?? payload.gameState?.nowMs
-        ?? payload.state?.nowMs,
+      serverTime:
+        payload.serverTime ??
+        payload.authority?.serverTime ??
+        payload.authority?.command?.serverTime ??
+        payload.timeline?.serverTime ??
+        payload.details?.serverTime ??
+        payload.details?.timeline?.serverTime ??
+        payload.gameState?.serverTime ??
+        payload.state?.serverTime,
+      serverNowMs:
+        payload.nowMs ??
+        payload.timeline?.nowMs ??
+        payload.details?.timeline?.nowMs ??
+        payload.gameState?.nowMs ??
+        payload.state?.nowMs,
     };
   }
 
@@ -117,8 +119,8 @@
   function getClockEntity(clockWorld = null) {
     if (!clockWorld?.world) return null;
     if (
-      Number.isInteger(clockWorld.clockEntity)
-      && hasComponent(clockWorld.world, Clock, clockWorld.clockEntity)
+      Number.isInteger(clockWorld.clockEntity) &&
+      hasComponent(clockWorld.world, Clock, clockWorld.clockEntity)
     ) {
       return clockWorld.clockEntity;
     }
@@ -132,12 +134,12 @@
     if (options.runtime) clockWorld.runtime = options.runtime;
     const payloadTimes = extractClockPayloadTime(options);
     const serverEpochMs = toEpochMs(
-      options.serverTime
-        ?? options.serverNowMs
-        ?? options.epochNowMs
-        ?? options.nowEpochMs
-        ?? payloadTimes.serverTime
-        ?? payloadTimes.serverNowMs,
+      options.serverTime ??
+        options.serverNowMs ??
+        options.epochNowMs ??
+        options.nowEpochMs ??
+        payloadTimes.serverTime ??
+        payloadTimes.serverNowMs,
       Number.NaN,
     );
     if (!Number.isFinite(serverEpochMs)) return false;
@@ -156,7 +158,10 @@
   function runClockAdvanceSystem(clockWorld = null) {
     const entity = getClockEntity(clockWorld);
     if (!Number.isInteger(entity) || !Clock.synced[entity]) return false;
-    const elapsedMs = Math.max(0, getMonotonicNow(clockWorld.runtime) - Clock.clientMonoAtSyncMs[entity]);
+    const elapsedMs = Math.max(
+      0,
+      getMonotonicNow(clockWorld.runtime) - Clock.clientMonoAtSyncMs[entity],
+    );
     Clock.elapsedMs[entity] = elapsedMs;
     Clock.epochNowMs[entity] = Clock.serverEpochAtSyncMs[entity] + elapsedMs;
     return true;
@@ -189,11 +194,11 @@
 
   function isClockWorld(value = null) {
     return Boolean(
-      value
-      && typeof value === 'object'
-      && value.world
-      && Number.isInteger(value.clockEntity)
-      && hasComponent(value.world, Clock, value.clockEntity),
+      value &&
+      typeof value === 'object' &&
+      value.world &&
+      Number.isInteger(value.clockEntity) &&
+      hasComponent(value.world, Clock, value.clockEntity),
     );
   }
 
@@ -239,8 +244,7 @@
   }
 
   function sync(source = {}, payload = {}) {
-    const clockWorld = getClockWorld(source)
-      || getShared({ runtime: source?.runtime || source });
+    const clockWorld = getClockWorld(source) || getShared({ runtime: source?.runtime || source });
     const synced = updateFromPayload(clockWorld, payload);
     if (source && typeof source === 'object' && !source.worldClock) source.worldClock = clockWorld;
     return synced;

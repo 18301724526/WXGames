@@ -102,7 +102,7 @@
       return drawLayout ? this.drawWorldTileLayerCache(work, drawLayout, frame) : false;
     }
 
-    renderWorldTileSnapshotCache(tileMapView = {}, viewport = {}, frame = {}) {
+    renderWorldTileSnapshotCache(_tileMapView = {}, viewport = {}, frame = {}) {
       if (!this.ctx || typeof this.ctx.drawImage !== 'function') return false;
       let rendered = false;
       if (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame) {

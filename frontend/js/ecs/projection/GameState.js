@@ -1,5 +1,4 @@
 (function (global) {
-
   const LocaleText = (() => {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
@@ -20,12 +19,13 @@
     return {
       completed: Boolean(tutorial && tutorial.completed),
       currentStep: Number.isFinite(tutorial && tutorial.currentStep) ? tutorial.currentStep : 0,
-      phaseCompleted: tutorial && tutorial.phaseCompleted
-        ? {
-          newbie: Boolean(tutorial.phaseCompleted.newbie),
-          era2: Boolean(tutorial.phaseCompleted.era2),
-        }
-        : { newbie: false, era2: false },
+      phaseCompleted:
+        tutorial && tutorial.phaseCompleted
+          ? {
+              newbie: Boolean(tutorial.phaseCompleted.newbie),
+              era2: Boolean(tutorial.phaseCompleted.era2),
+            }
+          : { newbie: false, era2: false },
     };
   }
 
@@ -50,7 +50,8 @@
       currentEraName: gameState.currentEraName || t('era.primitiveName'),
       currentEraDescription: gameState.currentEraDescription || '',
       softGuide: (apiResponse && apiResponse.softGuide) || null,
-      guideTasks: (apiResponse && apiResponse.guideTasks) || gameState.guideTasks || { visible: false, tasks: [] },
+      guideTasks: (apiResponse && apiResponse.guideTasks) ||
+        gameState.guideTasks || { visible: false, tasks: [] },
       taskCenter: (apiResponse && apiResponse.taskCenter) || gameState.taskCenter || null,
       talentPolicies: gameState.talentPolicies || {},
       famousPersons: gameState.famousPersons || {},
@@ -67,7 +68,11 @@
       regularEventState: gameState.regularEventState || null,
       threatEventState: gameState.threatEventState || null,
       activeBuffs: gameState.activeBuffs || [],
-      eraProgress: (apiResponse && apiResponse.eraProgress) || { percentage: 0, canAdvance: false, conditions: [] },
+      eraProgress: (apiResponse && apiResponse.eraProgress) || {
+        percentage: 0,
+        canAdvance: false,
+        conditions: [],
+      },
     };
   }
 

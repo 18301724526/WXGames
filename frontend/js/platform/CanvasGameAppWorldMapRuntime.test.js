@@ -33,7 +33,8 @@ test('CanvasGameAppWorldMapRuntime tracks snapshot drag water time and cooldown'
   app.worldMapDragWaterTimeMs = null;
   app.worldMapDragCooldownUntil = 0;
   app.worldMapPinchDragging = true;
-  app.updateWorldActorAnimationLoop = (options) => calls.push(['updateWorldActorAnimationLoop', options.force]);
+  app.updateWorldActorAnimationLoop = (options) =>
+    calls.push(['updateWorldActorAnimationLoop', options.force]);
 
   assert.equal(app.getFrozenWorldMapWaterTimeMs(), 1000);
   assert.equal(app.isWorldMapDragging(), false);
@@ -47,9 +48,7 @@ test('CanvasGameAppWorldMapRuntime tracks snapshot drag water time and cooldown'
   assert.equal(app.worldMapPinchDragging, false);
   assert.equal(app.worldMapRuntime.waterTimeMs, null);
   assert.equal(app.worldMapDragCooldownUntil, 1420);
-  assert.deepEqual(calls, [
-    ['updateWorldActorAnimationLoop', true],
-  ]);
+  assert.deepEqual(calls, [['updateWorldActorAnimationLoop', true]]);
 });
 
 test('CanvasGameAppWorldMapRuntime delegates render decisions to coordinator', () => {
@@ -146,11 +145,22 @@ test('CanvasGameAppWorldMapRuntime refreshes snapshot layer and commits camera',
   app.renderer = {
     getTopBarBottom: () => 91,
     renderWorldMapSnapshotLayer(state, options) {
-      calls.push(['renderWorldMapSnapshotLayer', state.id, options.topBarBottom, options.waterTimeMs, options.epochNowMs]);
+      calls.push([
+        'renderWorldMapSnapshotLayer',
+        state.id,
+        options.topBarBottom,
+        options.waterTimeMs,
+        options.epochNowMs,
+      ]);
       return true;
     },
     renderWorldMapActorLayer(state, options) {
-      calls.push(['renderWorldMapActorLayer', state.id, options.territoryUiState.worldPanX, options.epochNowMs]);
+      calls.push([
+        'renderWorldMapActorLayer',
+        state.id,
+        options.territoryUiState.worldPanX,
+        options.epochNowMs,
+      ]);
       return true;
     },
   };
@@ -221,7 +231,11 @@ test('CanvasGameAppWorldMapRuntime keeps actor anchor on the dragged map snapsho
     ['actorContextPan', 48, -24],
     [
       'anchor',
-      WorldMarchGeometry.getTileScreenCenter({ q: 0, r: 0 }, snapshotContext.viewport, snapshotContext.geometry),
+      WorldMarchGeometry.getTileScreenCenter(
+        { q: 0, r: 0 },
+        snapshotContext.viewport,
+        snapshotContext.geometry,
+      ),
     ],
   ]);
 });
@@ -275,7 +289,12 @@ test('CanvasGameAppWorldMapRuntime does not skip map layer when snapshot render 
       return true;
     },
     render(state, options) {
-      calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas, options.worldMapFrameState?.hitTargetsPreserved]);
+      calls.push([
+        'render',
+        options.skipWorldMapLayer,
+        options.preserveCanvas,
+        options.worldMapFrameState?.hitTargetsPreserved,
+      ]);
     },
   };
 
@@ -388,9 +407,6 @@ test('CanvasGameAppWorldMapRuntime observes async action failures without changi
   const coordinator = app.ensureWorldMapRuntimeCoordinator();
   const handled = coordinator.onAction({ type: 'selectWorldMarchTarget' }, null, {});
 
-  await assert.rejects(
-    () => handled,
-    /world map runtime action failed/,
-  );
+  await assert.rejects(() => handled, /world map runtime action failed/);
   assert.deepEqual(errors, ['world map runtime action failed']);
 });

@@ -123,10 +123,13 @@
       height: topology.worldHeight,
       wrapping: topology.wrapping,
     });
-    return normalizeChunkCoord({
-      chunkX: Math.floor(coord.x / topology.chunkWidth),
-      chunkY: Math.floor(coord.y / topology.chunkHeight),
-    }, topology);
+    return normalizeChunkCoord(
+      {
+        chunkX: Math.floor(coord.x / topology.chunkWidth),
+        chunkY: Math.floor(coord.y / topology.chunkHeight),
+      },
+      topology,
+    );
   }
 
   function getChunkBounds(chunk = {}, options = {}) {
@@ -173,12 +176,14 @@
     const topology = normalizeTopologyOptions(options);
     const minX = toInteger(rect.minX ?? rect.x, 0);
     const minY = toInteger(rect.minY ?? rect.y, 0);
-    const maxX = rect.maxX !== undefined
-      ? toInteger(rect.maxX, minX)
-      : minX + Math.max(0, toInteger(rect.width, 1) - 1);
-    const maxY = rect.maxY !== undefined
-      ? toInteger(rect.maxY, minY)
-      : minY + Math.max(0, toInteger(rect.height, 1) - 1);
+    const maxX =
+      rect.maxX !== undefined
+        ? toInteger(rect.maxX, minX)
+        : minX + Math.max(0, toInteger(rect.width, 1) - 1);
+    const maxY =
+      rect.maxY !== undefined
+        ? toInteger(rect.maxY, minY)
+        : minY + Math.max(0, toInteger(rect.height, 1) - 1);
     const xRanges = getWrappedRanges(minX, maxX, topology.worldWidth, topology.wrapping);
     const yRanges = getWrappedRanges(minY, maxY, topology.worldHeight, topology.wrapping);
     const chunksById = new Map();
@@ -196,9 +201,9 @@
         }
       }
     }
-    return Object.freeze([...chunksById.values()].sort((a, b) => (
-      a.chunkY - b.chunkY || a.chunkX - b.chunkX
-    )));
+    return Object.freeze(
+      [...chunksById.values()].sort((a, b) => a.chunkY - b.chunkY || a.chunkX - b.chunkX),
+    );
   }
 
   function containsTile(chunk = {}, tile = {}, options = {}) {

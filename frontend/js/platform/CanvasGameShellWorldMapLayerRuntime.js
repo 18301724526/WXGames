@@ -16,9 +16,10 @@
     const explicitUiState = pickOption(options, 'territoryUiState');
     const runtimeUiState = explicitUiState || runtime?.getCameraUiState?.() || null;
     if (typeof host?.buildRenderOptions === 'function') {
-      const renderOptions = host.buildRenderOptions('military', runtimeUiState, {
-        forceMapHome: true,
-      }) || {};
+      const renderOptions =
+        host.buildRenderOptions('military', runtimeUiState, {
+          forceMapHome: true,
+        }) || {};
       const { territoryUiState = runtimeUiState || {} } = renderOptions;
       return {
         ...renderOptions,
@@ -38,28 +39,36 @@
         const metrics = this.getCanvasLayerMetrics?.('worldMap', null);
         if (!metrics) return false;
         const width = Number(metrics.width) || this.runtime?.width || this.worldMapRenderer.width;
-        const height = Number(metrics.height) || this.runtime?.height || this.worldMapRenderer.height;
+        const height =
+          Number(metrics.height) || this.runtime?.height || this.worldMapRenderer.height;
         const padding = Number(metrics.padding) || 0;
-        const changed = this.worldMapRenderer.width !== width
-          || this.worldMapRenderer.height !== height
-          || this.worldMapRenderer.viewportOffsetX !== padding
-          || this.worldMapRenderer.viewportOffsetY !== padding;
+        const changed =
+          this.worldMapRenderer.width !== width ||
+          this.worldMapRenderer.height !== height ||
+          this.worldMapRenderer.viewportOffsetX !== padding ||
+          this.worldMapRenderer.viewportOffsetY !== padding;
         this.worldMapRenderer.width = width;
         this.worldMapRenderer.height = height;
-        this.worldMapRenderer.pixelRatio = this.runtime?.pixelRatio || this.worldMapRenderer.pixelRatio;
+        this.worldMapRenderer.pixelRatio =
+          this.runtime?.pixelRatio || this.worldMapRenderer.pixelRatio;
         this.worldMapRenderer.viewportOffsetX = padding;
         this.worldMapRenderer.viewportOffsetY = padding;
-        this.worldMapRenderer.viewportWidth = Number(metrics.viewportWidth) || this.runtime?.width || width;
-        this.worldMapRenderer.viewportHeight = Number(metrics.viewportHeight) || this.runtime?.height || height;
+        this.worldMapRenderer.viewportWidth =
+          Number(metrics.viewportWidth) || this.runtime?.width || width;
+        this.worldMapRenderer.viewportHeight =
+          Number(metrics.viewportHeight) || this.runtime?.height || height;
         if (this.worldActorLayerRenderer) {
           const actorMetrics = this.getCanvasLayerMetrics?.('worldActor', metrics) || metrics;
           this.worldActorLayerRenderer.width = Number(actorMetrics.width) || width;
           this.worldActorLayerRenderer.height = Number(actorMetrics.height) || height;
-          this.worldActorLayerRenderer.pixelRatio = this.runtime?.pixelRatio || this.worldActorLayerRenderer.pixelRatio;
+          this.worldActorLayerRenderer.pixelRatio =
+            this.runtime?.pixelRatio || this.worldActorLayerRenderer.pixelRatio;
           this.worldActorLayerRenderer.viewportOffsetX = Number(actorMetrics.padding) || padding;
           this.worldActorLayerRenderer.viewportOffsetY = Number(actorMetrics.padding) || padding;
-          this.worldActorLayerRenderer.viewportWidth = Number(actorMetrics.viewportWidth) || this.worldMapRenderer.viewportWidth;
-          this.worldActorLayerRenderer.viewportHeight = Number(actorMetrics.viewportHeight) || this.worldMapRenderer.viewportHeight;
+          this.worldActorLayerRenderer.viewportWidth =
+            Number(actorMetrics.viewportWidth) || this.worldMapRenderer.viewportWidth;
+          this.worldActorLayerRenderer.viewportHeight =
+            Number(actorMetrics.viewportHeight) || this.worldMapRenderer.viewportHeight;
           if (this.worldMapRenderer) {
             this.worldMapRenderer.worldActorLayerRenderer = this.worldActorLayerRenderer;
           }
@@ -73,7 +82,8 @@
             viewportOffsetX: Number(fogMetrics.padding) || padding,
             viewportOffsetY: Number(fogMetrics.padding) || padding,
             viewportWidth: Number(fogMetrics.viewportWidth) || this.worldMapRenderer.viewportWidth,
-            viewportHeight: Number(fogMetrics.viewportHeight) || this.worldMapRenderer.viewportHeight,
+            viewportHeight:
+              Number(fogMetrics.viewportHeight) || this.worldMapRenderer.viewportHeight,
           });
         }
         if (changed) this.worldMapRuntime?.invalidateBake?.();
@@ -96,12 +106,14 @@
       },
 
       getWorldMapRuntimeBakeState() {
-        const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime || null;
+        const runtime =
+          this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime || null;
         return runtime?.getBakedLayerState?.() || runtime?.bakedLayerState || null;
       },
 
       getWorldMapBakedLayerValidity() {
-        const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime || null;
+        const runtime =
+          this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime || null;
         if (!runtime?.hasBakedMapLayer) return { valid: false, reason: 'notBaked' };
         if (runtime?.mapBakeDirty) return { valid: false, reason: 'mapBakeDirty' };
         const backing = this.getWorldMapLayerBackingStoreState?.() || null;
@@ -128,7 +140,10 @@
       },
 
       hasValidBakedWorldMapLayer() {
-        const validity = this.getWorldMapBakedLayerValidity?.() || { valid: false, reason: 'missingValidator' };
+        const validity = this.getWorldMapBakedLayerValidity?.() || {
+          valid: false,
+          reason: 'missingValidator',
+        };
         this.lastWorldMapBakedLayerValidity = validity;
         return Boolean(validity.valid);
       },
@@ -137,19 +152,23 @@
         const FogOwner = EcsModeRuntimeBase?.FogOwner || global.EcsModeRuntime?.FogOwner;
         if (!FogOwner?.createFogOwner || !context) return null;
         const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? context.epochNowMs;
-        const owner = FogOwner.createFogOwner({
-          ...(context || {}),
-          config: this.config,
-          epochNowMs,
-          state: options.state || this.lastGame?.state || this.state || {},
-          worldExplorerState: options.worldExplorerState
-            || this.lastGame?.state?.worldExplorerState
-            || this.state?.worldExplorerState
-            || {},
-        }, {
-          ...options,
-          epochNowMs,
-        });
+        const owner = FogOwner.createFogOwner(
+          {
+            ...(context || {}),
+            config: this.config,
+            epochNowMs,
+            state: options.state || this.lastGame?.state || this.state || {},
+            worldExplorerState:
+              options.worldExplorerState ||
+              this.lastGame?.state?.worldExplorerState ||
+              this.state?.worldExplorerState ||
+              {},
+          },
+          {
+            ...options,
+            epochNowMs,
+          },
+        );
         this.__ecsFogOwner = owner;
         return owner;
       },
@@ -196,7 +215,11 @@
       },
 
       renderWorldActorLayer(options = {}) {
-        if (!this.worldMapRenderer || typeof this.worldMapRenderer.renderWorldMapActorLayer !== 'function') return false;
+        if (
+          !this.worldMapRenderer ||
+          typeof this.worldMapRenderer.renderWorldMapActorLayer !== 'function'
+        )
+          return false;
         const state = options.state || this.lastGame?.state;
         if (!state) return false;
         this.syncWorldMapRendererLayerMetrics();
@@ -210,11 +233,12 @@
           activeTab: 'military',
           isMapHome: true,
           territoryUiState,
-          worldMapRuntimeContext: options.worldMapRuntimeContext
-            || runtime?.getLastTileMapContext?.()
-            || runtime?.lastTileMapContext
-            || this.worldMapRenderer.lastWorldTileMapContext
-            || null,
+          worldMapRuntimeContext:
+            options.worldMapRuntimeContext ||
+            runtime?.getLastTileMapContext?.() ||
+            runtime?.lastTileMapContext ||
+            this.worldMapRenderer.lastWorldTileMapContext ||
+            null,
           showFpsOverlay: false,
         });
         if (rendered && runtime?.syncHitTargetsFromRenderer) {
@@ -233,9 +257,10 @@
         const runtime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
         const baseOptions = buildMilitaryRenderOptions(this, runtime, options);
         const { territoryUiState = {} } = baseOptions;
-        const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'
-          ? this.renderer.getTopBarBottom(state, { isMapHome: true })
-          : 84;
+        const topBarBottom =
+          typeof this.renderer?.getTopBarBottom === 'function'
+            ? this.renderer.getTopBarBottom(state, { isMapHome: true })
+            : 84;
         const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now();
         const rendered = this.worldMapRenderer.renderWorldMapSnapshotLayer(state, {
           ...baseOptions,

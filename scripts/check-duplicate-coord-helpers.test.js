@@ -71,8 +71,16 @@ test('coord-helper guard exempts the canonical + honest variant sources, tests a
 test('coord-helper guard scans frontend production files, skipping allowlist + tests', () =>
   withTempRepo((repoRoot) => {
     writeFile(repoRoot, 'frontend/js/ecs/foundation/Bad.js', 'const id = `tile_${q}_${r}`;\n');
-    writeFile(repoRoot, 'frontend/js/ecs/foundation/Good.js', 'const id = TileCoord.tileId(q, r);\n');
-    writeFile(repoRoot, 'frontend/js/ecs/foundation/TileCoord.js', 'const id = `tile_${x}_${y}`;\n');
+    writeFile(
+      repoRoot,
+      'frontend/js/ecs/foundation/Good.js',
+      'const id = TileCoord.tileId(q, r);\n',
+    );
+    writeFile(
+      repoRoot,
+      'frontend/js/ecs/foundation/TileCoord.js',
+      'const id = `tile_${x}_${y}`;\n',
+    );
     writeFile(repoRoot, 'frontend/js/ecs/foundation/Bad.test.js', 'const id = `tile_${q}_${r}`;\n');
 
     const report = scanDuplicateCoordHelpers({ repoRoot });

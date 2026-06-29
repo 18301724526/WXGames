@@ -34,7 +34,14 @@ test('TileMapGeometry converts screen points back to stable tile coordinates', (
 
 test('TileMapGeometry projects non-zero world origins around the local viewport center', () => {
   const geometry = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
-  const viewport = { originX: 216, originY: 337, panX: 0, panY: 0, scale: 0.78, worldOrigin: { q: 28, r: 9 } };
+  const viewport = {
+    originX: 216,
+    originY: 337,
+    panX: 0,
+    panY: 0,
+    scale: 0.78,
+    worldOrigin: { q: 28, r: 9 },
+  };
   const center = TileMapGeometry.getTileScreenCenter({ q: 28, r: 9 }, viewport, geometry);
   const coord = TileMapGeometry.screenPointToCoord(center, viewport, geometry);
 
@@ -55,5 +62,8 @@ test('TileMapGeometry sort order treats q/r as compatibility aliases', () => {
     { id: 'c', x: 0, y: 1 },
   ]);
 
-  assert.deepEqual(tiles.map((tile) => tile.id), ['a', 'b', 'c']);
+  assert.deepEqual(
+    tiles.map((tile) => tile.id),
+    ['a', 'b', 'c'],
+  );
 });

@@ -17,39 +17,44 @@ function createTileMapView() {
       { id: 'tile_1_0', q: 1, r: 0, terrain: 'forest' },
     ],
     sites: [{ id: 'capital', tileId: 'tile_0_0' }],
-    activeScouts: [{
-      id: 'explore-1',
-      kind: 'worldExplore',
-      mode: 'manual',
-      status: 'active',
-      origin: { q: 0, r: 0, tileId: 'tile_0_0' },
-      target: { q: 2, r: 0, tileId: 'tile_2_0' },
-      route: [
-        { q: 1, r: 0, tileId: 'tile_1_0', step: 1 },
-        { q: 2, r: 0, tileId: 'tile_2_0', step: 2 },
-      ],
-      startedAt: '2026-06-06T00:00:00.000Z',
-      nextStepAt: '2026-06-06T00:00:10.000Z',
-      completesAt: '2026-06-06T00:00:20.000Z',
-    }],
+    activeScouts: [
+      {
+        id: 'explore-1',
+        kind: 'worldExplore',
+        mode: 'manual',
+        status: 'active',
+        origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+        target: { q: 2, r: 0, tileId: 'tile_2_0' },
+        route: [
+          { q: 1, r: 0, tileId: 'tile_1_0', step: 1 },
+          { q: 2, r: 0, tileId: 'tile_2_0', step: 2 },
+        ],
+        startedAt: '2026-06-06T00:00:00.000Z',
+        nextStepAt: '2026-06-06T00:00:10.000Z',
+        completesAt: '2026-06-06T00:00:20.000Z',
+      },
+    ],
   };
 }
 
 test('WorldMapRenderSnapshot normalizes frame, viewport, ui, and march actors', () => {
   const tileMapView = createTileMapView();
-  const snapshot = WorldMapRenderSnapshot.createSnapshot({
-    tileMapView,
-    x: 10,
-    y: 90,
-    width: 360,
-    height: 300,
-    uiState: {
-      selectedSiteId: 'capital',
-      worldMarchTarget: { q: 1, r: 0 },
+  const snapshot = WorldMapRenderSnapshot.createSnapshot(
+    {
+      tileMapView,
+      x: 10,
+      y: 90,
+      width: 360,
+      height: 300,
+      uiState: {
+        selectedSiteId: 'capital',
+        worldMarchTarget: { q: 1, r: 0 },
+      },
     },
-  }, {
-    nowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
-  });
+    {
+      nowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+    },
+  );
 
   assert.equal(snapshot.schema, 'world-map-render-snapshot-v1');
   assert.equal(snapshot.tileMapView, tileMapView);
@@ -89,15 +94,18 @@ test('WorldMapRenderSnapshot carries world origin into render viewport', () => {
 });
 
 test('WorldMapRenderSnapshot uses epochNowMs for continuous march actors', () => {
-  const snapshot = WorldMapRenderSnapshot.createSnapshot({
-    tileMapView: createTileMapView(),
-    x: 10,
-    y: 90,
-    width: 360,
-    height: 300,
-  }, {
-    epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
-  });
+  const snapshot = WorldMapRenderSnapshot.createSnapshot(
+    {
+      tileMapView: createTileMapView(),
+      x: 10,
+      y: 90,
+      width: 360,
+      height: 300,
+    },
+    {
+      epochNowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+    },
+  );
   const actor = WorldMapRenderSnapshot.getActors(snapshot)[0];
 
   assert.equal(actor.current.q > 0, true);
@@ -124,15 +132,18 @@ test('WorldMapRenderSnapshot canonicalizes march target identity through stable 
 });
 
 test('WorldMapRenderSnapshot prefers epochNowMs when nowMs is absent', () => {
-  const snapshot = WorldMapRenderSnapshot.createSnapshot({
-    tileMapView: createTileMapView(),
-    x: 10,
-    y: 90,
-    width: 360,
-    height: 300,
-  }, {
-    epochNowMs: new Date('2026-06-06T00:00:15.000Z').getTime(),
-  });
+  const snapshot = WorldMapRenderSnapshot.createSnapshot(
+    {
+      tileMapView: createTileMapView(),
+      x: 10,
+      y: 90,
+      width: 360,
+      height: 300,
+    },
+    {
+      epochNowMs: new Date('2026-06-06T00:00:15.000Z').getTime(),
+    },
+  );
   const actor = WorldMapRenderSnapshot.getActors(snapshot)[0];
 
   assert.equal(actor.current.q > 1, true);
@@ -142,15 +153,24 @@ test('WorldMapRenderSnapshot prefers epochNowMs when nowMs is absent', () => {
 test('WorldMapRenderSnapshot keeps stable compact signatures', () => {
   const tileMapView = createTileMapView();
   const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();
-  const first = WorldMapRenderSnapshot.createSnapshot({ tileMapView, x: 0, y: 0, width: 520, height: 420 }, { nowMs });
-  const second = WorldMapRenderSnapshot.createSnapshot({ tileMapView, x: 0, y: 0, width: 520, height: 420 }, { nowMs });
-  const changedPan = WorldMapRenderSnapshot.createSnapshot({
-    tileMapView: { ...tileMapView, pan: { x: 24, y: -8 } },
-    x: 0,
-    y: 0,
-    width: 520,
-    height: 420,
-  }, { nowMs });
+  const first = WorldMapRenderSnapshot.createSnapshot(
+    { tileMapView, x: 0, y: 0, width: 520, height: 420 },
+    { nowMs },
+  );
+  const second = WorldMapRenderSnapshot.createSnapshot(
+    { tileMapView, x: 0, y: 0, width: 520, height: 420 },
+    { nowMs },
+  );
+  const changedPan = WorldMapRenderSnapshot.createSnapshot(
+    {
+      tileMapView: { ...tileMapView, pan: { x: 24, y: -8 } },
+      x: 0,
+      y: 0,
+      width: 520,
+      height: 420,
+    },
+    { nowMs },
+  );
 
   assert.equal(first.signature, second.signature);
   assert.notEqual(first.signature, changedPan.signature);
@@ -159,15 +179,18 @@ test('WorldMapRenderSnapshot keeps stable compact signatures', () => {
 });
 
 test('WorldMapRenderSnapshot serializes without copying renderer payloads', () => {
-  const snapshot = WorldMapRenderSnapshot.createSnapshot({
-    tileMapView: createTileMapView(),
-    x: 0,
-    y: 0,
-    width: 520,
-    height: 420,
-  }, {
-    nowMs: new Date('2026-06-06T00:00:25.000Z').getTime(),
-  });
+  const snapshot = WorldMapRenderSnapshot.createSnapshot(
+    {
+      tileMapView: createTileMapView(),
+      x: 0,
+      y: 0,
+      width: 520,
+      height: 420,
+    },
+    {
+      nowMs: new Date('2026-06-06T00:00:25.000Z').getTime(),
+    },
+  );
   const serializable = WorldMapRenderSnapshot.toSerializable(snapshot);
 
   assert.equal(serializable.schema, 'world-map-render-snapshot-v1');

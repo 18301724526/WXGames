@@ -152,14 +152,8 @@ test('ECS boundary skeleton guard allows gameplay ECS loads and blocks internal 
     isApprovedRuntimeEcsLoad('frontend/minigame/game.js', '../js/ecs/foundation/TileCoord'),
     true,
   );
-  assert.equal(
-    isApprovedRuntimeEcsLoad('frontend/index.html', 'js/ecs/owner/FogOwner.js'),
-    false,
-  );
-  assert.equal(
-    isBlockedRuntimeEcsLoad('frontend/index.html', 'js/ecs/owner/FogOwner.js'),
-    true,
-  );
+  assert.equal(isApprovedRuntimeEcsLoad('frontend/index.html', 'js/ecs/owner/FogOwner.js'), false);
+  assert.equal(isBlockedRuntimeEcsLoad('frontend/index.html', 'js/ecs/owner/FogOwner.js'), true);
   assert.equal(
     isBlockedRuntimeEcsLoad('frontend/index.html', 'js/ecs/core/EcsCoreBoundary.js'),
     true,
@@ -213,11 +207,9 @@ test('ECS boundary skeleton guard allows class instances inside gameplay ECS mod
   assert.deepEqual(
     findBoundaryViolationsInText(
       'frontend/js/ecs/system/WorldFogVisionModel.js',
-      [
-        'const byId = new Map();',
-        'const seen = new Set();',
-        'const values = new Array(4);',
-      ].join('\n'),
+      ['const byId = new Map();', 'const seen = new Set();', 'const values = new Array(4);'].join(
+        '\n',
+      ),
     ),
     [],
   );

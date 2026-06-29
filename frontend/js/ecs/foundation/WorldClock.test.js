@@ -49,19 +49,19 @@ test('WorldClock BitECS systems sync and advance the clock entity', () => {
     },
   });
 
-  assert.equal(runClockSyncSystem(clockWorld, {
-    serverTime: '2026-06-15T00:00:05.000Z',
-  }), true);
+  assert.equal(
+    runClockSyncSystem(clockWorld, {
+      serverTime: '2026-06-15T00:00:05.000Z',
+    }),
+    true,
+  );
 
   mono = 3250;
   assert.equal(runClockAdvanceSystem(clockWorld), true);
 
   const snapshot = getClockSnapshot(clockWorld);
   assert.equal(snapshot.synced, true);
-  assert.equal(
-    snapshot.epochNowMs,
-    new Date('2026-06-15T00:00:07.250Z').getTime(),
-  );
+  assert.equal(snapshot.epochNowMs, new Date('2026-06-15T00:00:07.250Z').getTime());
   assert.equal(Clock.elapsedMs[clockWorld.clockEntity], 2250);
 });
 
@@ -132,11 +132,14 @@ test('WorldClock syncs from command authority payloads', () => {
     },
   });
 
-  assert.equal(updateFromPayload(clockWorld, {
-    authority: {
-      serverTime: '2026-06-15T00:00:05.000Z',
-    },
-  }), true);
+  assert.equal(
+    updateFromPayload(clockWorld, {
+      authority: {
+        serverTime: '2026-06-15T00:00:05.000Z',
+      },
+    }),
+    true,
+  );
 
   mono = 1010;
 
@@ -149,10 +152,7 @@ test('WorldClock syncs from command authority payloads', () => {
 test('WorldClock preserves explicit NaN fallback when unsynced', () => {
   const clockWorld = createClockWorld();
 
-  assert.equal(
-    Number.isNaN(getEpochNowMs({ worldClock: clockWorld }, Number.NaN)),
-    true,
-  );
+  assert.equal(Number.isNaN(getEpochNowMs({ worldClock: clockWorld }, Number.NaN)), true);
 });
 
 test('WorldClock syncs from wrapped state payload server time', () => {
@@ -166,11 +166,14 @@ test('WorldClock syncs from wrapped state payload server time', () => {
     },
   });
 
-  assert.equal(updateFromPayload(clockWorld, {
-    gameState: {
-      serverTime: '2026-06-15T00:00:10.000Z',
-    },
-  }), true);
+  assert.equal(
+    updateFromPayload(clockWorld, {
+      gameState: {
+        serverTime: '2026-06-15T00:00:10.000Z',
+      },
+    }),
+    true,
+  );
 
   assert.equal(
     getEpochNowMs({ worldClock: clockWorld }),
@@ -195,10 +198,7 @@ test('WorldClock shared API stores the shared handle as a BitECS world', () => {
 
     assert.equal(isClockWorld(clockWorld), true);
     assert.equal(globalThis.__WorldClockShared, clockWorld);
-    assert.equal(
-      getEpochNowMs({}, Number.NaN),
-      new Date('2026-06-15T00:00:20.000Z').getTime(),
-    );
+    assert.equal(getEpochNowMs({}, Number.NaN), new Date('2026-06-15T00:00:20.000Z').getTime());
   } finally {
     globalThis.__WorldClockShared = previous;
   }
@@ -218,9 +218,12 @@ test('WorldClock sync assigns the real BitECS handle to legacy source fields', (
       },
     };
 
-    assert.equal(sync(source, {
-      serverTime: '2026-06-15T00:00:30.000Z',
-    }), true);
+    assert.equal(
+      sync(source, {
+        serverTime: '2026-06-15T00:00:30.000Z',
+      }),
+      true,
+    );
     assert.equal(isClockWorld(source.worldClock), true);
     assert.equal(
       Clock.serverEpochAtSyncMs[source.worldClock.clockEntity],

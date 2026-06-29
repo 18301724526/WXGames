@@ -30,11 +30,11 @@ wrappers only after component/query/system ownership exists.
 
 Each migration batch must end in one of three states:
 
-| State       | Meaning                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------- |
+| State       | Meaning                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
 | Sealed      | Old owner retired or read-only mirrored, new BitECS component/query/system owner active, guards block old-path growth |
-| Report-only | Old owner still active, but inventory and guard report exist                                |
-| Rolled back | New path disabled/removed, old behavior restored, no mixed ownership remains                |
+| Report-only | Old owner still active, but inventory and guard report exist                                                          |
+| Rolled back | New path disabled/removed, old behavior restored, no mixed ownership remains                                          |
 
 A batch is not allowed to end in "mixed but unguarded".
 
@@ -44,18 +44,18 @@ Do not sequence by perceived bug priority. Sequence by dependency topology and a
 
 The order below is the required operating sequence:
 
-| Batch                                              | Goal                                                                              | Why It Comes Here                                                             | Exit Criteria                                                             |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| 0A. Mode and Bridge Inventory                      | Produce mode boolean and bridge/prototype inventory                               | These are the main infection sources and must be known first                  | Mode and bridge reports exist; old owners and mirrors are named           |
-| 0B. Authority, Input, Literal, Duplicate Inventory | Produce renderer authority, input branch, literal, and duplicate inventories      | Completes the baseline needed for guard rollout                               | Reports exist; new violations can be distinguished from historical debt   |
-| 1. ECS Core ADR and Gate                           | Confirm external ECS library and block self-built core                            | Prevent a second homegrown architecture                                       | ADR accepted; dependency added only after gate design exists              |
-| 2. ECS Boundary Skeleton                           | Establish component/system/mode naming and read-only bridge policy                | Gives all later batches a target vocabulary                                   | No gameplay migration yet; guards can recognize ECS owner paths           |
-| 3. Mode Ownership Spine                            | Create the single mode stack and modal subtype ownership                          | Mode booleans are the main spread vector                                      | New mode decisions cannot be added outside mode owner paths               |
-| 4. Input Intent Boundary                           | Route physical input through explicit intent and mode resolver                    | Input is where old mode logic keeps re-entering                               | Input routers become physical adapters for covered modes                  |
-| 5. Panel/Modal Ownership                           | Seal naming, event, reward reveal, confirm dialog, target picker, blocking panels | These are concrete old booleans and high-risk blockers                        | Covered modal subtypes no longer have app/shell as source of truth        |
-| 6. Snapshot Boundary                               | Make renderers consume explicit snapshots for covered modes                       | Renderer authority cannot be removed until snapshot contract exists           | Covered renderers cannot read authoritative mode/panel state directly     |
+| Batch                                              | Goal                                                                              | Why It Comes Here                                                              | Exit Criteria                                                             |
+| -------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| 0A. Mode and Bridge Inventory                      | Produce mode boolean and bridge/prototype inventory                               | These are the main infection sources and must be known first                   | Mode and bridge reports exist; old owners and mirrors are named           |
+| 0B. Authority, Input, Literal, Duplicate Inventory | Produce renderer authority, input branch, literal, and duplicate inventories      | Completes the baseline needed for guard rollout                                | Reports exist; new violations can be distinguished from historical debt   |
+| 1. ECS Core ADR and Gate                           | Confirm external ECS library and block self-built core                            | Prevent a second homegrown architecture                                        | ADR accepted; dependency added only after gate design exists              |
+| 2. ECS Boundary Skeleton                           | Establish component/system/mode naming and read-only bridge policy                | Gives all later batches a target vocabulary                                    | No gameplay migration yet; guards can recognize ECS owner paths           |
+| 3. Mode Ownership Spine                            | Create the single mode stack and modal subtype ownership                          | Mode booleans are the main spread vector                                       | New mode decisions cannot be added outside mode owner paths               |
+| 4. Input Intent Boundary                           | Route physical input through explicit intent and mode resolver                    | Input is where old mode logic keeps re-entering                                | Input routers become physical adapters for covered modes                  |
+| 5. Panel/Modal Ownership                           | Seal naming, event, reward reveal, confirm dialog, target picker, blocking panels | These are concrete old booleans and high-risk blockers                         | Covered modal subtypes no longer have app/shell as source of truth        |
+| 6. Snapshot Boundary                               | Make renderers consume explicit snapshots for covered modes                       | Renderer authority cannot be removed until snapshot contract exists            | Covered renderers cannot read authoritative mode/panel state directly     |
 | 7. Retired Layer Sealing                           | Migrate one scope area at a time                                                  | Feature-specific work must happen after global mode/input/snapshot paths exist | Each scope area ends sealed or rolled back                                |
-| 8. Bridge Retirement                               | Remove or shrink temporary facades and mirrors                                    | Prevent permanent compatibility mud                                           | Expired bridges fail guard; allowed bridges have active lifecycle records |
+| 8. Bridge Retirement                               | Remove or shrink temporary facades and mirrors                                    | Prevent permanent compatibility mud                                            | Expired bridges fail guard; allowed bridges have active lifecycle records |
 
 The batches are ordered, but batches 5-7 can repeat per scope area after the global spine is in place.
 
@@ -63,12 +63,12 @@ The batches are ordered, but batches 5-7 can repeat per scope area after the glo
 
 Batch 7 must not pick scope order by frustration level. Use dependency and blast radius.
 
-| Order | Scope    | Reason                                                                                                                                                                 |
-| ----- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Battle    | Most isolated compared with city/world/tutorial and useful for validating ECS state, animation, and snapshot patterns with lower blast radius                          |
-| 2     | City      | Moderate dependency surface; validates panels, building/city state, and server DTO snapshot consumption before the world-map work                                      |
-| 3     | World Map | Largest and most coupled surface; should start only after mode, input, modal, and snapshot boundaries are proven                                                       |
-| 4     | Formation | Depends on city/military state and participates in world-march flow; should reuse city/world-map ownership patterns                                                    |
+| Order | Scope     | Reason                                                                                                                                                                |
+| ----- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Battle    | Most isolated compared with city/world/tutorial and useful for validating ECS state, animation, and snapshot patterns with lower blast radius                         |
+| 2     | City      | Moderate dependency surface; validates panels, building/city state, and server DTO snapshot consumption before the world-map work                                     |
+| 3     | World Map | Largest and most coupled surface; should start only after mode, input, modal, and snapshot boundaries are proven                                                      |
+| 4     | Formation | Depends on city/military state and participates in world-march flow; should reuse city/world-map ownership patterns                                                   |
 | 5     | Tutorial  | Depends on every other scope for focus targets, allowed actions, and guided transitions; should migrate last so it can point at ECS-owned state instead of old owners |
 
 If evidence shows a scope has a smaller sealed slice that can be completed without mixed ownership, it may be split, but the split must preserve the same dependency logic.
@@ -100,7 +100,7 @@ Every bridge must be time-boxed and tracked.
 
 | Rule           | Requirement                                                                                   |
 | -------------- | --------------------------------------------------------------------------------------------- |
-| Max lifetime   | Until the owning BitECS component/query/system slice is sealed                                 |
+| Max lifetime   | Until the owning BitECS component/query/system slice is sealed                                |
 | Allowed work   | Forward old public calls, mirror old fields read-only, preserve boot compatibility            |
 | Forbidden work | New business branches, new source-of-truth fields, new mode decisions, new renderer authority |
 | Extension      | Requires written exception, owner, new date, and a guard that blocks further growth           |
@@ -132,7 +132,7 @@ Guards must start as report-only where historical debt is large, then become blo
 | Mode ownership guard      | Report scattered mode checks                              | Block new mode checks outside owner | Blocking for sealed areas          |
 | Renderer authority guard  | Report renderer state writes                              | Block new writes in sealed areas    | Blocking for all renderer adapters |
 | Duplicate owner guard     | Baseline duplicate logic                                  | Block new duplicate owner patterns  | Reduce baseline per batch          |
-| Hardcoded literal guard   | Baseline literals                                         | Block new unowned literals          | Reduce baseline per scope         |
+| Hardcoded literal guard   | Baseline literals                                         | Block new unowned literals          | Reduce baseline per scope          |
 | Boundary dependency guard | Report dependency cycles/reverse deps                     | Block new reverse deps              | Blocking                           |
 | Bridge shrink guard       | Report bridge size/branches                               | Block expired bridge expansion      | Blocking                           |
 
@@ -450,7 +450,7 @@ Batch 5 slicing:
 | 5a    | `naming`, `confirmDialog` | `naming.visible` + payload; `confirmDialog.visible` + config/callback    | First round. Simplest single-flag modals; proves the owner + token-callback pattern at low blast radius. |
 | 5b    | `event`, `rewardReveal`   | `activeEventId`; `rewardReveal` payload                                  | Game-flow modals; gated separately.                                                                      |
 | 5c    | `targetPicker`            | `territoryUiState.worldTargetPicker` / `worldMarchTarget.pickerOpen`     | World-march coupled; gated separately.                                                                   |
-| 5d    | `blockingPanel`           | aggregate of ~14 `show*` / `activeCommandPanel` / `techDetailOpen` flags | Largest; may fold into per-scope sealing. Gated separately.                                             |
+| 5d    | `blockingPanel`           | aggregate of ~14 `show*` / `activeCommandPanel` / `techDetailOpen` flags | Largest; may fold into per-scope sealing. Gated separately.                                              |
 
 Batch 5 callback ownership:
 
@@ -527,7 +527,7 @@ Batch 6A execution checklist:
 
 | Step                                              | Status    | Artifact / Gate                                            | Acceptance Standard                                                                                   |
 | ------------------------------------------------- | --------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| 6A-1. Snapshot boundary module                    | Completed | `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`     | Frozen serializable `renderer-snapshot-v1`; sealed modal/panel facts only; no scope-state payloads   |
+| 6A-1. Snapshot boundary module                    | Completed | `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js`     | Frozen serializable `renderer-snapshot-v1`; sealed modal/panel facts only; no scope-state payloads    |
 | 6A-2. Runtime bundle regeneration                 | Completed | `EcsModeRuntimeEntry.js`, `EcsModeRuntimeBundle.js`        | Boundary exposed through the existing generated runtime bundle                                        |
 | 6A-3. Bridge read-only helper                     | Completed | `CanvasModeOwnershipBridge.js`                             | `buildRendererSnapshot` / `getRendererSnapshot` are null-safe and do not create source-of-truth state |
 | 6A-4. Renderer snapshot boundary guard            | Completed | `scripts/check-frontend-ecs-renderer-snapshot-boundary.js` | Current direct reads are grandfathered; new direct covered reads outside approved paths are blocked   |
@@ -557,21 +557,21 @@ Batch 7A approved runtime ECS surfaces:
 
 | Surface                                                | Status                   | Notes                                                                                        |
 | ------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------- |
-| `frontend/js/ecs/owner/BattleOwner.js`          | Owner source only        | Pure frozen `battle-owner-v1` owner for battle overlay/session facts                        |
+| `frontend/js/ecs/owner/BattleOwner.js`                 | Owner source only        | Pure frozen `battle-owner-v1` owner for battle overlay/session facts                         |
 | `frontend/js/ecs/snapshot/RendererSnapshotBoundary.js` | Snapshot boundary        | Emits `snapshot.battle` alongside existing modal/panel/mode facts                            |
 | `frontend/js/platform/CanvasGameAppBattleScene.js`     | Canonical adapter        | Routes battleScene/entityBattle open/update/close through the owner while preserving mirrors |
 | `frontend/js/platform/CanvasModeOwnershipBridge.js`    | Read-only snapshot facts | No Battle open/close wrappers; only existing `buildRendererSnapshot` / `getRendererSnapshot` |
-| `scripts/check-frontend-ecs-battle-owner.js`    | Blocking guard           | Blocks new canonical battle writes outside approved owner/snapshot/canonical adapter paths   |
+| `scripts/check-frontend-ecs-battle-owner.js`           | Blocking guard           | Blocks new canonical battle writes outside approved owner/snapshot/canonical adapter paths   |
 
 Batch 7A execution checklist:
 
 | Step                                        | Status    | Artifact / Gate                                 | Acceptance Standard                                                                  |
 | ------------------------------------------- | --------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
-| 7A-1. Battle owner                   | Completed | `BattleOwner.js`                          | Frozen serializable `battle-owner-v1`; battleScene/entityBattle facts only          |
+| 7A-1. Battle owner                          | Completed | `BattleOwner.js`                                | Frozen serializable `battle-owner-v1`; battleScene/entityBattle facts only           |
 | 7A-2. Snapshot path                         | Completed | `RendererSnapshotBoundary.js`, generated bundle | `snapshot.battle` available through the existing renderer snapshot path              |
 | 7A-3. Canonical battle adapter routing      | Completed | `CanvasGameAppBattleScene.js`                   | Canonical battle open/update/close write owner and preserve legacy mirrors           |
 | 7A-4. No new bridge wrappers                | Completed | `CanvasModeOwnershipBridge.js`                  | No `openBattle*Owner` / `closeBattle*Owner`; only read-only snapshot fact collection |
-| 7A-5. Battle ownership guard and tests      | Completed | `check-frontend-ecs-battle-owner.js`     | Guard blocks new non-owner canonical writes and is wired into architecture smoke     |
+| 7A-5. Battle ownership guard and tests      | Completed | `check-frontend-ecs-battle-owner.js`            | Guard blocks new non-owner canonical writes and is wired into architecture smoke     |
 | 7A-6. 7B cleanup plan                       | Completed | 7A batch doc                                    | 7B target is App-side `this.battleScene`; deletion order and expected files recorded |
 | 7A-7. Progress / operating plan / batch doc | Completed | progress doc, operating plan, 7A batch doc      | 7A signed off and pushed at commit `2818aab8`                                        |
 
@@ -595,13 +595,13 @@ single replay overlay source of truth.
 
 Batch 7B approved runtime surfaces:
 
-| Surface                                                   | Status    | Notes                                                                                        |
-| --------------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------- |
-| `frontend/js/platform/CanvasGameAppBattleScene.js`        | Completed | Replay flow reads `getBattleSceneSession()` and writes only the owner                        |
-| `frontend/js/platform/CanvasGameAppRenderingRuntime.js`   | Completed | App render options pass `battleScene` only from `snapshot.battle.battleScene`                |
-| `frontend/js/platform/CanvasGameShellRenderingRuntime.js` | Completed | Shell render options pass `battleScene` only from `snapshot.battle.battleScene`              |
+| Surface                                                   | Status    | Notes                                                                                  |
+| --------------------------------------------------------- | --------- | -------------------------------------------------------------------------------------- |
+| `frontend/js/platform/CanvasGameAppBattleScene.js`        | Completed | Replay flow reads `getBattleSceneSession()` and writes only the owner                  |
+| `frontend/js/platform/CanvasGameAppRenderingRuntime.js`   | Completed | App render options pass `battleScene` only from `snapshot.battle.battleScene`          |
+| `frontend/js/platform/CanvasGameShellRenderingRuntime.js` | Completed | Shell render options pass `battleScene` only from `snapshot.battle.battleScene`        |
 | `frontend/js/platform/CanvasModeOwnershipBridge.js`       | Completed | Battle snapshot facts read `lastGame.__ecsBattleOwner`; no mirror fallback or wrappers |
-| `scripts/check-frontend-ecs-battle-owner.js`       | Completed | Forbids App/Shell `battleScene` mirror reads and writes; guard reports 0 violations          |
+| `scripts/check-frontend-ecs-battle-owner.js`              | Completed | Forbids App/Shell `battleScene` mirror reads and writes; guard reports 0 violations    |
 
 Batch 7B execution checklist:
 
@@ -611,7 +611,7 @@ Batch 7B execution checklist:
 | 7B-2. Remove App-to-Shell battleScene sync       | Completed | `CanvasGameAppBattleScene.js`, Shell system UI | No `syncBattleSceneToShell`; Shell forwards start/close instead of storing state |
 | 7B-3. Migrate replay reads to snapshot           | Completed | `getBattleSceneSession()`                      | Advance, skip, animation, timer duration, and close paths read owner snapshot    |
 | 7B-4. Remove renderer fallback                   | Completed | App/Shell rendering runtimes                   | `battleScene` option is emitted only from snapshot                               |
-| 7B-5. Upgrade battle owner guard                 | Completed | `check-frontend-ecs-battle-owner.js`    | App/Shell `battleScene` reads/writes are forbidden; 0 current violations         |
+| 7B-5. Upgrade battle owner guard                 | Completed | `check-frontend-ecs-battle-owner.js`           | App/Shell `battleScene` reads/writes are forbidden; 0 current violations         |
 | 7B-6. Behavior and guard tests                   | Completed | targeted Node tests                            | 120 targeted tests passed; guard test covers removed mirror reads/writes         |
 | 7B-7. Progress / operating plan / batch document | Completed | progress doc, operating plan, 7B batch doc     | 7B completed after sign-off and push at commit `3db83d51`                        |
 
@@ -790,15 +790,15 @@ zero picker fields and consumers read the owner. World-march SCOPE data on
 
 Batch 8E approved runtime surfaces:
 
-| Surface                                                                                                          | Status                           | Notes                                                                                                                                          |
-| ---------------------------------------------------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `frontend/js/platform/CanvasModalSnapshotAdapter.js`                                                             | Ready for Migration Owner Review | Adds targetPicker helpers (structured payload discriminated by pickerKind)                                                                     |
-| `frontend/js/platform/CanvasModeOwnershipBridge.js`                                                              | Ready for Migration Owner Review | The 3 picker wrappers + dead territory-mirror helpers removed; collectModalKeys uses `isAnyModalOpen('modal:targetPicker')`                    |
-| `frontend/js/platform/CanvasTerritoryActionHandlers.js`                                                          | Ready for Migration Owner Review | Open/close via the snapshot adapter; chooseWorldTarget re-sources candidates from the owner; scope teardowns kept                             |
-| `frontend/js/controllers/TerritoryController.js`                                                                 | Ready for Migration Owner Review | worldTargetPicker seed + vestigial clears removed; worldMarchTarget scope kept; guard-excluded                                                |
-| render runtimes + `renderers/*` (`CanvasFrameRenderer`/`HudOverlayCanvasRenderer`/`WorldMarchHudCanvasRenderer`) | Ready for Migration Owner Review | Picker threaded as a dedicated `options.targetPicker`; HUD reads the option, dispatch keys on pickerKind                                       |
-| `frontend/js/ecs/foundation/WorldMarchGeometry.js` / `WorldMapRenderSnapshot.js`                                         | Ready for Migration Owner Review | Stopped copying `pickerOpen` off the scope target                                                                                             |
-| `frontend/js/tutorial/TutorialGuideController.js`                                                                | Ready for Migration Owner Review | `isWorldMarchFormationPickerOpen` reads the owner snapshot                                                                                     |
+| Surface                                                                                                          | Status                           | Notes                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/js/platform/CanvasModalSnapshotAdapter.js`                                                             | Ready for Migration Owner Review | Adds targetPicker helpers (structured payload discriminated by pickerKind)                                                                  |
+| `frontend/js/platform/CanvasModeOwnershipBridge.js`                                                              | Ready for Migration Owner Review | The 3 picker wrappers + dead territory-mirror helpers removed; collectModalKeys uses `isAnyModalOpen('modal:targetPicker')`                 |
+| `frontend/js/platform/CanvasTerritoryActionHandlers.js`                                                          | Ready for Migration Owner Review | Open/close via the snapshot adapter; chooseWorldTarget re-sources candidates from the owner; scope teardowns kept                           |
+| `frontend/js/controllers/TerritoryController.js`                                                                 | Ready for Migration Owner Review | worldTargetPicker seed + vestigial clears removed; worldMarchTarget scope kept; guard-excluded                                              |
+| render runtimes + `renderers/*` (`CanvasFrameRenderer`/`HudOverlayCanvasRenderer`/`WorldMarchHudCanvasRenderer`) | Ready for Migration Owner Review | Picker threaded as a dedicated `options.targetPicker`; HUD reads the option, dispatch keys on pickerKind                                    |
+| `frontend/js/ecs/foundation/WorldMarchGeometry.js` / `WorldMapRenderSnapshot.js`                                 | Ready for Migration Owner Review | Stopped copying `pickerOpen` off the scope target                                                                                           |
+| `frontend/js/tutorial/TutorialGuideController.js`                                                                | Ready for Migration Owner Review | `isWorldMarchFormationPickerOpen` reads the owner snapshot                                                                                  |
 | `scripts/check-frontend-ecs-target-picker-mirror-retirement.js`                                                  | Ready for Migration Owner Review | Blocks the 3 wrappers + worldTargetPicker/pickerOpen mirror writes; allows ECS/labels/options.targetPicker; excludes TerritoryController.js |
 
 Batch 8E execution checklist:

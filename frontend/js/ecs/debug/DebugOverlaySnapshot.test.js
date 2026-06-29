@@ -37,8 +37,12 @@ test('DebugOverlaySnapshot filters overlay keys and keeps stable signatures', ()
     fps: 24,
     worldMapRuntime: { hasBakedMapLayer: false, mapBakeDirty: true },
   };
-  const first = DebugOverlaySnapshot.createSnapshot(input, { overlayKeys: ['fps', 'worldMapBake', 'fps'] });
-  const second = DebugOverlaySnapshot.createSnapshot(input, { overlayKeys: ['fps', 'worldMapBake'] });
+  const first = DebugOverlaySnapshot.createSnapshot(input, {
+    overlayKeys: ['fps', 'worldMapBake', 'fps'],
+  });
+  const second = DebugOverlaySnapshot.createSnapshot(input, {
+    overlayKeys: ['fps', 'worldMapBake'],
+  });
 
   assert.deepEqual(first.keys, ['fps', 'worldMapBake']);
   assert.equal(DebugOverlaySnapshot.getRow(first, 'fps').status, DebugOverlaySnapshot.STATUS_BAD);
@@ -47,12 +51,15 @@ test('DebugOverlaySnapshot filters overlay keys and keeps stable signatures', ()
 });
 
 test('DebugOverlaySnapshot serializes without runtime or renderer objects', () => {
-  const snapshot = DebugOverlaySnapshot.createSnapshot({
-    renderer: { currentFps: 0 },
-    action: { type: 'openWorldSite' },
-  }, {
-    overlayKeys: ['fps', 'inputTrace'],
-  });
+  const snapshot = DebugOverlaySnapshot.createSnapshot(
+    {
+      renderer: { currentFps: 0 },
+      action: { type: 'openWorldSite' },
+    },
+    {
+      overlayKeys: ['fps', 'inputTrace'],
+    },
+  );
   const serializable = DebugOverlaySnapshot.toSerializable(snapshot);
 
   assert.deepEqual(serializable.keys, ['fps', 'inputTrace']);

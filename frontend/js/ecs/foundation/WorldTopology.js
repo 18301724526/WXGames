@@ -92,13 +92,16 @@
     const step = TileCoord?.normalizeDelta
       ? TileCoord.normalizeDelta(delta)
       : {
-        x: Math.floor(toNumber(delta.x ?? delta.q, 0)),
-        y: Math.floor(toNumber(delta.y ?? delta.r, 0)),
-      };
-    return normalizeCoord({
-      x: source.x + step.x,
-      y: source.y + step.y,
-    }, options);
+          x: Math.floor(toNumber(delta.x ?? delta.q, 0)),
+          y: Math.floor(toNumber(delta.y ?? delta.r, 0)),
+        };
+    return normalizeCoord(
+      {
+        x: source.x + step.x,
+        y: source.y + step.y,
+      },
+      options,
+    );
   }
 
   const WorldTopology = Object.freeze({

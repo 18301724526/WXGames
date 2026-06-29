@@ -38,15 +38,18 @@ test('flags retired host bridge symbols and proxy forms', () => {
     ].join('\n'),
   );
 
-  assert.deepEqual(findings.map((finding) => finding.kind), [
-    'retired-host-bridge-symbol',
-    'retired-host-bridge-alias',
-    'retired-host-bridge-alias',
-    'retired-create-proxy-call',
-    'inline-this-proxy',
-    'inline-renderer-proxy',
-    'inline-child-host-proxy',
-  ]);
+  assert.deepEqual(
+    findings.map((finding) => finding.kind),
+    [
+      'retired-host-bridge-symbol',
+      'retired-host-bridge-alias',
+      'retired-host-bridge-alias',
+      'retired-create-proxy-call',
+      'inline-this-proxy',
+      'inline-renderer-proxy',
+      'inline-child-host-proxy',
+    ],
+  );
 });
 
 test('ignores comments and non-host proxy usage outside scanned source roots', () =>
@@ -62,17 +65,24 @@ test('ignores comments and non-host proxy usage outside scanned source roots', (
 test('flags the retired bridge file and runtime entry references', () =>
   withTempRepo((repoRoot) => {
     writeFile(repoRoot, RETIRED_FILE, 'module.exports = {};\n');
-    writeFile(repoRoot, 'frontend/index.html', '<script src="WorldMapRendererHostBridge.js"></script>\n');
-    writeFile(repoRoot, 'frontend/minigame/game.js', "require('../js/platform/renderers/WorldMapRendererHostBridge');\n");
+    writeFile(
+      repoRoot,
+      'frontend/index.html',
+      '<script src="WorldMapRendererHostBridge.js"></script>\n',
+    );
+    writeFile(
+      repoRoot,
+      'frontend/minigame/game.js',
+      "require('../js/platform/renderers/WorldMapRendererHostBridge');\n",
+    );
 
     const report = scanRendererHostBridgeRetirement({ repoRoot });
 
     assert.equal(report.summary.totalViolations, 3);
-    assert.deepEqual(report.violations.map((violation) => violation.kind), [
-      'retired-host-bridge-file',
-      'retired-host-bridge-symbol',
-      'retired-host-bridge-symbol',
-    ]);
+    assert.deepEqual(
+      report.violations.map((violation) => violation.kind),
+      ['retired-host-bridge-file', 'retired-host-bridge-symbol', 'retired-host-bridge-symbol'],
+    );
   }));
 
 test('passes against the real repo', () => {

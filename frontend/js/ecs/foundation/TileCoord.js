@@ -25,7 +25,9 @@
     const fallbackY = readCoordAxis(fallback, 'y', 'r', 0);
     const x = readCoordAxis(source, 'x', 'q', fallbackX);
     const y = readCoordAxis(source, 'y', 'r', fallbackY);
-    const id = options.preserveTileId ? String(source.tileId || source.id || tileId(x, y)) : tileId(x, y);
+    const id = options.preserveTileId
+      ? String(source.tileId || source.id || tileId(x, y))
+      : tileId(x, y);
     return Object.freeze({
       x,
       y,
@@ -45,10 +47,14 @@
   function offset(coord = {}, delta = {}, options = {}) {
     const source = normalizeCoord(coord);
     const step = normalizeDelta(delta);
-    return normalizeCoord({
-      x: source.x + step.x,
-      y: source.y + step.y,
-    }, {}, options);
+    return normalizeCoord(
+      {
+        x: source.x + step.x,
+        y: source.y + step.y,
+      },
+      {},
+      options,
+    );
   }
 
   function equals(left = {}, right = {}) {

@@ -73,7 +73,9 @@
   }
 
   function normalizeViewport(input = {}, geometry = {}) {
-    const worldOrigin = normalizeCoord(input.worldOrigin || input.originCoord || input.renderOrigin || {});
+    const worldOrigin = normalizeCoord(
+      input.worldOrigin || input.originCoord || input.renderOrigin || {},
+    );
     return {
       originX: toNumber(input.originX, 0),
       originY: toNumber(input.originY, 0),
@@ -115,13 +117,21 @@
   }
 
   function getTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {
-    const origin = normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {});
+    const origin = normalizeCoord(
+      viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {},
+    );
     const q = toNumber(tile.q ?? tile.x, 0);
     const r = toNumber(tile.r ?? tile.y, 0);
     const scale = Math.max(0.05, toNumber(viewport.scale, 1));
     return {
-      x: toNumber(viewport.originX, 0) + toNumber(viewport.panX, 0) + ((q - origin.q) - (r - origin.r)) * toNumber(geometry.stepX, 96) * scale,
-      y: toNumber(viewport.originY, 0) + toNumber(viewport.panY, 0) + ((q - origin.q) + (r - origin.r)) * toNumber(geometry.stepY, 48) * scale,
+      x:
+        toNumber(viewport.originX, 0) +
+        toNumber(viewport.panX, 0) +
+        (q - origin.q - (r - origin.r)) * toNumber(geometry.stepX, 96) * scale,
+      y:
+        toNumber(viewport.originY, 0) +
+        toNumber(viewport.panY, 0) +
+        (q - origin.q + (r - origin.r)) * toNumber(geometry.stepY, 48) * scale,
     };
   }
 
@@ -140,21 +150,25 @@
 
   function intersectsFrame(rect = {}, frame = {}) {
     return Boolean(
-      toNumber(rect.x, 0) < toNumber(frame.x, 0) + toNumber(frame.width, 1)
-      && toNumber(rect.x, 0) + toNumber(rect.width, 0) > toNumber(frame.x, 0)
-      && toNumber(rect.y, 0) < toNumber(frame.y, 0) + toNumber(frame.height, 1)
-      && toNumber(rect.y, 0) + toNumber(rect.height, 0) > toNumber(frame.y, 0)
+      toNumber(rect.x, 0) < toNumber(frame.x, 0) + toNumber(frame.width, 1) &&
+      toNumber(rect.x, 0) + toNumber(rect.width, 0) > toNumber(frame.x, 0) &&
+      toNumber(rect.y, 0) < toNumber(frame.y, 0) + toNumber(frame.height, 1) &&
+      toNumber(rect.y, 0) + toNumber(rect.height, 0) > toNumber(frame.y, 0),
     );
   }
 
   function levelName(level) {
-    return VisibilityModel?.levelName?.(level) || (level >= 3 ? 'controlled' : (level >= 2 ? 'visible' : (level >= 1 ? 'explored' : 'unknown')));
+    return (
+      VisibilityModel?.levelName?.(level) ||
+      (level >= 3 ? 'controlled' : level >= 2 ? 'visible' : level >= 1 ? 'explored' : 'unknown')
+    );
   }
 
   function normalizeLevel(value, tile = {}) {
     if (VisibilityModel?.normalizeLevel) {
       return VisibilityModel.normalizeLevel(value, {
-        controlled: tile.controlled || tile.visibility === 'controlled' || tile.siteId === 'capital',
+        controlled:
+          tile.controlled || tile.visibility === 'controlled' || tile.siteId === 'capital',
         discovered: tile.discovered,
         visible: tile.visible,
         defaultLevel: tile.discovered === false ? 0 : 1,
@@ -171,35 +185,48 @@
   }
 
   function getLevel(visibilitySnapshot = null, id = '', tile = {}) {
-    if (VisibilityModel?.getLevel && visibilitySnapshot) return VisibilityModel.getLevel(visibilitySnapshot, id);
+    if (VisibilityModel?.getLevel && visibilitySnapshot)
+      return VisibilityModel.getLevel(visibilitySnapshot, id);
     return normalizeLevel(tile.visibility, tile);
   }
 
   function buildRenderSnapshot(input = {}, options = {}) {
-    if (input.renderSnapshot && typeof input.renderSnapshot === 'object') return input.renderSnapshot;
+    if (input.renderSnapshot && typeof input.renderSnapshot === 'object')
+      return input.renderSnapshot;
     if (!RenderSnapshot?.createSnapshot || !input.tileMapView) return null;
-    return RenderSnapshot.createSnapshot({
-      tileMapView: input.tileMapView,
-      uiState: input.uiState || {},
-      x: input.x ?? input.frame?.x ?? 0,
-      y: input.y ?? input.frame?.y ?? 0,
-      width: input.width ?? input.frame?.width ?? 1,
-      height: input.height ?? input.frame?.height ?? 1,
-    }, options);
+    return RenderSnapshot.createSnapshot(
+      {
+        tileMapView: input.tileMapView,
+        uiState: input.uiState || {},
+        x: input.x ?? input.frame?.x ?? 0,
+        y: input.y ?? input.frame?.y ?? 0,
+        width: input.width ?? input.frame?.width ?? 1,
+        height: input.height ?? input.frame?.height ?? 1,
+      },
+      options,
+    );
   }
 
   function buildVisibilitySnapshot(input = {}, tileMapView = {}, options = {}) {
-    if (input.visibilitySnapshot && typeof input.visibilitySnapshot === 'object') return input.visibilitySnapshot;
+    if (input.visibilitySnapshot && typeof input.visibilitySnapshot === 'object')
+      return input.visibilitySnapshot;
     if (!VisibilityModel?.createSnapshot) return null;
-    return VisibilityModel.createSnapshot({
-      worldMap: {
-        version: tileMapView.version || input.version || 0,
-        seed: tileMapView.seed || input.seed || '',
-        tiles: Array.isArray(input.tiles) ? input.tiles : (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []),
+    return VisibilityModel.createSnapshot(
+      {
+        worldMap: {
+          version: tileMapView.version || input.version || 0,
+          seed: tileMapView.seed || input.seed || '',
+          tiles: Array.isArray(input.tiles)
+            ? input.tiles
+            : Array.isArray(tileMapView.tiles)
+              ? tileMapView.tiles
+              : [],
+        },
+        worldExplorerState: input.worldExplorerState || {},
+        missions: input.missions,
       },
-      worldExplorerState: input.worldExplorerState || {},
-      missions: input.missions,
-    }, options.visibilityOptions || options);
+      options.visibilityOptions || options,
+    );
   }
 
   function createAccumulator(input = {}) {
@@ -301,7 +328,8 @@
       Math.round(toNumber(viewport.panX, 0)),
       Math.round(toNumber(viewport.panY, 0)),
       Math.round(toNumber(viewport.scale, 1) * 1000),
-      normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {}).tileId,
+      normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {})
+        .tileId,
       Math.round(toNumber(frame.x, 0)),
       Math.round(toNumber(frame.y, 0)),
       Math.round(toNumber(frame.width, 1)),
@@ -320,11 +348,21 @@
   function createSnapshot(input = {}, options = {}) {
     const renderSnapshot = buildRenderSnapshot(input, options);
     const tileMapView = input.tileMapView || renderSnapshot?.tileMapView || {};
-    const geometry = normalizeGeometry(input.geometry || renderSnapshot?.geometry || tileMapView.geometry || renderSnapshot?.viewport?.geometry || {});
+    const geometry = normalizeGeometry(
+      input.geometry ||
+        renderSnapshot?.geometry ||
+        tileMapView.geometry ||
+        renderSnapshot?.viewport?.geometry ||
+        {},
+    );
     const viewport = normalizeViewport(input.viewport || renderSnapshot?.viewport || {}, geometry);
     const frame = normalizeFrame(input.frame || renderSnapshot?.frame || {});
     const cullFrame = expandFrame(frame, getFogCullPadding(options, viewport, geometry));
-    const tiles = Array.isArray(input.tiles) ? input.tiles : (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : []);
+    const tiles = Array.isArray(input.tiles)
+      ? input.tiles
+      : Array.isArray(tileMapView.tiles)
+        ? tileMapView.tiles
+        : [];
     const visibilitySnapshot = buildVisibilitySnapshot(input, tileMapView, options);
     const accumulator = createAccumulator({
       version: tileMapView.version || visibilitySnapshot?.version || input.version || 0,
@@ -336,7 +374,14 @@
     });
     for (let i = 0; i < tiles.length; i += 1) {
       const coord = normalizeCoord(tiles[i]);
-      appendTile(accumulator, coord, getLevel(visibilitySnapshot, coord.tileId, tiles[i]), viewport, geometry, cullFrame);
+      appendTile(
+        accumulator,
+        coord,
+        getLevel(visibilitySnapshot, coord.tileId, tiles[i]),
+        viewport,
+        geometry,
+        cullFrame,
+      );
     }
     return finalizeSnapshot(accumulator);
   }

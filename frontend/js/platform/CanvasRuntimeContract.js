@@ -65,7 +65,8 @@
     if (typeof runtime.ensureLayerCanvas === 'function') present.push('ensureLayerCanvas');
     if (typeof runtime.getLayerCanvas === 'function') present.push('getLayerCanvas');
     if (typeof runtime.getLayerMetrics === 'function') present.push('getLayerMetrics');
-    if (typeof runtime.getLayerBackingStoreState === 'function') present.push('getLayerBackingStoreState');
+    if (typeof runtime.getLayerBackingStoreState === 'function')
+      present.push('getLayerBackingStoreState');
     if (typeof runtime.resize === 'function') present.push('resize');
     if (typeof runtime.onResize === 'function') present.push('onResize');
     if (typeof runtime.onPointerMove === 'function') present.push('onPointerMove');

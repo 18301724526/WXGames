@@ -2,16 +2,16 @@
 
 ## Status
 
-| Field            | Value                                               |
-| ---------------- | --------------------------------------------------- |
-| Batch            | `7. Retired Layer Sealing`                            |
-| Slice            | `7A (battle owner)`                          |
-| State            | `Completed`                                         |
-| Owner            | `frontend/js/ecs/owner/BattleOwner.js`       |
-| Snapshot path    | `RendererSnapshotBoundary` emits `snapshot.battle`  |
-| Guard            | `scripts/check-frontend-ecs-battle-owner.js` |
-| Runtime exposure | `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`   |
-| Last updated     | `2026-06-26 17:18:00 +08:00`                        |
+| Field            | Value                                              |
+| ---------------- | -------------------------------------------------- |
+| Batch            | `7. Retired Layer Sealing`                         |
+| Slice            | `7A (battle owner)`                                |
+| State            | `Completed`                                        |
+| Owner            | `frontend/js/ecs/owner/BattleOwner.js`             |
+| Snapshot path    | `RendererSnapshotBoundary` emits `snapshot.battle` |
+| Guard            | `scripts/check-frontend-ecs-battle-owner.js`       |
+| Runtime exposure | `frontend/js/ecs/runtime/EcsModeRuntimeBundle.js`  |
+| Last updated     | `2026-06-26 17:18:00 +08:00`                       |
 
 ## Decision
 

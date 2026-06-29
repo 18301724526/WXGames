@@ -205,7 +205,7 @@
 | ---: | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 |   27 | ★ `services/config/GameplayConfigRuntime.js`                                                         | 是（building/era/tech/tutorial/game 五域配置 + 域数学） |
 |   16 | ★ `services/WorldMapService.js`（483 行）                                                            | 是（领地/侦察/行军/出生/雾）                            |
-|   15 | `ECS/BuildingState.js`                                                                            | 否（建筑域内聚，好的高扇入）                            |
+|   15 | `ECS/BuildingState.js`                                                                               | 否（建筑域内聚，好的高扇入）                            |
 |   14 | `services/territory/TerritoryConstants.js`                                                           | 否（常量，好的高扇入）                                  |
 |   13 | ★ `services/CityService.js`                                                                          | 是（经济/建筑/人口/事件/领地）                          |
 |   11 | `services/territory/TerritoryShared.js`                                                              | 否（共享规则）                                          |

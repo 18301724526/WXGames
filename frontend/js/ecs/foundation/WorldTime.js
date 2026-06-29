@@ -49,11 +49,7 @@
   }
 
   function getEpochNowMs(source = {}, fallback = Date.now()) {
-    const candidates = [
-      source?.epochNowMs,
-      source?.serverNowMs,
-      source?.nowEpochMs,
-    ];
+    const candidates = [source?.epochNowMs, source?.serverNowMs, source?.nowEpochMs];
     for (const candidate of candidates) {
       const stamp = toEpochNowMs(candidate, Number.NaN);
       if (Number.isFinite(stamp)) return stamp;
@@ -68,7 +64,8 @@
     ];
     for (const candidate of frameNowCandidates) {
       const number = Number(candidate);
-      if (Number.isFinite(number) && Math.abs(number) >= EPOCH_MILLISECONDS_THRESHOLD) return number;
+      if (Number.isFinite(number) && Math.abs(number) >= EPOCH_MILLISECONDS_THRESHOLD)
+        return number;
     }
     return toEpochNowMs(fallback, Date.now());
   }

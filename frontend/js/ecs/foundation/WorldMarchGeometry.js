@@ -41,14 +41,17 @@
   }
 
   function getViewportWorldOrigin(viewport = {}) {
-    return normalizeCoord(viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {});
+    return normalizeCoord(
+      viewport.worldOrigin || viewport.originCoord || viewport.renderOrigin || {},
+    );
   }
 
   function hasFractionalAxis(coord = {}) {
     const x = coord?.x !== undefined ? Number(coord.x) : Number(coord?.q);
     const y = coord?.y !== undefined ? Number(coord.y) : Number(coord?.r);
-    return (Number.isFinite(x) && !Number.isInteger(x))
-      || (Number.isFinite(y) && !Number.isInteger(y));
+    return (
+      (Number.isFinite(x) && !Number.isInteger(x)) || (Number.isFinite(y) && !Number.isInteger(y))
+    );
   }
 
   function getContinuousTileScreenCenter(coord = {}, viewport = {}, geometry = {}) {
@@ -58,8 +61,14 @@
     const q = toNumber(coord.q ?? coord.x, 0);
     const r = toNumber(coord.r ?? coord.y, 0);
     return {
-      x: toNumber(viewport.originX) + toNumber(viewport.panX) + ((q - origin.q) - (r - origin.r)) * stepX * toNumber(viewport.scale, 1),
-      y: toNumber(viewport.originY) + toNumber(viewport.panY) + ((q - origin.q) + (r - origin.r)) * stepY * toNumber(viewport.scale, 1),
+      x:
+        toNumber(viewport.originX) +
+        toNumber(viewport.panX) +
+        (q - origin.q - (r - origin.r)) * stepX * toNumber(viewport.scale, 1),
+      y:
+        toNumber(viewport.originY) +
+        toNumber(viewport.panY) +
+        (q - origin.q + (r - origin.r)) * stepY * toNumber(viewport.scale, 1),
     };
   }
 
@@ -100,8 +109,10 @@
     const scale = Math.max(0.0001, toNumber(viewport.scale, 1));
     const stepX = Math.max(1, toNumber(geometry.stepX, 96));
     const stepY = Math.max(1, toNumber(geometry.stepY, 48));
-    const localX = (toNumber(point.x) - toNumber(viewport.originX) - toNumber(viewport.panX)) / scale;
-    const localY = (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
+    const localX =
+      (toNumber(point.x) - toNumber(viewport.originX) - toNumber(viewport.panX)) / scale;
+    const localY =
+      (toNumber(point.y) - toNumber(viewport.originY) - toNumber(viewport.panY)) / scale;
     const projectedQMinusR = localX / stepX;
     const projectedQPlusR = localY / stepY;
     const origin = getViewportWorldOrigin(viewport);
@@ -121,7 +132,11 @@
   function getMarchTargetUiState(uiState = {}) {
     const target = uiState.worldMarchTarget || null;
     if (!target || typeof target !== 'object') return null;
-    if (!Number.isFinite(Number(target.x ?? target.q)) || !Number.isFinite(Number(target.y ?? target.r))) return null;
+    if (
+      !Number.isFinite(Number(target.x ?? target.q)) ||
+      !Number.isFinite(Number(target.y ?? target.r))
+    )
+      return null;
     const coord = normalizeCoord(target);
     const result = {
       q: coord.q,
@@ -138,7 +153,8 @@
       result.actorId = target.actorId || target.missionId;
     }
     if (target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId) {
-      result.combatEncounterId = target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId;
+      result.combatEncounterId =
+        target.combatEncounterId || target.encounterId || target.combatTarget?.encounterId;
     }
     if (target.combatTarget && typeof target.combatTarget === 'object') {
       result.combatTarget = JSON.parse(JSON.stringify(target.combatTarget));

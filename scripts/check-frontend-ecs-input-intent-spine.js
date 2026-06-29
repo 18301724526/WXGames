@@ -21,7 +21,9 @@ const IN_SCOPE_BRANCH_KINDS = Object.freeze(['mode', 'runtime-route']);
 // The allowlist keeps the gate correct if the scanner's file set ever widens.
 const APPROVED_INTENT_PATHS = Object.freeze(['frontend/js/ecs/input/']);
 const APPROVED_RUNTIME_PATHS = Object.freeze(['frontend/js/ecs/runtime/EcsModeRuntimeBundle.js']);
-const APPROVED_MODE_RUNTIME_PATHS = Object.freeze(['frontend/js/platform/CanvasModeOwnershipRuntime.js']);
+const APPROVED_MODE_RUNTIME_PATHS = Object.freeze([
+  'frontend/js/platform/CanvasModeOwnershipRuntime.js',
+]);
 
 function normalizePath(filePath) {
   return String(filePath || '').replace(/\\/g, '/');

@@ -213,7 +213,10 @@ test('Axis A: mounted shell commands write explicit game UI owner', () => {
     renderActive() {},
   });
 
-  assert.equal(shell.setPendingBuildingAction({ buildingId: 'farm', action: 'build' }, { render: false }), true);
+  assert.equal(
+    shell.setPendingBuildingAction({ buildingId: 'farm', action: 'build' }, { render: false }),
+    true,
+  );
   assert.deepEqual(shell.lastGame.pendingBuildingAction, { buildingId: 'farm', action: 'build' });
   assert.equal(shell.pendingBuildingAction, undefined);
 

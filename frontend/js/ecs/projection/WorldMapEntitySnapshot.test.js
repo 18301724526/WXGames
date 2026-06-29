@@ -52,8 +52,14 @@ test('WorldMapEntitySnapshot normalizes tiles, sites, missions, and actors', () 
   assert.equal(snapshot.counts.actors, 1);
   assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'tiles', 'tile_0_0').terrain, 'capital');
   assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'sites', 'capital').name, 'Capital');
-  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'missions', 'mission-1').position.tileId, 'tile_1_0');
-  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'mission-1').tileId, 'tile_1_0');
+  assert.equal(
+    WorldMapEntitySnapshot.getEntity(snapshot, 'missions', 'mission-1').position.tileId,
+    'tile_1_0',
+  );
+  assert.equal(
+    WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'mission-1').tileId,
+    'tile_1_0',
+  );
 });
 
 test('WorldMapEntitySnapshot uses compact indexes and stable signatures', () => {
@@ -71,57 +77,90 @@ test('WorldMapEntitySnapshot uses compact indexes and stable signatures', () => 
 });
 
 test('WorldMapEntitySnapshot canonicalizes tile, site, mission, and actor identity through stable axes', () => {
-  const snapshot = WorldMapEntitySnapshot.createSnapshot({
-    worldMap: {
-      version: 10,
-      tiles: [
-        { x: 2, y: -1, q: 90, r: 90, tileId: 'legacy-tile', terrain: 'forest', visibility: 'visible' },
-      ],
-    },
-    sites: [
-      { id: 'site-1', x: 2, y: -1, q: 80, r: 80, tileId: 'legacy-site', type: 'town' },
-    ],
-    worldExplorerState: {
-      activeMission: {
-        id: 'mission-stale',
-        status: 'active',
-        origin: { x: 0, y: 0, q: 70, r: 70, tileId: 'legacy-origin' },
-        target: { x: 2, y: -1, q: 60, r: 60, tileId: 'legacy-target' },
-        position: { x: 2, y: -1, q: 50, r: 50, tileId: 'legacy-position' },
+  const snapshot = WorldMapEntitySnapshot.createSnapshot(
+    {
+      worldMap: {
+        version: 10,
+        tiles: [
+          {
+            x: 2,
+            y: -1,
+            q: 90,
+            r: 90,
+            tileId: 'legacy-tile',
+            terrain: 'forest',
+            visibility: 'visible',
+          },
+        ],
+      },
+      sites: [{ id: 'site-1', x: 2, y: -1, q: 80, r: 80, tileId: 'legacy-site', type: 'town' }],
+      worldExplorerState: {
+        activeMission: {
+          id: 'mission-stale',
+          status: 'active',
+          origin: { x: 0, y: 0, q: 70, r: 70, tileId: 'legacy-origin' },
+          target: { x: 2, y: -1, q: 60, r: 60, tileId: 'legacy-target' },
+          position: { x: 2, y: -1, q: 50, r: 50, tileId: 'legacy-position' },
+        },
       },
     },
-  }, {
-    actors: [{ id: 'actor-stale', current: { x: 2, y: -1, q: 40, r: 40, tileId: 'legacy-actor' } }],
-  });
+    {
+      actors: [
+        { id: 'actor-stale', current: { x: 2, y: -1, q: 40, r: 40, tileId: 'legacy-actor' } },
+      ],
+    },
+  );
 
   assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'tiles', 'tile_2_-1').id, 'tile_2_-1');
   assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'sites', 'site-1').tileId, 'tile_2_-1');
-  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'missions', 'mission-stale').position.tileId, 'tile_2_-1');
-  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'actor-stale').tileId, 'tile_2_-1');
-  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.indexById.tiles, 'legacy-tile'), false);
+  assert.equal(
+    WorldMapEntitySnapshot.getEntity(snapshot, 'missions', 'mission-stale').position.tileId,
+    'tile_2_-1',
+  );
+  assert.equal(
+    WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'actor-stale').tileId,
+    'tile_2_-1',
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(snapshot.indexById.tiles, 'legacy-tile'),
+    false,
+  );
 });
 
 test('WorldMapEntitySnapshot uses mission id as world actor entity identity', () => {
   const snapshot = WorldMapEntitySnapshot.createSnapshot(createInput(), {
-    actors: [{
-      id: 'stale-render-actor',
-      missionId: 'mission-2',
-      status: 'idle',
-      current: { x: 2, y: -1, q: 99, r: 99, tileId: 'legacy-actor-tile' },
-    }],
+    actors: [
+      {
+        id: 'stale-render-actor',
+        missionId: 'mission-2',
+        status: 'idle',
+        current: { x: 2, y: -1, q: 99, r: 99, tileId: 'legacy-actor-tile' },
+      },
+    ],
   });
 
   assert.equal(snapshot.actors[0].id, 'mission-2');
   assert.equal(snapshot.actors[0].missionId, 'mission-2');
   assert.equal(snapshot.actors[0].tileId, 'tile_2_-1');
-  assert.equal(WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'mission-2').tileId, 'tile_2_-1');
-  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.indexById.actors, 'stale-render-actor'), false);
+  assert.equal(
+    WorldMapEntitySnapshot.getEntity(snapshot, 'actors', 'mission-2').tileId,
+    'tile_2_-1',
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(snapshot.indexById.actors, 'stale-render-actor'),
+    false,
+  );
 });
 
 test('WorldMapEntitySnapshot handles large tile sets without nested entity maps', () => {
   const tiles = [];
   for (let i = 0; i < 4000; i += 1) {
-    tiles.push({ q: i, r: -i, terrain: i % 2 ? 'plains' : 'forest', visibility: i % 5 ? 'scouted' : 'unknown' });
+    tiles.push({
+      q: i,
+      r: -i,
+      terrain: i % 2 ? 'plains' : 'forest',
+      visibility: i % 5 ? 'scouted' : 'unknown',
+    });
   }
   const snapshot = WorldMapEntitySnapshot.createSnapshot({ worldMap: { version: 9, tiles } });
 

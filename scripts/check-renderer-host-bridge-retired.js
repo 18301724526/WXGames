@@ -20,7 +20,10 @@ const FORBIDDEN_PATTERNS = Object.freeze([
   { kind: 'retired-create-proxy-call', pattern: /\.createProxy\s*\(/ },
   { kind: 'inline-this-proxy', pattern: /\bnew\s+Proxy\s*\(\s*this\s*,/ },
   { kind: 'inline-renderer-proxy', pattern: /\bnew\s+Proxy\s*\(\s*renderer\s*,/ },
-  { kind: 'inline-child-host-proxy', pattern: /\bnew\s+Proxy\s*\(\s*Object\.create\s*\(\s*null\s*\)\s*,/ },
+  {
+    kind: 'inline-child-host-proxy',
+    pattern: /\bnew\s+Proxy\s*\(\s*Object\.create\s*\(\s*null\s*\)\s*,/,
+  },
 ]);
 
 function normalizePath(filePath) {
@@ -59,7 +62,8 @@ function findRetiredBridgeReferencesInText(relativePath, text) {
     const trimmed = line.trimStart();
     if (trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
     for (const rule of FORBIDDEN_PATTERNS) {
-      if (rule.pattern.test(line)) findings.push({ file: relativePath, line: i + 1, kind: rule.kind });
+      if (rule.pattern.test(line))
+        findings.push({ file: relativePath, line: i + 1, kind: rule.kind });
     }
   }
   return findings;

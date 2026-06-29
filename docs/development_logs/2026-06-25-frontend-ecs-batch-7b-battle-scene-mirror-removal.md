@@ -2,16 +2,16 @@
 
 ## Status
 
-| Field          | Value                                               |
-| -------------- | --------------------------------------------------- |
-| Batch          | `7. Retired Layer Sealing`                            |
-| Slice          | `7B (battleScene mirror removal)`                   |
-| State          | `Ready for Migration Owner Review`                  |
+| Field          | Value                                        |
+| -------------- | -------------------------------------------- |
+| Batch          | `7. Retired Layer Sealing`                   |
+| Slice          | `7B (battleScene mirror removal)`            |
+| State          | `Ready for Migration Owner Review`           |
 | Owner          | `frontend/js/ecs/owner/BattleOwner.js`       |
-| Removed mirror | App/Shell `this.battleScene`                        |
-| Snapshot path  | `getRendererSnapshot().battle.battleScene`          |
+| Removed mirror | App/Shell `this.battleScene`                 |
+| Snapshot path  | `getRendererSnapshot().battle.battleScene`   |
 | Guard          | `scripts/check-frontend-ecs-battle-owner.js` |
-| Last updated   | `2026-06-26 17:18:00 +08:00`                        |
+| Last updated   | `2026-06-26 17:18:00 +08:00`                 |
 
 ## Decision
 

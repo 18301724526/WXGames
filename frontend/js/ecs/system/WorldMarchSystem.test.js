@@ -40,18 +40,27 @@ test('WorldMarchSystem computes actor progress, remaining time, and stop tile', 
 test('WorldMarchSystem exposes active mission detection through facade', () => {
   const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();
 
-  assert.equal(WorldMarchSystem.hasActiveMission({
-    missions: [createMission()],
-    activeMission: null,
-  }, { nowMs }), true);
+  assert.equal(
+    WorldMarchSystem.hasActiveMission(
+      {
+        missions: [createMission()],
+        activeMission: null,
+      },
+      { nowMs },
+    ),
+    true,
+  );
 });
 
 test('WorldMarchSystem accepts epoch seconds from legacy mission timestamps', () => {
   const nowMs = new Date('2026-06-06T00:00:06.000Z').getTime();
-  const actor = WorldMarchSystem.buildActorFromMission(createMission({
-    startedAt: Math.floor(new Date('2026-06-06T00:00:00.000Z').getTime() / 1000),
-    completesAt: Math.floor(new Date('2026-06-06T00:00:20.000Z').getTime() / 1000),
-  }), { nowMs });
+  const actor = WorldMarchSystem.buildActorFromMission(
+    createMission({
+      startedAt: Math.floor(new Date('2026-06-06T00:00:00.000Z').getTime() / 1000),
+      completesAt: Math.floor(new Date('2026-06-06T00:00:20.000Z').getTime() / 1000),
+    }),
+    { nowMs },
+  );
 
   assert.equal(actor.current.q > 0, true);
   assert.equal(actor.current.q < 1, true);
@@ -60,21 +69,29 @@ test('WorldMarchSystem accepts epoch seconds from legacy mission timestamps', ()
 
 test('WorldMarchSystem ignores retired ready missions from stale state', () => {
   const nowMs = new Date('2026-06-06T00:00:30.000Z').getTime();
-  const actors = WorldMarchSystem.buildActors({
-    missions: [createMission({ status: 'ready' })],
-  }, { nowMs });
+  const actors = WorldMarchSystem.buildActors(
+    {
+      missions: [createMission({ status: 'ready' })],
+    },
+    { nowMs },
+  );
 
   assert.deepEqual(actors, []);
 });
 
 test('WorldMarchSystem renders idle missions at their position without remaining travel', () => {
   const nowMs = new Date('2026-06-06T00:00:30.000Z').getTime();
-  const actors = WorldMarchSystem.buildActors({
-    idleMissions: [createMission({
-      status: 'idle',
-      position: { q: 2, r: 0, tileId: 'tile_2_0' },
-    })],
-  }, { nowMs });
+  const actors = WorldMarchSystem.buildActors(
+    {
+      idleMissions: [
+        createMission({
+          status: 'idle',
+          position: { q: 2, r: 0, tileId: 'tile_2_0' },
+        }),
+      ],
+    },
+    { nowMs },
+  );
 
   assert.equal(actors.length, 1);
   assert.equal(actors[0].status, 'idle');
@@ -93,7 +110,10 @@ test('WorldMarchSystem derives expired manual marches as idle at the target', ()
   const actor = WorldMarchSystem.buildActorFromMission(mission, { nowMs });
 
   assert.equal(derived.status, 'idle');
-  assert.equal(derived.route.every((step) => step.revealed), true);
+  assert.equal(
+    derived.route.every((step) => step.revealed),
+    true,
+  );
   assert.equal(derived.position.tileId, 'tile_2_0');
   assert.equal(actor.status, 'idle');
   assert.equal(actor.animationId, 'idle');
@@ -103,12 +123,18 @@ test('WorldMarchSystem derives expired manual marches as idle at the target', ()
 
 test('WorldMarchSystem derives expired random explores as idle at the target', () => {
   const nowMs = new Date('2026-06-06T00:00:25.000Z').getTime();
-  const derived = WorldMarchSystem.deriveMissionForTime(createMission({
-    mode: 'random',
-  }), { nowMs });
+  const derived = WorldMarchSystem.deriveMissionForTime(
+    createMission({
+      mode: 'random',
+    }),
+    { nowMs },
+  );
 
   assert.equal(derived.status, 'idle');
-  assert.equal(derived.route.every((step) => step.revealed), true);
+  assert.equal(
+    derived.route.every((step) => step.revealed),
+    true,
+  );
   assert.equal(derived.position.tileId, 'tile_2_0');
 });
 
@@ -128,7 +154,11 @@ test('WorldMarchSystem maps a screen point to the nearest rendered tile', () => 
     ],
   };
   const viewport = { originX: 100, originY: 100, panX: 0, panY: 0, scale: 0.5 };
-  const target = WorldMarchSystem.screenPointToNearestTile({ x: 148, y: 124 }, tileMapView, viewport);
+  const target = WorldMarchSystem.screenPointToNearestTile(
+    { x: 148, y: 124 },
+    tileMapView,
+    viewport,
+  );
 
   assert.equal(target.tileId, 'tile_1_0');
 });
@@ -144,16 +174,19 @@ test('WorldMarchSystem maps fog screen points back to axial tile coordinates', (
 });
 
 test('WorldMarchSystem delegates geometry facade behavior', () => {
-  assert.deepEqual(WorldMarchSystem.getMarchTargetUiState({
-    worldMarchTarget: { q: '2', r: '-1' },
-  }), {
-    q: 2,
-    r: -1,
-    tileId: 'tile_2_-1',
-    known: undefined,
-    terrain: '',
-    terrainLabel: '',
-  });
+  assert.deepEqual(
+    WorldMarchSystem.getMarchTargetUiState({
+      worldMarchTarget: { q: '2', r: '-1' },
+    }),
+    {
+      q: 2,
+      r: -1,
+      tileId: 'tile_2_-1',
+      known: undefined,
+      terrain: '',
+      terrainLabel: '',
+    },
+  );
 });
 
 test('entrypoints load shared world march core before march ECS modules', () => {
@@ -161,7 +194,10 @@ test('entrypoints load shared world march core before march ECS modules', () => 
   const html = fs.readFileSync(path.join(rootDir, 'frontend/index.html'), 'utf8');
   const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
 
-  assert.ok(html.indexOf('WorldMarchCoreAdapter.js') >= 0, 'index.html should load WorldMarchCoreAdapter');
+  assert.ok(
+    html.indexOf('WorldMarchCoreAdapter.js') >= 0,
+    'index.html should load WorldMarchCoreAdapter',
+  );
   assert.ok(
     html.indexOf('WorldMarchCoreAdapter.js') < html.indexOf('TileCoord.js'),
     'index.html should load WorldMarchCoreAdapter before TileCoord',
@@ -171,20 +207,26 @@ test('entrypoints load shared world march core before march ECS modules', () => 
     'index.html should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
   );
   assert.ok(
-    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") < minigame.indexOf("require('../js/ecs/foundation/TileCoord')"),
+    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") <
+      minigame.indexOf("require('../js/ecs/foundation/TileCoord')"),
     'minigame should load WorldMarchCoreAdapter before TileCoord',
   );
   assert.ok(
-    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") < minigame.indexOf("require('../js/ecs/system/WorldMarchProgressSnapshot')"),
+    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") <
+      minigame.indexOf("require('../js/ecs/system/WorldMarchProgressSnapshot')"),
     'minigame should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
   );
-  assert.ok(html.indexOf('WorldMarchGeometry.js') >= 0, 'index.html should load WorldMarchGeometry');
+  assert.ok(
+    html.indexOf('WorldMarchGeometry.js') >= 0,
+    'index.html should load WorldMarchGeometry',
+  );
   assert.ok(
     html.indexOf('WorldMarchGeometry.js') < html.indexOf('WorldMarchSystem.js'),
     'index.html should load WorldMarchGeometry before WorldMarchSystem',
   );
   assert.ok(
-    minigame.indexOf("require('../js/ecs/foundation/WorldMarchGeometry')") < minigame.indexOf("require('../js/ecs/system/WorldMarchSystem')"),
+    minigame.indexOf("require('../js/ecs/foundation/WorldMarchGeometry')") <
+      minigame.indexOf("require('../js/ecs/system/WorldMarchSystem')"),
     'minigame should load WorldMarchGeometry before WorldMarchSystem',
   );
 });

@@ -81,7 +81,9 @@
   }
 
   function readStableAxis(source = {}, primaryKey = 'x', aliasKey = 'q', fallback = '') {
-    return source?.[primaryKey] !== undefined ? source[primaryKey] : (source?.[aliasKey] ?? fallback);
+    return source?.[primaryKey] !== undefined
+      ? source[primaryKey]
+      : (source?.[aliasKey] ?? fallback);
   }
 
   function hashStep(hash, value) {
@@ -91,12 +93,14 @@
   function containsPoint(target = {}, point = {}) {
     const x = Number(point.x);
     const y = Number(point.y);
-    return Boolean(Number.isFinite(x)
-      && Number.isFinite(y)
-      && x >= toNumber(target.x)
-      && x <= toNumber(target.x) + toNumber(target.width)
-      && y >= toNumber(target.y)
-      && y <= toNumber(target.y) + toNumber(target.height));
+    return Boolean(
+      Number.isFinite(x) &&
+      Number.isFinite(y) &&
+      x >= toNumber(target.x) &&
+      x <= toNumber(target.x) + toNumber(target.width) &&
+      y >= toNumber(target.y) &&
+      y <= toNumber(target.y) + toNumber(target.height),
+    );
   }
 
   function getTileMapView(context = {}) {
@@ -109,7 +113,13 @@
 
   function getGeometry(context = {}) {
     const tileMapView = getTileMapView(context);
-    return context?.geometry || context?.renderSnapshot?.geometry || tileMapView?.geometry || getViewport(context)?.geometry || {};
+    return (
+      context?.geometry ||
+      context?.renderSnapshot?.geometry ||
+      tileMapView?.geometry ||
+      getViewport(context)?.geometry ||
+      {}
+    );
   }
 
   function getFrame(context = {}) {
@@ -125,8 +135,14 @@
     const q = toNumber(tile.q ?? tile.x, 0);
     const r = toNumber(tile.r ?? tile.y, 0);
     return {
-      x: toNumber(viewport.originX) + toNumber(viewport.panX) + (q - r) * stepX * toNumber(viewport.scale, 1),
-      y: toNumber(viewport.originY) + toNumber(viewport.panY) + (q + r) * stepY * toNumber(viewport.scale, 1),
+      x:
+        toNumber(viewport.originX) +
+        toNumber(viewport.panX) +
+        (q - r) * stepX * toNumber(viewport.scale, 1),
+      y:
+        toNumber(viewport.originY) +
+        toNumber(viewport.panY) +
+        (q + r) * stepY * toNumber(viewport.scale, 1),
     };
   }
 
@@ -169,10 +185,20 @@
       height: drawH + 26,
       priority: 20,
       kind: 'site',
-      label: site?.cityName || site?.naturalName || site?.name || site?.title || (site?.owner === 'player' ? t('world.targetPicker.site.player') : t('world.targetPicker.site.neutral')),
-      subtitle: site?.owner === 'player'
-        ? t('world.targetPicker.site.playerSubtitle')
-        : (site?.owner === 'neutral' ? t('world.targetPicker.site.neutralSubtitle') : t('world.targetPicker.site.worldSubtitle')),
+      label:
+        site?.cityName ||
+        site?.naturalName ||
+        site?.name ||
+        site?.title ||
+        (site?.owner === 'player'
+          ? t('world.targetPicker.site.player')
+          : t('world.targetPicker.site.neutral')),
+      subtitle:
+        site?.owner === 'player'
+          ? t('world.targetPicker.site.playerSubtitle')
+          : site?.owner === 'neutral'
+            ? t('world.targetPicker.site.neutralSubtitle')
+            : t('world.targetPicker.site.worldSubtitle'),
       action: {
         type: 'openWorldSite',
         siteId,
@@ -186,7 +212,11 @@
   function createActorTarget(actor = {}, context = {}) {
     const selected = getActorTargetCoordSource(actor);
     const current = selected.coord;
-    if (!Number.isFinite(Number(current.q ?? current.x)) || !Number.isFinite(Number(current.r ?? current.y))) return null;
+    if (
+      !Number.isFinite(Number(current.q ?? current.x)) ||
+      !Number.isFinite(Number(current.r ?? current.y))
+    )
+      return null;
     const point = getTileScreenCenter(current, getViewport(context), getGeometry(context));
     const size = 42;
     const actorId = actor.id || actor.actorId || actor.missionId || '';
@@ -199,19 +229,30 @@
       height: size,
       priority: 10,
       kind: 'actor',
-      label: actor.formation?.label || actor.formation?.name || actor.name || actor.label || t('world.targetPicker.actor.default'),
-      subtitle: actor.status === 'active' ? t('world.targetPicker.actor.activeSubtitle') : t('world.targetPicker.actor.idleSubtitle'),
+      label:
+        actor.formation?.label ||
+        actor.formation?.name ||
+        actor.name ||
+        actor.label ||
+        t('world.targetPicker.actor.default'),
+      subtitle:
+        actor.status === 'active'
+          ? t('world.targetPicker.actor.activeSubtitle')
+          : t('world.targetPicker.actor.idleSubtitle'),
       current,
       action: {
         type: 'selectWorldActor',
         actorId,
         missionId,
-        actorName: actor.formation?.label || actor.formation?.name || actor.name || actor.label || '',
+        actorName:
+          actor.formation?.label || actor.formation?.name || actor.name || actor.label || '',
         status: actor.status || '',
-        ...(actor.combatTarget ? {
-          combatEncounterId: actor.combatTarget.encounterId,
-          combatTarget: actor.combatTarget,
-        } : {}),
+        ...(actor.combatTarget
+          ? {
+              combatEncounterId: actor.combatTarget.encounterId,
+              combatTarget: actor.combatTarget,
+            }
+          : {}),
       },
     };
   }
@@ -219,7 +260,9 @@
   function createSiteTargets(context = {}) {
     const tileMapView = getTileMapView(context);
     const sites = Array.isArray(tileMapView.sites) ? tileMapView.sites : [];
-    const siteById = new Map(sites.filter((site) => site?.id).map((site) => [String(site.id), site]));
+    const siteById = new Map(
+      sites.filter((site) => site?.id).map((site) => [String(site.id), site]),
+    );
     return (Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [])
       .map((tile) => createSiteTarget(tile, getSiteFromTile(tile, siteById), context))
       .filter(Boolean);
@@ -329,10 +372,7 @@
   function createSnapshot(context = {}, options = {}) {
     const siteTargets = createSiteTargets(context);
     const actorTargets = createActorTargets(context);
-    const targets = [
-      ...siteTargets,
-      ...actorTargets,
-    ];
+    const targets = [...siteTargets, ...actorTargets];
     const signature = options.signature || buildSignature(context);
     return {
       schema: 'world-map-picking-snapshot-v1',
@@ -378,8 +418,10 @@
     const matches = candidates.map((target, index) => ({ target, index }));
     const site = matches.find(({ target }) => isWorldSiteAction(target.action));
     if (site) return site.target.action;
-    const top = matches
-      .sort((a, b) => toNumber(b.target.priority, 0) - toNumber(a.target.priority, 0) || b.index - a.index)[0];
+    const top = matches.sort(
+      (a, b) =>
+        toNumber(b.target.priority, 0) - toNumber(a.target.priority, 0) || b.index - a.index,
+    )[0];
     return top?.target?.action || null;
   }
 
