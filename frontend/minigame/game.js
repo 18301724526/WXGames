@@ -9,7 +9,6 @@ require('../js/ecs/foundation/TileCoord');
 require('../js/ecs/foundation/WorldTopology');
 require('../js/ecs/foundation/WorldChunkAddress');
 require('../js/ecs/foundation/WorldInterestWindow');
-require('../js/ecs/resource/WorldRevealStore');
 require('../js/ecs/foundation/TileMapGeometry');
 require('../js/ecs/runtime/EcsModeRuntimeBundle');
 require('../js/ecs/foundation/WorldTime');

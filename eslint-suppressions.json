@@ -102,17 +102,7 @@
       "count": 1
     }
   },
-  "frontend/js/ecs/projection/WorldActorProjection.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
   "frontend/js/ecs/foundation/WorldChunkAddress.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/ecs/projection/WorldFogVisualSnapshot.js": {
     "no-unused-vars": {
       "count": 2
     }
@@ -122,47 +112,7 @@
       "count": 3
     }
   },
-  "frontend/js/ecs/projection/WorldMapEntitySnapshot.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/ecs/input/WorldMapInputIntent.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/ecs/projection/WorldMapPerformanceBudget.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/ecs/input/WorldMapPickingModel.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/ecs/projection/WorldMapRenderSnapshot.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/ecs/input/WorldMapSelectionResolver.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/ecs/projection/WorldMapVisibilityModel.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/ecs/foundation/WorldMarchGeometry.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/ecs/resource/WorldRevealStore.js": {
     "no-unused-vars": {
       "count": 2
     }
@@ -173,6 +123,51 @@
     }
   },
   "frontend/js/ecs/foundation/WorldTopology.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/ecs/input/WorldMapInputIntent.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/ecs/input/WorldMapPickingModel.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/ecs/input/WorldMapSelectionResolver.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/ecs/projection/WorldActorProjection.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/ecs/projection/WorldFogVisualSnapshot.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/ecs/projection/WorldMapEntitySnapshot.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "frontend/js/ecs/projection/WorldMapPerformanceBudget.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "frontend/js/ecs/projection/WorldMapRenderSnapshot.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "frontend/js/ecs/projection/WorldMapVisibilityModel.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -288,11 +283,6 @@
   "frontend/js/platform/WorldMapRuntimeCoordinator.js": {
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "frontend/js/platform/WorldMapVisualPluginRegistry.js": {
-    "no-unused-vars": {
-      "count": 2
     }
   },
   "frontend/js/platform/renderers/BattleCanvasRenderer.js": {
