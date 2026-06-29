@@ -63,3 +63,45 @@ test('UpdateChecker backs off failed version checks and resets after success', a
     ['log', 'initialized', 'dep-1'],
   ]);
 });
+
+test('UpdateChecker reports version checks through an injected trace', async () => {
+  const traceCalls = [];
+  const checker = new UpdateChecker({
+    intervalMs: 5000,
+    trace: {
+      mark(name, payload) {
+        traceCalls.push(['mark', name, payload.intervalMs]);
+      },
+      phaseStart(name, payload) {
+        traceCalls.push(['start', name, payload.initialize]);
+      },
+      phaseEnd(name, payload) {
+        traceCalls.push(['end', name, payload.deploymentId]);
+      },
+      phaseFail(name, error) {
+        traceCalls.push(['fail', name, error.message]);
+      },
+    },
+    scheduler: {
+      setInterval() {
+        return 'timer';
+      },
+    },
+    api: {
+      async getVersion() {
+        return {
+          deploymentId: 'dep-trace',
+          version: 'v1',
+        };
+      },
+    },
+  });
+
+  await checker.start();
+
+  assert.deepEqual(traceCalls, [
+    ['mark', 'version:watch:start', 5000],
+    ['start', 'version:check', true],
+    ['end', 'version:check', 'dep-trace'],
+  ]);
+});

@@ -9,7 +9,7 @@ const path = require('node:path');
 const SOURCE_ROOTS = Object.freeze(['frontend/js']);
 const APPROVED_PATHS = Object.freeze([
   // The owner + adapter legitimately derive the flat-12 facts FROM the modal entries.
-  'frontend/js/platform/CanvasModeOwnershipBridge.js',
+  'frontend/js/platform/CanvasModeOwnershipRuntime.js',
   'frontend/js/platform/CanvasModalSnapshotAdapter.js',
 ]);
 // Only RendererSnapshotBoundary's PANEL_DEFAULTS legitimately declares `showX: false`

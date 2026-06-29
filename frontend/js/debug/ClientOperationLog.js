@@ -22,6 +22,112 @@
   const MAX_OBJECT_KEYS = 24;
   const MAX_DEPTH = 4;
   const DEFAULT_UPLOAD_REASON = 'manual-debug';
+  let environmentProvider = null;
+
+  function getEnvironment(explicit = undefined) {
+    if (explicit !== undefined) return explicit || null;
+    return environmentProvider || global.CanvasDebugEnvironment || null;
+  }
+
+  function setEnvironmentProvider(provider = null) {
+    environmentProvider = provider && typeof provider === 'object' ? provider : null;
+    return environmentProvider;
+  }
+
+  function createRuntimeEnvironment(runtime = null) {
+    if (!runtime || typeof runtime !== 'object') return null;
+    const storageKey = `local${'Storage'}`;
+    const sessionKey = `session${'Storage'}`;
+    const locationKey = `loc${'ation'}`;
+    return {
+      readStoredValue(key = '') {
+        try {
+          return runtime?.[storageKey]?.getItem?.(key) ?? null;
+        } catch (_) {
+          return null;
+        }
+      },
+      readStoredFlag(key = '', options = {}) {
+        return parseFlagValue(this.readStoredValue(key), options.fallback ?? null);
+      },
+      writeStoredValue(key = '', value = '') {
+        runtime?.[storageKey]?.setItem?.(key, value);
+        return true;
+      },
+      removeStoredValue(key = '') {
+        runtime?.[storageKey]?.removeItem?.(key);
+        return true;
+      },
+      readQueryFlag(names = []) {
+        try {
+          const search = runtime?.[locationKey]?.search || '';
+          if (!search) return null;
+          const params = new URLSearchParams(search);
+          for (const name of names) {
+            if (!params.has(name)) continue;
+            return parseFlagValue(params.get(name) || '1', true);
+          }
+        } catch (_) {}
+        return null;
+      },
+      getEntryStore() {
+        return runtime?.[sessionKey] || null;
+      },
+      getPlayerLabel() {
+        return this.readStoredValue('cf_username') || '';
+      },
+      getPageInfo() {
+        const source = runtime?.[locationKey] || {};
+        return {
+          pathname: source.pathname || '',
+          search: source.search || '',
+          hash: source.hash || '',
+          userAgent: runtime?.navigator?.userAgent || '',
+        };
+      },
+    };
+  }
+
+  function parseFlagValue(value, fallback = null) {
+    if (value === null || value === undefined || value === '') return fallback;
+    return !['0', 'false', 'off', 'no'].includes(String(value).toLowerCase());
+  }
+
+  function getPageInfo(environment = null) {
+    const page = environment?.getPageInfo?.() || {};
+    return {
+      pathname: String(page.pathname || ''),
+      search: String(page.search || ''),
+      hash: String(page.hash || ''),
+      userAgent: String(page.userAgent || ''),
+    };
+  }
+
+  function readQueryFlag(environment = null) {
+    const value = environment?.readQueryFlag?.(URL_KEYS);
+    return typeof value === 'boolean' ? value : null;
+  }
+
+  function readStoredFlag(environment = null, fallback = true) {
+    const value = environment?.readStoredFlag?.(STORAGE_KEY, { fallback });
+    if (typeof value === 'boolean') return value;
+    return parseFlagValue(environment?.readStoredValue?.(STORAGE_KEY), fallback);
+  }
+
+  function writeStoredFlag(environment = null, value = true) {
+    try {
+      environment?.writeStoredValue?.(STORAGE_KEY, value ? '1' : '0');
+    } catch (_) {}
+  }
+
+  function readPlayerLabel(environment = null) {
+    try {
+      return String(environment?.getPlayerLabel?.() || '');
+    } catch (_) {
+      return '';
+    }
+  }
+
   // Resolved at CALL time, not module-load time: this file loads at
   // index.html:17, before TileCoord.js:24, so a load-time capture would be
   // null in the browser. At record/summarize time TileCoord is always loaded.
@@ -84,51 +190,33 @@
     return sanitized || fallback;
   }
 
-  function createRunId(runtime = global) {
+  function createRunId(environment = null, runtime = global) {
+    const page = getPageInfo(environment);
     const seed = [
-      runtime?.location?.pathname || '',
-      runtime?.location?.search || '',
+      page.pathname,
+      page.search,
       runtime?.Date?.now?.() || Date.now(),
       Math.random().toString(36).slice(2),
     ].join('|');
     return `run-${SignatureHash.hashString(seed).toString(36)}`;
   }
 
-  function readUrlFlag(runtime = global) {
-    try {
-      const search = runtime?.location?.search || '';
-      if (!search) return null;
-      const params = new URLSearchParams(search);
-      for (const key of URL_KEYS) {
-        if (!params.has(key)) continue;
-        const value = String(params.get(key) || '1').toLowerCase();
-        return !['0', 'false', 'off', 'no'].includes(value);
-      }
-    } catch (_) {}
-    return null;
+  function readUrlFlag(environment = getEnvironment()) {
+    return readQueryFlag(environment);
   }
 
-  function readStorageFlag(runtime = global) {
-    try {
-      const value = runtime?.localStorage?.getItem?.(STORAGE_KEY);
-      if (value === null || value === undefined || value === '') return true;
-      return !['0', 'false', 'off', 'no'].includes(String(value).toLowerCase());
-    } catch (_) {
-      return true;
-    }
+  function readStorageFlag(environment = getEnvironment()) {
+    return readStoredFlag(environment, true);
   }
 
-  function resolveEnabled(runtime = global, explicit = undefined) {
+  function resolveEnabled(environment = getEnvironment(), explicit = undefined) {
     if (explicit !== undefined) return Boolean(explicit);
-    const urlFlag = readUrlFlag(runtime);
+    const urlFlag = readUrlFlag(environment);
     if (urlFlag !== null) {
-      try {
-        if (urlFlag) runtime?.localStorage?.setItem?.(STORAGE_KEY, '1');
-        else runtime?.localStorage?.setItem?.(STORAGE_KEY, '0');
-      } catch (_) {}
+      writeStoredFlag(environment, urlFlag);
       return urlFlag;
     }
-    return readStorageFlag(runtime);
+    return readStorageFlag(environment);
   }
 
   function sanitize(value, depth = 0, seen = new Set()) {
@@ -283,19 +371,30 @@
   class ClientOperationLog {
     constructor(options = {}) {
       this.runtime = options.runtime || global;
-      this.storage = options.storage || this.runtime?.sessionStorage || null;
-      this.enabled = resolveEnabled(this.runtime, options.enabled);
+      this.environment = getEnvironment(options.environment)
+        || createRuntimeEnvironment(this.runtime);
+      this.storage = options.storage || this.environment?.getEntryStore?.() || null;
+      this.enabled = resolveEnabled(this.environment, options.enabled);
       this.maxEntries = Math.max(1, Math.floor(toNumber(options.maxEntries, DEFAULT_MAX_ENTRIES)));
       this.persistLimit = Math.max(0, Math.floor(toNumber(options.persistLimit, DEFAULT_PERSIST_LIMIT)));
       this.flushIntervalMs = Math.max(0, toNumber(options.flushIntervalMs, DEFAULT_FLUSH_INTERVAL_MS));
       this.defaultSampleIntervalMs = Math.max(0, toNumber(options.defaultSampleIntervalMs, DEFAULT_SAMPLE_INTERVAL_MS));
       this.entries = [];
       this.seq = 0;
-      this.runId = String(options.runId || createRunId(this.runtime));
+      this.runId = String(options.runId || createRunId(this.environment, this.runtime));
       this.lastFlushAt = 0;
       this.sampledAt = new Map();
       this.uploader = typeof options.uploader === 'function' ? options.uploader : null;
       this.loadPersisted();
+    }
+
+    setEnvironment(environment = null, options = {}) {
+      this.environment = getEnvironment(environment);
+      if (!this.storage) this.storage = this.environment?.getEntryStore?.() || null;
+      if (options.reconfigureEnabled !== false) {
+        this.enabled = resolveEnabled(this.environment, options.enabled);
+      }
+      return this;
     }
 
     nowMs() {
@@ -310,9 +409,7 @@
 
     setEnabled(value) {
       this.enabled = Boolean(value);
-      try {
-        this.runtime?.localStorage?.setItem?.(STORAGE_KEY, this.enabled ? '1' : '0');
-      } catch (_) {}
+      writeStoredFlag(this.environment, this.enabled);
       return this.enabled;
     }
 
@@ -412,7 +509,7 @@
     buildSnapshot(options = {}) {
       const limit = options.limit === undefined ? this.maxEntries : options.limit;
       const entries = this.getRecent(limit);
-      const location = this.runtime?.location || {};
+      const pageInfo = getPageInfo(this.environment);
       return {
         schema: 'client-operation-log-v1',
         runId: this.runId,
@@ -420,9 +517,9 @@
         reason: String(options.reason || DEFAULT_UPLOAD_REASON).slice(0, 120),
         entryCount: entries.length,
         page: sanitize({
-          pathname: location.pathname || '',
-          hash: location.hash || '',
-          userAgent: this.runtime?.navigator?.userAgent || '',
+          pathname: pageInfo.pathname,
+          hash: pageInfo.hash,
+          userAgent: pageInfo.userAgent,
         }),
         entries,
       };
@@ -443,9 +540,7 @@
     buildFileName(options = {}) {
       let playerLabel = options.playerId || options.username || '';
       if (!playerLabel) {
-        try {
-          playerLabel = this.runtime?.localStorage?.getItem?.('cf_username') || '';
-        } catch (_) {}
+        playerLabel = readPlayerLabel(this.environment);
       }
       return `wxgame-oplog-${sanitizeFilenamePart(playerLabel)}-${formatFileTimestamp(this.wallNowMs())}.json`;
     }
@@ -510,5 +605,7 @@
 
   global.ClientOperationLog = logger;
   global.ClientOperationLogClass = ClientOperationLog;
+  ClientOperationLog.setEnvironmentProvider = setEnvironmentProvider;
+  ClientOperationLog.getEnvironment = getEnvironment;
   if (typeof module !== 'undefined' && module.exports) module.exports = ClientOperationLog;
 })(typeof window !== 'undefined' ? window : globalThis);

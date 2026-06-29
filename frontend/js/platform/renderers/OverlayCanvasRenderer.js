@@ -45,65 +45,18 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    getNow(...args) {
-      return this.callDrawingSurface('getNow', args);
-    }
-
-    measureTextWidth(...args) {
-      return this.callDrawingSurface('measureTextWidth', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    getNow(...args) { const surface = this.drawingSurface; return surface && typeof surface.getNow === 'function' ? surface.getNow(...args) : this.host?.getNow?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;

@@ -287,6 +287,6 @@
 
   const api = { install };
 
-  global.CanvasGameShellWorldMapLayerBridge = api;
+  global.CanvasGameShellWorldMapLayerRuntime = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

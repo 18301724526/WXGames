@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasShellActionHandlers = require('./CanvasShellActionHandlers');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 // Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host
@@ -13,7 +13,7 @@ const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 // isBlockingPanelSnapshotOpen/getCommandPanelValue) so the shell handlers route
 // through the owner instead of host mirrors.
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {

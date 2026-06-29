@@ -33,48 +33,44 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
     addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args);
     }
 
     createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args);
     }
 
     drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args);
     }
 
     drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args);
     }
 
     drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args);
     }
 
     drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args);
     }
 
     getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args);
     }
 
     wrapText(...args) {
-      return this.callDrawingSurface('wrapText', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.wrapText === 'function' ? surface.wrapText(...args) : this.host?.wrapText?.(...args);
     }
 
     t(key = '', params = {}) {

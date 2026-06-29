@@ -31,16 +31,21 @@ function makeTempFrontend() {
     'style.css',
     'js/config/GameConfig.js',
     'js/debug/H5LoadTrace.js',
+    'js/debug/ActorPickingDiagnostics.js',
     'js/api/GameAPI.js',
+    'js/ui/H5DebugDiagnosticsAdapter.js',
+    'js/ui/H5ActorPickingDiagnosticsAdapter.js',
+    'js/ui/H5GameApiTransportAdapter.js',
     'js/ui/H5AuthStorageAdapter.js',
     'js/ui/H5ShellAdapter.js',
     'js/state/UIStatePresenterDelegates.js',
     'js/state/UIStatePresenter.js',
     'js/ecs/runtime/EcsModeRuntimeBundle.js',
+    'js/platform/CanvasRuntimeContract.js',
     'js/platform/CanvasLayerRegistry.js',
     'js/platform/CanvasActionDispatchRegistry.js',
     'js/platform/CanvasActionDispatcher.js',
-    'js/platform/CanvasModeOwnershipBridge.js',
+    'js/platform/CanvasModeOwnershipRuntime.js',
     'js/platform/CanvasModalSnapshotAdapter.js',
     'js/platform/CanvasGameShell.js',
     'app.js',
@@ -62,17 +67,22 @@ function writeIndex(root, overrides = {}) {
 <body>
   <script src="js/config/GameConfig.js?v=${version}"></script>
   <script src="js/debug/H5LoadTrace.js?v=${version}"></script>
+  <script src="js/debug/ActorPickingDiagnostics.js?v=${version}"></script>
   <script src="js/api/GameAPI.js?v=${version}"></script>
   <script src="https://cdn.example.test/remote.js?v=${version}"></script>
+  <script src="js/ui/H5DebugDiagnosticsAdapter.js?v=${version}"></script>
+  <script src="js/ui/H5ActorPickingDiagnosticsAdapter.js?v=${version}"></script>
+  <script src="js/ui/H5GameApiTransportAdapter.js?v=${version}"></script>
   <script src="js/ui/H5AuthStorageAdapter.js?v=${version}"></script>
   <script src="js/ui/H5ShellAdapter.js?v=${version}"></script>
   <script src="js/state/UIStatePresenterDelegates.js?v=${version}"></script>
   <script src="js/state/UIStatePresenter.js?v=${version}"></script>
   <script src="js/ecs/runtime/EcsModeRuntimeBundle.js?v=${version}"></script>
+  <script src="js/platform/CanvasRuntimeContract.js?v=${version}"></script>
   <script src="js/platform/CanvasLayerRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatchRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatcher.js?v=${version}"></script>
-  <script src="js/platform/CanvasModeOwnershipBridge.js?v=${version}"></script>
+  <script src="js/platform/CanvasModeOwnershipRuntime.js?v=${version}"></script>
   <script src="js/platform/CanvasModalSnapshotAdapter.js?v=${version}"></script>
   <script src="js/platform/CanvasGameShell.js?v=${version}"></script>
   <script src="app.js?v=${overrides.appVersion || version}"></script>
@@ -116,7 +126,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 17);
+  assert.equal(result.updated, 22);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -128,7 +138,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 16);
+  assert.equal(manifest.localScriptCount, 21);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -161,5 +171,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 18);
+  assert.equal(manifest.localScriptCount, 23);
 });

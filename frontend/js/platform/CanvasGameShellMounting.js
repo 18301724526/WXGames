@@ -59,6 +59,7 @@ createRenderer(canvas) {
         this.worldMapRenderer = new RendererCtor({
           canvas: mapCanvas,
           presenter: this.presenter,
+          loadTrace: this.loadTrace || this.lastGame?.loadTrace || null,
           pixelRatio: this.runtime?.pixelRatio,
           width: layerMetrics.width || this.runtime?.width,
           height: layerMetrics.height || this.runtime?.height,
@@ -87,6 +88,7 @@ createRenderer(canvas) {
         this.worldActorLayerRenderer = new RendererCtor({
           canvas: actorCanvas,
           presenter: this.presenter,
+          loadTrace: this.loadTrace || this.lastGame?.loadTrace || null,
           pixelRatio: this.runtime?.pixelRatio,
           width: actorMetrics.width || this.runtime?.width,
           height: actorMetrics.height || this.runtime?.height,
@@ -164,6 +166,7 @@ createRenderer(canvas) {
       this.renderer = new RendererCtor({
         canvas,
         presenter: this.presenter,
+        loadTrace: this.loadTrace || this.lastGame?.loadTrace || null,
         pixelRatio: this.runtime?.pixelRatio,
         width: this.runtime?.width,
         height: this.runtime?.height,

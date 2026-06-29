@@ -38,6 +38,7 @@
     'cityRenderer',
     'systemRenderer',
     'battleRenderer',
+    'tutorialRenderer',
     'eventRenderer',
     'buildingRenderer',
     'overlayRenderer',
@@ -92,6 +93,13 @@
       CHILD_RENDERER_SPECS.forEach((spec) => {
         rendererMap[spec.property] = this.createRenderer(spec);
       });
+      if (
+        rendererMap.hudOverlayRenderer &&
+        rendererMap.frameRenderer &&
+        !rendererMap.hudOverlayRenderer.mapHomeOverlayRenderer
+      ) {
+        rendererMap.hudOverlayRenderer.mapHomeOverlayRenderer = rendererMap.frameRenderer;
+      }
       return {
         rendererMap,
         rendererKeys,

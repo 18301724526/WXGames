@@ -35,9 +35,9 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellInputRouter) {
     CanvasGameShellInputRouter = require('./CanvasGameShellInputRouter');
   }
-  var CanvasModeOwnershipBridge = global.CanvasModeOwnershipBridge;
-  if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipBridge) {
-    CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+  var CanvasModeOwnershipRuntime = global.CanvasModeOwnershipRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipRuntime) {
+    CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
   }
   var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
   if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
@@ -51,9 +51,9 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellGuideUi) {
     CanvasGameShellGuideUi = require('./CanvasGameShellGuideUi');
   }
-  var CanvasGameShellWorldMapLayerBridge = global.CanvasGameShellWorldMapLayerBridge;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapLayerBridge) {
-    CanvasGameShellWorldMapLayerBridge = require('./CanvasGameShellWorldMapLayerBridge');
+  var CanvasGameShellWorldMapLayerRuntime = global.CanvasGameShellWorldMapLayerRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapLayerRuntime) {
+    CanvasGameShellWorldMapLayerRuntime = require('./CanvasGameShellWorldMapLayerRuntime');
   }
   var CanvasGameShellWorldMapDragRuntime = global.CanvasGameShellWorldMapDragRuntime;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellWorldMapDragRuntime) {
@@ -103,6 +103,7 @@ constructor(options = {}) {
       this.worldClock = options.worldClock || this.runtime?.worldClock || SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
       if (this.runtime && typeof this.runtime === 'object' && this.worldClock) this.runtime.worldClock = this.worldClock;
       this.config = options.config || global.GameConfig || {};
+      this.loadTrace = options.loadTrace || null;
       this.layerRegistry = options.layerRegistry || CanvasLayerRegistryBase || global.CanvasLayerRegistry || null;
       this.renderer = options.renderer || null;
       this.worldMapRenderer = options.worldMapRenderer || null;
@@ -287,6 +288,7 @@ static mount(game, options = {}) {
         config: options.config || game?.config || global.GameConfig,
         renderer: options.renderer,
         presenter: options.presenter,
+        loadTrace: options.loadTrace || game?.loadTrace || null,
         previewEnabled: options.previewEnabled,
         inputEnabled: options.inputEnabled,
         onAction: options.onAction,
@@ -298,12 +300,12 @@ static mount(game, options = {}) {
 
   [
     CanvasGameShellMounting,
-    CanvasModeOwnershipBridge,
+    CanvasModeOwnershipRuntime,
     CanvasModalSnapshotAdapter,
     CanvasGameShellInputRouter,
     CanvasGameShellCommands,
     CanvasGameShellGuideUi,
-    CanvasGameShellWorldMapLayerBridge,
+    CanvasGameShellWorldMapLayerRuntime,
     CanvasGameShellWorldMapDragRuntime,
     CanvasGameShellWorldMapFrameRuntime,
     CanvasGameShellWorldMapRuntime,
@@ -311,38 +313,6 @@ static mount(game, options = {}) {
     CanvasGameShellRenderingRuntime,
     CanvasGameShellSystemUi,
   ].forEach((shellModule) => shellModule?.install?.(CanvasGameShell));
-
-  // P3 Axis A — host-proxied live-state fields. Each listed field has ONE owner: the mounted
-  // host (this.lastGame === the App). The shell keeps no own copy; reads/writes forward to the
-  // host, so there is a single storage cell (kills the app<->shell mirror for that field). A
-  // local `__hp_<field>` fallback covers the window before mount() binds lastGame (during
-  // super(), or unit tests with no host). Add a field here ONLY after its app<->shell
-  // equivalence is read-proven AND its ctor declaration + sync writes are removed.
-  const HOST_PROXIED_FIELDS = [
-    'pendingBuildingAction',
-    'activeCityManagementTab',
-    'buildingOffset',
-    'activeBuildingCategory',
-    'famousPersonsPage',
-    'selectedFamousPersonId',
-  ];
-  HOST_PROXIED_FIELDS.forEach((field) => {
-    const backing = `__hp_${field}`;
-    Object.defineProperty(CanvasGameShell.prototype, field, {
-      configurable: true,
-      get() {
-        if (this.lastGame && typeof this.lastGame === 'object') {
-          const value = this.lastGame[field];
-          return value === undefined ? this[backing] : value;
-        }
-        return this[backing];
-      },
-      set(value) {
-        if (this.lastGame && typeof this.lastGame === 'object') this.lastGame[field] = value;
-        else this[backing] = value;
-      },
-    });
-  });
 
   global.CanvasGameShell = CanvasGameShell;
   if (typeof module !== 'undefined' && module.exports) module.exports = CanvasGameShell;

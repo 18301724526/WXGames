@@ -59,12 +59,6 @@
     return null;
   })();
 
-  function model(method, args = [], fallback = undefined) {
-    const fn = BattleCanvasModel?.[method];
-    if (typeof fn === 'function') return fn(...args);
-    return typeof fallback === 'function' ? fallback() : fallback;
-  }
-
   // ---- entity battle (live sim) constants ----
   // The entity battle is the 三国群英传-style mass-melee scene driven by
   // battleSimCore. It is rendered through this canvas renderer (no DOM) for both
@@ -113,88 +107,52 @@
       return LocaleText ? LocaleText.t(key, params) : key;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawCircle(...args) {
-      return this.callDrawingSurface('drawCircle', args);
-    }
-
-    drawCoverAsset(...args) {
-      return this.callDrawingSurface('drawCoverAsset', args);
-    }
-
-    drawFamousPortrait(...args) {
-      return this.callDrawingSurface('drawFamousPortrait', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getAsset(...args) {
-      return this.callDrawingSurface('getAsset', args);
-    }
-
-    getNow(...args) {
-      return this.callDrawingSurface('getNow', args);
-    }
-
-    measureTextWidth(...args) {
-      return this.callDrawingSurface('measureTextWidth', args);
-    }
-
-    setHitTargets(...args) {
-      return this.callDrawingSurface('setHitTargets', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawCircle(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawCircle === 'function' ? surface.drawCircle(...args) : this.host?.drawCircle?.(...args); }
+    drawCoverAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawCoverAsset === 'function' ? surface.drawCoverAsset(...args) : this.host?.drawCoverAsset?.(...args); }
+    drawFamousPortrait(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawFamousPortrait === 'function' ? surface.drawFamousPortrait(...args) : this.host?.drawFamousPortrait?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.getAsset === 'function' ? surface.getAsset(...args) : this.host?.getAsset?.(...args); }
+    getNow(...args) { const surface = this.drawingSurface; return surface && typeof surface.getNow === 'function' ? surface.getNow(...args) : this.host?.getNow?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    setHitTargets(...args) { const surface = this.drawingSurface; return surface && typeof surface.setHitTargets === 'function' ? surface.setHitTargets(...args) : this.host?.setHitTargets?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
 
     static getBattleUnitAssetVersion() {
-      return model('getBattleUnitAssetVersion', [], 'battle-units-split-v1-20260529');
+      const result = typeof BattleCanvasModel?.getBattleUnitAssetVersion === 'function'
+        ? BattleCanvasModel.getBattleUnitAssetVersion()
+        : undefined;
+      return result === undefined ? 'battle-units-split-v1-20260529' : result;
     }
 
     static getBattleUnitFrameCount() {
-      return model('getBattleUnitFrameCount', [], 4);
+      const result = typeof BattleCanvasModel?.getBattleUnitFrameCount === 'function'
+        ? BattleCanvasModel.getBattleUnitFrameCount()
+        : undefined;
+      return result === undefined ? 4 : result;
     }
 
     static getBattleUnitKey(side = 'attacker') {
-      return model('getBattleUnitKey', [side], side === 'attacker' ? 'player' : 'enemy');
+      const result = typeof BattleCanvasModel?.getBattleUnitKey === 'function'
+        ? BattleCanvasModel.getBattleUnitKey(side)
+        : undefined;
+      return result === undefined ? (side === 'attacker' ? 'player' : 'enemy') : result;
     }
 
     static getBattleUnitFramePath(unit = 'player', pose = 'idle', frameIndex = 0, rootPath = '') {
-      return model(
-        'getBattleUnitFramePath',
-        [unit, pose, frameIndex, rootPath],
-        'assets/art/battle/units/player/idle/01.png',
-      );
+      const result = typeof BattleCanvasModel?.getBattleUnitFramePath === 'function'
+        ? BattleCanvasModel.getBattleUnitFramePath(unit, pose, frameIndex, rootPath)
+        : undefined;
+      return result === undefined ? 'assets/art/battle/units/player/idle/01.png' : result;
     }
 
     static getBattleUnitFramePaths() {
-      return model('getBattleUnitFramePaths', [], []);
+      const result = typeof BattleCanvasModel?.getBattleUnitFramePaths === 'function'
+        ? BattleCanvasModel.getBattleUnitFramePaths()
+        : undefined;
+      return result === undefined ? [] : result;
     }
 
     render(state = {}, options = {}) {
@@ -202,110 +160,173 @@
     }
 
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
-      return model('getBattleUnitPose', [side, activeTurn, phase], 'idle');
+      const result = typeof BattleCanvasModel?.getBattleUnitPose === 'function'
+        ? BattleCanvasModel.getBattleUnitPose(side, activeTurn, phase)
+        : undefined;
+      return result === undefined ? 'idle' : result;
     }
 
     getBattleTurnSoldierCount(turn = {}, side = 'attacker', timing = 'after', fallback = 0) {
-      return model('getBattleTurnSoldierCount', [turn, side, timing, fallback], Number(fallback) || 0);
+      const result = typeof BattleCanvasModel?.getBattleTurnSoldierCount === 'function'
+        ? BattleCanvasModel.getBattleTurnSoldierCount(turn, side, timing, fallback)
+        : undefined;
+      return result === undefined ? Number(fallback) || 0 : result;
     }
 
     isBattleSideDefeatedByTurn(side = 'attacker', turn = {}) {
-      return model('isBattleSideDefeatedByTurn', [side, turn], false);
+      const result = typeof BattleCanvasModel?.isBattleSideDefeatedByTurn === 'function'
+        ? BattleCanvasModel.isBattleSideDefeatedByTurn(side, turn)
+        : undefined;
+      return result === undefined ? false : result;
     }
 
     getBattlePlaybackPhase(progress = 0, activeTurn = null) {
-      return model('getBattlePlaybackPhase', [progress, activeTurn], { phase: 'ended', phaseProgress: 1 });
+      const result = typeof BattleCanvasModel?.getBattlePlaybackPhase === 'function'
+        ? BattleCanvasModel.getBattlePlaybackPhase(progress, activeTurn)
+        : undefined;
+      return result === undefined ? { phase: 'ended', phaseProgress: 1 } : result;
     }
 
     getBattleEngagementProgress(turnIndex = 0, phase = 'prepare', phaseProgress = 0, activeTurn = null) {
-      return model('getBattleEngagementProgress', [turnIndex, phase, phaseProgress, activeTurn], 1);
+      const result = typeof BattleCanvasModel?.getBattleEngagementProgress === 'function'
+        ? BattleCanvasModel.getBattleEngagementProgress(turnIndex, phase, phaseProgress, activeTurn)
+        : undefined;
+      return result === undefined ? 1 : result;
     }
 
     getBattleUnitFormationPosition(side = 'attacker', area = {}, index = 0, columns = 1) {
-      return model('getBattleUnitFormationPosition', [side, area, index, columns], { x: 0, y: 0, col: 0, row: 0 });
+      const result = typeof BattleCanvasModel?.getBattleUnitFormationPosition === 'function'
+        ? BattleCanvasModel.getBattleUnitFormationPosition(side, area, index, columns)
+        : undefined;
+      return result === undefined ? { x: 0, y: 0, col: 0, row: 0 } : result;
     }
 
     getBattleUnitEngagementPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21) {
-      return model('getBattleUnitEngagementPosition', [side, area, index, columns, scale, this.width], { x: 0, y: 0, scale });
+      const result = typeof BattleCanvasModel?.getBattleUnitEngagementPosition === 'function'
+        ? BattleCanvasModel.getBattleUnitEngagementPosition(side, area, index, columns, scale, this.width)
+        : undefined;
+      return result === undefined ? { x: 0, y: 0, scale } : result;
     }
 
     easeBattleUnitProgress(progress = 0) {
-      return model('easeBattleUnitProgress', [progress], 0);
+      const result = typeof BattleCanvasModel?.easeBattleUnitProgress === 'function'
+        ? BattleCanvasModel.easeBattleUnitProgress(progress)
+        : undefined;
+      return result === undefined ? 0 : result;
     }
 
     getBattleUnitEngagementDelay(index = 0) {
-      return model('getBattleUnitEngagementDelay', [index], 0);
+      const result = typeof BattleCanvasModel?.getBattleUnitEngagementDelay === 'function'
+        ? BattleCanvasModel.getBattleUnitEngagementDelay(index)
+        : undefined;
+      return result === undefined ? 0 : result;
     }
 
     getBattleUnitEngagementRatio(index = 0, engagementProgress = 1) {
-      return model('getBattleUnitEngagementRatio', [index, engagementProgress], 1);
+      const result = typeof BattleCanvasModel?.getBattleUnitEngagementRatio === 'function'
+        ? BattleCanvasModel.getBattleUnitEngagementRatio(index, engagementProgress)
+        : undefined;
+      return result === undefined ? 1 : result;
     }
 
     getBattleUnitBattlefieldPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21, engagementProgress = 1) {
-      return model(
-        'getBattleUnitBattlefieldPosition',
-        [side, area, index, columns, scale, engagementProgress, this.width],
-        { x: 0, y: 0, formation: {}, engaged: {}, ratio: 1 },
-      );
+      const result = typeof BattleCanvasModel?.getBattleUnitBattlefieldPosition === 'function'
+        ? BattleCanvasModel.getBattleUnitBattlefieldPosition(
+          side,
+          area,
+          index,
+          columns,
+          scale,
+          engagementProgress,
+          this.width,
+        )
+        : undefined;
+      return result === undefined ? { x: 0, y: 0, formation: {}, engaged: {}, ratio: 1 } : result;
     }
 
     getBattleUnitSpec(side = 'attacker', spritePath = '') {
-      return model('getBattleUnitSpec', [side, spritePath], {
+      const result = typeof BattleCanvasModel?.getBattleUnitSpec === 'function'
+        ? BattleCanvasModel.getBattleUnitSpec(side, spritePath)
+        : undefined;
+      return result === undefined ? {
         unit: 'player',
         root: 'assets/art/battle/units/player',
         frameCount: this.constructor.getBattleUnitFrameCount(),
         width: 500,
         height: 400,
-      });
+      } : result;
     }
 
     getBattleFramePose(pose = 'idle') {
-      return model('getBattleFramePose', [pose], 'idle');
+      const result = typeof BattleCanvasModel?.getBattleFramePose === 'function'
+        ? BattleCanvasModel.getBattleFramePose(pose)
+        : undefined;
+      return result === undefined ? 'idle' : result;
     }
 
     getBattleFrameIndex(pose = 'idle', frame = 0, progress = 0) {
-      return model('getBattleFrameIndex', [pose, frame, progress], 0);
+      const result = typeof BattleCanvasModel?.getBattleFrameIndex === 'function'
+        ? BattleCanvasModel.getBattleFrameIndex(pose, frame, progress)
+        : undefined;
+      return result === undefined ? 0 : result;
     }
 
     getBattleFrameSpritePath(side = 'attacker', pose = 'idle', frame = 0, spritePath = '', progress = 0) {
-      return model(
-        'getBattleFrameSpritePath',
-        [side, pose, frame, spritePath, progress],
-        'assets/art/battle/units/player/idle/01.png',
-      );
+      const result = typeof BattleCanvasModel?.getBattleFrameSpritePath === 'function'
+        ? BattleCanvasModel.getBattleFrameSpritePath(side, pose, frame, spritePath, progress)
+        : undefined;
+      return result === undefined ? 'assets/art/battle/units/player/idle/01.png' : result;
     }
 
     getBattleSideSpritePath(sideView = {}, side = 'attacker') {
-      return model('getBattleSideSpritePath', [sideView, side], 'assets/art/battle/units/player');
+      const result = typeof BattleCanvasModel?.getBattleSideSpritePath === 'function'
+        ? BattleCanvasModel.getBattleSideSpritePath(sideView, side)
+        : undefined;
+      return result === undefined ? 'assets/art/battle/units/player' : result;
     }
 
     getBattleStatusBadgeColors(tone = 'status') {
-      return model('getBattleStatusBadgeColors', [tone], {
+      const result = typeof BattleCanvasModel?.getBattleStatusBadgeColors === 'function'
+        ? BattleCanvasModel.getBattleStatusBadgeColors(tone)
+        : undefined;
+      return result === undefined ? {
         fill: 'rgba(52, 43, 76, 0.84)',
         stroke: 'rgba(217, 198, 255, 0.50)',
         color: '#dfd2ff',
-      });
+      } : result;
     }
 
     getBattleTurnDamage(turn = null) {
-      return model('getBattleTurnDamage', [turn], 0);
+      const result = typeof BattleCanvasModel?.getBattleTurnDamage === 'function'
+        ? BattleCanvasModel.getBattleTurnDamage(turn)
+        : undefined;
+      return result === undefined ? 0 : result;
     }
 
     getBattleDamageFloatText(turn = null) {
-      return model('getBattleDamageFloatText', [turn], '');
+      const result = typeof BattleCanvasModel?.getBattleDamageFloatText === 'function'
+        ? BattleCanvasModel.getBattleDamageFloatText(turn)
+        : undefined;
+      return result === undefined ? '' : result;
     }
 
     getBattleScenePlayback(battleScene = {}, now = 0) {
-      return model('getBattleScenePlayback', [battleScene, now], {
+      const result = typeof BattleCanvasModel?.getBattleScenePlayback === 'function'
+        ? BattleCanvasModel.getBattleScenePlayback(battleScene, now)
+        : undefined;
+      return result === undefined ? {
         frame: Math.floor((now || 0) / 140),
         requestedTurnIndex: 0,
         rawActiveTurn: null,
         playback: { phase: 'ended', phaseProgress: 1 },
-      });
+      } : result;
     }
 
     getBattleSceneLayout(width = this.width, height = this.height) {
-      return model('getBattleSceneLayout', [width, height], {
+      const result = typeof BattleCanvasModel?.getBattleSceneLayout === 'function'
+        ? BattleCanvasModel.getBattleSceneLayout(width, height)
+        : undefined;
+      return result === undefined ? {
         topY: 20,
         fieldTop: 116,
         logH: 122,
@@ -313,7 +334,7 @@
         attackerArea: { x: 18, y: 254, width: Math.min(170, width * 0.42), height: 320 },
         defenderArea: { x: width - Math.min(170, width * 0.42) - 18, y: 254, width: Math.min(170, width * 0.42), height: 320 },
         buttonY: height - 54,
-      });
+      } : result;
     }
 
     drawBattleMapBackground(map = {}) {

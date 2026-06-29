@@ -175,44 +175,12 @@ test('Axis A baseline: applyConnectionState without a canvasShell mirror falls b
   assert.equal(host.networkState.status, 'reconnecting');
 });
 
-// --- Part 3: shell host-proxied fields (P3 Axis A single-owner collapse) ----
+// --- Part 3: shell UI state owner fields (P3 Axis A single-owner collapse) ----
 
-test('Axis A: pendingBuildingAction is host-proxied — shell reads/writes forward to the mounted host (single owner)', () => {
-  const shell = Object.create(CanvasGameShell.prototype);
-
-  // Pre-mount (lastGame unbound): behaves as a local cell, no host to forward to.
-  assert.equal(shell.pendingBuildingAction, undefined);
-  shell.pendingBuildingAction = { buildingId: 'x', action: 'build' };
-  assert.deepEqual(shell.pendingBuildingAction, { buildingId: 'x', action: 'build' });
-
-  // After mount binds the host, reads + writes go to the host's single slot — the shell keeps
-  // NO own copy (the old app<->shell mirror is gone).
-  const host = { pendingBuildingAction: null };
-  shell.lastGame = host;
-  assert.equal(shell.pendingBuildingAction, null); // now reads the host slot
-  shell.pendingBuildingAction = { buildingId: 'y', action: 'upgrade' };
-  assert.deepEqual(host.pendingBuildingAction, { buildingId: 'y', action: 'upgrade' }); // write landed on host
-  assert.equal(shell.pendingBuildingAction, host.pendingBuildingAction); // one cell
-});
-
-test('Axis A: activeCityManagementTab is host-proxied — shell forwards to the mounted host (single owner)', () => {
-  const shell = Object.create(CanvasGameShell.prototype);
-
-  // Pre-mount: local cell.
-  shell.activeCityManagementTab = 'people';
-  assert.equal(shell.activeCityManagementTab, 'people');
-
-  // After mount: reads + writes go to the host's single slot.
-  const host = { activeCityManagementTab: 'buildings' };
-  shell.lastGame = host;
-  assert.equal(shell.activeCityManagementTab, 'buildings'); // reads host slot
-  shell.activeCityManagementTab = 'military';
-  assert.equal(host.activeCityManagementTab, 'military'); // write landed on host
-  assert.equal(shell.activeCityManagementTab, host.activeCityManagementTab); // one cell
-});
-
-test('Axis A: per-render CLEAN scalars are host-proxied to the single owner', () => {
+test('Axis A: raw shell UI fields do not proxy into the mounted game owner', () => {
   const fields = {
+    pendingBuildingAction: { buildingId: 'x', action: 'build' },
+    activeCityManagementTab: 'people',
     buildingOffset: 7,
     activeBuildingCategory: 'military',
     famousPersonsPage: 3,
@@ -220,10 +188,47 @@ test('Axis A: per-render CLEAN scalars are host-proxied to the single owner', ()
   };
   for (const [field, value] of Object.entries(fields)) {
     const shell = Object.create(CanvasGameShell.prototype);
-    const host = {};
+    const host = { [field]: field === 'pendingBuildingAction' ? null : '' };
     shell.lastGame = host;
+
     shell[field] = value;
-    assert.equal(host[field], value, `${field}: write forwards to host`);
-    assert.equal(shell[field], value, `${field}: read forwards to host`);
+
+    assert.notEqual(host[field], value, `${field}: raw shell write must not mutate host`);
+    assert.equal(shell[field], value, `${field}: raw shell field remains local`);
   }
+});
+
+test('Axis A: mounted shell commands write explicit game UI owner', () => {
+  const shell = Object.create(CanvasGameShell.prototype);
+  Object.assign(shell, {
+    lastGame: {
+      pendingBuildingAction: null,
+      activeCityManagementTab: 'buildings',
+      buildingOffset: 8,
+      activeBuildingCategory: 'all',
+      famousPersonsPage: 2,
+      selectedFamousPersonId: 'fp-old',
+    },
+    renderer: { clearFamousSkillTooltip() {} },
+    renderActive() {},
+  });
+
+  assert.equal(shell.setPendingBuildingAction({ buildingId: 'farm', action: 'build' }, { render: false }), true);
+  assert.deepEqual(shell.lastGame.pendingBuildingAction, { buildingId: 'farm', action: 'build' });
+  assert.equal(shell.pendingBuildingAction, undefined);
+
+  assert.equal(shell.switchCityManagementTab('people'), true);
+  assert.equal(shell.lastGame.activeCityManagementTab, 'people');
+  assert.equal(shell.activeCityManagementTab, undefined);
+
+  assert.equal(shell.selectBuildingCategory({ category: 'agriculture' }), true);
+  assert.equal(shell.lastGame.activeBuildingCategory, 'agriculture');
+  assert.equal(shell.lastGame.buildingOffset, 0);
+  assert.equal(shell.activeBuildingCategory, undefined);
+
+  assert.equal(shell.changeFamousPersonsPage({ delta: 1 }), true);
+  assert.equal(shell.lastGame.famousPersonsPage, 3);
+  assert.equal(shell.lastGame.selectedFamousPersonId, '');
+  assert.equal(shell.famousPersonsPage, undefined);
+  assert.equal(shell.selectedFamousPersonId, undefined);
 });

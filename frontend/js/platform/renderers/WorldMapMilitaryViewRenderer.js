@@ -21,37 +21,12 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const surface = this.drawingSurface;
-      if (surface && typeof surface[method] === 'function') {
-        return surface[method](...args);
-      }
-      return this.host?.[method]?.(...args);
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;

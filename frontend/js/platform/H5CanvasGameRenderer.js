@@ -17,6 +17,7 @@
         ctx,
         canvas,
         presenter: options.presenter || null,
+        loadTrace: options.loadTrace || null,
         pixelRatio,
         width,
         height,

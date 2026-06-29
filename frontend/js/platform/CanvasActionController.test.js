@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const CanvasActionController = require('./CanvasActionController');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 // Batch 8F: the 12 blocking panels are owned modal subtypes now, so a stub host
@@ -12,7 +12,7 @@ const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 // host's closeBlockingPanelsSnapshot; armyFormationEditor + the event modal keep
 // their own out-of-scope close paths.
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {

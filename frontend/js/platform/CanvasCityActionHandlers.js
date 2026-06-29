@@ -24,15 +24,14 @@
       handle_openCityManagement(action) {
         const tab = action.tab || 'buildings';
         const game = this.getGameHost();
-        this.host.activeCityManagementTab = tab;
-        if (game && game !== this.host) game.activeCityManagementTab = tab;
+        const owner = game || this.host;
+        owner.activeCityManagementTab = tab;
         openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
         this.closePanels(['showCityManagement']);
         const handled = this.afterHandled(action);
         const result = game?.tutorialController?.onCityManagementOpened?.(tab);
         const refreshAfterTutorialAdvance = () => {
-          this.host.activeCityManagementTab = tab;
-          if (game && game !== this.host) game.activeCityManagementTab = tab;
+          owner.activeCityManagementTab = tab;
           openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
           game?.tutorialController?.refreshCurrentHighlight?.();
         };
@@ -52,9 +51,9 @@
       handle_switchCityManagementTab(action) {
         const allowed = ['buildings', 'people', 'military'];
         const tab = allowed.includes(action.tab) ? action.tab : 'buildings';
-        this.host.activeCityManagementTab = tab;
         const game = this.getGameHost();
-        if (game && game !== this.host) game.activeCityManagementTab = tab;
+        const owner = game || this.host;
+        owner.activeCityManagementTab = tab;
         const handled = this.afterHandled(action);
         game?.tutorialController?.onCityManagementOpened?.(tab);
         const scheduler = this.host?.runtime || game?.runtime || global;
@@ -199,13 +198,13 @@
           ? game.enterCity(cityId, { tab: action.tab || 'buildings' })
           : Promise.resolve(this.selectCity({ ...action, cityId })).then((allowed) => {
             if (allowed === false) return false;
-            this.host.activeCityManagementTab = action.tab || 'buildings';
+            (game || this.host).activeCityManagementTab = action.tab || 'buildings';
             openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
             return true;
           });
         return this.finalize(Promise.resolve(result).then((allowed) => {
           if (allowed !== false) {
-            this.host.activeCityManagementTab = action.tab || 'buildings';
+            (game || this.host).activeCityManagementTab = action.tab || 'buildings';
             openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
             this.afterHandled(action);
             const tab = action.tab || 'buildings';
@@ -245,14 +244,16 @@
         const forwarded = this.forward(action);
         if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
         const game = this.getGameHost();
-        const method = buildingAction === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding';
         if (game?.tutorialController?.onBuildingAction?.(action.buildingId, buildingAction) === false) {
           game.showFloatingText?.(t('guide.buildFirstHouseFirst'));
           game.tutorialController?.refreshCurrentHighlight?.();
           return false;
         }
-        if (typeof game?.[method] === 'function') {
-          return game[method](action.buildingId);
+        if (buildingAction === 'upgrade' && typeof game?.upgradeBuilding === 'function') {
+          return game.upgradeBuilding(action.buildingId);
+        }
+        if (buildingAction !== 'upgrade' && typeof game?.buildBuilding === 'function') {
+          return game.buildBuilding(action.buildingId);
         }
         const setPending = (pending, options = {}) => {
           if (typeof this.host?.setPendingBuildingAction === 'function') {
@@ -310,7 +311,6 @@
         if (typeof this.host?.selectTechNode === 'function') {
           this.host.selectTechNode(action);
         } else if (this.host) {
-          this.host.selectedTechId = techId;
           const game = this.getGameHost();
           if (game?.state && typeof game.state === 'object') {
             game.state = {

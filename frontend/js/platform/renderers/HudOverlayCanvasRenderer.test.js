@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const HudOverlayCanvasRenderer = require('./HudOverlayCanvasRenderer');
+const CanvasFrameRenderer = require('./CanvasFrameRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
 function createHost(overrides = {}) {
@@ -32,18 +33,22 @@ function createHost(overrides = {}) {
     renderCitySwitcherMenu(...args) { calls.push(['renderCitySwitcherMenu', args]); },
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
+    renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
+    renderFloatingEventButton(...args) { calls.push(['renderFloatingEventButton', args]); },
+    renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
     renderGuidebookPanel(...args) { calls.push(['renderGuidebookPanel', args]); },
     renderHudTabPageWithTransition(...args) { calls.push(['renderHudTabPageWithTransition', args]); },
     renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
     renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
     renderLogsPanel(...args) { calls.push(['renderLogsPanel', args]); },
-    renderMapHomeOverlays(...args) { calls.push(['renderMapHomeOverlays', args]); },
+    renderMapCommandPanel(...args) { calls.push(['renderMapCommandPanel', args]); },
     renderNamingModal(...args) { calls.push(['renderNamingModal', args]); },
     renderNetworkOverlay(...args) { calls.push(['renderNetworkOverlay', args]); },
     renderResourceDetailsPanel(...args) { calls.push(['renderResourceDetailsPanel', args]); },
     renderRewardReveal(...args) { calls.push(['renderRewardReveal', args]); },
     renderSettingsPanel(...args) { calls.push(['renderSettingsPanel', args]); },
+    renderSubcityListPanel(...args) { calls.push(['renderSubcityListPanel', args]); },
     renderTabs(...args) { calls.push(['renderTabs', args]); },
     renderTaskCenterPanel(...args) { calls.push(['renderTaskCenterPanel', args]); },
     renderTechDetailModal(...args) { calls.push(['renderTechDetailModal', args]); },
@@ -69,9 +74,17 @@ function callNames(host) {
   return host.calls.map((call) => call[0]);
 }
 
+function createRenderer(host, options = {}) {
+  return new HudOverlayCanvasRenderer({
+    host,
+    mapHomeOverlayRenderer: new CanvasFrameRenderer({ host }),
+    ...options,
+  });
+}
+
 test('HudOverlayCanvasRenderer preserves login early-return flow', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
   const options = { preserveCanvas: true, auth: { view: { loginPanelVisible: true } } };
 
   renderer.renderHudOverlay({}, options);
@@ -82,7 +95,7 @@ test('HudOverlayCanvasRenderer preserves login early-return flow', () => {
 
 test('HudOverlayCanvasRenderer preserves battle early-return flow', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
   const options = { battleScene: { visible: true } };
 
   renderer.renderHudOverlay({ battle: {} }, options);
@@ -94,7 +107,7 @@ test('HudOverlayCanvasRenderer preserves battle early-return flow', () => {
 
 test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
   const options = {
     activeTab: 'military',
     isMapHome: true,
@@ -109,7 +122,9 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   const names = callNames(host);
   assert.equal(names.includes('collectMapHomeWorldSiteHitTargets'), true);
   assert.equal(names.includes('renderMapHomeExplorerHud'), true);
-  assert.equal(names.includes('renderMapHomeOverlays'), true);
+  assert.equal(names.includes('renderFloatingSubcityButton'), true);
+  assert.equal(names.includes('renderFloatingEventButton'), true);
+  assert.equal(names.includes('renderFloatingAdvisorButton'), true);
   assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.includes('renderResourceDetailsPanel'), false);
   assert.equal(names.at(-1), 'endFrame');
@@ -125,7 +140,7 @@ test('HudOverlayCanvasRenderer renders dynamic world march HUD on the screen lay
   const host = createHost({
     lastWorldTileMapContext: hudContext,
   });
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
   const uiState = {
     worldMarchTarget: { q: 2, r: 2, tileId: 'tile_2_2', pickerOpen: true },
   };
@@ -160,7 +175,7 @@ test('HudOverlayCanvasRenderer paints same-frame dynamic HUD context on the scre
       this.lastMapHomeWorldHudContext = freshContext;
     },
   });
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
 
   renderer.renderHudOverlay({ id: 'state-1' }, {
     activeTab: 'military',
@@ -190,7 +205,7 @@ test('HudOverlayCanvasRenderer renders selected actor HUD context on the screen 
   const host = createHost({
     lastMapHomeWorldHudContext: staleContext,
   });
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
 
   renderer.renderHudOverlay({ id: 'state-1' }, {
     activeTab: 'military',
@@ -214,7 +229,7 @@ test('HudOverlayCanvasRenderer can derive actor commands on the screen HUD layer
   const host = createHost({
     lastMapHomeWorldHudContext: emptyContext,
   });
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
   const state = {
     id: 'state-1',
     worldExplorerState: {
@@ -244,7 +259,7 @@ test('HudOverlayCanvasRenderer can derive actor commands on the screen HUD layer
 
 test('HudOverlayCanvasRenderer preserves runtime world-map site targets on skipped map layers', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
 
   renderer.renderHudOverlay({ militaryView: 'world' }, {
     activeTab: 'military',
@@ -267,7 +282,7 @@ test('HudOverlayCanvasRenderer preserves runtime world-map site targets on skipp
 
 test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
   const options = {
     activeTab: 'tech',
     showResourceDetails: true,
@@ -300,7 +315,7 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
 
 test('HudOverlayCanvasRenderer renders canvas debug reset on map home overlay frames', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
 
   renderer.renderHudOverlay({ militaryView: 'world' }, {
     activeTab: 'military',
@@ -315,7 +330,7 @@ test('HudOverlayCanvasRenderer renders canvas debug reset on map home overlay fr
 
 test('HudOverlayCanvasRenderer renders confirm dialog above debug reset', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
 
   renderer.renderHudOverlay({ militaryView: 'world' }, {
     activeTab: 'military',
@@ -330,7 +345,7 @@ test('HudOverlayCanvasRenderer renders confirm dialog above debug reset', () => 
 
 test('HudOverlayCanvasRenderer hides debug reset while tutorial dialogue is visible', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
 
   renderer.renderHudOverlay({ militaryView: 'world' }, {
     activeTab: 'military',
@@ -344,14 +359,15 @@ test('HudOverlayCanvasRenderer hides debug reset while tutorial dialogue is visi
   });
 
   const names = callNames(host);
-  assert.equal(names.includes('renderMapHomeOverlays'), true);
+  assert.equal(names.includes('renderFloatingSubcityButton'), true);
+  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
   assert.equal(names.includes('renderCanvasDebugResetButton'), false);
   assert.equal(names.includes('renderConfirmDialog'), true);
 });
 
 test('HudOverlayCanvasRenderer prioritizes tutorial spine advisor over generic advisor panel', () => {
   const host = createHost();
-  const renderer = new HudOverlayCanvasRenderer({ host });
+  const renderer = createRenderer(host);
   const options = {
     activeTab: 'resources',
     showAdvisor: true,

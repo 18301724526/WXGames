@@ -3,14 +3,14 @@ const assert = require('node:assert/strict');
 
 const TechTreeInteractionModel = require('./TechTreeInteractionModel');
 const CanvasActionController = require('../CanvasActionController');
-const CanvasModeOwnershipBridge = require('../CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('../CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('../CanvasModalSnapshotAdapter');
 const GameAPI = require('../../api/GameAPI');
 
 // A modal-capable host carries the bridge + snapshot-adapter helpers so the
 // targetPicker modal routes through the owner snapshot (Batch 8E).
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {
@@ -164,8 +164,14 @@ test('CanvasActionController records input intent on action errors', async () =>
       /sync boom/,
     );
 
-    const asyncController = new CanvasActionController({ host: {} });
-    asyncController.handle_asyncBoom = () => Promise.reject(new Error('async boom'));
+    const asyncController = new CanvasActionController({
+      awaitAsync: true,
+      host: {
+        forwardCanvasAction() {
+          return Promise.reject(new Error('async boom'));
+        },
+      },
+    });
     await assert.rejects(
       () => asyncController.handle({ type: 'asyncBoom' }, { inputIntent }),
       /async boom/,
@@ -352,14 +358,14 @@ test('CanvasActionController defers tutorial enter-city action until the intro t
 
 test('CanvasActionController notifies tutorial when opening civilization command panel', async () => {
   const calls = [];
-  const game = {
+  const game = makeModalHost({
     tutorialController: {
       async onCommandPanelOpened(panelId) {
         calls.push(['onCommandPanelOpened', panelId]);
         return true;
       },
     },
-  };
+  });
   const host = makeModalHost({
     getCanvasGameHost() {
       return game;
@@ -432,8 +438,8 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
 test('CanvasActionController syncs opened event id across shell and game hosts', () => {
   const calls = [];
   const ownerCalls = [];
-  // Shared snapshot store: opening/closing on any related host fans out to all,
-  // mirroring the modal owner merge in CanvasModeOwnershipBridge.
+  // Shared snapshot store for this test double; production modal reads resolve to a
+  // canonical game owner instead of writing host mirrors.
   const eventStore = { snapshot: null };
   const eventSnapshotMock = {
     openEventSnapshot(eventId) {
@@ -669,7 +675,7 @@ test('CanvasActionController mirrors city management open to the game host', () 
 
   assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), true);
-  assert.equal(shell.activeCityManagementTab, 'people');
+  assert.equal(shell.activeCityManagementTab, '');
   assert.equal(game.activeCityManagementTab, 'people');
 });
 
@@ -883,7 +889,7 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
       return game;
     },
   });
-  const game = {
+  const game = makeModalHost({
     canvasShell: shell,
     territoryUiState: shell.territoryUiState,
     state: { activeCityId: 'capital' },
@@ -910,7 +916,7 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
       calls.push(['stopWorldMarch', missionId]);
       return true;
     },
-  };
+  });
   const controller = new CanvasActionController({ host: shell, awaitAsync: true });
 
   assert.equal(controller.handle_openWorldMarchFormationPicker({

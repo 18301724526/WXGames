@@ -29,7 +29,6 @@
     worldActorCanvasRenderer: getRendererDependency('worldActorCanvasRenderer'),
     worldMarchHudCanvasRenderer: getRendererDependency('worldMarchHudCanvasRenderer'),
     tutorialIntroUnitRenderer: getRendererDependency('tutorialIntroUnitRenderer'),
-    worldMapRendererHostBridge: getRendererDependency('worldMapRendererHostBridge'),
     worldMapRendererCompositionFactory: getRendererDependency('worldMapRendererCompositionFactory'),
     worldMapLayoutModel: getRendererDependency('worldMapLayoutModel'),
     worldMapLayoutFacade: getRendererDependency('worldMapLayoutFacade'),
@@ -58,19 +57,16 @@
   class WorldMapCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = options.worldMapRendererHostBridgeClass || sharedDependencies.worldMapRendererHostBridge;
-      const proxy = HostBridge?.createProxy ? HostBridge.createProxy(this) : this;
       const rendererHost = options.host || null;
       const CompositionFactory = options.worldMapRendererCompositionFactoryClass || sharedDependencies.worldMapRendererCompositionFactory;
       const composition = options.worldMapRendererComposition
         || (CompositionFactory?.create ? CompositionFactory.create({
-          renderer: proxy,
+          renderer: this,
           rendererHost,
           options,
           dependencies: sharedDependencies,
         }) : {});
       Object.assign(this, composition);
-      return proxy;
     }
 
     static getTileMapAssetManifest() {
@@ -87,10 +83,6 @@
 
     static getWorldMapRendererCompositionFactory() {
       return sharedDependencies.worldMapRendererCompositionFactory || null;
-    }
-
-    static getWorldMapRendererHostBridge() {
-      return sharedDependencies.worldMapRendererHostBridge || null;
     }
 
     static getWorldMapLayoutFacade() {
@@ -195,6 +187,222 @@
 
     render(tileMapView = {}, x = 0, y = 0, width = 0, height = 0, uiState = {}, options = {}) {
       return this.renderWorldTileMap(tileMapView, x, y, width, height, uiState, options);
+    }
+
+    get ctx() {
+      return this.host?.ctx || null;
+    }
+
+    get canvas() {
+      return this.host?.canvas || null;
+    }
+
+    get width() {
+      return this.host?.width;
+    }
+
+    get height() {
+      return this.host?.height;
+    }
+
+    get viewportOffsetX() {
+      return this.host?.viewportOffsetX;
+    }
+
+    get viewportOffsetY() {
+      return this.host?.viewportOffsetY;
+    }
+
+    get viewportWidth() {
+      return this.host?.viewportWidth;
+    }
+
+    get viewportHeight() {
+      return this.host?.viewportHeight;
+    }
+
+    get pixelRatio() {
+      return this.host?.pixelRatio;
+    }
+
+    get epochNowMs() {
+      return this.host?.epochNowMs;
+    }
+
+    get serverNowMs() {
+      return this.host?.serverNowMs;
+    }
+
+    get nowEpochMs() {
+      return this.host?.nowEpochMs;
+    }
+
+    get worldClock() {
+      return this.host?.worldClock || null;
+    }
+
+    get lastRenderOptions() {
+      return this.host?.lastRenderOptions || null;
+    }
+
+    get presenter() {
+      return this.host?.presenter || null;
+    }
+
+    get worldTileFastDragActive() {
+      return Boolean(this.host?.worldTileFastDragActive);
+    }
+
+    set worldTileFastDragActive(value) {
+      if (this.host) this.host.worldTileFastDragActive = Boolean(value);
+    }
+
+    get worldTileStaticCache() {
+      return this.host?.worldTileStaticCache || null;
+    }
+
+    set worldTileStaticCache(value) {
+      if (this.host) this.host.worldTileStaticCache = value || null;
+    }
+
+    get worldTileStaticCacheKey() {
+      return this.host?.worldTileStaticCacheKey || '';
+    }
+
+    set worldTileStaticCacheKey(value) {
+      if (this.host) this.host.worldTileStaticCacheKey = value || '';
+    }
+
+    get worldTileStaticCacheLayoutKind() {
+      return this.host?.worldTileStaticCacheLayoutKind || '';
+    }
+
+    set worldTileStaticCacheLayoutKind(value) {
+      if (this.host) this.host.worldTileStaticCacheLayoutKind = value || '';
+    }
+
+    get worldTileStaticCacheLayout() {
+      return this.host?.worldTileStaticCacheLayout || null;
+    }
+
+    set worldTileStaticCacheLayout(value) {
+      if (this.host) this.host.worldTileStaticCacheLayout = value || null;
+    }
+
+    get worldTileStaticChunkCaches() {
+      if (this.host && !this.host.worldTileStaticChunkCaches) this.host.worldTileStaticChunkCaches = new Map();
+      return this.host?.worldTileStaticChunkCaches || null;
+    }
+
+    get worldTileStaticChunkCacheTick() {
+      return Number(this.host?.worldTileStaticChunkCacheTick) || 0;
+    }
+
+    set worldTileStaticChunkCacheTick(value) {
+      if (this.host) this.host.worldTileStaticChunkCacheTick = Number(value) || 0;
+    }
+
+    get worldTileWaterLayerCache() {
+      return this.host?.worldTileWaterLayerCache || null;
+    }
+
+    set worldTileWaterLayerCache(value) {
+      if (this.host) this.host.worldTileWaterLayerCache = value || null;
+    }
+
+    get worldTileWaterLayerCacheKey() {
+      return this.host?.worldTileWaterLayerCacheKey || '';
+    }
+
+    set worldTileWaterLayerCacheKey(value) {
+      if (this.host) this.host.worldTileWaterLayerCacheKey = value || '';
+    }
+
+    get worldTileWaterFrameCaches() {
+      if (this.host && !this.host.worldTileWaterFrameCaches) this.host.worldTileWaterFrameCaches = new Map();
+      return this.host?.worldTileWaterFrameCaches || null;
+    }
+
+    get worldTileWaterChunkCaches() {
+      if (this.host && !this.host.worldTileWaterChunkCaches) this.host.worldTileWaterChunkCaches = new Map();
+      return this.host?.worldTileWaterChunkCaches || null;
+    }
+
+    get worldTileWaterChunkCacheTick() {
+      return Number(this.host?.worldTileWaterChunkCacheTick) || 0;
+    }
+
+    set worldTileWaterChunkCacheTick(value) {
+      if (this.host) this.host.worldTileWaterChunkCacheTick = Number(value) || 0;
+    }
+
+    get worldTileWaterTimeOverride() {
+      return this.host?.worldTileWaterTimeOverride ?? null;
+    }
+
+    set worldTileWaterTimeOverride(value) {
+      if (this.host) this.host.worldTileWaterTimeOverride = value ?? null;
+    }
+
+    addHitTarget(rect, action) {
+      return this.host?.addHitTarget?.(rect, action);
+    }
+
+    createGradient(...args) {
+      return this.host?.createGradient?.(...args) ?? args[5] ?? '#000';
+    }
+
+    drawPanel(...args) {
+      return this.host?.drawPanel?.(...args);
+    }
+
+    drawText(...args) {
+      return this.host?.drawText?.(...args);
+    }
+
+    truncateText(text, maxWidth, options = {}) {
+      return this.host?.truncateText?.(text, maxWidth, options) ?? String(text ?? '');
+    }
+
+    withSuppressedHitTargets(callback) {
+      if (typeof this.host?.withSuppressedHitTargets === 'function') return this.host.withSuppressedHitTargets(callback);
+      return callback?.();
+    }
+
+    getAsset(assetPath) {
+      return this.host?.getAsset?.(assetPath) || null;
+    }
+
+    analyzeAssetAlphaBounds(assetPath) {
+      return this.host?.analyzeAssetAlphaBounds?.(assetPath) || null;
+    }
+
+    getWorldTileTemplateMetrics(template = {}) {
+      return this.host?.getWorldTileTemplateMetrics?.(template) || null;
+    }
+
+    createTileWorkCanvas(width, height) {
+      return this.host?.createTileWorkCanvas?.(width, height) || null;
+    }
+
+    getWorldTileTemplateMask(assetPath = '') {
+      return this.host?.getWorldTileTemplateMask?.(assetPath) || null;
+    }
+
+    drawWorldTileDryTemplate(tile = {}, drawRect = {}) {
+      return this.host?.drawWorldTileDryTemplate?.(tile, drawRect) || false;
+    }
+
+    drawWorldTileBase(tile = {}, center = {}, drawRect = {}, viewport = {}) {
+      return this.host?.drawWorldTileBase?.(tile, center, drawRect, viewport) || false;
+    }
+
+    drawWorldTileWater(tile = {}, center = {}, drawRect = {}, viewport = {}, options = {}) {
+      return this.host?.drawWorldTileWater?.(tile, center, drawRect, viewport, options) || false;
+    }
+
+    getNow() {
+      return this.host?.getNow?.() ?? Date.now();
     }
 
     getWorldSiteDialogPresenter() {
@@ -620,8 +828,11 @@
     }
 
     getEpochNowMs() {
-      if (!this.worldMapActorHudRenderer?.getEpochNowMs) return Date.now();
-      return this.worldMapActorHudRenderer.getEpochNowMs();
+      if (this.worldMapActorHudRenderer?.host !== this && typeof this.worldMapActorHudRenderer?.getEpochNowMs === 'function') {
+        return this.worldMapActorHudRenderer.getEpochNowMs();
+      }
+      const WorldTime = this.constructor.getWorldTime?.();
+      return WorldTime?.getEpochNowMs?.(this) ?? Date.now();
     }
 
     addWorldMarchTileHitTargets(tileMapView = {}, viewport = {}, frame = {}, options = {}) {

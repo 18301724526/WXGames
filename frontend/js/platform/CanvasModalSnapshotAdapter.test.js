@@ -2,12 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 test('CanvasModalSnapshotAdapter reads naming from renderer snapshot modal owner', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
 
@@ -36,9 +36,9 @@ test('CanvasModalSnapshotAdapter reads naming from renderer snapshot modal owner
   assert.equal(host.getRendererSnapshot().modal['modal:naming'].payload.inputValue, 'River City');
 });
 
-test('CanvasModalSnapshotAdapter routes shell updates to the open naming owner host', () => {
+test('CanvasModalSnapshotAdapter routes shell updates to the canonical naming owner host', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const game = new Host();
   const shell = new Host();
@@ -55,13 +55,14 @@ test('CanvasModalSnapshotAdapter routes shell updates to the open naming owner h
   shell.updateNamingSnapshot({ inputValue: 'River League' });
 
   assert.equal(game.getModalPayload('modal:naming').inputValue, 'River League');
-  assert.equal(shell.isModalOpen('modal:naming'), false);
+  assert.equal(shell.getModalOwnerHost(), game);
+  assert.equal(shell.__ecsModalOwner, undefined);
   assert.equal(shell.getNamingInputValue(), 'River League');
 });
 
 test('CanvasModalSnapshotAdapter reads and updates confirmDialog through modal snapshot', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const shell = new Host();
 
@@ -91,7 +92,7 @@ test('CanvasModalSnapshotAdapter reads and updates confirmDialog through modal s
 
 test('CanvasModalSnapshotAdapter resolves confirmDialog callbacks on the open owner host', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const game = new Host();
   const shell = new Host();
@@ -113,7 +114,7 @@ test('CanvasModalSnapshotAdapter resolves confirmDialog callbacks on the open ow
 
 test('CanvasModalSnapshotAdapter reads and updates rewardReveal through modal snapshot', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const shell = new Host();
 
@@ -140,7 +141,7 @@ test('CanvasModalSnapshotAdapter reads and updates rewardReveal through modal sn
 
 test('CanvasModalSnapshotAdapter opens and closes a boolean blocking panel as a modal subtype', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
 
@@ -161,7 +162,7 @@ test('CanvasModalSnapshotAdapter opens and closes a boolean blocking panel as a 
 
 test('CanvasModalSnapshotAdapter routes a falsy openBlockingPanelSnapshot to CLOSE (Q6 toggle-via-open)', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
 
@@ -178,7 +179,7 @@ test('CanvasModalSnapshotAdapter routes a falsy openBlockingPanelSnapshot to CLO
 
 test('CanvasModalSnapshotAdapter carries the activeCommandPanel string enum in the payload', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
 
@@ -201,7 +202,7 @@ test('CanvasModalSnapshotAdapter carries the activeCommandPanel string enum in t
 
 test('CanvasModalSnapshotAdapter closeBlockingPanelsSnapshot keeps the excepted panel open', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
 
@@ -227,7 +228,7 @@ test('CanvasModalSnapshotAdapter closeBlockingPanelsSnapshot keeps the excepted 
 
 test('CanvasModalSnapshotAdapter buildBlockingPanelFacts returns the flat-12 panel facts', () => {
   class Host {}
-  CanvasModeOwnershipBridge.install(Host);
+  CanvasModeOwnershipRuntime.install(Host);
   CanvasModalSnapshotAdapter.install(Host);
   const host = new Host();
 

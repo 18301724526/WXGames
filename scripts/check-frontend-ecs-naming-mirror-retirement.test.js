@@ -62,7 +62,7 @@ test('naming mirror retirement guard allows renderer option naming payloads', ()
 
 test('naming mirror retirement guard blocks retired naming bridge wrappers', () => {
   const findings = findNamingMirrorRetirementViolationsInText(
-    'frontend/js/platform/CanvasModeOwnershipBridge.js',
+    'frontend/js/platform/CanvasModeOwnershipRuntime.js',
     [
       'openNamingModal(state) { return this.openModal(state); }',
       'this.closeNamingOwner?.();',

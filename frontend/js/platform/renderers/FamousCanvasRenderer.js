@@ -78,69 +78,19 @@
       return this.host?.width;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    containsPoint(...args) {
-      return this.callDrawingSurface('containsPoint', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawLine(...args) {
-      return this.callDrawingSurface('drawLine', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getAsset(...args) {
-      return this.callDrawingSurface('getAsset', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    roundRectPath(...args) {
-      return this.callDrawingSurface('roundRectPath', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    containsPoint(...args) { const surface = this.drawingSurface; return surface && typeof surface.containsPoint === 'function' ? surface.containsPoint(...args) : this.host?.containsPoint?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.getAsset === 'function' ? surface.getAsset(...args) : this.host?.getAsset?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    roundRectPath(...args) { const surface = this.drawingSurface; return surface && typeof surface.roundRectPath === 'function' ? surface.roundRectPath(...args) : this.host?.roundRectPath?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;

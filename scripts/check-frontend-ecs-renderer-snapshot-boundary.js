@@ -5,7 +5,7 @@ const FRONTEND_SOURCE_ROOT = 'frontend/js';
 const BASELINE_PATH = 'docs/development_logs/2026-06-25-frontend-ecs-batch-6a-snapshot-boundary.md';
 const APPROVED_PATHS = Object.freeze([
   'frontend/js/ecs/snapshot/RendererSnapshotBoundary.js',
-  'frontend/js/platform/CanvasModeOwnershipBridge.js',
+  'frontend/js/platform/CanvasModeOwnershipRuntime.js',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
 ]);
 const COVERED_SYMBOLS = Object.freeze([

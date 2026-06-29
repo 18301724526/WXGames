@@ -11,8 +11,9 @@ test('CanvasWorldMapFacade installs every world-map compatibility method', () =>
   class Host {}
   installWorldMapFacade(Host);
 
-  assert.equal(typeof Host.prototype.delegateWorldMapRenderer, 'function');
-  WORLD_MAP_FACADE_METHODS.forEach(([method]) => {
+  const retiredGenericDelegate = ['delegate', 'WorldMap', 'Renderer'].join('');
+  assert.equal(typeof Host.prototype[retiredGenericDelegate], 'undefined');
+  Object.keys(WORLD_MAP_FACADE_METHODS).forEach((method) => {
     assert.equal(typeof Host.prototype[method], 'function', `${method} should be installed`);
   });
 });

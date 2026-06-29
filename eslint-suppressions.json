@@ -71,7 +71,7 @@
   },
   "frontend/js/debug/ClientOperationLog.js": {
     "no-empty": {
-      "count": 5
+      "count": 3
     }
   },
   "frontend/js/debug/ClientOperationLog.test.js": {
@@ -91,7 +91,7 @@
   },
   "frontend/js/debug/WorldMarchTrace.js": {
     "no-empty": {
-      "count": 5
+      "count": 2
     },
     "no-unused-vars": {
       "count": 1
@@ -237,11 +237,6 @@
       "count": 6
     }
   },
-  "frontend/js/platform/CanvasGameShellInputRouter.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/CanvasGameShellMounting.js": {
     "no-unused-vars": {
       "count": 1
@@ -249,7 +244,7 @@
   },
   "frontend/js/platform/CanvasGameShellRenderingRuntime.js": {
     "no-unused-vars": {
-      "count": 4
+      "count": 1
     }
   },
   "frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.js": {
@@ -288,11 +283,6 @@
   "frontend/js/platform/MiniGameCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "frontend/js/platform/WorldMapRuntime.js": {
-    "no-unused-vars": {
-      "count": 10
     }
   },
   "frontend/js/platform/WorldMapRuntimeCoordinator.js": {

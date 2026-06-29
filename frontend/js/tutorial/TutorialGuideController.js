@@ -230,9 +230,7 @@
     }
 
     isCityManagementTabOpen(tab = '') {
-      const activeTab = this.game?.canvasShell?.activeCityManagementTab
-        || this.game?.activeCityManagementTab
-        || '';
+      const activeTab = this.game?.activeCityManagementTab || '';
       return activeTab === tab;
     }
 
@@ -301,7 +299,7 @@
     }
 
     isFamousPersonDetailOpen() {
-      return Boolean(this.game?.selectedFamousPersonId || this.game?.canvasShell?.selectedFamousPersonId);
+      return Boolean(this.game?.selectedFamousPersonId);
     }
 
     getActiveEventId() {
@@ -488,8 +486,8 @@
       setIfChanged(game, 'militaryView', 'world');
       setIfChanged(game, 'mapHomeActive', true);
       // Close the exact subset of blocking panels this reset cleared. Read the
-      // snapshot BEFORE closing so the 'changed' re-render gate stays accurate; the
-      // adapter close fans out across related hosts (game -> shell), so this runs once.
+      // canonical owner snapshot BEFORE closing so the 'changed' re-render gate stays
+      // accurate.
       const closePanelIfChanged = (key) => {
         if (!isBlockingPanelSnapshotOpen(game, key)) return;
         closeBlockingPanelSnapshot(game, key);

@@ -132,8 +132,8 @@
     const game = this.game || {};
     const shell = game.canvasShell || null;
     let changed = false;
-    // Adapter writes fan out across related hosts (game -> canvasShell); read the
-    // snapshot BEFORE closing so the 'changed' re-render gate stays accurate.
+    // The adapter reads/writes the canonical modal owner; read the snapshot BEFORE
+    // closing so the 'changed' re-render gate stays accurate.
     const closeIfOpen = (key) => {
       if (isBlockingPanelSnapshotOpen(game, key)) {
         closeBlockingPanelSnapshot(game, key);
@@ -151,10 +151,6 @@
     closeIfOpen('showFamousPersons');
     if (game.selectedFamousPersonId) {
       game.selectedFamousPersonId = '';
-      changed = true;
-    }
-    if (shell?.selectedFamousPersonId) {
-      shell.selectedFamousPersonId = '';
       changed = true;
     }
     if (game.isEventSnapshotOpen?.()) {
@@ -179,9 +175,6 @@
     closeBlockingPanelSnapshot(game, 'showSubcityList');
     closeBlockingPanelSnapshot(game, 'activeCommandPanel');
     game.closeEventSnapshot?.();
-    if (game.canvasShell) {
-      game.canvasShell.activeCityManagementTab = 'buildings';
-    }
     return true;
   },
 
@@ -208,11 +201,6 @@
     game.activeBuildingCategory = category;
     game.buildingOffset = 0;
     game.buildingTransition = null;
-    if (game.canvasShell) {
-      game.canvasShell.activeBuildingCategory = category;
-      game.canvasShell.buildingOffset = 0;
-      game.canvasShell.buildingTransition = null;
-    }
     return true;
   },
 
@@ -225,14 +213,7 @@
       host[key] = value;
       changed = true;
     };
-    // Non-panel fields stay as raw mirrors; the 5 blocking panels route through the
-    // adapter (open showCityManagement, close the others). Read the snapshot BEFORE
-    // mutating so the 'changed' re-render gate stays accurate. Adapter writes fan out
-    // across related hosts (game -> shell), so this runs once on game.
-    const patch = {
-      mapHomeActive: true,
-      activeCityManagementTab: 'people',
-    };
+    // Read the snapshot BEFORE mutating so the 'changed' re-render gate stays accurate.
     const openPanelIfChanged = (key, value) => {
       const open = isBlockingPanelSnapshotOpen(game, key);
       if (open === Boolean(value)) return;
@@ -250,8 +231,8 @@
     }
     setIfChanged(game, 'activeTab', 'military');
     setIfChanged(game, 'militaryView', 'world');
-    Object.entries(patch).forEach(([key, value]) => setIfChanged(game, key, value));
-    if (shell) Object.entries(patch).forEach(([key, value]) => setIfChanged(shell, key, value));
+    setIfChanged(game, 'mapHomeActive', true);
+    setIfChanged(game, 'activeCityManagementTab', 'people');
     openPanelIfChanged('showCityManagement', true);
     closePanelIfChanged('showTaskCenter');
     closePanelIfChanged('showFamousPersons');
@@ -311,9 +292,7 @@
 
   function install(TutorialGuideController) {
     if (!TutorialGuideController?.prototype) return false;
-    Object.entries(UI_STATE_METHODS).forEach(([name, method]) => {
-      TutorialGuideController.prototype[name] = method;
-    });
+    Object.assign(TutorialGuideController.prototype, UI_STATE_METHODS);
     return true;
   }
 

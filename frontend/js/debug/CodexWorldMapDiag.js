@@ -2,6 +2,19 @@
   const PREFIX = '[CodexDiag][WorldMap]';
   const MAX_SIGNATURES = 160;
   const lastSignatures = new Map();
+  let environmentProvider = null;
+
+  function setEnvironmentProvider(provider = null) {
+    environmentProvider = provider && typeof provider === 'object' ? provider : null;
+    return environmentProvider;
+  }
+
+  function isVerboseEnabled() {
+    if (global.__codexWorldMapDiagVerbose === true) return true;
+    const value = environmentProvider?.readStoredFlag?.('codexWorldMapDiagVerbose', { fallback: false });
+    if (typeof value === 'boolean') return value;
+    return environmentProvider?.readStoredValue?.('codexWorldMapDiagVerbose') === '1';
+  }
 
   function toArray(value) {
     return Array.isArray(value) ? value : [];
@@ -78,8 +91,7 @@
       ...detail,
     };
     try {
-      if (global.__codexWorldMapDiagVerbose === true
-        || global.localStorage?.getItem?.('codexWorldMapDiagVerbose') === '1') {
+      if (isVerboseEnabled()) {
         global?.console?.info?.(PREFIX, stage, payload);
       }
     } catch (_) {}
@@ -114,6 +126,7 @@
   const api = {
     log,
     logChanged,
+    setEnvironmentProvider,
     summarizeRenderResult,
     summarizeState,
     summarizeWorldMap,

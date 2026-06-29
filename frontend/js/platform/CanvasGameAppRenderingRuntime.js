@@ -1,7 +1,7 @@
 (function (global) {
-  var CanvasGameAppWorldMapRuntimeBridge = global.CanvasGameAppWorldMapRuntimeBridge;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppWorldMapRuntimeBridge) {
-    CanvasGameAppWorldMapRuntimeBridge = require('./CanvasGameAppWorldMapRuntimeBridge');
+  var CanvasGameAppWorldMapRuntime = global.CanvasGameAppWorldMapRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppWorldMapRuntime) {
+    CanvasGameAppWorldMapRuntime = require('./CanvasGameAppWorldMapRuntime');
   }
   var CanvasGameAppRenderPolicy = global.CanvasGameAppRenderPolicy;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderPolicy) {
@@ -69,10 +69,6 @@
               }
               if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
               if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
-              if (this.canvasShell && typeof this.canvasShell.techTreeZoom !== 'undefined') this.canvasShell.techTreeZoom = this.techTreeZoom;
-              // P3 Axis A: buildingOffset/activeBuildingCategory/famousPersonsPage/selectedFamousPersonId
-              // are host-proxied (single owner = this App); the shell reads them off the host directly,
-              // so the old per-render app<->shell sync for them is gone.
               this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
               if (
                 !this.pendingTutorialAdvisorDialogue
@@ -166,10 +162,10 @@
               techTreePanX: this.techTreePanX,
               techTreePanY: this.techTreePanY,
               techTreeZoom: this.getTechTreeZoom(),
-              selectedTechId: this.state?.techUiState?.selectedTechId || this.canvasShell?.selectedTechId || '',
+              selectedTechId: this.state?.techUiState?.selectedTechId || '',
               techDetailOpen: panel.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen),
               activeBuildingCategory: this.activeBuildingCategory,
-              pendingBuildingAction: this.pendingBuildingAction || this.canvasShell?.pendingBuildingAction || null,
+              pendingBuildingAction: this.pendingBuildingAction || null,
               ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
               ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
               activeEventId: snapshotEvent?.eventId ?? null,
@@ -333,7 +329,7 @@
             const minimumDurationMs = Number.isFinite(options.minimumDurationMs)
               ? Math.max(0, options.minimumDurationMs)
               : 3000;
-            const trace = global.H5LoadTrace;
+            const trace = this.loadTrace || null;
             const startedAt = this.now();
             trace?.phaseStart?.('assets:preload', {
               message,
@@ -461,9 +457,7 @@
           },
 
       startPageTransition(fromTab, toTab, options = {}) {
-            const buildingOffset = this.canvasShell && Number.isFinite(Number(this.canvasShell.buildingOffset))
-              ? Number(this.canvasShell.buildingOffset)
-              : this.buildingOffset;
+            const buildingOffset = this.buildingOffset;
             if (!fromTab || !toTab || fromTab === toTab) {
               this.pageTransition = null;
               if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = null;
@@ -488,12 +482,6 @@
           },
 
       scrollBuildings(action = {}) {
-            if (this.canvasShell && typeof this.canvasShell.scrollBuildings === 'function') {
-              const scrolled = this.canvasShell.scrollBuildings(action);
-              this.buildingOffset = this.canvasShell.buildingOffset;
-              this.buildingTransition = this.canvasShell.buildingTransition;
-              return scrolled;
-            }
             const fromOffset = Math.max(0, Number(this.buildingOffset) || 0);
             const delta = Number(action.delta) || 0;
             const toOffset = Math.max(0, fromOffset + delta);
@@ -514,24 +502,9 @@
       selectBuildingCategory(action = {}) {
             const category = action.category || 'all';
             const previous = this.activeBuildingCategory || 'all';
-            if (this.canvasShell && typeof this.canvasShell.selectBuildingCategory === 'function') {
-              const changed = this.canvasShell.selectBuildingCategory(action);
-              this.activeBuildingCategory = this.canvasShell.activeBuildingCategory;
-              this.buildingOffset = this.canvasShell.buildingOffset;
-              this.buildingTransition = this.canvasShell.buildingTransition;
-              return changed !== false && category !== previous;
-            }
             this.activeBuildingCategory = category;
             this.buildingOffset = 0;
             this.buildingTransition = null;
-            if (this.canvasShell && typeof this.canvasShell.activeBuildingCategory !== 'undefined') {
-              this.canvasShell.activeBuildingCategory = category;
-              this.canvasShell.buildingOffset = 0;
-              this.canvasShell.techTreePanX = 0;
-              this.canvasShell.techTreePanY = 0;
-              this.canvasShell.techTreeZoom = 1;
-              this.canvasShell.buildingTransition = null;
-            }
             return category !== previous;
           },
 
@@ -551,10 +524,6 @@
             const y = Number(pan.y) || 0;
             this.techTreePanX = x;
             this.techTreePanY = y;
-            if (this.canvasShell && typeof this.canvasShell === 'object') {
-              this.canvasShell.techTreePanX = x;
-              this.canvasShell.techTreePanY = y;
-            }
             return true;
           },
 
@@ -565,7 +534,6 @@
       setTechTreeZoom(zoom = 1) {
             const nextZoom = Math.max(0.65, Math.min(1.6, Number(zoom) || 1));
             this.techTreeZoom = nextZoom;
-            if (this.canvasShell && typeof this.canvasShell === 'object') this.canvasShell.techTreeZoom = nextZoom;
             return true;
           },
 
@@ -607,7 +575,6 @@
             this.closeRewardRevealSnapshot?.();
             this.famousPersonsPage = 0;
             this.selectedFamousPersonId = '';
-            if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
             if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             this.renderer?.clearFamousSkillTooltip?.();
             this.activeBuildingCategory = 'all';
@@ -616,7 +583,6 @@
             this.techTreePanY = 0;
             this.techTreeZoom = 1;
             closeBlockingPanelSnapshot(this, 'techDetailOpen');
-            if (this.canvasShell) this.canvasShell.selectedTechId = '';
             this.state = {
               ...this.state,
               techUiState: {
@@ -671,8 +637,6 @@
             this.activeGuideNavigation = null;
             this.pageTransition = null;
             this.buildingTransition = null;
-            if (this.canvasShell) this.canvasShell.selectedTechId = '';
-            if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
             if (this.canvasShell) {
               this.canvasShell.territoryUiState = {
                 ...(this.canvasShell.territoryUiState || {}),
@@ -739,7 +703,6 @@
             closeBlockingPanelSnapshot(this, 'techDetailOpen');
             this.techTreeDragStart = null;
             this.buildingTransition = null;
-            if (this.canvasShell) this.canvasShell.techTreeZoom = 1;
             this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
             this.closeEventSnapshot?.();
             this.renderMilitaryView();
@@ -835,7 +798,7 @@
             this.renderCanvasSurface(homeView.activeTab);
           },
     });
-    CanvasGameAppWorldMapRuntimeBridge?.install?.(CanvasGameApp);
+    CanvasGameAppWorldMapRuntime?.install?.(CanvasGameApp);
     return true;
   }
 

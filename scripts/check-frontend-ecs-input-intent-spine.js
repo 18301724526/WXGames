@@ -7,7 +7,7 @@ const { scanInputBranches } = require('./report-frontend-ecs-input-branch');
 // input-branch baseline, scoped to the covered-mode routing surface only:
 // Surface === 'input-router' AND Branch Kind in {mode, runtime-route}. Net-new
 // such branches in legacy router files (i.e. outside the approved ECS input
-// owner, the generated runtime bundle, or the mode-ownership bridge) fail the
+// owner, the generated runtime bundle, or the mode ownership runtime) fail the
 // gate. Panel / tutorial / action branch kinds stay report-only this batch.
 const BASELINE_PATH = 'docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md';
 const IN_SCOPE_SURFACE = 'input-router';
@@ -16,12 +16,12 @@ const IN_SCOPE_BRANCH_KINDS = Object.freeze(['mode', 'runtime-route']);
 // Approved growth paths, mirroring the mode-ownership-spine guard. These are a
 // forward-looking safety net: today report-frontend-ecs-input-branch only scans
 // files whose basename matches *InputRouter.js / *ActionController.js / etc., so
-// the ECS input owner, the generated bundle, and the bridge are never surfaced
+// the ECS input owner, the generated bundle, and the mode runtime are never surfaced
 // as input-router findings and the exemption is inert (approved-path findings: 0).
 // The allowlist keeps the gate correct if the scanner's file set ever widens.
 const APPROVED_INTENT_PATHS = Object.freeze(['frontend/js/ecs/input/']);
 const APPROVED_RUNTIME_PATHS = Object.freeze(['frontend/js/ecs/runtime/EcsModeRuntimeBundle.js']);
-const APPROVED_BRIDGE_PATHS = Object.freeze(['frontend/js/platform/CanvasModeOwnershipBridge.js']);
+const APPROVED_MODE_RUNTIME_PATHS = Object.freeze(['frontend/js/platform/CanvasModeOwnershipRuntime.js']);
 
 function normalizePath(filePath) {
   return String(filePath || '').replace(/\\/g, '/');
@@ -38,7 +38,7 @@ function isApprovedGrowthPath(filePath = '') {
   return (
     matchesAllowlist(filePath, APPROVED_INTENT_PATHS) ||
     matchesAllowlist(filePath, APPROVED_RUNTIME_PATHS) ||
-    matchesAllowlist(filePath, APPROVED_BRIDGE_PATHS)
+    matchesAllowlist(filePath, APPROVED_MODE_RUNTIME_PATHS)
   );
 }
 
@@ -98,7 +98,7 @@ function makeViolation({ finding, currentCount, baselineCount }) {
     currentCount,
     baselineCount,
     evidence: finding.evidence,
-    note: 'input-router mode/runtime-route routing cannot grow outside ecs/input, EcsModeRuntimeBundle, or CanvasModeOwnershipBridge after Batch 4',
+    note: 'input-router mode/runtime-route routing cannot grow outside ecs/input, EcsModeRuntimeBundle, or CanvasModeOwnershipRuntime after Batch 4',
   };
 }
 
@@ -138,7 +138,7 @@ function scanInputIntentSpine(options = {}) {
     inScopeBranchKinds: IN_SCOPE_BRANCH_KINDS,
     approvedIntentPaths: APPROVED_INTENT_PATHS,
     approvedRuntimePaths: APPROVED_RUNTIME_PATHS,
-    approvedBridgePaths: APPROVED_BRIDGE_PATHS,
+    approvedModeRuntimePaths: APPROVED_MODE_RUNTIME_PATHS,
     filesScanned: currentReport.filesScanned,
     currentInScopeFindings: currentInScope.length,
     currentLegacyFindings: currentLegacyFindings.length,
@@ -201,8 +201,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-  APPROVED_BRIDGE_PATHS,
   APPROVED_INTENT_PATHS,
+  APPROVED_MODE_RUNTIME_PATHS,
   APPROVED_RUNTIME_PATHS,
   BASELINE_PATH,
   IN_SCOPE_BRANCH_KINDS,

@@ -33,16 +33,6 @@ function createResponseWithHeaders(status, payload, headers = {}) {
   };
 }
 
-function withLoadTrace(trace, callback) {
-  const previous = globalThis.H5LoadTrace;
-  globalThis.H5LoadTrace = trace;
-  return Promise.resolve()
-    .then(callback)
-    .finally(() => {
-      globalThis.H5LoadTrace = previous;
-    });
-}
-
 function withOperationLog(logger, callback) {
   const previous = globalThis.ClientOperationLog;
   globalThis.ClientOperationLog = logger;
@@ -55,20 +45,6 @@ function withOperationLog(logger, callback) {
 
 test('GameAPI sends H5 load trace spans for successful requests', async () => {
   const calls = [];
-  const api = new GameAPI('/api', 'token-a', {
-    transport: {
-      async request(request) {
-        calls.push(['transport', request.url, request.headers.Authorization]);
-        return createResponse(200, {
-          gameState: {
-            playerId: 'player-1',
-            territoryState: { worldMap: { tiles: [{ q: 0, r: 0 }] } },
-          },
-        });
-      },
-    },
-  });
-
   const trace = {
     apiStart(method, path, url, detail) {
       calls.push(['start', method, path, url, detail.hasToken]);
@@ -84,8 +60,22 @@ test('GameAPI sends H5 load trace spans for successful requests', async () => {
       return { worldMapTiles: payload.gameState?.territoryState?.worldMap?.tiles?.length || 0 };
     },
   };
+  const api = new GameAPI('/api', 'token-a', {
+    trace,
+    transport: {
+      async request(request) {
+        calls.push(['transport', request.url, request.headers.Authorization]);
+        return createResponse(200, {
+          gameState: {
+            playerId: 'player-1',
+            territoryState: { worldMap: { tiles: [{ q: 0, r: 0 }] } },
+          },
+        });
+      },
+    },
+  });
 
-  const result = await withLoadTrace(trace, () => api.getState());
+  const result = await api.getState();
 
   assert.equal(result.gameState.playerId, 'player-1');
   assert.deepEqual(calls, [
@@ -265,16 +255,6 @@ test('GameAPI records replay correlation evidence in local operation logs', asyn
 
 test('GameAPI reports H5 load trace failures for 504 version checks', async () => {
   const calls = [];
-  const api = new GameAPI('/api', null, {
-    maxRetries: 0,
-    transport: {
-      async request(request) {
-        calls.push(['transport', request.url]);
-        return createResponse(504, { message: 'Gateway Timeout' });
-      },
-    },
-  });
-
   const trace = {
     apiStart(method, path, url) {
       calls.push(['start', method, path, url]);
@@ -290,9 +270,19 @@ test('GameAPI reports H5 load trace failures for 504 version checks', async () =
       return { keys: ['message'] };
     },
   };
+  const api = new GameAPI('/api', null, {
+    trace,
+    maxRetries: 0,
+    transport: {
+      async request(request) {
+        calls.push(['transport', request.url]);
+        return createResponse(504, { message: 'Gateway Timeout' });
+      },
+    },
+  });
 
   await assert.rejects(
-    withLoadTrace(trace, () => api.getVersion()),
+    () => api.getVersion(),
     /Gateway Timeout/,
   );
 
@@ -353,6 +343,19 @@ test('GameAPI aborts timed out requests with structured request metadata', async
       now() {
         return calls.length * 10;
       },
+    },
+    abortControllerFactory: () => {
+      const listeners = [];
+      return {
+        signal: {
+          addEventListener(type, listener) {
+            if (type === 'abort') listeners.push(listener);
+          },
+        },
+        abort() {
+          listeners.forEach((listener) => listener());
+        },
+      };
     },
     transport: {
       request(request) {

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasFamousActionHandlers = require('./CanvasFamousActionHandlers');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 // Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host
@@ -13,7 +13,7 @@ const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 // isBlockingPanelSnapshotOpen/getCommandPanelValue) so the famous handlers can route
 // through the owner instead of host mirrors.
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {
@@ -109,8 +109,10 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
   assert.equal(host.isModalOpen('modal:famousPersons'), true);
   assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), false);
   assert.equal(host.getCommandPanelValue(), '');
-  assert.equal(host.famousPersonsPage, 0);
-  assert.equal(host.selectedFamousPersonId, '');
+  assert.equal(host.famousPersonsPage, 2);
+  assert.equal(host.selectedFamousPersonId, 'fp-old');
+  assert.equal(game.famousPersonsPage, 0);
+  assert.equal(game.selectedFamousPersonId, '');
 
   assert.equal(controller.handle_closeFamousPersons({ type: 'closeFamousPersons' }), true);
   assert.equal(host.isBlockingPanelSnapshotOpen('showFamousPersons'), false);

@@ -29,61 +29,17 @@
       return this.host?.ctx;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    getMapHomeFloatingButtonLayout(...args) {
-      return this.callDrawingSurface('getMapHomeFloatingButtonLayout', args);
-    }
-
-    getTopBarBottom(...args) {
-      return this.callDrawingSurface('getTopBarBottom', args);
-    }
-
-    renderMainPanel(...args) {
-      return this.callDrawingSurface('renderMainPanel', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    getMapHomeFloatingButtonLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getMapHomeFloatingButtonLayout === 'function' ? surface.getMapHomeFloatingButtonLayout(...args) : this.host?.getMapHomeFloatingButtonLayout?.(...args); }
+    getTopBarBottom(...args) { const surface = this.drawingSurface; return surface && typeof surface.getTopBarBottom === 'function' ? surface.getTopBarBottom(...args) : this.host?.getTopBarBottom?.(...args); }
+    renderMainPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.renderMainPanel === 'function' ? surface.renderMainPanel(...args) : this.host?.renderMainPanel?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;

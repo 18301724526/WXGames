@@ -60,10 +60,10 @@ test('input intent spine guard scopes to input-router mode/runtime-route branche
   assert.equal(isInScopeFinding({ surface: 'command-handler', branchKind: 'mode' }), false);
 });
 
-test('input intent spine guard allows the approved owner/bundle/bridge paths only', () => {
+test('input intent spine guard allows the approved owner/bundle/mode runtime paths only', () => {
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/input/InputIntentResolver.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/runtime/EcsModeRuntimeBundle.js'), true);
-  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModeOwnershipBridge.js'), true);
+  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModeOwnershipRuntime.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameAppInputRouter.js'), false);
 });
 

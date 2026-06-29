@@ -117,7 +117,6 @@
             },
           };
         }
-        if (host.canvasShell) host.canvasShell.selectedTechId = techId;
         closeBlockingPanelSnapshot(host.canvasShell || host, 'techDetailOpen');
         host.showFloatingText?.(result?.message || t('command.research.completed', {}));
         host.log?.(result?.message || t('command.research.completed', {}));

@@ -51,13 +51,26 @@
   class TutorialAdvisorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+      this.drawingSurface = options.drawingSurface || null;
     }
+
+    get bottomSafeArea() { return Number(this.host?.bottomSafeArea) || 0; }
+    get ctx() { return this.host?.ctx || null; }
+    get h5Runtime() { return this.host?.h5Runtime || null; }
+    get height() { return Number(this.host?.height) || 0; }
+    get width() { return Number(this.host?.width) || 0; }
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;
     }
+
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    ensureCanvasLayer(name = '', overrides = {}) { return this.host?.ensureCanvasLayer?.(name, overrides) || this.h5Runtime?.ensureLayerCanvas?.(name, CanvasLayerRegistry?.getLayerOptions?.(name, overrides) || overrides) || null; }
+    getAsset(...args) { return this.host?.getAsset?.(...args) || null; }
+    handleAssetsChanged(...args) { return this.host?.handleAssetsChanged?.(...args); }
+    requestOverlayRenderFrame(...args) { return this.host?.requestOverlayRenderFrame?.(...args); }
+    setCanvasLayerVisible(...args) { return this.host?.setCanvasLayerVisible?.(...args) || this.h5Runtime?.setLayerVisible?.(...args) || false; }
 
     disposeTutorialAdvisorSpine() {
       const existing = this.tutorialAdvisorSpine;

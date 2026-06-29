@@ -16,7 +16,6 @@
     worldActorCanvasRenderer: { globalName: 'WorldActorCanvasRenderer', modulePath: './WorldActorCanvasRenderer' },
     worldMarchHudCanvasRenderer: { globalName: 'WorldMarchHudCanvasRenderer', modulePath: './WorldMarchHudCanvasRenderer' },
     tutorialIntroUnitRenderer: { globalName: 'TutorialIntroUnitRenderer', modulePath: './TutorialIntroUnitRenderer' },
-    worldMapRendererHostBridge: { globalName: 'WorldMapRendererHostBridge', modulePath: './WorldMapRendererHostBridge' },
     worldMapRendererCompositionFactory: { globalName: 'WorldMapRendererCompositionFactory', modulePath: './WorldMapRendererCompositionFactory' },
     worldMapLayoutModel: { globalName: 'WorldMapLayoutModel', modulePath: './WorldMapLayoutModel' },
     worldMapLayoutFacade: { globalName: 'WorldMapLayoutFacade', modulePath: './WorldMapLayoutFacade' },

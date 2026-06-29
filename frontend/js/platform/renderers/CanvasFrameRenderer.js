@@ -38,13 +38,86 @@
   class CanvasFrameRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
     }
+
+    get ctx() { return this.host?.ctx || null; }
+    get width() { return Number(this.host?.width) || 0; }
+    get height() { return Number(this.host?.height) || 0; }
+    get bottomSafeArea() { return Number(this.host?.bottomSafeArea) || 0; }
+    get presenter() { return this.host?.presenter || null; }
+    get lastGame() { return this.host?.lastGame || null; }
+    get worldMapRenderer() { return this.host?.worldMapRenderer || null; }
+    get worldMapLayerRenderer() { return this.host?.worldMapLayerRenderer || null; }
+    get lastWorldTileMapContext() { return this.host?.lastWorldTileMapContext || null; }
+    get lastMapHomeWorldHudContext() { return this.host?.lastMapHomeWorldHudContext || null; }
+    get epochNowMs() { return this.host?.epochNowMs; }
+    get serverNowMs() { return this.host?.serverNowMs; }
+    get nowEpochMs() { return this.host?.nowEpochMs; }
+    get worldClock() { return this.host?.worldClock || null; }
+    get lastRenderOptions() { return this.host?.lastRenderOptions || null; }
 
     t(key, params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;
     }
+
+    renderHudOverlay(...args) {
+      const renderer = this.host?.hudOverlayRenderer;
+      if (renderer && renderer !== this && typeof renderer.renderHudOverlay === 'function') return renderer.renderHudOverlay(...args);
+      return this.host?.renderHudOverlay?.(...args);
+    }
+
+    renderWorldSiteModal(...args) { return this.host?.renderWorldSiteModal?.(...args) || false; }
+    renderWorldMarchHud(...args) { return this.host?.renderWorldMarchHud?.(...args) || false; }
+    beginFrame(...args) { return this.host?.beginFrame?.(...args); }
+    setHitTargets(...args) { return this.host?.setHitTargets?.(...args); }
+    clear(...args) { return this.host?.clear?.(...args); }
+    clearAll(...args) { return this.host?.clearAll?.(...args); }
+    endFrame(...args) { return this.host?.endFrame?.(...args); }
+    addHitTarget(...args) { return this.host?.addHitTarget?.(...args); }
+    appendWorldMapRuntimeHitTargets(...args) { return this.host?.appendWorldMapRuntimeHitTargets?.(...args) || false; }
+    collectMapHomeWorldSiteHitTargets(...args) { return this.host?.collectMapHomeWorldSiteHitTargets?.(...args) || false; }
+    renderMapHomeWorldView(...args) { return this.host?.renderMapHomeWorldView?.(...args) || false; }
+    getWorldMapLayerLayout(...args) { return this.host?.getWorldMapLayerLayout?.(...args) || null; }
+    getTransitionFrame(...args) { return this.host?.getTransitionFrame?.(...args) || null; }
+    getLayout(...args) { return this.host?.getLayout?.(...args) || { contentX: 0, contentWidth: this.width, contentRight: this.width }; }
+    withSlideClip(...args) { return this.host?.withSlideClip?.(...args) ?? args[5]?.(); }
+    withSuppressedHitTargets(...args) { return this.host?.withSuppressedHitTargets?.(...args) ?? args[0]?.(); }
+    createGradient(...args) { return this.host?.createGradient?.(...args) ?? args[5] ?? '#000'; }
+    drawPanel(...args) { return this.host?.drawPanel?.(...args); }
+    drawText(...args) { return this.host?.drawText?.(...args); }
+    drawButton(...args) { return this.host?.drawButton?.(...args); }
+    renderLoginPanel(...args) { return this.host?.renderLoginPanel?.(...args); }
+    renderLoadingScreen(...args) { return this.host?.renderLoadingScreen?.(...args); }
+    renderEntityBattleOverlay(...args) { return this.host?.renderEntityBattleOverlay?.(...args); }
+    renderBattleSceneOverlay(...args) { return this.host?.renderBattleSceneOverlay?.(...args); }
+    renderTopBar(...args) { return this.host?.renderTopBar?.(...args) ?? 84; }
+    renderTabs(...args) { return this.host?.renderTabs?.(...args); }
+    renderAdvisor(...args) { return this.host?.renderAdvisor?.(...args); }
+    renderMainPanel(...args) { return this.host?.renderMainPanel?.(...args); }
+    renderResourceDetailsPanel(...args) { return this.host?.renderResourceDetailsPanel?.(...args); }
+    renderCitySwitcherMenu(...args) { return this.host?.renderCitySwitcherMenu?.(...args); }
+    renderTaskCenterPanel(...args) { return this.host?.renderTaskCenterPanel?.(...args); }
+    renderGuidebookPanel(...args) { return this.host?.renderGuidebookPanel?.(...args); }
+    renderFamousPersonsPanel(...args) { return this.host?.renderFamousPersonsPanel?.(...args); }
+    renderArmyFormationEditor(...args) { return this.host?.renderArmyFormationEditor?.(...args); }
+    renderEventModal(...args) { return this.host?.renderEventModal?.(...args); }
+    renderTechDetailModal(...args) { return this.host?.renderTechDetailModal?.(...args); }
+    renderNamingModal(...args) { return this.host?.renderNamingModal?.(...args); }
+    renderTutorialIntro(...args) { return this.host?.renderTutorialIntro?.(...args); }
+    renderTutorialAdvisorDialogue(...args) { return this.host?.renderTutorialAdvisorDialogue?.(...args); }
+    renderTutorialHighlight(...args) { return this.host?.renderTutorialHighlight?.(...args); }
+    renderFloatingTexts(...args) { return this.host?.renderFloatingTexts?.(...args); }
+    renderRewardReveal(...args) { return this.host?.renderRewardReveal?.(...args); }
+    renderNetworkOverlay(...args) { return this.host?.renderNetworkOverlay?.(...args); }
+    renderConfirmDialog(...args) { return this.host?.renderConfirmDialog?.(...args); }
+    renderFloatingSubcityButton(...args) { return this.host?.renderFloatingSubcityButton?.(...args); }
+    renderFloatingEventButton(...args) { return this.host?.renderFloatingEventButton?.(...args); }
+    renderFloatingAdvisorButton(...args) { return this.host?.renderFloatingAdvisorButton?.(...args); }
+    renderMapCommandPanel(...args) { return this.host?.renderMapCommandPanel?.(...args); }
+    renderSubcityListPanel(...args) { return this.host?.renderSubcityListPanel?.(...args); }
+    renderCityManagementPanel(...args) { return this.host?.renderCityManagementPanel?.(...args); }
+    renderSettingsPanel(...args) { return this.host?.renderSettingsPanel?.(...args); }
+    renderAdvisorPanel(...args) { return this.host?.renderAdvisorPanel?.(...args); }
 
     render(state = {}, options = {}) {
       if (options.mode === 'hud') {

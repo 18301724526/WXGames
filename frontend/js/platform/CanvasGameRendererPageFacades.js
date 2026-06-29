@@ -17,108 +17,180 @@
   }
   const PAGE_FACADE_METHODS = Object.freeze({
     clear(...args) {
-      return this.delegateSurfaceRenderer('clear', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.clear === 'function'
+        ? renderer.clear(...args)
+        : undefined;
     },
 
     clearAll(...args) {
-      return this.delegateSurfaceRenderer('clearAll', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.clearAll === 'function'
+        ? renderer.clearAll(...args)
+        : undefined;
     },
 
     drawText(...args) {
-      return this.delegateSurfaceRenderer('drawText', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawText === 'function'
+        ? renderer.drawText(...args)
+        : undefined;
     },
 
     drawTextLines(...args) {
-      return this.delegateSurfaceRenderer('drawTextLines', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawTextLines === 'function'
+        ? renderer.drawTextLines(...args)
+        : undefined;
     },
 
     wrapText(...args) {
-      const result = this.delegateSurfaceRenderer('wrapText', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.wrapText === 'function'
+        ? renderer.wrapText(...args)
+        : undefined;
       return result === undefined ? [String(args[0] ?? '')].filter(Boolean) : result;
     },
 
     measureTextWidth(...args) {
-      const result = this.delegateSurfaceRenderer('measureTextWidth', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.measureTextWidth === 'function'
+        ? renderer.measureTextWidth(...args)
+        : undefined;
       const [text, options = {}] = args;
       return result === undefined ? String(text ?? '').length * (options.size || 14) * 0.55 : result;
     },
 
     truncateText(...args) {
-      const result = this.delegateSurfaceRenderer('truncateText', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.truncateText === 'function'
+        ? renderer.truncateText(...args)
+        : undefined;
       const [text, maxWidth, options = {}] = args;
       return result === undefined ? String(text ?? '').slice(0, Math.max(0, Number(maxWidth) || 0) || undefined) : result;
     },
 
     wrapTextLimit(...args) {
-      const result = this.delegateSurfaceRenderer('wrapTextLimit', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.wrapTextLimit === 'function'
+        ? renderer.wrapTextLimit(...args)
+        : undefined;
       return result === undefined ? this.wrapText(args[0], args[1], args[3]).slice(0, Math.max(1, Number(args[2]) || 1)) : result;
     },
 
     drawLine(...args) {
-      return this.delegateSurfaceRenderer('drawLine', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawLine === 'function'
+        ? renderer.drawLine(...args)
+        : undefined;
     },
 
     drawPolyline(...args) {
-      return this.delegateSurfaceRenderer('drawPolyline', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawPolyline === 'function'
+        ? renderer.drawPolyline(...args)
+        : undefined;
     },
 
     drawCurvePath(...args) {
-      return this.delegateSurfaceRenderer('drawCurvePath', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawCurvePath === 'function'
+        ? renderer.drawCurvePath(...args)
+        : undefined;
     },
 
     drawCircle(...args) {
-      return this.delegateSurfaceRenderer('drawCircle', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawCircle === 'function'
+        ? renderer.drawCircle(...args)
+        : undefined;
     },
 
     beginFrame(...args) {
-      const result = this.delegateSurfaceRenderer('beginFrame', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.beginFrame === 'function'
+        ? renderer.beginFrame(...args)
+        : undefined;
       return result === undefined ? Date.now() : result;
     },
 
     endFrame(...args) {
-      return this.delegateSurfaceRenderer('endFrame', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.endFrame === 'function'
+        ? renderer.endFrame(...args)
+        : undefined;
     },
 
     getNow(...args) {
-      const result = this.delegateSurfaceRenderer('getNow', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.getNow === 'function'
+        ? renderer.getNow(...args)
+        : undefined;
       return result === undefined ? (this.frameNow || Date.now()) : result;
     },
 
     updateFps(...args) {
-      const result = this.delegateSurfaceRenderer('updateFps', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.updateFps === 'function'
+        ? renderer.updateFps(...args)
+        : undefined;
       return result === undefined ? this.currentFps : result;
     },
 
     renderFpsOverlay(...args) {
-      return this.delegateSurfaceRenderer('renderFpsOverlay', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.renderFpsOverlay === 'function'
+        ? renderer.renderFpsOverlay(...args)
+        : undefined;
     },
 
     drawPanel(...args) {
-      return this.delegateSurfaceRenderer('drawPanel', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawPanel === 'function'
+        ? renderer.drawPanel(...args)
+        : undefined;
     },
 
     drawButton(...args) {
-      return this.delegateSurfaceRenderer('drawButton', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawButton === 'function'
+        ? renderer.drawButton(...args)
+        : undefined;
     },
 
     drawPrimaryActionButton(...args) {
-      return this.delegateSurfaceRenderer('drawPrimaryActionButton', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawPrimaryActionButton === 'function'
+        ? renderer.drawPrimaryActionButton(...args)
+        : undefined;
     },
 
     drawProgressBar(...args) {
-      return this.delegateSurfaceRenderer('drawProgressBar', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawProgressBar === 'function'
+        ? renderer.drawProgressBar(...args)
+        : undefined;
     },
 
     drawIconCard(...args) {
-      return this.delegateSurfaceRenderer('drawIconCard', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.drawIconCard === 'function'
+        ? renderer.drawIconCard(...args)
+        : undefined;
     },
 
     renderSectionHeader(...args) {
-      return this.delegateSurfaceRenderer('renderSectionHeader', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.renderSectionHeader === 'function'
+        ? renderer.renderSectionHeader(...args)
+        : undefined;
     },
 
     getTopBarBottom(...args) {
-      const result = this.delegateSurfaceRenderer('getTopBarBottom', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.getTopBarBottom === 'function'
+        ? renderer.getTopBarBottom(...args)
+        : undefined;
       if (result !== undefined) return result;
       const [state = {}, options = {}] = args;
       if (options.isMapHome) return 72;
@@ -127,48 +199,57 @@
       return 12 + (cityView.hidden ? 128 : 166) + 12;
     },
 
-    delegateResourceTopBarRenderer(method, args = []) {
-      const renderer = this.resourceTopBarRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderTopBar(...args) {
-      const result = this.delegateResourceTopBarRenderer('renderTopBar', args);
+      const renderer = this.resourceTopBarRenderer;
+      const result = typeof renderer?.renderTopBar === 'function'
+        ? renderer.renderTopBar(...args)
+        : undefined;
       return result === undefined ? 84 : result;
     },
 
     renderMapHomeTopBar(...args) {
-      const result = this.delegateResourceTopBarRenderer('renderMapHomeTopBar', args);
+      const renderer = this.resourceTopBarRenderer;
+      const result = typeof renderer?.renderMapHomeTopBar === 'function'
+        ? renderer.renderMapHomeTopBar(...args)
+        : undefined;
       return result === undefined ? 72 : result;
     },
 
-    delegateGuideTaskRenderer(method, args = []) {
-      const renderer = this.guideTaskRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderGuideTasks(...args) {
-      const result = this.delegateGuideTaskRenderer('renderGuideTasks', args);
+      const renderer = this.guideTaskRenderer;
+      const result = typeof renderer?.renderGuideTasks === 'function'
+        ? renderer.renderGuideTasks(...args)
+        : undefined;
       return result === undefined ? (args.length > 1 ? args[1] : 0) : result;
     },
 
     renderTaskCenterButton(...args) {
-      return this.delegateGuideTaskRenderer('renderTaskCenterButton', args);
+      const renderer = this.guideTaskRenderer;
+      return typeof renderer?.renderTaskCenterButton === 'function'
+        ? renderer.renderTaskCenterButton(...args)
+        : undefined;
     },
 
     renderGuidebookButton(...args) {
-      return this.delegateGuideTaskRenderer('renderGuidebookButton', args);
+      const renderer = this.guideTaskRenderer;
+      return typeof renderer?.renderGuidebookButton === 'function'
+        ? renderer.renderGuidebookButton(...args)
+        : undefined;
     },
 
     renderGuidebookPanel(...args) {
-      const result = this.delegateGuideTaskRenderer('renderGuidebookPanel', args);
+      const renderer = this.guideTaskRenderer;
+      const result = typeof renderer?.renderGuidebookPanel === 'function'
+        ? renderer.renderGuidebookPanel(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderTaskCenterPanel(...args) {
-      const result = this.delegateGuideTaskRenderer('renderTaskCenterPanel', args);
+      const renderer = this.guideTaskRenderer;
+      const result = typeof renderer?.renderTaskCenterPanel === 'function'
+        ? renderer.renderTaskCenterPanel(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
@@ -180,46 +261,55 @@
       return result === undefined ? (Number(args[1]) || 84) + 180 : result;
     },
 
-    delegateSystemRenderer(method, args = []) {
-      const renderer = this.systemRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderLoginPanel(...args) {
-      return this.delegateSystemRenderer('renderLoginPanel', args);
+      const renderer = this.systemRenderer;
+      return typeof renderer?.renderLoginPanel === 'function'
+        ? renderer.renderLoginPanel(...args)
+        : undefined;
     },
 
     renderLoadingScreen(...args) {
-      return this.delegateSystemRenderer('renderLoadingScreen', args);
+      const renderer = this.systemRenderer;
+      return typeof renderer?.renderLoadingScreen === 'function'
+        ? renderer.renderLoadingScreen(...args)
+        : undefined;
     },
 
     renderNetworkOverlay(...args) {
-      const result = this.delegateSystemRenderer('renderNetworkOverlay', args);
+      const renderer = this.systemRenderer;
+      const result = typeof renderer?.renderNetworkOverlay === 'function'
+        ? renderer.renderNetworkOverlay(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderSettingsPanel(...args) {
-      return this.delegateSystemRenderer('renderSettingsPanel', args);
+      const renderer = this.systemRenderer;
+      return typeof renderer?.renderSettingsPanel === 'function'
+        ? renderer.renderSettingsPanel(...args)
+        : undefined;
     },
 
     renderConfirmDialog(...args) {
-      const result = this.delegateSystemRenderer('renderConfirmDialog', args);
+      const renderer = this.systemRenderer;
+      const result = typeof renderer?.renderConfirmDialog === 'function'
+        ? renderer.renderConfirmDialog(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderLogsPanel(...args) {
-      return this.delegateSystemRenderer('renderLogsPanel', args);
-    },
-
-    delegateCityRenderer(method, args = []) {
-      const renderer = this.cityRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
+      const renderer = this.systemRenderer;
+      return typeof renderer?.renderLogsPanel === 'function'
+        ? renderer.renderLogsPanel(...args)
+        : undefined;
     },
 
     getActiveCitySummary(...args) {
-      const result = this.delegateCityRenderer('getActiveCitySummary', args);
+      const renderer = this.cityRenderer;
+      const result = typeof renderer?.getActiveCitySummary === 'function'
+        ? renderer.getActiveCitySummary(...args)
+        : undefined;
       return result === undefined ? {
         id: 'capital',
         name: t('city.capitalName'),
@@ -232,82 +322,118 @@
     },
 
     renderCitySwitcherMenu(...args) {
-      return this.delegateCityRenderer('renderCitySwitcherMenu', args);
+      const renderer = this.cityRenderer;
+      return typeof renderer?.renderCitySwitcherMenu === 'function'
+        ? renderer.renderCitySwitcherMenu(...args)
+        : undefined;
     },
 
     renderCityManagementPanel(...args) {
-      return this.delegateCityRenderer('renderCityManagementPanel', args);
+      const renderer = this.cityRenderer;
+      return typeof renderer?.renderCityManagementPanel === 'function'
+        ? renderer.renderCityManagementPanel(...args)
+        : undefined;
     },
 
     renderCityMilitaryPanel(...args) {
-      return this.delegateCityRenderer('renderCityMilitaryPanel', args);
+      const renderer = this.cityRenderer;
+      return typeof renderer?.renderCityMilitaryPanel === 'function'
+        ? renderer.renderCityMilitaryPanel(...args)
+        : undefined;
     },
 
     renderSubcityListPanel(...args) {
-      return this.delegateCityRenderer('renderSubcityListPanel', args);
-    },
-
-    delegateOverlayRenderer(method, args = []) {
-      const renderer = this.overlayRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
+      const renderer = this.cityRenderer;
+      return typeof renderer?.renderSubcityListPanel === 'function'
+        ? renderer.renderSubcityListPanel(...args)
+        : undefined;
     },
 
     renderNamingModal(...args) {
-      return this.delegateOverlayRenderer('renderNamingModal', args);
+      const renderer = this.overlayRenderer;
+      return typeof renderer?.renderNamingModal === 'function'
+        ? renderer.renderNamingModal(...args)
+        : undefined;
     },
 
     renderFloatingTexts(...args) {
-      return this.delegateOverlayRenderer('renderFloatingTexts', args);
+      const renderer = this.overlayRenderer;
+      return typeof renderer?.renderFloatingTexts === 'function'
+        ? renderer.renderFloatingTexts(...args)
+        : undefined;
     },
 
     drawRewardParticle(...args) {
-      return this.delegateOverlayRenderer('drawRewardParticle', args);
+      const renderer = this.overlayRenderer;
+      return typeof renderer?.drawRewardParticle === 'function'
+        ? renderer.drawRewardParticle(...args)
+        : undefined;
     },
 
     renderRewardReveal(...args) {
-      return this.delegateOverlayRenderer('renderRewardReveal', args);
+      const renderer = this.overlayRenderer;
+      return typeof renderer?.renderRewardReveal === 'function'
+        ? renderer.renderRewardReveal(...args)
+        : undefined;
     },
 
     renderResourceDetailsPanel(...args) {
-      return this.delegateOverlayRenderer('renderResourceDetailsPanel', args);
-    },
-
-    delegateAdvisorRenderer(method, args = []) {
-      const renderer = this.advisorRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
+      const renderer = this.overlayRenderer;
+      return typeof renderer?.renderResourceDetailsPanel === 'function'
+        ? renderer.renderResourceDetailsPanel(...args)
+        : undefined;
     },
 
     renderAdvisor(...args) {
-      return this.delegateAdvisorRenderer('renderAdvisor', args);
+      const renderer = this.advisorRenderer;
+      return typeof renderer?.renderAdvisor === 'function'
+        ? renderer.renderAdvisor(...args)
+        : undefined;
     },
 
     getMapHomeFloatingButtonLayout(...args) {
-      const result = this.delegateAdvisorRenderer('getMapHomeFloatingButtonLayout', args);
+      const renderer = this.advisorRenderer;
+      const result = typeof renderer?.getMapHomeFloatingButtonLayout === 'function'
+        ? renderer.getMapHomeFloatingButtonLayout(...args)
+        : undefined;
       return result === undefined ? { x: 0, y: 0, size: 48 } : result;
     },
 
     renderFloatingAdvisorButton(...args) {
-      return this.delegateAdvisorRenderer('renderFloatingAdvisorButton', args);
+      const renderer = this.advisorRenderer;
+      return typeof renderer?.renderFloatingAdvisorButton === 'function'
+        ? renderer.renderFloatingAdvisorButton(...args)
+        : undefined;
     },
 
     renderAdvisorPanel(...args) {
-      return this.delegateAdvisorRenderer('renderAdvisorPanel', args);
+      const renderer = this.advisorRenderer;
+      return typeof renderer?.renderAdvisorPanel === 'function'
+        ? renderer.renderAdvisorPanel(...args)
+        : undefined;
     },
 
     renderFamousPersonItem(...args) {
-      const result = this.delegateFamousRenderer('renderFamousPersonItem', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.renderFamousPersonItem === 'function'
+        ? renderer.renderFamousPersonItem(...args)
+        : undefined;
       return result === undefined ? args[2] || 0 : result;
     },
 
     renderFamousSkillTooltip(...args) {
-      const result = this.delegateFamousRenderer('renderFamousSkillTooltip', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.renderFamousSkillTooltip === 'function'
+        ? renderer.renderFamousSkillTooltip(...args)
+        : undefined;
       return result === undefined ? undefined : result;
     },
 
     normalizeFamousPersonsPage(...args) {
-      const result = this.delegateFamousRenderer('normalizeFamousPersonsPage', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.normalizeFamousPersonsPage === 'function'
+        ? renderer.normalizeFamousPersonsPage(...args)
+        : undefined;
       if (result !== undefined) return result;
       const total = args[0];
       const page = args[1];
@@ -318,189 +444,262 @@
     },
 
     renderFamousPersonsPager(...args) {
-      const result = this.delegateFamousRenderer('renderFamousPersonsPager', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.renderFamousPersonsPager === 'function'
+        ? renderer.renderFamousPersonsPager(...args)
+        : undefined;
       return result === undefined ? undefined : result;
     },
 
     renderFamousPersonsPanel(...args) {
-      const result = this.delegateFamousRenderer('renderFamousPersonsPanel', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.renderFamousPersonsPanel === 'function'
+        ? renderer.renderFamousPersonsPanel(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
-    delegateArmyFormationEditorRenderer(method, args = []) {
-      const renderer = this.armyFormationEditorRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderArmyFormationEditor(...args) {
-      return this.delegateArmyFormationEditorRenderer('renderArmyFormationEditor', args);
-    },
-
-    delegateBuildingRenderer(method, args = []) {
-      const renderer = this.buildingRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
+      const renderer = this.armyFormationEditorRenderer;
+      return typeof renderer?.renderArmyFormationEditor === 'function'
+        ? renderer.renderArmyFormationEditor(...args)
+        : undefined;
     },
 
     renderBuildings(...args) {
-      const result = this.delegateBuildingRenderer('renderBuildings', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.renderBuildings === 'function'
+        ? renderer.renderBuildings(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawBuildingCategoryTabs(...args) {
-      const result = this.delegateBuildingRenderer('drawBuildingCategoryTabs', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.drawBuildingCategoryTabs === 'function'
+        ? renderer.drawBuildingCategoryTabs(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawBuildingInfoLine(...args) {
-      const result = this.delegateBuildingRenderer('drawBuildingInfoLine', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.drawBuildingInfoLine === 'function'
+        ? renderer.drawBuildingInfoLine(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawBuildingPlanningBadges(...args) {
-      const result = this.delegateBuildingRenderer('drawBuildingPlanningBadges', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.drawBuildingPlanningBadges === 'function'
+        ? renderer.drawBuildingPlanningBadges(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     resourceShortName(resource) {
-      const result = this.delegateBuildingRenderer('resourceShortName', [resource]);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.resourceShortName === 'function'
+        ? renderer.resourceShortName(resource)
+        : undefined;
       return result === undefined ? resource : result;
     },
 
     resourceIconPath(resource) {
-      const result = this.delegateBuildingRenderer('resourceIconPath', [resource]);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.resourceIconPath === 'function'
+        ? renderer.resourceIconPath(resource)
+        : undefined;
       return result === undefined ? '' : result;
     },
 
     buildingCostResourceAliases(resource) {
-      const result = this.delegateBuildingRenderer('buildingCostResourceAliases', [resource]);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.buildingCostResourceAliases === 'function'
+        ? renderer.buildingCostResourceAliases(resource)
+        : undefined;
       return result === undefined ? [resource] : result;
     },
 
     formatBuildingCostAmount(value) {
-      const result = this.delegateBuildingRenderer('formatBuildingCostAmount', [value]);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.formatBuildingCostAmount === 'function'
+        ? renderer.formatBuildingCostAmount(value)
+        : undefined;
       return result === undefined ? String(value ?? 0) : result;
     },
 
     getBuildingCostSlot(...args) {
-      const result = this.delegateBuildingRenderer('getBuildingCostSlot', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.getBuildingCostSlot === 'function'
+        ? renderer.getBuildingCostSlot(...args)
+        : undefined;
       return result === undefined ? { resource: args[1], value: 0, text: '0', present: false } : result;
     },
 
     getOwnedBuildingResource(...args) {
-      const result = this.delegateBuildingRenderer('getOwnedBuildingResource', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.getOwnedBuildingResource === 'function'
+        ? renderer.getOwnedBuildingResource(...args)
+        : undefined;
       return result === undefined ? 0 : result;
     },
 
     drawBuildingActionButton(...args) {
-      const result = this.delegateBuildingRenderer('drawBuildingActionButton', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.drawBuildingActionButton === 'function'
+        ? renderer.drawBuildingActionButton(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawBuildingCostChips(...args) {
-      const result = this.delegateBuildingRenderer('drawBuildingCostChips', args);
+      const renderer = this.buildingRenderer;
+      const result = typeof renderer?.drawBuildingCostChips === 'function'
+        ? renderer.drawBuildingCostChips(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
-    delegateEventRenderer(method, args = []) {
-      const renderer = this.eventRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     eventRowColor(tone) {
-      const result = this.delegateEventRenderer('eventRowColor', [tone]);
+      const renderer = this.eventRenderer;
+      const result = typeof renderer?.eventRowColor === 'function'
+        ? renderer.eventRowColor(tone)
+        : undefined;
       return result === undefined ? '#cbbd96' : result;
     },
 
     drawEventDetailRow(...args) {
-      const result = this.delegateEventRenderer('drawEventDetailRow', args);
+      const renderer = this.eventRenderer;
+      const result = typeof renderer?.drawEventDetailRow === 'function'
+        ? renderer.drawEventDetailRow(...args)
+        : undefined;
       return result === undefined ? 0 : result;
     },
 
     drawEventParts(...args) {
-      const result = this.delegateEventRenderer('drawEventParts', args);
+      const renderer = this.eventRenderer;
+      const result = typeof renderer?.drawEventParts === 'function'
+        ? renderer.drawEventParts(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderEvents(...args) {
-      const result = this.delegateEventRenderer('renderEvents', args);
+      const renderer = this.eventRenderer;
+      const result = typeof renderer?.renderEvents === 'function'
+        ? renderer.renderEvents(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderEventModal(...args) {
-      const result = this.delegateEventRenderer('renderEventModal', args);
+      const renderer = this.eventRenderer;
+      const result = typeof renderer?.renderEventModal === 'function'
+        ? renderer.renderEventModal(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
-    delegateCivilizationRenderer(method, args = []) {
-      const renderer = this.civilizationRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderCivilization(...args) {
-      return this.delegateCivilizationRenderer('renderCivilization', args);
-    },
-
-    delegateTechRenderer(method, args = []) {
-      const renderer = this.techRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...Array.from(args));
+      const renderer = this.civilizationRenderer;
+      return typeof renderer?.renderCivilization === 'function'
+        ? renderer.renderCivilization(...args)
+        : undefined;
     },
 
     getTechRouteCatalog() {
-      return this.delegateTechRenderer('getTechRouteCatalog', arguments) || {};
+      const renderer = this.techRenderer;
+      return typeof renderer?.getTechRouteCatalog === 'function'
+        ? renderer.getTechRouteCatalog(...arguments) || {}
+        : {};
     },
 
     getTechRouteMeta(route) {
-      return this.delegateTechRenderer('getTechRouteMeta', arguments) || { lane: 0, label: route || 'route', color: '#f0b45b', icon: 'assets/art/icon-science-cutout.webp' };
+      const renderer = this.techRenderer;
+      return typeof renderer?.getTechRouteMeta === 'function'
+        ? renderer.getTechRouteMeta(...arguments) || { lane: 0, label: route || 'route', color: '#f0b45b', icon: 'assets/art/icon-science-cutout.webp' }
+        : { lane: 0, label: route || 'route', color: '#f0b45b', icon: 'assets/art/icon-science-cutout.webp' };
     },
 
     getTechNodeRoutes(node = {}) {
-      return this.delegateTechRenderer('getTechNodeRoutes', arguments) || [];
+      const renderer = this.techRenderer;
+      return typeof renderer?.getTechNodeRoutes === 'function'
+        ? renderer.getTechNodeRoutes(...arguments) || []
+        : [];
     },
 
     getTechNodeRouteLabel(node = {}) {
-      return this.delegateTechRenderer('getTechNodeRouteLabel', arguments) || node.routeLabel || 'route';
+      const renderer = this.techRenderer;
+      return typeof renderer?.getTechNodeRouteLabel === 'function'
+        ? renderer.getTechNodeRouteLabel(...arguments) || node.routeLabel || 'route'
+        : node.routeLabel || 'route';
     },
 
     getTechNodePrimaryRoute(node = {}) {
-      return this.delegateTechRenderer('getTechNodePrimaryRoute', arguments) || node.route || '';
+      const renderer = this.techRenderer;
+      return typeof renderer?.getTechNodePrimaryRoute === 'function'
+        ? renderer.getTechNodePrimaryRoute(...arguments) || node.route || ''
+        : node.route || '';
     },
 
     getTechNodeLane(node = {}) {
-      const lane = this.delegateTechRenderer('getTechNodeLane', arguments);
+      const renderer = this.techRenderer;
+      const lane = typeof renderer?.getTechNodeLane === 'function'
+        ? renderer.getTechNodeLane(...arguments)
+        : undefined;
       return Number.isFinite(Number(lane)) ? Number(lane) : 0;
     },
 
     drawTechRouteSegments(...args) {
-      return this.delegateTechRenderer('drawTechRouteSegments', args);
+      const renderer = this.techRenderer;
+      return typeof renderer?.drawTechRouteSegments === 'function'
+        ? renderer.drawTechRouteSegments(...args)
+        : undefined;
     },
 
     getTechNodeColor(node = {}) {
-      return this.delegateTechRenderer('getTechNodeColor', arguments) || { fill: 'rgba(45, 34, 24, 0.82)', stroke: 'rgba(255, 226, 177, 0.18)', accent: '#f0b45b', text: '#ddd0ad', muted: 'rgba(203, 189, 150, 0.58)' };
+      const renderer = this.techRenderer;
+      return typeof renderer?.getTechNodeColor === 'function'
+        ? renderer.getTechNodeColor(...arguments) || { fill: 'rgba(45, 34, 24, 0.82)', stroke: 'rgba(255, 226, 177, 0.18)', accent: '#f0b45b', text: '#ddd0ad', muted: 'rgba(203, 189, 150, 0.58)' }
+        : { fill: 'rgba(45, 34, 24, 0.82)', stroke: 'rgba(255, 226, 177, 0.18)', accent: '#f0b45b', text: '#ddd0ad', muted: 'rgba(203, 189, 150, 0.58)' };
     },
 
     renderTechNode(...args) {
-      return this.delegateTechRenderer('renderTechNode', args);
+      const renderer = this.techRenderer;
+      return typeof renderer?.renderTechNode === 'function'
+        ? renderer.renderTechNode(...args)
+        : undefined;
     },
 
     renderTechDetailPanel(...args) {
-      return this.delegateTechRenderer('renderTechDetailPanel', args);
+      const renderer = this.techRenderer;
+      return typeof renderer?.renderTechDetailPanel === 'function'
+        ? renderer.renderTechDetailPanel(...args)
+        : undefined;
     },
 
     getTechDetailIcon() {
-      return this.delegateTechRenderer('getTechDetailIcon', arguments) || 'assets/art/icon-science-cutout.webp';
+      const renderer = this.techRenderer;
+      return typeof renderer?.getTechDetailIcon === 'function'
+        ? renderer.getTechDetailIcon(...arguments) || 'assets/art/icon-science-cutout.webp'
+        : 'assets/art/icon-science-cutout.webp';
     },
 
     renderTechDetailModal(...args) {
-      return this.delegateTechRenderer('renderTechDetailModal', args);
+      const renderer = this.techRenderer;
+      return typeof renderer?.renderTechDetailModal === 'function'
+        ? renderer.renderTechDetailModal(...args)
+        : undefined;
     },
 
     getTechTreeLayout(view = {}, panel = {}, options = {}) {
-      return this.delegateTechRenderer('getTechTreeLayout', arguments) || {
+      const renderer = this.techRenderer;
+      const result = typeof renderer?.getTechTreeLayout === 'function'
+        ? renderer.getTechTreeLayout(...arguments)
+        : undefined;
+      return result || {
         nodes: [],
         eras: [],
         eraPositions: [],
@@ -537,192 +736,270 @@
     },
 
     renderTechInternal(...args) {
-      return this.delegateTechRenderer('renderTechInternal', args) || false;
-    },
-
-    delegateMilitaryRenderer(method, args = []) {
-      const renderer = this.militaryRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
+      const renderer = this.techRenderer;
+      return typeof renderer?.renderTechInternal === 'function'
+        ? renderer.renderTechInternal(...args) || false
+        : false;
     },
 
     renderMilitarySubTabs(...args) {
-      const result = this.delegateMilitaryRenderer('renderMilitarySubTabs', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderMilitarySubTabs === 'function'
+        ? renderer.renderMilitarySubTabs(...args)
+        : undefined;
       return result === undefined ? 0 : result;
     },
 
     renderMilitaryArmyView(...args) {
-      const result = this.delegateMilitaryRenderer('renderMilitaryArmyView', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderMilitaryArmyView === 'function'
+        ? renderer.renderMilitaryArmyView(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderArmyFormationPortrait(...args) {
-      const result = this.delegateMilitaryRenderer('renderArmyFormationPortrait', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderArmyFormationPortrait === 'function'
+        ? renderer.renderArmyFormationPortrait(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderArmyFormationCard(...args) {
-      const result = this.delegateMilitaryRenderer('renderArmyFormationCard', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderArmyFormationCard === 'function'
+        ? renderer.renderArmyFormationCard(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderArmyFormationStrip(...args) {
-      const result = this.delegateMilitaryRenderer('renderArmyFormationStrip', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderArmyFormationStrip === 'function'
+        ? renderer.renderArmyFormationStrip(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     getScoutButtonTone(...args) {
-      const result = this.delegateMilitaryRenderer('getScoutButtonTone', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.getScoutButtonTone === 'function'
+        ? renderer.getScoutButtonTone(...args)
+        : undefined;
       return result === undefined ? { fill: 'rgba(63, 47, 32, 0.78)', stroke: 'rgba(240, 180, 91, 0.25)' } : result;
     },
 
     renderMilitaryScoutView(...args) {
-      const result = this.delegateMilitaryRenderer('renderMilitaryScoutView', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderMilitaryScoutView === 'function'
+        ? renderer.renderMilitaryScoutView(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderWorldReports(...args) {
-      const result = this.delegateMilitaryRenderer('renderWorldReports', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderWorldReports === 'function'
+        ? renderer.renderWorldReports(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
-    delegateTutorialRenderer(method, args = []) {
-      const renderer = this.tutorialRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderTutorialIntro(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialIntro', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialIntro === 'function'
+        ? renderer.renderTutorialIntro(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     disposeTutorialAdvisorSpine(...args) {
-      const result = this.delegateTutorialRenderer('disposeTutorialAdvisorSpine', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.disposeTutorialAdvisorSpine === 'function'
+        ? renderer.disposeTutorialAdvisorSpine(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     resolveTutorialIntroTarget(...args) {
-      const result = this.delegateTutorialRenderer('resolveTutorialIntroTarget', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.resolveTutorialIntroTarget === 'function'
+        ? renderer.resolveTutorialIntroTarget(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     findHitTarget(...args) {
-      const result = this.delegateTutorialRenderer('findHitTarget', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.findHitTarget === 'function'
+        ? renderer.findHitTarget(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     inflateRect(...args) {
-      const result = this.delegateTutorialRenderer('inflateRect', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.inflateRect === 'function'
+        ? renderer.inflateRect(...args)
+        : undefined;
       return result === undefined ? { x: 0, y: 0, width: 0, height: 0, action: null } : result;
     },
 
     renderTutorialIntroMarch(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialIntroMarch', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialIntroMarch === 'function'
+        ? renderer.renderTutorialIntroMarch(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderTutorialIntroUnit(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialIntroUnit', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialIntroUnit === 'function'
+        ? renderer.renderTutorialIntroUnit(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderTutorialIntroSpotlight(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialIntroSpotlight', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialIntroSpotlight === 'function'
+        ? renderer.renderTutorialIntroSpotlight(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     normalizeRect(...args) {
-      const result = this.delegateTutorialRenderer('normalizeRect', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.normalizeRect === 'function'
+        ? renderer.normalizeRect(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     renderTutorialIntroFinger(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialIntroFinger', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialIntroFinger === 'function'
+        ? renderer.renderTutorialIntroFinger(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderTutorialIntroDialogue(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialIntroDialogue', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialIntroDialogue === 'function'
+        ? renderer.renderTutorialIntroDialogue(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderTutorialAdvisorDialogue(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialAdvisorDialogue', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialAdvisorDialogue === 'function'
+        ? renderer.renderTutorialAdvisorDialogue(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     clearTutorialAdvisorDialogue(...args) {
-      const result = this.delegateTutorialRenderer('clearTutorialAdvisorDialogue', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.clearTutorialAdvisorDialogue === 'function'
+        ? renderer.clearTutorialAdvisorDialogue(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderTutorialIntroAdvisorPortrait(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialIntroAdvisorPortrait', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialIntroAdvisorPortrait === 'function'
+        ? renderer.renderTutorialIntroAdvisorPortrait(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderTutorialAdvisorSpineLayer(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialAdvisorSpineLayer', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialAdvisorSpineLayer === 'function'
+        ? renderer.renderTutorialAdvisorSpineLayer(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawTutorialAdvisorImageCover(...args) {
-      const result = this.delegateTutorialRenderer('drawTutorialAdvisorImageCover', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.drawTutorialAdvisorImageCover === 'function'
+        ? renderer.drawTutorialAdvisorImageCover(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderMilitary(...args) {
-      const result = this.delegateMilitaryRenderer('renderMilitary', args);
+      const renderer = this.militaryRenderer;
+      const result = typeof renderer?.renderMilitary === 'function'
+        ? renderer.renderMilitary(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
-    delegateHudTabPageRenderer(method, args = []) {
-      const renderer = this.hudTabPageRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderMainPanel(...args) {
-      return this.delegateHudTabPageRenderer('renderMainPanel', args);
+      const renderer = this.hudTabPageRenderer;
+      return typeof renderer?.renderMainPanel === 'function'
+        ? renderer.renderMainPanel(...args)
+        : undefined;
     },
 
     renderHudTabPage(...args) {
-      return this.delegateHudTabPageRenderer('renderHudTabPage', args);
+      const renderer = this.hudTabPageRenderer;
+      return typeof renderer?.renderHudTabPage === 'function'
+        ? renderer.renderHudTabPage(...args)
+        : undefined;
     },
 
     renderHudTabPageWithTransition(...args) {
-      return this.delegateHudTabPageRenderer('renderHudTabPageWithTransition', args);
-    },
-
-    delegateWorldMapLayerRenderer(method, args = []) {
-      const renderer = this.worldMapLayerRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
+      const renderer = this.hudTabPageRenderer;
+      return typeof renderer?.renderHudTabPageWithTransition === 'function'
+        ? renderer.renderHudTabPageWithTransition(...args)
+        : undefined;
     },
 
     getWorldMapLayerLayout(...args) {
-      const result = this.delegateWorldMapLayerRenderer('getWorldMapLayerLayout', args);
+      const renderer = this.worldMapLayerRenderer;
+      const result = typeof renderer?.getWorldMapLayerLayout === 'function'
+        ? renderer.getWorldMapLayerLayout(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     renderMapHomeWorldView(...args) {
-      const result = this.delegateWorldMapLayerRenderer('renderMapHomeWorldView', args);
+      const renderer = this.worldMapLayerRenderer;
+      const result = typeof renderer?.renderMapHomeWorldView === 'function'
+        ? renderer.renderMapHomeWorldView(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     collectMapHomeWorldSiteHitTargets(...args) {
-      const result = this.delegateWorldMapLayerRenderer('collectMapHomeWorldSiteHitTargets', args);
+      const renderer = this.worldMapLayerRenderer;
+      const result = typeof renderer?.collectMapHomeWorldSiteHitTargets === 'function'
+        ? renderer.collectMapHomeWorldSiteHitTargets(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderMapHomeEmptyWorld(...args) {
-      const result = this.delegateWorldMapLayerRenderer('renderMapHomeEmptyWorld', args);
+      const renderer = this.worldMapLayerRenderer;
+      const result = typeof renderer?.renderMapHomeEmptyWorld === 'function'
+        ? renderer.renderMapHomeEmptyWorld(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     renderWorldMapLayer(...args) {
-      const result = this.delegateWorldMapLayerRenderer('renderWorldMapLayer', args);
+      const renderer = this.worldMapLayerRenderer;
+      const result = typeof renderer?.renderWorldMapLayer === 'function'
+        ? renderer.renderWorldMapLayer(...args)
+        : undefined;
       this.lastWorldTileMapContext = this.worldMapLayerRenderer?.lastWorldTileMapContext
         || this.worldMapRenderer?.lastWorldTileMapContext
         || this.lastWorldTileMapContext
@@ -731,7 +1008,10 @@
     },
 
     renderWorldMapSnapshotLayer(...args) {
-      const result = this.delegateWorldMapLayerRenderer('renderWorldMapSnapshotLayer', args);
+      const renderer = this.worldMapLayerRenderer;
+      const result = typeof renderer?.renderWorldMapSnapshotLayer === 'function'
+        ? renderer.renderWorldMapSnapshotLayer(...args)
+        : undefined;
       this.lastWorldTileMapContext = this.worldMapLayerRenderer?.lastWorldTileMapContext
         || this.worldMapRenderer?.lastWorldTileMapContext
         || this.lastWorldTileMapContext
@@ -739,36 +1019,37 @@
       return result === undefined ? false : result;
     },
 
-    delegateMapCommandRenderer(method, args = []) {
-      const renderer = this.mapCommandRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderMapCommandDock(...args) {
-      return this.delegateMapCommandRenderer('renderMapCommandDock', args);
+      const renderer = this.mapCommandRenderer;
+      return typeof renderer?.renderMapCommandDock === 'function'
+        ? renderer.renderMapCommandDock(...args)
+        : undefined;
     },
 
     renderFloatingSubcityButton(...args) {
-      return this.delegateMapCommandRenderer('renderFloatingSubcityButton', args);
+      const renderer = this.mapCommandRenderer;
+      return typeof renderer?.renderFloatingSubcityButton === 'function'
+        ? renderer.renderFloatingSubcityButton(...args)
+        : undefined;
     },
 
     renderFloatingEventButton(...args) {
-      return this.delegateMapCommandRenderer('renderFloatingEventButton', args);
+      const renderer = this.mapCommandRenderer;
+      return typeof renderer?.renderFloatingEventButton === 'function'
+        ? renderer.renderFloatingEventButton(...args)
+        : undefined;
     },
 
     renderMapCommandPanel(...args) {
-      return this.delegateMapCommandRenderer('renderMapCommandPanel', args);
-    },
-
-    delegateTabBarRenderer(method, args = []) {
-      const renderer = this.tabBarRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
+      const renderer = this.mapCommandRenderer;
+      return typeof renderer?.renderMapCommandPanel === 'function'
+        ? renderer.renderMapCommandPanel(...args)
+        : undefined;
     },
 
     renderTabs(...args) {
-      return this.delegateTabBarRenderer('renderTabs', args);
+      const renderer = this.tabBarRenderer;
+      return typeof renderer?.renderTabs === 'function' ? renderer.renderTabs(...args) : undefined;
     },
 
     parsePixelValue(value) {
@@ -815,34 +1096,32 @@
     },
 
     renderTutorialHighlight(...args) {
-      const result = this.delegateTutorialRenderer('renderTutorialHighlight', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.renderTutorialHighlight === 'function'
+        ? renderer.renderTutorialHighlight(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     addTutorialShield(...args) {
-      const result = this.delegateTutorialRenderer('addTutorialShield', args);
+      const renderer = this.tutorialRenderer;
+      const result = typeof renderer?.addTutorialShield === 'function'
+        ? renderer.addTutorialShield(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
-    delegateHudOverlayRenderer(method, args = []) {
-      const renderer = this.hudOverlayRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    },
-
     renderHudOverlay(...args) {
-      return this.delegateHudOverlayRenderer('renderHudOverlay', args);
-    },
-
-    delegateFrameRenderer(method, args = []) {
-      const renderer = this.frameRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...Array.from(args));
+      const renderer = this.hudOverlayRenderer;
+      if (!renderer || typeof renderer.renderHudOverlay !== 'function') return undefined;
+      return renderer.renderHudOverlay(...args);
     },
 
     render(state = {}, options = {}) {
-      const result = this.delegateFrameRenderer('render', arguments);
-      if (result !== undefined || this.frameRenderer) return result;
+      const renderer = this.frameRenderer;
+      if (renderer) {
+        return typeof renderer.render === 'function' ? renderer.render(...arguments) : undefined;
+      }
       if (options.mode === 'hud') return this.renderHudOverlay(state, options);
       this.beginFrame(options);
       this.setHitTargets([]);
@@ -854,30 +1133,169 @@
     },
 
     renderMapHomeOverlays() {
-      const result = this.delegateFrameRenderer('renderMapHomeOverlays', arguments);
-      return result === undefined ? undefined : result;
+      const renderer = this.frameRenderer;
+      if (!renderer || typeof renderer.renderMapHomeOverlays !== 'function') return undefined;
+      return renderer.renderMapHomeOverlays(...arguments);
     },
 
     renderMapHomeExplorerHud(...args) {
-      const result = this.delegateFrameRenderer('renderMapHomeExplorerHud', args);
-      return result === undefined ? false : result;
+      const renderer = this.frameRenderer;
+      if (!renderer || typeof renderer.renderMapHomeExplorerHud !== 'function') return false;
+      return renderer.renderMapHomeExplorerHud(...args);
     },
 
     renderCanvasDebugResetButton(...args) {
-      const result = this.delegateFrameRenderer('renderCanvasDebugResetButton', args);
-      return result === undefined ? false : result;
+      const renderer = this.frameRenderer;
+      if (!renderer || typeof renderer.renderCanvasDebugResetButton !== 'function') return false;
+      return renderer.renderCanvasDebugResetButton(...args);
     },
   });
 
   function installPageFacades(RendererClass) {
     const proto = RendererClass?.prototype;
     if (!proto) return RendererClass;
-    Object.entries(PAGE_FACADE_METHODS).forEach(([method, value]) => {
-      Object.defineProperty(proto, method, {
-        configurable: true,
-        writable: true,
-        value,
-      });
+    Object.defineProperties(proto, {
+      clear: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.clear },
+      clearAll: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.clearAll },
+      drawText: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawText },
+      drawTextLines: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawTextLines },
+      wrapText: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.wrapText },
+      measureTextWidth: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.measureTextWidth },
+      truncateText: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.truncateText },
+      wrapTextLimit: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.wrapTextLimit },
+      drawLine: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawLine },
+      drawPolyline: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawPolyline },
+      drawCurvePath: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawCurvePath },
+      drawCircle: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawCircle },
+      beginFrame: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.beginFrame },
+      endFrame: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.endFrame },
+      getNow: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getNow },
+      updateFps: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.updateFps },
+      renderFpsOverlay: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFpsOverlay },
+      drawPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawPanel },
+      drawButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawButton },
+      drawPrimaryActionButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawPrimaryActionButton },
+      drawProgressBar: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawProgressBar },
+      drawIconCard: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawIconCard },
+      renderSectionHeader: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderSectionHeader },
+      getTopBarBottom: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTopBarBottom },
+      renderTopBar: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTopBar },
+      renderMapHomeTopBar: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMapHomeTopBar },
+      renderGuideTasks: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderGuideTasks },
+      renderTaskCenterButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTaskCenterButton },
+      renderGuidebookButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderGuidebookButton },
+      renderGuidebookPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderGuidebookPanel },
+      renderTaskCenterPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTaskCenterPanel },
+      renderPopulation: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderPopulation },
+      renderLoginPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderLoginPanel },
+      renderLoadingScreen: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderLoadingScreen },
+      renderNetworkOverlay: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderNetworkOverlay },
+      renderSettingsPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderSettingsPanel },
+      renderConfirmDialog: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderConfirmDialog },
+      renderLogsPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderLogsPanel },
+      getActiveCitySummary: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getActiveCitySummary },
+      renderCitySwitcherMenu: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderCitySwitcherMenu },
+      renderCityManagementPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderCityManagementPanel },
+      renderCityMilitaryPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderCityMilitaryPanel },
+      renderSubcityListPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderSubcityListPanel },
+      renderNamingModal: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderNamingModal },
+      renderFloatingTexts: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFloatingTexts },
+      drawRewardParticle: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawRewardParticle },
+      renderRewardReveal: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderRewardReveal },
+      renderResourceDetailsPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderResourceDetailsPanel },
+      renderAdvisor: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderAdvisor },
+      getMapHomeFloatingButtonLayout: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getMapHomeFloatingButtonLayout },
+      renderFloatingAdvisorButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFloatingAdvisorButton },
+      renderAdvisorPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderAdvisorPanel },
+      renderFamousPersonItem: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFamousPersonItem },
+      renderFamousSkillTooltip: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFamousSkillTooltip },
+      normalizeFamousPersonsPage: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.normalizeFamousPersonsPage },
+      renderFamousPersonsPager: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFamousPersonsPager },
+      renderFamousPersonsPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFamousPersonsPanel },
+      renderArmyFormationEditor: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderArmyFormationEditor },
+      renderBuildings: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderBuildings },
+      drawBuildingCategoryTabs: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawBuildingCategoryTabs },
+      drawBuildingInfoLine: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawBuildingInfoLine },
+      drawBuildingPlanningBadges: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawBuildingPlanningBadges },
+      resourceShortName: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.resourceShortName },
+      resourceIconPath: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.resourceIconPath },
+      buildingCostResourceAliases: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.buildingCostResourceAliases },
+      formatBuildingCostAmount: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.formatBuildingCostAmount },
+      getBuildingCostSlot: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getBuildingCostSlot },
+      getOwnedBuildingResource: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getOwnedBuildingResource },
+      drawBuildingActionButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawBuildingActionButton },
+      drawBuildingCostChips: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawBuildingCostChips },
+      eventRowColor: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.eventRowColor },
+      drawEventDetailRow: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawEventDetailRow },
+      drawEventParts: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawEventParts },
+      renderEvents: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderEvents },
+      renderEventModal: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderEventModal },
+      renderCivilization: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderCivilization },
+      getTechRouteCatalog: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechRouteCatalog },
+      getTechRouteMeta: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechRouteMeta },
+      getTechNodeRoutes: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechNodeRoutes },
+      getTechNodeRouteLabel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechNodeRouteLabel },
+      getTechNodePrimaryRoute: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechNodePrimaryRoute },
+      getTechNodeLane: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechNodeLane },
+      drawTechRouteSegments: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawTechRouteSegments },
+      getTechNodeColor: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechNodeColor },
+      renderTechNode: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTechNode },
+      renderTechDetailPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTechDetailPanel },
+      getTechDetailIcon: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechDetailIcon },
+      renderTechDetailModal: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTechDetailModal },
+      getTechTreeLayout: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTechTreeLayout },
+      renderTech: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTech },
+      renderTechInternal: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTechInternal },
+      renderMilitarySubTabs: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMilitarySubTabs },
+      renderMilitaryArmyView: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMilitaryArmyView },
+      renderArmyFormationPortrait: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderArmyFormationPortrait },
+      renderArmyFormationCard: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderArmyFormationCard },
+      renderArmyFormationStrip: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderArmyFormationStrip },
+      getScoutButtonTone: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getScoutButtonTone },
+      renderMilitaryScoutView: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMilitaryScoutView },
+      renderWorldReports: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderWorldReports },
+      renderTutorialIntro: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialIntro },
+      disposeTutorialAdvisorSpine: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.disposeTutorialAdvisorSpine },
+      resolveTutorialIntroTarget: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.resolveTutorialIntroTarget },
+      findHitTarget: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.findHitTarget },
+      inflateRect: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.inflateRect },
+      renderTutorialIntroMarch: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialIntroMarch },
+      renderTutorialIntroUnit: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialIntroUnit },
+      renderTutorialIntroSpotlight: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialIntroSpotlight },
+      normalizeRect: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.normalizeRect },
+      renderTutorialIntroFinger: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialIntroFinger },
+      renderTutorialIntroDialogue: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialIntroDialogue },
+      renderTutorialAdvisorDialogue: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialAdvisorDialogue },
+      clearTutorialAdvisorDialogue: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.clearTutorialAdvisorDialogue },
+      renderTutorialIntroAdvisorPortrait: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialIntroAdvisorPortrait },
+      renderTutorialAdvisorSpineLayer: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialAdvisorSpineLayer },
+      drawTutorialAdvisorImageCover: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.drawTutorialAdvisorImageCover },
+      renderMilitary: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMilitary },
+      renderMainPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMainPanel },
+      renderHudTabPage: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderHudTabPage },
+      renderHudTabPageWithTransition: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderHudTabPageWithTransition },
+      getWorldMapLayerLayout: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getWorldMapLayerLayout },
+      renderMapHomeWorldView: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMapHomeWorldView },
+      collectMapHomeWorldSiteHitTargets: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.collectMapHomeWorldSiteHitTargets },
+      renderMapHomeEmptyWorld: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMapHomeEmptyWorld },
+      renderWorldMapLayer: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderWorldMapLayer },
+      renderWorldMapSnapshotLayer: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderWorldMapSnapshotLayer },
+      renderMapCommandDock: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMapCommandDock },
+      renderFloatingSubcityButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFloatingSubcityButton },
+      renderFloatingEventButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderFloatingEventButton },
+      renderMapCommandPanel: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMapCommandPanel },
+      renderTabs: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTabs },
+      parsePixelValue: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.parsePixelValue },
+      easeOutCubic: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.easeOutCubic },
+      getTransitionFrame: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.getTransitionFrame },
+      interpolateRect: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.interpolateRect },
+      renderTutorialHighlight: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderTutorialHighlight },
+      addTutorialShield: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.addTutorialShield },
+      renderHudOverlay: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderHudOverlay },
+      render: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.render },
+      renderMapHomeOverlays: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMapHomeOverlays },
+      renderMapHomeExplorerHud: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderMapHomeExplorerHud },
+      renderCanvasDebugResetButton: { configurable: true, writable: true, value: PAGE_FACADE_METHODS.renderCanvasDebugResetButton },
     });
     return RendererClass;
   }

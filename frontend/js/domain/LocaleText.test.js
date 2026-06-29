@@ -28,3 +28,22 @@ test('LocaleText returns explicit fallback for missing keys', () => {
 
   assert.equal(LocaleText.t('missing.key', {}, { fallback: '后备文案' }), '后备文案');
 });
+
+test('LocaleText stores locale through an injected storage adapter', () => {
+  const values = {};
+  LocaleText.setStorageAdapter({
+    getItem(key) {
+      return values[key] || '';
+    },
+    setItem(key, value) {
+      values[key] = value;
+    },
+  });
+  try {
+    LocaleText.setLocale('en-US');
+    assert.equal(values.wxgame_locale, 'en-US');
+  } finally {
+    LocaleText.setStorageAdapter(null);
+    LocaleText.setLocale('zh-CN');
+  }
+});

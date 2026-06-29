@@ -6,7 +6,7 @@ const LocaleText = require('../domain/LocaleText');
 const CanvasGameApp = require('./CanvasGameApp');
 const UIStatePresenter = require('../state/UIStatePresenter');
 const TutorialGuideController = require('../tutorial/TutorialGuideController');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 // Batch 8F: techDetailOpen is now an ECS modal subtype owned through the snapshot
@@ -14,7 +14,7 @@ const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 // (openModal/getRendererSnapshot via the bridge + the snapshot helpers) for the
 // research close to route through. A bare {} shell would no-op the close.
 class CommandShellHost {}
-CanvasModeOwnershipBridge.install(CommandShellHost);
+CanvasModeOwnershipRuntime.install(CommandShellHost);
 CanvasModalSnapshotAdapter.install(CommandShellHost);
 
 function createCommandHost(api) {
@@ -95,7 +95,7 @@ test('GameCommandService research applies API state and keeps selected tech UI s
 
   assert.equal(host.state.techUiState.selectedTechId, 'writing');
   assert.equal(host.state.techUiState.detailOpen, false);
-  assert.equal(host.canvasShell.selectedTechId, 'writing');
+  assert.equal(host.canvasShell.selectedTechId, undefined);
   assert.equal(host.canvasShell.isBlockingPanelSnapshotOpen('techDetailOpen'), false);
   assert.deepEqual(calls.find(([name]) => name === 'showFloatingText'), ['showFloatingText', 'researched writing']);
 });

@@ -2,17 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialGuideUiStateCoordinator = require('./TutorialGuideUiStateCoordinator');
-const CanvasModeOwnershipBridge = require('../platform/CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('../platform/CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('../platform/CanvasModalSnapshotAdapter');
 
 // Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host carries
 // the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the snapshot
 // adapter (openBlockingPanelSnapshot/closeBlockingPanelSnapshot/
 // isBlockingPanelSnapshotOpen/getCommandPanelValue) so the coordinator can route
-// through the owner instead of host mirrors. The adapter fans writes out across related
-// hosts (game -> canvasShell), so a single open/close on game is observable on both.
+// through the canonical owner instead of host mirrors. Shell reads resolve back to
+// the game owner when shell.lastGame links them.
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {
@@ -72,6 +72,6 @@ test('TutorialGuideUiStateCoordinator keeps house guide visibility sync on game 
   assert.equal(game.getCommandPanelValue(), '');
   assert.equal(game.isEventSnapshotOpen(), false);
   assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
-  assert.equal(shell.activeCityManagementTab, 'buildings');
+  assert.equal(shell.activeCityManagementTab, '');
   assert.equal(shell.getCommandPanelValue(), '');
 });

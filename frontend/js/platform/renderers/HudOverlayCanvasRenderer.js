@@ -30,9 +30,59 @@
   class HudOverlayCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+      this.mapHomeOverlayRenderer = options.mapHomeOverlayRenderer || null;
     }
+
+    get presenter() { return this.host?.presenter || null; }
+    get lastGame() { return this.host?.lastGame || null; }
+    get lastWorldTileMapContext() { return this.host?.lastWorldTileMapContext || null; }
+    get lastMapHomeWorldHudContext() { return this.host?.lastMapHomeWorldHudContext || null; }
+    get worldMapRenderer() { return this.host?.worldMapRenderer || null; }
+    get worldMapLayerRenderer() { return this.host?.worldMapLayerRenderer || null; }
+
+    beginFrame(...args) { return this.host?.beginFrame?.(...args); }
+    setHitTargets(...args) { return this.host?.setHitTargets?.(...args); }
+    clear(...args) { return this.host?.clear?.(...args); }
+    endFrame(...args) { return this.host?.endFrame?.(...args); }
+    appendWorldMapRuntimeHitTargets(...args) { return this.host?.appendWorldMapRuntimeHitTargets?.(...args) || false; }
+    collectMapHomeWorldSiteHitTargets(...args) { return this.host?.collectMapHomeWorldSiteHitTargets?.(...args) || false; }
+    renderWorldMarchHud(...args) { return this.host?.renderWorldMarchHud?.(...args) || false; }
+    renderMapHomeExplorerHud(...args) { return this.host?.renderMapHomeExplorerHud?.(...args) || false; }
+    renderTabs(...args) { return this.host?.renderTabs?.(...args); }
+    renderMapHomeOverlays(...args) { return this.mapHomeOverlayRenderer?.renderMapHomeOverlays?.(...args); }
+    renderTutorialIntro(...args) { return this.host?.renderTutorialIntro?.(...args); }
+    renderTutorialHighlight(...args) { return this.host?.renderTutorialHighlight?.(...args); }
+    renderFloatingTexts(...args) { return this.host?.renderFloatingTexts?.(...args); }
+    renderRewardReveal(...args) { return this.host?.renderRewardReveal?.(...args); }
+    renderNetworkOverlay(...args) { return this.host?.renderNetworkOverlay?.(...args); }
+    renderCanvasDebugResetButton(...args) { return this.host?.renderCanvasDebugResetButton?.(...args) || false; }
+    renderConfirmDialog(...args) { return this.host?.renderConfirmDialog?.(...args); }
+    renderFloatingSubcityButton(...args) { return this.host?.renderFloatingSubcityButton?.(...args); }
+    renderFloatingEventButton(...args) { return this.host?.renderFloatingEventButton?.(...args); }
+    renderFloatingAdvisorButton(...args) { return this.host?.renderFloatingAdvisorButton?.(...args); }
+    renderMapCommandPanel(...args) { return this.host?.renderMapCommandPanel?.(...args); }
+    renderSubcityListPanel(...args) { return this.host?.renderSubcityListPanel?.(...args); }
+    renderCityManagementPanel(...args) { return this.host?.renderCityManagementPanel?.(...args); }
+    renderTopBar(...args) { return this.host?.renderTopBar?.(...args) ?? 84; }
+    renderHudTabPageWithTransition(...args) { return this.host?.renderHudTabPageWithTransition?.(...args); }
+    renderLoginPanel(...args) { return this.host?.renderLoginPanel?.(...args); }
+    renderLoadingScreen(...args) { return this.host?.renderLoadingScreen?.(...args); }
+    renderEntityBattleOverlay(...args) { return this.host?.renderEntityBattleOverlay?.(...args); }
+    renderBattleSceneOverlay(...args) { return this.host?.renderBattleSceneOverlay?.(...args); }
+    renderResourceDetailsPanel(...args) { return this.host?.renderResourceDetailsPanel?.(...args); }
+    renderSettingsPanel(...args) { return this.host?.renderSettingsPanel?.(...args); }
+    renderLogsPanel(...args) { return this.host?.renderLogsPanel?.(...args); }
+    renderCitySwitcherMenu(...args) { return this.host?.renderCitySwitcherMenu?.(...args); }
+    renderTutorialAdvisorDialogue(...args) { return this.host?.renderTutorialAdvisorDialogue?.(...args); }
+    renderAdvisorPanel(...args) { return this.host?.renderAdvisorPanel?.(...args); }
+    renderTaskCenterPanel(...args) { return this.host?.renderTaskCenterPanel?.(...args); }
+    renderGuidebookPanel(...args) { return this.host?.renderGuidebookPanel?.(...args); }
+    renderFamousPersonsPanel(...args) { return this.host?.renderFamousPersonsPanel?.(...args); }
+    renderArmyFormationEditor(...args) { return this.host?.renderArmyFormationEditor?.(...args); }
+    renderEventModal(...args) { return this.host?.renderEventModal?.(...args); }
+    renderTechDetailModal(...args) { return this.host?.renderTechDetailModal?.(...args); }
+    renderWorldSiteModal(...args) { return this.host?.renderWorldSiteModal?.(...args) || false; }
+    renderNamingModal(...args) { return this.host?.renderNamingModal?.(...args); }
 
     getMapHomeWorldHudContext(options = {}) {
       const contexts = [

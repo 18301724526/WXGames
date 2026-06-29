@@ -17,6 +17,7 @@
   }
   const H5CanvasViewport = global.H5CanvasViewport || (typeof require === 'function' ? require('./H5CanvasViewport') : null);
   const H5CanvasInputController = global.H5CanvasInputController || (typeof require === 'function' ? require('./H5CanvasInputController') : null);
+  const CanvasRuntimeContract = global.CanvasRuntimeContract || (typeof require === 'function' ? require('./CanvasRuntimeContract') : null);
 
   class H5CanvasRuntime {
     constructor(options = {}) {
@@ -54,6 +55,9 @@
       this.handleTouchStart = this.handleTouchStart.bind(this);
       this.handleTouchMove = this.handleTouchMove.bind(this);
       this.handleTouchEnd = this.handleTouchEnd.bind(this);
+      this.canvasRuntimeContract = CanvasRuntimeContract?.assertRuntime?.(this, {
+        runtimeName: 'H5CanvasRuntime',
+      }) || null;
     }
 
     ensureCanvas() {

@@ -1,18 +1,10 @@
 (function (global) {
   const CORE_FACADE_METHODS = Object.freeze({
-    delegateSurfaceRenderer(method, args = []) {
-      const renderer = this.surfaceRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...Array.from(args));
-    },
-
-    hasSurfaceRendererMethod(method) {
-      const renderer = this.surfaceRenderer;
-      return Boolean(renderer && typeof renderer[method] === 'function');
-    },
-
     getLayout(...args) {
-      const result = this.delegateSurfaceRenderer('getLayout', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.getLayout === 'function'
+        ? renderer.getLayout(...args)
+        : undefined;
       if (result !== undefined) return result;
       const contentWidth = Math.min(this.maxContentWidth, Math.max(300, this.width - this.edgePadding * 2));
       const contentX = Math.max(this.edgePadding, Math.floor((this.width - contentWidth) / 2));
@@ -20,36 +12,37 @@
     },
 
     createGradient(...args) {
-      const result = this.delegateSurfaceRenderer('createGradient', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.createGradient === 'function'
+        ? renderer.createGradient(...args)
+        : undefined;
       return result === undefined ? (args[5] || '#000') : result;
     },
 
     createRadialGradient(...args) {
-      const result = this.delegateSurfaceRenderer('createRadialGradient', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.createRadialGradient === 'function'
+        ? renderer.createRadialGradient(...args)
+        : undefined;
       return result === undefined ? (args[7] || '#000') : result;
     },
 
     roundRectPath(...args) {
-      return this.delegateSurfaceRenderer('roundRectPath', args);
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.roundRectPath === 'function'
+        ? renderer.roundRectPath(...args)
+        : undefined;
     },
 
     createImage() {
       return null;
     },
 
-    delegateAssetRenderer(method, args = []) {
-      const renderer = this.assetRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...Array.from(args));
-    },
-
-    hasAssetRendererMethod(method) {
-      const renderer = this.assetRenderer;
-      return Boolean(renderer && typeof renderer[method] === 'function');
-    },
-
     preloadAssets(...args) {
-      const result = this.delegateAssetRenderer('preloadAssets', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.preloadAssets === 'function'
+        ? renderer.preloadAssets(...args)
+        : undefined;
       if (result !== undefined) return result;
       const paths = Array.from(new Set((args[0] || this.getPreloadAssetPaths() || []).filter(Boolean)));
       args[1]?.({ total: paths.length, completed: paths.length, loaded: 0, failed: paths.length, percentage: 100 });
@@ -57,56 +50,77 @@
     },
 
     scheduleWorldTileCachePrewarm(...args) {
-      const result = this.delegateAssetRenderer('scheduleWorldTileCachePrewarm', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.scheduleWorldTileCachePrewarm === 'function'
+        ? renderer.scheduleWorldTileCachePrewarm(...args)
+        : undefined;
       return result === undefined
         ? { total: 0, candidateTotal: 0, scheduled: false, metrics: 0, masks: 0, dryTemplates: 0 }
         : result;
     },
 
     isWorldTilePrewarmMetricAssetPath(...args) {
-      const result = this.delegateAssetRenderer('isWorldTilePrewarmMetricAssetPath', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.isWorldTilePrewarmMetricAssetPath === 'function'
+        ? renderer.isWorldTilePrewarmMetricAssetPath(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     isWorldTileTemplateAssetPath(...args) {
-      const result = this.delegateAssetRenderer('isWorldTileTemplateAssetPath', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.isWorldTileTemplateAssetPath === 'function'
+        ? renderer.isWorldTileTemplateAssetPath(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     isWorldTileWaterTemplateAssetPath(...args) {
-      const result = this.delegateAssetRenderer('isWorldTileWaterTemplateAssetPath', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.isWorldTileWaterTemplateAssetPath === 'function'
+        ? renderer.isWorldTileWaterTemplateAssetPath(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     prewarmWorldTileCaches(...args) {
-      const result = this.delegateAssetRenderer('prewarmWorldTileCaches', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.prewarmWorldTileCaches === 'function'
+        ? renderer.prewarmWorldTileCaches(...args)
+        : undefined;
       return result === undefined ? { total: 0, metrics: 0, masks: 0, dryTemplates: 0 } : result;
     },
 
     prewarmWorldTileCachesForLoading(...args) {
-      const result = this.delegateAssetRenderer('prewarmWorldTileCachesForLoading', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.prewarmWorldTileCachesForLoading === 'function'
+        ? renderer.prewarmWorldTileCachesForLoading(...args)
+        : undefined;
       return result === undefined
         ? Promise.resolve({ total: 0, candidateTotal: 0, completed: 0, percentage: 100, metrics: 0, masks: 0, dryTemplates: 0 })
         : result;
     },
 
     getAsset(...args) {
-      const result = this.delegateAssetRenderer('getAsset', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.getAsset === 'function'
+        ? renderer.getAsset(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     setHitTargets(...args) {
-      if (this.hasSurfaceRendererMethod('setHitTargets')) {
-        this.hitTargets = args[0] || [];
-        return this.delegateSurfaceRenderer('setHitTargets', args);
-      }
       this.hitTargets = args[0] || [];
-      return undefined;
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.setHitTargets === 'function'
+        ? renderer.setHitTargets(...args)
+        : undefined;
     },
 
     addHitTarget(...args) {
-      if (this.hasSurfaceRendererMethod('addHitTarget')) {
-        const result = this.delegateSurfaceRenderer('addHitTarget', args);
+      const renderer = this.surfaceRenderer;
+      if (typeof renderer?.addHitTarget === 'function') {
+        const result = renderer.addHitTarget(...args);
         if (this.surfaceRenderer?.hitTargets && this.hitTargets !== this.surfaceRenderer.hitTargets) {
           this.hitTargets = this.surfaceRenderer.hitTargets;
         }
@@ -139,33 +153,42 @@
     },
 
     getHitTarget(...args) {
-      const result = this.delegateSurfaceRenderer('getHitTarget', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.getHitTarget === 'function'
+        ? renderer.getHitTarget(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     containsPoint(...args) {
-      const result = this.delegateSurfaceRenderer('containsPoint', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.containsPoint === 'function'
+        ? renderer.containsPoint(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     setHoverPoint(...args) {
-      const result = this.delegateSurfaceRenderer('setHoverPoint', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.setHoverPoint === 'function'
+        ? renderer.setHoverPoint(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
-    delegateFamousRenderer(method, args = []) {
-      const renderer = this.famousRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...Array.from(args));
-    },
-
     isSameFamousSkillTooltipAction(...args) {
-      const result = this.delegateFamousRenderer('isSameFamousSkillTooltipAction', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.isSameFamousSkillTooltipAction === 'function'
+        ? renderer.isSameFamousSkillTooltipAction(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     clearFamousSkillTooltip(...args) {
-      const result = this.delegateFamousRenderer('clearFamousSkillTooltip', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.clearFamousSkillTooltip === 'function'
+        ? renderer.clearFamousSkillTooltip(...args)
+        : undefined;
       if (result !== undefined) return result;
       const changed = Boolean(this.hoverPoint || this.activeFamousSkillTooltip || this.pinnedFamousSkillTooltip);
       this.hoverPoint = null;
@@ -175,88 +198,114 @@
     },
 
     setPinnedFamousSkillTooltip(...args) {
-      const result = this.delegateFamousRenderer('setPinnedFamousSkillTooltip', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.setPinnedFamousSkillTooltip === 'function'
+        ? renderer.setPinnedFamousSkillTooltip(...args)
+        : undefined;
       return result === undefined ? this.clearFamousSkillTooltip() : result;
     },
 
     getFamousSkillTooltipAction(...args) {
-      const result = this.delegateFamousRenderer('getFamousSkillTooltipAction', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.getFamousSkillTooltipAction === 'function'
+        ? renderer.getFamousSkillTooltipAction(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     isAllowedUnderTutorialShield(...args) {
-      const result = this.delegateSurfaceRenderer('isAllowedUnderTutorialShield', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.isAllowedUnderTutorialShield === 'function'
+        ? renderer.isAllowedUnderTutorialShield(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     matchesTutorialShieldAllowedAction(...args) {
-      const result = this.delegateSurfaceRenderer('matchesTutorialShieldAllowedAction', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.matchesTutorialShieldAllowedAction === 'function'
+        ? renderer.matchesTutorialShieldAllowedAction(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     matchesCurrentTutorialIntroAction(...args) {
-      const result = this.delegateSurfaceRenderer('matchesCurrentTutorialIntroAction', args);
+      const renderer = this.surfaceRenderer;
+      const result = typeof renderer?.matchesCurrentTutorialIntroAction === 'function'
+        ? renderer.matchesCurrentTutorialIntroAction(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     withSuppressedHitTargets(...args) {
-      if (this.hasSurfaceRendererMethod('withSuppressedHitTargets')) {
-        return this.delegateSurfaceRenderer('withSuppressedHitTargets', args);
-      }
-      return args[0]?.();
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.withSuppressedHitTargets === 'function'
+        ? renderer.withSuppressedHitTargets(...args)
+        : args[0]?.();
     },
 
     withSlideClip(...args) {
-      if (this.hasSurfaceRendererMethod('withSlideClip')) {
-        return this.delegateSurfaceRenderer('withSlideClip', args);
-      }
-      return args[5]?.();
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.withSlideClip === 'function'
+        ? renderer.withSlideClip(...args)
+        : args[5]?.();
     },
 
     withTranslatedClip(...args) {
-      if (this.hasSurfaceRendererMethod('withTranslatedClip')) {
-        return this.delegateSurfaceRenderer('withTranslatedClip', args);
-      }
-      return args[6]?.();
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.withTranslatedClip === 'function'
+        ? renderer.withTranslatedClip(...args)
+        : args[6]?.();
     },
 
     withTransformedClip(...args) {
-      if (this.hasSurfaceRendererMethod('withTransformedClip')) {
-        return this.delegateSurfaceRenderer('withTransformedClip', args);
-      }
-      return args[7]?.();
+      const renderer = this.surfaceRenderer;
+      return typeof renderer?.withTransformedClip === 'function'
+        ? renderer.withTransformedClip(...args)
+        : args[7]?.();
     },
 
     setAssetsChangedHandler(...args) {
-      const result = this.delegateAssetRenderer('setAssetsChangedHandler', args);
-      if (result !== undefined || this.hasAssetRendererMethod('setAssetsChangedHandler')) return result;
+      const renderer = this.assetRenderer;
+      if (typeof renderer?.setAssetsChangedHandler === 'function') {
+        return renderer.setAssetsChangedHandler(...args);
+      }
       this.assetsChangedHandler = typeof args[0] === 'function' ? args[0] : null;
       return undefined;
     },
 
     handleAssetsChanged(...args) {
-      const result = this.delegateAssetRenderer('handleAssetsChanged', args);
-      if (result !== undefined || this.hasAssetRendererMethod('handleAssetsChanged')) return result;
+      const renderer = this.assetRenderer;
+      if (typeof renderer?.handleAssetsChanged === 'function') {
+        return renderer.handleAssetsChanged(...args);
+      }
       this.invalidateWorldTileCaches();
       if (this.assetsChangedHandler) this.assetsChangedHandler();
       return undefined;
     },
 
     invalidateWorldTileCaches(...args) {
-      const result = this.delegateAssetRenderer('invalidateWorldTileCaches', args);
-      if (result !== undefined || this.hasAssetRendererMethod('invalidateWorldTileCaches')) return result;
+      const renderer = this.assetRenderer;
+      if (typeof renderer?.invalidateWorldTileCaches === 'function') {
+        return renderer.invalidateWorldTileCaches(...args);
+      }
       this.invalidateWorldTileViewCache();
       return undefined;
     },
 
     hasPreparedWorldTileSnapshotCache(...args) {
-      const result = this.delegateAssetRenderer('hasPreparedWorldTileSnapshotCache', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.hasPreparedWorldTileSnapshotCache === 'function'
+        ? renderer.hasPreparedWorldTileSnapshotCache(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     invalidateWorldTileViewCache(...args) {
-      const result = this.delegateAssetRenderer('invalidateWorldTileViewCache', args);
-      if (result !== undefined || this.hasAssetRendererMethod('invalidateWorldTileViewCache')) return result;
+      const renderer = this.assetRenderer;
+      if (typeof renderer?.invalidateWorldTileViewCache === 'function') {
+        return renderer.invalidateWorldTileViewCache(...args);
+      }
       this.worldTileViewCache = null;
       this.worldTileVisibleEntriesCache = null;
       this.worldTileLocalEntriesCache = null;
@@ -264,17 +313,26 @@
     },
 
     drawAsset(...args) {
-      const result = this.delegateAssetRenderer('drawAsset', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.drawAsset === 'function'
+        ? renderer.drawAsset(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawAssetClipped(...args) {
-      const result = this.delegateAssetRenderer('drawAssetClipped', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.drawAssetClipped === 'function'
+        ? renderer.drawAssetClipped(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     getFallbackAssetMetrics(...args) {
-      const result = this.delegateAssetRenderer('getFallbackAssetMetrics', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.getFallbackAssetMetrics === 'function'
+        ? renderer.getFallbackAssetMetrics(...args)
+        : undefined;
       if (result !== undefined) return result;
       const [image] = args;
       const width = Number(image?.naturalWidth || image?.width || 1) || 1;
@@ -283,58 +341,82 @@
     },
 
     isOpaquePixel(...args) {
-      const result = this.delegateAssetRenderer('isOpaquePixel', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.isOpaquePixel === 'function'
+        ? renderer.isOpaquePixel(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     isWorldTileTemplateWaterPixel(...args) {
-      const result = this.delegateAssetRenderer('isWorldTileTemplateWaterPixel', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.isWorldTileTemplateWaterPixel === 'function'
+        ? renderer.isWorldTileTemplateWaterPixel(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     measurePixelBounds(...args) {
-      const result = this.delegateAssetRenderer('measurePixelBounds', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.measurePixelBounds === 'function'
+        ? renderer.measurePixelBounds(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     analyzeAssetAlphaBounds(...args) {
-      const result = this.delegateAssetRenderer('analyzeAssetAlphaBounds', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.analyzeAssetAlphaBounds === 'function'
+        ? renderer.analyzeAssetAlphaBounds(...args)
+        : undefined;
       return result === undefined ? this.getFallbackAssetMetrics(null) : result;
     },
 
     getIsoTileSourceRect(...args) {
-      const result = this.delegateAssetRenderer('getIsoTileSourceRect', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.getIsoTileSourceRect === 'function'
+        ? renderer.getIsoTileSourceRect(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     getWorldTileTemplateMetrics(...args) {
-      const result = this.delegateAssetRenderer('getWorldTileTemplateMetrics', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.getWorldTileTemplateMetrics === 'function'
+        ? renderer.getWorldTileTemplateMetrics(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     drawTileAsset(...args) {
-      const result = this.delegateAssetRenderer('drawTileAsset', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.drawTileAsset === 'function'
+        ? renderer.drawTileAsset(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     getTemplateCanvasFactory(...args) {
-      const result = this.delegateAssetRenderer('getTemplateCanvasFactory', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.getTemplateCanvasFactory === 'function'
+        ? renderer.getTemplateCanvasFactory(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     createTileWorkCanvas(...args) {
-      const result = this.delegateAssetRenderer('createTileWorkCanvas', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.createTileWorkCanvas === 'function'
+        ? renderer.createTileWorkCanvas(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
-    delegateWorldTileWaterRenderer(method, args = []) {
-      const renderer = this.worldTileWaterRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...Array.from(args));
-    },
-
     isInsideTemplateDiamond(...args) {
-      const result = this.delegateWorldTileWaterRenderer('isInsideTemplateDiamond', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.isInsideTemplateDiamond === 'function'
+        ? renderer.isInsideTemplateDiamond(...args)
+        : undefined;
       if (result !== undefined) return result;
       const [x, y, metrics] = args;
       const centerX = metrics.x + metrics.width * 0.5;
@@ -345,69 +427,108 @@
     },
 
     createWorldTileColorWaterMask(...args) {
-      const result = this.delegateWorldTileWaterRenderer('createWorldTileColorWaterMask', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.createWorldTileColorWaterMask === 'function'
+        ? renderer.createWorldTileColorWaterMask(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     createWorldTileTransparentWaterMask(...args) {
-      const result = this.delegateWorldTileWaterRenderer('createWorldTileTransparentWaterMask', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.createWorldTileTransparentWaterMask === 'function'
+        ? renderer.createWorldTileTransparentWaterMask(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     getWorldTileTemplateMask(...args) {
-      const result = this.delegateWorldTileWaterRenderer('getWorldTileTemplateMask', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.getWorldTileTemplateMask === 'function'
+        ? renderer.getWorldTileTemplateMask(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     getWorldTileDryTemplateCanvas(...args) {
-      const result = this.delegateWorldTileWaterRenderer('getWorldTileDryTemplateCanvas', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.getWorldTileDryTemplateCanvas === 'function'
+        ? renderer.getWorldTileDryTemplateCanvas(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     drawCanvasClipped(...args) {
-      const result = this.delegateAssetRenderer('drawCanvasClipped', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.drawCanvasClipped === 'function'
+        ? renderer.drawCanvasClipped(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     getWorldTileCompositeContext(...args) {
-      const result = this.delegateWorldTileWaterRenderer('getWorldTileCompositeContext', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.getWorldTileCompositeContext === 'function'
+        ? renderer.getWorldTileCompositeContext(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     drawWorldTileTemplateSource(...args) {
-      const result = this.delegateWorldTileWaterRenderer('drawWorldTileTemplateSource', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.drawWorldTileTemplateSource === 'function'
+        ? renderer.drawWorldTileTemplateSource(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawWorldTileDryTemplate(...args) {
-      const result = this.delegateWorldTileWaterRenderer('drawWorldTileDryTemplate', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.drawWorldTileDryTemplate === 'function'
+        ? renderer.drawWorldTileDryTemplate(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     getWorldTileTemplateBaseAsset(...args) {
-      const result = this.delegateWorldTileWaterRenderer('getWorldTileTemplateBaseAsset', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.getWorldTileTemplateBaseAsset === 'function'
+        ? renderer.getWorldTileTemplateBaseAsset(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     getWorldTileWaterTemplateAssets(...args) {
-      const result = this.delegateWorldTileWaterRenderer('getWorldTileWaterTemplateAssets', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.getWorldTileWaterTemplateAssets === 'function'
+        ? renderer.getWorldTileWaterTemplateAssets(...args)
+        : undefined;
       return result === undefined ? [] : result;
     },
 
     getWorldTileWaterWorkContext(...args) {
-      const result = this.delegateWorldTileWaterRenderer('getWorldTileWaterWorkContext', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.getWorldTileWaterWorkContext === 'function'
+        ? renderer.getWorldTileWaterWorkContext(...args)
+        : undefined;
       return result === undefined ? null : result;
     },
 
     positiveModulo(...args) {
-      const result = this.delegateWorldTileWaterRenderer('positiveModulo', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.positiveModulo === 'function'
+        ? renderer.positiveModulo(...args)
+        : undefined;
       if (result !== undefined) return result;
       const [value, size] = args;
       return ((value % size) + size) % size;
     },
 
     getWorldTileMapPosition(...args) {
-      const result = this.delegateWorldTileWaterRenderer('getWorldTileMapPosition', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.getWorldTileMapPosition === 'function'
+        ? renderer.getWorldTileMapPosition(...args)
+        : undefined;
       if (result !== undefined) return result;
       const [tile = {}, geometry = {}] = args;
       const helper = this.constructor.getTileMapGeometry();
@@ -423,27 +544,42 @@
     },
 
     fillWorldTileWaterTexture(...args) {
-      const result = this.delegateWorldTileWaterRenderer('fillWorldTileWaterTexture', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.fillWorldTileWaterTexture === 'function'
+        ? renderer.fillWorldTileWaterTexture(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawWorldTileWaterDiamond(...args) {
-      const result = this.delegateWorldTileWaterRenderer('drawWorldTileWaterDiamond', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.drawWorldTileWaterDiamond === 'function'
+        ? renderer.drawWorldTileWaterDiamond(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawWorldTileWaterLayer(...args) {
-      const result = this.delegateWorldTileWaterRenderer('drawWorldTileWaterLayer', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.drawWorldTileWaterLayer === 'function'
+        ? renderer.drawWorldTileWaterLayer(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawWorldTileWater(...args) {
-      const result = this.delegateWorldTileWaterRenderer('drawWorldTileWater', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.drawWorldTileWater === 'function'
+        ? renderer.drawWorldTileWater(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     isWorldTileMapWaterAnimated(...args) {
-      const result = this.delegateWorldTileWaterRenderer('isWorldTileMapWaterAnimated', args);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.isWorldTileMapWaterAnimated === 'function'
+        ? renderer.isWorldTileMapWaterAnimated(...args)
+        : undefined;
       if (result !== undefined) return result;
       const [tileMapView = {}] = args;
       return (tileMapView.tiles || []).some((tile) => tile.water?.asset);
@@ -550,7 +686,10 @@
     },
 
     drawWorldTileBase(tile = {}, center = {}, drawRect = {}, viewport = {}) {
-      const result = this.delegateWorldTileWaterRenderer('drawWorldTileBase', arguments);
+      const renderer = this.worldTileWaterRenderer;
+      const result = typeof renderer?.drawWorldTileBase === 'function'
+        ? renderer.drawWorldTileBase(tile, center, drawRect, viewport)
+        : undefined;
       if (result !== undefined) return result;
       const baseTemplate = this.getWorldTileTemplateBaseAsset(tile);
       const baseAsset = baseTemplate?.asset || tile.terrainAsset || '';
@@ -561,47 +700,74 @@
     },
 
     drawCoverAsset(...args) {
-      const result = this.delegateAssetRenderer('drawCoverAsset', args);
+      const renderer = this.assetRenderer;
+      const result = typeof renderer?.drawCoverAsset === 'function'
+        ? renderer.drawCoverAsset(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawFamousPortraitLayer(...args) {
-      const result = this.delegateFamousRenderer('drawFamousPortraitLayer', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.drawFamousPortraitLayer === 'function'
+        ? renderer.drawFamousPortraitLayer(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawFamousPortrait(...args) {
-      const result = this.delegateFamousRenderer('drawFamousPortrait', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.drawFamousPortrait === 'function'
+        ? renderer.drawFamousPortrait(...args)
+        : undefined;
       return result === undefined ? false : result;
     },
 
     drawFamousAttributeRadar(...args) {
-      const result = this.delegateFamousRenderer('drawFamousAttributeRadar', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.drawFamousAttributeRadar === 'function'
+        ? renderer.drawFamousAttributeRadar(...args)
+        : undefined;
       return result === undefined ? undefined : result;
     },
 
     drawFamousAttributePointControls(...args) {
-      const result = this.delegateFamousRenderer('drawFamousAttributePointControls', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.drawFamousAttributePointControls === 'function'
+        ? renderer.drawFamousAttributePointControls(...args)
+        : undefined;
       return result === undefined ? 0 : result;
     },
 
     getFamousQualityStyle(...args) {
-      const result = this.delegateFamousRenderer('getFamousQualityStyle', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.getFamousQualityStyle === 'function'
+        ? renderer.getFamousQualityStyle(...args)
+        : undefined;
       return result === undefined ? { fill: 'rgba(43, 43, 42, 0.96)', stroke: '#d9d8cf', inset: 'rgba(255, 255, 255, 0.18)', glow: 'rgba(255, 255, 255, 0.1)', text: '#eeeee8' } : result;
     },
 
     drawFamousAvatarCard(...args) {
-      const result = this.delegateFamousRenderer('drawFamousAvatarCard', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.drawFamousAvatarCard === 'function'
+        ? renderer.drawFamousAvatarCard(...args)
+        : undefined;
       return result === undefined ? undefined : result;
     },
 
     renderFamousRosterGrid(...args) {
-      const result = this.delegateFamousRenderer('renderFamousRosterGrid', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.renderFamousRosterGrid === 'function'
+        ? renderer.renderFamousRosterGrid(...args)
+        : undefined;
       return result === undefined ? { nextY: args[2] || 0, pageInfo: { index: 0, pages: 1 } } : result;
     },
 
     renderFamousPersonDetail(...args) {
-      const result = this.delegateFamousRenderer('renderFamousPersonDetail', args);
+      const renderer = this.famousRenderer;
+      const result = typeof renderer?.renderFamousPersonDetail === 'function'
+        ? renderer.renderFamousPersonDetail(...args)
+        : undefined;
       return result === undefined ? undefined : result;
     },
   });
@@ -609,12 +775,85 @@
   function installCoreFacades(RendererClass) {
     const proto = RendererClass?.prototype;
     if (!proto) return RendererClass;
-    Object.entries(CORE_FACADE_METHODS).forEach(([method, value]) => {
-      Object.defineProperty(proto, method, {
-        configurable: true,
-        writable: true,
-        value,
-      });
+    Object.defineProperties(proto, {
+      getLayout: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getLayout },
+      createGradient: { configurable: true, writable: true, value: CORE_FACADE_METHODS.createGradient },
+      createRadialGradient: { configurable: true, writable: true, value: CORE_FACADE_METHODS.createRadialGradient },
+      roundRectPath: { configurable: true, writable: true, value: CORE_FACADE_METHODS.roundRectPath },
+      createImage: { configurable: true, writable: true, value: CORE_FACADE_METHODS.createImage },
+      preloadAssets: { configurable: true, writable: true, value: CORE_FACADE_METHODS.preloadAssets },
+      scheduleWorldTileCachePrewarm: { configurable: true, writable: true, value: CORE_FACADE_METHODS.scheduleWorldTileCachePrewarm },
+      isWorldTilePrewarmMetricAssetPath: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isWorldTilePrewarmMetricAssetPath },
+      isWorldTileTemplateAssetPath: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isWorldTileTemplateAssetPath },
+      isWorldTileWaterTemplateAssetPath: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isWorldTileWaterTemplateAssetPath },
+      prewarmWorldTileCaches: { configurable: true, writable: true, value: CORE_FACADE_METHODS.prewarmWorldTileCaches },
+      prewarmWorldTileCachesForLoading: { configurable: true, writable: true, value: CORE_FACADE_METHODS.prewarmWorldTileCachesForLoading },
+      getAsset: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getAsset },
+      setHitTargets: { configurable: true, writable: true, value: CORE_FACADE_METHODS.setHitTargets },
+      addHitTarget: { configurable: true, writable: true, value: CORE_FACADE_METHODS.addHitTarget },
+      appendWorldMapRuntimeHitTargets: { configurable: true, writable: true, value: CORE_FACADE_METHODS.appendWorldMapRuntimeHitTargets },
+      getHitTarget: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getHitTarget },
+      containsPoint: { configurable: true, writable: true, value: CORE_FACADE_METHODS.containsPoint },
+      setHoverPoint: { configurable: true, writable: true, value: CORE_FACADE_METHODS.setHoverPoint },
+      isSameFamousSkillTooltipAction: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isSameFamousSkillTooltipAction },
+      clearFamousSkillTooltip: { configurable: true, writable: true, value: CORE_FACADE_METHODS.clearFamousSkillTooltip },
+      setPinnedFamousSkillTooltip: { configurable: true, writable: true, value: CORE_FACADE_METHODS.setPinnedFamousSkillTooltip },
+      getFamousSkillTooltipAction: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getFamousSkillTooltipAction },
+      isAllowedUnderTutorialShield: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isAllowedUnderTutorialShield },
+      matchesTutorialShieldAllowedAction: { configurable: true, writable: true, value: CORE_FACADE_METHODS.matchesTutorialShieldAllowedAction },
+      matchesCurrentTutorialIntroAction: { configurable: true, writable: true, value: CORE_FACADE_METHODS.matchesCurrentTutorialIntroAction },
+      withSuppressedHitTargets: { configurable: true, writable: true, value: CORE_FACADE_METHODS.withSuppressedHitTargets },
+      withSlideClip: { configurable: true, writable: true, value: CORE_FACADE_METHODS.withSlideClip },
+      withTranslatedClip: { configurable: true, writable: true, value: CORE_FACADE_METHODS.withTranslatedClip },
+      withTransformedClip: { configurable: true, writable: true, value: CORE_FACADE_METHODS.withTransformedClip },
+      setAssetsChangedHandler: { configurable: true, writable: true, value: CORE_FACADE_METHODS.setAssetsChangedHandler },
+      handleAssetsChanged: { configurable: true, writable: true, value: CORE_FACADE_METHODS.handleAssetsChanged },
+      invalidateWorldTileCaches: { configurable: true, writable: true, value: CORE_FACADE_METHODS.invalidateWorldTileCaches },
+      hasPreparedWorldTileSnapshotCache: { configurable: true, writable: true, value: CORE_FACADE_METHODS.hasPreparedWorldTileSnapshotCache },
+      invalidateWorldTileViewCache: { configurable: true, writable: true, value: CORE_FACADE_METHODS.invalidateWorldTileViewCache },
+      drawAsset: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawAsset },
+      drawAssetClipped: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawAssetClipped },
+      getFallbackAssetMetrics: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getFallbackAssetMetrics },
+      isOpaquePixel: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isOpaquePixel },
+      isWorldTileTemplateWaterPixel: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isWorldTileTemplateWaterPixel },
+      measurePixelBounds: { configurable: true, writable: true, value: CORE_FACADE_METHODS.measurePixelBounds },
+      analyzeAssetAlphaBounds: { configurable: true, writable: true, value: CORE_FACADE_METHODS.analyzeAssetAlphaBounds },
+      getIsoTileSourceRect: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getIsoTileSourceRect },
+      getWorldTileTemplateMetrics: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileTemplateMetrics },
+      drawTileAsset: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawTileAsset },
+      getTemplateCanvasFactory: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getTemplateCanvasFactory },
+      createTileWorkCanvas: { configurable: true, writable: true, value: CORE_FACADE_METHODS.createTileWorkCanvas },
+      isInsideTemplateDiamond: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isInsideTemplateDiamond },
+      createWorldTileColorWaterMask: { configurable: true, writable: true, value: CORE_FACADE_METHODS.createWorldTileColorWaterMask },
+      createWorldTileTransparentWaterMask: { configurable: true, writable: true, value: CORE_FACADE_METHODS.createWorldTileTransparentWaterMask },
+      getWorldTileTemplateMask: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileTemplateMask },
+      getWorldTileDryTemplateCanvas: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileDryTemplateCanvas },
+      drawCanvasClipped: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawCanvasClipped },
+      getWorldTileCompositeContext: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileCompositeContext },
+      drawWorldTileTemplateSource: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawWorldTileTemplateSource },
+      drawWorldTileDryTemplate: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawWorldTileDryTemplate },
+      getWorldTileTemplateBaseAsset: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileTemplateBaseAsset },
+      getWorldTileWaterTemplateAssets: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileWaterTemplateAssets },
+      getWorldTileWaterWorkContext: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileWaterWorkContext },
+      positiveModulo: { configurable: true, writable: true, value: CORE_FACADE_METHODS.positiveModulo },
+      getWorldTileMapPosition: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileMapPosition },
+      fillWorldTileWaterTexture: { configurable: true, writable: true, value: CORE_FACADE_METHODS.fillWorldTileWaterTexture },
+      drawWorldTileWaterDiamond: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawWorldTileWaterDiamond },
+      drawWorldTileWaterLayer: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawWorldTileWaterLayer },
+      drawWorldTileWater: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawWorldTileWater },
+      isWorldTileMapWaterAnimated: { configurable: true, writable: true, value: CORE_FACADE_METHODS.isWorldTileMapWaterAnimated },
+      getWorldTileMapFallbackSignature: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getWorldTileMapFallbackSignature },
+      resolveWorldTileMapView: { configurable: true, writable: true, value: CORE_FACADE_METHODS.resolveWorldTileMapView },
+      drawWorldTileBase: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawWorldTileBase },
+      drawCoverAsset: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawCoverAsset },
+      drawFamousPortraitLayer: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawFamousPortraitLayer },
+      drawFamousPortrait: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawFamousPortrait },
+      drawFamousAttributeRadar: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawFamousAttributeRadar },
+      drawFamousAttributePointControls: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawFamousAttributePointControls },
+      getFamousQualityStyle: { configurable: true, writable: true, value: CORE_FACADE_METHODS.getFamousQualityStyle },
+      drawFamousAvatarCard: { configurable: true, writable: true, value: CORE_FACADE_METHODS.drawFamousAvatarCard },
+      renderFamousRosterGrid: { configurable: true, writable: true, value: CORE_FACADE_METHODS.renderFamousRosterGrid },
+      renderFamousPersonDetail: { configurable: true, writable: true, value: CORE_FACADE_METHODS.renderFamousPersonDetail },
     });
     return RendererClass;
   }

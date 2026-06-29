@@ -2,25 +2,24 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialGuideController = require('./TutorialGuideController');
-const CanvasModeOwnershipBridge = require('../platform/CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('../platform/CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('../platform/CanvasModalSnapshotAdapter');
 
 // Batch 8F: the 12 blocking panels are owned modal subtypes. A modal-capable host
 // carries the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the
 // snapshot adapter (openBlockingPanelSnapshot/closeBlockingPanelSnapshot/
 // isBlockingPanelSnapshotOpen/getCommandPanelValue) so the controller reads/writes
-// blocking-panel state through the owner instead of host mirrors. Adapter writes fan
-// out across related hosts (game -> canvasShell), so seeding/asserting on game is
-// observable on the shell once shell.lastGame links them.
+// blocking-panel state through the canonical owner instead of host mirrors. Shell
+// reads resolve back to the game owner once shell.lastGame links them.
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {
   return Object.assign(new ModalHost(), fields);
 }
 
-// Link a game host and its canvasShell so the adapter fan-out reaches both directions.
+// Link a game host and its canvasShell so shell reads resolve to the game owner.
 function linkGameShell(game, shell) {
   if (game) game.canvasShell = shell;
   if (shell) shell.lastGame = game;
@@ -136,7 +135,8 @@ test('TutorialGuideController highlights the house build button when available',
 
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
-  assert.equal(shell.activeCityManagementTab, 'buildings');
+  assert.equal(game.activeCityManagementTab, 'buildings');
+  assert.equal(shell.activeCityManagementTab, '');
   assert.equal(calls.some((call) => call.options?.allowedAction?.buildingId === 'house'), true);
 });
 
@@ -327,7 +327,7 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'farm' });
   assert.equal(game.activeBuildingCategory, 'agriculture');
-  assert.equal(game.canvasShell.activeBuildingCategory, 'agriculture');
+  assert.equal(game.canvasShell.activeBuildingCategory, undefined);
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.era2AdvanceReady });
   game.state.currentTab = 'buildings';
@@ -378,7 +378,7 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'lumbermill' });
   assert.equal(game.canvasShell.getCommandPanelValue(), 'buildings');
   assert.equal(game.activeBuildingCategory, 'production');
-  assert.equal(game.canvasShell.activeBuildingCategory, 'production');
+  assert.equal(game.canvasShell.activeBuildingCategory, undefined);
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.lumbermillBuilt });
   game.openBlockingPanelSnapshot('showTaskCenter', true);
@@ -507,12 +507,10 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   await controller.onFamousPersonDetailOpened('fp-scout');
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.famousCardViewed);
   game.selectedFamousPersonId = 'fp-scout';
-  shell.selectedFamousPersonId = 'fp-scout';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'closeFamousPersonDetail' });
 
   game.selectedFamousPersonId = '';
-  shell.selectedFamousPersonId = '';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'closeFamousPersons' });
 
@@ -530,12 +528,10 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'enterCity', cityId: 'capital' });
 
   game.openBlockingPanelSnapshot('showCityManagement', true);
-  shell.activeCityManagementTab = 'buildings';
   game.activeCityManagementTab = 'buildings';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'switchCityManagementTab', tab: 'military' });
 
-  shell.activeCityManagementTab = 'military';
   game.activeCityManagementTab = 'military';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openArmyFormation', cityId: 'capital', slot: 1 });
@@ -1003,7 +999,7 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(game.activeCityManagementTab, 'people');
-  assert.equal(shell.activeCityManagementTab, 'people');
+  assert.notEqual(shell.activeCityManagementTab, 'people');
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
   assert.equal(calls.some((call) => call.options?.allowedAction?.type === 'openCityManagement'), false);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'assignJob', job: 'scholar', delta: 1 });
@@ -1078,7 +1074,7 @@ test('TutorialGuideController keeps map home while opening city people guide dir
   assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(game.activeCityManagementTab, 'people');
-  assert.equal(shell.activeCityManagementTab, 'people');
+  assert.notEqual(shell.activeCityManagementTab, 'people');
   assert.equal(game.state.currentTab, 'military');
   assert.equal(game.state.militaryView, 'world');
   assert.deepEqual(

@@ -141,6 +141,10 @@
       this.baseUrl = baseUrl;
       this.token = token || null;
       this.transport = options.transport || null;
+      this.trace = options.trace || null;
+      this.abortControllerFactory = typeof options.abortControllerFactory === 'function'
+        ? options.abortControllerFactory
+        : null;
       this.timeoutMs = Math.max(0, toNumber(options.timeoutMs, DEFAULT_TIMEOUT_MS));
       this.maxRetries = Math.max(0, Math.floor(toNumber(options.maxRetries, DEFAULT_MAX_RETRIES)));
       this.retryBaseDelayMs = Math.max(0, toNumber(options.retryBaseDelayMs, DEFAULT_RETRY_BASE_DELAY_MS));
@@ -205,7 +209,7 @@
           action: actionBody.action || '',
         },
       });
-      const loadTrace = global.H5LoadTrace;
+      const loadTrace = this.trace;
       const loadTraceSpan = loadTrace?.apiStart?.(method, path, requestPayload.url, {
         requestId,
         hasToken: Boolean(this.token),
@@ -403,23 +407,22 @@
     }
 
     async performRequest(requestPayload) {
-      const abortController = typeof global.AbortController === 'function'
-        ? new global.AbortController()
-        : null;
+      const abortController = this.abortControllerFactory?.() || null;
       let timeoutId = null;
       let didTimeout = false;
       const payload = {
         ...requestPayload,
         signal: abortController?.signal,
       };
-      const requestPromise = this.transport && typeof this.transport.request === 'function'
-        ? this.transport.request(payload)
-        : fetch(payload.url, {
-          method: payload.method,
-          headers: payload.headers,
-          body: payload.body,
-          signal: payload.signal,
+      if (!this.transport || typeof this.transport.request !== 'function') {
+        throw createApiError('GameAPI transport is not configured', {
+          code: 'GAME_API_TRANSPORT_MISSING',
+          status: 0,
+          path: payload.path,
+          requestId: payload.requestId,
         });
+      }
+      const requestPromise = this.transport.request(payload);
       const timeoutPromise = this.timeoutMs > 0
         ? new Promise((_, reject) => {
           timeoutId = this.scheduler.setTimeout(() => {

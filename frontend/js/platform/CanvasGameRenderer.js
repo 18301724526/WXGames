@@ -112,6 +112,7 @@
       this.presenter = options.presenter || null;
       this.ctx = options.ctx || null;
       this.canvas = options.canvas || null;
+      this.loadTrace = options.loadTrace || null;
       this.pixelRatio = options.pixelRatio || 1;
       this.width = options.width || 390;
       this.height = options.height || 844;

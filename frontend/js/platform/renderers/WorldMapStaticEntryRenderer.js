@@ -25,8 +25,22 @@
   class WorldMapStaticEntryRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+      this.renderCtx = null;
+    }
+
+    get ctx() {
+      return this.renderCtx || this.host?.ctx || null;
+    }
+
+    withRenderCtx(ctx = null, callback = null) {
+      if (typeof callback !== 'function') return false;
+      const previousCtx = this.renderCtx;
+      this.renderCtx = ctx || null;
+      try {
+        return callback();
+      } finally {
+        this.renderCtx = previousCtx;
+      }
     }
 
     getTileMapAssetManifest() {
@@ -49,6 +63,54 @@
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
+    addHitTarget(rect, action) {
+      return this.host?.addHitTarget?.(rect, action);
+    }
+
+    analyzeAssetAlphaBounds(assetPath = '') {
+      return this.host?.analyzeAssetAlphaBounds?.(assetPath) || null;
+    }
+
+    drawIsoDiamond(...args) {
+      return this.host?.drawIsoDiamond?.(...args);
+    }
+
+    drawText(...args) {
+      return this.host?.drawText?.(...args);
+    }
+
+    drawWorldTileBase(...args) {
+      return this.host?.drawWorldTileBase?.(...args) || false;
+    }
+
+    drawWorldTileDryTemplate(...args) {
+      return this.host?.drawWorldTileDryTemplate?.(...args) || false;
+    }
+
+    getAsset(assetPath = '') {
+      return this.host?.getAsset?.(assetPath) || null;
+    }
+
+    getFallbackTerrainFill(terrain = 'plains') {
+      return this.host?.getFallbackTerrainFill?.(terrain) || 'rgba(90, 122, 70, 0.9)';
+    }
+
+    getWorldOverlayAnchor(...args) {
+      return this.host?.getWorldOverlayAnchor?.(...args) || { x: 0, y: 0 };
+    }
+
+    getWorldTileSiteLayout(...args) {
+      return this.host?.getWorldTileSiteLayout?.(...args) || null;
+    }
+
+    random01(...args) {
+      return this.host?.random01?.(...args) || 0;
+    }
+
+    truncateText(text, maxWidth, options = {}) {
+      return this.host?.truncateText?.(text, maxWidth, options) ?? String(text ?? '');
     }
 
     getWorldTileImageAspect(assetPath = '') {

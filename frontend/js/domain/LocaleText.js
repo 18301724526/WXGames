@@ -13,6 +13,7 @@
 
   const LOCALE_STORAGE_KEY = 'wxgame_locale';
   let activeLocale = '';
+  let storageAdapter = null;
 
   function normalizeLocale(value = '') {
     return (
@@ -22,7 +23,7 @@
 
   function readStoredLocale() {
     try {
-      return global.localStorage?.getItem?.(LOCALE_STORAGE_KEY) || '';
+      return storageAdapter?.getItem?.(LOCALE_STORAGE_KEY) || '';
     } catch (_error) {
       return '';
     }
@@ -30,7 +31,7 @@
 
   function writeStoredLocale(locale = '') {
     try {
-      global.localStorage?.setItem?.(LOCALE_STORAGE_KEY, locale);
+      storageAdapter?.setItem?.(LOCALE_STORAGE_KEY, locale);
     } catch (_error) {
       // Ignore storage failures; language selection still works in memory.
     }
@@ -82,6 +83,12 @@
     return (key = '', params = {}, overrides = {}) => t(key, params, { ...options, ...overrides });
   }
 
+  function setStorageAdapter(adapter = null) {
+    storageAdapter = adapter && typeof adapter === 'object' ? adapter : null;
+    resolvedCache = { raw: null, value: '' };
+    return storageAdapter;
+  }
+
   const LocaleText = Object.freeze({
     version: 'locale-text-v1',
     createTranslator,
@@ -91,6 +98,7 @@
     interpolate,
     normalizeLocale,
     setLocale,
+    setStorageAdapter,
     t,
     translate: t,
   });

@@ -40,8 +40,9 @@
   }
 
   function getRequestAnimationFrame(host = {}) {
-    const raf = host.runtime?.requestAnimationFrame || global.requestAnimationFrame;
-    return typeof raf === 'function' ? raf.bind(host.runtime || global) : null;
+    const raf = host.runtime?.requestAnimationFrame || host.scheduler?.requestAnimationFrame;
+    const owner = host.runtime?.requestAnimationFrame ? host.runtime : host.scheduler;
+    return typeof raf === 'function' ? raf.bind(owner) : null;
   }
 
   function getFrameMs(host = {}) {

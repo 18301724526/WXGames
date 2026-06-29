@@ -19,41 +19,61 @@
   const SharedTutorialAdvisorCanvasRenderer = resolveRendererDependency('TutorialAdvisorCanvasRenderer', './TutorialAdvisorCanvasRenderer');
   const SharedTutorialDialogueLayer = resolveRendererDependency('TutorialDialogueLayer', './TutorialDialogueLayer');
   const SharedTutorialAdvisorDialogueRenderer = resolveRendererDependency('TutorialAdvisorDialogueRenderer', './TutorialAdvisorDialogueRenderer');
+  const CanvasLayerRegistry = resolveRendererDependency('CanvasLayerRegistry', '../CanvasLayerRegistry');
   class TutorialCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.drawingSurface = options.drawingSurface || null;
       const AdvisorRendererClass = options.advisorRendererClass || SharedTutorialAdvisorCanvasRenderer;
-      this.advisorRenderer = options.advisorRenderer || (AdvisorRendererClass ? new AdvisorRendererClass({ host: this.host }) : null);
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+      this.advisorRenderer = options.advisorRenderer || (AdvisorRendererClass ? new AdvisorRendererClass({ host: this.host, drawingSurface: this.drawingSurface || this.host }) : null);
     }
+
+    get bottomSafeArea() { return Number(this.host?.bottomSafeArea) || 0; }
+    get ctx() { return this.host?.ctx || null; }
+    get height() { return Number(this.host?.height) || 0; }
+    get h5Runtime() { return this.host?.h5Runtime || null; }
+    get hitTargets() { return this.host?.hitTargets || null; }
+    get presenter() { return this.host?.presenter || null; }
+    get width() { return Number(this.host?.width) || 0; }
+    get worldMapRenderer() { return this.host?.worldMapRenderer || null; }
+
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    ensureCanvasLayer(name = '', overrides = {}) { return this.host?.ensureCanvasLayer?.(name, overrides) || this.h5Runtime?.ensureLayerCanvas?.(name, CanvasLayerRegistry?.getLayerOptions?.(name, overrides) || overrides) || null; }
+    getAsset(...args) { return this.host?.getAsset?.(...args) || null; }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args) ?? { contentX: 0, contentWidth: this.width, contentRight: this.width }; }
+    getNow(...args) { const surface = this.drawingSurface; return surface && typeof surface.getNow === 'function' ? surface.getNow(...args) : this.host?.getNow?.(...args) ?? Date.now(); }
+    getWorldSiteCanvasAnchor(...args) { return this.host?.getWorldSiteCanvasAnchor?.(...args) || null; }
+    interpolateRect(...args) { return this.host?.interpolateRect?.(...args) ?? (args[1] || args[0] || {}); }
+    parsePixelValue(value) { return this.host?.parsePixelValue?.(value) ?? (Number.isFinite(Number(String(value ?? '').replace('px', ''))) ? Number(String(value ?? '').replace('px', '')) : 0); }
+    roundRectPath(...args) { const surface = this.drawingSurface; return surface && typeof surface.roundRectPath === 'function' ? surface.roundRectPath(...args) : this.host?.roundRectPath?.(...args); }
+    setCanvasLayerVisible(...args) { return this.host?.setCanvasLayerVisible?.(...args) || this.h5Runtime?.setLayerVisible?.(...args) || false; }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args) ?? String(args[0] ?? ''); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args) ?? [String(args[0] ?? '')].filter(Boolean); }
+
     render(state = {}, options = {}) {
       return this.renderTutorialIntro(state, options);
     }
 
-    delegateTutorialAdvisorRenderer(method, args = []) {
-      const renderer = this.advisorRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    }
-
     disposeTutorialAdvisorSpine(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('disposeTutorialAdvisorSpine', args);
+      const result = this.advisorRenderer?.disposeTutorialAdvisorSpine?.(...args);
       return result === undefined ? false : result;
     }
 
     renderTutorialIntroAdvisorPortrait(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('renderTutorialIntroAdvisorPortrait', args);
+      const result = this.advisorRenderer?.renderTutorialIntroAdvisorPortrait?.(...args);
       return result === undefined ? false : result;
     }
 
     renderTutorialAdvisorSpineLayer(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('renderTutorialAdvisorSpineLayer', args);
+      const result = this.advisorRenderer?.renderTutorialAdvisorSpineLayer?.(...args);
       return result === undefined ? false : result;
     }
 
     drawTutorialAdvisorImageCover(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('drawTutorialAdvisorImageCover', args);
+      const result = this.advisorRenderer?.drawTutorialAdvisorImageCover?.(...args);
       return result === undefined ? false : result;
     }
 

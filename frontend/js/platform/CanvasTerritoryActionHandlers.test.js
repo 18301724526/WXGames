@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const CanvasTerritoryActionHandlers = require('./CanvasTerritoryActionHandlers');
 const CanvasActionController = require('./CanvasActionController');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 class HostController {
@@ -79,14 +79,14 @@ class HostController {
 }
 
 CanvasTerritoryActionHandlers.install(HostController);
-CanvasModeOwnershipBridge.install(HostController);
+CanvasModeOwnershipRuntime.install(HostController);
 CanvasModalSnapshotAdapter.install(HostController);
 
 // A modal-capable host carries the bridge + snapshot-adapter helpers so action
 // handlers can route the targetPicker modal through the owner (Batch 8E). Tests
 // build plain host literals and wrap them so openModal/getRendererSnapshot exist.
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {
@@ -132,7 +132,7 @@ test('CanvasTerritoryActionHandlers installs world-site compatibility methods', 
 
 test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh contract', async () => {
   const calls = [];
-  const game = {
+  const game = makeModalHost({
     territoryUiState: {},
     state: { activeCityId: 'capital' },
     startWorldMarch(options) {
@@ -158,7 +158,7 @@ test('CanvasTerritoryActionHandlers keeps world march HUD state and refresh cont
         callback?.();
       },
     },
-  };
+  });
   const host = makeModalHost({
     territoryUiState: game.territoryUiState,
     lastGame: game,
@@ -392,14 +392,14 @@ test('CanvasTerritoryActionHandlers opens and resolves world target picker candi
 
 test('CanvasTerritoryActionHandlers forwards selected world mission id on start march only when present', async () => {
   const calls = [];
-  const game = {
+  const game = makeModalHost({
     territoryUiState: { selectedWorldActorId: 'march-1', selectedWorldMissionId: 'march-1' },
     state: { activeCityId: 'capital' },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
       return Promise.resolve(true);
     },
-  };
+  });
   const host = {
     territoryUiState: game.territoryUiState,
     lastGame: game,
@@ -428,14 +428,14 @@ test('CanvasTerritoryActionHandlers forwards selected world mission id on start 
 
 test('CanvasTerritoryActionHandlers preserves selected world actor id through target and picker handoff', async () => {
   const calls = [];
-  const game = {
+  const game = makeModalHost({
     territoryUiState: { selectedWorldActorId: 'march-1', selectedWorldMissionId: 'march-1' },
     state: { activeCityId: 'capital' },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
       return Promise.resolve(true);
     },
-  };
+  });
   const host = makeModalHost({
     territoryUiState: game.territoryUiState,
     lastGame: game,

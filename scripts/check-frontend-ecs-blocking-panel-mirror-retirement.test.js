@@ -170,7 +170,7 @@ test('blocking-panel mirror guard scans production frontend files and excludes a
     writeFile(repoRoot, 'frontend/js/platform/Legacy.js', 'this.showSettings = true;\n');
     writeFile(
       repoRoot,
-      'frontend/js/platform/CanvasModeOwnershipBridge.js',
+      'frontend/js/platform/CanvasModeOwnershipRuntime.js',
       'showSettings: isOpen(),\n',
     );
     writeFile(

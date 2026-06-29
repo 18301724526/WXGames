@@ -24,6 +24,7 @@
       this.backoffBaseMs = Math.max(0, toNumber(options.backoffBaseMs, this.intervalMs));
       this.backoffMaxMs = Math.max(this.backoffBaseMs, toNumber(options.backoffMaxMs, Math.max(this.intervalMs, 60000)));
       this.nextAllowedAt = 0;
+      this.trace = options.trace || null;
     }
 
     async fetchVersion() {
@@ -50,7 +51,7 @@
     }
 
     async start() {
-      global.H5LoadTrace?.mark?.('version:watch:start', {
+      this.trace?.mark?.('version:watch:start', {
         intervalMs: this.intervalMs,
       });
       await this.safeCheck({ initialize: true });
@@ -76,7 +77,7 @@
       } catch (error) {
         this.failureCount += 1;
         this.updateBackoffWindow();
-        global.H5LoadTrace?.phaseFail?.('version:check', error, {
+        this.trace?.phaseFail?.('version:check', error, {
           initialize: Boolean(options.initialize),
           failureCount: this.failureCount,
           nextAllowedAt: this.nextAllowedAt,
@@ -87,7 +88,7 @@
     }
 
     async check(options = {}) {
-      const trace = global.H5LoadTrace;
+      const trace = this.trace;
       trace?.phaseStart?.('version:check', {
         initialize: Boolean(options.initialize),
       });

@@ -23,9 +23,48 @@
   class CanvasSurfaceRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+      this.localHitTargets = [];
+      this.localFpsSamples = [];
     }
+    get ctx() { return this.host?.ctx || null; }
+    get width() { return Number(this.host?.width) || 0; }
+    get height() { return Number(this.host?.height) || 0; }
+    get maxContentWidth() { return Number(this.host?.maxContentWidth) || 480; }
+    get edgePadding() { return Number(this.host?.edgePadding) || 12; }
+    get presenter() { return this.host?.presenter || null; }
+    get hitTargets() {
+      if (!this.host) return this.localHitTargets;
+      if (!Array.isArray(this.host.hitTargets)) this.host.hitTargets = [];
+      return this.host.hitTargets;
+    }
+    set hitTargets(value) { if (this.host) this.host.hitTargets = Array.isArray(value) ? value : []; else this.localHitTargets = Array.isArray(value) ? value : []; }
+    get suppressHitTargets() { return Boolean(this.host?.suppressHitTargets); }
+    set suppressHitTargets(value) { if (this.host) this.host.suppressHitTargets = Boolean(value); }
+    get lastRenderOptions() { return this.host?.lastRenderOptions || null; }
+    set lastRenderOptions(value) { if (this.host) this.host.lastRenderOptions = value || {}; }
+    get hoverPoint() { return this.host?.hoverPoint || null; }
+    set hoverPoint(value) { if (this.host) this.host.hoverPoint = value || null; }
+    get famousSkillHitTargets() { return this.host?.famousSkillHitTargets || []; }
+    set famousSkillHitTargets(value) { if (this.host) this.host.famousSkillHitTargets = Array.isArray(value) ? value : []; }
+    get activeFamousSkillTooltip() { return this.host?.activeFamousSkillTooltip || null; }
+    set activeFamousSkillTooltip(value) { if (this.host) this.host.activeFamousSkillTooltip = value || null; }
+    get frameNow() { return Number(this.host?.frameNow) || 0; }
+    set frameNow(value) { if (this.host) this.host.frameNow = Number(value) || 0; }
+    get fpsLastFrameAt() { return Number(this.host?.fpsLastFrameAt) || 0; }
+    set fpsLastFrameAt(value) { if (this.host) this.host.fpsLastFrameAt = Number(value) || 0; }
+    get fpsLastPaintAt() { return Number(this.host?.fpsLastPaintAt) || 0; }
+    set fpsLastPaintAt(value) { if (this.host) this.host.fpsLastPaintAt = Number(value) || 0; }
+    get fpsLastPaintedValue() { return Number(this.host?.fpsLastPaintedValue) || 0; }
+    set fpsLastPaintedValue(value) { if (this.host) this.host.fpsLastPaintedValue = Number(value) || 0; }
+    get fpsSamples() {
+      if (!this.host) return this.localFpsSamples;
+      if (!Array.isArray(this.host.fpsSamples)) this.host.fpsSamples = [];
+      return this.host.fpsSamples;
+    }
+    set fpsSamples(value) { if (this.host) this.host.fpsSamples = Array.isArray(value) ? value : []; else this.localFpsSamples = Array.isArray(value) ? value : []; }
+    get currentFps() { return Number(this.host?.currentFps) || 0; }
+    set currentFps(value) { if (this.host) this.host.currentFps = Number(value) || 0; }
+    get showFpsOverlay() { return this.host?.showFpsOverlay !== false; }
 
     getLayout() {
       const contentWidth = Math.min(this.maxContentWidth, Math.max(300, this.width - this.edgePadding * 2));
@@ -445,6 +484,9 @@
       if (!this.presenter) return 84;
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       return 12 + (cityView.hidden ? 128 : 166) + 12;
+    }
+    drawAsset(...args) {
+      return this.host?.drawAsset?.(...args) || false;
     }
   }
 

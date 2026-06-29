@@ -62,7 +62,7 @@ test('rewardReveal mirror retirement guard allows renderer option and snapshot p
 
 test('rewardReveal mirror retirement guard blocks retired bridge wrappers', () => {
   const findings = findRewardRevealMirrorRetirementViolationsInText(
-    'frontend/js/platform/CanvasModeOwnershipBridge.js',
+    'frontend/js/platform/CanvasModeOwnershipRuntime.js',
     [
       'openRewardRevealModal(state) { return this.openModal(state); }',
       'this.closeRewardRevealOwner?.();',

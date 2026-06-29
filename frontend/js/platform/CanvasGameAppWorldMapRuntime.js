@@ -258,16 +258,28 @@
 
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
-    Object.entries(WORLD_MAP_RUNTIME_METHODS).forEach(([name, method]) => {
-      CanvasGameApp.prototype[name] = method;
+    Object.assign(CanvasGameApp.prototype, {
+      getFrozenWorldMapWaterTimeMs: WORLD_MAP_RUNTIME_METHODS.getFrozenWorldMapWaterTimeMs,
+      isWorldMapDragging: WORLD_MAP_RUNTIME_METHODS.isWorldMapDragging,
+      isWorldMapDragCoolingDown: WORLD_MAP_RUNTIME_METHODS.isWorldMapDragCoolingDown,
+      startWorldMapSnapshotDrag: WORLD_MAP_RUNTIME_METHODS.startWorldMapSnapshotDrag,
+      finishWorldMapSnapshotDrag: WORLD_MAP_RUNTIME_METHODS.finishWorldMapSnapshotDrag,
+      renderWorldMapSnapshotDragFrame: WORLD_MAP_RUNTIME_METHODS.renderWorldMapSnapshotDragFrame,
+      getWorldMapSnapshotRenderOptions: WORLD_MAP_RUNTIME_METHODS.getWorldMapSnapshotRenderOptions,
+      ensureWorldMapRuntimeCoordinator: WORLD_MAP_RUNTIME_METHODS.ensureWorldMapRuntimeCoordinator,
+      ensureWorldMapRuntime: WORLD_MAP_RUNTIME_METHODS.ensureWorldMapRuntime,
+      isWorldMapHomeActive: WORLD_MAP_RUNTIME_METHODS.isWorldMapHomeActive,
+      renderRuntimeWorldMap: WORLD_MAP_RUNTIME_METHODS.renderRuntimeWorldMap,
+      shouldRenderRuntimeWorldMap: WORLD_MAP_RUNTIME_METHODS.shouldRenderRuntimeWorldMap,
+      refreshWorldMapLayerFromSnapshot: WORLD_MAP_RUNTIME_METHODS.refreshWorldMapLayerFromSnapshot,
     });
     return true;
   }
 
-  const CanvasGameAppWorldMapRuntimeBridge = {
+  const CanvasGameAppWorldMapRuntime = {
     WORLD_MAP_RUNTIME_METHODS,
     install,
   };
-  global.CanvasGameAppWorldMapRuntimeBridge = CanvasGameAppWorldMapRuntimeBridge;
-  if (typeof module !== 'undefined' && module.exports) module.exports = CanvasGameAppWorldMapRuntimeBridge;
+  global.CanvasGameAppWorldMapRuntime = CanvasGameAppWorldMapRuntime;
+  if (typeof module !== 'undefined' && module.exports) module.exports = CanvasGameAppWorldMapRuntime;
 })(typeof window !== 'undefined' ? window : globalThis);

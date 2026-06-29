@@ -6,11 +6,10 @@
     Object.assign(CanvasActionController.prototype, {
       handle_openFamousPersons(action) {
         openBlockingPanelSnapshot(this.host, 'showFamousPersons', true);
-        this.host.famousPersonsPage = 0;
-        this.host.selectedFamousPersonId = '';
         const game = this.getGameHost();
-        if (game && game !== this.host && 'famousPersonsPage' in game) game.famousPersonsPage = 0;
-        if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
+        const owner = game || this.host;
+        owner.famousPersonsPage = 0;
+        owner.selectedFamousPersonId = '';
         this.host.renderer?.clearFamousSkillTooltip?.();
         this.closePanels(['showFamousPersons']);
         const handled = this.afterHandled(action);
@@ -24,11 +23,10 @@
 
       handle_closeFamousPersons(action) {
         closeBlockingPanelSnapshot(this.host, 'showFamousPersons');
-        this.host.famousPersonsPage = 0;
-        this.host.selectedFamousPersonId = '';
         const game = this.getGameHost();
-        if (game && game !== this.host && 'famousPersonsPage' in game) game.famousPersonsPage = 0;
-        if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
+        const owner = game || this.host;
+        owner.famousPersonsPage = 0;
+        owner.selectedFamousPersonId = '';
         this.host.renderer?.clearFamousSkillTooltip?.();
         const handled = this.afterHandled(action);
         const tutorial = game?.tutorialController || null;
@@ -42,9 +40,9 @@
       },
 
       handle_openFamousPersonDetail(action) {
-        this.host.selectedFamousPersonId = action.personId || '';
         const game = this.getGameHost();
-        if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = action.personId || '';
+        const owner = game || this.host;
+        owner.selectedFamousPersonId = action.personId || '';
         this.host.renderer?.clearFamousSkillTooltip?.();
         const handled = this.afterHandled(action);
         const result = game?.tutorialController?.onFamousPersonDetailOpened?.(action.personId || '');
@@ -56,9 +54,9 @@
       },
 
       handle_closeFamousPersonDetail(action) {
-        this.host.selectedFamousPersonId = '';
         const game = this.getGameHost();
-        if (game && game !== this.host && 'selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
+        const owner = game || this.host;
+        owner.selectedFamousPersonId = '';
         this.host.renderer?.clearFamousSkillTooltip?.();
         const handled = this.afterHandled(action);
         game?.tutorialController?.refreshCurrentHighlight?.();

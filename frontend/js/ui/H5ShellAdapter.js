@@ -8,12 +8,20 @@
       const runtimeHost = runtime || {};
       const registry = options.registry || runtimeHost;
       const presenter = options.presenter || registry.UIStatePresenter || null;
+      const debugDiagnostics = registry.H5DebugDiagnosticsAdapter?.fromRuntime(runtimeHost, { registry }) || null;
       const authRuntime = registry.H5AuthRuntimeAdapter?.fromRuntime(runtimeHost);
       const authStorage = registry.H5AuthStorageAdapter?.fromRuntime(runtimeHost);
+      const actorPickingDiagnostics =
+        registry.H5ActorPickingDiagnosticsAdapter?.fromRuntime(runtimeHost) || null;
+      const gameApiTransport = registry.H5GameApiTransportAdapter?.fromRuntime(runtimeHost) || null;
+      registry.LocaleText?.setStorageAdapter?.(runtimeHost.localStorage || null);
       const moduleDeps = {
         presenter,
         authRuntime,
         authStorage,
+        debugDiagnostics,
+        actorPickingDiagnostics,
+        gameApiTransport,
       };
       const scheduler = {
         setInterval: runtimeHost.setInterval?.bind(runtimeHost),
@@ -45,6 +53,9 @@
         stateNormalizer: options.stateNormalizer || registry.FrontendGameState,
         scheduler,
         updateRuntime: registry.H5UpdateRuntimeAdapter?.fromRuntime(runtimeHost),
+        debugDiagnostics,
+        gameApiTransport,
+        actorPickingDiagnostics,
         authRuntime,
         authStorage,
       });

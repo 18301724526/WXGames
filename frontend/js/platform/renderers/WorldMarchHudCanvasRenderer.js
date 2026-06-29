@@ -32,58 +32,20 @@
     }
     return null;
   })();
-
-  function isActorPickingDiagEnabled() {
-    if (global.__actorPickingDiag === true) return true;
-    try {
-      const params = new URL(global.location?.href || '').searchParams;
-      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
-      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
+  const ActorPickingDiagnostics = (() => {
+    if (global.ActorPickingDiagnostics) return global.ActorPickingDiagnostics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../debug/ActorPickingDiagnostics');
+      } catch (_error) {
+        return null;
+      }
     }
-    try {
-      const value = global.localStorage?.getItem?.('actorPickingDiag');
-      return value === '1' || value === 'true' || value === 'on';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    return false;
-  }
+    return null;
+  })();
 
   function logActorPickingDiag(stage = '', detail = {}) {
-    if (!isActorPickingDiagEnabled()) return null;
-    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
-    const payload = {
-      at: new Date().toISOString(),
-      stage,
-      ...(tapTraceId ? { tapTraceId } : {}),
-      ...detail,
-    };
-    try {
-      const events = global.__actorPickingDiagEvents || [];
-      const signature = detail?.signature || '';
-      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
-      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
-      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
-      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
-      events.push(payload);
-      while (events.length > 160) events.shift();
-      global.__actorPickingDiagEvents = events;
-      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
-      global.__actorPickingDiagLastByStage[stage] = payload;
-    } catch (_) {
-      // Ignore diagnostic buffer failures.
-    }
-    try {
-      if (global.__actorPickingDiagVerbose === true
-        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
-        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
-      }
-    } catch (_) {
-      // Ignore diagnostic console failures.
-    }
-    return payload;
+    return ActorPickingDiagnostics?.log?.(stage, detail, { signature: detail?.signature || '' }) || null;
   }
 
   class WorldMarchHudCanvasRenderer {
@@ -124,35 +86,11 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...args);
-      }
-      const host = this.host;
-      if (!host || typeof host[method] !== 'function') return undefined;
-      return host[method](...args);
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;

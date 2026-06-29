@@ -54,6 +54,17 @@
     }
     return null;
   })();
+  const ActorPickingDiagnostics = (() => {
+    if (global.ActorPickingDiagnostics) return global.ActorPickingDiagnostics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../debug/ActorPickingDiagnostics');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const DEFAULT_ALLOWED_ACTIONS = Object.freeze([
     'openWorldSite',
@@ -93,62 +104,24 @@
   }
 
   function isActorPickingDiagEnabled() {
-    if (global.__actorPickingDiag === true) return true;
-    try {
-      const params = new URL(global.location?.href || '').searchParams;
-      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
-      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    try {
-      const value = global.localStorage?.getItem?.('actorPickingDiag');
-      return value === '1' || value === 'true' || value === 'on';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    return false;
+    return ActorPickingDiagnostics?.isEnabled?.() === true || global.__actorPickingDiag === true;
   }
 
   function getRecentActorPickingDiagEvents(limit = 20) {
-    const events = Array.isArray(global.__actorPickingDiagEvents) ? global.__actorPickingDiagEvents : [];
+    if (ActorPickingDiagnostics?.getRecentEvents) {
+      return ActorPickingDiagnostics.getRecentEvents(limit);
+    }
+    const events = Array.isArray(global.__actorPickingDiagEvents)
+      ? global.__actorPickingDiagEvents
+      : [];
     return events.slice(Math.max(0, events.length - limit));
   }
 
   function logActorPickingDiag(stage = '', detail = {}, options = {}) {
-    if (!isActorPickingDiagEnabled()) return null;
-    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
-    const payload = {
-      at: new Date().toISOString(),
-      stage,
-      ...(tapTraceId ? { tapTraceId } : {}),
-      ...detail,
-    };
-    try {
-      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
-      const events = global.__actorPickingDiagEvents || [];
-      const signature = options.signature || '';
-      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
-      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
-      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
-      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
-      events.push(payload);
-      while (events.length > 160) events.shift();
-      global.__actorPickingDiagEvents = events;
-      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
-      global.__actorPickingDiagLastByStage[stage] = payload;
-    } catch (_) {
-      // Ignore diagnostic buffer failures.
+    if (ActorPickingDiagnostics?.log) {
+      return ActorPickingDiagnostics.log(stage, detail, options);
     }
-    try {
-      if (global.__actorPickingDiagVerbose === true
-        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
-        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
-      }
-    } catch (_) {
-      // Ignore diagnostic console failures.
-    }
-    return payload;
+    return null;
   }
 
   function normalizeCoord(source = {}, fallback = {}) {

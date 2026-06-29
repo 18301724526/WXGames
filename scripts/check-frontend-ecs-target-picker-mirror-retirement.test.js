@@ -70,7 +70,7 @@ test('targetPicker mirror retirement guard blocks pickerOpen modal-flag writes a
 
 test('targetPicker mirror retirement guard blocks the retired bridge wrappers', () => {
   const findings = findTargetPickerMirrorRetirementViolationsInText(
-    'frontend/js/platform/CanvasModeOwnershipBridge.js',
+    'frontend/js/platform/CanvasModeOwnershipRuntime.js',
     [
       'function openWorldTargetPickerOwner(host, uiState, picker) {}',
       'function openWorldMarchFormationPickerOwner(host, uiState, target) {}',

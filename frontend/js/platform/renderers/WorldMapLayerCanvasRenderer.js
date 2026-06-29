@@ -105,8 +105,259 @@
     constructor(options = {}) {
       this.host = options.host || null;
       this.injectedWorldActorRenderer = options.worldActorRenderer || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+    }
+
+    get ctx() {
+      return this.host?.ctx || null;
+    }
+
+    set ctx(value) {
+      if (this.host) this.host.ctx = value || null;
+    }
+
+    get width() {
+      return this.host?.width;
+    }
+
+    get height() {
+      return this.host?.height;
+    }
+
+    get bottomSafeArea() {
+      return this.host?.bottomSafeArea;
+    }
+
+    get viewportOffsetX() {
+      return this.host?.viewportOffsetX;
+    }
+
+    get viewportOffsetY() {
+      return this.host?.viewportOffsetY;
+    }
+
+    get viewportWidth() {
+      return this.host?.viewportWidth;
+    }
+
+    get viewportHeight() {
+      return this.host?.viewportHeight;
+    }
+
+    get pixelRatio() {
+      return this.host?.pixelRatio;
+    }
+
+    get epochNowMs() {
+      return this.host?.epochNowMs;
+    }
+
+    get serverNowMs() {
+      return this.host?.serverNowMs;
+    }
+
+    get nowEpochMs() {
+      return this.host?.nowEpochMs;
+    }
+
+    get worldClock() {
+      return this.host?.worldClock || null;
+    }
+
+    get lastRenderOptions() {
+      return this.host?.lastRenderOptions || null;
+    }
+
+    get presenter() {
+      return this.host?.presenter || null;
+    }
+
+    get lastGame() {
+      return this.host?.lastGame || null;
+    }
+
+    get worldMapRenderer() {
+      return this.host?.worldMapRenderer || null;
+    }
+
+    get worldMapLayerRenderer() {
+      return this.host?.worldMapLayerRenderer || null;
+    }
+
+    get worldActorRenderer() {
+      return this.host?.worldActorRenderer || null;
+    }
+
+    get worldActorLayerRenderer() {
+      return this.host?.worldActorLayerRenderer || null;
+    }
+
+    get lastWorldTileMapContext() {
+      return this.host?.lastWorldTileMapContext || null;
+    }
+
+    set lastWorldTileMapContext(value) {
+      if (this.host) this.host.lastWorldTileMapContext = value || null;
+    }
+
+    get lastMapHomeWorldHudContext() {
+      return this.host?.lastMapHomeWorldHudContext || null;
+    }
+
+    set lastMapHomeWorldHudContext(value) {
+      if (this.host) this.host.lastMapHomeWorldHudContext = value || null;
+    }
+
+    get lastWorldActorOverlayDiag() {
+      return this.host?.lastWorldActorOverlayDiag || null;
+    }
+
+    set lastWorldActorOverlayDiag(value) {
+      if (this.host) this.host.lastWorldActorOverlayDiag = value || null;
+    }
+
+    get lastWorldActorOverlayDiagLogAt() {
+      return this.host?.lastWorldActorOverlayDiagLogAt;
+    }
+
+    set lastWorldActorOverlayDiagLogAt(value) {
+      if (this.host) this.host.lastWorldActorOverlayDiagLogAt = value;
+    }
+
+    get __worldActorOverlayDelegated() {
+      return this.host?.__worldActorOverlayDelegated;
+    }
+
+    set __worldActorOverlayDelegated(value) {
+      if (this.host) this.host.__worldActorOverlayDelegated = value;
+    }
+
+    get __worldActorOverlayActiveDiag() {
+      return this.host?.__worldActorOverlayActiveDiag || null;
+    }
+
+    set __worldActorOverlayActiveDiag(value) {
+      if (this.host) this.host.__worldActorOverlayActiveDiag = value || null;
+    }
+
+    get worldTileWaterTimeOverride() {
+      return this.host?.worldTileWaterTimeOverride ?? null;
+    }
+
+    set worldTileWaterTimeOverride(value) {
+      if (this.host) this.host.worldTileWaterTimeOverride = value ?? null;
+    }
+
+    get lastWorldMapLayerRenderResult() {
+      return this.host?.lastWorldMapLayerRenderResult || null;
+    }
+
+    set lastWorldMapLayerRenderResult(value) {
+      if (this.host) this.host.lastWorldMapLayerRenderResult = value || null;
+    }
+
+    addHitTarget(...args) {
+      return this.host?.addHitTarget?.(...args);
+    }
+
+    addWorldActorHitTargets(...args) {
+      return this.host?.addWorldActorHitTargets?.(...args) || false;
+    }
+
+    addWorldMapDragHitTarget(...args) {
+      return this.host?.addWorldMapDragHitTarget?.(...args) || false;
+    }
+
+    addWorldMarchTileHitTargets(...args) {
+      return this.host?.addWorldMarchTileHitTargets?.(...args) || false;
+    }
+
+    addWorldTileSiteHitTargets(...args) {
+      return this.host?.addWorldTileSiteHitTargets?.(...args) || false;
+    }
+
+    beginFrame(...args) {
+      return this.host?.beginFrame?.(...args);
+    }
+
+    clearAll(...args) {
+      return this.host?.clearAll?.(...args);
+    }
+
+    createGradient(...args) {
+      return this.host?.createGradient?.(...args) ?? args[5] ?? '#000';
+    }
+
+    drawButton(...args) {
+      return this.host?.drawButton?.(...args);
+    }
+
+    drawCircle(...args) {
+      return this.host?.drawCircle?.(...args);
+    }
+
+    drawPanel(...args) {
+      return this.host?.drawPanel?.(...args);
+    }
+
+    drawText(...args) {
+      return this.host?.drawText?.(...args);
+    }
+
+    endFrame(...args) {
+      return this.host?.endFrame?.(...args);
+    }
+
+    getLayout(...args) {
+      return this.host?.getLayout?.(...args) || { contentX: 0, contentWidth: this.width || 0, contentRight: this.width || 0 };
+    }
+
+    getWorldTileLayerCacheContext(...args) {
+      return this.host?.getWorldTileLayerCacheContext?.(...args) || null;
+    }
+
+    getWorldTileRenderEntries(...args) {
+      return this.host?.getWorldTileRenderEntries?.(...args) || [];
+    }
+
+    isWorldTileMapWaterAnimated(...args) {
+      return this.host?.isWorldTileMapWaterAnimated?.(...args) || false;
+    }
+
+    renderMilitaryWorldView(...args) {
+      return this.host?.renderMilitaryWorldView?.(...args) || false;
+    }
+
+    renderWorldActors(...args) {
+      return this.host?.renderWorldActors?.(...args) || false;
+    }
+
+    renderWorldScoutRoutes(...args) {
+      return this.host?.renderWorldScoutRoutes?.(...args) || false;
+    }
+
+    renderWorldTileFogMask(...args) {
+      return this.host?.renderWorldTileFogMask?.(...args) || false;
+    }
+
+    renderWorldTileMap(...args) {
+      return this.host?.renderWorldTileMap?.(...args) || false;
+    }
+
+    renderWorldTileSnapshotCache(...args) {
+      return this.host?.renderWorldTileSnapshotCache?.(...args) || false;
+    }
+
+    resolveWorldTileMapView(...args) {
+      return this.host?.resolveWorldTileMapView?.(...args) || null;
+    }
+
+    setHitTargets(...args) {
+      return this.host?.setHitTargets?.(...args);
+    }
+
+    withSuppressedHitTargets(callback) {
+      if (typeof this.host?.withSuppressedHitTargets === 'function') return this.host.withSuppressedHitTargets(callback);
+      return callback?.();
     }
 
     buildMilitaryNavigationViewState(state = {}) {

@@ -1,13 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const CanvasGameAppWorldMapRuntimeBridge = require('./CanvasGameAppWorldMapRuntimeBridge');
+const CanvasGameAppWorldMapRuntime = require('./CanvasGameAppWorldMapRuntime');
 const CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
 const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
 
-test('CanvasGameAppWorldMapRuntimeBridge installs world map methods on app prototype', () => {
+test('CanvasGameAppWorldMapRuntime installs world map methods on app prototype', () => {
   class App {}
-  assert.equal(CanvasGameAppWorldMapRuntimeBridge.install(App), true);
+  assert.equal(CanvasGameAppWorldMapRuntime.install(App), true);
 
   [
     'getFrozenWorldMapWaterTimeMs',
@@ -20,9 +20,9 @@ test('CanvasGameAppWorldMapRuntimeBridge installs world map methods on app proto
   });
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge tracks snapshot drag water time and cooldown', () => {
+test('CanvasGameAppWorldMapRuntime tracks snapshot drag water time and cooldown', () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
 
   let now = 1000;
   const calls = [];
@@ -52,9 +52,9 @@ test('CanvasGameAppWorldMapRuntimeBridge tracks snapshot drag water time and coo
   ]);
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge delegates render decisions to coordinator', () => {
+test('CanvasGameAppWorldMapRuntime delegates render decisions to coordinator', () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
 
   const calls = [];
   const runtime = {
@@ -96,9 +96,9 @@ test('CanvasGameAppWorldMapRuntimeBridge delegates render decisions to coordinat
   ]);
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge forces render for stale baked backing store', () => {
+test('CanvasGameAppWorldMapRuntime forces render for stale baked backing store', () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
 
   const app = new App();
   app.state = { id: 'state-stale' };
@@ -121,9 +121,9 @@ test('CanvasGameAppWorldMapRuntimeBridge forces render for stale baked backing s
   assert.equal(app.shouldRenderRuntimeWorldMap(app.state, {}), true);
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge refreshes snapshot layer and commits camera', () => {
+test('CanvasGameAppWorldMapRuntime refreshes snapshot layer and commits camera', () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
 
   const calls = [];
   const runtime = {
@@ -164,9 +164,9 @@ test('CanvasGameAppWorldMapRuntimeBridge refreshes snapshot layer and commits ca
   ]);
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge keeps actor anchor on the dragged map snapshot frame', () => {
+test('CanvasGameAppWorldMapRuntime keeps actor anchor on the dragged map snapshot frame', () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
 
   const oldContext = {
     frame: { x: 0, y: 0, width: 300, height: 200 },
@@ -226,9 +226,9 @@ test('CanvasGameAppWorldMapRuntimeBridge keeps actor anchor on the dragged map s
   ]);
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge does not skip map layer when snapshot render misses', () => {
+test('CanvasGameAppWorldMapRuntime does not skip map layer when snapshot render misses', () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
 
   const calls = [];
   const runtime = {
@@ -288,9 +288,9 @@ test('CanvasGameAppWorldMapRuntimeBridge does not skip map layer when snapshot r
   ]);
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge commits baked state only after a snapshot frame draws', () => {
+test('CanvasGameAppWorldMapRuntime commits baked state only after a snapshot frame draws', () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
 
   const calls = [];
   const runtime = {
@@ -356,9 +356,9 @@ test('CanvasGameAppWorldMapRuntimeBridge commits baked state only after a snapsh
   ]);
 });
 
-test('CanvasGameAppWorldMapRuntimeBridge observes async action failures without changing the rejection', async () => {
+test('CanvasGameAppWorldMapRuntime observes async action failures without changing the rejection', async () => {
   class App {}
-  CanvasGameAppWorldMapRuntimeBridge.install(App);
+  CanvasGameAppWorldMapRuntime.install(App);
   CanvasGameAppInputRouter.install(App);
 
   const errors = [];
@@ -378,7 +378,7 @@ test('CanvasGameAppWorldMapRuntimeBridge observes async action failures without 
   app.presenter = {};
   app.actionController = {
     handle() {
-      return Promise.reject(new Error('bridge action failed'));
+      return Promise.reject(new Error('world map runtime action failed'));
     },
   };
   app.advanceTutorialIntro = () => {};
@@ -390,7 +390,7 @@ test('CanvasGameAppWorldMapRuntimeBridge observes async action failures without 
 
   await assert.rejects(
     () => handled,
-    /bridge action failed/,
+    /world map runtime action failed/,
   );
-  assert.deepEqual(errors, ['bridge action failed']);
+  assert.deepEqual(errors, ['world map runtime action failed']);
 });

@@ -2,8 +2,84 @@
   class WorldMapStaticLayerRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+      this.renderCtx = null;
+    }
+
+    get ctx() {
+      return this.renderCtx || this.host?.ctx || null;
+    }
+
+    set ctx(value) {
+      this.renderCtx = value || null;
+    }
+
+    get worldTileFastDragActive() {
+      return Boolean(this.host?.worldTileFastDragActive);
+    }
+
+    get worldTileStaticCache() {
+      return this.host?.worldTileStaticCache || null;
+    }
+
+    set worldTileStaticCache(value) {
+      if (this.host) this.host.worldTileStaticCache = value || null;
+    }
+
+    get worldTileStaticCacheKey() {
+      return this.host?.worldTileStaticCacheKey || '';
+    }
+
+    set worldTileStaticCacheKey(value) {
+      if (this.host) this.host.worldTileStaticCacheKey = value || '';
+    }
+
+    get worldTileStaticCacheLayoutKind() {
+      return this.host?.worldTileStaticCacheLayoutKind || '';
+    }
+
+    set worldTileStaticCacheLayoutKind(value) {
+      if (this.host) this.host.worldTileStaticCacheLayoutKind = value || '';
+    }
+
+    get worldTileStaticCacheLayout() {
+      return this.host?.worldTileStaticCacheLayout || null;
+    }
+
+    set worldTileStaticCacheLayout(value) {
+      if (this.host) this.host.worldTileStaticCacheLayout = value || null;
+    }
+
+    resolveWorldTileStaticCacheLayout(...args) {
+      return this.host?.resolveWorldTileStaticCacheLayout?.(...args) || null;
+    }
+
+    renderWorldTileStaticChunks(...args) {
+      return this.host?.renderWorldTileStaticChunks?.(...args) || false;
+    }
+
+    getWorldTileStaticCacheScale(...args) {
+      return this.host?.getWorldTileStaticCacheScale?.(...args) || 1;
+    }
+
+    getWorldTileStaticCacheContext(...args) {
+      return this.host?.getWorldTileStaticCacheContext?.(...args) || null;
+    }
+
+    getWorldTileStaticCacheKey(...args) {
+      return this.host?.getWorldTileStaticCacheKey?.(...args) || '';
+    }
+
+    drawWorldTileLayerCache(...args) {
+      return this.host?.drawWorldTileLayerCache?.(...args) || false;
+    }
+
+    withSuppressedHitTargets(callback) {
+      if (typeof this.host?.withSuppressedHitTargets === 'function') return this.host.withSuppressedHitTargets(callback);
+      return callback?.();
+    }
+
+    renderWorldTileStaticEntries(...args) {
+      return this.host?.renderWorldTileStaticEntries?.(...args) || false;
     }
 
     withCacheContext(work = {}, callback = null) {
@@ -27,7 +103,16 @@
     renderStaticEntriesIntoCache(tileMapView = {}, layout = {}, uiState = {}) {
       const rendered = this.withCacheContext(layout.work, () => {
         layout.work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
-        this.withSuppressedHitTargets?.(() => {
+        this.withSuppressedHitTargets(() => {
+          const entryRenderer = this.host?.worldMapStaticEntryRenderer || null;
+          if (entryRenderer?.withRenderCtx) {
+            entryRenderer.withRenderCtx(layout.work.ctx, () => {
+              this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState, {
+                addHitTargets: false,
+              });
+            });
+            return;
+          }
           this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState, {
             addHitTargets: false,
           });

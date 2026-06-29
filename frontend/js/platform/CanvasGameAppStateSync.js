@@ -66,7 +66,7 @@
 
       applyState(payload = {}) {
             this.syncWorldClock?.(payload);
-            const loadTrace = global.H5LoadTrace;
+            const loadTrace = this.loadTrace || null;
             loadTrace?.mark?.('state:apply:start', {
               payload: loadTrace.summarizePayload?.(payload) || null,
             });
@@ -199,7 +199,7 @@
             });
             const reconciledServerState = WorldMarchOptimisticState?.reconcileState?.(this, serverState, { source: 'syncFromServer' })
               || serverState;
-            const loadTrace = global.H5LoadTrace;
+            const loadTrace = this.loadTrace || null;
             loadTrace?.mark?.('state:syncFromServer:start', {
               payload: loadTrace.summarizePayload?.({ gameState: serverState }) || null,
             });
@@ -422,7 +422,7 @@
           },
 
       async syncOnce() {
-            const trace = global.H5LoadTrace;
+            const trace = this.loadTrace || null;
             trace?.phaseStart?.('state:syncOnce', {
               hasToken: Boolean(this.token),
               forceLog: true,
@@ -439,7 +439,7 @@
       async startHeartbeat() {
             const api = this.getGameApi();
             api?.setToken?.(this.token);
-            const trace = global.H5LoadTrace;
+            const trace = this.loadTrace || null;
             trace?.phaseStart?.('state:first-sync', {
               hasToken: Boolean(this.token),
               hasSyncService: Boolean(this.syncService),

@@ -33,37 +33,12 @@
       return LocaleText ? LocaleText.t(key, params) : key;
     }
 
-    callDrawingSurface(method, args = []) {
-      const surface = this.drawingSurface;
-      if (surface && typeof surface[method] === 'function') {
-        return surface[method](...args);
-      }
-      return this.host?.[method]?.(...args);
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
 
     renderMapCommandDock(...args) {
       return this.host?.renderMapCommandDock?.(...args);

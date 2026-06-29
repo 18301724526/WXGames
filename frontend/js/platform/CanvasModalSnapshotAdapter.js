@@ -6,7 +6,7 @@
   const TARGET_PICKER_MODAL_KEY = 'modal:targetPicker';
 
   // Batch 8F: per-panel blocking modal subtypes replace the retired single
-  // 'modal:blockingPanel' umbrella + the host-mirror fan-out. Each blocking panel
+  // 'modal:blockingPanel' umbrella. Each blocking panel
   // owns one modal subtype; the renderer panel facts (snapshot.panel.showX) are
   // DERIVED from these entries by the bridge. 'activeCommandPanel' carries its
   // string enum in the payload value; the other 11 are open/closed only.
@@ -29,31 +29,29 @@
 
   const COMMAND_PANEL_MODAL_KEY = 'modal:commandPanel';
 
+  function getModalOwnerHost(host) {
+    if (!host || typeof host !== 'object') return host;
+    if (typeof host.getModalOwnerHost === 'function') return host.getModalOwnerHost();
+    return host.getCanvasGameHost?.() || host.lastGame || host;
+  }
+
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
-    return typeof host?.getRendererSnapshot === 'function' ? host.getRendererSnapshot() : null;
+    const owner = getModalOwnerHost(host);
+    return typeof owner?.getRendererSnapshot === 'function'
+      ? owner.getRendererSnapshot()
+      : (typeof host?.getRendererSnapshot === 'function' ? host.getRendererSnapshot() : null);
   }
 
   function readModalEntry(snapshot = null, subtype = '') {
     return snapshot?.modal?.[subtype] || null;
   }
 
-  function collectRelatedHosts(host) {
-    if (!host || typeof host !== 'object') return [];
-    const game = host.getCanvasGameHost?.() || host.lastGame || host;
-    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
-    return [host, game, shell].filter(
-      (target, index, targets) =>
-        target && typeof target === 'object' && targets.indexOf(target) === index,
-    );
-  }
-
-  function getOpenModalHost(host, subtype = '') {
-    return (
-      collectRelatedHosts(host).find(
-        (target) => typeof target.isModalOpen === 'function' && target.isModalOpen(subtype),
-      ) || null
-    );
+  function refreshRendererSnapshot(host) {
+    const owner = getModalOwnerHost(host);
+    owner?.buildRendererSnapshot?.();
+    if (owner === host) return;
+    host?.buildRendererSnapshot?.();
   }
 
   function getModalPayloadSnapshot(host, subtype = '', snapshot = null) {
@@ -115,29 +113,29 @@
   }
 
   function openModalPayload(host, subtype = '', payload = {}, callbacks = null) {
-    const target = getOpenModalHost(host, subtype) || host;
+    const target = getModalOwnerHost(host);
     const result =
       typeof target?.openModal === 'function'
         ? target.openModal(subtype, payload, callbacks)
         : null;
-    collectRelatedHosts(host).forEach((relatedHost) => relatedHost.buildRendererSnapshot?.());
+    refreshRendererSnapshot(host);
     return result;
   }
 
   function updateModalPayload(host, subtype = '', patch = {}) {
-    const target = getOpenModalHost(host, subtype) || host;
+    const target = getModalOwnerHost(host);
     const result =
       typeof target?.updateModalPayload === 'function'
         ? target.updateModalPayload(subtype, patch)
         : null;
-    collectRelatedHosts(host).forEach((relatedHost) => relatedHost.buildRendererSnapshot?.());
+    refreshRendererSnapshot(host);
     return result;
   }
 
   function closeModalPayload(host, subtype = '') {
-    const target = getOpenModalHost(host, subtype) || host;
+    const target = getModalOwnerHost(host);
     const result = typeof target?.closeModal === 'function' ? target.closeModal(subtype) : null;
-    collectRelatedHosts(host).forEach((relatedHost) => relatedHost.buildRendererSnapshot?.());
+    refreshRendererSnapshot(host);
     return result;
   }
 
@@ -170,7 +168,7 @@
   }
 
   function resolveConfirmDialogSnapshotCallback(host, type, ...args) {
-    const target = getOpenModalHost(host, CONFIRM_DIALOG_MODAL_KEY) || host;
+    const target = getModalOwnerHost(host);
     return typeof target?.resolveModalCallback === 'function'
       ? target.resolveModalCallback(CONFIRM_DIALOG_MODAL_KEY, type, ...args)
       : undefined;
@@ -258,18 +256,17 @@
   }
 
   // Close every blocking panel except the kept panelKeys (Axis-1 mutual exclusion).
-  // Closes across related hosts and rebuilds the renderer snapshot once (not per
-  // panel) so the umbrella close stays cheap. Does NOT touch armyFormationEditor or
+  // Does NOT touch armyFormationEditor or
   // the event modal -- those are out of scope and stay on their owning close paths.
   function closeBlockingPanelsSnapshot(host, except = []) {
     const keep = normalizeBlockingPanelKeepSet(except);
+    const target = getModalOwnerHost(host);
     BLOCKING_PANEL_KEYS.forEach((panelKey) => {
       if (keep.has(panelKey)) return;
       const subtype = BLOCKING_PANEL_SUBTYPE_BY_KEY[panelKey];
-      const target = getOpenModalHost(host, subtype);
-      if (target) target.closeModal(subtype);
+      target?.closeModal?.(subtype);
     });
-    collectRelatedHosts(host).forEach((relatedHost) => relatedHost.buildRendererSnapshot?.());
+    refreshRendererSnapshot(host);
     return null;
   }
 
@@ -323,14 +320,6 @@
 
       getNamingSnapshot(snapshot = null) {
         return getNamingSnapshot(this, snapshot);
-      },
-
-      getOpenModalHost(subtype = '') {
-        return getOpenModalHost(this, subtype);
-      },
-
-      getRelatedModalHosts() {
-        return collectRelatedHosts(this);
       },
 
       isNamingSnapshotOpen(snapshot = null) {
@@ -451,7 +440,6 @@
     buildBlockingPanelFacts,
     closeBlockingPanelSnapshot,
     closeBlockingPanelsSnapshot,
-    collectRelatedHosts,
     closeConfirmDialogSnapshot,
     closeEventSnapshot,
     closeModalPayload,
@@ -465,7 +453,7 @@
     getConfirmDialogSnapshotFromRendererSnapshot,
     getEventSnapshot,
     getEventSnapshotFromRendererSnapshot,
-    getOpenModalHost,
+    getModalOwnerHost,
     getModalPayloadSnapshot,
     getNamingInputValue,
     getNamingPrompt,

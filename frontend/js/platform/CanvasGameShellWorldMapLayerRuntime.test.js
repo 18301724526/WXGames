@@ -1,12 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const LayerBridge = require('./CanvasGameShellWorldMapLayerBridge');
+const LayerRuntime = require('./CanvasGameShellWorldMapLayerRuntime');
 const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
 
 function createShell(overrides = {}) {
   class Shell {}
-  LayerBridge.install(Shell);
+  LayerRuntime.install(Shell);
   return Object.assign(new Shell(), {
     buildRenderOptions() {
       return { built: true };
@@ -45,7 +45,7 @@ function createShell(overrides = {}) {
   }, overrides);
 }
 
-test('CanvasGameShellWorldMapLayerBridge syncs map and fog metrics', () => {
+test('CanvasGameShellWorldMapLayerRuntime syncs map and fog metrics', () => {
   const calls = [];
   const shell = createShell({
     isFogOfWarEnabled() {
@@ -73,7 +73,7 @@ test('CanvasGameShellWorldMapLayerBridge syncs map and fog metrics', () => {
   assert.equal(calls.includes('invalidateBake'), true);
 });
 
-test('CanvasGameShellWorldMapLayerBridge validates baked world-map layer backing store', () => {
+test('CanvasGameShellWorldMapLayerRuntime validates baked world-map layer backing store', () => {
   const runtime = {
     hasBakedMapLayer: true,
     mapBakeDirty: false,
@@ -118,7 +118,7 @@ test('CanvasGameShellWorldMapLayerBridge validates baked world-map layer backing
   assert.equal(shell.lastWorldMapBakedLayerValidity.checks.sameEpoch, false);
 });
 
-test('CanvasGameShellWorldMapLayerBridge clears disabled fog and skips plugins', () => {
+test('CanvasGameShellWorldMapLayerRuntime clears disabled fog and skips plugins', () => {
   const calls = [];
   const shell = createShell({
     worldFogRenderer: {
@@ -136,7 +136,7 @@ test('CanvasGameShellWorldMapLayerBridge clears disabled fog and skips plugins',
   assert.deepEqual(calls, ['clear']);
 });
 
-test('CanvasGameShellWorldMapLayerBridge refreshes fog actors when map layer context is reused', () => {
+test('CanvasGameShellWorldMapLayerRuntime refreshes fog actors when map layer context is reused', () => {
   const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
   const calls = [];
   const mission = {
@@ -196,7 +196,7 @@ test('CanvasGameShellWorldMapLayerBridge refreshes fog actors when map layer con
   assert.equal(context.visibilityActors[0].renderRevealSources[0].strength < 1, true);
 });
 
-test('CanvasGameShellWorldMapLayerBridge treats map, fog, and actor as one camera layer group', () => {
+test('CanvasGameShellWorldMapLayerRuntime treats map, fog, and actor as one camera layer group', () => {
   const calls = [];
   const shell = createShell({
     clearCanvasLayerTransform(name) {
@@ -278,7 +278,7 @@ test('CanvasGameShellWorldMapFrameRuntime invalidates bake when clearing non-mil
   ]);
 });
 
-test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits camera', () => {
+test('CanvasGameShellWorldMapLayerRuntime refreshes snapshot layer and commits camera', () => {
   const calls = [];
   const runtime = {
     camera: { x: 1, y: 2 },
@@ -339,7 +339,7 @@ test('CanvasGameShellWorldMapLayerBridge refreshes snapshot layer and commits ca
   ]);
 });
 
-test('CanvasGameShellWorldMapLayerBridge preserves runtime targets on empty actor refresh', () => {
+test('CanvasGameShellWorldMapLayerRuntime preserves runtime targets on empty actor refresh', () => {
   const calls = [];
   const runtime = {
     getCameraUiState() {
@@ -379,7 +379,7 @@ test('CanvasGameShellWorldMapLayerBridge preserves runtime targets on empty acto
   ]);
 });
 
-test('CanvasGameShellWorldMapLayerBridge keeps actor anchor on the dragged map snapshot frame', () => {
+test('CanvasGameShellWorldMapLayerRuntime keeps actor anchor on the dragged map snapshot frame', () => {
   const calls = [];
   const oldContext = {
     frame: { x: 0, y: 0, width: 300, height: 200 },

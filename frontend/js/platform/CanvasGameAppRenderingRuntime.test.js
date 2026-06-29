@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasGameAppRenderingRuntime = require('./CanvasGameAppRenderingRuntime');
 
@@ -12,7 +12,7 @@ const CanvasGameAppRenderingRuntime = require('./CanvasGameAppRenderingRuntime')
 
 function makeApp() {
   class App {}
-  CanvasModeOwnershipBridge.install(App);
+  CanvasModeOwnershipRuntime.install(App);
   CanvasModalSnapshotAdapter.install(App);
   CanvasGameAppRenderingRuntime.install(App);
   const app = new App();

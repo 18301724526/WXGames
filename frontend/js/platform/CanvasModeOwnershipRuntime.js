@@ -31,14 +31,20 @@
     return host?.lastGame || host;
   }
 
-  function collectRelatedHosts(host) {
-    if (!host || typeof host !== 'object') return [];
-    const game = host.getCanvasGameHost?.() || host.lastGame || host;
-    const shell = game?.canvasShell || host.canvasShell || host.lastGame?.canvasShell || null;
-    return [host, game, shell].filter(
-      (target, index, targets) =>
-        target && typeof target === 'object' && targets.indexOf(target) === index,
-    );
+  function getModalOwnerHost(host) {
+    if (!host || typeof host !== 'object') return host;
+    const owner = host.getCanvasGameHost?.() || host.lastGame || host;
+    if (owner !== host && host.__ecsModalOwner && typeof owner === 'object') {
+      if (!owner.__ecsModalOwner) {
+        owner.__ecsModalOwner = host.__ecsModalOwner;
+        if (host.__modalCallbacks && !owner.__modalCallbacks) {
+          owner.__modalCallbacks = host.__modalCallbacks;
+        }
+      }
+      delete host.__ecsModalOwner;
+      delete host.__modalCallbacks;
+    }
+    return owner;
   }
 
   function readBattleDomainSnapshot(host) {
@@ -235,11 +241,13 @@
   function ensureModalOwner(host) {
     const ModalWorld = getModalWorldApi();
     if (!ModalWorld) return null;
-    if (!host.__ecsModalOwner) host.__ecsModalOwner = ModalWorld.createModalWorld();
-    if (!host.__modalCallbacks && ModalCallbackRegistry) {
-      host.__modalCallbacks = ModalCallbackRegistry.createModalCallbackRegistry();
+    const owner = getModalOwnerHost(host);
+    if (!owner || typeof owner !== 'object') return null;
+    if (!owner.__ecsModalOwner) owner.__ecsModalOwner = ModalWorld.createModalWorld();
+    if (!owner.__modalCallbacks && ModalCallbackRegistry) {
+      owner.__modalCallbacks = ModalCallbackRegistry.createModalCallbackRegistry();
     }
-    return host.__ecsModalOwner;
+    return owner.__ecsModalOwner;
   }
 
   // Open a covered modal subtype: the owner becomes the source of truth, mints a
@@ -248,60 +256,65 @@
   // null when the runtime is unavailable so the host keeps its legacy field.
   function openModal(host, subtype, payload = {}, callbacks = null) {
     const ModalWorld = getModalWorldApi();
-    if (!ModalWorld || !ensureModalOwner(host)) return null;
-    host.__ecsModalOwner = ModalWorld.openModal(host.__ecsModalOwner, subtype, payload);
-    if (callbacks && host.__modalCallbacks) {
-      host.__modalCallbacks.register(
-        ModalWorld.getModalToken(host.__ecsModalOwner, subtype),
+    const owner = getModalOwnerHost(host);
+    if (!ModalWorld || !ensureModalOwner(owner)) return null;
+    owner.__ecsModalOwner = ModalWorld.openModal(owner.__ecsModalOwner, subtype, payload);
+    if (callbacks && owner.__modalCallbacks) {
+      owner.__modalCallbacks.register(
+        ModalWorld.getModalToken(owner.__ecsModalOwner, subtype),
         callbacks,
       );
     }
-    return ModalWorld.getModalPayload(host.__ecsModalOwner, subtype);
+    return ModalWorld.getModalPayload(owner.__ecsModalOwner, subtype);
   }
 
   function updateModalPayload(host, subtype, patch = {}) {
     const ModalWorld = getModalWorldApi();
-    if (!ModalWorld || !host.__ecsModalOwner) return null;
-    host.__ecsModalOwner = ModalWorld.updateModalPayload(host.__ecsModalOwner, subtype, patch);
-    return ModalWorld.getModalPayload(host.__ecsModalOwner, subtype);
+    const owner = getModalOwnerHost(host);
+    if (!ModalWorld || !owner?.__ecsModalOwner) return null;
+    owner.__ecsModalOwner = ModalWorld.updateModalPayload(owner.__ecsModalOwner, subtype, patch);
+    return ModalWorld.getModalPayload(owner.__ecsModalOwner, subtype);
   }
 
   function closeModal(host, subtype) {
     const ModalWorld = getModalWorldApi();
-    if (!ModalWorld || !host.__ecsModalOwner) return null;
-    if (host.__modalCallbacks) {
-      host.__modalCallbacks.clear(ModalWorld.getModalToken(host.__ecsModalOwner, subtype));
+    const owner = getModalOwnerHost(host);
+    if (!ModalWorld || !owner?.__ecsModalOwner) return null;
+    if (owner.__modalCallbacks) {
+      owner.__modalCallbacks.clear(ModalWorld.getModalToken(owner.__ecsModalOwner, subtype));
     }
-    host.__ecsModalOwner = ModalWorld.closeModal(host.__ecsModalOwner, subtype);
+    owner.__ecsModalOwner = ModalWorld.closeModal(owner.__ecsModalOwner, subtype);
     return null;
   }
 
   function getModalPayload(host, subtype) {
     const ModalWorld = getModalWorldApi();
-    if (!ModalWorld || !host.__ecsModalOwner) return null;
-    return ModalWorld.getModalPayload(host.__ecsModalOwner, subtype);
+    const owner = getModalOwnerHost(host);
+    if (!ModalWorld || !owner?.__ecsModalOwner) return null;
+    return ModalWorld.getModalPayload(owner.__ecsModalOwner, subtype);
   }
 
   function isModalOpen(host, subtype) {
     const ModalWorld = getModalWorldApi();
-    if (!ModalWorld || !host.__ecsModalOwner) return false;
-    return ModalWorld.isModalOpen(host.__ecsModalOwner, subtype);
+    const owner = getModalOwnerHost(host);
+    if (!ModalWorld || !owner?.__ecsModalOwner) return false;
+    return ModalWorld.isModalOpen(owner.__ecsModalOwner, subtype);
   }
 
   function isAnyModalOpen(host, subtype) {
-    return collectRelatedHosts(host).some((target) => isModalOpen(target, subtype));
+    return isModalOpen(host, subtype);
   }
 
   function getAnyModalPayload(host, subtype) {
-    const openHost = collectRelatedHosts(host).find((target) => isModalOpen(target, subtype));
-    return openHost ? getModalPayload(openHost, subtype) : null;
+    return getModalPayload(host, subtype);
   }
 
   function resolveModalCallback(host, subtype, action, ...args) {
     const ModalWorld = getModalWorldApi();
-    if (!ModalWorld || !host.__ecsModalOwner || !host.__modalCallbacks) return undefined;
-    return host.__modalCallbacks.resolve(
-      ModalWorld.getModalToken(host.__ecsModalOwner, subtype),
+    const owner = getModalOwnerHost(host);
+    if (!ModalWorld || !owner?.__ecsModalOwner || !owner.__modalCallbacks) return undefined;
+    return owner.__modalCallbacks.resolve(
+      ModalWorld.getModalToken(owner.__ecsModalOwner, subtype),
       action,
       ...args,
     );
@@ -353,19 +366,7 @@
   }
 
   function buildRendererModalWorld(host) {
-    const entries = {};
-    let tokenSeq = 0;
-    collectRelatedHosts(host).forEach((target) => {
-      const modalWorld = target.__ecsModalOwner || null;
-      if (!modalWorld?.entries) return;
-      tokenSeq = Math.max(tokenSeq, Number(modalWorld.tokenSeq) || 0);
-      Object.entries(modalWorld.entries).forEach(([subtype, entry]) => {
-        if (!entry) return;
-        const previous = entries[subtype] || null;
-        if (!previous || (!previous.visible && entry.visible)) entries[subtype] = entry;
-      });
-    });
-    return Object.freeze({ entries: Object.freeze(entries), tokenSeq });
+    return getModalOwnerHost(host)?.__ecsModalOwner || null;
   }
 
   function buildRendererSnapshot(host, options = {}) {
@@ -462,6 +463,10 @@
         return isModalOpen(this, subtype);
       },
 
+      getModalOwnerHost() {
+        return getModalOwnerHost(this);
+      },
+
       resolveModalCallback(subtype, action, ...args) {
         return resolveModalCallback(this, subtype, action, ...args);
       },
@@ -475,6 +480,7 @@
     buildRendererSnapshot,
     deriveModeFacts,
     getModalPayload,
+    getModalOwnerHost,
     getModeSnapshot,
     getRendererSnapshot,
     hasBlockingOverlayExceptTechTree,
@@ -488,6 +494,6 @@
     updateModalPayload,
   };
 
-  global.CanvasModeOwnershipBridge = api;
+  global.CanvasModeOwnershipRuntime = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasCityActionHandlers = require('./CanvasCityActionHandlers');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 
 // Batch 8F: the blocking panels are owned modal subtypes. A modal-capable host
@@ -13,7 +13,7 @@ const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 // isBlockingPanelSnapshotOpen/getCommandPanelValue) so the city handlers route
 // through the owner instead of host mirrors.
 class ModalHost {}
-CanvasModeOwnershipBridge.install(ModalHost);
+CanvasModeOwnershipRuntime.install(ModalHost);
 CanvasModalSnapshotAdapter.install(ModalHost);
 
 function makeModalHost(fields = {}) {
@@ -241,7 +241,6 @@ test('city blocking panels route task center and tech detail through the snapsho
   });
   const host = makeModalHost({
     activeTaskCenterTab: 'main',
-    selectedTechId: '',
     lastGame: game,
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
@@ -262,7 +261,7 @@ test('city blocking panels route task center and tech detail through the snapsho
   assert.equal(host.isBlockingPanelSnapshotOpen('techDetailOpen'), true);
   assert.equal(host.isModalOpen('modal:techDetail'), true);
   assert.equal(host.getRendererSnapshot().panel.techDetailOpen, true);
-  assert.equal(host.selectedTechId, 'writing');
+  assert.equal(host.selectedTechId, undefined);
   assert.equal(game.state.techUiState.selectedTechId, 'writing');
   // Axis-3: opening tech detail does NOT sweep the other panels, so the task center
   // opened above stays open.

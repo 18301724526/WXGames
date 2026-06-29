@@ -43,9 +43,9 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppInputRouter) {
     CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
   }
-  var CanvasModeOwnershipBridge = global.CanvasModeOwnershipBridge;
-  if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipBridge) {
-    CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+  var CanvasModeOwnershipRuntime = global.CanvasModeOwnershipRuntime;
+  if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipRuntime) {
+    CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
   }
 
   class CanvasGameApp {
@@ -124,7 +124,6 @@
           this.techTreePanX = 0;
           this.techTreePanY = 0;
           this.techTreeZoom = 1;
-          if (this.canvasShell) this.canvasShell.selectedTechId = '';
           this.state = {
             ...this.state,
             techUiState: {
@@ -230,7 +229,7 @@
     CanvasGameWorldActorAnimationRuntime,
     CanvasGameAppBattleScene,
     CanvasGameAppCommands,
-    CanvasModeOwnershipBridge,
+    CanvasModeOwnershipRuntime,
     CanvasModalSnapshotAdapter,
     CanvasGameAppGuideUi,
     CanvasGameAppInputRouter,

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <!-- update prompt verification marker v3 -->
 <html lang="zh-CN">
 <head>
@@ -18,6 +18,7 @@
     <script src="js/debug/CodexWorldMapDiag.js?v=world-map-data-diag-v1"></script>
     <script src="js/debug/WorldMarchTrace.js?v=world-march-trace-replay-correlation-v1"></script>
     <script src="js/debug/H5LoadTrace.js?v=h5-load-trace-v1"></script>
+    <script src="js/debug/ActorPickingDiagnostics.js?v=actor-picking-diagnostics-v1"></script>
     <script src="js/domain/BuildingState.js?v=army-formation-v1"></script>
     <script src="js/domain/GameState.js?v=army-formation-v1"></script>
     <script src="js/shared/WorldMarchCoreAdapter.js?v=world-march-core-adapter-v1"></script>
@@ -84,7 +85,6 @@
     <script src="js/platform/renderers/WorldFogMaskGenerator.js?v=world-fog-soft-mask-v1"></script>
     <script src="js/platform/renderers/WorldFogCanvasRenderer.js?v=world-fog-soft-mask-v1"></script>
     <script src="js/platform/renderers/WorldMapRendererDependencyRegistry.js?v=architecture-refactor-world-map-dependency-registry-v1"></script>
-    <script src="js/platform/renderers/WorldMapRendererHostBridge.js?v=architecture-refactor-world-map-host-bridge-v1"></script>
     <script src="js/platform/renderers/WorldMapRendererCompositionFactory.js?v=architecture-refactor-world-map-composition-factory-v1"></script>
     <script src="js/platform/renderers/WorldMapLayoutModel.js?v=world-site-hit-fallback-v1"></script>
     <script src="js/platform/renderers/WorldMapRenderUtilityFacade.js?v=architecture-refactor-world-map-render-utility-facade-v1"></script>
@@ -188,26 +188,30 @@
     <script src="js/platform/CanvasGameAppRenderPolicy.js?v=architecture-refactor-game-app-render-policy-v1"></script>
     <script src="js/platform/CanvasGameShellWorldMapRuntimePolicy.js?v=architecture-refactor-shell-world-map-runtime-policy-v2"></script>
     <script src="js/platform/CanvasGameAppRenderScheduler.js?v=architecture-refactor-game-app-render-scheduler-v1"></script>
-    <script src="js/platform/CanvasGameAppWorldMapRuntimeBridge.js?v=world-map-input-intent-v1"></script>
+    <script src="js/platform/CanvasGameAppWorldMapRuntime.js?v=world-map-runtime-v1"></script>
     <script src="js/platform/CanvasGameWorldActorAnimationRuntime.js?v=world-actor-independent-loop-v1"></script>
     <script src="js/platform/CanvasGameAppRenderingRuntime.js?v=entity-battle-canvas-v1"></script>
     <script src="js/platform/CanvasGameAppBattleScene.js?v=entity-battle-camera-v1"></script>
     <script src="js/platform/CanvasGameAppCommands.js?v=world-march-trace-v1"></script>
     <script src="js/platform/CanvasGameAppGuideUi.js?v=architecture-refactor-canvas-game-app-sr-v1"></script>
     <script src="js/platform/CanvasGameAppInputRouter.js?v=entity-battle-camera-v1"></script>
-    <script src="js/platform/CanvasModeOwnershipBridge.js?v=frontend-ecs-mode-runtime-v1"></script>
+    <script src="js/platform/CanvasModeOwnershipRuntime.js?v=frontend-ecs-mode-runtime-v1"></script>
     <script src="js/platform/CanvasModalSnapshotAdapter.js?v=frontend-ecs-naming-retirement-v1"></script>
     <script src="js/platform/CanvasGameApp.js?v=authority-state-refresh-v1"></script>
     <script src="js/services/GameStateSync.js?v=authority-state-refresh-v1"></script>
     <script src="js/services/UpdateChecker.js?v=army-formation-v1"></script>
     <script src="js/ui/H5GameBootstrap.js?v=army-formation-v1"></script>
     <script src="js/ui/H5UpdateRuntimeAdapter.js?v=world-march-trace-v2"></script>
+    <script src="js/ui/H5DebugDiagnosticsAdapter.js?v=debug-diagnostics-adapter-v1"></script>
+    <script src="js/ui/H5ActorPickingDiagnosticsAdapter.js?v=actor-picking-diagnostics-v1"></script>
+    <script src="js/ui/H5GameApiTransportAdapter.js?v=game-api-transport-adapter-v1"></script>
     <script src="js/ui/H5AuthRuntimeAdapter.js?v=canvas-reset-confirm-v1"></script>
     <script src="js/ui/H5AuthStorageAdapter.js?v=tutorial-spine-canvas-v4"></script>
     <script src="js/ui/H5ShellAdapter.js?v=architecture-refactor-h5-shell-adapter-v1"></script>
     <script src="js/controllers/BuildingController.js?v=tutorial-house-success-v1"></script>
     <script src="js/controllers/EventController.js?v=army-formation-v1"></script>
     <script src="js/controllers/TerritoryController.js?v=army-formation-v1"></script>
+    <script src="js/platform/CanvasRuntimeContract.js?v=canvas-runtime-contract-v1"></script>
     <script src="js/platform/H5CanvasViewport.js?v=architecture-refactor-h5-runtime-v1"></script>
     <script src="js/platform/H5CanvasInputController.js?v=client-operation-log-v1"></script>
     <script src="js/platform/H5CanvasRuntime.js?v=architecture-refactor-h5-runtime-v1"></script>
@@ -220,7 +224,7 @@
     <script src="js/platform/CanvasGameShellInputRouter.js?v=entity-battle-camera-v1"></script>
     <script src="js/platform/CanvasGameShellCommands.js?v=world-map-async-action-contract-v1"></script>
     <script src="js/platform/CanvasGameShellGuideUi.js?v=architecture-refactor-canvas-game-shell-sr-v1"></script>
-    <script src="js/platform/CanvasGameShellWorldMapLayerBridge.js?v=world-map-hit-target-preserve-v2"></script>
+    <script src="js/platform/CanvasGameShellWorldMapLayerRuntime.js?v=world-map-layer-runtime-v1"></script>
     <script src="js/platform/CanvasGameShellWorldMapDragRuntime.js?v=architecture-refactor-shell-world-map-drag-runtime-v1"></script>
     <script src="js/platform/CanvasGameShellWorldMapFrameRuntime.js?v=world-march-continuous-v3"></script>
     <script src="js/platform/CanvasGameShellWorldMapRuntime.js?v=world-map-input-intent-v1"></script>

@@ -10,8 +10,8 @@ const APPROVED_MODE_OWNER_PATHS = Object.freeze([
   'frontend/js/ecs/snapshot/',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
 ]);
-const APPROVED_MODE_BRIDGE_PATHS = Object.freeze([
-  'frontend/js/platform/CanvasModeOwnershipBridge.js',
+const APPROVED_MODE_RUNTIME_PATHS = Object.freeze([
+  'frontend/js/platform/CanvasModeOwnershipRuntime.js',
   'frontend/js/platform/CanvasModalSnapshotAdapter.js',
   'frontend/js/platform/CanvasGameAppBattleScene.js',
   'frontend/js/platform/CanvasGameAppRenderingRuntime.js',
@@ -21,7 +21,7 @@ const APPROVED_MODE_VOCABULARY_PATHS = Object.freeze([
   'frontend/js/ecs/registry/EcsBoundaryManifest.js',
 ]);
 const MODE_OWNER = 'frontend/js/ecs/mode/ModeWorld.js';
-const LEGACY_MODE_BRIDGE = 'frontend/js/platform/CanvasModeOwnershipBridge.js';
+const MODE_RUNTIME = 'frontend/js/platform/CanvasModeOwnershipRuntime.js';
 
 function normalizePath(filePath) {
   return String(filePath || '').replace(/\\/g, '/');
@@ -34,9 +34,9 @@ function isApprovedModeOwnerPath(filePath = '') {
   );
 }
 
-function isApprovedModeBridgePath(filePath = '') {
+function isApprovedModeRuntimePath(filePath = '') {
   const normalized = normalizePath(filePath);
-  return APPROVED_MODE_BRIDGE_PATHS.includes(normalized);
+  return APPROVED_MODE_RUNTIME_PATHS.includes(normalized);
 }
 
 function isApprovedModeVocabularyPath(filePath = '') {
@@ -47,7 +47,7 @@ function isApprovedModeVocabularyPath(filePath = '') {
 function isApprovedGrowthPath(filePath = '') {
   return (
     isApprovedModeOwnerPath(filePath) ||
-    isApprovedModeBridgePath(filePath) ||
+    isApprovedModeRuntimePath(filePath) ||
     isApprovedModeVocabularyPath(filePath)
   );
 }
@@ -101,7 +101,7 @@ function makeViolation({ finding, currentCount, baselineCount }) {
     role: finding.role,
     access: finding.access,
     evidence: finding.evidence,
-    note: 'mode/panel/tutorial decisions outside the ECS mode owner or approved bridge cannot grow after Batch 3',
+    note: 'mode/panel/tutorial decisions outside the ECS mode owner or approved runtime cannot grow after Batch 3',
   };
 }
 
@@ -130,8 +130,8 @@ function scanModeOwnershipSpine(options = {}) {
   const approvedOwnerFindings = currentReport.findings.filter((finding) =>
     isApprovedModeOwnerPath(finding.file),
   );
-  const approvedBridgeFindings = currentReport.findings.filter((finding) =>
-    isApprovedModeBridgePath(finding.file),
+  const approvedRuntimeFindings = currentReport.findings.filter((finding) =>
+    isApprovedModeRuntimePath(finding.file),
   );
   const approvedVocabularyFindings = currentReport.findings.filter((finding) =>
     isApprovedModeVocabularyPath(finding.file),
@@ -143,15 +143,15 @@ function scanModeOwnershipSpine(options = {}) {
     baselinePath: options.baselinePath || BASELINE_PATH,
     modeOwner: MODE_OWNER,
     approvedModeOwnerPaths: APPROVED_MODE_OWNER_PATHS,
-    approvedBridgePaths: APPROVED_MODE_BRIDGE_PATHS,
+    approvedRuntimePaths: APPROVED_MODE_RUNTIME_PATHS,
     approvedVocabularyPaths: APPROVED_MODE_VOCABULARY_PATHS,
-    legacyBridge: LEGACY_MODE_BRIDGE,
+    modeRuntime: MODE_RUNTIME,
     filesScanned: currentReport.filesScanned,
     currentFindings: currentReport.summary.totalFindings,
     currentLegacyFindings: currentLegacyFindings.length,
     baselineLegacyFindings: baselineFindings.length,
     approvedOwnerFindings: approvedOwnerFindings.length,
-    approvedBridgeFindings: approvedBridgeFindings.length,
+    approvedRuntimeFindings: approvedRuntimeFindings.length,
     approvedVocabularyFindings: approvedVocabularyFindings.length,
     violations,
     summary: {
@@ -165,13 +165,13 @@ function renderText(report) {
   const lines = [
     '[frontend-ecs-mode-ownership-spine] blocking gate',
     `mode owner: ${report.modeOwner}`,
-    `legacy bridge: ${report.legacyBridge}`,
+    `mode runtime: ${report.modeRuntime}`,
     `baseline: ${report.baselinePath}`,
     `files scanned: ${report.filesScanned}`,
     `current findings: ${report.currentFindings}`,
-    `legacy findings after approved owner/bridge paths: ${report.currentLegacyFindings}`,
+    `legacy findings after approved owner/runtime paths: ${report.currentLegacyFindings}`,
     `approved owner findings: ${report.approvedOwnerFindings}`,
-    `approved bridge findings: ${report.approvedBridgeFindings}`,
+    `approved runtime findings: ${report.approvedRuntimeFindings}`,
     `approved vocabulary findings: ${report.approvedVocabularyFindings}`,
     `violations: ${report.summary.totalViolations}`,
   ];
@@ -213,16 +213,16 @@ if (require.main === module) {
 }
 
 module.exports = {
-  APPROVED_MODE_BRIDGE_PATHS,
   APPROVED_MODE_OWNER_PATHS,
+  APPROVED_MODE_RUNTIME_PATHS,
   APPROVED_MODE_VOCABULARY_PATHS,
   BASELINE_PATH,
-  LEGACY_MODE_BRIDGE,
+  MODE_RUNTIME,
   MODE_OWNER,
   countByFileSymbol,
   isApprovedGrowthPath,
-  isApprovedModeBridgePath,
   isApprovedModeOwnerPath,
+  isApprovedModeRuntimePath,
   isApprovedModeVocabularyPath,
   loadBaselineFindings,
   parseBaselineFindings,

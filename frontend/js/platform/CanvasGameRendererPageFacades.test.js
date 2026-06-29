@@ -13,9 +13,8 @@ test('CanvasGameRendererPageFacades installs page rendering facade methods', () 
   const renderer = new Renderer();
   renderer.currentFps = 61;
   renderer.frameNow = 1234;
-  renderer.delegateSurfaceRenderer = (method) => (method === 'getNow' ? 9876 : undefined);
-  renderer.delegateResourceTopBarRenderer = () => undefined;
-  renderer.delegateTabBarRenderer = () => 'tabs';
+  renderer.surfaceRenderer = { getNow: () => 9876 };
+  renderer.tabBarRenderer = { renderTabs: () => 'tabs' };
 
   assert.equal(renderer.getNow(), 9876);
   assert.equal(renderer.renderTopBar({}, {}), 84);
@@ -51,6 +50,8 @@ test('CanvasGameRenderer uses installed page facades for child renderer delegati
     },
   });
 
+  assert.equal(typeof renderer.delegateResourceTopBarRenderer, 'undefined');
+  assert.equal(typeof renderer.delegateTabBarRenderer, 'undefined');
   assert.equal(renderer.renderTopBar({}, {}), 121);
   assert.deepEqual(renderer.renderPopulation({ id: 'state' }, 200), {
     owner: 'city-people',
@@ -58,6 +59,34 @@ test('CanvasGameRenderer uses installed page facades for child renderer delegati
   });
   assert.equal(renderer.resourceIconPath('wood'), 'icon:wood');
   assert.equal(renderer.render({}, {}), 'frame-rendered');
+});
+
+test('CanvasGameRendererPageFacades exposes frame and HUD renderers without generic method delegates', () => {
+  const renderer = new CanvasGameRenderer({
+    hudOverlayRenderer: {
+      renderHudOverlay(...args) {
+        return { owner: 'hud-overlay', args };
+      },
+    },
+    frameRenderer: {
+      render(...args) {
+        return { owner: 'frame', method: 'render', args };
+      },
+      renderMapHomeExplorerHud(...args) {
+        return { owner: 'frame', method: 'renderMapHomeExplorerHud', args };
+      },
+      renderCanvasDebugResetButton(...args) {
+        return { owner: 'frame', method: 'renderCanvasDebugResetButton', args };
+      },
+    },
+  });
+
+  assert.equal(typeof renderer.delegateHudOverlayRenderer, 'undefined');
+  assert.equal(typeof renderer.delegateFrameRenderer, 'undefined');
+  assert.equal(renderer.renderHudOverlay({ id: 'state' }, { mode: 'hud' }).owner, 'hud-overlay');
+  assert.equal(renderer.render({ id: 'state' }, {}).method, 'render');
+  assert.equal(renderer.renderMapHomeExplorerHud({}, 96, {}).method, 'renderMapHomeExplorerHud');
+  assert.equal(renderer.renderCanvasDebugResetButton({}).method, 'renderCanvasDebugResetButton');
 });
 
 test('CanvasGameRendererPageFacades promotes freshly rendered layer context over stale child map context', () => {

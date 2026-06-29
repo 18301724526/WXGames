@@ -88,7 +88,7 @@ test('event mirror retirement guard allows cursor, options, snapshot, and string
 
 test('event mirror retirement guard blocks retired bridge wrappers', () => {
   const findings = findEventMirrorRetirementViolationsInText(
-    'frontend/js/platform/CanvasModeOwnershipBridge.js',
+    'frontend/js/platform/CanvasModeOwnershipRuntime.js',
     [
       'openEventModal(eventId) { return this.openModal(eventId); }',
       'this.closeEventOwner?.();',

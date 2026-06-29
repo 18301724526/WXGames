@@ -3,7 +3,7 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     try {
       WorldMarchSystem = require('../domain/WorldMarchSystem');
-    } catch (error) {
+    } catch (_error) {
       WorldMarchSystem = null;
     }
   }
@@ -11,8 +11,16 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeRenderPolicy) {
     try {
       WorldMapRuntimeRenderPolicy = require('./WorldMapRuntimeRenderPolicy');
-    } catch (error) {
+    } catch (_error) {
       WorldMapRuntimeRenderPolicy = null;
+    }
+  }
+  var ActorPickingDiagnostics = global.ActorPickingDiagnostics;
+  if (typeof module !== 'undefined' && module.exports && !ActorPickingDiagnostics) {
+    try {
+      ActorPickingDiagnostics = require('../debug/ActorPickingDiagnostics');
+    } catch (_error) {
+      ActorPickingDiagnostics = null;
     }
   }
 
@@ -27,24 +35,6 @@
       ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
     ].filter(Boolean);
     return missions.some((mission) => mission.status === 'active');
-  }
-
-  function isActorPickingDiagEnabled() {
-    if (global.__actorPickingDiag === true) return true;
-    try {
-      const params = new URL(global.location?.href || '').searchParams;
-      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
-      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    try {
-      const value = global.localStorage?.getItem?.('actorPickingDiag');
-      return value === '1' || value === 'true' || value === 'on';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    return false;
   }
 
   function summarizeActorPickingUiState(uiState = {}) {
@@ -64,39 +54,15 @@
   }
 
   function logActorPickingDiag(stage = '', detail = {}, options = {}) {
-    if (!isActorPickingDiagEnabled()) return null;
-    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
-    const payload = {
-      at: new Date().toISOString(),
-      stage,
-      ...(tapTraceId ? { tapTraceId } : {}),
-      ...detail,
-    };
-    try {
-      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
-      const events = global.__actorPickingDiagEvents || [];
-      const signature = options.signature || '';
-      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
-      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
-      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
-      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
-      events.push(payload);
-      while (events.length > 160) events.shift();
-      global.__actorPickingDiagEvents = events;
-      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
-      global.__actorPickingDiagLastByStage[stage] = payload;
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    try {
-      if (global.__actorPickingDiagVerbose === true
-        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
-        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
-      }
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    return payload;
+    return ActorPickingDiagnostics?.log?.(stage, detail, options) || null;
+  }
+
+  function getMountedGame(shell) {
+    return shell?.lastGame && shell.lastGame !== shell ? shell.lastGame : null;
+  }
+
+  function getUiStateOwner(shell) {
+    return getMountedGame(shell) || shell;
   }
 
   function install(CanvasGameShell) {
@@ -124,8 +90,9 @@ getAnimationFrameMs() {
     },
 
 getRequestAnimationFrame() {
-      const raf = this.runtime?.requestAnimationFrame || global.requestAnimationFrame;
-      return typeof raf === 'function' ? raf.bind(this.runtime || global) : null;
+      const raf = this.runtime?.requestAnimationFrame || this.scheduler?.requestAnimationFrame;
+      const owner = this.runtime?.requestAnimationFrame ? this.runtime : this.scheduler;
+      return typeof raf === 'function' ? raf.bind(owner) : null;
     },
 
 renderAnimationFrame() {
@@ -204,7 +171,7 @@ startPageTransition(fromTab, toTab, options = {}) {
         direction: toIndex >= 0 && fromIndex >= 0 && toIndex < fromIndex ? -1 : 1,
         startedAt: this.now(),
         durationMs: this.getTransitionDurationMs(),
-        fromBuildingOffset: options.fromBuildingOffset ?? this.buildingOffset,
+        fromBuildingOffset: options.fromBuildingOffset ?? getUiStateOwner(this).buildingOffset,
       };
       this.startTransitionTimer();
       this.renderActive();
@@ -212,10 +179,11 @@ startPageTransition(fromTab, toTab, options = {}) {
     },
 
 scrollBuildings(action = {}) {
-      const fromOffset = Math.max(0, Number(this.buildingOffset) || 0);
+      const owner = getUiStateOwner(this);
+      const fromOffset = Math.max(0, Number(owner.buildingOffset) || 0);
       const delta = Number(action.delta) || 0;
       const toOffset = Math.max(0, fromOffset + delta);
-      this.buildingOffset = toOffset;
+      owner.buildingOffset = toOffset;
       if (toOffset !== fromOffset) {
         this.buildingTransition = {
           fromOffset,
@@ -226,10 +194,7 @@ scrollBuildings(action = {}) {
         };
         this.startTransitionTimer();
       }
-      if (this.lastGame && typeof this.lastGame === 'object') {
-        this.lastGame.buildingOffset = this.buildingOffset;
-        this.lastGame.buildingTransition = this.buildingTransition;
-      }
+      if (owner !== this) owner.buildingTransition = this.buildingTransition;
       return true;
     },
 
@@ -274,7 +239,6 @@ resolveMapHomeViewState(state = this.lastGame?.state || {}, options = {}) {
         return this.lastGame.resolveMapHomeViewState(state || {}, options);
       }
       const requestedTab = options.requestedTab || options.activeTab || state?.currentTab || 'resources';
-      const hasTiles = Array.isArray(state?.territoryState?.worldMap?.tiles) && state.territoryState.worldMap.tiles.length > 0;
       const canUseMapHome = true;
       const requestedMilitaryView = options.militaryView || state?.militaryView || 'army';
       const militaryMapRequested = requestedTab === 'military'
@@ -292,32 +256,30 @@ resolveMapHomeViewState(state = this.lastGame?.state || {}, options = {}) {
     },
 
 getTechTreePan() {
+      const owner = getUiStateOwner(this);
       return {
-        x: Number(this.techTreePanX) || 0,
-        y: Number(this.techTreePanY) || 0,
+        x: Number(owner.techTreePanX) || 0,
+        y: Number(owner.techTreePanY) || 0,
       };
     },
 
 setTechTreePan(pan = {}) {
+      const owner = getUiStateOwner(this);
       const x = Number(pan.x) || 0;
       const y = Number(pan.y) || 0;
-      this.techTreePanX = x;
-      this.techTreePanY = y;
-      if (this.lastGame && typeof this.lastGame === 'object') {
-        this.lastGame.techTreePanX = x;
-        this.lastGame.techTreePanY = y;
-      }
+      owner.techTreePanX = x;
+      owner.techTreePanY = y;
       return true;
     },
 
 getTechTreeZoom() {
-      return Math.max(0.65, Math.min(1.6, Number(this.techTreeZoom) || 1));
+      return Math.max(0.65, Math.min(1.6, Number(getUiStateOwner(this).techTreeZoom) || 1));
     },
 
 setTechTreeZoom(zoom = 1) {
+      const owner = getUiStateOwner(this);
       const nextZoom = Math.max(0.65, Math.min(1.6, Number(zoom) || 1));
-      this.techTreeZoom = nextZoom;
-      if (this.lastGame && typeof this.lastGame === 'object') this.lastGame.techTreeZoom = nextZoom;
+      owner.techTreeZoom = nextZoom;
       return true;
     },
 
@@ -399,6 +361,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
       const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
       const snapshotEvent = this.getEventSnapshot?.(rendererSnapshot) || null;
       const snapshotTargetPicker = this.getTargetPickerSnapshot?.(rendererSnapshot) || null;
+      const uiOwner = getUiStateOwner(this);
       logActorPickingDiag('shell:buildRenderOptions:territoryUiState', {
         activeTab,
         input: summarizeActorPickingUiState(territoryUiState),
@@ -425,15 +388,15 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         showCitySwitcher: panel.showCitySwitcher,
         showSubcityList: panel.showSubcityList,
         showCityManagement: panel.showCityManagement,
-        activeCityManagementTab: this.activeCityManagementTab,
+        activeCityManagementTab: uiOwner.activeCityManagementTab,
         showAdvisor: panel.showAdvisor,
         showTaskCenter: panel.showTaskCenter,
         activeTaskCenterTab: this.activeTaskCenterTab,
         showGuidebook: panel.showGuidebook,
         activeGuidebookTab: this.activeGuidebookTab,
         showFamousPersons: panel.showFamousPersons,
-        famousPersonsPage: this.famousPersonsPage,
-        selectedFamousPersonId: this.selectedFamousPersonId,
+        famousPersonsPage: uiOwner.famousPersonsPage,
+        selectedFamousPersonId: uiOwner.selectedFamousPersonId,
         armyFormationEditor: this.armyFormationEditor,
         worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
           || this.worldMapRuntime?.lastTileMapContext
@@ -442,14 +405,16 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         activeCommandPanel: panel.activeCommandPanel || '',
         logs: this.lastGame?.requestLogs || [],
         tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
-        buildingOffset: this.buildingOffset,
-        techTreePanX: this.techTreePanX,
-        techTreePanY: this.techTreePanY,
+        buildingOffset: uiOwner.buildingOffset,
+        techTreePanX: uiOwner.techTreePanX,
+        techTreePanY: uiOwner.techTreePanY,
         techTreeZoom: this.getTechTreeZoom(),
-        ...(this.selectedTechId ? { selectedTechId: this.selectedTechId } : {}),
+        ...(state.techUiState?.selectedTechId || uiOwner.selectedTechId
+          ? { selectedTechId: state.techUiState?.selectedTechId || uiOwner.selectedTechId }
+          : {}),
         techDetailOpen: panel.techDetailOpen || Boolean(state.techUiState?.detailOpen),
-        activeBuildingCategory: this.activeBuildingCategory,
-        pendingBuildingAction: this.pendingBuildingAction || this.lastGame?.pendingBuildingAction || null,
+        activeBuildingCategory: uiOwner.activeBuildingCategory,
+        pendingBuildingAction: uiOwner.pendingBuildingAction || null,
         ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
         ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
         activeEventId: snapshotEvent?.eventId ?? null,
@@ -683,14 +648,14 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
           skipWorldMapLayer: false,
           preserveCanvas: false,
         });
-       const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
+        const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
           || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
           || this.territoryUiState?.tileMapWaterAnimated);
         const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);
         this.updateWorldActorAnimationLoop?.({ ...renderOptions, state });
         if (homeView.activeTab === 'military' && (waterAnimated || (explorerAnimated && !this.worldActorLayerRenderer))) this.startTileMapWaterTimer();
-       else this.stopTileMapWaterTimer();
-       return true;
+        else this.stopTileMapWaterTimer();
+        return true;
       },
 
 getTabLocks(state = {}) {

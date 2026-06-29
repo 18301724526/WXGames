@@ -18,6 +18,14 @@
 
   const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
 
+  function getMountedGame(shell) {
+    return shell?.lastGame && shell.lastGame !== shell ? shell.lastGame : null;
+  }
+
+  function getUiStateOwner(shell) {
+    return getMountedGame(shell) || shell;
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -41,29 +49,24 @@ setPendingBuildingAction(pending = null, options = {}) {
           action: pending.action === 'upgrade' ? 'upgrade' : 'build',
         }
         : null;
-      // P3 Axis A: pendingBuildingAction is host-proxied — this assignment forwards to the host
-      // (the single owner), so the explicit lastGame mirror write is no longer needed.
-      this.pendingBuildingAction = nextPending;
+      getUiStateOwner(this).pendingBuildingAction = nextPending;
       if (options.render !== false) this.renderActive();
       return true;
     },
 
 selectBuildingCategory(action = {}) {
+      const owner = getUiStateOwner(this);
       const category = action.category || 'all';
-      this.activeBuildingCategory = category;
-      this.buildingOffset = 0;
+      owner.activeBuildingCategory = category;
+      owner.buildingOffset = 0;
       this.buildingTransition = null;
-      if (this.lastGame && typeof this.lastGame === 'object') {
-        this.lastGame.activeBuildingCategory = category;
-        this.lastGame.buildingOffset = 0;
-        this.lastGame.buildingTransition = null;
-      }
+      if (owner !== this) owner.buildingTransition = null;
       return true;
     },
 
 selectTechNode(action = {}) {
       const techId = action.techId || '';
-      this.selectedTechId = techId;
+      getUiStateOwner(this).selectedTechId = techId;
       openBlockingPanelSnapshot(this, 'techDetailOpen', Boolean(techId));
       if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
         this.lastGame.state = {
@@ -93,9 +96,10 @@ closeTechDetail(action = {}) {
     },
 
 openFamousPersons() {
+      const owner = getUiStateOwner(this);
       openBlockingPanelSnapshot(this, 'showFamousPersons', true);
-      this.famousPersonsPage = 0;
-      this.selectedFamousPersonId = '';
+      owner.famousPersonsPage = 0;
+      owner.selectedFamousPersonId = '';
       closeBlockingPanelSnapshot(this, 'showTaskCenter');
       closeBlockingPanelSnapshot(this, 'showGuidebook');
       closeBlockingPanelSnapshot(this, 'activeCommandPanel');
@@ -103,9 +107,10 @@ openFamousPersons() {
     },
 
 closeFamousPersons() {
+      const owner = getUiStateOwner(this);
       closeBlockingPanelSnapshot(this, 'showFamousPersons');
-      this.famousPersonsPage = 0;
-      this.selectedFamousPersonId = '';
+      owner.famousPersonsPage = 0;
+      owner.selectedFamousPersonId = '';
       const game = this.lastGame || null;
       this.renderer?.clearFamousSkillTooltip?.();
       game?.tutorialController?.onFamousPersonsClosed?.();
@@ -113,14 +118,14 @@ closeFamousPersons() {
     },
 
 openFamousPersonDetail(action = {}) {
-      this.selectedFamousPersonId = action.personId || '';
+      getUiStateOwner(this).selectedFamousPersonId = action.personId || '';
       this.renderer?.clearFamousSkillTooltip?.();
       this.renderActive();
       return true;
     },
 
 closeFamousPersonDetail() {
-      this.selectedFamousPersonId = '';
+      getUiStateOwner(this).selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
       this.renderActive();
       return true;
@@ -283,7 +288,7 @@ enterCity(action = {}) {
       const tab = action.tab || 'buildings';
       if (typeof game?.enterCity === 'function') return game.enterCity(cityId, { tab });
       openBlockingPanelSnapshot(this, 'showCityManagement', true);
-      this.activeCityManagementTab = tab;
+      getUiStateOwner(this).activeCityManagementTab = tab;
       closeBlockingPanelSnapshot(this, 'showSubcityList');
       closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       this.closeEventSnapshot?.();
@@ -294,7 +299,7 @@ enterCity(action = {}) {
 openCityManagement(action = {}) {
       const tab = action.tab || 'buildings';
       openBlockingPanelSnapshot(this, 'showCityManagement', true);
-      this.activeCityManagementTab = tab;
+      getUiStateOwner(this).activeCityManagementTab = tab;
       closeBlockingPanelSnapshot(this, 'showSubcityList');
       closeBlockingPanelSnapshot(this, 'activeCommandPanel');
       this.closeEventSnapshot?.();
@@ -310,27 +315,29 @@ closeCityManagement() {
 
 switchCityManagementTab(tab = 'buildings') {
       const allowed = ['buildings', 'people', 'military'];
-      this.activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
+      getUiStateOwner(this).activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
       this.renderActive();
       return true;
     },
 
 changeFamousPersonsPage(action = {}) {
+      const owner = getUiStateOwner(this);
       const delta = Number(action.delta) || 0;
-      this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
-      this.selectedFamousPersonId = '';
+      owner.famousPersonsPage = Math.max(0, (Number(owner.famousPersonsPage) || 0) + delta);
+      owner.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
       this.renderActive();
       return true;
     },
 
 resetForCanvasTabSwitch() {
-      this.buildingOffset = 0;
-      this.activeBuildingCategory = 'all';
-      this.techTreePanX = 0;
-      this.techTreePanY = 0;
-      this.techTreeZoom = 1;
-      this.selectedTechId = '';
+      const owner = getUiStateOwner(this);
+      owner.buildingOffset = 0;
+      owner.activeBuildingCategory = 'all';
+      owner.techTreePanX = 0;
+      owner.techTreePanY = 0;
+      owner.techTreeZoom = 1;
+      owner.selectedTechId = '';
       closeBlockingPanelSnapshot(this, 'techDetailOpen');
       this.techTreeDragStart = null;
       this.buildingTransition = null;
@@ -340,19 +347,20 @@ resetForCanvasTabSwitch() {
       closeBlockingPanelSnapshot(this, 'showCityManagement');
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
       this.closeRewardRevealSnapshot?.();
-      this.famousPersonsPage = 0;
-      this.selectedFamousPersonId = '';
+      owner.famousPersonsPage = 0;
+      owner.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
     },
 
 resetLocalViewToResources(options = {}) {
+      const owner = getUiStateOwner(this);
       const homeView = this.resolveMapHomeViewState(this.lastGame?.state || {}, { requestedTab: 'resources', forceMapHome: true });
-      this.buildingOffset = 0;
-      this.activeBuildingCategory = 'all';
-      this.techTreePanX = 0;
-      this.techTreePanY = 0;
-      this.techTreeZoom = 1;
-      this.selectedTechId = '';
+      owner.buildingOffset = 0;
+      owner.activeBuildingCategory = 'all';
+      owner.techTreePanX = 0;
+      owner.techTreePanY = 0;
+      owner.techTreeZoom = 1;
+      owner.selectedTechId = '';
       closeBlockingPanelSnapshot(this, 'techDetailOpen');
       this.techTreeDragStart = null;
       this.pageTransition = null;
@@ -377,8 +385,8 @@ resetLocalViewToResources(options = {}) {
       closeBlockingPanelSnapshot(this, 'showFamousPersons');
       this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
       closeBlockingPanelSnapshot(this, 'activeCommandPanel');
-      this.famousPersonsPage = 0;
-      this.selectedFamousPersonId = '';
+      owner.famousPersonsPage = 0;
+      owner.selectedFamousPersonId = '';
       this.renderer?.clearFamousSkillTooltip?.();
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';

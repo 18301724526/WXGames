@@ -208,14 +208,9 @@
 
       famousPersonsClosed: (host) => {
         const game = host.game || {};
-        const shell = game.canvasShell || null;
         closeBlockingPanelSnapshot(game, 'showFamousPersons');
         game.famousPersonsPage = 0;
         game.selectedFamousPersonId = '';
-        if (shell) {
-          shell.famousPersonsPage = 0;
-          shell.selectedFamousPersonId = '';
-        }
         host.refreshCurrentHighlight?.();
         return host.state;
       },

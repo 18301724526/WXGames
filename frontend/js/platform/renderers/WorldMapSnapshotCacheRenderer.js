@@ -2,8 +2,50 @@
   class WorldMapSnapshotCacheRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+    }
+
+    get ctx() {
+      return this.host?.ctx || null;
+    }
+
+    get worldTileStaticCache() {
+      return this.host?.worldTileStaticCache || null;
+    }
+
+    get worldTileStaticCacheLayout() {
+      return this.host?.worldTileStaticCacheLayout || null;
+    }
+
+    get worldTileStaticCacheLayoutKind() {
+      return this.host?.worldTileStaticCacheLayoutKind || '';
+    }
+
+    get worldTileStaticChunkCaches() {
+      return this.host?.worldTileStaticChunkCaches || null;
+    }
+
+    get worldTileWaterChunkCaches() {
+      return this.host?.worldTileWaterChunkCaches || null;
+    }
+
+    drawWorldTileLayerCache(...args) {
+      return this.host?.drawWorldTileLayerCache?.(...args) || false;
+    }
+
+    getWorldTileWaterFrameCache(...args) {
+      return this.host?.getWorldTileWaterFrameCache?.(...args) || null;
+    }
+
+    getWorldTileWaterAnimationFrameIndex(...args) {
+      return this.host?.getWorldTileWaterAnimationFrameIndex?.(...args) || 0;
+    }
+
+    getWorldTileRenderEntries(...args) {
+      return this.host?.getWorldTileRenderEntries?.(...args) || [];
+    }
+
+    renderWorldTileFogMask(...args) {
+      return this.host?.renderWorldTileFogMask?.(...args) || false;
     }
 
     getWorldMapCachePolicy() {

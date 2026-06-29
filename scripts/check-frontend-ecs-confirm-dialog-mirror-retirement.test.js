@@ -62,7 +62,7 @@ test('confirmDialog mirror retirement guard allows renderer option and snapshot 
 
 test('confirmDialog mirror retirement guard blocks retired bridge wrappers', () => {
   const findings = findConfirmDialogMirrorRetirementViolationsInText(
-    'frontend/js/platform/CanvasModeOwnershipBridge.js',
+    'frontend/js/platform/CanvasModeOwnershipRuntime.js',
     [
       'openConfirmDialogModal(state) { return this.openModal(state); }',
       'this.closeConfirmDialogOwner?.();',

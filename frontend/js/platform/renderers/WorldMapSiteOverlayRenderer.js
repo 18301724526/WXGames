@@ -26,12 +26,114 @@
   class WorldMapSiteOverlayRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
+    }
+
+    get width() {
+      return this.host?.width;
+    }
+
+    get height() {
+      return this.host?.height;
+    }
+
+    get bottomSafeArea() {
+      return this.host?.bottomSafeArea;
+    }
+
+    get viewportOffsetX() {
+      return this.host?.viewportOffsetX;
+    }
+
+    get viewportOffsetY() {
+      return this.host?.viewportOffsetY;
+    }
+
+    get viewportWidth() {
+      return this.host?.viewportWidth;
+    }
+
+    get viewportHeight() {
+      return this.host?.viewportHeight;
     }
 
     t(key = '', params = {}) {
       return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
+    addHitTarget(...args) {
+      return this.host?.addHitTarget?.(...args);
+    }
+
+    createGradient(...args) {
+      return this.host?.createGradient?.(...args) ?? args[5] ?? '#000';
+    }
+
+    drawAsset(...args) {
+      return this.host?.drawAsset?.(...args);
+    }
+
+    drawButton(...args) {
+      return this.host?.drawButton?.(...args);
+    }
+
+    drawCircle(...args) {
+      return this.host?.drawCircle?.(...args);
+    }
+
+    drawPanel(...args) {
+      return this.host?.drawPanel?.(...args);
+    }
+
+    drawText(...args) {
+      return this.host?.drawText?.(...args);
+    }
+
+    drawTextLines(...args) {
+      return this.host?.drawTextLines?.(...args);
+    }
+
+    getLayout(...args) {
+      return this.host?.getLayout?.(...args) || { contentWidth: this.width || 0, contentX: 0, contentRight: this.width || 0 };
+    }
+
+    getTopBarBottom(...args) {
+      return this.host?.getTopBarBottom?.(...args) || 84;
+    }
+
+    measureTextWidth(...args) {
+      return this.host?.measureTextWidth?.(...args) || 0;
+    }
+
+    truncateText(text, maxWidth, options = {}) {
+      return this.host?.truncateText?.(text, maxWidth, options) ?? String(text ?? '');
+    }
+
+    wrapTextLimit(text, maxWidth, maxLines, options = {}) {
+      return this.host?.wrapTextLimit?.(text, maxWidth, maxLines, options) || [String(text || '')].filter(Boolean);
+    }
+
+    getWorldMapLayerLayout(...args) {
+      return this.host?.getWorldMapLayerLayout?.(...args) || null;
+    }
+
+    resolveWorldTileMapView(...args) {
+      return this.host?.resolveWorldTileMapView?.(...args) || null;
+    }
+
+    getWorldTileScreenCenter(...args) {
+      return this.host?.getWorldTileScreenCenter?.(...args) || { x: 0, y: 0 };
+    }
+
+    getWorldTileRenderedDiamondCenter(...args) {
+      return this.host?.getWorldTileRenderedDiamondCenter?.(...args) || null;
+    }
+
+    getWorldTileRenderEntries(...args) {
+      return this.host?.getWorldTileRenderEntries?.(...args) || [];
+    }
+
+    getWorldTileSiteLayout(...args) {
+      return this.host?.getWorldTileSiteLayout?.(...args) || null;
     }
 
     getWorldSiteDialogPresenter() {
@@ -691,7 +793,8 @@
         const width = Math.min(this.getLayout().contentWidth - 24, 320);
         const x = Math.max(12, (this.width - width) / 2);
         const y = Math.max(this.getTopBarBottom(state, { isMapHome: true }) + 16, this.height - 260);
-        this.renderWorldSiteAction({ ...detail.action, buttons: [primary, ...sideButtons] }, x, y, width);
+        const fallbackButtons = [primary, ...sideButtons, renameButton].filter(Boolean);
+        this.renderWorldSiteAction({ ...detail.action, buttons: fallbackButtons }, x, y, width);
         return;
       }
 

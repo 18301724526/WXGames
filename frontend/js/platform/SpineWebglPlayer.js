@@ -120,7 +120,7 @@
         this.assetManager.loadText(this.jsonFile);
         this.assetManager.loadTextureAtlas(this.atlasFile);
         this.emitStatus('loading', `${this.assetBase}${this.jsonFile}`);
-        this.animationFrame = this.requestAnimationFrame(() => this.loadFrame());
+        this.animationFrame = this.requestRuntimeAnimationFrame(() => this.loadFrame());
         return true;
       } catch (error) {
         this.handleError(error);
@@ -132,7 +132,7 @@
       if (!this.assetManager) return;
       try {
         if (!this.assetManager.isLoadingComplete()) {
-          this.animationFrame = this.requestAnimationFrame(() => this.loadFrame());
+          this.animationFrame = this.requestRuntimeAnimationFrame(() => this.loadFrame());
           return;
         }
         const atlas = this.assetManager.get(this.atlasFile);
@@ -317,8 +317,8 @@
       };
     }
 
-    requestAnimationFrame(callback) {
-      const raf = this.runtime.requestAnimationFrame || global.requestAnimationFrame;
+    requestRuntimeAnimationFrame(callback) {
+      const raf = this.runtime.requestAnimationFrame;
       if (typeof raf === 'function') {
         this.animationFrameType = 'raf';
         return raf.call(this.runtime, callback);
@@ -329,28 +329,28 @@
 
     scheduleRenderFrame() {
       const interval = Math.max(16, Number(this.frameIntervalMs) || 16);
-      const setDelay = this.runtime.setTimeout || global.setTimeout;
+      const setDelay = this.runtime.setTimeout;
       if (interval > 20 && typeof setDelay === 'function') {
         this.animationFrameType = 'timeout';
         return setDelay.call(this.runtime, () => this.renderFrame(), interval);
       }
-      return this.requestAnimationFrame(() => this.renderFrame());
+      return this.requestRuntimeAnimationFrame(() => this.renderFrame());
     }
 
     cancelAnimationFrame(id) {
       if (!id) return;
       if (this.animationFrameType === 'timeout') {
-        const clearDelay = this.runtime.clearTimeout || global.clearTimeout;
+        const clearDelay = this.runtime.clearTimeout;
         if (typeof clearDelay === 'function') clearDelay.call(this.runtime, id);
         return;
       }
-      const cancel = this.runtime.cancelAnimationFrame || global.cancelAnimationFrame;
+      const cancel = this.runtime.cancelAnimationFrame;
       if (typeof cancel === 'function') cancel.call(this.runtime, id);
       else this.runtime.clearTimeout?.(id);
     }
 
     nowSeconds() {
-      const perf = this.runtime.performance || global.performance;
+      const perf = this.runtime.performance;
       if (perf && typeof perf.now === 'function') return perf.now() / 1000;
       return Date.now() / 1000;
     }

@@ -2,9 +2,25 @@
   class WorldMapWaterEntryRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.renderCtx = null;
+    }
+
+    withRenderCtx(ctx = null, callback = null) {
+      if (typeof callback !== 'function') return false;
+      const previousCtx = this.renderCtx;
+      this.renderCtx = ctx || null;
+      try {
+        return callback();
+      } finally {
+        this.renderCtx = previousCtx;
+      }
     }
 
     drawWorldTileWater(...args) {
+      const waterRenderer = this.host?.host?.worldTileWaterRenderer || this.host?.worldTileWaterRenderer || null;
+      if (this.renderCtx && waterRenderer?.withRenderCtx) {
+        return waterRenderer.withRenderCtx(this.renderCtx, () => this.host?.drawWorldTileWater?.(...args));
+      }
       return this.host?.drawWorldTileWater?.(...args);
     }
 

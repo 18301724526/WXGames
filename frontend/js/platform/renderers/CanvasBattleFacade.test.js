@@ -11,8 +11,9 @@ test('CanvasBattleFacade installs every battle compatibility method', () => {
   class Host {}
   installBattleFacade(Host);
 
-  assert.equal(typeof Host.prototype.delegateBattleRenderer, 'function');
-  BATTLE_FACADE_METHODS.forEach(([method]) => {
+  const retiredGenericDelegate = ['delegate', 'Battle', 'Renderer'].join('');
+  assert.equal(typeof Host.prototype[retiredGenericDelegate], 'undefined');
+  Object.keys(BATTLE_FACADE_METHODS).forEach((method) => {
     assert.equal(typeof Host.prototype[method], 'function', `${method} should be installed`);
   });
 });

@@ -49,12 +49,12 @@ test('mode ownership spine guard parses 0A markdown findings', () => {
   ]);
 });
 
-test('mode ownership spine guard allows approved owner and bridge paths', () => {
+test('mode ownership spine guard allows approved owner and runtime paths', () => {
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/mode/ModeWorld.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/runtime/EcsModeRuntimeBundle.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/snapshot/RendererSnapshotBoundary.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/domain/BattleDomainOwner.js'), true);
-  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModeOwnershipBridge.js'), true);
+  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModeOwnershipRuntime.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModalSnapshotAdapter.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameAppBattleScene.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/registry/EcsBoundaryManifest.js'), true);
@@ -83,14 +83,14 @@ test('mode ownership spine guard blocks legacy mode finding growth by file and s
     writeFile(repoRoot, 'frontend/js/ecs/mode/ModeResolver.js', 'const key = facts.activeTab;\n');
     writeFile(
       repoRoot,
-      'frontend/js/platform/CanvasModeOwnershipBridge.js',
+      'frontend/js/platform/CanvasModeOwnershipRuntime.js',
       'const key = host.activeTab;\n',
     );
 
     const report = scanModeOwnershipSpine({ repoRoot, baselinePath });
 
     assert.equal(report.approvedOwnerFindings, 1);
-    assert.equal(report.approvedBridgeFindings, 1);
+    assert.equal(report.approvedRuntimeFindings, 1);
     assert.equal(report.summary.totalViolations, 1);
     assert.equal(report.violations[0].file, 'frontend/js/platform/LegacyRouter.js');
     assert.equal(report.violations[0].symbol, 'activeTab');

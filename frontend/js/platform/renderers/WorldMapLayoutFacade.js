@@ -26,8 +26,6 @@
   class WorldMapLayoutFacade {
     constructor(options = {}) {
       this.host = options.host || null;
-      const HostBridge = global.WorldMapRendererHostBridge || (typeof require !== 'undefined' ? require('./WorldMapRendererHostBridge') : null);
-      return HostBridge ? HostBridge.createProxy(this) : this;
     }
 
     getWorldMapLayoutModel() {
@@ -52,6 +50,34 @@
       const helper = this.getTileMapGeometry();
       if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
       return TileCoord.normalizeCoord(tile);
+    }
+
+    analyzeAssetAlphaBounds(assetPath = '') {
+      return this.host?.analyzeAssetAlphaBounds?.(assetPath) || null;
+    }
+
+    getWorldTileTemplateBaseAsset(tile = {}) {
+      return this.host?.getWorldTileTemplateBaseAsset?.(tile) || null;
+    }
+
+    getWorldTileTemplateMetrics(template = {}) {
+      return this.host?.getWorldTileTemplateMetrics?.(template) || null;
+    }
+
+    getWorldTileStaticChunkCacheScale() {
+      return this.host?.getWorldTileStaticChunkCacheScale?.() || 1;
+    }
+
+    getWorldTileStaticCachePixelBudget() {
+      return this.host?.getWorldTileStaticCachePixelBudget?.() || 16000000;
+    }
+
+    getWorldTileStaticChunkSize() {
+      return this.host?.getWorldTileStaticChunkSize?.() || 1024;
+    }
+
+    getWorldTileDragCachePanRange() {
+      return this.host?.getWorldTileDragCachePanRange?.() || 180;
     }
 
     getWorldTileScreenCenter(tile = {}, viewport = {}, geometry = {}) {

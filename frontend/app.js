@@ -58,9 +58,14 @@ class H5GameHost extends CanvasGameAppBase {
 
     this.apiBase = this.config?.API_BASE || this.apiBase;
     this.token = this.authStorage?.getToken?.() || null;
+    this.loadTrace = window.H5LoadTrace || null;
     const constructors = this.runtimeConstructors || {};
-    this.gameAPI = new constructors.GameAPI(this.apiBase, this.token);
-    window.H5LoadTrace?.setReporter?.((event) => this.gameAPI.reportClientEvent(event));
+    this.gameAPI = new constructors.GameAPI(this.apiBase, this.token, {
+      transport: this.gameApiTransport,
+      abortControllerFactory: () => this.gameApiTransport?.createAbortController?.(),
+      trace: this.loadTrace,
+    });
+    this.loadTrace?.setReporter?.((event) => this.gameAPI.reportClientEvent(event));
     window.ClientOperationLog?.setUploader?.((snapshot) => this.gameAPI.uploadClientOperationLog(snapshot));
     this.api = this.gameAPI;
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
@@ -82,6 +87,7 @@ class H5GameHost extends CanvasGameAppBase {
       onLog: (entry) => {
         if (entry?.type === 'initialized') this.log(`版本检测已启动：${entry.deploymentId}`);
       },
+      trace: this.loadTrace,
     });
     this.stateManager = new constructors.GameStateManager(this.state, { buildingState: this.buildingState });
     this.eventController = new constructors.EventController({
@@ -137,6 +143,7 @@ class H5GameHost extends CanvasGameAppBase {
       runtime: window,
       config: this.config,
       presenter: this.presenter,
+      loadTrace: this.loadTrace,
       previewEnabled: true,
       inputEnabled: true,
     });
@@ -151,6 +158,7 @@ class H5GameHost extends CanvasGameAppBase {
     if (!window.TutorialIntroOverlay) return null;
     this.tutorialIntroOverlay = new window.TutorialIntroOverlay({
       runtime: window,
+      storage: window.localStorage || null,
       game: this,
     });
     return this.tutorialIntroOverlay;

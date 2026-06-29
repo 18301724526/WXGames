@@ -76,7 +76,7 @@ test('WorldMapRendererCompositionFactory preserves injected instances before cla
   assert.equal(composition.worldMapLayoutFacade, injected);
 });
 
-test('WorldMapRendererCompositionFactory child host bridges renderer and host state', () => {
+test('WorldMapRendererCompositionFactory child host is the renderer owner, not a renderer-host bridge', () => {
   const renderer = {
     localValue: 7,
     getLocalValue() {
@@ -92,12 +92,13 @@ test('WorldMapRendererCompositionFactory child host bridges renderer and host st
   };
   const composition = WorldMapRendererCompositionFactory.create({ renderer, rendererHost, dependencies: {} });
 
+  assert.equal(composition.childHost, renderer);
   assert.equal(composition.childHost.getLocalValue(), 7);
-  assert.equal(composition.childHost.getHostValue(), 11);
+  assert.equal(composition.childHost.getHostValue, undefined);
+  assert.equal('getHostValue' in composition.childHost, false);
   assert.equal(composition.childHost.worldTileCache, undefined);
   composition.childHost.worldTileCache = 'renderer-cache';
   assert.equal(renderer.worldTileCache, 'renderer-cache');
-  assert.equal('getHostValue' in composition.childHost, true);
 });
 
 test('WorldMapRendererCompositionFactory loads before WorldMapCanvasRenderer in browser entrypoints', () => {

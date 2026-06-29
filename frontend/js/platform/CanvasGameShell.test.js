@@ -8,6 +8,8 @@ require('../domain/WorldMarchProgressSnapshot');
 const EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../domain/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
+const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
 
 const SHELL_MODULES = [
@@ -15,7 +17,7 @@ const SHELL_MODULES = [
   'CanvasGameShellInputRouter',
   'CanvasGameShellCommands',
   'CanvasGameShellGuideUi',
-  'CanvasGameShellWorldMapLayerBridge',
+  'CanvasGameShellWorldMapLayerRuntime',
   'CanvasGameShellWorldMapDragRuntime',
   'CanvasGameShellWorldMapFrameRuntime',
   'CanvasGameShellWorldMapRuntime',
@@ -24,6 +26,14 @@ const SHELL_MODULES = [
   'CanvasModalSnapshotAdapter',
   'CanvasGameShellSystemUi',
 ];
+
+class ModalHost {}
+CanvasModeOwnershipRuntime.install(ModalHost);
+CanvasModalSnapshotAdapter.install(ModalHost);
+
+function makeModalHost(fields = {}) {
+  return Object.assign(new ModalHost(), fields);
+}
 
 test('CanvasGameShell installs responsibility modules into the compatibility facade', () => {
   const proto = CanvasGameShell.prototype;
@@ -118,7 +128,7 @@ test('index.html loads CanvasGameShell modules before the facade', () => {
     'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameAppRenderScheduler.js',
   );
   [
-    'CanvasGameShellWorldMapLayerBridge.js',
+    'CanvasGameShellWorldMapLayerRuntime.js',
     'CanvasGameShellWorldMapDragRuntime.js',
     'CanvasGameShellWorldMapFrameRuntime.js',
   ].forEach((scriptName) => {
@@ -220,14 +230,14 @@ test('CanvasGameShell layer helpers ignore disabled feature layers', () => {
 
 test('CanvasGameShell refreshes tutorial highlight after naming input is filled', async () => {
   const calls = [];
-  const game = {
+  const game = makeModalHost({
     tutorialController: {
       refreshCurrentHighlight() {
         calls.push(['refreshCurrentHighlight']);
         return true;
       },
     },
-  };
+  });
   const shell = new CanvasGameShell({
     runtime: {
       requestTextInput() {
@@ -1411,14 +1421,14 @@ test('CanvasGameShell routes map command tech tree drag through command panel hi
       },
     },
   });
-  shell.lastGame = {
+  shell.lastGame = makeModalHost({
     state: { currentTab: 'military', militaryView: 'world' },
     mapHomeActive: true,
     getActiveTab() {
       return 'military';
     },
-  };
-  shell.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
+  });
+  shell.lastGame.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
 
   assert.equal(shell.handleDrag('start', { x: 120, y: 420 }, {}), true);
   assert.equal(shell.handleDrag('move', { x: 150, y: 460 }, {}), true);
@@ -1464,14 +1474,14 @@ test('CanvasGameShell routes map command tech tree wheel zoom at tree hit target
       },
     },
   });
-  shell.lastGame = {
+  shell.lastGame = makeModalHost({
     state: { currentTab: 'military', militaryView: 'world' },
     mapHomeActive: true,
     getActiveTab() {
       return 'military';
     },
-  };
-  shell.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
+  });
+  shell.lastGame.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
 
   assert.equal(shell.handleGesture({ type: 'wheelZoom', scaleDelta: 1.1, centerX: 180, centerY: 520 }, event), true);
 
@@ -1521,8 +1531,6 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
   });
   shell.lastGame = game;
   shell.openBlockingPanelSnapshot('showFamousPersons', true);
-  shell.famousPersonsPage = 1;
-  shell.selectedFamousPersonId = 'fp-scout';
 
   assert.equal(shell.closeFamousPersons(), true);
 
@@ -1563,8 +1571,6 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
   });
   shell.lastGame = game;
   shell.openBlockingPanelSnapshot('showFamousPersons', true);
-  shell.famousPersonsPage = 1;
-  shell.selectedFamousPersonId = 'fp-scout';
   shell.renderActive = () => {
     calls.push(['renderActive']);
     return true;

@@ -10,7 +10,6 @@ test('WorldMapRendererDependencyRegistry owns dependency keys for the world map 
 
   assert.equal(definitions.worldMapCacheConfigFacade.globalName, 'WorldMapCacheConfigFacade');
   assert.equal(definitions.worldMapCacheConfigFacade.modulePath, './WorldMapCacheConfigFacade');
-  assert.equal(definitions.worldMapRendererHostBridge.globalName, 'WorldMapRendererHostBridge');
   assert.equal(definitions.worldMapRendererCompositionFactory.globalName, 'WorldMapRendererCompositionFactory');
   assert.equal(definitions.worldMapTileMapRenderer.globalName, 'WorldMapTileMapRenderer');
   assert.equal(definitions.worldActorCanvasRenderer.globalName, 'WorldActorCanvasRenderer');

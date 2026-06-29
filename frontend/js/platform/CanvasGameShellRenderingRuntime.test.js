@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
-const CanvasModeOwnershipBridge = require('./CanvasModeOwnershipBridge');
+const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasGameShellRenderingRuntime = require('./CanvasGameShellRenderingRuntime');
 
@@ -11,7 +11,7 @@ const CanvasGameShellRenderingRuntime = require('./CanvasGameShellRenderingRunti
 
 function makeShell(stateOverrides = {}) {
   class Shell {}
-  CanvasModeOwnershipBridge.install(Shell);
+  CanvasModeOwnershipRuntime.install(Shell);
   CanvasModalSnapshotAdapter.install(Shell);
   CanvasGameShellRenderingRuntime.install(Shell);
   const shell = new Shell();

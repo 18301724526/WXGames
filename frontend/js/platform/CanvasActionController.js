@@ -19,6 +19,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasShellActionHandlers) {
     CanvasShellActionHandlers = require('./CanvasShellActionHandlers');
   }
+  var ActorPickingDiagnostics = global.ActorPickingDiagnostics;
+  if (typeof module !== 'undefined' && module.exports && !ActorPickingDiagnostics) {
+    ActorPickingDiagnostics = require('../debug/ActorPickingDiagnostics');
+  }
 
   // armyFormationEditor is the formation-editor object, NOT a blocking panel; the
   // panel-close sweep historically also nulled it, so it stays here as an
@@ -33,21 +37,7 @@
   }
 
   function isActorPickingDiagEnabled() {
-    if (global.__actorPickingDiag === true) return true;
-    try {
-      const params = new URL(global.location?.href || '').searchParams;
-      const value = params.get('actorPickingDiag') || params.get('worldActorPickingDiag');
-      if (value !== null) return value !== '0' && value !== 'false' && value !== 'off';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    try {
-      const value = global.localStorage?.getItem?.('actorPickingDiag');
-      return value === '1' || value === 'true' || value === 'on';
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    return false;
+    return ActorPickingDiagnostics?.isEnabled?.() === true || global.__actorPickingDiag === true;
   }
 
   function summarizeActorPickingAction(action = {}) {
@@ -77,39 +67,7 @@
   }
 
   function logActorPickingDiag(stage = '', detail = {}, options = {}) {
-    if (!isActorPickingDiagEnabled()) return null;
-    const tapTraceId = detail?.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
-    const payload = {
-      at: new Date().toISOString(),
-      stage,
-      ...(tapTraceId ? { tapTraceId } : {}),
-      ...detail,
-    };
-    try {
-      if (payload.tapTraceId) global.__actorPickingDiagActiveTapTraceId = payload.tapTraceId;
-      const events = global.__actorPickingDiagEvents || [];
-      const signature = options.signature || '';
-      const effectiveSignature = signature && payload.tapTraceId ? `${payload.tapTraceId}|${signature}` : signature;
-      global.__actorPickingDiagLastSignatureByStage = global.__actorPickingDiagLastSignatureByStage || {};
-      if (effectiveSignature && events.length && global.__actorPickingDiagLastSignatureByStage[stage] === effectiveSignature) return null;
-      if (effectiveSignature) global.__actorPickingDiagLastSignatureByStage[stage] = effectiveSignature;
-      events.push(payload);
-      while (events.length > 160) events.shift();
-      global.__actorPickingDiagEvents = events;
-      global.__actorPickingDiagLastByStage = global.__actorPickingDiagLastByStage || {};
-      global.__actorPickingDiagLastByStage[stage] = payload;
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    try {
-      if (global.__actorPickingDiagVerbose === true
-        || global.localStorage?.getItem?.('actorPickingDiagVerbose') === '1') {
-        global.console?.log?.('[ActorPickingDiagVerbose]', JSON.stringify(payload));
-      }
-    } catch (_) {
-      // Ignore diagnostic preference lookup failures.
-    }
-    return payload;
+    return ActorPickingDiagnostics?.log?.(stage, detail, options) || null;
   }
 
   class CanvasActionController {
@@ -322,6 +280,129 @@
       }
     }
 
+    resolveActionHandler(action = {}) {
+      switch (action.type) {
+        case 'switchTab': return this.handle_switchTab;
+        case 'openResourceDetails': return this.handle_openResourceDetails;
+        case 'closeResourceDetails': return this.handle_closeResourceDetails;
+        case 'openCommandPanel': return this.handle_openCommandPanel;
+        case 'closeCommandPanel': return this.handle_closeCommandPanel;
+        case 'closeRewardReveal': return this.handle_closeRewardReveal;
+        case 'openCitySwitcher': return this.handle_openCitySwitcher;
+        case 'closeCitySwitcher': return this.handle_closeCitySwitcher;
+        case 'openSubcityList': return this.handle_openSubcityList;
+        case 'closeSubcityList': return this.handle_closeSubcityList;
+        case 'openArmyFormation': return this.handle_openArmyFormation;
+        case 'closeArmyFormationEditor': return this.handle_closeArmyFormationEditor;
+        case 'toggleArmyFormationMember': return this.handle_toggleArmyFormationMember;
+        case 'changeArmyFormationPage': return this.handle_changeArmyFormationPage;
+        case 'changeArmyFormationSoldiers': return this.handle_changeArmyFormationSoldiers;
+        case 'requestArmyFormationSoldierInput': return this.handle_requestArmyFormationSoldierInput;
+        case 'autoReplenishArmyFormation': return this.handle_autoReplenishArmyFormation;
+        case 'saveArmyFormation': return this.handle_saveArmyFormation;
+        case 'openSettings': return this.handle_openSettings;
+        case 'closeSettings': return this.handle_closeSettings;
+        case 'requestResetGame': return this.handle_requestResetGame;
+        case 'downloadClientOperationLog': return this.handle_downloadClientOperationLog;
+        case 'closeConfirmDialog': return this.handle_closeConfirmDialog;
+        case 'confirmResetGame': return this.handle_confirmResetGame;
+        case 'openLogs': return this.handle_openLogs;
+        case 'closeLogs': return this.handle_closeLogs;
+        case 'clearLogs': return this.handle_clearLogs;
+        case 'openAdvisor': return this.handle_openAdvisor;
+        case 'closeAdvisor': return this.handle_closeAdvisor;
+        case 'goToAdvisorTarget': return this.handle_goToAdvisorTarget;
+        case 'goToGuideTaskTarget': return this.handle_goToGuideTaskTarget;
+        case 'openGuidebook': return this.handle_openGuidebook;
+        case 'closeGuidebook': return this.handle_closeGuidebook;
+        case 'switchGuidebookTab': return this.handle_switchGuidebookTab;
+        case 'requestLoginUsername': return this.handle_requestLoginUsername;
+        case 'requestLoginPassword': return this.handle_requestLoginPassword;
+        case 'toggleRememberPassword': return this.handle_toggleRememberPassword;
+        case 'submitLogin': return this.handle_submitLogin;
+        case 'resetGame': return this.handle_resetGame;
+        case 'logout': return this.handle_logout;
+        case 'requestNamingInput': return this.handle_requestNamingInput;
+        case 'closeNaming': return this.handle_closeNaming;
+        case 'submitNaming': return this.handle_submitNaming;
+        case 'blockCanvasModal': return this.handle_blockCanvasModal;
+        case 'openCityManagement': return this.handle_openCityManagement;
+        case 'closeCityManagement': return this.handle_closeCityManagement;
+        case 'switchCityManagementTab': return this.handle_switchCityManagementTab;
+        case 'openEvent': return this.handle_openEvent;
+        case 'closeEvent': return this.handle_closeEvent;
+        case 'openTaskCenter': return this.handle_openTaskCenter;
+        case 'closeTaskCenter': return this.handle_closeTaskCenter;
+        case 'switchTaskCenterTab': return this.handle_switchTaskCenterTab;
+        case 'selectCity': return this.handle_selectCity;
+        case 'jumpToSubcity': return this.handle_jumpToSubcity;
+        case 'enterCity': return this.handle_enterCity;
+        case 'assignJob': return this.handle_assignJob;
+        case 'buildBuilding': return this.handle_buildBuilding;
+        case 'upgradeBuilding': return this.handle_upgradeBuilding;
+        case 'advanceEra': return this.handle_advanceEra;
+        case 'research': return this.handle_research;
+        case 'selectTechNode': return this.handle_selectTechNode;
+        case 'closeTechDetail': return this.handle_closeTechDetail;
+        case 'claimEvent': return this.handle_claimEvent;
+        case 'claimGuideTaskReward': return this.handle_claimGuideTaskReward;
+        case 'claimTaskReward': return this.handle_claimTaskReward;
+        case 'scrollBuildings': return this.handle_scrollBuildings;
+        case 'selectBuildingCategory': return this.handle_selectBuildingCategory;
+        case 'openFamousPersons': return this.handle_openFamousPersons;
+        case 'closeFamousPersons': return this.handle_closeFamousPersons;
+        case 'openFamousPersonDetail': return this.handle_openFamousPersonDetail;
+        case 'closeFamousPersonDetail': return this.handle_closeFamousPersonDetail;
+        case 'seekFamousPerson': return this.handle_seekFamousPerson;
+        case 'acceptFamousPerson': return this.handle_acceptFamousPerson;
+        case 'dismissFamousPersonCandidate': return this.handle_dismissFamousPersonCandidate;
+        case 'assignFamousAttributePoint': return this.handle_assignFamousAttributePoint;
+        case 'changeFamousPersonsPage': return this.handle_changeFamousPersonsPage;
+        case 'scoutTerritory': return this.handle_scoutTerritory;
+        case 'claimScout': return this.handle_claimScout;
+        case 'selectWorldMarchTarget': return this.handle_selectWorldMarchTarget;
+        case 'openWorldMarchFormationPicker': return this.handle_openWorldMarchFormationPicker;
+        case 'closeWorldMarchHud': return this.handle_closeWorldMarchHud;
+        case 'selectWorldActor': return this.handle_selectWorldActor;
+        case 'openWorldTargetPicker': return this.handle_openWorldTargetPicker;
+        case 'chooseWorldTarget': return this.handle_chooseWorldTarget;
+        case 'closeWorldTargetPicker': return this.handle_closeWorldTargetPicker;
+        case 'startWorldMarch': return this.handle_startWorldMarch;
+        case 'returnWorldMarch': return this.handle_returnWorldMarch;
+        case 'stopWorldMarch': return this.handle_stopWorldMarch;
+        case 'switchMilitaryView': return this.handle_switchMilitaryView;
+        case 'openWorldSite': return this.handle_openWorldSite;
+        case 'closeWorldSite': return this.handle_closeWorldSite;
+        case 'resetWorldPan': return this.handle_resetWorldPan;
+        case 'worldMapDrag': return this.handle_worldMapDrag;
+        case 'changeExpeditionSoldiers': return this.handle_changeExpeditionSoldiers;
+        case 'changeExpeditionLeader': return this.handle_changeExpeditionLeader;
+        case 'territoryAction': return this.handle_territoryAction;
+        case 'openExpedition': return this.handle_openExpedition;
+        case 'closeExpedition': return this.handle_closeExpedition;
+        case 'conquer': return this.handle_conquer;
+        case 'launchExpedition': return this.handle_launchExpedition;
+        case 'claimConquest': return this.handle_claimConquest;
+        case 'enterBattleScene': return this.handle_enterBattleScene;
+        case 'closeBattleScene': return this.handle_closeBattleScene;
+        case 'skipBattleScene': return this.handle_skipBattleScene;
+        case 'entityBattleSelectGeneral': return this.handle_entityBattleSelectGeneral;
+        case 'entityBattleOrder': return this.handle_entityBattleOrder;
+        case 'entityBattleMaster': return this.handle_entityBattleMaster;
+        case 'entityBattleSkill': return this.handle_entityBattleSkill;
+        case 'entityBattleAuto': return this.handle_entityBattleAuto;
+        case 'entityBattleDone': return this.handle_entityBattleDone;
+        case 'entityBattleClose': return this.handle_entityBattleClose;
+        case 'entityBattleZoom': return this.handle_entityBattleZoom;
+        case 'entityBattleDrag': return this.handle_entityBattleDrag;
+        case 'manageCity': return this.handle_manageCity;
+        case 'renameCity': return this.handle_renameCity;
+        case 'techTreeDrag': return this.handle_techTreeDrag;
+        case 'techTreeZoom': return this.handle_techTreeZoom;
+        default: return this.handleUnknown;
+      }
+    }
+
     handle(action, meta = {}) {
       if (!action || action.disabled) {
         global.ClientOperationLog?.record?.('action:skipped', {
@@ -330,7 +411,7 @@
         }, { flush: true });
         return Boolean(action?.disabled);
       }
-      const handler = this[`handle_${action.type}`] || this.handleUnknown;
+      const handler = this.resolveActionHandler(action);
       const tapTraceId = meta.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
       if (tapTraceId && action && typeof action === 'object') action.__tapTraceId = tapTraceId;
       if (isActorPickingDiagEnabled()) {

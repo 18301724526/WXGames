@@ -33,7 +33,7 @@
   class TutorialIntroOverlay {
     constructor(options = {}) {
       this.runtime = options.runtime || global;
-      this.storage = options.storage || this.runtime?.localStorage || null;
+      this.storage = options.storage || null;
       this.game = options.game || null;
       this.running = false;
       this.step = STEPS.done;

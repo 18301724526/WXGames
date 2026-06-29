@@ -41,73 +41,20 @@
       return LocaleText ? LocaleText.t(key, params) : key;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawIconCard(...args) {
-      return this.callDrawingSurface('drawIconCard', args);
-    }
-
-    drawLine(...args) {
-      return this.callDrawingSurface('drawLine', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    getTransitionFrame(...args) {
-      return this.callDrawingSurface('getTransitionFrame', args);
-    }
-
-    measureTextWidth(...args) {
-      return this.callDrawingSurface('measureTextWidth', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    withSlideClip(...args) {
-      return this.callDrawingSurface('withSlideClip', args);
-    }
-
-    withSuppressedHitTargets(...args) {
-      return this.callDrawingSurface('withSuppressedHitTargets', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawIconCard(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawIconCard === 'function' ? surface.drawIconCard(...args) : this.host?.drawIconCard?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    getTransitionFrame(...args) { const surface = this.drawingSurface; return surface && typeof surface.getTransitionFrame === 'function' ? surface.getTransitionFrame(...args) : this.host?.getTransitionFrame?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    withSlideClip(...args) { const surface = this.drawingSurface; return surface && typeof surface.withSlideClip === 'function' ? surface.withSlideClip(...args) : this.host?.withSlideClip?.(...args); }
+    withSuppressedHitTargets(...args) { const surface = this.drawingSurface; return surface && typeof surface.withSuppressedHitTargets === 'function' ? surface.withSuppressedHitTargets(...args) : this.host?.withSuppressedHitTargets?.(...args); }
 
     getBuildingPresenter() {
       return [this.presenter, this.host?.presenter, sharedUIStatePresenter]
