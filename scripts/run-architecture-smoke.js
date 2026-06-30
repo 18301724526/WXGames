@@ -414,6 +414,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
   'scripts/check-frontend-ecs-fog-owner.js',
+  'scripts/check-frontend-single-source-redline.js',
+  'scripts/check-frontend-single-source-redline.test.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.js',
   'scripts/check-frontend-ecs-naming-mirror-retirement.test.js',
   'scripts/check-frontend-ecs-confirm-dialog-mirror-retirement.js',
@@ -617,6 +619,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-source-encoding.test.js',
   'scripts/check-frontend-blocking-panel-snapshot-calls.test.js',
   'scripts/check-renderer-host-bridge-retired.test.js',
+  'scripts/check-frontend-single-source-redline.test.js',
   'scripts/check-frontend-ecs-mode-vocab.test.js',
   'scripts/check-frontend-ecs-runtime-bundle-fresh.test.js',
   'scripts/check-frontend-ecs-renderer-snapshot-boundary.test.js',
@@ -746,6 +749,9 @@ function main() {
   ]);
   run('frontend ECS fog owner blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-fog-owner.js',
+  ]);
+  run('frontend single-source redline blocking guard', process.execPath, [
+    'scripts/check-frontend-single-source-redline.js',
   ]);
   run('frontend ECS naming mirror retirement blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-naming-mirror-retirement.js',
