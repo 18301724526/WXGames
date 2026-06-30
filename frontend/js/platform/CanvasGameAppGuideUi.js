@@ -155,10 +155,6 @@
             return this.getActiveTab();
           },
 
-      getGuideTutorialState() {
-            return this.state?.tutorial || {};
-          },
-
       getGuideCanvasTarget(type, predicate = null) {
             return this.canvasShell?.getCanvasTarget?.(type, predicate)
               || this.getCanvasTarget(type, predicate);

@@ -54,10 +54,6 @@ getGuideActiveTab() {
       return this.getActiveTab();
     },
 
-getGuideTutorialState() {
-      return this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {};
-    },
-
 getGuideCanvasTarget(type, predicate = null) {
       return this.getCanvasTarget(type, predicate);
     },
