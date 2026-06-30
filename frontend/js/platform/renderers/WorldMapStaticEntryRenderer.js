@@ -82,10 +82,22 @@
     }
 
     drawWorldTileBase(...args) {
+      // During the static bake this renderer's renderCtx is the cache ctx, but the base draw
+      // delegates to the SEPARATE worldTileWaterRenderer (host chain). Thread the bake ctx into
+      // it (mirrors WorldMapWaterEntryRenderer.drawWorldTileWater) or the base draws to the screen
+      // ctx and the cache stays blank -> blank terrain.
+      const waterRenderer = this.host?.host?.worldTileWaterRenderer || this.host?.worldTileWaterRenderer || null;
+      if (this.renderCtx && waterRenderer?.withRenderCtx) {
+        return waterRenderer.withRenderCtx(this.renderCtx, () => this.host?.drawWorldTileBase?.(...args)) || false;
+      }
       return this.host?.drawWorldTileBase?.(...args) || false;
     }
 
     drawWorldTileDryTemplate(...args) {
+      const waterRenderer = this.host?.host?.worldTileWaterRenderer || this.host?.worldTileWaterRenderer || null;
+      if (this.renderCtx && waterRenderer?.withRenderCtx) {
+        return waterRenderer.withRenderCtx(this.renderCtx, () => this.host?.drawWorldTileDryTemplate?.(...args)) || false;
+      }
       return this.host?.drawWorldTileDryTemplate?.(...args) || false;
     }
 
