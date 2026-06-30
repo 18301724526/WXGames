@@ -347,9 +347,12 @@ class GameStateRepository {
       gameState.playerId,
       revision,
       JSON.stringify(saveMetadata),
-      JSON.stringify(gameState.resources || {}),
-      JSON.stringify(gameState.buildings || {}),
-      JSON.stringify(gameState.population || {}),
+      // Legacy top-level resources/buildings/population/military columns are vestigial: the
+      // sole truth now lives in the cities[] column. Persist null so nothing perpetuates the
+      // old dual-write mirror. (CUT 7 — columns kept for backward-compatible reads of pre-cities rows.)
+      null,
+      null,
+      null,
       JSON.stringify(gameState.techs || {}),
       JSON.stringify(gameState.techEffects || {}),
       gameState.currentEra || 0,
@@ -368,7 +371,7 @@ class GameStateRepository {
       JSON.stringify(gameState.famousPeople || []),
       JSON.stringify(gameState.famousPersonState || {}),
       JSON.stringify(gameState.taskProgress || {}),
-      JSON.stringify(gameState.military || {}),
+      null,
       JSON.stringify(gameState.regularEventState || {}),
       JSON.stringify(gameState.threatEventState || {}),
       JSON.stringify(gameState.activeBuffs || []),

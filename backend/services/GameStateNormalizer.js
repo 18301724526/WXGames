@@ -65,6 +65,23 @@ function createInitialGameState(playerId, options = {}) {
     scoutReports: [],
     updatedAt: nowIso,
   };
+  // Seed the capital city slot so cities[] is the single source of truth from creation.
+  // Even an un-normalized initial state that is persisted directly round-trips its
+  // resources/buildings/population/military through cities[] (legacy top-level columns are
+  // no longer persisted). The top-level fields above remain on the in-memory object only.
+  state.cities = {
+    [CityService.CAPITAL_CITY_ID]: CityService.createCityState({
+      id: CityService.CAPITAL_CITY_ID,
+      territoryId: CityService.CAPITAL_CITY_ID,
+      isCapital: true,
+      foundedAt: nowIso,
+      resources: state.resources,
+      buildings: state.buildings,
+      population: state.population,
+      military: state.military,
+      happiness: state.happiness,
+    }),
+  };
   WorldCombatEncounterService.normalizeCombatState(state, now);
   return state;
 }
@@ -131,7 +148,6 @@ function normalizeStateStructure(rawState) {
   state.happiness = state.happiness || 100;
   state.updatedAt = state.updatedAt || new Date().toISOString();
   BuildingActionService.applyDerivedStats(state);
-  CityService.persistLegacyFieldsToActiveCity(state);
   return state;
 }
 
@@ -149,7 +165,6 @@ function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   CityService.normalizeCities(state, now);
   WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
   BuildingActionService.applyDerivedStats(state);
-  CityService.persistLegacyFieldsToActiveCity(state);
   return state;
 }
 

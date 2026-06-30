@@ -27,7 +27,7 @@ function ensureTutorialSettlementSoldiers(gameState = {}, territoryId = '') {
   if ((Number(military.soldiers) || 0) < required) military.soldiers = required;
   if ((Number(military.soldierCap) || 0) < required) military.soldierCap = required;
   if (city) city.military = military;
-  gameState.military = military;
+  else gameState.military = military;
 }
 
 function attachTerritoryAuthority(result = {}, gameState = {}, action = '', payload = {}) {

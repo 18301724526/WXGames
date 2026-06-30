@@ -343,7 +343,6 @@ function applyEffects(gameState, event, option, now = new Date()) {
     }
   });
   CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
 }
 
 function meetsRequirements(gameState, requirements = {}) {
@@ -398,7 +397,6 @@ function claimEvent(gameState, eventId, optionId, now = new Date()) {
     Object.entries(reward).forEach(([key, value]) => {
       city.resources[key] = (city.resources[key] || 0) + value;
     });
-    CityService.syncActiveCityToLegacyFields(gameState);
   }
 
   const claimedEvent = {

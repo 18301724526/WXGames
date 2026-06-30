@@ -137,7 +137,7 @@ test('game action route builds the tutorial house before era one', () => {
 
   assert.equal(res.statusCode, 200);
   assert.equal(savedStates.length, 1);
-  assert.equal(savedStates[0].buildings.house.level, 1);
+  assert.equal(savedStates[0].cities.capital.buildings.house.level, 1);
   assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
 });
@@ -249,7 +249,11 @@ test('game task claim route pays main task reward and persists progress', () => 
       return state;
     },
     getClientGameState(state) {
-      return { playerId: state.playerId, resources: state.resources, taskProgress: state.taskProgress };
+      return {
+        playerId: state.playerId,
+        resources: state.cities[state.activeCityId].resources,
+        taskProgress: state.taskProgress,
+      };
     },
     calculateEraProgress() {
       return { canAdvance: false, conditions: [] };

@@ -155,7 +155,6 @@ function normalizeCities(gameState, now = new Date()) {
 
   gameState.cities = cities;
   if (!cities[gameState.activeCityId]) gameState.activeCityId = CAPITAL_CITY_ID;
-  syncActiveCityToLegacyFields(gameState);
   return cities;
 }
 
@@ -199,36 +198,10 @@ function applyDerivedStatsToCity(city, gameState) {
   return effects;
 }
 
-function syncActiveCityToLegacyFields(gameState) {
-  const city = gameState.cities?.[gameState.activeCityId] || gameState.cities?.[CAPITAL_CITY_ID];
-  if (!city) return gameState;
-  gameState.resources = city.resources;
-  gameState.buildings = city.buildings;
-  gameState.population = city.population;
-  gameState.military = city.military;
-  gameState.happiness = city.happiness;
-  gameState.buildingEffects = city.buildingEffects;
-  return gameState;
-}
-
-function persistLegacyFieldsToActiveCity(gameState) {
-  const city = gameState.cities?.[gameState.activeCityId];
-  if (!city) return gameState;
-  city.resources = createInitialResources(gameState.resources);
-  city.buildings = BuildingState.normalizeLegacyBuildingState(gameState.buildings);
-  city.population = createInitialPopulation(gameState.population);
-  city.military = gameState.military || city.military;
-  city.happiness = Number.isFinite(gameState.happiness) ? gameState.happiness : city.happiness;
-  applyDerivedStatsToCity(city, gameState);
-  syncActiveCityToLegacyFields(gameState);
-  return gameState;
-}
-
 function setActiveCity(gameState, cityId) {
   normalizeCities(gameState);
   if (!gameState.cities[cityId]) return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
   gameState.activeCityId = cityId;
-  syncActiveCityToLegacyFields(gameState);
   return { success: true, message: `已切换到${gameState.cities[cityId].name}`, city: gameState.cities[cityId] };
 }
 
@@ -239,7 +212,6 @@ function updateCityName(gameState, territoryId, name) {
     city.name = name;
     if (territoryId === CAPITAL_CITY_ID && gameState.polity) gameState.polity.capitalCityName = name;
   }
-  syncActiveCityToLegacyFields(gameState);
 }
 
 function advanceAllCities(gameState, deltaSeconds = 1) {
@@ -278,7 +250,6 @@ function advanceAllCities(gameState, deltaSeconds = 1) {
     MilitaryService.advanceTraining(trainingState, seconds);
     city.military = trainingState.military;
   }
-  syncActiveCityToLegacyFields(gameState);
 }
 
 function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEfficiency) {
@@ -323,7 +294,6 @@ function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEffic
     incomeByCity[city.id] = income;
     if (city.id === gameState.activeCityId) activeIncome = income;
   }
-  syncActiveCityToLegacyFields(gameState);
   const active = activeIncome || incomeByCity[CAPITAL_CITY_ID] || { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, offlineHours: 0, efficiency: baseEfficiency };
   return {
     activeIncome: active,
@@ -378,8 +348,6 @@ module.exports = {
   getActiveCity,
   getCapitalCity,
   applyDerivedStatsToCity,
-  syncActiveCityToLegacyFields,
-  persistLegacyFieldsToActiveCity,
   setActiveCity,
   updateCityName,
   advanceAllCities,

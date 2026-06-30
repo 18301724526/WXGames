@@ -36,7 +36,6 @@ function applyEraKnowledgeBonus(gameState, nextEra) {
   const bonus = eraKnowledgeBonus[nextEra] || 0;
   if (bonus > 0) {
     capital.resources.knowledge = (capital.resources.knowledge || 0) + bonus;
-    CityService.syncActiveCityToLegacyFields(gameState);
   }
 }
 
@@ -52,7 +51,6 @@ function welcomeSettlementResident(gameState, nextEra) {
   population.max = maxPopulation;
   population.maxPop = maxPopulation;
   capital.population = population;
-  CityService.syncActiveCityToLegacyFields(gameState);
 }
 
 function execute(gameState, tutorial) {
@@ -70,7 +68,6 @@ function execute(gameState, tutorial) {
   }
 
   capital.resources = deductResources(capital.resources, config.cost);
-  CityService.syncActiveCityToLegacyFields(gameState);
   gameState.currentEra = config.nextEra;
   applyEraKnowledgeBonus(gameState, config.nextEra);
   const techGrant = TechTreeService.grantEraPoints(gameState, config.nextEra);

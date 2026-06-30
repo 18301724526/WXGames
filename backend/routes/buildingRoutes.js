@@ -4,6 +4,7 @@ const BuildingActionService = require('../services/BuildingActionService');
 const TutorialService = require('../services/TutorialService');
 const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
+const CityService = require('../services/CityService');
 
 function registerBuildingRoutes(app, deps) {
   const { authMiddleware, repository, gameStateService } = deps;
@@ -12,8 +13,9 @@ function registerBuildingRoutes(app, deps) {
     const rawState = repository.findByPlayerId(req.playerId);
     if (!rawState) return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     const gameState = gameStateService.normalizeState(rawState);
+    const activeCityBuildings = CityService.getActiveCity(gameState)?.buildings || gameState.buildings;
     const buildings = Object.values(BuildingConfig.getAllBuildings()).map((config) => {
-      const level = BuildingState.getLevel(gameState.buildings, config.id);
+      const level = BuildingState.getLevel(activeCityBuildings, config.id);
       return {
         id: config.id,
         name: config.name,
@@ -22,7 +24,7 @@ function registerBuildingRoutes(app, deps) {
         level,
         isBuilt: level > 0,
         isUnlocked: BuildingUnlockService.isUnlocked(config.id, gameState.currentEra, gameState),
-        nextCost: BuildingCostCalculator.getNextActionCost(config.id, gameState.buildings),
+        nextCost: BuildingCostCalculator.getNextActionCost(config.id, activeCityBuildings),
         maxLevel: config.maxLevel,
         maintenancePreview: BuildingConfig.getMaintenancePreview(config.id),
         scalePlanPreview: BuildingConfig.getScalePlanPreview(config.id),
@@ -56,7 +58,8 @@ function registerBuildingRoutes(app, deps) {
     const rawState = repository.findByPlayerId(req.playerId);
     if (!rawState) return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     const gameState = gameStateService.normalizeState(rawState);
-    return res.json({ success: true, effects: gameState.buildingEffects || {} });
+    const effects = CityService.getActiveCity(gameState)?.buildingEffects || gameState.buildingEffects || {};
+    return res.json({ success: true, effects });
   });
 }
 

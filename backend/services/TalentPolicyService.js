@@ -355,7 +355,6 @@ function applyPolicy(gameState, tutorial, payload = {}) {
   const beforeCraftsmen = Number(city.population?.craftsmen) || 0;
   applyPopulationAllocation(city, preview.allocation);
   CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
 
   const state = ensureTalentPolicyState(gameState);
   if (policy.id === 'draft') {

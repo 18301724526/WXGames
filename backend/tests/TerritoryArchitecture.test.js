@@ -546,17 +546,19 @@ test('territory military missions module owns selectors and soldier allocation c
   assert.deepEqual(MilitaryMissions.getMissionSoldierAllocations({ sourceCityId: 'frontier', soldiersCommitted: 2 }), [
     { cityId: 'frontier', soldiers: 200 },
   ]);
+  // Single source of truth: the active city ('frontier') reports its city-slot soldiers (120),
+  // not the legacy top-level gameState.military mirror (180).
   assert.deepEqual(MilitaryMissions.getCitySoldierEntries(gameState), [
     { id: 'capital', soldiers: 140 },
-    { id: 'frontier', soldiers: 180 },
+    { id: 'frontier', soldiers: 120 },
     { id: 'outpost', soldiers: 90 },
   ]);
   assert.equal(MilitaryMissions.countSoldiersOnMission(gameState, 'capital'), 100);
   assert.equal(MilitaryMissions.countTotalSoldiersOnMission(gameState), 100);
-  assert.equal(MilitaryMissions.getAvailableSoldiers(gameState), 310);
+  assert.equal(MilitaryMissions.getAvailableSoldiers(gameState), 250);
   assert.equal(MilitaryMissions.getAvailableSoldiersForCity(gameState, 'capital'), 40);
-  assert.deepEqual(MilitaryMissions.allocateSoldiersForMission(gameState, 260), [
-    { cityId: 'frontier', soldiers: 180 },
+  assert.deepEqual(MilitaryMissions.allocateSoldiersForMission(gameState, 200), [
+    { cityId: 'frontier', soldiers: 120 },
     { cityId: 'capital', soldiers: 40 },
     { cityId: 'outpost', soldiers: 40 },
   ]);

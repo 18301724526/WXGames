@@ -20,7 +20,6 @@ function applyTaskReward(gameState, reward = {}) {
     : TaskDefinitionService.resolveRewardResources(reward);
   if (resolved.errors?.length) return { success: false, errors: resolved.errors, resources: {} };
   city.resources = addResources(city.resources || {}, resolved.resources);
-  CityService.syncActiveCityToLegacyFields(gameState);
   return { success: true, errors: [], resources: resolved.resources };
 }
 

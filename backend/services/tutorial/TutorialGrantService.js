@@ -71,7 +71,7 @@ function ensureHouseGuideResources(gameState) {
     }
   });
   if (city) city.resources = resources;
-  gameState.resources = resources;
+  else gameState.resources = resources;
   gameState.tutorial = {
     ...tutorial,
     grants: {

@@ -11,7 +11,6 @@ function execute(gameState, tutorial, payload) {
 
   city.population = result.population;
   CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
   const normalizedTutorial = TutorialService.normalizeTutorialState(tutorial);
   const amount = Number.parseInt(payload.count, 10) || 0;
   const nextTutorial = normalizedTutorial.currentStep === TutorialService.TUTORIAL_STEPS.talentPolicyApplied && amount !== 0

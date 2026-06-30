@@ -77,7 +77,7 @@ test('guided first empty city occupation and naming advance tutorial by real ter
   const started = TerritoryAction.execute('startConquest', state, { territoryId: siteId });
   assert.equal(started.success, true);
   assert.equal(started.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityConquestStarted);
-  assert.equal(state.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  assert.equal(state.cities.capital.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
   assert.equal(state.warMissions[0].status, 'ready');
   assert.equal(state.territories[1].status, 'contested');
 

@@ -63,9 +63,8 @@ test('claiming main first supplies applies dynamic rewards and advances toward f
 
   assert.equal(result.success, true);
   assert.deepEqual(result.reward.resources, { food: 120, knowledge: 5 });
-  assert.equal(gameState.resources.food, 127);
-  assert.equal(gameState.resources.knowledge, 7);
   assert.equal(gameState.cities.capital.resources.food, 127);
+  assert.equal(gameState.cities.capital.resources.knowledge, 7);
   assert.equal(gameState.taskProgress.claimed.main_first_supplies.reward.resources.food, 120);
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.farmPrepReserved);
   assert.equal(getMainFirstTask(gameState).status, 'completed');
@@ -79,8 +78,8 @@ test('claiming a task reward is idempotent and rejects duplicates', () => {
 
   assert.equal(duplicate.success, false);
   assert.equal(duplicate.error, 'TASK_ALREADY_CLAIMED');
-  assert.equal(gameState.resources.food, 120);
-  assert.equal(gameState.resources.knowledge, 5);
+  assert.equal(gameState.cities.capital.resources.food, 120);
+  assert.equal(gameState.cities.capital.resources.knowledge, 5);
 });
 
 test('main lumbermill supplies wait for lumbermill and pay next era cost', () => {
@@ -101,9 +100,9 @@ test('main lumbermill supplies wait for lumbermill and pay next era cost', () =>
 
   assert.equal(result.success, true);
   assert.deepEqual(result.reward.resources, { food: 500, knowledge: 100, wood: 200 });
-  assert.equal(gameState.resources.food, 511);
-  assert.equal(gameState.resources.knowledge, 103);
-  assert.equal(gameState.resources.wood, 207);
+  assert.equal(gameState.cities.capital.resources.food, 511);
+  assert.equal(gameState.cities.capital.resources.knowledge, 103);
+  assert.equal(gameState.cities.capital.resources.wood, 207);
   assert.equal(getMainLumbermillTask(gameState).status, 'completed');
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.era3AdvanceReady);
   assert.equal(gameState.tutorial.completed, false);

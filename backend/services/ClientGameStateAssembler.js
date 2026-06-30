@@ -32,15 +32,32 @@ function getBuildingCategories() {
 }
 
 function getClientGameStateFromNormalized(normalized, projection = {}) {
-  const outputs = ResourceTickCalculator.calculateOutputs(normalized, normalized.buildingEffects);
-  const totalBuildings = Object.values(normalized.buildings).reduce((sum, item) => sum + (item?.level || 0), 0);
-  const activeCity = CityService.getActiveCity(normalized);
-  const growthMultiplier = ResourceTickCalculator.calculatePopulationGrowthMultiplier(activeCity || normalized);
-  const populationCapacity = ResourceTickCalculator.calculatePopulationCapacity(normalized, normalized.buildingEffects);
+  const activeCity = CityService.getActiveCity(normalized) || normalized;
+  // Single source of truth: resources/buildings/population/military come from the active
+  // city slot (cities[activeCityId]), never the legacy top-level mirror. The DTO context
+  // combines the active city's state with gameState-wide fields (currentEra/activeBuffs).
+  const cityResources = activeCity.resources || {};
+  const cityBuildings = activeCity.buildings || {};
+  const cityPopulation = activeCity.population || {};
+  const cityMilitary = activeCity.military || {};
+  const cityBuildingEffects = activeCity.buildingEffects || {};
+  const cityHappiness = Number.isFinite(activeCity.happiness) ? activeCity.happiness : normalized.happiness;
+  const outputContext = {
+    ...normalized,
+    resources: cityResources,
+    population: cityPopulation,
+    buildings: cityBuildings,
+    buildingEffects: cityBuildingEffects,
+    happiness: cityHappiness,
+  };
+  const outputs = ResourceTickCalculator.calculateOutputs(outputContext, cityBuildingEffects);
+  const totalBuildings = Object.values(cityBuildings).reduce((sum, item) => sum + (item?.level || 0), 0);
+  const growthMultiplier = ResourceTickCalculator.calculatePopulationGrowthMultiplier(activeCity);
+  const populationCapacity = ResourceTickCalculator.calculatePopulationCapacity(outputContext, cityBuildingEffects);
   return {
     playerId: normalized.playerId,
     resources: {
-      ...normalized.resources,
+      ...cityResources,
       foodOutputPerSecond: Math.round(outputs.foodOutputPerSecond * 10) / 10,
       foodConsumptionPerSecond: Math.round(outputs.foodConsumptionPerSecond * 10) / 10,
       foodNetPerSecond: Math.round(outputs.foodPerSecond * 10) / 10,
@@ -51,12 +68,12 @@ function getClientGameStateFromNormalized(normalized, projection = {}) {
       stonePerSecond: Math.round(outputs.stonePerSecond * 10) / 10,
       metalPerSecond: Math.round(outputs.ironPerSecond * 10) / 10,
     },
-    buildings: normalized.buildings,
-    buildingCosts: getBuildingCosts(normalized.buildings),
+    buildings: cityBuildings,
+    buildingCosts: getBuildingCosts(cityBuildings),
     buildingDefinitions: getBuildingDefinitions(),
     buildingCategories: getBuildingCategories(),
-    buildingEffects: normalized.buildingEffects,
-    military: normalized.military,
+    buildingEffects: cityBuildingEffects,
+    military: cityMilitary,
     cityState: CityService.getClientCityStateFromNormalized
       ? CityService.getClientCityStateFromNormalized(normalized)
       : CityService.getClientCityState(normalized),
@@ -70,9 +87,9 @@ function getClientGameStateFromNormalized(normalized, projection = {}) {
     currentEraName: EraConfig.getEraName(normalized.currentEra),
     currentEraDescription: EraConfig.getEraDescription(normalized.currentEra),
     population: {
-      ...normalized.population,
-      max: normalized.population.max,
-      maxPop: normalized.population.max,
+      ...cityPopulation,
+      max: cityPopulation.max,
+      maxPop: cityPopulation.max,
       capacity: populationCapacity,
       eraCap: populationCapacity.eraCap,
       housingCap: populationCapacity.housingCap,
@@ -89,7 +106,7 @@ function getClientGameStateFromNormalized(normalized, projection = {}) {
       ? TechTreeService.getClientStateFromNormalized(normalized)
       : TechTreeService.getClientState(normalized),
     techEffects: normalized.techEffects,
-    happiness: normalized.happiness,
+    happiness: cityHappiness,
     gameDay: normalized.gameDay,
     eraHistory: normalized.eraHistory,
     eventQueue: normalized.eventQueue,

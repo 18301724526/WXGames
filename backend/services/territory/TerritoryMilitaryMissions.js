@@ -84,7 +84,8 @@ function createTerritoryMilitaryMissions(dependencies = {}) {
     }
     return cities.map((city) => {
       const id = city.id || city.territoryId || 'capital';
-      const military = id === activeCityId && gameState?.military ? gameState.military : city.military;
+      // Single source of truth: read soldiers from the city slot, never the legacy top-level mirror.
+      const military = city.military;
       return {
         id,
         soldiers: Math.max(0, Math.floor(Number(military?.soldiers) || 0)),

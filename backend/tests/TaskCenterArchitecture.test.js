@@ -87,7 +87,7 @@ test('TaskRewardClaimer owns resource payout and reward reveal payload', () => {
   const reveal = TaskRewardClaimer.buildRewardReveal(task, reward.resources);
 
   assert.equal(reward.success, true);
-  assert.equal(gameState.resources.food, 9);
+  assert.equal(gameState.cities.capital.resources.food, 9);
   assert.deepEqual(reveal.resources, { food: 4 });
   assert.equal(reveal.subtitle, 'Reward Task');
 });

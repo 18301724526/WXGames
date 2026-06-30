@@ -233,14 +233,23 @@ function getCityResources(gameState = {}, cityId = 'capital') {
 }
 
 function setCityMilitary(gameState = {}, cityId = 'capital', military = {}) {
-  if (gameState.cities?.[cityId]) gameState.cities[cityId].military = military;
-  if (cityId === (gameState.activeCityId || 'capital') || !gameState.military) gameState.military = military;
+  if (gameState.cities?.[cityId]) {
+    gameState.cities[cityId].military = military;
+  } else {
+    // No city slot to write to (uninitialized/legacy object handed to MilitaryService
+    // directly without normalizeCities). Fall back to the top-level field so the value is
+    // not silently dropped; once cities[] exists it is the sole truth.
+    gameState.military = military;
+  }
   return military;
 }
 
 function setCityResources(gameState = {}, cityId = 'capital', resources = {}) {
-  if (gameState.cities?.[cityId]) gameState.cities[cityId].resources = resources;
-  if (cityId === (gameState.activeCityId || 'capital') || !gameState.resources) gameState.resources = resources;
+  if (gameState.cities?.[cityId]) {
+    gameState.cities[cityId].resources = resources;
+  } else {
+    gameState.resources = resources;
+  }
   return resources;
 }
 
@@ -379,12 +388,12 @@ function setArmyFormation(gameState, payload = {}) {
 
 function advanceTraining(gameState, deltaSeconds = 0) {
   const elapsed = Math.max(0, Math.floor(toNonNegativeNumber(deltaSeconds)));
-  const current = normalizeMilitaryState(gameState.military, gameState);
+  const cityId = gameState.activeCityId || 'capital';
+  const current = normalizeMilitaryState(getCityMilitary(gameState, cityId), gameState);
   let soldiers = current.soldiers;
   let trainingProgress = current.trainingProgress;
   let trained = 0;
   const strengthPolicy = getFormationStrengthPolicy();
-  const cityId = gameState.activeCityId || 'capital';
   const cityResources = getCityResources(gameState, cityId);
 
   if (

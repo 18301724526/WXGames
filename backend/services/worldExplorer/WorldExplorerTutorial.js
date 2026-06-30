@@ -52,7 +52,7 @@ function ensureTutorialFirstCityClaimSoldiers(gameState = {}) {
   }
   if (!changed) return false;
   if (city) city.military = military;
-  gameState.military = military;
+  else gameState.military = military;
   gameState.tutorial = {
     ...tutorial,
     grants: {

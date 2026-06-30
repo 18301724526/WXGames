@@ -255,8 +255,8 @@ test('settlement forest event grants enough starter resources for lumbermill gui
 
   assert.equal(result.success, true);
   assert.deepEqual(result.reward, { food: 50, wood: 20 });
-  assert.equal(gameState.resources.food, 50);
-  assert.equal(gameState.resources.wood, 20);
+  assert.equal(gameState.cities.capital.resources.food, 50);
+  assert.equal(gameState.cities.capital.resources.wood, 20);
   assert.equal(TutorialService.validateAction(eventClaimed, 'build', { target: 'lumbermill' }, gameState).allowed, true);
 });
 
