@@ -5,6 +5,23 @@
 
 ---
 
+## 🏁 完成状态（2026-07-01 更新）：单源重构「清干净 + 上锁」闭环完成
+
+审计出的真镜像/套壳**全部清除、验证、推送、部署**。HEAD `0e28ac49`，门禁绿（npm test 1730/0、smoke、lint、format、diff、`baseline:check --base main`）。
+
+| 项                                                                       | 提交                                      | 状态                                                                                                                                                        |
+| ------------------------------------------------------------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 刀1-5 ecs 套壳 → state/ 单源                                             | e4133ca0 / 7c4bf1aa / 383149d2 / 597aa59f | ✅                                                                                                                                                          |
+| 刀6 host.state → StateWriter 单一写入点                                  | 83df7ca4                                  | ✅（对抗验证拦下一个绿门禁测不出的加载顺序 bug，已修+加顺序守卫）                                                                                           |
+| 刀7 CityService 双写根除 → cities[id] 唯一真相（愈资源/建筑/人口/军事）  | c605656b                                  | ✅                                                                                                                                                          |
+| 刀8 前端 tutorial                                                        | —（no-op）                                | ✅ 查实**非真镜像**（同一引用），无需动                                                                                                                     |
+| 死代码清理（Building{System,Validator,Effects} + getGuideTutorialState） | f9d0452d                                  | ✅                                                                                                                                                          |
+| 刀9 红线单源守卫（锁死回潮）                                             | 0e28ac49                                  | ✅ `scripts/check-frontend-single-source-redline.js`：禁 ecs owner 壳 / `globalThis.Ecs*Owner` / `<host>.state=` 绕过 StateWriter；已注册 smoke、变异测试过 |
+
+**剩余均为可选/低优先（都不是套壳）**：移除 bitecs 框架（WorldClock/ModeWorld/FogVisibility→plain/SoA，小错配）、删 DB vestigial 列（需迁移）、后端写权封装（多写者单真相，危害低）。
+
+---
+
 ## ✅ 已完成：loop 1 前端 ecs/ 去壳（审计出的 5 个套壳全清）
 
 每刀都满足：实现必须全门禁绿才提交 → 独立对抗式验证（查套壳/行为漂移/被削弱测试）→ 主控再独立复跑全门禁。
