@@ -2879,7 +2879,7 @@ var EcsModeRuntime = (() => {
           if (typeof module !== 'undefined' && module.exports) {
             try {
               return require_TileCoord();
-            } catch (error) {
+            } catch (_error) {
               return null;
             }
           }

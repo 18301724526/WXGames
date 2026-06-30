@@ -46,7 +46,7 @@
   function getSerializableSizeBytes(value) {
     try {
       return JSON.stringify(value || {}).length;
-    } catch (error) {
+    } catch (_error) {
       return Infinity;
     }
   }

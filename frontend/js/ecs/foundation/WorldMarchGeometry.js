@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./TileMapGeometry');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -15,7 +15,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./TileCoord');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }

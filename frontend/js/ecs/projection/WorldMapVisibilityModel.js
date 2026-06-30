@@ -59,7 +59,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../foundation/TileCoord');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }

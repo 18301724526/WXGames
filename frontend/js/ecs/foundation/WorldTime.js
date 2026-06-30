@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldClock');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }

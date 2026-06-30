@@ -16,7 +16,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../system/WorldMarchProgressSnapshot');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -28,7 +28,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldActorProjection');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -40,7 +40,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../foundation/TileCoord');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }

@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./TileCoord');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -16,7 +16,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldTopology');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -28,7 +28,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldChunkAddress');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }

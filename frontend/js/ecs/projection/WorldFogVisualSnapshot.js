@@ -16,7 +16,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldMapVisibilityModel');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -28,7 +28,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./WorldMapRenderSnapshot');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
