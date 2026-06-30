@@ -189,6 +189,11 @@
     return CanvasModalSnapshotAdapter?.getTargetPickerSnapshot?.(host) || null;
   }
 
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
+
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
     Object.assign(CanvasActionController.prototype, {
@@ -715,7 +720,7 @@
         const view = action.view || 'army';
         closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
         this.host.militaryView = view;
-        if (this.host.state) this.host.state = { ...this.host.state, militaryView: view };
+        if (this.host.state) StateWriter.commit(this.host, (prev) => ({ ...prev, militaryView: view }), { source: 'territoryHandlers:switchMilitaryView' });
         game?.tutorialController?.onMilitaryViewSwitched?.(view);
         return this.afterHandled(action);
       },

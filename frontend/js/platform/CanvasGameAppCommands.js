@@ -33,6 +33,10 @@
   }
 
   const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -432,14 +436,14 @@
 
       showHouseBuiltAdvisorDialogue() {
             const message = t('command.house.builtAdvisor');
-            this.state = {
-              ...(this.state || {}),
+            StateWriter.commit(this, (prev) => ({
+              ...(prev || {}),
               softGuide: {
                 mode: 'strong',
                 target: 'tab-civilization',
                 message,
               },
-            };
+            }), { source: 'houseBuiltAdvisor' });
             closeBlockingPanelSnapshot(this, 'showAdvisor');
             closeBlockingPanelSnapshot(this, 'showCityManagement');
             closeBlockingPanelSnapshot(this, 'showSubcityList');
@@ -748,11 +752,11 @@
               this.activeTab = homeView.activeTab;
               this.militaryView = homeView.militaryView;
               this.mapHomeActive = homeView.isMapHome;
-              this.state = {
-                ...this.state,
+              StateWriter.commit(this, (prev) => ({
+                ...prev,
                 currentTab: homeView.activeTab,
                 militaryView: homeView.militaryView,
-              };
+              }), { source: 'CanvasGameAppCommands:enterCity' });
               this.renderCanvasSurface(homeView.activeTab);
               this.tutorialController?.markCityEntered?.().then(() => {
                 this.tutorialController?.refreshCurrentHighlight?.();

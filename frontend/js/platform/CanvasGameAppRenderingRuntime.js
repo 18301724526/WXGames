@@ -28,6 +28,10 @@
     }
   }
   const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     if (WorldMarchSystem?.hasActiveMission) {
       return WorldMarchSystem.hasActiveMission(state?.worldExplorerState || {}, options);
@@ -60,11 +64,11 @@
             this.mapHomeActive = homeView.isMapHome;
             this.activeTab = resolvedActiveTab;
             if (this.state && typeof this.state === 'object') {
-              this.state = {
-                ...this.state,
+              StateWriter.commit(this, (prev) => ({
+                ...prev,
                 currentTab: resolvedActiveTab,
                 militaryView: homeView.militaryView,
-              };
+              }), { source: 'renderCanvasSurface' });
             }
             this.militaryView = homeView.militaryView;
             if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
@@ -591,14 +595,14 @@
             this.techTreePanY = 0;
             this.techTreeZoom = 1;
             closeBlockingPanelSnapshot(this, 'techDetailOpen');
-            this.state = {
-              ...this.state,
+            StateWriter.commit(this, (prev) => ({
+              ...prev,
               techUiState: {
-                ...(this.state.techUiState || {}),
+                ...(prev.techUiState || {}),
                 selectedTechId: '',
                 detailOpen: false,
               },
-            };
+            }), { source: 'resetForCanvasTabSwitch' });
             this.techTreeDragStart = null;
             this.buildingTransition = null;
           },
@@ -661,16 +665,16 @@
             }
             if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
             if (this.state && typeof this.state === 'object') {
-              this.state = {
-                ...this.state,
+              StateWriter.commit(this, (prev) => ({
+                ...prev,
                 currentTab: homeView.activeTab,
                 militaryView: homeView.militaryView,
                 techUiState: {
-                  ...(this.state.techUiState || {}),
+                  ...(prev.techUiState || {}),
                   selectedTechId: '',
                   detailOpen: false,
                 },
-              };
+              }), { source: 'resetLocalViewToResources' });
             }
             if (!options.skipShell && this.canvasShell?.resetLocalViewToResources) {
               this.canvasShell.resetLocalViewToResources({ skipGame: true, skipRender: true });
@@ -693,16 +697,17 @@
             });
             this.activeTab = homeView.activeTab;
             this.mapHomeActive = homeView.isMapHome;
-            this.state = {
-              ...this.state,
+            StateWriter.commit(this, (prev) => ({
+              ...prev,
               currentTab: this.activeTab,
-              militaryView: homeView.militaryView,
+              militaryView: (preferredMilitaryView && !homeView.isMapHome)
+                ? preferredMilitaryView
+                : homeView.militaryView,
               techUiState: {
-                ...(this.state.techUiState || {}),
+                ...(prev.techUiState || {}),
                 detailOpen: false,
               },
-            };
-            if (preferredMilitaryView && !homeView.isMapHome) this.state.militaryView = preferredMilitaryView;
+            }), { source: 'switchTab' });
             this.militaryView = this.state.militaryView || homeView.militaryView;
             this.buildingOffset = 0;
             this.techTreePanX = 0;
@@ -738,7 +743,7 @@
               militaryView: this.militaryView,
               forceMapHome: this.mapHomeActive,
             }).isMapHome;
-            this.state = { ...this.state, militaryView: this.militaryView };
+            StateWriter.commit(this, (prev) => ({ ...prev, militaryView: this.militaryView }), { source: 'switchMilitaryView' });
             this.renderMilitaryView();
             this.renderCanvasSurface(this.state?.currentTab);
             return true;
@@ -751,13 +756,13 @@
               forceMapHome: this.mapHomeActive,
             }).isMapHome) {
               this.militaryView = 'world';
-              if (this.state) this.state.militaryView = 'world';
+              if (this.state) StateWriter.commit(this, (prev) => ({ ...prev, militaryView: 'world' }), { source: 'renderMilitaryView:mapHome' });
               return;
             }
             const view = this.presenter?.buildMilitaryNavigationViewState?.(this.state);
             if (view?.activeView) {
               this.militaryView = view.activeView;
-              if (this.state) this.state.militaryView = view.activeView;
+              if (this.state) StateWriter.commit(this, (prev) => ({ ...prev, militaryView: view.activeView }), { source: 'renderMilitaryView:nav' });
             }
           },
 
@@ -797,11 +802,11 @@
             this.militaryView = homeView.militaryView;
             this.mapHomeActive = homeView.isMapHome;
             if (this.state && typeof this.state === 'object') {
-              this.state = {
-                ...this.state,
+              StateWriter.commit(this, (prev) => ({
+                ...prev,
                 currentTab: homeView.activeTab,
                 militaryView: homeView.militaryView,
-              };
+              }), { source: 'renderTerritory' });
             }
             this.renderCanvasSurface(homeView.activeTab);
           },

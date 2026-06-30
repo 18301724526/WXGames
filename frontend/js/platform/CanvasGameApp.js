@@ -47,6 +47,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipRuntime) {
     CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
   }
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   class CanvasGameApp {
     constructor(options = {}) {
@@ -81,12 +85,12 @@
           this.pendingBuildingAction = null;
           this.hasServerState = Boolean(options.hasServerState);
           this.syncIntervalMs = options.syncIntervalMs || this.config.SYNC_INTERVAL_MS || 2000;
-          this.state = options.initialState || {
+          StateWriter.commit(this, options.initialState || {
             resources: {},
             population: {},
             currentEra: 0,
             softGuide: null,
-          };
+          }, { source: 'CanvasGameApp:constructor:init' });
           this.mapHomeActive = false;
           const initialHome = this.resolveMapHomeViewState({
             ...this.state,
@@ -99,11 +103,11 @@
           this.activeTab = initialHome.activeTab;
           this.militaryView = initialHome.militaryView;
           this.mapHomeActive = initialHome.isMapHome;
-          this.state = {
-            ...this.state,
+          StateWriter.commit(this, (prev) => ({
+            ...prev,
             currentTab: initialHome.activeTab,
             militaryView: initialHome.militaryView,
-          };
+          }), { source: 'CanvasGameApp:constructor:home' });
           this.activeCityManagementTab = 'buildings';
           this.activeTaskCenterTab = 'main';
           this.activeGuidebookTab = 'planning';
@@ -124,14 +128,14 @@
           this.techTreePanX = 0;
           this.techTreePanY = 0;
           this.techTreeZoom = 1;
-          this.state = {
-            ...this.state,
+          StateWriter.commit(this, (prev) => ({
+            ...prev,
             techUiState: {
-              ...(this.state.techUiState || {}),
+              ...(prev.techUiState || {}),
               selectedTechId: '',
               detailOpen: false,
             },
-          };
+          }), { source: 'CanvasGameApp:constructor:techUi' });
           this.techTreeDragStart = null;
           this.pageTransition = null;
           this.buildingTransition = null;

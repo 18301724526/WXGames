@@ -11,6 +11,20 @@
       WorldMarchSystem = null;
     }
   }
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
+
+  // Write one owned state field through the single write point without mutating the
+  // caller's `state` object. When the handed object is the canonical owner slot, route
+  // through StateWriter; otherwise derive a fresh object (detached snapshot path).
+  function writeOwnedStateField(host, state, field, value, source) {
+    if (StateWriter.getStateHost(host)?.state === state) {
+      return StateWriter.commit(host, (prev) => ({ ...prev, [field]: value }), { source });
+    }
+    return { ...state, [field]: value };
+  }
 
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     const explorer = state?.worldExplorerState || {};
@@ -114,7 +128,10 @@
           forceMapHome: Boolean(this.lastGame?.mapHomeActive || options?.isMapHome),
         });
         this.mapHomeActive = homeView.isMapHome;
-        if (homeView.militaryView && state.militaryView !== homeView.militaryView) state.militaryView = homeView.militaryView;
+        // Single write point + no in-place mutation of the passed state object: when the
+        // resolved view differs, route the owned field through StateWriter (or derive a
+        // fresh object for a detached snapshot) instead of mutating the caller's input.
+        if (homeView.militaryView && state.militaryView !== homeView.militaryView) state = writeOwnedStateField(this, state, 'militaryView', homeView.militaryView, 'shellFrame:renderWorldMapLayer');
         if (homeView.activeTab !== 'military') {
           if (typeof this.worldMapRenderer.clearAll === 'function') {
             this.worldMapRenderer.clearAll();

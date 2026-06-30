@@ -12,6 +12,10 @@
   })();
 
   const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -108,14 +112,14 @@
         host.applyApiState?.(result);
         const state = this.getState();
         if (state && typeof state === 'object') {
-          host.state = {
-            ...state,
+          StateWriter.commit(host, (prev) => ({
+            ...prev,
             techUiState: {
-              ...(state.techUiState || {}),
+              ...(prev.techUiState || {}),
               selectedTechId: techId,
               detailOpen: false,
             },
-          };
+          }), { source: 'GameCommandService:research' });
         }
         closeBlockingPanelSnapshot(host.canvasShell || host, 'techDetailOpen');
         host.showFloatingText?.(result?.message || t('command.research.completed', {}));

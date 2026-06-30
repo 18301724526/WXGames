@@ -17,6 +17,10 @@
   }
 
   const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   function getMountedGame(shell) {
     return shell?.lastGame && shell.lastGame !== shell ? shell.lastGame : null;
@@ -69,14 +73,14 @@ selectTechNode(action = {}) {
       getUiStateOwner(this).selectedTechId = techId;
       openBlockingPanelSnapshot(this, 'techDetailOpen', Boolean(techId));
       if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
-        this.lastGame.state = {
-          ...this.lastGame.state,
+        StateWriter.commit(this, (prev) => ({
+          ...prev,
           techUiState: {
-            ...(this.lastGame.state.techUiState || {}),
+            ...(prev.techUiState || {}),
             selectedTechId: techId,
             detailOpen: Boolean(techId),
           },
-        };
+        }), { source: 'shell:selectTechNode' });
       }
       return true;
     },
@@ -84,13 +88,13 @@ selectTechNode(action = {}) {
 closeTechDetail(action = {}) {
       closeBlockingPanelSnapshot(this, 'techDetailOpen');
       if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
-        this.lastGame.state = {
-          ...this.lastGame.state,
+        StateWriter.commit(this, (prev) => ({
+          ...prev,
           techUiState: {
-            ...(this.lastGame.state.techUiState || {}),
+            ...(prev.techUiState || {}),
             detailOpen: false,
           },
-        };
+        }), { source: 'shell:closeTechDetail' });
       }
       return true;
     },
@@ -392,11 +396,11 @@ resetLocalViewToResources(options = {}) {
       this.activeGuidebookTab = 'planning';
       const game = this.lastGame;
       if (game?.state && typeof game.state === 'object') {
-        game.state = {
-          ...game.state,
+        StateWriter.commit(this, (prev) => ({
+          ...prev,
           currentTab: homeView.activeTab,
           militaryView: homeView.militaryView,
-        };
+        }), { source: 'shell:resetLocalViewToResources' });
       }
       if (game && 'activeTab' in game) game.activeTab = homeView.activeTab;
       if (game && 'militaryView' in game) game.militaryView = homeView.militaryView;

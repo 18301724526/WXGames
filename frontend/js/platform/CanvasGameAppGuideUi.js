@@ -12,6 +12,10 @@
   })();
 
   const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot, isBlockingPanelSnapshotOpen } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -172,7 +176,7 @@
 
       setGuideMilitaryView(view) {
             this.militaryView = view || 'army';
-            this.state = { ...this.state, militaryView: this.militaryView };
+            StateWriter.commit(this, (prev) => ({ ...prev, militaryView: this.militaryView }), { source: 'setGuideMilitaryView' });
             this.render();
             return true;
           },

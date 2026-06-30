@@ -1025,8 +1025,12 @@ test('CanvasGameShell can render resources without default map-home coercion', (
   assert.equal(shell.renderReadOnly(state, 'resources', { forceMapHome: false, allowDefaultMapHome: false }), true);
 
   assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
-  assert.equal(state.currentTab, 'resources');
-  assert.equal(state.militaryView, 'army');
+  // renderReadOnly honors its name: the input `state` object is not mutated; the
+  // resolved tab/view land on the canonical owner via StateWriter (single write point).
+  assert.equal(state.currentTab, 'military');
+  assert.equal(state.militaryView, 'world');
+  assert.equal(shell.lastGame.state.currentTab, 'resources');
+  assert.equal(shell.lastGame.state.militaryView, 'army');
   assert.equal(shell.mapHomeActive, false);
 });
 
@@ -1394,8 +1398,12 @@ test('CanvasGameShell keeps guided resource render target during active refreshe
   assert.equal(shell.renderActive(), true);
 
   assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
-  assert.equal(state.currentTab, 'resources');
-  assert.equal(state.militaryView, 'army');
+  // renderReadOnly honors its name: the input `state` object is not mutated; the
+  // resolved tab/view land on the canonical owner via StateWriter (single write point).
+  assert.equal(state.currentTab, 'military');
+  assert.equal(state.militaryView, 'world');
+  assert.equal(shell.lastGame.state.currentTab, 'resources');
+  assert.equal(shell.lastGame.state.militaryView, 'army');
   assert.equal(shell.mapHomeActive, false);
 });
 

@@ -1,4 +1,8 @@
 (function (global) {
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
@@ -137,8 +141,11 @@ renderGuideHighlightFrame(highlight = this.tutorialHighlight) {
           if ('militaryView' in this.lastGame && nextMilitaryView) this.lastGame.militaryView = nextMilitaryView;
           if ('mapHomeActive' in this.lastGame) this.lastGame.mapHomeActive = Boolean(renderView.isMapHome);
           if (this.lastGame.state && typeof this.lastGame.state === 'object') {
-            this.lastGame.state.currentTab = nextActiveTab;
-            if (nextMilitaryView) this.lastGame.state.militaryView = nextMilitaryView;
+            StateWriter.commit(this, (prev) => ({
+              ...prev,
+              currentTab: nextActiveTab,
+              ...(nextMilitaryView ? { militaryView: nextMilitaryView } : {}),
+            }), { source: 'shellGuideUi:refreshHighlight' });
           }
         }
       }
@@ -153,7 +160,7 @@ switchGuideTab(tabId) {
       if (this.lastGame?.handleCanvasTabSelection) {
         const result = this.lastGame.handleCanvasTabSelection(tabId);
         if (result !== false && this.lastGame?.state && typeof this.lastGame.state === 'object') {
-          this.lastGame.state.currentTab = tabId;
+          StateWriter.commit(this, (prev) => ({ ...prev, currentTab: tabId }), { source: 'shellGuideUi:switchGuideTab' });
         }
         return result;
       }
@@ -164,7 +171,7 @@ switchGuideTab(tabId) {
 setGuideMilitaryView(view) {
       if (this.onAction) return this.onAction({ type: 'switchMilitaryView', view: view || 'army' });
       if (this.lastGame?.switchMilitaryView) return this.lastGame.switchMilitaryView(view || 'army');
-      if (this.lastGame?.state) this.lastGame.state.militaryView = view || 'army';
+      if (this.lastGame?.state) StateWriter.commit(this, (prev) => ({ ...prev, militaryView: view || 'army' }), { source: 'shellGuideUi:setGuideMilitaryView' });
       return true;
     },
 

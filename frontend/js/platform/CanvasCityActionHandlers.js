@@ -17,6 +17,10 @@
   }
 
   const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   function install(CanvasActionController) {
     if (!CanvasActionController?.prototype) return false;
@@ -313,14 +317,14 @@
         } else if (this.host) {
           const game = this.getGameHost();
           if (game?.state && typeof game.state === 'object') {
-            game.state = {
-              ...game.state,
+            StateWriter.commit(game, (prev) => ({
+              ...prev,
               techUiState: {
-                ...(game.state.techUiState || {}),
+                ...(prev.techUiState || {}),
                 selectedTechId: techId,
                 detailOpen: Boolean(techId),
               },
-            };
+            }), { source: 'cityHandlers:selectTechNode' });
           }
         }
         openBlockingPanelSnapshot(this.host, 'techDetailOpen', Boolean(techId));
@@ -333,13 +337,13 @@
         } else if (this.host) {
           const game = this.getGameHost();
           if (game?.state && typeof game.state === 'object') {
-            game.state = {
-              ...game.state,
+            StateWriter.commit(game, (prev) => ({
+              ...prev,
               techUiState: {
-                ...(game.state.techUiState || {}),
+                ...(prev.techUiState || {}),
                 detailOpen: false,
               },
-            };
+            }), { source: 'cityHandlers:closeTechDetail' });
           }
         }
         closeBlockingPanelSnapshot(this.host, 'techDetailOpen');
@@ -382,10 +386,10 @@
         const game = this.getGameHost();
         const nextState = result?.gameState || result?.state || null;
         if (nextState && game?.state && typeof game.state === 'object' && !game.applyState && !game.applyApiState) {
-          game.state = {
+          StateWriter.commit(game, (prev) => ({
             ...nextState,
-            currentTab: game.state.currentTab || nextState.currentTab,
-          };
+            currentTab: prev.currentTab || nextState.currentTab,
+          }), { source: 'cityHandlers:afterEventClaimed' });
         }
         const nextTutorial = result?.tutorial || game?.tutorial || game?.state?.tutorial || null;
         if (nextTutorial) game?.tutorialController?.sync?.(nextTutorial);

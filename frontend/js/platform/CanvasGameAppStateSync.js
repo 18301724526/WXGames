@@ -23,6 +23,10 @@
       WorldMarchOptimisticState = null;
     }
   }
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -101,7 +105,7 @@
               militaryView: localMilitaryView,
               forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
             });
-            this.state = {
+            StateWriter.commit(this, {
               ...nextState,
               currentTab: homeView.activeTab,
               militaryView: homeView.militaryView,
@@ -109,7 +113,7 @@
               guideTasks: payload.guideTasks ?? nextState.guideTasks ?? { visible: false, tasks: [] },
               taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
               eraProgress: payload.eraProgress ?? nextState.eraProgress,
-            };
+            }, { source: 'applyState' });
             const assignedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
             global.CodexWorldMapDiag?.logChanged?.('state:applyState:afterAssign', {
               tileCount: assignedStateSummary?.worldMap?.tileCount || 0,
@@ -227,10 +231,10 @@
               militaryView: localMilitaryView,
               forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
             });
-            this.state = this.stateManager?.sync
+            StateWriter.commit(this, (prev) => (this.stateManager?.sync
               ? this.stateManager.sync(
                 {
-                  ...(this.state || {}),
+                  ...(prev || {}),
                   currentTab: homeView.activeTab,
                   militaryView: homeView.militaryView,
                 },
@@ -242,7 +246,7 @@
                 currentTab: homeView.activeTab,
                 militaryView: homeView.militaryView,
                 eraProgress: eraProgress ?? reconciledServerState?.eraProgress,
-              };
+              }), { source: 'syncFromServer:sync' });
             const syncedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
             global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:afterSync', {
               tileCount: syncedStateSummary?.worldMap?.tileCount || 0,
@@ -259,20 +263,20 @@
               militaryView: homeView.militaryView,
               forceMapHome: homeView.isMapHome,
             });
-            this.state = {
-              ...this.state,
+            StateWriter.commit(this, (prev) => ({
+              ...prev,
               currentTab: syncedHomeView.activeTab,
               militaryView: syncedHomeView.militaryView,
-            };
+            }), { source: 'syncFromServer:homeView' });
             this.activeTab = this.state.currentTab || syncedHomeView.activeTab;
             this.militaryView = this.state.militaryView || syncedHomeView.militaryView;
             this.mapHomeActive = syncedHomeView.isMapHome;
             const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
             this.tutorial = nextTutorial;
-            this.state = {
-              ...this.state,
+            StateWriter.commit(this, (prev) => ({
+              ...prev,
               tutorial: nextTutorial,
-            };
+            }), { source: 'syncFromServer:tutorial' });
             const beforeRenderStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
             global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:beforeRender', {
               tileCount: beforeRenderStateSummary?.worldMap?.tileCount || 0,

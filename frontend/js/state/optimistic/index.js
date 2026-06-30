@@ -28,6 +28,7 @@
   const Builder = requireModule('MarchCommandBuilder', './MarchCommandBuilder');
   const PendingStore = requireModule('MarchPendingStore', './MarchPendingStore');
   const Reconciler = requireModule('MarchReconciler', './MarchReconciler');
+  const StateWriter = requireModule('StateWriter', '../StateWriter');
 
   const SLOW_SYNC_MESSAGE = '网络连接缓慢，正在尝试同步';
 
@@ -75,19 +76,18 @@
   function setExplorer(host = {}, explorer = {}) {
     if (!host || typeof host !== 'object') return false;
     const currentState = getState(host);
-    const nextState = {
-      ...(currentState || {}),
-      worldExplorerState: explorer,
-    };
-    // Single live-state owner: write exactly the slot getState() reads (lastGame
-    // precedence). The host/lastGame split previously duplicated the same buffer and
-    // a third canvasShell.state mirror existed (zero readers, removed). Collapsed to
-    // one write; observably identical on every real call path.
-    const owner =
-      host.lastGame && host.lastGame !== host && typeof host.lastGame === 'object'
-        ? host.lastGame
-        : host;
-    owner.state = nextState;
+    // Single live-state owner: StateWriter owns the host/lastGame precedence and is
+    // the one place that assigns owner.state, so write exactly the slot getState()
+    // reads. The host/lastGame split previously duplicated the same buffer and a
+    // third canvasShell.state mirror existed (zero readers, removed).
+    StateWriter.commit(
+      host,
+      {
+        ...(currentState || {}),
+        worldExplorerState: explorer,
+      },
+      { source: 'optimistic:setExplorer' },
+    );
     return true;
   }
 

@@ -7,6 +7,10 @@
       WorldMarchSystem = null;
     }
   }
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
   var WorldMapRuntimeRenderPolicy = global.WorldMapRuntimeRenderPolicy;
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeRenderPolicy) {
     try {
@@ -233,8 +237,11 @@ getActiveTab() {
       this.mapHomeActive = view.isMapHome;
       if (this.lastGame && 'mapHomeActive' in this.lastGame) this.lastGame.mapHomeActive = view.isMapHome;
       if (this.lastGame?.state && view.isMapHome) {
-        this.lastGame.state.currentTab = view.activeTab;
-        this.lastGame.state.militaryView = view.militaryView;
+        StateWriter.commit(this, (prev) => ({
+          ...prev,
+          currentTab: view.activeTab,
+          militaryView: view.militaryView,
+        }), { source: 'shellRendering:getActiveTab' });
       }
       return view.activeTab;
     },
@@ -518,9 +525,28 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
         allowDefaultMapHome: options.allowDefaultMapHome,
       });
       this.mapHomeActive = homeView.isMapHome;
-      if (state.currentTab !== homeView.activeTab) state.currentTab = homeView.activeTab;
       const resolvedMilitaryView = homeView.activeTab === 'military' ? homeView.militaryView : 'army';
-      if (resolvedMilitaryView && state.militaryView !== resolvedMilitaryView) state.militaryView = resolvedMilitaryView;
+      // Honor the name: renderReadOnly must NOT mutate the state object it is handed.
+      // The active tab/military view it derives are owned facts, so route the update
+      // through StateWriter (the single write point), then re-point the local `state`
+      // to the canonical owner's fresh object for the rest of the read-only render.
+      const needsTabUpdate = state.currentTab !== homeView.activeTab;
+      const needsMilitaryUpdate = Boolean(resolvedMilitaryView) && state.militaryView !== resolvedMilitaryView;
+      if ((needsTabUpdate || needsMilitaryUpdate) && StateWriter.getStateHost(this)?.state === state) {
+        state = StateWriter.commit(this, (prev) => ({
+          ...prev,
+          ...(needsTabUpdate ? { currentTab: homeView.activeTab } : {}),
+          ...(needsMilitaryUpdate ? { militaryView: resolvedMilitaryView } : {}),
+        }), { source: 'shellRendering:renderReadOnly' });
+      } else if (needsTabUpdate || needsMilitaryUpdate) {
+        // Fallback: the handed state is not the owner's slot (e.g. a detached snapshot).
+        // Derive a fresh object instead of mutating the caller's input.
+        state = {
+          ...state,
+          ...(needsTabUpdate ? { currentTab: homeView.activeTab } : {}),
+          ...(needsMilitaryUpdate ? { militaryView: resolvedMilitaryView } : {}),
+        };
+      }
        const renderOptions = {
          ...this.buildRenderOptions(homeView.activeTab, territoryUiState, {
            forceMapHome: homeView.isMapHome,

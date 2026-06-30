@@ -30,6 +30,10 @@
   const { closeBlockingPanelSnapshot } =
     global.CanvasBlockingPanelSnapshotCalls ||
     (typeof require !== 'undefined' ? require('../platform/CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   function getStep(host) {
     return Number(host?.getCurrentStep?.()) || 0;
@@ -249,10 +253,14 @@
           return host.state;
         }
         game.canvasShell?.hideTutorialHighlight?.();
-        game.state = {
-          ...(game.state || {}),
-          softGuide: null,
-        };
+        StateWriter.commit(
+          game,
+          (prev) => ({
+            ...(prev || {}),
+            softGuide: null,
+          }),
+          { source: 'tutorialEvent:advisorClosed' },
+        );
         const result = await host.advanceTo?.(steps.completed);
         host.refreshCurrentHighlight?.();
         return result;

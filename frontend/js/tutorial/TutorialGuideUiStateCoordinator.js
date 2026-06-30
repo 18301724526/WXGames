@@ -29,6 +29,10 @@
   })();
 
   const { openBlockingPanelSnapshot, closeBlockingPanelSnapshot, isBlockingPanelSnapshotOpen } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('../platform/CanvasBlockingPanelSnapshotCalls') : {});
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
 
   function getCommandPanelValue(host) {
     if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();
@@ -50,14 +54,14 @@
     const game = this.game || {};
     game.canvasShell?.hideTutorialHighlight?.();
     const dialogue = { message, advisorName: t('tutorial.advisorName'), source: `softGuide:${target || 'tutorial'}` };
-    game.state = {
-      ...(game.state || {}),
+    StateWriter.commit(game, (prev) => ({
+      ...(prev || {}),
       softGuide: {
         mode: 'strong',
         target,
         message,
       },
-    };
+    }), { source: 'tutorialUiState:softGuide' });
     closeBlockingPanelSnapshot(game, 'showAdvisor');
     game.tutorialAdvisorDialogue = dialogue;
     if (game.canvasShell) {
