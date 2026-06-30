@@ -1104,3 +1104,24 @@ test('CanvasGameRenderer renders occupied city HUD through split renderer facade
 
   assert.equal(renderer.hitTargets.some((target) => target.action.type === 'enterCity' && target.action.cityId === 'capital'), true);
 });
+
+test('WorldMapCanvasRenderer dimensions stay finite when the host omits width/height/bottomSafeArea', () => {
+  // Regression: the site-command overlay reads this.width/height/bottomSafeArea
+  // directly (render() takes them as params, the overlay does not). If the host
+  // composition path exposes ctx/canvas but not width, the getters returned
+  // undefined and NaN-cascaded into createGradient (site modal crash). The
+  // getters must fall back to the live canvas / a sane default.
+  const renderer = new WorldMapCanvasRenderer({
+    host: createHost({
+      width: undefined,
+      height: undefined,
+      bottomSafeArea: undefined,
+      canvas: { clientWidth: 414, clientHeight: 896 },
+    }),
+  });
+  assert.equal(renderer.width, 414);
+  assert.equal(renderer.height, 896);
+  assert.equal(renderer.bottomSafeArea, 12);
+  assert.equal(Number.isFinite(renderer.width), true);
+  assert.equal(Number.isFinite(renderer.height), true);
+});

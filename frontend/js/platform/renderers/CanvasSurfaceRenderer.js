@@ -77,14 +77,14 @@
     }
 
     createGradient(x0, y0, x1, y1, stops = [], fallback = '#000') {
-      if (!this.ctx || typeof this.ctx.createLinearGradient !== 'function') return fallback;
+      if (!this.ctx || typeof this.ctx.createLinearGradient !== 'function' || ![x0, y0, x1, y1].every(Number.isFinite)) return fallback;
       const gradient = this.ctx.createLinearGradient(x0, y0, x1, y1);
       stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
       return gradient;
     }
 
     createRadialGradient(x0, y0, r0, x1, y1, r1, stops = [], fallback = '#000') {
-      if (!this.ctx || typeof this.ctx.createRadialGradient !== 'function') return fallback;
+      if (!this.ctx || typeof this.ctx.createRadialGradient !== 'function' || ![x0, y0, r0, x1, y1, r1].every(Number.isFinite)) return fallback;
       const gradient = this.ctx.createRadialGradient(x0, y0, r0, x1, y1, r1);
       stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
       return gradient;

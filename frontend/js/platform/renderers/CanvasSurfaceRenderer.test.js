@@ -102,6 +102,19 @@ test('CanvasSurfaceRenderer preserves layout and gradient helpers', () => {
   ]);
 });
 
+test('CanvasSurfaceRenderer gradients fall back to a solid color on non-finite coords', () => {
+  // Regression: canvas createLinearGradient/createRadialGradient THROW on NaN/Infinity.
+  // A non-finite layout value (e.g. an undefined width upstream) must degrade to the
+  // solid fallback instead of crashing the whole render pass.
+  const host = createHost({ width: 500 });
+  const renderer = new CanvasSurfaceRenderer({ host });
+
+  assert.equal(renderer.createGradient(NaN, 0, 10, 10, [[0, '#000']], '#solid'), '#solid');
+  assert.equal(renderer.createGradient(0, undefined, 10, 10, [[0, '#000']], '#solid'), '#solid');
+  assert.equal(renderer.createRadialGradient(0, 0, NaN, 1, 1, 1, [[0, '#000']], '#solid'), '#solid');
+  assert.equal(renderer.createRadialGradient(0, 0, 1, Infinity, 1, 1, [[0, '#000']], '#solid'), '#solid');
+});
+
 test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield rules', () => {
   const host = createHost();
   const renderer = new CanvasSurfaceRenderer({ host });

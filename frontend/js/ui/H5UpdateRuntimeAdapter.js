@@ -114,6 +114,7 @@
     createGradient(x0, y0, x1, y1, stops = [], fallback = '#000') {
       const ctx = this.promptContext;
       if (!ctx || typeof ctx.createLinearGradient !== 'function') return fallback;
+      if (![x0, y0, x1, y1].every(Number.isFinite)) return fallback;
       const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
       stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
       return gradient;

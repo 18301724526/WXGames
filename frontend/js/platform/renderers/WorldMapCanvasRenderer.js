@@ -193,11 +193,18 @@
     }
 
     get width() {
-      return this.host?.width;
+      // Host chain may not expose width on every composition path (the overlay
+      // render reads this.width directly, unlike render() which takes it as a param);
+      // fall back to the live canvas logical width so coords never go non-finite.
+      return Number(this.host?.width) || Number(this.canvas?.clientWidth) || Number(this.canvas?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || Number(this.canvas?.clientHeight) || Number(this.canvas?.height) || 0;
+    }
+
+    get bottomSafeArea() {
+      return Number(this.host?.bottomSafeArea) || 12;
     }
 
     get viewportOffsetX() {
