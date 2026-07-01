@@ -11,6 +11,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasBattleActionHandlers) {
     CanvasBattleActionHandlers = require('./CanvasBattleActionHandlers');
   }
+  var CanvasExpeditionActionHandlers = global.CanvasExpeditionActionHandlers;
+  if (typeof module !== 'undefined' && module.exports && !CanvasExpeditionActionHandlers) {
+    CanvasExpeditionActionHandlers = require('./CanvasExpeditionActionHandlers');
+  }
   var CanvasCityActionHandlers = global.CanvasCityActionHandlers;
   if (typeof module !== 'undefined' && module.exports && !CanvasCityActionHandlers) {
     CanvasCityActionHandlers = require('./CanvasCityActionHandlers');
@@ -523,6 +527,7 @@
 
   CanvasTerritoryActionHandlers?.install?.(CanvasActionController);
   CanvasBattleActionHandlers?.install?.(CanvasActionController);
+  CanvasExpeditionActionHandlers?.install?.(CanvasActionController);
   CanvasCityActionHandlers?.install?.(CanvasActionController);
   CanvasFamousActionHandlers?.install?.(CanvasActionController);
   CanvasShellActionHandlers?.install?.(CanvasActionController);

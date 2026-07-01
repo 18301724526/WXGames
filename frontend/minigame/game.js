@@ -136,6 +136,7 @@ require('../js/tutorial/TutorialGuideController');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/CanvasTerritoryActionHandlers');
 require('../js/platform/CanvasBattleActionHandlers');
+require('../js/platform/CanvasExpeditionActionHandlers');
 require('../js/platform/CanvasCityActionHandlers');
 require('../js/platform/CanvasFamousActionHandlers');
 require('../js/platform/CanvasShellActionHandlers');
