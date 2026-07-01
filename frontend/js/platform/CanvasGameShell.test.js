@@ -35,6 +35,7 @@ const SHELL_MODULES = [
   'CanvasGameShellWorldMapRuntime',
   'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameShellRenderingRuntime',
+  'CanvasGameShellTransitionTimers',
   'CanvasModalSnapshotAdapter',
   'CanvasGameShellSystemUi',
 ];

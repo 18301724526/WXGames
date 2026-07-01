@@ -75,6 +75,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellRenderingRuntime) {
     CanvasGameShellRenderingRuntime = require('./CanvasGameShellRenderingRuntime');
   }
+  var CanvasGameShellTransitionTimers = global.CanvasGameShellTransitionTimers;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellTransitionTimers) {
+    CanvasGameShellTransitionTimers = require('./CanvasGameShellTransitionTimers');
+  }
   var CanvasGameShellSystemUi = global.CanvasGameShellSystemUi;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellSystemUi) {
     CanvasGameShellSystemUi = require('./CanvasGameShellSystemUi');
@@ -315,6 +319,7 @@ static mount(game, options = {}) {
     CanvasGameShellWorldMapRuntime,
     CanvasGameWorldActorAnimationRuntime,
     CanvasGameShellRenderingRuntime,
+    CanvasGameShellTransitionTimers,
     CanvasGameShellSystemUi,
   ].forEach((shellModule) => shellModule?.install?.(CanvasGameShell));
 

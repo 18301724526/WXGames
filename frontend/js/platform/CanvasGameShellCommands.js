@@ -26,13 +26,11 @@
     TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
   }
 
-  function getMountedGame(shell) {
-    return shell?.lastGame && shell.lastGame !== shell ? shell.lastGame : null;
+  var CanvasGameShellHostAccess = global.CanvasGameShellHostAccess;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellHostAccess) {
+    CanvasGameShellHostAccess = require('./CanvasGameShellHostAccess');
   }
-
-  function getUiStateOwner(shell) {
-    return getMountedGame(shell) || shell;
-  }
+  var getUiStateOwner = CanvasGameShellHostAccess.getUiStateOwner;
 
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
