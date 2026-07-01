@@ -100,6 +100,7 @@ require('../js/platform/renderers/WorldMapLayerCanvasRenderer');
 require('../js/platform/renderers/FamousCanvasRenderer');
 require('../js/platform/renderers/TechCanvasRenderer');
 require('../js/platform/renderers/BattleLayoutModel');
+require('../js/platform/renderers/BattleSpriteRenderer');
 require('../js/platform/renderers/BattleCanvasRenderer');
 require('../js/platform/renderers/CanvasBattleFacade');
 require('../js/platform/renderers/TutorialAdvisorSpineLayoutConfig');
