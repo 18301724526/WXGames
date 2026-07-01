@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasTerritoryActionHandlers = require('./CanvasTerritoryActionHandlers');
+const CanvasBattleActionHandlers = require('./CanvasBattleActionHandlers');
 const CanvasActionController = require('./CanvasActionController');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
@@ -71,6 +72,7 @@ class HostController {
 }
 
 CanvasTerritoryActionHandlers.install(HostController);
+CanvasBattleActionHandlers.install(HostController);
 CanvasModeOwnershipRuntime.install(HostController);
 CanvasModalSnapshotAdapter.install(HostController);
 
