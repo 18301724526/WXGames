@@ -24,6 +24,7 @@ function makeTempFrontend() {
   fs.mkdirSync(path.join(root, 'js', 'debug'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'api'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'ui'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'js', 'shared'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'state'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'ecs', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'platform'), { recursive: true });
@@ -38,6 +39,7 @@ function makeTempFrontend() {
     'js/ui/H5GameApiTransportAdapter.js',
     'js/ui/H5AuthStorageAdapter.js',
     'js/ui/H5ShellAdapter.js',
+    'js/shared/FormationDeploymentEligibilityAdapter.js',
     'js/state/UIStatePresenterDelegates.js',
     'js/state/UIStatePresenter.js',
     'js/ecs/runtime/EcsModeRuntimeBundle.js',
@@ -53,6 +55,7 @@ function makeTempFrontend() {
   ].forEach((file) => {
     fs.writeFileSync(path.join(root, file), file.endsWith('.css') ? 'body{}' : 'window.__asset=1;');
   });
+  fs.writeFileSync(path.join(repoRoot, 'shared', 'formationDeploymentEligibility.js'), 'window.FormationDeploymentEligibility={};');
   return { repoRoot, frontendDir: root };
 }
 
@@ -75,6 +78,8 @@ function writeIndex(root, overrides = {}) {
   <script src="js/ui/H5GameApiTransportAdapter.js?v=${version}"></script>
   <script src="js/ui/H5AuthStorageAdapter.js?v=${version}"></script>
   <script src="js/ui/H5ShellAdapter.js?v=${version}"></script>
+  <script src="shared/formationDeploymentEligibility.js?v=${version}"></script>
+  <script src="js/shared/FormationDeploymentEligibilityAdapter.js?v=${version}"></script>
   <script src="js/state/UIStatePresenterDelegates.js?v=${version}"></script>
   <script src="js/state/UIStatePresenter.js?v=${version}"></script>
   <script src="js/ecs/runtime/EcsModeRuntimeBundle.js?v=${version}"></script>
@@ -126,7 +131,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 22);
+  assert.equal(result.updated, 24);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -138,7 +143,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 21);
+  assert.equal(manifest.localScriptCount, 23);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -171,5 +176,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 23);
+  assert.equal(manifest.localScriptCount, 25);
 });

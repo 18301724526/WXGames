@@ -694,3 +694,51 @@ test('world combat encounter is seeded near capital and resolves when a formatio
   const renormalizedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
   assert.equal(renormalizedEncounter.status, 'active');
 });
+
+test('world combat encounter rejects deployment when primary general has zero soldiers', () => {
+  const now = new Date('2026-06-22T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  gameState.military.formations.capital[0].soldierAssignments = { 'fp-tutorial-scout': 0 };
+  gameState.cities.capital.military.formations = gameState.military.formations;
+  const combatState = WorldCombatEncounterService.normalizeCombatState(gameState, now);
+  const encounter = combatState.encounters.find((item) => item.id === WorldCombatEncounterService.ENCOUNTER_ID);
+
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    combatEncounterId: encounter.id,
+    targetQ: encounter.q,
+    targetR: encounter.r,
+    formationSlot: 1,
+  }, now);
+
+  assert.equal(started.success, false);
+  assert.equal(started.error, 'WORLD_COMBAT_PRIMARY_NO_SOLDIERS');
+  assert.equal(gameState.exploreMissions.length, 0);
+});
+
+test('world combat encounter allows deployment when only a deputy has zero soldiers', () => {
+  const now = new Date('2026-06-22T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  gameState.famousPeople.push({ id: 'fp-deputy', name: 'Deputy' });
+  gameState.military.formations.capital[0] = {
+    slot: 1,
+    memberIds: ['fp-tutorial-scout', 'fp-deputy'],
+    soldierAssignments: { 'fp-tutorial-scout': 120, 'fp-deputy': 0 },
+  };
+  gameState.cities.capital.military.formations = gameState.military.formations;
+  const combatState = WorldCombatEncounterService.normalizeCombatState(gameState, now);
+  const encounter = combatState.encounters.find((item) => item.id === WorldCombatEncounterService.ENCOUNTER_ID);
+
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    combatEncounterId: encounter.id,
+    targetQ: encounter.q,
+    targetR: encounter.r,
+    formationSlot: 1,
+  }, now);
+
+  assert.equal(started.success, true);
+  assert.equal(started.mission.formationSnapshot.members.length, 2);
+  assert.equal(started.mission.formationSnapshot.members[0].soldiersRemaining, 120);
+  assert.equal(started.mission.formationSnapshot.members[1].soldiersRemaining, 0);
+});

@@ -65,6 +65,7 @@ openConfirmDialog(view = {}) {
         message: view.message || '',
         confirmLabel: view.confirmLabel || t('common.confirm'),
         cancelLabel: view.cancelLabel || t('common.cancel'),
+        confirmAction: view.confirmAction || null,
         submitting: Boolean(view.submitting),
       };
       this.openConfirmDialogSnapshot?.(dialog, {

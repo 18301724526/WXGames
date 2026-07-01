@@ -165,6 +165,38 @@ test('WorldMarchHudCanvasRenderer renders formation picker with start action', (
   assert.equal(start.rect.y + start.rect.height <= 84 + 696, true);
 });
 
+test('WorldMarchHudCanvasRenderer keeps zero-soldier primary formations clickable with eligibility facts', () => {
+  const host = createHost({
+    presenter: {
+      buildMilitaryViewState() {
+        return {
+          formations: [
+            {
+              slot: 1,
+              cityId: 'capital',
+              name: 'Scout A',
+              memberCount: 1,
+              maxMembers: 5,
+              members: [{ id: 'fp-1', name: 'Scout', soldiersAssigned: 0 }],
+            },
+          ],
+        };
+      },
+    },
+  });
+  const renderer = new WorldMarchHudCanvasRenderer({ host });
+
+  renderer.renderWorldMarchHud({ activeCityId: 'capital' }, {
+    worldMarchTarget: { q: 2, r: -1, tileId: 'tile_2_-1' },
+  }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
+
+  const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
+  assert.equal(Boolean(start), true);
+  assert.equal(start.action.disabled, false);
+  assert.equal(start.action.deploymentEligibility.blocked, true);
+  assert.equal(start.action.deploymentEligibility.blockers[0].code, 'FORMATION_PRIMARY_NO_SOLDIERS');
+});
+
 test('WorldMarchHudCanvasRenderer disables formation starts for blocked march target', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });

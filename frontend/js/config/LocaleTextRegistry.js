@@ -760,6 +760,14 @@
       'world.march.formation.routeBlocked': '路线受阻',
       'world.march.formation.targetTooFar': '目标过远',
       'world.march.formation.start': '出征',
+      'world.march.deploy.emptyFormation': '该编队没有武将，无法出征。',
+      'world.march.deploy.primaryNoSoldiers':
+        '主将{name}兵力为 0，无法出征。请先为该编队分配士兵。',
+      'world.march.deploy.deputyNoSoldiers': '副将{name}兵力为 0，出征后将无法加入战斗。',
+      'world.march.deploy.deputiesNoSoldiers': '副将{names}兵力为 0，出征后将无法加入战斗。',
+      'world.march.deploy.blockedTitle': '无法出征',
+      'world.march.deploy.confirmTitle': '确认出征',
+      'world.march.deploy.confirmDeploy': '继续出征',
       'world.march.actor.defaultScout': '侦察队',
       'world.march.actor.return': '回城',
       'world.march.actor.stop': '停止',
@@ -1641,6 +1649,16 @@
       'world.march.formation.routeBlocked': 'Route blocked',
       'world.march.formation.targetTooFar': 'Target too far',
       'world.march.formation.start': 'Deploy',
+      'world.march.deploy.emptyFormation': 'This formation has no generals and cannot deploy.',
+      'world.march.deploy.primaryNoSoldiers':
+        'Primary general {name} has 0 soldiers and cannot deploy. Assign soldiers to this formation first.',
+      'world.march.deploy.deputyNoSoldiers':
+        'Deputy {name} has 0 soldiers and will not join the battle after deployment.',
+      'world.march.deploy.deputiesNoSoldiers':
+        'Deputies {names} have 0 soldiers and will not join the battle after deployment.',
+      'world.march.deploy.blockedTitle': 'Cannot Deploy',
+      'world.march.deploy.confirmTitle': 'Confirm Deployment',
+      'world.march.deploy.confirmDeploy': 'Deploy Anyway',
       'world.march.actor.defaultScout': 'Scout',
       'world.march.actor.return': 'Return',
       'world.march.actor.stop': 'Stop',

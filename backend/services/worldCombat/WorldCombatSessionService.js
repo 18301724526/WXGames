@@ -19,6 +19,7 @@ const BattleSimService = require('../battle/BattleSimService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const { toInteger } = require('../../../shared/numberUtils');
 const { cloneIfObject } = require('../../../shared/objectUtils');
+const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
 
 const SCHEMA = 'world-combat-session-v1';
 
@@ -86,12 +87,9 @@ function openSession(
   const mission = findSourceMission(gameState, { missionId, cityId, formationSlot });
   const rawSnapshot = mission ? mission.formationSnapshot : null;
   const snapshot = FormationStrengthService.normalizeFormationSnapshot(rawSnapshot);
-  const hasGeneral = Boolean(
-    snapshot && (snapshot.members || []).some((member) => member && member.personId),
-  );
-  if (!snapshot || (snapshot.soldiersRemaining <= 0 && !hasGeneral)) {
-    return failure('WORLD_COMBAT_NO_TROOPS', 'No troops available to attack.');
-  }
+  const deploymentFailure =
+    FormationDeploymentEligibility.getCombatDeploymentFailureForSnapshot(snapshot);
+  if (deploymentFailure) return failure(deploymentFailure.error, deploymentFailure.message);
 
   const attributesByPersonId = WorldCombatEncounterService.getFamousPersonAttributes(
     gameState,

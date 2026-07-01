@@ -298,6 +298,7 @@
         case 'downloadClientOperationLog': return this.handle_downloadClientOperationLog;
         case 'closeConfirmDialog': return this.handle_closeConfirmDialog;
         case 'confirmResetGame': return this.handle_confirmResetGame;
+        case 'confirmWorldMarchDeployment': return this.handle_confirmWorldMarchDeployment;
         case 'openLogs': return this.handle_openLogs;
         case 'closeLogs': return this.handle_closeLogs;
         case 'clearLogs': return this.handle_clearLogs;

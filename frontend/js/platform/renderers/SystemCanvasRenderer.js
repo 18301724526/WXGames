@@ -418,7 +418,9 @@
       });
       this.addHitTarget(
         { x: confirmX, y: buttonY, width: buttonWidth, height: 36 },
-        submitting ? { type: 'blockCanvasModal' } : { type: 'confirmResetGame', source: dialog.source || '' },
+        submitting
+          ? { type: 'blockCanvasModal' }
+          : (dialog.confirmAction || { type: 'confirmResetGame', source: dialog.source || '' }),
       );
       return true;
     }

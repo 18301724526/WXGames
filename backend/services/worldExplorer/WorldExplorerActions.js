@@ -26,13 +26,10 @@ const {
 } = require('../realtime');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const WorldCombatEncounterService = require('../worldCombat/WorldCombatEncounterService');
+const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
 
 function countActiveMissions(gameState) {
   return (gameState.exploreMissions || []).filter((mission) => mission.status === 'active').length;
-}
-
-function getTutorialSteps() {
-  return TutorialFlowConfig.TUTORIAL_STEPS;
 }
 
 function normalizeFormationSlot(value, fallback = 1) {
@@ -127,7 +124,7 @@ function traceWorldMarch(stage, options = {}, payload = {}) {
 }
 
 function startWorldMarch(gameState, options = {}, now = new Date()) {
-  const TUTORIAL_STEPS = getTutorialSteps();
+  const TUTORIAL_STEPS = TutorialFlowConfig.TUTORIAL_STEPS;
   normalizeExploreState(gameState, now);
   const combatTarget = WorldCombatEncounterService.resolveMarchTarget(gameState, options, now);
   if (!combatTarget.success) return combatTarget;
@@ -160,7 +157,10 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return formationValidation;
   }
-  if (combatTarget.encounter && !(formationValidation.formation.memberIds || []).length) return { success: false, error: 'WORLD_COMBAT_NO_TROOPS', message: 'No troops available to attack.' };
+  if (combatTarget.encounter) {
+    const deploymentFailure = FormationDeploymentEligibility.getCombatDeploymentFailure(formationValidation.formation);
+    if (deploymentFailure) return deploymentFailure;
+  }
   const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formationValidation.formation);
   if (busyMission) {
     traceWorldMarch('actions:startWorldMarch:busyFormation', options, {

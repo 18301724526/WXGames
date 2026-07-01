@@ -30,6 +30,17 @@
     }
     return null;
   })();
+  const FormationDeploymentEligibility = (() => {
+    if (global.FormationDeploymentEligibility) return global.FormationDeploymentEligibility;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../shared/FormationDeploymentEligibilityAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const ActorPickingDiagnostics = (() => {
     if (global.ActorPickingDiagnostics) return global.ActorPickingDiagnostics;
     if (typeof module !== 'undefined' && module.exports) {
@@ -46,6 +57,23 @@
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
+  function joinNames(names = []) {
+    return (Array.isArray(names) ? names : []).map((name) => String(name || '').trim()).filter(Boolean).join(', ');
+  }
+
+  function formatDeploymentBlocker(blocker = {}) {
+    return t(blocker.messageKey || 'world.march.deploy.blocked', {
+      name: blocker.name || blocker.participant?.name || '',
+    });
+  }
+
+  function formatDeploymentWarning(warning = {}) {
+    return t(warning.messageKey || 'world.march.deploy.warning', {
+      name: warning.names?.[0] || warning.participants?.[0]?.name || '',
+      names: joinNames(warning.names || warning.participants?.map((participant) => participant.name)),
+    });
   }
 
   function normalizeWorldMarchTarget(action = {}) {
@@ -189,6 +217,18 @@
     return CanvasModalSnapshotAdapter?.getTargetPickerSnapshot?.(host) || null;
   }
 
+  function openConfirmDialogSnapshot(host, payload = {}, callbacks = null) {
+    if (typeof host?.openConfirmDialogSnapshot === 'function') {
+      return host.openConfirmDialogSnapshot(payload, callbacks);
+    }
+    return CanvasModalSnapshotAdapter?.openConfirmDialogSnapshot?.(host, payload, callbacks) || null;
+  }
+
+  function closeConfirmDialogSnapshot(host) {
+    if (typeof host?.closeConfirmDialogSnapshot === 'function') return host.closeConfirmDialogSnapshot();
+    return CanvasModalSnapshotAdapter?.closeConfirmDialogSnapshot?.(host) || null;
+  }
+
   var StateWriter = global.StateWriter;
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
@@ -219,6 +259,144 @@
           scheduler.setTimeout(() => tutorialController.refreshCurrentHighlight(), 0);
         }
         return true;
+      },
+
+      getWorldMarchFormationForAction(action = {}) {
+        const game = this.getGameHost();
+        const state = this.getState();
+        const cityId = action.cityId || game?.state?.activeCityId || state?.activeCityId || 'capital';
+        const slot = Math.max(1, Math.floor(Number(action.formationSlot || action.slot || 1)));
+        const rootFormations = state?.military?.formations || null;
+        const rootCityFormations = Array.isArray(rootFormations?.[cityId]) ? rootFormations[cityId] : null;
+        const cityFormations = state?.cities?.[cityId]?.military?.formations || null;
+        const cityMilitaryFormations = Array.isArray(cityFormations?.[cityId]) ? cityFormations[cityId] : null;
+        const rawFormations = rootCityFormations || cityMilitaryFormations;
+        if (rawFormations) {
+          return rawFormations.find((item) => Math.max(1, Math.floor(Number(item?.slot) || 1)) === slot)
+            || rawFormations[slot - 1]
+            || null;
+        }
+        const presenter = this.getPresenter?.() || this.host?.presenter || game?.presenter || null;
+        if (presenter && typeof presenter.buildMilitaryViewState === 'function') {
+          const view = presenter.buildMilitaryViewState({
+            ...state,
+            activeCityId: cityId,
+          });
+          const formation = (Array.isArray(view?.formations) ? view.formations : [])
+            .find((item) => Math.max(1, Math.floor(Number(item?.slot) || 1)) === slot);
+          if (formation) return formation;
+        }
+        return null;
+      },
+
+      getWorldMarchDeploymentEligibility(action = {}) {
+        if (action.deploymentEligibility && typeof action.deploymentEligibility === 'object') {
+          return action.deploymentEligibility;
+        }
+        const formation = this.getWorldMarchFormationForAction(action);
+        if (!formation) {
+          return {
+            allowed: true,
+            blocked: false,
+            blockers: [],
+            warnings: [],
+          };
+        }
+        return FormationDeploymentEligibility?.evaluateFormationDeployment?.(formation) || {
+          allowed: true,
+          blocked: false,
+          blockers: [],
+          warnings: [],
+        };
+      },
+
+      showWorldMarchDeploymentBlocked(eligibility = {}, action = {}) {
+        const blocker = eligibility.blockers?.[0] || {};
+        const message = formatDeploymentBlocker(blocker);
+        const game = this.getGameHost();
+        const uiHost = this.host?.openConfirmDialog ? this.host : game?.canvasShell || game;
+        if (typeof uiHost?.openConfirmDialog === 'function') {
+          uiHost.openConfirmDialog({
+            kind: 'worldMarchDeploymentBlocked',
+            source: 'worldMarch',
+            title: t('world.march.deploy.blockedTitle'),
+            message,
+            confirmLabel: t('common.confirm'),
+            cancelLabel: t('common.cancel'),
+            confirmAction: { type: 'closeConfirmDialog' },
+          });
+          return true;
+        }
+        openConfirmDialogSnapshot(this.host, {
+          visible: true,
+          kind: 'worldMarchDeploymentBlocked',
+          source: 'worldMarch',
+          title: t('world.march.deploy.blockedTitle'),
+          message,
+          confirmLabel: t('common.confirm'),
+          cancelLabel: t('common.cancel'),
+          confirmAction: { type: 'closeConfirmDialog' },
+        });
+        this.refreshWorldMarchLayer(action);
+        return true;
+      },
+
+      openWorldMarchDeploymentWarning(eligibility = {}, action = {}) {
+        const warning = eligibility.warnings?.[0] || {};
+        const message = formatDeploymentWarning(warning);
+        const pendingAction = clonePlain({
+          ...action,
+          skipDeploymentWarnings: true,
+          deploymentEligibility: undefined,
+        });
+        const game = this.getGameHost();
+        const uiHost = this.host?.openConfirmDialog ? this.host : game?.canvasShell || game;
+        if (typeof uiHost?.openConfirmDialog === 'function') {
+          uiHost.openConfirmDialog({
+            kind: 'worldMarchDeploymentWarning',
+            source: 'worldMarch',
+            title: t('world.march.deploy.confirmTitle'),
+            message,
+            confirmLabel: t('world.march.deploy.confirmDeploy'),
+            cancelLabel: t('common.cancel'),
+            confirmAction: {
+              type: 'confirmWorldMarchDeployment',
+              action: pendingAction,
+            },
+          });
+          return true;
+        }
+        const opened = openConfirmDialogSnapshot(this.host, {
+          visible: true,
+          kind: 'worldMarchDeploymentWarning',
+          source: 'worldMarch',
+          title: t('world.march.deploy.confirmTitle'),
+          message,
+          confirmLabel: t('world.march.deploy.confirmDeploy'),
+          cancelLabel: t('common.cancel'),
+          confirmAction: {
+            type: 'confirmWorldMarchDeployment',
+            action: pendingAction,
+          },
+        });
+        this.refreshWorldMarchLayer(action);
+        return Boolean(opened);
+      },
+
+      handle_confirmWorldMarchDeployment(action, meta = {}) {
+        const game = this.getGameHost();
+        this.host?.closeConfirmDialog?.();
+        closeConfirmDialogSnapshot(this.host);
+        game?.canvasShell?.closeConfirmDialog?.();
+        closeConfirmDialogSnapshot(game?.canvasShell);
+        game?.closeConfirmDialog?.();
+        closeConfirmDialogSnapshot(game);
+        const pendingAction = action.action || action.pendingAction || null;
+        if (!pendingAction?.type) return false;
+        return this.handle_startWorldMarch({
+          ...pendingAction,
+          skipDeploymentWarnings: true,
+        }, meta);
       },
 
       getWorldTileForSite(siteId) {
@@ -618,6 +796,13 @@
         if (action?.disabled) return true;
         const target = normalizeWorldMarchTarget(action);
         if (!target) return false;
+        const deploymentEligibility = this.getWorldMarchDeploymentEligibility(action);
+        if (deploymentEligibility.blocked) {
+          return this.showWorldMarchDeploymentBlocked(deploymentEligibility, action);
+        }
+        if (!action.skipDeploymentWarnings && Array.isArray(deploymentEligibility.warnings) && deploymentEligibility.warnings.length > 0) {
+          return this.openWorldMarchDeploymentWarning(deploymentEligibility, action);
+        }
         const uiState = this.getSharedTerritoryUiState();
         const previousTarget = uiState.worldMarchTarget || {};
         const combatEncounterId = getCombatEncounterId(action, previousTarget);

@@ -5,6 +5,7 @@ require('../js/debug/ClientOperationLog');
 require('../js/debug/ActorPickingDiagnostics');
 require('../js/config/FamousPortraitLayout');
 require('../js/shared/WorldMarchCoreAdapter');
+require('../js/shared/FormationDeploymentEligibilityAdapter');
 require('../js/ecs/foundation/TileCoord');
 require('../js/ecs/foundation/WorldTopology');
 require('../js/ecs/foundation/WorldChunkAddress');

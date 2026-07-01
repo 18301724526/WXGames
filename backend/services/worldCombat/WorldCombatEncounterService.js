@@ -5,6 +5,7 @@ const FormationStrengthService = require('../military/FormationStrengthService')
 const DefenderLeaderService = require('../DefenderLeaderService');
 const { toInteger } = require('../../../shared/numberUtils');
 const { cloneIfObject } = require('../../../shared/objectUtils');
+const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
 
 const SCHEMA = 'world-combat-encounters-v1';
 const ENCOUNTER_ID = 'hostile_force_capital_ridge';
@@ -383,13 +384,14 @@ function settleMissionSnapshot(mission = {}, nextSnapshot = null) {
   return false;
 }
 
+function canSnapshotDeployForCombat(snapshot = null) {
+  return !FormationDeploymentEligibility.getCombatDeploymentFailureForSnapshot(snapshot);
+}
+
 function resolveEncounterBattle(gameState = {}, mission = {}, encounter = {}, now = new Date()) {
   if (!mission?.formationSnapshot || encounter?.status !== 'active') return null;
   const snapshot = FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot);
-  // A general (主将) is itself a combatant worth 1, so a formation can fight as
-  // long as it fields at least one general even with zero accompanying troops.
-  const hasGeneral = Boolean(snapshot && (snapshot.members || []).some((m) => m && m.personId));
-  if (!snapshot || (snapshot.soldiersRemaining <= 0 && !hasGeneral)) return null;
+  if (!canSnapshotDeployForCombat(snapshot)) return null;
   const battle = BattleSimService.resolveBattle({
     seed: now.getTime() + String(encounter.id || '').length,
     attacker: {

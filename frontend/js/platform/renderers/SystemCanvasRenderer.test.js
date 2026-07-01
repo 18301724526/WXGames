@@ -305,6 +305,29 @@ test('SystemCanvasRenderer renders reset confirmation as canvas actions', () => 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
 });
 
+test('SystemCanvasRenderer renders custom confirm actions from dialog payload', () => {
+  const host = createHost({
+    drawTextLines(lines) { this.calls.push(['drawTextLines', lines]); },
+    wrapTextLimit(text) { return [String(text || '')]; },
+  });
+  const renderer = new SystemCanvasRenderer({ host });
+
+  renderer.renderConfirmDialog({
+    visible: true,
+    kind: 'worldMarchDeploymentWarning',
+    title: 'Confirm Deployment',
+    message: 'Deputy has no soldiers.',
+    confirmAction: {
+      type: 'confirmWorldMarchDeployment',
+      action: { type: 'startWorldMarch', targetQ: 2, targetR: -1, formationSlot: 1 },
+    },
+  });
+
+  const confirmTarget = host.hitTargets.find((target) => target.action.type === 'confirmWorldMarchDeployment');
+  assert.equal(Boolean(confirmTarget), true);
+  assert.equal(confirmTarget.action.action.type, 'startWorldMarch');
+});
+
 test('CanvasGameRenderer exposes system rendering through facade', () => {
   class StubSystemRenderer {
     constructor(options) {

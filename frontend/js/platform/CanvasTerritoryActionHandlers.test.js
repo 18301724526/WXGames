@@ -300,6 +300,114 @@ test('CanvasTerritoryActionHandlers refreshes world march UI before start comman
   assert.equal(await handled, true);
 });
 
+test('CanvasTerritoryActionHandlers blocks deployment when primary general has zero soldiers', async () => {
+  const calls = [];
+  const game = makeModalHost({
+    territoryUiState: {
+      worldMarchTarget: { q: 4, r: -2, tileId: 'tile_4_-2' },
+    },
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+  });
+  const host = makeModalHost({
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    presenter: {
+      buildMilitaryViewState() {
+        return {
+          formations: [{
+            slot: 1,
+            cityId: 'capital',
+            memberCount: 1,
+            members: [{ id: 'fp-main', name: 'Main', soldiersAssigned: 0 }],
+          }],
+        };
+      },
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['refreshWorldMap', options.force]);
+    },
+  });
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 4,
+    targetR: -2,
+    formationSlot: 1,
+  }), true);
+
+  assert.equal(calls.some((call) => call[0] === 'startWorldMarch'), false);
+  assert.equal(host.isConfirmDialogSnapshotOpen(), true);
+  assert.equal(host.getConfirmDialogSnapshot().kind, 'worldMarchDeploymentBlocked');
+  assert.equal(host.territoryUiState.worldMarchTarget.tileId, 'tile_4_-2');
+});
+
+test('CanvasTerritoryActionHandlers confirms deployment when deputies have zero soldiers', async () => {
+  const calls = [];
+  const game = makeModalHost({
+    territoryUiState: {
+      worldMarchTarget: { q: 4, r: -2, tileId: 'tile_4_-2' },
+    },
+    state: { activeCityId: 'capital' },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+  });
+  const host = makeModalHost({
+    territoryUiState: game.territoryUiState,
+    lastGame: game,
+    presenter: {
+      buildMilitaryViewState() {
+        return {
+          formations: [{
+            slot: 1,
+            cityId: 'capital',
+            memberCount: 2,
+            members: [
+              { id: 'fp-main', name: 'Main', soldiersAssigned: 120 },
+              { id: 'fp-deputy', name: 'Deputy', soldiersAssigned: 0 },
+            ],
+          }],
+        };
+      },
+    },
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['refreshWorldMap', options.force]);
+    },
+  });
+  const controller = new HostController(host);
+
+  assert.equal(await controller.handle_startWorldMarch({
+    type: 'startWorldMarch',
+    targetQ: 4,
+    targetR: -2,
+    formationSlot: 1,
+  }), true);
+
+  assert.equal(calls.some((call) => call[0] === 'startWorldMarch'), false);
+  const dialog = host.getConfirmDialogSnapshot();
+  assert.equal(dialog.kind, 'worldMarchDeploymentWarning');
+  assert.equal(dialog.confirmAction.type, 'confirmWorldMarchDeployment');
+
+  assert.equal(await controller.handle_confirmWorldMarchDeployment(dialog.confirmAction), true);
+  const startCall = calls.find((call) => call[0] === 'startWorldMarch');
+  assert.equal(Boolean(startCall), true);
+  assert.equal(startCall[1].formationSlot, 1);
+  assert.equal(host.isConfirmDialogSnapshotOpen(), false);
+  assert.equal(host.territoryUiState.worldMarchTarget, null);
+});
+
 test('CanvasTerritoryActionHandlers dismisses an open target picker when a map drag starts', () => {
   const host = makeModalHost({
     territoryUiState: {},

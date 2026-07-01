@@ -43,6 +43,17 @@
     }
     return null;
   })();
+  const FormationDeploymentEligibility = (() => {
+    if (global.FormationDeploymentEligibility) return global.FormationDeploymentEligibility;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../shared/FormationDeploymentEligibilityAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function logActorPickingDiag(stage = '', detail = {}) {
     return ActorPickingDiagnostics?.log?.(stage, detail, { signature: detail?.signature || '' }) || null;
@@ -289,6 +300,20 @@
       return Number(formation.memberCount) > 0;
     }
 
+    getFormationDeploymentEligibility(formation = {}) {
+      return FormationDeploymentEligibility?.evaluateFormationDeployment?.(formation) || {
+        allowed: this.formationHasMembers(formation),
+        blocked: !this.formationHasMembers(formation),
+        blockers: [],
+        warnings: [],
+        participants: [],
+        primary: null,
+        deputies: [],
+        zeroSoldierDeputies: [],
+        soldiersAssigned: Number(formation.soldiersAssigned) || 0,
+      };
+    }
+
     getBusyFormationMap(state = {}) {
       const explorer = state?.worldExplorerState || {};
       const busyFormations = Array.isArray(explorer.busyFormations) ? explorer.busyFormations : [];
@@ -504,6 +529,7 @@
           members: [],
         };
         const cardX = x + 12 + index * (cardW + gap);
+        const deploymentEligibility = this.getFormationDeploymentEligibility(formation);
         const empty = !this.formationHasMembers(formation);
         const busy = this.getFormationBusyInfo(formation, militaryState, state);
         const blocked = this.isMarchTargetBlocked(target);
@@ -566,6 +592,7 @@
             missionId: target.missionId || target.actorId,
             actorId: target.actorId || target.missionId,
           } : {}),
+          deploymentEligibility,
           disabled,
         });
       });
