@@ -609,7 +609,7 @@
 
       handle_selectWorldMarchTarget(action) {
         const target = normalizeWorldMarchTarget(action);
-        const tapTraceId = action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
+        const tapTraceId = this.getActionTapTraceId?.(action) || global.__actorPickingDiagActiveTapTraceId || '';
         if (!target) {
           logActorPickingDiag('territory:selectWorldMarchTarget:invalidTarget', {
             tapTraceId,
@@ -718,7 +718,7 @@
       handle_selectWorldActor(action) {
         const actorId = action.actorId || action.missionId || '';
         const missionId = action.missionId || '';
-        const tapTraceId = action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
+        const tapTraceId = this.getActionTapTraceId?.(action) || global.__actorPickingDiagActiveTapTraceId || '';
         if (!actorId) {
           logActorPickingDiag('territory:selectWorldActor:missingActorId', {
             tapTraceId,

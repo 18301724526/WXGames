@@ -126,3 +126,16 @@ test('CanvasActionController closePanelsEverywhere routes owner close across hos
   assert.equal(game.isModalOpen('modal:settings'), false);
   assert.equal(shell.isModalOpen('modal:settings'), false);
 });
+
+test('CanvasActionController keeps tap trace metadata out of frozen actions', () => {
+  const host = makeModalHost();
+  host.closeConfirmDialog = () => host.closeConfirmDialogSnapshot();
+  host.openConfirmDialogSnapshot({ visible: true, kind: 'worldMarchDeploymentBlocked' });
+  const controller = new CanvasActionController({ host });
+  const action = Object.freeze({ type: 'closeConfirmDialog' });
+
+  assert.doesNotThrow(() => controller.handle(action, { tapTraceId: 'tap-frozen-confirm' }));
+  assert.equal(action.__tapTraceId, undefined);
+  assert.equal(controller.getActionTapTraceId(action), 'tap-frozen-confirm');
+  assert.equal(host.isConfirmDialogSnapshotOpen(), false);
+});

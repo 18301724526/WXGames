@@ -74,6 +74,22 @@
     return ActorPickingDiagnostics?.log?.(stage, detail, options) || null;
   }
 
+  const ACTION_TAP_TRACE_IDS = typeof WeakMap === 'function' ? new WeakMap() : null;
+
+  function rememberActionTapTraceId(action, tapTraceId = '') {
+    if (!ACTION_TAP_TRACE_IDS || !tapTraceId || !action || typeof action !== 'object') return false;
+    ACTION_TAP_TRACE_IDS.set(action, tapTraceId);
+    return true;
+  }
+
+  function getActionTapTraceId(action = {}, meta = {}) {
+    return meta?.tapTraceId
+      || (action && typeof action === 'object' ? ACTION_TAP_TRACE_IDS?.get(action) : '')
+      || action?.__tapTraceId
+      || global.__actorPickingDiagActiveTapTraceId
+      || '';
+  }
+
   class CanvasActionController {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -213,7 +229,7 @@
     refreshWorldMarchLayer(action = {}) {
       if (isActorPickingDiagEnabled()) {
         logActorPickingDiag('actionController:refreshWorldMarchLayer:before', {
-          tapTraceId: action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '',
+          tapTraceId: this.getActionTapTraceId(action),
           action: summarizeActorPickingAction(action),
           uiState: summarizeActorPickingUiState(this.getSharedTerritoryUiState?.() || {}),
         });
@@ -222,7 +238,7 @@
       const refreshResult = this.refreshWorldMapLayer();
       if (isActorPickingDiagEnabled()) {
         logActorPickingDiag('actionController:refreshWorldMarchLayer:after', {
-          tapTraceId: action.__tapTraceId || global.__actorPickingDiagActiveTapTraceId || '',
+          tapTraceId: this.getActionTapTraceId(action),
           action: summarizeActorPickingAction(action),
           handled: handled !== false,
           refreshResult: refreshResult !== false,
@@ -270,6 +286,14 @@
       } catch (_) {
         return {};
       }
+    }
+
+    rememberActionTapTraceId(action, tapTraceId = '') {
+      return rememberActionTapTraceId(action, tapTraceId);
+    }
+
+    getActionTapTraceId(action = {}, meta = {}) {
+      return getActionTapTraceId(action, meta);
     }
 
     resolveActionHandler(action = {}) {
@@ -405,8 +429,8 @@
         return Boolean(action?.disabled);
       }
       const handler = this.resolveActionHandler(action);
-      const tapTraceId = meta.tapTraceId || global.__actorPickingDiagActiveTapTraceId || '';
-      if (tapTraceId && action && typeof action === 'object') action.__tapTraceId = tapTraceId;
+      const tapTraceId = this.getActionTapTraceId(action, meta);
+      this.rememberActionTapTraceId(action, tapTraceId);
       if (isActorPickingDiagEnabled()) {
         logActorPickingDiag('actionController:handle:before', {
           tapTraceId,
