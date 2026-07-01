@@ -31,6 +31,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppCommands) {
     CanvasGameAppCommands = require('./CanvasGameAppCommands');
   }
+  var CanvasGameAppFormationCommands = global.CanvasGameAppFormationCommands;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppFormationCommands) {
+    CanvasGameAppFormationCommands = require('./CanvasGameAppFormationCommands');
+  }
   var CanvasGameAppGuideUi = global.CanvasGameAppGuideUi;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppGuideUi) {
     CanvasGameAppGuideUi = require('./CanvasGameAppGuideUi');
@@ -226,6 +230,7 @@
     CanvasGameWorldActorAnimationRuntime,
     CanvasGameAppBattleScene,
     CanvasGameAppCommands,
+    CanvasGameAppFormationCommands,
     CanvasModeOwnershipRuntime,
     CanvasModalSnapshotAdapter,
     CanvasGameAppGuideUi,

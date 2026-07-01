@@ -144,6 +144,7 @@ require('../js/platform/CanvasGameWorldActorAnimationRuntime');
 require('../js/platform/CanvasGameAppRenderingRuntime');
 require('../js/platform/CanvasGameAppBattleScene');
 require('../js/platform/CanvasGameAppCommands');
+require('../js/platform/CanvasGameAppFormationCommands');
 require('../js/platform/CanvasGameAppGuideUi');
 require('../js/platform/CanvasGameAppInputRouter');
 require('../js/platform/CanvasModeOwnershipRuntime');

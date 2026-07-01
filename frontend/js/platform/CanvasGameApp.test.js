@@ -7,6 +7,7 @@ const CanvasGameApp = require('./CanvasGameApp');
 const BattleStore = require('../state/BattleStore');
 const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
 const CanvasGameAppCommands = require('./CanvasGameAppCommands');
+const CanvasGameAppFormationCommands = require('./CanvasGameAppFormationCommands');
 const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
 const CanvasGameShell = require('./CanvasGameShell');
 
@@ -81,6 +82,7 @@ test('html and minigame entries load CanvasGameApp modules before the facade', (
 test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
   class Host {}
   CanvasGameAppCommands.install(Host);
+  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
   const host = new Host();
   Object.assign(host, {
@@ -149,6 +151,7 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
 test('autoReplenishArmyFormation saves the visible draft soldier assignments without a separate confirm step', async () => {
   class Host {}
   CanvasGameAppCommands.install(Host);
+  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
   const host = new Host();
   Object.assign(host, {
@@ -401,6 +404,7 @@ test('CanvasGameApp does not preserve canvas when runtime hit targets are preser
 test('CanvasGameApp rolls back optimistic world march after start rejection', async () => {
   class Host {}
   CanvasGameAppCommands.install(Host);
+  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
   const host = new Host();
   const initialExplorer = {
@@ -456,6 +460,7 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
   class Host {}
   CanvasGameAppStateSync.install(Host);
   CanvasGameAppCommands.install(Host);
+  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
   const parkedMission = {
     id: 'march-parked',
