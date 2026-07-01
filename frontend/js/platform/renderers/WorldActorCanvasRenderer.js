@@ -92,14 +92,22 @@
       return WorldMarchSystem.getTileScreenCenter(actor.target || actor.current || {}, viewport, geometry);
     }
 
-    getActorFramePath(actor = {}) {
+    getActorFrameNowMs(options = {}) {
+      const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
+      const resolvedOptionNow = Number(optionNow);
+      if (Number.isFinite(resolvedOptionNow)) return resolvedOptionNow;
+      const hostNow = Number(this.getNow?.());
+      return Number.isFinite(hostNow) ? hostNow : Date.now();
+    }
+
+    getActorFramePath(actor = {}, options = {}) {
       const unitKey = actor.unitKey || 'scout_squad_default';
       const animationId = actor.status === 'idle' ? 'move' : (actor.animationId || 'move');
       const frames = UnitSpriteManifest?.getFramePaths?.(unitKey, animationId) || [];
       if (!frames.length) return '';
       if (actor.status === 'idle') return frames[0];
       const frameMs = UnitSpriteManifest?.getFrameDurationMs?.(unitKey, animationId) || 80;
-      const nowMs = this.getNow?.() || Date.now();
+      const nowMs = this.getActorFrameNowMs(options);
       return frames[Math.floor(Number(nowMs) / Math.max(1, frameMs)) % frames.length] || frames[0];
     }
 
@@ -180,7 +188,7 @@
 
     drawActorUnit(actor = {}, point = {}, viewport = {}, options = {}) {
       const ctx = this.getActorRenderCtx(options);
-      const framePath = this.getActorFramePath(actor);
+      const framePath = this.getActorFramePath(actor, options);
       const scale = Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
       const unitRenderer = global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('tutorialIntroUnitRenderer')
         || this.host?.constructor?.getTutorialIntroUnitRenderer?.()
@@ -205,8 +213,9 @@
       actors.forEach((actor) => {
         const point = this.getActorScreenPoint(actor, viewport, geometry);
         const targetPoint = this.getActorTargetScreenPoint(actor, viewport, geometry);
-        if (actor.status === 'active') this.drawMarchArrow(point, targetPoint, { ctx });
-        if (this.drawActorUnit(actor, point, viewport, { ctx })) rendered = true;
+        const actorRenderOptions = { ...options, ctx };
+        if (actor.status === 'active') this.drawMarchArrow(point, targetPoint, actorRenderOptions);
+        if (this.drawActorUnit(actor, point, viewport, actorRenderOptions)) rendered = true;
         this.addActorHitTarget(actor, point);
       });
       return rendered;

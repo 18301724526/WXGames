@@ -308,6 +308,36 @@ test('WorldActorCanvasRenderer renders active actors between tile centers', () =
   assert.deepEqual(point, { x: 124, y: 112 });
 });
 
+test('WorldActorCanvasRenderer selects active sprite frame from render epoch time', () => {
+  const host = createHost();
+  host.getNow = () => 1000;
+  const renderer = new WorldActorCanvasRenderer({ host });
+  const actor = {
+    status: 'active',
+    unitKey: 'scout_squad_default',
+  };
+
+  assert.equal(
+    renderer.getActorFramePath(actor, { epochNowMs: 160 }),
+    'assets/art/units/spearman/move/003.png',
+  );
+  assert.equal(
+    renderer.getActorFramePath(actor, { epochNowMs: 0 }),
+    'assets/art/units/spearman/move/001.png',
+  );
+});
+
+test('WorldActorCanvasRenderer falls back to host frame time without render epoch time', () => {
+  const host = createHost();
+  host.getNow = () => 160;
+  const renderer = new WorldActorCanvasRenderer({ host });
+
+  assert.equal(
+    renderer.getActorFramePath({ status: 'active', unitKey: 'scout_squad_default' }),
+    'assets/art/units/spearman/move/003.png',
+  );
+});
+
 test('WorldActorCanvasRenderer keeps idle units on first frame without march arrow', () => {
   const host = createHost();
   const renderer = new WorldActorCanvasRenderer({ host });

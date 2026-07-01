@@ -821,15 +821,16 @@
         || null;
     }
 
-    renderWorldActorsWithCtx(actors = [], viewport = {}, geometry = {}, ctx = null) {
+    renderWorldActorsWithCtx(actors = [], viewport = {}, geometry = {}, ctx = null, options = {}) {
       const actorRenderer = this.getExplicitWorldActorRenderer();
+      const renderOptions = { ...options, ctx };
       if (actorRenderer?.renderActors) {
         if (typeof actorRenderer.withActorRenderCtx === 'function') {
-          return actorRenderer.withActorRenderCtx(ctx, () => actorRenderer.renderActors(actors, viewport, geometry, { ctx }));
+          return actorRenderer.withActorRenderCtx(ctx, () => actorRenderer.renderActors(actors, viewport, geometry, renderOptions));
         }
-        return actorRenderer.renderActors(actors, viewport, geometry, { ctx });
+        return actorRenderer.renderActors(actors, viewport, geometry, renderOptions);
       }
-      return this.renderWorldActors?.(actors, viewport, geometry, { ctx }) || false;
+      return this.renderWorldActors?.(actors, viewport, geometry, renderOptions) || false;
     }
 
     renderWorldMapActorLayer(state = {}, options = {}) {
@@ -872,7 +873,7 @@
         this.renderWorldScoutRoutes?.(context.tileMapView, viewport, actors);
         diag.drawnCanvasId = getWorldActorOverlayCanvasId(this.ctx);
         this.setActiveWorldActorOverlayDiag(diag);
-        this.renderWorldActorsWithCtx(actors, viewport, geometry, this.ctx);
+        this.renderWorldActorsWithCtx(actors, viewport, geometry, this.ctx, options);
       } finally {
         this.setActiveWorldActorOverlayDiag(null);
         if (didClip && this.ctx.restore) this.ctx.restore();

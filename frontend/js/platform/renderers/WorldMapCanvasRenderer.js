@@ -778,14 +778,14 @@
       return this.worldMapScoutRenderer.renderWorldScoutRoutes(tileMapView, viewport, actors);
     }
 
-    renderWorldScoutUnits(tileMapView = {}, viewport = {}) {
+    renderWorldScoutUnits(tileMapView = {}, viewport = {}, options = {}) {
       if (!this.worldMapActorHudRenderer?.renderWorldScoutUnits) return false;
-      return this.worldMapActorHudRenderer.renderWorldScoutUnits(tileMapView, viewport);
+      return this.worldMapActorHudRenderer.renderWorldScoutUnits(tileMapView, viewport, options);
     }
 
-    renderWorldActors(actors = [], viewport = {}, geometry = {}) {
+    renderWorldActors(actors = [], viewport = {}, geometry = {}, options = {}) {
       if (!this.worldMapActorHudRenderer?.renderWorldActors) return false;
-      return this.worldMapActorHudRenderer.renderWorldActors(actors, viewport, geometry);
+      return this.worldMapActorHudRenderer.renderWorldActors(actors, viewport, geometry, options);
     }
 
     addWorldActorHitTargets(actors = [], viewport = {}, geometry = {}) {

@@ -38,20 +38,26 @@
       return sharedWorldTime?.getEpochNowMs?.(this) ?? Date.now();
     }
 
-    buildWorldMapActors(tileMapView = {}, renderSnapshot = null) {
+    getWorldActorNowMs(options = {}) {
+      const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
+      const resolvedOptionNow = Number(optionNow);
+      return Number.isFinite(resolvedOptionNow) ? resolvedOptionNow : this.getEpochNowMs();
+    }
+
+    buildWorldMapActors(tileMapView = {}, renderSnapshot = null, options = {}) {
       return renderSnapshot?.actors || sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
-        nowMs: this.getEpochNowMs(),
+        nowMs: this.getWorldActorNowMs(options),
       }) || [];
     }
 
-    renderWorldScoutUnits(tileMapView = {}, viewport = {}) {
-      const actors = this.buildWorldMapActors(tileMapView);
-      return this.renderWorldActors(actors, viewport, tileMapView.geometry || {});
+    renderWorldScoutUnits(tileMapView = {}, viewport = {}, options = {}) {
+      const actors = this.buildWorldMapActors(tileMapView, null, options);
+      return this.renderWorldActors(actors, viewport, tileMapView.geometry || {}, options);
     }
 
-    renderWorldActors(actors = [], viewport = {}, geometry = {}) {
+    renderWorldActors(actors = [], viewport = {}, geometry = {}, options = {}) {
       if (!this.worldActorRenderer?.renderActors) return false;
-      return this.worldActorRenderer.renderActors(actors, viewport, geometry);
+      return this.worldActorRenderer.renderActors(actors, viewport, geometry, options);
     }
 
     addWorldActorHitTargets(actors = [], viewport = {}, geometry = {}) {

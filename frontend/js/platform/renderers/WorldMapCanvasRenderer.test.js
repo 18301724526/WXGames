@@ -806,9 +806,10 @@ test('WorldMapCanvasRenderer delegates actor and march HUD helpers to split rend
   const geometry = tileMapView.geometry;
   const actors = [{ id: 'actor-1' }];
   const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const actorOptions = { epochNowMs: 160 };
 
-  assert.equal(renderer.renderWorldScoutUnits(tileMapView, viewport), 'scout-units-ok');
-  assert.equal(renderer.renderWorldActors(actors, viewport, geometry), 'actors-ok');
+  assert.equal(renderer.renderWorldScoutUnits(tileMapView, viewport, actorOptions), 'scout-units-ok');
+  assert.equal(renderer.renderWorldActors(actors, viewport, geometry, actorOptions), 'actors-ok');
   assert.equal(renderer.addWorldActorHitTargets(actors, viewport, geometry), 'targets-ok');
   assert.equal(renderer.renderWorldMarchHud({ id: 'state' }, {}, actors, viewport, geometry, frame), 'hud-ok');
   assert.deepEqual(renderer.getNearestWorldTileAtPoint({ x: 1, y: 2 }, tileMapView, viewport), { id: 'nearest' });
@@ -821,6 +822,8 @@ test('WorldMapCanvasRenderer delegates actor and march HUD helpers to split rend
     'nearest-tile',
     'epoch-now',
   ]);
+  assert.equal(calls[0][3], actorOptions);
+  assert.equal(calls[1][4], actorOptions);
 });
 
 test('WorldMapCanvasRenderer routes actor layer frames to a separate overlay context', () => {

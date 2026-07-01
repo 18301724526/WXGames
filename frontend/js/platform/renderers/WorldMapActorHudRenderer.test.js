@@ -38,21 +38,23 @@ test('WorldMapActorHudRenderer builds actors from epoch time and renders scout u
   const renderer = new WorldMapActorHudRenderer({
     host,
     worldActorRenderer: {
-      renderActors(actors, viewport, geometry) {
-        calls.push(['renderActors', actors, viewport, geometry]);
+      renderActors(actors, viewport, geometry, options) {
+        calls.push(['renderActors', actors, viewport, geometry, options]);
         return true;
       },
     },
   });
   const viewport = { originX: 100, originY: 100, scale: 0.5 };
+  const epochNowMs = new Date('2026-06-06T00:00:06.000Z').getTime();
 
-  assert.equal(renderer.renderWorldScoutUnits(createTileMapView(), viewport), true);
+  assert.equal(renderer.renderWorldScoutUnits(createTileMapView(), viewport, { epochNowMs }), true);
   const actors = calls[0][1];
   assert.equal(actors.length, 1);
   assert.equal(actors[0].current.q > 0, true);
   assert.equal(actors[0].current.q < 1, true);
-  assert.equal(actors[0].remainingSeconds, 15);
+  assert.equal(actors[0].remainingSeconds, 14);
   assert.equal(calls[0][2], viewport);
+  assert.equal(calls[0][4].epochNowMs, epochNowMs);
 });
 
 test('WorldMapActorHudRenderer delegates actor hit targets and snapshot actor reuse', () => {

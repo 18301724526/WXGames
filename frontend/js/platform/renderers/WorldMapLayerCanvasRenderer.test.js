@@ -678,6 +678,38 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
 });
 
+test('WorldMapLayerCanvasRenderer passes epoch time to explicit world actor renderer', () => {
+  const actorContext = {
+    actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const calls = [];
+  const host = createHost({ lastWorldTileMapContext: actorContext });
+  const actorRenderer = {
+    renderActors(actors, viewport, geometry, options) {
+      calls.push(['renderActors', actors, viewport, geometry, options]);
+      return true;
+    },
+  };
+  const renderer = new WorldMapLayerCanvasRenderer({ host, worldActorRenderer: actorRenderer });
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, {
+    activeTab: 'military',
+    epochNowMs: 160,
+    isMapHome: true,
+    territoryUiState: actorContext.uiState,
+  });
+  const renderCall = calls.find((call) => call[0] === 'renderActors');
+
+  assert.equal(rendered, true);
+  assert.equal(renderCall[4].epochNowMs, 160);
+  assert.equal(renderCall[4].ctx, host.ctx);
+});
+
 test('WorldMapLayerCanvasRenderer publishes actor overlay context without stale state copies', () => {
   const host = createHost();
   const renderer = new WorldMapLayerCanvasRenderer({ host });
