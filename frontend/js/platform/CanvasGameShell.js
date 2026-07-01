@@ -87,6 +87,10 @@
       SharedWorldClock = null;
     }
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   class CanvasGameShell extends (CanvasGameAppBase || class {}) {
 constructor(options = {}) {
@@ -157,7 +161,7 @@ constructor(options = {}) {
       this.worldMapPinchDragging = false;
       this.tileMapWaterTimer = null;
       this.networkOverlayTimer = null;
-      this.territoryUiState = {};
+      TerritoryUiStateStore.ensure(this);
       this.auth = {
         view: {
           loginPanelVisible: false,

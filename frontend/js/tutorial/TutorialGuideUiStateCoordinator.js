@@ -33,6 +33,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   function getCommandPanelValue(host) {
     if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();
@@ -246,18 +250,8 @@
       game.closeEventSnapshot?.();
       changed = true;
     }
-    if (game.territoryUiState) {
-      setIfChanged(game.territoryUiState, 'selectedSiteId', '');
-      setIfChanged(game.territoryUiState, 'worldMarchTarget', null);
-      setIfChanged(game.territoryUiState, 'selectedWorldActorId', '');
-      setIfChanged(game.territoryUiState, 'selectedWorldMissionId', '');
-    }
-    if (shell?.territoryUiState) {
-      setIfChanged(shell.territoryUiState, 'selectedSiteId', '');
-      setIfChanged(shell.territoryUiState, 'worldMarchTarget', null);
-      setIfChanged(shell.territoryUiState, 'selectedWorldActorId', '');
-      setIfChanged(shell.territoryUiState, 'selectedWorldMissionId', '');
-    }
+    TerritoryUiStateStore?.clearWorldSelection?.(game, { clearWorldMarchTarget: true });
+    if (shell) TerritoryUiStateStore?.ensure?.(shell);
     game.territoryController?.closeSiteDialog?.({ render: false });
     shell?.closeWorldSiteHud?.({ render: false });
     shell?.hideTutorialHighlight?.();

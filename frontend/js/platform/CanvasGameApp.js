@@ -51,6 +51,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   class CanvasGameApp {
     constructor(options = {}) {
@@ -147,18 +151,7 @@
           this.worldActorQueuedRenderOptions = null;
           this.lastWorldActorAnimationRenderAt = 0;
           this.tileMapWaterTimer = null;
-          this.territoryUiState = {
-            selectedSiteId: '',
-            worldMarchTarget: null,
-            selectedWorldActorId: '',
-            selectedWorldMissionId: '',
-            worldPanX: 0,
-            worldPanY: 0,
-            expeditionConfigSiteId: '',
-            expeditionTroopType: '',
-            expeditionLeader: '',
-            expeditionSoldiers: '',
-          };
+          TerritoryUiStateStore.ensure(this);
           this.externalLog = typeof options.log === 'function' ? options.log : null;
           this.stateNormalizer = options.stateNormalizer || null;
           this.stateManager = options.stateManager || null;

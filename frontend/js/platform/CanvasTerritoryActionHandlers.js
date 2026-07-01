@@ -204,13 +204,8 @@
           territory.openSiteDialog(siteId);
           return true;
         }
-        this.host.territoryUiState = this.host.territoryUiState || {};
-        this.host.territoryUiState.selectedSiteId = siteId;
-        const game = this.getGameHost();
-        if (game && game !== this.host) {
-          game.territoryUiState = game.territoryUiState || {};
-          game.territoryUiState.selectedSiteId = siteId;
-        }
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.selectedSiteId = siteId;
         return true;
       },
 
@@ -285,9 +280,9 @@
           territory.setWorldPan(x, y);
           return true;
         }
-        this.host.territoryUiState = this.host.territoryUiState || {};
-        this.host.territoryUiState.worldPanX = x;
-        this.host.territoryUiState.worldPanY = y;
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.worldPanX = x;
+        uiState.worldPanY = y;
         return true;
       },
 
@@ -741,8 +736,8 @@
           this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
           return true;
         }
-        this.host.territoryUiState = this.host.territoryUiState || {};
-        this.host.territoryUiState.selectedSiteId = siteId;
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.selectedSiteId = siteId;
         const handled = this.afterHandled(action);
         this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
         return handled;
@@ -756,10 +751,10 @@
           territory.closeSiteDialog();
           return true;
         }
-        this.host.territoryUiState = this.host.territoryUiState || {};
-        this.host.territoryUiState.selectedSiteId = '';
-        this.host.territoryUiState.expeditionConfigSiteId = '';
-        this.host.territoryUiState.expeditionSoldiers = '';
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.selectedSiteId = '';
+        uiState.expeditionConfigSiteId = '';
+        uiState.expeditionSoldiers = '';
         return this.afterHandled(action);
       },
 
@@ -789,32 +784,32 @@
           if (action.phase === 'move') territory.moveWorldDrag?.(pointer);
           if (action.phase === 'end') territory.endWorldDrag?.(pointer);
         } else {
-          this.host.territoryUiState = this.host.territoryUiState || {};
+          const uiState = this.getSharedTerritoryUiState();
           const x = Number(pointer.x) || 0;
           const y = Number(pointer.y) || 0;
           if (action.phase === 'start') {
             closeTargetPickerSnapshot(this.host);
-            this.host.territoryUiState.selectedSiteId = '';
-            this.host.territoryUiState.expeditionConfigSiteId = '';
-            this.host.territoryUiState.expeditionSoldiers = '';
-            this.host.territoryUiState.expeditionTroopType = '';
-            this.host.territoryUiState.expeditionLeader = '';
+            uiState.selectedSiteId = '';
+            uiState.expeditionConfigSiteId = '';
+            uiState.expeditionSoldiers = '';
+            uiState.expeditionTroopType = '';
+            uiState.expeditionLeader = '';
             this.worldDragStart = {
               x,
               y,
-              panX: Number(this.host.territoryUiState.worldPanX) || 0,
-              panY: Number(this.host.territoryUiState.worldPanY) || 0,
+              panX: Number(uiState.worldPanX) || 0,
+              panY: Number(uiState.worldPanY) || 0,
             };
           }
           if (action.phase === 'move') {
             const dx = Number(pointer.dx ?? pointer.deltaX);
             const dy = Number(pointer.dy ?? pointer.deltaY);
             if (Number.isFinite(dx) && Number.isFinite(dy)) {
-              this.host.territoryUiState.worldPanX = (Number(this.host.territoryUiState.worldPanX) || 0) + dx;
-              this.host.territoryUiState.worldPanY = (Number(this.host.territoryUiState.worldPanY) || 0) + dy;
+              uiState.worldPanX = (Number(uiState.worldPanX) || 0) + dx;
+              uiState.worldPanY = (Number(uiState.worldPanY) || 0) + dy;
             } else if (this.worldDragStart) {
-              this.host.territoryUiState.worldPanX = this.worldDragStart.panX + x - this.worldDragStart.x;
-              this.host.territoryUiState.worldPanY = this.worldDragStart.panY + y - this.worldDragStart.y;
+              uiState.worldPanX = this.worldDragStart.panX + x - this.worldDragStart.x;
+              uiState.worldPanY = this.worldDragStart.panY + y - this.worldDragStart.y;
             }
           }
           if (action.phase === 'end' || action.phase === 'cancel') this.worldDragStart = null;
@@ -831,9 +826,9 @@
           territory.handleDraftInput({ field: 'soldiers', value: action.value });
           return true;
         }
-        this.host.territoryUiState = this.host.territoryUiState || {};
-        this.host.territoryUiState.expeditionConfigSiteId = action.siteId || this.host.territoryUiState.expeditionConfigSiteId;
-        this.host.territoryUiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(action.value) || 1)));
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.expeditionConfigSiteId = action.siteId || uiState.expeditionConfigSiteId;
+        uiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(action.value) || 1)));
         return this.afterHandled(action);
       },
 
@@ -845,9 +840,9 @@
           territory.handleDraftInput({ field: 'leader', value: action.value || action.leaderId });
           return true;
         }
-        this.host.territoryUiState = this.host.territoryUiState || {};
-        this.host.territoryUiState.expeditionConfigSiteId = action.siteId || this.host.territoryUiState.expeditionConfigSiteId;
-        this.host.territoryUiState.expeditionLeader = action.value || action.leaderId || 'unavailable';
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.expeditionConfigSiteId = action.siteId || uiState.expeditionConfigSiteId;
+        uiState.expeditionLeader = action.value || action.leaderId || 'unavailable';
         return this.afterHandled(action);
       },
 
@@ -869,8 +864,9 @@
           return true;
         }
         const site = (this.host.state?.territoryState?.territories || []).find((item) => item.id === action.territoryId);
-        this.host.territoryUiState.expeditionConfigSiteId = action.territoryId || '';
-        this.host.territoryUiState.expeditionSoldiers = String(Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1));
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.expeditionConfigSiteId = action.territoryId || '';
+        uiState.expeditionSoldiers = String(Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1));
         return this.afterHandled(action);
       },
 
@@ -882,8 +878,9 @@
           territory.handleAction({ territoryId: action.territoryId, action: 'close-expedition' });
           return true;
         }
-        this.host.territoryUiState.expeditionConfigSiteId = '';
-        this.host.territoryUiState.expeditionSoldiers = '';
+        const uiState = this.getSharedTerritoryUiState();
+        uiState.expeditionConfigSiteId = '';
+        uiState.expeditionSoldiers = '';
         return this.afterHandled(action);
       },
 
@@ -906,9 +903,10 @@
           territory.handleAction({ territoryId: action.territoryId, action: 'launch-expedition' });
           return true;
         }
+        const uiState = this.getSharedTerritoryUiState();
         return this.finalize(this.runAction(() => this.host.api.startConquest(action.territoryId, {
-          troopType: this.host.territoryUiState.expeditionTroopType || 'unavailable',
-          leader: this.host.territoryUiState.expeditionLeader || 'unavailable',
+          troopType: uiState.expeditionTroopType || 'unavailable',
+          leader: uiState.expeditionLeader || 'unavailable',
           soldiers: this.host.getExpeditionSoldiers?.(),
         })));
       },

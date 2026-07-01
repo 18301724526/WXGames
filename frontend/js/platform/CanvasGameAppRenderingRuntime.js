@@ -27,6 +27,10 @@
       SharedWorldClock = null;
     }
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
   const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
   var StateWriter = global.StateWriter;
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
@@ -620,17 +624,7 @@
             closeBlockingPanelSnapshot(this, 'techDetailOpen');
             this.techTreeDragStart = null;
             this.closeEventSnapshot?.();
-            this.territoryUiState = {
-              ...(this.territoryUiState || {}),
-              selectedSiteId: '',
-              worldMarchTarget: null,
-              selectedWorldActorId: '',
-              selectedWorldMissionId: '',
-              expeditionConfigSiteId: '',
-              expeditionSoldiers: '',
-              expeditionTroopType: '',
-              expeditionLeader: '',
-            };
+            TerritoryUiStateStore?.clearWorldSelection?.(this, { clearWorldMarchTarget: true });
             this.territoryController?.closeSiteDialog?.({ render: false });
             closeBlockingPanelSnapshot(this, 'showResourceDetails');
             closeBlockingPanelSnapshot(this, 'showCitySwitcher');
@@ -650,17 +644,7 @@
             this.pageTransition = null;
             this.buildingTransition = null;
             if (this.canvasShell) {
-              this.canvasShell.territoryUiState = {
-                ...(this.canvasShell.territoryUiState || {}),
-                selectedSiteId: '',
-                worldMarchTarget: null,
-                selectedWorldActorId: '',
-                selectedWorldMissionId: '',
-                expeditionConfigSiteId: '',
-                expeditionSoldiers: '',
-                expeditionTroopType: '',
-                expeditionLeader: '',
-              };
+              TerritoryUiStateStore?.ensure?.(this.canvasShell);
               this.canvasShell.closeWorldSiteHud?.({ render: false });
             }
             if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
@@ -675,6 +659,9 @@
                   detailOpen: false,
                 },
               }), { source: 'resetLocalViewToResources' });
+            }
+            if (this.canvasShell) {
+              this.canvasShell.mapHomeActive = homeView.isMapHome;
             }
             if (!options.skipShell && this.canvasShell?.resetLocalViewToResources) {
               this.canvasShell.resetLocalViewToResources({ skipGame: true, skipRender: true });

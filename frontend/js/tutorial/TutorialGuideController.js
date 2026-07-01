@@ -47,6 +47,13 @@
     }
     return null;
   })();
+  const TerritoryUiStateStore = (() => {
+    if (global.TerritoryUiStateStore) return global.TerritoryUiStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../state/TerritoryUiStateStore');
+    }
+    return null;
+  })();
 
   const CanvasModalSnapshotAdapter = (() => {
     if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
@@ -276,10 +283,7 @@
 
 
     getWorldMarchTarget() {
-      return this.game?.territoryController?.uiState?.worldMarchTarget
-        || this.game?.canvasShell?.territoryUiState?.worldMarchTarget
-        || this.game?.territoryUiState?.worldMarchTarget
-        || null;
+      return TerritoryUiStateStore?.ensure?.(this.game)?.worldMarchTarget || null;
     }
 
     isWorldMarchTargetSelected() {
@@ -332,10 +336,7 @@
     }
 
     isWorldSiteSelected(siteId = '') {
-      const selected = this.game?.territoryController?.uiState?.selectedSiteId
-        || this.game?.canvasShell?.territoryUiState?.selectedSiteId
-        || this.game?.territoryUiState?.selectedSiteId
-        || '';
+      const selected = TerritoryUiStateStore?.ensure?.(this.game)?.selectedSiteId || '';
       return Boolean(siteId && selected === siteId);
     }
 
@@ -500,49 +501,13 @@
       closePanelIfChanged('showFamousPersons');
       game.closeEventSnapshot?.();
       this.closeArmyFormationEditorEverywhere();
-      mergeUiState(game, 'territoryUiState', {
-        selectedSiteId: '',
-        ...(clearWorldMarchTarget ? {
-          worldMarchTarget: null,
-          selectedWorldActorId: '',
-          selectedWorldMissionId: '',
-        } : {}),
-        expeditionConfigSiteId: '',
-        expeditionSoldiers: '',
-        expeditionTroopType: '',
-        expeditionLeader: '',
-      });
-      if (game.territoryController?.uiState) {
-        mergeUiState(game.territoryController, 'uiState', {
-          selectedSiteId: '',
-          ...(clearWorldMarchTarget ? {
-            worldMarchTarget: null,
-            selectedWorldActorId: '',
-            selectedWorldMissionId: '',
-          } : {}),
-          expeditionConfigSiteId: '',
-          expeditionSoldiers: '',
-          expeditionTroopType: '',
-          expeditionLeader: '',
-        });
-      }
+      TerritoryUiStateStore?.clearWorldSelection?.(game, { clearWorldMarchTarget });
       if (clearWorldMarchTarget) game.territoryController?.closeSiteDialog?.({ render: false });
       if (shell) {
         setIfChanged(shell, 'mapHomeActive', true);
         // The 5 blocking-panel closes above fanned out to the shell via the adapter.
         shell.closeEventSnapshot?.();
-        mergeUiState(shell, 'territoryUiState', {
-          selectedSiteId: '',
-          ...(clearWorldMarchTarget ? {
-            worldMarchTarget: null,
-            selectedWorldActorId: '',
-            selectedWorldMissionId: '',
-          } : {}),
-          expeditionConfigSiteId: '',
-          expeditionSoldiers: '',
-          expeditionTroopType: '',
-          expeditionLeader: '',
-        });
+        TerritoryUiStateStore?.ensure?.(shell);
       }
       shell?.hideTutorialHighlight?.();
       if (typeof shell?.renderReadOnly === 'function') {

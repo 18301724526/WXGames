@@ -1,4 +1,9 @@
 (function (global) {
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
+
   var WorldMarchSystem = global.WorldMarchSystem;
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     try {
@@ -98,9 +103,7 @@
     const runtime = host.worldMapRuntimeCoordinator?.getMapRuntime?.() || host.worldMapRuntime || null;
     const territoryUiState = options.territoryUiState
       || runtime?.getCameraUiState?.()
-      || host.territoryController?.getUiState?.()
-      || host.territoryController?.uiState
-      || host.territoryUiState
+      || TerritoryUiStateStore?.ensure?.(host)
       || {};
     const rendered = host.renderer.renderWorldMapActorLayer(state, {
       ...options,

@@ -10,7 +10,7 @@ const path = require('node:path');
 // (b) mounted themselves on globalThis.Ecs<Name>Owner, and (c) duplicated the
 // host game-state slot. After 刀6 every host-state write routes through the
 // single writer state/StateWriter.js. This guard fails the build (exit 1) when
-// any of those four recurrence signatures reappears.
+// any of those recurrence signatures reappears.
 //
 // RULES (each is green on the current HEAD -- zero violations):
 //   1) NO ecs owner shells: no file under frontend/js/ecs/owner/ and no
@@ -29,6 +29,9 @@ const path = require('node:path');
 //      pattern used by many classes. The receiver list is intentionally narrow
 //      to stay low-false-positive; the allowlist below documents the only files
 //      that legitimately assign their OWN distinct .state.
+//   5) SINGLE territory UI owner router: production frontend code must not
+//      rebind game/shell/controller territory UI mirrors directly. Creation,
+//      normalization, and aliasing route through state/TerritoryUiStateStore.js.
 //
 // HONEST LIMIT: a fully general "zero-mirror" proof is NOT machine-provable --
 // a determined author can mirror host state through an aliased local, a computed
@@ -42,6 +45,7 @@ const path = require('node:path');
 const SOURCE_ROOTS = Object.freeze(['frontend/js']);
 const ECS_ROOT = 'frontend/js/ecs';
 const STATE_WRITER = 'frontend/js/state/StateWriter.js';
+const TERRITORY_UI_STATE_STORE = 'frontend/js/state/TerritoryUiStateStore.js';
 
 const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /\.test\.js$/,
@@ -78,6 +82,7 @@ const HOST_STATE_RECEIVERS = Object.freeze([
 const HOST_STATE_WRITE = new RegExp(
   `\\b(?:${HOST_STATE_RECEIVERS.join('|')})\\.state\\s*=\\s*[^=]`,
 );
+const TERRITORY_UI_STATE_REBIND = /(?:\b(?:this|app|canvasShell|game|host|lastGame|owner|shell)\.territoryUiState|\bterritoryController\.uiState)\s*=\s*[^=]/;
 
 // Allowlist for Rule 4: the ONLY production files that legitimately assign their
 // own distinct .state slot. Documented per the CUT 9 spec.
@@ -92,6 +97,9 @@ const STATE_WRITE_ALLOWLIST = Object.freeze([
   // Tutorial guide state (`this.state = ...`); a distinct owner, not the host
   // game-state slot. Same documentation note as above.
   'frontend/js/tutorial/TutorialGuideController.js',
+]);
+const TERRITORY_UI_STATE_ALLOWLIST = Object.freeze([
+  TERRITORY_UI_STATE_STORE,
 ]);
 
 function normalizePath(filePath) {
@@ -188,6 +196,7 @@ function findTextViolationsInFile(filePath, text = '') {
   const findings = [];
   const normalized = normalizePath(filePath);
   const allowStateWrite = STATE_WRITE_ALLOWLIST.includes(normalized);
+  const allowTerritoryUiStateWrite = TERRITORY_UI_STATE_ALLOWLIST.includes(normalized);
   const lines = String(text || '').split(/\r?\n/);
 
   lines.forEach((rawLine, index) => {
@@ -220,6 +229,16 @@ function findTextViolationsInFile(filePath, text = '') {
         note: 'host game-state writes must route through state/StateWriter.js (single write point, 刀6)',
       });
     }
+    if (!allowTerritoryUiStateWrite && TERRITORY_UI_STATE_REBIND.test(line)) {
+      findings.push({
+        file: normalized,
+        line: index + 1,
+        rule: 'territory-ui-state-rebind',
+        symbol: '<host>.territoryUiState =',
+        evidence,
+        note: 'territory UI state owner aliasing must route through state/TerritoryUiStateStore.js; do not rebind shell/game/controller mirrors directly',
+      });
+    }
   });
 
   return findings;
@@ -248,6 +267,7 @@ function scanSingleSourceRedline(options = {}) {
     hostStateReceivers: HOST_STATE_RECEIVERS,
     retiredShellBasenames: RETIRED_SHELL_BASENAMES,
     stateWriteAllowlist: STATE_WRITE_ALLOWLIST,
+    territoryUiStateAllowlist: TERRITORY_UI_STATE_ALLOWLIST,
     violations,
     summary: { totalViolations: violations.length },
   };
@@ -261,6 +281,7 @@ function renderText(report) {
     `host-state receivers: ${report.hostStateReceivers.join(', ')}`,
     `retired shell basenames: ${report.retiredShellBasenames.join(', ')}`,
     `state-write allowlist: ${report.stateWriteAllowlist.join(', ')}`,
+    `territory-ui-state allowlist: ${report.territoryUiStateAllowlist.join(', ')}`,
     `violations: ${report.summary.totalViolations}`,
   ];
   if (report.violations.length) {
@@ -302,6 +323,7 @@ module.exports = {
   HOST_STATE_RECEIVERS,
   RETIRED_SHELL_BASENAMES,
   STATE_WRITE_ALLOWLIST,
+  TERRITORY_UI_STATE_ALLOWLIST,
   findPathViolations,
   findTextViolationsInFile,
   parseFormat,

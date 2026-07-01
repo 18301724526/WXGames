@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const TutorialGuideController = require('./TutorialGuideController');
 const CanvasModeOwnershipRuntime = require('../platform/CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('../platform/CanvasModalSnapshotAdapter');
+const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
 
 // Batch 8F: the 12 blocking panels are owned modal subtypes. A modal-capable host
 // carries the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the
@@ -789,7 +790,7 @@ test('TutorialGuideController guides first empty city occupation and naming', ()
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldSite', siteId });
 
-  game.territoryController = { uiState: { selectedSiteId: siteId } };
+  TerritoryUiStateStore.ensure(game).selectedSiteId = siteId;
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'conquer', territoryId: siteId });
 

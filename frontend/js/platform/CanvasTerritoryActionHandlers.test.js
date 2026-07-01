@@ -7,6 +7,7 @@ const CanvasTerritoryActionHandlers = require('./CanvasTerritoryActionHandlers')
 const CanvasActionController = require('./CanvasActionController');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
 
 class HostController {
   constructor(host) {
@@ -27,16 +28,7 @@ class HostController {
   }
 
   getSharedTerritoryUiState() {
-    const game = this.getGameHost();
-    const territoryController = this.getTerritoryController();
-    const uiState = territoryController?.uiState
-      || this.host.territoryUiState
-      || game?.territoryUiState
-      || {};
-    this.host.territoryUiState = uiState;
-    if (game && game !== this.host) game.territoryUiState = uiState;
-    if (territoryController && !territoryController.uiState) territoryController.uiState = uiState;
-    return uiState;
+    return TerritoryUiStateStore.ensure(this.host);
   }
 
   forward() {

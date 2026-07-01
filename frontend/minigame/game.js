@@ -14,6 +14,7 @@ require('../js/ecs/runtime/EcsModeRuntimeBundle');
 require('../js/ecs/foundation/WorldTime');
 require('../js/ecs/system/WorldMarchProgressSnapshot');
 require('../js/state/StateWriter');
+require('../js/state/TerritoryUiStateStore');
 require('../js/state/optimistic/MarchCommandBuilder');
 require('../js/state/optimistic/MarchPendingStore');
 require('../js/state/optimistic/MarchReconciler');

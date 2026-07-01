@@ -16,6 +16,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/state/StateWriter.js',
   'frontend/js/state/StateWriter.test.js',
+  'frontend/js/state/TerritoryUiStateStore.js',
+  'frontend/js/state/TerritoryUiStateStore.test.js',
   'frontend/js/state/BattleStore.js',
   'frontend/js/state/BattleStore.test.js',
   'frontend/js/state/ModalStore.js',

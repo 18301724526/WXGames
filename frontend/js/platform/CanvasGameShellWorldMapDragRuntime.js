@@ -1,4 +1,9 @@
 (function (global) {
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
+
   var WorldMapRuntimePolicy = global.CanvasGameShellWorldMapRuntimePolicy;
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimePolicy) {
     WorldMapRuntimePolicy = require('./CanvasGameShellWorldMapRuntimePolicy');
@@ -42,7 +47,7 @@
       },
 
       getWorldMapPan() {
-        const uiState = this.lastGame?.territoryController?.getUiState?.() || this.territoryUiState || {};
+        const uiState = TerritoryUiStateStore?.ensure?.(this) || {};
         return WorldMapRuntimePolicy.getWorldMapPan(uiState);
       },
 

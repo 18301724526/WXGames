@@ -23,6 +23,10 @@
   if (typeof module !== 'undefined' && module.exports && !ActorPickingDiagnostics) {
     ActorPickingDiagnostics = require('../debug/ActorPickingDiagnostics');
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   // armyFormationEditor is the formation-editor object, NOT a blocking panel; the
   // panel-close sweep historically also nulled it, so it stays here as an
@@ -111,19 +115,7 @@
     }
 
     getSharedTerritoryUiState() {
-      const game = this.getGameHost();
-      const territoryController = this.host?.territoryController || game?.territoryController || null;
-      const uiState = territoryController?.uiState
-        || this.host.territoryUiState
-        || game?.territoryUiState
-        || territoryController?.getUiState?.()
-        || {};
-      this.host.territoryUiState = uiState;
-      if (game && game !== this.host && typeof game === 'object') game.territoryUiState = uiState;
-      if (territoryController && typeof territoryController === 'object' && !territoryController.uiState) {
-        territoryController.uiState = uiState;
-      }
-      return uiState;
+      return TerritoryUiStateStore?.ensure?.(this.host) || {};
     }
 
     setField(key, value, target = this.host) {

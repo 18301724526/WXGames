@@ -7,6 +7,10 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeRenderPolicy) {
     WorldMapRuntimeRenderPolicy = require('./WorldMapRuntimeRenderPolicy');
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   function buildMilitaryRenderOptions(host = null, uiState = null, options = {}) {
     if (typeof host?.buildRenderOptions === 'function') {
@@ -172,16 +176,9 @@
         getState: () => this.state || {},
         getLayerBackingStoreState: () =>
           this.runtime?.getLayerBackingStoreState?.('worldMap') || null,
-        getBaseUiState: () => {
-          const controllerState =
-            this.territoryController?.uiState || this.territoryController?.getUiState?.() || null;
-          if (controllerState) return controllerState;
-          const renderOptions = buildMilitaryRenderOptions(this);
-          const { territoryUiState = {} } = renderOptions;
-          return territoryUiState;
-        },
+        getBaseUiState: () => TerritoryUiStateStore?.ensure?.(this) || {},
         getLocalUiState: () => {
-          const renderOptions = buildMilitaryRenderOptions(this);
+          const renderOptions = buildMilitaryRenderOptions(this, TerritoryUiStateStore?.ensure?.(this) || {});
           const { territoryUiState = {} } = renderOptions;
           return territoryUiState;
         },

@@ -37,6 +37,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -587,17 +591,11 @@
               trace?.log?.('app:startWorldMarch:afterApply', {
                 after: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
               });
-              this.territoryUiState = {
-                ...(this.territoryUiState || {}),
+              TerritoryUiStateStore?.patch?.(this, {
                 worldMarchTarget: null,
                 selectedWorldActorId: '',
                 selectedWorldMissionId: '',
-              };
-              if (this.canvasShell?.territoryUiState) {
-                this.canvasShell.territoryUiState.worldMarchTarget = null;
-                this.canvasShell.territoryUiState.selectedWorldActorId = '';
-                this.canvasShell.territoryUiState.selectedWorldMissionId = '';
-              }
+              });
               this.tutorialController?.sync?.(this.tutorial);
               this.tutorialController?.onExploreStarted?.(result);
               this.showFloatingText(result.message || t('command.worldMarch.started', {}));
@@ -731,23 +729,14 @@
               }
               openBlockingPanelSnapshot(this, 'showCityManagement', true);
               this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
-              this.territoryUiState = {
-                ...(this.territoryUiState || {}),
+              TerritoryUiStateStore?.patch?.(this, {
                 selectedSiteId: '',
                 worldMarchTarget: null,
                 selectedWorldActorId: '',
                 selectedWorldMissionId: '',
-              };
+              });
               this.territoryController?.closeSiteDialog?.();
-              if (this.canvasShell) {
-                this.canvasShell.territoryUiState = {
-                  ...(this.canvasShell.territoryUiState || {}),
-                  selectedSiteId: '',
-                  worldMarchTarget: null,
-                  selectedWorldActorId: '',
-                  selectedWorldMissionId: '',
-                };
-              }
+              if (this.canvasShell) TerritoryUiStateStore?.ensure?.(this.canvasShell);
               const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });
               this.activeTab = homeView.activeTab;
               this.militaryView = homeView.militaryView;

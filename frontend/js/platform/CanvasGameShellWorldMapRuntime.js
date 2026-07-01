@@ -3,6 +3,10 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
     WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
@@ -21,12 +25,8 @@
           getPresenter: () => this.presenter || this.renderer?.presenter,
           getState: () => this.lastGame?.state || {},
           getLayerBackingStoreState: () => this.getWorldMapLayerBackingStoreState?.() || null,
-          getBaseUiState: () => this.territoryUiState
-            || this.lastGame?.territoryUiState
-            || this.lastGame?.territoryController?.uiState
-            || this.lastGame?.territoryController?.getUiState?.()
-            || {},
-          getLocalUiState: () => this.territoryUiState || {},
+          getBaseUiState: () => TerritoryUiStateStore?.ensure?.(this) || {},
+          getLocalUiState: () => TerritoryUiStateStore?.ensure?.(this) || {},
           getTerritoryController: () => this.lastGame?.territoryController || null,
           getTopBarBottom: (state) => (typeof this.renderer?.getTopBarBottom === 'function'
             ? this.renderer.getTopBarBottom(state, { isMapHome: true })

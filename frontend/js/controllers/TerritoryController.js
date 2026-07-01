@@ -14,6 +14,17 @@
   function t(key, params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
+  const TerritoryUiStateStore = (() => {
+    if (global.TerritoryUiStateStore) return global.TerritoryUiStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../state/TerritoryUiStateStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class TerritoryController {
     static MIN_EXPEDITION_SOLDIERS = 100;
@@ -29,7 +40,7 @@
       this.onCityRenameRequested = options.onCityRenameRequested || (() => null);
       this.onBattleSceneRequested = options.onBattleSceneRequested || (() => false);
       this.dragState = null;
-      this.uiState = {
+      this.uiState = TerritoryUiStateStore?.createInitialState?.(options.uiState || {}) || {
         selectedSiteId: '',
         worldMarchTarget: null,
         selectedWorldActorId: '',

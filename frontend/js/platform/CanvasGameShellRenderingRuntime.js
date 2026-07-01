@@ -35,6 +35,10 @@
       SharedWorldClock = null;
     }
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     const explorer = state?.worldExplorerState || {};
@@ -299,48 +303,22 @@ setTechTreeZoom(zoom = 1) {
     },
 
 resolveTerritoryUiState(overrideUiState = null) {
-      const territoryController = this.lastGame?.territoryController || null;
-      const controllerSnapshot = territoryController?.getUiState?.() || null;
-      const sources = [
-        controllerSnapshot,
-        this.lastGame?.territoryUiState,
-        this.territoryUiState,
-        territoryController?.uiState,
-        overrideUiState,
-      ].filter((source) => source && typeof source === 'object');
-      const resolved = Object.assign({}, ...sources);
-      const liveSelectedActorSource = [
-        this.lastGame?.territoryUiState,
-        this.territoryUiState,
-        territoryController?.uiState,
-      ].find((source) => source?.selectedWorldActorId);
-      if (liveSelectedActorSource?.selectedWorldActorId) {
-        resolved.selectedWorldActorId = liveSelectedActorSource.selectedWorldActorId;
-      }
+      const ownerUiState = TerritoryUiStateStore?.ensure?.(this) || {};
+      const resolved = TerritoryUiStateStore?.resolve?.(this, overrideUiState) || ownerUiState;
       logActorPickingDiag('shell:resolveTerritoryUiState', {
         sources: {
-          controllerSnapshot: summarizeActorPickingUiState(controllerSnapshot),
-          lastGameTerritoryUiState: summarizeActorPickingUiState(this.lastGame?.territoryUiState),
-          shellTerritoryUiState: summarizeActorPickingUiState(this.territoryUiState),
-          controllerUiState: summarizeActorPickingUiState(territoryController?.uiState),
+          ownerTerritoryUiState: summarizeActorPickingUiState(ownerUiState),
           overrideUiState: summarizeActorPickingUiState(overrideUiState),
         },
         resolved: summarizeActorPickingUiState(resolved),
-        liveSelectedActorSource: liveSelectedActorSource === this.lastGame?.territoryUiState
-          ? 'lastGame.territoryUiState'
-          : (liveSelectedActorSource === this.territoryUiState
-            ? 'shell.territoryUiState'
-            : (liveSelectedActorSource === territoryController?.uiState ? 'territoryController.uiState' : '')),
+        ownerAlias: {
+          shellMatchesOwner: this.territoryUiState === ownerUiState,
+          controllerMatchesOwner: this.lastGame?.territoryController?.uiState === ownerUiState,
+        },
       }, {
         signature: [
-          controllerSnapshot?.selectedWorldActorId || '',
-          controllerSnapshot?.selectedWorldMissionId || '',
-          this.lastGame?.territoryUiState?.selectedWorldActorId || '',
-          this.lastGame?.territoryUiState?.selectedWorldMissionId || '',
-          this.territoryUiState?.selectedWorldActorId || '',
-          this.territoryUiState?.selectedWorldMissionId || '',
-          territoryController?.uiState?.selectedWorldActorId || '',
-          territoryController?.uiState?.selectedWorldMissionId || '',
+          ownerUiState?.selectedWorldActorId || '',
+          ownerUiState?.selectedWorldMissionId || '',
           overrideUiState?.selectedWorldActorId || '',
           overrideUiState?.selectedWorldMissionId || '',
           resolved.selectedWorldActorId || '',

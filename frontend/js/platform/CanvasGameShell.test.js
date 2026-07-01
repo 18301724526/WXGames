@@ -1100,19 +1100,11 @@ test('CanvasGameShell renders HUD with the latest shared world actor selection',
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    territoryController: {
-      getUiState() {
-        return {
-          selectedWorldActorId: '',
-          worldMarchTarget: null,
-          worldPanX: 12,
-          worldPanY: -4,
-        };
-      },
-    },
     territoryUiState: {
       selectedWorldActorId: 'explore-active-1',
       worldMarchTarget: null,
+      worldPanX: 12,
+      worldPanY: -4,
     },
     tutorial: {},
   };

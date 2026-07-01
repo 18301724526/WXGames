@@ -9,6 +9,7 @@ const {
   findTextViolationsInFile,
   parseFormat,
   scanSingleSourceRedline,
+  TERRITORY_UI_STATE_ALLOWLIST,
 } = require('./check-frontend-single-source-redline');
 
 function writeFile(root, filePath, text) {
@@ -154,11 +155,59 @@ test('rule 4 allows .state comparisons and reads (only assignments fire)', () =>
   assert.deepEqual(findings, []);
 });
 
+// ---- Rule 5: single territory UI state owner router ---------------------------
+
+test('rule 5 catches direct territory UI state rebinding outside the store', () => {
+  const findings = findTextViolationsInFile(
+    'frontend/js/platform/CanvasTerritoryActionHandlers.js',
+    [
+      'game.territoryUiState = {};',
+      'shell.territoryUiState = nextState;',
+      'territoryController.uiState = state;',
+    ].join('\n'),
+  );
+  assert.deepEqual(
+    findings.map((finding) => [finding.rule, finding.line]),
+    [
+      ['territory-ui-state-rebind', 1],
+      ['territory-ui-state-rebind', 2],
+      ['territory-ui-state-rebind', 3],
+    ],
+  );
+});
+
+test('rule 5 allows the territory UI state store as the only rebinding point', () => {
+  assert.deepEqual(TERRITORY_UI_STATE_ALLOWLIST, ['frontend/js/state/TerritoryUiStateStore.js']);
+  const findings = findTextViolationsInFile(
+    'frontend/js/state/TerritoryUiStateStore.js',
+    [
+      'owner.territoryUiState = createInitialState();',
+      'shell.territoryUiState = uiState;',
+      'controller.uiState = uiState;',
+    ].join('\n'),
+  );
+  assert.deepEqual(findings, []);
+});
+
+test('rule 5 allows territory UI state reads and in-place field writes', () => {
+  const findings = findTextViolationsInFile(
+    'frontend/js/platform/CanvasTerritoryActionHandlers.js',
+    [
+      'const uiState = this.getSharedTerritoryUiState();',
+      'uiState.worldMarchTarget = nextTarget;',
+      'const selected = shell.territoryUiState?.selectedSiteId;',
+      'if (game.territoryUiState === ownerUiState) return;',
+    ].join('\n'),
+  );
+  assert.deepEqual(findings, []);
+});
+
 // ---- end-to-end scan over a temp repo -----------------------------------------
 
 test('full scan is clean on a well-formed fixture tree', () =>
   withTempRepo((repoRoot) => {
     writeFile(repoRoot, 'frontend/js/state/StateWriter.js', 'owner.state = next;\n');
+    writeFile(repoRoot, 'frontend/js/state/TerritoryUiStateStore.js', 'owner.territoryUiState = next;\n');
     writeFile(repoRoot, 'frontend/js/state/BattleStore.js', 'globalThis.BattleStore = store;\n');
     writeFile(repoRoot, 'frontend/js/ecs/projection/FogProjection.js', 'module.exports = {};\n');
     writeFile(
@@ -181,6 +230,8 @@ test('full scan flags one violation per recurrence signature in a temp repo', ()
     writeFile(repoRoot, 'frontend/js/platform/Mount.js', 'globalThis.EcsBattleOwner = api;\n');
     // Rule 4 (text-based).
     writeFile(repoRoot, 'frontend/js/platform/Writer.js', 'host.state = next;\n');
+    // Rule 5 (text-based).
+    writeFile(repoRoot, 'frontend/js/platform/TerritoryMirror.js', 'shell.territoryUiState = next;\n');
 
     const report = scanSingleSourceRedline({ repoRoot });
     const rules = report.violations.map((violation) => violation.rule).sort();
@@ -193,6 +244,7 @@ test('full scan flags one violation per recurrence signature in a temp repo', ()
       'global-owner-mount',
       'host-state-write',
       'retired-shell-module',
+      'territory-ui-state-rebind',
     ]);
   }));
 

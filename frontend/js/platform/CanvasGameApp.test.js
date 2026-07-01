@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const CanvasGameApp = require('./CanvasGameApp');
 const BattleStore = require('../state/BattleStore');
+const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
 const CanvasGameAppCommands = require('./CanvasGameAppCommands');
 const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
 const CanvasGameShell = require('./CanvasGameShell');
@@ -326,13 +327,8 @@ test('CanvasGameApp renders territory site selection through map-home city HUD',
       },
     },
   });
-  app.territoryController = {
-    uiState: { selectedSiteId: 'capital' },
-    getUiState() {
-      return { selectedSiteId: 'capital' };
-    },
-  };
   shell.lastGame = app;
+  TerritoryUiStateStore.patch(app, { selectedSiteId: 'capital' });
 
   app.renderTerritory();
 

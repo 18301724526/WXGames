@@ -107,6 +107,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.territoryController = new constructors.TerritoryController({
       api: this.gameAPI,
       getState: () => this.state,
+      uiState: this.territoryUiState,
       onRenderRequested: () => this.renderTerritory(),
       onStateApplied: (result) => this.applyApiState(result),
       onFloatingText: (message) => this.showFloatingText(message),
@@ -114,6 +115,7 @@ class H5GameHost extends CanvasGameAppBase {
       onCityRenameRequested: (prompt) => this.requestCityRename(prompt),
       onBattleSceneRequested: (report) => this.startBattleScene(report),
     });
+    window.TerritoryUiStateStore?.ensure?.(this);
     if (!this.tutorialController && window.TutorialGuideController) {
       this.tutorialController = new window.TutorialGuideController({
         game: this,

@@ -1,4 +1,9 @@
 (function (global) {
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
+
   var WorldMapRuntimePolicy = global.CanvasGameShellWorldMapRuntimePolicy;
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimePolicy) {
     WorldMapRuntimePolicy = require('./CanvasGameShellWorldMapRuntimePolicy');
@@ -140,8 +145,7 @@
           return false;
         }
         const territoryUiState = options?.territoryUiState
-          || this.lastGame?.territoryController?.getUiState?.()
-          || this.territoryUiState
+          || TerritoryUiStateStore?.ensure?.(this)
           || {};
         const baseOptions = options || this.buildRenderOptions(homeView.activeTab, territoryUiState);
         const topBarBottom = typeof this.renderer?.getTopBarBottom === 'function'

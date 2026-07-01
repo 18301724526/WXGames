@@ -21,6 +21,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var TerritoryUiStateStore = global.TerritoryUiStateStore;
+  if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
+    TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
 
   function getMountedGame(shell) {
     return shell?.lastGame && shell.lastGame !== shell ? shell.lastGame : null;
@@ -370,14 +374,13 @@ resetLocalViewToResources(options = {}) {
       this.pageTransition = null;
       this.buildingTransition = null;
       this.closeEventSnapshot?.();
-      this.territoryUiState = {
-        ...(this.territoryUiState || {}),
+      TerritoryUiStateStore?.patch?.(this, {
         selectedSiteId: '',
         expeditionConfigSiteId: '',
         expeditionSoldiers: '',
         expeditionTroopType: '',
         expeditionLeader: '',
-      };
+      });
       this.clearWorldSiteHudSelection?.();
       closeBlockingPanelSnapshot(this, 'showResourceDetails');
       closeBlockingPanelSnapshot(this, 'showCitySwitcher');
@@ -430,12 +433,7 @@ syncForwardedLocalAction(action = {}) {
         if (!siteId) return false;
         const territory = this.lastGame?.territoryController || null;
         if (territory?.openSiteDialog) territory.openSiteDialog(siteId);
-        this.territoryUiState = this.territoryUiState || {};
-        this.territoryUiState.selectedSiteId = siteId;
-        if (this.lastGame && typeof this.lastGame === 'object') {
-          this.lastGame.territoryUiState = this.lastGame.territoryUiState || {};
-          this.lastGame.territoryUiState.selectedSiteId = siteId;
-        }
+        TerritoryUiStateStore?.patch?.(this, { selectedSiteId: siteId });
         this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
         return true;
       }
@@ -448,37 +446,22 @@ renderCanvasAction(action = {}) {
     },
 
 clearWorldSiteHudSelection() {
-      const clearUiState = (uiState) => {
-        if (!uiState || typeof uiState !== 'object') return false;
-        const hadValue = Boolean(
-          uiState.selectedSiteId
-          || uiState.worldMarchTarget
-          || uiState.selectedWorldActorId
-          || uiState.selectedWorldMissionId
-          || uiState.expeditionConfigSiteId
-          || uiState.expeditionSoldiers
-          || uiState.expeditionTroopType
-          || uiState.expeditionLeader
-        );
-        uiState.selectedSiteId = '';
-        uiState.worldMarchTarget = null;
-        uiState.selectedWorldActorId = '';
-        uiState.selectedWorldMissionId = '';
-        uiState.expeditionConfigSiteId = '';
-        uiState.expeditionSoldiers = '';
-        uiState.expeditionTroopType = '';
-        uiState.expeditionLeader = '';
-        return hadValue;
-      };
-      let changed = false;
+      const uiState = TerritoryUiStateStore?.ensure?.(this) || {};
+      const changed = Boolean(
+        uiState.selectedSiteId
+        || uiState.worldMarchTarget
+        || uiState.selectedWorldActorId
+        || uiState.selectedWorldMissionId
+        || uiState.expeditionConfigSiteId
+        || uiState.expeditionSoldiers
+        || uiState.expeditionTroopType
+        || uiState.expeditionLeader
+      );
+      TerritoryUiStateStore?.clearWorldSelection?.(this, { clearWorldMarchTarget: true });
       const territoryController = this.lastGame?.territoryController || null;
-      const controllerUiState = territoryController?.uiState || null;
-      changed = clearUiState(controllerUiState) || changed;
       if (territoryController?.closeSiteDialog) {
         territoryController.closeSiteDialog({ render: false });
       }
-      changed = clearUiState(this.territoryUiState) || changed;
-      changed = clearUiState(this.lastGame?.territoryUiState) || changed;
       return changed;
     },
 

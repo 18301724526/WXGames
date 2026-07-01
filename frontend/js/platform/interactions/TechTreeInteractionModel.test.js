@@ -984,18 +984,17 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
   assert.equal(calls.filter((call) => call[0] === 'setTimeout').length, 6);
 });
 
-test('CanvasActionController writes world march selection into territory controller UI state', async () => {
+test('CanvasActionController writes world march selection into the shared territory UI owner', async () => {
   const calls = [];
-  const controllerUiState = {};
   const game = {
     territoryUiState: {},
     territoryController: {
-      uiState: controllerUiState,
+      uiState: {},
       closeSiteDialog(options) {
         calls.push(['closeSiteDialog', options]);
-        controllerUiState.selectedSiteId = '';
-        controllerUiState.worldMarchTarget = null;
-        controllerUiState.selectedWorldActorId = '';
+        this.uiState.selectedSiteId = '';
+        this.uiState.worldMarchTarget = null;
+        this.uiState.selectedWorldActorId = '';
       },
     },
   };
@@ -1019,14 +1018,15 @@ test('CanvasActionController writes world march selection into territory control
     targetR: -3,
   }), true);
 
-  assert.strictEqual(host.territoryUiState, controllerUiState);
-  assert.strictEqual(game.territoryUiState, controllerUiState);
-  assert.deepEqual(controllerUiState.worldMarchTarget, {
+  const sharedUiState = game.territoryUiState;
+  assert.strictEqual(host.territoryUiState, sharedUiState);
+  assert.strictEqual(game.territoryController.uiState, sharedUiState);
+  assert.deepEqual(sharedUiState.worldMarchTarget, {
     q: 5,
     r: -3,
     tileId: 'tile_5_-3',
   });
-  assert.equal(controllerUiState.selectedSiteId, '');
-  assert.equal(controllerUiState.selectedWorldActorId, '');
+  assert.equal(sharedUiState.selectedSiteId, '');
+  assert.equal(sharedUiState.selectedWorldActorId, '');
   assert.equal(calls.some((call) => call[0] === 'requestWorldMapRenderAnimationFrame'), true);
 });

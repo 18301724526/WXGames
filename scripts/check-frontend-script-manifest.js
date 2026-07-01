@@ -31,6 +31,8 @@ const REQUIRED_ORDER_PAIRS = [
   // StateWriter is the single state-write entry point; optimistic/index.js eagerly binds it
   // at module-eval (window global), so StateWriter must load first in the browser.
   ['js/state/StateWriter.js', 'js/state/optimistic/index.js'],
+  ['js/state/TerritoryUiStateStore.js', 'js/platform/CanvasActionController.js'],
+  ['js/state/TerritoryUiStateStore.js', 'js/platform/CanvasGameShellRenderingRuntime.js'],
   ['js/state/UIStatePresenterDelegates.js', 'js/state/UIStatePresenter.js'],
   ['js/debug/ActorPickingDiagnostics.js', 'js/ecs/input/WorldMapInputActionMap.js'],
   ['js/debug/ActorPickingDiagnostics.js', 'js/platform/CanvasActionController.js'],
