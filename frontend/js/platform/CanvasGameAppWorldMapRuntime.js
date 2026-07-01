@@ -178,7 +178,10 @@
           this.runtime?.getLayerBackingStoreState?.('worldMap') || null,
         getBaseUiState: () => TerritoryUiStateStore?.ensure?.(this) || {},
         getLocalUiState: () => {
-          const renderOptions = buildMilitaryRenderOptions(this, TerritoryUiStateStore?.ensure?.(this) || {});
+          const renderOptions = buildMilitaryRenderOptions(
+            this,
+            TerritoryUiStateStore?.ensure?.(this) || {},
+          );
           const { territoryUiState = {} } = renderOptions;
           return territoryUiState;
         },

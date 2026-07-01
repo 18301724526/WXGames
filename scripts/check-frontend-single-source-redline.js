@@ -82,7 +82,8 @@ const HOST_STATE_RECEIVERS = Object.freeze([
 const HOST_STATE_WRITE = new RegExp(
   `\\b(?:${HOST_STATE_RECEIVERS.join('|')})\\.state\\s*=\\s*[^=]`,
 );
-const TERRITORY_UI_STATE_REBIND = /(?:\b(?:this|app|canvasShell|game|host|lastGame|owner|shell)\.territoryUiState|\bterritoryController\.uiState)\s*=\s*[^=]/;
+const TERRITORY_UI_STATE_REBIND =
+  /(?:\b(?:this|app|canvasShell|game|host|lastGame|owner|shell)\.territoryUiState|\bterritoryController\.uiState)\s*=\s*[^=]/;
 
 // Allowlist for Rule 4: the ONLY production files that legitimately assign their
 // own distinct .state slot. Documented per the CUT 9 spec.
@@ -98,9 +99,7 @@ const STATE_WRITE_ALLOWLIST = Object.freeze([
   // game-state slot. Same documentation note as above.
   'frontend/js/tutorial/TutorialGuideController.js',
 ]);
-const TERRITORY_UI_STATE_ALLOWLIST = Object.freeze([
-  TERRITORY_UI_STATE_STORE,
-]);
+const TERRITORY_UI_STATE_ALLOWLIST = Object.freeze([TERRITORY_UI_STATE_STORE]);
 
 function normalizePath(filePath) {
   return String(filePath || '').replace(/\\/g, '/');

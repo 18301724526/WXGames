@@ -87,11 +87,13 @@
     const clearMarch = options.clearWorldMarchTarget !== false;
     return patch(host, {
       selectedSiteId: '',
-      ...(clearMarch ? {
-        worldMarchTarget: null,
-        selectedWorldActorId: '',
-        selectedWorldMissionId: '',
-      } : {}),
+      ...(clearMarch
+        ? {
+            worldMarchTarget: null,
+            selectedWorldActorId: '',
+            selectedWorldMissionId: '',
+          }
+        : {}),
       expeditionConfigSiteId: '',
       expeditionSoldiers: '',
       expeditionTroopType: '',

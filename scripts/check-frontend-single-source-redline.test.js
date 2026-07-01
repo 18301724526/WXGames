@@ -207,7 +207,11 @@ test('rule 5 allows territory UI state reads and in-place field writes', () => {
 test('full scan is clean on a well-formed fixture tree', () =>
   withTempRepo((repoRoot) => {
     writeFile(repoRoot, 'frontend/js/state/StateWriter.js', 'owner.state = next;\n');
-    writeFile(repoRoot, 'frontend/js/state/TerritoryUiStateStore.js', 'owner.territoryUiState = next;\n');
+    writeFile(
+      repoRoot,
+      'frontend/js/state/TerritoryUiStateStore.js',
+      'owner.territoryUiState = next;\n',
+    );
     writeFile(repoRoot, 'frontend/js/state/BattleStore.js', 'globalThis.BattleStore = store;\n');
     writeFile(repoRoot, 'frontend/js/ecs/projection/FogProjection.js', 'module.exports = {};\n');
     writeFile(
@@ -231,7 +235,11 @@ test('full scan flags one violation per recurrence signature in a temp repo', ()
     // Rule 4 (text-based).
     writeFile(repoRoot, 'frontend/js/platform/Writer.js', 'host.state = next;\n');
     // Rule 5 (text-based).
-    writeFile(repoRoot, 'frontend/js/platform/TerritoryMirror.js', 'shell.territoryUiState = next;\n');
+    writeFile(
+      repoRoot,
+      'frontend/js/platform/TerritoryMirror.js',
+      'shell.territoryUiState = next;\n',
+    );
 
     const report = scanSingleSourceRedline({ repoRoot });
     const rules = report.violations.map((violation) => violation.rule).sort();

@@ -470,15 +470,6 @@
         host[key] = value;
         changed = true;
       };
-      const mergeUiState = (host, key, patch = {}) => {
-        if (!host || typeof host !== 'object') return;
-        const current = host[key] || {};
-        const next = { ...current, ...patch };
-        const changedEntry = Object.entries(patch).some(([field, value]) => current[field] !== value);
-        if (!changedEntry) return;
-        host[key] = next;
-        changed = true;
-      };
       if (game.state) {
         setIfChanged(game.state, 'currentTab', 'military');
         setIfChanged(game.state, 'militaryView', 'world');
