@@ -150,6 +150,7 @@ require('../js/platform/CanvasGameAppRenderScheduler');
 require('../js/platform/CanvasGameAppWorldMapRuntime');
 require('../js/platform/CanvasGameWorldActorAnimationRuntime');
 require('../js/platform/CanvasGameAppRenderingRuntime');
+require('../js/platform/CanvasGameAppAssetLoading');
 require('../js/platform/CanvasGameAppSecondaryPanels');
 require('../js/platform/CanvasGameAppBattleScene');
 require('../js/platform/CanvasGameAppCommands');

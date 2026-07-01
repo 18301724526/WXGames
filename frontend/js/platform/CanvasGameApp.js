@@ -19,6 +19,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderingRuntime) {
     CanvasGameAppRenderingRuntime = require('./CanvasGameAppRenderingRuntime');
   }
+  var CanvasGameAppAssetLoading = global.CanvasGameAppAssetLoading;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppAssetLoading) {
+    CanvasGameAppAssetLoading = require('./CanvasGameAppAssetLoading');
+  }
   var CanvasGameAppSecondaryPanels = global.CanvasGameAppSecondaryPanels;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppSecondaryPanels) {
     CanvasGameAppSecondaryPanels = require('./CanvasGameAppSecondaryPanels');
@@ -231,6 +235,7 @@
   [
     CanvasGameAppStateSync,
     CanvasGameAppRenderingRuntime,
+    CanvasGameAppAssetLoading,
     CanvasGameAppSecondaryPanels,
     CanvasGameWorldActorAnimationRuntime,
     CanvasGameAppBattleScene,

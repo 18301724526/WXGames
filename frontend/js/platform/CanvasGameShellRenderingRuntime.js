@@ -207,34 +207,6 @@ resolveMapHomeViewState(state = this.lastGame?.state || {}, options = {}) {
       };
     },
 
-getTechTreePan() {
-      const owner = getUiStateOwner(this);
-      return {
-        x: Number(owner.techTreePanX) || 0,
-        y: Number(owner.techTreePanY) || 0,
-      };
-    },
-
-setTechTreePan(pan = {}) {
-      const owner = getUiStateOwner(this);
-      const x = Number(pan.x) || 0;
-      const y = Number(pan.y) || 0;
-      owner.techTreePanX = x;
-      owner.techTreePanY = y;
-      return true;
-    },
-
-getTechTreeZoom() {
-      return Math.max(0.65, Math.min(1.6, Number(getUiStateOwner(this).techTreeZoom) || 1));
-    },
-
-setTechTreeZoom(zoom = 1) {
-      const owner = getUiStateOwner(this);
-      const nextZoom = Math.max(0.65, Math.min(1.6, Number(zoom) || 1));
-      owner.techTreeZoom = nextZoom;
-      return true;
-    },
-
 resolveTerritoryUiState(overrideUiState = null) {
       const ownerUiState = TerritoryUiStateStore?.ensure?.(this) || {};
       const resolved = TerritoryUiStateStore?.resolve?.(this, overrideUiState) || ownerUiState;

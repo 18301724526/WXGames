@@ -5,6 +5,7 @@ global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasGameAppRenderingRuntime = require('./CanvasGameAppRenderingRuntime');
+const CanvasGameAppAssetLoading = require('./CanvasGameAppAssetLoading');
 const CanvasGameAppSecondaryPanels = require('./CanvasGameAppSecondaryPanels');
 
 // Batch 8F: the App rendering runtime now SOURCES its blocking-panel render options
@@ -16,6 +17,7 @@ function makeApp() {
   CanvasModeOwnershipRuntime.install(App);
   CanvasModalSnapshotAdapter.install(App);
   CanvasGameAppRenderingRuntime.install(App);
+  CanvasGameAppAssetLoading.install(App);
   CanvasGameAppSecondaryPanels.install(App);
   const app = new App();
   const renderCalls = [];

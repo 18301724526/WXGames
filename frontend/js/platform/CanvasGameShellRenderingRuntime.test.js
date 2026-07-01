@@ -5,6 +5,7 @@ global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasGameShellRenderingRuntime = require('./CanvasGameShellRenderingRuntime');
+const CanvasGameShellTechTreeView = require('./CanvasGameShellTechTreeView');
 const CanvasGameShellTransitionTimers = require('./CanvasGameShellTransitionTimers');
 
 // Batch 8F: the Shell rendering runtime option-builder now SOURCES its blocking-panel
@@ -15,6 +16,7 @@ function makeShell(stateOverrides = {}) {
   CanvasModeOwnershipRuntime.install(Shell);
   CanvasModalSnapshotAdapter.install(Shell);
   CanvasGameShellRenderingRuntime.install(Shell);
+  CanvasGameShellTechTreeView.install(Shell);
   CanvasGameShellTransitionTimers.install(Shell);
   const shell = new Shell();
   shell.lastGame = {

@@ -75,6 +75,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellRenderingRuntime) {
     CanvasGameShellRenderingRuntime = require('./CanvasGameShellRenderingRuntime');
   }
+  var CanvasGameShellTechTreeView = global.CanvasGameShellTechTreeView;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameShellTechTreeView) {
+    CanvasGameShellTechTreeView = require('./CanvasGameShellTechTreeView');
+  }
   var CanvasGameShellTransitionTimers = global.CanvasGameShellTransitionTimers;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellTransitionTimers) {
     CanvasGameShellTransitionTimers = require('./CanvasGameShellTransitionTimers');
@@ -319,6 +323,7 @@ static mount(game, options = {}) {
     CanvasGameShellWorldMapRuntime,
     CanvasGameWorldActorAnimationRuntime,
     CanvasGameShellRenderingRuntime,
+    CanvasGameShellTechTreeView,
     CanvasGameShellTransitionTimers,
     CanvasGameShellSystemUi,
   ].forEach((shellModule) => shellModule?.install?.(CanvasGameShell));
