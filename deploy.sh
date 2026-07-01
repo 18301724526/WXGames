@@ -592,11 +592,7 @@ else
 fi
 
 run_deploy_gate
-
-echo "[Deploy] 发布前端静态文件..."
-publish_frontend_assets
-apply_frontend_environment_overrides
-write_deploy_version
+export WXGAME_DEPLOY_MANIFEST_PATH="$DEPLOY_STATE_DIR/current-deploy.json"
 
 echo "[Deploy] 同步 shared/ 目录..."
 ensure_shared_link
@@ -646,6 +642,10 @@ echo "[Deploy] 校验健康接口..."
 for attempt in 1 2 3 4 5; do
     if health_payload="$(curl -fsS "http://localhost:${API_PORT}/api/health")"; then
         verify_runtime_config "$health_payload"
+        echo "[Deploy] 发布前端静态文件..."
+        publish_frontend_assets
+        apply_frontend_environment_overrides
+        write_deploy_version
         printf '%s\n' "$health_payload"
         echo
         echo "[Deploy] 部署完成"

@@ -4305,8 +4305,8 @@ Status: candidate
 璐熻矗 / Owns:
 
 - backend deployment version DTO for `/api/version` and `/api/health`
-- package version, git commit, source hash, deploy manifest metadata, deployment id, ETag, and checked timestamp calculation
-- source fingerprinting for `frontend`, `backend`, and `shared`
+- package version, git commit, diagnostic source hash, deploy manifest metadata, deployment id, ETag, and checked timestamp calculation
+- diagnostic source fingerprinting for `frontend`, `backend`, and `shared`
 - runtime-artifact filtering for `.git`, `.local-logs`, `node_modules`, logs, data folders, `.env`, database files, SQLite runtime files, backups, and logs
 - optional deployment manifest lookup from `WXGAME_DEPLOY_MANIFEST_PATH`, `.wxgame/current-deploy.json`, or `.wxgame-deploy-version.json`
 - cached version calculation so frequent update polling does not scan the workspace every request
@@ -4328,7 +4328,7 @@ Extension Path:
 - New runtime artifact patterns must be added to the ignore lists with `VersionService.test.js` coverage.
 - New deployment metadata fields must be derived from deploy manifest input here and covered by `VersionService.test.js`.
 - Deployment identity semantics stay here; config registry schema/version hardening belongs to P11-006 modules.
-- Do not make local database writes, screenshots, logs, or playtest evidence change `deploymentId`.
+- Do not make local database writes, screenshots, logs, playtest evidence, or in-progress live source sync change `deploymentId`; update prompts must follow the completed deploy manifest release marker.
 
 Regression:
 

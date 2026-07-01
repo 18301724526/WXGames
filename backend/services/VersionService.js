@@ -52,8 +52,6 @@ function buildEtag(info) {
     .update([
       info.version || '',
       info.deploymentId || '',
-      info.gitCommit || '',
-      info.sourceHash || '',
       info.deployedCommit || '',
       info.deployedAt || '',
     ].join('|'))
@@ -158,10 +156,11 @@ class VersionService {
     const sourceHash = createSourceHash(this.repoRoot);
     const deployManifest = this.readDeployManifest();
     const explicitVersion = process.env.APP_VERSION || process.env.GAME_VERSION || null;
+    const releaseIdentity = deployManifest?.deployedCommit || deployManifest?.commit || gitCommit || 'nogit';
     const versionParts = [
       explicitVersion || packageJson.version || '0.0.0',
-      deployManifest?.deployedCommit || deployManifest?.commit || gitCommit || 'nogit',
-      sourceHash,
+      releaseIdentity,
+      deployManifest?.deployedAt || '',
     ];
     const deploymentId = crypto.createHash('sha256').update(versionParts.join('|')).digest('hex').slice(0, 16);
 

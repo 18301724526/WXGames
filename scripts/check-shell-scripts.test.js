@@ -85,6 +85,30 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(verifyHookScript, /current deploy commit is reachable/);
 });
 
+test('deploy release marker is written only after backend health passes', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const deployScript = fs.readFileSync(path.join(repoRoot, 'deploy.sh'), 'utf8');
+  const deployStageStart = deployScript.indexOf('run_deploy_gate');
+  const firstHealthCheck = deployScript.indexOf('if health_payload="$(curl -fsS "http://localhost:${API_PORT}/api/health")"; then');
+  const verifyRuntimeAfterHealth = deployScript.indexOf('verify_runtime_config "$health_payload"', firstHealthCheck);
+  const publishAfterHealth = deployScript.indexOf('publish_frontend_assets', verifyRuntimeAfterHealth);
+  const writeVersionAfterPublish = deployScript.indexOf('write_deploy_version', publishAfterHealth);
+  const deployComplete = deployScript.indexOf('[Deploy]', writeVersionAfterPublish);
+  const beforeHealthRuntimeStage = deployScript.slice(deployStageStart, firstHealthCheck);
+  const earlyPublish = beforeHealthRuntimeStage.includes('publish_frontend_assets');
+  const earlyVersionWrite = beforeHealthRuntimeStage.includes('write_deploy_version');
+
+  assert.notEqual(deployStageStart, -1);
+  assert.notEqual(firstHealthCheck, -1);
+  assert.notEqual(verifyRuntimeAfterHealth, -1);
+  assert.notEqual(publishAfterHealth, -1);
+  assert.notEqual(writeVersionAfterPublish, -1);
+  assert.notEqual(deployComplete, -1);
+  assert.equal(earlyPublish, false);
+  assert.equal(earlyVersionWrite, false);
+  assert.match(deployScript, /export WXGAME_DEPLOY_MANIFEST_PATH="\$DEPLOY_STATE_DIR\/current-deploy\.json"/);
+});
+
 test('pre-deploy gate auto-installs architecture dependencies for server hooks', () => {
   const repoRoot = path.join(__dirname, '..');
   const gateScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'pre-deploy-gate.sh'), 'utf8');
