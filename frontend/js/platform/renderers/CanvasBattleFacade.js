@@ -273,41 +273,15 @@
   function installBattleFacade(RendererClass) {
     const proto = RendererClass?.prototype;
     if (!proto) return RendererClass;
-    Object.defineProperties(proto, {
-      getBattleUnitPose: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleUnitPose },
-      getBattleTurnSoldierCount: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleTurnSoldierCount },
-      isBattleSideDefeatedByTurn: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.isBattleSideDefeatedByTurn },
-      getBattlePlaybackPhase: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattlePlaybackPhase },
-      getBattleEngagementProgress: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleEngagementProgress },
-      getBattleUnitFormationPosition: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleUnitFormationPosition },
-      getBattleUnitEngagementPosition: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleUnitEngagementPosition },
-      easeBattleUnitProgress: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.easeBattleUnitProgress },
-      getBattleUnitEngagementDelay: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleUnitEngagementDelay },
-      getBattleUnitEngagementRatio: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleUnitEngagementRatio },
-      getBattleUnitBattlefieldPosition: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleUnitBattlefieldPosition },
-      getBattleUnitSpec: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleUnitSpec },
-      getBattleFramePose: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleFramePose },
-      getBattleFrameIndex: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleFrameIndex },
-      getBattleFrameSpritePath: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleFrameSpritePath },
-      getBattleSideSpritePath: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleSideSpritePath },
-      drawBattleMapBackground: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleMapBackground },
-      drawBattleSoldierFrame: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleSoldierFrame },
-      drawBattleSoldierFallback: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleSoldierFallback },
-      drawBattleSoldierSprite: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleSoldierSprite },
-      drawBattleSoldier: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleSoldier },
-      drawBattleArmy: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleArmy },
-      getBattleStatusBadgeColors: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleStatusBadgeColors },
-      drawBattleSideState: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleSideState },
-      drawBattleActionEffect: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleActionEffect },
-      drawBattleSkillCutIn: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleSkillCutIn },
-      getBattleTurnDamage: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleTurnDamage },
-      getBattleDamageFloatText: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.getBattleDamageFloatText },
-      drawBattleDamageFloat: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleDamageFloat },
-      drawBattleStatusFloatingTexts: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleStatusFloatingTexts },
-      drawBattleLeader: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.drawBattleLeader },
-      renderBattleSceneOverlay: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.renderBattleSceneOverlay },
-      renderEntityBattleOverlay: { configurable: true, writable: true, value: BATTLE_FACADE_METHODS.renderEntityBattleOverlay },
-    });
+    const facadeDescriptors = {};
+    for (const facadeMethodName of Object.keys(BATTLE_FACADE_METHODS)) {
+      facadeDescriptors[facadeMethodName] = {
+        configurable: true,
+        writable: true,
+        value: BATTLE_FACADE_METHODS[facadeMethodName],
+      };
+    }
+    Object.defineProperties(proto, facadeDescriptors);
     return RendererClass;
   }
 
