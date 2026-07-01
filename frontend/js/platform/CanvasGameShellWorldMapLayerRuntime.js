@@ -69,9 +69,6 @@
             Number(actorMetrics.viewportWidth) || this.worldMapRenderer.viewportWidth;
           this.worldActorLayerRenderer.viewportHeight =
             Number(actorMetrics.viewportHeight) || this.worldMapRenderer.viewportHeight;
-          if (this.worldMapRenderer) {
-            this.worldMapRenderer.worldActorLayerRenderer = this.worldActorLayerRenderer;
-          }
           this.syncWorldActorOverlayRendererLinks?.();
         }
         if (this.isFogOfWarEnabled?.() === true && this.worldFogRenderer?.setMetrics) {

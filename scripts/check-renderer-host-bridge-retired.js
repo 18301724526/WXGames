@@ -24,6 +24,14 @@ const FORBIDDEN_PATTERNS = Object.freeze([
     kind: 'inline-child-host-proxy',
     pattern: /\bnew\s+Proxy\s*\(\s*Object\.create\s*\(\s*null\s*\)\s*,/,
   },
+  // After the host-bridge Proxy was retired, every numeric geometry getter must carry a
+  // finite fallback (Number(this.host?.x) || n) — a bare `return this.host?.width;` yields
+  // undefined -> NaN and cascades into canvas draw calls (e.g. createGradient) as a crash.
+  {
+    kind: 'unguarded-numeric-host-getter',
+    pattern:
+      /\breturn this\.host\?\.(?:width|height|bottomSafeArea|viewportOffsetX|viewportOffsetY|viewportWidth|viewportHeight|pixelRatio)\s*;/,
+  },
 ]);
 
 function normalizePath(filePath) {

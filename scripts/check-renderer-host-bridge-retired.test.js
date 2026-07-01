@@ -52,6 +52,38 @@ test('flags retired host bridge symbols and proxy forms', () => {
   );
 });
 
+test('flags unguarded numeric host getters but not ones with a finite fallback', () => {
+  const flagged = findRetiredBridgeReferencesInText(
+    'frontend/js/platform/renderers/Foo.js',
+    [
+      '    return this.host?.width;',
+      '    return this.host?.height;',
+      '    return this.host?.bottomSafeArea;',
+      '    return this.host?.viewportOffsetX;',
+      '    return this.host?.pixelRatio;',
+    ].join('\n'),
+  );
+  assert.deepEqual(
+    flagged.map((finding) => finding.kind),
+    Array(5).fill('unguarded-numeric-host-getter'),
+  );
+
+  const guarded = findRetiredBridgeReferencesInText(
+    'frontend/js/platform/renderers/Foo.js',
+    [
+      '    return Number(this.host?.width) || 0;',
+      '    return Number(this.host?.bottomSafeArea) || 12;',
+      '    return Number(this.host?.pixelRatio) || 1;',
+      '    return this.host?.presenter || null;',
+      '    return this.host?.ctx || null;',
+    ].join('\n'),
+  );
+  assert.equal(
+    guarded.filter((finding) => finding.kind === 'unguarded-numeric-host-getter').length,
+    0,
+  );
+});
+
 test('ignores comments and non-host proxy usage outside scanned source roots', () =>
   withTempRepo((repoRoot) => {
     writeFile(repoRoot, 'frontend/js/platform/renderers/Ok.js', '// new Proxy(this, {})\n');

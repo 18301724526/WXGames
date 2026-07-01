@@ -22,7 +22,7 @@
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get presenter() {

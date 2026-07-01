@@ -5,7 +5,7 @@
     }
 
     get pixelRatio() {
-      return this.host?.pixelRatio;
+      return Number(this.host?.pixelRatio) || 1;
     }
 
     getWorldTileStaticChunkSize() {

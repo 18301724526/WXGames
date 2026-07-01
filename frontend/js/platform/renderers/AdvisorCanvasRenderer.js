@@ -18,15 +18,15 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get bottomSafeArea() {
-      return this.host?.bottomSafeArea;
+      return Number(this.host?.bottomSafeArea) || 12;
     }
 
     get presenter() {

@@ -66,27 +66,27 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get viewportOffsetX() {
-      return this.host?.viewportOffsetX;
+      return Number(this.host?.viewportOffsetX) || 0;
     }
 
     get viewportOffsetY() {
-      return this.host?.viewportOffsetY;
+      return Number(this.host?.viewportOffsetY) || 0;
     }
 
     get viewportWidth() {
-      return this.host?.viewportWidth;
+      return Number(this.host?.viewportWidth) || 0;
     }
 
     get viewportHeight() {
-      return this.host?.viewportHeight;
+      return Number(this.host?.viewportHeight) || 0;
     }
 
     get epochNowMs() {
