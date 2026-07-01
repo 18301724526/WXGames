@@ -42,9 +42,9 @@ test('worldMap layer owns only terrain/static/site work and never actor/HUD owne
 });
 
 test('worldActor layer owns actor drawing and actor hit targets without command HUD', () => {
-  const source = readProjectFile('frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js');
-  const actorLayerStart = source.indexOf('renderWorldMapActorLayer');
-  const actorLayerSource = source.slice(actorLayerStart, source.indexOf('getEpochNowMs', actorLayerStart));
+  const source = readProjectFile('frontend/js/platform/renderers/WorldMapCacheCoordinator.js');
+  const actorLayerStart = source.indexOf('renderWorldMapActorLayer(state');
+  const actorLayerSource = source.slice(actorLayerStart);
 
   assert.equal(actorLayerSource.includes('renderWorldActors'), true);
   assert.equal(actorLayerSource.includes('addWorldActorHitTargets'), true);
@@ -54,7 +54,7 @@ test('worldActor layer owns actor drawing and actor hit targets without command 
 test('worldActor overlay has a physical canvas and refuses shared terrain ctx rendering', () => {
   const shellMounting = readProjectFile('frontend/js/platform/CanvasGameShellMounting.js');
   const canvasRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapCanvasRenderer.js');
-  const layerRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js');
+  const layerRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapCacheCoordinator.js');
 
   assert.equal(shellMounting.includes("ensureCanvasLayer?.('worldActor'"), true);
   assert.equal(shellMounting.includes('worldActorOverlaySeparate'), true);

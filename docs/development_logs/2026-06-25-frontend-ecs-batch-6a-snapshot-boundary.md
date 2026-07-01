@@ -134,7 +134,9 @@ facts. The guard compares by `file + symbol` count and blocks growth.
 | `naming`              | `frontend/js/platform/renderers/OverlayCanvasRenderer.js`        |     3 |
 | `showFamousPersons`   | `frontend/js/platform/renderers/TabBarCanvasRenderer.js`         |     1 |
 | `showAdvisor`         | `frontend/js/platform/renderers/TutorialCanvasRenderer.js`       |     1 |
-| `territoryUiState`    | `frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js`  |     5 |
+| `territoryUiState`    | `frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js`  |     3 |
+| `territoryUiState`    | `frontend/js/platform/renderers/WorldMapCacheCoordinator.js`     |     1 |
+| `territoryUiState`    | `frontend/js/platform/renderers/WorldMapHitTargetCollector.js`   |     1 |
 | `territoryUiState`    | `frontend/js/platform/renderers/WorldMapMilitaryViewRenderer.js` |     1 |
 | `territoryUiState`    | `frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js`  |     3 |
 | `territoryUiState`    | `frontend/js/platform/WorldMapRuntimeCoordinator.js`             |     2 |

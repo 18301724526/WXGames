@@ -330,9 +330,14 @@
       "count": 1
     }
   },
+  "frontend/js/platform/renderers/WorldMapCacheCoordinator.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
   "frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 6
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/WorldMapLayoutModel.js": {
