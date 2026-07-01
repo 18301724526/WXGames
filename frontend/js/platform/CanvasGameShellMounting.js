@@ -30,9 +30,25 @@
     });
   }
 
+  function syncWorldActorOverlayRendererLinks(shell) {
+    const worldMapRenderer = shell?.worldMapRenderer || null;
+    const worldActorLayerRenderer = shell?.worldActorLayerRenderer || null;
+    if (!worldMapRenderer || !worldActorLayerRenderer) return false;
+
+    const mapChildRenderer = worldMapRenderer.worldMapRenderer || null;
+    worldMapRenderer.worldActorLayerRenderer = worldActorLayerRenderer;
+    worldActorLayerRenderer.worldMapRenderer = worldMapRenderer;
+    if (mapChildRenderer) mapChildRenderer.worldActorLayerRenderer = worldActorLayerRenderer;
+    return true;
+  }
+
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
+syncWorldActorOverlayRendererLinks() {
+      return syncWorldActorOverlayRendererLinks(this);
+    },
+
 createRenderer(canvas) {
       if (this.renderer || !canvas) return this.renderer;
       const RendererCtor = global.H5CanvasGameRenderer;
@@ -104,8 +120,7 @@ createRenderer(canvas) {
           worldTileDryCompositeCache: sharedWorldTileDryCompositeCache,
           showFpsOverlay: false,
         });
-        this.worldMapRenderer.worldActorLayerRenderer = this.worldActorLayerRenderer;
-        this.worldActorLayerRenderer.worldMapRenderer = this.worldMapRenderer;
+        this.syncWorldActorOverlayRendererLinks();
         this.worldMapRenderer.worldActorOverlayCanvas = actorCanvas;
         this.worldMapRenderer.worldActorOverlayCtx = this.worldActorLayerRenderer.ctx || null;
         this.worldActorLayerRenderer.worldActorOverlayCanvas = actorCanvas;
@@ -126,6 +141,7 @@ createRenderer(canvas) {
         actorCtx,
       });
       this.worldActorOverlayAssembly = actorAssembly;
+      this.syncWorldActorOverlayRendererLinks();
       if (this.worldMapRenderer) {
         this.worldMapRenderer.worldActorOverlaySeparate = this.worldActorOverlayAssembly.ctxSeparated;
       }

@@ -72,6 +72,7 @@
           if (this.worldMapRenderer) {
             this.worldMapRenderer.worldActorLayerRenderer = this.worldActorLayerRenderer;
           }
+          this.syncWorldActorOverlayRendererLinks?.();
         }
         if (this.isFogOfWarEnabled?.() === true && this.worldFogRenderer?.setMetrics) {
           const fogMetrics = this.getCanvasLayerMetrics?.('worldFog', metrics) || metrics;

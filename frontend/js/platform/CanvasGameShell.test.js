@@ -389,6 +389,8 @@ test('CanvasGameShell mounts actor overlay with a context separate from the terr
       this.viewportHeight = options.viewportHeight || this.height;
       this.viewportOffsetX = options.viewportOffsetX || 0;
       this.viewportOffsetY = options.viewportOffsetY || 0;
+      this.worldMapRenderer = { rendererKind: 'worldMapChild' };
+      this.worldMapLayerRenderer = { rendererKind: 'worldMapLayerChild' };
     }
     setAssetsChangedHandler() {}
   }
@@ -437,6 +439,12 @@ test('CanvasGameShell mounts actor overlay with a context separate from the terr
   assert.equal(shell.worldMapRenderer.worldActorOverlayCtx, shell.worldActorLayerRenderer.ctx);
   assert.equal(shell.worldMapRenderer.worldActorOverlaySeparate, true);
   assert.equal(shell.worldActorLayerRenderer.worldActorOverlaySeparate, true);
+  assert.equal(shell.worldMapRenderer.worldActorLayerRenderer, shell.worldActorLayerRenderer);
+  assert.equal(
+    shell.worldMapRenderer.worldMapRenderer.worldActorLayerRenderer,
+    shell.worldActorLayerRenderer,
+  );
+  assert.equal(shell.worldActorLayerRenderer.worldMapRenderer, shell.worldMapRenderer);
   assert.deepEqual(shell.worldActorOverlayAssembly, {
     enabled: true,
     canvasCreated: true,
@@ -1196,6 +1204,111 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
     ['renderRuntimeWorldMap', 'military', true],
     ['visible', true],
     ['render', true, false],
+  ]);
+});
+
+test('CanvasGameShell refreshes actor overlay when a valid baked map layer is reused', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+    worldExplorerState: {
+      idleMissions: [{
+        id: 'explore-idle',
+        status: 'idle',
+        current: { q: 1, r: 0, tileId: 'tile_1_0' },
+        homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      }],
+    },
+  };
+  const mapContext = {
+    frame: { x: 0, y: 0, width: 300, height: 200 },
+    tileMapView: { tiles: [{ id: 'tile_0_0' }] },
+    viewport: { scale: 1 },
+  };
+  const runtime = {
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+    bakedLayerState: {
+      epoch: 2,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    },
+    lastTileMapContext: mapContext,
+    getBakedLayerState() {
+      return this.bakedLayerState;
+    },
+    getLastTileMapContext() {
+      return this.lastTileMapContext;
+    },
+    isMapBakeDirty() {
+      calls.push(['isMapBakeDirty']);
+      return false;
+    },
+    syncHitTargetsFromRenderer(options) {
+      calls.push(['syncHitTargetsFromRenderer', options]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', options.skipWorldMapLayer, options.worldMapRuntimeContext]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.getCanvasLayerBackingStoreState = () => ({
+    epoch: 2,
+    width: 300,
+    height: 200,
+    pixelRatio: 1,
+    reason: 'valid',
+  });
+  shell.getCanvasLayerMetrics = () => ({ width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 });
+  shell.setWorldMapLayerVisible = (visible) => {
+    calls.push(['visible', visible]);
+    return true;
+  };
+  shell.renderRuntimeWorldMap = () => {
+    calls.push(['renderRuntimeWorldMap']);
+    return true;
+  };
+  shell.renderWorldActorLayer = (options) => {
+    calls.push([
+      'renderWorldActorLayer',
+      options.state.worldExplorerState.idleMissions[0].id,
+      options.worldMapRuntimeContext,
+      options.preserveRuntimeHitTargetsOnEmpty,
+    ]);
+    return true;
+  };
+  shell.worldActorLayerRenderer = {};
+  shell.worldMapRenderer = {};
+  shell.worldMapRuntime = runtime;
+  shell.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+  };
+
+  assert.equal(shell.renderReadOnly(state, 'military'), true);
+
+  assert.equal(calls.some((call) => call[0] === 'renderRuntimeWorldMap'), false);
+  assert.deepEqual(calls, [
+    ['isMapBakeDirty'],
+    ['visible', true],
+    ['render', true, mapContext],
+    ['renderWorldActorLayer', 'explore-idle', mapContext, true],
   ]);
 });
 

@@ -537,14 +537,19 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
       let worldMapLayerRendered = false;
       let worldMapFrameState = null;
       let worldMapLayerVisible = false;
+      let runtimeWorldMapRenderedThisFrame = false;
       if (homeView.isMapHome && this.ensureWorldMapRuntimeCoordinator()?.canRender(state)) {
          const hasValidWorldMapLayer = this.hasValidBakedWorldMapLayer?.() !== false;
-         worldMapLayerRendered = (this.shouldRenderRuntimeWorldMap(state, renderOptions) || !hasValidWorldMapLayer)
-           ? this.renderRuntimeWorldMap(state, {
+         const shouldRenderRuntimeMap = this.shouldRenderRuntimeWorldMap(state, renderOptions) || !hasValidWorldMapLayer;
+         if (shouldRenderRuntimeMap) {
+           worldMapLayerRendered = this.renderRuntimeWorldMap(state, {
              ...renderOptions,
              force: renderOptions.force || !hasValidWorldMapLayer,
-           }) !== false
-           : hasValidWorldMapLayer;
+           }) !== false;
+           runtimeWorldMapRenderedThisFrame = worldMapLayerRendered;
+         } else {
+           worldMapLayerRendered = hasValidWorldMapLayer;
+         }
          const bakedLayerValidity = typeof this.getWorldMapBakedLayerValidity === 'function'
            ? this.getWorldMapBakedLayerValidity()
            : null;
@@ -660,6 +665,20 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
           skipWorldMapLayer: false,
           preserveCanvas: false,
         });
+        if (
+          homeView.isMapHome
+          && worldMapLayerVisible
+          && !runtimeWorldMapRenderedThisFrame
+          && typeof this.renderWorldActorLayer === 'function'
+          && (state?.worldExplorerState || this.worldActorLayerRenderer?.lastMapHomeWorldHudContext)
+        ) {
+          this.renderWorldActorLayer({
+            ...renderOptions,
+            state,
+            preserveRuntimeHitTargetsOnEmpty: true,
+            worldMapRuntimeContext: liveWorldMapRuntimeContext,
+          });
+        }
         const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
           || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
           || this.territoryUiState?.tileMapWaterAnimated);
