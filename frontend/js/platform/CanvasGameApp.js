@@ -19,6 +19,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderingRuntime) {
     CanvasGameAppRenderingRuntime = require('./CanvasGameAppRenderingRuntime');
   }
+  var CanvasGameAppSecondaryPanels = global.CanvasGameAppSecondaryPanels;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppSecondaryPanels) {
+    CanvasGameAppSecondaryPanels = require('./CanvasGameAppSecondaryPanels');
+  }
   var CanvasGameWorldActorAnimationRuntime = global.CanvasGameWorldActorAnimationRuntime;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameWorldActorAnimationRuntime) {
     CanvasGameWorldActorAnimationRuntime = require('./CanvasGameWorldActorAnimationRuntime');
@@ -227,6 +231,7 @@
   [
     CanvasGameAppStateSync,
     CanvasGameAppRenderingRuntime,
+    CanvasGameAppSecondaryPanels,
     CanvasGameWorldActorAnimationRuntime,
     CanvasGameAppBattleScene,
     CanvasGameAppCommands,
