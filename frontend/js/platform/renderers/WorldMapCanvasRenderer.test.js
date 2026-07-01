@@ -1,7 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../ecs/resource/LocaleText');
 const WorldMapCanvasRenderer = require('./WorldMapCanvasRenderer');
+const WorldMapActorHudRenderer = require('./WorldMapActorHudRenderer');
+const WorldMarchHudCanvasRenderer = require('./WorldMarchHudCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
 function createHost(overrides = {}) {
@@ -90,6 +94,74 @@ function createTileMapView() {
     ],
   };
 }
+
+test('WorldMapCanvasRenderer delegates drawButton to the host drawing surface', () => {
+  const calls = [];
+  const host = createHost({
+    drawButton(...args) {
+      calls.push(args);
+      return 'button-drawn';
+    },
+  });
+  const renderer = new WorldMapCanvasRenderer({ host });
+
+  const result = renderer.drawButton(1, 2, 68, 32, 'March', { active: true });
+
+  assert.equal(result, 'button-drawn');
+  assert.deepEqual(calls, [[1, 2, 68, 32, 'March', { active: true }]]);
+});
+
+test('WorldMapCanvasRenderer lets the split march HUD draw target action buttons through the host surface', () => {
+  const previousLocale = LocaleText.getLocale();
+  const drawButtonCalls = [];
+  const host = createHost({
+    drawButton(...args) {
+      drawButtonCalls.push(args);
+    },
+  });
+  const renderer = new WorldMapCanvasRenderer({
+    host,
+    worldMapActorHudRendererClass: WorldMapActorHudRenderer,
+    worldMarchHudRendererClass: WorldMarchHudCanvasRenderer,
+  });
+
+  try {
+    LocaleText.setLocale('zh-CN');
+    const rendered = renderer.renderWorldMarchHud({
+      activeCityId: 'capital',
+    }, {
+      worldMarchTarget: {
+        q: 1,
+        r: 0,
+        tileId: 'tile_1_0',
+        known: true,
+        terrain: 'plains',
+        terrainLabel: '平原',
+      },
+    }, [], {
+      originX: 100,
+      originY: 100,
+      panX: 0,
+      panY: 0,
+      scale: 0.5,
+    }, {
+      stepX: 96,
+      stepY: 48,
+    }, {
+      x: 0,
+      y: 84,
+      width: 390,
+      height: 696,
+    });
+
+    const marchLabel = LocaleText.t('world.march.command.march');
+    assert.equal(rendered, true);
+    assert.equal(drawButtonCalls.some((args) => args[4] === marchLabel), true);
+    assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), true);
+  } finally {
+    LocaleText.setLocale(previousLocale);
+  }
+});
 
 test('WorldMapCanvasRenderer owns tile projection and site layout helpers', () => {
   const renderer = new WorldMapCanvasRenderer({ host: createHost() });

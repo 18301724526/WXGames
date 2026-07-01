@@ -358,6 +358,10 @@
       return this.host?.drawPanel?.(...args);
     }
 
+    drawButton(...args) {
+      return this.host?.drawButton?.(...args);
+    }
+
     drawText(...args) {
       return this.host?.drawText?.(...args);
     }
