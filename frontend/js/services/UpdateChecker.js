@@ -25,6 +25,8 @@
       this.backoffMaxMs = Math.max(this.backoffBaseMs, toNumber(options.backoffMaxMs, Math.max(this.intervalMs, 60000)));
       this.nextAllowedAt = 0;
       this.trace = options.trace || null;
+      this.onDeployFailure = options.onDeployFailure || (() => {});
+      this.lastDeployFailureSignature = '';
     }
 
     async fetchVersion() {
@@ -100,6 +102,26 @@
           deploymentId: '',
         });
         return null;
+      }
+      const deployStatus = version?.deployStatus || null;
+      if (deployStatus?.status === 'failed') {
+        const signature = [
+          deployStatus.targetCommit || '',
+          deployStatus.stage || '',
+          deployStatus.updatedAt || '',
+          deployStatus.exitCode ?? '',
+          deployStatus.error?.message || '',
+        ].join('|');
+        if (signature && signature !== this.lastDeployFailureSignature) {
+          this.lastDeployFailureSignature = signature;
+          this.onLog({
+            type: 'deployFailed',
+            version,
+            deploymentId: nextDeploymentId,
+            deployStatus,
+          });
+          this.onDeployFailure(version, deployStatus);
+        }
       }
       if (!this.currentDeploymentId || options.initialize) {
         this.currentDeploymentId = nextDeploymentId;

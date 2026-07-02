@@ -42,6 +42,33 @@ function sanitizeDeployManifest(manifest) {
   };
 }
 
+function sanitizeDeployStatus(status) {
+  if (!status || typeof status !== 'object') return null;
+  const normalizedStatus = String(status.status || '').trim();
+  if (!['running', 'succeeded', 'failed'].includes(normalizedStatus)) return null;
+  const error = status.error && typeof status.error === 'object'
+    ? {
+      stage: status.error.stage ? String(status.error.stage) : null,
+      message: status.error.message ? String(status.error.message) : null,
+    }
+    : null;
+  return {
+    schema: status.schema ? String(status.schema) : 'wxgame-deploy-status-v1',
+    status: normalizedStatus,
+    environment: status.environment ? String(status.environment) : null,
+    branch: status.branch ? String(status.branch) : null,
+    targetCommit: status.targetCommit ? String(status.targetCommit) : null,
+    previousDeployedCommit: status.previousDeployedCommit ? String(status.previousDeployedCommit) : null,
+    stage: status.stage ? String(status.stage) : null,
+    startedAt: status.startedAt ? String(status.startedAt) : null,
+    updatedAt: status.updatedAt ? String(status.updatedAt) : null,
+    finishedAt: status.finishedAt ? String(status.finishedAt) : null,
+    exitCode: Number.isFinite(Number(status.exitCode)) ? Number(status.exitCode) : null,
+    logPath: status.logPath ? String(status.logPath) : null,
+    error,
+  };
+}
+
 function firstExistingPath(paths) {
   return paths.find((candidate) => candidate && fs.existsSync(candidate)) || paths[0];
 }
@@ -54,6 +81,11 @@ function buildEtag(info) {
       info.deploymentId || '',
       info.deployedCommit || '',
       info.deployedAt || '',
+      info.deployStatus?.status || '',
+      info.deployStatus?.targetCommit || '',
+      info.deployStatus?.stage || '',
+      info.deployStatus?.updatedAt || '',
+      info.deployStatus?.error?.message || '',
     ].join('|'))
     .digest('hex')
     .slice(0, 24)}"`;
@@ -138,6 +170,11 @@ class VersionService {
       path.join(this.repoRoot, '.wxgame', 'current-deploy.json'),
       path.join(this.repoRoot, '.wxgame-deploy-version.json'),
     ]);
+    this.deployStatusPath = options.deployStatusPath || process.env.WXGAME_DEPLOY_STATUS_PATH || firstExistingPath([
+      path.join(this.repoRoot, '.wxgame', 'deploy-status.json'),
+      path.join(path.dirname(this.deployManifestPath || this.repoRoot), 'deploy-status.json'),
+      path.join(this.repoRoot, '.wxgame-deploy-status.json'),
+    ]);
     this.cacheMs = options.cacheMs ?? DEFAULT_CACHE_MS;
     this.cachedAt = 0;
     this.cachedInfo = null;
@@ -145,6 +182,10 @@ class VersionService {
 
   readDeployManifest() {
     return sanitizeDeployManifest(readJson(this.deployManifestPath));
+  }
+
+  readDeployStatus() {
+    return sanitizeDeployStatus(readJson(this.deployStatusPath));
   }
 
   getVersionInfo() {
@@ -155,6 +196,7 @@ class VersionService {
     const gitCommit = getGitCommit(this.repoRoot);
     const sourceHash = createSourceHash(this.repoRoot);
     const deployManifest = this.readDeployManifest();
+    const deployStatus = this.readDeployStatus();
     const explicitVersion = process.env.APP_VERSION || process.env.GAME_VERSION || null;
     const releaseIdentity = deployManifest?.deployedCommit || deployManifest?.commit || gitCommit || 'nogit';
     const versionParts = [
@@ -173,6 +215,7 @@ class VersionService {
       branch: deployManifest?.branch || null,
       sourceHash: sourceHash.slice(0, 16),
       checkedAt: new Date(now).toISOString(),
+      deployStatus,
     };
     this.cachedInfo.etag = buildEtag(this.cachedInfo);
     this.cachedAt = now;

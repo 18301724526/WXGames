@@ -52,3 +52,39 @@ test('H5UpdateRuntimeAdapter resolves update message through active locale', () 
   );
   LocaleText.setLocale('zh-CN');
 });
+
+test('H5UpdateRuntimeAdapter reports deploy failure without forcing reload', () => {
+  LocaleText.setLocale('en-US');
+  const calls = [];
+  const adapter = new H5UpdateRuntimeAdapter({}, {
+    confirm(message) {
+      calls.push(['confirm', message]);
+    },
+    location: {
+      href: 'http://47.116.32.216/',
+      replace(url) {
+        calls.push(['replace', url]);
+      },
+    },
+    URL,
+  });
+
+  const message = adapter.notifyDeployFailure({
+    deployStatus: {
+      targetCommit: 'abcdef1234567890',
+      stage: 'deploy-gate',
+      logPath: '/opt/wxgame-refactor/.wxgame/push-deploy.log',
+      error: { message: 'npm test failed' },
+    },
+  });
+
+  assert.equal(message, [
+    'Deployment failed. The game is still using the previous version.',
+    'Target commit: abcdef123456',
+    'Failed stage: deploy-gate',
+    'Error: npm test failed',
+    'Server log: /opt/wxgame-refactor/.wxgame/push-deploy.log',
+  ].join('\n'));
+  assert.deepEqual(calls, [['confirm', message]]);
+  LocaleText.setLocale('zh-CN');
+});

@@ -74,7 +74,12 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /run_post_backend_sync_script/);
   assert.match(deployScript, /publish_runtime_config_release\(\)/);
   assert.match(deployScript, /ConfigReleaseService\.publishRelease/);
-  assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+publish_runtime_config_release\s+echo "\[Deploy\]/s);
+  assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+DEPLOY_STAGE="config-release"\s+publish_runtime_config_release\s+DEPLOY_STAGE="pm2-restart"/s);
+  assert.match(deployScript, /DEPLOY_STATUS_PATH="\$DEPLOY_STATE_DIR\/deploy-status\.json"/);
+  assert.match(deployScript, /WXGAME_DEPLOY_STATUS_PATH="\$DEPLOY_STATUS_PATH"/);
+  assert.match(deployScript, /write_deploy_status "running"/);
+  assert.match(deployScript, /write_deploy_status "failed"/);
+  assert.match(deployScript, /write_deploy_status "succeeded"/);
   assert.match(deployScript, /OPS_AGENT_PM2_NAME="\$\{OPS_AGENT_PM2_NAME:-wxgame-ops-agent\}"/);
   assert.match(deployScript, /restart_ops_agent_if_configured/);
   assert.match(deployScript, /ENABLE_OPS_AGENT:-0/);

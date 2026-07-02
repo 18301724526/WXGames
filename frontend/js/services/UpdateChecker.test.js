@@ -105,3 +105,48 @@ test('UpdateChecker reports version checks through an injected trace', async () 
     ['end', 'version:check', 'dep-trace'],
   ]);
 });
+
+test('UpdateChecker reports deploy failure status once per failure signature', async () => {
+  const calls = [];
+  const version = {
+    deploymentId: 'dep-stable',
+    version: 'v1',
+    deployStatus: {
+      status: 'failed',
+      targetCommit: 'abcdef1234567890',
+      stage: 'deploy-gate',
+      updatedAt: '2026-07-02T00:00:00Z',
+      exitCode: 1,
+      error: { message: 'npm test failed' },
+    },
+  };
+  const checker = new UpdateChecker({
+    api: {
+      async getVersion() {
+        return version;
+      },
+    },
+    onDeployFailure(payload, status) {
+      calls.push(['failed', payload.deploymentId, status.targetCommit, status.error.message]);
+    },
+    onLog(event) {
+      calls.push(['log', event.type, event.deploymentId]);
+    },
+  });
+
+  await checker.safeCheck({ initialize: true });
+  await checker.safeCheck();
+  version.deployStatus.updatedAt = '2026-07-02T00:01:00Z';
+  version.deployStatus.error = { message: 'architecture gate failed' };
+  await checker.safeCheck();
+
+  assert.deepEqual(calls, [
+    ['log', 'deployFailed', 'dep-stable'],
+    ['failed', 'dep-stable', 'abcdef1234567890', 'npm test failed'],
+    ['log', 'initialized', 'dep-stable'],
+    ['log', 'unchanged', 'dep-stable'],
+    ['log', 'deployFailed', 'dep-stable'],
+    ['failed', 'dep-stable', 'abcdef1234567890', 'architecture gate failed'],
+    ['log', 'unchanged', 'dep-stable'],
+  ]);
+});

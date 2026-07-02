@@ -60,6 +60,25 @@
       return lines.join('\n');
     }
 
+    buildDeployFailureMessage(version = {}) {
+      const deployStatus = version.deployStatus || {};
+      const error = deployStatus.error || {};
+      const lines = [this.t('shell.update.deployFailedMessage')];
+      if (deployStatus.targetCommit) {
+        lines.push(this.t('shell.update.deployTarget', { commit: String(deployStatus.targetCommit).slice(0, 12) }));
+      }
+      if (deployStatus.stage) {
+        lines.push(this.t('shell.update.deployStage', { stage: deployStatus.stage }));
+      }
+      if (error.message) {
+        lines.push(this.t('shell.update.deployError', { message: error.message }));
+      }
+      if (deployStatus.logPath) {
+        lines.push(this.t('shell.update.deployLogPath', { path: deployStatus.logPath }));
+      }
+      return lines.join('\n');
+    }
+
     getViewportSize() {
       const docElement = this.document?.documentElement || {};
       const width = this.runtime.innerWidth || docElement.clientWidth || 390;
@@ -441,6 +460,16 @@
         }
       }
       return this.forceReload();
+    }
+
+    notifyDeployFailure(version) {
+      const message = this.buildDeployFailureMessage(version);
+      try {
+        this.confirm(message);
+      } catch (error) {
+        // This is informational only; failed deployments must not force a reload.
+      }
+      return message;
     }
   }
 

@@ -80,6 +80,13 @@ class H5GameHost extends CanvasGameAppBase {
         this.log(`检测到新版本：${previousDeploymentId} -> ${version.deploymentId}`);
         return this.showUpdatePrompt(version);
       },
+      onDeployFailure: (version, deployStatus) => {
+        const target = deployStatus?.targetCommit ? String(deployStatus.targetCommit).slice(0, 12) : '';
+        const stage = deployStatus?.stage || '';
+        const message = deployStatus?.error?.message || 'deploy failed';
+        this.log(`Deploy failed${target ? ` ${target}` : ''}${stage ? ` at ${stage}` : ''}: ${message}`);
+        return this.updateRuntime?.notifyDeployFailure?.(version);
+      },
       onError: (error) => {
         const message = error?.payload?.message || error?.message || '未知错误';
         this.log(`版本检测失败：${message}`);
