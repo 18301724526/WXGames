@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../config/FamousPortraitLayout');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -16,7 +16,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../config/TileMapAssetManifest');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -28,7 +28,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../ecs/foundation/TileMapGeometry');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -73,7 +73,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./CanvasGameRendererCompositionFactory');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -85,7 +85,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./renderers/CanvasPreloadAssetManifest');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -97,7 +97,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./renderers/CanvasSurfaceState');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -108,7 +108,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./renderers/WorldMapRenderState');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -119,7 +119,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./renderers/WorldMapCacheState');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -1246,7 +1246,7 @@
       const result = typeof renderer?.truncateText === 'function'
         ? renderer.truncateText(...args)
         : undefined;
-      const [text, maxWidth, options = {}] = args;
+      const [text, maxWidth] = args;
       return result === undefined ? String(text ?? '').slice(0, Math.max(0, Number(maxWidth) || 0) || undefined) : result;
     }
 
@@ -1803,7 +1803,7 @@
         : { lane: 0, label: route || 'route', color: '#f0b45b', icon: 'assets/art/icon-science-cutout.webp' };
     }
 
-    getTechNodeRoutes(node = {}) {
+    getTechNodeRoutes() {
       const renderer = this.techRenderer;
       return typeof renderer?.getTechNodeRoutes === 'function'
         ? renderer.getTechNodeRoutes(...arguments) || []
@@ -1824,7 +1824,7 @@
         : node.route || '';
     }
 
-    getTechNodeLane(node = {}) {
+    getTechNodeLane() {
       const renderer = this.techRenderer;
       const lane = typeof renderer?.getTechNodeLane === 'function'
         ? renderer.getTechNodeLane(...arguments)
@@ -1839,7 +1839,7 @@
         : undefined;
     }
 
-    getTechNodeColor(node = {}) {
+    getTechNodeColor() {
       const renderer = this.techRenderer;
       return typeof renderer?.getTechNodeColor === 'function'
         ? renderer.getTechNodeColor(...arguments) || { fill: 'rgba(45, 34, 24, 0.82)', stroke: 'rgba(255, 226, 177, 0.18)', accent: '#f0b45b', text: '#ddd0ad', muted: 'rgba(203, 189, 150, 0.58)' }
@@ -1874,7 +1874,7 @@
         : undefined;
     }
 
-    getTechTreeLayout(view = {}, panel = {}, options = {}) {
+    getTechTreeLayout(_view = {}, panel = {}, options = {}) {
       const renderer = this.techRenderer;
       const result = typeof renderer?.getTechTreeLayout === 'function'
         ? renderer.getTechTreeLayout(...arguments)

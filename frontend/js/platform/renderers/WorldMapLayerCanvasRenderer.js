@@ -387,7 +387,6 @@
       const nav = this.buildMilitaryNavigationViewState(state);
       if (nav.activeView !== 'world') return null;
       const layout = this.getLayout();
-      const offsetX = Number(this.viewportOffsetX) || 0;
       const offsetY = Number(this.viewportOffsetY) || 0;
       const viewportBottom = this.height - Math.max(0, offsetY);
       const tabsTop = viewportBottom - 60 - this.bottomSafeArea;
@@ -1169,7 +1168,7 @@
         this.endFrame({ ...options, showFpsOverlay: false });
         return false;
       }
-      const { actors, viewport, geometry, frame, uiState } = context;
+      const { actors, viewport, geometry, frame } = context;
       let didClip = false;
       if (this.ctx.save && this.ctx.beginPath && this.ctx.rect && this.ctx.clip) {
         this.ctx.save();
@@ -1213,7 +1212,7 @@
       );
     }
 
-    shouldPreserveWorldMapLayerOnEmpty(state = {}, options = {}) {
+    shouldPreserveWorldMapLayerOnEmpty(_state = {}, options = {}) {
       if (options.__snapshotBackbuffer) return false;
       if (options.preserveOnEmptyWorldMap === false || options.clearOnEmptyWorldMap === true)
         return false;

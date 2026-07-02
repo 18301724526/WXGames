@@ -5,7 +5,6 @@ global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const BattleStore = require('../state/BattleStore');
 const ModalStore = require('../state/ModalStore');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
-const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const { CanvasModalOwnerTestHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 // Modal truth is a single global ModalStore (no per-host owner), so each test starts

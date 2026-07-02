@@ -1943,7 +1943,7 @@
             return true;
           }
 
-    handle_claimGuideTaskReward(action) {
+    handle_claimGuideTaskReward() {
             return false;
           }
 
@@ -2112,7 +2112,7 @@
           }
 
     // Shell, modal, guide, login, settings, and system actions.
-    finalizeNamingSubmit(result, action = {}) {
+    finalizeNamingSubmit(result) {
             const closeAfterSuccess = (value) => {
               if (value !== false) {
                 this.host?.closeNaming?.();
@@ -2464,7 +2464,7 @@
             return result !== false;
           }
 
-    handle_goToGuideTaskTarget(action) {
+    handle_goToGuideTaskTarget() {
             return false;
           }
 
@@ -2510,18 +2510,18 @@
             return this.handle_requestResetGame({ ...action, type: 'requestResetGame' });
           }
 
-    handle_logout(action) {
+    handle_logout() {
             this.closePanels();
             const result = this.getGameHost()?.logout?.();
             return result === undefined ? true : result !== false;
           }
 
-    handle_requestNamingInput(action) {
+    handle_requestNamingInput() {
             const result = this.host?.requestNamingInput?.();
             return result !== false;
           }
 
-    handle_closeNaming(action) {
+    handle_closeNaming() {
             const result = this.host?.closeNaming?.() || this.getGameHost()?.closeNamingModal?.();
             return result !== false;
           }

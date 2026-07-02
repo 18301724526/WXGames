@@ -8,7 +8,6 @@ const {
   findRendererSnapshotReadsInText,
   isApprovedPath,
   isRendererSnapshotSurface,
-  parseBaselineCounts,
   parseFormat,
   scanRendererSnapshotBoundary,
 } = require('./check-frontend-ecs-renderer-snapshot-boundary');

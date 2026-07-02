@@ -9,11 +9,6 @@
       "count": 1
     }
   },
-  "backend/services/BattleService.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/services/TaskDefinitionService.js": {
     "no-unused-vars": {
       "count": 1
@@ -102,84 +97,9 @@
       "count": 1
     }
   },
-  "frontend/js/platform/CanvasCityActionHandlers.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/CanvasGameApp.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameAppCommands.js": {
-    "no-empty": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameAppGuideUi.js": {
-    "no-unused-vars": {
-      "count": 4
-    }
-  },
-  "frontend/js/platform/CanvasGameAppInputRouter.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameRenderer.js": {
-    "no-unused-vars": {
-      "count": 9
-    }
-  },
   "frontend/js/platform/CanvasGameRendererCompositionFactory.js": {
     "no-unused-vars": {
       "count": 3
-    }
-  },
-  "frontend/js/platform/CanvasGameRendererPageFacades.js": {
-    "no-unused-vars": {
-      "count": 5
-    }
-  },
-  "frontend/js/platform/CanvasGameShell.js": {
-    "no-unused-vars": {
-      "count": 4
-    }
-  },
-  "frontend/js/platform/CanvasGameShellCommands.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/CanvasGameShellGuideUi.js": {
-    "no-unused-vars": {
-      "count": 6
-    }
-  },
-  "frontend/js/platform/CanvasGameShellMounting.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameShellRenderingRuntime.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameWorldActorAnimationRuntime.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/CanvasShellActionHandlers.js": {
-    "no-unused-vars": {
-      "count": 5
     }
   },
   "frontend/js/platform/DebugOverlayRegistry.js": {
@@ -330,16 +250,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/WorldMapCacheCoordinator.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/renderers/WorldMapLayoutModel.js": {
     "no-unused-vars": {
       "count": 3
@@ -411,11 +321,6 @@
     }
   },
   "frontend/js/state/presenters/WorldTileMapTileNormalizer.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/ui/H5UpdateRuntimeAdapter.js": {
     "no-unused-vars": {
       "count": 2
     }

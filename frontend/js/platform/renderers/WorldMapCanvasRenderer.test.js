@@ -1,7 +1,5 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
 require('../../config/LocaleTextRegistry');
 const LocaleText = require('../../ecs/resource/LocaleText');
@@ -9,8 +7,6 @@ const WorldMapCanvasRenderer = require('./WorldMapCanvasRenderer');
 const WorldMapActorHudRenderer = require('./WorldMapActorHudRenderer');
 const WorldMarchHudCanvasRenderer = require('./WorldMarchHudCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
-
-const ROOT = path.resolve(__dirname, '../../../..');
 
 function createHost(overrides = {}) {
   const hitTargets = [];

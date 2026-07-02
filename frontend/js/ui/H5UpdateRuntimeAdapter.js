@@ -440,7 +440,7 @@
           }
           url.searchParams.set('reload', this.now().toString());
           return url.toString();
-        } catch (error) {
+        } catch (_error) {
           // Some embedded runtimes only expose a partial URL implementation.
         }
       }
@@ -461,7 +461,7 @@
         const message = this.buildMessage(version);
         try {
           this.confirm(message);
-        } catch (error) {
+        } catch (_error) {
           // Reload is mandatory once a deployment change is detected.
         }
       }
@@ -472,7 +472,7 @@
       const message = this.buildDeployFailureMessage(version);
       try {
         this.confirm(message);
-      } catch (error) {
+      } catch (_error) {
         // This is informational only; failed deployments must not force a reload.
       }
       return message;

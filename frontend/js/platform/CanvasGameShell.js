@@ -7,7 +7,7 @@
   if (typeof module !== 'undefined' && module.exports && !FeatureFlagsBase) {
     try {
       FeatureFlagsBase = require('../config/FeatureFlags');
-    } catch (error) {
+    } catch (_error) {
       FeatureFlagsBase = null;
     }
   }
@@ -15,7 +15,7 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasLayerRegistryBase) {
     try {
       CanvasLayerRegistryBase = require('./CanvasLayerRegistry');
-    } catch (error) {
+    } catch (_error) {
       CanvasLayerRegistryBase = null;
     }
   }
@@ -23,7 +23,7 @@
   if (typeof module !== 'undefined' && module.exports && !DebugOverlayRegistryBase) {
     try {
       DebugOverlayRegistryBase = require('./DebugOverlayRegistry');
-    } catch (error) {
+    } catch (_error) {
       DebugOverlayRegistryBase = null;
     }
   }
@@ -267,7 +267,9 @@
     if (typeof host.isWorldMapHomeActive === 'function') {
       try {
         return host.isWorldMapHomeActive(state);
-      } catch (_error) {}
+      } catch (_error) {
+        // Fall through to the legacy map-home fields below.
+      }
     }
     return Boolean(host.mapHomeActive
       && (state?.currentTab || host.activeTab) === 'military'
@@ -1410,7 +1412,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return true;
         }
 
-    closeTechDetail(action = {}) {
+    closeTechDetail() {
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'techDetailOpen');
           if (this.lastGame?.state && typeof this.lastGame.state === 'object') {
             StateWriter.commit(this, (prev) => ({
@@ -1761,7 +1763,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return false;
         }
 
-    renderCanvasAction(action = {}) {
+    renderCanvasAction() {
           this.renderActive();
           return true;
         }
@@ -1970,15 +1972,15 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return this.hideTutorialHighlight();
         }
 
-    getTutorialTarget(key) {
+    getTutorialTarget() {
           return null;
         }
 
-    getTutorialTargetWithoutScroll(key) {
+    getTutorialTargetWithoutScroll() {
           return null;
         }
 
-    refreshTaskCenterGuideHighlight(action = {}) {
+    refreshTaskCenterGuideHighlight() {
           return false;
         }
 
@@ -1990,15 +1992,15 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return false;
         }
 
-    getTargetTab(key) {
+    getTargetTab() {
           return null;
         }
 
-    ensureTutorialTargetVisible(key) {
+    ensureTutorialTargetVisible() {
           return false;
         }
 
-    goToGuideTaskTarget(action = {}) {
+    goToGuideTaskTarget() {
           return false;
         }
 
@@ -3274,7 +3276,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             return true;
           }
 
-    getTabLocks(state = {}) {
+    getTabLocks() {
           const tabIds = ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
           const canOpenTab = this.lastGame?.tutorialController?.canOpenTab;
           if (typeof canOpenTab !== 'function') {

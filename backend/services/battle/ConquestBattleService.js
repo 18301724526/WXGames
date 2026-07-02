@@ -142,7 +142,6 @@ function buildReport({
   const defenderStart = Math.max(0, toInteger(defenderGeneral.soldiers, 0));
   const defenderEnd = getSurvivorCount(result, defenderGeneral.gid);
   const success = battle.winner === 'attacker';
-  const casualties = Math.max(0, attackerStart - attackerEnd);
   const experience = createExperienceSummary(attackerStart, attackerEnd, defenderStart, defenderEnd, success);
   const leader = attacker.leader || {};
   const defenderLeader = defenderGeneral.leader || {};

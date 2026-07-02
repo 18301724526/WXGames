@@ -7,7 +7,7 @@
   if (typeof module !== 'undefined' && module.exports && !TutorialGuideControllerBase) {
     try {
       TutorialGuideControllerBase = require('../tutorial/TutorialGuideController');
-    } catch (error) {
+    } catch (_error) {
       TutorialGuideControllerBase = null;
     }
   }
@@ -150,7 +150,9 @@
     if (typeof host.isWorldMapHomeActive === 'function') {
       try {
         return host.isWorldMapHomeActive(state);
-      } catch (_error) {}
+      } catch (_error) {
+        // Fall through to the legacy map-home fields below.
+      }
     }
     return Boolean(host.mapHomeActive
       && (state?.currentTab || host.activeTab) === 'military'
@@ -2790,7 +2792,9 @@
                   try {
                     const data = await this.getGameApi().getState?.();
                     if (data?.gameState) this.applyApiState(data);
-                  } catch (_) {}
+                  } catch (_error) {
+                    return false;
+                  }
                   return false;
                 }
               }
@@ -3532,7 +3536,7 @@
                 return false;
               }
 
-    ensureGuideTargetVisible(key) {
+    ensureGuideTargetVisible() {
                 return false;
               }
 
@@ -3556,7 +3560,7 @@
                 };
               }
 
-    showGuideHighlight(target, message, options = {}) {
+    showGuideHighlight() {
                 return false;
               }
 
@@ -3584,7 +3588,7 @@
                 return false;
               }
 
-    goToGuideTaskTarget(action = {}) {
+    goToGuideTaskTarget() {
                 return false;
               }
 
@@ -3662,7 +3666,7 @@
                 return null;
               }
 
-    hasActiveGuideTaskTarget(target) {
+    hasActiveGuideTaskTarget() {
                 return false;
               }
 
