@@ -120,6 +120,7 @@ require('../js/platform/renderers/HudTabPageCanvasRenderer');
 require('../js/platform/renderers/HudOverlayCanvasRenderer');
 require('../js/platform/renderers/CanvasFrameRenderer');
 require('../js/platform/CanvasGameRendererCompositionFactory');
+require('../js/platform/HitTargetManager');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/tutorial/TutorialGuideStepPolicy');
 require('../js/tutorial/TutorialGuideTargetResolver');

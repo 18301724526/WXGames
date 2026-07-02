@@ -103,6 +103,17 @@
     }
     return null;
   })();
+  const SharedHitTargetManager = (() => {
+    if (global.HitTargetManager) return global.HitTargetManager;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./HitTargetManager');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const SharedWorldMapRenderState = (() => {
     if (global.WorldMapRenderState) return global.WorldMapRenderState;
     if (typeof module !== 'undefined' && module.exports) {
@@ -131,6 +142,13 @@
       throw new Error('CanvasSurfaceState is required before CanvasGameRenderer');
     }
     return SharedCanvasSurfaceState.createCanvasSurfaceState();
+  }
+
+  function createHitTargetManager(host) {
+    if (typeof SharedHitTargetManager !== 'function') {
+      throw new Error('HitTargetManager is required before CanvasGameRenderer');
+    }
+    return new SharedHitTargetManager({ host });
   }
 
   function createWorldMapRenderState() {
@@ -168,6 +186,7 @@
       this.tutorialAdvisorSpine = null;
       this.tutorialAdvisorSpineFailed = false;
       this.surfaceState = createSurfaceState();
+      this.hitTargetManager = createHitTargetManager(this);
       this.worldMapRenderState = options.worldMapRenderState || createWorldMapRenderState();
       this.worldMapCacheState = options.worldMapCacheState || createWorldMapCacheState(options);
       this.techRenderState = options.techRenderState || { lastTechTreeScroll: null };
@@ -182,23 +201,22 @@
     }
 
     get hitTargets() {
-      return SharedCanvasSurfaceState.getHitTargets(this.surfaceState);
+      return this.hitTargetManager.readHitTargets();
     }
 
     set hitTargets(value) {
-      SharedCanvasSurfaceState.setHitTargets(this.surfaceState, value);
+      this.hitTargetManager.writeHitTargets(value);
     }
 
     get hoverPoint() { return SharedCanvasSurfaceState.getHoverPoint(this.surfaceState); }
     set hoverPoint(value) { SharedCanvasSurfaceState.setHoverPoint(this.surfaceState, value); }
 
     get famousSkillHitTargets() {
-      if (!Array.isArray(this.surfaceState.famousSkillHitTargets)) this.surfaceState.famousSkillHitTargets = [];
-      return this.surfaceState.famousSkillHitTargets;
+      return this.hitTargetManager.readFamousSkillHitTargets();
     }
 
     set famousSkillHitTargets(value) {
-      this.surfaceState.famousSkillHitTargets = Array.isArray(value) ? value : [];
+      this.hitTargetManager.writeFamousSkillHitTargets(value);
     }
 
     get activeFamousSkillTooltip() { return this.surfaceState.activeFamousSkillTooltip || null; }
@@ -264,8 +282,8 @@
       if (this.techRenderState) this.techRenderState.lastTechTreeScroll = value || null;
     }
 
-    get suppressHitTargets() { return Boolean(this.surfaceState.suppressHitTargets); }
-    set suppressHitTargets(value) { this.surfaceState.suppressHitTargets = Boolean(value); }
+    get suppressHitTargets() { return this.hitTargetManager.readSuppressHitTargets(); }
+    set suppressHitTargets(value) { this.hitTargetManager.writeSuppressHitTargets(value); }
 
     get frameNow() { return Number(this.surfaceState.frameNow) || 0; }
     set frameNow(value) { this.surfaceState.frameNow = Number(value) || 0; }
@@ -544,49 +562,19 @@
     }
 
     setHitTargets(...args) {
-      const renderer = this.surfaceRenderer;
-      return typeof renderer?.setHitTargets === 'function'
-        ? renderer.setHitTargets(...args)
-        : SharedCanvasSurfaceState.setHitTargets(this.surfaceState, args[0] || []);
+      return this.hitTargetManager.setHitTargets(...args);
     }
 
     addHitTarget(...args) {
-      const renderer = this.surfaceRenderer;
-      if (typeof renderer?.addHitTarget === 'function') {
-        return renderer.addHitTarget(...args);
-      }
-      const [rect, action] = args;
-      if (this.suppressHitTargets) return undefined;
-      if (!action || !rect) return undefined;
-      SharedCanvasSurfaceState.appendHitTarget(this.surfaceState, {
-        x: Number(rect.x) || 0,
-        y: Number(rect.y) || 0,
-        width: Number(rect.width) || 0,
-        height: Number(rect.height) || 0,
-        action,
-      });
-      return undefined;
+      return this.hitTargetManager.addHitTarget(...args);
     }
 
     appendWorldMapRuntimeHitTargets(targets = []) {
-      if (!Array.isArray(targets) || !targets.length) return false;
-      targets.forEach((target) => {
-        this.addHitTarget({
-          x: target.x,
-          y: target.y,
-          width: target.width,
-          height: target.height,
-        }, target.action);
-      });
-      return true;
+      return this.hitTargetManager.appendWorldMapRuntimeHitTargets(targets);
     }
 
     getHitTarget(...args) {
-      const renderer = this.surfaceRenderer;
-      const result = typeof renderer?.getHitTarget === 'function'
-        ? renderer.getHitTarget(...args)
-        : undefined;
-      return result === undefined ? null : result;
+      return this.hitTargetManager.getHitTarget(...args);
     }
 
     containsPoint(...args) {
@@ -663,10 +651,7 @@
     }
 
     withSuppressedHitTargets(...args) {
-      const renderer = this.surfaceRenderer;
-      return typeof renderer?.withSuppressedHitTargets === 'function'
-        ? renderer.withSuppressedHitTargets(...args)
-        : args[0]?.();
+      return this.hitTargetManager.withSuppressedHitTargets(...args);
     }
 
     withSlideClip(...args) {
@@ -2011,11 +1996,7 @@
     }
 
     findHitTarget(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.findHitTarget === 'function'
-        ? renderer.findHitTarget(...args)
-        : undefined;
-      return result === undefined ? null : result;
+      return this.hitTargetManager.findHitTarget(...args);
     }
 
     inflateRect(...args) {
