@@ -107,6 +107,10 @@
   if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
     TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
   }
+  var WorldClockTimingModule = global.WorldClockTimingModule;
+  if (typeof module !== 'undefined' && module.exports && !WorldClockTimingModule) {
+    WorldClockTimingModule = require('./WorldClockTimingModule');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -1014,27 +1018,11 @@
               }
 
     ensureWorldClock() {
-                if (this.worldClock) return this.worldClock;
-                this.worldClock = SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
-                if (this.runtime && typeof this.runtime === 'object' && this.worldClock) this.runtime.worldClock = this.worldClock;
-                // P3 Axis A: dropped the canvasShell.worldClock mirror (zero readers). The
-                // shell resolves the clock from its own constructor (shared singleton) and a
-                // this.runtime/lastGame fallback chain in CanvasGameShell,
-                // so this push was redundant.
-                return this.worldClock;
+                return WorldClockTimingModule.ensureWorldClock(this);
               }
 
     syncWorldClock(payload = {}) {
-                const clock = this.ensureWorldClock?.();
-                if (!clock || !payload || typeof payload !== 'object') return false;
-                const synced = SharedWorldClock?.updateFromPayload?.(clock, payload) || false;
-                // P3 Axis A: dropped the canvasShell.worldClock mirror (see ensureWorldClock).
-                return synced;
-              }
-
-    getWorldEpochNowMs() {
-                const clock = this.ensureWorldClock?.();
-                return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
+                return WorldClockTimingModule.syncWorldClock(this, payload);
               }
 
     applyConnectionState(status = {}) {
@@ -1433,8 +1421,7 @@
               }
 
     getWorldEpochNowMs() {
-                const clock = this.worldClock || this.runtime?.worldClock || global.__WorldClockShared;
-                return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
+                return WorldClockTimingModule.getWorldEpochNowMs(this);
               }
 
     wait(ms = 0) {

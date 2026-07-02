@@ -2764,14 +2764,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               : this.stopWorldActorAnimationLoop();
           }
 
-    now() {
-          return this.runtime?.now?.() || Date.now();
-        }
-
-    getWorldEpochNowMs() {
-          const clock = this.worldClock || this.runtime?.worldClock || this.lastGame?.worldClock || global.__WorldClockShared;
-          return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
-        }
+    // now() + getWorldEpochNowMs() were byte-redundant with the base CanvasGameApp
+    // versions (App.now === RenderScheduler.now === runtime.now||Date.now; the world
+    // epoch chain now includes lastGame.worldClock in WorldClockTimingModule), so the
+    // shell inherits both from CanvasGameApp -- one code path, no divergent copy.
 
     getTabOrder() {
           return ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
