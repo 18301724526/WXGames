@@ -950,6 +950,114 @@ test('CanvasGameApp routes active march animation to actor loop instead of map w
   ]);
 });
 
+// Characterization tests for the scout-countdown / tile-map-water timer lifecycles
+// (god-file re-decomposition slice 7). Written against the pre-extraction
+// CanvasGameApp bodies and kept UNCHANGED through the ScoutCountdownTimer /
+// TileMapWaterAnimationTimer extraction.
+test('startScoutCountdownTimer arms a 1s interval that re-renders military and active conquests', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    scheduler: {
+      setInterval(callback, ms) {
+        intervalCallback = callback;
+        calls.push(['setInterval', ms]);
+        return 7;
+      },
+      clearInterval(handle) {
+        calls.push(['clearInterval', handle]);
+      },
+    },
+  });
+  app.renderCanvasSurface = (tab) => {
+    calls.push(['renderCanvasSurface', tab]);
+    return true;
+  };
+  app.renderTerritory = () => {
+    calls.push(['renderTerritory']);
+    return true;
+  };
+
+  app.startScoutCountdownTimer();
+  app.startScoutCountdownTimer();
+  assert.deepEqual(calls, [['setInterval', 1000]]);
+
+  app.state = { currentTab: 'military', currentEra: 5 };
+  intervalCallback();
+  assert.deepEqual(calls.at(-1), ['renderCanvasSurface', 'military']);
+
+  app.state = { currentTab: 'military', currentEra: 0 };
+  intervalCallback();
+  assert.deepEqual(calls.at(-1), ['renderCanvasSurface', 'military']);
+  assert.equal(calls.length, 2);
+
+  app.state = { currentTab: 'military', currentEra: 5 };
+  app.canvasShell = { isWorldMapDragging: () => true };
+  intervalCallback();
+  assert.equal(calls.length, 2);
+
+  app.canvasShell = null;
+  app.state = {
+    currentTab: 'territory',
+    currentEra: 5,
+    territoryState: { territories: [{ mission: { status: 'active' } }, {}] },
+  };
+  intervalCallback();
+  assert.deepEqual(calls.at(-1), ['renderTerritory']);
+
+  app.syncService = null;
+  app.updateChecker = null;
+  app.stopHeartbeat();
+  assert.deepEqual(calls.at(-1), ['clearInterval', 7]);
+
+  app.startScoutCountdownTimer();
+  assert.deepEqual(calls.at(-1), ['setInterval', 1000]);
+});
+
+test('tileMapWaterTimer lifecycle: no double-arm, tick self-stops off military, stop re-arms', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    scheduler: {
+      setInterval(callback, ms) {
+        intervalCallback = callback;
+        calls.push(['setInterval', ms]);
+        return 3;
+      },
+      clearInterval(handle) {
+        calls.push(['clearInterval', handle]);
+      },
+    },
+  });
+  app.getWorldTileWaterAnimationFrameMs = () => 125;
+
+  assert.equal(app.startTileMapWaterTimer(), true);
+  assert.equal(app.startTileMapWaterTimer(), false);
+  assert.deepEqual(calls, [['setInterval', 125]]);
+
+  app.state = { currentTab: 'resources' };
+  app.activeTab = 'resources';
+  intervalCallback();
+  assert.deepEqual(calls, [
+    ['setInterval', 125],
+    ['clearInterval', 3],
+  ]);
+
+  assert.equal(app.startTileMapWaterTimer(), true);
+  app.stopTileMapWaterTimer();
+  app.stopTileMapWaterTimer();
+  assert.deepEqual(calls.slice(2), [
+    ['setInterval', 125],
+    ['clearInterval', 3],
+  ]);
+});
+
 test('CanvasGameApp keeps active march animation from forcing map layer redraw', () => {
   const calls = [];
   const runtime = {

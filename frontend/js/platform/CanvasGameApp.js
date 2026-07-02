@@ -119,6 +119,14 @@
   if (typeof module !== 'undefined' && module.exports && !ArmyFormationEditorController) {
     ArmyFormationEditorController = require('./ArmyFormationEditorController');
   }
+  var ScoutCountdownTimer = global.ScoutCountdownTimer;
+  if (typeof module !== 'undefined' && module.exports && !ScoutCountdownTimer) {
+    ScoutCountdownTimer = require('./ScoutCountdownTimer');
+  }
+  var TileMapWaterAnimationTimer = global.TileMapWaterAnimationTimer;
+  if (typeof module !== 'undefined' && module.exports && !TileMapWaterAnimationTimer) {
+    TileMapWaterAnimationTimer = require('./TileMapWaterAnimationTimer');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -358,7 +366,6 @@
           this.worldActorAnimationQueued = false;
           this.worldActorQueuedRenderOptions = null;
           this.lastWorldActorAnimationRenderAt = 0;
-          this.tileMapWaterTimer = null;
           TerritoryUiStateStore.ensure(this);
           this.externalLog = typeof options.log === 'function' ? options.log : null;
           this.stateNormalizer = options.stateNormalizer || null;
@@ -407,7 +414,6 @@
           this.activeAdvisor = null;
           this.activeNamingPrompt = null;
           this.activeNamingPromptKey = null;
-          this.scoutCountdownTimer = null;
           const CommandServiceCtor = options.commandServiceClass || GameCommandServiceBase || null;
           this.commandService = options.commandService || (CommandServiceCtor ? new CommandServiceCtor({ host: this }) : null);
           if (this.commandService && !this.commandService.host) this.commandService.host = this;
@@ -1160,10 +1166,7 @@
     stopHeartbeat() {
                 this.syncService?.stop?.();
                 this.updateChecker?.stop?.();
-                if (this.scoutCountdownTimer) {
-                  this.scheduler?.clearInterval?.(this.scoutCountdownTimer);
-                  this.scoutCountdownTimer = null;
-                }
+                this.getScoutCountdownTimer().stop();
               }
 
     showUpdatePrompt(version) {
@@ -1399,49 +1402,63 @@
                 };
               }
 
-    startTileMapWaterTimer() {
-                if (this.tileMapWaterTimer) return false;
-                const tick = () => {
-                  if ((this.state?.currentTab || this.getActiveTab()) !== 'military') {
-                    this.stopTileMapWaterTimer();
-                    return;
-                  }
-                  if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
-                  const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
-                  if (hasActiveWorldExplorerMission(this.state, { epochNowMs })) {
-                    this.updateWorldActorAnimationLoop?.({ epochNowMs, state: this.state });
-                    if (!this.canvasShell && !this.renderer?.worldActorLayerRenderer) {
-                      this.renderRuntimeWorldMap({
-                        ...this.buildRenderOptions('military', this.territoryUiState),
-                        epochNowMs,
-                        force: true,
-                      });
-                      this.renderAnimationFrame('military');
-                    }
-                    return;
-                  }
-                  if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) {
+    // Timer lifecycles are single-owned by SHAPE-B timer classes (re-decomposition
+    // slice 7), composed lazily so prototype-only test hosts keep working. The
+    // water tick body stays here as the host callback -- it is render-stack
+    // orchestration, and CanvasGameShell keeps its own divergent implementation.
+    getScoutCountdownTimer() {
+                if (!this.scoutCountdown) {
+                  this.scoutCountdown = new ScoutCountdownTimer({ host: this });
+                }
+                return this.scoutCountdown;
+              }
+
+    getTileMapWaterAnimationTimer() {
+                if (!this.tileMapWaterAnimation) {
+                  this.tileMapWaterAnimation = new TileMapWaterAnimationTimer({
+                    host: this,
+                    tick: () => this.tickTileMapWaterAnimation(),
+                  });
+                }
+                return this.tileMapWaterAnimation;
+              }
+
+    tickTileMapWaterAnimation() {
+                if ((this.state?.currentTab || this.getActiveTab()) !== 'military') {
+                  this.stopTileMapWaterTimer();
+                  return;
+                }
+                if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+                const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
+                if (hasActiveWorldExplorerMission(this.state, { epochNowMs })) {
+                  this.updateWorldActorAnimationLoop?.({ epochNowMs, state: this.state });
+                  if (!this.canvasShell && !this.renderer?.worldActorLayerRenderer) {
                     this.renderRuntimeWorldMap({
-                      reuseCachedWorldTileView: true,
-                      snapshotOnly: true,
-                      waterTimeMs: this.now(),
+                      ...this.buildRenderOptions('military', this.territoryUiState),
+                      epochNowMs,
+                      force: true,
                     });
-                    return;
+                    this.renderAnimationFrame('military');
                   }
-                  this.renderAnimationFrame('military');
-                };
-                this.tileMapWaterTimer = CanvasGameAppRenderScheduler.setIntervalForHost(
-                  this,
-                  tick,
-                  this.getWorldTileWaterAnimationFrameMs(),
-                );
-                return Boolean(this.tileMapWaterTimer);
+                  return;
+                }
+                if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) {
+                  this.renderRuntimeWorldMap({
+                    reuseCachedWorldTileView: true,
+                    snapshotOnly: true,
+                    waterTimeMs: this.now(),
+                  });
+                  return;
+                }
+                this.renderAnimationFrame('military');
+              }
+
+    startTileMapWaterTimer() {
+                return this.getTileMapWaterAnimationTimer().start();
               }
 
     stopTileMapWaterTimer() {
-                if (!this.tileMapWaterTimer) return;
-                CanvasGameAppRenderScheduler.clearIntervalForHost(this, this.tileMapWaterTimer);
-                this.tileMapWaterTimer = null;
+                return this.getTileMapWaterAnimationTimer().stop();
               }
 
     now() {
@@ -1763,20 +1780,7 @@
               }
 
     startScoutCountdownTimer() {
-                if (this.scoutCountdownTimer) return;
-                this.scoutCountdownTimer = this.scheduler?.setInterval?.(() => {
-                  if ((this.state?.currentEra || 0) < 5) return;
-                  if (
-                    this.canvasShell?.isWorldMapDragging?.()
-                    || this.canvasShell?.hasPendingWorldMapCompositeCommit?.()
-                  ) return;
-                  if (this.state?.currentTab === 'military') this.renderCanvasSurface(this.state.currentTab);
-                  if (this.state?.currentTab === 'territory') {
-                    const territories = this.state.territoryState?.territories || [];
-                    const hasConquestMission = territories.some((site) => site.mission?.status === 'active');
-                    if (hasConquestMission) this.renderTerritory();
-                  }
-                }, 1000);
+                this.getScoutCountdownTimer().start();
               }
 
     renderTerritory() {
