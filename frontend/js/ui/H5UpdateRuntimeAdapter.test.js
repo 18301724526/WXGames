@@ -74,6 +74,7 @@ test('H5UpdateRuntimeAdapter reports deploy failure without forcing reload', () 
       targetCommit: 'abcdef1234567890',
       stage: 'deploy-gate',
       logPath: '/opt/wxgame-refactor/.wxgame/push-deploy.log',
+      recentLogLines: ['older line', 'npm test failed at architecture gate'],
       error: { message: 'npm test failed' },
     },
   });
@@ -84,6 +85,7 @@ test('H5UpdateRuntimeAdapter reports deploy failure without forcing reload', () 
     'Failed stage: deploy-gate',
     'Error: npm test failed',
     'Server log: /opt/wxgame-refactor/.wxgame/push-deploy.log',
+    'Recent log: npm test failed at architecture gate',
   ].join('\n'));
   assert.deepEqual(calls, [['confirm', message]]);
   LocaleText.setLocale('zh-CN');

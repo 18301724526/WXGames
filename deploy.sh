@@ -3,7 +3,7 @@
 # 位置：仓库根目录 deploy.sh
 # 用法：在服务器上执行 ./deploy.sh [branch]
 
-set -euo pipefail
+set -Eeuo pipefail
 
 WORK_TREE="${WORK_TREE:-/www/wwwroot/h5}"
 FRONTEND_PUBLIC_DIR="${FRONTEND_PUBLIC_DIR:-${WEB_ROOT:-$WORK_TREE}}"
@@ -193,6 +193,21 @@ function text(value, limit = 240) {
   return normalized.length > limit ? `${normalized.slice(0, limit - 3)}...` : normalized;
 }
 
+function readRecentLogLines(filePath, maxLines = 20) {
+  if (!filePath || !fs.existsSync(filePath)) return [];
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content
+      .replace(/\u001b\[[0-9;]*m/g, '')
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .slice(-maxLines)
+      .map((line) => text(line, 500));
+  } catch (_error) {
+    return [];
+  }
+}
+
 function writeJsonAtomic(filePath, payload) {
   if (!filePath) return;
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -224,6 +239,10 @@ if (message) {
     stage: payload.stage,
     message: text(message, 600),
   };
+}
+
+if (normalizedStatus === 'failed') {
+  payload.recentLogLines = readRecentLogLines(asyncLogPath || deployLogPath);
 }
 
 writeJsonAtomic(statusPath, payload);

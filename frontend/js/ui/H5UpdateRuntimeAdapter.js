@@ -76,6 +76,12 @@
       if (deployStatus.logPath) {
         lines.push(this.t('shell.update.deployLogPath', { path: deployStatus.logPath }));
       }
+      const recentLine = Array.isArray(deployStatus.recentLogLines)
+        ? deployStatus.recentLogLines[deployStatus.recentLogLines.length - 1]
+        : '';
+      if (recentLine) {
+        lines.push(this.t('shell.update.deployRecentLog', { line: recentLine }));
+      }
       return lines.join('\n');
     }
 

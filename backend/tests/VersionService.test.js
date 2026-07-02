@@ -137,6 +137,7 @@ test('version service exposes deploy failure status without changing completed d
       updatedAt: '2026-07-02T00:00:00Z',
       exitCode: 1,
       logPath: '/opt/wxgame/.wxgame/push-deploy.log',
+      recentLogLines: ['line 1', 'npm test failed'],
       error: { stage: 'deploy-gate', message: 'npm test failed' },
     }));
 
@@ -163,6 +164,7 @@ test('version service exposes deploy failure status without changing completed d
     assert.equal(info.deployStatus.status, 'failed');
     assert.equal(info.deployStatus.targetCommit, 'failed-release');
     assert.equal(info.deployStatus.error.message, 'npm test failed');
+    assert.deepEqual(info.deployStatus.recentLogLines, ['line 1', 'npm test failed']);
     assert.equal(after.deploymentId, info.deploymentId);
     assert.notEqual(after.etag, firstEtag);
   } finally {

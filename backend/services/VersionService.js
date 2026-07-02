@@ -65,6 +65,9 @@ function sanitizeDeployStatus(status) {
     finishedAt: status.finishedAt ? String(status.finishedAt) : null,
     exitCode: Number.isFinite(Number(status.exitCode)) ? Number(status.exitCode) : null,
     logPath: status.logPath ? String(status.logPath) : null,
+    recentLogLines: Array.isArray(status.recentLogLines)
+      ? status.recentLogLines.slice(-20).map((line) => String(line).slice(0, 500))
+      : [],
     error,
   };
 }
