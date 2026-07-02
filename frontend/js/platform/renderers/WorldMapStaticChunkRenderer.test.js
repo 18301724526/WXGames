@@ -193,6 +193,97 @@ test('WorldMapStaticChunkRenderer delegates cache key and prune policy when avai
   assert.equal(host.worldMapCacheState.worldTileStaticChunkCaches.has('stale'), false);
 });
 
+function createScopedHost(overrides = {}) {
+  const host = createHost(overrides);
+  host.withRenderCtx = function withRenderCtx(ctx, callback) {
+    if (typeof callback !== 'function') return false;
+    if (!ctx) return callback();
+    const previousCtx = this.ctx;
+    this.ctx = ctx;
+    try {
+      return callback();
+    } finally {
+      this.ctx = previousCtx;
+    }
+  };
+  return host;
+}
+
+function createBakeWork(calls = []) {
+  return {
+    canvas: { width: 200, height: 120 },
+    ctx: createCtx(calls),
+    width: 100,
+    height: 60,
+    pixelWidth: 200,
+    pixelHeight: 120,
+    scale: 2,
+  };
+}
+
+test('WorldMapStaticChunkRenderer chunk bake scopes the work ctx on the host owner', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapStaticChunkRenderer({ host });
+  const liveCtx = host.ctx;
+  const work = createBakeWork([]);
+  const seenCtxs = [];
+
+  const result = renderer.withStaticChunkContext(work, createLayout(), () => {
+    seenCtxs.push(host.ctx);
+    return true;
+  });
+
+  assert.equal(result, true);
+  assert.equal(seenCtxs.length, 1);
+  assert.equal(seenCtxs[0], work.ctx);
+  assert.equal(host.ctx, liveCtx);
+});
+
+test('WorldMapStaticChunkRenderer chunk bake never pins a stale ctx across host ctx recreation', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapStaticChunkRenderer({ host });
+
+  assert.equal(renderer.withStaticChunkContext(createBakeWork([]), createLayout(), () => true), true);
+
+  const recreatedCtx = createCtx([]);
+  host.ctx = recreatedCtx;
+  assert.equal(renderer.ctx, recreatedCtx);
+});
+
+test('WorldMapStaticChunkRenderer chunk bake restores the host ctx when the bake throws', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapStaticChunkRenderer({ host });
+  const liveCtx = host.ctx;
+  const workCalls = [];
+  const work = createBakeWork(workCalls);
+
+  assert.throws(
+    () =>
+      renderer.withStaticChunkContext(work, createLayout(), () => {
+        throw new Error('bake failed');
+      }),
+    /bake failed/,
+  );
+  assert.equal(host.ctx, liveCtx);
+  assert.equal(workCalls.some((call) => call[0] === 'restore'), true);
+
+  const recreatedCtx = createCtx([]);
+  host.ctx = recreatedCtx;
+  assert.equal(renderer.ctx, recreatedCtx);
+});
+
+test('WorldMapStaticChunkRenderer chunk bake still runs when the host lacks withRenderCtx', () => {
+  const host = createHost();
+  const renderer = new WorldMapStaticChunkRenderer({ host });
+  const workCalls = [];
+  const work = createBakeWork(workCalls);
+
+  assert.equal(renderer.withStaticChunkContext(work, createLayout(), () => 'baked'), 'baked');
+  assert.equal(workCalls.some((call) => call[0] === 'save'), true);
+  assert.equal(workCalls.some((call) => call[0] === 'translate' && call[1] === 10 && call[2] === 20), true);
+  assert.equal(workCalls.some((call) => call[0] === 'restore'), true);
+});
+
 test('WorldMapStaticChunkRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {
   const html = fs.readFileSync(path.join(__dirname, '../../..', 'index.html'), 'utf8');
   const miniGameEntry = fs.readFileSync(path.join(__dirname, '../../..', 'minigame/game.js'), 'utf8');

@@ -3,15 +3,15 @@
     constructor(options = {}) {
       this.host = options.host || null;
       this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
-      this.renderCtx = null;
     }
 
     get ctx() {
-      return this.renderCtx || this.host?.ctx || null;
+      return this.host?.ctx || null;
     }
 
-    set ctx(value) {
-      this.renderCtx = value || null;
+    withRenderCtx(ctx, callback) {
+      if (typeof this.host?.withRenderCtx === 'function') return this.host.withRenderCtx(ctx, callback);
+      return callback?.();
     }
 
     get worldTileStaticChunkCaches() {
@@ -132,21 +132,22 @@
 
     withStaticChunkContext(work = {}, layout = {}, callback = null) {
       if (!work?.ctx || !layout?.frame || typeof callback !== 'function') return false;
-      const previousCtx = this.ctx;
-      this.ctx = work.ctx;
-      try {
+      // The chunk bake draws through host-resolved renderers, so the work ctx must be
+      // scoped on the ctx owner for the duration of the bake.
+      return this.withRenderCtx(work.ctx, () => {
         work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
         work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
         work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
         work.ctx.globalAlpha = 1;
         work.ctx.globalCompositeOperation = 'source-over';
         work.ctx.save?.();
-        work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
-        return callback(work);
-      } finally {
-        work.ctx.restore?.();
-        this.ctx = previousCtx;
-      }
+        try {
+          work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
+          return callback(work);
+        } finally {
+          work.ctx.restore?.();
+        }
+      });
     }
 
     renderStaticChunkEntriesIntoCache(tileMapView = {}, layout = {}, uiState = {}) {
