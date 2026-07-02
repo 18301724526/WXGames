@@ -1751,3 +1751,250 @@ test('CanvasGameApp publishes the live entityBattle session into BattleStore', (
     BattleStore.closeEntityBattle();
   }
 });
+
+// Characterization tests for the entity-battle session cluster (god-file
+// re-decomposition slice 8). Written against the pre-extraction CanvasGameApp
+// bodies and kept UNCHANGED through the EntityBattleController extraction.
+
+function makeEntityBattleApp(overrides = {}) {
+  const timers = { callback: null, cleared: [] };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: { render() {} },
+    scheduler: {
+      setInterval(callback) {
+        timers.callback = callback;
+        return 11;
+      },
+      clearInterval(handle) {
+        timers.cleared.push(handle);
+      },
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+    ...overrides,
+  });
+  app.renderCanvasSurface = () => true;
+  app.renderAnimationFrame = () => true;
+  return { app, timers };
+}
+
+function makeSimCoreStub(steps, { endAtTick = Infinity } = {}) {
+  return {
+    createBattle() {
+      return {
+        config: { tickHz: 20 },
+        tick: 0,
+        squads: { g1: { side: 0, generalId: 'u1' }, g2: { side: 1, generalId: 'u2' } },
+        units: { u1: { skills: [{ id: 'sk1' }] }, u2: { skills: [] } },
+        result: null,
+      };
+    },
+    step(battle, ins) {
+      steps.push(ins.map((entry) => entry.type || entry.order || 'unknown'));
+      battle.tick += 1;
+      if (battle.tick >= endAtTick) battle.result = { winner: 'attacker' };
+    },
+  };
+}
+
+test('entityBattle interactive tick steps queued player + AI inputs and resolves on end', async () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  const previousAI = global.BattleAI;
+  const steps = [];
+  global.BattleSimCore = makeSimCoreStub(steps, { endAtTick: 2 });
+  global.BattleAI = {
+    decideSideOrders() {
+      return [{ type: 'ai-order' }];
+    },
+  };
+  const { app, timers } = makeEntityBattleApp();
+  let nowMs = 1000;
+  app.now = () => nowMs;
+  const resolveCalls = [];
+
+  try {
+    assert.equal(
+      app.openEntityBattle({
+        setup: { sides: [{}, {}] },
+        battleId: 'battle-live',
+        onResolve: async (payload) => {
+          resolveCalls.push(payload);
+          return { winner: 'defender', result: { loot: 1 } };
+        },
+      }),
+      true,
+    );
+    assert.equal(app.entityBattle.mode, 'interactive');
+
+    assert.equal(app.entityBattleOrder('g1', 'charge'), true);
+
+    timers.callback();
+    nowMs = 1050;
+    timers.callback();
+    assert.deepEqual(steps, [['order', 'ai-order']]);
+    assert.equal(app.entityBattle.ended, false);
+
+    nowMs = 1100;
+    timers.callback();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.equal(app.entityBattle.ended, true);
+    assert.equal(resolveCalls.length, 1);
+    assert.equal(resolveCalls[0].battleId, 'battle-live');
+    assert.equal(resolveCalls[0].inputStream.length >= 2, true);
+    assert.equal(app.entityBattle.resultWinner, 'defender');
+    assert.deepEqual(app.entityBattle.serverResult, { loot: 1 });
+    assert.equal(app.entityBattle.statusColor, '#f85149');
+    assert.deepEqual(timers.cleared, [11]);
+  } finally {
+    global.BattleSimCore = previousCore;
+    global.BattleAI = previousAI;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('entityBattle replay tick feeds recorded inputs by tick and ends from the report result', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  const steps = [];
+  global.BattleSimCore = makeSimCoreStub(steps, { endAtTick: 1 });
+  const { app, timers } = makeEntityBattleApp();
+  let nowMs = 1000;
+  app.now = () => nowMs;
+
+  try {
+    assert.equal(
+      app.openEntityBattle({
+        setup: { sides: [{}, {}] },
+        mode: 'replay',
+        inputStream: [{ tick: 0, type: 'order' }],
+        report: { result: 'victory' },
+      }),
+      true,
+    );
+    assert.equal(app.entityBattle.mode, 'replay');
+
+    timers.callback();
+    nowMs = 1050;
+    timers.callback();
+    assert.deepEqual(steps, [['order']]);
+    assert.equal(app.entityBattle.ended, true);
+    assert.equal(app.entityBattle.statusColor, '#3fb950');
+    assert.deepEqual(timers.cleared, [11]);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('closeEntityBattle stops the timer, clears the store, and prefers onClose over render', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = makeSimCoreStub([]);
+  const { app, timers } = makeEntityBattleApp();
+  const calls = [];
+  app.renderCanvasSurface = () => {
+    calls.push(['render']);
+    return true;
+  };
+
+  try {
+    app.openEntityBattle({
+      setup: { sides: [{}, {}] },
+      onClose: () => calls.push(['onClose']),
+    });
+    calls.length = 0;
+    assert.equal(app.closeEntityBattle(), true);
+    assert.equal(app.entityBattle, null);
+    assert.equal(BattleStore.getEntityBattle(), null);
+    assert.deepEqual(calls, [['onClose']]);
+    assert.deepEqual(timers.cleared, [11]);
+
+    app.openEntityBattle({ setup: { sides: [{}, {}] } });
+    calls.length = 0;
+    assert.equal(app.closeEntityBattle(), true);
+    assert.deepEqual(calls, [['render']]);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('entityBattle camera zoom and drag route through BattleCameraPolicy', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  const previousPolicy = global.BattleCameraPolicy;
+  global.BattleSimCore = makeSimCoreStub([]);
+  global.BattleCameraPolicy = {
+    createCamera() {
+      return { zoom: 1, offsetX: 0, offsetY: 0 };
+    },
+    zoomAt(camera, _fit, _point, scaleDelta) {
+      return { ...camera, zoom: camera.zoom * scaleDelta };
+    },
+    panBy(camera, _fit, dx, dy) {
+      return { ...camera, offsetX: camera.offsetX + dx, offsetY: camera.offsetY + dy };
+    },
+  };
+  const { app } = makeEntityBattleApp();
+
+  try {
+    app.openEntityBattle({ setup: { sides: [{}, {}] } });
+    assert.equal(app.entityBattleZoom({ scaleDelta: 2 }), false);
+    app.entityBattle._viewFit = { scale: 1 };
+    assert.equal(app.entityBattleZoom({ centerX: 10, centerY: 20, scaleDelta: 2, deltaX: 5 }), true);
+    assert.equal(app.entityBattle.camera.zoom, 2);
+    assert.equal(app.entityBattle.camera.offsetX, 5);
+
+    assert.equal(app.entityBattleDrag('start', { x: 100, y: 50 }), true);
+    assert.equal(app.entityBattleDrag('move', { x: 110, y: 45 }), true);
+    assert.equal(app.entityBattle.camera.offsetX, 15);
+    assert.equal(app.entityBattle.camera.offsetY, -5);
+    app.entityBattleDrag('end', { x: 110, y: 45 });
+    assert.equal(app.entityBattle._dragLast, null);
+  } finally {
+    global.BattleSimCore = previousCore;
+    global.BattleCameraPolicy = previousPolicy;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('toggleEntityBattleAuto flips side-0 skills and issueEntityInput guards replay/ended', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = makeSimCoreStub([]);
+  const { app } = makeEntityBattleApp();
+
+  try {
+    app.openEntityBattle({ setup: { sides: [{}, {}] } });
+    assert.equal(app.toggleEntityBattleAuto(), true);
+    assert.equal(app.entityBattle.auto, true);
+    assert.equal(app.entityBattle.battle.auto, true);
+    assert.equal(app.entityBattle.battle.units.u1.skills[0].auto, true);
+
+    assert.equal(app.entityBattleSkill('g1', 'sk1'), true);
+    assert.equal(app.entityBattle.inputStream.at(-1).skillId, 'sk1');
+    assert.equal(app.entityBattleMaster('retreat'), true);
+    assert.equal(app.entityBattle.inputStream.at(-1).side, 0);
+
+    app.entityBattle.ended = true;
+    assert.equal(app.entityBattleOrder('g1', 'charge'), false);
+
+    app.closeEntityBattle();
+    app.openEntityBattle({ setup: { sides: [{}, {}] }, mode: 'replay', inputStream: [] });
+    assert.equal(app.issueEntityInput({ type: 'order' }), false);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
+  }
+});
