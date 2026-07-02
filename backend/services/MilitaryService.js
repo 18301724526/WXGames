@@ -2,7 +2,7 @@ const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigR
 const BuildingState = require('../modules/BuildingState');
 const TerritoryService = require('./TerritoryService');
 const { manualAdvance } = require('./tutorial/TutorialProgression');
-const { getTutorialScoutPersonId } = require('./tutorial/TutorialSelectors');
+const { getTutorialScoutPersonId, getFirstArmyReserveFloor } = require('./tutorial/TutorialSelectors');
 const FormationStrengthService = require('./military/FormationStrengthService');
 
 const MAX_FORMATION_SLOTS = 3;
@@ -168,10 +168,18 @@ function normalizeArmyFormations(rawFormations, gameState = {}) {
 
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
-  const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
+  // Tutorial first-army grant floor: while the formation guide runs, the
+  // granted reserve must survive the barracks cap clamp (cap AND soldiers are
+  // floored at the granted amount; after scoutFormationSaved the floor is 0 and
+  // the residual reserve re-clamps to the barracks cap).
+  const reserveFloor = getFirstArmyReserveFloor(gameState || {});
+  const cap = Math.max(0, Math.floor(stats.soldierCap || 0), reserveFloor);
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
   const batchSize = Math.max(0, Math.floor(Number(stats.trainingBatchSize || 0)));
-  const soldiers = Math.min(cap, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers)));
+  const soldiers = Math.max(
+    reserveFloor,
+    Math.min(cap, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers))),
+  );
   const trainingProgress = cap > 0 && soldiers < cap && interval > 0
     ? Math.min(interval, toNonNegativeNumber(rawMilitary?.trainingProgress))
     : 0;

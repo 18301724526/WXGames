@@ -14,6 +14,10 @@ const {
 } = require('./TaskDefinitionShared');
 const ConfigRegistryContract = require('../config/ConfigRegistryContract');
 const RewardResolver = require('./TaskDefinitionRewardResolver');
+const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
+
+// Non-resource reward archetypes TaskRewardClaimer can pay out.
+const FAMOUS_PERSON_REWARD_ARCHETYPES = Object.freeze(['scout']);
 
 const HEADER_ALIASES = Object.freeze({
   id: ['id', 'taskId', 'task_id', '任务ID', '任务编号'],
@@ -38,6 +42,8 @@ const HEADER_ALIASES = Object.freeze({
   rewardStone: ['reward.stone', 'stone', '奖励石料', '石料'],
   rewardMetal: ['reward.metal', 'metal', '奖励金属', '金属'],
   rewardSoldiers: ['reward.soldiers', 'soldiers', '奖励士兵', '士兵'],
+  rewardFamousPerson: ['reward.famousPerson', 'rewardFamousPerson', '奖励名人'],
+  rewardText: ['rewardText', '奖励文案'],
 });
 
 function getHeaderValue(row, key) {
@@ -86,7 +92,15 @@ function normalizeCondition(rawTask, row) {
   )));
   if (type === 'buildingLevel') return { type, buildingId: target, count };
   if (type === 'eraAtLeast') return { type, era: Math.max(0, Math.floor(toNumber(target || condition.era, 0))) };
-  if (type === 'tutorialStepAtLeast') return { type, step: Math.max(0, Math.floor(toNumber(target || condition.step, 0))) };
+  if (type === 'tutorialStepAtLeast') {
+    // Steps are NAMES (shared/tutorialFlowConfig.js); legacy numeric rows stay
+    // accepted and normalize through the same clamp as persisted saves.
+    const rawStep = condition.step ?? target;
+    if (SharedTutorialFlowConfig.isValidStep(rawStep)) {
+      return { type, step: SharedTutorialFlowConfig.stepName(rawStep) };
+    }
+    return { type, step: Math.max(0, Math.floor(toNumber(rawStep, 0))) };
+  }
   if (type === 'eventClaimed') return { type, eventId: target };
   return { type: 'always' };
 }
@@ -113,7 +127,10 @@ function normalizeReward(rawTask, row) {
         || sanitizeText(row.rewardText)
       ),
   );
-  return { resources, formulas, formulaResourcesResolved };
+  const famousPerson = sanitizeText(reward.famousPerson || getHeaderValue(row, 'rewardFamousPerson'));
+  const normalized = { resources, formulas, formulaResourcesResolved };
+  if (famousPerson) normalized.famousPerson = famousPerson;
+  return normalized;
 }
 
 function normalizeAction(rawTask, row, taskId, target) {
@@ -141,6 +158,9 @@ function normalizeTask(rawTask, index = 0) {
     target,
     condition,
     reward,
+    // Explicit reward copy (e.g. '士兵+1000') for non-resource rewards; falls
+    // back to the resolved-resource text in normalizeDefinitions.
+    rewardText: sanitizeText(getHeaderValue(row, 'rewardText')),
     action: normalizeAction({ ...row, category }, row, id, target),
     sortOrder: Math.floor(toNumber(row.sortOrder ?? getHeaderValue(row, 'sortOrder'), index + 1)),
     enabled: toBoolean(row.enabled ?? getHeaderValue(row, 'enabled'), true),
@@ -161,6 +181,9 @@ function validateTasks(tasks = [], options = {}) {
     if (task.condition?.type === 'buildingLevel' && !task.condition.buildingId) {
       errors.push(`${label}: buildingLevel condition needs buildingId`);
     }
+    if (task.reward?.famousPerson && !FAMOUS_PERSON_REWARD_ARCHETYPES.includes(task.reward.famousPerson)) {
+      errors.push(`${label}: UNKNOWN_FAMOUS_PERSON_REWARD:${task.reward.famousPerson}`);
+    }
     const reward = RewardResolver.resolveRewardResources(task.reward, options);
     reward.errors.forEach((error) => errors.push(`${label}: ${error}`));
   });
@@ -178,7 +201,11 @@ function normalizeDefinitions(raw = {}, options = {}) {
     const resolvedReward = RewardResolver.resolveRewardResources(task.reward, options);
     const reward = { ...task.reward, resources: resolvedReward.resources };
     if ((task.reward.formulas || []).length > 0) reward.formulaResourcesResolved = true;
-    return { ...task, reward, rewardText: RewardResolver.formatRewardText(resolvedReward.resources) };
+    return {
+      ...task,
+      reward,
+      rewardText: task.rewardText || RewardResolver.formatRewardText(resolvedReward.resources),
+    };
   });
   const version = sanitizeText(raw.version, '0.1.0');
   const registryValidation = ConfigRegistryContract.validateRegistry({

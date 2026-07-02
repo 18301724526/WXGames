@@ -28,7 +28,11 @@ const { clone } = require('../../shared/objectUtils');
 
 // 3.0.0: steps are persisted/projected as NAMES; clientGate entry ids changed
 // from numeric step keys to step names (removed entries -> major bump).
-const CONFIG_VERSION = '3.0.0';
+// 3.1.0: barracks segment inserted (barracksSuppliesClaimed,
+// buildingsTabOpenedForBarracks, barracksBuilt, firstArmyClaimed) plus the
+// barracksBuilt event and buildingsTabOpenedForBarracks client gate
+// (added entries -> minor bump).
+const CONFIG_VERSION = '3.1.0';
 const CONFIG_SCHEMA_VERSION = 1;
 const sourcePath = __filename;
 

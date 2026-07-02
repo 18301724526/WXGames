@@ -34,7 +34,9 @@
     if (context.completed) return true;
     const step = normalizeStep(context.step);
     const { stepEquals, stepAtLeast, stepAtMost, stepBefore } = TutorialFlowShared;
-    if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'military', 'buildings'].includes(tabId);
+    // 'tasks' opens from the very start: the homestead-supplies task is
+    // claimed at cityEntered, before the first house exists.
+    if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'military', 'buildings', 'tasks'].includes(tabId);
     if (stepBefore(step, TUTORIAL_STEPS.eraAdvancedTo1)) return ['resources', 'military', 'buildings', 'civilization'].includes(tabId);
     if (stepAtMost(step, TUTORIAL_STEPS.farmBuilt)) return ['buildings', 'civilization', 'tasks'].includes(tabId);
     if (stepEquals(step, TUTORIAL_STEPS.era2AdvanceReady)) return tabId === 'civilization';
@@ -42,7 +44,13 @@
     if (stepBefore(step, TUTORIAL_STEPS.lumbermillBuilt)) return ['events', 'buildings'].includes(tabId);
     if (stepEquals(step, TUTORIAL_STEPS.lumbermillBuilt)) return ['buildings', 'tasks'].includes(tabId);
     if (stepEquals(step, TUTORIAL_STEPS.era3AdvanceReady)) return ['civilization', 'buildings', 'tasks'].includes(tabId);
-    if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.firstCityDiscovered)) {
+    // Barracks segment (era3Advanced..scoutFamousGranted): the player claims
+    // the barracks-supplies / first-army / scout-officer tasks and builds the
+    // barracks, so 'tasks' + 'buildings' must open here.
+    if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.scoutFamousGranted)) {
+      return ['resources', 'buildings', 'tasks'].includes(tabId);
+    }
+    if (stepAtLeast(step, TUTORIAL_STEPS.scoutFamousGranted) && stepBefore(step, TUTORIAL_STEPS.firstCityDiscovered)) {
       return ['civilization', 'resources', 'military'].includes(tabId);
     }
     if (stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered) && stepBefore(step, TUTORIAL_STEPS.polityNamed)) {

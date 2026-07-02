@@ -248,3 +248,59 @@ test('normalizeMilitaryState clamps soldiers purely to the barracks cap with no 
   assert.equal(zero.soldiers, 0);
   assert.equal(zero.soldierCap, cap);
 });
+
+test('normalizeMilitaryState floors reserve and cap at the first-army grant during the formation guide', () => {
+  const TutorialService = require('../services/TutorialService');
+  const inWindowSteps = [
+    TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
+    TutorialService.TUTORIAL_STEPS.scoutFamousGranted,
+    TutorialService.TUTORIAL_STEPS.formationPanelOpened,
+  ];
+  for (const step of inWindowSteps) {
+    const state = createState({
+      tutorial: {
+        completed: false,
+        disabled: false,
+        currentStep: step,
+        grants: { firstArmy: { soldiers: 1000, grantedAt: '2026-07-03T00:00:00.000Z' } },
+      },
+    });
+    const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);
+    assert.equal(normalized.soldiers, 1000, `soldiers must survive at ${step}`);
+    assert.equal(normalized.soldierCap, 1000, `cap must be floored at ${step}`);
+  }
+});
+
+test('normalizeMilitaryState re-clamps the residual reserve after scoutFormationSaved', () => {
+  const TutorialService = require('../services/TutorialService');
+  const state = createState({
+    tutorial: {
+      completed: false,
+      disabled: false,
+      currentStep: TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
+      grants: { firstArmy: { soldiers: 1000, grantedAt: '2026-07-03T00:00:00.000Z' } },
+    },
+  });
+  const cap = Math.max(0, Math.floor(MilitaryService.getTrainingStats(state.buildings).soldierCap || 0));
+
+  const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);
+  assert.equal(normalized.soldierCap, cap);
+  assert.equal(normalized.soldiers, cap);
+});
+
+test('normalizeMilitaryState ignores the first-army floor without a grant record', () => {
+  const TutorialService = require('../services/TutorialService');
+  const state = createState({
+    tutorial: {
+      completed: false,
+      disabled: false,
+      currentStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
+      grants: {},
+    },
+  });
+  const cap = Math.max(0, Math.floor(MilitaryService.getTrainingStats(state.buildings).soldierCap || 0));
+
+  const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);
+  assert.equal(normalized.soldierCap, cap);
+  assert.equal(normalized.soldiers, cap);
+});

@@ -128,8 +128,6 @@ function normalizeStateStructure(rawState) {
   state.taskProgress.claimed = state.taskProgress.claimed && typeof state.taskProgress.claimed === 'object'
     ? state.taskProgress.claimed
     : {};
-  TutorialService.ensureHouseGuideResources(state);
-  TutorialService.ensureScoutFamousPersonGrant(state);
   WorldMapService.ensureWorldMap(state);
   WorldCombatEncounterService.normalizeCombatState(state);
   state.exploreMissions = Array.isArray(state.exploreMissions)

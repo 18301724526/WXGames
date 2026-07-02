@@ -110,6 +110,16 @@ function validateScoutFormationAction(step, action, payload, gameState) {
     return { allowed: true };
   }
 
+  if (action === 'build') {
+    // Barracks segment (era3Advanced..barracksBuilt): only the guided barracks
+    // build passes; from barracksBuilt onward building is unrestricted again.
+    if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.barracksBuilt)) {
+      if (payload?.target !== 'barracks') return blocked('当前只能按照引导建造兵营。');
+      return { allowed: true };
+    }
+    return { allowed: true };
+  }
+
   if (action === 'setArmyFormation') {
     if (stepBefore(step, TUTORIAL_STEPS.formationPanelOpened)) {
       return blocked('请先按照引导打开编队并配置侦察名人。');

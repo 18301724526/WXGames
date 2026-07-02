@@ -79,10 +79,9 @@ function execute(gameState, tutorial) {
     EventService.generateSpecialEvent(gameState, config.nextEra);
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvancedTo2');
   } else if (config.nextEra === 3) {
+    // The scout famous person is no longer auto-granted here: it is a claimable
+    // task reward (main_scout_officer) later in the barracks segment.
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'era3Advanced');
-    gameState.tutorial = nextTutorial;
-    TutorialService.ensureScoutFamousPersonGrant(gameState);
-    nextTutorial = gameState.tutorial;
   } else {
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvanced');
   }

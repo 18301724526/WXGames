@@ -26,6 +26,48 @@ test('TaskDefinitionService loads default main tasks with dynamic reward formula
   assert.match(task.rewardText, /food\+120/);
 });
 
+test('TaskDefinitionService loads the tutorial-chain tasks with step-name conditions and reward overrides', () => {
+  const definitions = TaskDefinitionService.loadDefinitions({
+    runtimePath: path.join(os.tmpdir(), `missing-task-defs-${Date.now()}-chain.json`),
+  });
+
+  assert.equal(definitions.errors.length, 0);
+  assert.equal(definitions.version, '0.2.0');
+
+  const homestead = definitions.tasks.find((item) => item.id === 'main_homestead_supplies');
+  assert.deepEqual(homestead.condition, { type: 'tutorialStepAtLeast', step: 'cityEntered' });
+  assert.deepEqual(homestead.reward.resources, { food: 30 });
+
+  const barracks = definitions.tasks.find((item) => item.id === 'main_barracks_supplies');
+  assert.deepEqual(barracks.condition, { type: 'tutorialStepAtLeast', step: 'era3Advanced' });
+  assert.deepEqual(barracks.reward.resources, { food: 260, knowledge: 80 });
+
+  const firstArmy = definitions.tasks.find((item) => item.id === 'main_first_army');
+  assert.deepEqual(firstArmy.reward.resources, { soldiers: 1000 });
+  assert.equal(firstArmy.rewardText, '士兵+1000');
+  assert.deepEqual(firstArmy.condition.conditions[1], { type: 'tutorialStepAtLeast', step: 'barracksBuilt' });
+
+  const officer = definitions.tasks.find((item) => item.id === 'main_scout_officer');
+  assert.equal(officer.reward.famousPerson, 'scout');
+  assert.equal(officer.rewardText, '侦察名人+1');
+  assert.deepEqual(officer.condition, { type: 'tutorialStepAtLeast', step: 'firstArmyClaimed' });
+});
+
+test('TaskDefinitionService rejects unknown famousPerson reward archetypes', () => {
+  const payload = {
+    definitions: {
+      version: 'unit-famous-reward',
+      tasks: [
+        { id: 'bad_famous', title: 'Bad famous reward', category: 'main', reward: { famousPerson: 'general' } },
+      ],
+    },
+  };
+  const result = TaskDefinitionService.previewImport(payload);
+
+  assert.equal(result.success, false);
+  assert.equal(result.errors.some((error) => error.includes('UNKNOWN_FAMOUS_PERSON_REWARD:general')), true);
+});
+
 test('TaskDefinitionService previews JSON definitions and rejects duplicate task ids', () => {
   const payload = {
     definitions: {

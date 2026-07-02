@@ -1,6 +1,8 @@
+const { TUTORIAL_STEPS, stepBefore } = require('../../../shared/tutorialFlowConfig');
 const { normalizeTutorialState } = require('./TutorialState');
 
 const SCOUT_FAMOUS_GRANT_KEY = 'scoutFamousPerson';
+const FIRST_ARMY_GRANT_KEY = 'firstArmy';
 
 function getBuildingLevel(gameState, buildingId) {
   const cityId = gameState?.activeCityId || 'capital';
@@ -59,6 +61,19 @@ function hasTutorialScoutFormation(gameState = {}, payload = {}) {
   return getFormationMembers(gameState, payload).includes(scoutPersonId);
 }
 
+// Reserve floor for the claimed first-army grant: while the formation guide is
+// still running (before scoutFormationSaved) the granted soldiers must survive
+// every normalizeMilitaryState clamp (barracks L1 cap is far below the grant).
+// Returns 0 when no floor applies.
+function getFirstArmyReserveFloor(gameState = {}) {
+  const tutorial = normalizeTutorialState(gameState.tutorial);
+  if (tutorial.completed || tutorial.disabled) return 0;
+  const soldiers = Math.max(0, Math.floor(Number(tutorial.grants?.[FIRST_ARMY_GRANT_KEY]?.soldiers) || 0));
+  if (!soldiers) return 0;
+  if (!stepBefore(tutorial.currentStep, TUTORIAL_STEPS.scoutFormationSaved)) return 0;
+  return soldiers;
+}
+
 function getTutorialFirstEmptyCityId(tutorialState = {}) {
   const tutorial = normalizeTutorialState(tutorialState);
   const siteId = tutorial.grants?.firstExploreEmptyCity?.siteId;
@@ -74,11 +89,13 @@ function getTerritoryById(gameState = {}, territoryId = '') {
 
 module.exports = {
   SCOUT_FAMOUS_GRANT_KEY,
+  FIRST_ARMY_GRANT_KEY,
   getBuildingLevel,
   hasBuiltHouse,
   hasBuiltFarm,
   canAffordLumbermill,
   getTutorialScoutPersonId,
+  getFirstArmyReserveFloor,
   getFormationSnapshot,
   getFormationMembers,
   hasTutorialScoutFormation,

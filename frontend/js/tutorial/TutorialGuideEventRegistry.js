@@ -113,6 +113,9 @@
         if (tabId === 'buildings' && stepEquals(getStep(host), steps.specialEventClaimed)) {
           await host.advanceTo?.(steps.buildingsTabOpenedForLumbermill);
         }
+        if (tabId === 'buildings' && stepEquals(getStep(host), steps.barracksSuppliesClaimed)) {
+          await host.advanceTo?.(steps.buildingsTabOpenedForBarracks);
+        }
         if (tabId === 'tech' && stepEquals(getStep(host), steps.famousSeekCompleted)) {
           await host.advanceTo?.(steps.finalTechOpened);
         }
@@ -122,11 +125,10 @@
 
       cityEntered: async (host) => {
         if (host.isCompleted?.()) return host.state;
+        // houseGuideReady is no longer auto-advanced here: it is reached by
+        // claiming the homestead-supplies task (TASK_CLAIM_STEPS).
         if (TutorialFlowShared.stepBefore(getStep(host), steps.cityEntered)) {
-          await host.advanceTo?.(steps.cityEntered);
-        }
-        if (TutorialFlowShared.stepBefore(getStep(host), steps.houseGuideReady)) {
-          return host.advanceTo?.(steps.houseGuideReady) || host.state;
+          return host.advanceTo?.(steps.cityEntered) || host.state;
         }
         return host.state;
       },
@@ -144,6 +146,16 @@
       eraAdvanced: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
         const step = getStep(host);
+        if (stepEquals(step, steps.era3Advanced)) {
+          // Era 3 lands on the barracks segment: the next beat is claiming the
+          // barracks supplies from the task center.
+          return (
+            host.showSoftGuide?.(
+              'task-center-button',
+              t('tutorial.softGuide.claimBarracksSupplies'),
+            ) || false
+          );
+        }
         if (
           TutorialFlowShared.stepAtLeast(step, steps.scoutFamousGranted) &&
           TutorialFlowShared.stepBefore(step, steps.scoutFormationSaved)

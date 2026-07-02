@@ -164,6 +164,22 @@
         { type: 'toggleArmyFormationMember', personId: scoutPersonId },
       );
     }
+    // Middle branch: the scout is in the formation but has no soldiers drafted
+    // yet - guide the auto-replenish button so the first-army reserve is
+    // assigned before saving.
+    const scoutDraftSoldiers = Number(
+      editor.soldierDraftAssignments?.[scoutPersonId] ??
+        editor.soldierAssignments?.[scoutPersonId] ??
+        0,
+    );
+    if (scoutPersonId && memberIds.includes(scoutPersonId) && scoutDraftSoldiers <= 0) {
+      return host.showHighlight(
+        'autoReplenishArmyFormation',
+        (action) => !action.disabled,
+        t('tutorial.highlight.replenishScoutFormation'),
+        { type: 'autoReplenishArmyFormation' },
+      );
+    }
     return host.showHighlight(
       'saveArmyFormation',
       (action) => !action.disabled,
@@ -362,6 +378,16 @@
         matches: (host) => host.isRewardRevealOpen?.(),
         render: hideHighlight,
       },
+      // Homestead claim pair: at cityEntered the house supplies are claimed
+      // from the task center BEFORE the house-build guide takes over.
+      ...makeTaskClaimPairRules({
+        openId: 'homestead-open-task-center',
+        claimId: 'homestead-claim-supplies',
+        step: steps.cityEntered,
+        taskId: 'main_homestead_supplies',
+        openMessage: () => t('tutorial.highlight.openHomesteadTask'),
+        claimMessage: () => t('tutorial.highlight.claimHomesteadSupplies'),
+      }),
       {
         id: 'first-era-open-civilization',
         matches: all(stepIs(steps.houseBuilt), (host) => !host.isOnTab?.('civilization')),
@@ -476,6 +502,47 @@
             '\u8fdb\u9636\u5230\u57ce\u90a6\u65f6\u4ee3\uff0c\u4fa6\u5bdf\u4e0e\u540d\u4eba\u7f16\u961f\u5c31\u4f1a\u6b63\u5f0f\u5f00\u653e\u3002',
           ),
       },
+      // Barracks segment: claim supplies, open the buildings tab, build the
+      // barracks, claim the first army, then recruit the scout officer.
+      ...makeTaskClaimPairRules({
+        openId: 'barracks-open-task-center',
+        claimId: 'barracks-claim-supplies',
+        step: steps.era3Advanced,
+        taskId: 'main_barracks_supplies',
+        openMessage: () => t('tutorial.highlight.openBarracksTask'),
+        claimMessage: () => t('tutorial.highlight.claimBarracksSupplies'),
+      }),
+      makeTabOpenRule({
+        id: 'barracks-open-buildings',
+        steps: [steps.barracksSuppliesClaimed],
+        panel: 'buildings',
+        message: () => t('tutorial.highlight.openBuildingsForBarracks'),
+      }),
+      makeBuildRule({
+        id: 'barracks-build',
+        matches: any(
+          all(stepIs(steps.barracksSuppliesClaimed), isCommandPanelOpen('buildings')),
+          stepIs(steps.buildingsTabOpenedForBarracks),
+        ),
+        buildingId: 'barracks',
+        message: () => t('tutorial.highlight.buildBarracks'),
+      }),
+      ...makeTaskClaimPairRules({
+        openId: 'first-army-open-task-center',
+        claimId: 'first-army-claim',
+        step: steps.barracksBuilt,
+        taskId: 'main_first_army',
+        openMessage: () => t('tutorial.highlight.openFirstArmyTask'),
+        claimMessage: () => t('tutorial.highlight.claimFirstArmy'),
+      }),
+      ...makeTaskClaimPairRules({
+        openId: 'scout-officer-open-task-center',
+        claimId: 'scout-officer-claim',
+        step: steps.firstArmyClaimed,
+        taskId: 'main_scout_officer',
+        openMessage: () => t('tutorial.highlight.openScoutOfficerTask'),
+        claimMessage: () => t('tutorial.highlight.claimScoutOfficer'),
+      }),
       {
         id: 'scout-open-famous',
         matches: all(stepIs(steps.scoutFamousGranted), not(isFamousPersonsOpen)),

@@ -33,7 +33,9 @@ function build(gameState, tutorialState, buildingId) {
       ? 'lumbermillBuilt'
       : buildingId === 'house'
         ? 'houseBuilt'
-        : null;
+        : buildingId === 'barracks'
+          ? 'barracksBuilt'
+          : null;
   const nextTutorial = TutorialService.advanceTutorial(tutorialState, tutorialEvent);
   return {
     success: true,

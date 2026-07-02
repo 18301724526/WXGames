@@ -367,54 +367,37 @@ test('game action route syncs farm-built tutorial before second era advancement'
   assert.equal(savedStates[0].eventQueue.some((event) => event.id === 'evt_settlement_forest_001'), true);
 });
 
-test('game action route grants scout famous person and persists tutorial formation save', () => {
+test('game task claim route pays homestead supplies and advances the house guide', () => {
   const { app, routes } = createAppHarness();
-  const builtAt = '2026-06-04T00:00:00.000Z';
-  const tutorial = TutorialService.manualAdvance(
-    TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.era3AdvanceReady,
-  );
-  const resources = { food: 500, knowledge: 100, wood: 200, iron: 0, stone: 0, metal: 0 };
-  const buildings = {
-    house: { level: 1, builtAt, upgradedAt: builtAt },
-    farm: { level: 1, builtAt, upgradedAt: builtAt },
-    lumbermill: { level: 1, builtAt, upgradedAt: builtAt },
-  };
   const gameState = {
-    playerId: 'route-scout-famous-formation-test',
-    tutorial,
-    currentEra: 2,
-    resources,
-    buildings,
-    population: { total: 4, max: 4, maxPop: 4, farmers: 3, scholars: 0, craftsmen: 1, unassigned: 0 },
-    techs: {},
-    techEffects: {},
-    eraHistory: [{ era: 0, advancedAt: builtAt }, { era: 1, advancedAt: builtAt }, { era: 2, advancedAt: builtAt }],
-    eventQueue: [],
-    eventHistory: [],
-    activeBuffs: [],
-    activeCityId: 'capital',
+    playerId: 'route-homestead-claim-test',
+    resources: { food: 10, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    buildings: {},
+    population: {},
+    tutorial: TutorialService.manualAdvance(
+      TutorialService.createInitialTutorialState(),
+      TutorialService.TUTORIAL_STEPS.cityEntered,
+    ),
+    currentEra: 0,
     cities: {
       capital: {
         id: 'capital',
         territoryId: 'capital',
         isCapital: true,
-        resources: { ...resources },
-        buildings: { ...buildings },
-        population: { total: 4, max: 4, maxPop: 4, farmers: 3, scholars: 0, craftsmen: 1, unassigned: 0 },
-        military: { soldiers: 0 },
+        resources: { food: 10, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+        buildings: {},
+        population: {},
       },
     },
-    famousPeople: [],
-    famousPersonState: { candidates: [], seek: { count: 0, lastAt: null } },
-    military: { formations: { capital: [{ slot: 1, memberIds: [] }] } },
+    activeCityId: 'capital',
     taskProgress: { claimed: {} },
-    updatedAt: builtAt,
+    eventQueue: [],
+    eventHistory: [],
   };
   const savedStates = [];
   const repository = {
     findByPlayerId(playerId) {
-      assert.equal(playerId, 'route-scout-famous-formation-test');
+      assert.equal(playerId, 'route-homestead-claim-test');
       return gameState;
     },
     save(state) {
@@ -425,44 +408,192 @@ test('game action route grants scout famous person and persists tutorial formati
     applyOnlineProgress(state) {
       return state;
     },
+    getClientGameState(state) {
+      return {
+        playerId: state.playerId,
+        resources: state.cities[state.activeCityId].resources,
+        taskProgress: state.taskProgress,
+      };
+    },
+    calculateEraProgress() {
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/tasks/claim');
+  const req = {
+    playerId: 'route-homestead-claim-test',
+    body: { taskId: 'main_homestead_supplies', category: 'main' },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.success, true);
+  // Reward = buildCost:house (food 30) paid into the active city resources.
+  assert.deepEqual(res.payload.reward.resources, { food: 30 });
+  assert.equal(res.payload.gameState.resources.food, 40);
+  assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseGuideReady);
+  assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseGuideReady);
+  assert.equal(Boolean(savedStates[0].taskProgress.claimed.main_homestead_supplies), true);
+});
+
+test('game routes walk the barracks, first-army, and scout-officer chain into formation save', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-barracks-first-army-test';
+  const builtAt = '2026-06-04T00:00:00.000Z';
+  const gameState = GameStateService.createInitialGameState(playerId);
+  gameState.currentEra = 2;
+  gameState.tutorial = TutorialService.manualAdvance(
+    gameState.tutorial,
+    TutorialService.TUTORIAL_STEPS.era3AdvanceReady,
+  );
+  const resources = { food: 900, knowledge: 400, wood: 300, iron: 0, stone: 0, metal: 0 };
+  const buildings = {
+    house: { level: 1, builtAt, upgradedAt: builtAt },
+    farm: { level: 1, builtAt, upgradedAt: builtAt },
+    lumbermill: { level: 1, builtAt, upgradedAt: builtAt },
+  };
+  gameState.resources = { ...resources };
+  gameState.buildings = { ...buildings };
+  gameState.population = { total: 4, max: 4, maxPop: 4, farmers: 3, scholars: 0, craftsmen: 1, unassigned: 0 };
+  gameState.eraHistory = [{ era: 0, advancedAt: builtAt }, { era: 1, advancedAt: builtAt }, { era: 2, advancedAt: builtAt }];
+  gameState.activeCityId = 'capital';
+  gameState.cities = {
+    capital: {
+      id: 'capital',
+      territoryId: 'capital',
+      isCapital: true,
+      resources: { ...resources },
+      buildings: { ...buildings },
+      population: { ...gameState.population },
+      military: { soldiers: 0, formations: { capital: [{ slot: 1, memberIds: [] }] } },
+    },
+  };
+  gameState.famousPeople = [];
+  gameState.famousPersonState = { candidates: [], seek: { count: 0, lastAt: null } };
+  gameState.taskProgress = { claimed: {} };
+
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return savedStates.length ? JSON.parse(JSON.stringify(savedStates.at(-1))) : gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    // Full normalize on every load: proves the first-army grant survives the
+    // reserve clamp while the tutorial floor window is active.
+    applyOnlineProgress(state) {
+      return GameStateService.normalizeState(state);
+    },
+    normalizeState(state) {
+      return GameStateService.normalizeState(state);
+    },
     getClientGameState: GameStateService.getClientGameState,
     calculateEraProgress: GameStateService.calculateEraProgress,
   };
   const authMiddleware = (req, res, next) => next();
 
   registerGameRoutes(app, { authMiddleware, repository, gameStateService });
-  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
-  const advanceReq = {
-    playerId: 'route-scout-famous-formation-test',
-    body: { action: 'advanceEra' },
+  const actionRoute = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const claimRoute = routes.find((item) => item.method === 'POST' && item.path === '/api/game/tasks/claim');
+  const runAction = (body) => {
+    const req = { playerId, body };
+    const res = createResponse();
+    actionRoute.handlers[0](req, res, () => actionRoute.handlers[1](req, res));
+    return res;
   };
-  const advanceRes = createResponse();
+  const runClaim = (taskId) => {
+    const req = { playerId, body: { taskId, category: 'main' } };
+    const res = createResponse();
+    claimRoute.handlers[0](req, res, () => claimRoute.handlers[1](req, res));
+    return res;
+  };
 
-  route.handlers[0](advanceReq, advanceRes, () => route.handlers[1](advanceReq, advanceRes));
-
+  // 1) Era 3 advance lands on era3Advanced and does NOT auto-grant the scout.
+  const advanceRes = runAction({ action: 'advanceEra' });
   assert.equal(advanceRes.statusCode, 200);
   assert.equal(advanceRes.payload.gameState.currentEra, 3);
-  assert.equal(advanceRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
-  assert.equal(savedStates[0].famousPeople.length, 1);
-  assert.equal(savedStates[0].famousPeople[0].quality, 'great');
-  assert.equal(savedStates[0].famousPeople[0].archetype, 'scout');
-  const personId = savedStates[0].tutorial.grants.scoutFamousPerson.personId;
+  assert.equal(advanceRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.era3Advanced);
+  assert.equal(savedStates.at(-1).famousPeople.length, 0);
+  assert.equal(savedStates.at(-1).tutorial.grants.scoutFamousPerson, undefined);
 
-  gameState.tutorial = TutorialService.manualAdvance(savedStates[0].tutorial, TutorialService.TUTORIAL_STEPS.formationPanelOpened);
-  const formationReq = {
-    playerId: 'route-scout-famous-formation-test',
-    body: { action: 'setArmyFormation', cityId: 'capital', slot: 1, memberIds: [personId] },
-  };
-  const formationRes = createResponse();
+  // 2) Claim the barracks supplies task (buildCost:barracks = food 260 + knowledge 80).
+  const foodBeforeBarracksClaim = savedStates.at(-1).cities.capital.resources.food;
+  const barracksClaimRes = runClaim('main_barracks_supplies');
+  assert.equal(barracksClaimRes.statusCode, 200);
+  assert.equal(barracksClaimRes.payload.success, true);
+  assert.deepEqual(barracksClaimRes.payload.reward.resources, { food: 260, knowledge: 80 });
+  assert.equal(barracksClaimRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.barracksSuppliesClaimed);
+  assert.equal(savedStates.at(-1).cities.capital.resources.food, foodBeforeBarracksClaim + 260);
 
-  route.handlers[0](formationReq, formationRes, () => route.handlers[1](formationReq, formationRes));
+  // 3) Client-gated buildings-tab step advances via tutorialAdvance.
+  const tabRes = runAction({ action: 'tutorialAdvance', step: TutorialService.TUTORIAL_STEPS.buildingsTabOpenedForBarracks });
+  assert.equal(tabRes.statusCode, 200);
+  assert.equal(tabRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.buildingsTabOpenedForBarracks);
 
+  // 4) Building the barracks advances the barracksBuilt event step.
+  const buildRes = runAction({ action: 'build', target: 'barracks' });
+  assert.equal(buildRes.statusCode, 200);
+  assert.equal(buildRes.payload.success, true);
+  assert.equal(buildRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.barracksBuilt);
+  assert.equal(savedStates.at(-1).cities.capital.buildings.barracks.level, 1);
+
+  // 5) Claim the first-army task: 1000 soldiers land in the city military and
+  //    survive normalization (barracks L1 cap is 300; the tutorial floor keeps them).
+  const firstArmyRes = runClaim('main_first_army');
+  assert.equal(firstArmyRes.statusCode, 200);
+  assert.equal(firstArmyRes.payload.success, true);
+  assert.equal(firstArmyRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
+  assert.equal(savedStates.at(-1).cities.capital.military.soldiers, 1000);
+  assert.equal(savedStates.at(-1).tutorial.grants.firstArmy.soldiers, 1000);
+
+  // 6) Claim the scout-officer task: the tutorial scout famous person joins.
+  const officerRes = runClaim('main_scout_officer');
+  assert.equal(officerRes.statusCode, 200);
+  assert.equal(officerRes.payload.success, true);
+  assert.equal(officerRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
+  assert.equal(savedStates.at(-1).famousPeople.length, 1);
+  assert.equal(savedStates.at(-1).famousPeople[0].quality, 'great');
+  assert.equal(savedStates.at(-1).famousPeople[0].archetype, 'scout');
+  const personId = savedStates.at(-1).tutorial.grants.scoutFamousPerson.personId;
+  assert.equal(savedStates.at(-1).famousPeople[0].id, personId);
+  // The first-army reserve is still floored while the formation guide runs.
+  assert.equal(savedStates.at(-1).cities.capital.military.soldiers, 1000);
+
+  // 7) Save the scout formation with the full 1000-soldier assignment.
+  const walked = repository.findByPlayerId(playerId);
+  walked.tutorial = TutorialService.manualAdvance(walked.tutorial, TutorialService.TUTORIAL_STEPS.formationPanelOpened);
+  savedStates.push(walked);
+  const formationRes = runAction({
+    action: 'setArmyFormation',
+    cityId: 'capital',
+    slot: 1,
+    memberIds: [personId],
+    soldierAssignments: { [personId]: 1000 },
+  });
   assert.equal(formationRes.statusCode, 200);
   assert.equal(formationRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFormationSaved);
   assert.deepEqual(formationRes.payload.formation.memberIds, [personId]);
-  assert.deepEqual(formationRes.payload.gameState.military.formations.capital[0].memberIds, [personId]);
+  assert.equal(formationRes.payload.formation.soldierAssignments[personId], 1000);
   assert.equal(savedStates.at(-1).tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFormationSaved);
-  assert.deepEqual(savedStates.at(-1).cities.capital.military.formations.capital[0].memberIds, [personId]);
+
+  // 8) After scoutFormationSaved the floor ends: the residual reserve re-clamps
+  //    to the barracks cap on the next normalize (assigned soldiers stay in the
+  //    formation).
+  const reNormalized = GameStateService.normalizeState(JSON.parse(JSON.stringify(savedStates.at(-1))));
+  assert.equal(reNormalized.cities.capital.military.soldiers, 300);
+  assert.equal(
+    reNormalized.cities.capital.military.formations.capital[0].soldierAssignments[personId],
+    1000,
+  );
 });
 
 test('game action route starts guided world march with planned tiles in client state', () => {

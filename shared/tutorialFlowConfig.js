@@ -30,6 +30,10 @@ const STEP_ORDER = Object.freeze([
   'lumbermillBuilt',
   'era3AdvanceReady',
   'era3Advanced',
+  'barracksSuppliesClaimed',
+  'buildingsTabOpenedForBarracks',
+  'barracksBuilt',
+  'firstArmyClaimed',
   'scoutFamousGranted',
   'famousPanelOpened',
   'famousCardViewed',
@@ -77,6 +81,7 @@ const EVENT_STEPS = Object.freeze({
   lumbermillBuilt: TUTORIAL_STEPS.lumbermillBuilt,
   era3AdvanceReady: TUTORIAL_STEPS.era3AdvanceReady,
   era3Advanced: TUTORIAL_STEPS.era3Advanced,
+  barracksBuilt: TUTORIAL_STEPS.barracksBuilt,
   scoutFamousGranted: TUTORIAL_STEPS.scoutFamousGranted,
   famousPanelOpened: TUTORIAL_STEPS.famousPanelOpened,
   famousCardViewed: TUTORIAL_STEPS.famousCardViewed,
@@ -104,6 +109,7 @@ const CLIENT_STEP_GATES = Object.freeze({
   [TUTORIAL_STEPS.buildingsTabOpened]: TUTORIAL_STEPS.eraAdvancedTo1,
   [TUTORIAL_STEPS.specialEventTabOpened]: TUTORIAL_STEPS.eraAdvancedTo2,
   [TUTORIAL_STEPS.buildingsTabOpenedForLumbermill]: TUTORIAL_STEPS.specialEventClaimed,
+  [TUTORIAL_STEPS.buildingsTabOpenedForBarracks]: TUTORIAL_STEPS.barracksSuppliesClaimed,
   [TUTORIAL_STEPS.famousPanelOpened]: TUTORIAL_STEPS.scoutFamousGranted,
   [TUTORIAL_STEPS.famousCardViewed]: TUTORIAL_STEPS.famousPanelOpened,
   [TUTORIAL_STEPS.formationPanelOpened]: TUTORIAL_STEPS.famousCardViewed,
@@ -117,8 +123,12 @@ const CLIENT_STEP_GATES = Object.freeze({
 
 // Task-center reward claim -> tutorial step advanced after claiming.
 const TASK_CLAIM_STEPS = Object.freeze({
+  main_homestead_supplies: TUTORIAL_STEPS.houseGuideReady,
   main_first_supplies: TUTORIAL_STEPS.farmPrepReserved,
   main_lumbermill_supplies: TUTORIAL_STEPS.era3AdvanceReady,
+  main_barracks_supplies: TUTORIAL_STEPS.barracksSuppliesClaimed,
+  main_first_army: TUTORIAL_STEPS.firstArmyClaimed,
+  main_scout_officer: TUTORIAL_STEPS.scoutFamousGranted,
 });
 
 // name -> index in STEP_ORDER; legacy number -> that number (floored, clamped

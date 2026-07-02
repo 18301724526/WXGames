@@ -45,7 +45,11 @@ test('tutorial module responsibilities remain split by public contract', () => {
   assert.equal(TutorialTabAccess.canAccessTab(houseReady, 'buildings'), true);
   assert.equal(TutorialActionValidator.validateAction(houseReady, 'build', { target: 'house' }, gameState).allowed, true);
   assert.equal(TutorialActionValidator.validateAction(houseReady, 'build', { target: 'farm' }, gameState).allowed, false);
-  assert.deepEqual(TutorialGrantService.getHouseGuideMinimumResources(), TutorialService.getHouseGuideMinimumResources());
+  // Grant cores are claim-driven (task rewards), not normalize-time ensures.
+  assert.deepEqual(
+    Object.keys(TutorialGrantService).sort(),
+    ['grantScoutFamousPerson', 'recordFirstArmyGrant'],
+  );
 });
 
 test('TutorialService facade preserves the legacy tutorial API', () => {
@@ -55,9 +59,6 @@ test('TutorialService facade preserves the legacy tutorial API', () => {
     'advanceTutorial',
     'canAccessTab',
     'createInitialTutorialState',
-    'ensureHouseGuideResources',
-    'ensureScoutFamousPersonGrant',
-    'getHouseGuideMinimumResources',
     'manualAdvance',
     'maybeActivateEra2Tutorial',
     'normalizeTutorialState',

@@ -1,5 +1,7 @@
 const CityService = require('../CityService');
+const MilitaryService = require('../MilitaryService');
 const TaskDefinitionService = require('../TaskDefinitionService');
+const TutorialGrantService = require('../tutorial/TutorialGrantService');
 
 function addResources(target, source = {}) {
   Object.entries(source || {}).forEach(([key, value]) => {
@@ -11,6 +13,36 @@ function addResources(target, source = {}) {
   return target;
 }
 
+// Soldier rewards land in the active city military, not in city resources.
+// Mechanics mirror the EventService {type:'soldiers'} effect: normalize with a
+// city-scoped context, then refresh derived city stats. The first-army grant is
+// recorded BEFORE the normalize so the reserve floor is already active and the
+// barracks cap cannot clamp the grant away in this same mutation.
+function applySoldierReward(gameState, city, soldiers) {
+  const amount = Math.max(0, Math.floor(Number(soldiers) || 0));
+  if (!amount) return;
+  TutorialGrantService.recordFirstArmyGrant(gameState, amount);
+  const current = Number(city.military?.soldiers) || 0;
+  city.military = MilitaryService.normalizeMilitaryState(
+    {
+      ...(city.military || {}),
+      soldiers: Math.max(0, current + amount),
+    },
+    { ...gameState, activeCityId: city.id, buildings: city.buildings, military: city.military },
+  );
+  CityService.applyDerivedStatsToCity(city, gameState);
+}
+
+// Famous-person rewards grant the tutorial scout (the only supported archetype;
+// TaskDefinitionNormalizer validates the config side).
+function applyFamousPersonReward(gameState, archetype) {
+  if (archetype !== 'scout')
+    return { success: false, error: `UNKNOWN_FAMOUS_PERSON_REWARD:${archetype}` };
+  const grant = TutorialGrantService.grantScoutFamousPerson(gameState);
+  if (!grant?.person) return { success: false, error: 'FAMOUS_PERSON_GRANT_FAILED' };
+  return { success: true };
+}
+
 function applyTaskReward(gameState, reward = {}) {
   CityService.normalizeCities(gameState);
   const city = CityService.getActiveCity(gameState);
@@ -19,7 +51,13 @@ function applyTaskReward(gameState, reward = {}) {
     ? { resources: reward.resources, errors: [] }
     : TaskDefinitionService.resolveRewardResources(reward);
   if (resolved.errors?.length) return { success: false, errors: resolved.errors, resources: {} };
-  city.resources = addResources(city.resources || {}, resolved.resources);
+  if (reward.famousPerson) {
+    const famous = applyFamousPersonReward(gameState, reward.famousPerson);
+    if (!famous.success) return { success: false, errors: [famous.error], resources: {} };
+  }
+  const { soldiers, ...cityResources } = resolved.resources || {};
+  city.resources = addResources(city.resources || {}, cityResources);
+  applySoldierReward(gameState, city, soldiers);
   return { success: true, errors: [], resources: resolved.resources };
 }
 

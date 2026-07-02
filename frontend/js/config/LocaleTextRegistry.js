@@ -468,6 +468,17 @@
       'tutorial.highlight.advanceEra': '条件已经满足，点击进阶，让文明迈入农耕时代。',
       'tutorial.highlight.openTaskCenter': '打开任务，领取第一份主线物资。',
       'tutorial.highlight.claimFirstSupplies': '领取“安居的火种”，准备建造第一块农田。',
+      'tutorial.highlight.openHomesteadTask': '打开任务，领取安家物资，先把住所安顿下来。',
+      'tutorial.highlight.claimHomesteadSupplies': '领取“安家物资”，用这批粮食建起第一处民居。',
+      'tutorial.highlight.openBarracksTask': '打开任务，领取兵营物资。',
+      'tutorial.highlight.claimBarracksSupplies': '领取“兵营物资”，为建设兵营备齐粮草。',
+      'tutorial.highlight.openBuildingsForBarracks': '打开建筑，为城邦选址建设兵营。',
+      'tutorial.highlight.buildBarracks': '建设兵营，让城邦拥有自己的常备军。',
+      'tutorial.highlight.openFirstArmyTask': '打开任务，领取军费组建首支军队。',
+      'tutorial.highlight.claimFirstArmy': '领取“组建首支军队”，一支千人军队将进入城防储备。',
+      'tutorial.highlight.openScoutOfficerTask': '打开任务，招募一位侦察官。',
+      'tutorial.highlight.claimScoutOfficer': '领取“侦察官”，一位善于侦察的名人将加入我们。',
+      'tutorial.highlight.replenishScoutFormation': '点击补兵，为编队补满士兵。',
       'tutorial.highlight.switchTalentTab': '切到人才标签，之后的人才调整都在这里完成。',
       'tutorial.highlight.switchTalentTabAdjust': '切到人才标签，手动调整一次岗位分配。',
       'tutorial.highlight.adjustTalentDetail':
@@ -723,6 +734,8 @@
       'worldSite.emptyCity': '空城',
       'tutorial.softGuide.claimSupplies':
         '火种已经越过最初的夜色。去任务里领取这份物资，我们就能准备第一块农田。',
+      'tutorial.softGuide.claimBarracksSupplies':
+        '城邦时代已经到来。先去任务里领取兵营物资，组建军队的第一步从这里开始。',
       'tutorial.intro.city':
         '前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。点一下首都看看。',
       'tutorial.intro.enter': '让队伍入城整备。只要根基扎稳，这座首都会慢慢长成我们的核心。',
@@ -1353,6 +1366,26 @@
       'tutorial.highlight.openTaskCenter': 'Open Tasks and claim your first main-line supplies.',
       'tutorial.highlight.claimFirstSupplies':
         'Claim “Spark of Settlement” and get ready to build your first farm.',
+      'tutorial.highlight.openHomesteadTask':
+        'Open Tasks and claim the homestead supplies to settle your people in.',
+      'tutorial.highlight.claimHomesteadSupplies':
+        'Claim “Homestead Supplies” and use the food to build your first house.',
+      'tutorial.highlight.openBarracksTask': 'Open Tasks and claim the barracks supplies.',
+      'tutorial.highlight.claimBarracksSupplies':
+        'Claim “Barracks Supplies” to stock up for the barracks build.',
+      'tutorial.highlight.openBuildingsForBarracks':
+        'Open Buildings and pick a spot for the barracks.',
+      'tutorial.highlight.buildBarracks':
+        'Build the barracks so the city-state has a standing army.',
+      'tutorial.highlight.openFirstArmyTask':
+        'Open Tasks and claim the funds to raise your first army.',
+      'tutorial.highlight.claimFirstArmy':
+        'Claim “Raise Your First Army” — a thousand soldiers join the city reserve.',
+      'tutorial.highlight.openScoutOfficerTask': 'Open Tasks and recruit a scout officer.',
+      'tutorial.highlight.claimScoutOfficer':
+        'Claim “Scout Officer” — a famous person skilled in scouting joins you.',
+      'tutorial.highlight.replenishScoutFormation':
+        'Tap Replenish to fill the formation with soldiers.',
       'tutorial.highlight.switchTalentTab':
         'Switch to the Talent tab — all talent tuning happens here.',
       'tutorial.highlight.switchTalentTabAdjust':
@@ -1618,6 +1651,8 @@
       'worldSite.emptyCity': 'Empty City',
       'tutorial.softGuide.claimSupplies':
         'The spark has survived its first night. Claim these supplies in Tasks and we can prepare the first farm.',
+      'tutorial.softGuide.claimBarracksSupplies':
+        'The city-state era has arrived. Claim the barracks supplies in Tasks — raising an army starts there.',
       'tutorial.intro.city':
         'The fog ahead has lifted. Mountains behind, water in front, level ground — a fine place for a base. Tap the capital to take a look.',
       'tutorial.intro.enter':

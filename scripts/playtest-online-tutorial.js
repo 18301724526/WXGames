@@ -25,6 +25,10 @@ const CONFIG = {
 // Single source: shared/tutorialFlowConfig.js (index -> step name).
 const TutorialFlowShared = require('../shared/tutorialFlowConfig');
 const STEP_NAMES = TutorialFlowShared.STEP_ORDER;
+const STEPS = TutorialFlowShared.TUTORIAL_STEPS;
+// Scripted fallbacks compare the runtime numeric index against named steps so
+// STEP_ORDER insertions never silently retarget a branch.
+const stepIndexOf = (name) => TutorialFlowShared.stepIndex(name);
 const COMPLETED_STEP_INDEX = TutorialFlowShared.stepIndex(
   TutorialFlowShared.TUTORIAL_STEPS.completed,
 );
@@ -543,6 +547,10 @@ async function getState(page) {
         activeCityId: game.state.activeCityId,
         buildings: game.state.buildings,
         resources: game.state.resources,
+        military: game.state.military ? {
+          soldiers: Number(game.state.military.soldiers) || 0,
+          soldierCap: Number(game.state.military.soldierCap) || 0,
+        } : null,
         eventQueue: Array.isArray(game.state.eventQueue) ? game.state.eventQueue.map((event) => ({
           id: event.id,
           status: event.status,
@@ -1236,81 +1244,183 @@ async function chooseNextAction(page, iteration) {
   }
 
   const step = state.tutorialStep;
-  if (step === 3 || step === 8 || step === 14) {
-    const buildingId = step === 3 ? 'house' : (step === 8 ? 'farm' : 'lumbermill');
+  const stepIs = (name) => step === stepIndexOf(name);
+  if (stepIs(STEPS.cityEntered) && !state.taskCenterOpen) {
+    return clickByPredicate(page, `open-task-center-homestead-${iteration}`, (action) => (
+      action.type === 'openTaskCenter' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.cityEntered) && state.taskCenterOpen) {
+    return clickByPredicate(page, `claim-homestead-task-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_homestead_supplies' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.houseGuideReady) || stepIs(STEPS.farmPrepReserved) || stepIs(STEPS.buildingsTabOpenedForLumbermill)) {
+    const buildingId = stepIs(STEPS.houseGuideReady) ? 'house' : (stepIs(STEPS.farmPrepReserved) ? 'farm' : 'lumbermill');
     return clickByPredicate(page, `build-${buildingId}-${iteration}`, (action) => (
       action.type === 'buildBuilding' && action.buildingId === buildingId && !action.disabled
     ));
   }
-  if (step === 4 || step === 10 || step === 16) {
+  if (stepIs(STEPS.houseBuilt) || stepIs(STEPS.era2AdvanceReady) || stepIs(STEPS.era3AdvanceReady)) {
+    if (stepIs(STEPS.era3AdvanceReady) && state.taskCenterOpen) {
+      return clickByPredicate(page, `claim-lumber-task-${iteration}`, (action) => (
+        action.type === 'claimTaskReward' && action.taskId === 'main_lumbermill_supplies' && !action.disabled
+      ));
+    }
     return clickByPredicate(page, `open-civilization-${iteration}`, (action) => (
       action.type === 'openCommandPanel' && action.panel === 'civilization' && !action.disabled
     ));
   }
-  if (step === 5 || step === 11 || step === 17) {
+  if (stepIs(STEPS.civilizationTabOpened) || stepIs(STEPS.eraAdvancedTo2)) {
     return clickByPredicate(page, `advance-era-${iteration}`, (action) => action.type === 'advanceEra' && !action.disabled);
   }
-  if (step === 6 || step === 15) {
+  if (stepIs(STEPS.eraAdvancedTo1) || stepIs(STEPS.lumbermillBuilt)) {
     return clickByPredicate(page, `open-task-center-${iteration}`, (action) => action.type === 'openTaskCenter' && !action.disabled);
   }
-  if (step === 7) {
+  if (stepIs(STEPS.buildingsTabOpened)) {
     return clickByPredicate(page, `claim-first-task-${iteration}`, (action) => (
       action.type === 'claimTaskReward' && action.taskId === 'main_first_supplies' && !action.disabled
     ));
   }
-  if (step === 12) {
+  if (stepIs(STEPS.specialEventTabOpened)) {
     return clickByPredicate(page, `open-events-${iteration}`, (action) => (
       action.type === 'openCommandPanel' && action.panel === 'events' && !action.disabled
     ));
   }
-  if (step === 13 && !state.activeEventId) {
+  if (stepIs(STEPS.specialEventClaimed) && !state.activeEventId) {
     return clickByPredicate(page, `open-forest-event-${iteration}`, (action) => (
       action.type === 'openEvent' && !action.disabled
     ));
   }
-  if (step === 13 && state.activeEventId) {
+  if (stepIs(STEPS.specialEventClaimed) && state.activeEventId) {
     return clickByPredicate(page, `claim-forest-event-${iteration}`, (action) => (
       action.type === 'claimEvent' && !action.disabled
     ));
   }
-  if (step === 16 && state.taskCenterOpen) {
-    return clickByPredicate(page, `claim-lumber-task-${iteration}`, (action) => (
-      action.type === 'claimTaskReward' && action.taskId === 'main_lumbermill_supplies' && !action.disabled
+  // Barracks segment: claim supplies -> open buildings -> build barracks ->
+  // claim the first army -> claim the scout officer.
+  if (stepIs(STEPS.era3Advanced) && !state.taskCenterOpen) {
+    return clickByPredicate(page, `open-task-center-barracks-${iteration}`, (action) => (
+      action.type === 'openTaskCenter' && !action.disabled
     ));
   }
-  if (step === 18) {
+  if (stepIs(STEPS.era3Advanced) && state.taskCenterOpen) {
+    return clickByPredicate(page, `claim-barracks-supplies-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_barracks_supplies' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.barracksSuppliesClaimed)) {
+    return clickByPredicate(page, `open-buildings-for-barracks-${iteration}`, (action) => (
+      action.type === 'openCommandPanel' && action.panel === 'buildings' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.buildingsTabOpenedForBarracks)) {
+    return clickByPredicate(page, `build-barracks-${iteration}`, (action) => (
+      action.type === 'buildBuilding' && action.buildingId === 'barracks' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.barracksBuilt) && !state.taskCenterOpen) {
+    return clickByPredicate(page, `open-task-center-first-army-${iteration}`, (action) => (
+      action.type === 'openTaskCenter' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.barracksBuilt) && state.taskCenterOpen) {
+    return clickByPredicate(page, `claim-first-army-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_first_army' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.firstArmyClaimed)) {
+    // In-window invariant: the claimed 1000-soldier army must survive every
+    // server normalize (barracks L1 cap is 300; the tutorial floor keeps it).
+    const reserveSoldiers = Number(state.stateSummary?.military?.soldiers ?? 0);
+    if (reserveSoldiers < 1000) {
+      await writeSnapshot(page, `first-army-reserve-too-low-${iteration}`, state);
+      throw createVerificationFailure('first-army-reserve', 'first-army reserve dropped below the granted 1000 soldiers', {
+        reserveSoldiers,
+        military: state.stateSummary?.military || null,
+      });
+    }
+    if (!state.taskCenterOpen) {
+      return clickByPredicate(page, `open-task-center-officer-${iteration}`, (action) => (
+        action.type === 'openTaskCenter' && !action.disabled
+      ));
+    }
+    return clickByPredicate(page, `claim-scout-officer-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_scout_officer' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.scoutFamousGranted)) {
     return clickByPredicate(page, `open-famous-${iteration}`, (action) => action.type === 'openFamousPersons' && !action.disabled);
   }
-  if (step === 19) {
+  if (stepIs(STEPS.famousPanelOpened)) {
     return clickByPredicate(page, `open-famous-detail-${iteration}`, (action) => action.type === 'openFamousPersonDetail' && !action.disabled);
   }
-  if (step === 20 && state.selectedFamousPersonId) {
+  if (stepIs(STEPS.famousCardViewed) && state.selectedFamousPersonId) {
     return clickByPredicate(page, `close-famous-detail-${iteration}`, (action) => action.type === 'closeFamousPersonDetail' && !action.disabled);
   }
-  if (step === 20 && state.showFamousPersons) {
+  if (stepIs(STEPS.famousCardViewed) && state.showFamousPersons) {
     return clickByPredicate(page, `close-famous-${iteration}`, (action) => action.type === 'closeFamousPersons' && !action.disabled);
   }
-  if (step === 20 && !state.cityManagementOpen) {
+  if (stepIs(STEPS.famousCardViewed) && !state.cityManagementOpen) {
     return clickByPredicate(page, `open-capital-for-formation-${iteration}`, (action) => (
       action.type === 'openWorldSite' && (!action.siteId || action.siteId === 'capital') && !action.disabled
     ));
   }
-  if (step === 20 && state.cityManagementOpen && state.activeCityManagementTab !== 'military') {
+  if (stepIs(STEPS.famousCardViewed) && state.cityManagementOpen && state.activeCityManagementTab !== 'military') {
     return clickByPredicate(page, `switch-city-military-${iteration}`, (action) => (
       action.type === 'switchCityManagementTab' && action.tab === 'military' && !action.disabled
     ));
   }
-  if (step === 20 && state.cityManagementOpen) {
+  if (stepIs(STEPS.famousCardViewed) && state.cityManagementOpen) {
     return clickByPredicate(page, `open-army-formation-${iteration}`, (action) => (
       action.type === 'openArmyFormation' && !action.disabled
     ));
   }
-  if (step === 21 && state.armyFormationEditor?.open) {
+  if (stepIs(STEPS.formationPanelOpened) && state.armyFormationEditor?.open) {
     const memberTarget = findTarget(state, (action) => action.type === 'toggleArmyFormationMember' && !action.disabled);
     if (memberTarget) return clickTarget(page, `toggle-formation-member-${iteration}`, state, memberTarget);
-    return clickByPredicate(page, `save-army-formation-${iteration}`, (action) => action.type === 'saveArmyFormation' && !action.disabled);
+    const editor = state.armyFormationEditor;
+    const scoutId = String((editor.memberIds || [])[0] || '');
+    const draftSoldiers = Number(
+      (editor.soldierDraftAssignments || {})[scoutId]
+      ?? (editor.soldierAssignments || {})[scoutId]
+      ?? 0,
+    );
+    if (draftSoldiers <= 0) {
+      const replenished = await clickByPredicate(page, `auto-replenish-formation-${iteration}`, (action) => (
+        action.type === 'autoReplenishArmyFormation' && !action.disabled
+      ));
+      const afterReplenish = await getState(page);
+      const afterDraft = Number(
+        (afterReplenish.armyFormationEditor?.soldierDraftAssignments || {})[scoutId]
+        ?? (afterReplenish.armyFormationEditor?.soldierAssignments || {})[scoutId]
+        ?? 0,
+      );
+      if (afterDraft < 1000) {
+        await writeSnapshot(page, `replenish-draft-too-low-${iteration}`, afterReplenish);
+        throw createVerificationFailure('auto-replenish-draft', 'auto-replenish did not fill the scout draft to 1000 soldiers', {
+          scoutId,
+          afterDraft,
+          editor: afterReplenish.armyFormationEditor || null,
+        });
+      }
+      return replenished;
+    }
+    const foodBeforeSave = Number(state.stateSummary?.resources?.food ?? NaN);
+    const saved = await clickByPredicate(page, `save-army-formation-${iteration}`, (action) => action.type === 'saveArmyFormation' && !action.disabled);
+    const afterSave = await getState(page);
+    const foodAfterSave = Number(afterSave.stateSummary?.resources?.food ?? NaN);
+    // Assignment is free (recruit-time food cost only): saving must not deduct food.
+    if (Number.isFinite(foodBeforeSave) && Number.isFinite(foodAfterSave) && foodAfterSave < foodBeforeSave) {
+      await writeSnapshot(page, `formation-save-food-deducted-${iteration}`, afterSave);
+      throw createVerificationFailure('formation-save-food', 'formation save deducted food (assignment must be free)', {
+        foodBeforeSave,
+        foodAfterSave,
+      });
+    }
+    return saved;
   }
-  if (step === 22) {
+  if (stepIs(STEPS.scoutFormationSaved)) {
     const mapTarget = findTarget(state, (action) => action.type === 'selectWorldMarchTarget' && !action.disabled);
     if (mapTarget) return clickTarget(page, `select-world-march-target-${iteration}`, state, mapTarget);
     await writeSnapshot(page, `missing-world-march-target-step-${step}-${iteration}`, state);
@@ -1321,20 +1431,20 @@ async function chooseNextAction(page, iteration) {
       targets: state.hitTargets.map((item) => item.action).slice(-100),
     });
   }
-  if (step === 23 && !state.territoryUiState?.worldMarchTarget?.pickerOpen) {
+  if (stepIs(STEPS.scoutWorldPanelOpened) && !state.territoryUiState?.worldMarchTarget?.pickerOpen) {
     return clickByPredicate(page, `open-world-march-picker-${iteration}`, (action) => (
       action.type === 'openWorldMarchFormationPicker' && !action.disabled
     ));
   }
-  if (step === 23 && state.territoryUiState?.worldMarchTarget?.pickerOpen) {
+  if (stepIs(STEPS.scoutWorldPanelOpened) && state.territoryUiState?.worldMarchTarget?.pickerOpen) {
     return clickByPredicate(page, `start-world-march-${iteration}`, (action) => (
       action.type === 'startWorldMarch' && !action.disabled
     ));
   }
-  if (step === 24) {
+  if (stepIs(STEPS.scoutExploreStarted)) {
     return recordWaitAction(page, `wait-explore-${iteration}`, state, { type: 'waitExplore' }, 2000, 3600);
   }
-  if (step === 25) {
+  if (stepIs(STEPS.firstCityDiscovered)) {
     let siteId = getFirstCitySiteId(state);
     if (!state.territoryUiState?.selectedSiteId || (siteId && state.territoryUiState.selectedSiteId !== siteId)) {
       return clickByPredicate(
@@ -1371,24 +1481,24 @@ async function chooseNextAction(page, iteration) {
       action.type === 'conquer' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
     ));
   }
-  if (step === 26) {
+  if (stepIs(STEPS.firstCityConquestStarted)) {
     const siteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId || state.territoryUiState?.selectedSiteId || '';
     return clickByPredicate(page, `claim-first-city-${iteration}`, (action) => (
       action.type === 'claimConquest' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
     ));
   }
-  if (step === 27) {
+  if (stepIs(STEPS.firstCityOccupied)) {
     const siteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId || state.territoryUiState?.selectedSiteId || '';
     return clickByPredicate(page, `rename-first-city-${iteration}`, (action) => (
       action.type === 'renameCity' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
     ));
   }
-  if (step === 29) {
+  if (stepIs(STEPS.polityNamed)) {
     return clickByPredicate(page, `open-city-people-${iteration}`, (action) => (
       action.type === 'openCityManagement' && (action.tab || 'people') === 'people' && !action.disabled
     ));
   }
-  if (step === 30) {
+  if (stepIs(STEPS.talentPolicyOpened)) {
     if (!state.cityManagementOpen) {
       const opened = findTarget(state, (action) => (
         action.type === 'openCityManagement' && (action.tab || 'people') === 'people' && !action.disabled
@@ -1399,17 +1509,17 @@ async function chooseNextAction(page, iteration) {
       action.type === 'switchCityManagementTab' && action.tab === 'people' && !action.disabled
     ));
   }
-  if (step === 31) {
+  if (stepIs(STEPS.talentPolicyApplied)) {
     return clickByPredicate(page, `assign-manual-talent-${iteration}`, (action) => (
       action.type === 'assignJob' && Number(action.delta) !== 0 && !action.disabled
     ));
   }
-  if (step === 32) {
+  if (stepIs(STEPS.manualTalentAssigned)) {
     return clickByPredicate(page, `open-famous-for-seek-${iteration}`, (action) => (
       action.type === 'openFamousPersons' && !action.disabled
     ));
   }
-  if (step === 33) {
+  if (stepIs(STEPS.famousSeekOpened)) {
     if (!state.showFamousPersons) {
       const openFamous = findTarget(state, (action) => action.type === 'openFamousPersons' && !action.disabled);
       if (openFamous) return clickTarget(page, `open-famous-for-seek-${iteration}`, state, openFamous);
@@ -1418,12 +1528,12 @@ async function chooseNextAction(page, iteration) {
       action.type === 'seekFamousPerson' && !action.disabled
     ));
   }
-  if (step === 34) {
+  if (stepIs(STEPS.famousSeekCompleted)) {
     return clickByPredicate(page, `open-final-tech-${iteration}`, (action) => (
       action.type === 'openCommandPanel' && action.panel === 'tech' && !action.disabled
     ));
   }
-  if (step === 35) {
+  if (stepIs(STEPS.finalTechOpened)) {
     const advisor = await closeAdvisorDialogueIfOpen(page);
     if (advisor) return advisor;
     await writeSnapshot(page, `blocked-final-tech-step-${step}-${iteration}`, state);

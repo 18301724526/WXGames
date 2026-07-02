@@ -82,6 +82,63 @@ test('claiming a task reward is idempotent and rejects duplicates', () => {
   assert.equal(gameState.cities.capital.resources.knowledge, 5);
 });
 
+function getMainTask(gameState, taskId) {
+  return TaskCenterService.getTaskCenter(gameState, { activeTab: 'main' })
+    .categories.main.tasks.find((task) => task.id === taskId);
+}
+
+test('claiming the first-army task pays soldiers into the city military with the grant record', () => {
+  const gameState = createMainTaskState({
+    currentEra: 3,
+    tutorialStep: TutorialService.TUTORIAL_STEPS.barracksBuilt,
+  });
+  gameState.buildings.barracks = { level: 1 };
+  gameState.cities.capital.buildings.barracks = { level: 1 };
+
+  assert.equal(getMainTask(gameState, 'main_first_army').status, 'claimable');
+  assert.equal(getMainTask(gameState, 'main_first_army').rewardText, '士兵+1000');
+
+  const result = TaskCenterService.claimTask(gameState, 'main_first_army', 'main');
+
+  assert.equal(result.success, true);
+  // Soldiers are NOT a city resource: they land in the city military.
+  assert.equal(gameState.cities.capital.resources.soldiers, undefined);
+  assert.equal(gameState.cities.capital.military.soldiers, 1000);
+  assert.equal(gameState.tutorial.grants.firstArmy.soldiers, 1000);
+  assert.equal(typeof gameState.tutorial.grants.firstArmy.grantedAt, 'string');
+  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
+
+  const duplicate = TaskCenterService.claimTask(gameState, 'main_first_army', 'main');
+  assert.equal(duplicate.success, false);
+  assert.equal(duplicate.error, 'TASK_ALREADY_CLAIMED');
+  assert.equal(gameState.cities.capital.military.soldiers, 1000);
+});
+
+test('claiming the scout-officer task grants the tutorial scout famous person once', () => {
+  const gameState = createMainTaskState({
+    currentEra: 3,
+    tutorialStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
+  });
+  gameState.famousPeople = [];
+  gameState.famousPersonState = { candidates: [], seek: { count: 0, lastAt: null } };
+
+  assert.equal(getMainTask(gameState, 'main_scout_officer').status, 'claimable');
+  const result = TaskCenterService.claimTask(gameState, 'main_scout_officer', 'main');
+
+  assert.equal(result.success, true);
+  assert.equal(gameState.famousPeople.length, 1);
+  assert.equal(gameState.famousPeople[0].archetype, 'scout');
+  assert.equal(gameState.famousPeople[0].quality, 'great');
+  assert.equal(gameState.tutorial.grants.scoutFamousPerson.personId, gameState.famousPeople[0].id);
+  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
+
+  // Double-claim attempts are rejected before the grant core runs.
+  const duplicate = TaskCenterService.claimTask(gameState, 'main_scout_officer', 'main');
+  assert.equal(duplicate.success, false);
+  assert.equal(duplicate.error, 'TASK_ALREADY_CLAIMED');
+  assert.equal(gameState.famousPeople.length, 1);
+});
+
 test('main lumbermill supplies wait for lumbermill and pay next era cost', () => {
   const gameState = createMainTaskState({
     food: 11,
