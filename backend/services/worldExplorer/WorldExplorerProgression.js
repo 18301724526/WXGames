@@ -9,9 +9,6 @@ const {
   normalizePlannedSite,
   normalizeMissions,
 } = require('./WorldExplorerMissionNormalizer');
-const {
-  ensureTutorialFirstCityClaimSoldiers,
-} = require('./WorldExplorerTutorial');
 const { manualAdvance } = require('../tutorial/TutorialProgression');
 const WorldExplorerTrace = require('./WorldExplorerTrace');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
@@ -288,7 +285,6 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       settleReturnedFormationSnapshot(gameState, mission, now);
       if (mission.status === 'idle' && gameState.tutorial?.currentStep === TUTORIAL_STEPS.scoutExploreStarted) {
         gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.firstCityDiscovered);
-        ensureTutorialFirstCityClaimSoldiers(gameState);
       }
     }
     WorldExplorerTrace.log('progression:advanceMission:after', {

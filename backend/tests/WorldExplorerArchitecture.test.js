@@ -316,7 +316,6 @@ test('WorldExplorerService facade exposes only the actor march API', () => {
     'TUTORIAL_FIRST_SITE_GRANT_KEY',
     'advanceExploreMissions',
     'buildManualRoute',
-    'ensureTutorialFirstCityClaimSoldiers',
     'getClientState',
     'normalizeExploreState',
     'normalizeMission',

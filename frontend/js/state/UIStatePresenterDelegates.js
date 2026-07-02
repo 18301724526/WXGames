@@ -164,7 +164,6 @@
       'buildWorldExpeditionDraftViewState',
       'buildWorldExpeditionConfigViewState',
       'makeWorldSiteActionButton',
-      'isGuidedFirstCitySettlement',
       'buildWorldSiteActionViewState',
       'getWorldSiteLastBattleNote',
       'getWorldSiteBattleReportLines',
@@ -623,9 +622,6 @@
     });
     defineStaticMethod(UIStatePresenter, 'makeWorldSiteActionButton', function makeWorldSiteActionButton(...args) {
       return WorldSitePresenter.makeWorldSiteActionButton(...args);
-    });
-    defineStaticMethod(UIStatePresenter, 'isGuidedFirstCitySettlement', function isGuidedFirstCitySettlement(...args) {
-      return WorldSitePresenter.isGuidedFirstCitySettlement(...args);
     });
     defineStaticMethod(UIStatePresenter, 'buildWorldSiteActionViewState', function buildWorldSiteActionViewState(...args) {
       return WorldSitePresenter.buildWorldSiteActionViewState(...args);

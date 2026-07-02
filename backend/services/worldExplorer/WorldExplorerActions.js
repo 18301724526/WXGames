@@ -16,7 +16,6 @@ const {
 } = require('./WorldExplorerRoutePlanner');
 const {
   validateTutorialFormation,
-  ensureTutorialFirstCityClaimSoldiers,
 } = require('./WorldExplorerTutorial');
 const { manualAdvance } = require('../tutorial/TutorialProgression');
 const {

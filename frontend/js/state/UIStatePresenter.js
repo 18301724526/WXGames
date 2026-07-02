@@ -13,7 +13,6 @@
 
   class UIStatePresenter {
     static POPULATION_PER_OFFICIAL = 100;
-    static MIN_EXPEDITION_SOLDIERS = 100;
   }
 
   Object.assign(UIStatePresenter, UIStatePresenterDelegates.createStaticMethods());

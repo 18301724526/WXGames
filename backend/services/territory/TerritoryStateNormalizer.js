@@ -258,7 +258,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
             leader: typeof mission.expedition?.leader === 'string' && mission.expedition.leader.trim()
               ? mission.expedition.leader.trim()
               : 'unavailable',
-            soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, normalizeSoldierScale(mission.expedition?.soldiers || mission.soldiersCommitted, MIN_EXPEDITION_SOLDIERS)),
+            soldiers: normalizeSoldierScale(mission.expedition?.soldiers || mission.soldiersCommitted, 0),
           },
           startedAt: mission.startedAt || new Date().toISOString(),
           completesAt: mission.completesAt || new Date().toISOString(),

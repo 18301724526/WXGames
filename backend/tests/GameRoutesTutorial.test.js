@@ -900,7 +900,9 @@ test('game action route enforces guided first empty city occupation target', () 
   assert.equal(allowedRes.payload.success, true);
   assert.equal(allowedRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityConquestStarted);
   assert.equal(savedStates.at(-1).warMissions[0].status, 'ready');
-  assert.equal(savedStates.at(-1).cities.capital.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  // Settlement occupation consumes no soldiers and receives no tutorial grant.
+  assert.equal(savedStates.at(-1).warMissions[0].soldiersCommitted, 0);
+  assert.equal(savedStates.at(-1).cities.capital.military.soldiers, 0);
 });
 
 test('game action route retries once when worker saves a newer revision first', () => {

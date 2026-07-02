@@ -6,7 +6,6 @@ const GameStateNormalizer = require('../services/GameStateNormalizer');
 const ClientGameStateAssembler = require('../services/ClientGameStateAssembler');
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 const TutorialService = require('../services/TutorialService');
-const TerritoryService = require('../services/TerritoryService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 
 function clone(value) {
@@ -170,7 +169,7 @@ test('initial game state keeps the legacy origin when no spawn assignment is pro
   assert.equal(initial.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), true);
 });
 
-test('guided first city settlement soldiers survive state normalization', () => {
+test('guided first city flow grants no soldiers during state normalization', () => {
   const siteId = 'site_3_1';
   const rawState = {
     playerId: 'tutorial-settlement-soldier-normalize-test',
@@ -208,8 +207,11 @@ test('guided first city settlement soldiers survive state normalization', () => 
 
   const normalized = GameStateService.normalizeState(rawState);
 
-  assert.equal(normalized.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
-  assert.equal(normalized.military.soldierCap, TerritoryService.MIN_EXPEDITION_SOLDIERS);
-  assert.equal(normalized.military.availableSoldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
-  assert.equal(normalized.cities.capital.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  // Settlement of the guided first empty city needs no soldiers, so normalization
+  // must not grant any: military stays exactly what training produced (here zero).
+  assert.equal(normalized.military.soldiers, 0);
+  assert.equal(normalized.military.soldierCap, 0);
+  assert.equal(normalized.military.availableSoldiers, 0);
+  assert.equal(normalized.cities.capital.military.soldiers, 0);
+  assert.equal(normalized.tutorial.grants.firstExploreEmptyCity.settlementSoldiersGranted, undefined);
 });

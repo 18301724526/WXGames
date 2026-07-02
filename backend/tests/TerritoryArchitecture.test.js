@@ -563,6 +563,8 @@ test('territory military missions module owns selectors and soldier allocation c
     { cityId: 'outpost', soldiers: 40 },
   ]);
   assert.equal(MilitaryMissions.allocateSoldiersForMission(gameState, 999), null);
+  // A zero-soldier mission (settlement) allocates successfully without drafting anyone.
+  assert.deepEqual(MilitaryMissions.allocateSoldiersForMission(gameState, 0), []);
 });
 
 test('territory military missions module advances scout reveal steps and enforces scout limit', () => {
@@ -1091,10 +1093,13 @@ test('territory conquest missions module owns settlement and battle resolution c
 
   assert.equal(Conquest.getOccupationMode({ owner: 'neutral' }), 'settlement');
   assert.equal(Conquest.getOccupationMode({ owner: 'tribe' }), 'conquest');
-  assert.equal(Conquest.normalizeExpeditionConfig({ soldiers: 20 }, { owner: 'tribe', defense: 250 }).soldiers, TerritoryConstants.MIN_EXPEDITION_SOLDIERS);
+  // Combat expeditions keep the requested amount (floor of 1); settlement needs no soldiers.
+  assert.equal(Conquest.normalizeExpeditionConfig({ soldiers: 20 }, { owner: 'tribe', defense: 250 }).soldiers, 20);
+  assert.equal(Conquest.normalizeExpeditionConfig({}, { owner: 'tribe', defense: 250 }).soldiers, 250);
+  assert.equal(Conquest.normalizeExpeditionConfig({ soldiers: 500 }, { owner: 'neutral' }).soldiers, 0);
 
   const settlementState = {
-    availableSoldiers: TerritoryConstants.MIN_EXPEDITION_SOLDIERS,
+    availableSoldiers: 0,
     activeCityId: 'capital',
     warMissions: [],
     territories: [{
@@ -1110,7 +1115,8 @@ test('territory conquest missions module owns settlement and battle resolution c
   const startedSettlement = Conquest.startConquest(settlementState, 'site-1', {}, now);
   assert.equal(startedSettlement.success, true);
   assert.equal(startedSettlement.mission.mode, 'settlement');
-  assert.equal(startedSettlement.mission.soldiersCommitted, TerritoryConstants.MIN_EXPEDITION_SOLDIERS);
+  // Settlement occupation launches with zero reserve soldiers and commits zero.
+  assert.equal(startedSettlement.mission.soldiersCommitted, 0);
   assert.equal(settlementState.territories[0].status, 'contested');
   settlementState.warMissions[0].status = 'ready';
   const claimedSettlement = Conquest.claimConquest(settlementState, 'site-1', now);

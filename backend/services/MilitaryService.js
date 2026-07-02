@@ -7,7 +7,6 @@ const FormationStrengthService = require('./military/FormationStrengthService');
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
-const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
 const FORMATION_NAMES = ['Formation 1', 'Formation 2', 'Formation 3'];
 // Formations have no user-set name (the client never sends one), so the slot label is purely a
 // localized default rendered by the client. Persisting the English default ('Formation N') leaked
@@ -55,19 +54,6 @@ function toNonNegativeNumber(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0) return 0;
   return number;
-}
-
-function getTutorialSettlementSoldierFloor(gameState = {}) {
-  const tutorial = gameState?.tutorial || {};
-  if (tutorial.completed || tutorial.disabled) return 0;
-  const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TutorialFlowConfig.TUTORIAL_STEPS.firstCityDiscovered || step > TutorialFlowConfig.TUTORIAL_STEPS.firstCityConquestStarted) return 0;
-  const siteId = tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
-  if (!siteId) return 0;
-  const target = (Array.isArray(gameState.territories) ? gameState.territories : [])
-    .find((territory) => String(territory?.id || '') === String(siteId));
-  if (!target || target.owner === 'player' || target.status === 'occupied') return 0;
-  return TerritoryService.MIN_EXPEDITION_SOLDIERS;
 }
 
 function buildSoldierAvailabilityState(gameState = {}, soldiers = 0) {
@@ -182,11 +168,10 @@ function normalizeArmyFormations(rawFormations, gameState = {}) {
 
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
-  const tutorialSoldierFloor = getTutorialSettlementSoldierFloor(gameState);
-  const cap = Math.max(0, Math.floor(stats.soldierCap || 0), tutorialSoldierFloor);
+  const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
   const batchSize = Math.max(0, Math.floor(Number(stats.trainingBatchSize || 0)));
-  const soldiers = Math.min(cap, Math.max(Math.floor(toNonNegativeNumber(rawMilitary?.soldiers)), tutorialSoldierFloor));
+  const soldiers = Math.min(cap, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers)));
   const trainingProgress = cap > 0 && soldiers < cap && interval > 0
     ? Math.min(interval, toNonNegativeNumber(rawMilitary?.trainingProgress))
     : 0;

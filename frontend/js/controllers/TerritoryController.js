@@ -27,8 +27,6 @@
   })();
 
   class TerritoryController {
-    static MIN_EXPEDITION_SOLDIERS = 100;
-
     constructor(options = {}) {
       this.actionAdapter = options.actionAdapter || null;
       this.api = options.api;
@@ -161,12 +159,12 @@
     }
 
     getExpeditionDraft(site = this.getSelectedSite()) {
-      const recommended = Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Number(site?.recommendedSoldiers) || Number(site?.defense) || TerritoryController.MIN_EXPEDITION_SOLDIERS);
+      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
       return {
         territoryId: this.uiState.expeditionConfigSiteId || '',
         troopType: this.uiState.expeditionTroopType || 'unavailable',
         leader: this.uiState.expeditionLeader || 'unavailable',
-        soldiers: Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Number(this.uiState.expeditionSoldiers) || recommended),
+        soldiers: Math.max(1, Number(this.uiState.expeditionSoldiers) || recommended),
       };
     }
 
@@ -174,7 +172,7 @@
       if (draft.territoryId) this.uiState.expeditionConfigSiteId = draft.territoryId;
       if (draft.troopType) this.uiState.expeditionTroopType = draft.troopType;
       if (draft.leader) this.uiState.expeditionLeader = draft.leader;
-      if (draft.soldiers) this.uiState.expeditionSoldiers = String(Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Math.floor(Number(draft.soldiers) || TerritoryController.MIN_EXPEDITION_SOLDIERS)));
+      if (draft.soldiers) this.uiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(draft.soldiers) || 1)));
       this.onRenderRequested();
     }
 
@@ -195,7 +193,7 @@
         territoryId,
         troopType: 'unavailable',
         leader: leader?.id || 'unavailable',
-        soldiers: territory.recommendedSoldiers || territory.defense || TerritoryController.MIN_EXPEDITION_SOLDIERS,
+        soldiers: territory.recommendedSoldiers || territory.defense || 1,
       });
     }
 
@@ -204,7 +202,7 @@
       const draft = this.getExpeditionDraft(selectedSite);
       if (!draft.territoryId) return;
       if (change.field === 'soldiers') {
-        draft.soldiers = Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Math.floor(Number(change.value) || TerritoryController.MIN_EXPEDITION_SOLDIERS));
+        draft.soldiers = Math.max(1, Math.floor(Number(change.value) || 1));
       }
       if (change.field === 'troopType') {
         draft.troopType = change.value || 'unavailable';
@@ -245,7 +243,7 @@
       await this.runButton(actionRequest.button, async () => {
         if (action === 'conquer') {
           this.clearExpeditionDraft();
-          return this.api.startConquest(territoryId, { soldiers: TerritoryController.MIN_EXPEDITION_SOLDIERS });
+          return this.api.startConquest(territoryId, { soldiers: 0 });
         }
         if (action === 'open-expedition') {
           this.openExpeditionDraft(territoryId);

@@ -39,11 +39,6 @@
       "count": 1
     }
   },
-  "backend/services/worldExplorer/WorldExplorerActions.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/services/worldMap/WorldMapVisionHistory.js": {
     "no-unused-vars": {
       "count": 1

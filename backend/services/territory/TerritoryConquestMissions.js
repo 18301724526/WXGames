@@ -1,6 +1,5 @@
 const {
   CONQUEST_DURATION_MS,
-  MIN_EXPEDITION_SOLDIERS,
   POST_WAR_FAMOUS_PERSON_ENABLED,
 } = require('./TerritoryConstants');
 const {
@@ -46,14 +45,15 @@ function createTerritoryConquestMissions(dependencies = {}) {
   }
 
   function normalizeExpeditionConfig(rawConfig, territory) {
-    const fallbackSoldiers = getOccupationMode(territory) === 'settlement'
-      ? MIN_EXPEDITION_SOLDIERS
-      : Math.max(MIN_EXPEDITION_SOLDIERS, territory?.recommendedSoldiers || territory?.defense || MIN_EXPEDITION_SOLDIERS);
+    // Settlement of an unowned site requires and consumes no soldiers; combat
+    // expeditions need at least one soldier (you cannot attack with zero).
+    const isSettlement = getOccupationMode(territory) === 'settlement';
+    const fallbackSoldiers = Math.max(1, territory?.recommendedSoldiers || territory?.defense || 1);
     const raw = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
     return {
       troopType: typeof raw.troopType === 'string' && raw.troopType.trim() ? raw.troopType.trim() : 'unavailable',
       leader: typeof raw.leader === 'string' && raw.leader.trim() ? raw.leader.trim() : 'unavailable',
-      soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, Math.floor(Number(raw.soldiers) || fallbackSoldiers)),
+      soldiers: isSettlement ? 0 : Math.max(1, Math.floor(Number(raw.soldiers) || fallbackSoldiers)),
     };
   }
 
@@ -69,7 +69,7 @@ function createTerritoryConquestMissions(dependencies = {}) {
         : { soldiers: expeditionInput },
       territory,
     );
-    const committed = occupationMode === 'settlement' ? MIN_EXPEDITION_SOLDIERS : expedition.soldiers;
+    const committed = occupationMode === 'settlement' ? 0 : expedition.soldiers;
     if (committed > getAvailableSoldiers(gameState)) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '\u53ef\u7528\u58eb\u5175\u4e0d\u8db3' };
     const soldierAllocations = allocateSoldiersForMission(gameState, committed);
     if (!soldierAllocations) return { success: false, error: 'INSUFFICIENT_SOLDIERS', message: '\u53ef\u7528\u58eb\u5175\u4e0d\u8db3' };
@@ -98,7 +98,7 @@ function createTerritoryConquestMissions(dependencies = {}) {
     return {
       success: true,
       message: occupationMode === 'settlement'
-        ? `\u5df2\u6d3e\u51fa ${MIN_EXPEDITION_SOLDIERS} \u58eb\u5175\u524d\u5f80${territory.naturalName}\u5efa\u7acb\u636e\u70b9`
+        ? `\u5df2\u6d3e\u51fa\u5148\u9063\u961f\u524d\u5f80${territory.naturalName}\u5efa\u7acb\u636e\u70b9`
         : `\u5df2\u6d3e\u51fa ${committed} \u58eb\u5175\u524d\u5f80${territory.naturalName}`,
       mission,
     };

@@ -12,10 +12,6 @@
   })();
 
   class WorldSitePresenter {
-    static MIN_EXPEDITION_SOLDIERS = 100;
-    static TUTORIAL_SCOUT_EXPLORE_CLAIMED_STEP = 25;
-    static TUTORIAL_FIRST_CITY_CONQUEST_STARTED_STEP = 26;
-
     static toNumber(value, fallback = 0) {
       const number = Number(value);
       return Number.isFinite(number) ? number : fallback;
@@ -102,14 +98,14 @@
     }
 
     static buildWorldExpeditionDraftViewState(site = {}, uiState = {}, famousPersons = {}) {
-      const recommended = Math.max(this.MIN_EXPEDITION_SOLDIERS, Number(site?.recommendedSoldiers) || Number(site?.defense) || this.MIN_EXPEDITION_SOLDIERS);
+      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
       const people = Array.isArray(famousPersons.people) ? famousPersons.people : [];
       const firstLeader = people.find((person) => Array.isArray(person.roles) && person.roles.includes('military')) || null;
       return {
         territoryId: uiState.expeditionConfigSiteId || '',
         troopType: uiState.expeditionTroopType || 'unavailable',
         leader: uiState.expeditionLeader || firstLeader?.id || 'unavailable',
-        soldiers: Math.max(this.MIN_EXPEDITION_SOLDIERS, Number(uiState.expeditionSoldiers) || recommended),
+        soldiers: Math.max(1, Number(uiState.expeditionSoldiers) || recommended),
         recommended,
       };
     }
@@ -132,7 +128,7 @@
         availableSoldiers,
         disabled: availableSoldiers < draft.soldiers || !hasLeader,
         note: this.t('world.site.expedition.note', {
-          recommended: site.recommendedSoldiers || site.defense || this.MIN_EXPEDITION_SOLDIERS,
+          recommended: draft.recommended,
           available: availableSoldiers,
         }),
         fields: {
@@ -153,8 +149,8 @@
           soldiers: {
             label: this.t('world.site.expedition.soldiers'),
             value: draft.soldiers,
-            min: this.MIN_EXPEDITION_SOLDIERS,
-            step: this.MIN_EXPEDITION_SOLDIERS,
+            min: 1,
+            step: 1,
           },
         },
         buttons: {
@@ -174,37 +170,17 @@
       };
     }
 
-    static isGuidedFirstCitySettlement(site = {}, territoryState = {}, uiState = {}) {
-      const tutorial = territoryState.tutorial || uiState.tutorial || {};
-      if (tutorial.completed || tutorial.disabled) return false;
-      const step = this.toInteger(tutorial.currentStep, -1);
-      if (
-        step < this.TUTORIAL_SCOUT_EXPLORE_CLAIMED_STEP
-        || step >= this.TUTORIAL_FIRST_CITY_CONQUEST_STARTED_STEP
-      ) {
-        return false;
-      }
-      const grantSiteId = tutorial.grants?.firstExploreEmptyCity?.siteId;
-      if (!grantSiteId || String(grantSiteId) !== String(site.id || '')) return false;
-      return site.status === 'discovered' && site.owner === 'neutral';
-    }
-
     static buildWorldSiteActionViewState(site = {}, territoryState = {}, uiState = {}) {
-      const availableSoldiers = this.toInteger(territoryState.availableSoldiers);
       const mission = site.mission || null;
       if (site.status === 'discovered') {
         const isOwnedTarget = site.occupationMode === 'conquest';
         const expanded = uiState.expeditionConfigSiteId === site.id;
-        const directDisabled = availableSoldiers < this.MIN_EXPEDITION_SOLDIERS
-          && !this.isGuidedFirstCitySettlement(site, territoryState, uiState);
         return {
           kind: 'group',
           buttons: [
             this.makeWorldSiteActionButton(this.t('world.site.action.trade'), '', site.id, { disabled: true, secondary: true }),
             this.makeWorldSiteActionButton(this.t('world.site.action.plunder'), '', site.id, { disabled: true, secondary: true }),
-            this.makeWorldSiteActionButton(this.t('world.site.action.conquer'), isOwnedTarget ? 'open-expedition' : 'conquer', site.id, {
-              disabled: !isOwnedTarget && directDisabled,
-            }),
+            this.makeWorldSiteActionButton(this.t('world.site.action.conquer'), isOwnedTarget ? 'open-expedition' : 'conquer', site.id),
           ],
           hint: isOwnedTarget ? this.t('world.site.hint.conquestOwned') : this.t('world.site.hint.freeSettlement'),
           expeditionConfig: isOwnedTarget && expanded

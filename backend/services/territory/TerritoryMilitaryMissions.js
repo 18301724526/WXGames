@@ -1,6 +1,5 @@
 const {
   MAX_ACTIVE_SCOUTS,
-  MIN_EXPEDITION_SOLDIERS,
   SCOUT_ACTION_POINTS,
   SCOUT_STEP_DURATION_MS,
 } = require('./TerritoryConstants');
@@ -107,7 +106,7 @@ function createTerritoryMilitaryMissions(dependencies = {}) {
   }
 
   function allocateSoldiersForMission(gameState, requiredSoldiers) {
-    const required = Math.max(MIN_EXPEDITION_SOLDIERS, Math.floor(Number(requiredSoldiers) || MIN_EXPEDITION_SOLDIERS));
+    const required = Math.max(0, Math.floor(Number(requiredSoldiers) || 0));
     if (getAvailableSoldiers(gameState) < required) return null;
     const activeCityId = gameState?.activeCityId || 'capital';
     const entries = getCitySoldierEntries(gameState)

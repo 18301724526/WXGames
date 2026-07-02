@@ -226,3 +226,25 @@ test('advanceTraining consumes recruitment resources and writes back to the acti
   assert.equal(state.cities.capital.military.soldiers, 10);
   assert.equal(state.cities.capital.resources.food, 5);
 });
+
+test('normalizeMilitaryState clamps soldiers purely to the barracks cap with no tutorial floor', () => {
+  const TutorialService = require('../services/TutorialService');
+  const state = createState({
+    tutorial: {
+      completed: false,
+      disabled: false,
+      currentStep: TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
+      grants: { firstExploreEmptyCity: { siteId: 'site_9_9' } },
+    },
+    territories: [{ id: 'site_9_9', owner: 'neutral', status: 'discovered' }],
+  });
+  const cap = Math.max(0, Math.floor(MilitaryService.getTrainingStats(state.buildings).soldierCap || 0));
+
+  const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 500 }, state);
+  assert.equal(normalized.soldierCap, cap);
+  assert.equal(normalized.soldiers, Math.min(cap, 500));
+
+  const zero = MilitaryService.normalizeMilitaryState({ soldiers: 0 }, state);
+  assert.equal(zero.soldiers, 0);
+  assert.equal(zero.soldierCap, cap);
+});

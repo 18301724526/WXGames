@@ -2153,7 +2153,7 @@
               return true;
             }
             return this.finalize(
-              this.runAction(() => this.host.api.startConquest(action.territoryId, { soldiers: 100 })),
+              this.runAction(() => this.host.api.startConquest(action.territoryId, { soldiers: 0 })),
             );
           }
 

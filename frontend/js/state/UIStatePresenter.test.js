@@ -1386,8 +1386,10 @@ test('UIStatePresenter delegates world site dialog view state while preserving f
   assert.equal(tribeDetail.text.battleReport[1], '速度：己方 12 / 敌方 8');
   assert.equal(tribeDetail.action.expeditionConfig.disabled, false);
   assert.equal(tribeDetail.action.expeditionConfig.fields.leader.value, 'hero-mil');
+  // Combat expedition amounts floor at 1 soldier (no 100-soldier minimum).
+  assert.equal(tribeDetail.action.expeditionConfig.fields.soldiers.min, 1);
   assert.equal(emptyAction.buttons[2].action, 'conquer');
-  assert.equal(emptyAction.hint, '该地区无主，派出 100 士兵即可建立据点。');
+  assert.equal(emptyAction.hint, '该地区无主，无需派兵即可建立据点。');
   assert.equal(occupiedAction.kind, 'city-command');
   assert.equal(occupiedAction.buttons.find((button) => button.action === 'rename-city').label, '改名');
   assert.equal(readyAction.buttons[0].action, 'claim');
@@ -1443,8 +1445,8 @@ test('UIStatePresenter resolves world site chrome through active locale', () => 
   LocaleText.setLocale('zh-CN');
 });
 
-test('UIStatePresenter keeps guided first empty city conquer action enabled with tutorial soldier grant', () => {
-  const guidedSite = {
+test('UIStatePresenter enables direct occupation of an empty site with zero soldiers', () => {
+  const emptySite = {
     id: 'site_2_2',
     status: 'discovered',
     owner: 'neutral',
@@ -1454,20 +1456,11 @@ test('UIStatePresenter keeps guided first empty city conquer action enabled with
     defense: 100,
     recommendedSoldiers: 100,
   };
-  const territoryState = {
-    availableSoldiers: 0,
-    tutorial: {
-      currentStep: 25,
-      completed: false,
-      grants: {
-        firstExploreEmptyCity: { siteId: 'site_2_2' },
-      },
-    },
-  };
-  const action = UIStatePresenter.buildWorldSiteActionViewState(guidedSite, territoryState, {});
+  // No tutorial grant, no reserve soldiers: settlement needs neither.
+  const territoryState = { availableSoldiers: 0 };
+  const action = UIStatePresenter.buildWorldSiteActionViewState(emptySite, territoryState, {});
   const conquer = action.buttons.find((button) => button.action === 'conquer');
 
-  assert.equal(UIStatePresenter.isGuidedFirstCitySettlement(guidedSite, territoryState, {}), true);
   assert.equal(conquer.disabled, false);
 });
 
@@ -1688,5 +1681,4 @@ test('UIStatePresenter facade is installed by delegate registry', () => {
   assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'undefined');
   assert.equal(typeof UIStatePresenter.buildTechViewState, 'function');
   assert.equal(UIStatePresenter.POPULATION_PER_OFFICIAL, 100);
-  assert.equal(UIStatePresenter.MIN_EXPEDITION_SOLDIERS, 100);
 });

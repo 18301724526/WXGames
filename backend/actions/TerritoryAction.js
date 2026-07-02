@@ -18,18 +18,6 @@ function advanceTutorialAfterTerritoryAction(gameState = {}, result = {}, nextSt
   };
 }
 
-function ensureTutorialSettlementSoldiers(gameState = {}, territoryId = '') {
-  if (!isTutorialFirstCity(gameState, territoryId)) return;
-  const activeCityId = gameState.activeCityId || CityService.CAPITAL_CITY_ID;
-  const city = gameState.cities?.[activeCityId] || gameState.cities?.[CityService.CAPITAL_CITY_ID] || null;
-  const military = city?.military || gameState.military || {};
-  const required = TerritoryService.MIN_EXPEDITION_SOLDIERS;
-  if ((Number(military.soldiers) || 0) < required) military.soldiers = required;
-  if ((Number(military.soldierCap) || 0) < required) military.soldierCap = required;
-  if (city) city.military = military;
-  else gameState.military = military;
-}
-
 function attachTerritoryAuthority(result = {}, gameState = {}, action = '', payload = {}) {
   return CommandAuthorityContract.attach(result, {
     type: action,
@@ -76,7 +64,6 @@ function execute(action, gameState, payload = {}) {
     return attachTerritoryAuthority(TerritoryService.claimScout(gameState, payload.missionId), gameState, action, payload);
   }
   if (action === 'startConquest') {
-    ensureTutorialSettlementSoldiers(gameState, payload.territoryId);
     const result = TerritoryService.startConquest(gameState, payload.territoryId, payload.expedition || payload.soldiers);
     if (result.success) markTutorialSettlementMissionReady(gameState, payload.territoryId);
     return attachTerritoryAuthority(

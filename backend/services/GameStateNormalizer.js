@@ -142,7 +142,6 @@ function normalizeStateStructure(rawState) {
     ? state.worldMarchVerification
     : null;
   CityService.normalizeCities(state);
-  WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
   state.happiness = state.happiness || 100;
@@ -163,7 +162,6 @@ function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   }
   TerritoryService.normalizeTerritoryState(state, now, { previousWorldMapVersion });
   CityService.normalizeCities(state, now);
-  WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
   BuildingActionService.applyDerivedStats(state);
   return state;
 }

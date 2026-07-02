@@ -855,7 +855,7 @@
       'world.site.action.cancel': '取消',
       'world.site.action.launch': '出发',
       'world.site.hint.conquestOwned': '该地区已有势力，需要先配置出征队伍。',
-      'world.site.hint.freeSettlement': '该地区无主，派出 100 士兵即可建立据点。',
+      'world.site.hint.freeSettlement': '该地区无主，无需派兵即可建立据点。',
       'world.site.hint.occupied':
         '选择入城进入建设、人口与驻军管理；行军、调动、驻守后续接军团系统。',
       'world.site.battle.settlementSuccess': '最近一次行动已顺利建立据点',
@@ -1755,7 +1755,7 @@
       'world.site.hint.conquestOwned':
         'This area already has a force. Configure an expedition first.',
       'world.site.hint.freeSettlement':
-        'This area is neutral. Send 100 soldiers to establish an outpost.',
+        'This area is neutral. You can establish an outpost without sending soldiers.',
       'world.site.hint.occupied':
         'Enter the city for construction, population, and garrison management. March, transfer, and garrison commands will connect to the army system later.',
       'world.site.battle.settlementSuccess':
