@@ -125,6 +125,17 @@
     }
     return null;
   })();
+  const SharedCanvasLayoutService = (() => {
+    if (global.CanvasLayoutService) return global.CanvasLayoutService;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasLayoutService');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const SharedWorldMapRenderState = (() => {
     if (global.WorldMapRenderState) return global.WorldMapRenderState;
     if (typeof module !== 'undefined' && module.exports) {
@@ -2108,46 +2119,19 @@
     }
 
     parsePixelValue(value) {
-      if (typeof value === 'number') return value;
-      const parsed = Number(String(value ?? '').replace('px', ''));
-      return Number.isFinite(parsed) ? parsed : 0;
+      return SharedCanvasLayoutService.parsePixelValue(value);
     }
 
     easeOutCubic(value) {
-      const t = Math.max(0, Math.min(1, Number(value) || 0));
-      return 1 - ((1 - t) ** 3);
+      return SharedCanvasLayoutService.easeOutCubic(value);
     }
 
     getTransitionFrame(transition = null) {
-      if (!transition) return null;
-      const startedAt = Number(transition.startedAt);
-      if (!Number.isFinite(startedAt)) return null;
-      const durationMs = Math.max(1, Number(transition.durationMs) || 220);
-      const progress = Math.max(0, Math.min(1, (this.getNow() - startedAt) / durationMs));
-      if (progress >= 1) return null;
-      return {
-        progress,
-        eased: this.easeOutCubic(progress),
-        direction: Number(transition.direction) < 0 ? -1 : 1,
-      };
+      return SharedCanvasLayoutService.getTransitionFrame(transition, this.getNow());
     }
 
     interpolateRect(fromRect = {}, toRect = {}, progress = 1) {
-      const eased = this.easeOutCubic(progress);
-      const read = (rect, key, fallback = 0) => Number(rect?.[key] ?? fallback) || 0;
-      const lerp = (from, to) => from + (to - from) * eased;
-      const left = lerp(read(fromRect, 'left'), read(toRect, 'left'));
-      const top = lerp(read(fromRect, 'top'), read(toRect, 'top'));
-      const width = lerp(read(fromRect, 'width'), read(toRect, 'width'));
-      const height = lerp(read(fromRect, 'height'), read(toRect, 'height'));
-      return {
-        left,
-        top,
-        width,
-        height,
-        right: left + width,
-        bottom: top + height,
-      };
+      return SharedCanvasLayoutService.interpolateRect(fromRect, toRect, progress);
     }
 
     renderTutorialHighlight(...args) {

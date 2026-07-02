@@ -122,6 +122,7 @@ require('../js/platform/renderers/CanvasFrameRenderer');
 require('../js/platform/CanvasGameRendererCompositionFactory');
 require('../js/platform/HitTargetManager');
 require('../js/platform/WorldTileMapCacheCoordinator');
+require('../js/platform/CanvasLayoutService');
 require('../js/platform/MiniGameCanvasRenderer');
 require('../js/tutorial/TutorialGuideStepPolicy');
 require('../js/tutorial/TutorialGuideTargetResolver');
