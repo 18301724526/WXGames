@@ -63,6 +63,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.gameAPI = new constructors.GameAPI(this.apiBase, this.token, {
       transport: this.gameApiTransport,
       abortControllerFactory: () => this.gameApiTransport?.createAbortController?.(),
+      deployStatusPath: this.config?.DEPLOY_STATUS_PATH,
       trace: this.loadTrace,
     });
     this.loadTrace?.setReporter?.((event) => this.gameAPI.reportClientEvent(event));
@@ -73,7 +74,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.syncService.onState = (data) => this.applyApiState(data);
     this.syncService.setStateProvider?.(() => this.state);
     this.updateChecker = new constructors.UpdateChecker({
-      api: { getVersion: () => this.apiGet('/version') },
+      api: this.gameAPI,
       intervalMs: this.config?.UPDATE_CHECK_INTERVAL_MS,
       scheduler: this.scheduler,
       onUpdate: (version, previousDeploymentId) => {

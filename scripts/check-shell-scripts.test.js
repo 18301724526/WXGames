@@ -43,6 +43,7 @@ test('refactor tutorial test server keeps isolated runtime surfaces', () => {
   assert.match(script, /PM2_APP_NAME="\$\{PM2_APP_NAME:-wxgame-refactor-server\}"/);
   assert.match(script, /WORLD_WORKER_PM2_NAME="\$\{WORLD_WORKER_PM2_NAME:-wxgame-refactor-world-worker\}"/);
   assert.match(script, /FRONTEND_API_BASE="\$\{FRONTEND_API_BASE:-\/wxgame-refactor-api\}"/);
+  assert.match(script, /FRONTEND_DEPLOY_STATUS_PATH="\$\{FRONTEND_DEPLOY_STATUS_PATH:-\.wxgame-deploy-status\.json\}"/);
   assert.match(script, /FRONTEND_ENVIRONMENT_LABEL="\$\{FRONTEND_ENVIRONMENT_LABEL:-TUTORIAL REFACTOR\}"/);
 });
 
@@ -70,13 +71,18 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$gate_script" "\$WORK_TREE"/);
   assert.match(deployScript, /apply_frontend_environment_overrides/);
   assert.match(deployScript, /FRONTEND_API_BASE="\$\{FRONTEND_API_BASE:-\}"/);
+  assert.match(deployScript, /FRONTEND_DEPLOY_STATUS_PATH="\$\{FRONTEND_DEPLOY_STATUS_PATH:-\}"/);
+  assert.equal(deployScript.includes("DEPLOY_STATUS_PATH:\\s*['\"][^'\"]+['\"],"), true);
   assert.match(deployScript, /POST_BACKEND_SYNC_SCRIPT="\$\{POST_BACKEND_SYNC_SCRIPT:-\}"/);
   assert.match(deployScript, /run_post_backend_sync_script/);
   assert.match(deployScript, /publish_runtime_config_release\(\)/);
   assert.match(deployScript, /ConfigReleaseService\.publishRelease/);
-  assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+DEPLOY_STAGE="config-release"\s+publish_runtime_config_release\s+DEPLOY_STAGE="pm2-restart"/s);
+  assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+set_deploy_stage "config-release"\s+publish_runtime_config_release\s+set_deploy_stage "pm2-restart"/s);
   assert.match(deployScript, /DEPLOY_STATUS_PATH="\$DEPLOY_STATE_DIR\/deploy-status\.json"/);
   assert.match(deployScript, /WXGAME_DEPLOY_STATUS_PATH="\$DEPLOY_STATUS_PATH"/);
+  assert.match(deployScript, /set_deploy_stage\(\)/);
+  assert.match(deployScript, /set_deploy_stage "deploy-gate"/);
+  assert.match(deployScript, /set_deploy_stage "health-check"/);
   assert.match(deployScript, /write_deploy_status "running"/);
   assert.match(deployScript, /write_deploy_status "failed"/);
   assert.match(deployScript, /write_deploy_status "succeeded"/);

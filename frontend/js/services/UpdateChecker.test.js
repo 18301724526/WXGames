@@ -150,3 +150,106 @@ test('UpdateChecker reports deploy failure status once per failure signature', a
     ['log', 'unchanged', 'dep-stable'],
   ]);
 });
+
+test('UpdateChecker merges static deploy status before reporting failures', async () => {
+  const calls = [];
+  const checker = new UpdateChecker({
+    api: {
+      async getVersion() {
+        return {
+          deploymentId: 'dep-current',
+          version: 'v1',
+          deployStatus: { status: 'succeeded', updatedAt: '2026-07-01T00:00:00Z' },
+        };
+      },
+      async getDeployStatus() {
+        return {
+          status: 'failed',
+          targetCommit: 'next-release',
+          stage: 'health-check',
+          updatedAt: '2026-07-02T00:00:00Z',
+          error: { message: 'backend health failed' },
+        };
+      },
+    },
+    onDeployFailure(payload, status) {
+      calls.push(['failed', payload.deploymentId, status.targetCommit, status.error.message]);
+    },
+  });
+
+  const version = await checker.safeCheck({ initialize: true });
+
+  assert.equal(version.deployStatus.status, 'failed');
+  assert.deepEqual(calls, [
+    ['failed', 'dep-current', 'next-release', 'backend health failed'],
+  ]);
+});
+
+test('UpdateChecker reports stale running deploy status as a deploy failure', async () => {
+  const calls = [];
+  const checker = new UpdateChecker({
+    deployRunningStaleMs: 1000,
+    scheduler: {
+      now: () => Date.parse('2026-07-02T00:01:05Z'),
+    },
+    api: {
+      async getVersion() {
+        return {
+          deploymentId: 'dep-current',
+          version: 'v1',
+        };
+      },
+      async getDeployStatus() {
+        return {
+          status: 'running',
+          targetCommit: 'next-release',
+          stage: 'checkout',
+          updatedAt: '2026-07-02T00:00:00Z',
+        };
+      },
+    },
+    onDeployFailure(payload, status) {
+      calls.push(['failed', payload.deploymentId, status.status, status.stale, status.error.message]);
+    },
+  });
+
+  const version = await checker.safeCheck({ initialize: true });
+
+  assert.equal(version.deployStatus.status, 'failed');
+  assert.equal(version.deployStatus.stale, true);
+  assert.deepEqual(calls, [
+    ['failed', 'dep-current', 'failed', true, 'deployment status stale after 65s'],
+  ]);
+});
+
+test('UpdateChecker can report static deploy status when version endpoint is unavailable', async () => {
+  const calls = [];
+  const checker = new UpdateChecker({
+    api: {
+      async getVersion() {
+        throw new Error('version endpoint unavailable');
+      },
+      async getDeployStatus() {
+        return {
+          status: 'failed',
+          targetCommit: 'next-release',
+          previousDeployedCommit: 'current-release',
+          stage: 'deploy-gate',
+          updatedAt: '2026-07-02T00:00:00Z',
+          error: { message: 'gate failed before backend publish' },
+        };
+      },
+    },
+    onDeployFailure(payload, status) {
+      calls.push(['failed', payload.deploymentId, status.targetCommit, status.error.message]);
+    },
+  });
+
+  const version = await checker.safeCheck({ initialize: true });
+
+  assert.equal(version.deploymentId, 'deploy-status:current-release');
+  assert.equal(version.deployStatus.status, 'failed');
+  assert.deepEqual(calls, [
+    ['failed', 'deploy-status:current-release', 'next-release', 'gate failed before backend publish'],
+  ]);
+});

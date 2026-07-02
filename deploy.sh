@@ -22,6 +22,7 @@ DEPLOY_STATE_DIR="${DEPLOY_STATE_DIR:-/opt/wxgame-workspace/.wxgame}"
 DEPLOY_ENVIRONMENT="${DEPLOY_ENVIRONMENT:-production}"
 DEPLOY_GATE_SCRIPT="${DEPLOY_GATE_SCRIPT:-scripts/pre-deploy-gate.sh}"
 FRONTEND_API_BASE="${FRONTEND_API_BASE:-}"
+FRONTEND_DEPLOY_STATUS_PATH="${FRONTEND_DEPLOY_STATUS_PATH:-}"
 FRONTEND_ENVIRONMENT_LABEL="${FRONTEND_ENVIRONMENT_LABEL:-}"
 POST_BACKEND_SYNC_SCRIPT="${POST_BACKEND_SYNC_SCRIPT:-}"
 DEPLOY_STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -250,6 +251,13 @@ if (publicPath && publicPath !== statusPath) writeJsonAtomic(publicPath, payload
 NODE
     then
         echo "[Deploy] Failed to write deploy status: $DEPLOY_STATUS_PATH" >&2
+    fi
+}
+
+set_deploy_stage() {
+    DEPLOY_STAGE="$1"
+    if [ -n "${DEPLOY_TARGET_COMMIT:-}" ]; then
+        write_deploy_status "running" "" "0" ""
     fi
 }
 
@@ -590,30 +598,46 @@ publish_frontend_assets() {
 apply_frontend_environment_overrides() {
     local label="$FRONTEND_ENVIRONMENT_LABEL"
     local api_base="$FRONTEND_API_BASE"
+    local deploy_status_path="$FRONTEND_DEPLOY_STATUS_PATH"
     local config_file="$FRONTEND_PUBLIC_DIR/js/config/GameConfig.js"
     local index_file="$FRONTEND_PUBLIC_DIR/index.html"
 
-    if [ -z "$label" ] && [ -z "$api_base" ]; then
+    if [ -z "$label" ] && [ -z "$api_base" ] && [ -z "$deploy_status_path" ]; then
         return
     fi
 
-    node - "$config_file" "$index_file" "$api_base" "$label" "$DEPLOY_ENVIRONMENT" <<'NODE'
+    node - "$config_file" "$index_file" "$api_base" "$deploy_status_path" "$label" "$DEPLOY_ENVIRONMENT" <<'NODE'
 const fs = require('fs');
 
-const [configFile, indexFile, apiBase, label, environment] = process.argv.slice(2);
+const [configFile, indexFile, apiBase, deployStatusPath, label, environment] = process.argv.slice(2);
 
-if (apiBase) {
+if (apiBase || deployStatusPath) {
   let config = fs.readFileSync(configFile, 'utf8');
-  let replacements = 0;
-  config = config.replace(
-    /API_BASE:\s*['"][^'"]+['"],/,
-    () => {
-      replacements += 1;
-      return `API_BASE: ${JSON.stringify(apiBase)},\n    ENVIRONMENT: { name: ${JSON.stringify(environment)}, label: ${JSON.stringify(label || environment)}, apiBase: ${JSON.stringify(apiBase)} },`;
-    },
-  );
-  if (replacements !== 1) {
-    throw new Error(`Expected to replace exactly one API_BASE in ${configFile}, replaced ${replacements}`);
+  if (apiBase) {
+    let replacements = 0;
+    config = config.replace(
+      /API_BASE:\s*['"][^'"]+['"],/,
+      () => {
+        replacements += 1;
+        return `API_BASE: ${JSON.stringify(apiBase)},\n    ENVIRONMENT: { name: ${JSON.stringify(environment)}, label: ${JSON.stringify(label || environment)}, apiBase: ${JSON.stringify(apiBase)} },`;
+      },
+    );
+    if (replacements !== 1) {
+      throw new Error(`Expected to replace exactly one API_BASE in ${configFile}, replaced ${replacements}`);
+    }
+  }
+  if (deployStatusPath) {
+    let replacements = 0;
+    config = config.replace(
+      /DEPLOY_STATUS_PATH:\s*['"][^'"]+['"],/,
+      () => {
+        replacements += 1;
+        return `DEPLOY_STATUS_PATH: ${JSON.stringify(deployStatusPath)},`;
+      },
+    );
+    if (replacements !== 1) {
+      throw new Error(`Expected to replace exactly one DEPLOY_STATUS_PATH in ${configFile}, replaced ${replacements}`);
+    }
   }
   fs.writeFileSync(configFile, config);
 }
@@ -694,7 +718,7 @@ require_command rsync
 require_command curl
 require_command ss
 
-DEPLOY_STAGE="resolve-git"
+set_deploy_stage "resolve-git"
 mkdir -p "$WORK_TREE"
 GIT_DIR_PATH="$(resolve_git_dir)" || {
     echo "[Deploy] 未找到 Git 仓库，请设置 REPO_GIT_DIR 或确保 $WORK_TREE/.git 存在" >&2
@@ -708,7 +732,7 @@ echo "[Deploy] 使用 Git 目录: $GIT_DIR_PATH"
 echo "[Deploy] 使用部署状态目录: $DEPLOY_STATE_DIR"
 
 if [ "$IS_BARE_REPO" = "true" ]; then
-    DEPLOY_STAGE="checkout"
+    set_deploy_stage "checkout"
     echo "[Deploy] 检测到 bare repo，直接检出 ref $BRANCH ..."
     if ! DEPLOY_COMMIT="$(resolve_deploy_commit 2>/dev/null)"; then
         echo "[Deploy] bare repo 中不存在可部署 ref/commit: $BRANCH" >&2
@@ -719,7 +743,7 @@ if [ "$IS_BARE_REPO" = "true" ]; then
     git_repo checkout -f "$DEPLOY_COMMIT"
     git_repo clean -fd
 else
-    DEPLOY_STAGE="checkout"
+    set_deploy_stage "checkout"
     echo "[Deploy] 检测到普通仓库，强制对齐到 ref $BRANCH ..."
     if git_repo fetch origin "$BRANCH" >/dev/null 2>&1 \
         && DEPLOY_COMMIT="$(git_repo rev-parse --verify "origin/$BRANCH^{commit}" 2>/dev/null)"; then
@@ -738,17 +762,17 @@ else
     git_repo clean -fd
 fi
 
-DEPLOY_STAGE="deploy-gate"
+set_deploy_stage "deploy-gate"
 run_deploy_gate
 export WXGAME_DEPLOY_MANIFEST_PATH="$DEPLOY_STATE_DIR/current-deploy.json"
 
-DEPLOY_STAGE="shared-sync"
+set_deploy_stage "shared-sync"
 
 echo "[Deploy] 同步 shared/ 目录..."
 ensure_shared_link
 verify_shared_sync
 
-DEPLOY_STAGE="backend-sync"
+set_deploy_stage "backend-sync"
 
 echo "[Deploy] 同步 backend/ 到运行目录..."
 mkdir -p "$BACKEND_DIR"
@@ -768,17 +792,17 @@ rsync -a --delete \
     "$WORK_TREE/backend/" "$BACKEND_DIR/"
 run_post_backend_sync_script
 
-DEPLOY_STAGE="backend-dependencies"
+set_deploy_stage "backend-dependencies"
 
 echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"
 npm install --omit=dev --no-audit --no-fund
 echo "[Deploy] Cleaning retired world-explorer ready state..."
 DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
-DEPLOY_STAGE="config-release"
+set_deploy_stage "config-release"
 publish_runtime_config_release
 
-DEPLOY_STAGE="pm2-restart"
+set_deploy_stage "pm2-restart"
 
 echo "[Deploy] 重启 PM2 服务..."
 if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
@@ -795,17 +819,17 @@ verify_pm2_listener "$PM2_APP_NAME" 1
 verify_pm2_listener "$WORLD_WORKER_PM2_NAME" 0
 restart_ops_agent_if_configured
 
-DEPLOY_STAGE="health-check"
+set_deploy_stage "health-check"
 
 echo "[Deploy] 校验健康接口..."
 for attempt in 1 2 3 4 5; do
     if health_payload="$(curl -fsS "http://localhost:${API_PORT}/api/health")"; then
         verify_runtime_config "$health_payload"
-        DEPLOY_STAGE="frontend-publish"
+        set_deploy_stage "frontend-publish"
         echo "[Deploy] 发布前端静态文件..."
         publish_frontend_assets
         apply_frontend_environment_overrides
-        DEPLOY_STAGE="deploy-marker"
+        set_deploy_stage "deploy-marker"
         write_deploy_version
         DEPLOY_STAGE="complete"
         write_deploy_status "succeeded" "" "0" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"

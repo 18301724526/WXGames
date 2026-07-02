@@ -34,8 +34,9 @@ test('H5 game host wires authority state refreshes after replacing the construct
   }
 
   class FakeGameAPI {
-    constructor(baseUrl, token) {
+    constructor(baseUrl, token, options = {}) {
       calls.push(['GameAPI', baseUrl, Boolean(token)]);
+      this.deployStatusPath = options.deployStatusPath || '';
     }
 
     setToken() {}
@@ -53,8 +54,8 @@ test('H5 game host wires authority state refreshes after replacing the construct
   }
 
   class FakeUpdateChecker {
-    constructor() {
-      calls.push(['UpdateChecker']);
+    constructor(options = {}) {
+      calls.push(['UpdateChecker', options.api instanceof FakeGameAPI, options.api?.deployStatusPath || '']);
     }
 
     start() {
@@ -109,6 +110,7 @@ test('H5 game host wires authority state refreshes after replacing the construct
         return {
           config: {
             API_BASE: '/api',
+            DEPLOY_STATUS_PATH: '.wxgame-deploy-status.json',
             HEARTBEAT_INTERVAL_MS: 1000,
             UPDATE_CHECK_INTERVAL_MS: 5000,
           },

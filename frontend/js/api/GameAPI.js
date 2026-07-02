@@ -149,6 +149,7 @@
       this.maxRetries = Math.max(0, Math.floor(toNumber(options.maxRetries, DEFAULT_MAX_RETRIES)));
       this.retryBaseDelayMs = Math.max(0, toNumber(options.retryBaseDelayMs, DEFAULT_RETRY_BASE_DELAY_MS));
       this.retryMaxDelayMs = Math.max(this.retryBaseDelayMs, toNumber(options.retryMaxDelayMs, DEFAULT_RETRY_MAX_DELAY_MS));
+      this.deployStatusPath = options.deployStatusPath || '/.wxgame-deploy-status.json';
       this.requestSeq = 0;
       this.versionEtag = '';
       this.cachedVersionInfo = null;
@@ -596,6 +597,25 @@
     }
     getTasks() { return this.request('GET', '/game/tasks'); }
     getVersion() { return this.request('GET', '/version'); }
+    async getDeployStatus() {
+      if (!this.deployStatusPath) return null;
+      const requestId = `deploy-status-${++this.requestSeq}`;
+      const response = await this.performRequest({
+        url: this.deployStatusPath,
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'X-Client-Request-ID': requestId,
+        },
+        path: this.deployStatusPath,
+        requestId,
+        timeoutMs: this.timeoutMs,
+        attempt: 1,
+        maxRetries: 0,
+      });
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    }
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
     assignJob(job, count) { return this.request('POST', '/game/action', { action: 'assign', target: job, count }); }

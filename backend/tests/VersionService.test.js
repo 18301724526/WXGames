@@ -171,3 +171,42 @@ test('version service exposes deploy failure status without changing completed d
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
 });
+
+test('version service reports stale running deploy status as failed', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'version-service-stale-deploy-status-'));
+  try {
+    fs.mkdirSync(path.join(repoRoot, 'backend'), { recursive: true });
+    fs.mkdirSync(path.join(repoRoot, 'frontend'), { recursive: true });
+    fs.mkdirSync(path.join(repoRoot, 'shared'), { recursive: true });
+    fs.writeFileSync(path.join(repoRoot, 'backend', 'package.json'), JSON.stringify({ version: '9.9.9' }));
+    fs.writeFileSync(path.join(repoRoot, 'backend', 'server.js'), 'module.exports = {};\n');
+    const manifestPath = path.join(repoRoot, '.wxgame-deploy-version.json');
+    const statusPath = path.join(repoRoot, '.wxgame-deploy-status.json');
+    fs.writeFileSync(manifestPath, JSON.stringify({
+      branch: 'main',
+      commit: 'completed-release',
+      deployedAt: '2026-07-01T00:00:00Z',
+    }));
+    fs.writeFileSync(statusPath, JSON.stringify({
+      schema: 'wxgame-deploy-status-v1',
+      status: 'running',
+      targetCommit: 'stuck-release',
+      stage: 'checkout',
+      updatedAt: '2026-07-02T00:00:00Z',
+    }));
+    const info = new VersionService({
+      repoRoot,
+      deployManifestPath: manifestPath,
+      deployStatusPath: statusPath,
+      deployRunningStaleMs: 300000,
+      now: () => Date.parse('2026-07-02T00:05:01Z'),
+      cacheMs: 0,
+    }).getVersionInfo();
+
+    assert.equal(info.deployStatus.status, 'failed');
+    assert.equal(info.deployStatus.stale, true);
+    assert.equal(info.deployStatus.error.message, 'deployment status stale after 301s');
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});

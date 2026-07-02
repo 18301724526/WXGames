@@ -326,6 +326,31 @@ test('GameAPI reuses cached version info on 304 ETag responses', async () => {
   ]);
 });
 
+test('GameAPI reads deploy status from the configured frontend marker', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', null, {
+    timeoutMs: 0,
+    maxRetries: 0,
+    deployStatusPath: '.wxgame-deploy-status.json',
+    transport: {
+      async request(request) {
+        calls.push(['transport', request.url, request.headers['Cache-Control']]);
+        return createResponseWithHeaders(200, {
+          status: 'failed',
+          stage: 'deploy-gate',
+        });
+      },
+    },
+  });
+
+  const status = await api.getDeployStatus();
+
+  assert.equal(status.status, 'failed');
+  assert.deepEqual(calls, [
+    ['transport', '.wxgame-deploy-status.json', 'no-cache'],
+  ]);
+});
+
 test('GameAPI aborts timed out requests with structured request metadata', async () => {
   const calls = [];
   const api = new GameAPI('/api', 'token-a', {
