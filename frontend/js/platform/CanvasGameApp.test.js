@@ -1712,6 +1712,65 @@ test('CanvasGameApp routes battleScene replay overlay through BattleStore', () =
   BattleStore.closeBattleScene();
 });
 
+// Characterization tests for the tutorial-highlight lifecycle (god-file
+// re-decomposition slice 10). Written against the pre-extraction bodies and kept
+// UNCHANGED through the TutorialGuideUiController extraction. The shell-side
+// show/hide machinery is already pinned by the CanvasGameShell.test.js suite.
+test('hideGuideHighlight forwards to the shell hide and reports its result', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    canvasShell: {
+      hideTutorialHighlight() {
+        calls.push(['hideTutorialHighlight']);
+        return true;
+      },
+    },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+  });
+
+  assert.equal(host.hideGuideHighlight(), true);
+  assert.deepEqual(calls, [['hideTutorialHighlight']]);
+});
+
+test('hideGuideHighlight without a shell clears the highlight and re-renders once', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    canvasShell: null,
+    tutorialHighlight: { rect: { left: 1, top: 2, width: 3, height: 4 } },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+  });
+
+  assert.equal(host.hideGuideHighlight(), true);
+  assert.equal(host.tutorialHighlight, null);
+  assert.deepEqual(calls, [['renderCanvasSurface', 'military']]);
+  assert.equal(host.hideGuideHighlight(), false);
+  assert.equal(calls.length, 1);
+});
+
+test('showHouseBuiltAdvisorDialogue clears the tutorial highlight and opens the advisor dialogue', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'buildings' },
+    tutorialHighlight: { rect: { left: 1, top: 2, width: 3, height: 4 } },
+    closeEventSnapshot() {},
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+  });
+
+  assert.equal(host.showHouseBuiltAdvisorDialogue(), true);
+  assert.equal(host.tutorialHighlight, null);
+  assert.equal(host.tutorialAdvisorDialogue.source, 'houseBuilt');
+  assert.equal(host.state.softGuide.target, 'tab-civilization');
+  assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
+});
+
 // Characterization tests for the turn-card battle-scene timer cluster (god-file
 // re-decomposition slice 9). Written against the pre-extraction CanvasGameApp
 // bodies and kept UNCHANGED through the BattleSceneController extraction.

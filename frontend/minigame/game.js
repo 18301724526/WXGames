@@ -138,6 +138,7 @@ require('../js/platform/ScoutCountdownTimer');
 require('../js/platform/TileMapWaterAnimationTimer');
 require('../js/platform/EntityBattleController');
 require('../js/platform/BattleSceneController');
+require('../js/platform/TutorialGuideUiController');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();

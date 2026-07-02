@@ -135,6 +135,10 @@
   if (typeof module !== 'undefined' && module.exports && !BattleSceneController) {
     BattleSceneController = require('./BattleSceneController');
   }
+  var TutorialGuideUiController = global.TutorialGuideUiController;
+  if (typeof module !== 'undefined' && module.exports && !TutorialGuideUiController) {
+    TutorialGuideUiController = require('./TutorialGuideUiController');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -342,13 +346,8 @@
           this.activeGuidebookTab = 'planning';
           this.famousPersonsPage = 0;
           this.selectedFamousPersonId = '';
-          this.tutorialHighlight = null;
           this.tutorialIntro = options.tutorialIntro || null;
           this.tutorialIntroOverlay = options.tutorialIntroOverlay || null;
-          this.highlightTimer = null;
-          this.skipNextSoftGuideRender = false;
-          this.suppressSoftGuideRenderOnce = false;
-          this.activeGuideNavigation = null;
           this.buildingOffset = 0;
           this.activeBuildingCategory = 'all';
           this.techTreePanX = 0;
@@ -1212,10 +1211,6 @@
                   this.runtime.clearInterval(this.timer);
                   this.timer = null;
                 }
-                if (this.highlightTimer) {
-                  this.runtime.clearInterval(this.highlightTimer);
-                  this.highlightTimer = null;
-                }
                 this.stopTransitionTimer();
                 if (this.tapDisposer) {
                   this.tapDisposer();
@@ -1664,7 +1659,6 @@
                 this.renderer?.clearFamousSkillTooltip?.();
                 this.activeTaskCenterTab = 'main';
                 this.activeGuidebookTab = 'planning';
-                this.activeGuideNavigation = null;
                 this.pageTransition = null;
                 this.buildingTransition = null;
                 if (this.canvasShell) {
@@ -1730,15 +1724,7 @@
                 this.closeEventSnapshot?.();
                 this.renderMilitaryView();
                 this.renderCanvasSurface(this.state.currentTab);
-                if (this.skipNextSoftGuideRender) {
-                  this.skipNextSoftGuideRender = false;
-                  if (this.activeGuideNavigation?.target === 'scout-action-first') {
-                    this.activeGuideNavigation = null;
-                    this.renderSoftGuide();
-                  }
-                } else {
-                  this.renderSoftGuide();
-                }
+                this.renderSoftGuide();
               }
 
     getPreferredMilitaryView(tabId) {
@@ -2097,6 +2083,27 @@
                 this.getEntityBattleController().session = value;
               }
 
+    // The tutorial-highlight blob is single-owned by TutorialGuideUiController on
+          // the state host (re-decomposition slice 10), composed lazily. The accessor
+          // keeps the legacy field name alive for every read/write site (shell input
+          // gating + render paths, advisor flows, mode facts), which retires the
+          // app<->shell highlight mirror.
+          getTutorialGuideUiController() {
+                const owner = this.getStateHost() || this;
+                if (!owner.tutorialGuideUiController) {
+                  owner.tutorialGuideUiController = new TutorialGuideUiController({ host: owner });
+                }
+                return owner.tutorialGuideUiController;
+              }
+
+    get tutorialHighlight() {
+                return this.getTutorialGuideUiController().highlight;
+              }
+
+    set tutorialHighlight(value) {
+                this.getTutorialGuideUiController().highlight = value;
+              }
+
     publishEntityBattle(session) {
                 return this.getEntityBattleController().publish(session);
               }
@@ -2419,7 +2426,6 @@
                 this.tutorialAdvisorDialogue = { message, advisorName: t('tutorial.advisorName'), source: 'houseBuilt' };
                 if (this.canvasShell) {
                   this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
-                  this.canvasShell.tutorialHighlight = null;
                 }
                 this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
                 return true;
@@ -2960,10 +2966,6 @@
                 };
               }
 
-    getGuideTargetRect(key) {
-                return this.guideController?.getTargetRect?.(key) || null;
-              }
-
     refreshTaskCenterGuideHighlight(action = {}) {
                 return this.guideController?.refreshTaskCenterGuideHighlight?.(action) || false;
               }
@@ -2980,35 +2982,13 @@
                 return false;
               }
 
-    normalizeGuideHighlightRect(target) {
-                if (!target) return null;
-                const rawRect = typeof target.getRect === 'function'
-                  ? target.getRect()
-                  : (typeof target.getBoundingClientRect === 'function' ? target.getBoundingClientRect() : target);
-                const left = Number(rawRect.left ?? rawRect.x);
-                const top = Number(rawRect.top ?? rawRect.y);
-                const width = Number(rawRect.width);
-                const height = Number(rawRect.height);
-                if (![left, top, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
-                return {
-                  left,
-                  top,
-                  width,
-                  height,
-                  right: Number(rawRect.right) || left + width,
-                  bottom: Number(rawRect.bottom) || top + height,
-                };
-              }
-
     showGuideHighlight() {
                 return false;
               }
 
     hideGuideHighlight() {
                 if (this.canvasShell && typeof this.canvasShell.hideTutorialHighlight === 'function') {
-                  const hidden = this.canvasShell.hideTutorialHighlight();
-                  this.tutorialHighlight = this.canvasShell.tutorialHighlight || null;
-                  return hidden;
+                  return this.canvasShell.hideTutorialHighlight();
                 }
                 const hadHighlight = Boolean(this.tutorialHighlight);
                 this.tutorialHighlight = null;

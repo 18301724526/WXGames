@@ -39,6 +39,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipRuntime) {
     CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
   }
+  var TutorialGuideUiControllerBase = global.TutorialGuideUiController;
+  if (typeof module !== 'undefined' && module.exports && !TutorialGuideUiControllerBase) {
+    TutorialGuideUiControllerBase = require('./TutorialGuideUiController');
+  }
   var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
   if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
     CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
@@ -450,7 +454,6 @@ constructor(options = {}) {
         status: 'online',
         failureCount: 0,
       };
-      this.tutorialHighlight = null;
       this.tutorialIntro = null;
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
@@ -1715,52 +1718,12 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return this.renderActive();
         }
 
+    // The highlight blob + show/hide/target-refresh lifecycle are single-owned by
+    // TutorialGuideUiController on the state host (re-decomposition slice 10); the
+    // methods below stay as thin delegators. renderGuideHighlightFrame keeps its
+    // body here because it re-points tab/military view state (mode-owned territory).
     refreshTutorialHighlightTarget(highlight = this.tutorialHighlight) {
-          const locator = highlight?.locator || null;
-          if (!locator || locator.type !== 'worldSite' || !locator.siteId) return highlight || null;
-          const anchorSource = [
-            this.worldMapRenderer,
-            this.renderer,
-            this.worldActorLayerRenderer,
-          ].find((source) => typeof source?.getWorldSiteCanvasAnchor === 'function') || null;
-          if (!anchorSource) return highlight || null;
-          const anchor = anchorSource.getWorldSiteCanvasAnchor(locator.siteId, this.lastGame?.state || {}, {
-              worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
-                || this.worldMapRuntime?.lastTileMapContext
-                || this.getWorldMapRenderState?.()?.lastWorldTileMapContext
-                || this.worldMapRenderer?.lastWorldTileMapContext
-                || this.renderer?.lastWorldTileMapContext
-                || null,
-              territoryUiState: this.territoryUiState || this.lastGame?.territoryUiState || {},
-            });
-          if (!anchor?.hitRect) return null;
-          const rect = this.resolveTutorialRect({
-            ...anchor.hitRect,
-            action: {
-              type: 'openWorldSite',
-              siteId: anchor.site?.id || anchor.siteId || locator.siteId,
-              tileId: anchor.tile?.id || anchor.tileId || '',
-              inputSurface: 'worldMap',
-            },
-          });
-          if (!rect) return null;
-          const sameRect = highlight?.rect
-            && rect.left === highlight.rect.left
-            && rect.top === highlight.rect.top
-            && rect.width === highlight.rect.width
-            && rect.height === highlight.rect.height;
-          return {
-            ...highlight,
-            rect,
-            targetAction: {
-              ...(highlight?.targetAction || {}),
-              type: 'openWorldSite',
-              siteId: anchor.site?.id || anchor.siteId || locator.siteId,
-              tileId: anchor.tile?.id || anchor.tileId || '',
-              inputSurface: 'worldMap',
-            },
-            transition: sameRect ? highlight.transition : null,
-          };
+          return this.getTutorialGuideUiController().refreshTarget(this, highlight);
         }
 
     renderGuideHighlightFrame(highlight = this.tutorialHighlight) {
@@ -1866,60 +1829,15 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     resolveTutorialRect(target) {
-          if (!target) return null;
-          const rect = typeof target.getRect === 'function'
-            ? target.getRect()
-            : (typeof target.getBoundingClientRect === 'function' ? target.getBoundingClientRect() : target);
-          const x = Number(rect.x ?? rect.left);
-          const y = Number(rect.y ?? rect.top);
-          const width = Number(rect.width);
-          const height = Number(rect.height);
-          if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
-          return {
-            left: x,
-            top: y,
-            width,
-            height,
-            right: Number(rect.right) || x + width,
-            bottom: Number(rect.bottom) || y + height,
-          };
+          return TutorialGuideUiControllerBase.resolveTutorialRect(target);
         }
 
     showTutorialHighlight(target, message, options = {}) {
-          const rect = this.resolveTutorialRect(target);
-          if (!rect) {
-            if (this.tutorialHighlight) return true;
-            return false;
-          }
-          const now = this.now();
-          const previousRect = this.tutorialHighlight?.rect || rect;
-          this.tutorialHighlight = {
-            rect,
-            message: String(message ?? ''),
-            allowedAction: options.allowedAction || null,
-            targetAction: options.targetAction || target?.action || null,
-            locator: options.locator || null,
-            renderActiveTab: options.renderActiveTab || null,
-            renderOptions: options.renderOptions || null,
-            transition: {
-              fromRect: previousRect,
-              toRect: rect,
-              startedAt: now,
-              durationMs: 260,
-            },
-            pulseStartedAt: this.tutorialHighlight?.pulseStartedAt || now,
-            source: options.source || 'guide',
-          };
-          this.startFloatTimer();
-          this.renderGuideHighlightFrame(this.tutorialHighlight);
-          return true;
+          return this.getTutorialGuideUiController().show(this, target, message, options);
         }
 
     hideTutorialHighlight() {
-          const hadHighlight = Boolean(this.tutorialHighlight);
-          this.tutorialHighlight = null;
-          if (hadHighlight) this.renderActive();
-          return hadHighlight;
+          return this.getTutorialGuideUiController().hide(this);
         }
 
     syncWorldMapRendererLayerMetrics() {
