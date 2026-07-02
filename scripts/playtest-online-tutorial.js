@@ -477,18 +477,39 @@ async function getState(page) {
       tutorialIntro: game?.tutorialIntro || shell?.tutorialIntro || null,
       tutorialHighlight: shell?.tutorialHighlight || null,
       tutorialAdvisorDialogue: shell?.tutorialAdvisorDialogue || game?.tutorialAdvisorDialogue || null,
-      rewardReveal: shell?.rewardReveal || game?.rewardReveal || null,
-      taskCenterOpen: Boolean(shell?.showTaskCenter || game?.showTaskCenter),
+      rewardReveal: shell?.getRewardRevealSnapshot?.() || game?.getRewardRevealSnapshot?.() || shell?.rewardReveal || game?.rewardReveal || null,
+      // Blocking panels live in the modal snapshot (Batch 8F retired the direct
+      // showX properties); probe the snapshot API, keep legacy reads as fallback
+      // for older deployments.
+      taskCenterOpen: Boolean(
+        shell?.isBlockingPanelSnapshotOpen?.('showTaskCenter')
+        || game?.isBlockingPanelSnapshotOpen?.('showTaskCenter')
+        || shell?.showTaskCenter || game?.showTaskCenter,
+      ),
       activeTaskCenterTab: shell?.activeTaskCenterTab || game?.activeTaskCenterTab || '',
-      cityManagementOpen: Boolean(shell?.showCityManagement || game?.showCityManagement),
+      cityManagementOpen: Boolean(
+        shell?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+        || game?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+        || shell?.showCityManagement || game?.showCityManagement,
+      ),
       activeCityManagementTab: shell?.activeCityManagementTab || game?.activeCityManagementTab || '',
-      activeCommandPanel: shell?.activeCommandPanel || game?.activeCommandPanel || '',
-      activeEventId: shell?.activeEventId || game?.activeEventId || game?.eventController?.activeEventId || '',
-      showFamousPersons: Boolean(shell?.showFamousPersons || game?.showFamousPersons),
+      activeCommandPanel: shell?.getCommandPanelValue?.() || game?.getCommandPanelValue?.()
+        || shell?.activeCommandPanel || game?.activeCommandPanel || '',
+      activeEventId: shell?.getEventSnapshot?.()?.eventId || game?.getEventSnapshot?.()?.eventId
+        || shell?.activeEventId || game?.activeEventId || game?.eventController?.activeEventId || '',
+      showFamousPersons: Boolean(
+        shell?.isBlockingPanelSnapshotOpen?.('showFamousPersons')
+        || game?.isBlockingPanelSnapshotOpen?.('showFamousPersons')
+        || shell?.showFamousPersons || game?.showFamousPersons,
+      ),
       selectedFamousPersonId: shell?.selectedFamousPersonId || game?.selectedFamousPersonId || '',
-      cityPeopleOpen: Boolean((shell?.showCityManagement || game?.showCityManagement)
-        && (shell?.activeCityManagementTab || game?.activeCityManagementTab) === 'people'),
-      naming: shell?.naming || game?.naming || null,
+      cityPeopleOpen: Boolean(
+        (shell?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+          || game?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+          || shell?.showCityManagement || game?.showCityManagement)
+        && (shell?.activeCityManagementTab || game?.activeCityManagementTab) === 'people',
+      ),
+      naming: shell?.getNamingSnapshot?.() || game?.getNamingSnapshot?.() || shell?.naming || game?.naming || null,
       armyFormationEditor: shell?.armyFormationEditor || game?.armyFormationEditor || null,
       territoryUiState: shell?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || null,
       territoryState: {
@@ -1574,7 +1595,7 @@ async function main() {
   page.on('response', (resp) => {
     if (resp.status() >= 400) badResponses.push({ url: resp.url(), status: resp.status() });
   });
-  await page.addInitScript(({ token, username }) => {
+  await page.addInitScript(({ token, username, apiBasePath }) => {
     const originalPrompt = window.prompt;
     const originalFetch = window.fetch.bind(window);
     window.__codexPromptCalls = [];
@@ -1602,7 +1623,15 @@ async function main() {
         index: window.__codexApiCalls.length,
         url,
         path: (() => {
-          try { return new URL(url, location.href).pathname.replace(/^\/api/, '') || '/'; } catch (_) { return url; }
+          // Strip the deployment's api base (e.g. '/api' on the remote test server,
+          // '/wxgame-test-api' on the WSL mirror) so matching sees '/game/...'.
+          try {
+            const pathname = new URL(url, location.href).pathname;
+            if (apiBasePath && apiBasePath !== '/' && pathname.startsWith(apiBasePath)) {
+              return pathname.slice(apiBasePath.length) || '/';
+            }
+            return pathname.replace(/^\/api/, '') || '/';
+          } catch (_) { return url; }
         })(),
         method,
         body,
@@ -1639,7 +1668,13 @@ async function main() {
       'tutorialIntroAdvisorSeen.v2',
       'civilizationFirePhase2',
     ].forEach((key) => localStorage.removeItem(key));
-  }, { token: login.token, username: CONFIG.username });
+  }, {
+    token: login.token,
+    username: CONFIG.username,
+    apiBasePath: (() => {
+      try { return new URL(CONFIG.apiBase).pathname.replace(/\/$/, ''); } catch (_) { return '/api'; }
+    })(),
+  });
 
   await page.goto(normalizeUrl(CONFIG.gameUrl), { waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.waitForFunction(() => Boolean(window.Game && window.Game.canvasShell), null, { timeout: 45000 });
