@@ -27,9 +27,18 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
 
-  const { closeBlockingPanelSnapshot } =
-    global.CanvasBlockingPanelSnapshotCalls ||
-    (typeof require !== 'undefined' ? require('../platform/CanvasBlockingPanelSnapshotCalls') : {});
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   var StateWriter = global.StateWriter;
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
@@ -212,7 +221,7 @@
 
       famousPersonsClosed: (host) => {
         const game = host.game || {};
-        closeBlockingPanelSnapshot(game, 'showFamousPersons');
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showFamousPersons');
         game.famousPersonsPage = 0;
         game.selectedFamousPersonId = '';
         host.refreshCurrentHighlight?.();
@@ -243,7 +252,7 @@
 
       advisorClosed: async (host) => {
         const game = host.game || {};
-        closeBlockingPanelSnapshot(game, 'showAdvisor');
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showAdvisor');
         game.tutorialAdvisorDialogue = null;
         if (game.canvasShell) {
           game.canvasShell.tutorialAdvisorDialogue = null;

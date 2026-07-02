@@ -109,6 +109,28 @@
     }
     return null;
   })();
+  const WorldMapRuntimeFrameState = (() => {
+    if (global.WorldMapRuntimeFrameState) return global.WorldMapRuntimeFrameState;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMapRuntimeFrameState');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const WorldMapInputState = (() => {
+    if (global.WorldMapInputState) return global.WorldMapInputState;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./WorldMapInputState');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   const ActorPickingDiagnostics = (() => {
     if (global.ActorPickingDiagnostics) return global.ActorPickingDiagnostics;
     if (typeof module !== 'undefined' && module.exports) {
@@ -231,27 +253,157 @@
       this.drag = null;
       this.renderQueued = false;
       this.queuedRenderOptions = null;
-      this.lastRenderAt = 0;
-      this.lastLayout = null;
-      this.hitTargets = [];
+      this.worldMapRuntimeFrameState = WorldMapRuntimeFrameState?.createWorldMapRuntimeFrameState
+        ? WorldMapRuntimeFrameState.createWorldMapRuntimeFrameState(options.worldMapRuntimeFrameState || {})
+        : {
+          lastRenderAt: 0,
+          lastLayout: null,
+          hasBakedMapLayer: false,
+          mapBakeDirty: true,
+          bakedLayerState: null,
+          lastMapDataSignature: '',
+          lastTileMapContext: null,
+        };
+      this.worldMapInputState = WorldMapInputState?.createWorldMapInputState
+        ? WorldMapInputState.createWorldMapInputState(options.worldMapInputState || {})
+        : {
+          hitTargets: [],
+          baseHitTargets: [],
+          lastHitTargetSync: null,
+          hitTargetSyncSequence: 0,
+          inputEpoch: 0,
+          inputSequence: 0,
+          lastPickingSignature: '',
+          pickingSnapshot: null,
+          lastInputIntent: null,
+        };
       this.frameMs = Math.max(1, Number(options.frameMs) || 16);
       this.waterTimeMs = null;
       this.dragLayerOffset = { x: 0, y: 0 };
       this.renderOnDrag = options.renderOnDrag !== false;
       this.bakedCamera = { x: this.camera.x, y: this.camera.y };
-      this.baseHitTargets = [];
-      this.lastHitTargetSync = null;
-      this.hitTargetSyncSequence = 0;
-      this.hasBakedMapLayer = false;
-      this.mapBakeDirty = true;
-      this.bakedLayerState = null;
-      this.lastMapDataSignature = '';
-      this.lastTileMapContext = null;
-      this.inputEpoch = 0;
-      this.inputSequence = 0;
-      this.lastPickingSignature = '';
-      this.pickingSnapshot = null;
-      this.lastInputIntent = null;
+    }
+
+    get lastRenderAt() { return Number(this.worldMapRuntimeFrameState?.lastRenderAt) || 0; }
+    set lastRenderAt(value) { this.commitFrameState({ lastRenderAt: value }); }
+    get lastLayout() { return this.worldMapRuntimeFrameState?.lastLayout || null; }
+    set lastLayout(value) { this.commitFrameState({ lastLayout: value || null }); }
+    get hasBakedMapLayer() { return Boolean(this.worldMapRuntimeFrameState?.hasBakedMapLayer); }
+    set hasBakedMapLayer(value) { this.commitFrameState({ hasBakedMapLayer: value }); }
+    get mapBakeDirty() { return this.worldMapRuntimeFrameState?.mapBakeDirty !== false; }
+    set mapBakeDirty(value) { this.commitFrameState({ mapBakeDirty: value }); }
+    get bakedLayerState() { return this.worldMapRuntimeFrameState?.bakedLayerState || null; }
+    set bakedLayerState(value) { this.commitFrameState({ bakedLayerState: value || null }); }
+    get lastMapDataSignature() { return this.worldMapRuntimeFrameState?.lastMapDataSignature || ''; }
+    set lastMapDataSignature(value) { this.commitFrameState({ lastMapDataSignature: value || '' }); }
+    get lastTileMapContext() { return this.worldMapRuntimeFrameState?.lastTileMapContext || null; }
+    set lastTileMapContext(value) { this.commitFrameState({ lastTileMapContext: value || null }); }
+
+    commitFrameState(patch = {}) {
+      if (!this.worldMapRuntimeFrameState) return null;
+      if (WorldMapRuntimeFrameState?.applyWorldMapRuntimeFramePatch) {
+        return WorldMapRuntimeFrameState.applyWorldMapRuntimeFramePatch(this.worldMapRuntimeFrameState, patch);
+      }
+      Object.assign(this.worldMapRuntimeFrameState, patch || {});
+      return this.worldMapRuntimeFrameState;
+    }
+
+    resetFrameState(patch = {}) {
+      this.worldMapRuntimeFrameState = WorldMapRuntimeFrameState?.createWorldMapRuntimeFrameState
+        ? WorldMapRuntimeFrameState.createWorldMapRuntimeFrameState(patch)
+        : {
+          lastRenderAt: Number(patch.lastRenderAt) || 0,
+          lastLayout: patch.lastLayout || null,
+          hasBakedMapLayer: Boolean(patch.hasBakedMapLayer),
+          mapBakeDirty: patch.mapBakeDirty !== false,
+          bakedLayerState: patch.bakedLayerState || null,
+          lastMapDataSignature: patch.lastMapDataSignature || '',
+          lastTileMapContext: patch.lastTileMapContext || null,
+        };
+      return this.worldMapRuntimeFrameState;
+    }
+
+    getHitTargets() {
+      if (WorldMapInputState?.getHitTargets) return WorldMapInputState.getHitTargets(this.worldMapInputState);
+      if (!Array.isArray(this.worldMapInputState?.hitTargets)) this.worldMapInputState.hitTargets = [];
+      return this.worldMapInputState.hitTargets;
+    }
+
+    setHitTargets(targets = []) {
+      if (WorldMapInputState?.setHitTargets) {
+        return WorldMapInputState.setHitTargets(this.worldMapInputState, targets);
+      }
+      this.worldMapInputState.hitTargets = Array.isArray(targets) ? targets : [];
+      return this.worldMapInputState.hitTargets;
+    }
+
+    getBaseHitTargets() {
+      if (WorldMapInputState?.getBaseHitTargets) return WorldMapInputState.getBaseHitTargets(this.worldMapInputState);
+      if (!Array.isArray(this.worldMapInputState?.baseHitTargets)) this.worldMapInputState.baseHitTargets = [];
+      return this.worldMapInputState.baseHitTargets;
+    }
+
+    setBaseHitTargets(targets = []) {
+      if (WorldMapInputState?.setBaseHitTargets) {
+        return WorldMapInputState.setBaseHitTargets(this.worldMapInputState, targets);
+      }
+      this.worldMapInputState.baseHitTargets = Array.isArray(targets) ? targets : [];
+      return this.worldMapInputState.baseHitTargets;
+    }
+
+    getLastHitTargetSync() {
+      return WorldMapInputState?.getLastHitTargetSync
+        ? WorldMapInputState.getLastHitTargetSync(this.worldMapInputState)
+        : (this.worldMapInputState?.lastHitTargetSync || null);
+    }
+
+    getHitTargetSyncSequence() {
+      return WorldMapInputState?.getHitTargetSyncSequence
+        ? WorldMapInputState.getHitTargetSyncSequence(this.worldMapInputState)
+        : (Number(this.worldMapInputState?.hitTargetSyncSequence) || 0);
+    }
+
+    setLastInputIntent(intent = null) {
+      if (WorldMapInputState?.setLastInputIntent) {
+        return WorldMapInputState.setLastInputIntent(this.worldMapInputState, intent);
+      }
+      this.worldMapInputState.lastInputIntent = intent || null;
+      return this.worldMapInputState.lastInputIntent;
+    }
+
+    getLastInputIntent() {
+      return WorldMapInputState?.getLastInputIntent
+        ? WorldMapInputState.getLastInputIntent(this.worldMapInputState)
+        : (this.worldMapInputState?.lastInputIntent || null);
+    }
+
+    getLastPickingSignature() {
+      return WorldMapInputState?.getLastPickingSignature
+        ? WorldMapInputState.getLastPickingSignature(this.worldMapInputState)
+        : (this.worldMapInputState?.lastPickingSignature || '');
+    }
+
+    resetHitTargetState() {
+      if (WorldMapInputState?.resetHitTargetState) {
+        WorldMapInputState.resetHitTargetState(this.worldMapInputState);
+        return true;
+      }
+      this.setHitTargets([]);
+      this.setBaseHitTargets([]);
+      this.worldMapInputState.lastHitTargetSync = null;
+      this.worldMapInputState.hitTargetSyncSequence = 0;
+      return true;
+    }
+
+    commitBakedFrame(context = null, options = {}) {
+      return this.commitFrameState({
+        hasBakedMapLayer: true,
+        mapBakeDirty: false,
+        ...(Object.prototype.hasOwnProperty.call(options, 'lastLayout')
+          ? { lastLayout: options.lastLayout }
+          : {}),
+        lastTileMapContext: context || null,
+      });
     }
 
     setRenderer(renderer) {
@@ -386,23 +538,24 @@
       this.renderQueued = false;
       this.queuedRenderOptions = null;
       this.lastLayout = null;
-      this.hitTargets = [];
-      this.baseHitTargets = [];
-      this.lastHitTargetSync = null;
-      this.hitTargetSyncSequence = 0;
+      this.resetHitTargetState();
       this.hasBakedMapLayer = false;
       this.mapBakeDirty = true;
       this.bakedLayerState = null;
       this.lastMapDataSignature = '';
       this.lastTileMapContext = null;
-      this.inputEpoch = 0;
-      this.lastPickingSignature = '';
-      this.pickingSnapshot = null;
-      this.lastInputIntent = null;
+      if (WorldMapInputState?.resetPickingState) {
+        WorldMapInputState.resetPickingState(this.worldMapInputState);
+      } else {
+        this.worldMapInputState.inputEpoch = 0;
+        this.worldMapInputState.lastPickingSignature = '';
+        this.worldMapInputState.pickingSnapshot = null;
+      }
+      this.setLastInputIntent(null);
       this.waterTimeMs = null;
       this.dragLayerOffset = { x: 0, y: 0 };
       this.bakedCamera = { x: this.camera.x, y: this.camera.y };
-      if (options.resetInputSequence === true) this.inputSequence = 0;
+      if (options.resetInputSequence === true) this.worldMapInputState.inputSequence = 0;
       if (options.invalidateRendererCaches !== false) {
         if (typeof this.renderer?.invalidateWorldTileCaches === 'function') {
           this.renderer.invalidateWorldTileCaches();
@@ -502,7 +655,7 @@
       global.ClientOperationLog?.record?.('worldMap:dragStart', {
         point: global.ClientOperationLog?.summarizePoint?.(point),
         camera: global.ClientOperationLog?.summarizeCamera?.(this.camera),
-        hitTargetCount: this.hitTargets.length,
+        hitTargetCount: this.getHitTargets().length,
       });
       return true;
     }
@@ -521,7 +674,7 @@
         camera: global.ClientOperationLog?.summarizeCamera?.(this.camera),
         bakedCamera: global.ClientOperationLog?.summarizeCamera?.(this.bakedCamera),
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
-        hitTargetCount: this.hitTargets.length,
+        hitTargetCount: this.getHitTargets().length,
       }, { flush: true });
       return true;
     }
@@ -539,7 +692,7 @@
 
     getHitTarget(point = {}) {
       if (WorldMapInputActionMap?.getHitTarget) {
-        return WorldMapInputActionMap.getHitTarget(point, this.hitTargets);
+        return WorldMapInputActionMap.getHitTarget(point, this.getHitTargets());
       }
       return null;
     }
@@ -567,14 +720,14 @@
         layerPoint,
         pickingSnapshot,
       });
-      this.lastInputIntent = inputIntent;
+      this.setLastInputIntent(inputIntent);
       const actionMeta = { inputIntent, tapTraceId };
       logActorPickingDiag('worldMapRuntime:handleTap', {
         tapTraceId,
         point: global.ClientOperationLog?.summarizePoint?.(point) || point,
         layerPoint: global.ClientOperationLog?.summarizePoint?.(layerPoint) || layerPoint,
         action: summarizeActorPickingAction(action),
-        hitTargetCount: this.hitTargets.length,
+        hitTargetCount: this.getHitTargets().length,
         pickingSnapshot: pickingSnapshot ? {
           inputEpoch: pickingSnapshot.inputEpoch || 0,
           signature: pickingSnapshot.signature || '',
@@ -586,7 +739,7 @@
         layerPoint: global.ClientOperationLog?.summarizePoint?.(layerPoint),
         action: global.ClientOperationLog?.summarizeAction?.(action),
         inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(inputIntent) || inputIntent,
-        hitTargetCount: this.hitTargets.length,
+        hitTargetCount: this.getHitTargets().length,
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
       });
       if (!action || action.disabled) return false;
@@ -630,7 +783,7 @@
 
     setDragLayerOffset(x = 0, y = 0) {
       this.dragLayerOffset = WorldMapRuntimeCameraPolicy.normalizeDragLayerOffset(x, y);
-      this.hitTargets = this.getOffsetHitTargets();
+      this.setHitTargets(this.getOffsetHitTargets());
       return this.dragLayerOffset;
     }
 
@@ -644,15 +797,15 @@
 
     markBakedCamera(camera = this.camera) {
       this.bakedCamera = {
-        x: WorldMapRuntimeCameraPolicy.toLegacyAxis(camera?.x),
-        y: WorldMapRuntimeCameraPolicy.toLegacyAxis(camera?.y),
+        x: WorldMapRuntimeCameraPolicy.normalizeCameraAxis(camera?.x),
+        y: WorldMapRuntimeCameraPolicy.normalizeCameraAxis(camera?.y),
       };
       this.clearDragLayerOffset();
       return this.bakedCamera;
     }
 
     getOffsetHitTargets() {
-      return WorldMapRuntimeCameraPolicy.applyOffsetToHitTargets(this.baseHitTargets, this.dragLayerOffset);
+      return WorldMapRuntimeCameraPolicy.applyOffsetToHitTargets(this.getBaseHitTargets(), this.dragLayerOffset);
     }
 
     resolveTapAction(point = {}, options = {}) {
@@ -660,7 +813,7 @@
       const normalizedPoint = options.layerPoint || this.getLayerPointFromHudPoint(point);
       if (WorldMapInputActionMap?.resolveTapAction) {
         const action = WorldMapInputActionMap.resolveTapAction(point, {
-          hitTargets: this.hitTargets,
+          hitTargets: this.getHitTargets(),
           backgroundPoint: normalizedPoint,
           context,
         pickingSnapshot: options.pickingSnapshot || this.getPickingSnapshot(),
@@ -673,10 +826,12 @@
 
     createTapIntent(point = {}, action = null, options = {}) {
       if (!WorldMapInputIntent?.createTapIntent) return null;
-      this.inputSequence += 1;
+      const clientSequence = WorldMapInputState?.nextInputSequence
+        ? WorldMapInputState.nextInputSequence(this.worldMapInputState)
+        : ((this.worldMapInputState.inputSequence = (Number(this.worldMapInputState.inputSequence) || 0) + 1));
       return WorldMapInputIntent.createTapIntent({
         source: 'worldMapRuntime',
-        clientSequence: this.inputSequence,
+        clientSequence,
         physicalPoint: point,
         layerPoint: options.layerPoint || this.getLayerPointFromHudPoint(point),
         action,
@@ -684,7 +839,7 @@
         context: options.context || this.getLastTileMapContext(),
         camera: this.camera,
         diagnostics: {
-          hitTargetCount: this.hitTargets.length,
+          hitTargetCount: this.getHitTargets().length,
           dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
         },
       });
@@ -693,19 +848,32 @@
     getPickingSnapshot() {
       const context = this.getPickingContext();
       if (!context || !WorldMapPickingModel?.buildSignature || !WorldMapPickingModel?.createSnapshot) {
-        this.lastPickingSignature = '';
-        this.pickingSnapshot = null;
+        if (WorldMapInputState?.clearPickingSnapshot) {
+          WorldMapInputState.clearPickingSnapshot(this.worldMapInputState);
+        } else {
+          this.worldMapInputState.lastPickingSignature = '';
+          this.worldMapInputState.pickingSnapshot = null;
+        }
         return null;
       }
       const signature = WorldMapPickingModel.buildSignature(context);
-      if (this.pickingSnapshot && signature === this.lastPickingSignature) return this.pickingSnapshot;
-      this.inputEpoch += 1;
-      this.lastPickingSignature = signature;
-      this.pickingSnapshot = WorldMapPickingModel.createSnapshot(context, {
-        inputEpoch: this.inputEpoch,
+      const previousSnapshot = WorldMapInputState?.getPickingSnapshot
+        ? WorldMapInputState.getPickingSnapshot(this.worldMapInputState)
+        : (this.worldMapInputState.pickingSnapshot || null);
+      if (previousSnapshot && signature === this.getLastPickingSignature()) return previousSnapshot;
+      const inputEpoch = WorldMapInputState?.nextInputEpoch
+        ? WorldMapInputState.nextInputEpoch(this.worldMapInputState)
+        : ((this.worldMapInputState.inputEpoch = (Number(this.worldMapInputState.inputEpoch) || 0) + 1));
+      const snapshot = WorldMapPickingModel.createSnapshot(context, {
+        inputEpoch,
         signature,
       });
-      return this.pickingSnapshot;
+      if (WorldMapInputState?.setPickingSnapshot) {
+        return WorldMapInputState.setPickingSnapshot(this.worldMapInputState, signature, snapshot);
+      }
+      this.worldMapInputState.lastPickingSignature = signature;
+      this.worldMapInputState.pickingSnapshot = snapshot;
+      return snapshot;
     }
 
     syncHitTargetsFromRenderer(options = {}) {
@@ -736,27 +904,44 @@
           preserveOnEmpty: options.preserveOnEmpty,
           actorTargets,
           mapTargets,
-          previousBaseHitTargets: this.baseHitTargets,
+          previousBaseHitTargets: this.getBaseHitTargets(),
           sourceTargets,
         })
         : { preserved: false, targets: sourceTargets };
-      this.baseHitTargets = resolvedTargets.targets;
-      this.hitTargets = this.getOffsetHitTargets();
-      this.hitTargetSyncSequence += 1;
-      this.lastHitTargetSync = {
-        actorTargetCount: actorTargets.length,
-        baseHitTargetCount: this.baseHitTargets.length,
-        hitTargetCount: this.hitTargets.length,
-        mapTargetCount: mapTargets.length,
-        preserved: Boolean(resolvedTargets.preserved),
-        sequence: this.hitTargetSyncSequence,
-        sourceHitTargetCount: sourceTargets.length,
-        viewportOffsetX,
-        viewportOffsetY,
-      };
+      const baseHitTargets = resolvedTargets.targets;
+      const hitTargets = WorldMapRuntimeCameraPolicy.applyOffsetToHitTargets(baseHitTargets, this.dragLayerOffset);
+      const committed = WorldMapInputState?.commitHitTargetSync
+        ? WorldMapInputState.commitHitTargetSync(this.worldMapInputState, {
+          actorTargetCount: actorTargets.length,
+          baseHitTargets,
+          hitTargets,
+          mapTargetCount: mapTargets.length,
+          preserved: Boolean(resolvedTargets.preserved),
+          sourceHitTargetCount: sourceTargets.length,
+          viewportOffsetX,
+          viewportOffsetY,
+        })
+        : null;
+      if (!committed) {
+        this.setBaseHitTargets(baseHitTargets);
+        this.setHitTargets(hitTargets);
+        this.worldMapInputState.hitTargetSyncSequence = this.getHitTargetSyncSequence() + 1;
+        this.worldMapInputState.lastHitTargetSync = {
+          actorTargetCount: actorTargets.length,
+          baseHitTargetCount: baseHitTargets.length,
+          hitTargetCount: hitTargets.length,
+          mapTargetCount: mapTargets.length,
+          preserved: Boolean(resolvedTargets.preserved),
+          sequence: this.getHitTargetSyncSequence(),
+          sourceHitTargetCount: sourceTargets.length,
+          viewportOffsetX,
+          viewportOffsetY,
+        };
+      }
+      const sync = this.getLastHitTargetSync();
       global.ClientOperationLog?.recordSampled?.('worldMap:hitTargetsSynced', 'hitTargets', {
-        baseHitTargetCount: this.baseHitTargets.length,
-        hitTargetCount: this.hitTargets.length,
+        baseHitTargetCount: Number(sync?.baseHitTargetCount) || this.getBaseHitTargets().length,
+        hitTargetCount: Number(sync?.hitTargetCount) || this.getHitTargets().length,
         sourceHitTargetCount: sourceTargets.length,
         mapTargetCount: mapTargets.length,
         preserved: Boolean(resolvedTargets.preserved),
@@ -765,25 +950,27 @@
         viewportOffsetY,
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
       }, 500);
-      return this.hitTargets;
+      return this.getHitTargets();
     }
 
     getWorldMapFrameState(options = {}) {
       if (WorldMapRuntimeRenderPolicy?.createWorldMapFrameState) {
         return WorldMapRuntimeRenderPolicy.createWorldMapFrameState(this, options);
       }
+      const lastHitTargetSync = this.getLastHitTargetSync();
       return {
         context: this.getLastTileMapContext(),
-        hitTargetCount: this.hitTargets.length,
-        hitTargets: this.hitTargets,
-        hitTargetsFresh: !this.lastHitTargetSync?.preserved,
-        hitTargetsPreserved: Boolean(this.lastHitTargetSync?.preserved),
+        hitTargetCount: this.getHitTargets().length,
+        hitTargets: this.getHitTargets(),
+        hitTargetsFresh: !lastHitTargetSync?.preserved,
+        hitTargetsPreserved: Boolean(lastHitTargetSync?.preserved),
         visualLayerValid: this.isBakedLayerStateValid(),
       };
     }
 
     getLastTileMapContext() {
       return this.lastTileMapContext
+        || this.renderer?.worldMapRenderState?.lastWorldTileMapContext
         || this.renderer?.lastWorldTileMapContext
         || this.renderer?.worldMapRenderer?.lastWorldTileMapContext
         || this.renderer?.worldMapLayerRenderer?.lastWorldTileMapContext
@@ -791,7 +978,8 @@
     }
 
     getLastActorLayerContext() {
-      return this.renderer?.lastMapHomeWorldHudContext
+      return this.renderer?.worldMapRenderState?.lastMapHomeWorldHudContext
+        || this.renderer?.lastMapHomeWorldHudContext
         || this.renderer?.worldMapRenderer?.lastMapHomeWorldHudContext
         || this.renderer?.worldMapLayerRenderer?.lastMapHomeWorldHudContext
         || this.renderer?.worldActorLayerRenderer?.lastMapHomeWorldHudContext

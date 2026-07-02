@@ -36,14 +36,17 @@ function createHost(overrides = {}) {
     drawX: 50,
     drawY: 40,
   };
+  const worldMapCacheState = {
+    worldTileFastDragActive: Boolean(overrides.worldTileFastDragActive),
+    worldTileStaticCacheKey: overrides.worldTileStaticCacheKey || '',
+    worldTileStaticCacheLayoutKind: overrides.worldTileStaticCacheLayoutKind || '',
+    worldTileStaticCacheLayout: overrides.worldTileStaticCacheLayout || null,
+    worldTileStaticCache: overrides.worldTileStaticCache || work,
+  };
   return {
     calls,
     ctx: createCtx(calls),
-    worldTileFastDragActive: false,
-    worldTileStaticCacheKey: '',
-    worldTileStaticCacheLayoutKind: '',
-    worldTileStaticCacheLayout: null,
-    worldTileStaticCache: work,
+    worldMapCacheState,
     resolveWorldTileStaticCacheLayout() {
       calls.push(['resolveWorldTileStaticCacheLayout']);
       return layout;
@@ -84,8 +87,8 @@ test('WorldMapStaticLayerRenderer renders and caches static layer work', () => {
   const renderer = new WorldMapStaticLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileStaticLayer({ tiles: [] }, {}, {}, [], { selectedSiteId: 'capital' }), true);
-  assert.equal(host.worldTileStaticCacheKey, 'static-cache-v1');
-  assert.equal(host.worldTileStaticCacheLayoutKind, 'world');
+  assert.equal(host.worldMapCacheState.worldTileStaticCacheKey, 'static-cache-v1');
+  assert.equal(host.worldMapCacheState.worldTileStaticCacheLayoutKind, 'world');
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileStaticEntries'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileLayerCache'), true);
 });

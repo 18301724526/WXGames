@@ -112,7 +112,7 @@ function buildCandidate({ bridge, file, line, surface, lines, role = 'bridge', n
     methods: collectMethodNames(lines),
     branchCount: countBranchTokens(lines),
     role,
-    retirementTarget: 'ECS owner/adapter target pending Batch 1-2 decision',
+    retirementTarget: 'remove bridge surface and route through the owned module directly',
     note,
   };
 }
@@ -204,7 +204,7 @@ function scanBridgeShrink(options = {}) {
   });
   return {
     report: 'frontend-ecs-bridge-shrink',
-    mode: 'report-only',
+    mode: 'blocking',
     sourceRoot: FRONTEND_SOURCE_ROOT,
     filesScanned: files.length,
     candidates,
@@ -220,7 +220,7 @@ function escapeMarkdownCell(value) {
 
 function renderSummary(report) {
   const lines = [
-    '[frontend-ecs-bridge-shrink] report-only baseline',
+    '[frontend-ecs-bridge-shrink] blocking gate',
     `source root: ${report.sourceRoot}`,
     `files scanned: ${report.filesScanned}`,
     `candidates: ${report.summary.totalCandidates}`,
@@ -230,6 +230,7 @@ function renderSummary(report) {
   Object.entries(report.summary.bySurface).forEach(([surface, count]) => {
     lines.push(`- ${surface}: ${count}`);
   });
+  lines.push(report.summary.totalCandidates === 0 ? 'passed' : 'FAILED');
   return `${lines.join('\n')}\n`;
 }
 
@@ -237,7 +238,7 @@ function renderMarkdown(report) {
   const lines = [
     '# Frontend ECS Bridge Shrink Report',
     '',
-    'Mode: report-only. Historical bridge candidates do not fail the architecture gate.',
+    'Mode: blocking. Bridge candidates fail the architecture gate.',
     '',
     '## Summary',
     '',
@@ -278,6 +279,7 @@ function main() {
     if (format === 'json') process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     else if (format === 'markdown') process.stdout.write(renderMarkdown(report));
     else process.stdout.write(renderSummary(report));
+    if (report.summary.totalCandidates > 0) process.exit(1);
   } catch (error) {
     console.error(`[frontend-ecs-bridge-shrink] failed: ${error.message}`);
     process.exit(1);

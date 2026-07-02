@@ -34,21 +34,28 @@ function withRendererDependencyRegistry(dependencies = {}, callback = null) {
 
 function createHost(overrides = {}) {
   const calls = [];
+  const worldMapCacheState = {
+    worldTileStaticCache: Object.prototype.hasOwnProperty.call(overrides, 'worldTileStaticCache')
+      ? overrides.worldTileStaticCache
+      : createWork('static'),
+    worldTileStaticCacheLayout: Object.prototype.hasOwnProperty.call(overrides, 'worldTileStaticCacheLayout')
+      ? overrides.worldTileStaticCacheLayout
+      : {
+        kind: 'world',
+        frame: { x: -10, y: -20, width: 100, height: 60 },
+        drawX: 0,
+        drawY: 0,
+      },
+    worldTileStaticCacheLayoutKind: overrides.worldTileStaticCacheLayoutKind || '',
+    worldTileStaticChunkCaches: overrides.worldTileStaticChunkCaches || new Map(),
+    worldTileWaterChunkCaches: overrides.worldTileWaterChunkCaches || new Map(),
+  };
   const host = {
     calls,
     ctx: {
       drawImage() {},
     },
-    worldTileStaticCache: createWork('static'),
-    worldTileStaticCacheLayout: {
-      kind: 'world',
-      frame: { x: -10, y: -20, width: 100, height: 60 },
-      drawX: 0,
-      drawY: 0,
-    },
-    worldTileStaticCacheLayoutKind: '',
-    worldTileStaticChunkCaches: new Map(),
-    worldTileWaterChunkCaches: new Map(),
+    worldMapCacheState,
     constructor: {
       getWorldMapCachePolicy() {
         return null;

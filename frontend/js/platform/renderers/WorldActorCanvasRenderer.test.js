@@ -118,7 +118,6 @@ test('WorldActorCanvasRenderer records actual actor and arrow canvas ids during 
   const host = createHost();
   const diag = {};
   const renderer = new WorldActorCanvasRenderer({ host });
-  host.__worldActorOverlayActiveDiag = diag;
   const actor = {
     id: 'explore-1',
     missionId: 'explore-1',
@@ -134,7 +133,7 @@ test('WorldActorCanvasRenderer records actual actor and arrow canvas ids during 
     panX: 0,
     panY: 0,
     scale: 0.5,
-  }, { stepX: 96, stepY: 48 }), true);
+  }, { stepX: 96, stepY: 48 }, { worldActorOverlayDiag: diag }), true);
 
   assert.equal(diag.drawnCanvasId, 'actor-layer');
   assert.equal(diag.arrowCanvasId, 'actor-layer');
@@ -170,7 +169,6 @@ test('WorldActorCanvasRenderer uses explicit ctx through actor and arrow drawing
   };
   const diag = {};
   const renderer = new WorldActorCanvasRenderer({ host });
-  host.__worldActorOverlayActiveDiag = diag;
   const actor = {
     id: 'explore-1',
     missionId: 'explore-1',
@@ -186,7 +184,7 @@ test('WorldActorCanvasRenderer uses explicit ctx through actor and arrow drawing
     panX: 0,
     panY: 0,
     scale: 0.5,
-  }, { stepX: 96, stepY: 48 }, { ctx: explicitCtx }), true);
+  }, { stepX: 96, stepY: 48 }, { ctx: explicitCtx, worldActorOverlayDiag: diag }), true);
 
   assert.equal(diag.drawnCanvasId, 'worldActor');
   assert.equal(diag.arrowCanvasId, 'worldActor');
@@ -211,17 +209,14 @@ test('WorldActorCanvasRenderer reads host ctx dynamically after proxy removal', 
   assert.equal(renderer.ctx, secondCtx);
 });
 
-test('WorldActorCanvasRenderer reads active overlay diagnostics dynamically from host', () => {
+test('WorldActorCanvasRenderer reads active overlay diagnostics from render options', () => {
   const host = createHost();
   const renderer = new WorldActorCanvasRenderer({ host });
-  const firstDiag = { drawnCanvasId: 'first' };
-  const secondDiag = { drawnCanvasId: 'second' };
+  const diag = { drawnCanvasId: 'first' };
 
-  host.__worldActorOverlayActiveDiag = firstDiag;
-  assert.equal(renderer.__worldActorOverlayActiveDiag, firstDiag);
-
-  host.__worldActorOverlayActiveDiag = secondDiag;
-  assert.equal(renderer.__worldActorOverlayActiveDiag, secondDiag);
+  assert.equal(renderer.getActorOverlayDiag({ worldActorOverlayDiag: diag }), diag);
+  assert.equal(renderer.getActorOverlayDiag({}), null);
+  assert.equal(host.__worldActorOverlayActiveDiag, undefined);
 });
 
 test('WorldActorCanvasRenderer does not proxy unknown host properties after proxy removal', () => {

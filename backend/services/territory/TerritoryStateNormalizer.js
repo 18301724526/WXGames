@@ -1,5 +1,4 @@
 const {
-  LEGACY_SITE_MIGRATIONS,
   MAX_NAME_LENGTH,
   MIN_EXPEDITION_SOLDIERS,
   SCOUT_ACTION_POINTS,
@@ -42,25 +41,6 @@ function createTerritoryStateNormalizer(dependencies = {}) {
     upsertScoutCoordinateRecord,
   } = dependencies;
 
-  function isLegacyPresetTerritory(rawTerritory) {
-    return Boolean(LEGACY_SITE_MIGRATIONS[rawTerritory?.id]);
-  }
-
-  function migrateLegacyPresetTerritory(rawTerritory) {
-    if (!isLegacyPresetTerritory(rawTerritory)) return rawTerritory;
-    if (!['scouted', 'contested', 'occupied'].includes(rawTerritory.status)) return null;
-    const migration = LEGACY_SITE_MIGRATIONS[rawTerritory.id];
-    return {
-      ...rawTerritory,
-      x: hasFiniteValue(rawTerritory.x) ? rawTerritory.x : migration.x,
-      y: hasFiniteValue(rawTerritory.y) ? rawTerritory.y : migration.y,
-      type: migration.type,
-      owner: rawTerritory.status === 'occupied' ? 'player' : migration.owner,
-      status: rawTerritory.status === 'scouted' ? 'discovered' : rawTerritory.status,
-      art: SITE_ART[migration.type],
-    };
-  }
-
   function getCapitalOrigin(rawTerritory = {}, options = {}) {
     const configuredOrigin = options.capitalOrigin || options.origin || {};
     const configuredQ = configuredOrigin.q ?? configuredOrigin.x;
@@ -97,9 +77,6 @@ function createTerritoryStateNormalizer(dependencies = {}) {
 
   function normalizeTerritory(rawTerritory, now = new Date().toISOString(), options = {}) {
     if (!rawTerritory || typeof rawTerritory !== 'object') return null;
-    const migratedTerritory = migrateLegacyPresetTerritory(rawTerritory);
-    if (!migratedTerritory) return null;
-    rawTerritory = migratedTerritory;
     if (rawTerritory.id === 'capital') {
       const origin = getCapitalOrigin(rawTerritory, options);
       return {
@@ -230,8 +207,8 @@ function createTerritoryStateNormalizer(dependencies = {}) {
             : hasStoredRevealArea
               ? 'directional-route-v1'
               : hasStoredRoute
-                ? 'legacy-route'
-                : 'legacy-target';
+                ? 'stored-route-v1'
+                : 'target-coordinate-v1';
           return {
             id: mission.id || `scout_${direction}_${Date.now()}`,
             kind: 'scout',

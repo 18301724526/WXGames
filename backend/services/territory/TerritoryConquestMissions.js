@@ -12,6 +12,7 @@ const OCCUPIED_CITY_TERRAIN_REVEAL_RADIUS = 3;
 function createTerritoryConquestMissions(dependencies = {}) {
   const {
     BattleService,
+    ConquestBattleService,
     getFamousPersonService,
     WorldMapService,
     allocateSoldiersForMission,
@@ -134,13 +135,12 @@ function createTerritoryConquestMissions(dependencies = {}) {
       return { success: true, casualties: 0 };
     }
 
-    const battle = BattleService.simulateConquestBattle(gameState, mission, territory, now);
-    const success = battle ? battle.success : mission.soldiersCommitted >= territory.defense;
-    const casualties = battle
-      ? battle.casualties
-      : success
-        ? Math.min(Math.max(0, mission.soldiersCommitted - 1), Math.floor(territory.defense / 3))
-        : Math.ceil(mission.soldiersCommitted / 2);
+    if (typeof ConquestBattleService?.resolveConquestBattle !== 'function') {
+      throw new Error('ConquestBattleService.resolveConquestBattle is required');
+    }
+    const battle = ConquestBattleService.resolveConquestBattle(gameState, mission, territory, now);
+    const success = battle.success;
+    const casualties = battle.casualties;
     let remainingCasualties = casualties;
     for (const allocation of getMissionSoldierAllocations(mission)) {
       if (remainingCasualties <= 0) break;
@@ -173,7 +173,7 @@ function createTerritoryConquestMissions(dependencies = {}) {
       leaderId: mission.expedition?.leader || 'unavailable',
       leaderName: battle?.report?.attacker?.leaderName || mission.expedition?.leaderSnapshot?.name || '',
       report: attachBattleTileSnapshot(
-        battle?.report || BattleService.createLegacyBattleReport(mission, territory, { success, casualties }, now),
+        battle.report || BattleService.createConquestSummaryReport(mission, territory, { success, casualties }, now),
         tileSnapshot,
         battleTarget,
       ),

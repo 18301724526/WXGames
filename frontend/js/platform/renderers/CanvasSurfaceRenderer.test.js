@@ -5,6 +5,8 @@ const path = require('node:path');
 
 const CanvasSurfaceHitTargets = require('./CanvasSurfaceHitTargets');
 const CanvasSurfaceTextLayout = require('./CanvasSurfaceTextLayout');
+const CanvasSurfaceFrameClock = require('./CanvasSurfaceFrameClock');
+const { createCanvasSurfaceState } = require('./CanvasSurfaceState');
 const CanvasSurfaceRenderer = require('./CanvasSurfaceRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
@@ -117,7 +119,8 @@ test('CanvasSurfaceRenderer gradients fall back to a solid color on non-finite c
 
 test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield rules', () => {
   const host = createHost();
-  const renderer = new CanvasSurfaceRenderer({ host });
+  const surfaceState = createCanvasSurfaceState();
+  const renderer = new CanvasSurfaceRenderer({ host, surfaceState });
 
   renderer.setHitTargets([]);
   renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'background', background: true });
@@ -183,19 +186,22 @@ test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield ru
   renderer.withSuppressedHitTargets(() => {
     renderer.addHitTarget({ x: 0, y: 0, width: 10, height: 10 }, { type: 'suppressed' });
   });
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'suppressed'), false);
+  assert.equal(surfaceState.hitTargets.some((target) => target.action.type === 'suppressed'), false);
+  assert.equal(host.hitTargets.length, 0);
 });
 
 test('CanvasSurfaceRenderer preserves hover point and geometry helpers', () => {
   const host = createHost();
-  const renderer = new CanvasSurfaceRenderer({ host });
+  const surfaceState = createCanvasSurfaceState();
+  const renderer = new CanvasSurfaceRenderer({ host, surfaceState });
 
   assert.equal(renderer.containsPoint({ x: 10, y: 20, width: 30, height: 40 }, { x: 25, y: 50 }), true);
   assert.equal(renderer.containsPoint({ x: 10, y: 20, width: 30, height: 40 }, { x: 50, y: 50 }), false);
   assert.equal(renderer.setHoverPoint({ x: '11', y: 22 }), true);
-  assert.deepEqual(host.hoverPoint, { x: 11, y: 22 });
-  assert.equal(renderer.setHoverPoint({ x: 'bad', y: 22 }), false);
+  assert.deepEqual(surfaceState.hoverPoint, { x: 11, y: 22 });
   assert.equal(host.hoverPoint, null);
+  assert.equal(renderer.setHoverPoint({ x: 'bad', y: 22 }), false);
+  assert.equal(surfaceState.hoverPoint, null);
 });
 
 test('CanvasSurfaceRenderer preserves clip callback flow', () => {
@@ -331,17 +337,41 @@ test('CanvasSurfaceTextLayout owns text layout helpers and line-count boundary',
 
   assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceRenderer.js')) < 500);
   assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceHitTargets.js')) < 500);
+  assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceState.js')) < 500);
+  assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceFrameClock.js')) < 500);
   assert.ok(lineCount(path.join(__dirname, 'CanvasSurfaceTextLayout.js')) < 500);
+});
+
+test('CanvasSurfaceFrameClock owns frame and FPS state transitions', () => {
+  const surfaceState = createCanvasSurfaceState({
+    famousSkillHitTargets: [{ id: 'old' }],
+    activeFamousSkillTooltip: { id: 'old' },
+  });
+
+  assert.equal(CanvasSurfaceFrameClock.setFrameStart(surfaceState, { now: 1000 }), 1000);
+  assert.equal(surfaceState.frameNow, 1000);
+  assert.deepEqual(surfaceState.famousSkillHitTargets, []);
+  assert.equal(surfaceState.activeFamousSkillTooltip, null);
+  assert.equal(CanvasSurfaceFrameClock.updateFps(surfaceState, 1000), 0);
+  assert.equal(CanvasSurfaceFrameClock.updateFps(surfaceState, 1016), 60);
+  assert.equal(CanvasSurfaceFrameClock.updatePaintedFps(surfaceState, { fps: 60 }, 1016), 60);
+  CanvasSurfaceFrameClock.setFrameEnd(surfaceState);
+  assert.equal(surfaceState.frameNow, 0);
 });
 
 test('CanvasSurfaceRenderer preserves frame timing and FPS overlay contract', () => {
   const host = createHost();
-  const renderer = new CanvasSurfaceRenderer({ host });
+  const surfaceState = createCanvasSurfaceState({
+    famousSkillHitTargets: [{ id: 'old' }],
+    activeFamousSkillTooltip: { id: 'old' },
+  });
+  const renderer = new CanvasSurfaceRenderer({ host, surfaceState });
 
   assert.equal(renderer.beginFrame({ now: 1000, tutorialIntro: { active: true, step: 'city' } }), 1000);
-  assert.equal(host.frameNow, 1000);
-  assert.deepEqual(host.famousSkillHitTargets, []);
-  assert.equal(host.activeFamousSkillTooltip, null);
+  assert.equal(surfaceState.frameNow, 1000);
+  assert.equal(host.frameNow, 0);
+  assert.deepEqual(surfaceState.famousSkillHitTargets, []);
+  assert.equal(surfaceState.activeFamousSkillTooltip, null);
   assert.equal(renderer.matchesCurrentTutorialIntroAction({ type: 'openWorldSite', cityId: 'capital' }), true);
 
   assert.equal(renderer.updateFps(1016), 60);
@@ -349,7 +379,7 @@ test('CanvasSurfaceRenderer preserves frame timing and FPS overlay contract', ()
   assert.equal(host.calls.some((call) => call[0] === 'fillText' && call[1] === 'FPS 60'), true);
 
   renderer.endFrame({ fps: 60 });
-  assert.equal(host.frameNow, 0);
+  assert.equal(surfaceState.frameNow, 0);
 });
 
 test('CanvasSurfaceRenderer preserves common drawing primitives', () => {
@@ -376,6 +406,7 @@ test('CanvasGameRenderer exposes surface rendering through facade', () => {
   class StubSurfaceRenderer {
     constructor(options) {
       this.host = options.host;
+      this.surfaceState = options.surfaceState;
     }
 
     getLayout(...args) {
@@ -383,11 +414,11 @@ test('CanvasGameRenderer exposes surface rendering through facade', () => {
     }
 
     setHitTargets(targets) {
-      this.host.stubTargets = targets;
+      this.surfaceState.hitTargets = targets;
     }
 
     addHitTarget(rect, action) {
-      this.host.stubTarget = { rect, action };
+      this.surfaceState.hitTargets.push({ ...rect, action });
     }
 
     beginFrame(...args) {
@@ -408,9 +439,11 @@ test('CanvasGameRenderer exposes surface rendering through facade', () => {
   assert.equal(renderer.getLayout('x').host, renderer);
   renderer.setHitTargets([{ id: 'target' }]);
   renderer.addHitTarget({ x: 1, y: 2, width: 3, height: 4 }, { type: 'click' });
-  assert.deepEqual(renderer.hitTargets, [{ id: 'target' }]);
-  assert.deepEqual(renderer.stubTargets, [{ id: 'target' }]);
-  assert.deepEqual(renderer.stubTarget.action, { type: 'click' });
+  assert.deepEqual(renderer.hitTargets, [
+    { id: 'target' },
+    { x: 1, y: 2, width: 3, height: 4, action: { type: 'click' } },
+  ]);
+  assert.equal(renderer.surfaceRenderer.surfaceState, renderer.surfaceState);
   assert.equal(renderer.beginFrame({ now: 123 }).method, 'beginFrame');
   assert.equal(renderer.drawButton(1, 2, 3, 4, 'OK').method, 'drawButton');
 });

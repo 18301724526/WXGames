@@ -2,22 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const CanvasActionController = require('./CanvasActionController');
-const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
-const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
-// Batch 8F: the 12 blocking panels are owned modal subtypes now, so a stub host
-// carries BOTH the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and
-// the snapshot adapter (openBlockingPanelSnapshot/closeBlockingPanelsSnapshot/
-// isBlockingPanelSnapshotOpen/getCommandPanelValue). closePanels routes through the
-// host's closeBlockingPanelsSnapshot; armyFormationEditor + the event modal keep
-// their own out-of-scope close paths.
-class ModalHost {}
-CanvasModeOwnershipRuntime.install(ModalHost);
-CanvasModalSnapshotAdapter.install(ModalHost);
-
-function makeModalHost(fields = {}) {
-  return Object.assign(new ModalHost(), fields);
-}
+const makeModalHost = makeModalOwnerHost;
 
 test('CanvasActionController closePanels closes blocking panels through the snapshot owner before side-effects', () => {
   const calls = [];

@@ -84,10 +84,10 @@ test('WorldMapRuntime includes world origin in map bake signature', () => {
 
 test('WorldMapRuntime keeps the topmost background tile action over map drag', () => {
   const runtime = new WorldMapRuntime({ renderer: { renderWorldMapLayer() {} } });
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
     { x: 40, y: 40, width: 80, height: 60, action: { type: 'selectWorldMarchTarget', targetQ: 1, targetR: 0, background: true } },
-  ];
+  ]);
 
   assert.deepEqual(runtime.getHitTarget({ x: 60, y: 60 }), {
     type: 'selectWorldMarchTarget',
@@ -124,9 +124,9 @@ test('WorldMapRuntime converts map background taps into fog march targets', () =
       return true;
     },
   });
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
-  ];
+  ]);
   runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
 
   assert.equal(runtime.handleTap({ x: 148, y: 220 }), true);
@@ -181,10 +181,10 @@ test('WorldMapRuntime infers background tile targets when snapshot hit targets a
     },
   });
   runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 8, y: 8, width: 40, height: 40, action: { type: 'resetWorldPan' } },
     { x: 340, y: 760, width: 42, height: 42, action: { type: 'openSettings' } },
-  ];
+  ]);
 
   assert.equal(runtime.handleTap({ x: 256, y: 228 }), true);
   assert.equal(calls[0].type, 'selectWorldMarchTarget');
@@ -229,9 +229,9 @@ test('WorldMapRuntime resolves world site and actor picks from stable context in
     },
   });
   runtime.lastTileMapContext = context;
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true } },
-  ];
+  ]);
 
   assert.equal(runtime.handleTap({ x: 180, y: 196 }), true);
   assert.equal(calls[0].type, 'openWorldSite');
@@ -287,7 +287,7 @@ test('WorldMapRuntime picking snapshot uses actor layer actors when map context 
       return true;
     },
   });
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true, inputSurface: 'worldMap' } },
     {
       x: 255,
@@ -301,7 +301,7 @@ test('WorldMapRuntime picking snapshot uses actor layer actors when map context 
         inputSurface: 'worldMap',
       },
     },
-  ];
+  ]);
 
   const snapshot = runtime.getPickingSnapshot();
   assert.equal(snapshot.counts.actors, 1);
@@ -376,7 +376,7 @@ test('WorldMapRuntime keeps stale renderer actor targets as background when no c
       return true;
     },
   });
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true, inputSurface: 'worldMap' } },
     {
       x: 255,
@@ -389,7 +389,7 @@ test('WorldMapRuntime keeps stale renderer actor targets as background when no c
         inputSurface: 'worldMap',
       },
     },
-  ];
+  ]);
 
   assert.equal(runtime.handleTap({ x: 276, y: 252 }), true);
   assert.equal(calls[0].type, 'selectWorldMarchTarget');
@@ -452,9 +452,9 @@ test('WorldMapRuntime emits a serializable input intent for routed taps', () => 
       },
     });
     runtime.lastTileMapContext = context;
-    runtime.hitTargets = [
+    runtime.setHitTargets([
       { x: 0, y: 84, width: 390, height: 640, action: { type: 'worldMapDrag', background: true } },
-    ];
+    ]);
 
     assert.equal(runtime.handleTap({ x: 170, y: 160 }, { type: 'tap' }), true);
 
@@ -469,9 +469,9 @@ test('WorldMapRuntime emits a serializable input intent for routed taps', () => 
     assert.equal(intent.action.type, 'openWorldSite');
     assert.equal(intent.action.siteId, 'capital');
     assert.equal(intent.picking.inputEpoch, 1);
-    assert.equal(intent.picking.signature, runtime.lastPickingSignature);
+    assert.equal(intent.picking.signature, runtime.getLastPickingSignature());
     assert.equal(intent.view.frame.y, 84);
-    assert.deepEqual(runtime.lastInputIntent, intent);
+    assert.deepEqual(runtime.getLastInputIntent(), intent);
     assert.equal(JSON.stringify(intent).includes('"tiles"'), false);
 
     const tapLog = logEntries.find((entry) => entry.type === 'worldMap:tapHit');
@@ -603,9 +603,9 @@ test('WorldMapRuntime converts HUD taps into padded world-layer coordinates befo
       return true;
     },
   });
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
-  ];
+  ]);
   runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
   const layerTileCenter = {
     x: renderer.lastWorldTileMapContext.viewport.originX + geometry.stepX,
@@ -662,7 +662,7 @@ test('WorldMapRuntime recomputes background tile targets from the actual tap poi
     x: targetCenter.x - renderer.viewportOffsetX,
     y: targetCenter.y - renderer.viewportOffsetY,
   };
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 0, width: 390, height: 620, action: { type: 'worldMapDrag', background: true } },
     {
       x: hudPoint.x - 70,
@@ -678,7 +678,7 @@ test('WorldMapRuntime recomputes background tile targets from the actual tap poi
         background: true,
       },
     },
-  ];
+  ]);
   runtime.lastTileMapContext = renderer.lastWorldTileMapContext;
 
   assert.equal(runtime.handleTap(hudPoint), true);
@@ -731,9 +731,9 @@ test('WorldMapRuntime reads tile context from the split world map renderer', () 
       return true;
     },
   });
-  runtime.hitTargets = [
+  runtime.setHitTargets([
     { x: 0, y: 0, width: 300, height: 300, action: { type: 'worldMapDrag', background: true } },
-  ];
+  ]);
 
   assert.equal(runtime.handleTap({ x: 148, y: 220 }), true);
   assert.equal(calls[0].type, 'selectWorldMarchTarget');
@@ -755,7 +755,7 @@ test('WorldMapRuntime camera helpers preserve render and hit target side effects
     calls.push(['render', Boolean(options.snapshotOnly), Boolean(options.reuseCachedWorldTileView)]);
     return true;
   };
-  runtime.baseHitTargets = [{ x: 10, y: 20, action: { type: 'worldMapDrag' } }];
+  runtime.setBaseHitTargets([{ x: 10, y: 20, action: { type: 'worldMapDrag' } }]);
   runtime.bakedCamera = { x: 2, y: 3 };
 
   assert.deepEqual(runtime.syncCameraFromUi(), { x: 4, y: 5 });
@@ -766,7 +766,7 @@ test('WorldMapRuntime camera helpers preserve render and hit target side effects
   });
   assert.equal(runtime.setCamera(12, 8, { source: 'pinchPan', render: false }), true);
   assert.deepEqual(runtime.dragLayerOffset, { x: 10, y: 5 });
-  assert.deepEqual(runtime.hitTargets[0], { x: 20, y: 25, action: { type: 'worldMapDrag' } });
+  assert.deepEqual(runtime.getHitTargets()[0], { x: 20, y: 25, action: { type: 'worldMapDrag' } });
   assert.equal(runtime.setCamera(12, 8), false);
   assert.deepEqual(calls, [
     ['camera', 12, 8, 'pinchPan'],
@@ -807,17 +807,17 @@ test('WorldMapRuntime preserves stable map hit targets while refreshing actor ta
     },
     presenter: {},
   });
-  runtime.baseHitTargets = [mapTarget, oldActorTarget];
+  runtime.setBaseHitTargets([mapTarget, oldActorTarget]);
 
   runtime.syncHitTargetsFromRenderer({ preserveOnEmpty: true });
 
-  assert.deepEqual(runtime.baseHitTargets, [mapTarget, nextActorTarget]);
-  assert.equal(runtime.hitTargets.some((target) => target.action.type === 'openWorldSite'), true);
-  assert.equal(runtime.hitTargets.some((target) => target.action.actorId === 'old'), false);
-  assert.equal(runtime.hitTargets.some((target) => target.action.actorId === 'next'), true);
-  assert.equal(runtime.lastHitTargetSync.preserved, true);
-  assert.equal(runtime.lastHitTargetSync.mapTargetCount, 0);
-  assert.equal(runtime.lastHitTargetSync.sourceHitTargetCount, 1);
+  assert.deepEqual(runtime.getBaseHitTargets(), [mapTarget, nextActorTarget]);
+  assert.equal(runtime.getHitTargets().some((target) => target.action.type === 'openWorldSite'), true);
+  assert.equal(runtime.getHitTargets().some((target) => target.action.actorId === 'old'), false);
+  assert.equal(runtime.getHitTargets().some((target) => target.action.actorId === 'next'), true);
+  assert.equal(runtime.getLastHitTargetSync().preserved, true);
+  assert.equal(runtime.getLastHitTargetSync().mapTargetCount, 0);
+  assert.equal(runtime.getLastHitTargetSync().sourceHitTargetCount, 1);
   assert.equal(runtime.getWorldMapFrameState().hitTargetsPreserved, true);
   assert.equal(runtime.getWorldMapFrameState().visualLayerValid, false);
 });
@@ -852,10 +852,10 @@ test('WorldMapRuntime collects actor targets registered on the map renderer hit 
 
   runtime.syncHitTargetsFromRenderer();
 
-  assert.equal(runtime.lastHitTargetSync.actorTargetCount, 1);
-  assert.equal(runtime.lastHitTargetSync.mapTargetCount, 1);
-  assert.equal(runtime.baseHitTargets.some((target) => target.action.type === 'selectWorldActor' && target.action.actorId === 'scout-1'), true);
-  assert.equal(runtime.baseHitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
+  assert.equal(runtime.getLastHitTargetSync().actorTargetCount, 1);
+  assert.equal(runtime.getLastHitTargetSync().mapTargetCount, 1);
+  assert.equal(runtime.getBaseHitTargets().some((target) => target.action.type === 'selectWorldActor' && target.action.actorId === 'scout-1'), true);
+  assert.equal(runtime.getBaseHitTargets().some((target) => target.action.type === 'worldMapDrag'), true);
 });
 
 test('WorldMapRuntime getHitTarget resolves clicks inside renderer-store actor targets as selectWorldActor', () => {
@@ -903,19 +903,19 @@ test('WorldMapRuntime resetWorldState invalidates stale world input and render s
   runtime.renderQueued = true;
   runtime.queuedRenderOptions = { force: true };
   runtime.lastLayout = { map: {} };
-  runtime.hitTargets = [{ action: { type: 'openWorldSite', siteId: 'capital' } }];
-  runtime.baseHitTargets = runtime.hitTargets.slice();
-  runtime.lastHitTargetSync = { preserved: true };
-  runtime.hitTargetSyncSequence = 3;
+  runtime.setHitTargets([{ action: { type: 'openWorldSite', siteId: 'capital' } }]);
+  runtime.setBaseHitTargets(runtime.getHitTargets().slice());
+  runtime.worldMapInputState.lastHitTargetSync = { preserved: true };
+  runtime.worldMapInputState.hitTargetSyncSequence = 3;
   runtime.hasBakedMapLayer = true;
   runtime.mapBakeDirty = false;
   runtime.bakedLayerState = { epoch: 3 };
   runtime.lastMapDataSignature = 'old-signature';
   runtime.lastTileMapContext = context;
-  runtime.inputEpoch = 4;
-  runtime.lastPickingSignature = 'pick-old';
-  runtime.pickingSnapshot = { inputEpoch: 4 };
-  runtime.lastInputIntent = { inputId: 'old' };
+  runtime.worldMapInputState.inputEpoch = 4;
+  runtime.worldMapInputState.lastPickingSignature = 'pick-old';
+  runtime.worldMapInputState.pickingSnapshot = { inputEpoch: 4 };
+  runtime.worldMapInputState.lastInputIntent = { inputId: 'old' };
   runtime.waterTimeMs = 123;
   runtime.dragLayerOffset = { x: 12, y: -8 };
 
@@ -925,19 +925,19 @@ test('WorldMapRuntime resetWorldState invalidates stale world input and render s
   assert.equal(runtime.renderQueued, false);
   assert.equal(runtime.queuedRenderOptions, null);
   assert.equal(runtime.lastLayout, null);
-  assert.deepEqual(runtime.hitTargets, []);
-  assert.deepEqual(runtime.baseHitTargets, []);
-  assert.equal(runtime.lastHitTargetSync, null);
-  assert.equal(runtime.hitTargetSyncSequence, 0);
+  assert.deepEqual(runtime.getHitTargets(), []);
+  assert.deepEqual(runtime.getBaseHitTargets(), []);
+  assert.equal(runtime.getLastHitTargetSync(), null);
+  assert.equal(runtime.getHitTargetSyncSequence(), 0);
   assert.equal(runtime.hasBakedMapLayer, false);
   assert.equal(runtime.mapBakeDirty, true);
   assert.equal(runtime.bakedLayerState, null);
   assert.equal(runtime.lastMapDataSignature, '');
   assert.equal(runtime.lastTileMapContext, null);
-  assert.equal(runtime.inputEpoch, 0);
-  assert.equal(runtime.lastPickingSignature, '');
-  assert.equal(runtime.pickingSnapshot, null);
-  assert.equal(runtime.lastInputIntent, null);
+  assert.equal(runtime.worldMapInputState.inputEpoch, 0);
+  assert.equal(runtime.getLastPickingSignature(), '');
+  assert.equal(runtime.worldMapInputState.pickingSnapshot, null);
+  assert.equal(runtime.getLastInputIntent(), null);
   assert.equal(runtime.waterTimeMs, null);
   assert.deepEqual(runtime.dragLayerOffset, { x: 0, y: 0 });
   assert.deepEqual(calls, [['invalidateWorldTileCaches']]);
@@ -1018,6 +1018,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
     'WorldMapRuntimeInputPolicy.js',
     'WorldMapRuntimeHitTargetPolicy.js',
     'WorldMapRuntimeRenderPolicy.js',
+    'WorldMapInputState.js',
     'WorldMapRuntimeRenderPipeline.js',
   ].forEach((scriptName) => {
     assert.ok(
@@ -1038,6 +1039,7 @@ test('entrypoints load runtime policies before WorldMapRuntime', () => {
     "require('../js/platform/WorldMapRuntimeInputPolicy')",
     "require('../js/platform/WorldMapRuntimeHitTargetPolicy')",
     "require('../js/platform/WorldMapRuntimeRenderPolicy')",
+    "require('../js/platform/WorldMapInputState')",
     "require('../js/platform/WorldMapRuntimeRenderPipeline')",
   ].forEach((requireText) => {
     assert.ok(

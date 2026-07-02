@@ -66,7 +66,7 @@ test('skill generator random authority owns ability kit random source metadata',
   }), 'seek:scout:good');
 });
 
-test('skill generator constants and normalizer preserve public pools and migrations', () => {
+test('skill generator constants and normalizer preserve current public pools', () => {
   assert.equal(Constants.GENERATOR_VERSION, SkillGeneratorService.GENERATOR_VERSION);
   assert.equal(Constants.ARCHETYPE_CATEGORIES.scout.category, 'hybrid');
   assert.equal(Constants.ARCHETYPE_CATEGORIES.governor.battlePolicy, 'basicAttackOnly');
@@ -81,11 +81,11 @@ test('skill generator constants and normalizer preserve public pools and migrati
   assert.equal(Normalizer.rollQuality(() => 0.99), 'legendary');
   assert.equal(Normalizer.normalizeAbilityArchetype('missing'), 'vanguard');
 
-  assert.deepEqual(Normalizer.normalizeEffect({ key: 'combo', chance: 0.5 }), {
+  assert.deepEqual(Normalizer.normalizeEffect({ key: 'secondHit', multiplier: 0.5 }), {
     key: 'secondHit',
     multiplier: 0.36,
-    migratedFrom: 'combo',
   });
+  assert.equal(Normalizer.normalizeEffect({ key: 'combo', chance: 0.5 }), null);
   assert.equal(Normalizer.normalizeEffect({ key: 'counter' }), null);
 });
 
@@ -111,7 +111,6 @@ test('SkillGeneratorService facade preserves ability kit API for battle, civil, 
     'CIVIL_EFFECTS',
     'FIRST_BATCH_BATTLE_EFFECTS',
     'GENERATOR_VERSION',
-    'LEGACY_EFFECT_MIGRATIONS',
     'QUALITY_BUDGETS',
     'QUALITY_LABELS',
     'SCOUT_EFFECTS',
@@ -182,23 +181,16 @@ test('skill ability kit generation consumes server random authority by default',
   assert.equal(kit.budgetStatus, 'withinLimit');
 });
 
-test('skill ability kit service completes legacy and partial stored kits', () => {
-  const legacy = KitService.normalizeAbilityKit({}, {
+test('skill ability kit service completes empty and partial stored kits', () => {
+  const emptyStored = KitService.normalizeAbilityKit({}, {
     abilityArchetype: 'vanguard',
     quality: 'good',
-    source: 'legacy',
-    seed: 'legacy-kit',
-    skills: [{
-      id: 'legacy_active',
-      name: 'Legacy Active',
-      type: 'battle',
-      effects: [{ key: 'combo', chance: 0.22 }],
-    }],
+    source: 'stored',
+    seed: 'stored-kit',
   });
-  assert.equal(legacy.abilities.length, 2);
-  assert.equal(legacy.abilities[0].slot, 'activeSkill');
-  assert.equal(legacy.abilities[0].effects[0].key, 'secondHit');
-  assert.equal(legacy.abilities[1].slot, 'passiveTrait');
+  assert.equal(emptyStored.abilities.length, 2);
+  assert.equal(emptyStored.abilities[0].slot, 'activeSkill');
+  assert.equal(emptyStored.abilities[1].slot, 'passiveTrait');
 
   const partialCivil = KitService.normalizeAbilityKit({
     archetype: 'governor',

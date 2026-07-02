@@ -26,6 +26,7 @@
   class WorldTileWaterCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
       this.renderCtx = null;
     }
 
@@ -94,8 +95,7 @@
       return this.analyzeAssetAlphaBounds(assetPath);
     }
 
-    // Host-provided pixel helpers (CanvasAssetRenderer). The retired WorldMapRendererHostBridge proxy
-    // forwarded these to the host; the host-bridge retirement added explicit delegators for the other
+    // Host-provided pixel helpers (CanvasAssetRenderer). Explicit delegators keep the other
     // host helpers but missed these three, so template water-mask generation threw and the mask +
     // metrics caches were nulled. Restore them as explicit delegators (matching the pattern above).
     isWorldTileTemplateWaterPixel(data, index) {
@@ -147,7 +147,7 @@
     }
 
     getMapCache(name) {
-      const owner = this.host || this;
+      const owner = this.worldMapCacheState || this;
       const existing = owner[name];
       if (existing && typeof existing.get === 'function' && typeof existing.set === 'function') return existing;
       const cache = new Map();
@@ -280,7 +280,7 @@
     getWorldTileCompositeContext(width, height) {
       const localW = Math.max(1, Math.ceil(width));
       const localH = Math.max(1, Math.ceil(height));
-      const owner = this.host || this;
+      const owner = this.worldMapCacheState || this;
       if (!owner.worldTileCompositeCanvas) {
         owner.worldTileCompositeCanvas = this.createTileWorkCanvas(localW, localH);
         owner.worldTileCompositeCtx = owner.worldTileCompositeCanvas?.getContext?.('2d') || null;
@@ -378,7 +378,7 @@
     getWorldTileWaterWorkContext(width, height) {
       const localW = Math.max(1, Math.ceil(width));
       const localH = Math.max(1, Math.ceil(height));
-      const owner = this.host || this;
+      const owner = this.worldMapCacheState || this;
       if (!owner.worldTileWaterCanvas) {
         owner.worldTileWaterCanvas = this.createTileWorkCanvas(localW, localH);
         owner.worldTileWaterCtx = owner.worldTileWaterCanvas?.getContext?.('2d') || null;

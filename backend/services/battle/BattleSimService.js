@@ -5,9 +5,9 @@
 // (the SAME module the frontend battle scene will run for the spectacle), and
 // maps the authoritative casualties back onto a formation snapshot.
 //
-// This does NOT replace the legacy turn-based simulateConquestBattle yet: that
-// one still feeds the old battle-replay UI. The live swap happens when the new
-// battle scene (frontend) is ready to take over rendering.
+// Territory conquest and world-combat encounters both resolve through this
+// entity-based simulation; callers adapt their domain state into this request
+// shape and keep persistence outside this service.
 //
 // The attribute -> combat-stat conversion below is an intentional, isolated
 // PLACEHOLDER. Real balance values should later move into the config registry.

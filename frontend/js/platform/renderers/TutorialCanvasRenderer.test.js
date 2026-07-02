@@ -972,7 +972,7 @@ test('TutorialIntroDialogueLayout owns tuned dialogue and portrait placement', (
   assert.ok(lineCount(path.join(__dirname, 'TutorialIntroDialogueLayout.js')) < 500);
 });
 
-test('TutorialDialogueLayer renders above the spine layer and restores host context', () => {
+test('TutorialDialogueLayer renders above the spine layer without replacing host context', () => {
   const calls = [];
   const dialogueCtx = {
     clearRect(...args) { calls.push(['clearRect', ...args]); },
@@ -1013,9 +1013,11 @@ test('TutorialDialogueLayer renders above the spine layer and restores host cont
   assert.equal(ensureCall[2].pointerEvents, 'none');
   assert.deepEqual(ensureCall[2].rect, { x: 0, y: 0, width: 390, height: 693 });
   assert.equal(calls.some((call) => call[0] === 'clearRect'), true);
-  TutorialDialogueLayer.withHostContext(renderer, dialogueCtx, () => {
-    assert.equal(host.ctx, dialogueCtx);
+  TutorialDialogueLayer.withDialogueContext(renderer, dialogueCtx, () => {
+    assert.equal(renderer.dialogueCtx, dialogueCtx);
+    assert.equal(host.ctx, mainCtx);
   });
+  assert.equal(renderer.dialogueCtx, undefined);
   assert.equal(host.ctx, mainCtx);
   assert.equal(TutorialDialogueLayer.clear(renderer, true), true);
   assert.equal(calls.some((call) => call[0] === 'setLayerVisible' && call[2] === false), true);

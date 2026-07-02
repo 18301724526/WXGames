@@ -222,7 +222,7 @@ test('BattleCanvasModel owns battle layout and damage contracts', () => {
   assert.equal(BattleCanvasModel.getBattleDamageFloatText({ action: 'skill', damage: 9, damageLabel: 'Burn' }), 'Burn -9');
 });
 
-test('BattleCanvasRenderer keeps extracted helper facade compatible', () => {
+test('BattleCanvasRenderer owns battle helper methods directly', () => {
   const renderer = new BattleCanvasRenderer({ host: { width: 390, height: 844 } });
   const area = { x: 18, y: 254, width: 160, height: 320 };
 
@@ -232,6 +232,8 @@ test('BattleCanvasRenderer keeps extracted helper facade compatible', () => {
   });
   assert.equal(renderer.getBattleUnitEngagementPosition('attacker', area, 0, 4).x < 195, true);
   assert.equal(renderer.getBattleUnitBattlefieldPosition('defender', area, 1, 4, 0.21, 0).ratio, 0);
+  assert.equal(BattleCanvasRenderer.prototype.hasOwnProperty('getBattleScenePlayback'), true);
+  assert.equal(BattleCanvasRenderer.prototype.hasOwnProperty('drawBattleArmy'), true);
 });
 
 test('CanvasGameRenderer exposes battle helpers through the battle renderer facade', () => {
@@ -457,7 +459,7 @@ test('renderEntityBattleOverlay replay mode exposes a close hit target', () => {
   }
 });
 
-test('frontend html loads battle helpers before the renderer', () => {
+test('frontend html loads battle model render helpers before the renderer', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../../index.html'), 'utf8');
   const modelIndex = html.indexOf('BattleCanvasModel.js');
   const floatingIndex = html.indexOf('BattleFloatingTextRenderer.js');
@@ -468,5 +470,16 @@ test('frontend html loads battle helpers before the renderer', () => {
   assert.equal(floatingIndex > modelIndex, true);
   assert.equal(effectsIndex > floatingIndex, true);
   assert.equal(rendererIndex > effectsIndex, true);
+  assert.equal(html.includes('BattleLayoutModel.js'), false);
+  assert.equal(html.includes('BattleSpriteRenderer.js'), false);
   assert.match(html, /BattleCanvasRenderer\.js\?v=entity-battle-render-context-v1/);
+});
+
+test('retired battle prototype modules stay deleted', () => {
+  [
+    'BattleLayoutModel.js',
+    'BattleSpriteRenderer.js',
+  ].forEach((fileName) => {
+    assert.equal(fs.existsSync(path.resolve(__dirname, fileName)), false);
+  });
 });

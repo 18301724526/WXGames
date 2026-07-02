@@ -73,7 +73,7 @@ function createTerritoryScoutAreas(dependencies = {}) {
       }
     }
     if (!Array.isArray(mission.revealArea) || !mission.revealArea.length) {
-      mission.revealAreaSource = mission.revealAreaSource || (mission.route.length > 1 ? 'legacy-route' : 'legacy-target');
+      mission.revealAreaSource = mission.revealAreaSource || (mission.route.length > 1 ? 'stored-route-v1' : 'target-coordinate-v1');
       const seed = WorldMapService.ensureWorldMap(gameState, now).seed;
       mission.revealArea = WorldMapService.getScoutRevealArea(seed, mission.route, mission.direction)
         .map((coord) => ({

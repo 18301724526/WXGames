@@ -19,12 +19,40 @@
     }
     return null;
   })();
+  const SurfaceState = global.CanvasSurfaceState || (() => {
+    if (typeof require === 'function') {
+      try {
+        return require('./CanvasSurfaceState');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const FrameClock = global.CanvasSurfaceFrameClock || (() => {
+    if (typeof require === 'function') {
+      try {
+        return require('./CanvasSurfaceFrameClock');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function createSurfaceState() {
+    if (typeof SurfaceState?.createCanvasSurfaceState !== 'function') {
+      throw new Error('CanvasSurfaceState is required before CanvasSurfaceRenderer');
+    }
+    return SurfaceState.createCanvasSurfaceState();
+  }
 
   class CanvasSurfaceRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      this.localHitTargets = [];
-      this.localFpsSamples = [];
+      this.surfaceState = options.surfaceState
+        || this.host?.surfaceState
+        || createSurfaceState();
     }
     get ctx() { return this.host?.ctx || null; }
     get width() { return Number(this.host?.width) || 0; }
@@ -33,37 +61,37 @@
     get edgePadding() { return Number(this.host?.edgePadding) || 12; }
     get presenter() { return this.host?.presenter || null; }
     get hitTargets() {
-      if (!this.host) return this.localHitTargets;
-      if (!Array.isArray(this.host.hitTargets)) this.host.hitTargets = [];
-      return this.host.hitTargets;
+      return SurfaceState.getHitTargets(this.surfaceState);
     }
-    set hitTargets(value) { if (this.host) this.host.hitTargets = Array.isArray(value) ? value : []; else this.localHitTargets = Array.isArray(value) ? value : []; }
-    get suppressHitTargets() { return Boolean(this.host?.suppressHitTargets); }
-    set suppressHitTargets(value) { if (this.host) this.host.suppressHitTargets = Boolean(value); }
-    get lastRenderOptions() { return this.host?.lastRenderOptions || null; }
-    set lastRenderOptions(value) { if (this.host) this.host.lastRenderOptions = value || {}; }
-    get hoverPoint() { return this.host?.hoverPoint || null; }
-    set hoverPoint(value) { if (this.host) this.host.hoverPoint = value || null; }
-    get famousSkillHitTargets() { return this.host?.famousSkillHitTargets || []; }
-    set famousSkillHitTargets(value) { if (this.host) this.host.famousSkillHitTargets = Array.isArray(value) ? value : []; }
-    get activeFamousSkillTooltip() { return this.host?.activeFamousSkillTooltip || null; }
-    set activeFamousSkillTooltip(value) { if (this.host) this.host.activeFamousSkillTooltip = value || null; }
-    get frameNow() { return Number(this.host?.frameNow) || 0; }
-    set frameNow(value) { if (this.host) this.host.frameNow = Number(value) || 0; }
-    get fpsLastFrameAt() { return Number(this.host?.fpsLastFrameAt) || 0; }
-    set fpsLastFrameAt(value) { if (this.host) this.host.fpsLastFrameAt = Number(value) || 0; }
-    get fpsLastPaintAt() { return Number(this.host?.fpsLastPaintAt) || 0; }
-    set fpsLastPaintAt(value) { if (this.host) this.host.fpsLastPaintAt = Number(value) || 0; }
-    get fpsLastPaintedValue() { return Number(this.host?.fpsLastPaintedValue) || 0; }
-    set fpsLastPaintedValue(value) { if (this.host) this.host.fpsLastPaintedValue = Number(value) || 0; }
+    set hitTargets(value) { SurfaceState.setHitTargets(this.surfaceState, value); }
+    get suppressHitTargets() { return Boolean(this.surfaceState.suppressHitTargets); }
+    set suppressHitTargets(value) { this.surfaceState.suppressHitTargets = Boolean(value); }
+    get lastRenderOptions() { return this.surfaceState.lastRenderOptions || null; }
+    set lastRenderOptions(value) { this.surfaceState.lastRenderOptions = value || {}; }
+    get hoverPoint() { return SurfaceState.getHoverPoint(this.surfaceState); }
+    set hoverPoint(value) { SurfaceState.setHoverPoint(this.surfaceState, value); }
+    get famousSkillHitTargets() {
+      if (!Array.isArray(this.surfaceState.famousSkillHitTargets)) this.surfaceState.famousSkillHitTargets = [];
+      return this.surfaceState.famousSkillHitTargets;
+    }
+    set famousSkillHitTargets(value) { this.surfaceState.famousSkillHitTargets = Array.isArray(value) ? value : []; }
+    get activeFamousSkillTooltip() { return this.surfaceState.activeFamousSkillTooltip || null; }
+    set activeFamousSkillTooltip(value) { SurfaceState.setFamousSkillTooltips(this.surfaceState, { active: value }); }
+    get frameNow() { return Number(this.surfaceState.frameNow) || 0; }
+    set frameNow(value) { this.surfaceState.frameNow = Number(value) || 0; }
+    get fpsLastFrameAt() { return Number(this.surfaceState.fpsLastFrameAt) || 0; }
+    set fpsLastFrameAt(value) { this.surfaceState.fpsLastFrameAt = Number(value) || 0; }
+    get fpsLastPaintAt() { return Number(this.surfaceState.fpsLastPaintAt) || 0; }
+    set fpsLastPaintAt(value) { this.surfaceState.fpsLastPaintAt = Number(value) || 0; }
+    get fpsLastPaintedValue() { return Number(this.surfaceState.fpsLastPaintedValue) || 0; }
+    set fpsLastPaintedValue(value) { this.surfaceState.fpsLastPaintedValue = Number(value) || 0; }
     get fpsSamples() {
-      if (!this.host) return this.localFpsSamples;
-      if (!Array.isArray(this.host.fpsSamples)) this.host.fpsSamples = [];
-      return this.host.fpsSamples;
+      if (!Array.isArray(this.surfaceState.fpsSamples)) this.surfaceState.fpsSamples = [];
+      return this.surfaceState.fpsSamples;
     }
-    set fpsSamples(value) { if (this.host) this.host.fpsSamples = Array.isArray(value) ? value : []; else this.localFpsSamples = Array.isArray(value) ? value : []; }
-    get currentFps() { return Number(this.host?.currentFps) || 0; }
-    set currentFps(value) { if (this.host) this.host.currentFps = Number(value) || 0; }
+    set fpsSamples(value) { this.surfaceState.fpsSamples = Array.isArray(value) ? value : []; }
+    get currentFps() { return Number(this.surfaceState.currentFps) || 0; }
+    set currentFps(value) { this.surfaceState.currentFps = Number(value) || 0; }
     get showFpsOverlay() { return this.host?.showFpsOverlay !== false; }
 
     getLayout() {
@@ -100,14 +128,23 @@
       }
     }
 
+    canClip(callback) {
+      return this.ctx && typeof callback === 'function'
+        && typeof this.ctx.save === 'function'
+        && typeof this.ctx.restore === 'function'
+        && typeof this.ctx.beginPath === 'function'
+        && typeof this.ctx.rect === 'function'
+        && typeof this.ctx.clip === 'function';
+    }
+
     setHitTargets(targets = []) {
-      this.hitTargets = targets;
+      SurfaceState.setHitTargets(this.surfaceState, targets);
     }
 
     addHitTarget(rect, action) {
       if (this.suppressHitTargets) return;
       const target = HitTargets.normalizeHitTarget(rect, action);
-      if (target) this.hitTargets.push(target);
+      SurfaceState.appendHitTarget(this.surfaceState, target);
     }
 
     getHitTarget(point = {}) {
@@ -120,10 +157,10 @@
 
     setHoverPoint(point = null) {
       if (!point || !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))) {
-        this.hoverPoint = null;
+        SurfaceState.setHoverPoint(this.surfaceState, null);
         return false;
       }
-      this.hoverPoint = { x: Number(point.x), y: Number(point.y) };
+      SurfaceState.setHoverPoint(this.surfaceState, { x: Number(point.x), y: Number(point.y) });
       return true;
     }
 
@@ -141,11 +178,11 @@
 
     withSuppressedHitTargets(callback) {
       const previous = this.suppressHitTargets;
-      this.suppressHitTargets = true;
+      SurfaceState.setSuppressHitTargets(this.surfaceState, true);
       try {
         return callback?.();
       } finally {
-        this.suppressHitTargets = previous;
+        SurfaceState.setSuppressHitTargets(this.surfaceState, previous);
       }
     }
 
@@ -154,13 +191,7 @@
     }
 
     withTranslatedClip(x, y, width, height, offsetX = 0, offsetY = 0, callback) {
-      if (!this.ctx || typeof callback !== 'function') return callback?.();
-      const canClip = typeof this.ctx.save === 'function'
-        && typeof this.ctx.restore === 'function'
-        && typeof this.ctx.beginPath === 'function'
-        && typeof this.ctx.rect === 'function'
-        && typeof this.ctx.clip === 'function';
-      if (!canClip) return callback();
+      if (!this.canClip(callback)) return callback?.();
       this.ctx.save();
       this.ctx.beginPath();
       this.ctx.rect(x, y, width, height);
@@ -174,13 +205,7 @@
     }
 
     withTransformedClip(x, y, width, height, offsetX = 0, offsetY = 0, scale = 1, callback) {
-      if (!this.ctx || typeof callback !== 'function') return callback?.();
-      const canClip = typeof this.ctx.save === 'function'
-        && typeof this.ctx.restore === 'function'
-        && typeof this.ctx.beginPath === 'function'
-        && typeof this.ctx.rect === 'function'
-        && typeof this.ctx.clip === 'function';
-      if (!canClip) return callback();
+      if (!this.canClip(callback)) return callback?.();
       const safeScale = Math.max(0.01, Number(scale) || 1);
       this.ctx.save();
       this.ctx.beginPath();
@@ -300,58 +325,27 @@
     }
 
     beginFrame(options = {}) {
-      const optionNow = Number(options.now);
-      const now = Number.isFinite(optionNow) ? optionNow : Date.now();
-      this.frameNow = now;
-      this.lastRenderOptions = options || {};
-      if (this.host && typeof this.host === 'object') {
-        this.host.frameNow = now;
-        this.host.lastRenderOptions = this.lastRenderOptions;
-        if (options.epochNowMs !== undefined) this.host.epochNowMs = options.epochNowMs;
-        if (options.serverNowMs !== undefined) this.host.serverNowMs = options.serverNowMs;
-      }
-      this.famousSkillHitTargets = [];
-      this.activeFamousSkillTooltip = null;
+      const now = FrameClock.setFrameStart(this.surfaceState, options);
       this.updateFps(now);
       return now;
     }
 
     endFrame(options = {}) {
       this.renderFpsOverlay(options);
-      this.frameNow = 0;
+      FrameClock.setFrameEnd(this.surfaceState);
     }
 
     getNow() {
-      return this.frameNow || Date.now();
+      return FrameClock.getNow(this.surfaceState);
     }
 
     updateFps(now = Date.now()) {
-      const timestamp = Number(now);
-      if (!Number.isFinite(timestamp)) return this.currentFps;
-      if (!this.fpsLastFrameAt) {
-        this.fpsLastFrameAt = timestamp;
-        this.fpsLastPaintAt = timestamp;
-        return this.currentFps;
-      }
-      const delta = Math.max(4, timestamp - this.fpsLastFrameAt);
-      this.fpsLastFrameAt = timestamp;
-      if (delta > 250) return this.currentFps;
-      const fps = Math.min(120, 1000 / delta);
-      this.fpsSamples.push(fps);
-      if (this.fpsSamples.length > 30) this.fpsSamples.shift();
-      const average = this.fpsSamples.reduce((sum, value) => sum + value, 0) / this.fpsSamples.length;
-      this.currentFps = Math.round(average >= 58 && average <= 64 ? 60 : average);
-      return this.currentFps;
+      return FrameClock.updateFps(this.surfaceState, now);
     }
 
     renderFpsOverlay(options = {}) {
       if (!this.showFpsOverlay || options.showFpsOverlay === false || !this.ctx) return;
-      const now = this.getNow();
-      if (!this.fpsLastPaintAt || now - this.fpsLastPaintAt >= 180 || (!this.fpsLastPaintedValue && this.currentFps)) {
-        this.fpsLastPaintAt = now;
-        this.fpsLastPaintedValue = Math.max(0, Math.round(Number(options.fps ?? this.currentFps) || 0));
-      }
-      const fps = this.fpsLastPaintedValue;
+      const fps = FrameClock.updatePaintedFps(this.surfaceState, options, this.getNow());
       const label = fps ? `FPS ${fps}` : 'FPS --';
       const width = Math.max(66, Math.min(84, Math.ceil(this.measureTextWidth(label, { size: 11, bold: true }) + 18)));
       const color = fps >= 55 ? '#74d3a0' : (fps >= 30 ? '#ffd98a' : '#ff6b6b');

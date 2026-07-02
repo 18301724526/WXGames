@@ -41,7 +41,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['骁', '峻', '烈', '岚', '锋'],
     abilityArchetype: 'vanguard',
     attributes: { command: 66, force: 78, intelligence: 42, strategy: 42, politics: 26, governance: 26, charisma: 52, speed: 64 },
-    skillPairs: [['lifesteal', 'combo'], ['combo', 'armorBreak'], ['ambush', 'combo']],
+    skillPairs: [['lifesteal', 'secondHit'], ['secondHit', 'armorBreak'], ['firstStrike', 'secondHit']],
   },
   {
     id: 'guardian',
@@ -51,7 +51,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['衡', '坚', '岳', '承', '镇'],
     abilityArchetype: 'commander',
     attributes: { command: 76, force: 62, intelligence: 48, strategy: 48, politics: 34, governance: 34, charisma: 58, speed: 52 },
-    skillPairs: [['shield', 'counter'], ['shield', 'morale'], ['counter', 'heal']],
+    skillPairs: [['shield', 'armorBreak'], ['shield', 'attributeBonus'], ['heal', 'armorBreak']],
   },
   {
     id: 'tactician',
@@ -61,7 +61,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['策', '玄', '微', '昭', '临'],
     abilityArchetype: 'strategist',
     attributes: { command: 58, force: 34, intelligence: 82, strategy: 82, politics: 44, governance: 44, charisma: 56, speed: 50 },
-    skillPairs: [['burn', 'ambush'], ['poison', 'armorBreak'], ['morale', 'combo']],
+    skillPairs: [['burn', 'firstStrike'], ['poison', 'armorBreak'], ['attributeBonus', 'secondHit']],
   },
   {
     id: 'warden',
@@ -71,7 +71,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['宁', '禾', '安', '序', '清'],
     abilityArchetype: 'governor',
     attributes: { command: 38, force: 24, intelligence: 54, strategy: 54, politics: 82, governance: 82, charisma: 66, speed: 38 },
-    skillPairs: [['morale', 'heal'], ['shield', 'heal'], ['morale', 'shield']],
+    skillPairs: [['attributeBonus', 'heal'], ['shield', 'heal'], ['attributeBonus', 'shield']],
   },
   {
     id: 'artisan',
@@ -81,7 +81,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['钧', '砺', '椽', '铎', '工'],
     abilityArchetype: 'governor',
     attributes: { command: 34, force: 32, intelligence: 46, strategy: 46, politics: 82, governance: 82, charisma: 42, speed: 36 },
-    skillPairs: [['armorBreak', 'shield'], ['burn', 'morale'], ['counter', 'armorBreak']],
+    skillPairs: [['armorBreak', 'shield'], ['burn', 'attributeBonus'], ['secondHit', 'armorBreak']],
   },
   {
     id: 'scholar',
@@ -91,7 +91,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['闻', '简', '知', '言', '书'],
     abilityArchetype: 'strategist',
     attributes: { command: 28, force: 18, intelligence: 74, strategy: 74, politics: 64, governance: 64, charisma: 54, speed: 42 },
-    skillPairs: [['morale', 'ambush'], ['poison', 'heal'], ['shield', 'morale']],
+    skillPairs: [['attributeBonus', 'firstStrike'], ['poison', 'heal'], ['shield', 'attributeBonus']],
   },
   {
     id: 'envoy',
@@ -101,7 +101,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['望', '舒', '容', '信', '和'],
     abilityArchetype: 'charmer',
     attributes: { command: 34, force: 22, intelligence: 58, strategy: 58, politics: 66, governance: 66, charisma: 84, speed: 42 },
-    skillPairs: [['morale', 'heal'], ['shield', 'morale'], ['heal', 'shield']],
+    skillPairs: [['attributeBonus', 'heal'], ['shield', 'attributeBonus'], ['heal', 'shield']],
   },
   {
     id: 'scout',
@@ -111,7 +111,7 @@ const ARCHETYPES = Object.freeze([
     namePool: ['迅', '隼', '遥', '踪', '越'],
     abilityArchetype: 'scout',
     attributes: { command: 44, force: 48, intelligence: 62, strategy: 62, politics: 28, governance: 28, charisma: 52, speed: 82 },
-    skillPairs: [['ambush', 'combo'], ['morale', 'ambush'], ['combo', 'shield']],
+    skillPairs: [['firstStrike', 'secondHit'], ['attributeBonus', 'firstStrike'], ['secondHit', 'shield']],
   },
 ]);
 
@@ -148,14 +148,6 @@ const EFFECTS = Object.freeze({
     label: '吸血',
     create: (roll) => ({ key: 'lifesteal', value: round2(0.12 + roll * 0.08) }),
   },
-  combo: {
-    label: '连击',
-    create: (roll) => ({ key: 'combo', chance: round2(0.18 + roll * 0.1), times: 1 }),
-  },
-  counter: {
-    label: '反击',
-    create: (roll) => ({ key: 'counter', chance: round2(0.16 + roll * 0.1) }),
-  },
   shield: {
     label: '护盾',
     create: (roll) => ({ key: 'shield', value: round2(0.12 + roll * 0.08) }),
@@ -172,17 +164,9 @@ const EFFECTS = Object.freeze({
     label: '中毒',
     create: (roll) => ({ key: 'poison', value: round2(0.07 + roll * 0.06), turns: 3 }),
   },
-  morale: {
-    label: '士气',
-    create: (roll) => ({ key: 'morale', value: round2(0.08 + roll * 0.06) }),
-  },
   heal: {
     label: '治疗',
     create: (roll) => ({ key: 'heal', value: round2(0.1 + roll * 0.08) }),
-  },
-  ambush: {
-    label: '伏击',
-    create: (roll) => ({ key: 'ambush', chance: round2(0.14 + roll * 0.1) }),
   },
 });
 

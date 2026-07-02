@@ -76,16 +76,22 @@ function createHost(overrides = {}) {
   const calls = [];
   const work = createWork(calls);
   const layout = createLayout(calls);
+  const worldMapCacheState = {
+    worldTileFastDragActive: Boolean(overrides.worldTileFastDragActive),
+    worldTileWaterLayerCache: overrides.worldTileWaterLayerCache || null,
+    worldTileWaterLayerCacheKey: overrides.worldTileWaterLayerCacheKey || '',
+    worldTileWaterFrameCaches: overrides.worldTileWaterFrameCaches || new Map(),
+    worldTileWaterChunkCaches: overrides.worldTileWaterChunkCaches || new Map(),
+    worldTileWaterChunkCacheTick: Number(overrides.worldTileWaterChunkCacheTick) || 0,
+  };
+  const worldMapRenderState = {
+    worldTileWaterTimeOverride: overrides.worldTileWaterTimeOverride ?? null,
+  };
   return {
     calls,
     ctx: createCtx(calls),
-    worldTileFastDragActive: false,
-    worldTileWaterLayerCache: null,
-    worldTileWaterLayerCacheKey: '',
-    worldTileWaterFrameCaches: new Map(),
-    worldTileWaterChunkCaches: new Map(),
-    worldTileWaterChunkCacheTick: 0,
-    worldTileWaterTimeOverride: null,
+    worldMapCacheState,
+    worldMapRenderState,
     constructor: {
       getWorldMapCachePolicy() {
         return null;
@@ -150,8 +156,8 @@ test('WorldMapWaterLayerRenderer renders and caches all water frame variants', (
   const renderer = new WorldMapWaterLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileWaterLayer({ seed: 'seed' }, {}, {}, [createEntry()]), true);
-  assert.equal(host.worldTileWaterFrameCaches.size, 8);
-  assert.equal(host.worldTileWaterLayerCache, host.worldTileWaterFrameCaches.get(1));
+  assert.equal(host.worldMapCacheState.worldTileWaterFrameCaches.size, 8);
+  assert.equal(host.worldMapCacheState.worldTileWaterLayerCache, host.worldMapCacheState.worldTileWaterFrameCaches.get(1));
   assert.equal(host.calls.filter((call) => call[0] === 'renderWorldTileWaterEntries').length, 8);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileLayerCache'), true);
 });
@@ -160,13 +166,13 @@ test('WorldMapWaterLayerRenderer reuses fast-drag water frame cache without repa
   const host = createHost({ worldTileFastDragActive: true, worldTileWaterTimeOverride: 0 });
   const cached = createWork(host.calls);
   cached.key = 'water-cache-v1';
-  host.worldTileWaterFrameCaches.set(0, cached);
+  host.worldMapCacheState.worldTileWaterFrameCaches.set(0, cached);
   const renderer = new WorldMapWaterLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileWaterLayer({ seed: 'seed' }, {}, {}, [createEntry()]), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileWaterEntries'), false);
-  assert.equal(host.worldTileWaterLayerCache, cached);
-  assert.equal(host.worldTileWaterLayerCacheKey, 'water-cache-v1');
+  assert.equal(host.worldMapCacheState.worldTileWaterLayerCache, cached);
+  assert.equal(host.worldMapCacheState.worldTileWaterLayerCacheKey, 'water-cache-v1');
 });
 
 test('WorldMapWaterLayerRenderer renders chunk water frames and prunes stale chunks', () => {
@@ -183,12 +189,12 @@ test('WorldMapWaterLayerRenderer renders chunk water frames and prunes stale chu
       };
     },
   });
-  host.worldTileWaterChunkCaches.set('stale:0', { canvas: {}, lastUsedAt: 0 });
+  host.worldMapCacheState.worldTileWaterChunkCaches.set('stale:0', { canvas: {}, lastUsedAt: 0 });
   const renderer = new WorldMapWaterLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileWaterLayer({ seed: 'seed' }, {}, {}, [createEntry()]), true);
-  assert.equal(host.worldTileWaterChunkCaches.has('0,0:0'), true);
-  assert.equal(host.worldTileWaterChunkCaches.has('stale:0'), false);
+  assert.equal(host.worldMapCacheState.worldTileWaterChunkCaches.has('0,0:0'), true);
+  assert.equal(host.worldMapCacheState.worldTileWaterChunkCaches.has('stale:0'), false);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileLayerCache'), true);
 });
 

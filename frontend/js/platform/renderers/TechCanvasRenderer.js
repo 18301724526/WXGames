@@ -18,6 +18,7 @@
     constructor(options = {}) {
       this.host = options.host || null;
       this.drawingSurface = options.drawingSurface || null;
+      this.techRenderState = options.techRenderState || this.host?.techRenderState || { lastTechTreeScroll: null };
     }
 
     get width() {
@@ -41,11 +42,11 @@
     }
 
     get lastTechTreeScroll() {
-      return this.host?.lastTechTreeScroll;
+      return this.techRenderState?.lastTechTreeScroll || null;
     }
 
     set lastTechTreeScroll(value) {
-      if (this.host) this.host.lastTechTreeScroll = value;
+      if (this.techRenderState) this.techRenderState.lastTechTreeScroll = value || null;
     }
 
     addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }

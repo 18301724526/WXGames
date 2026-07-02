@@ -29,7 +29,7 @@
     }
 
     get bottomSafeArea() { return Number(this.host?.bottomSafeArea) || 0; }
-    get ctx() { return this.host?.ctx || null; }
+    get ctx() { return this.dialogueCtx || this.host?.ctx || null; }
     get height() { return Number(this.host?.height) || 0; }
     get h5Runtime() { return this.host?.h5Runtime || null; }
     get hitTargets() { return this.host?.hitTargets || null; }

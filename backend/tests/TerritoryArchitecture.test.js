@@ -1012,19 +1012,27 @@ test('territory conquest missions module owns settlement and battle resolution c
   const terrainRevealRequests = [];
   const terrainRevealBatches = [];
   const experienceGrants = [];
+  const conquestBattleCalls = [];
   const Conquest = createTerritoryConquestMissions({
     BattleService: {
       getLeaderSnapshot: (_gameState, leader) => (leader === 'leader-1' ? { id: leader, name: '先锋' } : null),
-      simulateConquestBattle: (_gameState, mission, territory) => ({
-        success: mission.soldiersCommitted >= territory.defense,
-        casualties: 30,
-        report: {
-          id: 'battle-1',
-          attacker: { leaderName: '先锋' },
-          experience: { leader: 12 },
-        },
-      }),
-      createLegacyBattleReport: () => ({ id: 'legacy-battle' }),
+      createConquestSummaryReport: () => ({ id: 'summary-battle' }),
+    },
+    ConquestBattleService: {
+      resolveConquestBattle: (_gameState, mission, territory) => {
+        conquestBattleCalls.push({ missionId: mission.id, territoryId: territory.id });
+        return {
+          success: mission.soldiersCommitted >= territory.defense,
+          casualties: 30,
+          report: {
+            id: 'battle-1',
+            mode: 'entity-battle',
+            attacker: { leaderName: 'battle-leader' },
+            experience: { leader: 12 },
+            replay: { setup: { sides: [{}, {}] }, inputStream: [] },
+          },
+        };
+      },
     },
     getFamousPersonService: () => ({
       MAX_CANDIDATES: 3,
@@ -1147,6 +1155,8 @@ test('territory conquest missions module owns settlement and battle resolution c
   assert.equal(claimedBattle.success, true);
   assert.equal(claimedBattle.outcome, 'success');
   assert.equal(claimedBattle.casualties, 30);
+  assert.deepEqual(conquestBattleCalls, [{ missionId: startedBattle.mission.id, territoryId: 'camp-1' }]);
+  assert.equal(claimedBattle.battleReport.mode, 'entity-battle');
   assert.equal(battleState.cities.capital.military.soldiers, 270);
   assert.equal(battleState.territories[0].garrison, null);
   assert.equal(battleState.territories[0].lastBattle.leaderGrowth.leader, 'leader-1');
@@ -1299,7 +1309,7 @@ test('territory state normalizer owns territory, mission, and world sync contrac
       ],
     },
     territories: [
-      { id: 'river_plain', status: 'scouted', naturalName: 'Legacy River' },
+      { id: 'river-site', x: 1, y: 0, type: 'town', owner: 'neutral', status: 'discovered', naturalName: 'River Site' },
       { id: 'camp-1', x: 3, y: 0, type: 'camp', owner: 'tribe', status: 'discovered', defense: 5, recommendedSoldiers: 7 },
       { id: 'zero', x: 0, y: 0, status: 'discovered' },
     ],
@@ -1334,11 +1344,11 @@ test('territory state normalizer owns territory, mission, and world sync contrac
 
   assert.equal(gameState.territories[0].id, 'capital');
   assert.equal(gameState.territories.some((territory) => territory.id === 'zero'), false);
-  const legacy = gameState.territories.find((territory) => territory.id === 'river_plain');
-  assert.equal(legacy.x, 1);
-  assert.equal(legacy.y, 0);
-  assert.equal(legacy.status, 'discovered');
-  assert.equal(legacy.owner, 'neutral');
+  const riverSite = gameState.territories.find((territory) => territory.id === 'river-site');
+  assert.equal(riverSite.x, 1);
+  assert.equal(riverSite.y, 0);
+  assert.equal(riverSite.status, 'discovered');
+  assert.equal(riverSite.owner, 'neutral');
   const camp = gameState.territories.find((territory) => territory.id === 'camp-1');
   assert.equal(camp.defense, 500);
   assert.equal(camp.garrison.siteId, 'camp-1');
@@ -1350,7 +1360,7 @@ test('territory state normalizer owns territory, mission, and world sync contrac
   assert.equal(gameState.scoutState.emptyStreak, 2);
   assert.ok(gameState.scoutedCoordinates.some((coord) => coord.siteId === 'camp-1'));
   assert.ok(calls.boundSites.some((call) => call.siteId === 'camp-1' && call.options.visibility === 'scouted'));
-  assert.equal(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_1_0').siteId, 'river_plain');
+  assert.equal(gameState.worldMap.tiles.find((tile) => tile.id === 'tile_1_0').siteId, 'river-site');
   assert.equal(calls.migrated[0].previousWorldMapVersion, 7);
   assert.equal(calls.readiness, 1);
   assert.equal(calls.limited, 1);

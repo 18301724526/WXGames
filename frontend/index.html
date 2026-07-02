@@ -77,13 +77,15 @@
     <script src="js/state/presenters/WorldTileMapPresenter.js?v=tilecoord-presenter-normalizer-v1"></script>
     <script src="js/state/presenters/ShellPresenter.js?v=architecture-refactor-shell-presenter-v1"></script>
     <script src="js/state/presenters/TalentPolicyPresenter.js?v=architecture-refactor-talent-policy-presenter-v1"></script>
-    <script src="js/state/UIStatePresenterDelegates.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/state/UIStatePresenter.js?v=legacy-retirement-world-map-v1"></script>
+    <script src="js/state/UIStatePresenterDelegates.js?v=world-map-owner-cleanup-v1"></script>
+    <script src="js/state/UIStatePresenter.js?v=world-map-owner-cleanup-v1"></script>
     <script src="js/api/GameAPI.js?v=world-map-error-evidence-v1"></script>
     <script src="js/config/FamousPortraitLayout.js?v=army-formation-v1"></script>
-    <script src="js/platform/renderers/CanvasSurfaceHitTargets.js?v=tutorial-reward-flow-v1"></script>
-    <script src="js/platform/renderers/CanvasSurfaceTextLayout.js?v=architecture-refactor-surface-text-v1"></script>
-    <script src="js/platform/renderers/CanvasSurfaceRenderer.js?v=world-march-continuous-v3"></script>
+      <script src="js/platform/renderers/CanvasSurfaceHitTargets.js?v=tutorial-reward-flow-v1"></script>
+      <script src="js/platform/renderers/CanvasSurfaceTextLayout.js?v=architecture-refactor-surface-text-v1"></script>
+      <script src="js/platform/renderers/CanvasSurfaceState.js?v=architecture-refactor-surface-state-v1"></script>
+      <script src="js/platform/renderers/CanvasSurfaceFrameClock.js?v=architecture-refactor-surface-frame-clock-v1"></script>
+      <script src="js/platform/renderers/CanvasSurfaceRenderer.js?v=world-march-continuous-v3"></script>
     <script src="js/platform/renderers/CanvasAssetRenderer.js?v=p2-system-guide-v1"></script>
     <script src="js/platform/renderers/CanvasPreloadAssetManifest.js?v=unit-sprite-manifest-v1"></script>
     <script src="js/platform/renderers/WorldTileWaterCanvasRenderer.js?v=p2-system-guide-v1"></script>
@@ -92,16 +94,13 @@
     <script src="js/platform/renderers/WorldFogMaskGenerator.js?v=world-fog-soft-mask-v1"></script>
     <script src="js/platform/renderers/WorldFogCanvasRenderer.js?v=world-fog-soft-mask-v1"></script>
     <script src="js/platform/renderers/WorldMapRendererDependencyRegistry.js?v=architecture-refactor-world-map-dependency-registry-v1"></script>
+    <script src="js/platform/renderers/WorldMapRenderState.js?v=architecture-refactor-world-map-render-state-v1"></script>
+    <script src="js/platform/renderers/WorldMapCacheState.js?v=architecture-refactor-world-map-cache-state-v1"></script>
     <script src="js/platform/renderers/WorldMapRendererCompositionFactory.js?v=architecture-refactor-world-map-composition-factory-v1"></script>
     <script src="js/platform/renderers/WorldMapLayoutModel.js?v=world-site-hit-fallback-v1"></script>
-    <script src="js/platform/renderers/WorldMapRenderUtilityFacade.js?v=architecture-refactor-world-map-render-utility-facade-v1"></script>
-    <script src="js/platform/renderers/WorldMapLayoutFacade.js?v=world-map-entity-hit-cache-v1"></script>
     <script src="js/platform/renderers/WorldMapHitTargetModel.js?v=world-map-input-surface-v1"></script>
-    <script src="js/platform/renderers/WorldMapHitTargetFacade.js?v=world-map-hit-target-facade-coord-collapse-v1"></script>
     <script src="js/platform/renderers/WorldMapCachePolicy.js?v=architecture-refactor-world-map-cache-policy-v1"></script>
     <script src="js/platform/renderers/WorldMapLayerCacheStore.js?v=architecture-refactor-world-map-layer-cache-store-v1"></script>
-    <script src="js/platform/renderers/WorldMapCacheFacade.js?v=world-map-cache-facade-coord-collapse-v1"></script>
-    <script src="js/platform/renderers/WorldMapCacheConfigFacade.js?v=architecture-refactor-world-map-cache-config-facade-v1"></script>
     <script src="js/platform/renderers/WorldMapStaticLayerRenderer.js?v=architecture-refactor-world-map-static-layer-renderer-v1"></script>
     <script src="js/platform/renderers/WorldMapStaticEntryRenderer.js?v=world-map-input-surface-v1"></script>
     <script src="js/platform/renderers/WorldMapStaticChunkRenderer.js?v=architecture-refactor-world-map-static-chunk-renderer-v1"></script>
@@ -109,17 +108,13 @@
     <script src="js/platform/renderers/WorldMapWaterEntryRenderer.js?v=architecture-refactor-world-map-water-entry-renderer-v1"></script>
     <script src="js/platform/renderers/WorldMapSnapshotCacheRenderer.js?v=architecture-refactor-world-map-snapshot-cache-renderer-v1"></script>
     <script src="js/platform/renderers/WorldMapFastDragCompositeRenderer.js?v=architecture-refactor-world-map-fast-drag-composite-renderer-v1"></script>
-    <script src="js/platform/renderers/WorldMapScoutRenderer.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/platform/renderers/WorldMapSiteOverlayRenderer.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/platform/renderers/WorldMapMilitaryViewRenderer.js?v=legacy-retirement-world-map-v1"></script>
+    <script src="js/platform/renderers/WorldMapScoutRenderer.js?v=world-map-owner-cleanup-v1"></script>
+    <script src="js/platform/renderers/WorldMapSiteOverlayRenderer.js?v=world-map-owner-cleanup-v1"></script>
+    <script src="js/platform/renderers/WorldMapMilitaryViewRenderer.js?v=world-map-owner-cleanup-v1"></script>
     <script src="js/platform/renderers/WorldMapTileMapRenderer.js?v=world-map-input-surface-v1"></script>
     <script src="js/platform/renderers/WorldMapActorHudRenderer.js?v=architecture-refactor-world-map-actor-hud-renderer-v1"></script>
-    <script src="js/platform/renderers/WorldMapCanvasRenderer.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/platform/renderers/CanvasWorldMapFacade.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/platform/renderers/WorldActorLayerManager.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/platform/renderers/WorldMapCacheCoordinator.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/platform/renderers/WorldMapHitTargetCollector.js?v=legacy-retirement-world-map-v1"></script>
-    <script src="js/platform/renderers/WorldMapLayerCanvasRenderer.js?v=legacy-retirement-world-map-v1"></script>
+    <script src="js/platform/renderers/WorldMapCanvasRenderer.js?v=world-map-owner-cleanup-v1"></script>
+    <script src="js/platform/renderers/WorldMapLayerCanvasRenderer.js?v=world-map-owner-cleanup-v1"></script>
     <script src="js/platform/renderers/FamousCanvasModel.js?v=architecture-refactor-famous-model-v1"></script>
     <script src="js/platform/renderers/FamousPortraitCanvasRenderer.js?v=architecture-refactor-famous-portrait-v1"></script>
     <script src="js/platform/renderers/FamousSkillCanvasRenderer.js?v=architecture-refactor-famous-skill-v1"></script>
@@ -133,10 +128,7 @@
     <script src="js/platform/renderers/BattleCanvasModel.js?v=architecture-refactor-battle-model-v1"></script>
     <script src="js/platform/renderers/BattleFloatingTextRenderer.js?v=architecture-refactor-battle-floating-v1"></script>
     <script src="js/platform/renderers/BattleEffectRenderer.js?v=architecture-refactor-battle-effects-v1"></script>
-    <script src="js/platform/renderers/BattleLayoutModel.js?v=entity-battle-render-context-v1"></script>
-    <script src="js/platform/renderers/BattleSpriteRenderer.js?v=entity-battle-render-context-v1"></script>
     <script src="js/platform/renderers/BattleCanvasRenderer.js?v=entity-battle-render-context-v1"></script>
-    <script src="js/platform/renderers/CanvasBattleFacade.js?v=entity-battle-canvas-v1"></script>
     <script src="js/platform/renderers/TutorialAdvisorSpineLayoutConfig.js?v=tutorial-advisor-tuned-v1"></script>
     <script src="js/platform/renderers/TutorialAdvisorCanvasRenderer.js?v=tutorial-advisor-tuned-v1"></script>
     <script src="js/platform/renderers/TutorialDialogueLayer.js?v=tutorial-dialogue-layer-v1"></script>
@@ -163,17 +155,19 @@
     <script src="js/platform/renderers/HudOverlayCanvasRenderer.js?v=entity-battle-canvas-v1"></script>
     <script src="js/platform/renderers/CanvasFrameRenderer.js?v=entity-battle-canvas-v1"></script>
     <script src="js/platform/CanvasGameRendererCompositionFactory.js?v=architecture-refactor-canvas-game-composition-factory-v1"></script>
-    <script src="js/platform/CanvasGameRendererCoreFacades.js?v=world-tile-fallback-signature-v1"></script>
-    <script src="js/platform/CanvasGameRendererPageFacades.js?v=canvas-reset-confirm-v1"></script>
     <script src="js/platform/CanvasGameRenderer.js?v=world-march-local-progress-v1"></script>
     <script src="js/platform/WorldMapRuntimeBakePolicy.js?v=tilecoord-bake-coord-collapse-v1"></script>
     <script src="js/platform/WorldMapRuntimeCameraPolicy.js?v=architecture-refactor-world-map-runtime-camera-policy-v1"></script>
     <script src="js/platform/WorldMapRuntimeInputPolicy.js?v=architecture-refactor-world-map-runtime-input-policy-v1"></script>
     <script src="js/platform/WorldMapRuntimeHitTargetPolicy.js?v=world-map-independent-picking-v1"></script>
     <script src="js/platform/WorldMapRuntimeRenderPolicy.js?v=architecture-refactor-world-map-runtime-render-policy-v2"></script>
+    <script src="js/platform/WorldMapRuntimeFrameState.js?v=architecture-refactor-world-map-runtime-frame-state-v1"></script>
+    <script src="js/platform/WorldMapInputState.js?v=architecture-refactor-world-map-input-state-v1"></script>
     <script src="js/platform/WorldMapRuntimeRenderPipeline.js?v=world-map-hit-target-preserve-v2"></script>
     <script src="js/platform/WorldMapRuntime.js?v=world-map-runtime-coord-collapse-v1"></script>
     <script src="js/platform/WorldMapRuntimeCoordinator.js?v=world-map-input-intent-v1"></script>
+    <script src="js/platform/CanvasModeOwnershipRuntime.js?v=frontend-ecs-mode-runtime-v1"></script>
+    <script src="js/platform/CanvasModalSnapshotAdapter.js?v=modal-snapshot-owner-v1"></script>
     <script src="js/platform/MiniGameCanvasRenderer.js?v=architecture-refactor-mini-game-renderer-v1"></script>
     <script src="js/platform/H5CanvasGameRenderer.js?v=architecture-refactor-h5-canvas-renderer-v1"></script>
     <script src="js/vendor/spine-3.8/spine-webgl.js?v=tutorial-spine-20260604"></script>
@@ -182,37 +176,14 @@
     <script src="js/tutorial/TutorialGuideStepPolicy.js?v=architecture-refactor-tutorial-guide-step-policy-v1"></script>
     <script src="js/tutorial/TutorialGuideTargetResolver.js?v=architecture-refactor-tutorial-guide-target-resolver-v1"></script>
     <script src="js/tutorial/TutorialGuideFlowRegistry.js?v=architecture-refactor-tutorial-flow-registry-v1"></script>
-    <script src="js/tutorial/TutorialGuidePhaseHighlights.js?v=architecture-refactor-tutorial-guide-phase-highlights-v1"></script>
-    <script src="js/platform/CanvasBlockingPanelSnapshotCalls.js?v=p1-strangler-v1"></script>
     <script src="js/tutorial/TutorialGuideEventRegistry.js?v=architecture-refactor-tutorial-event-registry-v1"></script>
-    <script src="js/tutorial/TutorialGuideUiStateCoordinator.js?v=architecture-refactor-tutorial-guide-ui-state-v1"></script>
     <script src="js/tutorial/TutorialGuideController.js?v=scout-guide-after-formation-save-v1"></script>
     <script src="js/platform/interactions/TechTreeInteractionModel.js?v=architecture-refactor-step-7"></script>
-    <script src="js/platform/CanvasTerritoryActionHandlers.js?v=territory-actions-coord-collapse-v1"></script>
-    <script src="js/platform/CanvasBattleActionHandlers.js?v=territory-actions-coord-collapse-v1"></script>
-    <script src="js/platform/CanvasExpeditionActionHandlers.js?v=territory-actions-coord-collapse-v1"></script>
-    <script src="js/platform/CanvasWorldMarchActionHandlers.js?v=territory-actions-coord-collapse-v1"></script>
-    <script src="js/platform/CanvasCityActionHandlers.js?v=world-map-async-action-contract-v1"></script>
-    <script src="js/platform/CanvasFamousActionHandlers.js?v=world-map-async-action-contract-v1"></script>
-    <script src="js/platform/CanvasShellActionHandlers.js?v=world-map-async-action-contract-v1"></script>
     <script src="js/platform/CanvasActionController.js?v=world-map-async-action-contract-v1"></script>
     <script src="js/platform/GameCommandService.js?v=p1-house-guide-v1"></script>
-    <script src="js/platform/CanvasGameAppStateSync.js?v=world-march-trace-v1"></script>
     <script src="js/platform/CanvasGameAppRenderPolicy.js?v=architecture-refactor-game-app-render-policy-v1"></script>
-    <script src="js/platform/CanvasGameShellWorldMapRuntimePolicy.js?v=architecture-refactor-shell-world-map-runtime-policy-v2"></script>
+    <script src="js/platform/WorldMapRuntimePolicy.js?v=architecture-refactor-world-map-runtime-policy-v1"></script>
     <script src="js/platform/CanvasGameAppRenderScheduler.js?v=architecture-refactor-game-app-render-scheduler-v1"></script>
-    <script src="js/platform/CanvasGameAppWorldMapRuntime.js?v=world-map-runtime-v1"></script>
-    <script src="js/platform/CanvasGameWorldActorAnimationRuntime.js?v=world-actor-independent-loop-v1"></script>
-    <script src="js/platform/CanvasGameAppRenderingRuntime.js?v=entity-battle-canvas-v1"></script>
-    <script src="js/platform/CanvasGameAppAssetLoading.js?v=entity-battle-canvas-v1"></script>
-    <script src="js/platform/CanvasGameAppSecondaryPanels.js?v=entity-battle-canvas-v1"></script>
-    <script src="js/platform/CanvasGameAppBattleScene.js?v=entity-battle-camera-v1"></script>
-    <script src="js/platform/CanvasGameAppCommands.js?v=world-march-trace-v1"></script>
-    <script src="js/platform/CanvasGameAppFormationCommands.js?v=world-march-trace-v1"></script>
-    <script src="js/platform/CanvasGameAppGuideUi.js?v=architecture-refactor-canvas-game-app-sr-v1"></script>
-    <script src="js/platform/CanvasGameAppInputRouter.js?v=entity-battle-camera-v1"></script>
-    <script src="js/platform/CanvasModeOwnershipRuntime.js?v=frontend-ecs-mode-runtime-v1"></script>
-    <script src="js/platform/CanvasModalSnapshotAdapter.js?v=frontend-ecs-naming-retirement-v1"></script>
     <script src="js/platform/CanvasGameApp.js?v=authority-state-refresh-v1"></script>
     <script src="js/services/GameStateSync.js?v=authority-state-refresh-v1"></script>
     <script src="js/services/UpdateChecker.js?v=army-formation-v1"></script>
@@ -235,19 +206,6 @@
     <script src="js/platform/DebugOverlayRegistry.js?v=architecture-refactor-debug-overlay-registry-v1"></script>
     <script src="js/platform/CanvasActionDispatchRegistry.js?v=architecture-refactor-canvas-action-dispatch-registry-v1"></script>
     <script src="js/platform/CanvasActionDispatcher.js?v=architecture-refactor-canvas-action-dispatcher-v2"></script>
-    <script src="js/platform/CanvasGameShellMounting.js?v=world-fog-webgl-layer-v1"></script>
-    <script src="js/platform/CanvasGameShellInputRouter.js?v=entity-battle-camera-v1"></script>
-    <script src="js/platform/CanvasGameShellHostAccess.js?v=shell-host-access-v1"></script>
-    <script src="js/platform/CanvasGameShellCommands.js?v=world-map-async-action-contract-v1"></script>
-    <script src="js/platform/CanvasGameShellGuideUi.js?v=architecture-refactor-canvas-game-shell-sr-v1"></script>
-    <script src="js/platform/CanvasGameShellWorldMapLayerRuntime.js?v=world-map-layer-runtime-v1"></script>
-    <script src="js/platform/CanvasGameShellWorldMapDragRuntime.js?v=architecture-refactor-shell-world-map-drag-runtime-v1"></script>
-    <script src="js/platform/CanvasGameShellWorldMapFrameRuntime.js?v=world-march-continuous-v3"></script>
-    <script src="js/platform/CanvasGameShellWorldMapRuntime.js?v=world-map-input-intent-v1"></script>
-    <script src="js/platform/CanvasGameShellRenderingRuntime.js?v=entity-battle-canvas-v1"></script>
-    <script src="js/platform/CanvasGameShellTechTreeView.js?v=entity-battle-canvas-v1"></script>
-    <script src="js/platform/CanvasGameShellTransitionTimers.js?v=shell-transition-timers-v1"></script>
-    <script src="js/platform/CanvasGameShellSystemUi.js?v=canvas-reset-confirm-v1"></script>
     <script src="js/platform/CanvasGameShell.js?v=world-map-async-action-contract-v1"></script>
     <script src="app.js?v=codex-iab-auth-v1"></script>
     <script src="auth.js?v=canvas-reset-confirm-v1"></script>

@@ -311,7 +311,7 @@ function buildEncounterBattleReport(
   const victory = battle.winner === 'attacker';
   const leaderName = getPrimaryLeaderName(gameState, snapshotBeforeNormalized);
   const defenderLeader = encounter.defender?.leader || {};
-  const report = BattleService.createLegacyBattleReport(
+  const report = BattleService.createConquestSummaryReport(
     {
       id: `world_combat_${encounter.id}_${now.getTime()}`,
       soldiersCommitted: attackerStart,

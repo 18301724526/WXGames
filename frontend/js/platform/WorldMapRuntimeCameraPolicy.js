@@ -4,14 +4,14 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
-  function toLegacyAxis(value, fallback = 0) {
+  function normalizeCameraAxis(value, fallback = 0) {
     return Number(value) || Number(fallback) || 0;
   }
 
   function createInitialCamera(options = {}) {
     return {
-      x: toLegacyAxis(options.camera?.x, options.initialPanX),
-      y: toLegacyAxis(options.camera?.y, options.initialPanY),
+      x: normalizeCameraAxis(options.camera?.x, options.initialPanX),
+      y: normalizeCameraAxis(options.camera?.y, options.initialPanY),
     };
   }
 
@@ -105,7 +105,7 @@
 
   const WorldMapRuntimeCameraPolicy = Object.freeze({
     toNumber,
-    toLegacyAxis,
+    normalizeCameraAxis,
     createInitialCamera,
     createCameraUiState,
     syncCameraFromUi,

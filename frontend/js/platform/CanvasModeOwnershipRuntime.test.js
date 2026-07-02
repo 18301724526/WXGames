@@ -6,6 +6,7 @@ const BattleStore = require('../state/BattleStore');
 const ModalStore = require('../state/ModalStore');
 const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+const { CanvasModalOwnerTestHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 // Modal truth is a single global ModalStore (no per-host owner), so each test starts
 // from a clean modal state -- the isolation the retired per-host __ecsModalOwner gave
@@ -29,8 +30,7 @@ test('CanvasModeOwnershipRuntime derives world map mode facts from legacy fields
 });
 
 test('CanvasModeOwnershipRuntime maps scattered modal fields to modal mode keys', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
   host.openModal('modal:naming', { visible: true, view: { title: 'Name' } });
   host.openModal('modal:confirmDialog', { visible: true, kind: 'resetGame' });
@@ -53,8 +53,7 @@ test('CanvasModeOwnershipRuntime maps scattered modal fields to modal mode keys'
 });
 
 test('CanvasModeOwnershipRuntime ignores retired naming mirrors when mapping modal keys', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = Object.assign(new Host(), {
     naming: { visible: true },
     lastGame: {
@@ -73,9 +72,9 @@ test('CanvasModeOwnershipRuntime ignores retired naming mirrors when mapping mod
   ]);
 });
 
-test('CanvasModeOwnershipRuntime installs snapshot helpers on legacy facades', () => {
-  class Host {}
-  assert.equal(CanvasModeOwnershipRuntime.install(Host), true);
+test('CanvasModeOwnershipRuntime owner host exposes snapshot helpers', () => {
+  class Host extends CanvasModalOwnerTestHost {}
+  assert.equal(typeof Host.prototype.getModeSnapshot, 'function');
 
   const host = new Host();
   Object.assign(host, {
@@ -94,8 +93,7 @@ test('CanvasModeOwnershipRuntime installs snapshot helpers on legacy facades', (
 });
 
 test('CanvasModeOwnershipRuntime preserves tech panel routing exception', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = Object.assign(new Host(), { activeTab: 'tech' });
   // commandPanel='tech' is a general blocking overlay but NOT a tech-tree-routing
   // blocker (it IS tech-tree base access). techDetail/show-stars still block routing.
@@ -115,8 +113,7 @@ test('CanvasModeOwnershipRuntime preserves tech panel routing exception', () => 
 });
 
 test('CanvasModeOwnershipRuntime resolves covered-mode input intents from the snapshot', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
 
   const worldHost = Object.assign(new Host(), {
     state: { currentTab: 'military', militaryView: 'world' },
@@ -148,8 +145,7 @@ test('CanvasModeOwnershipRuntime resolves covered-mode input intents from the sn
 });
 
 test('CanvasModeOwnershipRuntime owns modal open/close/update + token callbacks', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   const opened = host.openModal('modal:naming', {
@@ -186,8 +182,7 @@ test('CanvasModeOwnershipRuntime owns modal open/close/update + token callbacks'
 });
 
 test('CanvasModeOwnershipRuntime does not install retired naming owner wrappers', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(typeof host.openNamingModal, 'undefined');
@@ -196,8 +191,7 @@ test('CanvasModeOwnershipRuntime does not install retired naming owner wrappers'
 });
 
 test('CanvasModeOwnershipRuntime does not install retired confirmDialog owner wrappers', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(typeof host.openConfirmDialogModal, 'undefined');
@@ -207,8 +201,7 @@ test('CanvasModeOwnershipRuntime does not install retired confirmDialog owner wr
 });
 
 test('CanvasModeOwnershipRuntime generic modal APIs seal confirmDialog continuations', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   let confirmed = 0;
@@ -234,8 +227,7 @@ test('CanvasModeOwnershipRuntime generic modal APIs seal confirmDialog continuat
 });
 
 test('CanvasModeOwnershipRuntime does not install retired rewardReveal owner wrappers', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(typeof host.openRewardRevealModal, 'undefined');
@@ -243,8 +235,7 @@ test('CanvasModeOwnershipRuntime does not install retired rewardReveal owner wra
 });
 
 test('CanvasModeOwnershipRuntime does not install retired event owner wrappers', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(typeof host.openEventModal, 'undefined');
@@ -254,9 +245,7 @@ test('CanvasModeOwnershipRuntime does not install retired event owner wrappers',
 });
 
 test('CanvasModeOwnershipRuntime event snapshot uses one canonical owner without touching EventController cursor', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const shell = new Host();
   const game = new Host();
   game.canvasShell = shell;
@@ -281,9 +270,7 @@ test('CanvasModeOwnershipRuntime event snapshot uses one canonical owner without
 });
 
 test('CanvasModeOwnershipRuntime event snapshot preserves falsy but non-null event ids', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(host.openEventSnapshot(0), 0);
@@ -292,8 +279,7 @@ test('CanvasModeOwnershipRuntime event snapshot preserves falsy but non-null eve
 });
 
 test('CanvasModeOwnershipRuntime does not install retired target picker wrappers', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(typeof host.openWorldTargetPickerOwner, 'undefined');
@@ -305,9 +291,7 @@ test('CanvasModeOwnershipRuntime does not install retired target picker wrappers
 });
 
 test('CanvasModeOwnershipRuntime targetPicker snapshot uses the canonical game owner', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const shell = new Host();
   const game = new Host();
   game.canvasShell = shell;
@@ -355,9 +339,7 @@ test('CanvasModeOwnershipRuntime targetPicker snapshot uses the canonical game o
 });
 
 test('CanvasModeOwnershipRuntime derives panel facts + blocking from per-panel modal owners', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   host.openBlockingPanelSnapshot('showSettings', true);
@@ -383,9 +365,7 @@ test('CanvasModeOwnershipRuntime derives panel facts + blocking from per-panel m
 });
 
 test('CanvasModeOwnershipRuntime keeps commandPanel=tech and techDetail open simultaneously (Axis 3)', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   // handle_openCommandPanel('tech') then handle_selectTechNode: the tech command
@@ -412,9 +392,7 @@ test('CanvasModeOwnershipRuntime keeps commandPanel=tech and techDetail open sim
 });
 
 test('CanvasModeOwnershipRuntime closeBlockingPanelsSnapshot keeps the except panel', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   host.openBlockingPanelSnapshot('showTaskCenter', true);
@@ -433,9 +411,7 @@ test('CanvasModeOwnershipRuntime closeBlockingPanelsSnapshot keeps the except pa
 });
 
 test('CanvasModeOwnershipRuntime builds renderer snapshots from owner-backed panels', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
   const shell = new Host();
   const game = new Host();
@@ -478,8 +454,7 @@ test('CanvasModeOwnershipRuntime builds renderer snapshots from owner-backed pan
 });
 
 test('CanvasModeOwnershipRuntime exposes battle facts only through BattleStore-backed snapshot path', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
   BattleStore.closeEntityBattle();
   BattleStore.openBattleScene({
@@ -508,8 +483,7 @@ test('CanvasModeOwnershipRuntime exposes battle facts only through BattleStore-b
 });
 
 test('CanvasModeOwnershipRuntime ignores removed battleScene host mirrors for renderer snapshots', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
   BattleStore.closeBattleScene();
   BattleStore.closeEntityBattle();

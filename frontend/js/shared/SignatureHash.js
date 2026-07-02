@@ -4,8 +4,7 @@
   // the browser, where top-level shared/ is not served. shared/signatureHash.drift.test.js
   // requires both and asserts identical output so the two copies cannot drift.
   //
-  // Three named helpers preserve the exact input coercion of the legacy inline
-  // copies they replace, so swapping a call site is byte-identical:
+  // Three named helpers define the exact input coercion contract:
   //   - hashStep(hash, value): String(value ?? ''), seeded by the caller's hash
   //   - hashString(input):     String(input),       seeded by FNV_OFFSET_BASIS
   //   - hashText(value):       String(value || ''), seeded by FNV_OFFSET_BASIS

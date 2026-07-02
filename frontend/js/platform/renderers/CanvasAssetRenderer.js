@@ -14,6 +14,7 @@
   class CanvasAssetRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
       this.localState = Object.create(null);
     }
 
@@ -22,6 +23,10 @@
     }
 
     getOwner() {
+      return this.worldMapCacheState || this.localState;
+    }
+
+    getAssetOwner() {
       return this.host || this.localState;
     }
 
@@ -39,8 +44,16 @@
     get h5Runtime() { return this.host?.h5Runtime || null; }
     get runtime() { return this.host?.runtime || null; }
     get loadTrace() { return this.host?.loadTrace || null; }
-    get assetCache() { return this.getMapResource('assetCache'); }
-    get assetMetricsCache() { return this.getMapResource('assetMetricsCache'); }
+    get assetCache() {
+      const owner = this.getAssetOwner();
+      if (!owner.assetCache) owner.assetCache = new Map();
+      return owner.assetCache;
+    }
+    get assetMetricsCache() {
+      const owner = this.getAssetOwner();
+      if (!owner.assetMetricsCache) owner.assetMetricsCache = new Map();
+      return owner.assetMetricsCache;
+    }
     get worldTileMaskCache() { return this.getMapResource('worldTileMaskCache'); }
     get worldTileMaskMetricsCache() { return this.getMapResource('worldTileMaskMetricsCache'); }
     get worldTileDryCompositeCache() { return this.getMapResource('worldTileDryCompositeCache'); }

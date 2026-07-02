@@ -67,13 +67,6 @@ const EFFECT_LABELS = Object.freeze({
   cityStabilityPct: '城市稳定',
 });
 
-const LEGACY_EFFECT_MIGRATIONS = Object.freeze({
-  combo: 'secondHit',
-  ambush: 'firstStrike',
-  morale: 'attributeBonus',
-  counter: null,
-});
-
 const QUALITY_BUDGETS = Object.freeze({
   common: { active: 100, passive: 40, scoutActive: 85, scoutTrait: 45, civilPrimary: 60, civilSecondary: 35 },
   good: { active: 120, passive: 50, scoutActive: 100, scoutTrait: 55, civilPrimary: 80, civilSecondary: 45 },
@@ -280,7 +273,6 @@ module.exports = {
   EFFECT_LABELS,
   FIRST_BATCH_BATTLE_EFFECTS,
   GENERATOR_VERSION,
-  LEGACY_EFFECT_MIGRATIONS,
   PASSIVE_TEMPLATES,
   QUALITY_BUDGETS,
   QUALITY_LABELS,

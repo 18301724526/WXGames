@@ -91,7 +91,7 @@
     const layout = buildLayout(renderer, options);
     const dialogueCtx = SharedTutorialDialogueLayer?.begin?.(renderer) || null;
     const draw = () => renderContent(renderer, layout, message, advisorName);
-    if (dialogueCtx) SharedTutorialDialogueLayer.withHostContext(renderer, dialogueCtx, draw);
+    if (dialogueCtx) SharedTutorialDialogueLayer.withDialogueContext(renderer, dialogueCtx, draw);
     else draw();
     addClickTargets(renderer, layout.panel, options.action || null);
     return Boolean(dialogueCtx);

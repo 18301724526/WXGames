@@ -77,7 +77,6 @@
 
     setMapRuntime(runtime) {
       this.mapRuntime = runtime || null;
-      if (this.host) this.host.worldMapRuntime = this.mapRuntime;
       return this.mapRuntime;
     }
 

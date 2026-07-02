@@ -40,14 +40,17 @@ function createLayout(overrides = {}) {
 function createHost(overrides = {}) {
   const calls = [];
   const compositeWork = createWork('composite', calls);
+  const worldMapCacheState = {
+    worldTileStaticCacheKey: overrides.worldTileStaticCacheKey || 'static-key',
+    worldTileWaterLayerCacheKey: overrides.worldTileWaterLayerCacheKey || 'water-key',
+    worldTileStaticCache: overrides.worldTileStaticCache || createWork('static', calls),
+    worldTileWaterLayerCache: overrides.worldTileWaterLayerCache || createWork('water', calls),
+    worldTileFastDragComposite: overrides.worldTileFastDragComposite || null,
+  };
   return {
     calls,
     ctx: createCtx(calls),
-    worldTileStaticCacheKey: 'static-key',
-    worldTileWaterLayerCacheKey: 'water-key',
-    worldTileStaticCache: createWork('static', calls),
-    worldTileWaterLayerCache: createWork('water', calls),
-    worldTileFastDragComposite: null,
+    worldMapCacheState,
     getWorldTileStaticCacheScale() {
       calls.push(['getWorldTileStaticCacheScale']);
       return 2;
@@ -81,8 +84,8 @@ test('WorldMapFastDragCompositeRenderer updates composite cache from water and s
   const renderer = new WorldMapFastDragCompositeRenderer({ host });
 
   assert.equal(renderer.updateWorldTileFastDragComposite(createLayout(), {}), true);
-  assert.equal(host.worldTileFastDragComposite.signature, 'static-key::water-key');
-  assert.equal(host.worldTileFastDragComposite.work, host.compositeWork);
+  assert.equal(host.worldMapCacheState.worldTileFastDragComposite.signature, 'static-key::water-key');
+  assert.equal(host.worldMapCacheState.worldTileFastDragComposite.work, host.compositeWork);
   assert.equal(host.calls.filter((call) => call[0] === 'drawWorldTileLayerCache').length, 2);
   assert.deepEqual(host.calls.find((call) => call[0] === 'getWorldTileLayerCacheContext').slice(1), [
     'worldTileFastDragCompositeCache',
@@ -94,7 +97,7 @@ test('WorldMapFastDragCompositeRenderer updates composite cache from water and s
 
 test('WorldMapFastDragCompositeRenderer repositions and draws valid composite cache', () => {
   const host = createHost();
-  host.worldTileFastDragComposite = {
+  host.worldMapCacheState.worldTileFastDragComposite = {
     signature: 'static-key::water-key',
     layout: createLayout({ drawX: 0, drawY: 0 }),
     work: createWork('cached-composite', host.calls),
@@ -103,7 +106,7 @@ test('WorldMapFastDragCompositeRenderer repositions and draws valid composite ca
 
   assert.equal(renderer.renderWorldTileFastDragComposite({}, {}, { x: 0, y: 0, width: 100, height: 100 }, []), true);
   const drawCall = host.calls.find((call) => call[0] === 'drawWorldTileLayerCache');
-  assert.equal(drawCall[1], host.worldTileFastDragComposite.work);
+  assert.equal(drawCall[1], host.worldMapCacheState.worldTileFastDragComposite.work);
   assert.equal(drawCall[2].drawX, 120);
   assert.equal(drawCall[2].drawY, 80);
 });
@@ -115,7 +118,7 @@ test('WorldMapFastDragCompositeRenderer rejects stale or chunk composite layouts
       return { kind: 'chunks', layouts: [] };
     },
   });
-  host.worldTileFastDragComposite = {
+  host.worldMapCacheState.worldTileFastDragComposite = {
     signature: 'old-signature',
     layout: createLayout(),
     work: createWork('cached-composite', host.calls),
@@ -123,7 +126,7 @@ test('WorldMapFastDragCompositeRenderer rejects stale or chunk composite layouts
   const renderer = new WorldMapFastDragCompositeRenderer({ host });
 
   assert.equal(renderer.renderWorldTileFastDragComposite({}, {}, {}, []), false);
-  host.worldTileFastDragComposite.signature = 'static-key::water-key';
+  host.worldMapCacheState.worldTileFastDragComposite.signature = 'static-key::water-key';
   assert.equal(renderer.renderWorldTileFastDragComposite({}, {}, {}, []), false);
 });
 

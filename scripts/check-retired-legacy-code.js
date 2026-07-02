@@ -17,6 +17,7 @@ const EXCLUDED_PATH_PATTERNS = Object.freeze([
 
 const RETIRED_SYMBOLS = Object.freeze([
   'HomeCanvasRenderer',
+  'CanvasBlockingPanelSnapshotCalls',
   'openTalentPolicy',
   'startExplore',
   'claimExplore',
@@ -32,6 +33,7 @@ const RETIRED_SYMBOLS = Object.freeze([
 ]);
 
 const RETIRED_FILES = Object.freeze([
+  'frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js',
   'frontend/js/platform/renderers/HomeCanvasRenderer.js',
   'frontend/js/platform/renderers/TalentPolicyCanvasRenderer.js',
   'frontend/js/state/presenters/WorldRadarPresenter.js',
@@ -50,7 +52,14 @@ const RETIRED_LAYER_IMPORT_PATTERNS = Object.freeze([
   new RegExp(`import\\(\\s*['"][^'"]*/${RETIRED_LAYER_NAME}/`),
 ]);
 
-const RETIRED_LAYER_TOKEN_PATTERN = new RegExp(RETIRED_LAYER_NAME, 'i');
+const RETIRED_LAYER_TOKEN_PATTERN = new RegExp(
+  [
+    `\\.${escapeRegExp(RETIRED_LAYER_NAME)}\\b`,
+    `\\b${escapeRegExp(RETIRED_LAYER_NAME)}\\s*:`,
+    `\\b[A-Z0-9_]*${escapeRegExp(RETIRED_LAYER_NAME.toUpperCase())}[A-Z0-9_]*\\b`,
+    `['"\`]${escapeRegExp(RETIRED_LAYER_NAME)}['"\`]`,
+  ].join('|'),
+);
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

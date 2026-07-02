@@ -2,6 +2,7 @@
   class WorldMapSnapshotCacheRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
     }
 
     get ctx() {
@@ -9,23 +10,23 @@
     }
 
     get worldTileStaticCache() {
-      return this.host?.worldTileStaticCache || null;
+      return this.worldMapCacheState?.worldTileStaticCache || null;
     }
 
     get worldTileStaticCacheLayout() {
-      return this.host?.worldTileStaticCacheLayout || null;
+      return this.worldMapCacheState?.worldTileStaticCacheLayout || null;
     }
 
     get worldTileStaticCacheLayoutKind() {
-      return this.host?.worldTileStaticCacheLayoutKind || '';
+      return this.worldMapCacheState?.worldTileStaticCacheLayoutKind || '';
     }
 
     get worldTileStaticChunkCaches() {
-      return this.host?.worldTileStaticChunkCaches || null;
+      return this.worldMapCacheState?.worldTileStaticChunkCaches || null;
     }
 
     get worldTileWaterChunkCaches() {
-      return this.host?.worldTileWaterChunkCaches || null;
+      return this.worldMapCacheState?.worldTileWaterChunkCaches || null;
     }
 
     drawWorldTileLayerCache(...args) {

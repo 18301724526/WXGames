@@ -3,19 +3,10 @@ const assert = require('node:assert/strict');
 
 const TechTreeInteractionModel = require('./TechTreeInteractionModel');
 const CanvasActionController = require('../CanvasActionController');
-const CanvasModeOwnershipRuntime = require('../CanvasModeOwnershipRuntime');
-const CanvasModalSnapshotAdapter = require('../CanvasModalSnapshotAdapter');
 const GameAPI = require('../../api/GameAPI');
+const { makeModalOwnerHost } = require('../../../test-support/CanvasOwnerTestHarness');
 
-// A modal-capable host carries the bridge + snapshot-adapter helpers so the
-// targetPicker modal routes through the owner snapshot (Batch 8E).
-class ModalHost {}
-CanvasModeOwnershipRuntime.install(ModalHost);
-CanvasModalSnapshotAdapter.install(ModalHost);
-
-function makeModalHost(fields = {}) {
-  return Object.assign(new ModalHost(), fields);
-}
+const makeModalHost = makeModalOwnerHost;
 
 function createHost() {
   const calls = [];

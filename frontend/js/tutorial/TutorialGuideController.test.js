@@ -2,23 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialGuideController = require('./TutorialGuideController');
-const CanvasModeOwnershipRuntime = require('../platform/CanvasModeOwnershipRuntime');
-const CanvasModalSnapshotAdapter = require('../platform/CanvasModalSnapshotAdapter');
 const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
-// Batch 8F: the 12 blocking panels are owned modal subtypes. A modal-capable host
-// carries the ownership bridge (openModal/isModalOpen/getRendererSnapshot) and the
-// snapshot adapter (openBlockingPanelSnapshot/closeBlockingPanelSnapshot/
-// isBlockingPanelSnapshotOpen/getCommandPanelValue) so the controller reads/writes
-// blocking-panel state through the canonical owner instead of host mirrors. Shell
-// reads resolve back to the game owner once shell.lastGame links them.
-class ModalHost {}
-CanvasModeOwnershipRuntime.install(ModalHost);
-CanvasModalSnapshotAdapter.install(ModalHost);
-
-function makeModalHost(fields = {}) {
-  return Object.assign(new ModalHost(), fields);
-}
+const makeModalHost = makeModalOwnerHost;
 
 // Link a game host and its canvasShell so shell reads resolve to the game owner.
 function linkGameShell(game, shell) {

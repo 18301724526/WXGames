@@ -218,16 +218,15 @@
     return dependencies;
   }
 
-  function defineStaticMethod(target, methodName, method) {
-    Object.defineProperty(target, methodName, {
-      configurable: true,
-      enumerable: false,
-      writable: true,
-      value: method,
-    });
+  function defineStaticMethod(methods, methodName, method) {
+    if (!methodName || typeof method !== 'function') return;
+    methods[methodName] = method;
   }
 
-  function installDirectDelegates(UIStatePresenter, dependencies) {
+  function buildDirectDelegates(dependencies) {
+    const UIStatePresenter = {};
+    const methods = UIStatePresenter;
+
     const ShellPresenter = dependencies.ShellPresenter;
     defineStaticMethod(UIStatePresenter, 'toNumber', function toNumber(...args) {
       return ShellPresenter.toNumber(...args);
@@ -708,37 +707,43 @@
     defineStaticMethod(UIStatePresenter, 'buildWorldTileMapViewState', function buildWorldTileMapViewState(...args) {
       return WorldTileMapPresenter.buildWorldTileMapViewState(...args);
     });
+    return methods;
   }
 
-  function installCustomDelegates(UIStatePresenter, dependencies) {
+  function buildCustomDelegates(dependencies, baseMethods) {
+    const UIStatePresenter = baseMethods;
+    const methods = {};
     const { TaskGuidePresenter, TechPresenter } = dependencies;
-    defineStaticMethod(UIStatePresenter, 'buildGuidebookViewState', function buildGuidebookViewState(state = {}, options = {}) {
+    defineStaticMethod(methods, 'buildGuidebookViewState', function buildGuidebookViewState(state = {}, options = {}) {
+      const presenter = this && typeof this.buildCityPlanningViewState === 'function'
+        ? this
+        : UIStatePresenter;
       return TaskGuidePresenter.buildGuidebookViewState(state, {
         ...options,
-        buildCityPlanningViewState: (sourceState) => UIStatePresenter.buildCityPlanningViewState(sourceState),
+        buildCityPlanningViewState: (sourceState) => presenter.buildCityPlanningViewState(sourceState),
       });
     });
-    defineStaticMethod(UIStatePresenter, 'buildTechViewState', function buildTechViewState(state = {}) {
+    defineStaticMethod(methods, 'buildTechViewState', function buildTechViewState(state = {}) {
       if (TechPresenter && typeof TechPresenter.buildTechViewState === 'function') {
         return TechPresenter.buildTechViewState(state);
       }
       return { points: 0, researchedCount: 0, availableCount: 0, eras: [], nodes: [], links: [], treeEras: [], selectedTech: null };
     });
+    return methods;
   }
 
-  function install(UIStatePresenter, overrides = {}) {
-    if (!UIStatePresenter) return null;
+  function createStaticMethods(overrides = {}) {
     const dependencies = createDependencies(overrides);
-    installDirectDelegates(UIStatePresenter, dependencies);
-    installCustomDelegates(UIStatePresenter, dependencies);
-    return UIStatePresenter;
+    const directMethods = buildDirectDelegates(dependencies);
+    const customMethods = buildCustomDelegates(dependencies, directMethods);
+    return Object.freeze({ ...directMethods, ...customMethods });
   }
 
   const UIStatePresenterDelegates = Object.freeze({
     DEPENDENCY_DEFINITIONS,
     DELEGATE_METHODS,
     createDependencies,
-    install,
+    createStaticMethods,
   });
 
   global.UIStatePresenterDelegates = UIStatePresenterDelegates;

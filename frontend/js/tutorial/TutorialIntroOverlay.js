@@ -16,7 +16,6 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
   const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
-  const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
   const MARCH_DURATION_MS = 4800;
   const ENTER_DURATION_MS = 1560;
   const MARCH_FRAME_INTERVAL_MS = 33;
@@ -51,15 +50,10 @@
       return STORAGE_KEY;
     }
 
-    static get legacyStorageKey() {
-      return LEGACY_STORAGE_KEY;
-    }
-
     getQueryMode() {
       const search = String(this.runtime?.location?.search || '');
       if (/[?&]tutorialIntro=reset(?:&|$)/.test(search)) {
         this.storage?.removeItem?.(STORAGE_KEY);
-        this.storage?.removeItem?.(LEGACY_STORAGE_KEY);
         return 'reset';
       }
       if (/[?&]tutorialIntro=1(?:&|$)/.test(search)) return 'force';
@@ -74,12 +68,10 @@
     markSeen() {
       if (this.getQueryMode() === 'force') return;
       this.storage?.setItem?.(STORAGE_KEY, 'true');
-      this.storage?.setItem?.(LEGACY_STORAGE_KEY, 'true');
     }
 
     resetSeen() {
       this.storage?.removeItem?.(STORAGE_KEY);
-      this.storage?.removeItem?.(LEGACY_STORAGE_KEY);
       this.completedThisSession = false;
       return true;
     }

@@ -57,16 +57,6 @@ function toNonNegativeNumber(value) {
   return number;
 }
 
-function migrateLegacySoldiers(rawMilitary, stats) {
-  const soldiers = Math.max(0, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers)));
-  const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
-  if (soldiers <= 0 || cap < 100) return soldiers;
-  const hasHundredScaleFields = Object.prototype.hasOwnProperty.call(rawMilitary || {}, 'trainingBatchSize')
-    || Number(rawMilitary?.defensePerSoldier) === Number(stats.defensePerSoldier);
-  if (!hasHundredScaleFields && soldiers < 100) return Math.min(cap, soldiers * 100);
-  return soldiers;
-}
-
 function getTutorialSettlementSoldierFloor(gameState = {}) {
   const tutorial = gameState?.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return 0;
@@ -196,7 +186,7 @@ function normalizeMilitaryState(rawMilitary, gameState) {
   const cap = Math.max(0, Math.floor(stats.soldierCap || 0), tutorialSoldierFloor);
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
   const batchSize = Math.max(0, Math.floor(Number(stats.trainingBatchSize || 0)));
-  const soldiers = Math.min(cap, Math.max(migrateLegacySoldiers(rawMilitary, stats), tutorialSoldierFloor));
+  const soldiers = Math.min(cap, Math.max(Math.floor(toNonNegativeNumber(rawMilitary?.soldiers)), tutorialSoldierFloor));
   const trainingProgress = cap > 0 && soldiers < cap && interval > 0
     ? Math.min(interval, toNonNegativeNumber(rawMilitary?.trainingProgress))
     : 0;
@@ -236,9 +226,9 @@ function setCityMilitary(gameState = {}, cityId = 'capital', military = {}) {
   if (gameState.cities?.[cityId]) {
     gameState.cities[cityId].military = military;
   } else {
-    // No city slot to write to (uninitialized/legacy object handed to MilitaryService
-    // directly without normalizeCities). Fall back to the top-level field so the value is
-    // not silently dropped; once cities[] exists it is the sole truth.
+    // No city slot to write to (an uninitialized object reached this service directly).
+    // Fall back to the top-level field so the value is not silently dropped; once
+    // cities[] exists it is the sole truth.
     gameState.military = military;
   }
   return military;

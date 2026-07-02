@@ -27,10 +27,12 @@ test('retired legacy guard scans active production sources only', () => {
 
 test('retired legacy guard blocks retired tracked files', () => {
   assert.deepEqual(findRetiredFileOffenders([
+    'frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js',
     'frontend/js/platform/renderers/HomeCanvasRenderer.js',
     'frontend/js/state/presenters/WorldRadarPresenter.js',
     'frontend/js/platform/renderers/WorldMapCanvasRenderer.js',
   ], { exists: () => true }), [
+    'frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js',
     'frontend/js/platform/renderers/HomeCanvasRenderer.js',
     'frontend/js/state/presenters/WorldRadarPresenter.js',
   ]);
@@ -67,6 +69,7 @@ test('retired legacy guard blocks retired layer tokens in active code', () => {
   const offenders = findRetiredLayerTokenOffendersInText(
     'backend/services/random/Bad.js',
     [
+      '// current battle domain adapter',
       `const DEFAULT_${RETIRED_UPPER} = 'gameplay';`,
       `const scope = input.${RETIRED};`,
       'const ok = input.scope;',
@@ -75,21 +78,34 @@ test('retired legacy guard blocks retired layer tokens in active code', () => {
   assert.deepEqual(offenders, [
     {
       file: 'backend/services/random/Bad.js',
-      line: 1,
+      line: 2,
       evidence: `const DEFAULT_${RETIRED_UPPER} = 'gameplay';`,
     },
     {
       file: 'backend/services/random/Bad.js',
-      line: 2,
+      line: 3,
       evidence: `const scope = input.${RETIRED};`,
     },
   ]);
+});
+
+test('retired legacy guard does not block ordinary words containing retired token text', () => {
+  const offenders = findRetiredLayerTokenOffendersInText(
+    'backend/services/battle/BattleSimService.js',
+    [
+      '// entity-based simulation; callers adapt their domain state into this request',
+      'const domainSnapshot = createBattleRequest(input);',
+      'const ok = "kingdom";',
+    ].join('\n'),
+  );
+  assert.deepEqual(offenders, []);
 });
 
 test('retired legacy guard reports retired symbols from text', () => {
   const symbols = findRetiredSymbolsInText('renderer.renderWorldScoutUnitsLegacy(); controller.openTalentPolicy();');
   assert.equal(symbols.includes('renderWorldScoutUnitsLegacy'), true);
   assert.equal(symbols.includes('openTalentPolicy'), true);
+  assert.equal(findRetiredSymbolsInText('global.CanvasBlockingPanelSnapshotCalls = api;').includes('CanvasBlockingPanelSnapshotCalls'), true);
 });
 
 test('retired legacy guard matches exact symbols without blocking current plural preload helpers', () => {

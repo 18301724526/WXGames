@@ -10,7 +10,9 @@ test('DebugOverlaySnapshot builds compact rows for fps, bake, visibility, and in
       hasBakedMapLayer: true,
       mapBakeDirty: false,
       lastMapDataSignature: 'abc',
-      hitTargets: [{}, {}],
+      getHitTargets() {
+        return [{}, {}];
+      },
       camera: { x: 12, y: -4 },
       bakedCamera: { x: 10, y: -4 },
     },
@@ -32,10 +34,34 @@ test('DebugOverlaySnapshot builds compact rows for fps, bake, visibility, and in
   assert.equal(Object.prototype.hasOwnProperty.call(snapshot, 'worldMapRuntime'), false);
 });
 
+test('DebugOverlaySnapshot reads runtime hit targets through the official API only', () => {
+  const snapshot = DebugOverlaySnapshot.createSnapshot(
+    {
+      worldMapRuntime: {
+        hasBakedMapLayer: true,
+        worldMapInputState: {
+          hitTargets: [{}, {}, {}],
+        },
+      },
+    },
+    {
+      overlayKeys: ['worldMapBake'],
+    },
+  );
+
+  assert.equal(DebugOverlaySnapshot.getRow(snapshot, 'worldMapBake').details.hitTargetCount, 0);
+});
+
 test('DebugOverlaySnapshot filters overlay keys and keeps stable signatures', () => {
   const input = {
     fps: 24,
-    worldMapRuntime: { hasBakedMapLayer: false, mapBakeDirty: true },
+    worldMapRuntime: {
+      hasBakedMapLayer: false,
+      mapBakeDirty: true,
+      getHitTargets() {
+        return [];
+      },
+    },
   };
   const first = DebugOverlaySnapshot.createSnapshot(input, {
     overlayKeys: ['fps', 'worldMapBake', 'fps'],

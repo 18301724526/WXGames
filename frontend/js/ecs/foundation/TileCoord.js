@@ -63,7 +63,7 @@
     return a.x === b.x && a.y === b.y;
   }
 
-  function toLegacy(coord = {}) {
+  function toAxial(coord = {}) {
     const normalized = normalizeCoord(coord);
     return Object.freeze({
       q: normalized.x,
@@ -79,8 +79,8 @@
     offset,
     readCoordAxis,
     tileId,
+    toAxial,
     toInteger,
-    toLegacy,
     toNumber,
   });
 

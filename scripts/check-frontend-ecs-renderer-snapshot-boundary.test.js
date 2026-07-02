@@ -8,6 +8,7 @@ const {
   findRendererSnapshotReadsInText,
   isApprovedPath,
   isRendererSnapshotSurface,
+  parseBaselineCounts,
   parseFormat,
   scanRendererSnapshotBoundary,
 } = require('./check-frontend-ecs-renderer-snapshot-boundary');
@@ -121,6 +122,34 @@ test('renderer snapshot boundary guard grandfathers baseline reads but blocks gr
     const report = scanRendererSnapshotBoundary({ repoRoot });
     assert.equal(report.summary.totalViolations, 1);
     assert.equal(report.violations[0].symbol, 'showSettings');
+  }));
+
+test('renderer snapshot boundary guard does not credit retired renderer baseline to a new owner', () =>
+  withTempRepo((repoRoot) => {
+    writeFile(
+      repoRoot,
+      'docs/development_logs/2026-06-25-frontend-ecs-batch-6a-snapshot-boundary.md',
+      [
+        '## Guard Baseline',
+        '',
+        '| Symbol | File | Count |',
+        '| --- | --- | ---: |',
+        '| `territoryUiState` | `frontend/js/platform/renderers/RetiredRenderer.js` | 1 |',
+      ].join('\n'),
+    );
+    writeFile(
+      repoRoot,
+      'frontend/js/platform/renderers/NewRenderer.js',
+      'const uiState = options.territoryUiState || {};\n',
+    );
+
+    const report = scanRendererSnapshotBoundary({ repoRoot });
+
+    assert.equal(report.summary.totalViolations, 1);
+    assert.equal(report.violations[0].file, 'frontend/js/platform/renderers/NewRenderer.js');
+    assert.equal(report.violations[0].symbol, 'territoryUiState');
+    assert.equal(report.violations[0].baselineCount, 0);
+    assert.equal(report.violations[0].currentCount, 1);
   }));
 
 test('renderer snapshot boundary guard rejects unknown CLI flags', () => {

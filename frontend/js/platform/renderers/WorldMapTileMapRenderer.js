@@ -26,6 +26,8 @@
   class WorldMapTileMapRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapRenderState = options.worldMapRenderState || this.host?.worldMapRenderState || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
     }
 
     get ctx() {
@@ -41,11 +43,11 @@
     }
 
     get worldTileFastDragActive() {
-      return Boolean(this.host?.worldTileFastDragActive);
+      return Boolean(this.worldMapCacheState?.worldTileFastDragActive);
     }
 
     set worldTileFastDragActive(value) {
-      if (this.host) this.host.worldTileFastDragActive = Boolean(value);
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileFastDragActive = Boolean(value);
     }
 
     getWorldMapHitTargetModel() {
@@ -106,10 +108,7 @@
     }
 
     publishWorldTileMapContext(context = null) {
-      this.lastWorldTileMapContext = context;
-      if (this.host && this.host !== this) {
-        this.host.lastWorldTileMapContext = context;
-      }
+      if (this.worldMapRenderState) this.worldMapRenderState.lastWorldTileMapContext = context;
       return context;
     }
 

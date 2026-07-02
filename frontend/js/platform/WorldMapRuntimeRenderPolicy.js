@@ -58,10 +58,6 @@
 
   function createCannotRenderState() {
     return {
-      hitTargets: [],
-      baseHitTargets: [],
-      lastHitTargetSync: null,
-      hitTargetSyncSequence: 0,
       hasBakedMapLayer: false,
       mapBakeDirty: true,
       lastMapDataSignature: '',
@@ -75,13 +71,14 @@
   function createHitTargetFrameState(runtime = {}, syncState = null) {
     const source = syncState && typeof syncState === 'object' && !Array.isArray(syncState)
       ? syncState
-      : (runtime?.lastHitTargetSync || {});
-    const hitTargets = toArray(runtime?.hitTargets);
+      : (runtime?.getLastHitTargetSync?.() || runtime?.worldMapInputState?.lastHitTargetSync || {});
+    const hitTargets = toArray(runtime?.getHitTargets?.() || runtime?.worldMapInputState?.hitTargets);
     const sourceHitTargetCount = Number(source.sourceHitTargetCount);
     const mapTargetCount = Number(source.mapTargetCount);
     return {
       actorTargetCount: Number(source.actorTargetCount) || 0,
-      baseHitTargetCount: Number(source.baseHitTargetCount) || toArray(runtime?.baseHitTargets).length,
+      baseHitTargetCount: Number(source.baseHitTargetCount)
+        || toArray(runtime?.getBaseHitTargets?.() || runtime?.worldMapInputState?.baseHitTargets).length,
       hitTargetCount: Number(source.hitTargetCount) || hitTargets.length,
       hitTargets,
       hitTargetsFresh: Boolean(!source.preserved && (

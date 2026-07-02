@@ -35,9 +35,9 @@ test('GameStateService keeps normalizeState compatible with GameStateNormalizer'
   assert.equal(Boolean(viaFacade.territoryState), Boolean(viaModule.territoryState));
 });
 
-test('GameStateService normalizes legacy saves through the migration pipeline', () => {
+test('GameStateService normalizes schema-0 saves through the migration pipeline', () => {
   const rawState = {
-    playerId: 'legacy-save-normalize-test',
+    playerId: 'schema-0-save-normalize-test',
     resources: { food: 10, metal: 4 },
     population: { total: 3, maxPop: 3, farmers: 3 },
     buildings: {},
@@ -52,7 +52,12 @@ test('GameStateService normalizes legacy saves through the migration pipeline', 
 
   assert.equal(normalized.saveMetadata.schema, GameStateMigrationPipeline.SAVE_SCHEMA_NAME);
   assert.equal(normalized.saveMetadata.schemaVersion, GameStateMigrationPipeline.CURRENT_SCHEMA_VERSION);
-  assert.deepEqual(normalized.saveMetadata.migrations.map((entry) => entry.id), ['initialize-save-schema-v1']);
+  assert.deepEqual(normalized.saveMetadata.migrations.map((entry) => entry.id), [
+    'initialize-save-schema-v1',
+    'initialize-city-source-v2',
+    'upgrade-stored-skill-effects-v3',
+    'upgrade-territory-source-v4',
+  ]);
   assert.equal(normalized.resources.iron, 4);
   assert.equal(normalized.resources.metal, 4);
   assert.deepEqual(normalized.taskProgress.claimed, {});

@@ -166,17 +166,9 @@ const SITE_TEMPLATES = [
   },
 ];
 
-const LEGACY_SITE_MIGRATIONS = {
-  river_plain: { x: 1, y: 0, type: 'town', owner: 'neutral' },
-  north_forest: { x: 0, y: -1, type: 'camp', owner: 'tribe' },
-  hill_outpost: { x: -1, y: 0, type: 'outpost', owner: 'neutral' },
-  old_ruins: { x: 1, y: -1, type: 'ruins', owner: 'neutral' },
-};
-
 module.exports = {
   CONQUEST_DURATION_MS,
   DIRECTIONS,
-  LEGACY_SITE_MIGRATIONS,
   MAP_TERRAIN_TYPES,
   MAX_ACTIVE_SCOUTS,
   MAX_MIGRATION_SITE_SEARCH_DISTANCE,

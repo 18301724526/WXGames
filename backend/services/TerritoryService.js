@@ -148,8 +148,10 @@ const {
   renamePolity: applyPolityName,
 } = Naming;
 const BattleService = require('./BattleService');
+const ConquestBattleService = require('./battle/ConquestBattleService');
 const ConquestMissions = createTerritoryConquestMissions({
   BattleService,
+  ConquestBattleService,
   getFamousPersonService: () => require('./FamousPersonService'),
   WorldMapService,
   allocateSoldiersForMission,

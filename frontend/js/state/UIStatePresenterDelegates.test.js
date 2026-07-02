@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 
 const UIStatePresenterDelegates = require('./UIStatePresenterDelegates');
 
-test('UIStatePresenterDelegates installs direct presenter static delegates', () => {
+test('UIStatePresenterDelegates creates direct presenter static delegates', () => {
   class Facade {}
   const calls = [];
-  UIStatePresenterDelegates.install(Facade, {
+  Object.assign(Facade, UIStatePresenterDelegates.createStaticMethods({
     ShellPresenter: {
       toNumber(value, fallback) {
         calls.push(['toNumber', value, fallback]);
@@ -23,7 +23,7 @@ test('UIStatePresenterDelegates installs direct presenter static delegates', () 
         return { id: state.id };
       },
     },
-  });
+  }));
 
   assert.equal(Facade.toNumber('12', 0), 12);
   assert.equal(Facade.formatCompactNumber(12000), '12k');
@@ -37,7 +37,7 @@ test('UIStatePresenterDelegates installs direct presenter static delegates', () 
 
 test('UIStatePresenterDelegates keeps custom guidebook facade callbacks', () => {
   class Facade {}
-  UIStatePresenterDelegates.install(Facade, {
+  Object.assign(Facade, UIStatePresenterDelegates.createStaticMethods({
     TaskGuidePresenter: {
       buildGuidebookViewState(state, options) {
         return {
@@ -51,7 +51,7 @@ test('UIStatePresenterDelegates keeps custom guidebook facade callbacks', () => 
         return { source: 'home', id: state.id };
       },
     },
-  });
+  }));
 
   Facade.buildCityPlanningViewState = (state) => ({ source: 'facade', id: state.id });
 
@@ -64,19 +64,19 @@ test('UIStatePresenterDelegates keeps custom guidebook facade callbacks', () => 
 
 test('UIStatePresenterDelegates preserves tech fallback contract', () => {
   class WithTech {}
-  UIStatePresenterDelegates.install(WithTech, {
+  Object.assign(WithTech, UIStatePresenterDelegates.createStaticMethods({
     TechPresenter: {
       buildTechViewState(state) {
         return { selectedTech: state.selectedTech };
       },
     },
-  });
+  }));
   assert.deepEqual(WithTech.buildTechViewState({ selectedTech: 'tech-1' }), { selectedTech: 'tech-1' });
 
   class WithoutTech {}
-  UIStatePresenterDelegates.install(WithoutTech, {
+  Object.assign(WithoutTech, UIStatePresenterDelegates.createStaticMethods({
     TechPresenter: {},
-  });
+  }));
   assert.deepEqual(WithoutTech.buildTechViewState(), {
     points: 0,
     researchedCount: 0,

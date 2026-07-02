@@ -11,49 +11,89 @@
       TutorialGuideControllerBase = null;
     }
   }
-  var CanvasGameAppStateSync = global.CanvasGameAppStateSync;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppStateSync) {
-    CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
+  var CanvasGameAppRenderPolicy = global.CanvasGameAppRenderPolicy;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderPolicy) {
+    CanvasGameAppRenderPolicy = require('./CanvasGameAppRenderPolicy');
   }
-  var CanvasGameAppRenderingRuntime = global.CanvasGameAppRenderingRuntime;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderingRuntime) {
-    CanvasGameAppRenderingRuntime = require('./CanvasGameAppRenderingRuntime');
+  var CanvasGameAppRenderScheduler = global.CanvasGameAppRenderScheduler;
+  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderScheduler) {
+    CanvasGameAppRenderScheduler = require('./CanvasGameAppRenderScheduler');
   }
-  var CanvasGameAppAssetLoading = global.CanvasGameAppAssetLoading;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppAssetLoading) {
-    CanvasGameAppAssetLoading = require('./CanvasGameAppAssetLoading');
+  var WorldMapRuntimeCoordinatorBase = global.WorldMapRuntimeCoordinator;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeCoordinatorBase) {
+    WorldMapRuntimeCoordinatorBase = require('./WorldMapRuntimeCoordinator');
   }
-  var CanvasGameAppSecondaryPanels = global.CanvasGameAppSecondaryPanels;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppSecondaryPanels) {
-    CanvasGameAppSecondaryPanels = require('./CanvasGameAppSecondaryPanels');
+  var WorldMapRuntimeRenderPolicy = global.WorldMapRuntimeRenderPolicy;
+  if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeRenderPolicy) {
+    WorldMapRuntimeRenderPolicy = require('./WorldMapRuntimeRenderPolicy');
   }
-  var CanvasGameWorldActorAnimationRuntime = global.CanvasGameWorldActorAnimationRuntime;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameWorldActorAnimationRuntime) {
-    CanvasGameWorldActorAnimationRuntime = require('./CanvasGameWorldActorAnimationRuntime');
+  var WorldMarchSystem = global.WorldMarchSystem;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
+    WorldMarchSystem = require('../ecs/system/WorldMarchSystem');
   }
-  var CanvasGameAppBattleScene = global.CanvasGameAppBattleScene;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppBattleScene) {
-    CanvasGameAppBattleScene = require('./CanvasGameAppBattleScene');
+  var SharedWorldClock = global.WorldClock;
+  if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
+    try {
+      SharedWorldClock = require('../ecs/foundation/WorldClock');
+    } catch (_error) {
+      SharedWorldClock = null;
+    }
   }
-  var CanvasGameAppCommands = global.CanvasGameAppCommands;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppCommands) {
-    CanvasGameAppCommands = require('./CanvasGameAppCommands');
+  var WorldMarchOptimisticState = global.WorldMarchOptimisticState;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchOptimisticState) {
+    try {
+      WorldMarchOptimisticState = require('../state/optimistic/index');
+    } catch (_error) {
+      WorldMarchOptimisticState = null;
+    }
   }
-  var CanvasGameAppFormationCommands = global.CanvasGameAppFormationCommands;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppFormationCommands) {
-    CanvasGameAppFormationCommands = require('./CanvasGameAppFormationCommands');
-  }
-  var CanvasGameAppGuideUi = global.CanvasGameAppGuideUi;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppGuideUi) {
-    CanvasGameAppGuideUi = require('./CanvasGameAppGuideUi');
-  }
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const SharedRewardText = (() => {
+    if (global.RewardText) return global.RewardText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ecs/resource/RewardText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const BattleStore = (() => {
+    if (global.BattleStore) return global.BattleStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../state/BattleStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const WorldMapInputActionMap = (() => {
+    if (global.WorldMapInputActionMap) return global.WorldMapInputActionMap;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ecs/input/WorldMapInputActionMap');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
   if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
     CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
-  }
-  var CanvasGameAppInputRouter = global.CanvasGameAppInputRouter;
-  if (typeof module !== 'undefined' && module.exports && !CanvasGameAppInputRouter) {
-    CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
   }
   var CanvasModeOwnershipRuntime = global.CanvasModeOwnershipRuntime;
   if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipRuntime) {
@@ -66,6 +106,149 @@
   var TerritoryUiStateStore = global.TerritoryUiStateStore;
   if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
     TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+  }
+
+  function t(key = '', params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
+  function toNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function hasActiveWorldExplorerMission(state = {}, options = {}) {
+    if (WorldMarchSystem?.hasActiveMission) {
+      return WorldMarchSystem.hasActiveMission(state?.worldExplorerState || {}, options);
+    }
+    const explorer = state?.worldExplorerState || {};
+    const missions = [
+      explorer.activeMission,
+      ...(Array.isArray(explorer.missions) ? explorer.missions : []),
+      ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
+    ].filter(Boolean);
+    return missions.some((mission) => mission.status === 'active');
+  }
+
+  function buildMilitaryRenderOptions(host = null, uiState = null, options = {}) {
+    if (typeof host?.buildRenderOptions === 'function') {
+      const renderOptions = host.buildRenderOptions('military', uiState, {
+        ...options,
+        forceMapHome: true,
+      }) || {};
+      const { territoryUiState = uiState || {} } = renderOptions;
+      return { ...renderOptions, territoryUiState };
+    }
+    return { territoryUiState: uiState || {} };
+  }
+
+  function resolveRuntimeUiState(runtime = null) {
+    return runtime?.getCameraUiState?.() || null;
+  }
+
+  function isMapHomeActive(host = {}, state = {}) {
+    if (typeof host.isWorldMapHomeActive === 'function') {
+      try {
+        return host.isWorldMapHomeActive(state);
+      } catch (_error) {}
+    }
+    return Boolean(host.mapHomeActive
+      && (state?.currentTab || host.activeTab) === 'military'
+      && (state?.militaryView || host.militaryView) === 'world');
+  }
+
+  function getRequestAnimationFrame(host = {}) {
+    const raf = host.runtime?.requestAnimationFrame || host.scheduler?.requestAnimationFrame;
+    const owner = host.runtime?.requestAnimationFrame ? host.runtime : host.scheduler;
+    return typeof raf === 'function' ? raf.bind(owner) : null;
+  }
+
+  function getFrameMs(host = {}) {
+    const configuredFps = toNumber(
+      host.config?.WORLD_ACTOR_ANIMATION_FPS
+        ?? host.config?.PERFORMANCE?.WORLD_ACTOR_ANIMATION_FPS,
+      30,
+    );
+    const fps = Math.max(1, Math.min(60, configuredFps));
+    const baseFrameMs = Math.max(1, toNumber(host.getAnimationFrameMs?.(), 16));
+    return Math.max(baseFrameMs, Math.round(1000 / fps));
+  }
+
+  function getState(host = {}) {
+    return host.lastGame?.state || host.state || {};
+  }
+
+  function shouldAnimateWorldActors(host = {}, options = {}) {
+    const state = options.state || getState(host);
+    if (!state || !isMapHomeActive(host, state)) return false;
+    if (host.isWorldMapDragging?.()) return false;
+    const epochNowMs = options.epochNowMs ?? host.getWorldEpochNowMs?.() ?? Date.now();
+    return hasActiveWorldExplorerMission(state, { ...options, epochNowMs });
+  }
+
+  function canRenderWorldActorLayer(host = {}) {
+    if (host.canvasShell?.renderWorldActorLayer) return true;
+    if (typeof host.renderWorldActorLayer === 'function') return true;
+    return Boolean(host.renderer && typeof host.renderer.renderWorldMapActorLayer === 'function');
+  }
+
+  function renderWorldActorLayerFrame(host = {}, options = {}) {
+    if (!canRenderWorldActorLayer(host)) return false;
+    if (host.canvasShell?.renderWorldActorLayer) {
+      return host.canvasShell.renderWorldActorLayer({
+        ...options,
+        state: options.state || getState(host),
+        epochNowMs: options.epochNowMs ?? host.getWorldEpochNowMs?.() ?? Date.now(),
+        preserveRuntimeHitTargetsOnEmpty: options.preserveRuntimeHitTargetsOnEmpty !== false,
+      });
+    }
+    const state = options.state || getState(host);
+    if (!state) return false;
+    const epochNowMs = options.epochNowMs ?? host.getWorldEpochNowMs?.() ?? Date.now();
+    if (typeof host.renderWorldActorLayer === 'function') {
+      return host.renderWorldActorLayer({
+        ...options,
+        epochNowMs,
+        state,
+        preserveRuntimeHitTargetsOnEmpty: options.preserveRuntimeHitTargetsOnEmpty !== false,
+      });
+    }
+    const runtime = host.worldMapRuntimeCoordinator?.getMapRuntime?.() || host.worldMapRuntime || null;
+    const territoryUiState = options.territoryUiState
+      || runtime?.getCameraUiState?.()
+      || TerritoryUiStateStore?.ensure?.(host)
+      || {};
+    const rendered = host.renderer.renderWorldMapActorLayer(state, {
+      ...options,
+      epochNowMs,
+      activeTab: 'military',
+      isMapHome: true,
+      territoryUiState,
+      worldMapRuntimeContext: options.worldMapRuntimeContext
+        || runtime?.getLastTileMapContext?.()
+        || runtime?.lastTileMapContext
+        || host.renderer?.lastWorldTileMapContext
+        || null,
+      preserveCanvas: true,
+      showFpsOverlay: false,
+    });
+    if (rendered && runtime?.syncHitTargetsFromRenderer) {
+      runtime.syncHitTargetsFromRenderer({
+        preserveOnEmpty: options.preserveRuntimeHitTargetsOnEmpty !== false,
+      });
+    }
+    return rendered;
+  }
+
+  function shouldRouteTapThroughWorldMapRuntime(action = null) {
+    if (WorldMapInputActionMap?.shouldRouteTapThroughWorldMapRuntime) {
+      return WorldMapInputActionMap.shouldRouteTapThroughWorldMapRuntime(action);
+    }
+    return !action;
+  }
+
+  function summarizeHandledForOperationLog(handled) {
+    return handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled);
   }
 
   class CanvasGameApp {
@@ -230,22 +413,3740 @@
           this.gestureDisposer = null;
           this.ensureWorldMapRuntime();
         }
-  }
 
-  [
-    CanvasGameAppStateSync,
-    CanvasGameAppRenderingRuntime,
-    CanvasGameAppAssetLoading,
-    CanvasGameAppSecondaryPanels,
-    CanvasGameWorldActorAnimationRuntime,
-    CanvasGameAppBattleScene,
-    CanvasGameAppCommands,
-    CanvasGameAppFormationCommands,
-    CanvasModeOwnershipRuntime,
-    CanvasModalSnapshotAdapter,
-    CanvasGameAppGuideUi,
-    CanvasGameAppInputRouter,
-  ].forEach((module) => module?.install?.(CanvasGameApp));
+
+    getFrozenWorldMapWaterTimeMs() {
+          return this.worldMapDragWaterTimeMs !== null &&
+            this.worldMapDragWaterTimeMs !== undefined &&
+            Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+            ? Number(this.worldMapDragWaterTimeMs)
+            : this.now();
+        }
+
+    isWorldMapDragging() {
+          return (
+            this.worldMapDragWaterTimeMs !== null &&
+            this.worldMapDragWaterTimeMs !== undefined &&
+            Number.isFinite(Number(this.worldMapDragWaterTimeMs))
+          );
+        }
+
+    isWorldMapDragCoolingDown() {
+          return Number(this.worldMapDragCooldownUntil) > this.now();
+        }
+
+    startWorldMapSnapshotDrag() {
+          this.worldMapDragWaterTimeMs = this.now();
+          return this.worldMapDragWaterTimeMs;
+        }
+
+    finishWorldMapSnapshotDrag() {
+          this.worldMapDragCooldownUntil = this.now() + this.getWorldMapDragCooldownMs();
+          this.worldMapDragWaterTimeMs = null;
+          this.worldMapPinchDragging = false;
+          if (this.worldMapRuntime) this.worldMapRuntime.waterTimeMs = null;
+          this.updateWorldActorAnimationLoop?.({ force: true });
+        }
+
+    renderWorldMapSnapshotDragFrame() {
+          if (!this.renderer || typeof this.renderer.renderWorldMapSnapshotLayer !== 'function')
+            return false;
+          const coordinator = this.ensureWorldMapRuntimeCoordinator();
+          const runtime = coordinator?.getMapRuntime?.();
+          if (!runtime || !coordinator?.canRender?.(this.state)) return false;
+          const renderOptions = buildMilitaryRenderOptions(this, resolveRuntimeUiState(runtime));
+          const { territoryUiState = {} } = renderOptions;
+          const topBarBottom =
+            typeof this.renderer.getTopBarBottom === 'function'
+              ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
+              : 84;
+          const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
+          const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+            ...renderOptions,
+            epochNowMs,
+            activeTab: 'military',
+            isMapHome: true,
+            territoryUiState,
+            topBarBottom,
+            frameless: true,
+            preserveOnMiss: false,
+            reuseCachedWorldTileView: true,
+            snapshotOnly: true,
+            waterTimeMs: this.now(),
+            showFpsOverlay: false,
+          });
+          if (!rendered) return false;
+          const frameContext = this.renderer.lastWorldTileMapContext || null;
+          if (frameContext) runtime.commitFrameState?.({ lastTileMapContext: frameContext });
+          this.renderer.renderWorldMapActorLayer?.(this.state, {
+            epochNowMs,
+            activeTab: 'military',
+            isMapHome: true,
+            territoryUiState,
+            worldMapRuntimeContext: frameContext,
+            preserveCanvas: true,
+            showFpsOverlay: false,
+          });
+          runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
+          const renderResult =
+            this.renderer.lastWorldMapLayerRenderResult ||
+            this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult ||
+            null;
+          const frameState =
+            runtime.getWorldMapFrameState?.({ renderResult, rendered }) ||
+            WorldMapRuntimeRenderPolicy?.createWorldMapFrameState?.(runtime, {
+              renderResult,
+              rendered,
+            }) ||
+            null;
+          const compositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
+            ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions(
+                {
+                  activeTab: 'military',
+                  isMapHome: true,
+                  territoryUiState,
+                  network: this.networkState,
+                },
+                frameState || {},
+              )
+            : {
+                activeTab: 'military',
+                isMapHome: true,
+                skipWorldMapLayer: true,
+                worldMapRuntimeHitTargets: runtime.getHitTargets?.() || [],
+                preserveCanvas: true,
+                territoryUiState,
+                network: this.networkState,
+              };
+          this.renderer.render(this.state, {
+            ...compositionOptions,
+            activeTab: 'military',
+            isMapHome: true,
+            territoryUiState,
+            network: this.networkState,
+          });
+          return true;
+        }
+
+    getWorldMapSnapshotRenderOptions(waterTimeMs = this.getFrozenWorldMapWaterTimeMs()) {
+          const hasWaterTimeMs =
+            waterTimeMs !== null && waterTimeMs !== undefined && Number.isFinite(Number(waterTimeMs));
+          const resolvedWaterTimeMs = hasWaterTimeMs
+            ? Number(waterTimeMs)
+            : this.getFrozenWorldMapWaterTimeMs();
+          return {
+            force: true,
+            reuseCachedWorldTileView: true,
+            snapshotOnly: true,
+            waterTimeMs: resolvedWaterTimeMs,
+          };
+        }
+
+    ensureWorldMapRuntimeCoordinator() {
+          if (this.worldMapRuntimeCoordinator) return this.worldMapRuntimeCoordinator;
+          const CoordinatorCtor = WorldMapRuntimeCoordinatorBase || global.WorldMapRuntimeCoordinator;
+          if (!CoordinatorCtor) return null;
+          this.worldMapRuntimeCoordinator = new CoordinatorCtor({
+            host: this,
+            worldMapRuntime: this.worldMapRuntime,
+            useWorldMapRuntime: this.useWorldMapRuntime,
+            renderOnDrag: false,
+            getRenderer: () => this.renderer,
+            getPresenter: () => this.presenter,
+            getState: () => this.state || {},
+            getLayerBackingStoreState: () =>
+              this.runtime?.getLayerBackingStoreState?.('worldMap') || null,
+            getBaseUiState: () => TerritoryUiStateStore?.ensure?.(this) || {},
+            getLocalUiState: () => {
+              const renderOptions = buildMilitaryRenderOptions(
+                this,
+                TerritoryUiStateStore?.ensure?.(this) || {},
+              );
+              const { territoryUiState = {} } = renderOptions;
+              return territoryUiState;
+            },
+            getTerritoryController: () => this.territoryController,
+            getTopBarBottom: (state) =>
+              typeof this.renderer?.getTopBarBottom === 'function'
+                ? this.renderer.getTopBarBottom(state, { isMapHome: true })
+                : 84,
+            getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
+            getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
+            getForceMapHome: () => this.mapHomeActive,
+            canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
+            onAction: (action, event, meta = {}) => {
+              const handled = this.actionController?.handle?.(action, { ...(meta || {}), event });
+              this.advanceTutorialIntroAfterHandled(handled, action);
+              return handled;
+            },
+            onBeforeDrag: ({ phase, runtime }) => {
+              if (phase === 'start') {
+                const waterTimeMs = this.startWorldMapSnapshotDrag();
+                if (runtime) runtime.waterTimeMs = waterTimeMs;
+              }
+            },
+            onAfterDrag: ({ phase, handled }) => {
+              if (handled && phase === 'move') this.renderWorldMapSnapshotDragFrame();
+              if (handled && (phase === 'end' || phase === 'cancel')) this.finishWorldMapSnapshotDrag();
+            },
+          });
+          return this.worldMapRuntimeCoordinator;
+        }
+
+    ensureWorldMapRuntime() {
+          const coordinator = this.ensureWorldMapRuntimeCoordinator();
+          if (!coordinator) return this.worldMapRuntime;
+          this.worldMapRuntime = coordinator.ensureRuntime();
+          return this.worldMapRuntime;
+        }
+
+    isWorldMapHomeActive() {
+          const coordinator = this.ensureWorldMapRuntimeCoordinator();
+          if (coordinator) return coordinator.isMapHomeActive(this.state);
+          const homeView = this.resolveMapHomeViewState(this.state, {
+            requestedTab: this.state?.currentTab || this.activeTab || 'resources',
+            militaryView: this.state?.militaryView || this.militaryView,
+            forceMapHome: this.mapHomeActive,
+          });
+          return Boolean(
+            homeView.isMapHome &&
+            homeView.activeTab === 'military' &&
+            homeView.militaryView === 'world',
+          );
+        }
+
+    renderRuntimeWorldMap(stateOrOptions = this.state, maybeOptions = null) {
+          const hasExplicitState = maybeOptions !== null && maybeOptions !== undefined;
+          const state = hasExplicitState ? stateOrOptions : this.state;
+          const options = hasExplicitState ? maybeOptions || {} : stateOrOptions || {};
+          const coordinator = this.ensureWorldMapRuntimeCoordinator();
+          if (!coordinator) return false;
+          const rendered = coordinator.render(state || this.state, options);
+          this.worldMapRuntime = coordinator.getMapRuntime();
+          return rendered;
+        }
+
+    shouldRenderRuntimeWorldMap(stateOrOptions = this.state, maybeOptions = null) {
+          const hasExplicitState = maybeOptions !== null && maybeOptions !== undefined;
+          const state = hasExplicitState ? stateOrOptions : this.state;
+          const options = hasExplicitState ? maybeOptions || {} : stateOrOptions || {};
+          const coordinator = this.ensureWorldMapRuntimeCoordinator();
+          const runtime = coordinator?.getMapRuntime?.();
+          if (!coordinator?.canRender?.(state || this.state)) return false;
+          if (runtime?.isBakedLayerStateValid && !runtime.isBakedLayerStateValid()) return true;
+          if (!runtime || typeof runtime.isMapBakeDirty !== 'function') return true;
+          return Boolean(options.force || runtime.isMapBakeDirty(state || this.state, options));
+        }
+
+    refreshWorldMapLayerFromSnapshot(options = {}) {
+          const coordinator = this.ensureWorldMapRuntimeCoordinator();
+          const runtime = coordinator?.getMapRuntime?.();
+          if (
+            !runtime ||
+            !this.renderer ||
+            typeof this.renderer.renderWorldMapSnapshotLayer !== 'function'
+          )
+            return false;
+          const renderOptions = buildMilitaryRenderOptions(this, resolveRuntimeUiState(runtime));
+          const { territoryUiState = {} } = renderOptions;
+          const epochNowMs = options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now();
+          const rendered = this.renderer.renderWorldMapSnapshotLayer(this.state, {
+            ...renderOptions,
+            epochNowMs,
+            activeTab: 'military',
+            isMapHome: true,
+            territoryUiState,
+            topBarBottom:
+              typeof this.renderer.getTopBarBottom === 'function'
+                ? this.renderer.getTopBarBottom(this.state, { isMapHome: true })
+                : 84,
+            frameless: true,
+            preserveOnMiss: true,
+            reuseCachedWorldTileView: true,
+            snapshotOnly: true,
+            waterTimeMs: options.waterTimeMs ?? this.worldMapDragWaterTimeMs,
+            showFpsOverlay: false,
+          });
+          if (!rendered) return false;
+          const frameContext = this.renderer.lastWorldTileMapContext || null;
+          if (frameContext) runtime.commitFrameState?.({ lastTileMapContext: frameContext });
+          this.renderer.renderWorldMapActorLayer?.(this.state, {
+            epochNowMs,
+            activeTab: 'military',
+            isMapHome: true,
+            territoryUiState,
+            worldMapRuntimeContext: frameContext,
+            preserveCanvas: true,
+            showFpsOverlay: false,
+          });
+          runtime.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
+          const renderResult =
+            this.renderer.lastWorldMapLayerRenderResult ||
+            this.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult ||
+            null;
+          if (renderResult?.drewFrame !== false) {
+            runtime.commitBakedFrame?.(frameContext || runtime.getLastTileMapContext?.() || null);
+            runtime.markBakedLayerCommitted?.();
+          }
+          if (options.commitCamera !== false) runtime.markBakedCamera?.(runtime.camera);
+          return true;
+        }
+
+    getWorldMarchClientReport() {
+                return WorldMarchOptimisticState?.buildClientReport?.(this) || null;
+              }
+
+    playUnseenWorldCombatReports(state = this.state) {
+                const reports = state?.worldExplorerState?.combat?.recentReports;
+                if (!Array.isArray(reports) || !reports.length) return false;
+                this.playedWorldCombatReportIds = this.playedWorldCombatReportIds || new Set();
+                // First sync of this session: the reports already present are history from
+                // before the page loaded, not battles that just happened. Mark them all seen
+                // without playing 鈥?otherwise every reload (e.g. the post-deploy update
+                // refresh) re-plays the newest historical report as an orderless replay.
+                if (!this.worldCombatReportsSeeded) {
+                  for (const entry of reports) {
+                    const seededId = entry?.id || entry?.report?.id || '';
+                    if (seededId) this.playedWorldCombatReportIds.add(seededId);
+                  }
+                  this.worldCombatReportsSeeded = true;
+                  return false;
+                }
+                // recentReports is newest-first. Play only the newest unseen report
+                // and mark the rest seen, so a backlog (several battles between syncs)
+                // doesn't stack multiple battle scenes at once.
+                let toPlay = null;
+                for (const entry of reports) {
+                  const report = entry?.report || null;
+                  const reportId = entry?.id || report?.id || '';
+                  if (!report || !reportId || this.playedWorldCombatReportIds.has(reportId)) continue;
+                  if (!toPlay) toPlay = report;
+                  this.playedWorldCombatReportIds.add(reportId);
+                }
+                if (toPlay && typeof this.startBattleScene === 'function') {
+                  this.startBattleScene(toPlay);
+                  return true;
+                }
+                return false;
+              }
+
+    applyState(payload = {}) {
+                this.syncWorldClock?.(payload);
+                const loadTrace = this.loadTrace || null;
+                loadTrace?.mark?.('state:apply:start', {
+                  payload: loadTrace.summarizePayload?.(payload) || null,
+                });
+                global.WorldMarchTrace?.log?.('app:applyState:input', {
+                  payload: global.WorldMarchTrace?.summarizeApiPayload?.(payload) || null,
+                  before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                });
+                const rawNextState = payload.gameState || payload.state || this.state;
+                const nextState = WorldMarchOptimisticState?.reconcileState?.(this, rawNextState, { source: 'applyState' })
+                  || rawNextState;
+                const payloadWorldMap = global.CodexWorldMapDiag?.summarizeWorldMap?.(payload) || null;
+                const nextStateSummary = global.CodexWorldMapDiag?.summarizeState?.(nextState) || null;
+                global.CodexWorldMapDiag?.logChanged?.('state:applyState:input', {
+                  source: payload.gameState ? 'payload.gameState' : (payload.state ? 'payload.state' : 'currentState'),
+                  payloadHasWorldMap: Boolean(payloadWorldMap?.hasWorldMap),
+                  payloadTileCount: payloadWorldMap?.tileCount || 0,
+                  payloadVersion: payloadWorldMap?.version || 0,
+                  nextTileCount: nextStateSummary?.worldMap?.tileCount || 0,
+                  nextVersion: nextStateSummary?.worldMap?.version || 0,
+                  nextCurrentTab: nextStateSummary?.currentTab || '',
+                  nextMilitaryView: nextStateSummary?.militaryView || '',
+                }, {
+                  source: payload.gameState ? 'payload.gameState' : (payload.state ? 'payload.state' : 'currentState'),
+                  payloadWorldMap,
+                  nextState: nextStateSummary,
+                });
+                const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
+                const localTab = this.getActiveTab();
+                const localMilitaryView = this.state?.militaryView || this.militaryView || nextState.militaryView || 'army';
+                const homeView = this.resolveMapHomeViewState(nextState, {
+                  requestedTab: localTab,
+                  militaryView: localMilitaryView,
+                  forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
+                });
+                StateWriter.commit(this, {
+                  ...nextState,
+                  currentTab: homeView.activeTab,
+                  militaryView: homeView.militaryView,
+                  softGuide: payload.softGuide ?? nextState.softGuide ?? null,
+                  guideTasks: payload.guideTasks ?? nextState.guideTasks ?? { visible: false, tasks: [] },
+                  taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
+                  eraProgress: payload.eraProgress ?? nextState.eraProgress,
+                }, { source: 'applyState' });
+                const assignedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+                global.CodexWorldMapDiag?.logChanged?.('state:applyState:afterAssign', {
+                  tileCount: assignedStateSummary?.worldMap?.tileCount || 0,
+                  version: assignedStateSummary?.worldMap?.version || 0,
+                  currentTab: assignedStateSummary?.currentTab || '',
+                  militaryView: assignedStateSummary?.militaryView || '',
+                  mapHomeActive: Boolean(this.mapHomeActive),
+                }, {
+                  state: assignedStateSummary,
+                  mapHomeActive: Boolean(this.mapHomeActive),
+                });
+                this.tutorial = nextTutorial;
+                this.activeTab = this.state.currentTab || homeView.activeTab;
+                this.militaryView = this.state.militaryView || homeView.militaryView;
+                this.mapHomeActive = homeView.isMapHome;
+                const api = this.getGameApi();
+                if (payload.token && api) {
+                  api.setToken?.(payload.token);
+                  this.runtime?.setStorage?.('token', payload.token);
+                }
+                this.hasServerState = true;
+                if (this.loading.visible || this.canvasShell?.loading?.visible) {
+                  this.loading = { visible: false, percentage: 100, message: '' };
+                  if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
+                }
+                this.tutorialController?.sync?.(nextTutorial);
+                this.setPendingBuildingAction(null, { render: false });
+                global.WorldMarchTrace?.log?.('app:applyState:after', {
+                  after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                });
+                this.playUnseenWorldCombatReports?.(this.state);
+                this.render();
+                loadTrace?.ready?.({
+                  source: 'applyState',
+                  activeTab: this.state?.currentTab || '',
+                  militaryView: this.state?.militaryView || '',
+                });
+              }
+
+    getGameApi() {
+                return this.gameAPI || this.api;
+              }
+
+    applyApiState(data = {}) {
+                this.syncWorldClock?.(data);
+                const apiPayloadWorldMap = global.CodexWorldMapDiag?.summarizeWorldMap?.(data) || null;
+                global.CodexWorldMapDiag?.logChanged?.('state:applyApiState:input', {
+                  payloadHasWorldMap: Boolean(apiPayloadWorldMap?.hasWorldMap),
+                  payloadTileCount: apiPayloadWorldMap?.tileCount || 0,
+                  payloadVersion: apiPayloadWorldMap?.version || 0,
+                  hasNormalizer: Boolean(this.stateNormalizer?.normalizeGameState),
+                }, {
+                  payloadWorldMap: apiPayloadWorldMap,
+                  hasNormalizer: Boolean(this.stateNormalizer?.normalizeGameState),
+                });
+                global.WorldMarchTrace?.log?.('app:applyApiState:input', {
+                  payload: global.WorldMarchTrace?.summarizeApiPayload?.(data) || null,
+                  before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                });
+                if (this.stateNormalizer?.normalizeGameState) {
+                  const nextState = this.stateNormalizer.normalizeGameState(data);
+                  const normalizedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(nextState) || null;
+                  global.CodexWorldMapDiag?.logChanged?.('state:applyApiState:afterNormalizer', {
+                    tileCount: normalizedStateSummary?.worldMap?.tileCount || 0,
+                    version: normalizedStateSummary?.worldMap?.version || 0,
+                    currentTab: normalizedStateSummary?.currentTab || '',
+                    militaryView: normalizedStateSummary?.militaryView || '',
+                    tutorialStep: normalizedStateSummary?.tutorial?.currentStep ?? null,
+                  }, {
+                    nextState: normalizedStateSummary,
+                  });
+                  this.tutorial = this.stateNormalizer.normalizeTutorialState?.(data) || this.tutorial || {};
+                  this.syncFromServer(nextState, data.tutorial, data.eraProgress);
+                  global.WorldMarchTrace?.log?.('app:applyApiState:afterNormalizer', {
+                    after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                  });
+                  return;
+                }
+                this.applyState(data);
+              }
+
+    syncFromServer(serverState, tutorial, eraProgress) {
+                this.syncWorldClock?.({
+                  gameState: serverState,
+                  tutorial,
+                  eraProgress,
+                });
+                const reconciledServerState = WorldMarchOptimisticState?.reconcileState?.(this, serverState, { source: 'syncFromServer' })
+                  || serverState;
+                const loadTrace = this.loadTrace || null;
+                loadTrace?.mark?.('state:syncFromServer:start', {
+                  payload: loadTrace.summarizePayload?.({ gameState: serverState }) || null,
+                });
+                global.WorldMarchTrace?.log?.('app:syncFromServer:input', {
+                  server: global.WorldMarchTrace?.summarizeWorldExplorerState?.(reconciledServerState?.worldExplorerState),
+                  before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                });
+                const serverStateSummary = global.CodexWorldMapDiag?.summarizeState?.(reconciledServerState) || null;
+                const beforeStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+                global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:input', {
+                  serverTileCount: serverStateSummary?.worldMap?.tileCount || 0,
+                  serverVersion: serverStateSummary?.worldMap?.version || 0,
+                  beforeTileCount: beforeStateSummary?.worldMap?.tileCount || 0,
+                  beforeVersion: beforeStateSummary?.worldMap?.version || 0,
+                  serverCurrentTab: serverStateSummary?.currentTab || '',
+                  beforeCurrentTab: beforeStateSummary?.currentTab || '',
+                }, {
+                  serverState: serverStateSummary,
+                  beforeState: beforeStateSummary,
+                });
+                const localTab = this.getActiveTab();
+                const localMilitaryView = this.state?.militaryView || this.militaryView || 'army';
+                const homeView = this.resolveMapHomeViewState(reconciledServerState, {
+                  requestedTab: localTab,
+                  militaryView: localMilitaryView,
+                  forceMapHome: this.mapHomeActive && (localTab === 'resources' || localTab === 'military'),
+                });
+                StateWriter.commit(this, (prev) => (this.stateManager?.sync
+                  ? this.stateManager.sync(
+                    {
+                      ...(prev || {}),
+                      currentTab: homeView.activeTab,
+                      militaryView: homeView.militaryView,
+                    },
+                    reconciledServerState,
+                    eraProgress,
+                  )
+                  : {
+                    ...reconciledServerState,
+                    currentTab: homeView.activeTab,
+                    militaryView: homeView.militaryView,
+                    eraProgress: eraProgress ?? reconciledServerState?.eraProgress,
+                  }), { source: 'syncFromServer:sync' });
+                const syncedStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+                global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:afterSync', {
+                  tileCount: syncedStateSummary?.worldMap?.tileCount || 0,
+                  version: syncedStateSummary?.worldMap?.version || 0,
+                  currentTab: syncedStateSummary?.currentTab || '',
+                  militaryView: syncedStateSummary?.militaryView || '',
+                  usedStateManager: Boolean(this.stateManager?.sync),
+                }, {
+                  state: syncedStateSummary,
+                  usedStateManager: Boolean(this.stateManager?.sync),
+                });
+                const syncedHomeView = this.resolveMapHomeViewState(this.state, {
+                  requestedTab: homeView.activeTab,
+                  militaryView: homeView.militaryView,
+                  forceMapHome: homeView.isMapHome,
+                });
+                StateWriter.commit(this, (prev) => ({
+                  ...prev,
+                  currentTab: syncedHomeView.activeTab,
+                  militaryView: syncedHomeView.militaryView,
+                }), { source: 'syncFromServer:homeView' });
+                this.activeTab = this.state.currentTab || syncedHomeView.activeTab;
+                this.militaryView = this.state.militaryView || syncedHomeView.militaryView;
+                this.mapHomeActive = syncedHomeView.isMapHome;
+                const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
+                this.tutorial = nextTutorial;
+                StateWriter.commit(this, (prev) => ({
+                  ...prev,
+                  tutorial: nextTutorial,
+                }), { source: 'syncFromServer:tutorial' });
+                const beforeRenderStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
+                global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:beforeRender', {
+                  tileCount: beforeRenderStateSummary?.worldMap?.tileCount || 0,
+                  version: beforeRenderStateSummary?.worldMap?.version || 0,
+                  currentTab: beforeRenderStateSummary?.currentTab || '',
+                  militaryView: beforeRenderStateSummary?.militaryView || '',
+                  tutorialStep: beforeRenderStateSummary?.tutorial?.currentStep ?? null,
+                  mapHomeActive: Boolean(this.mapHomeActive),
+                }, {
+                  state: beforeRenderStateSummary,
+                  mapHomeActive: Boolean(this.mapHomeActive),
+                });
+                this.tutorialController?.sync?.(nextTutorial);
+                this.updateSyncInterval();
+                this.hasServerState = true;
+                if (this.loading.visible || this.canvasShell?.loading?.visible) {
+                  this.loading = { visible: false, percentage: 100, message: '' };
+                  if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
+                }
+                this.setPendingBuildingAction(null, { render: false });
+                global.WorldMarchTrace?.log?.('app:syncFromServer:after', {
+                  after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                });
+                this.playUnseenWorldCombatReports?.(this.state);
+                this.render();
+                loadTrace?.ready?.({
+                  source: 'syncFromServer',
+                  activeTab: this.state?.currentTab || '',
+                  militaryView: this.state?.militaryView || '',
+                });
+              }
+
+    getSyncInterval() {
+                return this.config?.SYNC_INTERVAL_MS || this.syncIntervalMs;
+              }
+
+    updateSyncInterval() {
+                this.syncService?.setIntervalMs?.(this.getSyncInterval());
+              }
+
+    applyHeartbeat(data = {}) {
+                this.syncWorldClock?.(data);
+                if (!data || data.gameState) return data;
+                const wasReconnecting = this.networkState?.status === 'reconnecting';
+                const marchVerification = data.worldMarchVerification || data.marchVerification || null;
+                const largeDrift = marchVerification?.status === 'pullback'
+                  || (Array.isArray(marchVerification?.results)
+                    && marchVerification.results.some((result) => result?.severity === 'large'));
+                this.networkState = {
+                  ...(this.networkState || {}),
+                  status: largeDrift ? 'reconnecting' : 'online',
+                  failureCount: largeDrift ? Math.max(1, Number(this.networkState?.failureCount) || 0) : 0,
+                  serverTime: data.serverTime || this.networkState?.serverTime || null,
+                  heartbeatSeq: Number(data.heartbeatSeq) || this.networkState?.heartbeatSeq || 0,
+                  message: largeDrift
+                    ? (WorldMarchOptimisticState?.SLOW_SYNC_MESSAGE || this.networkState?.message || null)
+                    : null,
+                  worldMarchReconciliation: marchVerification || null,
+                };
+                if (this.canvasShell?.setNetworkState) this.canvasShell.setNetworkState(this.networkState);
+                else if (wasReconnecting || largeDrift) this.renderCanvasSurface(this.state?.currentTab);
+                return data;
+              }
+
+    ensureWorldClock() {
+                if (this.worldClock) return this.worldClock;
+                this.worldClock = SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
+                if (this.runtime && typeof this.runtime === 'object' && this.worldClock) this.runtime.worldClock = this.worldClock;
+                // P3 Axis A: dropped the canvasShell.worldClock mirror (zero readers). The
+                // shell resolves the clock from its own constructor (shared singleton) and a
+                // this.runtime/lastGame fallback chain in CanvasGameShell,
+                // so this push was redundant.
+                return this.worldClock;
+              }
+
+    syncWorldClock(payload = {}) {
+                const clock = this.ensureWorldClock?.();
+                if (!clock || !payload || typeof payload !== 'object') return false;
+                const synced = SharedWorldClock?.updateFromPayload?.(clock, payload) || false;
+                // P3 Axis A: dropped the canvasShell.worldClock mirror (see ensureWorldClock).
+                return synced;
+              }
+
+    getWorldEpochNowMs() {
+                const clock = this.ensureWorldClock?.();
+                return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
+              }
+
+    applyConnectionState(status = {}) {
+                const nextStatus = status.status || 'online';
+                const wasReconnecting = this.networkState?.status === 'reconnecting';
+                this.networkState = {
+                  ...(this.networkState || {}),
+                  status: nextStatus,
+                  failureCount: Number(status.failureCount) || 0,
+                  lastError: status.error?.message || status.error?.payload?.message || null,
+                };
+                if (this.canvasShell?.setNetworkState) this.canvasShell.setNetworkState(this.networkState);
+                else if (nextStatus === 'reconnecting' || wasReconnecting) this.renderCanvasSurface(this.state?.currentTab);
+                return this.networkState;
+              }
+
+    getBuildingLevel(buildingId) {
+                const entry = this.state?.buildings?.[buildingId];
+                if (!entry) return 0;
+                return typeof entry === 'object' ? entry.level || 0 : Number(entry) || 0;
+              }
+
+    isEra2AdvanceReady(progress = this.state?.eraProgress) {
+                return this.state?.currentEra === 1
+                  && Boolean(progress?.canAdvance)
+                  && this.getBuildingLevel('house') > 0;
+              }
+
+    getEffectiveTutorialState(tutorial) {
+                const nextTutorial = tutorial || { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
+                const tutorialSteps = this.tutorialController?.constructor?.TUTORIAL_STEPS || TutorialGuideControllerBase?.TUTORIAL_STEPS || {};
+                if (!nextTutorial.completed && nextTutorial.currentStep === tutorialSteps.farmBuilt && this.isEra2AdvanceReady()) {
+                  return {
+                    ...nextTutorial,
+                    currentStep: tutorialSteps.era2AdvanceReady,
+                    phaseCompleted: {
+                      ...nextTutorial.phaseCompleted,
+                      newbie: true,
+                    },
+                  };
+                }
+                return nextTutorial;
+              }
+
+    canAdvanceEraByTutorial() {
+                return true;
+              }
+
+    canAdvanceEraNow(progress = this.state?.eraProgress) {
+                const tutorial = this.getEffectiveTutorialState(this.tutorial || this.state?.tutorial || {});
+                const view = this.presenter?.buildCivilizationViewState?.(
+                  { ...this.state, eraProgress: progress },
+                  tutorial,
+                  { canOpenCivilizationTab: true },
+                );
+                return Boolean(view?.advanceButton?.canAdvance);
+              }
+
+    hasActiveTutorialGuideHighlight() {
+                return false;
+              }
+
+    async syncOnce() {
+                const trace = this.loadTrace || null;
+                trace?.phaseStart?.('state:syncOnce', {
+                  hasToken: Boolean(this.token),
+                  forceLog: true,
+                });
+                const data = await this.api.getState();
+                this.applyState(data);
+                trace?.phaseEnd?.('state:syncOnce', {
+                  forceLog: true,
+                  payload: trace.summarizePayload?.(data) || null,
+                });
+                return data;
+              }
+
+    async startHeartbeat() {
+                const api = this.getGameApi();
+                api?.setToken?.(this.token);
+                const trace = this.loadTrace || null;
+                trace?.phaseStart?.('state:first-sync', {
+                  hasToken: Boolean(this.token),
+                  hasSyncService: Boolean(this.syncService),
+                  forceLog: true,
+                });
+                try {
+                  if (this.syncService?.stop) this.syncService.stop();
+                  await this.syncOnce();
+                  trace?.phaseEnd?.('state:first-sync', {
+                    forceLog: true,
+                    next: 'heartbeat:start',
+                  });
+                  this.syncService?.start?.();
+                } catch (error) {
+                  trace?.phaseFail?.('state:first-sync', error);
+                  if (error.payload && error.payload.error && this.handleAuthError) {
+                    this.handleAuthError(error.payload);
+                  } else {
+                    this.applyConnectionState({ status: 'reconnecting', failureCount: 1, error });
+                  }
+                }
+              }
+
+    stopHeartbeat() {
+                this.syncService?.stop?.();
+                this.updateChecker?.stop?.();
+                if (this.scoutCountdownTimer) {
+                  this.scheduler?.clearInterval?.(this.scoutCountdownTimer);
+                  this.scoutCountdownTimer = null;
+                }
+              }
+
+    showUpdatePrompt(version) {
+                this.stopHeartbeat();
+                return this.updateRuntime?.promptAndReload?.(version);
+              }
+
+    start() {
+                this.render();
+                this.syncOnce().catch(() => {});
+                if (this.timer) return;
+                if (!this.tapDisposer && this.runtime && typeof this.runtime.onTap === 'function') {
+                  this.tapDisposer = this.runtime.onTap((point) => this.handleTap(point));
+                }
+                if (!this.dragDisposer && this.runtime && typeof this.runtime.onDrag === 'function') {
+                  this.dragDisposer = this.runtime.onDrag((phase, point) => this.handleDrag(phase, point));
+                }
+                if (!this.gestureDisposer && this.runtime && typeof this.runtime.onGesture === 'function') {
+                  this.gestureDisposer = this.runtime.onGesture((gesture) => this.handleGesture(gesture));
+                }
+                if (this.syncService?.start) this.syncService.start();
+                else if (this.api?.heartbeat && this.runtime?.setInterval) {
+                  this.timer = this.runtime.setInterval(() => {
+                    const report = this.getWorldMarchClientReport?.();
+                    this.api.heartbeat(report ? { worldMarchClientReport: report } : undefined).then((data) => this.applyHeartbeat(data)).catch((error) => this.applyConnectionState({
+                      status: 'reconnecting',
+                      failureCount: (this.networkState?.failureCount || 0) + 1,
+                      error,
+                    }));
+                  }, this.config?.HEARTBEAT_INTERVAL_MS || this.syncIntervalMs);
+                }
+              }
+
+    stop() {
+                this.syncService?.stop?.();
+                if (this.timer) {
+                  this.runtime.clearInterval(this.timer);
+                  this.timer = null;
+                }
+                if (this.highlightTimer) {
+                  this.runtime.clearInterval(this.highlightTimer);
+                  this.highlightTimer = null;
+                }
+                this.stopTransitionTimer();
+                if (this.tapDisposer) {
+                  this.tapDisposer();
+                  this.tapDisposer = null;
+                }
+                if (this.dragDisposer) {
+                  this.dragDisposer();
+                  this.dragDisposer = null;
+                }
+                if (this.gestureDisposer) {
+                  this.gestureDisposer();
+                  this.gestureDisposer = null;
+                }
+              }
+
+    render() {
+                this.renderMilitaryView();
+                this.renderSoftGuide({ skipSurface: true });
+                this.maybeShowNamingPrompt();
+                this.renderCanvasSurface();
+              }
+
+    renderCanvasSurface(activeTab = this.getActiveTab()) {
+                const homeView = this.resolveMapHomeViewState(this.state, {
+                  requestedTab: activeTab || this.getActiveTab(),
+                  militaryView: this.state?.militaryView || this.militaryView,
+                  forceMapHome: this.mapHomeActive && (activeTab === 'resources' || activeTab === 'military'),
+                });
+                const resolvedActiveTab = homeView.activeTab;
+                this.mapHomeActive = homeView.isMapHome;
+                this.activeTab = resolvedActiveTab;
+                if (this.state && typeof this.state === 'object') {
+                  StateWriter.commit(this, (prev) => ({
+                    ...prev,
+                    currentTab: resolvedActiveTab,
+                    militaryView: homeView.militaryView,
+                  }), { source: 'renderCanvasSurface' });
+                }
+                this.militaryView = homeView.militaryView;
+                if (this.canvasShell?.previewEnabled || typeof this.canvasShell?.renderReadOnly === 'function') {
+                  if (
+                    this.canvasShell?.isWorldMapDragging?.()
+                    || this.canvasShell?.hasPendingWorldMapCompositeCommit?.()
+                  ) {
+                    this.canvasShell.deferRenderUntilWorldMapDragEnd = true;
+                    return true;
+                  }
+                  if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
+                  if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
+                  this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
+                  if (
+                    !this.pendingTutorialAdvisorDialogue
+                    && !this.tutorialAdvisorDialogue
+                    && !this.canvasShell?.tutorialAdvisorDialogue
+                  ) {
+                    this.tutorialController?.refreshCurrentHighlight?.();
+                  }
+                  return true;
+                }
+                if (!this.renderer?.render) return false;
+                const runtimeCanRenderWorldMap = Boolean(homeView.isMapHome
+                  && this.ensureWorldMapRuntimeCoordinator()?.canRender(this.state));
+                const runtimeRenderOptions = this.buildRenderOptions(resolvedActiveTab, this.territoryUiState);
+                const explorerAnimatedForRuntime = hasActiveWorldExplorerMission(this.state, runtimeRenderOptions);
+                let worldMapLayerRendered = runtimeCanRenderWorldMap
+                  ? (this.shouldRenderRuntimeWorldMap(runtimeRenderOptions)
+                    ? this.renderRuntimeWorldMap({
+                      ...runtimeRenderOptions,
+                      force: runtimeRenderOptions.force,
+                    }) !== false
+                    : (this.worldMapRuntime?.isBakedLayerStateValid?.() ?? Boolean(this.worldMapRuntime?.hasBakedMapLayer)))
+                  : false;
+                const worldMapFrameState = runtimeCanRenderWorldMap
+                  ? (this.worldMapRuntime?.getWorldMapFrameState?.({ rendered: worldMapLayerRendered })
+                    || WorldMapRuntimeRenderPolicy?.createWorldMapFrameState?.(this.worldMapRuntime || {}, {
+                      rendered: worldMapLayerRendered,
+                    })
+                    || null)
+                  : null;
+                worldMapLayerRendered = WorldMapRuntimeRenderPolicy?.canSkipWorldMapLayer
+                  ? WorldMapRuntimeRenderPolicy.canSkipWorldMapLayer(worldMapFrameState)
+                  : Boolean(worldMapLayerRendered);
+                const worldMapCompositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
+                  ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions({
+                    skipWorldMapLayer: worldMapLayerRendered,
+                    worldMapRuntimeHitTargets: this.worldMapRuntime?.getHitTargets?.() || [],
+                    worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+                      || this.worldMapRuntime?.lastTileMapContext
+                      || this.renderer?.lastWorldTileMapContext
+                      || null,
+                    preserveCanvas: worldMapLayerRendered,
+                  }, worldMapFrameState || {})
+                  : {
+                    skipWorldMapLayer: worldMapLayerRendered,
+                    worldMapRuntimeHitTargets: this.worldMapRuntime?.getHitTargets?.() || [],
+                    worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+                      || this.worldMapRuntime?.lastTileMapContext
+                      || this.renderer?.lastWorldTileMapContext
+                      || null,
+                    preserveCanvas: worldMapLayerRendered,
+                  };
+                const rendererSnapshot = typeof this.buildRendererSnapshot === 'function'
+                  ? this.buildRendererSnapshot()
+                  : null;
+                const battleSnapshot = rendererSnapshot?.battle || {};
+                const snapshotBattleScene = battleSnapshot.battleScene || null;
+                const snapshotEntityBattle = battleSnapshot.entityBattle || null;
+                const snapshotNaming = this.getNamingSnapshot?.(rendererSnapshot) || null;
+                const snapshotConfirmDialog = this.getConfirmDialogSnapshot?.(rendererSnapshot) || null;
+                const snapshotRewardReveal = this.getRewardRevealSnapshot?.(rendererSnapshot) || null;
+                const snapshotEvent = this.getEventSnapshot?.(rendererSnapshot) || null;
+                const snapshotTargetPicker = this.getTargetPickerSnapshot?.(rendererSnapshot) || null;
+                const panel = this.getRendererSnapshot?.()?.panel || {};
+                this.renderer.render(this.state, {
+                  activeTab: resolvedActiveTab,
+                  isMapHome: homeView.isMapHome,
+                  ...worldMapCompositionOptions,
+                  showResourceDetails: panel.showResourceDetails,
+                  showCitySwitcher: panel.showCitySwitcher,
+                  showSubcityList: panel.showSubcityList,
+                  showCityManagement: panel.showCityManagement,
+                  activeCityManagementTab: this.activeCityManagementTab,
+                  showTaskCenter: panel.showTaskCenter,
+                  activeTaskCenterTab: this.activeTaskCenterTab,
+                  showGuidebook: panel.showGuidebook,
+                  activeGuidebookTab: this.activeGuidebookTab,
+                  showFamousPersons: panel.showFamousPersons,
+                  famousPersonsPage: this.famousPersonsPage,
+                  selectedFamousPersonId: this.selectedFamousPersonId,
+                  armyFormationEditor: this.canvasShell && 'armyFormationEditor' in this.canvasShell
+                    ? this.canvasShell.armyFormationEditor
+                    : this.armyFormationEditor,
+                  activeCommandPanel: panel.activeCommandPanel || '',
+                  rewardReveal: snapshotRewardReveal,
+                  buildingOffset: this.buildingOffset,
+                  techTreePanX: this.techTreePanX,
+                  techTreePanY: this.techTreePanY,
+                  techTreeZoom: this.getTechTreeZoom(),
+                  selectedTechId: this.state?.techUiState?.selectedTechId || '',
+                  techDetailOpen: panel.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen),
+                  activeBuildingCategory: this.activeBuildingCategory,
+                  pendingBuildingAction: this.pendingBuildingAction || null,
+                  ...(this.pageTransition ? { pageTransition: this.pageTransition } : {}),
+                  ...(this.buildingTransition ? { buildingTransition: this.buildingTransition } : {}),
+                  activeEventId: snapshotEvent?.eventId ?? null,
+                  territoryUiState: this.territoryUiState,
+                  targetPicker: snapshotTargetPicker,
+                  ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
+                  ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
+                  naming: snapshotNaming,
+                  tutorialIntro: this.tutorialIntro || null,
+                  tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
+                  tutorialHighlight: null,
+                  loading: this.loading,
+                  network: this.networkState,
+                  confirmDialog: snapshotConfirmDialog,
+                });
+                const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
+                  || this.territoryController?.uiState?.tileMapWaterAnimated);
+                const explorerAnimated = explorerAnimatedForRuntime;
+                this.updateWorldActorAnimationLoop?.({
+                  ...runtimeRenderOptions,
+                  state: this.state,
+                });
+                if (resolvedActiveTab === 'military' && (waterAnimated || (explorerAnimated && !this.canvasShell && !this.renderer?.worldActorLayerRenderer))) this.startTileMapWaterTimer();
+                else this.stopTileMapWaterTimer();
+                return true;
+              }
+
+    buildRenderOptions(activeTab = this.getActiveTab(), territoryUiState = this.territoryUiState, options = {}) {
+                const state = this.state || {};
+                const homeView = this.resolveMapHomeViewState(state, {
+                  requestedTab: activeTab || state.currentTab || 'resources',
+                  militaryView: state.militaryView || this.militaryView,
+                  forceMapHome: options.forceMapHome ?? Boolean(this.mapHomeActive),
+                  allowDefaultMapHome: options.allowDefaultMapHome,
+                });
+                return {
+                  epochNowMs: this.getWorldEpochNowMs?.() ?? Date.now(),
+                  activeTab: homeView.activeTab,
+                  isMapHome: homeView.isMapHome,
+                  territoryUiState: territoryUiState || this.territoryUiState || {},
+                  targetPicker: this.getTargetPickerSnapshot?.() || null,
+                  tutorial: this.tutorialController?.state || this.tutorial || {},
+                  tutorialIntro: this.tutorialIntro || null,
+                  tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
+                  worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
+                    || this.worldMapRuntime?.lastTileMapContext
+                    || this.renderer?.lastWorldTileMapContext
+                    || null,
+                  network: this.networkState,
+                };
+              }
+
+    startTileMapWaterTimer() {
+                if (this.tileMapWaterTimer) return false;
+                const tick = () => {
+                  if ((this.state?.currentTab || this.getActiveTab()) !== 'military') {
+                    this.stopTileMapWaterTimer();
+                    return;
+                  }
+                  if (this.isWorldMapDragging() || this.isWorldMapDragCoolingDown()) return;
+                  const epochNowMs = this.getWorldEpochNowMs?.() ?? Date.now();
+                  if (hasActiveWorldExplorerMission(this.state, { epochNowMs })) {
+                    this.updateWorldActorAnimationLoop?.({ epochNowMs, state: this.state });
+                    if (!this.canvasShell && !this.renderer?.worldActorLayerRenderer) {
+                      this.renderRuntimeWorldMap({
+                        ...this.buildRenderOptions('military', this.territoryUiState),
+                        epochNowMs,
+                        force: true,
+                      });
+                      this.renderAnimationFrame('military');
+                    }
+                    return;
+                  }
+                  if (this.isWorldMapHomeActive() && !this.shouldRenderRuntimeWorldMap()) {
+                    this.renderRuntimeWorldMap({
+                      reuseCachedWorldTileView: true,
+                      snapshotOnly: true,
+                      waterTimeMs: this.now(),
+                    });
+                    return;
+                  }
+                  this.renderAnimationFrame('military');
+                };
+                this.tileMapWaterTimer = CanvasGameAppRenderScheduler.setIntervalForHost(
+                  this,
+                  tick,
+                  this.getWorldTileWaterAnimationFrameMs(),
+                );
+                return Boolean(this.tileMapWaterTimer);
+              }
+
+    stopTileMapWaterTimer() {
+                if (!this.tileMapWaterTimer) return;
+                CanvasGameAppRenderScheduler.clearIntervalForHost(this, this.tileMapWaterTimer);
+                this.tileMapWaterTimer = null;
+              }
+
+    now() {
+                return CanvasGameAppRenderScheduler.now(this);
+              }
+
+    getWorldEpochNowMs() {
+                const clock = this.worldClock || this.runtime?.worldClock || global.__WorldClockShared;
+                return SharedWorldClock?.getEpochNowMs?.({ worldClock: clock }, Date.now()) ?? Date.now();
+              }
+
+    wait(ms = 0) {
+                return CanvasGameAppRenderScheduler.wait(this, ms);
+              }
+
+    getActiveTab() {
+                return this.activeTab || this.state?.currentTab || 'resources';
+              }
+
+    resolveMapHomeViewState(state = this.state, options = {}) {
+                if (this.presenter?.resolveMapHomeViewState) {
+                  return this.presenter.resolveMapHomeViewState(state || {}, options);
+                }
+                return CanvasGameAppRenderPolicy.resolveMapHomeViewState(state || {}, options);
+              }
+
+    getTabOrder() {
+                return CanvasGameAppRenderPolicy.getTabOrder();
+              }
+
+    getTransitionDurationMs() {
+                return CanvasGameAppRenderScheduler.getTransitionDurationMs(this);
+              }
+
+    getAnimationFrameMs() {
+                return CanvasGameAppRenderScheduler.getAnimationFrameMs(this);
+              }
+
+    getWorldTileWaterAnimationFrameMs() {
+                return CanvasGameAppRenderScheduler.getWorldTileWaterAnimationFrameMs(this);
+              }
+
+    getWorldMapDragCooldownMs() {
+                return CanvasGameAppRenderScheduler.getWorldMapDragCooldownMs(this);
+              }
+
+    getRequestAnimationFrame() {
+                return CanvasGameAppRenderScheduler.getRequestAnimationFrame(this);
+              }
+
+    renderAnimationFrame(activeTab = this.state?.currentTab || this.getActiveTab()) {
+                if (this.canvasShell && typeof this.canvasShell.renderAnimationFrame === 'function') {
+                  return this.canvasShell.renderAnimationFrame();
+                }
+                const now = this.now();
+                const frameMs = Math.max(1, this.getAnimationFrameMs() - 1);
+                if (this.lastAnimationRenderAt && now - this.lastAnimationRenderAt < frameMs) return false;
+                this.lastAnimationRenderAt = now;
+                return this.renderCanvasSurface(activeTab);
+              }
+
+    requestRenderAnimationFrame(activeTab = this.state?.currentTab || this.getActiveTab()) {
+                const resolvedActiveTab = typeof activeTab === 'string'
+                  ? activeTab
+                  : (this.state?.currentTab || this.getActiveTab());
+                if (this.canvasShell && typeof this.canvasShell.requestRenderAnimationFrame === 'function') {
+                  return this.canvasShell.requestRenderAnimationFrame();
+                }
+                if (this.animationRenderQueued) return true;
+                const raf = this.getRequestAnimationFrame();
+                if (!raf) return this.renderAnimationFrame(resolvedActiveTab);
+                this.animationRenderQueued = true;
+                raf(() => {
+                  this.animationRenderQueued = false;
+                  this.renderAnimationFrame(resolvedActiveTab);
+                });
+                return true;
+              }
+
+    startTransitionTimer() {
+                if (this.canvasShell && typeof this.canvasShell.startTransitionTimer === 'function') {
+                  if (typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
+                  if (typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
+                  return this.canvasShell.startTransitionTimer();
+                }
+                if (this.transitionTimer || !this.runtime?.setInterval) return false;
+                this.transitionTimer = this.runtime.setInterval(() => {
+                  const now = this.now();
+                  const duration = this.getTransitionDurationMs();
+                  const pageDone = !this.pageTransition || now - this.pageTransition.startedAt >= (this.pageTransition.durationMs || duration);
+                  const buildingDone = !this.buildingTransition || now - this.buildingTransition.startedAt >= (this.buildingTransition.durationMs || duration);
+                  if (pageDone) this.pageTransition = null;
+                  if (buildingDone) this.buildingTransition = null;
+                  if (!this.pageTransition && !this.buildingTransition) this.stopTransitionTimer();
+                  this.renderAnimationFrame(this.state?.currentTab || this.getActiveTab());
+                }, this.getAnimationFrameMs());
+                return true;
+              }
+
+    stopTransitionTimer() {
+                if (!this.transitionTimer) return;
+                this.runtime?.clearInterval?.(this.transitionTimer);
+                this.transitionTimer = null;
+              }
+
+    startPageTransition(fromTab, toTab, options = {}) {
+                const buildingOffset = this.buildingOffset;
+                if (!fromTab || !toTab || fromTab === toTab) {
+                  this.pageTransition = null;
+                  if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = null;
+                  return false;
+                }
+                const tabs = this.getTabOrder();
+                const fromIndex = tabs.indexOf(fromTab);
+                const toIndex = tabs.indexOf(toTab);
+                this.pageTransition = {
+                  fromTab,
+                  toTab,
+                  direction: toIndex >= 0 && fromIndex >= 0 && toIndex < fromIndex ? -1 : 1,
+                  startedAt: this.now(),
+                  durationMs: this.getTransitionDurationMs(),
+                  fromBuildingOffset: options.fromBuildingOffset ?? buildingOffset,
+                };
+                if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') {
+                  this.canvasShell.pageTransition = this.pageTransition;
+                }
+                this.startTransitionTimer();
+                return true;
+              }
+
+    getCanvasActionState() {
+                return this.state;
+              }
+
+    renderCanvasAction() {
+                return this.renderCanvasSurface();
+              }
+
+    resetForCanvasTabSwitch() {
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showResourceDetails');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
+                this.closeEventSnapshot?.();
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+                this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
+                this.closeRewardRevealSnapshot?.();
+                this.famousPersonsPage = 0;
+                this.selectedFamousPersonId = '';
+                if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
+                this.renderer?.clearFamousSkillTooltip?.();
+                this.activeBuildingCategory = 'all';
+                this.buildingOffset = 0;
+                this.techTreePanX = 0;
+                this.techTreePanY = 0;
+                this.techTreeZoom = 1;
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'techDetailOpen');
+                StateWriter.commit(this, (prev) => ({
+                  ...prev,
+                  techUiState: {
+                    ...(prev.techUiState || {}),
+                    selectedTechId: '',
+                    detailOpen: false,
+                  },
+                }), { source: 'resetForCanvasTabSwitch' });
+                this.techTreeDragStart = null;
+                this.buildingTransition = null;
+              }
+
+    resetLocalViewToResources(options = {}) {
+                const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });
+                this.activeTab = homeView.activeTab;
+                this.militaryView = homeView.militaryView;
+                this.mapHomeActive = homeView.isMapHome;
+                this.buildingOffset = 0;
+                this.activeBuildingCategory = 'all';
+                this.techTreePanX = 0;
+                this.techTreePanY = 0;
+                this.techTreeZoom = 1;
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'techDetailOpen');
+                this.techTreeDragStart = null;
+                this.closeEventSnapshot?.();
+                TerritoryUiStateStore?.clearWorldSelection?.(this, { clearWorldMarchTarget: true });
+                this.territoryController?.closeSiteDialog?.({ render: false });
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showResourceDetails');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+                this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
+                this.famousPersonsPage = 0;
+                this.selectedFamousPersonId = '';
+                this.renderer?.clearFamousSkillTooltip?.();
+                this.activeTaskCenterTab = 'main';
+                this.activeGuidebookTab = 'planning';
+                this.activeGuideNavigation = null;
+                this.pageTransition = null;
+                this.buildingTransition = null;
+                if (this.canvasShell) {
+                  TerritoryUiStateStore?.ensure?.(this.canvasShell);
+                  this.canvasShell.closeWorldSiteHud?.({ render: false });
+                }
+                if (this.canvasShell) this.canvasShell.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
+                if (this.state && typeof this.state === 'object') {
+                  StateWriter.commit(this, (prev) => ({
+                    ...prev,
+                    currentTab: homeView.activeTab,
+                    militaryView: homeView.militaryView,
+                    techUiState: {
+                      ...(prev.techUiState || {}),
+                      selectedTechId: '',
+                      detailOpen: false,
+                    },
+                  }), { source: 'resetLocalViewToResources' });
+                }
+                if (this.canvasShell) {
+                  this.canvasShell.mapHomeActive = homeView.isMapHome;
+                }
+                if (!options.skipShell && this.canvasShell?.resetLocalViewToResources) {
+                  this.canvasShell.resetLocalViewToResources({ skipGame: true, skipRender: true });
+                }
+                if (!options.skipRender) this.renderCanvasSurface(homeView.activeTab);
+                return true;
+              }
+
+    switchTab(tab) {
+                const previousTab = this.getActiveTab();
+                const previousBuildingOffset = this.buildingOffset;
+                this.resetForCanvasTabSwitch();
+                const navigation = this.presenter?.buildTabNavigationViewState?.(this.state, { requestedTab: tab });
+                this.activeTab = navigation?.activeTab || tab || 'resources';
+                const preferredMilitaryView = this.getPreferredMilitaryView(tab);
+                const homeView = this.resolveMapHomeViewState(this.state, {
+                  requestedTab: this.activeTab,
+                  militaryView: preferredMilitaryView || this.state?.militaryView || this.militaryView,
+                  forceMapHome: tab === 'resources',
+                });
+                this.activeTab = homeView.activeTab;
+                this.mapHomeActive = homeView.isMapHome;
+                StateWriter.commit(this, (prev) => ({
+                  ...prev,
+                  currentTab: this.activeTab,
+                  militaryView: (preferredMilitaryView && !homeView.isMapHome)
+                    ? preferredMilitaryView
+                    : homeView.militaryView,
+                  techUiState: {
+                    ...(prev.techUiState || {}),
+                    detailOpen: false,
+                  },
+                }), { source: 'switchTab' });
+                this.militaryView = this.state.militaryView || homeView.militaryView;
+                this.buildingOffset = 0;
+                this.techTreePanX = 0;
+                this.techTreePanY = 0;
+                this.techTreeZoom = 1;
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'techDetailOpen');
+                this.techTreeDragStart = null;
+                this.buildingTransition = null;
+                this.startPageTransition(previousTab, this.activeTab, { fromBuildingOffset: previousBuildingOffset });
+                this.closeEventSnapshot?.();
+                this.renderMilitaryView();
+                this.renderCanvasSurface(this.state.currentTab);
+                if (this.skipNextSoftGuideRender) {
+                  this.skipNextSoftGuideRender = false;
+                  if (this.activeGuideNavigation?.target === 'scout-action-first') {
+                    this.activeGuideNavigation = null;
+                    this.renderSoftGuide();
+                  }
+                } else {
+                  this.renderSoftGuide();
+                }
+              }
+
+    getPreferredMilitaryView(tabId) {
+                return CanvasGameAppRenderPolicy.getPreferredMilitaryView(tabId, this.state?.softGuide || {});
+              }
+
+    switchMilitaryView(view) {
+                const allowed = ['army', 'scout', 'world'];
+                this.militaryView = allowed.includes(view) ? view : 'army';
+                this.mapHomeActive = this.militaryView === 'world' && this.resolveMapHomeViewState(this.state, {
+                  requestedTab: this.state?.currentTab || this.activeTab,
+                  militaryView: this.militaryView,
+                  forceMapHome: this.mapHomeActive,
+                }).isMapHome;
+                StateWriter.commit(this, (prev) => ({ ...prev, militaryView: this.militaryView }), { source: 'switchMilitaryView' });
+                this.renderMilitaryView();
+                this.renderCanvasSurface(this.state?.currentTab);
+                return true;
+              }
+
+    renderMilitaryView() {
+                if (this.resolveMapHomeViewState(this.state, {
+                  requestedTab: this.state?.currentTab || this.activeTab,
+                  militaryView: this.state?.militaryView || this.militaryView,
+                  forceMapHome: this.mapHomeActive,
+                }).isMapHome) {
+                  this.militaryView = 'world';
+                  if (this.state) StateWriter.commit(this, (prev) => ({ ...prev, militaryView: 'world' }), { source: 'renderMilitaryView:mapHome' });
+                  return;
+                }
+                const view = this.presenter?.buildMilitaryNavigationViewState?.(this.state);
+                if (view?.activeView) {
+                  this.militaryView = view.activeView;
+                  if (this.state) StateWriter.commit(this, (prev) => ({ ...prev, militaryView: view.activeView }), { source: 'renderMilitaryView:nav' });
+                }
+              }
+
+    updateMilitaryViewLocks() {
+                this.renderMilitaryView();
+              }
+
+    renderMilitary() {
+                this.updateMilitaryViewLocks();
+                this.renderCanvasSurface(this.state?.currentTab);
+              }
+
+    startScoutCountdownTimer() {
+                if (this.scoutCountdownTimer) return;
+                this.scoutCountdownTimer = this.scheduler?.setInterval?.(() => {
+                  if ((this.state?.currentEra || 0) < 5) return;
+                  if (
+                    this.canvasShell?.isWorldMapDragging?.()
+                    || this.canvasShell?.hasPendingWorldMapCompositeCommit?.()
+                  ) return;
+                  if (this.state?.currentTab === 'military') this.renderCanvasSurface(this.state.currentTab);
+                  if (this.state?.currentTab === 'territory') {
+                    const territories = this.state.territoryState?.territories || [];
+                    const hasConquestMission = territories.some((site) => site.mission?.status === 'active');
+                    if (hasConquestMission) this.renderTerritory();
+                  }
+                }, 1000);
+              }
+
+    renderTerritory() {
+                const homeView = this.resolveMapHomeViewState(this.state, {
+                  requestedTab: 'territory',
+                  militaryView: 'world',
+                  forceMapHome: true,
+                });
+                this.activeTab = homeView.activeTab;
+                this.militaryView = homeView.militaryView;
+                this.mapHomeActive = homeView.isMapHome;
+                if (this.state && typeof this.state === 'object') {
+                  StateWriter.commit(this, (prev) => ({
+                    ...prev,
+                    currentTab: homeView.activeTab,
+                    militaryView: homeView.militaryView,
+                  }), { source: 'renderTerritory' });
+                }
+                this.renderCanvasSurface(homeView.activeTab);
+              }
+
+    showLoading(message = '') {
+            this.loading = {
+              visible: true,
+              percentage: 0,
+              message: message || '姝ｅ湪鏁寸悊钀ュ湴璧勬簮',
+            };
+            this.canvasShell?.showLoading?.(this.loading.message);
+            this.renderCanvasSurface();
+            return true;
+          }
+
+    updateLoading(progress = {}) {
+            if (!this.loading.visible && !this.canvasShell?.loading?.visible) return false;
+            this.loading = {
+              ...this.loading,
+              visible: true,
+              percentage: Math.max(0, Math.min(100, Number(progress.percentage) || 0)),
+              message: progress.message || this.loading.message,
+            };
+            this.canvasShell?.updateLoading?.(this.loading);
+            this.renderCanvasSurface();
+            return true;
+          }
+
+    hideLoading() {
+            const hadLoading = Boolean(this.loading.visible || this.canvasShell?.loading?.visible);
+            this.loading = {
+              visible: false,
+              percentage: 100,
+              message: '',
+            };
+            this.canvasShell?.hideLoading?.();
+            if (hadLoading) this.renderCanvasSurface();
+            return hadLoading;
+          }
+
+    preloadAssets(onProgress = null, assetPaths = null) {
+            if (this.canvasShell && typeof this.canvasShell.preloadAssets === 'function') {
+              return this.canvasShell.preloadAssets(onProgress, assetPaths);
+            }
+            if (!this.renderer || typeof this.renderer.preloadAssets !== 'function') {
+              onProgress?.({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
+              return Promise.resolve({ total: 0, completed: 0, loaded: 0, failed: 0, percentage: 100 });
+            }
+            return this.renderer.preloadAssets(assetPaths || undefined, onProgress);
+          }
+
+    async loadGameAssets(options = {}) {
+            const message = options.message || '姝ｅ湪鏁寸悊钀ュ湴璧勬簮';
+            const hideWhenDone = options.hideWhenDone !== false;
+            const minimumDurationMs = Number.isFinite(options.minimumDurationMs)
+              ? Math.max(0, options.minimumDurationMs)
+              : 3000;
+            const trace = this.loadTrace || null;
+            const startedAt = this.now();
+            trace?.phaseStart?.('assets:preload', {
+              message,
+              hideWhenDone,
+              minimumDurationMs,
+            });
+            this.showLoading(message);
+            try {
+              const result = await this.preloadAssets((progress) => {
+                const progressMessage = progress?.message || message;
+                trace?.progress?.('assets:preload', { ...progress, message: progressMessage });
+                this.updateLoading({ ...progress, message: progressMessage });
+              }, options.assetPaths || null);
+              const elapsed = Math.max(0, this.now() - startedAt);
+              const minimumWaitMs = Math.max(0, minimumDurationMs - elapsed);
+              trace?.phaseEnd?.('assets:preload', {
+                ...result,
+                minimumWaitMs,
+              });
+              if (minimumWaitMs > 0) {
+                trace?.mark?.('assets:minimum-wait', {
+                  waitMs: Math.round(minimumWaitMs),
+                  reason: 'loading screen minimum duration',
+                });
+              }
+              await this.wait(minimumWaitMs);
+              return result;
+            } catch (error) {
+              trace?.phaseFail?.('assets:preload', error);
+              throw error;
+            } finally {
+              this.updateLoading({ percentage: 100, message: '璧勬簮鍑嗗瀹屾垚' });
+              if (hideWhenDone) this.hideLoading();
+            }
+          }
+
+    scrollBuildings(action = {}) {
+            const fromOffset = Math.max(0, Number(this.buildingOffset) || 0);
+            const delta = Number(action.delta) || 0;
+            const toOffset = Math.max(0, fromOffset + delta);
+            this.buildingOffset = toOffset;
+            if (toOffset !== fromOffset) {
+              this.buildingTransition = {
+                fromOffset,
+                toOffset,
+                direction: toOffset < fromOffset ? -1 : 1,
+                startedAt: this.now(),
+                durationMs: this.getTransitionDurationMs(),
+              };
+              this.startTransitionTimer();
+            }
+            return true;
+          }
+
+    selectBuildingCategory(action = {}) {
+            const category = action.category || 'all';
+            const previous = this.activeBuildingCategory || 'all';
+            this.activeBuildingCategory = category;
+            this.buildingOffset = 0;
+            this.buildingTransition = null;
+            return category !== previous;
+          }
+
+    getTechTreePan() {
+            return {
+              x: Number(this.techTreePanX) || 0,
+              y: Number(this.techTreePanY) || 0,
+            };
+          }
+
+    setTechTreePan(pan = {}) {
+            const x = Number(pan.x) || 0;
+            const y = Number(pan.y) || 0;
+            this.techTreePanX = x;
+            this.techTreePanY = y;
+            return true;
+          }
+
+    getTechTreeZoom() {
+            return Math.max(0.65, Math.min(1.6, Number(this.techTreeZoom) || 1));
+          }
+
+    setTechTreeZoom(zoom = 1) {
+            const nextZoom = Math.max(0.65, Math.min(1.6, Number(zoom) || 1));
+            this.techTreeZoom = nextZoom;
+            return true;
+          }
+
+    changeFamousPersonsPage(action = {}) {
+            const delta = Number(action.delta) || 0;
+            this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
+            this.selectedFamousPersonId = '';
+            this.renderer?.clearFamousSkillTooltip?.();
+            return this.renderCanvasSurface();
+          }
+
+    openFamousPersonDetail(action = {}) {
+            this.selectedFamousPersonId = action.personId || '';
+            this.renderer?.clearFamousSkillTooltip?.();
+            return this.renderCanvasSurface();
+          }
+
+    closeFamousPersonDetail() {
+            this.selectedFamousPersonId = '';
+            this.renderer?.clearFamousSkillTooltip?.();
+            return this.renderCanvasSurface();
+          }
+
+    getWorldActorAnimationFrameMs() {
+            return getFrameMs(this);
+          }
+
+    shouldAnimateWorldActors(options = {}) {
+            return shouldAnimateWorldActors(this, options);
+          }
+
+    renderWorldActorAnimationFrame(options = {}) {
+            if (!this.shouldAnimateWorldActors(options)) return false;
+            const now = this.now?.() ?? Date.now();
+            const frameMs = Math.max(1, this.getWorldActorAnimationFrameMs() - 1);
+            if (!options.force && this.lastWorldActorAnimationRenderAt && now - this.lastWorldActorAnimationRenderAt < frameMs) return false;
+            this.lastWorldActorAnimationRenderAt = now;
+            return renderWorldActorLayerFrame(this, options);
+          }
+
+    requestWorldActorAnimationFrame(options = {}) {
+            this.worldActorQueuedRenderOptions = {
+              ...(this.worldActorQueuedRenderOptions || {}),
+              ...options,
+            };
+            if (this.worldActorAnimationQueued) return true;
+            const raf = getRequestAnimationFrame(this);
+            if (!raf) {
+              const queuedOptions = this.worldActorQueuedRenderOptions || {};
+              this.worldActorQueuedRenderOptions = null;
+              return this.renderWorldActorAnimationFrame(queuedOptions);
+            }
+            this.worldActorAnimationQueued = true;
+            raf(() => {
+              this.worldActorAnimationQueued = false;
+              const queuedOptions = this.worldActorQueuedRenderOptions || {};
+              this.worldActorQueuedRenderOptions = null;
+              this.renderWorldActorAnimationFrame(queuedOptions);
+              if (this.shouldAnimateWorldActors()) this.requestWorldActorAnimationFrame();
+              else this.stopWorldActorAnimationLoop();
+            });
+            return true;
+          }
+
+    startWorldActorAnimationLoop(options = {}) {
+            if (!canRenderWorldActorLayer(this)) return false;
+            if (!this.shouldAnimateWorldActors(options)) {
+              this.stopWorldActorAnimationLoop();
+              return false;
+            }
+            if (this.worldActorAnimationActive) return true;
+            this.worldActorAnimationActive = true;
+            return this.requestWorldActorAnimationFrame({ force: true, ...options });
+          }
+
+    stopWorldActorAnimationLoop() {
+            this.worldActorAnimationActive = false;
+            this.worldActorQueuedRenderOptions = null;
+            return true;
+          }
+
+    updateWorldActorAnimationLoop(options = {}) {
+            return this.shouldAnimateWorldActors(options)
+              ? this.startWorldActorAnimationLoop(options)
+              : this.stopWorldActorAnimationLoop();
+          }
+
+    getBattleBaseTurnDurationMs() {
+                return 900;
+              }
+
+    getBattleSkillCutInDurationMs() {
+                return 2200;
+              }
+
+    getBattleTurnDurationMs(turn = null) {
+                const isSkill = turn && (turn.action === 'skill' || turn.actionType === 'skill' || turn.presentation?.cutIn);
+                return this.getBattleBaseTurnDurationMs() + (isSkill ? this.getBattleSkillCutInDurationMs() : 0);
+              }
+
+    getCurrentBattleTurnDurationMs(scene = null) {
+                const currentScene = scene || this.getBattleSceneSession();
+                const turns = currentScene?.report?.turns || [];
+                const index = Math.max(0, Math.min(turns.length, Number(currentScene?.turnIndex) || 0));
+                return this.getBattleTurnDurationMs(index < turns.length ? turns[index] : null);
+              }
+
+    getBattleStore() {
+                return BattleStore || global.BattleStore || null;
+              }
+
+    invalidateRendererSnapshot() {
+                this.__ecsRendererSnapshot = null;
+                if (this.canvasShell) this.canvasShell.__ecsRendererSnapshot = null;
+              }
+
+    getBattleSceneSession() {
+                const store = this.getBattleStore();
+                return store ? store.getBattleScene() : null;
+              }
+
+    // The entityBattle session is a single LIVE object the app steps every tick;
+          // BattleStore holds that same reference (no second copy). Re-pointing it on
+          // each change keeps the store in sync if the app swaps the session object, and
+          // invalidates the cached renderer snapshot so battle facts are recomputed.
+          publishEntityBattle(session) {
+                const store = this.getBattleStore();
+                if (store) store.openEntityBattle(session || null);
+                this.invalidateRendererSnapshot();
+                return store ? store.getEntityBattle() : session;
+              }
+
+    // Open the entity battle (battleSimCore mass-melee) as a pure-canvas scene.
+          // mode 'interactive' = live 鍐涗护 play recording an inputStream (resolved by
+          // onResolve); mode 'replay' = deterministic playback of a finished report's
+          // { setup, inputStream }. Rendered by BattleCanvasRenderer.renderEntityBattleOverlay
+          // via options.entityBattle; the sim is stepped here in startEntityBattleTimer.
+          openEntityBattle(opts = {}) {
+                const view = (typeof window !== 'undefined' ? window : globalThis);
+                const Core = view.BattleSimCore;
+                const setup = opts.setup;
+                if (!Core || typeof Core.createBattle !== 'function' || !setup || !setup.sides) {
+                  view.console?.log?.('[entity-battle] openEntityBattle:abort', { hasCore: !!Core, hasSetup: !!setup });
+                  return false;
+                }
+                this.closeEntityBattle();
+                const battle = Core.createBattle(setup);
+                const tickHz = (battle.config && battle.config.tickHz) || 20;
+                const mode = opts.mode === 'replay' ? 'replay' : 'interactive';
+                let selectedGid = null;
+                Object.keys(battle.squads || {}).some((gid) => {
+                  if (battle.squads[gid].side === 0) { selectedGid = gid; return true; }
+                  return false;
+                });
+                const byTick = {};
+                if (mode === 'replay') {
+                  (Array.isArray(opts.inputStream) ? opts.inputStream : []).forEach((entry) => {
+                    const t = Number(entry && entry.tick) || 0;
+                    (byTick[t] = byTick[t] || []).push(entry);
+                  });
+                }
+                const encounter = opts.encounter || {};
+                const report = opts.report || null;
+                const battleTarget = opts.battleTarget || encounter.battleTarget || {};
+                const visualMap = mode === 'replay'
+                  ? (report && report.visual && report.visual.map)
+                  : (encounter.visual && encounter.visual.map);
+                const bgPath = (visualMap && (visualMap.background || visualMap.image))
+                  || 'assets/art/battle/battlefield-forest-camp.png';
+                this.entityBattle = {
+                  visible: true,
+                  mode,
+                  battle,
+                  setup,
+                  arena: (setup && setup.arena) || null,
+                  tickHz,
+                  status: t('battle.scene.status.fighting'),
+                  statusColor: '#d29922',
+                  selectedGid,
+                  auto: false,
+                  battleId: opts.battleId || '',
+                  encounter,
+                  battleTarget,
+                  report,
+                  bgPath,
+                  byTick,
+                  pending: [],
+                  inputStream: mode === 'replay'
+                    ? (Array.isArray(opts.inputStream) ? opts.inputStream.slice() : [])
+                    : [],
+                  inputStreamLen: mode === 'replay' && Array.isArray(opts.inputStream) ? opts.inputStream.length : 0,
+                  ended: false,
+                  resolving: false,
+                  resultWinner: null,
+                  serverResult: null,
+                  acc: 0,
+                  lastMs: 0,
+                  onResolve: typeof opts.onResolve === 'function' ? opts.onResolve : null,
+                  onClose: typeof opts.onClose === 'function' ? opts.onClose : null,
+                  camera: view.BattleCameraPolicy
+                    ? view.BattleCameraPolicy.createCamera()
+                    : { zoom: 1, offsetX: 0, offsetY: 0 },
+                  _viewFit: null,
+                  _dragLast: null,
+                  _rstate: {},
+                };
+                this.publishEntityBattle(this.entityBattle);
+                this.startEntityBattleTimer();
+                this.renderCanvasSurface(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    startEntityBattleTimer() {
+                this.stopEntityBattleTimer();
+                const timerHost = typeof this.scheduler?.setInterval === 'function'
+                  ? this.scheduler
+                  : (typeof this.runtime?.setInterval === 'function' ? this.runtime : null);
+                const setIntervalFn = timerHost?.setInterval || (typeof setInterval === 'function' ? setInterval : null);
+                if (!setIntervalFn) return false;
+                const tick = () => this.tickEntityBattle();
+                this.entityBattleTimer = timerHost
+                  ? setIntervalFn.call(timerHost, tick, this.getAnimationFrameMs())
+                  : setIntervalFn(tick, this.getAnimationFrameMs());
+                return true;
+              }
+
+    stopEntityBattleTimer() {
+                if (!this.entityBattleTimer) return;
+                if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.entityBattleTimer);
+                else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.entityBattleTimer);
+                else if (typeof clearInterval === 'function') clearInterval(this.entityBattleTimer);
+                this.entityBattleTimer = null;
+              }
+
+    tickEntityBattle() {
+                const eb = this.entityBattle;
+                if (!eb || !eb.visible) { this.stopEntityBattleTimer(); return false; }
+                const view = (typeof window !== 'undefined' ? window : globalThis);
+                const Core = view.BattleSimCore;
+                const AI = view.BattleAI;
+                const battle = eb.battle;
+                if (!Core || !battle) { this.stopEntityBattleTimer(); return false; }
+                const now = this.now();
+                if (!eb.lastMs) eb.lastMs = now;
+                let dt = (now - eb.lastMs) / 1000;
+                eb.lastMs = now;
+                if (dt > 0.25) dt = 0.25;
+                if (!(dt >= 0)) dt = 0;
+                eb.acc += dt;
+                const tickDt = 1 / (eb.tickHz || 20);
+                let steps = 0;
+                while (eb.acc >= tickDt && steps < 6 && battle && !battle.result) {
+                  let ins;
+                  if (eb.mode === 'replay') {
+                    ins = eb.byTick[battle.tick] || [];
+                  } else {
+                    const aiIns = AI && typeof AI.decideSideOrders === 'function' ? AI.decideSideOrders(battle, 1) : [];
+                    for (let k = 0; k < aiIns.length; k += 1) this.recordEntityInput(aiIns[k]);
+                    ins = eb.pending;
+                    eb.pending = [];
+                  }
+                  Core.step(battle, ins);
+                  eb.acc -= tickDt;
+                  steps += 1;
+                }
+                if (battle && battle.result && !eb.ended) this.onEntityBattleEnd();
+                this.publishEntityBattle(eb);
+                this.renderAnimationFrame(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    recordEntityInput(input) {
+                const eb = this.entityBattle;
+                if (!eb || !eb.battle) return;
+                const entry = Object.assign({ tick: eb.battle.tick }, input);
+                eb.inputStream.push(entry);
+                eb.inputStreamLen = eb.inputStream.length;
+                eb.pending.push(input);
+              }
+
+    issueEntityInput(input) {
+                const eb = this.entityBattle;
+                if (!eb || eb.mode !== 'interactive' || eb.ended || (eb.battle && eb.battle.result)) return false;
+                this.recordEntityInput(input);
+                this.publishEntityBattle(eb);
+                this.renderAnimationFrame(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    entityBattleSelectGeneral(gid) {
+                const eb = this.entityBattle;
+                if (!eb) return false;
+                eb.selectedGid = gid;
+                this.publishEntityBattle(eb);
+                this.renderAnimationFrame(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    entityBattleOrder(gid, order) {
+                return this.issueEntityInput({ type: 'order', gid: gid || this.entityBattle?.selectedGid, order });
+              }
+
+    entityBattleMaster(order) {
+                return this.issueEntityInput({ type: 'order', side: 0, order });
+              }
+
+    entityBattleSkill(gid, skillId) {
+                return this.issueEntityInput({ type: 'skill', gid: gid || this.entityBattle?.selectedGid, skillId });
+              }
+
+    toggleEntityBattleAuto() {
+                const eb = this.entityBattle;
+                if (!eb || eb.mode !== 'interactive') return false;
+                eb.auto = !eb.auto;
+                if (eb.battle) {
+                  eb.battle.auto = eb.auto;
+                  Object.keys(eb.battle.squads || {}).forEach((gid) => {
+                    if (eb.battle.squads[gid].side !== 0) return;
+                    const gen = eb.battle.units[eb.battle.squads[gid].generalId];
+                    ((gen && gen.skills) || []).forEach((sk) => { sk.auto = eb.auto; });
+                  });
+                }
+                this.publishEntityBattle(eb);
+                this.renderAnimationFrame(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    // Camera controller: translate an input gesture/drag into a camera change
+          // using the pure BattleCameraPolicy, then re-render. No math lives here or in
+          // the input routers 鈥?only orchestration.
+          entityBattleZoom(gesture = {}) {
+                const eb = this.entityBattle;
+                if (!eb || !eb.visible) return false;
+                const Policy = (typeof window !== 'undefined' ? window : globalThis).BattleCameraPolicy;
+                const fit = eb._viewFit;
+                if (!Policy || !fit) return false;
+                const point = {
+                  x: Number(gesture.centerX != null ? gesture.centerX : gesture.x) || 0,
+                  y: Number(gesture.centerY != null ? gesture.centerY : gesture.y) || 0,
+                };
+                const scaleDelta = Number(gesture.scaleDelta) || 1;
+                let camera = Policy.zoomAt(eb.camera || Policy.createCamera(), fit, point, scaleDelta);
+                // A pinch gesture also carries a pan delta; apply it too.
+                const dx = Number(gesture.deltaX);
+                const dy = Number(gesture.deltaY);
+                if ((Number.isFinite(dx) && dx) || (Number.isFinite(dy) && dy)) {
+                  camera = Policy.panBy(camera, fit, dx || 0, dy || 0);
+                }
+                eb.camera = camera;
+                this.publishEntityBattle(eb);
+                this.renderAnimationFrame(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    entityBattleDrag(phase, point = {}) {
+                const eb = this.entityBattle;
+                if (!eb || !eb.visible) return false;
+                const px = Number(point.x) || 0;
+                const py = Number(point.y) || 0;
+                if (phase === 'start') { eb._dragLast = { x: px, y: py }; return true; }
+                const Policy = (typeof window !== 'undefined' ? window : globalThis).BattleCameraPolicy;
+                const fit = eb._viewFit;
+                if (Policy && fit && eb._dragLast) {
+                  const dx = px - eb._dragLast.x;
+                  const dy = py - eb._dragLast.y;
+                  eb.camera = Policy.panBy(eb.camera || Policy.createCamera(), fit, dx, dy);
+                  eb._dragLast = { x: px, y: py };
+                  this.publishEntityBattle(eb);
+                  this.renderAnimationFrame(this.state?.currentTab || 'military');
+                }
+                if (phase === 'end' || phase === 'cancel') eb._dragLast = null;
+                return true;
+              }
+
+    onEntityBattleEnd() {
+                const eb = this.entityBattle;
+                if (!eb || eb.ended) return;
+                eb.ended = true;
+                eb.resultWinner = eb.battle && eb.battle.result && eb.battle.result.winner;
+                if (eb.mode === 'replay') {
+                  const win = eb.report ? (eb.report.result === 'victory') : (eb.resultWinner === 'attacker');
+                  eb.status = win ? t('battle.scene.result.win') : t('battle.scene.result.lose');
+                  eb.statusColor = win ? '#3fb950' : '#f85149';
+                  this.stopEntityBattleTimer();
+                  this.publishEntityBattle(eb);
+                  this.renderAnimationFrame(this.state?.currentTab || 'military');
+                  return;
+                }
+                eb.status = t('battle.scene.status.settling');
+                eb.statusColor = '#58a6ff';
+                this.publishEntityBattle(eb);
+                this.submitEntityResolve();
+              }
+
+    async submitEntityResolve() {
+                const eb = this.entityBattle;
+                if (!eb || eb.resolving) return;
+                eb.resolving = true;
+                let winner = eb.battle && eb.battle.result && eb.battle.result.winner;
+                let serverResult = null;
+                try {
+                  if (typeof eb.onResolve === 'function') {
+                    const resolved = await eb.onResolve({ battleId: eb.battleId, inputStream: eb.inputStream });
+                    if (resolved) {
+                      if (resolved.winner) winner = resolved.winner;
+                      serverResult = resolved.result || serverResult;
+                    }
+                  }
+                } catch (e) {
+                  const view = (typeof window !== 'undefined' ? window : globalThis);
+                  view.console?.error?.('[entity-battle] resolve failed:', e);
+                }
+                if (this.entityBattle !== eb) return;
+                eb.resultWinner = winner;
+                eb.serverResult = serverResult;
+                const win = winner === 'attacker';
+                const draw = winner === 'draw';
+                eb.status = win
+            ? t('battle.scene.result.win')
+            : draw
+              ? t('battle.scene.result.draw')
+              : t('battle.scene.result.lose');
+                eb.statusColor = win ? '#3fb950' : (draw ? '#d29922' : '#f85149');
+                this.stopEntityBattleTimer();
+                this.publishEntityBattle(eb);
+                this.renderAnimationFrame(this.state?.currentTab || 'military');
+              }
+
+    closeEntityBattle() {
+                const eb = this.entityBattle;
+                this.stopEntityBattleTimer();
+                this.getBattleStore()?.closeEntityBattle();
+                this.invalidateRendererSnapshot();
+                this.entityBattle = null;
+                if (eb && typeof eb.onClose === 'function') {
+                  try { eb.onClose(); } catch (_e) { /* ignore */ }
+                } else if (eb) {
+                  this.renderCanvasSurface(this.state?.currentTab || 'military');
+                }
+                return true;
+              }
+
+    // LIVE attack on an active encounter tile. Opens a session on the backend
+          // (startWorldCombat 鈫?deterministic {battleId, setup}, no simulation), then
+          // runs the INTERACTIVE battle scene; on battle end it submits the recorded
+          // inputStream to resolveWorldCombat for the authoritative result. Returns a
+                // promise that resolves true when the scene opened. Falls back to false so
+          // the caller can use the passive report path when prerequisites are missing.
+          async enterInteractiveBattle(options = {}) {
+                const view = (typeof window !== 'undefined' ? window : globalThis);
+                const api = this.getGameApi?.() || this.api;
+                if (typeof this.openEntityBattle !== 'function' || !api?.startWorldCombat || !view.BattleSimCore) {
+                  view.console?.log?.('[battle-interactive] enterInteractiveBattle:abort', {
+                    hasScene: typeof this.openEntityBattle === 'function', hasApi: !!api?.startWorldCombat, hasCore: !!view.BattleSimCore,
+                  });
+                  return false;
+                }
+                let opened = null;
+                try {
+                  opened = await api.startWorldCombat({
+                    missionId: options.missionId || '',
+                    formationSlot: options.formationSlot ?? options.slot ?? 1,
+                    cityId: options.cityId || this.state?.activeCityId || 'capital',
+                    targetQ: options.targetQ ?? options.q,
+                    targetR: options.targetR ?? options.r,
+                  });
+                } catch (err) {
+                  view.console?.error?.('[battle-interactive] startWorldCombat failed:', err);
+                  this.log?.(t('battle.scene.openFailed', { message: err?.payload?.message || err?.message || '' }));
+                  return false;
+                }
+                if (!opened || opened.success === false || !opened.setup || !opened.battleId) {
+                  this.log?.(opened?.message || t('battle.scene.cannotOpenHere'));
+                  return false;
+                }
+                this.applyApiState?.(opened);
+                const battleId = opened.battleId;
+                const shown = this.openEntityBattle({
+                  mode: 'interactive',
+                  battleId,
+                  setup: opened.setup,
+                  encounter: opened.encounter,
+                  battleTarget: opened.battleTarget,
+                  onResolve: async ({ inputStream }) => {
+                    try {
+                      const resolved = await api.resolveWorldCombat(battleId, inputStream);
+                      // The interactive scene already played this battle live. The
+                      // authoritative re-sim pushes its report into recentReports, so
+                      // mark it seen BEFORE applyApiState 鈥?otherwise the passive
+                      // BattleReplayOverlay replays the very same fight right after
+                      // (the "鍐涗护鐗?+ 鏃犲啗浠ょ増 浜ゆ浛鍑虹幇" double-play). The passive
+                      // path stays only for unattended reports.
+                      const playedReportId = resolved?.report?.id;
+                      if (playedReportId) {
+                        this.playedWorldCombatReportIds = this.playedWorldCombatReportIds || new Set();
+                        this.playedWorldCombatReportIds.add(playedReportId);
+                      }
+                      this.applyApiState?.(resolved);
+                      return resolved;
+                    } catch (err) {
+                      view.console?.error?.('[battle-interactive] resolveWorldCombat failed:', err);
+                      this.log?.(t('battle.scene.settleFailed', { message: err?.payload?.message || err?.message || '' }));
+                      return null;
+                    }
+                  },
+                  onClose: () => this.renderCanvasSurface?.(this.state?.currentTab || 'military'),
+                });
+                return shown !== false;
+              }
+
+    startBattleScene(report = null) {
+                if (!report) return false;
+                // Entity battles carry a deterministic replay; render them in the new
+                // sprite overlay instead of the turn-card scene. Any failure
+                // falls back to the turn-card scene so a battle always shows.
+                const view = (typeof window !== 'undefined' ? window : globalThis);
+                try {
+                  view.console?.log?.('[battle-replay] startBattleScene', {
+                    hasReplay: !!(report.replay && report.replay.setup),
+                    hasCore: !!view.BattleSimCore,
+                    hasOverlay: typeof this.openEntityBattle === 'function',
+                  });
+                } catch (_e) { /* ignore */ }
+                if (report.replay && report.replay.setup && view.BattleSimCore && typeof this.openEntityBattle === 'function') {
+                  try {
+                    const shown = this.openEntityBattle({
+                      mode: 'replay',
+                      setup: report.replay.setup,
+                      inputStream: report.replay.inputStream || [],
+                      report,
+                      onClose: () => this.renderCanvasSurface(this.state?.currentTab || 'military'),
+                    });
+                    if (shown) return true;
+                  } catch (err) {
+                    view.console?.error?.('[battle-replay] entity overlay failed, using turn-card scene:', err);
+                  }
+                }
+                const battleScene = {
+                  visible: true,
+                  report,
+                  turnIndex: 0,
+                  startedAt: this.now(),
+                  turnStartedAt: this.now(),
+                  turnDurationMs: this.getBattleTurnDurationMs(report.turns?.[0] || null),
+                };
+                const store = this.getBattleStore();
+                if (!store) return false;
+                store.openBattleScene(battleScene);
+                this.invalidateRendererSnapshot();
+                this.startBattleSceneTimer();
+                this.startBattleAnimationTimer();
+                this.renderCanvasSurface(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    stopBattleSceneTimer() {
+                if (!this.battleReplayTurnTimer) return;
+                if (typeof this.scheduler?.clearTimeout === 'function') this.scheduler.clearTimeout(this.battleReplayTurnTimer);
+                else if (typeof this.runtime?.clearTimeout === 'function') this.runtime.clearTimeout(this.battleReplayTurnTimer);
+                else if (typeof clearTimeout === 'function') clearTimeout(this.battleReplayTurnTimer);
+                else if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleReplayTurnTimer);
+                else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleReplayTurnTimer);
+                else if (typeof clearInterval === 'function') clearInterval(this.battleReplayTurnTimer);
+                this.battleReplayTurnTimer = null;
+              }
+
+    stopBattleAnimationTimer() {
+                if (!this.battleAnimationTimer) return;
+                if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleAnimationTimer);
+                else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleAnimationTimer);
+                else if (typeof clearInterval === 'function') clearInterval(this.battleAnimationTimer);
+                this.battleAnimationTimer = null;
+              }
+
+    startBattleAnimationTimer() {
+                this.stopBattleAnimationTimer();
+                const timerHost = typeof this.scheduler?.setInterval === 'function'
+                  ? this.scheduler
+                  : (typeof this.runtime?.setInterval === 'function' ? this.runtime : null);
+                const setIntervalFn = timerHost?.setInterval || (typeof setInterval === 'function' ? setInterval : null);
+                if (!setIntervalFn) return false;
+                this.battleAnimationTimer = timerHost
+                  ? setIntervalFn.call(timerHost, () => {
+                    if (!this.getBattleSceneSession()?.visible) {
+                      this.stopBattleAnimationTimer();
+                      return;
+                    }
+                    this.renderAnimationFrame(this.state?.currentTab || 'military');
+                  }, this.getAnimationFrameMs())
+                  : setIntervalFn(() => {
+                    if (!this.getBattleSceneSession()?.visible) {
+                      this.stopBattleAnimationTimer();
+                      return;
+                    }
+                    this.renderAnimationFrame(this.state?.currentTab || 'military');
+                  }, this.getAnimationFrameMs());
+                return true;
+              }
+
+    advanceBattleSceneTurn() {
+                const battleScene = this.getBattleSceneSession();
+                if (!battleScene?.visible) {
+                  this.stopBattleSceneTimer();
+                  return false;
+                }
+                const turns = battleScene.report?.turns || [];
+                if (battleScene.turnIndex < turns.length) {
+                  const nextTurnIndex = battleScene.turnIndex + 1;
+                  const nextBattleScene = {
+                    ...battleScene,
+                    turnIndex: nextTurnIndex,
+                    turnStartedAt: this.now(),
+                    turnDurationMs: this.getBattleTurnDurationMs(nextTurnIndex < turns.length ? turns[nextTurnIndex] : null),
+                  };
+                  this.getBattleStore()?.updateBattleScene(nextBattleScene);
+                  this.invalidateRendererSnapshot();
+                  this.renderAnimationFrame(this.state?.currentTab || 'military');
+                  this.startBattleSceneTimer();
+                  return true;
+                }
+                this.stopBattleSceneTimer();
+                this.stopBattleAnimationTimer();
+                return false;
+              }
+
+    startBattleSceneTimer() {
+                this.stopBattleSceneTimer();
+                const timerHost = typeof this.scheduler?.setTimeout === 'function'
+                  ? this.scheduler
+                  : (typeof this.runtime?.setTimeout === 'function' ? this.runtime : null);
+                const setTimeoutFn = timerHost?.setTimeout || (typeof setTimeout === 'function' ? setTimeout : null);
+                if (!setTimeoutFn) return false;
+                this.battleReplayTurnTimer = timerHost
+                  ? setTimeoutFn.call(timerHost, () => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs())
+                  : setTimeoutFn(() => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs());
+                return true;
+              }
+
+    closeBattleScene() {
+                this.stopBattleSceneTimer();
+                this.stopBattleAnimationTimer();
+                this.getBattleStore()?.closeBattleScene();
+                this.invalidateRendererSnapshot();
+                this.renderCanvasSurface(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    skipBattleScene() {
+                const battleScene = this.getBattleSceneSession();
+                if (!battleScene?.visible) return false;
+                const turns = battleScene.report?.turns || [];
+                const nextBattleScene = {
+                  ...battleScene,
+                  turnIndex: turns.length,
+                  turnStartedAt: this.now(),
+                };
+                this.getBattleStore()?.updateBattleScene(nextBattleScene);
+                this.invalidateRendererSnapshot();
+                this.stopBattleSceneTimer();
+                this.stopBattleAnimationTimer();
+                this.renderCanvasSurface(this.state?.currentTab || 'military');
+                return true;
+              }
+
+    async runAction(callback) {
+                try {
+                  const data = await callback();
+                  if (data) this.applyState(data);
+                  return data;
+                } catch (error) {
+                  this.log(error.payload?.message || error.message || t('command.action.failed', {}));
+                  return null;
+                }
+              }
+
+    async seekFamousPerson(source = 'seek') {
+                try {
+                  const result = await this.getGameApi().seekFamousPerson(source);
+                  this.applyApiState(result);
+                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
+                  this.famousPersonsPage = 0;
+                  this.selectedFamousPersonId = '';
+                  this.showFloatingText(result.message || t('command.famous.seekComplete'));
+                  this.log(result.message || t('command.famous.seekComplete'));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.famous.seekFailed', { message: error.payload?.message || error.message }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async acceptFamousPerson(candidateId) {
+                try {
+                  const result = await this.getGameApi().acceptFamousPerson(candidateId);
+                  this.applyApiState(result);
+                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
+                  this.famousPersonsPage = 0;
+                  this.selectedFamousPersonId = '';
+                  this.showFloatingText(result.message || t('command.famous.accepted', {}));
+                  this.log(result.message || t('command.famous.accepted', {}));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.famous.acceptFailed', { message: error.payload?.message || error.message }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async dismissFamousPersonCandidate(candidateId) {
+                try {
+                  const result = await this.getGameApi().dismissFamousPersonCandidate(candidateId);
+                  this.applyApiState(result);
+                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
+                  this.selectedFamousPersonId = '';
+                  this.showFloatingText(result.message || t('command.famous.dismissed', {}));
+                  this.log(result.message || t('command.famous.dismissed', {}));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.famous.dismissFailed', { message: error.payload?.message || error.message }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async assignFamousAttributePoint(personId, attribute) {
+                try {
+                  const result = await this.getGameApi().assignFamousAttributePoint(personId, attribute);
+                  this.applyApiState(result);
+                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
+                  this.selectedFamousPersonId = personId;
+                  this.showFloatingText(result.message || t('command.famous.attributeUpgraded'));
+                  this.log(result.message || t('command.famous.attributeUpgraded'));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.famous.attributePointFailed', { message: error.payload?.message || error.message }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async apiGet(path) {
+                const api = this.getGameApi();
+                const startedAt = Date.now();
+                try {
+                  const data = await api.request('GET', path);
+                  this.cacheRequestLog?.(path, 'GET', null, 200, data, Date.now() - startedAt);
+                  return data;
+                } catch (error) {
+                  this.cacheRequestLog?.(path, 'GET', null, error.payload?.statusCode || 500, error.payload || { message: error.message }, Date.now() - startedAt);
+                  throw error;
+                }
+              }
+
+    async apiPost(path, body) {
+                const api = this.getGameApi();
+                const startedAt = Date.now();
+                try {
+                  const data = await api.request('POST', path, body);
+                  this.cacheRequestLog?.(path, 'POST', body, 200, data, Date.now() - startedAt);
+                  return data;
+                } catch (error) {
+                  this.cacheRequestLog?.(path, 'POST', body, error.payload?.statusCode || 500, error.payload || { message: error.message }, Date.now() - startedAt);
+                  throw error;
+                }
+              }
+
+    async handleBuildingSuccess(result, action, buildingId) {
+                if (this.commandService?.handleBuildingSuccess) {
+                  this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
+                  try {
+                    const handled = await this.commandService.handleBuildingSuccess(result, action, buildingId);
+                    this.tutorialController?.sync?.(this.tutorial);
+                    this.maybeShowHouseBuiltAdvisor(action, buildingId);
+                    return handled;
+                  } finally {
+                    this.pendingTutorialAdvisorDialogue = false;
+                  }
+                }
+                this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
+                try {
+                  this.applyApiState(result);
+                  this.showFloatingText(action === 'upgrade' ? t('command.building.upgradeSuccess') : t('command.building.buildSuccess'));
+                  this.log(`Success: ${result?.message || ''}`);
+                  this.tutorialController?.sync?.(this.tutorial);
+                  this.maybeShowHouseBuiltAdvisor(action, buildingId);
+                  return true;
+                } finally {
+                  this.pendingTutorialAdvisorDialogue = false;
+                }
+              }
+
+    maybeShowHouseBuiltAdvisor(action, buildingId) {
+                const steps = this.tutorialController?.constructor?.TUTORIAL_STEPS || {};
+                if (action !== 'build' || buildingId !== 'house') return false;
+                if (Number(this.tutorial?.currentStep) !== Number(steps.houseBuilt)) return false;
+                return this.showHouseBuiltAdvisorDialogue();
+              }
+
+    showHouseBuiltAdvisorDialogue() {
+                const message = t('command.house.builtAdvisor');
+                StateWriter.commit(this, (prev) => ({
+                  ...(prev || {}),
+                  softGuide: {
+                    mode: 'strong',
+                    target: 'tab-civilization',
+                    message,
+                  },
+                }), { source: 'houseBuiltAdvisor' });
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
+                this.closeEventSnapshot?.();
+                this.tutorialHighlight = null;
+                this.tutorialAdvisorDialogue = { message, advisorName: t('tutorial.advisorName'), source: 'houseBuilt' };
+                if (this.canvasShell) {
+                  this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
+                  this.canvasShell.tutorialHighlight = null;
+                }
+                this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
+                return true;
+              }
+
+    setPendingBuildingAction(pending = null, options = {}) {
+                const nextPending = pending && pending.buildingId
+                  ? {
+                    buildingId: pending.buildingId,
+                    action: pending.action === 'upgrade' ? 'upgrade' : 'build',
+                  }
+                  : null;
+                this.pendingBuildingAction = nextPending;
+                if (options.render !== false) this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
+                return true;
+              }
+
+    async buildBuilding(buildingId) {
+                return this.commandService?.buildBuilding
+                  ? this.commandService.buildBuilding(buildingId)
+                  : this.handleBuildingAction(buildingId, 'build');
+              }
+
+    async upgradeBuilding(buildingId) {
+                return this.commandService?.upgradeBuilding
+                  ? this.commandService.upgradeBuilding(buildingId)
+                  : this.handleBuildingAction(buildingId, 'upgrade');
+              }
+
+    async handleBuildingAction(buildingId, action) {
+                if (this.commandService?.handleBuildingAction) {
+                  return this.commandService.handleBuildingAction(buildingId, action);
+                }
+                return false;
+              }
+
+    async assignJob(job, delta) {
+                if (!this.token && this.authStorage) {
+                  this.log(t('command.auth.loginRequired'));
+                  return false;
+                }
+                try {
+                  const result = await this.getGameApi().assignJob(job, delta);
+                  if (result?.success === false) {
+                    this.log(result.message || t('command.job.assignFailed'));
+                    const data = await this.getGameApi().getState?.();
+                    if (data?.gameState) this.applyApiState(data);
+                    return false;
+                  }
+                  this.applyApiState(result);
+                  this.log(t('command.job.assigned', { delta: `${delta > 0 ? '+' : ''}${delta}`, job }));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.job.assignFailedDetail', { message: error.payload?.message || error.message }));
+                  try {
+                    const data = await this.getGameApi().getState?.();
+                    if (data?.gameState) this.applyApiState(data);
+                  } catch (_) {}
+                  return false;
+                }
+              }
+
+    async applyTalentPolicy(policyId) {
+                if (!policyId) return false;
+                try {
+                  const result = await this.getGameApi().applyTalentPolicy(policyId);
+                  this.applyApiState(result);
+                  this.showFloatingText(result.message || t('command.policy.applied', {}));
+                  this.log(result.message || t('command.policy.applied', {}));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.policy.failed', { message: error.payload?.message || error.message }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async advanceEra() {
+                if (!this.canAdvanceEraNow()) {
+                  this.log(this.state?.isCapitalCity === false
+                    ? t('command.era.capitalOnly', {})
+                    : this.canAdvanceEraByTutorial()
+                      ? t('command.era.requirementsNotMet', {})
+                      : t('command.era.locked', {}));
+                  this.renderMilitary();
+                  return false;
+                }
+                try {
+                  const result = await this.getGameApi().advanceEra();
+                  this.applyApiState(result);
+                  this.tutorialController?.sync?.(this.tutorial);
+                  this.tutorialController?.onEraAdvanced?.(result);
+                  this.log(t('command.era.entered', { message: result.message || this.state.currentEraName || '' }));
+                  this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
+                  return false;
+                } finally {
+                  this.renderMilitary();
+                }
+              }
+
+    async research(techId) {
+                return this.commandService?.research
+                  ? this.commandService.research(techId)
+                  : false;
+              }
+
+    async startWorldMarch(options = {}) {
+                let optimistic = null;
+                try {
+                  const trace = global.WorldMarchTrace;
+                  trace?.log?.('app:startWorldMarch:begin', {
+                    options: {
+                      mode: options.mode || 'manual',
+                      targetQ: options.targetQ ?? options.q ?? options.x ?? null,
+                      targetR: options.targetR ?? options.r ?? options.y ?? null,
+                      formationSlot: options.formationSlot ?? options.slot ?? null,
+                    },
+                    before: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                  });
+                  optimistic = WorldMarchOptimisticState?.beginStart?.(this, { ...options, mode: 'manual' }) || null;
+                  const api = this.getGameApi();
+                  const result = await api.startWorldMarch({ ...options, mode: 'manual' });
+                  trace?.log?.('app:startWorldMarch:apiResult', {
+                    result: trace.summarizeApiPayload?.(result) || result,
+                  });
+                  this.applyApiState(result);
+                  WorldMarchOptimisticState?.complete?.(this, optimistic || result?.mission?.id || '');
+                  trace?.log?.('app:startWorldMarch:afterApply', {
+                    after: trace.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                  });
+                  TerritoryUiStateStore?.patch?.(this, {
+                    worldMarchTarget: null,
+                    selectedWorldActorId: '',
+                    selectedWorldMissionId: '',
+                  });
+                  this.tutorialController?.sync?.(this.tutorial);
+                  this.tutorialController?.onExploreStarted?.(result);
+                  this.showFloatingText(result.message || t('command.worldMarch.started', {}));
+                  this.log(result.message || t('command.worldMarch.started', {}));
+                  return true;
+                } catch (error) {
+                  global.WorldMarchTrace?.error?.('app:startWorldMarch:error', {
+                    message: error.payload?.message || error.message,
+                    payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
+                  });
+                  WorldMarchOptimisticState?.rollback?.(this, optimistic || '', { render: false });
+                  this.log(t('command.worldMarch.failed', { message: error.payload?.message || error.message || '' }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async returnWorldMarch(missionId, options = {}) {
+                if (!missionId) return false;
+                let optimistic = null;
+                try {
+                  global.WorldMarchTrace?.log?.('app:returnWorldMarch:begin', {
+                    missionId,
+                    before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                  });
+                  optimistic = WorldMarchOptimisticState?.beginReturn?.(this, missionId, options) || null;
+                  const api = this.getGameApi();
+                  const result = await api.returnWorldMarch(missionId, options);
+                  this.applyApiState(result);
+                  WorldMarchOptimisticState?.complete?.(this, optimistic || missionId);
+                  global.WorldMarchTrace?.log?.('app:returnWorldMarch:afterApply', {
+                    result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
+                    after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                  });
+                  this.showFloatingText(result.message || t('command.worldMarch.returning', {}));
+                  this.log(result.message || t('command.worldMarch.returning', {}));
+                  return true;
+                } catch (error) {
+                  global.WorldMarchTrace?.error?.('app:returnWorldMarch:error', {
+                    missionId,
+                    message: error.payload?.message || error.message,
+                    payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
+                  });
+                  WorldMarchOptimisticState?.rollback?.(this, optimistic || missionId, { render: false });
+                  this.log(t('command.worldMarch.returnFailed', { message: error.payload?.message || error.message || '' }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async stopWorldMarch(missionId, options = {}) {
+                if (!missionId) return false;
+                try {
+                  global.WorldMarchTrace?.log?.('app:stopWorldMarch:begin', {
+                    missionId,
+                    before: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                  });
+                  const api = this.getGameApi();
+                  const result = await api.stopWorldMarch(missionId, options);
+                  this.applyApiState(result);
+                  global.WorldMarchTrace?.log?.('app:stopWorldMarch:afterApply', {
+                    result: global.WorldMarchTrace?.summarizeApiPayload?.(result) || result,
+                    after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
+                  });
+                  this.showFloatingText(result.message || t('command.worldMarch.stopped', {}));
+                  this.log(result.message || t('command.worldMarch.stopped', {}));
+                  return true;
+                } catch (error) {
+                  global.WorldMarchTrace?.error?.('app:stopWorldMarch:error', {
+                    missionId,
+                    message: error.payload?.message || error.message,
+                    payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
+                  });
+                  this.log(t('command.worldMarch.stopFailed', { message: error.payload?.message || error.message || '' }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async claimGuideTaskReward(_taskId) {
+                return false;
+              }
+
+    async claimTaskReward(taskId, category = 'main', _options = {}) {
+                if (!taskId) return false;
+                try {
+                  const api = this.getGameApi();
+                  const result = await api.claimTaskReward(taskId, category || 'main');
+                  this.applyApiState(result);
+                  this.tutorialController?.sync?.(this.tutorial);
+                  this.tutorialController?.onTaskRewardClaimed?.(result);
+                  if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
+                    this.openRewardRevealSnapshot?.({ ...result.rewardReveal, createdAt: this.runtime?.now?.() || Date.now() });
+                    this.renderCanvasSurface(this.state?.currentTab);
+                  }
+                  this.showFloatingText(
+                    SharedRewardText && SharedRewardText.hasResources(result.rewardReveal?.resources)
+                      ? SharedRewardText.formatResources(result.rewardReveal.resources)
+                      : result.message || t('command.reward.claimed'),
+                  );
+                  this.log(t('command.reward.detail', { message: result.message || '' }));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    async switchCity(cityId) {
+                return this.commandService?.switchCity
+                  ? this.commandService.switchCity(cityId)
+                  : false;
+              }
+
+    async enterCity(cityId, options = {}) {
+                const targetCityId = cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
+                if (!targetCityId) return false;
+                try {
+                  const currentCityId = this.state?.activeCityId
+                    || this.state?.cityState?.activeCityId
+                    || this.state?.cityState?.capitalCityId
+                    || 'capital';
+                  this.closeCitySwitcher({ skipRender: true });
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
+                  this.closeEventSnapshot?.();
+                  if (targetCityId !== currentCityId) {
+                    const result = await this.getGameApi().switchCity(targetCityId);
+                    this.applyApiState(result);
+                  }
+                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showCityManagement', true);
+                  this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
+                  TerritoryUiStateStore?.patch?.(this, {
+                    selectedSiteId: '',
+                    worldMarchTarget: null,
+                    selectedWorldActorId: '',
+                    selectedWorldMissionId: '',
+                  });
+                  this.territoryController?.closeSiteDialog?.();
+                  if (this.canvasShell) TerritoryUiStateStore?.ensure?.(this.canvasShell);
+                  const homeView = this.resolveMapHomeViewState(this.state, { requestedTab: 'resources', forceMapHome: true });
+                  this.activeTab = homeView.activeTab;
+                  this.militaryView = homeView.militaryView;
+                  this.mapHomeActive = homeView.isMapHome;
+                  StateWriter.commit(this, (prev) => ({
+                    ...prev,
+                    currentTab: homeView.activeTab,
+                    militaryView: homeView.militaryView,
+                  }), { source: 'CanvasGameApp:enterCity' });
+                  this.renderCanvasSurface(homeView.activeTab);
+                  this.tutorialController?.markCityEntered?.().then(() => {
+                    this.tutorialController?.refreshCurrentHighlight?.();
+                  }).catch((error) => this.log(error?.message || String(error)));
+                  return true;
+                } catch (error) {
+                  this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+              }
+
+    getArmyFormation(cityId, slot) {
+            const targetCityId =
+              cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
+            const targetSlot = Math.max(1, Math.min(3, Number(slot) || 1));
+            const formations = this.state?.military?.formations || {};
+            const cityFormations = Array.isArray(formations[targetCityId])
+              ? formations[targetCityId]
+              : [];
+            return (
+              cityFormations.find((item) => Number(item?.slot) === targetSlot) ||
+              cityFormations[targetSlot - 1] ||
+              null
+            );
+          }
+
+    getArmyFormationSoldierCap(cityId, slot) {
+            const formation = this.getArmyFormation(cityId, slot);
+            return Math.max(0, Math.floor(Number(formation?.maxSoldiersPerMember) || 1000));
+          }
+
+    getArmyFormationReserveSoldiers(cityId) {
+            const targetCityId =
+              cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
+            const cityMilitary =
+              this.state?.cities?.[targetCityId]?.military || this.state?.military || {};
+            return Math.max(0, Math.floor(Number(cityMilitary.soldiers) || 0));
+          }
+
+    normalizeArmyFormationAssignments(assignments = {}, memberIds = [], cap = 1000) {
+            const max = Math.max(0, Math.floor(Number(cap) || 1000));
+            const result = {};
+            (Array.isArray(memberIds) ? memberIds : []).forEach((memberId) => {
+              const id = String(memberId || '').trim();
+              if (!id) return;
+              result[id] = Math.max(0, Math.min(max, Math.floor(Number(assignments?.[id]) || 0)));
+            });
+            return result;
+          }
+
+    sumArmyFormationAssignments(assignments = {}) {
+            return Object.values(
+              assignments && typeof assignments === 'object' ? assignments : {},
+            ).reduce((sum, value) => sum + Math.max(0, Math.floor(Number(value) || 0)), 0);
+          }
+
+    createArmyFormationEditorState(editor = {}) {
+            return {
+              open: false,
+              cityId: '',
+              slot: 1,
+              memberIds: [],
+              soldierAssignments: {},
+              soldierDraftAssignments: {},
+              page: 0,
+              saving: false,
+              ...(editor || {}),
+            };
+          }
+
+    getArmyFormationEditablePool(editor = {}) {
+            const cityId = editor.cityId || this.state?.activeCityId || 'capital';
+            const slot = Math.max(1, Math.min(3, Number(editor.slot) || 1));
+            const formation = this.getArmyFormation(cityId, slot) || {};
+            const previousAssigned = this.sumArmyFormationAssignments(
+              formation.soldierAssignments || {},
+            );
+            return previousAssigned + this.getArmyFormationReserveSoldiers(cityId);
+          }
+
+    setArmyFormationSoldierDraft(personId, value, options = {}) {
+            const editor = this.armyFormationEditor || {};
+            if (!editor.open) return false;
+            const id = String(personId || '').trim();
+            const memberIds = Array.isArray(editor.memberIds) ? editor.memberIds : [];
+            if (!id || !memberIds.includes(id)) return false;
+            const cap = this.getArmyFormationSoldierCap(editor.cityId, editor.slot);
+            const assignments = this.normalizeArmyFormationAssignments(
+              editor.soldierDraftAssignments || editor.soldierAssignments || {},
+              memberIds,
+              cap,
+            );
+            const pool = this.getArmyFormationEditablePool(editor);
+            const others = memberIds.reduce(
+              (sum, memberId) =>
+                memberId === id
+                  ? sum
+                  : sum + Math.max(0, Math.floor(Number(assignments[memberId]) || 0)),
+              0,
+            );
+            assignments[id] = Math.max(0, Math.min(cap, pool - others, Math.floor(Number(value) || 0)));
+            return this.setArmyFormationEditor(
+              { ...editor, soldierDraftAssignments: assignments },
+              { render: options.render !== false },
+            );
+          }
+
+    setArmyFormationEditor(editor = {}, options = {}) {
+            const next = this.createArmyFormationEditorState(editor);
+            const cap = this.getArmyFormationSoldierCap(next.cityId, next.slot);
+            next.memberIds = Array.isArray(next.memberIds) ? next.memberIds.slice(0, 5) : [];
+            next.soldierAssignments = this.normalizeArmyFormationAssignments(
+              next.soldierAssignments || {},
+              next.memberIds,
+              cap,
+            );
+            next.soldierDraftAssignments = this.normalizeArmyFormationAssignments(
+              next.soldierDraftAssignments || next.soldierAssignments || {},
+              next.memberIds,
+              cap,
+            );
+            this.armyFormationEditor = next;
+            if (this.canvasShell && typeof this.canvasShell === 'object') {
+              this.canvasShell.armyFormationEditor = { ...this.armyFormationEditor };
+            }
+            if (options.render !== false) this.renderCanvasSurface(this.state?.currentTab);
+            return true;
+          }
+
+    openArmyFormation(action = {}) {
+            const slot = Math.max(1, Math.min(3, Number(action.slot) || 1));
+            const cityId =
+              action.cityId ||
+              this.state?.activeCityId ||
+              this.state?.cityState?.activeCityId ||
+              'capital';
+            const formation = this.getArmyFormation(cityId, slot);
+            const memberIds = Array.isArray(formation?.memberIds) ? formation.memberIds : [];
+            const cap = this.getArmyFormationSoldierCap(cityId, slot);
+            return this.setArmyFormationEditor({
+              open: true,
+              cityId,
+              slot,
+              memberIds: [...memberIds].slice(0, 5),
+              soldierAssignments: this.normalizeArmyFormationAssignments(
+                formation?.soldierAssignments || {},
+                memberIds,
+                cap,
+              ),
+              soldierDraftAssignments: this.normalizeArmyFormationAssignments(
+                formation?.soldierAssignments || {},
+                memberIds,
+                cap,
+              ),
+              page: 0,
+              saving: false,
+            });
+          }
+
+    closeArmyFormationEditor(options = {}) {
+            return this.setArmyFormationEditor(this.createArmyFormationEditorState(), options);
+          }
+
+    toggleArmyFormationMember(action = {}) {
+            const editor = this.armyFormationEditor || {};
+            if (!editor.open) return false;
+            const personId = String(action.personId || '').trim();
+            if (!personId) return false;
+            const memberIds = Array.isArray(editor.memberIds) ? [...editor.memberIds] : [];
+            const assignments = { ...(editor.soldierAssignments || {}) };
+            const draftAssignments = {
+              ...(editor.soldierDraftAssignments || editor.soldierAssignments || {}),
+            };
+            const index = memberIds.indexOf(personId);
+            if (index >= 0) {
+              memberIds.splice(index, 1);
+              delete assignments[personId];
+              delete draftAssignments[personId];
+            } else {
+              if (memberIds.length >= 5) {
+                this.showFloatingText(t('command.formation.full'));
+                return false;
+              }
+              memberIds.push(personId);
+              assignments[personId] = 0;
+              draftAssignments[personId] = 0;
+            }
+            return this.setArmyFormationEditor(
+              {
+                ...editor,
+                memberIds,
+                soldierAssignments: this.normalizeArmyFormationAssignments(
+                  assignments,
+                  memberIds,
+                  this.getArmyFormationSoldierCap(editor.cityId, editor.slot),
+                ),
+                soldierDraftAssignments: this.normalizeArmyFormationAssignments(
+                  draftAssignments,
+                  memberIds,
+                  this.getArmyFormationSoldierCap(editor.cityId, editor.slot),
+                ),
+              },
+              { render: true },
+            );
+          }
+
+    changeArmyFormationPage(action = {}) {
+            const editor = this.armyFormationEditor || {};
+            if (!editor.open) return false;
+            const page = Math.max(0, (Number(editor.page) || 0) + (Number(action.delta) || 0));
+            return this.setArmyFormationEditor({ ...editor, page }, { render: true });
+          }
+
+    changeArmyFormationSoldiers(action = {}) {
+            const editor = this.armyFormationEditor || {};
+            if (!editor.open || editor.saving) return false;
+            const cap = this.getArmyFormationSoldierCap(editor.cityId, editor.slot);
+            const ratio = Math.max(0, Math.min(1, Number(action.ratio) || 0));
+            return this.setArmyFormationSoldierDraft(action.personId, Math.round(cap * ratio));
+          }
+
+    async requestArmyFormationSoldierInput(action = {}) {
+            const editor = this.armyFormationEditor || {};
+            if (!editor.open || editor.saving) return false;
+            const personId = String(action.personId || '').trim();
+            if (!personId) return false;
+            const current = Math.max(
+              0,
+              Math.floor(
+                Number(
+                  editor.soldierDraftAssignments?.[personId] ?? editor.soldierAssignments?.[personId],
+                ) || 0,
+              ),
+            );
+            const input =
+              typeof this.runtime?.requestTextInput === 'function'
+                ? await this.runtime.requestTextInput({
+                    title: t('command.formation.soldierTitle'),
+                    message: t('command.formation.soldierPrompt'),
+                    placeholder: '0',
+                    value: String(current),
+                    inputType: 'number',
+                  })
+                : global.prompt?.(t('command.formation.soldierTitle'), String(current));
+            if (input === null || input === undefined || input === '') return false;
+            return this.setArmyFormationSoldierDraft(personId, input);
+          }
+
+    autoReplenishArmyFormation() {
+            const editor = this.armyFormationEditor || {};
+            if (!editor.open || editor.saving) return false;
+            const memberIds = Array.isArray(editor.memberIds) ? editor.memberIds : [];
+            if (!memberIds.length) return false;
+            const cap = this.getArmyFormationSoldierCap(editor.cityId, editor.slot);
+            let remaining = this.getArmyFormationEditablePool(editor);
+            const assignments = {};
+            let active = [...memberIds];
+            while (active.length && remaining > 0) {
+              const share = Math.max(1, Math.floor(remaining / active.length));
+              const nextActive = [];
+              active.forEach((memberId) => {
+                const current = assignments[memberId] || 0;
+                const add = Math.min(cap - current, share, remaining);
+                assignments[memberId] = current + add;
+                remaining -= add;
+                if (assignments[memberId] < cap) nextActive.push(memberId);
+              });
+              if (nextActive.length === active.length && share <= 0) break;
+              active = nextActive;
+            }
+            return this.setArmyFormationEditor(
+              {
+                ...editor,
+                soldierDraftAssignments: this.normalizeArmyFormationAssignments(
+                  assignments,
+                  memberIds,
+                  cap,
+                ),
+              },
+              { render: true },
+            );
+          }
+
+    async saveArmyFormation() {
+            const editor = this.armyFormationEditor || {};
+            if (!editor.open || editor.saving) return false;
+            const cityId = editor.cityId || this.state?.activeCityId || 'capital';
+            const slot = Math.max(1, Math.min(3, Number(editor.slot) || 1));
+            const memberIds = (Array.isArray(editor.memberIds) ? editor.memberIds : []).slice(0, 5);
+            const soldierAssignments = this.normalizeArmyFormationAssignments(
+              editor.soldierDraftAssignments || editor.soldierAssignments || {},
+              memberIds,
+              this.getArmyFormationSoldierCap(cityId, slot),
+            );
+            this.setArmyFormationEditor({ ...editor, saving: true }, { render: true });
+            try {
+              const result = await this.getGameApi().setArmyFormation(
+                cityId,
+                slot,
+                memberIds,
+                soldierAssignments,
+              );
+              this.applyApiState(result);
+              this.closeArmyFormationEditor({ render: false });
+              const tutorialHandled = this.tutorialController?.onArmyFormationSaved?.(result) === true;
+              this.showFloatingText(result.message || t('command.formation.saved'));
+              this.log(result.message || t('command.formation.saved'));
+              if (!tutorialHandled) {
+                this.tutorialController?.sync?.(this.tutorial);
+                this.tutorialController?.refreshCurrentHighlight?.();
+                this.renderCanvasSurface(this.state?.currentTab);
+              }
+              return true;
+            } catch (error) {
+              const message =
+                error.payload?.message || error.message || t('command.formation.saveFailed');
+              this.setArmyFormationEditor({ ...editor, saving: false }, { render: false });
+              this.showFloatingText(message);
+              this.log(message);
+              this.renderCanvasSurface(this.state?.currentTab);
+              return false;
+            }
+          }
+
+    openNaming(prompt = {}) {
+                const view = this.presenter.buildNamingPromptViewState(prompt);
+                this.activeNamingPrompt = prompt;
+                this.activeNamingPromptKey = view.key;
+                const namingState = { visible: true, view, prompt, inputValue: '', submitting: false };
+                this.openNamingSnapshot?.(namingState);
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showResourceDetails');
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
+                  this.closeEventSnapshot?.();
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
+                  this.render();
+                  this.scheduleTutorialHighlightRefresh(80);
+              }
+
+    closeNaming() {
+                this.activeNamingPrompt = null;
+                this.activeNamingPromptKey = null;
+                this.closeNamingSnapshot?.();
+                this.render();
+              }
+
+    scheduleTutorialHighlightRefresh(delayMs = 0) {
+                const callback = () => this.tutorialController?.refreshCurrentHighlight?.();
+                const scheduler = typeof this.scheduler?.setTimeout === 'function'
+                  ? this.scheduler
+                  : (typeof this.runtime?.setTimeout === 'function' ? this.runtime : null);
+                if (scheduler) {
+                  scheduler.setTimeout(callback, delayMs);
+                  return true;
+                }
+                if (typeof setTimeout === 'function') {
+                  setTimeout(callback, delayMs);
+                  return true;
+                }
+                callback();
+                return false;
+              }
+
+    async requestNamingInput() {
+                const naming = this.getNamingSnapshot?.() || null;
+                if (!naming?.visible || typeof this.runtime.requestTextInput !== 'function') return;
+                const view = naming.view || {};
+                const value = await this.runtime.requestTextInput({
+                  title: view.title || t('shell.naming.title'),
+                  message: view.message || '',
+                  placeholder: view.placeholder || '',
+                  value: naming.inputValue || '',
+                  maxLength: view.maxLength || 12,
+                });
+                if (value === null || value === undefined || !this.isNamingSnapshotOpen?.()) return;
+                const inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
+                this.updateNamingSnapshot?.({ inputValue });
+                this.render();
+                this.scheduleTutorialHighlightRefresh(0);
+              }
+
+    submitNaming(inputName = null) {
+                return this.submitNamingValue(inputName);
+              }
+
+    async submitNamingValue(inputName = null) {
+                const naming = this.getNamingSnapshot?.() || null;
+                const prompt = this.activeNamingPrompt || naming?.prompt || {};
+                const name = String(inputName ?? naming?.inputValue ?? '').trim();
+                if (!prompt.type || !name) return;
+                let tutorialHandledView = false;
+                this.updateNamingSnapshot?.({ submitting: true });
+                this.render();
+                try {
+                  const api = this.getGameApi();
+                  const result = prompt.type === 'polity'
+                    ? await api.renamePolity(name)
+                    : await api.renameCity(prompt.territoryId, name);
+                  this.closeNaming();
+                  this.applyApiState(result);
+                  this.tutorialController?.sync?.(this.tutorial || this.state?.tutorial || {});
+                  tutorialHandledView = this.tutorialController?.refreshCurrentHighlight?.() === true;
+                  this.showFloatingText(result.message);
+                  this.log(t('command.success.detail', { message: result.message || '' }));
+                } catch (error) {
+                  this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
+                } finally {
+                  this.updateNamingSnapshot?.({ submitting: false });
+                  if (!tutorialHandledView) this.renderCanvasSurface(this.state?.currentTab);
+                }
+              }
+
+    async handleCanvasTabSelection(tabId) {
+                if (!tabId) return false;
+                const onTabClicked = this.tutorialController?.onTabClicked;
+                const allowed = typeof onTabClicked === 'function'
+                  ? await onTabClicked.call(this.tutorialController, tabId).catch(() => false)
+                  : true;
+                if (!allowed) {
+                  this.log(t('guide.completeCurrentStep'));
+                  this.renderCanvasSurface(this.state?.currentTab);
+                  return false;
+                }
+                this.switchTab(tabId);
+                return true;
+              }
+
+    moveToCurrentMainTaskTarget() {
+                return false;
+              }
+
+    continueCurrentMainTaskTarget() {
+                return false;
+              }
+
+    getTargetTab(key) {
+                return this.guideController?.getTargetTab?.(key) || null;
+              }
+
+    getTutorialTarget(key) {
+                return this.canvasShell?.getTutorialTarget?.(key)
+                  || this.guideController?.getTargetRect?.(key)
+                  || null;
+              }
+
+    getGuideState() {
+                return this.state;
+              }
+
+    getGuideActiveTab() {
+                return this.getActiveTab();
+              }
+
+    getGuideCanvasTarget(type, predicate = null) {
+                return this.canvasShell?.getCanvasTarget?.(type, predicate)
+                  || this.getCanvasTarget(type, predicate);
+              }
+
+    renderGuideFrame() {
+                this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
+                return true;
+              }
+
+    switchGuideTab(tabId) {
+                this.switchTab(tabId);
+                return true;
+              }
+
+    setGuideMilitaryView(view) {
+                this.militaryView = view || 'army';
+                StateWriter.commit(this, (prev) => ({ ...prev, militaryView: this.militaryView }), { source: 'setGuideMilitaryView' });
+                this.render();
+                return true;
+              }
+
+    getCanvasTarget(type, predicate = null) {
+                const targets = this.canvasShell?.renderer?.hitTargets || this.renderer?.hitTargets || [];
+                const target = targets.find((item) => (
+                  item.action?.type === type
+                  && (typeof predicate !== 'function' || predicate(item.action))
+                ));
+                if (!target) return null;
+                return {
+                  left: target.x,
+                  top: target.y,
+                  width: target.width,
+                  height: target.height,
+                  right: target.x + target.width,
+                  bottom: target.y + target.height,
+                };
+              }
+
+    getGuideTargetRect(key) {
+                return this.guideController?.getTargetRect?.(key) || null;
+              }
+
+    refreshTaskCenterGuideHighlight(action = {}) {
+                return this.guideController?.refreshTaskCenterGuideHighlight?.(action) || false;
+              }
+
+    hasClaimableMainTask() {
+                return false;
+              }
+
+    refreshCurrentGuideHighlight() {
+                return false;
+              }
+
+    ensureGuideTargetVisible(key) {
+                return false;
+              }
+
+    normalizeGuideHighlightRect(target) {
+                if (!target) return null;
+                const rawRect = typeof target.getRect === 'function'
+                  ? target.getRect()
+                  : (typeof target.getBoundingClientRect === 'function' ? target.getBoundingClientRect() : target);
+                const left = Number(rawRect.left ?? rawRect.x);
+                const top = Number(rawRect.top ?? rawRect.y);
+                const width = Number(rawRect.width);
+                const height = Number(rawRect.height);
+                if (![left, top, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
+                return {
+                  left,
+                  top,
+                  width,
+                  height,
+                  right: Number(rawRect.right) || left + width,
+                  bottom: Number(rawRect.bottom) || top + height,
+                };
+              }
+
+    showGuideHighlight(target, message, options = {}) {
+                return false;
+              }
+
+    hideGuideHighlight() {
+                if (this.canvasShell && typeof this.canvasShell.hideTutorialHighlight === 'function') {
+                  const hidden = this.canvasShell.hideTutorialHighlight();
+                  this.tutorialHighlight = this.canvasShell.tutorialHighlight || null;
+                  return hidden;
+                }
+                const hadHighlight = Boolean(this.tutorialHighlight);
+                this.tutorialHighlight = null;
+                if (hadHighlight) this.renderCanvasSurface(this.state?.currentTab);
+                return hadHighlight;
+              }
+
+    showGuideControllerHighlight(target, message) {
+                return this.showGuideHighlight(target, message);
+              }
+
+    hideGuideControllerHighlight() {
+                return this.hideGuideHighlight();
+              }
+
+    hasGuideControllerHighlight() {
+                return false;
+              }
+
+    goToGuideTaskTarget(action = {}) {
+                return false;
+              }
+
+    toggleCitySwitcher() {
+                CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showCitySwitcher', !CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this, 'showCitySwitcher'));
+                this.renderCanvasSurface(this.state?.currentTab);
+              }
+
+    closeCitySwitcher(options = {}) {
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCitySwitcher');
+                if (options.skipRender) return true;
+                this.renderCanvasSurface(this.state?.currentTab);
+                return true;
+              }
+
+    openCityManagement(options = {}) {
+                CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showCityManagement', true);
+                this.activeCityManagementTab = options.tab || this.activeCityManagementTab || 'buildings';
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
+                this.closeEventSnapshot?.();
+                return this.renderCanvasSurface(this.state?.currentTab);
+              }
+
+    closeCityManagement() {
+                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
+                return this.renderCanvasSurface(this.state?.currentTab);
+              }
+
+    switchCityManagementTab(tab = 'buildings') {
+                const allowed = ['buildings', 'people', 'military'];
+                this.activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
+                return this.renderCanvasSurface(this.state?.currentTab);
+              }
+
+    getMissionRemainingSeconds(mission) {
+                return this.presenter?.getScoutMissionRemainingSeconds?.(mission);
+              }
+
+    formatScoutCountdown(seconds) {
+                return this.presenter?.formatScoutCountdown?.(seconds);
+              }
+
+    maybeShowNamingPrompt() {
+                const prompt = this.state?.territoryState?.namingPrompt;
+                const key = prompt ? `${prompt.type}:${prompt.territoryId || 'polity'}` : null;
+                if (!prompt || this.activeNamingPromptKey === key) return;
+                this.openNaming(prompt);
+              }
+
+    requestCityRename(prompt = {}) {
+                if (!prompt.territoryId) return null;
+                this.openNaming({
+                  type: 'city',
+                  territoryId: prompt.territoryId,
+                  title: t('world.site.rename.cityTitle'),
+                  message: t('world.site.rename.currentName', {
+                    name: prompt.currentName || t('world.site.rename.unnamedCity'),
+                  }),
+                });
+                return null;
+              }
+
+    closeNamingModal() {
+                this.closeNaming();
+              }
+
+    renderSoftGuide(options = {}) {
+                this.updateAdvisor(this.state?.softGuide || null, { skipSurface: true });
+                this.hideGuideHighlight();
+                if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
+              }
+
+    getActiveGuideNavigation() {
+                return null;
+              }
+
+    hasActiveGuideTaskTarget(target) {
+                return false;
+              }
+
+    getFallbackGuideTarget(target) {
+                if (target === 'btn-advance-era') return 'tab-civilization';
+                if (target === 'card-craftsman') return 'tab-resources';
+                if (target === 'event-card-special' || target === 'btn-claim-event') return 'tab-events';
+                if (target === 'scout-action-first') return 'tab-military';
+                if (target === 'task-center-main-claim') return 'task-center-button';
+                if (typeof target === 'string' && target.startsWith('card-')) return 'tab-buildings';
+                return null;
+              }
+
+    updateAdvisor(guide, options = {}) {
+                const view = this.presenter?.buildAdvisorViewState?.(guide) || {};
+                this.activeAdvisor = view.activeAdvisor;
+                if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
+              }
+
+    goToAdvisorTarget() {
+                const target = this.activeAdvisor?.target || this.state?.softGuide?.target || null;
+                if (target === 'task-center-button') {
+                  const action = { type: 'openTaskCenter', tab: 'main', source: 'advisor' };
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
+                  this.canvasShell?.hideTutorialHighlight?.();
+                  if (this.canvasShell?.actionController?.handle_openTaskCenter) {
+                    this.canvasShell.actionController.handle_openTaskCenter(action);
+                  } else if (this.actionController?.handle_openTaskCenter) {
+                    this.actionController.handle_openTaskCenter(action);
+                  } else {
+                    CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showTaskCenter', true);
+                    this.activeTaskCenterTab = 'main';
+                    if (this.canvasShell) {
+                      this.canvasShell.activeTaskCenterTab = 'main';
+                    }
+                    this.renderCanvasSurface(this.state?.currentTab);
+                  }
+                  this.tutorialController?.refreshCurrentHighlight?.();
+                  return true;
+                }
+                if (target === 'scout-action-first') {
+                  return this.canvasShell?.goToGuideTaskTarget?.({
+                    target,
+                    nextAction: { type: 'switchMilitaryView', view: 'scout' },
+                  });
+                }
+                const tabId = this.presenter?.getAdvisorTargetTab?.(target);
+                if (tabId) this.switchTab(tabId);
+                return Boolean(tabId);
+              }
+
+    showFloatingText(message) {
+                const shown = this.canvasShell?.showFloatingText?.(message);
+                if (!shown && message) this.log(message);
+                return shown;
+              }
+
+    cacheRequestLog(path, method, body, statusCode, response, duration) {
+                this.requestLogs.unshift({
+                  path,
+                  method,
+                  body: body ? JSON.stringify(body).slice(0, 200) : '',
+                  statusCode,
+                  response: JSON.stringify(response).slice(0, 200),
+                  duration,
+                  timestamp: new Date().toLocaleTimeString(),
+                });
+                if (this.requestLogs.length > 100) this.requestLogs = this.requestLogs.slice(0, 100);
+              }
+
+    log(message) {
+                if (this.externalLog) this.externalLog(message);
+                const entry = { text: String(message ?? ''), timestamp: Date.now() };
+                this.recentLogs.unshift(entry);
+                if (this.recentLogs.length > 30) this.recentLogs = this.recentLogs.slice(0, 30);
+              }
+
+    getSelectedSite() {
+                return (this.state.territoryState?.territories || []).find((site) => site.id === this.territoryUiState.selectedSiteId) || null;
+              }
+
+    getExpeditionSoldiers(site = this.getSelectedSite()) {
+                const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
+                return Math.max(1, Number(this.territoryUiState.expeditionSoldiers) || recommended);
+              }
+
+    handleDrag(phase, point = {}) {
+                const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'drag', phase, pointer: point }) : null;
+                const routedInputRoute = routedInput && routedInput.route;
+                if (routedInputRoute ? routedInputRoute === 'entity-battle' : (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible)) {
+                  return this.actionController?.handle?.({ type: 'entityBattleDrag', phase, pointer: point }) || false;
+                }
+                if (routedInputRoute ? routedInputRoute === 'tech-tree' : (typeof this.canRouteModeTechTree === 'function' ? this.canRouteModeTechTree() : this.activeTab === 'tech')) {
+                  return this.actionController?.handle?.({ type: 'techTreeDrag', phase, pointer: point }) || false;
+                }
+                if (routedInputRoute) {
+                  if (routedInputRoute !== 'world-map') return false;
+                } else if (typeof this.canRouteModeWorldMap === 'function') {
+                  if (!this.canRouteModeWorldMap()) return false;
+                } else if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
+                if (
+                  this.isWorldMapHomeActive()
+                  && !this.hasBlockingOverlayOpen()
+                ) {
+                  const handled = this.ensureWorldMapRuntimeCoordinator()?.handleDrag(phase, point) || false;
+                  this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+                  return handled;
+                }
+                return this.actionController?.handle?.({ type: 'worldMapDrag', phase, pointer: point }) || false;
+              }
+
+    hasBlockingOverlayOpen() {
+                if (typeof this.isModeBlockingOverlayOpen === 'function') return this.isModeBlockingOverlayOpen();
+                const battleScene = typeof this.getRendererSnapshot === 'function'
+                  ? this.getRendererSnapshot()?.battle?.battleScene
+                  : null;
+                const namingOpen = typeof this.isNamingSnapshotOpen === 'function'
+                  ? this.isNamingSnapshotOpen()
+                  : false;
+                const confirmDialogOpen = typeof this.isConfirmDialogSnapshotOpen === 'function'
+                  ? this.isConfirmDialogSnapshotOpen()
+                  : false;
+                const rewardRevealOpen = typeof this.isRewardRevealSnapshotOpen === 'function'
+                  ? this.isRewardRevealSnapshotOpen()
+                  : false;
+                return Boolean(this.isBlockingPanelSnapshotOpen('showResourceDetails')
+                  || this.isBlockingPanelSnapshotOpen('showCitySwitcher')
+                  || this.isBlockingPanelSnapshotOpen('showSubcityList')
+                  || this.isBlockingPanelSnapshotOpen('showCityManagement')
+                  || this.isBlockingPanelSnapshotOpen('showAdvisor')
+                  || this.tutorialAdvisorDialogue
+                  || this.canvasShell?.tutorialAdvisorDialogue
+                  || this.isBlockingPanelSnapshotOpen('showTaskCenter')
+                  || this.isBlockingPanelSnapshotOpen('showGuidebook')
+                  || this.isBlockingPanelSnapshotOpen('showFamousPersons')
+                  || this.armyFormationEditor?.open
+                  || confirmDialogOpen
+                  || this.getCommandPanelValue()
+                  || this.isBlockingPanelSnapshotOpen('techDetailOpen')
+                  || this.isEventSnapshotOpen?.()
+                  || namingOpen
+                  || battleScene?.visible
+                  || this.entityBattle?.visible
+                  || rewardRevealOpen);
+              }
+
+    handleGesture(gesture) {
+                const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'gesture', gesture }) : null;
+                const routedInputRoute = routedInput && routedInput.route;
+                if (routedInputRoute ? routedInputRoute === 'entity-battle' : (typeof this.isModeEntityBattleActive === 'function' ? this.isModeEntityBattleActive() : this.entityBattle?.visible)) {
+                  return this.actionController?.handle?.({ type: 'entityBattleZoom', gesture }) || false;
+                }
+                const worldMapGestureHandled = this.handleWorldMapGesture(gesture);
+                if (worldMapGestureHandled) return true;
+                if (typeof this.canRouteModeTechTree === 'function') {
+                  if (!this.canRouteModeTechTree()) return false;
+                } else if (this.activeTab !== 'tech' || this.hasBlockingOverlayOpen()) return false;
+                return this.actionController?.handle?.({ type: 'techTreeZoom', gesture }) || false;
+              }
+
+    handleWorldMapGesture(gesture = {}) {
+                if (gesture?.type !== 'pinchZoom') return false;
+                const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'gesture', gesture }) : null;
+                const routedInputRoute = routedInput && routedInput.route;
+                if (routedInputRoute) {
+                  if (routedInputRoute !== 'world-map') return false;
+                } else if (typeof this.canRouteModeWorldMap === 'function') {
+                  if (!this.canRouteModeWorldMap()) return false;
+                } else if (this.activeTab !== 'military' || this.militaryView !== 'world') return false;
+                if (!this.isWorldMapHomeActive() || this.hasBlockingOverlayOpen()) return false;
+                const coordinator = this.ensureWorldMapRuntimeCoordinator();
+                const runtime = coordinator?.getMapRuntime?.();
+                if (!coordinator || !runtime || !coordinator.canRender?.(this.state)) return false;
+                const point = {
+                  x: Number(gesture.centerX ?? gesture.x) || 0,
+                  y: Number(gesture.centerY ?? gesture.y) || 0,
+                };
+                if (!runtime.isPointInMap?.(point, this.state) && !this.worldMapPinchDragging) return false;
+                const phase = gesture.phase || 'move';
+                if (phase === 'end' || phase === 'cancel') {
+                  this.finishWorldMapSnapshotDrag();
+                  this.renderCanvasSurface(this.state?.currentTab || this.activeTab);
+                  return true;
+                }
+                const dx = Number(gesture.deltaX);
+                const dy = Number(gesture.deltaY);
+                if (!Number.isFinite(dx) || !Number.isFinite(dy)) return false;
+                if (!this.worldMapPinchDragging) {
+                  this.worldMapPinchDragging = true;
+                  runtime.waterTimeMs = this.startWorldMapSnapshotDrag();
+                }
+                runtime.setCamera?.(
+                  (Number(runtime.camera?.x) || 0) + dx,
+                  (Number(runtime.camera?.y) || 0) + dy,
+                  { source: 'pinchPan', render: false },
+                );
+                this.worldMapRuntime = runtime;
+                this.renderWorldMapSnapshotDragFrame();
+                return true;
+              }
+
+    observeAsyncActionResult(result) {
+                if (result && typeof result.then === 'function') {
+                  result.catch((error) => this.log?.(error));
+                }
+                return result;
+              }
+
+    async handleTap(point) {
+                const action = this.renderer.getHitTarget(point);
+                global.ClientOperationLog?.record?.('input:tapHit', {
+                  point: global.ClientOperationLog?.summarizePoint?.(point),
+                  action: global.ClientOperationLog?.summarizeAction?.(action),
+                  blockingOverlay: this.hasBlockingOverlayOpen?.(),
+                  mapHomeActive: Boolean(this.mapHomeActive),
+                  currentTab: this.state?.currentTab || this.activeTab || '',
+                  militaryView: this.state?.militaryView || this.militaryView || '',
+                });
+                if (action?.type === 'blockCanvasModal') {
+                  return this.actionController?.handle?.(action);
+                }
+                if (action?.disabled) {
+                  global.ClientOperationLog?.record?.('input:tapDisabled', {
+                    point: global.ClientOperationLog?.summarizePoint?.(point),
+                    action: global.ClientOperationLog?.summarizeAction?.(action),
+                  }, { flush: true });
+                  return true;
+                }
+                if (shouldRouteTapThroughWorldMapRuntime(action)) {
+                  const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
+                  this.observeAsyncActionResult(handled);
+                  this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+                  global.ClientOperationLog?.record?.(action ? 'input:tapRuntime' : 'input:tapMiss', {
+                    point: global.ClientOperationLog?.summarizePoint?.(point),
+                    actionType: action?.type || '',
+                    action: global.ClientOperationLog?.summarizeAction?.(action),
+                    runtimeHandled: summarizeHandledForOperationLog(handled),
+                  }, { flush: true });
+                  if (handled) return handled;
+                  return handled;
+                }
+                if (action.type === 'showFamousSkillTooltip') {
+                  this.renderer.setPinnedFamousSkillTooltip?.(action);
+                  this.render();
+                  return;
+                }
+                if (action.type === 'clearFamousSkillTooltip') {
+                  this.renderer.clearFamousSkillTooltip?.();
+                  this.render();
+                  return;
+                }
+                const handledResult = this.actionController?.handle?.(action);
+                global.ClientOperationLog?.record?.('input:tapAction', {
+                  action: global.ClientOperationLog?.summarizeAction?.(action),
+                  handled: summarizeHandledForOperationLog(handledResult),
+                }, { flush: true });
+                const handled = await handledResult;
+                this.advanceTutorialIntroAfterHandled(handled, action);
+                return handled;
+              }
+
+    advanceTutorialIntro(action = {}) {
+                const controller = this.tutorialIntroOverlay || null;
+                if (!controller || typeof controller.advanceFromAction !== 'function') return false;
+                return controller.advanceFromAction(action);
+              }
+
+    advanceTutorialIntroAfterHandled(handled, action = {}) {
+                if (handled && typeof handled.then === 'function') {
+                  handled.then((value) => {
+                    if (value !== false) this.advanceTutorialIntro(action);
+                  }).catch((error) => this.log?.(error));
+                  return true;
+                }
+                return handled ? this.advanceTutorialIntro(action) : false;
+              }
+
+    isPointBlockedByTutorialShield(point = {}) {
+                if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
+                return this.renderer.getHitTarget(point)?.type === 'blockCanvasModal';
+              }
+
+    getModeSnapshot() {
+            return CanvasModeOwnershipRuntime.getModeSnapshot(this);
+          }
+
+    refreshModeSnapshot() {
+            return CanvasModeOwnershipRuntime.refreshModeSnapshot(this);
+          }
+
+    deriveModeFacts() {
+            return CanvasModeOwnershipRuntime.deriveModeFacts(this);
+          }
+
+    isModeBlockingOverlayOpen() {
+            const snapshot = this.getModeSnapshot();
+            return snapshot
+              ? CanvasModeOwnershipRuntime.isBlockingOverlayOpen?.(snapshot)
+              : this.deriveModeFacts().blockingOverlayActive;
+          }
+
+    isModeEntityBattleActive() {
+            const snapshot = this.getModeSnapshot();
+            return snapshot
+              ? CanvasModeOwnershipRuntime.isEntityBattleActive?.(snapshot)
+              : this.deriveModeFacts().entityBattleActive;
+          }
+
+    canRouteModeWorldMap() {
+            const snapshot = this.getModeSnapshot();
+            if (snapshot) return CanvasModeOwnershipRuntime.canRouteWorldMap?.(snapshot);
+            const facts = this.deriveModeFacts();
+            return facts.baseModeKey === 'worldMap' && !facts.blockingOverlayActive;
+          }
+
+    canRouteModeTechTree() {
+            const snapshot = this.getModeSnapshot();
+            if (snapshot) return CanvasModeOwnershipRuntime.canRouteTechTree?.(snapshot);
+            const facts = this.deriveModeFacts();
+            return facts.techTreeActive && !facts.techTreeBlockingOverlayActive;
+          }
+
+    resolveInputIntent(physicalIntent) {
+            return CanvasModeOwnershipRuntime.resolveInputIntent(this, physicalIntent);
+          }
+
+    buildRendererSnapshot(options = {}) {
+            return CanvasModeOwnershipRuntime.buildRendererSnapshot(this, options);
+          }
+
+    getRendererSnapshot() {
+            return CanvasModeOwnershipRuntime.getRendererSnapshot(this);
+          }
+
+    openModal(subtype, payload, callbacks) {
+            return CanvasModeOwnershipRuntime.openModal(this, subtype, payload, callbacks);
+          }
+
+    updateModalPayload(subtype, patch) {
+            return CanvasModeOwnershipRuntime.updateModalPayload(this, subtype, patch);
+          }
+
+    closeModal(subtype) {
+            return CanvasModeOwnershipRuntime.closeModal(this, subtype);
+          }
+
+    getModalPayload(subtype) {
+            return CanvasModeOwnershipRuntime.getModalPayload(this, subtype);
+          }
+
+    isModalOpen(subtype) {
+            return CanvasModeOwnershipRuntime.isModalOpen(this, subtype);
+          }
+
+    getModalOwnerHost() {
+            return CanvasModeOwnershipRuntime.getModalOwnerHost(this);
+          }
+
+    resolveModalCallback(subtype, action, ...args) {
+            return CanvasModeOwnershipRuntime.resolveModalCallback(this, subtype, action, ...args);
+          }
+
+    closeNamingSnapshot() {
+            return CanvasModalSnapshotAdapter.closeNamingSnapshot(this);
+          }
+
+    closeConfirmDialogSnapshot() {
+            return CanvasModalSnapshotAdapter.closeConfirmDialogSnapshot(this);
+          }
+
+    getConfirmDialogSnapshot(snapshot = null) {
+            return CanvasModalSnapshotAdapter.getConfirmDialogSnapshot(this, snapshot);
+          }
+
+    getNamingSnapshot(snapshot = null) {
+            return CanvasModalSnapshotAdapter.getNamingSnapshot(this, snapshot);
+          }
+
+    isNamingSnapshotOpen(snapshot = null) {
+            return CanvasModalSnapshotAdapter.isNamingSnapshotOpen(this, snapshot);
+          }
+
+    isConfirmDialogSnapshotOpen(snapshot = null) {
+            return CanvasModalSnapshotAdapter.isConfirmDialogSnapshotOpen(this, snapshot);
+          }
+
+    getNamingInputValue(snapshot = null) {
+            return CanvasModalSnapshotAdapter.getNamingInputValue(this, snapshot);
+          }
+
+    openNamingSnapshot(payload = {}) {
+            return CanvasModalSnapshotAdapter.openNamingSnapshot(this, payload);
+          }
+
+    updateNamingSnapshot(patch = {}) {
+            return CanvasModalSnapshotAdapter.updateNamingSnapshot(this, patch);
+          }
+
+    openConfirmDialogSnapshot(payload = {}, callbacks = null) {
+            return CanvasModalSnapshotAdapter.openConfirmDialogSnapshot(this, payload, callbacks);
+          }
+
+    updateConfirmDialogSnapshot(patch = {}) {
+            return CanvasModalSnapshotAdapter.updateConfirmDialogSnapshot(this, patch);
+          }
+
+    resolveConfirmDialogSnapshotCallback(type, ...args) {
+            return CanvasModalSnapshotAdapter.resolveConfirmDialogSnapshotCallback(this, type, ...args);
+          }
+
+    openRewardRevealSnapshot(payload = {}) {
+            return CanvasModalSnapshotAdapter.openRewardRevealSnapshot(this, payload);
+          }
+
+    closeRewardRevealSnapshot() {
+            return CanvasModalSnapshotAdapter.closeRewardRevealSnapshot(this);
+          }
+
+    getRewardRevealSnapshot(snapshot = null) {
+            return CanvasModalSnapshotAdapter.getRewardRevealSnapshot(this, snapshot);
+          }
+
+    isRewardRevealSnapshotOpen(snapshot = null) {
+            return CanvasModalSnapshotAdapter.isRewardRevealSnapshotOpen(this, snapshot);
+          }
+
+    openEventSnapshot(eventId) {
+            return CanvasModalSnapshotAdapter.openEventSnapshot(this, eventId);
+          }
+
+    closeEventSnapshot() {
+            return CanvasModalSnapshotAdapter.closeEventSnapshot(this);
+          }
+
+    getEventSnapshot(snapshot = null) {
+            return CanvasModalSnapshotAdapter.getEventSnapshot(this, snapshot);
+          }
+
+    isEventSnapshotOpen(snapshot = null) {
+            return CanvasModalSnapshotAdapter.isEventSnapshotOpen(this, snapshot);
+          }
+
+    openTargetPickerSnapshot(payload = {}) {
+            return CanvasModalSnapshotAdapter.openTargetPickerSnapshot(this, payload);
+          }
+
+    closeTargetPickerSnapshot() {
+            return CanvasModalSnapshotAdapter.closeTargetPickerSnapshot(this);
+          }
+
+    getTargetPickerSnapshot(snapshot = null) {
+            return CanvasModalSnapshotAdapter.getTargetPickerSnapshot(this, snapshot);
+          }
+
+    isTargetPickerSnapshotOpen(snapshot = null) {
+            return CanvasModalSnapshotAdapter.isTargetPickerSnapshotOpen(this, snapshot);
+          }
+
+    openBlockingPanelSnapshot(panelKey, value = true) {
+            return CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, panelKey, value);
+          }
+
+    closeBlockingPanelSnapshot(panelKey) {
+            return CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, panelKey);
+          }
+
+    closeBlockingPanelsSnapshot(except = []) {
+            return CanvasModalSnapshotAdapter.closeBlockingPanelsSnapshot(this, except);
+          }
+
+    isBlockingPanelSnapshotOpen(panelKey, snapshot = null) {
+            return CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this, panelKey, snapshot);
+          }
+
+    getCommandPanelValue(snapshot = null) {
+            return CanvasModalSnapshotAdapter.getCommandPanelValue(this, snapshot);
+          }
+
+    buildBlockingPanelFacts(snapshot = null) {
+            return CanvasModalSnapshotAdapter.buildBlockingPanelFacts(this, snapshot);
+          }
+}
+
+
 
   global.CanvasGameApp = CanvasGameApp;
   if (typeof module !== 'undefined' && module.exports) module.exports = CanvasGameApp;

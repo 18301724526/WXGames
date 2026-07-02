@@ -2,6 +2,7 @@
   class WorldMapStaticChunkRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
       this.renderCtx = null;
     }
 
@@ -14,24 +15,23 @@
     }
 
     get worldTileStaticChunkCaches() {
-      if (this.host && !this.host.worldTileStaticChunkCaches) this.host.worldTileStaticChunkCaches = new Map();
-      return this.host?.worldTileStaticChunkCaches || new Map();
+      return this.worldMapCacheState?.worldTileStaticChunkCaches || new Map();
     }
 
     get worldTileStaticChunkCacheTick() {
-      return Number(this.host?.worldTileStaticChunkCacheTick) || 0;
+      return Number(this.worldMapCacheState?.worldTileStaticChunkCacheTick) || 0;
     }
 
     set worldTileStaticChunkCacheTick(value) {
-      if (this.host) this.host.worldTileStaticChunkCacheTick = Number(value) || 0;
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticChunkCacheTick = Number(value) || 0;
     }
 
     get worldTileStaticCacheLayoutKind() {
-      return this.host?.worldTileStaticCacheLayoutKind || '';
+      return this.worldMapCacheState?.worldTileStaticCacheLayoutKind || '';
     }
 
     set worldTileStaticCacheLayoutKind(value) {
-      if (this.host) this.host.worldTileStaticCacheLayoutKind = value || '';
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCacheLayoutKind = value || '';
     }
 
     createTileWorkCanvas(...args) {

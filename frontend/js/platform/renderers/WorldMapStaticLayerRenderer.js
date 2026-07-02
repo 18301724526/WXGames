@@ -2,6 +2,7 @@
   class WorldMapStaticLayerRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
       this.renderCtx = null;
     }
 
@@ -14,39 +15,39 @@
     }
 
     get worldTileFastDragActive() {
-      return Boolean(this.host?.worldTileFastDragActive);
+      return Boolean(this.worldMapCacheState?.worldTileFastDragActive);
     }
 
     get worldTileStaticCache() {
-      return this.host?.worldTileStaticCache || null;
+      return this.worldMapCacheState?.worldTileStaticCache || null;
     }
 
     set worldTileStaticCache(value) {
-      if (this.host) this.host.worldTileStaticCache = value || null;
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCache = value || null;
     }
 
     get worldTileStaticCacheKey() {
-      return this.host?.worldTileStaticCacheKey || '';
+      return this.worldMapCacheState?.worldTileStaticCacheKey || '';
     }
 
     set worldTileStaticCacheKey(value) {
-      if (this.host) this.host.worldTileStaticCacheKey = value || '';
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCacheKey = value || '';
     }
 
     get worldTileStaticCacheLayoutKind() {
-      return this.host?.worldTileStaticCacheLayoutKind || '';
+      return this.worldMapCacheState?.worldTileStaticCacheLayoutKind || '';
     }
 
     set worldTileStaticCacheLayoutKind(value) {
-      if (this.host) this.host.worldTileStaticCacheLayoutKind = value || '';
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCacheLayoutKind = value || '';
     }
 
     get worldTileStaticCacheLayout() {
-      return this.host?.worldTileStaticCacheLayout || null;
+      return this.worldMapCacheState?.worldTileStaticCacheLayout || null;
     }
 
     set worldTileStaticCacheLayout(value) {
-      if (this.host) this.host.worldTileStaticCacheLayout = value || null;
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCacheLayout = value || null;
     }
 
     resolveWorldTileStaticCacheLayout(...args) {

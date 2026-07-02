@@ -15,6 +15,19 @@ const EXACT_MODE_SYMBOLS = Object.freeze([
   'activeEventId',
 ]);
 
+const SHOW_MODE_SYMBOLS = Object.freeze([
+  'showSettings',
+  'showLogs',
+  'showResourceDetails',
+  'showCitySwitcher',
+  'showSubcityList',
+  'showCityManagement',
+  'showAdvisor',
+  'showTaskCenter',
+  'showGuidebook',
+  'showFamousPersons',
+]);
+
 const EXCLUDED_PATH_PATTERNS = Object.freeze([
   /(^|\/)node_modules\//,
   /(^|\/)vendor\//,
@@ -28,6 +41,10 @@ function normalizePath(filePath) {
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripStringLiterals(line = '') {
+  return String(line || '').replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '""');
 }
 
 function toPosixRelative(filePath, repoRoot = process.cwd()) {
@@ -59,42 +76,52 @@ function extractModeSymbols(line = '') {
     if (!isMeaningfulExactSymbolUsage(line, match[1])) continue;
     symbols.add(match[1]);
   }
-  for (const match of line.matchAll(/\bshow[A-Z][A-Za-z0-9_$]*\b/g)) {
-    const symbol = match[0];
+  for (const symbol of SHOW_MODE_SYMBOLS) {
+    if (!new RegExp(`\\b${escapeRegExp(symbol)}\\b`).test(line)) continue;
     if (!isShowBooleanLikeUsage(line, symbol)) continue;
     symbols.add(symbol);
   }
   return Array.from(symbols).sort();
 }
 
-function isMeaningfulExactSymbolUsage(line = '', symbol = '') {
-  const text = String(line || '');
+function hasHostLikePropertyUsage(line = '', symbol = '') {
+  const text = stripStringLiterals(line);
   const escaped = escapeRegExp(symbol);
-  const dottedStringOnly = new RegExp(`['"][^'"]*\\.${escaped}\\.[^'"]*['"]`);
-  const propertyOrBareIdentifier = new RegExp(
-    `(?:\\bthis\\.|\\b[A-Za-z_$][\\w$]*\\.|\\b${escaped}\\b|['"]${escaped}['"])`,
+  const hostNames = '(?:host|game|shell|state|facts|lastGame|canvasShell)';
+  const hostLike = `(?:this(?:\\??\\.[A-Za-z_$][\\w$]*)*|${hostNames})`;
+  const propertyAccess = new RegExp(`${hostLike}\\??\\.${escaped}\\b`);
+  const hostAssignment = new RegExp(
+    `${hostLike}\\??\\.${escaped}\\s*(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)`,
   );
-  if (
-    dottedStringOnly.test(text) &&
-    !propertyOrBareIdentifier.test(text.replace(dottedStringOnly, ''))
-  ) {
-    return false;
-  }
-  return true;
+  return propertyAccess.test(text) || hostAssignment.test(text);
+}
+
+function hasPropertyLikeUsage(line = '', symbol = '') {
+  const text = stripStringLiterals(line);
+  const escaped = escapeRegExp(symbol);
+  const propertyAccess = new RegExp(
+    `(?:\\bthis|\\b[A-Za-z_$][\\w$]*|\\]|\\))\\??\\.${escaped}\\b`,
+  );
+  const bareWrite = new RegExp(`(^|[^A-Za-z0-9_$])${escaped}\\s*(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)`);
+  const objectProperty = new RegExp(`(^|[^A-Za-z0-9_$])${escaped}\\s*:`);
+  const quotedObjectProperty = new RegExp(`['"]${escaped}['"]\\s*:`);
+  return (
+    propertyAccess.test(text) ||
+    bareWrite.test(text) ||
+    objectProperty.test(text) ||
+    quotedObjectProperty.test(line)
+  );
+}
+
+function isMeaningfulExactSymbolUsage(line = '', symbol = '') {
+  return hasHostLikePropertyUsage(line, symbol);
 }
 
 function isShowBooleanLikeUsage(line = '', symbol = '') {
   const escaped = escapeRegExp(symbol);
   const methodPattern = new RegExp(`(^|[.\\s])${escaped}\\s*(?:\\?\\.)?\\(`);
   if (methodPattern.test(line)) return false;
-
-  const writePattern = new RegExp(
-    `(?:\\bthis|\\b[A-Za-z_$][\\w$]*|\\])?\\.?${escaped}\\s*(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)`,
-  );
-  const objectPropertyPattern = new RegExp(`(^|[^A-Za-z0-9_$])${escaped}\\s*:`);
-  if (writePattern.test(line) || objectPropertyPattern.test(line)) return true;
-
-  return true;
+  return hasPropertyLikeUsage(line, symbol);
 }
 
 function countSymbolOccurrences(line = '', symbol = '') {
@@ -315,6 +342,7 @@ if (require.main === module) {
 
 module.exports = {
   EXACT_MODE_SYMBOLS,
+  SHOW_MODE_SYMBOLS,
   EXCLUDED_PATH_PATTERNS,
   buildSummary,
   classifyAccess,
@@ -324,6 +352,9 @@ module.exports = {
   isMeaningfulExactSymbolUsage,
   isProductionFrontendSource,
   isShowBooleanLikeUsage,
+  hasPropertyLikeUsage,
+  hasHostLikePropertyUsage,
+  stripStringLiterals,
   parseFormat,
   renderMarkdown,
   renderSummary,

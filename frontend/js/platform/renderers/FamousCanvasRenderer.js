@@ -27,19 +27,30 @@
   const FamousPortraitCanvasRenderer = global.FamousPortraitCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousPortraitCanvasRenderer') : null);
   const FamousSkillCanvasRenderer = global.FamousSkillCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousSkillCanvasRenderer') : null);
   const FamousPanelCanvasRenderer = global.FamousPanelCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousPanelCanvasRenderer') : null);
+  const SurfaceState = global.CanvasSurfaceState || (typeof require !== 'undefined' ? require('./CanvasSurfaceState') : null);
+
+  function createSurfaceState() {
+    if (typeof SurfaceState?.createCanvasSurfaceState !== 'function') {
+      throw new Error('CanvasSurfaceState is required before FamousCanvasRenderer');
+    }
+    return SurfaceState.createCanvasSurfaceState();
+  }
 
   class FamousCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
       this.drawingSurface = options.drawingSurface || null;
+      this.surfaceState = options.surfaceState
+        || this.host?.surfaceState
+        || createSurfaceState();
     }
 
     get activeFamousSkillTooltip() {
-      return this.host?.activeFamousSkillTooltip;
+      return this.surfaceState.activeFamousSkillTooltip || null;
     }
 
     set activeFamousSkillTooltip(value) {
-      if (this.host) this.host.activeFamousSkillTooltip = value;
+      this.surfaceState.activeFamousSkillTooltip = value || null;
     }
 
     get ctx() {
@@ -47,7 +58,8 @@
     }
 
     get famousSkillHitTargets() {
-      return this.host?.famousSkillHitTargets;
+      if (!Array.isArray(this.surfaceState.famousSkillHitTargets)) this.surfaceState.famousSkillHitTargets = [];
+      return this.surfaceState.famousSkillHitTargets;
     }
 
     get height() {
@@ -55,19 +67,19 @@
     }
 
     get hoverPoint() {
-      return this.host?.hoverPoint;
+      return this.surfaceState.hoverPoint || null;
     }
 
     set hoverPoint(value) {
-      if (this.host) this.host.hoverPoint = value;
+      this.surfaceState.hoverPoint = value || null;
     }
 
     get pinnedFamousSkillTooltip() {
-      return this.host?.pinnedFamousSkillTooltip;
+      return this.surfaceState.pinnedFamousSkillTooltip || null;
     }
 
     set pinnedFamousSkillTooltip(value) {
-      if (this.host) this.host.pinnedFamousSkillTooltip = value;
+      this.surfaceState.pinnedFamousSkillTooltip = value || null;
     }
 
     get presenter() {

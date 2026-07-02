@@ -6,23 +6,14 @@ const LocaleText = require('../ecs/resource/LocaleText');
 const CanvasGameApp = require('./CanvasGameApp');
 const UIStatePresenter = require('../state/UIStatePresenter');
 const TutorialGuideController = require('../tutorial/TutorialGuideController');
-const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
-const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
-
-// Batch 8F: techDetailOpen is now an ECS modal subtype owned through the snapshot
-// adapter, so the command host's canvasShell must carry the modal machinery
-// (openModal/getRendererSnapshot via the bridge + the snapshot helpers) for the
-// research close to route through. A bare {} shell would no-op the close.
-class CommandShellHost {}
-CanvasModeOwnershipRuntime.install(CommandShellHost);
-CanvasModalSnapshotAdapter.install(CommandShellHost);
+const { CanvasModalOwnerTestHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 function createCommandHost(api) {
   const calls = [];
   const host = {
     api,
     state: { activeCityId: 'capital', currentTab: 'resources', techUiState: { detailOpen: true } },
-    canvasShell: new CommandShellHost(),
+    canvasShell: new CanvasModalOwnerTestHost(),
     pendingBuildingAction: null,
     closeCitySwitcher(options) {
       calls.push(['closeCitySwitcher', options]);

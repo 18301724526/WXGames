@@ -2,6 +2,7 @@
   class WorldMapFastDragCompositeRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
       this.renderCtx = null;
     }
 
@@ -14,27 +15,27 @@
     }
 
     get worldTileStaticCacheKey() {
-      return this.host?.worldTileStaticCacheKey || '';
+      return this.worldMapCacheState?.worldTileStaticCacheKey || '';
     }
 
     get worldTileWaterLayerCacheKey() {
-      return this.host?.worldTileWaterLayerCacheKey || '';
+      return this.worldMapCacheState?.worldTileWaterLayerCacheKey || '';
     }
 
     get worldTileStaticCache() {
-      return this.host?.worldTileStaticCache || null;
+      return this.worldMapCacheState?.worldTileStaticCache || null;
     }
 
     get worldTileWaterLayerCache() {
-      return this.host?.worldTileWaterLayerCache || null;
+      return this.worldMapCacheState?.worldTileWaterLayerCache || null;
     }
 
     get worldTileFastDragComposite() {
-      return this.host?.worldTileFastDragComposite || null;
+      return this.worldMapCacheState?.worldTileFastDragComposite || null;
     }
 
     set worldTileFastDragComposite(value) {
-      if (this.host) this.host.worldTileFastDragComposite = value || null;
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileFastDragComposite = value || null;
     }
 
     resolveWorldTileStaticCacheLayout(...args) {

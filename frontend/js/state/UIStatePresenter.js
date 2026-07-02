@@ -16,7 +16,7 @@
     static MIN_EXPEDITION_SOLDIERS = 100;
   }
 
-  UIStatePresenterDelegates.install(UIStatePresenter);
+  Object.assign(UIStatePresenter, UIStatePresenterDelegates.createStaticMethods());
 
   global.UIStatePresenter = UIStatePresenter;
   if (typeof module !== 'undefined' && module.exports) module.exports = UIStatePresenter;

@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 require('../../config/LocaleTextRegistry');
 const LocaleText = require('../../ecs/resource/LocaleText');
@@ -7,6 +9,8 @@ const WorldMapCanvasRenderer = require('./WorldMapCanvasRenderer');
 const WorldMapActorHudRenderer = require('./WorldMapActorHudRenderer');
 const WorldMarchHudCanvasRenderer = require('./WorldMarchHudCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
+
+const ROOT = path.resolve(__dirname, '../../../..');
 
 function createHost(overrides = {}) {
   const hitTargets = [];
@@ -187,7 +191,7 @@ test('WorldMapCanvasRenderer owns tile projection and site layout helpers', () =
   assert.equal(layout.hitRect.width > 0, true);
 });
 
-test('CanvasGameRenderer exposes world map helpers through the world map renderer facade', () => {
+test('CanvasGameRenderer exposes world map helpers through the world map renderer', () => {
   const renderer = new CanvasGameRenderer({
     ctx: {},
     presenter: {},
@@ -216,7 +220,7 @@ test('WorldMapCanvasRenderer keeps world map hit target contract in hit-target-o
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), false);
 });
 
-test('WorldMapCanvasRenderer exposes tile map context on the renderer facade', () => {
+test('WorldMapCanvasRenderer exposes tile map context on the renderer owner', () => {
   const host = createHost();
   const renderer = new WorldMapCanvasRenderer({ host });
   const tileMapView = createTileMapView();
@@ -230,7 +234,7 @@ test('WorldMapCanvasRenderer exposes tile map context on the renderer facade', (
   assert.equal(context.viewport.originX, 190);
 });
 
-test('WorldMapCanvasRenderer renders world march formation picker through HUD facade', () => {
+test('WorldMapCanvasRenderer renders world march formation picker through HUD renderer', () => {
   const host = createHost({
     presenter: {
       buildMilitaryViewState() {
@@ -252,7 +256,7 @@ test('WorldMapCanvasRenderer renders world march formation picker through HUD fa
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeWorldMarchHud'), true);
 });
 
-test('WorldMapCanvasRenderer renders active explorer units through actor facade', () => {
+test('WorldMapCanvasRenderer renders active explorer units through actor renderer', () => {
   const calls = [];
   const baseCtx = createHost().ctx;
   const host = createHost({
@@ -855,7 +859,8 @@ test('WorldMapCanvasRenderer routes actor layer frames to a separate overlay con
   assert.equal(calls.length, 1);
   assert.equal(calls[0][0], 'overlayActorLayer');
   assert.equal(calls[0][2].worldMapRuntimeContext.id, 'runtime-context');
-  assert.equal(renderer.worldActorLayerRenderer.lastWorldTileMapContext.id, 'runtime-context');
+  assert.equal(overlayLayerRenderer.worldMapRenderState, renderer.worldMapRenderState);
+  assert.equal(renderer.worldMapRenderState.lastWorldTileMapContext.id, 'runtime-context');
 });
 
 test('WorldMapCanvasRenderer refuses actor overlay rendering when overlay shares terrain context', () => {
@@ -883,27 +888,14 @@ test('WorldMapCanvasRenderer refuses actor overlay rendering when overlay shares
   assert.deepEqual(calls, []);
 });
 
-test('WorldMapCanvasRenderer delegates layout helpers to split facade', () => {
-  const calls = [];
+test('WorldMapCanvasRenderer owns layout helpers without retired facade injection', () => {
   const renderer = new WorldMapCanvasRenderer({
     host: createHost(),
     worldMapLayoutFacade: {
-      getWorldTileScreenCenter(...args) {
-        calls.push(['screen-center', ...args]);
-        return { x: 1, y: 2 };
-      },
-      getWorldTileDrawRect(...args) {
-        calls.push(['draw-rect', ...args]);
-        return { x: 3, y: 4, width: 5, height: 6 };
-      },
-      getWorldTileRenderEntries(...args) {
-        calls.push(['render-entries', ...args]);
-        return [{ tile: { id: 'tile-1' } }];
-      },
-      getWorldTileStaticChunkLayouts(...args) {
-        calls.push(['chunk-layouts', ...args]);
-        return [{ chunkX: 0, chunkY: 0 }];
-      },
+      getWorldTileScreenCenter() { throw new Error('retired layout facade must not run'); },
+      getWorldTileDrawRect() { throw new Error('retired layout facade must not run'); },
+      getWorldTileRenderEntries() { throw new Error('retired layout facade must not run'); },
+      getWorldTileStaticChunkLayouts() { throw new Error('retired layout facade must not run'); },
     },
   });
   const tileMapView = createTileMapView();
@@ -911,78 +903,66 @@ test('WorldMapCanvasRenderer delegates layout helpers to split facade', () => {
   const geometry = tileMapView.geometry;
   const frame = { x: 1, y: 2, width: 3, height: 4 };
 
-  assert.deepEqual(renderer.getWorldTileScreenCenter(tileMapView.tiles[0], viewport, geometry), { x: 1, y: 2 });
-  assert.deepEqual(renderer.getWorldTileDrawRect({ x: 1, y: 2 }, 1, geometry), { x: 3, y: 4, width: 5, height: 6 });
-  assert.deepEqual(renderer.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry), [{ tile: { id: 'tile-1' } }]);
-  assert.deepEqual(renderer.getWorldTileStaticChunkLayouts(tileMapView, viewport, frame, geometry), [{ chunkX: 0, chunkY: 0 }]);
-  assert.deepEqual(calls.map((call) => call[0]), [
-    'screen-center',
-    'draw-rect',
-    'render-entries',
-    'chunk-layouts',
-  ]);
+  assert.deepEqual(renderer.getWorldTileScreenCenter(tileMapView.tiles[0], viewport, geometry), { x: 0, y: 0 });
+  assert.deepEqual(renderer.getWorldTileDrawRect({ x: 1, y: 2 }, 1, geometry), {
+    x: -96.5,
+    y: -46.75,
+    width: 195,
+    height: 97.5,
+  });
+  assert.equal(renderer.getWorldTileRenderEntries(tileMapView, viewport, frame, geometry).length, 1);
+  assert.equal(renderer.getWorldTileStaticChunkLayouts(tileMapView, viewport, { x: -200, y: -200, width: 400, height: 400 }, geometry).length > 0, true);
 });
 
-test('WorldMapCanvasRenderer delegates render utility helpers to split facade', () => {
-  const calls = [];
+test('WorldMapCanvasRenderer owns render utility helpers without retired facade injection', () => {
   const renderer = new WorldMapCanvasRenderer({
     host: createHost(),
     worldMapRenderUtilityFacade: {
-      drawIsoDiamond(...args) {
-        calls.push(['diamond', ...args]);
-        return 'diamond-ok';
-      },
-      getFallbackTerrainFill(...args) {
-        calls.push(['fill', ...args]);
-        return 'fill-ok';
-      },
-      hashString(...args) {
-        calls.push(['hash', ...args]);
-        return 123;
-      },
-      random01(...args) {
-        calls.push(['random', ...args]);
-        return 0.25;
-      },
+      drawIsoDiamond() { throw new Error('retired render utility facade must not run'); },
+      getFallbackTerrainFill() { throw new Error('retired render utility facade must not run'); },
+      hashString() { throw new Error('retired render utility facade must not run'); },
+      random01() { throw new Error('retired render utility facade must not run'); },
     },
   });
 
-  assert.equal(renderer.drawIsoDiamond(1, 2, 3, 4, { stroke: '#fff' }), 'diamond-ok');
-  assert.equal(renderer.getFallbackTerrainFill('forest'), 'fill-ok');
-  assert.equal(renderer.hashString('abc'), 123);
-  assert.equal(renderer.random01('seed', 1, 2, 'salt'), 0.25);
-  assert.deepEqual(calls.map((call) => call[0]), ['diamond', 'fill', 'hash', 'random']);
-  assert.deepEqual(calls[0].slice(1), [1, 2, 3, 4, { stroke: '#fff' }]);
-  assert.equal(calls[1][1], 'forest');
-  assert.equal(calls[2][1], 'abc');
-  assert.deepEqual(calls[3].slice(1), ['seed', 1, 2, 'salt']);
+  assert.equal(renderer.drawIsoDiamond(1, 2, 3, 4, { stroke: '#fff' }), true);
+  assert.equal(renderer.getFallbackTerrainFill('forest'), 'rgba(45, 91, 63, 0.94)');
+  assert.equal(Number.isInteger(renderer.hashString('abc')), true);
+  assert.equal(renderer.random01('seed', 1, 2, 'salt') > 0, true);
 });
 
-test('WorldMapCanvasRenderer delegates cache helpers to split facade', () => {
-  const calls = [];
+test('WorldMapCanvasRenderer owns cache helpers without retired facade injection', () => {
+  const drawCalls = [];
+  const host = createHost({
+    ctx: {
+      ...createHost().ctx,
+      drawImage(...args) { drawCalls.push(args); },
+    },
+    createTileWorkCanvas(width, height) {
+      return {
+        width,
+        height,
+        getContext() {
+          return {
+            clearRect() {},
+            drawImage() {},
+            save() {},
+            restore() {},
+            scale() {},
+            translate() {},
+          };
+        },
+      };
+    },
+  });
   const renderer = new WorldMapCanvasRenderer({
-    host: createHost(),
+    host,
     worldMapCacheFacade: {
-      getWorldTileStaticCacheKey(...args) {
-        calls.push(['static-key', ...args]);
-        return 'static-key-ok';
-      },
-      getWorldTileLayerCacheContext(...args) {
-        calls.push(['layer-context', ...args]);
-        return { id: 'layer-context-ok' };
-      },
-      createWorldTileLayerWork(...args) {
-        calls.push(['layer-work', ...args]);
-        return { id: 'layer-work-ok' };
-      },
-      drawWorldTileLayerCache(...args) {
-        calls.push(['layer-draw', ...args]);
-        return 'layer-draw-ok';
-      },
-      resolveWorldTileStaticCacheLayout(...args) {
-        calls.push(['resolve-layout', ...args]);
-        return { kind: 'viewport' };
-      },
+      getWorldTileStaticCacheKey() { throw new Error('retired cache facade must not run'); },
+      getWorldTileLayerCacheContext() { throw new Error('retired cache facade must not run'); },
+      createWorldTileLayerWork() { throw new Error('retired cache facade must not run'); },
+      drawWorldTileLayerCache() { throw new Error('retired cache facade must not run'); },
+      resolveWorldTileStaticCacheLayout() { throw new Error('retired cache facade must not run'); },
     },
   });
   const tileMapView = createTileMapView();
@@ -993,103 +973,56 @@ test('WorldMapCanvasRenderer delegates cache helpers to split facade', () => {
   const work = { canvas: {}, scale: 1 };
   const layout = { frame, drawX: 1, drawY: 2 };
 
-  assert.equal(renderer.getWorldTileStaticCacheKey(tileMapView, viewport, frame, entries, uiState, { cacheScale: 2 }), 'static-key-ok');
-  assert.deepEqual(renderer.getWorldTileLayerCacheContext('cache-a', 10, 20, 2), { id: 'layer-context-ok' });
-  assert.deepEqual(renderer.createWorldTileLayerWork(10, 20, 2), { id: 'layer-work-ok' });
-  assert.equal(renderer.drawWorldTileLayerCache(work, layout, frame), 'layer-draw-ok');
-  assert.deepEqual(renderer.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries), { kind: 'viewport' });
+  assert.equal(renderer.getWorldTileStaticCacheKey(tileMapView, viewport, frame, entries, uiState, { cacheScale: 2 }).startsWith('world::'), true);
+  assert.equal(renderer.getWorldTileLayerCacheContext('cacheA', 10, 20, 2).pixelWidth, 20);
+  assert.equal(renderer.createWorldTileLayerWork(10, 20, 2).pixelHeight, 40);
+  assert.equal(renderer.drawWorldTileLayerCache(work, layout, frame), true);
+  assert.equal(drawCalls.length, 1);
+  assert.equal(renderer.resolveWorldTileStaticCacheLayout(tileMapView, viewport, frame, entries)?.kind, 'world');
   assert.equal(typeof renderer.getWorldTileScoutRouteCacheKey, 'undefined');
-  assert.deepEqual(calls.map((call) => call[0]), [
-    'static-key',
-    'layer-context',
-    'layer-work',
-    'layer-draw',
-    'resolve-layout',
-  ]);
-  assert.equal(calls[0][1], tileMapView);
-  assert.equal(calls[0][4], entries);
-  assert.equal(calls[3][1], work);
-  assert.equal(calls[4][3], frame);
 });
 
-test('WorldMapCanvasRenderer delegates cache config helpers to split facade', () => {
-  const calls = [];
+test('WorldMapCanvasRenderer owns cache config helpers without retired facade injection', () => {
   const renderer = new WorldMapCanvasRenderer({
-    host: createHost(),
+    host: createHost({ pixelRatio: 3 }),
     worldMapCacheConfigFacade: {
-      getWorldTileStaticChunkSize() {
-        calls.push(['chunk-size']);
-        return 2048;
-      },
-      getWorldTileStaticChunkCacheLimit() {
-        calls.push(['chunk-limit']);
-        return 64;
-      },
-      getWorldTileStaticChunkCacheScale() {
-        calls.push(['chunk-scale']);
-        return 2;
-      },
-      getWorldTileDragCachePanRange() {
-        calls.push(['drag-range']);
-        return 240;
-      },
-      getWorldTileStaticCacheScale() {
-        calls.push(['cache-scale']);
-        return 3;
-      },
-      getWorldTileStaticCachePixelBudget() {
-        calls.push(['pixel-budget']);
-        return 32000000;
-      },
+      getWorldTileStaticChunkSize() { throw new Error('retired cache config facade must not run'); },
+      getWorldTileStaticChunkCacheLimit() { throw new Error('retired cache config facade must not run'); },
+      getWorldTileStaticChunkCacheScale() { throw new Error('retired cache config facade must not run'); },
+      getWorldTileDragCachePanRange() { throw new Error('retired cache config facade must not run'); },
+      getWorldTileStaticCacheScale() { throw new Error('retired cache config facade must not run'); },
+      getWorldTileStaticCachePixelBudget() { throw new Error('retired cache config facade must not run'); },
     },
   });
 
-  assert.equal(renderer.getWorldTileStaticChunkSize(), 2048);
-  assert.equal(renderer.getWorldTileStaticChunkCacheLimit(), 64);
-  assert.equal(renderer.getWorldTileStaticChunkCacheScale(), 2);
-  assert.equal(renderer.getWorldTileDragCachePanRange(), 240);
+  assert.equal(renderer.getWorldTileStaticChunkSize(), 1024);
+  assert.equal(renderer.getWorldTileStaticChunkCacheLimit(), 32);
+  assert.equal(renderer.getWorldTileStaticChunkCacheScale(), 1);
+  assert.equal(renderer.getWorldTileDragCachePanRange(), 180);
   assert.equal(renderer.getWorldTileStaticCacheScale(), 3);
-  assert.equal(renderer.getWorldTileStaticCachePixelBudget(), 32000000);
-  assert.deepEqual(calls.map((call) => call[0]), [
-    'chunk-size',
-    'chunk-limit',
-    'chunk-scale',
-    'drag-range',
-    'cache-scale',
-    'pixel-budget',
-  ]);
+  assert.equal(renderer.getWorldTileStaticCachePixelBudget(), 16000000);
 });
 
-test('WorldMapCanvasRenderer delegates hit-target helpers to split facade', () => {
-  const calls = [];
+test('WorldMapCanvasRenderer owns hit-target helpers without retired facade injection', () => {
+  const host = createHost();
   const renderer = new WorldMapCanvasRenderer({
-    host: createHost(),
+    host,
     worldMapHitTargetFacade: {
-      addWorldTileSiteHitTargets(...args) {
-        calls.push(['site-targets', ...args]);
-        return 'site-targets-ok';
-      },
-      addWorldMarchTileHitTargets(...args) {
-        calls.push(['march-targets', ...args]);
-        return 'march-targets-ok';
-      },
+      addWorldTileSiteHitTargets() { throw new Error('retired hit-target facade must not run'); },
+      addWorldMarchTileHitTargets() { throw new Error('retired hit-target facade must not run'); },
     },
   });
   const tileMapView = createTileMapView();
-  const viewport = { scale: 1 };
-  const frame = { x: 1, y: 2, width: 3, height: 4 };
+  const viewport = { originX: 100, originY: 100, panX: 0, panY: 0, scale: 1 };
+  const frame = { x: 0, y: 0, width: 240, height: 240 };
   const options = { state: { id: 'state-1' } };
-  const entries = [{ tile: tileMapView.tiles[0] }];
+  const entries = [{ tile: tileMapView.tiles[0], center: { x: 100, y: 100 } }];
   const uiState = { selectedSiteId: 'capital' };
 
-  assert.equal(renderer.addWorldTileSiteHitTargets(tileMapView, viewport, entries, uiState), 'site-targets-ok');
-  assert.equal(renderer.addWorldMarchTileHitTargets(tileMapView, viewport, frame, options), 'march-targets-ok');
-  assert.deepEqual(calls.map((call) => call[0]), ['site-targets', 'march-targets']);
-  assert.equal(calls[0][1], tileMapView);
-  assert.equal(calls[0][3], entries);
-  assert.equal(calls[0][4], uiState);
-  assert.equal(calls[1][3], frame);
-  assert.equal(calls[1][4], options);
+  assert.equal(renderer.addWorldTileSiteHitTargets(tileMapView, viewport, entries, uiState), true);
+  assert.equal(renderer.addWorldMarchTileHitTargets(tileMapView, viewport, frame, options), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
 });
 
 test('WorldMapCanvasRenderer falls back for occupied city HUD when presenter is split out', () => {
@@ -1118,7 +1051,7 @@ test('WorldMapCanvasRenderer falls back for occupied city HUD when presenter is 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'renameCity' && target.action.cityId === 'capital'), true);
 });
 
-test('CanvasGameRenderer renders occupied city HUD through split renderer facade', () => {
+test('CanvasGameRenderer renders occupied city HUD through world map renderer', () => {
   const renderer = new CanvasGameRenderer({
     ctx: createHost().ctx,
     presenter: {},

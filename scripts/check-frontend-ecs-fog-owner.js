@@ -10,7 +10,7 @@ const EXCLUDED_PATH_PATTERNS = Object.freeze([
 const APPROVED_PATHS = Object.freeze([
   'frontend/js/ecs/projection/FogProjection.js',
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
-  'frontend/js/platform/CanvasGameShellWorldMapLayerRuntime.js',
+  'frontend/js/platform/CanvasGameShell.js',
 ]);
 const RETIRED_SYMBOLS = Object.freeze([
   'lastWorldFogContext',

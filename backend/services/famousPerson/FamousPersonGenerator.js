@@ -67,16 +67,16 @@ function normalizeAppearance(raw = {}, archetype, fallbackSeed) {
 
 function makeSkillName(effects = []) {
   const keys = effects.map((effect) => effect.key);
-  if (keys.includes('lifesteal') && keys.includes('combo')) return '血刃连袭';
-  if (keys.includes('combo') && keys.includes('armorBreak')) return '破阵连击';
-  if (keys.includes('ambush') && keys.includes('combo')) return '伏击追袭';
-  if (keys.includes('shield') && keys.includes('counter')) return '守势反击';
-  if (keys.includes('shield') && keys.includes('morale')) return '固阵振军';
-  if (keys.includes('counter') && keys.includes('heal')) return '回锋自守';
-  if (keys.includes('burn') && keys.includes('ambush')) return '伏火奇袭';
+  if (keys.includes('lifesteal') && keys.includes('secondHit')) return '血刃连袭';
+  if (keys.includes('secondHit') && keys.includes('armorBreak')) return '破阵连击';
+  if (keys.includes('firstStrike') && keys.includes('secondHit')) return '伏击追袭';
+  if (keys.includes('shield') && keys.includes('armorBreak')) return '守势破甲';
+  if (keys.includes('shield') && keys.includes('attributeBonus')) return '固阵振军';
+  if (keys.includes('heal') && keys.includes('armorBreak')) return '回锋破阵';
+  if (keys.includes('burn') && keys.includes('firstStrike')) return '伏火奇袭';
   if (keys.includes('poison') && keys.includes('armorBreak')) return '蚀甲毒计';
-  if (keys.includes('morale') && keys.includes('combo')) return '鼓锋连战';
-  if (keys.includes('morale') && keys.includes('heal')) return '振军疗伤';
+  if (keys.includes('attributeBonus') && keys.includes('secondHit')) return '鼓锋连战';
+  if (keys.includes('attributeBonus') && keys.includes('heal')) return '振军疗伤';
   if (keys.includes('armorBreak') && keys.includes('shield')) return '破甲护阵';
   return effects.map((effect) => EFFECTS[effect.key]?.label || effect.key).join('');
 }

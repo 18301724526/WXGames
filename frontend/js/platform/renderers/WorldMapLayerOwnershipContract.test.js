@@ -8,8 +8,6 @@ const ROOT = path.resolve(__dirname, '../../../..');
 const PRODUCTION_FILES = [
   'frontend/js/platform/CanvasGameRenderer.js',
   'frontend/js/platform/renderers/CanvasAssetRenderer.js',
-  'frontend/js/platform/renderers/CanvasWorldMapFacade.js',
-  'frontend/js/platform/renderers/WorldMapCacheFacade.js',
   'frontend/js/platform/renderers/WorldMapCachePolicy.js',
   'frontend/js/platform/renderers/WorldMapCanvasRenderer.js',
   'frontend/js/platform/renderers/WorldMapFastDragCompositeRenderer.js',
@@ -23,11 +21,37 @@ const TUTORIAL_SPINE_FILES = [
   'frontend/js/platform/renderers/TutorialAdvisorSpineLayoutConfig.js',
   'frontend/js/platform/SpineWebglPlayer.js',
   'frontend/js/platform/renderers/CanvasAssetRenderer.js',
+];
+const RETIRED_FACADE_FILES = [
   'frontend/js/platform/CanvasGameRendererCoreFacades.js',
+  'frontend/js/platform/CanvasGameRendererPageFacades.js',
+  'frontend/js/platform/CanvasBattleActionHandlers.js',
+  'frontend/js/platform/CanvasCityActionHandlers.js',
+  'frontend/js/platform/CanvasExpeditionActionHandlers.js',
+  'frontend/js/platform/CanvasFamousActionHandlers.js',
+  'frontend/js/platform/CanvasShellActionHandlers.js',
+  'frontend/js/platform/CanvasTerritoryActionHandlers.js',
+  'frontend/js/platform/CanvasWorldMarchActionHandlers.js',
+  'frontend/js/platform/renderers/CanvasBattleFacade.js',
+  'frontend/js/platform/renderers/CanvasWorldMapFacade.js',
+  'frontend/js/platform/renderers/BattleLayoutModel.js',
+  'frontend/js/platform/renderers/BattleSpriteRenderer.js',
+  'frontend/js/platform/renderers/WorldMapCacheConfigFacade.js',
+  'frontend/js/platform/renderers/WorldMapCacheFacade.js',
+  'frontend/js/platform/renderers/WorldMapHitTargetFacade.js',
+  'frontend/js/platform/renderers/WorldMapLayoutFacade.js',
+  'frontend/js/platform/renderers/WorldMapRenderUtilityFacade.js',
+  'frontend/js/platform/renderers/WorldActorLayerManager.js',
+  'frontend/js/platform/renderers/WorldMapCacheCoordinator.js',
+  'frontend/js/platform/renderers/WorldMapHitTargetCollector.js',
 ];
 
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+}
+
+function projectFileExists(relativePath) {
+  return fs.existsSync(path.join(ROOT, relativePath));
 }
 
 test('worldMap layer owns only terrain/static/site work and never actor/HUD ownership', () => {
@@ -42,7 +66,7 @@ test('worldMap layer owns only terrain/static/site work and never actor/HUD owne
 });
 
 test('worldActor layer owns actor drawing and actor hit targets without command HUD', () => {
-  const source = readProjectFile('frontend/js/platform/renderers/WorldMapCacheCoordinator.js');
+  const source = readProjectFile('frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js');
   const actorLayerStart = source.indexOf('renderWorldMapActorLayer(state');
   const actorLayerSource = source.slice(actorLayerStart);
 
@@ -52,12 +76,12 @@ test('worldActor layer owns actor drawing and actor hit targets without command 
 });
 
 test('worldActor overlay has a physical canvas and refuses shared terrain ctx rendering', () => {
-  const shellMounting = readProjectFile('frontend/js/platform/CanvasGameShellMounting.js');
+  const shellSource = readProjectFile('frontend/js/platform/CanvasGameShell.js');
   const canvasRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapCanvasRenderer.js');
-  const layerRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapCacheCoordinator.js');
+  const layerRenderer = readProjectFile('frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js');
 
-  assert.equal(shellMounting.includes("ensureCanvasLayer?.('worldActor'"), true);
-  assert.equal(shellMounting.includes('worldActorOverlaySeparate'), true);
+  assert.equal(shellSource.includes("ensureCanvasLayer?.('worldActor'"), true);
+  assert.equal(shellSource.includes('worldActorOverlaySeparate'), true);
   assert.equal(canvasRenderer.includes('terrainCtx && targetCtx && terrainCtx === targetCtx'), true);
   assert.equal(layerRenderer.includes('getWorldActorOverlayLayerRenderer'), true);
   assert.equal(layerRenderer.includes('__worldActorOverlayDelegated'), true);
@@ -122,4 +146,10 @@ test('architecture smoke registers the world-map layer ownership contract', () =
   const smoke = readProjectFile('scripts/run-architecture-smoke.js');
 
   assert.equal(smoke.includes('frontend/js/platform/renderers/WorldMapLayerOwnershipContract.test.js'), true);
+});
+
+test('retired facade, mixin, and action-handler files stay deleted', () => {
+  RETIRED_FACADE_FILES.forEach((file) => {
+    assert.equal(projectFileExists(file), false, `${file} must stay deleted`);
+  });
 });

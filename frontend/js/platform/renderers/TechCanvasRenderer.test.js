@@ -247,17 +247,17 @@ test('TechCanvasRenderer does not proxy unknown host properties', () => {
 
 test('TechCanvasRenderer forwards tech tree scroll state through explicit accessors', () => {
   const host = {
-    lastTechTreeScroll: null,
+    techRenderState: { lastTechTreeScroll: null },
   };
   const renderer = new TechCanvasRenderer({ host });
   const writtenScroll = { panel: { width: 320 } };
 
   renderer.lastTechTreeScroll = writtenScroll;
 
-  assert.equal(host.lastTechTreeScroll, writtenScroll);
+  assert.equal(host.techRenderState.lastTechTreeScroll, writtenScroll);
 
   const hostScroll = { panel: { width: 640 } };
-  host.lastTechTreeScroll = hostScroll;
+  host.techRenderState.lastTechTreeScroll = hostScroll;
 
   assert.equal(renderer.lastTechTreeScroll, hostScroll);
 });
@@ -292,7 +292,7 @@ test('TechTreeCanvasRenderer renders tree hit targets and scroll contract', () =
   const calls = [];
   const renderer = new TechCanvasRenderer({
     host: {
-      lastTechTreeScroll: null,
+      techRenderState: { lastTechTreeScroll: null },
       ctx: { globalAlpha: 1, fillRect() {} },
       drawPanel(...args) { calls.push(['drawPanel', ...args]); },
       drawLine(...args) { calls.push(['drawLine', ...args]); },
@@ -323,7 +323,7 @@ test('TechTreeCanvasRenderer renders tree hit targets and scroll contract', () =
   const result = TechTreeCanvasRenderer.renderTechTreePanel(renderer, view, { x: 20, y: 80, width: 320, height: 260 }, {});
 
   assert.equal(result.renderedCards, 1);
-  assert.equal(renderer.host.lastTechTreeScroll.panel.width, 320);
+  assert.equal(renderer.techRenderState.lastTechTreeScroll.panel.width, 320);
   assert.ok(calls.some((call) => call[0] === 'withTransformedClip'));
   assert.ok(calls.some((call) => call[0] === 'hit' && call[2].type === 'selectTechNode'));
   assert.ok(calls.some((call) => call[0] === 'hit' && call[2].type === 'techTreeDrag'));

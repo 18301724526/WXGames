@@ -47,7 +47,7 @@ function upgrade(buildings, id, now = new Date().toISOString()) {
   };
 }
 
-function normalizeLegacyBuildingState(rawBuildings) {
+function normalizeBuildingState(rawBuildings) {
   const base = createInitialBuildingState();
   const now = new Date().toISOString();
   const source = rawBuildings || {};
@@ -55,14 +55,6 @@ function normalizeLegacyBuildingState(rawBuildings) {
     const value = source[id];
     if (value == null || value === 0) {
       base[id] = null;
-      continue;
-    }
-    if (typeof value === 'number') {
-      base[id] = {
-        level: value,
-        builtAt: now,
-        upgradedAt: now,
-      };
       continue;
     }
     if (typeof value === 'object' && value.level) {
@@ -82,5 +74,5 @@ module.exports = {
   isBuilt,
   build,
   upgrade,
-  normalizeLegacyBuildingState,
+  normalizeBuildingState,
 };

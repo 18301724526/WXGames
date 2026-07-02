@@ -5,6 +5,8 @@
       this.rendererHost = options.rendererHost || null;
       this.options = options.options || {};
       this.dependencies = options.dependencies || {};
+      this.worldMapRenderState = options.worldMapRenderState || this.options.worldMapRenderState || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.options.worldMapCacheState || null;
     }
 
     getDependency(key) {
@@ -24,7 +26,12 @@
       if (this.options[instanceOptionKey]) return this.options[instanceOptionKey];
       const RendererClass = this.getClass(classOptionKey, dependencyKey);
       if (!RendererClass) return null;
-      return new RendererClass({ host: childHost, ...(extraOptions || {}) });
+      return new RendererClass({
+        host: childHost,
+        worldMapRenderState: this.worldMapRenderState,
+        worldMapCacheState: this.worldMapCacheState,
+        ...(extraOptions || {}),
+      });
     }
 
     createComposition() {
@@ -54,11 +61,6 @@
         worldActorRenderer,
         worldMarchHudRenderer,
         worldMapActorHudRenderer,
-        worldMapLayoutFacade: this.createInstance('worldMapLayoutFacade', 'worldMapLayoutFacadeClass', 'worldMapLayoutFacade', childHost),
-        worldMapRenderUtilityFacade: this.createInstance('worldMapRenderUtilityFacade', 'worldMapRenderUtilityFacadeClass', 'worldMapRenderUtilityFacade', childHost),
-        worldMapHitTargetFacade: this.createInstance('worldMapHitTargetFacade', 'worldMapHitTargetFacadeClass', 'worldMapHitTargetFacade', childHost),
-        worldMapCacheFacade: this.createInstance('worldMapCacheFacade', 'worldMapCacheFacadeClass', 'worldMapCacheFacade', childHost),
-        worldMapCacheConfigFacade: this.createInstance('worldMapCacheConfigFacade', 'worldMapCacheConfigFacadeClass', 'worldMapCacheConfigFacade', childHost),
         worldMapStaticLayerRenderer: this.createInstance('worldMapStaticLayerRenderer', 'worldMapStaticLayerRendererClass', 'worldMapStaticLayerRenderer', childHost),
         worldMapStaticEntryRenderer: this.createInstance('worldMapStaticEntryRenderer', 'worldMapStaticEntryRendererClass', 'worldMapStaticEntryRenderer', childHost),
         worldMapStaticChunkRenderer: this.createInstance('worldMapStaticChunkRenderer', 'worldMapStaticChunkRendererClass', 'worldMapStaticChunkRenderer', childHost),

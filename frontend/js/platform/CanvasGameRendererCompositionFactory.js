@@ -47,6 +47,23 @@
     'armyFormationEditorRenderer',
   ]);
 
+  const SURFACE_STATE_RENDERER_PROPERTIES = new Set([
+    'surfaceRenderer',
+    'famousRenderer',
+  ]);
+
+  const WORLD_MAP_RENDER_STATE_RENDERER_PROPERTIES = new Set([
+    'worldMapRenderer',
+    'worldMapLayerRenderer',
+  ]);
+
+  const WORLD_MAP_CACHE_STATE_RENDERER_PROPERTIES = new Set([
+    'assetRenderer',
+    'worldTileWaterRenderer',
+    'worldMapRenderer',
+    'worldMapLayerRenderer',
+  ]);
+
   function resolveSharedDependency(spec) {
     if (global[spec.globalName]) return global[spec.globalName];
     if (typeof module !== 'undefined' && module.exports) {
@@ -83,7 +100,23 @@
       if (this.options[spec.property]) return this.options[spec.property];
       const RendererClass = this.getRendererClass(spec);
       if (!RendererClass) return null;
-      const extraOptions = DRAWING_SURFACE_RENDERER_PROPERTIES.has(spec.property) ? { drawingSurface: this.host } : {};
+      const extraOptions = {
+        ...(DRAWING_SURFACE_RENDERER_PROPERTIES.has(spec.property)
+          ? { drawingSurface: this.host }
+          : {}),
+        ...(SURFACE_STATE_RENDERER_PROPERTIES.has(spec.property)
+          ? { surfaceState: this.host?.surfaceState || null }
+          : {}),
+        ...(WORLD_MAP_RENDER_STATE_RENDERER_PROPERTIES.has(spec.property)
+          ? { worldMapRenderState: this.host?.worldMapRenderState || null }
+          : {}),
+        ...(WORLD_MAP_CACHE_STATE_RENDERER_PROPERTIES.has(spec.property)
+          ? { worldMapCacheState: this.host?.worldMapCacheState || null }
+          : {}),
+        ...(spec.property === 'techRenderer'
+          ? { techRenderState: this.host?.techRenderState || null }
+          : {}),
+      };
       return new RendererClass({ host: this.host, ...extraOptions });
     }
 

@@ -56,5 +56,5 @@ test('TileCoord offsets and compares coordinates through the stable axes', () =>
     tileId: 'tile_3_6',
   });
   assert.equal(TileCoord.equals(moved, { x: 3, y: 6 }), true);
-  assert.deepEqual(TileCoord.toLegacy(moved), { q: 3, r: 6, tileId: 'tile_3_6' });
+  assert.deepEqual(TileCoord.toAxial(moved), { q: 3, r: 6, tileId: 'tile_3_6' });
 });

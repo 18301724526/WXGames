@@ -1,15 +1,26 @@
 (function (global) {
+  const CanvasModeOwnershipRuntime = (() => {
+    if (global.CanvasModeOwnershipRuntime) return global.CanvasModeOwnershipRuntime;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModeOwnershipRuntime');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const NAMING_MODAL_KEY = 'modal:naming';
   const CONFIRM_DIALOG_MODAL_KEY = 'modal:confirmDialog';
   const REWARD_REVEAL_MODAL_KEY = 'modal:rewardReveal';
   const EVENT_MODAL_KEY = 'modal:event';
   const TARGET_PICKER_MODAL_KEY = 'modal:targetPicker';
 
-  // Batch 8F: per-panel blocking modal subtypes replace the retired single
-  // 'modal:blockingPanel' umbrella. Each blocking panel
-  // owns one modal subtype; the renderer panel facts (snapshot.panel.showX) are
-  // DERIVED from these entries by the bridge. 'activeCommandPanel' carries its
-  // string enum in the payload value; the other 11 are open/closed only.
+  // Each blocking panel owns one modal subtype. Renderer panel facts
+  // (snapshot.panel.showX) are derived from these ModalStore entries.
+  // activeCommandPanel carries its string enum in the payload value; the other
+  // entries are open/closed only.
   const BLOCKING_PANEL_SUBTYPE_BY_KEY = Object.freeze({
     showSettings: 'modal:settings',
     showLogs: 'modal:logs',
@@ -35,28 +46,11 @@
     return host.getCanvasGameHost?.() || host.lastGame || host;
   }
 
-  // The modal owner DATA (__ecsModalOwner / the ModalWorld) is placed on the resolved owner host by
-  // CanvasModeOwnershipRuntime, but the modal METHODS (openModal/updateModalPayload/closeModal/
-  // resolveModalCallback) live on whichever host prototype installed them — that method resolves the
-  // owner internally and operates the BitECS ModalWorld. So mutations must be invoked on a host that
-  // actually carries the methods: prefer the owner host, fall back to the calling host. (The host-bridge
-  // retirement dropped this fallback, so a plain lastGame without the methods silently no-op'd the open
-  // and the ModalWorld was never created — leaving every blocking-panel fact false.)
-  function getModalMethodHost(host) {
-    const owner = getModalOwnerHost(host);
-    if (owner && typeof owner.openModal === 'function') return owner;
-    if (host && typeof host.openModal === 'function') return host;
-    return owner;
-  }
-
   function getRendererSnapshot(host, snapshot = null) {
     if (snapshot && typeof snapshot === 'object') return snapshot;
     const owner = getModalOwnerHost(host);
-    return typeof owner?.getRendererSnapshot === 'function'
-      ? owner.getRendererSnapshot()
-      : typeof host?.getRendererSnapshot === 'function'
-        ? host.getRendererSnapshot()
-        : null;
+    if (!CanvasModeOwnershipRuntime?.getRendererSnapshot) return null;
+    return CanvasModeOwnershipRuntime.getRendererSnapshot(owner || host);
   }
 
   function readModalEntry(snapshot = null, subtype = '') {
@@ -65,9 +59,9 @@
 
   function refreshRendererSnapshot(host) {
     const owner = getModalOwnerHost(host);
-    owner?.buildRendererSnapshot?.();
+    CanvasModeOwnershipRuntime?.buildRendererSnapshot?.(owner || host);
     if (owner === host) return;
-    host?.buildRendererSnapshot?.();
+    CanvasModeOwnershipRuntime?.buildRendererSnapshot?.(host);
   }
 
   function getModalPayloadSnapshot(host, subtype = '', snapshot = null) {
@@ -129,28 +123,31 @@
   }
 
   function openModalPayload(host, subtype = '', payload = {}, callbacks = null) {
-    const target = getModalMethodHost(host);
+    const owner = getModalOwnerHost(host);
     const result =
-      typeof target?.openModal === 'function'
-        ? target.openModal(subtype, payload, callbacks)
+      typeof CanvasModeOwnershipRuntime?.openModal === 'function'
+        ? CanvasModeOwnershipRuntime.openModal(owner || host, subtype, payload, callbacks)
         : null;
     refreshRendererSnapshot(host);
     return result;
   }
 
   function updateModalPayload(host, subtype = '', patch = {}) {
-    const target = getModalMethodHost(host);
+    const owner = getModalOwnerHost(host);
     const result =
-      typeof target?.updateModalPayload === 'function'
-        ? target.updateModalPayload(subtype, patch)
+      typeof CanvasModeOwnershipRuntime?.updateModalPayload === 'function'
+        ? CanvasModeOwnershipRuntime.updateModalPayload(owner || host, subtype, patch)
         : null;
     refreshRendererSnapshot(host);
     return result;
   }
 
   function closeModalPayload(host, subtype = '') {
-    const target = getModalMethodHost(host);
-    const result = typeof target?.closeModal === 'function' ? target.closeModal(subtype) : null;
+    const owner = getModalOwnerHost(host);
+    const result =
+      typeof CanvasModeOwnershipRuntime?.closeModal === 'function'
+        ? CanvasModeOwnershipRuntime.closeModal(owner || host, subtype)
+        : null;
     refreshRendererSnapshot(host);
     return result;
   }
@@ -184,9 +181,9 @@
   }
 
   function resolveConfirmDialogSnapshotCallback(host, type, ...args) {
-    const target = getModalMethodHost(host);
-    return typeof target?.resolveModalCallback === 'function'
-      ? target.resolveModalCallback(CONFIRM_DIALOG_MODAL_KEY, type, ...args)
+    const owner = getModalOwnerHost(host);
+    return typeof CanvasModeOwnershipRuntime?.resolveModalCallback === 'function'
+      ? CanvasModeOwnershipRuntime.resolveModalCallback(owner || host, CONFIRM_DIALOG_MODAL_KEY, type, ...args)
       : undefined;
   }
 
@@ -246,11 +243,9 @@
     return new Set(except ? [except] : []);
   }
 
-  // Open (or, for a falsy/empty value, close) a blocking panel. Preserves the
-  // retired openBlockingPanelOwner toggle contract: boolean panels open on a truthy
-  // value / close on falsy; activeCommandPanel opens on a non-empty string carried in
-  // the payload / closes on ''. Returns the normalized value so toggle call sites can
-  // keep `const next = host.openBlockingPanelSnapshot(key, !current)`.
+  // Open a blocking panel, or close it when the requested value is empty. Boolean
+  // panels open on truthy values; activeCommandPanel stores its string in the
+  // payload and closes on an empty string.
   function openBlockingPanelSnapshot(host, panelKey, value = true) {
     const subtype = blockingPanelSubtype(panelKey);
     if (!subtype) return null;
@@ -276,11 +271,11 @@
   // the event modal -- those are out of scope and stay on their owning close paths.
   function closeBlockingPanelsSnapshot(host, except = []) {
     const keep = normalizeBlockingPanelKeepSet(except);
-    const target = getModalMethodHost(host);
+    const owner = getModalOwnerHost(host);
     BLOCKING_PANEL_KEYS.forEach((panelKey) => {
       if (keep.has(panelKey)) return;
       const subtype = BLOCKING_PANEL_SUBTYPE_BY_KEY[panelKey];
-      target?.closeModal?.(subtype);
+      CanvasModeOwnershipRuntime?.closeModal?.(owner || host, subtype);
     });
     refreshRendererSnapshot(host);
     return null;
@@ -319,132 +314,6 @@
     return facts;
   }
 
-  function install(TargetClass) {
-    if (!TargetClass?.prototype) return false;
-    Object.assign(TargetClass.prototype, {
-      closeNamingSnapshot() {
-        return closeNamingSnapshot(this);
-      },
-
-      closeConfirmDialogSnapshot() {
-        return closeConfirmDialogSnapshot(this);
-      },
-
-      getConfirmDialogSnapshot(snapshot = null) {
-        return getConfirmDialogSnapshot(this, snapshot);
-      },
-
-      getNamingSnapshot(snapshot = null) {
-        return getNamingSnapshot(this, snapshot);
-      },
-
-      isNamingSnapshotOpen(snapshot = null) {
-        return isNamingSnapshotOpen(this, snapshot);
-      },
-
-      isConfirmDialogSnapshotOpen(snapshot = null) {
-        return isConfirmDialogSnapshotOpen(this, snapshot);
-      },
-
-      getNamingInputValue(snapshot = null) {
-        return getNamingInputValue(this, snapshot);
-      },
-
-      openNamingSnapshot(payload = {}) {
-        return openNamingSnapshot(this, payload);
-      },
-
-      updateNamingSnapshot(patch = {}) {
-        return updateNamingSnapshot(this, patch);
-      },
-
-      openConfirmDialogSnapshot(payload = {}, callbacks = null) {
-        return openConfirmDialogSnapshot(this, payload, callbacks);
-      },
-
-      updateConfirmDialogSnapshot(patch = {}) {
-        return updateConfirmDialogSnapshot(this, patch);
-      },
-
-      resolveConfirmDialogSnapshotCallback(type, ...args) {
-        return resolveConfirmDialogSnapshotCallback(this, type, ...args);
-      },
-
-      openRewardRevealSnapshot(payload = {}) {
-        return openRewardRevealSnapshot(this, payload);
-      },
-
-      closeRewardRevealSnapshot() {
-        return closeRewardRevealSnapshot(this);
-      },
-
-      getRewardRevealSnapshot(snapshot = null) {
-        return getRewardRevealSnapshot(this, snapshot);
-      },
-
-      isRewardRevealSnapshotOpen(snapshot = null) {
-        return isRewardRevealSnapshotOpen(this, snapshot);
-      },
-
-      openEventSnapshot(eventId) {
-        return openEventSnapshot(this, eventId);
-      },
-
-      closeEventSnapshot() {
-        return closeEventSnapshot(this);
-      },
-
-      getEventSnapshot(snapshot = null) {
-        return getEventSnapshot(this, snapshot);
-      },
-
-      isEventSnapshotOpen(snapshot = null) {
-        return isEventSnapshotOpen(this, snapshot);
-      },
-
-      openTargetPickerSnapshot(payload = {}) {
-        return openTargetPickerSnapshot(this, payload);
-      },
-
-      closeTargetPickerSnapshot() {
-        return closeTargetPickerSnapshot(this);
-      },
-
-      getTargetPickerSnapshot(snapshot = null) {
-        return getTargetPickerSnapshot(this, snapshot);
-      },
-
-      isTargetPickerSnapshotOpen(snapshot = null) {
-        return isTargetPickerSnapshotOpen(this, snapshot);
-      },
-
-      openBlockingPanelSnapshot(panelKey, value = true) {
-        return openBlockingPanelSnapshot(this, panelKey, value);
-      },
-
-      closeBlockingPanelSnapshot(panelKey) {
-        return closeBlockingPanelSnapshot(this, panelKey);
-      },
-
-      closeBlockingPanelsSnapshot(except = []) {
-        return closeBlockingPanelsSnapshot(this, except);
-      },
-
-      isBlockingPanelSnapshotOpen(panelKey, snapshot = null) {
-        return isBlockingPanelSnapshotOpen(this, panelKey, snapshot);
-      },
-
-      getCommandPanelValue(snapshot = null) {
-        return getCommandPanelValue(this, snapshot);
-      },
-
-      buildBlockingPanelFacts(snapshot = null) {
-        return buildBlockingPanelFacts(this, snapshot);
-      },
-    });
-    return true;
-  }
-
   const api = {
     BLOCKING_PANEL_SUBTYPE_BY_KEY,
     COMMAND_PANEL_MODAL_KEY,
@@ -479,7 +348,6 @@
     getRewardRevealSnapshotFromRendererSnapshot,
     getTargetPickerSnapshot,
     getTargetPickerSnapshotFromRendererSnapshot,
-    install,
     isConfirmDialogSnapshotOpen,
     isEventSnapshotOpen,
     isNamingSnapshotOpen,

@@ -5,11 +5,14 @@ const path = require('node:path');
 
 const WorldMapRendererDependencyRegistry = require('./WorldMapRendererDependencyRegistry');
 
-test('WorldMapRendererDependencyRegistry owns dependency keys for the world map renderer facade', () => {
+test('WorldMapRendererDependencyRegistry owns concrete world map renderer dependencies', () => {
   const definitions = WorldMapRendererDependencyRegistry.DEFINITIONS;
 
-  assert.equal(definitions.worldMapCacheConfigFacade.globalName, 'WorldMapCacheConfigFacade');
-  assert.equal(definitions.worldMapCacheConfigFacade.modulePath, './WorldMapCacheConfigFacade');
+  assert.equal(definitions.worldMapCacheConfigFacade, undefined);
+  assert.equal(definitions.worldMapLayoutFacade, undefined);
+  assert.equal(definitions.worldMapRenderUtilityFacade, undefined);
+  assert.equal(definitions.worldMapHitTargetFacade, undefined);
+  assert.equal(definitions.worldMapCacheFacade, undefined);
   assert.equal(definitions.worldMapRendererCompositionFactory.globalName, 'WorldMapRendererCompositionFactory');
   assert.equal(definitions.worldMapTileMapRenderer.globalName, 'WorldMapTileMapRenderer');
   assert.equal(definitions.worldActorCanvasRenderer.globalName, 'WorldActorCanvasRenderer');
@@ -18,32 +21,32 @@ test('WorldMapRendererDependencyRegistry owns dependency keys for the world map 
 });
 
 test('WorldMapRendererDependencyRegistry resolves globals before module fallback', () => {
-  const marker = { id: 'global-cache-config' };
+  const marker = { id: 'global-tile-map-renderer' };
   const registry = WorldMapRendererDependencyRegistry.createRegistry({
-    global: { WorldMapCacheConfigFacade: marker },
+    global: { WorldMapTileMapRenderer: marker },
     requireModule() {
       throw new Error('global dependency should win');
     },
   });
 
-  assert.equal(registry.get('worldMapCacheConfigFacade'), marker);
+  assert.equal(registry.get('worldMapTileMapRenderer'), marker);
 });
 
 test('WorldMapRendererDependencyRegistry uses injected module fallback and caches successful lookups', () => {
-  const marker = { id: 'module-cache-config' };
+  const marker = { id: 'module-tile-map-renderer' };
   const calls = [];
   const registry = WorldMapRendererDependencyRegistry.createRegistry({
     global: {},
     requireModule(modulePath) {
       calls.push(modulePath);
-      if (modulePath === './WorldMapCacheConfigFacade') return marker;
+      if (modulePath === './WorldMapTileMapRenderer') return marker;
       return null;
     },
   });
 
-  assert.equal(registry.get('worldMapCacheConfigFacade'), marker);
-  assert.equal(registry.get('worldMapCacheConfigFacade'), marker);
-  assert.deepEqual(calls, ['./WorldMapCacheConfigFacade']);
+  assert.equal(registry.get('worldMapTileMapRenderer'), marker);
+  assert.equal(registry.get('worldMapTileMapRenderer'), marker);
+  assert.deepEqual(calls, ['./WorldMapTileMapRenderer']);
 });
 
 test('WorldMapRendererDependencyRegistry handles unknown keys and explicit fallbacks', () => {
@@ -64,8 +67,8 @@ test('WorldMapRendererDependencyRegistry loads before WorldMapCanvasRenderer in 
 
   assert.ok(html.indexOf('WorldMapRendererDependencyRegistry.js') > -1);
   assert.ok(html.indexOf('WorldMarchRoutePolicy.js') > -1);
-  assert.ok(html.indexOf('WorldMarchRoutePolicy.js') < html.indexOf('WorldMapHitTargetFacade.js'));
+  assert.equal(html.includes('WorldMapHitTargetFacade.js'), false);
   assert.ok(html.indexOf('WorldMapRendererDependencyRegistry.js') < html.indexOf('WorldMapCanvasRenderer.js'));
-  assert.ok(miniGameEntry.indexOf('WorldMarchRoutePolicy') < miniGameEntry.indexOf('WorldMapHitTargetFacade'));
+  assert.equal(miniGameEntry.includes('WorldMapHitTargetFacade'), false);
   assert.ok(miniGameEntry.indexOf('WorldMapRendererDependencyRegistry') < miniGameEntry.indexOf('WorldMapCanvasRenderer'));
 });

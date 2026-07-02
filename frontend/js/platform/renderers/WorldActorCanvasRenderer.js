@@ -58,14 +58,11 @@
   class WorldActorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapRenderState = options.worldMapRenderState || this.host?.worldMapRenderState || null;
     }
 
     get ctx() {
       return this.host?.ctx;
-    }
-
-    get __worldActorOverlayActiveDiag() {
-      return this.host?.__worldActorOverlayActiveDiag;
     }
 
     addHitTarget(...args) {
@@ -112,21 +109,21 @@
     }
 
     getActorRenderCtx(options = {}) {
-      return options?.ctx || this.__worldActorOverlayTargetCtx || this.ctx || null;
+      return options?.ctx || this.worldMapRenderState?.worldActorOverlayTargetCtx || this.ctx || null;
+    }
+
+    getActorOverlayDiag(options = {}) {
+      return options.worldActorOverlayDiag || null;
     }
 
     withActorRenderCtx(ctx = null, callback = null) {
-      const hadOwnCtx = Object.prototype.hasOwnProperty.call(this, '__worldActorOverlayTargetCtx');
-      const previousCtx = this.__worldActorOverlayTargetCtx;
-      if (ctx) this.__worldActorOverlayTargetCtx = ctx;
+      const renderState = this.worldMapRenderState;
+      const previousCtx = renderState?.worldActorOverlayTargetCtx || null;
+      if (renderState) renderState.worldActorOverlayTargetCtx = ctx || null;
       try {
         return typeof callback === 'function' ? callback() : false;
       } finally {
-        if (hadOwnCtx) {
-          this.__worldActorOverlayTargetCtx = previousCtx;
-        } else {
-          delete this.__worldActorOverlayTargetCtx;
-        }
+        if (renderState) renderState.worldActorOverlayTargetCtx = previousCtx;
       }
     }
 
@@ -160,7 +157,7 @@
       const dy = Number(to.y) - Number(from.y);
       const length = Math.hypot(dx, dy);
       if (!Number.isFinite(length) || length < 8) return false;
-      const diag = this.__worldActorOverlayActiveDiag;
+      const diag = this.getActorOverlayDiag(options);
       if (diag) diag.arrowCanvasId = getCanvasId(ctx);
       const ux = dx / length;
       const uy = dy / length;
@@ -206,7 +203,7 @@
 
     renderActors(actors = [], viewport = {}, geometry = {}, options = {}) {
       const ctx = this.getActorRenderCtx(options);
-      const diag = this.__worldActorOverlayActiveDiag;
+      const diag = this.getActorOverlayDiag(options);
       if (diag) diag.drawnCanvasId = getCanvasId(ctx);
       if (!Array.isArray(actors) || !actors.length) return false;
       let rendered = false;

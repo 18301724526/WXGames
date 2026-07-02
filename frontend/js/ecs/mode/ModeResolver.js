@@ -16,8 +16,8 @@ const {
 
 // Batch 8F: 'modal:blockingPanel' was split per panel. Every modal subtype is
 // unconditionally blocking EXCEPT 'modal:commandPanel', which blocks only when its
-// value is non-'tech' (a string-value condition the bridge folds into
-// facts.blockingOverlayActive in createModeSnapshot). Derived from the canonical
+// value is non-'tech' (a string-value condition projected into
+// facts.blockingOverlayActive by createModeSnapshot). Derived from the canonical
 // MODAL_MODE_KEYS so a newly added modal is blocking-by-default with no second edit.
 const NON_BLOCKING_MODAL_KEYS = Object.freeze(['modal:commandPanel']);
 const BLOCKING_MODAL_KEYS = Object.freeze(

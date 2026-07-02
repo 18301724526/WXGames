@@ -2800,7 +2800,7 @@ var EcsModeRuntime = (() => {
           const b = normalizeCoord(right);
           return a.x === b.x && a.y === b.y;
         }
-        function toLegacy(coord = {}) {
+        function toAxial(coord = {}) {
           const normalized = normalizeCoord(coord);
           return Object.freeze({
             q: normalized.x,
@@ -2815,8 +2815,8 @@ var EcsModeRuntime = (() => {
           offset,
           readCoordAxis,
           tileId,
+          toAxial,
           toInteger,
-          toLegacy,
           toNumber,
         });
         global.TileCoord = TileCoord;

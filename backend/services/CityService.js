@@ -49,7 +49,7 @@ function createCityState(options = {}) {
     isCapital: Boolean(options.isCapital || id === CAPITAL_CITY_ID),
     foundedAt: options.foundedAt || new Date().toISOString(),
     resources: createInitialResources(options.resources || { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 }),
-    buildings: BuildingState.normalizeLegacyBuildingState(options.buildings),
+    buildings: BuildingState.normalizeBuildingState(options.buildings),
     population: createInitialPopulation(options.population),
     military: options.military || { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     happiness: Number.isFinite(options.happiness) ? options.happiness : 100,
@@ -93,7 +93,7 @@ function getCapitalName(gameState) {
   return territory?.cityName || gameState.polity?.capitalCityName || '首都';
 }
 
-function migrateLegacyCapital(gameState) {
+function createCapitalCityFromState(gameState) {
   return createCityState({
     id: CAPITAL_CITY_ID,
     territoryId: CAPITAL_CITY_ID,
@@ -134,7 +134,7 @@ function normalizeCities(gameState, now = new Date()) {
       name: getCapitalName(gameState),
     }, gameState, now);
   } else {
-    cities[CAPITAL_CITY_ID] = migrateLegacyCapital(gameState);
+    cities[CAPITAL_CITY_ID] = createCapitalCityFromState(gameState);
     applyDerivedStatsToCity(cities[CAPITAL_CITY_ID], gameState);
   }
 

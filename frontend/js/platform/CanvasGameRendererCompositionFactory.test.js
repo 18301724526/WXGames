@@ -108,6 +108,24 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
   });
 });
 
+test('CanvasGameRendererCompositionFactory injects shared surface state only into surface-owned renderers', () => {
+  const calls = [];
+  const surfaceState = { id: 'surface-state' };
+  const host = { id: 'game-renderer', surfaceState };
+  const dependencies = {
+    canvasSurfaceRenderer: createClass('surface', calls),
+    famousCanvasRenderer: createClass('famous', calls),
+    advisorCanvasRenderer: createClass('advisor', calls),
+  };
+
+  const composition = CanvasGameRendererCompositionFactory.create({ host, dependencies });
+
+  assert.equal(composition.rendererMap.surfaceRenderer.options.surfaceState, surfaceState);
+  assert.equal(composition.rendererMap.famousRenderer.options.surfaceState, surfaceState);
+  assert.equal(composition.rendererMap.advisorRenderer.options.surfaceState, undefined);
+  assert.equal(composition.rendererMap.advisorRenderer.options.drawingSurface, host);
+});
+
 test('CanvasGameRendererCompositionFactory syncs presenter through descriptor fallback boundary', () => {
   const host = { presenter: { id: 'presenter' } };
   const renderer = {};

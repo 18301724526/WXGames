@@ -13,8 +13,6 @@ const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot
 const CanvasGameShell = require('./CanvasGameShell');
 const BattleStore = require('../state/BattleStore');
 const ModalStore = require('../state/ModalStore');
-const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
-const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
 
 // Modal presence is a single global ModalStore (no per-host owner). Reset it before
@@ -24,7 +22,7 @@ test.beforeEach(() => {
   ModalStore.closeAll();
 });
 
-const SHELL_MODULES = [
+const RETIRED_SHELL_MODULES = [
   'CanvasGameShellMounting',
   'CanvasGameShellInputRouter',
   'CanvasGameShellCommands',
@@ -37,19 +35,14 @@ const SHELL_MODULES = [
   'CanvasGameShellRenderingRuntime',
   'CanvasGameShellTechTreeView',
   'CanvasGameShellTransitionTimers',
-  'CanvasModalSnapshotAdapter',
   'CanvasGameShellSystemUi',
 ];
 
-class ModalHost {}
-CanvasModeOwnershipRuntime.install(ModalHost);
-CanvasModalSnapshotAdapter.install(ModalHost);
-
 function makeModalHost(fields = {}) {
-  return Object.assign(new ModalHost(), fields);
+  return Object.assign(new CanvasGameShell({}), fields);
 }
 
-test('CanvasGameShell installs responsibility modules into the compatibility facade', () => {
+test('CanvasGameShell owns retired responsibility methods directly', () => {
   const proto = CanvasGameShell.prototype;
   const expectedMethods = {
     mounting: ['createRenderer', 'mount'],
@@ -67,7 +60,7 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
 
   Object.entries(expectedMethods).forEach(([group, methods]) => {
     methods.forEach((method) => {
-      assert.equal(typeof proto[method], 'function', `${group}.${method} should be installed`);
+      assert.equal(typeof proto[method], 'function', `${group}.${method} should live on CanvasGameShell`);
     });
   });
 });
@@ -119,7 +112,7 @@ test('CanvasGameShell awaits world tile cache prewarm during asset preload', asy
   ]);
 });
 
-test('index.html loads CanvasGameShell modules before the facade', () => {
+test('index.html loads CanvasGameShell without retired split modules', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const facadePosition = html.indexOf('CanvasGameShell.js');
   assert.notEqual(facadePosition, -1);
@@ -127,32 +120,14 @@ test('index.html loads CanvasGameShell modules before the facade', () => {
   assert.notEqual(layerRegistryPosition, -1, 'CanvasLayerRegistry.js should be loaded');
   assert.equal(layerRegistryPosition < facadePosition, true, 'CanvasLayerRegistry.js should load before CanvasGameShell.js');
 
-  SHELL_MODULES.forEach((moduleName) => {
-    const modulePosition = html.indexOf(`${moduleName}.js`);
-    assert.notEqual(modulePosition, -1, `${moduleName}.js should be loaded`);
-    assert.equal(modulePosition < facadePosition, true, `${moduleName}.js should load before CanvasGameShell.js`);
+  RETIRED_SHELL_MODULES.forEach((moduleName) => {
+    assert.equal(html.includes(`${moduleName}.js`), false, `${moduleName}.js should not be loaded`);
   });
   assert.equal(
-    html.indexOf('CanvasGameShellWorldMapRuntimePolicy.js') < html.indexOf('CanvasGameShellWorldMapRuntime.js'),
+    html.indexOf('WorldMapRuntimePolicy.js') < html.indexOf('CanvasGameAppRenderScheduler.js'),
     true,
-    'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameShellWorldMapRuntime.js',
+    'WorldMapRuntimePolicy.js should load before CanvasGameAppRenderScheduler.js',
   );
-  assert.equal(
-    html.indexOf('CanvasGameShellWorldMapRuntimePolicy.js') < html.indexOf('CanvasGameAppRenderScheduler.js'),
-    true,
-    'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameAppRenderScheduler.js',
-  );
-  [
-    'CanvasGameShellWorldMapLayerRuntime.js',
-    'CanvasGameShellWorldMapDragRuntime.js',
-    'CanvasGameShellWorldMapFrameRuntime.js',
-  ].forEach((scriptName) => {
-    assert.equal(
-      html.indexOf(scriptName) < html.indexOf('CanvasGameShellWorldMapRuntime.js'),
-      true,
-      `${scriptName} should load before CanvasGameShellWorldMapRuntime.js`,
-    );
-  });
 });
 
 test('CanvasGameShell owns canvas layer lifecycle through the registry', () => {
@@ -1323,15 +1298,17 @@ test('CanvasGameShell does not skip map layer when hit targets are preserved but
     territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
   };
   const runtime = {
-    baseHitTargets: [{ action: { type: 'enterCity' } }],
     hasBakedMapLayer: true,
-    hitTargets: [{ action: { type: 'enterCity' } }],
-    lastHitTargetSync: {
-      baseHitTargetCount: 1,
-      hitTargetCount: 1,
-      mapTargetCount: 0,
-      preserved: true,
-      sourceHitTargetCount: 0,
+    worldMapInputState: {
+      baseHitTargets: [{ action: { type: 'enterCity' } }],
+      hitTargets: [{ action: { type: 'enterCity' } }],
+      lastHitTargetSync: {
+        baseHitTargetCount: 1,
+        hitTargetCount: 1,
+        mapTargetCount: 0,
+        preserved: true,
+        sourceHitTargetCount: 0,
+      },
     },
     mapBakeDirty: false,
     bakedLayerState: {
@@ -1342,6 +1319,15 @@ test('CanvasGameShell does not skip map layer when hit targets are preserved but
     },
     getBakedLayerState() {
       return this.bakedLayerState;
+    },
+    getBaseHitTargets() {
+      return this.worldMapInputState.baseHitTargets;
+    },
+    getHitTargets() {
+      return this.worldMapInputState.hitTargets;
+    },
+    getLastHitTargetSync() {
+      return this.worldMapInputState.lastHitTargetSync;
     },
     isMapBakeDirty() {
       return false;

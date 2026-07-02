@@ -221,10 +221,104 @@
     return deriveModeFacts(host);
   }
 
+  function getCurrentTab(host) {
+    const game = getStateHost(host);
+    return String(
+      game?.state?.currentTab ||
+        game?.activeTab ||
+        host?.state?.currentTab ||
+        host?.activeTab ||
+        '',
+    );
+  }
+
+  function isCurrentTab(host, tabId = '') {
+    const expected = String(tabId || '');
+    return Boolean(expected && getCurrentTab(host) === expected);
+  }
+
+  function setMilitaryView(host, view = 'army') {
+    const normalized = ['army', 'scout', 'world'].includes(view) ? view : 'army';
+    const game = getStateHost(host);
+    if (game && typeof game === 'object') {
+      game.militaryView = normalized;
+      if (game.state && typeof game.state === 'object') {
+        game.state.militaryView = normalized;
+      }
+    }
+    if (host && host !== game && typeof host === 'object') {
+      host.militaryView = normalized;
+      if (host.state && typeof host.state === 'object') {
+        host.state.militaryView = normalized;
+      }
+    }
+    refreshModeSnapshot(host);
+    if (game && game !== host) refreshModeSnapshot(game);
+    return normalized;
+  }
+
+  function getFormationEditor(host) {
+    const game = getStateHost(host);
+    const gameEditor = game?.armyFormationEditor || null;
+    const shellEditor = game?.canvasShell?.armyFormationEditor || null;
+    const hostEditor = host?.armyFormationEditor || null;
+    if (shellEditor?.open) return shellEditor;
+    if (gameEditor?.open) return gameEditor;
+    if (hostEditor?.open) return hostEditor;
+    return gameEditor || shellEditor || hostEditor || {};
+  }
+
+  function closeFormationEditor(host) {
+    const closed = {
+      open: false,
+      cityId: '',
+      slot: 1,
+      memberIds: [],
+      soldierAssignments: {},
+      soldierDraftAssignments: {},
+      page: 0,
+      saving: false,
+    };
+    const game = getStateHost(host);
+    if (game && typeof game === 'object') game.armyFormationEditor = { ...closed };
+    if (game?.canvasShell && typeof game.canvasShell === 'object') {
+      game.canvasShell.armyFormationEditor = { ...closed };
+    }
+    if (host && host !== game && typeof host === 'object') host.armyFormationEditor = { ...closed };
+    refreshModeSnapshot(host);
+    if (game && game !== host) refreshModeSnapshot(game);
+    if (game?.canvasShell && game.canvasShell !== host) refreshModeSnapshot(game.canvasShell);
+    return closed;
+  }
+
   function resolveInputIntent(host, physicalIntent) {
     const snapshot = getModeSnapshot(host);
     if (!snapshot || !EcsModeRuntime?.resolveInputIntent) return null;
     return EcsModeRuntime.resolveInputIntent(physicalIntent, snapshot);
+  }
+
+  function isBlockingOverlayOpen(snapshot = {}) {
+    return EcsModeRuntime?.isBlockingOverlayOpen
+      ? EcsModeRuntime.isBlockingOverlayOpen(snapshot)
+      : Boolean(snapshot.blockingOverlayActive);
+  }
+
+  function isEntityBattleActive(snapshot = {}) {
+    return EcsModeRuntime?.isEntityBattleActive
+      ? EcsModeRuntime.isEntityBattleActive(snapshot)
+      : Boolean(snapshot.entityBattleActive);
+  }
+
+  function canRouteWorldMap(snapshot = {}) {
+    return EcsModeRuntime?.canRouteWorldMap
+      ? EcsModeRuntime.canRouteWorldMap(snapshot)
+      : Boolean(snapshot.canRouteWorldMap);
+  }
+
+  function canRouteTechTree(snapshot = {}) {
+    return EcsModeRuntime?.canRouteTechTree
+      ? EcsModeRuntime.canRouteTechTree(snapshot)
+      : Boolean(snapshot.canRouteTechTree);
   }
 
   function getRendererSnapshotBoundaryApi() {
@@ -235,8 +329,7 @@
 
   // Modal commands/queries are thin pass-throughs to the global ModalStore -- the
   // single source of truth for modal presence + payload + token + continuations.
-  // The host argument is ignored for storage (kept only so the installed prototype
-  // methods read naturally as host.openModal(...)); when the store is unavailable
+  // The host argument is ignored for storage; when the store is unavailable
   // (node-require fallback edge) the helpers degrade to inert no-ops.
 
   // Open a covered modal subtype: the store mints a token and (for subtypes with
@@ -344,109 +437,31 @@
     return host?.__ecsRendererSnapshot || buildRendererSnapshot(host) || null;
   }
 
-  function install(TargetClass) {
-    if (!TargetClass?.prototype) return false;
-    Object.assign(TargetClass.prototype, {
-      getModeSnapshot() {
-        return getModeSnapshot(this);
-      },
-
-      refreshModeSnapshot() {
-        return refreshModeSnapshot(this);
-      },
-
-      deriveModeFacts() {
-        return deriveModeFacts(this);
-      },
-
-      isModeBlockingOverlayOpen() {
-        const snapshot = getModeSnapshot(this);
-        return snapshot
-          ? EcsModeRuntime.isBlockingOverlayOpen(snapshot)
-          : getFallbackModeFacts(this).blockingOverlayActive;
-      },
-
-      isModeEntityBattleActive() {
-        const snapshot = getModeSnapshot(this);
-        return snapshot
-          ? EcsModeRuntime.isEntityBattleActive(snapshot)
-          : getFallbackModeFacts(this).entityBattleActive;
-      },
-
-      canRouteModeWorldMap() {
-        const snapshot = getModeSnapshot(this);
-        if (snapshot) return EcsModeRuntime.canRouteWorldMap(snapshot);
-        const facts = getFallbackModeFacts(this);
-        return facts.baseModeKey === 'worldMap' && !facts.blockingOverlayActive;
-      },
-
-      canRouteModeTechTree() {
-        const snapshot = getModeSnapshot(this);
-        if (snapshot) return EcsModeRuntime.canRouteTechTree(snapshot);
-        const facts = getFallbackModeFacts(this);
-        return facts.techTreeActive && !facts.techTreeBlockingOverlayActive;
-      },
-
-      resolveInputIntent(physicalIntent) {
-        return resolveInputIntent(this, physicalIntent);
-      },
-
-      buildRendererSnapshot(options = {}) {
-        return buildRendererSnapshot(this, options);
-      },
-
-      getRendererSnapshot() {
-        return getRendererSnapshot(this);
-      },
-
-      openModal(subtype, payload, callbacks) {
-        return openModal(this, subtype, payload, callbacks);
-      },
-
-      updateModalPayload(subtype, patch) {
-        return updateModalPayload(this, subtype, patch);
-      },
-
-      closeModal(subtype) {
-        return closeModal(this, subtype);
-      },
-
-      getModalPayload(subtype) {
-        return getModalPayload(this, subtype);
-      },
-
-      isModalOpen(subtype) {
-        return isModalOpen(this, subtype);
-      },
-
-      getModalOwnerHost() {
-        return getModalOwnerHost(this);
-      },
-
-      resolveModalCallback(subtype, action, ...args) {
-        return resolveModalCallback(this, subtype, action, ...args);
-      },
-    });
-    return true;
-  }
-
   const api = {
     closeModal,
     collectModalKeys,
     buildRendererSnapshot,
     deriveModeFacts,
+    closeFormationEditor,
     getModalPayload,
     getModalOwnerHost,
+    getCurrentTab,
+    getFormationEditor,
     getModeSnapshot,
     getRendererSnapshot,
     hasBlockingOverlayExceptTechTree,
-    install,
+    isBlockingOverlayOpen,
+    isCurrentTab,
+    isEntityBattleActive,
     isModalOpen,
     openModal,
     refreshModeSnapshot,
+    canRouteTechTree,
+    canRouteWorldMap,
     resolveBaseModeKey,
     resolveInputIntent,
     resolveModalCallback,
+    setMilitaryView,
     updateModalPayload,
   };
 

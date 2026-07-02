@@ -43,8 +43,8 @@
     static getBattleTurnSoldiers(turn = {}, side = 'attacker', timing = 'before', fallback = 0) {
       const nested = turn?.[`soldiers${timing === 'after' ? 'After' : 'Before'}`]?.[side];
       if (nested !== undefined && nested !== null) return this.toInteger(nested);
-      const legacyKey = `${side}Soldiers${timing === 'after' ? 'After' : 'Before'}`;
-      if (turn?.[legacyKey] !== undefined && turn?.[legacyKey] !== null) return this.toInteger(turn[legacyKey]);
+      const flatReportKey = `${side}Soldiers${timing === 'after' ? 'After' : 'Before'}`;
+      if (turn?.[flatReportKey] !== undefined && turn?.[flatReportKey] !== null) return this.toInteger(turn[flatReportKey]);
       return this.toInteger(fallback);
     }
 

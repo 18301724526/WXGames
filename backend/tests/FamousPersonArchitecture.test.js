@@ -41,7 +41,7 @@ test('famous person constants and shared helpers preserve deterministic generati
   assert.equal(Constants.MIN_SEEK_ERA, 3);
   assert.equal(Constants.MAX_CANDIDATES, 3);
   assert.equal(Constants.ARCHETYPES.some((item) => item.id === 'scout' && item.abilityArchetype === 'scout'), true);
-  assert.equal(Constants.EFFECTS.combo.label, '连击');
+  assert.equal(Constants.EFFECTS.secondHit.label, '二段伤害');
 
   const left = Shared.createSeedRandom('same-seed');
   const right = Shared.createSeedRandom('same-seed');
@@ -97,7 +97,7 @@ test('famous person generator preserves candidate and tutorial scout contracts',
   assert.equal(tutorialScout.abilityArchetype, 'scout');
   assert.equal(tutorialScout.source.type, 'tutorial');
 
-  assert.equal(Generator.makeSkillName([{ key: 'lifesteal' }, { key: 'combo' }]), '血刃连袭');
+  assert.equal(Generator.makeSkillName([{ key: 'lifesteal' }, { key: 'secondHit' }]), '血刃连袭');
   assert.equal(Generator.getArchetypePool('seek').some((item) => item.id === 'scout'), true);
 });
 

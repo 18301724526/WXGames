@@ -113,10 +113,7 @@ function createHost(overrides = {}) {
     ['water-river.png', { naturalWidth: 10, naturalHeight: 5, width: 10, height: 5 }],
     ['water-ocean.png', { naturalWidth: 12, naturalHeight: 6, width: 12, height: 6 }],
   ]);
-  return {
-    calls,
-    outputRef,
-    ctx: createCtx(calls),
+  const worldMapCacheState = {
     worldTileMaskCache: new Map(),
     worldTileMaskMetricsCache: new Map(),
     worldTileDryCompositeCache: new Map(),
@@ -124,6 +121,12 @@ function createHost(overrides = {}) {
     worldTileCompositeCtx: null,
     worldTileWaterCanvas: null,
     worldTileWaterCtx: null,
+  };
+  return {
+    calls,
+    outputRef,
+    ctx: createCtx(calls),
+    worldMapCacheState,
     getAsset(assetPath) { return images.get(assetPath) || null; },
     createTileWorkCanvas: createCanvasFactory(calls, sourceData, outputRef),
     getFallbackAssetMetrics(image) {
@@ -195,8 +198,8 @@ test('WorldTileWaterCanvasRenderer creates and caches template water masks', () 
   const second = renderer.getWorldTileTemplateMask('assets/art/tile-map/transition-template/water.png');
 
   assert.equal(first, second);
-  assert.equal(host.worldTileMaskCache.get('assets/art/tile-map/transition-template/water.png'), first);
-  assert.deepEqual(host.worldTileMaskMetricsCache.get('assets/art/tile-map/transition-template/water.png'), {
+  assert.equal(host.worldMapCacheState.worldTileMaskCache.get('assets/art/tile-map/transition-template/water.png'), first);
+  assert.deepEqual(host.worldMapCacheState.worldTileMaskMetricsCache.get('assets/art/tile-map/transition-template/water.png'), {
     x: 0,
     y: 0,
     width: 2,

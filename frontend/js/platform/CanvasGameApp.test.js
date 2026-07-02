@@ -6,23 +6,23 @@ const path = require('node:path');
 const CanvasGameApp = require('./CanvasGameApp');
 const BattleStore = require('../state/BattleStore');
 const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
-const CanvasGameAppCommands = require('./CanvasGameAppCommands');
-const CanvasGameAppFormationCommands = require('./CanvasGameAppFormationCommands');
-const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
 const CanvasGameShell = require('./CanvasGameShell');
 
-const APP_MODULES = [
+const RETIRED_APP_MODULES = [
   'CanvasGameAppStateSync',
   'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameAppRenderingRuntime',
   'CanvasGameAppBattleScene',
   'CanvasGameAppCommands',
-  'CanvasModalSnapshotAdapter',
   'CanvasGameAppGuideUi',
   'CanvasGameAppInputRouter',
 ];
 
-test('CanvasGameApp installs responsibility modules into the compatibility facade', () => {
+function makeAppHost(fields = {}) {
+  return Object.assign(Object.create(CanvasGameApp.prototype), fields);
+}
+
+test('CanvasGameApp owns retired responsibility methods directly', () => {
   const proto = CanvasGameApp.prototype;
   const expectedMethods = {
     stateSync: ['applyState', 'syncFromServer', 'start', 'stop'],
@@ -36,12 +36,12 @@ test('CanvasGameApp installs responsibility modules into the compatibility facad
 
   Object.entries(expectedMethods).forEach(([group, methods]) => {
     methods.forEach((method) => {
-      assert.equal(typeof proto[method], 'function', `${group}.${method} should be installed`);
+      assert.equal(typeof proto[method], 'function', `${group}.${method} should live on CanvasGameApp`);
     });
   });
 });
 
-test('html and minigame entries load CanvasGameApp modules before the facade', () => {
+test('html and minigame entries load CanvasGameApp without retired split modules', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');
 
@@ -50,42 +50,34 @@ test('html and minigame entries load CanvasGameApp modules before the facade', (
   assert.notEqual(facadeHtmlPosition, -1);
   assert.notEqual(facadeMinigamePosition, -1);
 
-  APP_MODULES.forEach((moduleName) => {
-    const htmlPosition = html.indexOf(`${moduleName}.js`);
-    const minigamePosition = minigame.indexOf(`require('../js/platform/${moduleName}')`);
-    assert.notEqual(htmlPosition, -1, `${moduleName}.js should be loaded by index.html`);
-    assert.notEqual(minigamePosition, -1, `${moduleName} should be required by minigame/game.js`);
-    assert.equal(htmlPosition < facadeHtmlPosition, true, `${moduleName}.js should load before CanvasGameApp.js`);
-    assert.equal(minigamePosition < facadeMinigamePosition, true, `${moduleName} should require before CanvasGameApp`);
+  RETIRED_APP_MODULES.forEach((moduleName) => {
+    assert.equal(html.includes(`${moduleName}.js`), false, `${moduleName}.js should not be loaded by index.html`);
+    assert.equal(
+      minigame.includes(`require('../js/platform/${moduleName}')`),
+      false,
+      `${moduleName} should not be required by minigame/game.js`,
+    );
   });
 
   const optimisticHtmlPosition = html.indexOf('js/state/optimistic/index.js');
   const optimisticMinigamePosition = minigame.indexOf("require('../js/state/optimistic/index')");
-  const syncHtmlPosition = html.indexOf('CanvasGameAppStateSync.js');
-  const syncMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppStateSync')");
-  const commandsHtmlPosition = html.indexOf('CanvasGameAppCommands.js');
-  const commandsMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppCommands')");
   assert.notEqual(optimisticHtmlPosition, -1, 'state/optimistic/index.js should be loaded by index.html');
   assert.notEqual(optimisticMinigamePosition, -1, 'state/optimistic/index should be required by minigame/game.js');
   assert.equal(
-    optimisticHtmlPosition < syncHtmlPosition && optimisticHtmlPosition < commandsHtmlPosition,
+    optimisticHtmlPosition < facadeHtmlPosition,
     true,
-    'state/optimistic/index.js should load before CanvasGameApp state/command modules',
+    'state/optimistic/index.js should load before CanvasGameApp',
   );
   assert.equal(
-    optimisticMinigamePosition < syncMinigamePosition && optimisticMinigamePosition < commandsMinigamePosition,
+    optimisticMinigamePosition < facadeMinigamePosition,
     true,
-    'state/optimistic/index should require before CanvasGameApp state/command modules',
+    'state/optimistic/index should require before CanvasGameApp',
   );
 });
 
 test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
-  class Host {}
-  CanvasGameAppCommands.install(Host);
-  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: { currentTab: 'buildings' },
     tutorial: { completed: false, currentStep: 22 },
     armyFormationEditor: {
@@ -149,12 +141,8 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
 });
 
 test('autoReplenishArmyFormation saves the visible draft soldier assignments without a separate confirm step', async () => {
-  class Host {}
-  CanvasGameAppCommands.install(Host);
-  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: {
       activeCityId: 'capital',
       military: {
@@ -248,12 +236,9 @@ test('CanvasGameApp wires authority state refreshes from the sync service', () =
   ]);
 });
 
-test('CanvasGameAppStateSync seeds reports on load and plays only newly arriving ones once', () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
+test('CanvasGameApp seeds reports on load and plays only newly arriving ones once', () => {
   const calls = [];
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: { currentTab: 'military' },
     tutorial: {},
     loading: { visible: false },
@@ -343,17 +328,28 @@ test('CanvasGameApp renders territory site selection through map-home city HUD',
 test('CanvasGameApp does not preserve canvas when runtime hit targets are preserved but map layer is invalid', () => {
   const calls = [];
   const runtime = {
-    baseHitTargets: [{ action: { type: 'enterCity' } }],
     hasBakedMapLayer: true,
-    hitTargets: [{ action: { type: 'enterCity' } }],
-    lastHitTargetSync: {
-      baseHitTargetCount: 1,
-      hitTargetCount: 1,
-      mapTargetCount: 0,
-      preserved: true,
-      sourceHitTargetCount: 0,
+    worldMapInputState: {
+      baseHitTargets: [{ action: { type: 'enterCity' } }],
+      hitTargets: [{ action: { type: 'enterCity' } }],
+      lastHitTargetSync: {
+        baseHitTargetCount: 1,
+        hitTargetCount: 1,
+        mapTargetCount: 0,
+        preserved: true,
+        sourceHitTargetCount: 0,
+      },
     },
     mapBakeDirty: true,
+    getBaseHitTargets() {
+      return this.worldMapInputState.baseHitTargets;
+    },
+    getHitTargets() {
+      return this.worldMapInputState.hitTargets;
+    },
+    getLastHitTargetSync() {
+      return this.worldMapInputState.lastHitTargetSync;
+    },
     isMapBakeDirty() {
       return true;
     },
@@ -402,11 +398,8 @@ test('CanvasGameApp does not preserve canvas when runtime hit targets are preser
 });
 
 test('CanvasGameApp rolls back optimistic world march after start rejection', async () => {
-  class Host {}
-  CanvasGameAppCommands.install(Host);
-  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
-  const host = new Host();
+  const host = makeAppHost();
   const initialExplorer = {
     missions: [],
     activeMission: null,
@@ -457,10 +450,6 @@ test('CanvasGameApp rolls back optimistic world march after start rejection', as
 });
 
 test('CanvasGameApp starts a selected idle world actor by id without a capital optimistic replacement', async () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
-  CanvasGameAppCommands.install(Host);
-  CanvasGameAppFormationCommands.install(Host);
   const calls = [];
   const parkedMission = {
     id: 'march-parked',
@@ -479,8 +468,7 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
     nextStepAt: null,
     completedAt: '2026-06-21T00:00:00.000Z',
   };
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: {
       activeCityId: 'capital',
       currentTab: 'military',
@@ -590,11 +578,8 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
 });
 
 test('CanvasGameApp applies world march verification pullback overlay from heartbeat', () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
   const calls = [];
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: { currentTab: 'military' },
     networkState: { status: 'online', failureCount: 0 },
     renderCanvasSurface(tab) {
@@ -622,10 +607,7 @@ test('CanvasGameApp applies world march verification pullback overlay from heart
 });
 
 test('CanvasGameApp clears quiet world march verification heartbeat without overlay', () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: { currentTab: 'military' },
     networkState: {
       status: 'reconnecting',

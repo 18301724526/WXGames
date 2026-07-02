@@ -14,6 +14,8 @@
   class WorldMapWaterLayerRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapRenderState = options.worldMapRenderState || this.host?.worldMapRenderState || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
       this.renderCtx = null;
     }
 
@@ -26,45 +28,43 @@
     }
 
     get worldTileFastDragActive() {
-      return Boolean(this.host?.worldTileFastDragActive);
+      return Boolean(this.worldMapCacheState?.worldTileFastDragActive);
     }
 
     get worldTileWaterLayerCache() {
-      return this.host?.worldTileWaterLayerCache || null;
+      return this.worldMapCacheState?.worldTileWaterLayerCache || null;
     }
 
     set worldTileWaterLayerCache(value) {
-      if (this.host) this.host.worldTileWaterLayerCache = value || null;
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileWaterLayerCache = value || null;
     }
 
     get worldTileWaterLayerCacheKey() {
-      return this.host?.worldTileWaterLayerCacheKey || '';
+      return this.worldMapCacheState?.worldTileWaterLayerCacheKey || '';
     }
 
     set worldTileWaterLayerCacheKey(value) {
-      if (this.host) this.host.worldTileWaterLayerCacheKey = value || '';
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileWaterLayerCacheKey = value || '';
     }
 
     get worldTileWaterFrameCaches() {
-      if (this.host && !this.host.worldTileWaterFrameCaches) this.host.worldTileWaterFrameCaches = new Map();
-      return this.host?.worldTileWaterFrameCaches || null;
+      return this.worldMapCacheState?.worldTileWaterFrameCaches || null;
     }
 
     get worldTileWaterChunkCaches() {
-      if (this.host && !this.host.worldTileWaterChunkCaches) this.host.worldTileWaterChunkCaches = new Map();
-      return this.host?.worldTileWaterChunkCaches || null;
+      return this.worldMapCacheState?.worldTileWaterChunkCaches || null;
     }
 
     get worldTileWaterChunkCacheTick() {
-      return Number(this.host?.worldTileWaterChunkCacheTick) || 0;
+      return Number(this.worldMapCacheState?.worldTileWaterChunkCacheTick) || 0;
     }
 
     set worldTileWaterChunkCacheTick(value) {
-      if (this.host) this.host.worldTileWaterChunkCacheTick = Number(value) || 0;
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileWaterChunkCacheTick = Number(value) || 0;
     }
 
     get worldTileWaterTimeOverride() {
-      return this.host?.worldTileWaterTimeOverride ?? null;
+      return this.worldMapRenderState?.worldTileWaterTimeOverride ?? null;
     }
 
     getNow() {

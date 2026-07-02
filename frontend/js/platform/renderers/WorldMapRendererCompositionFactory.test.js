@@ -22,7 +22,6 @@ test('WorldMapRendererCompositionFactory creates shared child renderers with one
     worldActorCanvasRenderer: createClass('actor', calls),
     worldMarchHudCanvasRenderer: createClass('march-hud', calls),
     worldMapActorHudRenderer: createClass('actor-hud', calls),
-    worldMapLayoutFacade: createClass('layout', calls),
     worldMapTileMapRenderer: createClass('tile-map', calls),
   };
   const renderer = { getNow() { return 123; } };
@@ -32,9 +31,9 @@ test('WorldMapRendererCompositionFactory creates shared child renderers with one
   assert.equal(composition.worldMarchHudRenderer.name, 'march-hud');
   assert.equal(composition.worldMapActorHudRenderer.options.worldActorRenderer, composition.worldActorRenderer);
   assert.equal(composition.worldMapActorHudRenderer.options.worldMarchHudRenderer, composition.worldMarchHudRenderer);
-  assert.equal(composition.worldMapLayoutFacade.name, 'layout');
   assert.equal(composition.worldMapTileMapRenderer.name, 'tile-map');
   assert.equal(calls.every((call) => call.options.host === composition.childHost), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(composition, 'worldMapLayoutFacade'), false);
 });
 
 test('WorldMapRendererCompositionFactory injects actor renderer into tile-map layer renderer', () => {
@@ -59,21 +58,26 @@ test('WorldMapRendererCompositionFactory injects actor renderer into tile-map la
   assert.notEqual(composition.worldMapTileMapRenderer.getExplicitWorldActorRenderer(), fallbackActorRenderer);
 });
 
-test('WorldMapRendererCompositionFactory preserves injected instances before class fallback', () => {
-  const injected = { id: 'layout-instance' };
+test('WorldMapRendererCompositionFactory does not create retired facade instances', () => {
   const composition = WorldMapRendererCompositionFactory.create({
     renderer: {},
-    options: { worldMapLayoutFacade: injected },
+    options: {
+      worldMapLayoutFacade: {
+        getWorldTileScreenCenter() {
+          throw new Error('retired facade injection must not run');
+        },
+      },
+    },
     dependencies: {
       worldMapLayoutFacade: class {
         constructor() {
-          throw new Error('injected instance should win');
+          throw new Error('retired facade class must not be constructed');
         }
       },
     },
   });
 
-  assert.equal(composition.worldMapLayoutFacade, injected);
+  assert.equal(Object.prototype.hasOwnProperty.call(composition, 'worldMapLayoutFacade'), false);
 });
 
 test('WorldMapRendererCompositionFactory child host is the renderer owner, not a renderer-host bridge', () => {

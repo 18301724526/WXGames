@@ -29,23 +29,19 @@ function getMethodBody(source, methodName) {
   assert.fail(`${methodName} body should close`);
 }
 
-test('TutorialGuidePhaseHighlights stays a thin flow-registry installer', () => {
-  const source = readSource('TutorialGuidePhaseHighlights.js');
+test('TutorialGuideController owns retired highlight/coordinator responsibilities directly', () => {
+  const source = readSource('TutorialGuideController.js');
 
-  assert.ok(
-    lineCount(source) <= 40,
-    'phase highlight installer should not grow tutorial flow logic',
-  );
+  assert.equal(fs.existsSync(path.join(tutorialRoot, 'TutorialGuidePhaseHighlights.js')), false);
+  assert.equal(fs.existsSync(path.join(tutorialRoot, 'TutorialGuideUiStateCoordinator.js')), false);
+  assert.match(source, /refreshCurrentHighlight\(/);
+  assert.match(source, /ensureHouseGuideVisible\(/);
+  assert.match(source, /ensureCityPeopleGuideVisible\(/);
   assert.match(source, /TutorialGuideFlowRegistry/);
-  assert.doesNotMatch(
-    source,
-    /isFirstEraGuideActive|isEra2GuideActive|isScoutFormationGuideActive/,
+  assert.ok(
+    lineCount(source) > 40,
+    'tutorial controller now owns the former installer responsibilities',
   );
-  assert.doesNotMatch(
-    source,
-    /isScoutExploreGuideActive|isFirstCityGuideActive|isPostNamingSystemGuideActive/,
-  );
-  assert.doesNotMatch(source, /showBuildingGuide|showSoftGuide|claimTaskReward|openFamousPersons/);
 });
 
 test('TutorialGuideController legacy event methods stay handleEvent adapters', () => {

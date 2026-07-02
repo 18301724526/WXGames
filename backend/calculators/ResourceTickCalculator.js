@@ -119,7 +119,7 @@ function calculatePopulationCapacity(gameState = {}, effects = gameState.buildin
     eraCap,
     housingCap,
     effectiveCap,
-    limitingSource: active ? limitingSource : 'legacy',
+    limitingSource: active ? limitingSource : 'splitCapacityInactive',
   };
 }
 

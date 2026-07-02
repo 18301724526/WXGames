@@ -11,7 +11,18 @@
     return null;
   })();
 
-  const { closeBlockingPanelSnapshot } = global.CanvasBlockingPanelSnapshotCalls || (typeof require !== 'undefined' ? require('./CanvasBlockingPanelSnapshotCalls') : {});
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   var StateWriter = global.StateWriter;
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
@@ -121,7 +132,7 @@
             },
           }), { source: 'GameCommandService:research' });
         }
-        closeBlockingPanelSnapshot(host.canvasShell || host, 'techDetailOpen');
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(host.canvasShell || host, 'techDetailOpen');
         host.showFloatingText?.(result?.message || t('command.research.completed', {}));
         host.log?.(result?.message || t('command.research.completed', {}));
         return true;

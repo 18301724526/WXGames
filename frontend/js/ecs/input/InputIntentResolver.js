@@ -41,8 +41,8 @@ function routeForSnapshot(snapshot = {}, kind = '') {
   return INPUT_ROUTES.CITY;
 }
 
-// Resolve a physical intent against a mode snapshot. Returns null when no
-// snapshot is available so callers fall back to their legacy mode branches.
+// Resolve a physical intent against a mode snapshot. Returns null when the
+// caller has not provided the current mode facts.
 function resolveInputIntent(physicalIntent = {}, snapshot = null) {
   if (!snapshot) return null;
   const kind = String(physicalIntent.kind || '');

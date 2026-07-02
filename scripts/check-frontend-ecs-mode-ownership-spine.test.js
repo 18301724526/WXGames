@@ -56,7 +56,9 @@ test('mode ownership spine guard allows approved owner and runtime paths', () =>
   assert.equal(isApprovedGrowthPath('frontend/js/state/BattleStore.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModeOwnershipRuntime.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasModalSnapshotAdapter.js'), true);
-  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameAppBattleScene.js'), true);
+  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameApp.js'), true);
+  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameShell.js'), true);
+  assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameAppBattleScene.js'), false);
   assert.equal(isApprovedGrowthPath('frontend/js/ecs/registry/EcsBoundaryManifest.js'), true);
   assert.equal(isApprovedGrowthPath('frontend/js/platform/CanvasGameShellInputRouter.js'), false);
 });
@@ -78,7 +80,7 @@ test('mode ownership spine guard blocks legacy mode finding growth by file and s
     writeFile(
       repoRoot,
       'frontend/js/platform/LegacyRouter.js',
-      ['if (this.activeTab === "city") {}', 'if (this.activeTab === "tech") {}'].join('\n'),
+      ['if (host?.activeTab === "city") {}', 'if (host?.activeTab === "tech") {}'].join('\n'),
     );
     writeFile(repoRoot, 'frontend/js/ecs/mode/ModeResolver.js', 'const key = facts.activeTab;\n');
     writeFile(
@@ -96,6 +98,35 @@ test('mode ownership spine guard blocks legacy mode finding growth by file and s
     assert.equal(report.violations[0].symbol, 'activeTab');
     assert.equal(report.violations[0].currentCount, 2);
     assert.equal(report.violations[0].baselineCount, 1);
+  }));
+
+test('mode ownership spine guard does not credit retired handler baseline to a new owner', () =>
+  withTempRepo((repoRoot) => {
+    const baselinePath = 'baseline.md';
+    writeFile(
+      repoRoot,
+      baselinePath,
+      [
+        '## Findings',
+        '',
+        '| Symbol | File | Line | Role | Access | Evidence | Note |',
+        '| --- | --- | ---: | --- | --- | --- | --- |',
+        '| `activeTab` | frontend/js/platform/RetiredRouter.js | 1 | adapter | read | `old` | old |',
+      ].join('\n'),
+    );
+    writeFile(
+      repoRoot,
+      'frontend/js/platform/NewRouter.js',
+      'if (this.activeTab === "military") {}\n',
+    );
+
+    const report = scanModeOwnershipSpine({ repoRoot, baselinePath });
+
+    assert.equal(report.summary.totalViolations, 1);
+    assert.equal(report.violations[0].file, 'frontend/js/platform/NewRouter.js');
+    assert.equal(report.violations[0].symbol, 'activeTab');
+    assert.equal(report.violations[0].baselineCount, 0);
+    assert.equal(report.violations[0].currentCount, 1);
   }));
 
 test('mode ownership spine guard accepts unchanged legacy baseline', () =>

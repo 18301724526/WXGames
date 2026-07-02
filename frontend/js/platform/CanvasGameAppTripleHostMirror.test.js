@@ -12,11 +12,11 @@ const assert = require('node:assert/strict');
 //   - "READ CONTRACT": behavior that MUST hold regardless of the collapse.
 //   - "MIRROR BASELINE": a mirror NOT yet collapsed — pins current behavior so the
 //     eventual collapse can be proven behavior-preserving (expected to change then).
-// Part 1 (setExplorer) is collapsed. Part 2 (CanvasGameAppStateSync canvasShell
-// networkState mirror) is still a pre-collapse baseline.
+// Part 1 (setExplorer) is collapsed. Part 2 now verifies the live CanvasGameApp
+// connection-state owner path directly; the retired StateSync mixin stays deleted.
 
 const WorldMarchOptimisticState = require('../state/optimistic/index');
-const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
+const CanvasGameApp = require('./CanvasGameApp');
 const CanvasGameShell = require('./CanvasGameShell');
 
 function makeSeedState() {
@@ -125,17 +125,15 @@ test('Axis A: with lastGame present, setExplorer writes only the lastGame owner 
   assert.equal(host.canvasShell.state.sentinel, 'stale-shell');
 });
 
-// --- Part 2: CanvasGameAppStateSync sibling networkState mirror -------------
+// --- Part 2: CanvasGameApp connection-state owner path -----------------------
 
-test('Axis A baseline: applyConnectionState mirrors the new networkState onto canvasShell.setNetworkState', () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
+test('Axis A: applyConnectionState pushes networkState through the mounted shell API', () => {
   const pushed = [];
-  const host = new Host();
-  Object.assign(host, {
-    state: { currentTab: 'military' },
-    networkState: { status: 'online', failureCount: 0 },
-    renderCanvasSurface() {},
+  const host = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: { currentTab: 'military' },
     canvasShell: {
       setNetworkState(networkState) {
         pushed.push(networkState);
@@ -150,23 +148,23 @@ test('Axis A baseline: applyConnectionState mirrors the new networkState onto ca
   assert.equal(host.networkState.failureCount, 2);
   assert.equal(result, host.networkState);
 
-  // MIRROR BASELINE: the SAME networkState object is pushed into canvasShell.
+  // Shell is notified, but shell.state is not a second game-state owner.
   assert.equal(pushed.length, 1);
   assert.equal(pushed[0], host.networkState);
+  assert.equal(host.canvasShell.state, undefined);
 });
 
-test('Axis A baseline: applyConnectionState without a canvasShell mirror falls back to a render', () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
+test('Axis A: applyConnectionState without a canvasShell API falls back to a render', () => {
   const renders = [];
-  const host = new Host();
-  Object.assign(host, {
-    state: { currentTab: 'military' },
-    networkState: { status: 'online', failureCount: 0 },
-    renderCanvasSurface(tab) {
-      renders.push(tab);
-    },
+  const host = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    initialState: { currentTab: 'military' },
   });
+  host.renderCanvasSurface = (tab) => {
+    renders.push(tab);
+  };
 
   host.applyConnectionState({ status: 'reconnecting', failureCount: 1 });
 

@@ -11,6 +11,7 @@ const {
   findBridgeCandidatesInText,
   isProductionFrontendSource,
   parseFormat,
+  renderSummary,
   scanBridgeShrink,
 } = require('./report-frontend-ecs-bridge-shrink');
 
@@ -97,6 +98,20 @@ test('bridge shrink report can scan a temporary repo baseline', () => {
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
+});
+
+test('bridge shrink report is a blocking gate', () => {
+  const report = {
+    sourceRoot: 'frontend/js',
+    filesScanned: 1,
+    summary: {
+      totalCandidates: 1,
+      totalBranches: 0,
+      bySurface: { 'direct prototype assignment': 1 },
+    },
+  };
+  assert.match(renderSummary(report), /blocking gate/);
+  assert.match(renderSummary(report), /FAILED/);
 });
 
 test('bridge shrink report rejects unknown CLI flags', () => {

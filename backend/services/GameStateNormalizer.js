@@ -67,8 +67,8 @@ function createInitialGameState(playerId, options = {}) {
   };
   // Seed the capital city slot so cities[] is the single source of truth from creation.
   // Even an un-normalized initial state that is persisted directly round-trips its
-  // resources/buildings/population/military through cities[] (legacy top-level columns are
-  // no longer persisted). The top-level fields above remain on the in-memory object only.
+  // resources/buildings/population/military through cities[]. The top-level fields
+  // above remain on the in-memory object only.
   state.cities = {
     [CityService.CAPITAL_CITY_ID]: CityService.createCityState({
       id: CityService.CAPITAL_CITY_ID,
@@ -97,7 +97,7 @@ function normalizeStateStructure(rawState) {
     stone: state.resources?.stone || 0,
     metal: state.resources?.metal ?? state.resources?.iron ?? 0,
   };
-  state.buildings = BuildingState.normalizeLegacyBuildingState(state.buildings);
+  state.buildings = BuildingState.normalizeBuildingState(state.buildings);
   state.population = {
     total: state.population?.total || 3,
     max: state.population?.max || state.population?.maxPop || 3,

@@ -4,7 +4,6 @@ const {
   EFFECT_LABELS,
   FIRST_BATCH_BATTLE_EFFECTS,
   GENERATOR_VERSION,
-  LEGACY_EFFECT_MIGRATIONS,
   QUALITY_BUDGETS,
   QUALITY_LABELS,
   SCOUT_EFFECTS,
@@ -84,18 +83,13 @@ function normalizeGeneratorInput(raw = {}, fallback = {}) {
 
 function normalizeEffect(raw = {}) {
   if (!raw || typeof raw !== 'object') return null;
-  const legacyKey = raw.key;
-  const key = Object.prototype.hasOwnProperty.call(LEGACY_EFFECT_MIGRATIONS, legacyKey)
-    ? LEGACY_EFFECT_MIGRATIONS[legacyKey]
-    : legacyKey;
+  const key = raw.key;
   if (!key || !EFFECT_LABELS[key]) return null;
-  const migratedFrom = key !== legacyKey ? legacyKey : raw.migratedFrom;
   if (key === 'secondHit') {
     const multiplier = Number(raw.multiplier ?? raw.value ?? raw.chance);
     return {
       key,
       multiplier: Number.isFinite(multiplier) ? round2(Math.max(0.18, Math.min(0.36, multiplier))) : 0.3,
-      ...(migratedFrom ? { migratedFrom } : {}),
     };
   }
   if (key === 'firstStrike') {
@@ -103,7 +97,6 @@ function normalizeEffect(raw = {}) {
     return {
       key,
       value: Number.isFinite(value) ? round2(Math.max(0.16, Math.min(0.32, value))) : 0.22,
-      ...(migratedFrom ? { migratedFrom } : {}),
     };
   }
   if (key === 'attributeBonus') {
@@ -112,7 +105,6 @@ function normalizeEffect(raw = {}) {
       key,
       attribute: raw.attribute || raw.keyAttribute || 'command',
       value: Number.isFinite(value) && Math.abs(value) >= 1 ? Math.round(value) : 5,
-      ...(migratedFrom ? { migratedFrom } : {}),
     };
   }
   if (key === 'armorBreak') {
@@ -122,7 +114,6 @@ function normalizeEffect(raw = {}) {
       value: Number.isFinite(value) ? round2(Math.max(0.06, Math.min(0.3, value))) : 0.12,
       turns: Math.max(1, Math.floor(Number(raw.turns ?? raw.duration) || 2)),
       maxStacks: Math.max(1, Math.min(3, Math.floor(Number(raw.maxStacks) || 3))),
-      ...(migratedFrom ? { migratedFrom } : {}),
     };
   }
   if (key === 'burn' || key === 'poison') {
@@ -132,13 +123,11 @@ function normalizeEffect(raw = {}) {
       value: Number.isFinite(value) ? round2(Math.max(0.06, Math.min(0.3, value))) : 0.12,
       turns: Math.max(1, Math.floor(Number(raw.turns ?? raw.duration) || 2)),
       maxStacks: Math.max(1, Math.min(3, Math.floor(Number(raw.maxStacks) || 3))),
-      ...(migratedFrom ? { migratedFrom } : {}),
     };
   }
   return {
     ...raw,
     key,
-    ...(migratedFrom ? { migratedFrom } : {}),
   };
 }
 

@@ -70,16 +70,16 @@
     return Boolean(ctx);
   }
 
-  function withHostContext(renderer = {}, ctx = null, callback = null) {
+  function withDialogueContext(renderer = {}, ctx = null, callback = null) {
     if (!ctx || typeof callback !== 'function') return undefined;
-    const host = renderer.host || null;
-    if (!host) return callback();
-    const previousCtx = host.ctx;
-    host.ctx = ctx;
+    const hadOwnCtx = Object.prototype.hasOwnProperty.call(renderer, 'dialogueCtx');
+    const previousCtx = renderer.dialogueCtx;
+    renderer.dialogueCtx = ctx;
     try {
       return callback();
     } finally {
-      host.ctx = previousCtx;
+      if (hadOwnCtx) renderer.dialogueCtx = previousCtx;
+      else delete renderer.dialogueCtx;
     }
   }
 
@@ -87,7 +87,7 @@
     TUTORIAL_DIALOGUE_LAYER_NAME,
     begin,
     clear,
-    withHostContext,
+    withDialogueContext,
   };
 
   global.TutorialDialogueLayer = api;

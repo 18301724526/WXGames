@@ -47,18 +47,7 @@ function createCanvasFactory(calls = [], imageData = null) {
 function createHost(overrides = {}) {
   const calls = [];
   const images = new Map();
-  const host = {
-    calls,
-    canvas: {
-      ownerDocument: {
-        createElement() {
-          return createCanvasFactory(calls)();
-        },
-      },
-    },
-    ctx: createCtx(calls),
-    assetCache: new Map(),
-    assetMetricsCache: new Map(),
+  const worldMapCacheState = {
     worldTileMaskCache: new Map(),
     worldTileMaskMetricsCache: new Map(),
     worldTileDryCompositeCache: new Map(),
@@ -75,6 +64,20 @@ function createHost(overrides = {}) {
     worldTileVisibleEntriesCache: { entries: [] },
     worldTileLocalEntriesCache: { entries: [] },
     assetsChangedHandler: null,
+  };
+  const host = {
+    calls,
+    canvas: {
+      ownerDocument: {
+        createElement() {
+          return createCanvasFactory(calls)();
+        },
+      },
+    },
+    ctx: createCtx(calls),
+    worldMapCacheState,
+    assetCache: new Map(),
+    assetMetricsCache: new Map(),
     createImage(assetPath) {
       const image = {
         naturalWidth: 2,
@@ -95,15 +98,19 @@ function createHost(overrides = {}) {
     handleAssetsChanged() { calls.push(['handleAssetsChanged']); },
     invalidateWorldTileViewCache() {
       calls.push(['invalidateWorldTileViewCache']);
-      host.worldTileViewCache = null;
+      host.worldMapCacheState.worldTileViewCache = null;
     },
     getWorldTileTemplateMask(assetPath) {
-      if (!this.worldTileMaskCache.has(assetPath)) this.worldTileMaskCache.set(assetPath, { assetPath });
-      return this.worldTileMaskCache.get(assetPath);
+      if (!this.worldMapCacheState.worldTileMaskCache.has(assetPath)) {
+        this.worldMapCacheState.worldTileMaskCache.set(assetPath, { assetPath });
+      }
+      return this.worldMapCacheState.worldTileMaskCache.get(assetPath);
     },
     getWorldTileDryTemplateCanvas(assetPath) {
-      if (!this.worldTileDryCompositeCache.has(assetPath)) this.worldTileDryCompositeCache.set(assetPath, { assetPath });
-      return this.worldTileDryCompositeCache.get(assetPath);
+      if (!this.worldMapCacheState.worldTileDryCompositeCache.has(assetPath)) {
+        this.worldMapCacheState.worldTileDryCompositeCache.set(assetPath, { assetPath });
+      }
+      return this.worldMapCacheState.worldTileDryCompositeCache.get(assetPath);
     },
     constructor: {
       getAssetRequestPath(assetPath) {
@@ -154,8 +161,8 @@ test('CanvasAssetRenderer preserves preload progress, cached states, and request
   assert.deepEqual(result, { total: 3, completed: 3, loaded: 2, failed: 1, percentage: 100 });
   assert.equal(progress[0].status, 'start');
   assert.equal(progress.at(-1).percentage, 100);
-  assert.equal(host.worldTileStaticCache, null);
-  assert.equal(host.worldTileViewCache, null);
+  assert.equal(host.worldMapCacheState.worldTileStaticCache, null);
+  assert.equal(host.worldMapCacheState.worldTileViewCache, null);
   assert.equal(timers.length, 0);
 });
 
@@ -252,8 +259,8 @@ test('CanvasAssetRenderer prewarms world tile caches during loading with stage p
   assert.equal(result.percentage, 100);
   assert.equal(result.candidateTotal, 2);
   assert.equal(host.assetMetricsCache.has(tilePath), true);
-  assert.equal(host.worldTileMaskCache.has(waterPath), true);
-  assert.equal(host.worldTileDryCompositeCache.has(waterPath), true);
+  assert.equal(host.worldMapCacheState.worldTileMaskCache.has(waterPath), true);
+  assert.equal(host.worldMapCacheState.worldTileDryCompositeCache.has(waterPath), true);
   assert.deepEqual(progress.map((event) => event.status), ['start', 'prewarm', 'prewarm', 'complete']);
   assert.equal(progress.some((event) => event.message === '\u6b63\u5728\u51c6\u5907\u6c34\u9762\u6a21\u677f'), true);
   assert.equal(host.calls.some((call) => call[0] === 'setTimeout' && call[1] === 3), true);
@@ -280,10 +287,10 @@ test('CanvasAssetRenderer preserves cache invalidation and snapshot readiness', 
   assert.equal(renderer.hasPreparedWorldTileSnapshotCache(), true);
   renderer.invalidateWorldTileCaches();
 
-  assert.equal(host.worldTileStaticCache, null);
-  assert.equal(host.worldTileStaticChunkCaches.size, 0);
-  assert.equal(host.worldTileWaterFrameCaches.size, 0);
-  assert.equal(host.worldTileViewCache, null);
+  assert.equal(host.worldMapCacheState.worldTileStaticCache, null);
+  assert.equal(host.worldMapCacheState.worldTileStaticChunkCaches.size, 0);
+  assert.equal(host.worldMapCacheState.worldTileWaterFrameCaches.size, 0);
+  assert.equal(host.worldMapCacheState.worldTileViewCache, null);
 });
 
 test('CanvasAssetRenderer preserves image drawing alpha and cover crop contracts', () => {

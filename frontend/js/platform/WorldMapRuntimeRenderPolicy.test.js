@@ -155,10 +155,6 @@ test('WorldMapRuntimeRenderPolicy builds trace payloads without renderer state',
   assert.equal(beginTrace.data.activeMission.status, 'ready');
 
   assert.deepEqual(Policy.createCannotRenderState(), {
-    hitTargets: [],
-    baseHitTargets: [],
-    lastHitTargetSync: null,
-    hitTargetSyncSequence: 0,
     hasBakedMapLayer: false,
     mapBakeDirty: true,
     lastMapDataSignature: '',
@@ -172,18 +168,37 @@ test('WorldMapRuntimeRenderPolicy builds trace payloads without renderer state',
 
 test('WorldMapRuntimeRenderPolicy separates preserved hit targets from visual layer validity', () => {
   const preservedRuntime = {
-    baseHitTargets: [{ action: { type: 'enterCity' } }],
     hasBakedMapLayer: true,
-    hitTargets: [{ action: { type: 'enterCity' } }],
-    lastHitTargetSync: {
+    mapBakeDirty: true,
+    worldMapInputState: {
+      baseHitTargets: [{ action: { type: 'enterCity' } }],
+      hitTargets: [{ action: { type: 'enterCity' } }],
+      lastHitTargetSync: {
+        baseHitTargetCount: 1,
+        hitTargetCount: 1,
+        mapTargetCount: 0,
+        preserved: true,
+        sourceHitTargetCount: 0,
+      },
+    },
+    getBaseHitTargets() {
+      return this.worldMapInputState.baseHitTargets;
+    },
+    getHitTargets() {
+      return this.worldMapInputState.hitTargets;
+    },
+    getLastHitTargetSync() {
+      return this.worldMapInputState.lastHitTargetSync;
+    },
+  };
+
+  assert.deepEqual(preservedRuntime.getLastHitTargetSync(), {
       baseHitTargetCount: 1,
       hitTargetCount: 1,
       mapTargetCount: 0,
       preserved: true,
       sourceHitTargetCount: 0,
-    },
-    mapBakeDirty: true,
-  };
+  });
 
   const invalidFrame = Policy.createWorldMapFrameState(preservedRuntime);
   assert.equal(invalidFrame.hitTargetsPreserved, true);

@@ -1,7 +1,7 @@
 (function (global) {
-  var WorldMapRuntimePolicy = global.CanvasGameShellWorldMapRuntimePolicy;
+  var WorldMapRuntimePolicy = global.WorldMapRuntimePolicy;
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimePolicy) {
-    WorldMapRuntimePolicy = require('./CanvasGameShellWorldMapRuntimePolicy');
+    WorldMapRuntimePolicy = require('./WorldMapRuntimePolicy');
   }
 
   function now(host = {}) {

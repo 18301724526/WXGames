@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 
 global.EcsModeRuntime = require('../ecs/mode/EcsModeRuntimeEntry');
 const ModalStore = require('../state/ModalStore');
-const CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
 const CanvasModalSnapshotAdapter = require('./CanvasModalSnapshotAdapter');
+const { CanvasModalOwnerTestHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 // Modal truth is a single global ModalStore (no per-host owner); reset it before each
 // test so presence from a prior test does not leak across hosts.
@@ -13,9 +13,7 @@ test.beforeEach(() => {
 });
 
 test('CanvasModalSnapshotAdapter reads naming from renderer snapshot modal owner', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   host.openNamingSnapshot({
@@ -44,9 +42,7 @@ test('CanvasModalSnapshotAdapter reads naming from renderer snapshot modal owner
 });
 
 test('CanvasModalSnapshotAdapter routes shell updates to the canonical naming owner host', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const game = new Host();
   const shell = new Host();
   game.canvasShell = shell;
@@ -68,9 +64,7 @@ test('CanvasModalSnapshotAdapter routes shell updates to the canonical naming ow
 });
 
 test('CanvasModalSnapshotAdapter reads and updates confirmDialog through modal snapshot', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const shell = new Host();
 
   shell.openConfirmDialogSnapshot(
@@ -98,9 +92,7 @@ test('CanvasModalSnapshotAdapter reads and updates confirmDialog through modal s
 });
 
 test('CanvasModalSnapshotAdapter resolves confirmDialog callbacks on the open owner host', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const game = new Host();
   const shell = new Host();
   game.canvasShell = shell;
@@ -120,9 +112,7 @@ test('CanvasModalSnapshotAdapter resolves confirmDialog callbacks on the open ow
 });
 
 test('CanvasModalSnapshotAdapter reads and updates rewardReveal through modal snapshot', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const shell = new Host();
 
   shell.openRewardRevealSnapshot({ title: 'Wood', resources: { gold: 5 }, createdAt: 1 });
@@ -147,9 +137,7 @@ test('CanvasModalSnapshotAdapter reads and updates rewardReveal through modal sn
 });
 
 test('CanvasModalSnapshotAdapter opens and closes a boolean blocking panel as a modal subtype', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
@@ -168,9 +156,7 @@ test('CanvasModalSnapshotAdapter opens and closes a boolean blocking panel as a 
 });
 
 test('CanvasModalSnapshotAdapter routes a falsy openBlockingPanelSnapshot to CLOSE (Q6 toggle-via-open)', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   // Open via truthy, then "open" with a falsy value must toggle it closed.
@@ -185,9 +171,7 @@ test('CanvasModalSnapshotAdapter routes a falsy openBlockingPanelSnapshot to CLO
 });
 
 test('CanvasModalSnapshotAdapter carries the activeCommandPanel string enum in the payload', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   assert.equal(host.getCommandPanelValue(), '');
@@ -208,9 +192,7 @@ test('CanvasModalSnapshotAdapter carries the activeCommandPanel string enum in t
 });
 
 test('CanvasModalSnapshotAdapter closeBlockingPanelsSnapshot keeps the excepted panel open', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   host.openBlockingPanelSnapshot('showSettings', true);
@@ -234,9 +216,7 @@ test('CanvasModalSnapshotAdapter closeBlockingPanelsSnapshot keeps the excepted 
 });
 
 test('CanvasModalSnapshotAdapter buildBlockingPanelFacts returns the flat-12 panel facts', () => {
-  class Host {}
-  CanvasModeOwnershipRuntime.install(Host);
-  CanvasModalSnapshotAdapter.install(Host);
+  class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
   // All-closed baseline: 11 booleans false + activeCommandPanel ''.

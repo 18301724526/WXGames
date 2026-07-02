@@ -74,6 +74,7 @@
   function readWorldMapBake(input = {}) {
     const runtime = input.worldMapRuntime || input.mapRuntime || {};
     const hasRuntime = Boolean(input.worldMapRuntime || input.mapRuntime);
+    const hitTargets = typeof runtime.getHitTargets === 'function' ? runtime.getHitTargets() : [];
     const hasBakedMapLayer = Boolean(runtime.hasBakedMapLayer);
     const mapBakeDirty = Boolean(runtime.mapBakeDirty);
     const status = !hasRuntime
@@ -97,7 +98,7 @@
         hasBakedMapLayer,
         mapBakeDirty,
         signatureLength: String(runtime.lastMapDataSignature || '').length,
-        hitTargetCount: Array.isArray(runtime.hitTargets) ? runtime.hitTargets.length : 0,
+        hitTargetCount: Array.isArray(hitTargets) ? hitTargets.length : 0,
         cameraX: toNumber(runtime.camera?.x, 0),
         cameraY: toNumber(runtime.camera?.y, 0),
         bakedCameraX: toNumber(runtime.bakedCamera?.x, 0),
