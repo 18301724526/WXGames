@@ -150,6 +150,49 @@ function extractStylesheets(html) {
   return links;
 }
 
+// Classic scripts share ONE global scope in the browser: a top-level const/let/class
+// declared in two files throws "Identifier 'x' has already been declared" and kills
+// the second script entirely -- invisible to node tests (per-module scopes). Scripts
+// that open with an IIFE have no top-level bindings and are exempt.
+function isIifeWrapped(source = '') {
+  const stripped = String(source)
+    .replace(/^﻿/, '')
+    .replace(/^(?:\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/))*\s*/, '')
+    .replace(/^['"]use strict['"];\s*/, '');
+  return /^[;!]?\(/.test(stripped);
+}
+
+function collectTopLevelBindings(source = '') {
+  const bindings = [];
+  const regex = /^(?:const|let|class)\s+([A-Za-z_$][\w$]*)/gm;
+  let match = regex.exec(source);
+  while (match) {
+    bindings.push(match[1]);
+    match = regex.exec(source);
+  }
+  return bindings;
+}
+
+function checkGlobalBindingCollisions(scriptPaths, options = {}) {
+  const owners = new Map();
+  const collisions = [];
+  for (const scriptPath of scriptPaths) {
+    const resolved = resolveLocalAssetPath(scriptPath, options);
+    if (!fs.existsSync(resolved)) continue;
+    const source = fs.readFileSync(resolved, 'utf8');
+    if (isIifeWrapped(source)) continue;
+    for (const name of collectTopLevelBindings(source)) {
+      const owner = owners.get(name);
+      if (owner && owner !== scriptPath) {
+        collisions.push(`'${name}' declared at top level by both ${owner} and ${scriptPath}`);
+      } else {
+        owners.set(name, scriptPath);
+      }
+    }
+  }
+  return collisions;
+}
+
 function fail(message, detail = []) {
   const lines = [message, ...detail.map((item) => `- ${item}`)];
   throw new Error(lines.join('\n'));
@@ -184,6 +227,13 @@ function checkManifest(options = {}) {
   }
 
   if (duplicates.length > 0) fail('duplicate local asset paths', duplicates);
+  const bindingCollisions = checkGlobalBindingCollisions(
+    localScripts.map(stripQuery),
+    { frontendDir, repoRoot },
+  );
+  if (bindingCollisions.length > 0) {
+    fail('top-level binding collisions between classic scripts (breaks the page at load)', bindingCollisions);
+  }
   if (missingVersion.length > 0) fail('local assets missing cache-busting ?v=', missingVersion);
   if (mismatchedVersion.length > 0) fail('local assets do not use required cache-busting version', mismatchedVersion);
   if (missingFiles.length > 0) fail('local asset files missing on disk', missingFiles);
@@ -234,4 +284,7 @@ module.exports = {
   getQueryVersion,
   resolveLocalAssetPath,
   checkManifest,
+  isIifeWrapped,
+  collectTopLevelBindings,
+  checkGlobalBindingCollisions,
 };
