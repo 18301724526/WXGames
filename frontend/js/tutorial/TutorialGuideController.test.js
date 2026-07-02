@@ -579,14 +579,10 @@ test('TutorialGuideController guides era three, scout famous card, and army form
     category: 'main',
   });
 
-  // Buildings tab-open rule at barracksSuppliesClaimed.
+  // House-style barracks guide: the claim leaves the player on the world-map
+  // home, so the build rule fires DIRECTLY at barracksSuppliesClaimed
+  // (showBuildingGuide force-opens city management on the buildings tab).
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.barracksSuppliesClaimed });
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'buildings' });
-  assert.equal(game.isBlockingPanelSnapshotOpen('showTaskCenter'), false);
-
-  // Barracks build highlight (window barracksSuppliesClaimed..barracksBuilt).
-  game.openBlockingPanelSnapshot('activeCommandPanel', 'buildings');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'barracks' });
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.buildingsTabOpenedForBarracks });

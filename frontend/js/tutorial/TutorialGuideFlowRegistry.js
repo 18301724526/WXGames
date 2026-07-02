@@ -512,16 +512,16 @@
         openMessage: () => t('tutorial.highlight.openBarracksTask'),
         claimMessage: () => t('tutorial.highlight.claimBarracksSupplies'),
       }),
-      makeTabOpenRule({
-        id: 'barracks-open-buildings',
-        steps: [steps.barracksSuppliesClaimed],
-        panel: 'buildings',
-        message: () => t('tutorial.highlight.openBuildingsForBarracks'),
-      }),
+      // house-style: showBuildingGuide force-opens city management on the
+      // buildings tab from ANY surface (the claim leaves the player on the
+      // world-map home, where a command-panel highlight has no target), so
+      // the build highlight fires directly; buildingsTabOpenedForBarracks is
+      // advanced by the commandPanelOpened event when the player routes via
+      // the panel, and the build event jumps past it otherwise (monotonic).
       makeBuildRule({
         id: 'barracks-build',
         matches: any(
-          all(stepIs(steps.barracksSuppliesClaimed), isCommandPanelOpen('buildings')),
+          stepIs(steps.barracksSuppliesClaimed),
           stepIs(steps.buildingsTabOpenedForBarracks),
         ),
         buildingId: 'barracks',
