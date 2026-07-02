@@ -1462,14 +1462,9 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return true;
         }
 
-    getArmyFormation(cityId, slot) {
-          const state = this.lastGame?.state || {};
-          const targetCityId = cityId || state.activeCityId || state.cityState?.activeCityId || 'capital';
-          const targetSlot = Math.max(1, Math.min(3, Number(slot) || 1));
-          const formations = state.military?.formations || {};
-          const cityFormations = Array.isArray(formations[targetCityId]) ? formations[targetCityId] : [];
-          return cityFormations.find((item) => Number(item?.slot) === targetSlot) || cityFormations[targetSlot - 1] || null;
-        }
+    // getArmyFormation was a divergent copy that read this.lastGame.state; it now lives in
+    // ArmyFormationQueries (via host.getState) and the shell inherits CanvasGameApp's
+    // delegator -- one implementation for both. See slice 5 of the re-decomposition.
 
     setArmyFormationEditor(editor = {}, options = {}) {
           this.armyFormationEditor = {

@@ -132,6 +132,7 @@ require('../js/platform/GameCommandService');
 require('../js/platform/CanvasGameAppRenderPolicy');
 require('../js/platform/CanvasGameAppRenderScheduler');
 require('../js/platform/WorldClockTimingModule');
+require('../js/platform/ArmyFormationQueries');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();

@@ -111,6 +111,10 @@
   if (typeof module !== 'undefined' && module.exports && !WorldClockTimingModule) {
     WorldClockTimingModule = require('./WorldClockTimingModule');
   }
+  var ArmyFormationQueries = global.ArmyFormationQueries;
+  if (typeof module !== 'undefined' && module.exports && !ArmyFormationQueries) {
+    ArmyFormationQueries = require('./ArmyFormationQueries');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -3033,31 +3037,15 @@
               }
 
     getArmyFormation(cityId, slot) {
-            const targetCityId =
-              cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
-            const targetSlot = Math.max(1, Math.min(3, Number(slot) || 1));
-            const formations = this.state?.military?.formations || {};
-            const cityFormations = Array.isArray(formations[targetCityId])
-              ? formations[targetCityId]
-              : [];
-            return (
-              cityFormations.find((item) => Number(item?.slot) === targetSlot) ||
-              cityFormations[targetSlot - 1] ||
-              null
-            );
+            return ArmyFormationQueries.getArmyFormation(this, cityId, slot);
           }
 
     getArmyFormationSoldierCap(cityId, slot) {
-            const formation = this.getArmyFormation(cityId, slot);
-            return Math.max(0, Math.floor(Number(formation?.maxSoldiersPerMember) || 1000));
+            return ArmyFormationQueries.getArmyFormationSoldierCap(this, cityId, slot);
           }
 
     getArmyFormationReserveSoldiers(cityId) {
-            const targetCityId =
-              cityId || this.state?.activeCityId || this.state?.cityState?.activeCityId || 'capital';
-            const cityMilitary =
-              this.state?.cities?.[targetCityId]?.military || this.state?.military || {};
-            return Math.max(0, Math.floor(Number(cityMilitary.soldiers) || 0));
+            return ArmyFormationQueries.getArmyFormationReserveSoldiers(this, cityId);
           }
 
     normalizeArmyFormationAssignments(assignments = {}, memberIds = [], cap = 1000) {
@@ -3092,13 +3080,7 @@
           }
 
     getArmyFormationEditablePool(editor = {}) {
-            const cityId = editor.cityId || this.state?.activeCityId || 'capital';
-            const slot = Math.max(1, Math.min(3, Number(editor.slot) || 1));
-            const formation = this.getArmyFormation(cityId, slot) || {};
-            const previousAssigned = this.sumArmyFormationAssignments(
-              formation.soldierAssignments || {},
-            );
-            return previousAssigned + this.getArmyFormationReserveSoldiers(cityId);
+            return ArmyFormationQueries.getArmyFormationEditablePool(this, editor);
           }
 
     setArmyFormationSoldierDraft(personId, value, options = {}) {
