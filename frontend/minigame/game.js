@@ -127,6 +127,8 @@ require('../js/tutorial/TutorialGuideFlowRegistry');
 require('../js/tutorial/TutorialGuideEventRegistry');
 require('../js/tutorial/TutorialGuideController');
 require('../js/platform/interactions/TechTreeInteractionModel');
+require('../js/platform/WorldMarchActionHandler');
+require('../js/platform/TargetPickerActionHandler');
 require('../js/platform/CanvasActionController');
 require('../js/platform/GameCommandService');
 require('../js/platform/CanvasGameAppRenderPolicy');

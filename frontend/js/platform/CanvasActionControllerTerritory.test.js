@@ -477,6 +477,50 @@ test('CanvasActionController opens and resolves world target picker candidates',
   );
 });
 
+test('CanvasActionController closes the world target picker without dispatching a candidate', () => {
+  const calls = [];
+  const host = makeModalHost({
+    territoryUiState: {},
+    renderCanvasAction(action) {
+      calls.push(['render', action.type]);
+    },
+    requestWorldMapRenderAnimationFrame(options) {
+      calls.push(['refreshWorldMap', options]);
+    },
+  });
+  const controller = new HostController({ host: host, awaitAsync: true });
+
+  assert.equal(
+    controller.handle_openWorldTargetPicker({
+      type: 'openWorldTargetPicker',
+      q: 0,
+      r: 0,
+      tileId: 'tile_0_0',
+      candidates: [
+        {
+          id: 'capital',
+          kind: 'site',
+          label: 'Capital',
+          action: { type: 'openWorldSite', siteId: 'capital' },
+        },
+      ],
+    }),
+    true,
+  );
+  assert.equal(host.isTargetPickerSnapshotOpen(), true);
+
+  assert.equal(controller.handle_closeWorldTargetPicker({ type: 'closeWorldTargetPicker' }), true);
+  // Closing only dismisses the picker snapshot; no candidate action is dispatched.
+  assert.equal(host.isTargetPickerSnapshotOpen(), false);
+  assert.equal(host.territoryUiState.selectedSiteId, '');
+  assert.deepEqual(calls, [
+    ['render', 'openWorldTargetPicker'],
+    ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
+    ['render', 'closeWorldTargetPicker'],
+    ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
+  ]);
+});
+
 test('CanvasActionController forwards selected world mission id on start march only when present', async () => {
   const calls = [];
   const game = makeModalHost({

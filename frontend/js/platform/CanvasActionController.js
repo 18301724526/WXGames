@@ -3,6 +3,14 @@
   if (typeof module !== 'undefined' && module.exports && !TechTreeInteractionModelBase) {
     TechTreeInteractionModelBase = require('./interactions/TechTreeInteractionModel');
   }
+  var WorldMarchActionHandlerCtor = global.WorldMarchActionHandler;
+  if (typeof module !== 'undefined' && module.exports && !WorldMarchActionHandlerCtor) {
+    WorldMarchActionHandlerCtor = require('./WorldMarchActionHandler');
+  }
+  var TargetPickerActionHandlerCtor = global.TargetPickerActionHandler;
+  if (typeof module !== 'undefined' && module.exports && !TargetPickerActionHandlerCtor) {
+    TargetPickerActionHandlerCtor = require('./TargetPickerActionHandler');
+  }
   const LocaleText = (() => {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
@@ -11,15 +19,6 @@
       } catch (_error) {
         return null;
       }
-    }
-    return null;
-  })();
-  const TileCoord = (() => {
-    if (global.TileCoord) return global.TileCoord;
-    try {
-      if (typeof require === 'function') return require('../ecs/foundation/TileCoord');
-    } catch (_error) {
-      // Optional dependency in browser bundles.
     }
     return null;
   })();
@@ -38,17 +37,6 @@
       if (typeof require === 'function') return require('./CanvasModeOwnershipRuntime');
     } catch (_error) {
       // Optional runtime in standalone action tests.
-    }
-    return null;
-  })();
-  const FormationDeploymentEligibility = (() => {
-    if (global.FormationDeploymentEligibility) return global.FormationDeploymentEligibility;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../shared/FormationDeploymentEligibilityAdapter');
-      } catch (_error) {
-        return null;
-      }
     }
     return null;
   })();
@@ -120,173 +108,9 @@
     return CanvasModalSnapshotAdapter?.closeTargetPickerSnapshot?.(host) || null;
   }
 
-  function openTargetPickerSnapshot(host, payload) {
-    if (typeof host?.openTargetPickerSnapshot === 'function') {
-      return host.openTargetPickerSnapshot(payload);
-    }
-    return CanvasModalSnapshotAdapter?.openTargetPickerSnapshot?.(host, payload) || null;
-  }
-
-  function getTargetPickerSnapshot(host) {
-    if (typeof host?.getTargetPickerSnapshot === 'function') return host.getTargetPickerSnapshot();
-    return CanvasModalSnapshotAdapter?.getTargetPickerSnapshot?.(host) || null;
-  }
-
-  function openConfirmDialogSnapshot(host, payload = {}, callbacks = null) {
-    if (typeof host?.openConfirmDialogSnapshot === 'function') {
-      return host.openConfirmDialogSnapshot(payload, callbacks);
-    }
-    return (
-      CanvasModalSnapshotAdapter?.openConfirmDialogSnapshot?.(host, payload, callbacks) || null
-    );
-  }
-
-  function closeConfirmDialogSnapshot(host) {
-    if (typeof host?.closeConfirmDialogSnapshot === 'function')
-      return host.closeConfirmDialogSnapshot();
-    return CanvasModalSnapshotAdapter?.closeConfirmDialogSnapshot?.(host) || null;
-  }
-
   function getCommandPanelValue(host) {
     if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();
     return CanvasModalSnapshotAdapter?.getCommandPanelValue?.(host) || '';
-  }
-
-  function normalizeWorldMarchTarget(action = {}) {
-    const q = Math.floor(Number(action.targetQ ?? action.q));
-    const r = Math.floor(Number(action.targetR ?? action.r));
-    if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
-    const coord = TileCoord?.normalizeCoord?.({ x: q, y: r }) || { q, r, tileId: `${q},${r}` };
-    return {
-      q: coord.q,
-      r: coord.r,
-      tileId: coord.tileId,
-    };
-  }
-
-  function getCombatEncounterId(action = {}, previousTarget = {}) {
-    return String(
-      action.combatEncounterId ||
-        action.encounterId ||
-        action.combatTarget?.encounterId ||
-        previousTarget.combatEncounterId ||
-        previousTarget.encounterId ||
-        previousTarget.combatTarget?.encounterId ||
-        '',
-    ).trim();
-  }
-
-  function getMarchMissionId(action = {}, previousTarget = {}, uiState = {}) {
-    return String(
-      action.missionId || previousTarget.missionId || uiState.selectedWorldMissionId || '',
-    ).trim();
-  }
-
-  function getWorldActorId(action = {}, previousTarget = {}, uiState = {}) {
-    return String(
-      action.actorId || previousTarget.actorId || uiState.selectedWorldActorId || '',
-    ).trim();
-  }
-
-  function assignMarchMissionTarget(target = {}, missionId = '', actorId = '') {
-    if (!missionId) return target;
-    target.missionId = missionId;
-    if (actorId) target.actorId = actorId;
-    return target;
-  }
-
-  function clonePlain(value) {
-    if (!value || typeof value !== 'object') return value;
-    if (Array.isArray(value)) return value.map(clonePlain);
-    const output = {};
-    Object.entries(value).forEach(([key, next]) => {
-      if (typeof next !== 'function') output[key] = clonePlain(next);
-    });
-    return output;
-  }
-
-  function copyCombatTargetFields(nextTarget = {}, action = {}, previousTarget = {}) {
-    const encounterId = getCombatEncounterId(action, previousTarget);
-    if (encounterId) nextTarget.combatEncounterId = encounterId;
-    const combatTarget = action.combatTarget || previousTarget.combatTarget || null;
-    if (combatTarget && typeof combatTarget === 'object')
-      nextTarget.combatTarget = clonePlain(combatTarget);
-    return nextTarget;
-  }
-
-  function sanitizeWorldTargetCandidate(candidate = {}, index = 0) {
-    const action = clonePlain(candidate.action || {});
-    if (!action?.type) return null;
-    return {
-      id: String(
-        candidate.id ||
-          action.siteId ||
-          action.cityId ||
-          action.territoryId ||
-          action.actorId ||
-          action.missionId ||
-          `target-${index}`,
-      ),
-      index,
-      kind: candidate.kind || (action.type === 'selectWorldActor' ? 'actor' : 'site'),
-      label: String(
-        candidate.label ||
-          action.actorName ||
-          action.siteName ||
-          action.cityName ||
-          action.siteId ||
-          action.actorId ||
-          t('common.target'),
-      ),
-      subtitle: String(candidate.subtitle || action.statusLabel || action.ownerLabel || ''),
-      tileId: candidate.tileId || action.tileId || '',
-      q: candidate.q,
-      r: candidate.r,
-      action,
-    };
-  }
-
-  function sanitizeWorldTargetPicker(action = {}) {
-    const candidates = (Array.isArray(action.candidates) ? action.candidates : [])
-      .map((candidate, index) => sanitizeWorldTargetCandidate(candidate, index))
-      .filter(Boolean);
-    if (!candidates.length) return null;
-    const q = Math.floor(Number(action.q ?? action.targetQ ?? candidates[0]?.q));
-    const r = Math.floor(Number(action.r ?? action.targetR ?? candidates[0]?.r));
-    const coord =
-      Number.isFinite(q) && Number.isFinite(r)
-        ? (TileCoord?.normalizeCoord?.({ q, r, tileId: action.tileId }) || { q, r, tileId: action.tileId || `${q},${r}` })
-        : { q: undefined, r: undefined, tileId: action.tileId || candidates[0]?.tileId || '' };
-    return {
-      tileId: coord.tileId || action.tileId || candidates[0]?.tileId || '',
-      q: coord.q,
-      r: coord.r,
-      anchorX: Number.isFinite(Number(action.anchorX)) ? Number(action.anchorX) : undefined,
-      anchorY: Number.isFinite(Number(action.anchorY)) ? Number(action.anchorY) : undefined,
-      candidates,
-    };
-  }
-
-  function joinNames(names = []) {
-    return (Array.isArray(names) ? names : [])
-      .map((name) => String(name || '').trim())
-      .filter(Boolean)
-      .join(', ');
-  }
-
-  function formatDeploymentBlocker(blocker = {}) {
-    return t(blocker.messageKey || 'world.march.deploy.blocked', {
-      name: blocker.name || blocker.participant?.name || '',
-    });
-  }
-
-  function formatDeploymentWarning(warning = {}) {
-    return t(warning.messageKey || 'world.march.deploy.warning', {
-      name: warning.names?.[0] || warning.participants?.[0]?.name || '',
-      names: joinNames(
-        warning.names || warning.participants?.map((participant) => participant.name),
-      ),
-    });
   }
 
   const ACTION_TAP_TRACE_IDS = typeof WeakMap === 'function' ? new WeakMap() : null;
@@ -316,6 +140,22 @@
         getState: () => this.getState(),
       }) : null);
       if (this.techTreeInteraction && !this.techTreeInteraction.host) this.techTreeInteraction.host = this.host;
+      // Slice 11: world-march + target-picker handlers live in composed plain
+      // classes; the controller-module helpers below are shared with code that
+      // stays here (refreshWorldMarchLayer, handle, worldMapDrag, openWorldSite).
+      this.worldMarchActions = new WorldMarchActionHandlerCtor({
+        core: this,
+        helpers: {
+          logActorPickingDiag,
+          summarizeActorPickingAction,
+          summarizeActorPickingUiState,
+          closeTargetPickerSnapshot,
+        },
+      });
+      this.targetPickerActions = new TargetPickerActionHandlerCtor({
+        core: this,
+        helpers: { closeTargetPickerSnapshot },
+      });
     }
 
     getGameHost() {
@@ -1065,20 +905,6 @@
             return true;
           }
 
-    refreshWorldMarchTutorialHighlight() {
-            const game = this.getGameHost();
-            const tutorialController =
-              game?.tutorialController || this.host?.tutorialController || null;
-            if (!tutorialController || typeof tutorialController.refreshCurrentHighlight !== 'function')
-              return false;
-            tutorialController.refreshCurrentHighlight();
-            const scheduler = this.host?.runtime || game?.runtime || global;
-            if (typeof scheduler?.setTimeout === 'function') {
-              scheduler.setTimeout(() => tutorialController.refreshCurrentHighlight(), 0);
-            }
-            return true;
-          }
-
     getWorldMarchFormationForAction(action = {}) {
             const game = this.getGameHost();
             const state = this.getState();
@@ -1117,119 +943,8 @@
             return null;
           }
 
-    getWorldMarchDeploymentEligibility(action = {}) {
-            if (action.deploymentEligibility && typeof action.deploymentEligibility === 'object') {
-              return action.deploymentEligibility;
-            }
-            const formation = this.getWorldMarchFormationForAction(action);
-            if (!formation) {
-              return {
-                allowed: true,
-                blocked: false,
-                blockers: [],
-                warnings: [],
-              };
-            }
-            return (
-              FormationDeploymentEligibility?.evaluateFormationDeployment?.(formation) || {
-                allowed: true,
-                blocked: false,
-                blockers: [],
-                warnings: [],
-              }
-            );
-          }
-
-    showWorldMarchDeploymentBlocked(eligibility = {}, action = {}) {
-            const blocker = eligibility.blockers?.[0] || {};
-            const message = formatDeploymentBlocker(blocker);
-            const game = this.getGameHost();
-            const uiHost = this.host?.openConfirmDialog ? this.host : game?.canvasShell || game;
-            if (typeof uiHost?.openConfirmDialog === 'function') {
-              uiHost.openConfirmDialog({
-                kind: 'worldMarchDeploymentBlocked',
-                source: 'worldMarch',
-                title: t('world.march.deploy.blockedTitle'),
-                message,
-                confirmLabel: t('common.confirm'),
-                cancelLabel: t('common.cancel'),
-                confirmAction: { type: 'closeConfirmDialog' },
-              });
-              return true;
-            }
-            openConfirmDialogSnapshot(this.host, {
-              visible: true,
-              kind: 'worldMarchDeploymentBlocked',
-              source: 'worldMarch',
-              title: t('world.march.deploy.blockedTitle'),
-              message,
-              confirmLabel: t('common.confirm'),
-              cancelLabel: t('common.cancel'),
-              confirmAction: { type: 'closeConfirmDialog' },
-            });
-            this.refreshWorldMarchLayer(action);
-            return true;
-          }
-
-    openWorldMarchDeploymentWarning(eligibility = {}, action = {}) {
-            const warning = eligibility.warnings?.[0] || {};
-            const message = formatDeploymentWarning(warning);
-            const pendingAction = clonePlain({
-              ...action,
-              skipDeploymentWarnings: true,
-              deploymentEligibility: undefined,
-            });
-            const game = this.getGameHost();
-            const uiHost = this.host?.openConfirmDialog ? this.host : game?.canvasShell || game;
-            if (typeof uiHost?.openConfirmDialog === 'function') {
-              uiHost.openConfirmDialog({
-                kind: 'worldMarchDeploymentWarning',
-                source: 'worldMarch',
-                title: t('world.march.deploy.confirmTitle'),
-                message,
-                confirmLabel: t('world.march.deploy.confirmDeploy'),
-                cancelLabel: t('common.cancel'),
-                confirmAction: {
-                  type: 'confirmWorldMarchDeployment',
-                  action: pendingAction,
-                },
-              });
-              return true;
-            }
-            const opened = openConfirmDialogSnapshot(this.host, {
-              visible: true,
-              kind: 'worldMarchDeploymentWarning',
-              source: 'worldMarch',
-              title: t('world.march.deploy.confirmTitle'),
-              message,
-              confirmLabel: t('world.march.deploy.confirmDeploy'),
-              cancelLabel: t('common.cancel'),
-              confirmAction: {
-                type: 'confirmWorldMarchDeployment',
-                action: pendingAction,
-              },
-            });
-            this.refreshWorldMarchLayer(action);
-            return Boolean(opened);
-          }
-
     handle_confirmWorldMarchDeployment(action, meta = {}) {
-            const game = this.getGameHost();
-            this.host?.closeConfirmDialog?.();
-            closeConfirmDialogSnapshot(this.host);
-            game?.canvasShell?.closeConfirmDialog?.();
-            closeConfirmDialogSnapshot(game?.canvasShell);
-            game?.closeConfirmDialog?.();
-            closeConfirmDialogSnapshot(game);
-            const pendingAction = action.action || action.pendingAction || null;
-            if (!pendingAction?.type) return false;
-            return this.handle_startWorldMarch(
-              {
-                ...pendingAction,
-                skipDeploymentWarnings: true,
-              },
-              meta,
-            );
+            return this.worldMarchActions.confirmDeployment(action, meta);
           }
 
     handle_scoutTerritory(action) {
@@ -1259,308 +974,43 @@
           }
 
     handle_selectWorldMarchTarget(action) {
-            const target = normalizeWorldMarchTarget(action);
-            const tapTraceId =
-              this.getActionTapTraceId?.(action) || global.__actorPickingDiagActiveTapTraceId || '';
-            if (!target) {
-              logActorPickingDiag('territory:selectWorldMarchTarget:invalidTarget', {
-                tapTraceId,
-                action: summarizeActorPickingAction(action),
-              });
-              return false;
-            }
-            const uiState = this.getSharedTerritoryUiState();
-            const combatEncounterId = getCombatEncounterId(action);
-            const missionId = combatEncounterId ? '' : getMarchMissionId(action, {}, uiState);
-            const actorId = missionId ? getWorldActorId(action, {}, uiState) : '';
-            const game = this.getGameHost();
-            game?.territoryController?.closeSiteDialog?.({ render: false });
-            logActorPickingDiag('territory:selectWorldMarchTarget:beforeWrite', {
-              tapTraceId,
-              action: summarizeActorPickingAction(action),
-              target,
-              uiState: summarizeActorPickingUiState(uiState),
-            });
-            const nextTarget = {
-              q: target.q,
-              r: target.r,
-              tileId: target.tileId,
-            };
-            assignMarchMissionTarget(nextTarget, missionId, actorId);
-            if (action.known !== undefined) nextTarget.known = Boolean(action.known);
-            if (action.terrain) nextTarget.terrain = action.terrain;
-            if (action.terrainLabel) nextTarget.terrainLabel = action.terrainLabel;
-            if (action.marchDisabled !== undefined)
-              nextTarget.marchDisabled = Boolean(action.marchDisabled);
-            if (action.marchDisabledReason) nextTarget.marchDisabledReason = action.marchDisabledReason;
-            copyCombatTargetFields(nextTarget, action);
-            uiState.worldMarchTarget = nextTarget;
-            uiState.selectedWorldActorId = '';
-            uiState.selectedWorldMissionId = '';
-            uiState.selectedSiteId = '';
-            closeTargetPickerSnapshot(this.host);
-            uiState.expeditionConfigSiteId = '';
-            logActorPickingDiag('territory:selectWorldMarchTarget:afterWrite', {
-              tapTraceId,
-              action: summarizeActorPickingAction(action),
-              target,
-              uiState: summarizeActorPickingUiState(uiState),
-            });
-            const tutorialResult =
-              game?.tutorialController?.onWorldMarchTargetSelected?.(action) || true;
-            return this.finalize(
-              Promise.resolve(tutorialResult).then((allowed) => {
-                logActorPickingDiag('territory:selectWorldMarchTarget:tutorialResult', {
-                  tapTraceId,
-                  allowed: allowed !== false,
-                  uiState: summarizeActorPickingUiState(uiState),
-                });
-                if (allowed !== false) {
-                  this.refreshWorldMarchLayer(action);
-                  this.refreshWorldMarchTutorialHighlight();
-                }
-                return allowed !== false;
-              }),
-            );
+            return this.worldMarchActions.selectTarget(action);
           }
 
     handle_openWorldMarchFormationPicker(action) {
-            const target = normalizeWorldMarchTarget(action);
-            if (!target) return false;
-            const uiState = this.getSharedTerritoryUiState();
-            const previousTarget = uiState.worldMarchTarget || {};
-            const combatEncounterId = getCombatEncounterId(action, previousTarget);
-            const missionId = combatEncounterId
-              ? ''
-              : getMarchMissionId(action, previousTarget, uiState);
-            const actorId = missionId ? getWorldActorId(action, previousTarget, uiState) : '';
-            const samePreviousTarget =
-              Number(previousTarget.q) === Number(target.q) &&
-              Number(previousTarget.r) === Number(target.r);
-            const nextTarget = {
-              q: target.q,
-              r: target.r,
-              tileId: target.tileId,
-            };
-            assignMarchMissionTarget(nextTarget, missionId, actorId);
-            if (action.known !== undefined) nextTarget.known = Boolean(action.known);
-            else if (previousTarget.known !== undefined)
-              nextTarget.known = Boolean(previousTarget.known);
-            if (action.terrain || previousTarget.terrain)
-              nextTarget.terrain = action.terrain || previousTarget.terrain;
-            if (action.terrainLabel || previousTarget.terrainLabel)
-              nextTarget.terrainLabel = action.terrainLabel || previousTarget.terrainLabel;
-            if (action.marchDisabled !== undefined)
-              nextTarget.marchDisabled = Boolean(action.marchDisabled);
-            else if (samePreviousTarget && previousTarget.marchDisabled !== undefined)
-              nextTarget.marchDisabled = Boolean(previousTarget.marchDisabled);
-            if (
-              action.marchDisabledReason ||
-              (samePreviousTarget && previousTarget.marchDisabledReason)
-            )
-              nextTarget.marchDisabledReason =
-                action.marchDisabledReason || previousTarget.marchDisabledReason;
-            copyCombatTargetFields(nextTarget, action, previousTarget);
-            uiState.worldMarchTarget = nextTarget;
-            openTargetPickerSnapshot(this.host, {
-              pickerKind: 'worldMarchFormation',
-              target: nextTarget,
-            });
-            uiState.selectedWorldActorId = '';
-            uiState.selectedWorldMissionId = '';
-            const handled = this.refreshWorldMarchLayer(action);
-            this.refreshWorldMarchTutorialHighlight();
-            return handled;
+            return this.worldMarchActions.openFormationPicker(action);
           }
 
     handle_closeWorldMarchHud(action) {
-            const uiState = this.getSharedTerritoryUiState();
-            closeTargetPickerSnapshot(this.host);
-            uiState.worldMarchTarget = null;
-            uiState.selectedWorldActorId = '';
-            uiState.selectedWorldMissionId = '';
-            const handled = this.refreshWorldMarchLayer(action);
-            this.refreshWorldMarchTutorialHighlight();
-            return handled;
+            return this.worldMarchActions.closeHud(action);
           }
 
     handle_selectWorldActor(action) {
-            const actorId = action.actorId || action.missionId || '';
-            const missionId = action.missionId || '';
-            const tapTraceId =
-              this.getActionTapTraceId?.(action) || global.__actorPickingDiagActiveTapTraceId || '';
-            if (!actorId) {
-              logActorPickingDiag('territory:selectWorldActor:missingActorId', {
-                tapTraceId,
-                action: summarizeActorPickingAction(action),
-              });
-              return false;
-            }
-            const uiState = this.getSharedTerritoryUiState();
-            logActorPickingDiag('territory:selectWorldActor:beforeWrite', {
-              tapTraceId,
-              action: summarizeActorPickingAction(action),
-              actorId,
-              uiState: summarizeActorPickingUiState(uiState),
-            });
-            uiState.selectedWorldActorId = actorId;
-            uiState.selectedWorldMissionId = missionId;
-            uiState.worldMarchTarget = null;
-            uiState.selectedSiteId = '';
-            closeTargetPickerSnapshot(this.host);
-            logActorPickingDiag('territory:selectWorldActor:afterWrite', {
-              tapTraceId,
-              action: summarizeActorPickingAction(action),
-              actorId,
-              uiState: summarizeActorPickingUiState(uiState),
-            });
-            const handled = this.refreshWorldMarchLayer(action);
-            logActorPickingDiag('territory:selectWorldActor:afterRefresh', {
-              tapTraceId,
-              action: summarizeActorPickingAction(action),
-              actorId,
-              handled: handled !== false,
-              uiState: summarizeActorPickingUiState(uiState),
-            });
-            this.refreshWorldMarchTutorialHighlight();
-            return handled;
+            return this.worldMarchActions.selectActor(action);
           }
 
     handle_openWorldTargetPicker(action) {
-            const picker = sanitizeWorldTargetPicker(action);
-            if (!picker) return false;
-            const game = this.getGameHost();
-            game?.territoryController?.closeSiteDialog?.({ render: false });
-            const uiState = this.getSharedTerritoryUiState();
-            if (!openTargetPickerSnapshot(this.host, { pickerKind: 'worldTargetPicker', picker }))
-              return false;
-            // The candidate picker supersedes any pending march target.
-            uiState.worldMarchTarget = null;
-            uiState.selectedWorldActorId = '';
-            uiState.selectedWorldMissionId = '';
-            uiState.selectedSiteId = '';
-            uiState.expeditionConfigSiteId = '';
-            return this.refreshWorldMarchLayer(action);
+            return this.targetPickerActions.openWorldTargetPicker(action);
           }
 
     handle_chooseWorldTarget(action, meta = {}) {
-            const picker = getTargetPickerSnapshot(this.host)?.picker || {};
-            const candidates = Array.isArray(picker.candidates) ? picker.candidates : [];
-            const candidate =
-              candidates.find(
-                (item) => String(item.id) === String(action.targetId || action.id || ''),
-              ) ||
-              candidates[Math.max(0, Math.floor(Number(action.index) || 0))] ||
-              null;
-            const nextAction = candidate?.action || action.action || null;
-            if (!nextAction?.type || nextAction.type === 'chooseWorldTarget') return false;
-            closeTargetPickerSnapshot(this.host);
-            if (typeof this.handle === 'function') return this.handle(nextAction, meta);
-            const handler = this[`handle_${nextAction.type}`];
-            return typeof handler === 'function' ? handler.call(this, nextAction, meta) : false;
+            return this.targetPickerActions.chooseWorldTarget(action, meta);
           }
 
     handle_closeWorldTargetPicker(action) {
-            closeTargetPickerSnapshot(this.host);
-            return this.refreshWorldMarchLayer(action);
+            return this.targetPickerActions.closeWorldTargetPicker(action);
           }
 
     handle_startWorldMarch(action, meta = {}) {
-            if (action?.disabled) return true;
-            const target = normalizeWorldMarchTarget(action);
-            if (!target) return false;
-            const deploymentEligibility = this.getWorldMarchDeploymentEligibility(action);
-            if (deploymentEligibility.blocked) {
-              return this.showWorldMarchDeploymentBlocked(deploymentEligibility, action);
-            }
-            if (
-              !action.skipDeploymentWarnings &&
-              Array.isArray(deploymentEligibility.warnings) &&
-              deploymentEligibility.warnings.length > 0
-            ) {
-              return this.openWorldMarchDeploymentWarning(deploymentEligibility, action);
-            }
-            const uiState = this.getSharedTerritoryUiState();
-            const previousTarget = uiState.worldMarchTarget || {};
-            const combatEncounterId = getCombatEncounterId(action, previousTarget);
-            const missionId = combatEncounterId
-              ? ''
-              : getMarchMissionId(action, previousTarget, uiState);
-            const run = () => {
-              const game = this.getGameHost();
-              const options = {
-                mode: 'manual',
-                targetQ: target.q,
-                targetR: target.r,
-                formationSlot: action.formationSlot || action.slot || 1,
-                cityId: action.cityId || game?.state?.activeCityId || 'capital',
-              };
-              if (missionId) options.missionId = missionId;
-              if (combatEncounterId) options.combatEncounterId = combatEncounterId;
-              if (meta.inputIntent) options.clientInputIntent = meta.inputIntent;
-              // LIVE attack on an active encounter tile 鈫?open the INTERACTIVE battle
-              // scene (decoupled session) instead of the passive explore-march combat.
-              if (combatEncounterId && typeof game?.enterInteractiveBattle === 'function') {
-                return game.enterInteractiveBattle(options);
-              }
-              if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
-              return this.runAction(() => this.host.api.startWorldMarch(options));
-            };
-            const result = run();
-            if (result !== false) {
-              closeTargetPickerSnapshot(this.host);
-              uiState.worldMarchTarget = null;
-              uiState.selectedWorldActorId = '';
-              uiState.selectedWorldMissionId = '';
-              this.refreshWorldMarchLayer(action);
-              this.refreshWorldMarchTutorialHighlight();
-            }
-            return this.finalize(Promise.resolve(result).then((value) => value !== false));
+            return this.worldMarchActions.startMarch(action, meta);
           }
 
     handle_returnWorldMarch(action, meta = {}) {
-            const missionId = action.missionId || action.actorId || '';
-            if (!missionId) return false;
-            const game = this.getGameHost();
-            const options = meta.inputIntent ? { clientInputIntent: meta.inputIntent } : {};
-            const run = () => {
-              if (typeof game?.returnWorldMarch === 'function')
-                return game.returnWorldMarch(missionId, options);
-              return this.runAction(() => this.host.api.returnWorldMarch(missionId, options));
-            };
-            const result = run();
-            if (result !== false) {
-              this.getSharedTerritoryUiState().selectedWorldActorId = '';
-              this.getSharedTerritoryUiState().selectedWorldMissionId = '';
-              closeTargetPickerSnapshot(this.host);
-              this.refreshWorldMarchLayer(action);
-              this.refreshWorldMarchTutorialHighlight();
-            }
-            return this.finalize(Promise.resolve(result).then((value) => value !== false));
+            return this.worldMarchActions.returnMarch(action, meta);
           }
 
     handle_stopWorldMarch(action, meta = {}) {
-            const missionId = action.missionId || action.actorId || '';
-            if (!missionId) return false;
-            const game = this.getGameHost();
-            const options = meta.inputIntent ? { clientInputIntent: meta.inputIntent } : {};
-            const run = () => {
-              if (typeof game?.stopWorldMarch === 'function')
-                return game.stopWorldMarch(missionId, options);
-              return this.runAction(() => this.host.api.stopWorldMarch(missionId, options));
-            };
-            return this.finalize(
-              Promise.resolve(run()).then((result) => {
-                if (result !== false) {
-                  this.getSharedTerritoryUiState().selectedWorldActorId = '';
-                  this.getSharedTerritoryUiState().selectedWorldMissionId = '';
-                  closeTargetPickerSnapshot(this.host);
-                  this.refreshWorldMarchLayer(action);
-                  this.refreshWorldMarchTutorialHighlight();
-                }
-                return result !== false;
-              }),
-            );
+            return this.worldMarchActions.stopMarch(action, meta);
           }
 
     // City, building, event, task, and technology actions.
