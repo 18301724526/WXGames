@@ -3623,18 +3623,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return true;
         }
 
-    startBattleScene(report = null) {
-          if (!report) return false;
-          return typeof this.lastGame?.startBattleScene === 'function'
-            ? this.lastGame.startBattleScene(report) !== false
-            : false;
-        }
-
-    closeBattleScene() {
-          return typeof this.lastGame?.closeBattleScene === 'function'
-            ? this.lastGame.closeBattleScene() !== false
-            : false;
-        }
+    // startBattleScene / closeBattleScene were delegate-to-lastGame wrappers; the
+    // battle-scene timers are now single-owned by BattleSceneController on the state
+    // host and the shell inherits CanvasGameApp's delegators, which resolve to the
+    // same controller. See slice 9 of the re-decomposition.
 
     getModeSnapshot() {
             return CanvasModeOwnershipRuntime.getModeSnapshot(this);

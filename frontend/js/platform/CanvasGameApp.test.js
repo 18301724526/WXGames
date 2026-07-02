@@ -1712,6 +1712,146 @@ test('CanvasGameApp routes battleScene replay overlay through BattleStore', () =
   BattleStore.closeBattleScene();
 });
 
+// Characterization tests for the turn-card battle-scene timer cluster (god-file
+// re-decomposition slice 9). Written against the pre-extraction CanvasGameApp
+// bodies and kept UNCHANGED through the BattleSceneController extraction.
+
+function makeBattleSceneApp() {
+  const timers = { timeoutCb: null, timeoutMs: [], intervalCb: null, cleared: [] };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: { render() {} },
+    scheduler: {
+      setTimeout(callback, ms) {
+        timers.timeoutCb = callback;
+        timers.timeoutMs.push(ms);
+        return 31;
+      },
+      clearTimeout(handle) {
+        timers.cleared.push(['timeout', handle]);
+      },
+      setInterval(callback) {
+        timers.intervalCb = callback;
+        return 32;
+      },
+      clearInterval(handle) {
+        timers.cleared.push(['interval', handle]);
+      },
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+  });
+  app.now = () => 500;
+  return { app, timers };
+}
+
+test('startBattleScene turn-card path arms the turn + animation timers with per-turn durations', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const { app, timers } = makeBattleSceneApp();
+
+  try {
+    assert.equal(
+      app.startBattleScene({
+        id: 'r1',
+        turns: [{ action: 'attack' }, { action: 'skill' }],
+      }),
+      true,
+    );
+    assert.equal(BattleStore.getBattleScene().turnDurationMs, 900);
+    assert.deepEqual(timers.timeoutMs, [900]);
+
+    // advance turn 0 -> 1: next turn is a skill -> 900 + 2200 cut-in.
+    assert.equal(app.advanceBattleSceneTurn(), true);
+    assert.equal(BattleStore.getBattleScene().turnIndex, 1);
+    assert.equal(BattleStore.getBattleScene().turnDurationMs, 3100);
+    assert.deepEqual(timers.timeoutMs, [900, 3100]);
+
+    // advance past the last turn stops both timers.
+    assert.equal(app.advanceBattleSceneTurn(), true);
+    assert.equal(app.advanceBattleSceneTurn(), false);
+    assert.deepEqual(timers.cleared.at(-2), ['timeout', 31]);
+    assert.deepEqual(timers.cleared.at(-1), ['interval', 32]);
+  } finally {
+    BattleStore.closeBattleScene();
+  }
+});
+
+test('battle animation timer renders while the scene is visible and self-stops after close', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const { app, timers } = makeBattleSceneApp();
+  const renders = [];
+  app.renderAnimationFrame = (tab) => {
+    renders.push(tab);
+    return true;
+  };
+
+  try {
+    app.startBattleScene({ id: 'r2', turns: [{ action: 'attack' }] });
+    timers.intervalCb();
+    assert.deepEqual(renders, ['military']);
+
+    BattleStore.closeBattleScene();
+    timers.intervalCb();
+    assert.deepEqual(renders, ['military']);
+    assert.deepEqual(timers.cleared.at(-1), ['interval', 32]);
+  } finally {
+    BattleStore.closeBattleScene();
+  }
+});
+
+test('closeBattleScene stops both timers, clears the store scene, and re-renders', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const { app, timers } = makeBattleSceneApp();
+  const renders = [];
+  app.renderCanvasSurface = (tab) => {
+    renders.push(tab);
+    return true;
+  };
+
+  try {
+    app.startBattleScene({ id: 'r3', turns: [] });
+    renders.length = 0;
+    assert.equal(app.closeBattleScene(), true);
+    assert.equal(BattleStore.getBattleScene(), null);
+    assert.deepEqual(renders, ['military']);
+    assert.deepEqual(timers.cleared, [
+      ['timeout', 31],
+      ['interval', 32],
+    ]);
+  } finally {
+    BattleStore.closeBattleScene();
+  }
+});
+
+test('startBattleScene prefers the entity replay overlay when the report carries a replay', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = { createBattle() {} };
+  const { app } = makeBattleSceneApp();
+  const opened = [];
+  app.openEntityBattle = (opts) => {
+    opened.push([opts.mode, opts.report.id]);
+    return true;
+  };
+
+  try {
+    assert.equal(
+      app.startBattleScene({ id: 'r4', replay: { setup: { sides: [{}, {}] }, inputStream: [] } }),
+      true,
+    );
+    assert.deepEqual(opened, [['replay', 'r4']]);
+    assert.equal(BattleStore.getBattleScene(), null);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeBattleScene();
+  }
+});
+
 test('CanvasGameApp publishes the live entityBattle session into BattleStore', () => {
   BattleStore.closeBattleScene();
   BattleStore.closeEntityBattle();

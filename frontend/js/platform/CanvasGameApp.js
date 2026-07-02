@@ -131,6 +131,10 @@
   if (typeof module !== 'undefined' && module.exports && !EntityBattleController) {
     EntityBattleController = require('./EntityBattleController');
   }
+  var BattleSceneController = global.BattleSceneController;
+  if (typeof module !== 'undefined' && module.exports && !BattleSceneController) {
+    BattleSceneController = require('./BattleSceneController');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -338,8 +342,6 @@
           this.activeGuidebookTab = 'planning';
           this.famousPersonsPage = 0;
           this.selectedFamousPersonId = '';
-          this.battleReplayTurnTimer = null;
-          this.battleAnimationTimer = null;
           this.tutorialHighlight = null;
           this.tutorialIntro = options.tutorialIntro || null;
           this.tutorialIntroOverlay = options.tutorialIntroOverlay || null;
@@ -2032,24 +2034,31 @@
               : this.stopWorldActorAnimationLoop();
           }
 
+    // The turn-card battle-scene timers + turn-duration policy are single-owned
+          // by BattleSceneController on the state host (re-decomposition slice 9),
+          // composed lazily. The scene session itself stays in BattleStore.
+          getBattleSceneController() {
+                const owner = this.getStateHost() || this;
+                if (!owner.battleSceneController) {
+                  owner.battleSceneController = new BattleSceneController({ host: owner });
+                }
+                return owner.battleSceneController;
+              }
+
     getBattleBaseTurnDurationMs() {
-                return 900;
+                return this.getBattleSceneController().getBaseTurnDurationMs();
               }
 
     getBattleSkillCutInDurationMs() {
-                return 2200;
+                return this.getBattleSceneController().getSkillCutInDurationMs();
               }
 
     getBattleTurnDurationMs(turn = null) {
-                const isSkill = turn && (turn.action === 'skill' || turn.actionType === 'skill' || turn.presentation?.cutIn);
-                return this.getBattleBaseTurnDurationMs() + (isSkill ? this.getBattleSkillCutInDurationMs() : 0);
+                return this.getBattleSceneController().getTurnDurationMs(turn);
               }
 
     getCurrentBattleTurnDurationMs(scene = null) {
-                const currentScene = scene || this.getBattleSceneSession();
-                const turns = currentScene?.report?.turns || [];
-                const index = Math.max(0, Math.min(turns.length, Number(currentScene?.turnIndex) || 0));
-                return this.getBattleTurnDurationMs(index < turns.length ? turns[index] : null);
+                return this.getBattleSceneController().getCurrentTurnDurationMs(scene);
               }
 
     getBattleStore() {
@@ -2225,157 +2234,35 @@
               }
 
     startBattleScene(report = null) {
-                if (!report) return false;
-                // Entity battles carry a deterministic replay; render them in the new
-                // sprite overlay instead of the turn-card scene. Any failure
-                // falls back to the turn-card scene so a battle always shows.
-                const view = (typeof window !== 'undefined' ? window : globalThis);
-                try {
-                  view.console?.log?.('[battle-replay] startBattleScene', {
-                    hasReplay: !!(report.replay && report.replay.setup),
-                    hasCore: !!view.BattleSimCore,
-                    hasOverlay: typeof this.openEntityBattle === 'function',
-                  });
-                } catch (_e) { /* ignore */ }
-                if (report.replay && report.replay.setup && view.BattleSimCore && typeof this.openEntityBattle === 'function') {
-                  try {
-                    const shown = this.openEntityBattle({
-                      mode: 'replay',
-                      setup: report.replay.setup,
-                      inputStream: report.replay.inputStream || [],
-                      report,
-                      onClose: () => this.renderCanvasSurface(this.state?.currentTab || 'military'),
-                    });
-                    if (shown) return true;
-                  } catch (err) {
-                    view.console?.error?.('[battle-replay] entity overlay failed, using turn-card scene:', err);
-                  }
-                }
-                const battleScene = {
-                  visible: true,
-                  report,
-                  turnIndex: 0,
-                  startedAt: this.now(),
-                  turnStartedAt: this.now(),
-                  turnDurationMs: this.getBattleTurnDurationMs(report.turns?.[0] || null),
-                };
-                const store = this.getBattleStore();
-                if (!store) return false;
-                store.openBattleScene(battleScene);
-                this.invalidateRendererSnapshot();
-                this.startBattleSceneTimer();
-                this.startBattleAnimationTimer();
-                this.renderCanvasSurface(this.state?.currentTab || 'military');
-                return true;
+                return this.getBattleSceneController().start(report);
               }
 
     stopBattleSceneTimer() {
-                if (!this.battleReplayTurnTimer) return;
-                if (typeof this.scheduler?.clearTimeout === 'function') this.scheduler.clearTimeout(this.battleReplayTurnTimer);
-                else if (typeof this.runtime?.clearTimeout === 'function') this.runtime.clearTimeout(this.battleReplayTurnTimer);
-                else if (typeof clearTimeout === 'function') clearTimeout(this.battleReplayTurnTimer);
-                else if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleReplayTurnTimer);
-                else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleReplayTurnTimer);
-                else if (typeof clearInterval === 'function') clearInterval(this.battleReplayTurnTimer);
-                this.battleReplayTurnTimer = null;
+                return this.getBattleSceneController().stopTurnTimer();
               }
 
     stopBattleAnimationTimer() {
-                if (!this.battleAnimationTimer) return;
-                if (typeof this.scheduler?.clearInterval === 'function') this.scheduler.clearInterval(this.battleAnimationTimer);
-                else if (typeof this.runtime?.clearInterval === 'function') this.runtime.clearInterval(this.battleAnimationTimer);
-                else if (typeof clearInterval === 'function') clearInterval(this.battleAnimationTimer);
-                this.battleAnimationTimer = null;
+                return this.getBattleSceneController().stopAnimationTimer();
               }
 
     startBattleAnimationTimer() {
-                this.stopBattleAnimationTimer();
-                const timerHost = typeof this.scheduler?.setInterval === 'function'
-                  ? this.scheduler
-                  : (typeof this.runtime?.setInterval === 'function' ? this.runtime : null);
-                const setIntervalFn = timerHost?.setInterval || (typeof setInterval === 'function' ? setInterval : null);
-                if (!setIntervalFn) return false;
-                this.battleAnimationTimer = timerHost
-                  ? setIntervalFn.call(timerHost, () => {
-                    if (!this.getBattleSceneSession()?.visible) {
-                      this.stopBattleAnimationTimer();
-                      return;
-                    }
-                    this.renderAnimationFrame(this.state?.currentTab || 'military');
-                  }, this.getAnimationFrameMs())
-                  : setIntervalFn(() => {
-                    if (!this.getBattleSceneSession()?.visible) {
-                      this.stopBattleAnimationTimer();
-                      return;
-                    }
-                    this.renderAnimationFrame(this.state?.currentTab || 'military');
-                  }, this.getAnimationFrameMs());
-                return true;
+                return this.getBattleSceneController().startAnimationTimer();
               }
 
     advanceBattleSceneTurn() {
-                const battleScene = this.getBattleSceneSession();
-                if (!battleScene?.visible) {
-                  this.stopBattleSceneTimer();
-                  return false;
-                }
-                const turns = battleScene.report?.turns || [];
-                if (battleScene.turnIndex < turns.length) {
-                  const nextTurnIndex = battleScene.turnIndex + 1;
-                  const nextBattleScene = {
-                    ...battleScene,
-                    turnIndex: nextTurnIndex,
-                    turnStartedAt: this.now(),
-                    turnDurationMs: this.getBattleTurnDurationMs(nextTurnIndex < turns.length ? turns[nextTurnIndex] : null),
-                  };
-                  this.getBattleStore()?.updateBattleScene(nextBattleScene);
-                  this.invalidateRendererSnapshot();
-                  this.renderAnimationFrame(this.state?.currentTab || 'military');
-                  this.startBattleSceneTimer();
-                  return true;
-                }
-                this.stopBattleSceneTimer();
-                this.stopBattleAnimationTimer();
-                return false;
+                return this.getBattleSceneController().advanceTurn();
               }
 
     startBattleSceneTimer() {
-                this.stopBattleSceneTimer();
-                const timerHost = typeof this.scheduler?.setTimeout === 'function'
-                  ? this.scheduler
-                  : (typeof this.runtime?.setTimeout === 'function' ? this.runtime : null);
-                const setTimeoutFn = timerHost?.setTimeout || (typeof setTimeout === 'function' ? setTimeout : null);
-                if (!setTimeoutFn) return false;
-                this.battleReplayTurnTimer = timerHost
-                  ? setTimeoutFn.call(timerHost, () => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs())
-                  : setTimeoutFn(() => this.advanceBattleSceneTurn(), this.getCurrentBattleTurnDurationMs());
-                return true;
+                return this.getBattleSceneController().startTurnTimer();
               }
 
     closeBattleScene() {
-                this.stopBattleSceneTimer();
-                this.stopBattleAnimationTimer();
-                this.getBattleStore()?.closeBattleScene();
-                this.invalidateRendererSnapshot();
-                this.renderCanvasSurface(this.state?.currentTab || 'military');
-                return true;
+                return this.getBattleSceneController().close();
               }
 
     skipBattleScene() {
-                const battleScene = this.getBattleSceneSession();
-                if (!battleScene?.visible) return false;
-                const turns = battleScene.report?.turns || [];
-                const nextBattleScene = {
-                  ...battleScene,
-                  turnIndex: turns.length,
-                  turnStartedAt: this.now(),
-                };
-                this.getBattleStore()?.updateBattleScene(nextBattleScene);
-                this.invalidateRendererSnapshot();
-                this.stopBattleSceneTimer();
-                this.stopBattleAnimationTimer();
-                this.renderCanvasSurface(this.state?.currentTab || 'military');
-                return true;
+                return this.getBattleSceneController().skip();
               }
 
     async runAction(callback) {
