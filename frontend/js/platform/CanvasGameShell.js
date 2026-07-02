@@ -404,7 +404,6 @@ constructor(options = {}) {
       this.floatTimer = null;
       this.activeTaskCenterTab = 'main';
       this.activeGuidebookTab = 'planning';
-      this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
       this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeZoom = 1;
@@ -1466,147 +1465,14 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
     // ArmyFormationQueries (via host.getState) and the shell inherits CanvasGameApp's
     // delegator -- one implementation for both. See slice 5 of the re-decomposition.
 
-    setArmyFormationEditor(editor = {}, options = {}) {
-          this.armyFormationEditor = {
-            open: false,
-            cityId: '',
-            slot: 1,
-            memberIds: [],
-            soldierAssignments: {},
-            soldierDraftAssignments: {},
-            page: 0,
-            saving: false,
-            ...(editor || {}),
-          };
-          if (this.lastGame && typeof this.lastGame === 'object') {
-            this.lastGame.armyFormationEditor = { ...this.armyFormationEditor };
-          }
-          if (options.render !== false) this.renderActive();
-          return true;
-        }
-
-    openArmyFormation(action = {}) {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.openArmyFormation === 'function') {
-            const opened = game.openArmyFormation(action);
-            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-            return opened !== false;
-          }
-          const slot = Math.max(1, Math.min(3, Number(action.slot) || 1));
-          const cityId = action.cityId || game?.state?.activeCityId || game?.state?.cityState?.activeCityId || 'capital';
-          const formation = this.getArmyFormation(cityId, slot);
-          const memberIds = Array.isArray(formation?.memberIds) ? formation.memberIds : [];
-          return this.setArmyFormationEditor({
-            open: true,
-            cityId,
-            slot,
-            memberIds: [...memberIds].slice(0, 5),
-            soldierAssignments: { ...(formation?.soldierAssignments || {}) },
-            soldierDraftAssignments: { ...(formation?.soldierAssignments || {}) },
-            page: 0,
-            saving: false,
-          });
-        }
-
-    closeArmyFormationEditor(options = {}) {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.closeArmyFormationEditor === 'function') {
-            const closed = game.closeArmyFormationEditor({ render: false });
-            this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
-            if (options.render !== false) this.renderActive();
-            return closed !== false;
-          }
-          return this.setArmyFormationEditor({ open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false }, options);
-        }
-
-    toggleArmyFormationMember(action = {}) {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.toggleArmyFormationMember === 'function') {
-            const result = game.toggleArmyFormationMember(action);
-            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-            return result !== false;
-          }
-          const editor = this.armyFormationEditor || {};
-          if (!editor.open) return false;
-          const personId = String(action.personId || '').trim();
-          if (!personId) return false;
-          const memberIds = Array.isArray(editor.memberIds) ? [...editor.memberIds] : [];
-          const index = memberIds.indexOf(personId);
-          if (index >= 0) memberIds.splice(index, 1);
-          else {
-            if (memberIds.length >= 5) {
-              this.showFloatingText(t('formation.maxMembersToast'));
-              return false;
-            }
-            memberIds.push(personId);
-          }
-          return this.setArmyFormationEditor({ ...editor, memberIds }, { render: true });
-        }
-
-    changeArmyFormationPage(action = {}) {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.changeArmyFormationPage === 'function') {
-            const result = game.changeArmyFormationPage(action);
-            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-            return result !== false;
-          }
-          const editor = this.armyFormationEditor || {};
-          if (!editor.open) return false;
-          const page = Math.max(0, (Number(editor.page) || 0) + (Number(action.delta) || 0));
-          return this.setArmyFormationEditor({ ...editor, page }, { render: true });
-        }
-
-    changeArmyFormationSoldiers(action = {}) {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.changeArmyFormationSoldiers === 'function') {
-            const result = game.changeArmyFormationSoldiers(action);
-            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-            return result !== false;
-          }
-          return false;
-        }
-
-    requestArmyFormationSoldierInput(action = {}) {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.requestArmyFormationSoldierInput === 'function') {
-            const result = game.requestArmyFormationSoldierInput(action);
-            if (result && typeof result.then === 'function') {
-              result.finally(() => {
-                this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-              });
-              return result;
-            }
-            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-            return result !== false;
-          }
-          return false;
-        }
-
-    autoReplenishArmyFormation(action = {}) {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.autoReplenishArmyFormation === 'function') {
-            const result = game.autoReplenishArmyFormation(action);
-            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-            return result !== false;
-          }
-          return false;
-        }
-
-    saveArmyFormation() {
-          const game = this.lastGame;
-          if (game && game !== this && typeof game.saveArmyFormation === 'function') {
-            const result = game.saveArmyFormation();
-            if (result && typeof result.then === 'function') {
-              result.finally(() => {
-                this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-              });
-              return result;
-            }
-            this.armyFormationEditor = { ...(game.armyFormationEditor || this.armyFormationEditor || {}) };
-            return result !== false;
-          }
-          return false;
-        }
+    // The army-formation editor wrappers (setArmyFormationEditor, openArmyFormation,
+    // closeArmyFormationEditor, toggleArmyFormationMember, changeArmyFormationPage,
+    // changeArmyFormationSoldiers, requestArmyFormationSoldierInput,
+    // autoReplenishArmyFormation, saveArmyFormation) were delegate-to-lastGame copies
+    // that mirrored the editor blob back onto the shell. The blob is now single-owned
+    // by ArmyFormationEditorController on the state host and the shell inherits
+    // CanvasGameApp's delegators + the armyFormationEditor accessor -- one
+    // implementation, one store, for both. See slice 6 of the re-decomposition.
 
     enterCity(action = {}) {
           const game = this.lastGame;
