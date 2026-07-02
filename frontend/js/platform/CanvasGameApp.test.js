@@ -193,6 +193,264 @@ test('autoReplenishArmyFormation saves the visible draft soldier assignments wit
   ]);
 });
 
+// Characterization tests for the army-formation editor cluster (god-file
+// re-decomposition slice 6). Written against the pre-extraction CanvasGameApp
+// bodies and kept UNCHANGED through the ArmyFormationEditorController
+// extraction -- staying green is the read-proof of behavioural equivalence.
+test('openArmyFormation seeds the editor from the city formation and normalizes assignments', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 500,
+        formations: {
+          capital: [{
+            slot: 2,
+            memberIds: ['a', 'b', 'c', 'd', 'e', 'f'],
+            maxSoldiersPerMember: 200,
+            soldierAssignments: { a: 999, b: -5, c: 20 },
+          }],
+        },
+      },
+    },
+    renderCanvasSurface(tab) { calls.push(['renderCanvasSurface', tab]); },
+  });
+
+  assert.equal(host.openArmyFormation({ slot: 2 }), true);
+  assert.deepEqual(host.armyFormationEditor, {
+    open: true,
+    cityId: 'capital',
+    slot: 2,
+    memberIds: ['a', 'b', 'c', 'd', 'e'],
+    soldierAssignments: { a: 200, b: 0, c: 20, d: 0, e: 0 },
+    soldierDraftAssignments: { a: 200, b: 0, c: 20, d: 0, e: 0 },
+    page: 0,
+    saving: false,
+  });
+  assert.equal(calls.length, 1);
+});
+
+test('toggleArmyFormationMember adds with zeroed assignments, removes, and enforces the 5-member cap', () => {
+  const toasts = [];
+  const host = makeAppHost({
+    state: { activeCityId: 'capital', military: { formations: {} } },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a'],
+      soldierAssignments: { a: 10 },
+      soldierDraftAssignments: { a: 10 },
+      page: 0,
+      saving: false,
+    },
+    renderCanvasSurface() {},
+    showFloatingText(message) { toasts.push(message); },
+  });
+
+  assert.equal(host.toggleArmyFormationMember({ personId: 'b' }), true);
+  assert.deepEqual(host.armyFormationEditor.memberIds, ['a', 'b']);
+  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { a: 10, b: 0 });
+  assert.deepEqual(host.armyFormationEditor.soldierDraftAssignments, { a: 10, b: 0 });
+
+  assert.equal(host.toggleArmyFormationMember({ personId: 'a' }), true);
+  assert.deepEqual(host.armyFormationEditor.memberIds, ['b']);
+  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { b: 0 });
+
+  host.toggleArmyFormationMember({ personId: 'c' });
+  host.toggleArmyFormationMember({ personId: 'd' });
+  host.toggleArmyFormationMember({ personId: 'e' });
+  host.toggleArmyFormationMember({ personId: 'f' });
+  assert.equal(toasts.length, 0);
+  assert.equal(host.toggleArmyFormationMember({ personId: 'g' }), false);
+  assert.equal(toasts.length, 1);
+  assert.deepEqual(host.armyFormationEditor.memberIds, ['b', 'c', 'd', 'e', 'f']);
+});
+
+test('changeArmyFormationPage clamps at zero and requires an open editor', () => {
+  const host = makeAppHost({
+    state: {},
+    armyFormationEditor: { open: true, cityId: 'capital', slot: 1, memberIds: [], page: 1 },
+    renderCanvasSurface() {},
+  });
+
+  assert.equal(host.changeArmyFormationPage({ delta: -5 }), true);
+  assert.equal(host.armyFormationEditor.page, 0);
+  assert.equal(host.changeArmyFormationPage({ delta: 2 }), true);
+  assert.equal(host.armyFormationEditor.page, 2);
+
+  host.armyFormationEditor = { open: false };
+  assert.equal(host.changeArmyFormationPage({ delta: 1 }), false);
+});
+
+test('changeArmyFormationSoldiers maps the ratio onto the per-member cap', () => {
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 1000,
+        formations: { capital: [{ slot: 1, maxSoldiersPerMember: 400 }] },
+      },
+    },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a', 'b'],
+      soldierAssignments: { a: 0, b: 0 },
+      soldierDraftAssignments: { a: 0, b: 0 },
+      page: 0,
+      saving: false,
+    },
+    renderCanvasSurface() {},
+  });
+
+  assert.equal(host.changeArmyFormationSoldiers({ personId: 'a', ratio: 0.5 }), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 200);
+  assert.equal(host.changeArmyFormationSoldiers({ personId: 'a', ratio: 2 }), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 400);
+});
+
+test('setArmyFormationSoldierDraft clamps to the remaining editable pool', () => {
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 100,
+        formations: {
+          capital: [{
+            slot: 1,
+            maxSoldiersPerMember: 1000,
+            soldierAssignments: { a: 30, b: 20 },
+          }],
+        },
+      },
+    },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a', 'b'],
+      soldierAssignments: { a: 30, b: 20 },
+      soldierDraftAssignments: { a: 30, b: 20 },
+      page: 0,
+      saving: false,
+    },
+    renderCanvasSurface() {},
+  });
+
+  // pool = assigned (50) + reserve (100) = 150; b keeps 20 -> a caps at 130.
+  assert.equal(host.setArmyFormationSoldierDraft('a', 500), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 130);
+  assert.equal(host.setArmyFormationSoldierDraft('missing', 10), false);
+});
+
+test('requestArmyFormationSoldierInput prompts through the runtime and applies the draft', async () => {
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 500,
+        formations: { capital: [{ slot: 1, maxSoldiersPerMember: 1000 }] },
+      },
+    },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a'],
+      soldierAssignments: { a: 5 },
+      soldierDraftAssignments: { a: 5 },
+      page: 0,
+      saving: false,
+    },
+    runtime: {
+      async requestTextInput(prompt) {
+        return prompt.value === '5' ? '42' : '';
+      },
+    },
+    renderCanvasSurface() {},
+  });
+
+  assert.equal(await host.requestArmyFormationSoldierInput({ personId: 'a' }), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 42);
+
+  host.runtime = { async requestTextInput() { return ''; } };
+  assert.equal(await host.requestArmyFormationSoldierInput({ personId: 'a' }), false);
+});
+
+test('saveArmyFormation failure resets saving, surfaces the message, and re-renders', async () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a'],
+      soldierAssignments: { a: 10 },
+      soldierDraftAssignments: { a: 10 },
+      page: 0,
+      saving: false,
+    },
+    getGameApi() {
+      return {
+        async setArmyFormation() {
+          const error = new Error('boom');
+          error.payload = { message: 'save rejected' };
+          throw error;
+        },
+      };
+    },
+    applyApiState() { calls.push(['applyApiState']); },
+    renderCanvasSurface(tab) { calls.push(['renderCanvasSurface', tab]); },
+    showFloatingText(message) { calls.push(['showFloatingText', message]); },
+    log(message) { calls.push(['log', message]); },
+  });
+
+  assert.equal(await host.saveArmyFormation(), false);
+  assert.equal(host.armyFormationEditor.saving, false);
+  assert.equal(host.armyFormationEditor.open, true);
+  assert.deepEqual(calls, [
+    ['renderCanvasSurface', 'military'],
+    ['showFloatingText', 'save rejected'],
+    ['log', 'save rejected'],
+    ['renderCanvasSurface', 'military'],
+  ]);
+});
+
+test('closeArmyFormationEditor resets to the closed default and honours render:false', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 2,
+      memberIds: ['a'],
+      soldierAssignments: { a: 1 },
+      soldierDraftAssignments: { a: 1 },
+      page: 3,
+      saving: false,
+    },
+    renderCanvasSurface(tab) { calls.push(['renderCanvasSurface', tab]); },
+  });
+
+  assert.equal(host.closeArmyFormationEditor({ render: false }), true);
+  assert.deepEqual(host.armyFormationEditor, {
+    open: false,
+    cityId: '',
+    slot: 1,
+    memberIds: [],
+    soldierAssignments: {},
+    soldierDraftAssignments: {},
+    page: 0,
+    saving: false,
+  });
+  assert.equal(calls.length, 0);
+});
+
 test('CanvasGameApp wires authority state refreshes from the sync service', () => {
   const calls = [];
   const syncService = {
