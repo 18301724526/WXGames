@@ -1,5 +1,17 @@
 (function (global) {
 
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const LocaleText = (() => {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
@@ -27,7 +39,7 @@
     entering: 'entering',
     done: 'done',
   };
-  const MAX_INTRO_TUTORIAL_STEP = 1;
+  const MAX_INTRO_TUTORIAL_STEP = TutorialFlowShared?.TUTORIAL_STEPS?.tutorialStarted || 'tutorialStarted';
 
   class TutorialIntroOverlay {
     constructor(options = {}) {
@@ -95,8 +107,8 @@
       const tutorial = state?.tutorial || this.game?.tutorial || null;
       if (!tutorial || typeof tutorial !== 'object') return true;
       if (tutorial.completed || tutorial.disabled) return false;
-      const step = Number(tutorial.currentStep);
-      return Number.isFinite(step) ? step <= MAX_INTRO_TUTORIAL_STEP : true;
+      const step = TutorialFlowShared?.stepName(tutorial.currentStep) || '';
+      return step ? TutorialFlowShared.stepAtMost(step, MAX_INTRO_TUTORIAL_STEP) : true;
     }
 
     now() {

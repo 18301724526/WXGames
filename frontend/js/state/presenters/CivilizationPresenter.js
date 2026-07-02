@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CivilizationPresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
@@ -33,9 +45,10 @@
 
     static canAdvanceEraByTutorial(state = {}, tutorial = {}) {
       if (tutorial.completed) return true;
-      const step = Number(tutorial.currentStep) || 0;
-      if (this.toNumber(state.currentEra) === 0) return step >= 2;
-      if (this.toNumber(state.currentEra) === 1) return step >= 9;
+      const steps = TutorialFlowShared.TUTORIAL_STEPS;
+      const step = TutorialFlowShared.stepName(tutorial.currentStep) || steps.initial;
+      if (this.toNumber(state.currentEra) === 0) return TutorialFlowShared.stepAtLeast(step, steps.cityEntered);
+      if (this.toNumber(state.currentEra) === 1) return TutorialFlowShared.stepAtLeast(step, steps.farmBuilt);
       return true;
     }
 

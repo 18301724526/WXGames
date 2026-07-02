@@ -4,6 +4,7 @@ require('../js/config/LocaleTextRegistry');
 require('../js/debug/ClientOperationLog');
 require('../js/debug/ActorPickingDiagnostics');
 require('../js/config/FamousPortraitLayout');
+require('../../shared/tutorialFlowConfig');
 require('../js/shared/WorldMarchCoreAdapter');
 require('../js/shared/FormationDeploymentEligibilityAdapter');
 require('../js/ecs/foundation/TileCoord');

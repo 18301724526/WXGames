@@ -56,6 +56,7 @@ function makeTempFrontend() {
     fs.writeFileSync(path.join(root, file), file.endsWith('.css') ? 'body{}' : 'window.__asset=1;');
   });
   fs.writeFileSync(path.join(repoRoot, 'shared', 'formationDeploymentEligibility.js'), 'window.FormationDeploymentEligibility={};');
+  fs.writeFileSync(path.join(repoRoot, 'shared', 'tutorialFlowConfig.js'), 'window.TutorialFlowShared={};');
   return { repoRoot, frontendDir: root };
 }
 
@@ -79,6 +80,7 @@ function writeIndex(root, overrides = {}) {
   <script src="js/ui/H5AuthStorageAdapter.js?v=${version}"></script>
   <script src="js/ui/H5ShellAdapter.js?v=${version}"></script>
   <script src="shared/formationDeploymentEligibility.js?v=${version}"></script>
+  <script src="shared/tutorialFlowConfig.js?v=${version}"></script>
   <script src="js/shared/FormationDeploymentEligibilityAdapter.js?v=${version}"></script>
   <script src="js/state/UIStatePresenterDelegates.js?v=${version}"></script>
   <script src="js/state/UIStatePresenter.js?v=${version}"></script>
@@ -131,7 +133,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 24);
+  assert.equal(result.updated, 25);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -143,7 +145,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 23);
+  assert.equal(manifest.localScriptCount, 24);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -176,5 +178,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 25);
+  assert.equal(manifest.localScriptCount, 26);
 });

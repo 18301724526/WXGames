@@ -1,5 +1,13 @@
 (function (global) {
 
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../../../shared/tutorialFlowConfig');
+    }
+    return null;
+  })();
+
   const TutorialGuideStepPolicy = (() => {
     if (global.TutorialGuideStepPolicy) return global.TutorialGuideStepPolicy;
     if (typeof module !== 'undefined' && module.exports) {
@@ -102,7 +110,9 @@
     }
 
     getCurrentStep() {
-      return Number(this.state?.currentStep ?? this.game?.tutorial?.currentStep ?? this.game?.state?.tutorial?.currentStep) || 0;
+      // Canonical step NAME (legacy numeric states normalize onto it).
+      const rawStep = this.state?.currentStep ?? this.game?.tutorial?.currentStep ?? this.game?.state?.tutorial?.currentStep;
+      return TutorialFlowShared.stepName(rawStep) || TUTORIAL_STEPS.initial;
     }
 
     isCompleted() {
@@ -134,8 +144,9 @@
     }
 
     async advanceTo(step) {
-      const nextStep = Number(step);
-      if (!Number.isFinite(nextStep) || nextStep <= this.getCurrentStep()) return this.state;
+      // Accepts step names and legacy numbers; the API is called with the NAME.
+      const nextStep = TutorialFlowShared.stepName(step);
+      if (!nextStep || TutorialFlowShared.compareSteps(nextStep, this.getCurrentStep()) <= 0) return this.state;
       if (this.pendingAdvanceByStep.has(nextStep)) return this.pendingAdvanceByStep.get(nextStep);
       const api = this.getApi();
       if (!api?.advanceTutorial) return this.sync({ ...(this.state || {}), currentStep: nextStep });

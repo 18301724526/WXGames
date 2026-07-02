@@ -1,4 +1,5 @@
 const CityService = require('../CityService');
+const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 
 function getTaskProgress(gameState) {
   if (!gameState.taskProgress || typeof gameState.taskProgress !== 'object') {
@@ -31,7 +32,12 @@ function isTaskConditionMet(gameState, condition = {}) {
     return Math.max(0, Number(gameState.currentEra) || 0) >= Math.max(0, Number(condition.era) || 0);
   }
   if (condition.type === 'tutorialStepAtLeast') {
-    return Math.max(0, Number(gameState.tutorial?.currentStep) || 0) >= Math.max(0, Number(condition.step) || 0);
+    // Accepts step names and legacy numbers on both sides (missing -> initial).
+    const currentStep = SharedTutorialFlowConfig.stepName(gameState.tutorial?.currentStep)
+      || SharedTutorialFlowConfig.TUTORIAL_STEPS.initial;
+    const targetStep = SharedTutorialFlowConfig.stepName(condition.step)
+      || SharedTutorialFlowConfig.TUTORIAL_STEPS.initial;
+    return SharedTutorialFlowConfig.stepAtLeast(currentStep, targetStep);
   }
   if (condition.type === 'eventClaimed') {
     return (gameState.eventHistory || []).some((event) => event?.id === condition.eventId);

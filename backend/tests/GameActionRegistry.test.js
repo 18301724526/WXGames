@@ -110,7 +110,8 @@ test('dispatches tutorialAdvance through the tutorial client-step gate', () => {
   });
 
   assert.equal(result.success, true);
-  assert.equal(result.tutorial.currentStep, 5);
+  // Persisted step is the insertion-proof NAME (legacy numeric payloads map onto it).
+  assert.equal(result.tutorial.currentStep, 'civilizationTabOpened');
 });
 
 test('blocks tutorialAdvance for business-only tutorial steps', () => {

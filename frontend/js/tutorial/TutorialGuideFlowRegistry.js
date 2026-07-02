@@ -1,4 +1,16 @@
 (function (global) {
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const LocaleText = (() => {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
@@ -28,7 +40,7 @@
   }
 
   function getStep(host) {
-    return Number(host?.getCurrentStep?.()) || 0;
+    return TutorialFlowShared.stepName(host?.getCurrentStep?.()) || 'initial';
   }
 
   function getSteps(host, fallback = {}) {
@@ -38,7 +50,8 @@
   }
 
   function stepIs(...allowedSteps) {
-    return (host) => allowedSteps.includes(getStep(host));
+    const allowedNames = allowedSteps.map((step) => TutorialFlowShared.stepName(step));
+    return (host) => allowedNames.includes(getStep(host));
   }
 
   function all(...conditions) {
@@ -278,6 +291,48 @@
     );
   }
 
+  function resolveMessage(message, host) {
+    return typeof message === 'function' ? message(host) : message;
+  }
+
+  // Standard-rule factories. `message` may be a string or a () => string thunk
+  // (kept lazy so LocaleText lookups still happen at render time).
+  function makeTabOpenRule({ id, steps, panel, message }) {
+    return {
+      id,
+      matches: all(stepIs(...steps), not(isCommandPanelOpen(panel))),
+      render: (host) => renderOpenCommandPanel(host, panel, resolveMessage(message, host)),
+    };
+  }
+
+  function makeBuildRule({ id, matches, buildingId, message, render }) {
+    return {
+      id,
+      matches,
+      render:
+        render ||
+        ((host) => host.showBuildingGuide?.(buildingId, resolveMessage(message, host)) || false),
+    };
+  }
+
+  function makeTaskClaimPairRules({ openId, claimId, step, taskId, openMessage, claimMessage }) {
+    return [
+      {
+        id: openId,
+        matches: all(stepIs(step), not(isTaskCenterOpen)),
+        render: (host) =>
+          renderOpenTaskCenter(host, resolveMessage(openMessage, host), {
+            type: 'openTaskCenter',
+          }),
+      },
+      {
+        id: claimId,
+        matches: all(stepIs(step), isTaskCenterOpen),
+        render: (host) => renderClaimTaskReward(host, taskId, resolveMessage(claimMessage, host)),
+      },
+    ];
+  }
+
   function createDefaultRules(steps = {}) {
     const eventPanelOpen = all(
       any(
@@ -318,43 +373,28 @@
         matches: stepIs(steps.civilizationTabOpened),
         render: (host) => renderAdvanceEra(host, t('tutorial.highlight.advanceEra')),
       },
-      {
-        id: 'first-era-open-task-center',
-        matches: all(stepIs(steps.eraAdvancedTo1), not(isTaskCenterOpen)),
-        render: (host) =>
-          renderOpenTaskCenter(host, t('tutorial.highlight.openTaskCenter'), {
-            type: 'openTaskCenter',
-          }),
-      },
-      {
-        id: 'first-era-claim-supplies',
-        matches: all(stepIs(steps.eraAdvancedTo1), isTaskCenterOpen),
-        render: (host) =>
-          renderClaimTaskReward(
-            host,
-            'main_first_supplies',
-            t('tutorial.highlight.claimFirstSupplies'),
-          ),
-      },
-      {
+      ...makeTaskClaimPairRules({
+        openId: 'first-era-open-task-center',
+        claimId: 'first-era-claim-supplies',
+        step: steps.eraAdvancedTo1,
+        taskId: 'main_first_supplies',
+        openMessage: () => t('tutorial.highlight.openTaskCenter'),
+        claimMessage: () => t('tutorial.highlight.claimFirstSupplies'),
+      }),
+      makeBuildRule({
         id: 'farm-build',
         matches: (host) => host.isFarmGuideActive?.(),
-        render: (host) =>
-          host.showBuildingGuide?.(
-            'farm',
-            '\u5efa\u9020\u7b2c\u4e00\u5757\u519c\u7530\uff0c\u8ba9\u98df\u7269\u4f9b\u5e94\u5148\u7a33\u5b9a\u4e0b\u6765\u3002',
-          ) || false,
-      },
-      {
+        buildingId: 'farm',
+        message:
+          '\u5efa\u9020\u7b2c\u4e00\u5757\u519c\u7530\uff0c\u8ba9\u98df\u7269\u4f9b\u5e94\u5148\u7a33\u5b9a\u4e0b\u6765\u3002',
+      }),
+      makeTabOpenRule({
         id: 'era2-open-civilization',
-        matches: all(stepIs(steps.era2AdvanceReady), not(isCommandPanelOpen('civilization'))),
-        render: (host) =>
-          renderOpenCommandPanel(
-            host,
-            'civilization',
-            '\u56de\u5230\u6587\u660e\uff0c\u628a\u805a\u843d\u63a8\u5411\u4e0b\u4e00\u4e2a\u65f6\u4ee3\u3002',
-          ),
-      },
+        steps: [steps.era2AdvanceReady],
+        panel: 'civilization',
+        message:
+          '\u56de\u5230\u6587\u660e\uff0c\u628a\u805a\u843d\u63a8\u5411\u4e0b\u4e00\u4e2a\u65f6\u4ee3\u3002',
+      }),
       {
         id: 'era2-advance',
         matches: all(stepIs(steps.era2AdvanceReady), isCommandPanelOpen('civilization')),
@@ -364,16 +404,13 @@
             '\u6761\u4ef6\u5df2\u7ecf\u51c6\u5907\u597d\uff0c\u70b9\u51fb\u8fdb\u9636\u8fdb\u5165\u805a\u843d\u65f6\u4ee3\u3002',
           ),
       },
-      {
+      makeTabOpenRule({
         id: 'era2-open-events',
-        matches: all(stepIs(steps.eraAdvancedTo2), not(isCommandPanelOpen('events'))),
-        render: (host) =>
-          renderOpenCommandPanel(
-            host,
-            'events',
-            '\u6253\u5f00\u4e8b\u4ef6\uff0c\u5904\u7406\u68ee\u6797\u91cc\u7684\u6728\u6750\u7ebf\u7d22\u3002',
-          ),
-      },
+        steps: [steps.eraAdvancedTo2],
+        panel: 'events',
+        message:
+          '\u6253\u5f00\u4e8b\u4ef6\uff0c\u5904\u7406\u68ee\u6797\u91cc\u7684\u6728\u6750\u7ebf\u7d22\u3002',
+      }),
       {
         id: 'era2-open-forest-event',
         matches: eventPanelOpen,
@@ -403,47 +440,33 @@
             },
           ),
       },
-      {
+      makeBuildRule({
         id: 'lumbermill-build',
         matches: any(
           stepIs(steps.specialEventClaimed),
           stepIs(steps.buildingsTabOpenedForLumbermill),
         ),
-        render: (host) =>
-          host.showBuildingGuide?.(
-            'lumbermill',
-            '\u5efa\u9020\u4f10\u6728\u573a\uff0c\u8ba9\u6728\u6750\u5f00\u59cb\u6301\u7eed\u6d41\u5165\u4ed3\u5e93\u3002',
-          ) || false,
-      },
-      {
-        id: 'lumbermill-open-task-center',
-        matches: all(stepIs(steps.lumbermillBuilt), not(isTaskCenterOpen)),
-        render: (host) =>
-          renderOpenTaskCenter(
-            host,
-            '\u6253\u5f00\u4efb\u52a1\uff0c\u9886\u53d6\u4f10\u6728\u573a\u5b8c\u6210\u540e\u7684\u4e3b\u7ebf\u5956\u52b1\u3002',
-          ),
-      },
-      {
-        id: 'lumbermill-claim-task',
-        matches: all(stepIs(steps.lumbermillBuilt), isTaskCenterOpen),
-        render: (host) =>
-          renderClaimTaskReward(
-            host,
-            'main_lumbermill_supplies',
-            '\u9886\u53d6\u201c\u8ba9\u6728\u6750\u6d41\u5165\u4ed3\u623f\u201d\uff0c\u4e0b\u4e00\u6b21\u8fdb\u9636\u7684\u7269\u8d44\u5c31\u5230\u4f4d\u4e86\u3002',
-          ),
-      },
-      {
+        buildingId: 'lumbermill',
+        message:
+          '\u5efa\u9020\u4f10\u6728\u573a\uff0c\u8ba9\u6728\u6750\u5f00\u59cb\u6301\u7eed\u6d41\u5165\u4ed3\u5e93\u3002',
+      }),
+      ...makeTaskClaimPairRules({
+        openId: 'lumbermill-open-task-center',
+        claimId: 'lumbermill-claim-task',
+        step: steps.lumbermillBuilt,
+        taskId: 'main_lumbermill_supplies',
+        openMessage:
+          '\u6253\u5f00\u4efb\u52a1\uff0c\u9886\u53d6\u4f10\u6728\u573a\u5b8c\u6210\u540e\u7684\u4e3b\u7ebf\u5956\u52b1\u3002',
+        claimMessage:
+          '\u9886\u53d6\u201c\u8ba9\u6728\u6750\u6d41\u5165\u4ed3\u623f\u201d\uff0c\u4e0b\u4e00\u6b21\u8fdb\u9636\u7684\u7269\u8d44\u5c31\u5230\u4f4d\u4e86\u3002',
+      }),
+      makeTabOpenRule({
         id: 'era3-open-civilization',
-        matches: all(stepIs(steps.era3AdvanceReady), not(isCommandPanelOpen('civilization'))),
-        render: (host) =>
-          renderOpenCommandPanel(
-            host,
-            'civilization',
-            '\u6253\u5f00\u6587\u660e\uff0c\u7528\u4f10\u6728\u573a\u7684\u7269\u8d44\u63a8\u8fdb\u5230\u57ce\u90a6\u65f6\u4ee3\u3002',
-          ),
-      },
+        steps: [steps.era3AdvanceReady],
+        panel: 'civilization',
+        message:
+          '\u6253\u5f00\u6587\u660e\uff0c\u7528\u4f10\u6728\u573a\u7684\u7269\u8d44\u63a8\u8fdb\u5230\u57ce\u90a6\u65f6\u4ee3\u3002',
+      }),
       {
         id: 'era3-advance',
         matches: all(stepIs(steps.era3AdvanceReady), isCommandPanelOpen('civilization')),
@@ -684,19 +707,13 @@
             { type: 'seekFamousPerson' },
           ),
       },
-      {
+      makeTabOpenRule({
         id: 'final-tech-open',
-        matches: all(
-          stepIs(steps.famousSeekCompleted, steps.finalTechOpened),
-          not(isCommandPanelOpen('tech')),
-        ),
-        render: (host) =>
-          renderOpenCommandPanel(
-            host,
-            'tech',
-            '\u6253\u5f00\u79d1\u6280\uff0c\u770b\u770b\u6587\u660e\u672a\u6765\u7684\u53d1\u5c55\u8def\u7ebf\u3002',
-          ),
-      },
+        steps: [steps.famousSeekCompleted, steps.finalTechOpened],
+        panel: 'tech',
+        message:
+          '\u6253\u5f00\u79d1\u6280\uff0c\u770b\u770b\u6587\u660e\u672a\u6765\u7684\u53d1\u5c55\u8def\u7ebf\u3002',
+      }),
       {
         id: 'final-tech-soft-guide',
         matches: stepIs(steps.famousSeekCompleted, steps.finalTechOpened),
@@ -706,11 +723,12 @@
             '\u79d1\u6280\u70b9\u4f1a\u5f71\u54cd\u6587\u660e\u7684\u53d1\u5c55\u8fdb\u7a0b\uff0c\u4e0d\u540c\u8def\u7ebf\u4f1a\u628a\u805a\u843d\u5e26\u5411\u519c\u4e1a\u3001\u519b\u4e8b\u6216\u5de5\u4e1a\u7b49\u4e0d\u540c\u4fa7\u91cd\u3002\u63a5\u4e0b\u6765\u7531\u4f60\u6765\u51b3\u5b9a\u7b2c\u4e00\u9879\u7814\u7a76\u3002',
           ) || false,
       },
-      {
+      makeBuildRule({
         id: 'house-build',
         matches: (host) => host.isHouseGuideActive?.(),
+        buildingId: 'house',
         render: renderHouseGuide,
-      },
+      }),
     ];
   }
 
@@ -740,6 +758,9 @@
     TutorialGuideFlowRegistry,
     create,
     createDefaultRules,
+    makeTabOpenRule,
+    makeBuildRule,
+    makeTaskClaimPairRules,
   };
 
   global.TutorialGuideFlowRegistry = api;

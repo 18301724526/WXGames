@@ -408,3 +408,63 @@ test('tutorial guides first discovered empty city claim and naming in order', ()
   gameState.territories[1].cityName = '河湾城';
   assert.equal(TutorialService.validateAction(cityNamed, 'renamePolity', { name: '赤火联盟' }, gameState).allowed, true);
 });
+
+test('normalize migrates legacy numeric saves onto step names', () => {
+  const numericSave = TutorialService.normalizeTutorialState({
+    completed: false,
+    currentStep: 22,
+    grants: { scoutFamousPerson: { personId: 'fp_1' } },
+  });
+
+  assert.equal(numericSave.currentStep, 'scoutFormationSaved');
+  assert.equal(numericSave.completed, false);
+  assert.deepEqual(numericSave.phaseCompleted, { newbie: true, era2: true, scoutFormation: true });
+  assert.equal(numericSave.grants.scoutFamousPerson.personId, 'fp_1');
+
+  const clampedSave = TutorialService.normalizeTutorialState({ currentStep: 99 });
+  assert.equal(clampedSave.currentStep, 'completed');
+  assert.equal(clampedSave.completed, true);
+
+  const nameSave = TutorialService.normalizeTutorialState({ currentStep: 'farmBuilt' });
+  assert.equal(nameSave.currentStep, 'farmBuilt');
+  assert.equal(nameSave.phaseCompleted.newbie, true);
+  assert.equal(nameSave.phaseCompleted.era2, false);
+
+  const garbageSave = TutorialService.normalizeTutorialState({ currentStep: 'not-a-step' });
+  assert.equal(garbageSave.currentStep, 'initial');
+});
+
+test('tutorialAdvance client gate accepts step names and legacy numeric payloads', () => {
+  const atHouseBuilt = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.houseBuilt,
+  );
+
+  const byName = TutorialService.advanceClientStep(atHouseBuilt, 'civilizationTabOpened');
+  assert.equal(byName.success, true);
+  assert.equal(byName.tutorial.currentStep, 'civilizationTabOpened');
+
+  const byLegacyNumber = TutorialService.advanceClientStep(atHouseBuilt, 5);
+  assert.equal(byLegacyNumber.success, true);
+  assert.equal(byLegacyNumber.tutorial.currentStep, 'civilizationTabOpened');
+
+  const byLegacyNumericString = TutorialService.advanceClientStep(atHouseBuilt, '5');
+  assert.equal(byLegacyNumericString.success, true);
+  assert.equal(byLegacyNumericString.tutorial.currentStep, 'civilizationTabOpened');
+
+  const lockedBusinessStep = TutorialService.advanceClientStep(atHouseBuilt, 'houseBuilt');
+  assert.equal(lockedBusinessStep.success, false);
+  assert.equal(lockedBusinessStep.error, 'TUTORIAL_STEP_LOCKED');
+
+  const lockedPrerequisite = TutorialService.advanceClientStep(atHouseBuilt, 'buildingsTabOpened');
+  assert.equal(lockedPrerequisite.success, false);
+  assert.equal(lockedPrerequisite.error, 'TUTORIAL_STEP_LOCKED');
+
+  const outOfRangeNumber = TutorialService.advanceClientStep(atHouseBuilt, 99);
+  assert.equal(outOfRangeNumber.success, false);
+  assert.equal(outOfRangeNumber.error, 'TUTORIAL_STEP_LOCKED');
+
+  const invalidPayload = TutorialService.advanceClientStep(atHouseBuilt, 'nonsense');
+  assert.equal(invalidPayload.success, false);
+  assert.equal(invalidPayload.error, 'TUTORIAL_STEP_INVALID');
+});

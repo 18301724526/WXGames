@@ -16,6 +16,7 @@ const REQUIRED_SCRIPTS = [
   'js/state/UIStatePresenterDelegates.js',
   'js/state/UIStatePresenter.js',
   'shared/formationDeploymentEligibility.js',
+  'shared/tutorialFlowConfig.js',
   'js/shared/FormationDeploymentEligibilityAdapter.js',
   'js/platform/CanvasRuntimeContract.js',
   'js/platform/CanvasLayerRegistry.js',
@@ -37,6 +38,12 @@ const REQUIRED_ORDER_PAIRS = [
   ['js/state/TerritoryUiStateStore.js', 'js/platform/CanvasGameShell.js'],
   ['js/state/UIStatePresenterDelegates.js', 'js/state/UIStatePresenter.js'],
   ['shared/formationDeploymentEligibility.js', 'js/shared/FormationDeploymentEligibilityAdapter.js'],
+  // The shared tutorial step table must load before every consumer that binds
+  // it at module-eval (step policy, presenters, ECS GameState projection).
+  ['shared/tutorialFlowConfig.js', 'js/tutorial/TutorialGuideStepPolicy.js'],
+  ['shared/tutorialFlowConfig.js', 'js/state/presenters/BuildingPresenter.js'],
+  ['shared/tutorialFlowConfig.js', 'js/state/presenters/CivilizationPresenter.js'],
+  ['shared/tutorialFlowConfig.js', 'js/ecs/projection/GameState.js'],
   ['js/shared/FormationDeploymentEligibilityAdapter.js', 'js/platform/renderers/WorldMarchHudCanvasRenderer.js'],
   ['js/shared/FormationDeploymentEligibilityAdapter.js', 'js/platform/CanvasActionController.js'],
   ['js/debug/ActorPickingDiagnostics.js', 'js/ecs/input/WorldMapInputActionMap.js'],

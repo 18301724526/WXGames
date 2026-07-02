@@ -375,6 +375,10 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-tutorial-advance-single-source.js',
   'scripts/check-tutorial-advance-single-source.test.js',
+  'scripts/check-tutorial-step-contract.js',
+  'scripts/check-tutorial-step-contract.test.js',
+  'shared/tutorialFlowConfig.js',
+  'shared/tutorialFlowConfig.test.js',
   'scripts/check-source-encoding.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-renderer-host-bridge-retired.js',
@@ -578,6 +582,8 @@ const TEST_FILES = Object.freeze([
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-tutorial-advance-single-source.test.js',
+  'scripts/check-tutorial-step-contract.test.js',
+  'shared/tutorialFlowConfig.test.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-renderer-host-bridge-retired.test.js',
   'scripts/check-frontend-single-source-redline.test.js',
@@ -689,6 +695,9 @@ function main() {
   ]);
   run('tutorial advance single-source blocking guard', process.execPath, [
     'scripts/check-tutorial-advance-single-source.js',
+  ]);
+  run('tutorial step contract blocking guard', process.execPath, [
+    'scripts/check-tutorial-step-contract.js',
   ]);
   run('source encoding blocking guard', process.execPath, [
     'scripts/check-source-encoding.js',

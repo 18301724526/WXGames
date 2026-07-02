@@ -246,7 +246,7 @@
       },
       territoryCount: Array.isArray(state.territoryState?.territories) ? state.territoryState.territories.length : 0,
       worldExplorerState: summarizeWorldExplorerState(state.worldExplorerState),
-      tutorialStep: Number(state.tutorial?.currentStep || 0),
+      tutorialStep: state.tutorial?.currentStep ?? 0,
     };
   }
 
@@ -274,7 +274,7 @@
       mission: summarizeMission(data.mission),
       gameState: summarizeGameState(data.gameState),
       authority: summarizeAuthority(data.authority),
-      tutorialStep: Number(data.tutorial?.currentStep || data.gameState?.tutorial?.currentStep || 0),
+      tutorialStep: data.tutorial?.currentStep ?? data.gameState?.tutorial?.currentStep ?? 0,
       syncTime: data.syncTime || '',
     };
   }

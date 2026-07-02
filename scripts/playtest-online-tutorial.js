@@ -22,45 +22,12 @@ const CONFIG = {
   minHighlightGoldPixels: Number(process.env.PLAYTEST_MIN_HIGHLIGHT_GOLD_PIXELS || 24),
 };
 
-const STEP_NAMES = {
-  0: 'initial',
-  1: 'tutorialStarted',
-  2: 'cityEntered',
-  3: 'houseGuideReady',
-  4: 'houseBuilt',
-  5: 'civilizationTabOpened',
-  6: 'eraAdvancedTo1',
-  7: 'buildingsTabOpened',
-  8: 'farmPrepReserved',
-  9: 'farmBuilt',
-  10: 'era2AdvanceReady',
-  11: 'eraAdvancedTo2',
-  12: 'specialEventTabOpened',
-  13: 'specialEventClaimed',
-  14: 'buildingsTabOpenedForLumbermill',
-  15: 'lumbermillBuilt',
-  16: 'era3AdvanceReady',
-  17: 'era3Advanced',
-  18: 'scoutFamousGranted',
-  19: 'famousPanelOpened',
-  20: 'famousCardViewed',
-  21: 'formationPanelOpened',
-  22: 'scoutFormationSaved',
-  23: 'scoutWorldPanelOpened',
-  24: 'scoutExploreStarted',
-  25: 'firstCityDiscovered',
-  26: 'firstCityConquestStarted',
-  27: 'firstCityOccupied',
-  28: 'firstCityNamed',
-  29: 'polityNamed',
-  30: 'talentPolicyOpened',
-  31: 'talentPolicyApplied',
-  32: 'manualTalentAssigned',
-  33: 'famousSeekOpened',
-  34: 'famousSeekCompleted',
-  35: 'finalTechOpened',
-  36: 'completed',
-};
+// Single source: shared/tutorialFlowConfig.js (index -> step name).
+const TutorialFlowShared = require('../shared/tutorialFlowConfig');
+const STEP_NAMES = TutorialFlowShared.STEP_ORDER;
+const COMPLETED_STEP_INDEX = TutorialFlowShared.stepIndex(
+  TutorialFlowShared.TUTORIAL_STEPS.completed,
+);
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = path.resolve(CONFIG.outputRoot, runId);
@@ -496,7 +463,11 @@ async function getState(page) {
       hasServerState: Boolean(game?.hasServerState),
       currentTab: game?.state?.currentTab || game?.currentTab || shell?.currentTab || '',
       militaryView: game?.state?.militaryView || shell?.militaryView || '',
-      tutorialStep: Number(game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0) || 0,
+      tutorialStep: (() => {
+        const raw = game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0;
+        const index = globalThis.TutorialFlowShared?.stepIndex?.(raw);
+        return Number.isFinite(index) && index >= 0 ? index : Number(raw) || 0;
+      })(),
       tutorialCompleted: Boolean(game?.tutorial?.completed || game?.state?.tutorial?.completed),
       tutorial: game?.tutorial || game?.state?.tutorial || null,
       tutorialIntro: game?.tutorialIntro || shell?.tutorialIntro || null,
@@ -616,10 +587,14 @@ async function refreshAuthorityStateAndWorldMap(page, label = 'refresh-authority
     const coordinator = shell?.worldMapRuntimeCoordinator || game?.worldMapRuntimeCoordinator || null;
     const runtime = coordinator?.getMapRuntime?.() || shell?.worldMapRuntime || game?.worldMapRuntime || null;
     const api = game?.gameAPI || game?.api || game?.syncService?.api || null;
+    const toStepIndex = (raw) => {
+      const index = globalThis.TutorialFlowShared?.stepIndex?.(raw);
+      return Number.isFinite(index) && index >= 0 ? index : Number(raw) || 0;
+    };
     const summary = {
       fetchedAuthorityState: false,
       appliedAuthorityState: false,
-      tutorialStep: Number(game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0) || 0,
+      tutorialStep: toStepIndex(game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0),
       invalidated: [],
     };
 
@@ -627,7 +602,7 @@ async function refreshAuthorityStateAndWorldMap(page, label = 'refresh-authority
       if (typeof api?.getState === 'function') {
         const data = await api.getState();
         summary.fetchedAuthorityState = true;
-        summary.responseTutorialStep = Number(data?.tutorial?.currentStep ?? data?.gameState?.tutorial?.currentStep ?? 0) || 0;
+        summary.responseTutorialStep = toStepIndex(data?.tutorial?.currentStep ?? data?.gameState?.tutorial?.currentStep ?? 0);
         if (typeof game?.applyApiState === 'function') {
           game.applyApiState(data);
           summary.appliedAuthorityState = true;
@@ -892,7 +867,7 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
   const actionType = action?.type || '';
   const apiCall = getSuccessfulApiCall(after, action, before);
   const stepAdvanced = Number(after.tutorialStep) > Number(before.tutorialStep);
-  const completed = Boolean(after.tutorialCompleted || after.tutorialStep >= 36);
+  const completed = Boolean(after.tutorialCompleted || after.tutorialStep >= COMPLETED_STEP_INDEX);
   const apiRequired = isApiAction(actionType);
   const apiOk = !apiRequired || Boolean(apiCall);
   const authorityOk = !actionRequiresAuthority(action) || (
@@ -1565,7 +1540,7 @@ async function main() {
   let stopReason = '';
   for (let index = 1; index <= CONFIG.maxActions; index += 1) {
     const state = await getState(page);
-    if (state.tutorialCompleted || state.tutorialStep >= 36) {
+    if (state.tutorialCompleted || state.tutorialStep >= COMPLETED_STEP_INDEX) {
       stopReason = 'tutorial-completed';
       break;
     }

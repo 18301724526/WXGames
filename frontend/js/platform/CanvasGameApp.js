@@ -3,6 +3,10 @@
   if (typeof module !== 'undefined' && module.exports && !GameCommandServiceBase) {
     GameCommandServiceBase = require('./GameCommandService');
   }
+  var TutorialFlowShared = global.TutorialFlowShared;
+  if (typeof module !== 'undefined' && module.exports && !TutorialFlowShared) {
+    TutorialFlowShared = require('../../../shared/tutorialFlowConfig');
+  }
   var TutorialGuideControllerBase = global.TutorialGuideController;
   if (typeof module !== 'undefined' && module.exports && !TutorialGuideControllerBase) {
     try {
@@ -1095,7 +1099,7 @@
     getEffectiveTutorialState(tutorial) {
                 const nextTutorial = tutorial || { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
                 const tutorialSteps = this.tutorialController?.constructor?.TUTORIAL_STEPS || TutorialGuideControllerBase?.TUTORIAL_STEPS || {};
-                if (!nextTutorial.completed && nextTutorial.currentStep === tutorialSteps.farmBuilt && this.isEra2AdvanceReady()) {
+                if (!nextTutorial.completed && TutorialFlowShared.stepEquals(nextTutorial.currentStep, tutorialSteps.farmBuilt) && this.isEra2AdvanceReady()) {
                   return {
                     ...nextTutorial,
                     currentStep: tutorialSteps.era2AdvanceReady,
@@ -2403,7 +2407,7 @@
     maybeShowHouseBuiltAdvisor(action, buildingId) {
                 const steps = this.tutorialController?.constructor?.TUTORIAL_STEPS || {};
                 if (action !== 'build' || buildingId !== 'house') return false;
-                if (Number(this.tutorial?.currentStep) !== Number(steps.houseBuilt)) return false;
+                if (!TutorialFlowShared.stepEquals(this.tutorial?.currentStep, steps.houseBuilt)) return false;
                 return this.showHouseBuiltAdvisorDialogue();
               }
 

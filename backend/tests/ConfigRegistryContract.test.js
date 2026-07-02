@@ -181,7 +181,7 @@ test('Core config families expose registry metadata and validation', () => {
     id: 'tutorial-flow-config',
     schema: 'tutorial-flow-config-registry',
     minEntries: Object.keys(TutorialFlowConfig.TUTORIAL_STEPS).length,
-    entryIds: ['step:initial', 'step:completed', 'clientGate:36'],
+    entryIds: ['step:initial', 'step:completed', 'clientGate:completed'],
   });
   assertConfigRegistry(BattleConfig, {
     id: 'battle-config',

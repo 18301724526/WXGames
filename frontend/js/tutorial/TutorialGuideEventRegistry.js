@@ -1,4 +1,16 @@
 (function (global) {
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const TutorialGuideStepPolicy = (() => {
     if (global.TutorialGuideStepPolicy) return global.TutorialGuideStepPolicy;
     if (typeof module !== 'undefined' && module.exports) {
@@ -45,13 +57,17 @@
   }
 
   function getStep(host) {
-    return Number(host?.getCurrentStep?.()) || 0;
+    return TutorialFlowShared.stepName(host?.getCurrentStep?.()) || 'initial';
   }
 
   function getSteps(host, fallback = {}) {
     return (
       host?.constructor?.TUTORIAL_STEPS || TutorialGuideStepPolicy?.TUTORIAL_STEPS || fallback || {}
     );
+  }
+
+  function stepEquals(a, b) {
+    return TutorialFlowShared.stepEquals(a, b);
   }
 
   function syncFromResult(host, payload = {}) {
@@ -77,10 +93,10 @@
       tabClicked: async (host, payload = {}) => {
         const tabId = payload.tabId || payload.panelId || payload.tab || '';
         if (!host.canOpenTab?.(tabId)) return false;
-        if (tabId === 'buildings' && getStep(host) === steps.cityEntered) {
+        if (tabId === 'buildings' && stepEquals(getStep(host), steps.cityEntered)) {
           await host.advanceTo?.(steps.houseGuideReady);
         }
-        if (tabId === 'civilization' && getStep(host) === steps.houseBuilt) {
+        if (tabId === 'civilization' && stepEquals(getStep(host), steps.houseBuilt)) {
           await host.advanceTo?.(steps.civilizationTabOpened);
         }
         return true;
@@ -91,13 +107,13 @@
           host.normalizePanelTab?.(payload.panelId || payload.tabId || payload.panel || '') || '';
         const allowed = await host.handleEvent?.('tabClicked', { tabId });
         if (allowed === false) return false;
-        if (tabId === 'events' && getStep(host) === steps.eraAdvancedTo2) {
+        if (tabId === 'events' && stepEquals(getStep(host), steps.eraAdvancedTo2)) {
           await host.advanceTo?.(steps.specialEventTabOpened);
         }
-        if (tabId === 'buildings' && getStep(host) === steps.specialEventClaimed) {
+        if (tabId === 'buildings' && stepEquals(getStep(host), steps.specialEventClaimed)) {
           await host.advanceTo?.(steps.buildingsTabOpenedForLumbermill);
         }
-        if (tabId === 'tech' && getStep(host) === steps.famousSeekCompleted) {
+        if (tabId === 'tech' && stepEquals(getStep(host), steps.famousSeekCompleted)) {
           await host.advanceTo?.(steps.finalTechOpened);
         }
         if (allowed !== false) host.refreshCurrentHighlight?.();
@@ -106,10 +122,10 @@
 
       cityEntered: async (host) => {
         if (host.isCompleted?.()) return host.state;
-        if (getStep(host) < steps.cityEntered) {
+        if (TutorialFlowShared.stepBefore(getStep(host), steps.cityEntered)) {
           await host.advanceTo?.(steps.cityEntered);
         }
-        if (getStep(host) < steps.houseGuideReady) {
+        if (TutorialFlowShared.stepBefore(getStep(host), steps.houseGuideReady)) {
           return host.advanceTo?.(steps.houseGuideReady) || host.state;
         }
         return host.state;
@@ -128,7 +144,10 @@
       eraAdvanced: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
         const step = getStep(host);
-        if (step >= steps.scoutFamousGranted && step < steps.scoutFormationSaved) {
+        if (
+          TutorialFlowShared.stepAtLeast(step, steps.scoutFamousGranted) &&
+          TutorialFlowShared.stepBefore(step, steps.scoutFormationSaved)
+        ) {
           return (
             host.showSoftGuide?.(
               'famous-persons-button',
@@ -136,7 +155,7 @@
             ) || false
           );
         }
-        if (step === steps.eraAdvancedTo2) {
+        if (stepEquals(step, steps.eraAdvancedTo2)) {
           return (
             host.showSoftGuide?.(
               'events-button',
@@ -144,7 +163,7 @@
             ) || false
           );
         }
-        if (step !== steps.eraAdvancedTo1) return false;
+        if (!stepEquals(step, steps.eraAdvancedTo1)) return false;
         return (
           host.showSoftGuide?.('task-center-button', t('tutorial.softGuide.claimSupplies')) || false
         );
@@ -152,24 +171,24 @@
 
       taskRewardClaimed: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
-        return getStep(host) >= steps.farmPrepReserved;
+        return TutorialFlowShared.stepAtLeast(getStep(host), steps.farmPrepReserved);
       },
 
       famousPersonsOpened: (host) => {
-        if (getStep(host) === steps.scoutFamousGranted) {
+        if (stepEquals(getStep(host), steps.scoutFamousGranted)) {
           return host.advanceTo?.(steps.famousPanelOpened) || host.state;
         }
-        if (getStep(host) === steps.manualTalentAssigned) {
+        if (stepEquals(getStep(host), steps.manualTalentAssigned)) {
           return host.advanceTo?.(steps.famousSeekOpened) || host.state;
         }
         return host.state;
       },
 
       talentPolicyOpened: async (host) => {
-        if (getStep(host) === steps.polityNamed) {
+        if (stepEquals(getStep(host), steps.polityNamed)) {
           await host.advanceTo?.(steps.talentPolicyOpened);
         }
-        if (getStep(host) === steps.talentPolicyOpened) {
+        if (stepEquals(getStep(host), steps.talentPolicyOpened)) {
           return await (host.advanceTo?.(steps.talentPolicyApplied) || host.state);
         }
         return host.state;
@@ -185,7 +204,7 @@
         const personId = payload.personId || '';
         const scoutPersonId = host.getScoutFamousPersonId?.() || '';
         if (
-          getStep(host) === steps.famousPanelOpened &&
+          stepEquals(getStep(host), steps.famousPanelOpened) &&
           (!scoutPersonId || String(personId || '') === scoutPersonId)
         ) {
           return host.advanceTo?.(steps.famousCardViewed) || host.state;
@@ -194,12 +213,19 @@
       },
 
       armyFormationOpened: (host) =>
-        advanceIf(host, () => getStep(host) === steps.famousCardViewed, steps.formationPanelOpened),
+        advanceIf(
+          host,
+          () => stepEquals(getStep(host), steps.famousCardViewed),
+          steps.formationPanelOpened,
+        ),
 
       armyFormationSaved: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
         const step = getStep(host);
-        if (step === steps.scoutFormationSaved || step === steps.scoutWorldPanelOpened) {
+        if (
+          stepEquals(step, steps.scoutFormationSaved) ||
+          stepEquals(step, steps.scoutWorldPanelOpened)
+        ) {
           host.closeArmyFormationEditorEverywhere?.();
           host.ensureMapHomeGuideVisible?.({ clearWorldMarchTarget: true });
           host.refreshCurrentHighlight?.();
@@ -214,7 +240,7 @@
         const view = payload.view || '';
         return advanceIf(
           host,
-          () => view === 'world' && getStep(host) === steps.scoutFormationSaved,
+          () => view === 'world' && stepEquals(getStep(host), steps.scoutFormationSaved),
           steps.scoutWorldPanelOpened,
         );
       },
@@ -240,7 +266,7 @@
       worldMarchTargetSelected: (host) =>
         advanceIf(
           host,
-          () => getStep(host) === steps.scoutFormationSaved,
+          () => stepEquals(getStep(host), steps.scoutFormationSaved),
           steps.scoutWorldPanelOpened,
         ),
 
@@ -257,7 +283,7 @@
         if (game.canvasShell) {
           game.canvasShell.tutorialAdvisorDialogue = null;
         }
-        if (getStep(host) !== steps.finalTechOpened) {
+        if (!stepEquals(getStep(host), steps.finalTechOpened)) {
           host.refreshCurrentHighlight?.();
           return host.state;
         }

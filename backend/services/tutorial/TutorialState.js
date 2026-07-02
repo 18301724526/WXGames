@@ -1,12 +1,13 @@
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 const { nowIso } = require('../../../shared/timeUtils');
 
 function createInitialTutorialState() {
-  const tutorialSteps = TutorialFlowConfig.TUTORIAL_STEPS;
+  const initialStep = SharedTutorialFlowConfig.TUTORIAL_STEPS.initial;
   return {
     completed: false,
-    currentStep: tutorialSteps.initial,
-    phaseCompleted: TutorialFlowConfig.createPhaseCompleted(tutorialSteps.initial),
+    currentStep: initialStep,
+    phaseCompleted: TutorialFlowConfig.createPhaseCompleted(initialStep),
     grants: {},
     updatedAt: nowIso(),
   };
@@ -17,10 +18,9 @@ function normalizeGrants(raw = {}) {
 }
 
 function createCompletedTutorialState(raw = {}) {
-  const tutorialSteps = TutorialFlowConfig.TUTORIAL_STEPS;
   return {
     completed: true,
-    currentStep: tutorialSteps.completed,
+    currentStep: SharedTutorialFlowConfig.TUTORIAL_STEPS.completed,
     phaseCompleted: {
       newbie: true,
       era2: true,
@@ -32,23 +32,34 @@ function createCompletedTutorialState(raw = {}) {
   };
 }
 
+// Load boundary + one-shot lazy migration: legacy saves persisted the step as
+// a NUMBER; stepName() maps it onto the step NAME (clamped like the legacy
+// normalize), so every normalized state carries the insertion-proof name.
 function normalizeTutorialState(raw) {
-  const tutorialSteps = TutorialFlowConfig.TUTORIAL_STEPS;
+  const tutorialSteps = SharedTutorialFlowConfig.TUTORIAL_STEPS;
   if (!raw || typeof raw !== 'object') return createInitialTutorialState();
   if (raw.disabled) return createCompletedTutorialState(raw);
-  const rawStep = Number(raw.currentStep);
-  const currentStep = Number.isFinite(rawStep)
-    ? Math.max(tutorialSteps.initial, Math.min(tutorialSteps.completed, Math.floor(rawStep)))
-    : tutorialSteps.initial;
-  const completed = Boolean(raw.completed || currentStep >= tutorialSteps.completed);
+  const currentStep = SharedTutorialFlowConfig.stepName(raw.currentStep) || tutorialSteps.initial;
+  const completed = Boolean(
+    raw.completed || SharedTutorialFlowConfig.stepAtLeast(currentStep, tutorialSteps.completed),
+  );
   if (completed) return createCompletedTutorialState({ ...raw, disabled: false, currentStep });
   return {
     completed: false,
     currentStep,
     phaseCompleted: {
-      newbie: Boolean(raw.phaseCompleted?.newbie || currentStep >= tutorialSteps.eraAdvancedTo1),
-      era2: Boolean(raw.phaseCompleted?.era2 || currentStep >= tutorialSteps.lumbermillBuilt),
-      scoutFormation: Boolean(raw.phaseCompleted?.scoutFormation || currentStep >= tutorialSteps.scoutFormationSaved),
+      newbie: Boolean(
+        raw.phaseCompleted?.newbie
+        || SharedTutorialFlowConfig.stepAtLeast(currentStep, tutorialSteps.eraAdvancedTo1),
+      ),
+      era2: Boolean(
+        raw.phaseCompleted?.era2
+        || SharedTutorialFlowConfig.stepAtLeast(currentStep, tutorialSteps.lumbermillBuilt),
+      ),
+      scoutFormation: Boolean(
+        raw.phaseCompleted?.scoutFormation
+        || SharedTutorialFlowConfig.stepAtLeast(currentStep, tutorialSteps.scoutFormationSaved),
+      ),
     },
     grants: normalizeGrants(raw.grants),
     updatedAt: raw.updatedAt || nowIso(),

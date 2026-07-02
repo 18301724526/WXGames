@@ -506,7 +506,11 @@ async function getState(page) {
       currentTab: game?.state?.currentTab || game?.currentTab || shell?.currentTab || '',
       militaryView: game?.state?.militaryView || shell?.militaryView || '',
       mapHomeActive: Boolean(shell?.mapHomeActive || game?.mapHomeActive),
-      tutorialStep: Number(game?.state?.tutorial?.currentStep ?? game?.tutorial?.currentStep ?? 0) || 0,
+      tutorialStep: (() => {
+        const raw = game?.state?.tutorial?.currentStep ?? game?.tutorial?.currentStep ?? 0;
+        const index = globalThis.TutorialFlowShared?.stepIndex?.(raw);
+        return Number.isFinite(index) && index >= 0 ? index : Number(raw) || 0;
+      })(),
       tutorialCompleted: Boolean(game?.state?.tutorial?.completed || game?.tutorial?.completed),
       canvas: {
         id: canvas?.id || '',

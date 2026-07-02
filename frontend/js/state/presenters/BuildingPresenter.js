@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class BuildingPresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
@@ -384,19 +396,13 @@
         'card-watchtower': 'watchtower',
         'card-barracks-upgrade': 'barracks',
       }[guideTarget] || null;
-      const tutorialSteps = global.TutorialGuideController?.TUTORIAL_STEPS || {
-        houseGuideReady: 3,
-        houseBuilt: 4,
-        buildingsTabOpened: 7,
-        farmBuilt: 9,
-        buildingsTabOpenedForLumbermill: 14,
-        lumbermillBuilt: 15,
-      };
-      const step = Number(tutorial?.currentStep) || 0;
+      const tutorialSteps = TutorialFlowShared.TUTORIAL_STEPS;
+      const step = TutorialFlowShared.stepName(tutorial?.currentStep) || tutorialSteps.initial;
+      const { stepAtLeast, stepAtMost, stepBefore } = TutorialFlowShared;
       const disabledByTutorial = Boolean(tutorial && !tutorial.completed && guidedBuildingId !== id && (
-        (step >= tutorialSteps.houseGuideReady && step < tutorialSteps.houseBuilt && id !== 'house')
-        || (step >= tutorialSteps.buildingsTabOpened && step < tutorialSteps.farmBuilt && id !== 'farm')
-        || (step >= tutorialSteps.buildingsTabOpenedForLumbermill && step <= tutorialSteps.lumbermillBuilt && id !== 'lumbermill')
+        (stepAtLeast(step, tutorialSteps.houseGuideReady) && stepBefore(step, tutorialSteps.houseBuilt) && id !== 'house')
+        || (stepAtLeast(step, tutorialSteps.buildingsTabOpened) && stepBefore(step, tutorialSteps.farmBuilt) && id !== 'farm')
+        || (stepAtLeast(step, tutorialSteps.buildingsTabOpenedForLumbermill) && stepAtMost(step, tutorialSteps.lumbermillBuilt) && id !== 'lumbermill')
       ));
       const maxLevelLabel = this.t('building.action.maxLevel', {});
       const isMax = cost === null || actionLabel === maxLevelLabel || actionLabel === 'max';

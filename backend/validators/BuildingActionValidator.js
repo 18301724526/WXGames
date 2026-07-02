@@ -1,4 +1,5 @@
-const { BuildingConfig, TutorialFlowConfig } = require('../services/config/GameplayConfigRuntime');
+const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
+const { TUTORIAL_STEPS, stepBefore } = require('../../shared/tutorialFlowConfig');
 const BuildingState = require('../modules/BuildingState');
 const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
@@ -20,7 +21,7 @@ function isTutorialHouseBuild(tutorialState, buildingId) {
   return buildingId === 'house'
     && !tutorialState?.completed
     && !tutorialState?.disabled
-    && Number(tutorialState?.currentStep) < TutorialFlowConfig.TUTORIAL_STEPS.houseBuilt;
+    && stepBefore(tutorialState?.currentStep, TUTORIAL_STEPS.houseBuilt);
 }
 
 function validateBuild(gameState, tutorialState, buildingId) {

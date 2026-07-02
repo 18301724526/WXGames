@@ -8,6 +8,7 @@ const TechTreeService = require('../services/TechTreeService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
 const TutorialService = require('../services/TutorialService');
+const SharedTutorialFlowConfig = require('../../shared/tutorialFlowConfig');
 
 const TERRITORY_ACTIONS = new Set([
   'scoutTerritory',
@@ -138,7 +139,7 @@ function createGameActionRegistry(overrides = {}) {
     const result = deps.FamousPersonService.seekFamousPerson(gameState, { source: body.source || body.target });
     if (result?.success) {
       const normalizedTutorial = deps.TutorialService.normalizeTutorialState(tutorial || gameState.tutorial);
-      if (normalizedTutorial.currentStep === deps.TutorialService.TUTORIAL_STEPS.famousSeekOpened) {
+      if (SharedTutorialFlowConfig.stepEquals(normalizedTutorial.currentStep, deps.TutorialService.TUTORIAL_STEPS.famousSeekOpened)) {
         return {
           ...result,
           tutorial: deps.TutorialService.advanceTutorial(normalizedTutorial, 'famousSeekCompleted'),

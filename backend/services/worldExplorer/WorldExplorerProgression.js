@@ -12,6 +12,7 @@ const {
 const { manualAdvance } = require('../tutorial/TutorialProgression');
 const WorldExplorerTrace = require('./WorldExplorerTrace');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 const MilitaryService = require('../MilitaryService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const WorldMarchVerification = require('./WorldMarchVerification');
@@ -283,7 +284,7 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       mission.nextStepAt = null;
       WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now);
       settleReturnedFormationSnapshot(gameState, mission, now);
-      if (mission.status === 'idle' && gameState.tutorial?.currentStep === TUTORIAL_STEPS.scoutExploreStarted) {
+      if (mission.status === 'idle' && SharedTutorialFlowConfig.stepEquals(gameState.tutorial?.currentStep, TUTORIAL_STEPS.scoutExploreStarted)) {
         gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.firstCityDiscovered);
       }
     }

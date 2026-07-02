@@ -4,6 +4,7 @@ const {
   TutorialFlowConfig,
 } = require('../config/GameplayConfigRuntime');
 const FamousPersonService = require('../FamousPersonService');
+const { stepBefore } = require('../../../shared/tutorialFlowConfig');
 const { normalizeTutorialState, nowIso } = require('./TutorialState');
 const { manualAdvance } = require('./TutorialProgression');
 const {
@@ -22,7 +23,7 @@ function ensureScoutFamousPersonGrant(gameState) {
   if (!gameState || typeof gameState !== 'object') return false;
   let tutorial = normalizeTutorialState(gameState.tutorial);
   if (tutorial.completed || tutorial.disabled || tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]) return false;
-  if ((Number(gameState.currentEra) || 0) < 3 || tutorial.currentStep < TUTORIAL_STEPS.era3Advanced) return false;
+  if ((Number(gameState.currentEra) || 0) < 3 || stepBefore(tutorial.currentStep, TUTORIAL_STEPS.era3Advanced)) return false;
 
   const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState);
   if (!grant?.person) return false;

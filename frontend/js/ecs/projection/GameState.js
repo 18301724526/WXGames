@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function t(key, params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
   }
@@ -18,7 +30,9 @@
     const tutorial = apiResponse && apiResponse.tutorial;
     return {
       completed: Boolean(tutorial && tutorial.completed),
-      currentStep: Number.isFinite(tutorial && tutorial.currentStep) ? tutorial.currentStep : 0,
+      currentStep:
+        TutorialFlowShared.stepName(tutorial && tutorial.currentStep) ||
+        TutorialFlowShared.TUTORIAL_STEPS.initial,
       phaseCompleted:
         tutorial && tutorial.phaseCompleted
           ? {
