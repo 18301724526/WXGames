@@ -119,7 +119,6 @@
     constructor(options = {}) {
       this.host = options.host || null;
       this.injectedWorldActorRenderer = options.worldActorRenderer || null;
-      this.renderCtx = null;
       this.worldMapRenderState = options.worldMapRenderState
         || this.host?.worldMapRenderState
         || SharedWorldMapRenderState?.createWorldMapRenderState?.()
@@ -127,11 +126,7 @@
     }
 
     get ctx() {
-      return this.renderCtx || this.host?.ctx || null;
-    }
-
-    set ctx(value) {
-      this.renderCtx = value || null;
+      return this.host?.ctx || null;
     }
 
     get width() {
@@ -357,6 +352,11 @@
 
     setHitTargets(...args) {
       return this.host?.setHitTargets?.(...args);
+    }
+
+    withRenderCtx(ctx, callback) {
+      if (typeof this.host?.withRenderCtx === 'function') return this.host.withRenderCtx(ctx, callback);
+      return callback?.();
     }
 
     withSuppressedHitTargets(callback) {
@@ -680,21 +680,21 @@
         const cacheScale = Math.max(1, Number(this.pixelRatio) || 1);
         const work = this.getWorldTileLayerCacheContext('worldTileSnapshotLayerBackbuffer', this.width, this.height, cacheScale);
         if (!work?.canvas || !work?.ctx) return false;
-        const previousCtx = this.ctx;
-        this.ctx = work.ctx;
-        try {
+        // The recursive draw resolves its ctx through host.ctx (beginFrame/clearAll and the
+        // renderWorldTileSnapshotCache sub-renderers), so the backbuffer swap must be scoped
+        // on the ctx owner; a renderer-local swap would leave the live canvas exposed and
+        // composite a dark-only backbuffer over the map on every preserved frame.
+        const rendered = this.withRenderCtx(work.ctx, () => {
           work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
           work.ctx.clearRect?.(0, 0, work.pixelWidth || work.canvas.width, work.pixelHeight || work.canvas.height);
           work.ctx.setTransform?.(cacheScale, 0, 0, cacheScale, 0, 0);
-          const rendered = this.renderWorldMapSnapshotLayer(state, {
+          return this.renderWorldMapSnapshotLayer(state, {
             ...options,
             preserveOnMiss: false,
             __snapshotBackbuffer: true,
           });
-          if (!rendered) return false;
-        } finally {
-          this.ctx = previousCtx;
-        }
+        });
+        if (!rendered) return false;
         this.ctx.drawImage(
           work.canvas,
           0,

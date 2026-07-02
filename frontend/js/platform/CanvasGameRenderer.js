@@ -230,6 +230,22 @@
       if (this.ctx && typeof this.ctx.scale === 'function') this.ctx.scale(1, 1);
     }
 
+    // Scoped override for the renderer-owned drawing context. Child renderers resolve
+    // their ctx through host.ctx, so offscreen bakes (snapshot backbuffer, fast-drag
+    // composite, layer caches) must swap the OWNER ctx for the duration of the callback;
+    // a renderer-local shadow would leave the live canvas exposed to the inner draw chain.
+    withRenderCtx(ctx = null, callback = null) {
+      if (typeof callback !== 'function') return false;
+      if (!ctx) return callback();
+      const previousCtx = this.ctx;
+      this.ctx = ctx;
+      try {
+        return callback();
+      } finally {
+        this.ctx = previousCtx;
+      }
+    }
+
     get hitTargets() {
       return this.hitTargetManager.readHitTargets();
     }

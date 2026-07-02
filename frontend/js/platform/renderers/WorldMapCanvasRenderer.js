@@ -204,6 +204,11 @@
       return this.host?.ctx || null;
     }
 
+    withRenderCtx(ctx, callback) {
+      if (typeof this.host?.withRenderCtx === 'function') return this.host.withRenderCtx(ctx, callback);
+      return callback?.();
+    }
+
     get canvas() {
       return this.host?.canvas || null;
     }
