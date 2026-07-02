@@ -90,6 +90,26 @@ function normalizeFormationSlot(slot) {
   return value;
 }
 
+// Formation members are validated against the famous-person roster. The roster
+// lives in TWO places: the persisted single-source `famousPersons.people` and the
+// legacy flat `famousPeople` (kept populated only while an ensure-grant ran on
+// every load). Reading only the flat field silently drops every formation member
+// once the flat copy is gone (e.g. after the tutorial scout grant became a
+// one-shot task reward), which then trips the world-march tutorial gate. Union
+// both so validation matches the persisted truth regardless of collection.
+function collectValidPersonIds(gameState = {}) {
+  const ids = new Set();
+  const add = (list) => {
+    (Array.isArray(list) ? list : []).forEach((person) => {
+      const id = String(person?.id || '').trim();
+      if (id) ids.add(id);
+    });
+  };
+  add(gameState.famousPeople);
+  add(gameState.famousPersons?.people);
+  return ids;
+}
+
 function normalizeFormationMemberIds(memberIds, validPersonIds = null) {
   const rawIds = Array.isArray(memberIds) ? memberIds : [];
   const seen = new Set();
@@ -150,9 +170,7 @@ function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
 }
 
 function normalizeArmyFormations(rawFormations, gameState = {}) {
-  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
-    .map((person) => String(person?.id || '').trim())
-    .filter(Boolean));
+  const validPersonIds = collectValidPersonIds(gameState);
   const source = rawFormations && typeof rawFormations === 'object' ? rawFormations : {};
   const cityIds = new Set(Object.keys(source).filter(Boolean));
   cityIds.add(gameState.activeCityId || 'capital');
@@ -282,9 +300,7 @@ function setArmyFormation(gameState, payload = {}) {
   const context = createMilitaryContext(gameState, cityId, sourceMilitary);
   const normalizedMilitary = normalizeMilitaryState(sourceMilitary, context);
   setCityMilitary(gameState, cityId, normalizedMilitary);
-  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
-    .map((person) => String(person?.id || '').trim())
-    .filter(Boolean));
+  const validPersonIds = collectValidPersonIds(gameState);
   const memberIds = normalizeFormationMemberIds(payload.memberIds || payload.members, validPersonIds);
   const strengthPolicy = getFormationStrengthPolicy();
   const requestedSource = payload.soldierAssignments || payload.memberSoldiers || {};
@@ -414,9 +430,7 @@ function settleFormationSnapshot(gameState, snapshot = {}, options = {}) {
   const sourceMilitary = getCityMilitary(gameState, cityId);
   const context = createMilitaryContext(gameState, cityId, sourceMilitary);
   const normalizedMilitary = normalizeMilitaryState(sourceMilitary, context);
-  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
-    .map((person) => String(person?.id || '').trim())
-    .filter(Boolean));
+  const validPersonIds = collectValidPersonIds(gameState);
   const formations = {
     ...(normalizedMilitary.formations || {}),
     [cityId]: normalizeCityFormations(normalizedMilitary.formations?.[cityId], validPersonIds),
