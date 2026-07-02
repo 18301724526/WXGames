@@ -417,6 +417,14 @@
         }
 
 
+    getStateHost() {
+          return StateWriter.getStateHost(this);
+        }
+
+    getState() {
+          return this.getStateHost()?.state || {};
+        }
+
     getFrozenWorldMapWaterTimeMs() {
           return this.worldMapDragWaterTimeMs !== null &&
             this.worldMapDragWaterTimeMs !== undefined &&
