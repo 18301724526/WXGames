@@ -126,6 +126,9 @@ module.exports = [
     ignores: [
       '**/node_modules/**',
       '**/vendor/**',
+      // Session worktrees checked out by agent tooling; their files are copies of
+      // repo sources and must not be linted from the main tree.
+      '.claude/**',
       'frontend/js/vendor/**',
       'frontend/assets/**',
       'frontend/minigame/**',
