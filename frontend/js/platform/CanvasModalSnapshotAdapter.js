@@ -183,7 +183,12 @@
   function resolveConfirmDialogSnapshotCallback(host, type, ...args) {
     const owner = getModalOwnerHost(host);
     return typeof CanvasModeOwnershipRuntime?.resolveModalCallback === 'function'
-      ? CanvasModeOwnershipRuntime.resolveModalCallback(owner || host, CONFIRM_DIALOG_MODAL_KEY, type, ...args)
+      ? CanvasModeOwnershipRuntime.resolveModalCallback(
+          owner || host,
+          CONFIRM_DIALOG_MODAL_KEY,
+          type,
+          ...args,
+        )
       : undefined;
   }
 

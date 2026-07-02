@@ -180,9 +180,7 @@ test('UpdateChecker merges static deploy status before reporting failures', asyn
   const version = await checker.safeCheck({ initialize: true });
 
   assert.equal(version.deployStatus.status, 'failed');
-  assert.deepEqual(calls, [
-    ['failed', 'dep-current', 'next-release', 'backend health failed'],
-  ]);
+  assert.deepEqual(calls, [['failed', 'dep-current', 'next-release', 'backend health failed']]);
 });
 
 test('UpdateChecker reports stale running deploy status as a deploy failure', async () => {
@@ -209,7 +207,13 @@ test('UpdateChecker reports stale running deploy status as a deploy failure', as
       },
     },
     onDeployFailure(payload, status) {
-      calls.push(['failed', payload.deploymentId, status.status, status.stale, status.error.message]);
+      calls.push([
+        'failed',
+        payload.deploymentId,
+        status.status,
+        status.stale,
+        status.error.message,
+      ]);
     },
   });
 
@@ -250,6 +254,11 @@ test('UpdateChecker can report static deploy status when version endpoint is una
   assert.equal(version.deploymentId, 'deploy-status:current-release');
   assert.equal(version.deployStatus.status, 'failed');
   assert.deepEqual(calls, [
-    ['failed', 'deploy-status:current-release', 'next-release', 'gate failed before backend publish'],
+    [
+      'failed',
+      'deploy-status:current-release',
+      'next-release',
+      'gate failed before backend publish',
+    ],
   ]);
 });

@@ -34,19 +34,24 @@
     if (!Array.isArray(surfaceState.fpsSamples)) surfaceState.fpsSamples = [];
     surfaceState.fpsSamples.push(fps);
     if (surfaceState.fpsSamples.length > 30) surfaceState.fpsSamples.shift();
-    const average = surfaceState.fpsSamples.reduce((sum, value) => sum + value, 0) / surfaceState.fpsSamples.length;
+    const average =
+      surfaceState.fpsSamples.reduce((sum, value) => sum + value, 0) /
+      surfaceState.fpsSamples.length;
     surfaceState.currentFps = Math.round(average >= 58 && average <= 64 ? 60 : average);
     return surfaceState.currentFps;
   }
 
   function updatePaintedFps(surfaceState, options = {}, now = getNow(surfaceState)) {
     if (
-      !surfaceState.fpsLastPaintAt
-      || now - surfaceState.fpsLastPaintAt >= 180
-      || (!surfaceState.fpsLastPaintedValue && surfaceState.currentFps)
+      !surfaceState.fpsLastPaintAt ||
+      now - surfaceState.fpsLastPaintAt >= 180 ||
+      (!surfaceState.fpsLastPaintedValue && surfaceState.currentFps)
     ) {
       surfaceState.fpsLastPaintAt = now;
-      surfaceState.fpsLastPaintedValue = Math.max(0, Math.round(Number(options.fps ?? surfaceState.currentFps) || 0));
+      surfaceState.fpsLastPaintedValue = Math.max(
+        0,
+        Math.round(Number(options.fps ?? surfaceState.currentFps) || 0),
+      );
     }
     return Number(surfaceState.fpsLastPaintedValue) || 0;
   }

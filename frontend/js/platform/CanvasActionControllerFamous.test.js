@@ -105,8 +105,14 @@ test('seek famous person notifies tutorial with async result', async () => {
   };
   const controller = new HostController({ host: { lastGame: game }, awaitAsync: true });
 
-  assert.equal(await controller.handle_seekFamousPerson({ type: 'seekFamousPerson', source: 'guide' }), true);
-  assert.deepEqual(calls, [['seek', 'guide'], ['tutorial', result]]);
+  assert.equal(
+    await controller.handle_seekFamousPerson({ type: 'seekFamousPerson', source: 'guide' }),
+    true,
+  );
+  assert.deepEqual(calls, [
+    ['seek', 'guide'],
+    ['tutorial', result],
+  ]);
 });
 
 test('entrypoints load CanvasActionController without retired famous action handler module', () => {

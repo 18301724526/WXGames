@@ -41,7 +41,10 @@ test('building action delegates to building controller and always clears pending
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_buildBuilding({ type: 'buildBuilding', buildingId: 'hut' }), true);
+  assert.equal(
+    await controller.handle_buildBuilding({ type: 'buildBuilding', buildingId: 'hut' }),
+    true,
+  );
 
   assert.equal(host.pendingBuildingAction, null);
   assert.equal(game.pendingBuildingAction, null);
@@ -115,15 +118,21 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
   game.canvasShell = host;
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_claimEvent({
-    type: 'claimEvent',
-    eventId: 'event-1',
-    optionId: 'collect',
-  }), true);
+  assert.equal(
+    await controller.handle_claimEvent({
+      type: 'claimEvent',
+      eventId: 'event-1',
+      optionId: 'collect',
+    }),
+    true,
+  );
 
   assert.equal(host.isEventSnapshotOpen(), false);
   assert.equal(game.isEventSnapshotOpen(), false);
-  assert.deepEqual(host.getRewardRevealSnapshot(), { title: 'Wood', items: [{ id: 'wood', amount: 5 }] });
+  assert.deepEqual(host.getRewardRevealSnapshot(), {
+    title: 'Wood',
+    items: [{ id: 'wood', amount: 5 }],
+  });
   assert.deepEqual(calls, [
     ['close'],
     ['open', 'event-1'],
@@ -147,7 +156,10 @@ test('task center tab switch preserves historical custom category values', () =>
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.handle_switchTaskCenterTab({ type: 'switchTaskCenterTab', tab: 'seasonal' }), true);
+  assert.equal(
+    controller.handle_switchTaskCenterTab({ type: 'switchTaskCenterTab', tab: 'seasonal' }),
+    true,
+  );
   assert.equal(host.activeTaskCenterTab, 'seasonal');
   assert.equal(game.activeTaskCenterTab, 'seasonal');
   assert.deepEqual(calls, [['render', 'switchTaskCenterTab']]);
@@ -183,7 +195,10 @@ test('city blocking panels route task center and tech detail through the snapsho
   assert.equal(game.activeTaskCenterTab, 'seasonal');
   assert.equal(shell.activeTaskCenterTab, 'seasonal');
 
-  assert.equal(controller.handle_selectTechNode({ type: 'selectTechNode', techId: 'writing' }), true);
+  assert.equal(
+    controller.handle_selectTechNode({ type: 'selectTechNode', techId: 'writing' }),
+    true,
+  );
   assert.equal(host.isBlockingPanelSnapshotOpen('techDetailOpen'), true);
   assert.equal(host.isModalOpen('modal:techDetail'), true);
   assert.equal(host.getRendererSnapshot().panel.techDetailOpen, true);

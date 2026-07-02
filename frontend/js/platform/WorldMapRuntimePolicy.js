@@ -5,9 +5,7 @@
   }
 
   function hasNumber(value) {
-    return value !== null
-      && value !== undefined
-      && Number.isFinite(Number(value));
+    return value !== null && value !== undefined && Number.isFinite(Number(value));
   }
 
   function getNavigator(options = {}) {
@@ -16,8 +14,9 @@
 
   function isMobileNavigator(nav = {}) {
     const userAgent = String(nav.userAgent || '');
-    return Boolean(Number(nav.maxTouchPoints) > 0
-      || /Android|Mobile|iPhone|iPad|iPod/i.test(userAgent));
+    return Boolean(
+      Number(nav.maxTouchPoints) > 0 || /Android|Mobile|iPhone|iPad|iPod/i.test(userAgent),
+    );
   }
 
   function getWaterAnimationDeviceFloorMs(options = {}) {
@@ -42,7 +41,11 @@
   function getWaterAnimationFrameMs(options = {}) {
     const animationFrameMs = Math.max(1, toNumber(options.animationFrameMs, 16));
     const fps = Math.max(1, toNumber(options.fps, 8));
-    return Math.max(animationFrameMs, Math.round(1000 / fps), getWaterAnimationDeviceFloorMs(options));
+    return Math.max(
+      animationFrameMs,
+      Math.round(1000 / fps),
+      getWaterAnimationDeviceFloorMs(options),
+    );
   }
 
   function getLayerPadding(options = {}) {
@@ -71,7 +74,8 @@
   }
 
   function getDragOffset(runtime = null) {
-    if (runtime && typeof runtime.getCameraOffsetFromBaked === 'function') return runtime.getCameraOffsetFromBaked();
+    if (runtime && typeof runtime.getCameraOffsetFromBaked === 'function')
+      return runtime.getCameraOffsetFromBaked();
     return {
       x: toNumber(runtime?.dragLayerOffset?.x),
       y: toNumber(runtime?.dragLayerOffset?.y),
@@ -87,10 +91,14 @@
 
   function resolveRuntimeFrameOptions(options = {}, state = {}) {
     const runtimeDragging = Boolean(state.runtimeDragging);
-    const reuseCachedWorldTileView = Boolean(options.reuseCachedWorldTileView || state.dragFrameActive || runtimeDragging);
+    const reuseCachedWorldTileView = Boolean(
+      options.reuseCachedWorldTileView || state.dragFrameActive || runtimeDragging,
+    );
     const waterTimeMs = hasNumber(options.waterTimeMs)
       ? Number(options.waterTimeMs)
-      : (state.shellDragging || runtimeDragging || reuseCachedWorldTileView ? state.frozenWaterTimeMs : null);
+      : state.shellDragging || runtimeDragging || reuseCachedWorldTileView
+        ? state.frozenWaterTimeMs
+        : null;
     return {
       reuseCachedWorldTileView,
       snapshotOnly: Boolean(options.snapshotOnly || state.dragFrameActive || runtimeDragging),
@@ -99,9 +107,9 @@
   }
 
   function isSnapshotWaterRefresh(options = {}) {
-    return Boolean(options.snapshotOnly
-      && options.reuseCachedWorldTileView
-      && hasNumber(options.waterTimeMs));
+    return Boolean(
+      options.snapshotOnly && options.reuseCachedWorldTileView && hasNumber(options.waterTimeMs),
+    );
   }
 
   const WorldMapRuntimePolicy = Object.freeze({

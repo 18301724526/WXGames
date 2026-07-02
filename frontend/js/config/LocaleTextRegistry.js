@@ -1549,7 +1549,8 @@
       'shell.update.localDeployment': 'Local deployment: {deploymentId}',
       'shell.update.note': 'Reload now to keep assets and state in sync.',
       'shell.update.reloadNow': 'Update Now',
-      'shell.update.deployFailedMessage': 'Deployment failed. The game is still using the previous version.',
+      'shell.update.deployFailedMessage':
+        'Deployment failed. The game is still using the previous version.',
       'shell.update.deployTarget': 'Target commit: {commit}',
       'shell.update.deployStage': 'Failed stage: {stage}',
       'shell.update.deployError': 'Error: {message}',

@@ -29,9 +29,8 @@
       worldTileViewCache: initial.worldTileViewCache || null,
       worldTileVisibleEntriesCache: initial.worldTileVisibleEntriesCache || null,
       worldTileLocalEntriesCache: initial.worldTileLocalEntriesCache || null,
-      assetsChangedHandler: typeof initial.assetsChangedHandler === 'function'
-        ? initial.assetsChangedHandler
-        : null,
+      assetsChangedHandler:
+        typeof initial.assetsChangedHandler === 'function' ? initial.assetsChangedHandler : null,
       worldTileCachePrewarmTask: initial.worldTileCachePrewarmTask || null,
     };
   }

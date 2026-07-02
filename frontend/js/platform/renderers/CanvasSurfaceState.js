@@ -63,9 +63,9 @@
   function clearFamousSkillTooltips(surfaceState = null) {
     if (!surfaceState) return false;
     const changed = Boolean(
-      surfaceState.hoverPoint
-      || surfaceState.activeFamousSkillTooltip
-      || surfaceState.pinnedFamousSkillTooltip,
+      surfaceState.hoverPoint ||
+      surfaceState.activeFamousSkillTooltip ||
+      surfaceState.pinnedFamousSkillTooltip,
     );
     surfaceState.hoverPoint = null;
     surfaceState.activeFamousSkillTooltip = null;

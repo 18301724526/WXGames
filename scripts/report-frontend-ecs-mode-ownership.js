@@ -99,10 +99,10 @@ function hasHostLikePropertyUsage(line = '', symbol = '') {
 function hasPropertyLikeUsage(line = '', symbol = '') {
   const text = stripStringLiterals(line);
   const escaped = escapeRegExp(symbol);
-  const propertyAccess = new RegExp(
-    `(?:\\bthis|\\b[A-Za-z_$][\\w$]*|\\]|\\))\\??\\.${escaped}\\b`,
+  const propertyAccess = new RegExp(`(?:\\bthis|\\b[A-Za-z_$][\\w$]*|\\]|\\))\\??\\.${escaped}\\b`);
+  const bareWrite = new RegExp(
+    `(^|[^A-Za-z0-9_$])${escaped}\\s*(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)`,
   );
-  const bareWrite = new RegExp(`(^|[^A-Za-z0-9_$])${escaped}\\s*(?:=(?!=|>)|\\+=|-=|\\*=|/=|%=|\\|\\|=|&&=|\\?\\?=|\\+\\+|--)`);
   const objectProperty = new RegExp(`(^|[^A-Za-z0-9_$])${escaped}\\s*:`);
   const quotedObjectProperty = new RegExp(`['"]${escaped}['"]\\s*:`);
   return (

@@ -175,7 +175,10 @@ test('reset request opens canvas confirmation before executing reset', async () 
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.handle_requestResetGame({ type: 'requestResetGame', source: 'settings' }), true);
+  assert.equal(
+    controller.handle_requestResetGame({ type: 'requestResetGame', source: 'settings' }),
+    true,
+  );
   assert.equal(controller.handle_resetGame({ type: 'resetGame', source: 'legacy' }), true);
   assert.deepEqual(calls, [
     ['openResetConfirm', 'settings'],
@@ -200,10 +203,11 @@ test('reset request uses canvas shell when the action host is the game app', asy
   };
   const controller = new HostController({ host: game, awaitAsync: true });
 
-  assert.equal(controller.handle_requestResetGame({ type: 'requestResetGame', source: 'debugResetAccount' }), true);
-  assert.deepEqual(calls, [
-    ['shellOpenResetConfirm', 'debugResetAccount'],
-  ]);
+  assert.equal(
+    controller.handle_requestResetGame({ type: 'requestResetGame', source: 'debugResetAccount' }),
+    true,
+  );
+  assert.deepEqual(calls, [['shellOpenResetConfirm', 'debugResetAccount']]);
 });
 
 test('downloadClientOperationLog saves local client operation log through runtime logger', () => {
@@ -231,7 +235,10 @@ test('downloadClientOperationLog saves local client operation log through runtim
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }), true);
+  assert.equal(
+    controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }),
+    true,
+  );
   assert.deepEqual(calls, [
     ['download', 'settings-download', 'test1', 'test1'],
     ['float', '操作日志已保存：wxgame-oplog-test1.json'],
@@ -259,7 +266,10 @@ test('downloadClientOperationLog falls back to global ClientOperationLog', () =>
   const controller = new HostController({ host: host, awaitAsync: true });
 
   try {
-    assert.equal(controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }), true);
+    assert.equal(
+      controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }),
+      true,
+    );
     assert.deepEqual(calls, [
       ['download', 'settings-download'],
       ['float', '操作日志已保存：wxgame-oplog-global.json'],
@@ -290,7 +300,10 @@ test('downloadClientOperationLog reports concrete local save failure', () => {
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }), true);
+  assert.equal(
+    controller.handle_downloadClientOperationLog({ type: 'downloadClientOperationLog' }),
+    true,
+  );
   assert.deepEqual(calls, [
     ['download'],
     ['float', 'CLIENT_OPERATION_LOG_DOWNLOAD_UNSUPPORTED', '#ffb86b'],
@@ -326,7 +339,10 @@ test('shell blocking panel actions route canonical opens through the snapshot ow
   assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), true);
   assert.equal(host.isModalOpen('modal:settings'), true);
 
-  assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), true);
+  assert.equal(
+    await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }),
+    true,
+  );
   assert.equal(host.getCommandPanelValue(), 'tech');
   assert.equal(host.isModalOpen('modal:commandPanel'), true);
   assert.deepEqual(host.getModalPayload('modal:commandPanel')?.value, 'tech');
@@ -336,14 +352,10 @@ test('shell blocking panel actions route canonical opens through the snapshot ow
   assert.equal(controller.handle_closeCommandPanel({ type: 'closeCommandPanel' }), true);
   assert.equal(host.getCommandPanelValue(), '');
   assert.equal(host.isModalOpen('modal:commandPanel'), false);
-  assert.deepEqual(calls.map((call) => call[0]), [
-    'render',
-    'render',
-    'refresh',
-    'timeout',
-    'refresh',
-    'render',
-  ]);
+  assert.deepEqual(
+    calls.map((call) => call[0]),
+    ['render', 'render', 'refresh', 'timeout', 'refresh', 'render'],
+  );
 });
 
 test('confirm reset executes reset after canvas confirmation', async () => {

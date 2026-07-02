@@ -1,22 +1,10 @@
 const BattleConfig = require('../../config/BattleConfig');
 const BattleSimService = require('./BattleSimService');
-const {
-  clone,
-  getBattleVisualGroups,
-  normalizeAttributes,
-  toInteger,
-} = require('./BattleShared');
-const {
-  createBattleLeaders,
-} = require('./BattleLeaders');
-const {
-  createBattleReports,
-} = require('./BattleReports');
+const { clone, getBattleVisualGroups, normalizeAttributes, toInteger } = require('./BattleShared');
+const { createBattleLeaders } = require('./BattleLeaders');
+const { createBattleReports } = require('./BattleReports');
 
-const {
-  DEFAULT_SOLDIER_SCALE,
-  MIN_BATTLE_SOLDIERS,
-} = BattleConfig;
+const { DEFAULT_SOLDIER_SCALE, MIN_BATTLE_SOLDIERS } = BattleConfig;
 
 const battleLeaders = createBattleLeaders({ BattleConfig });
 const battleReports = createBattleReports({
@@ -30,7 +18,9 @@ const DEFAULT_INPUT_STREAM = Object.freeze([
 ]);
 
 function getTimestamp(now = new Date()) {
-  return now && typeof now.toISOString === 'function' ? now.toISOString() : new Date(now).toISOString();
+  return now && typeof now.toISOString === 'function'
+    ? now.toISOString()
+    : new Date(now).toISOString();
 }
 
 function getNowMs(now = new Date()) {
@@ -38,19 +28,22 @@ function getNowMs(now = new Date()) {
 }
 
 function getMissionLeader(gameState = {}, mission = {}) {
-  return battleLeaders.getLeaderSnapshot(gameState, mission.expedition?.leader)
-    || battleLeaders.getLeaderSnapshotFromMission(mission)
-    || BattleConfig.getFallbackLeader();
+  return (
+    battleLeaders.getLeaderSnapshot(gameState, mission.expedition?.leader) ||
+    battleLeaders.getLeaderSnapshotFromMission(mission) ||
+    BattleConfig.getFallbackLeader()
+  );
 }
 
 function buildAttackerSnapshot(gameState = {}, mission = {}, now = new Date()) {
   const leader = getMissionLeader(gameState, mission);
   const leaderId = String(leader.id || mission.expedition?.leader || 'unavailable');
   const soldiersCommitted = Math.max(0, toInteger(mission.soldiersCommitted, 0));
-  const sourceCityId = mission.sourceCityId
-    || mission.soldierAllocations?.[0]?.cityId
-    || gameState.activeCityId
-    || 'capital';
+  const sourceCityId =
+    mission.sourceCityId ||
+    mission.soldierAllocations?.[0]?.cityId ||
+    gameState.activeCityId ||
+    'capital';
   return {
     leader,
     attributesByPersonId: {
@@ -60,11 +53,13 @@ function buildAttackerSnapshot(gameState = {}, mission = {}, now = new Date()) {
       schema: 'formation-snapshot-v1',
       sourceCityId,
       slot: 1,
-      members: [{
-        personId: leaderId,
-        soldiersCommitted,
-        soldiersRemaining: soldiersCommitted,
-      }],
+      members: [
+        {
+          personId: leaderId,
+          soldiersCommitted,
+          soldiersRemaining: soldiersCommitted,
+        },
+      ],
       soldiersCommitted,
       soldiersRemaining: soldiersCommitted,
       lockedAt: mission.startedAt || getTimestamp(now),
@@ -103,12 +98,14 @@ function getDefenderLeader(territory = {}) {
 
 function buildDefenderGenerals(territory = {}) {
   const leader = getDefenderLeader(territory);
-  return [{
-    gid: String(leader.id || `df_${territory.id || 'site'}`),
-    attributes: clone(leader.attributes || {}),
-    soldiers: getDefenderSoldiers(territory),
-    leader,
-  }];
+  return [
+    {
+      gid: String(leader.id || `df_${territory.id || 'site'}`),
+      attributes: clone(leader.attributes || {}),
+      soldiers: getDefenderSoldiers(territory),
+      leader,
+    },
+  ];
 }
 
 function getSurvivorCount(result = {}, gid = '') {
@@ -142,7 +139,13 @@ function buildReport({
   const defenderStart = Math.max(0, toInteger(defenderGeneral.soldiers, 0));
   const defenderEnd = getSurvivorCount(result, defenderGeneral.gid);
   const success = battle.winner === 'attacker';
-  const experience = createExperienceSummary(attackerStart, attackerEnd, defenderStart, defenderEnd, success);
+  const experience = createExperienceSummary(
+    attackerStart,
+    attackerEnd,
+    defenderStart,
+    defenderEnd,
+    success,
+  );
   const leader = attacker.leader || {};
   const defenderLeader = defenderGeneral.leader || {};
   return {
@@ -229,7 +232,11 @@ function resolveConquestBattle(gameState = {}, mission = {}, territory = {}, now
   });
   return {
     success: battle.winner === 'attacker',
-    casualties: Math.max(0, toInteger(attacker.snapshot.soldiersCommitted, 0) - toInteger(battle.attackerSnapshot?.soldiersRemaining, 0)),
+    casualties: Math.max(
+      0,
+      toInteger(attacker.snapshot.soldiersCommitted, 0) -
+        toInteger(battle.attackerSnapshot?.soldiersRemaining, 0),
+    ),
     experience: report.experience,
     report,
   };

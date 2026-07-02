@@ -36,7 +36,10 @@ test('CanvasActionController installs world-site compatibility methods', () => {
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.handle_openWorldSite({ type: 'openWorldSite', territoryId: 'site_2_3' }), true);
+  assert.equal(
+    controller.handle_openWorldSite({ type: 'openWorldSite', territoryId: 'site_2_3' }),
+    true,
+  );
   assert.equal(host.territoryUiState.selectedSiteId, 'site_2_3');
   assert.equal(controller.centerWorldMapOnSite('site_2_3'), true);
 
@@ -87,11 +90,14 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
   });
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_selectWorldMarchTarget({
-    type: 'selectWorldMarchTarget',
-    targetQ: 4,
-    targetR: -2,
-  }), true);
+  assert.equal(
+    await controller.handle_selectWorldMarchTarget({
+      type: 'selectWorldMarchTarget',
+      targetQ: 4,
+      targetR: -2,
+    }),
+    true,
+  );
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
     q: 4,
     r: -2,
@@ -100,11 +106,14 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
   // Selecting a single target leaves no picker modal open.
   assert.equal(host.isTargetPickerSnapshotOpen(), false);
 
-  assert.equal(controller.handle_openWorldMarchFormationPicker({
-    type: 'openWorldMarchFormationPicker',
-    targetQ: 4,
-    targetR: -2,
-  }), true);
+  assert.equal(
+    controller.handle_openWorldMarchFormationPicker({
+      type: 'openWorldMarchFormationPicker',
+      targetQ: 4,
+      targetR: -2,
+    }),
+    true,
+  );
   // The march target stays in territoryUiState WITHOUT a pickerOpen flag; the
   // formation-picker modal state lives only in the owner snapshot.
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
@@ -115,22 +124,28 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
   assert.equal(host.isTargetPickerSnapshotOpen(), true);
   assert.equal(host.getTargetPickerSnapshot()?.pickerKind, 'worldMarchFormation');
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 4,
-    targetR: -2,
-    formationSlot: 2,
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 4,
+      targetR: -2,
+      formationSlot: 2,
+    }),
+    true,
+  );
   assert.equal(host.territoryUiState.worldMarchTarget, null);
   // Launching the march consumes the target and closes the formation picker.
   assert.equal(host.isTargetPickerSnapshotOpen(), false);
 
-  assert.equal(await controller.handle_stopWorldMarch({
-    type: 'stopWorldMarch',
-    missionId: 'march-1',
-    targetQ: 999,
-    targetR: 999,
-  }), true);
+  assert.equal(
+    await controller.handle_stopWorldMarch({
+      type: 'stopWorldMarch',
+      missionId: 'march-1',
+      targetQ: 999,
+      targetR: 999,
+    }),
+    true,
+  );
 
   assert.deepEqual(calls, [
     ['targetSelected', 4, -2],
@@ -144,13 +159,16 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
     ['refreshCurrentHighlight'],
     ['setTimeout'],
     ['refreshCurrentHighlight'],
-    ['startWorldMarch', {
-      mode: 'manual',
-      targetQ: 4,
-      targetR: -2,
-      formationSlot: 2,
-      cityId: 'capital',
-    }],
+    [
+      'startWorldMarch',
+      {
+        mode: 'manual',
+        targetQ: 4,
+        targetR: -2,
+        formationSlot: 2,
+        cityId: 'capital',
+      },
+    ],
     ['render', 'startWorldMarch'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
     ['refreshCurrentHighlight'],
@@ -242,12 +260,14 @@ test('CanvasActionController blocks deployment when primary general has zero sol
     presenter: {
       buildMilitaryViewState() {
         return {
-          formations: [{
-            slot: 1,
-            cityId: 'capital',
-            memberCount: 1,
-            members: [{ id: 'fp-main', name: 'Main', soldiersAssigned: 0 }],
-          }],
+          formations: [
+            {
+              slot: 1,
+              cityId: 'capital',
+              memberCount: 1,
+              members: [{ id: 'fp-main', name: 'Main', soldiersAssigned: 0 }],
+            },
+          ],
         };
       },
     },
@@ -260,14 +280,20 @@ test('CanvasActionController blocks deployment when primary general has zero sol
   });
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 4,
-    targetR: -2,
-    formationSlot: 1,
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 4,
+      targetR: -2,
+      formationSlot: 1,
+    }),
+    true,
+  );
 
-  assert.equal(calls.some((call) => call[0] === 'startWorldMarch'), false);
+  assert.equal(
+    calls.some((call) => call[0] === 'startWorldMarch'),
+    false,
+  );
   assert.equal(host.isConfirmDialogSnapshotOpen(), true);
   assert.equal(host.getConfirmDialogSnapshot().kind, 'worldMarchDeploymentBlocked');
   assert.equal(host.territoryUiState.worldMarchTarget.tileId, 'tile_4_-2');
@@ -291,15 +317,17 @@ test('CanvasActionController confirms deployment when deputies have zero soldier
     presenter: {
       buildMilitaryViewState() {
         return {
-          formations: [{
-            slot: 1,
-            cityId: 'capital',
-            memberCount: 2,
-            members: [
-              { id: 'fp-main', name: 'Main', soldiersAssigned: 120 },
-              { id: 'fp-deputy', name: 'Deputy', soldiersAssigned: 0 },
-            ],
-          }],
+          formations: [
+            {
+              slot: 1,
+              cityId: 'capital',
+              memberCount: 2,
+              members: [
+                { id: 'fp-main', name: 'Main', soldiersAssigned: 120 },
+                { id: 'fp-deputy', name: 'Deputy', soldiersAssigned: 0 },
+              ],
+            },
+          ],
         };
       },
     },
@@ -312,14 +340,20 @@ test('CanvasActionController confirms deployment when deputies have zero soldier
   });
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 4,
-    targetR: -2,
-    formationSlot: 1,
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 4,
+      targetR: -2,
+      formationSlot: 1,
+    }),
+    true,
+  );
 
-  assert.equal(calls.some((call) => call[0] === 'startWorldMarch'), false);
+  assert.equal(
+    calls.some((call) => call[0] === 'startWorldMarch'),
+    false,
+  );
   const dialog = host.getConfirmDialogSnapshot();
   assert.equal(dialog.kind, 'worldMarchDeploymentWarning');
   assert.equal(dialog.confirmAction.type, 'confirmWorldMarchDeployment');
@@ -353,8 +387,18 @@ test('CanvasActionController dismisses an open target picker when a map drag sta
       r: 0,
       tileId: 'tile_0_0',
       candidates: [
-        { id: 'capital', kind: 'site', label: 'Capital', action: { type: 'openWorldSite', siteId: 'capital' } },
-        { id: 'march-1', kind: 'actor', label: 'Scout A', action: { type: 'selectWorldActor', actorId: 'march-1' } },
+        {
+          id: 'capital',
+          kind: 'site',
+          label: 'Capital',
+          action: { type: 'openWorldSite', siteId: 'capital' },
+        },
+        {
+          id: 'march-1',
+          kind: 'actor',
+          label: 'Scout A',
+          action: { type: 'selectWorldActor', actorId: 'march-1' },
+        },
       ],
     }),
     true,
@@ -381,16 +425,29 @@ test('CanvasActionController opens and resolves world target picker candidates',
   });
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.handle_openWorldTargetPicker({
-    type: 'openWorldTargetPicker',
-    q: 0,
-    r: 0,
-    tileId: 'tile_0_0',
-    candidates: [
-      { id: 'capital', kind: 'site', label: 'Capital', action: { type: 'openWorldSite', siteId: 'capital' } },
-      { id: 'march-1', kind: 'actor', label: 'Scout A', action: { type: 'selectWorldActor', actorId: 'march-1' } },
-    ],
-  }), true);
+  assert.equal(
+    controller.handle_openWorldTargetPicker({
+      type: 'openWorldTargetPicker',
+      q: 0,
+      r: 0,
+      tileId: 'tile_0_0',
+      candidates: [
+        {
+          id: 'capital',
+          kind: 'site',
+          label: 'Capital',
+          action: { type: 'openWorldSite', siteId: 'capital' },
+        },
+        {
+          id: 'march-1',
+          kind: 'actor',
+          label: 'Scout A',
+          action: { type: 'selectWorldActor', actorId: 'march-1' },
+        },
+      ],
+    }),
+    true,
+  );
 
   // The picker candidate list lives ONLY in the owner snapshot, not on uiState.
   assert.equal(host.territoryUiState.worldTargetPicker, undefined);
@@ -399,19 +456,25 @@ test('CanvasActionController opens and resolves world target picker candidates',
   assert.equal(pickerSnap.picker.candidates.length, 2);
   assert.equal(host.territoryUiState.selectedSiteId, '');
 
-  assert.equal(controller.handle_chooseWorldTarget({
-    type: 'chooseWorldTarget',
-    targetId: 'march-1',
-  }), true);
+  assert.equal(
+    controller.handle_chooseWorldTarget({
+      type: 'chooseWorldTarget',
+      targetId: 'march-1',
+    }),
+    true,
+  );
 
   assert.equal(host.isTargetPickerSnapshotOpen(), false);
   assert.equal(host.territoryUiState.selectedWorldActorId, 'march-1');
-  assert.deepEqual(calls.map((call) => call[0] === 'render' ? call : [call[0]]), [
-    ['render', 'openWorldTargetPicker'],
-    ['refreshWorldMap'],
-    ['render', 'selectWorldActor'],
-    ['refreshWorldMap'],
-  ]);
+  assert.deepEqual(
+    calls.map((call) => (call[0] === 'render' ? call : [call[0]])),
+    [
+      ['render', 'openWorldTargetPicker'],
+      ['refreshWorldMap'],
+      ['render', 'selectWorldActor'],
+      ['refreshWorldMap'],
+    ],
+  );
 });
 
 test('CanvasActionController forwards selected world mission id on start march only when present', async () => {
@@ -432,21 +495,27 @@ test('CanvasActionController forwards selected world mission id on start march o
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 4,
-    targetR: -2,
-    formationSlot: 1,
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 4,
+      targetR: -2,
+      formationSlot: 1,
+    }),
+    true,
+  );
   assert.equal(calls[0][1].missionId, 'march-1');
   assert.equal(host.territoryUiState.selectedWorldActorId, '');
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 5,
-    targetR: -3,
-    formationSlot: 1,
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 5,
+      targetR: -3,
+      formationSlot: 1,
+    }),
+    true,
+  );
   assert.equal(Object.hasOwn(calls[1][1], 'missionId'), false);
 });
 
@@ -468,19 +537,25 @@ test('CanvasActionController preserves selected world actor id through target an
   });
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_selectWorldMarchTarget({
-    type: 'selectWorldMarchTarget',
-    targetQ: 4,
-    targetR: -2,
-  }), true);
+  assert.equal(
+    await controller.handle_selectWorldMarchTarget({
+      type: 'selectWorldMarchTarget',
+      targetQ: 4,
+      targetR: -2,
+    }),
+    true,
+  );
   assert.equal(host.territoryUiState.worldMarchTarget.missionId, 'march-1');
   assert.equal(host.territoryUiState.selectedWorldActorId, '');
 
-  assert.equal(controller.handle_openWorldMarchFormationPicker({
-    type: 'openWorldMarchFormationPicker',
-    targetQ: 4,
-    targetR: -2,
-  }), true);
+  assert.equal(
+    controller.handle_openWorldMarchFormationPicker({
+      type: 'openWorldMarchFormationPicker',
+      targetQ: 4,
+      targetR: -2,
+    }),
+    true,
+  );
   assert.equal(host.territoryUiState.worldMarchTarget.missionId, 'march-1');
   // The march-formation modal flag lives in the owner snapshot, not on the target.
   assert.equal(host.territoryUiState.worldMarchTarget.pickerOpen, undefined);
@@ -488,12 +563,15 @@ test('CanvasActionController preserves selected world actor id through target an
   assert.equal(host.getTargetPickerSnapshot()?.pickerKind, 'worldMarchFormation');
   assert.equal(host.getTargetPickerSnapshot()?.target?.missionId, 'march-1');
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 4,
-    targetR: -2,
-    formationSlot: 1,
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 4,
+      targetR: -2,
+      formationSlot: 1,
+    }),
+    true,
+  );
   assert.equal(calls[0][1].missionId, 'march-1');
   assert.equal(host.isTargetPickerSnapshotOpen(), false);
 });
@@ -504,7 +582,9 @@ test('CanvasActionController carries combat encounter id into world march option
     territoryUiState: {},
     state: { activeCityId: 'capital' },
     tutorialController: {
-      onWorldMarchTargetSelected() { return true; },
+      onWorldMarchTargetSelected() {
+        return true;
+      },
       refreshCurrentHighlight() {},
     },
     startWorldMarch(options) {
@@ -520,27 +600,39 @@ test('CanvasActionController carries combat encounter id into world march option
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_selectWorldMarchTarget({
-    type: 'selectWorldMarchTarget',
-    targetQ: 2,
-    targetR: -1,
-    combatEncounterId: 'hostile_force_capital_ridge',
-    combatTarget: { encounterId: 'hostile_force_capital_ridge', defender: { soldiers: 40 } },
-  }), true);
-  assert.equal(host.territoryUiState.worldMarchTarget.combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(
+    await controller.handle_selectWorldMarchTarget({
+      type: 'selectWorldMarchTarget',
+      targetQ: 2,
+      targetR: -1,
+      combatEncounterId: 'hostile_force_capital_ridge',
+      combatTarget: { encounterId: 'hostile_force_capital_ridge', defender: { soldiers: 40 } },
+    }),
+    true,
+  );
+  assert.equal(
+    host.territoryUiState.worldMarchTarget.combatEncounterId,
+    'hostile_force_capital_ridge',
+  );
 
-  assert.equal(controller.handle_openWorldMarchFormationPicker({
-    type: 'openWorldMarchFormationPicker',
-    targetQ: 2,
-    targetR: -1,
-  }), true);
+  assert.equal(
+    controller.handle_openWorldMarchFormationPicker({
+      type: 'openWorldMarchFormationPicker',
+      targetQ: 2,
+      targetR: -1,
+    }),
+    true,
+  );
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 2,
-    targetR: -1,
-    formationSlot: 1,
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 2,
+      targetR: -1,
+      formationSlot: 1,
+    }),
+    true,
+  );
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0][1].combatEncounterId, 'hostile_force_capital_ridge');
@@ -568,25 +660,34 @@ test('CanvasActionController keeps combat actor identity out of march mission pa
   const controller = new HostController({ host: host, awaitAsync: true });
   const combatTarget = { encounterId: 'hostile_force_capital_ridge', defender: { soldiers: 40 } };
 
-  assert.equal(controller.handle_openWorldMarchFormationPicker({
-    type: 'openWorldMarchFormationPicker',
-    targetQ: 2,
-    targetR: -1,
-    combatEncounterId: 'hostile_force_capital_ridge',
-    combatTarget,
-  }), true);
+  assert.equal(
+    controller.handle_openWorldMarchFormationPicker({
+      type: 'openWorldMarchFormationPicker',
+      targetQ: 2,
+      targetR: -1,
+      combatEncounterId: 'hostile_force_capital_ridge',
+      combatTarget,
+    }),
+    true,
+  );
 
-  assert.equal(host.territoryUiState.worldMarchTarget.combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(
+    host.territoryUiState.worldMarchTarget.combatEncounterId,
+    'hostile_force_capital_ridge',
+  );
   assert.equal(Object.hasOwn(host.territoryUiState.worldMarchTarget, 'missionId'), false);
   assert.equal(Object.hasOwn(host.territoryUiState.worldMarchTarget, 'actorId'), false);
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 2,
-    targetR: -1,
-    formationSlot: 1,
-    combatEncounterId: 'hostile_force_capital_ridge',
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 2,
+      targetR: -1,
+      formationSlot: 1,
+      combatEncounterId: 'hostile_force_capital_ridge',
+    }),
+    true,
+  );
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0][1].combatEncounterId, 'hostile_force_capital_ridge');
@@ -634,12 +735,15 @@ test('CanvasActionController resets runtime world camera for return-home control
     ['ensureRuntime'],
     ['resetCamera', { source: 'resetWorldPan', render: false }],
     ['clearTransform'],
-    ['renderWorldMapLayerFrame', {
-      force: true,
-      reuseCachedWorldTileView: false,
-      snapshotOnly: false,
-      waterTimeMs: null,
-    }],
+    [
+      'renderWorldMapLayerFrame',
+      {
+        force: true,
+        reuseCachedWorldTileView: false,
+        snapshotOnly: false,
+        waterTimeMs: null,
+      },
+    ],
     ['render', 'resetWorldPan'],
   ]);
 });
@@ -742,11 +846,12 @@ test('CanvasActionController centers a non-zero world-origin capital in render s
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.centerWorldMapOnCapital({ source: 'resumeWorldMap', render: false }), true);
+  assert.equal(
+    controller.centerWorldMapOnCapital({ source: 'resumeWorldMap', render: false }),
+    true,
+  );
 
-  assert.deepEqual(calls, [
-    ['setCamera', 0, 24, 'resumeWorldMap', false],
-  ]);
+  assert.deepEqual(calls, [['setCamera', 0, 24, 'resumeWorldMap', false]]);
   assert.equal(Math.round(host.territoryUiState.worldPanX), 0);
   assert.equal(Math.round(host.territoryUiState.worldPanY), 24);
 });
@@ -861,7 +966,14 @@ test('CanvasActionController can invalidate world runtime before account reset s
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(controller.resetWorldMapCamera({ source: 'accountReset', render: false, resetRuntimeState: true }), true);
+  assert.equal(
+    controller.resetWorldMapCamera({
+      source: 'accountReset',
+      render: false,
+      resetRuntimeState: true,
+    }),
+    true,
+  );
 
   assert.deepEqual(calls, [
     ['ensureRuntime'],
@@ -962,12 +1074,14 @@ test('CanvasActionController clears cyclic world renderer graph without recursio
   assert.equal(worldActorLayerRenderer.lastWorldTileMapContext, null);
   assert.equal(worldActorLayerRenderer.lastMapHomeWorldHudContext, null);
   assert.deepEqual(worldActorLayerRenderer.hitTargets, []);
-  assert.deepEqual(calls.filter((call) => call[0] === 'setCamera'), [
-    ['setCamera', 0, 24, 'accountReset', false],
-  ]);
-  assert.deepEqual(calls.filter((call) => call[0] === 'requestRender'), [
-    ['requestRender', { force: true }],
-  ]);
+  assert.deepEqual(
+    calls.filter((call) => call[0] === 'setCamera'),
+    [['setCamera', 0, 24, 'accountReset', false]],
+  );
+  assert.deepEqual(
+    calls.filter((call) => call[0] === 'requestRender'),
+    [['requestRender', { force: true }]],
+  );
 });
 
 test('CanvasActionController centers account reset camera from the updated game state behind the shell', () => {
@@ -1087,20 +1201,38 @@ test('CanvasActionController forwards runtime input intent evidence to world mar
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 4,
-    targetR: -2,
-    formationSlot: 2,
-  }, { inputIntent }), true);
-  assert.equal(await controller.handle_returnWorldMarch({
-    type: 'returnWorldMarch',
-    missionId: 'march-1',
-  }, { inputIntent }), true);
-  assert.equal(await controller.handle_stopWorldMarch({
-    type: 'stopWorldMarch',
-    missionId: 'march-1',
-  }, { inputIntent }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch(
+      {
+        type: 'startWorldMarch',
+        targetQ: 4,
+        targetR: -2,
+        formationSlot: 2,
+      },
+      { inputIntent },
+    ),
+    true,
+  );
+  assert.equal(
+    await controller.handle_returnWorldMarch(
+      {
+        type: 'returnWorldMarch',
+        missionId: 'march-1',
+      },
+      { inputIntent },
+    ),
+    true,
+  );
+  assert.equal(
+    await controller.handle_stopWorldMarch(
+      {
+        type: 'stopWorldMarch',
+        missionId: 'march-1',
+      },
+      { inputIntent },
+    ),
+    true,
+  );
 
   assert.equal(calls[0][1].clientInputIntent, inputIntent);
   assert.equal(calls[1][2].clientInputIntent, inputIntent);
@@ -1131,14 +1263,17 @@ test('CanvasActionController derives world march tile identity from target coord
   };
   const controller = new HostController({ host: host, awaitAsync: true });
 
-  assert.equal(await controller.handle_selectWorldMarchTarget({
-    type: 'selectWorldMarchTarget',
-    targetQ: 4,
-    targetR: -2,
-    tileId: 'stale-renderer-tile',
-    marchDisabled: true,
-    marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
-  }), true);
+  assert.equal(
+    await controller.handle_selectWorldMarchTarget({
+      type: 'selectWorldMarchTarget',
+      targetQ: 4,
+      targetR: -2,
+      tileId: 'stale-renderer-tile',
+      marchDisabled: true,
+      marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
+    }),
+    true,
+  );
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
     q: 4,
     r: -2,
@@ -1147,12 +1282,15 @@ test('CanvasActionController derives world march tile identity from target coord
     marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
   });
 
-  assert.equal(controller.handle_openWorldMarchFormationPicker({
-    type: 'openWorldMarchFormationPicker',
-    targetQ: 4,
-    targetR: -2,
-    tileId: 'stale-picker-tile',
-  }), true);
+  assert.equal(
+    controller.handle_openWorldMarchFormationPicker({
+      type: 'openWorldMarchFormationPicker',
+      targetQ: 4,
+      targetR: -2,
+      tileId: 'stale-picker-tile',
+    }),
+    true,
+  );
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
     q: 4,
     r: -2,
@@ -1161,24 +1299,30 @@ test('CanvasActionController derives world march tile identity from target coord
     marchDisabledReason: 'EXPLORE_ROUTE_BLOCKED',
   });
 
-  assert.equal(controller.handle_openWorldMarchFormationPicker({
-    type: 'openWorldMarchFormationPicker',
-    targetQ: 5,
-    targetR: -3,
-    tileId: 'stale-picker-tile',
-  }), true);
+  assert.equal(
+    controller.handle_openWorldMarchFormationPicker({
+      type: 'openWorldMarchFormationPicker',
+      targetQ: 5,
+      targetR: -3,
+      tileId: 'stale-picker-tile',
+    }),
+    true,
+  );
   assert.deepEqual(host.territoryUiState.worldMarchTarget, {
     q: 5,
     r: -3,
     tileId: 'tile_5_-3',
   });
 
-  assert.equal(await controller.handle_startWorldMarch({
-    type: 'startWorldMarch',
-    targetQ: 5,
-    targetR: -3,
-    tileId: 'stale-start-tile',
-  }), true);
+  assert.equal(
+    await controller.handle_startWorldMarch({
+      type: 'startWorldMarch',
+      targetQ: 5,
+      targetR: -3,
+      tileId: 'stale-start-tile',
+    }),
+    true,
+  );
   assert.deepEqual(calls[0][1], {
     mode: 'manual',
     targetQ: 5,
@@ -1235,12 +1379,15 @@ test('CanvasActionController resets local shell camera after forwarded return-ho
     ['ensureRuntime'],
     ['resetCamera', { source: 'resetWorldPan', render: false }],
     ['clearTransform'],
-    ['renderWorldMapLayerFrame', {
-      force: true,
-      reuseCachedWorldTileView: false,
-      snapshotOnly: false,
-      waterTimeMs: null,
-    }],
+    [
+      'renderWorldMapLayerFrame',
+      {
+        force: true,
+        reuseCachedWorldTileView: false,
+        snapshotOnly: false,
+        waterTimeMs: null,
+      },
+    ],
     ['render', 'resetWorldPan'],
   ]);
 });
