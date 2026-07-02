@@ -43,7 +43,7 @@ function createState(overrides = {}) {
   return state;
 }
 
-test('setArmyFormation assigns standing troops by deducting reserve soldiers and resources', () => {
+test('setArmyFormation assigns standing troops by deducting reserve soldiers without charging resources', () => {
   const state = createState();
 
   const result = MilitaryService.setArmyFormation(state, {
@@ -55,8 +55,25 @@ test('setArmyFormation assigns standing troops by deducting reserve soldiers and
 
   assert.equal(result.success, true);
   assert.equal(state.cities.capital.military.soldiers, 100);
-  assert.equal(state.cities.capital.resources.food, 300);
+  assert.equal(state.cities.capital.resources.food, 500);
   assert.deepEqual(result.formation.soldierAssignments, { 'hero-1': 200 });
+  assert.equal(result.formation.soldiersAssigned, 200);
+});
+
+test('setArmyFormation assigns reserve soldiers even when the city has no resources', () => {
+  const state = createState();
+  state.cities.capital.resources.food = 0;
+
+  const result = MilitaryService.setArmyFormation(state, {
+    cityId: 'capital',
+    slot: 1,
+    memberIds: ['hero-1'],
+    soldierAssignments: { 'hero-1': 200 },
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(state.cities.capital.military.soldiers, 100);
+  assert.equal(state.cities.capital.resources.food, 0);
   assert.equal(result.formation.soldiersAssigned, 200);
 });
 
@@ -102,8 +119,20 @@ test('setArmyFormation refunds resources without returning soldiers when standin
 
   assert.equal(result.success, true);
   assert.equal(state.cities.capital.military.soldiers, 100);
-  assert.equal(state.cities.capital.resources.food, 360);
+  assert.equal(state.cities.capital.resources.food, 560);
   assert.deepEqual(result.refund, { food: 60 });
+
+  const oddDeltaResult = MilitaryService.setArmyFormation(state, {
+    cityId: 'capital',
+    slot: 1,
+    memberIds: ['hero-1'],
+    soldierAssignments: { 'hero-1': 75 },
+  });
+
+  assert.equal(oddDeltaResult.success, true);
+  assert.equal(state.cities.capital.military.soldiers, 100);
+  assert.equal(state.cities.capital.resources.food, 562);
+  assert.deepEqual(oddDeltaResult.refund, { food: 2 });
 });
 
 test('setArmyFormation rejects editing a formation locked by an active march snapshot', () => {

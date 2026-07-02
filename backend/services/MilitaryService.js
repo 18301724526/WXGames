@@ -325,14 +325,8 @@ function setArmyFormation(gameState, payload = {}) {
   const nextAssigned = FormationStrengthService.sumAssignments(requestedAssignments);
   const reserveDelta = nextAssigned - previousAssigned;
   const cityResources = getCityResources(gameState, cityId);
-  const resourceCost = reserveDelta > 0
-    ? FormationStrengthService.scaleResourceCost(strengthPolicy.recruitmentCostPerSoldier, reserveDelta)
-    : {};
   if (reserveDelta > normalizedMilitary.soldiers) {
     return { success: false, error: 'INSUFFICIENT_CITY_SOLDIERS', message: 'City reserve soldiers are insufficient' };
-  }
-  if (reserveDelta > 0 && !FormationStrengthService.hasEnoughResources(cityResources, resourceCost)) {
-    return { success: false, error: 'INSUFFICIENT_RECRUITMENT_RESOURCES', message: 'Recruitment resources are insufficient' };
   }
   const refund = reserveDelta < 0
     ? FormationStrengthService.scaleResourceCost(
@@ -358,7 +352,6 @@ function setArmyFormation(gameState, payload = {}) {
     formations,
   }, createMilitaryContext(gameState, cityId, normalizedMilitary));
   setCityMilitary(gameState, cityId, nextMilitary);
-  if (reserveDelta > 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, createNegativeCost(resourceCost)));
   if (reserveDelta < 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
   const scoutPersonId = getTutorialScoutPersonId(gameState);
   const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
@@ -370,7 +363,6 @@ function setArmyFormation(gameState, payload = {}) {
     message: `${FORMATION_NAMES[slot - 1] || `Formation ${slot}`} saved`,
     formation: getCityMilitary(gameState, cityId).formations?.[cityId]?.[slot - 1] || null,
     reserveDelta,
-    resourceCost,
     refund,
     tutorial,
   };
