@@ -81,6 +81,24 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /DEPLOY_STATUS_PATH="\$DEPLOY_STATE_DIR\/deploy-status\.json"/);
   assert.match(deployScript, /WXGAME_DEPLOY_STATUS_PATH="\$DEPLOY_STATUS_PATH"/);
   assert.match(deployScript, /set_deploy_stage\(\)/);
+  assert.match(deployScript, /run_with_deploy_status_heartbeat\(\)/);
+  assert.match(deployScript, /record_deploy_failure\(\)/);
+  assert.match(deployScript, /write_deploy_status "failed" "\$message" "\$exit_code"/);
+  assert.equal(deployScript.includes('if "$@"; then\n        command_status=0\n    else\n        command_status="$?"'), true);
+  assert.equal(deployScript.includes('record_deploy_failure "$command_status" "command failed: $(describe_deploy_command "$@")"'), true);
+  assert.equal(
+    deployScript.indexOf('kill "$heartbeat_pid"'),
+    deployScript.indexOf('kill "$heartbeat_pid"', deployScript.indexOf('run_with_deploy_status_heartbeat()')),
+  );
+  assert.equal(
+    deployScript.indexOf('kill "$heartbeat_pid"', deployScript.indexOf('run_with_deploy_status_heartbeat()'))
+      < deployScript.indexOf('record_deploy_failure "$command_status"', deployScript.indexOf('run_with_deploy_status_heartbeat()')),
+    true,
+  );
+  assert.match(deployScript, /record_deploy_failure "\$exit_code" "deploy exited before completion"/);
+  assert.match(deployScript, /record_deploy_failure "\$exit_code" "command failed: \$failed_command"/);
+  assert.match(deployScript, /return "\$command_status"/);
+  assert.match(deployScript, /run_with_deploy_status_heartbeat env REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$gate_script" "\$WORK_TREE"/);
   assert.match(deployScript, /set_deploy_stage "deploy-gate"/);
   assert.match(deployScript, /set_deploy_stage "health-check"/);
   assert.match(deployScript, /write_deploy_status "running"/);

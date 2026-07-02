@@ -261,19 +261,75 @@ set_deploy_stage() {
     fi
 }
 
+record_deploy_failure() {
+    local exit_code="$1"
+    local message="$2"
+
+    if [ "$DEPLOY_ERROR_RECORDED" = "1" ]; then
+        return
+    fi
+
+    DEPLOY_ERROR_RECORDED=1
+    write_deploy_status "failed" "$message" "$exit_code" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+
+describe_deploy_command() {
+    local args=()
+    local arg
+
+    for arg in "$@"; do
+        args+=("$(printf '%q' "$arg")")
+    done
+
+    local IFS=" "
+    printf '%s' "${args[*]}"
+}
+
+run_with_deploy_status_heartbeat() {
+    local heartbeat_interval="${DEPLOY_STATUS_HEARTBEAT_SECONDS:-20}"
+    local heartbeat_pid=""
+    local command_status
+
+    if [ -n "${DEPLOY_TARGET_COMMIT:-}" ] && [ "${heartbeat_interval:-0}" -gt 0 ] 2>/dev/null; then
+        (
+            while true; do
+                sleep "$heartbeat_interval"
+                write_deploy_status "running" "" "0" ""
+            done
+        ) &
+        heartbeat_pid="$!"
+    fi
+
+    if "$@"; then
+        command_status=0
+    else
+        command_status="$?"
+    fi
+
+    if [ -n "$heartbeat_pid" ]; then
+        kill "$heartbeat_pid" >/dev/null 2>&1 || true
+        wait "$heartbeat_pid" >/dev/null 2>&1 || true
+    fi
+
+    if [ "$command_status" -ne 0 ]; then
+        record_deploy_failure "$command_status" "command failed: $(describe_deploy_command "$@")"
+    fi
+
+    return "$command_status"
+}
+
 deploy_exit_trap() {
     local exit_code="$?"
     if [ "$DEPLOY_FINISHED" = "1" ] || [ "$DEPLOY_ERROR_RECORDED" = "1" ] || [ "$exit_code" = "0" ]; then
         return
     fi
-    write_deploy_status "failed" "deploy exited before completion" "$exit_code" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    record_deploy_failure "$exit_code" "deploy exited before completion"
 }
 
 deploy_error_trap() {
     local exit_code="$1"
     local failed_command="$2"
-    DEPLOY_ERROR_RECORDED=1
-    write_deploy_status "failed" "command failed: $failed_command" "$exit_code" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    record_deploy_failure "$exit_code" "command failed: $failed_command"
 }
 
 get_frontend_asset_version() {
@@ -677,7 +733,7 @@ run_deploy_gate() {
     fi
 
     echo "[Deploy] Running deploy gate: $gate_script"
-    REPO_GIT_DIR="$GIT_DIR_PATH" bash "$gate_script" "$WORK_TREE"
+    run_with_deploy_status_heartbeat env REPO_GIT_DIR="$GIT_DIR_PATH" bash "$gate_script" "$WORK_TREE"
 }
 
 run_post_backend_sync_script() {
@@ -692,7 +748,8 @@ run_post_backend_sync_script() {
     fi
 
     echo "[Deploy] Running post-backend sync script: $hook_script"
-    BACKEND_DIR="$BACKEND_DIR" \
+    run_with_deploy_status_heartbeat env \
+        BACKEND_DIR="$BACKEND_DIR" \
         DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" \
         DEPLOY_STATE_DIR="$DEPLOY_STATE_DIR" \
         bash "$hook_script"
@@ -796,9 +853,9 @@ set_deploy_stage "backend-dependencies"
 
 echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"
-npm install --omit=dev --no-audit --no-fund
+run_with_deploy_status_heartbeat npm install --omit=dev --no-audit --no-fund
 echo "[Deploy] Cleaning retired world-explorer ready state..."
-DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
+run_with_deploy_status_heartbeat env DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
 set_deploy_stage "config-release"
 publish_runtime_config_release
 
