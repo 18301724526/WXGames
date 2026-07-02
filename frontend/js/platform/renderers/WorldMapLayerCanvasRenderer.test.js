@@ -1431,6 +1431,28 @@ test('WorldMapLayerCanvasRenderer keeps current layer untouched when preserved s
   assert.equal(host.calls.filter((call) => call[0] === 'renderWorldTileSnapshotCache').length, 1);
 });
 
+test('WorldMapLayerCanvasRenderer does not commit a preserved snapshot when cache blit misses', () => {
+  const host = createHost({
+    renderWorldTileSnapshotCache(...args) {
+      host.calls.push(['renderWorldTileSnapshotCache', args]);
+      return false;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapSnapshotLayer({ territoryState: { worldMap: createTileMapView() } }, {
+    preserveOnMiss: true,
+    topBarBottom: 96,
+    frameless: true,
+    waterTimeMs: 123,
+  });
+
+  assert.equal(rendered, false);
+  assert.equal(host.worldMapRenderState.lastWorldMapLayerRenderResult.reason, 'snapshotMiss');
+  assert.equal(host.calls.filter((call) => call[0] === 'drawImage').length, 0);
+  assert.equal(host.calls.filter((call) => call[0] === 'fillRect').length, 1);
+});
+
 test('WorldMapLayerCanvasRenderer preserves the previous full map layer on transient empty tile input', () => {
   const host = createHost({
     lastWorldTileMapContext: {

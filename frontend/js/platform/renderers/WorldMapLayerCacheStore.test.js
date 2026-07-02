@@ -83,7 +83,7 @@ test('WorldMapLayerCacheStore computes visible blit and draws clipped cache regi
   ]);
 });
 
-test('WorldMapLayerCacheStore treats fully clipped cache as handled without drawImage', () => {
+test('WorldMapLayerCacheStore treats fully clipped cache as a draw miss', () => {
   const drawCalls = [];
   const drawn = WorldMapLayerCacheStore.drawLayerCache({
     drawImage(...args) { drawCalls.push(args); },
@@ -101,7 +101,7 @@ test('WorldMapLayerCacheStore treats fully clipped cache as handled without draw
     height: 10,
   });
 
-  assert.equal(drawn, true);
+  assert.equal(drawn, false);
   assert.equal(drawCalls.length, 0);
 });
 

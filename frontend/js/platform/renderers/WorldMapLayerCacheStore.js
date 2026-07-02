@@ -106,7 +106,7 @@
     if (!work?.canvas || !layout?.frame || typeof targetCtx?.drawImage !== 'function') return false;
     const blit = getVisibleBlit(work, layout, clipFrame);
     if (!blit) return false;
-    if (blit.empty) return true;
+    if (blit.empty) return false;
     targetCtx.drawImage(
       work.canvas,
       blit.sourceX,

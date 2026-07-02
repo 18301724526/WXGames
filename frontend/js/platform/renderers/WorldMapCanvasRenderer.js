@@ -1297,7 +1297,7 @@
       const visibleBottom = Math.min(drawY + frameHeight, clipY + clipHeight);
       const visibleWidth = Math.max(0, visibleRight - visibleX);
       const visibleHeight = Math.max(0, visibleBottom - visibleY);
-      if (visibleWidth <= 0 || visibleHeight <= 0) return true;
+      if (visibleWidth <= 0 || visibleHeight <= 0) return false;
       const scale = Math.max(1, Number(work.scale) || 1);
       const sourceX = Math.max(0, (visibleX - drawX) * scale);
       const sourceY = Math.max(0, (visibleY - drawY) * scale);
