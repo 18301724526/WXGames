@@ -479,6 +479,7 @@
       'tutorial.highlight.openScoutOfficerTask': '打开任务，招募一位侦察官。',
       'tutorial.highlight.claimScoutOfficer': '领取“侦察官”，一位善于侦察的名人将加入我们。',
       'tutorial.highlight.replenishScoutFormation': '点击补兵，为编队补满士兵。',
+      'tutorial.highlight.chooseFirstCitySite': '在候选里选择这座空城，进入据点视图。',
       'tutorial.highlight.switchTalentTab': '切到人才标签，之后的人才调整都在这里完成。',
       'tutorial.highlight.switchTalentTabAdjust': '切到人才标签，手动调整一次岗位分配。',
       'tutorial.highlight.adjustTalentDetail':
@@ -1386,6 +1387,8 @@
         'Claim “Scout Officer” — a famous person skilled in scouting joins you.',
       'tutorial.highlight.replenishScoutFormation':
         'Tap Replenish to fill the formation with soldiers.',
+      'tutorial.highlight.chooseFirstCitySite':
+        'Choose this empty city from the candidates to open its outpost view.',
       'tutorial.highlight.switchTalentTab':
         'Switch to the Talent tab — all talent tuning happens here.',
       'tutorial.highlight.switchTalentTabAdjust':

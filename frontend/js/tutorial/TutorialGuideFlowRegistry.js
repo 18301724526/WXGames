@@ -190,6 +190,17 @@
 
   function renderFirstCityDiscovered(host) {
     const siteId = host.getFirstExploreCityId?.() || '';
+    // Scout actor still on the site tile -> the click opened the multi-candidate
+    // world target picker; guide choosing the site candidate out of it.
+    const pickerCandidate = host.getWorldTargetPickerSiteCandidate?.(siteId);
+    if (pickerCandidate) {
+      return host.showHighlight(
+        'chooseWorldTarget',
+        (action) => !action.disabled && String(action.targetId || '') === String(pickerCandidate.id),
+        t('tutorial.highlight.chooseFirstCitySite'),
+        { type: 'chooseWorldTarget', targetId: pickerCandidate.id },
+      );
+    }
     if (!host.isWorldSiteSelected?.(siteId)) {
       const highlighted = host.showFirstCitySiteOpenHighlight?.(siteId);
       if (highlighted) return true;

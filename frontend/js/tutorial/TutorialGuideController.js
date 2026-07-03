@@ -309,6 +309,27 @@
       );
     }
 
+    // When the scout actor still overlaps the discovered site tile, clicking it
+    // resolves to the multi-candidate world target picker instead of a direct
+    // openWorldSite. Return the site candidate so the first-city guide can
+    // highlight choosing it (chooseWorldTarget) rather than stalling.
+    getWorldTargetPickerSiteCandidate(siteId = '') {
+      const snapshot = this.game?.getTargetPickerSnapshot?.();
+      if (!snapshot || snapshot.pickerKind !== 'worldTargetPicker') return null;
+      const candidates = Array.isArray(snapshot.picker?.candidates) ? snapshot.picker.candidates : [];
+      const wanted = String(siteId || '');
+      return (
+        candidates.find((candidate) => {
+          const action = candidate?.action || {};
+          const candidateSiteId = String(action.siteId || action.cityId || action.territoryId || '');
+          return (
+            (action.type === 'openWorldSite' || candidate?.kind === 'site')
+            && (!wanted || candidateSiteId === wanted)
+          );
+        }) || null
+      );
+    }
+
     isFamousPersonsOpen() {
       return CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this.game, 'showFamousPersons');
     }

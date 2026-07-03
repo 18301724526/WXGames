@@ -961,6 +961,20 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     matchesTutorialAllowedAction(action = {}, allowedAction = null) {
           if (!action?.type || !allowedAction?.type) return false;
+          // A guided openWorldSite click on a tile the scout actor still overlaps
+          // resolves to the multi-candidate world target picker. Accept that picker
+          // when it carries the guided site candidate so the click is not blocked;
+          // the first-city guide then highlights choosing the site from the picker.
+          if (allowedAction.type === 'openWorldSite' && action.type === 'openWorldTargetPicker') {
+            const wanted = String(allowedAction.siteId || allowedAction.cityId || allowedAction.territoryId || '');
+            const candidates = Array.isArray(action.candidates) ? action.candidates : [];
+            return candidates.some((candidate) => {
+              const candidateAction = candidate?.action || candidate || {};
+              const candidateSiteId = String(candidateAction.siteId || candidateAction.cityId || candidateAction.territoryId || '');
+              return (candidateAction.type === 'openWorldSite' || candidate?.kind === 'site')
+                && (!wanted || candidateSiteId === wanted);
+            });
+          }
           if (action.type !== allowedAction.type) return false;
           const getTargetId = (item = {}) => item.siteId || item.territoryId || item.cityId || item.targetId || '';
           const allowedTargetId = getTargetId(allowedAction);
