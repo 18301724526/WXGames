@@ -112,8 +112,10 @@
       // degrades to the legacy per-layer DOM canvas stack below.
       const surface = this.ensureLayerSurface(key, options);
       if (surface) {
-        // The visible canvas must exist as the composite target (and input surface).
-        this.ensureCanvas();
+        // The visible canvas must exist as the composite target (and input surface). Guard on
+        // absence: calling ensureCanvas() unconditionally would run resize() and re-enter the
+        // render pipeline through the resize handlers on every layer ensure.
+        if (!this.canvas) this.ensureCanvas();
         return surface;
       }
       // Legacy fallback: mainHud IS the visible canvas when there are no offscreen surfaces.
