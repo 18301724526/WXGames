@@ -214,4 +214,4 @@
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.TutorialFlowShared = api;
-})(typeof globalThis !== 'undefined' ? globalThis : window);
+})(typeof globalThis !== 'undefined' ? globalThis : this);

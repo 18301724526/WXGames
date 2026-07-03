@@ -16,14 +16,29 @@ const scoutId = 'fp_tutorial_scout_alus23';
 function stateWithSplitFormation() {
   return {
     activeCityId: 'capital',
-    tutorial: { currentStep: 'scoutWorldPanelOpened', grants: { scoutFamousPerson: { personId: scoutId } } },
+    tutorial: {
+      currentStep: 'scoutWorldPanelOpened',
+      grants: { scoutFamousPerson: { personId: scoutId } },
+    },
     famousPeople: [{ id: scoutId, archetype: 'scout' }],
     // top-level military: stale, empty-member slots (what normalize leaves here)
-    military: { formations: { capital: [{ slot: 1, memberIds: [] }, { slot: 2, memberIds: [] }, { slot: 3, memberIds: [] }] } },
+    military: {
+      formations: {
+        capital: [
+          { slot: 1, memberIds: [] },
+          { slot: 2, memberIds: [] },
+          { slot: 3, memberIds: [] },
+        ],
+      },
+    },
     // per-city military: the authoritative save target, has the scout
     cities: {
       capital: {
-        military: { formations: { capital: [{ slot: 1, memberIds: [scoutId], soldierAssignments: { [scoutId]: 1000 } }] } },
+        military: {
+          formations: {
+            capital: [{ slot: 1, memberIds: [scoutId], soldierAssignments: { [scoutId]: 1000 } }],
+          },
+        },
       },
     },
   };
@@ -39,7 +54,10 @@ test('getFormationMembers reads the city-scoped formation over the stale top-lev
 
 test('hasTutorialScoutFormation passes when the scout is in the city-scoped formation', () => {
   assert.equal(
-    TutorialSelectors.hasTutorialScoutFormation(stateWithSplitFormation(), { cityId: 'capital', formationSlot: 1 }),
+    TutorialSelectors.hasTutorialScoutFormation(stateWithSplitFormation(), {
+      cityId: 'capital',
+      formationSlot: 1,
+    }),
     true,
   );
 });
