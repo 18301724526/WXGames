@@ -1,5 +1,14 @@
 # 零 DOM 单画布渲染改造计划（2026-07-04）
 
+> **状态：全部阶段已完成并部署**（ZD-0 `a098c393` / ZD-A `1a4fcc7c` / ZD-B `8db3a89a` / ZD-C `c45c1c44`+`2bfcef6c` / ZD-D `721cf770`+终验）。
+> 实测结果：DOM 画布 6→**1**（唯一可见画布 `h5CanvasLayer`），6 层全部离屏 surface，
+> clip DIV 清零，headless FPS 28→**71**，pan 像素级等价（ZD-B 100% 匹配），零 JS 错误，
+> 立绘/对话框/雾/HUD 视觉与基线一致。DOM 边界由 `CanvasDomBoundary.test.js` 棘轮守卫
+> （允许清单：H5CanvasRuntime 4 处 boot+回退、CanvasAssetRenderer 2 处兜底，只减不增）。
+> 已知取舍：无 OffscreenCanvas 的老浏览器自动回退旧多画布 DOM 栈（旧测试全绿保障）；
+> `H5UpdateRuntimeAdapter` 的更新提示画布**刻意保留独立 DOM**——它是部署更新逃生舱，
+> 必须在游戏渲染循环损坏时仍可用，属 boot 边缘平台 chrome，不算渲染架构债。
+
 ## 目标
 
 H5 渲染宿主去除全部运行期 DOM 机器（多 DOM `<canvas>`、`document.createElement`、`appendChild`/`insertBefore`、`canvas.style.*`、CSS z-index 合成），收敛为：

@@ -220,6 +220,18 @@ function actionCompatible(expected = {}, actual = {}) {
         && (!wanted || candidateId === wanted);
     });
   }
+  // openWorldSite and enterCity are interchangeable entrances to the same city (which one
+  // owns the tile's clickable center depends on hit-target stacking).
+  const cityEntranceTypes = ['openWorldSite', 'enterCity'];
+  if (
+    cityEntranceTypes.includes(expected.type)
+    && cityEntranceTypes.includes(actual.type)
+    && expected.type !== actual.type
+  ) {
+    const wantedCity = getActionTargetId(expected);
+    const actualCity = getActionTargetId(actual);
+    return Boolean(wantedCity && actualCity && wantedCity === actualCity);
+  }
   if (expected.type !== actual.type) return false;
   const expectedId = getActionTargetId(expected);
   const actualId = getActionTargetId(actual);
@@ -529,6 +541,12 @@ async function getState(page) {
         && (game?.activeCityManagementTab || shell?.activeCityManagementTab) === 'people',
       ),
       targetPickerKind: (game?.getTargetPickerSnapshot?.() || shell?.getTargetPickerSnapshot?.())?.pickerKind || '',
+      // The rendered hit targets are the most reliable "world target picker is open"
+      // signal: the picker always registers its candidate buttons there, while the modal
+      // snapshot can lag behind on click-opened pickers.
+      worldTargetPickerCandidates: hitTargets
+        .filter((target) => target?.action?.type === 'chooseWorldTarget')
+        .map((target) => String(target.action.targetId || target.action.siteId || '')),
       naming: shell?.getNamingSnapshot?.() || game?.getNamingSnapshot?.() || shell?.naming || game?.naming || null,
       armyFormationEditor: shell?.armyFormationEditor || game?.armyFormationEditor || null,
       territoryUiState: shell?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || null,
@@ -976,10 +994,14 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
     case 'openWorldSite': {
       const siteId = action.siteId || action.cityId || action.territoryId || '';
       const selected = after.territoryUiState?.selectedSiteId || '';
-      // When the scout actor overlaps the tile, the click opens the world target
-      // picker instead; that is a valid intermediate step (the guide then highlights
-      // choosing the site candidate), so treat an opened picker as progress.
-      const pickerOpened = after.targetPickerKind === 'worldTargetPicker';
+      // When a march actor overlaps the tile, the click opens the world target
+      // picker instead; that is a valid intermediate step (the next iteration clicks
+      // the site candidate). Only a FRESHLY opened picker counts as progress — an
+      // already-open picker would otherwise turn every click into a false pass.
+      const pickerOpened = (after.targetPickerKind === 'worldTargetPicker'
+        || (after.worldTargetPickerCandidates || []).length > 0)
+        && !(before.worldTargetPickerCandidates || []).length
+        && before.targetPickerKind !== 'worldTargetPicker';
       return (siteId && selected === siteId) || after.cityManagementOpen || pickerOpened || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
         ? pass('world site opened, picker opened, or intro advanced')
         : fail('world site did not open');
@@ -1296,7 +1318,30 @@ async function chooseNextAction(page, iteration) {
     ));
   }
 
+  // The world target picker blocks every click behind it. Whenever it is open (its
+  // candidate buttons are registered as hit targets), resolve it first — a real player
+  // taps the site candidate — otherwise the guide-highlight fallback below keeps
+  // clicking through it without ever advancing.
+  if ((state.worldTargetPickerCandidates || []).length) {
+    const candidates = state.worldTargetPickerCandidates;
+    const wanted = candidates.find((id) => id === 'capital' || String(id).startsWith('site_')) || '';
+    return clickByPredicate(page, `resolve-world-target-picker-${iteration}`, (action) => (
+      action.type === 'chooseWorldTarget'
+      && (!wanted || String(action.targetId || action.siteId || '') === wanted)
+      && !action.disabled
+    ));
+  }
+
   const allowed = state.tutorialHighlight?.allowedAction || null;
+  // A guided openWorldSite towards a site the active march has not reached yet cannot
+  // advance the step machine (the guide points at the discovered empty city while the
+  // exploration march is still travelling). Wait the march out instead of click-spamming.
+  if (allowed?.type === 'openWorldSite' && missionCounts(state).active > 0) {
+    return recordWaitAction(page, `wait-march-before-${allowed.type}-${iteration}`, state, {
+      type: 'wait',
+      reason: 'active march has not arrived yet',
+    }, 1500, 3000);
+  }
   if (allowed?.type) {
     const target = findTarget(state, (action) => actionMatches(allowed, action))
       || findTarget(state, (action) => action.type === allowed.type && !action.disabled);
@@ -1422,8 +1467,13 @@ async function chooseNextAction(page, iteration) {
     return clickByPredicate(page, `close-famous-${iteration}`, (action) => action.type === 'closeFamousPersons' && !action.disabled);
   }
   if (stepIs(STEPS.famousCardViewed) && !state.cityManagementOpen) {
+    // Both openWorldSite and enterCity land in capital city management; which one owns the
+    // tile's clickable center depends on hit-target stacking, so accept either.
     return clickByPredicate(page, `open-capital-for-formation-${iteration}`, (action) => (
-      action.type === 'openWorldSite' && (!action.siteId || action.siteId === 'capital') && !action.disabled
+      (action.type === 'openWorldSite' || action.type === 'enterCity')
+      && (!(action.siteId || action.cityId || action.territoryId)
+        || (action.siteId || action.cityId || action.territoryId) === 'capital')
+      && !action.disabled
     ));
   }
   if (stepIs(STEPS.famousCardViewed) && state.cityManagementOpen && state.activeCityManagementTab !== 'military') {
