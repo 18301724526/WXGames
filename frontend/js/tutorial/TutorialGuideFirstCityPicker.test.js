@@ -3,15 +3,71 @@ const assert = require('node:assert/strict');
 
 const CanvasGameShell = require('../platform/CanvasGameShell');
 const TutorialGuideController = require('./TutorialGuideController');
+const TutorialGuideFlowRegistry = require('./TutorialGuideFlowRegistry');
 
-// After the scout marches to the discovered empty city, the actor still overlaps
-// the site tile for a moment, so a click resolves to the multi-candidate world
-// target picker (openWorldTargetPicker) instead of a direct openWorldSite. The
-// firstCityDiscovered guide must (1) not block that click, and (2) then guide the
-// player to choose the site candidate out of the picker. Regression for the
+// A guided click on a world site whose tile also carries an actor (intro march
+// on the capital, arrived scout on the discovered city) resolves to the
+// multi-candidate world target picker (openWorldTargetPicker) instead of a
+// direct openWorldSite. The guide must (1) not block that click, and (2) follow
+// into the picker and highlight choosing the guided site's candidate — at EVERY
+// site-guide step, not just firstCityDiscovered. Regression for the
 // world-march post-arrival stall.
 
 const SITE_ID = 'site_-21_1';
+const CAPITAL_ID = 'capital';
+
+function makeGuideHost({ step, pickerSiteId = '', pickerCandidateId = 'site-1' }) {
+  const highlights = [];
+  const host = {
+    getCurrentStep: () => step,
+    getCapitalCityId: () => CAPITAL_ID,
+    getFirstExploreCityId: () => SITE_ID,
+    getWorldTargetPickerSiteCandidate: (siteId) =>
+      pickerSiteId && String(siteId) === String(pickerSiteId)
+        ? { id: pickerCandidateId, kind: 'site' }
+        : null,
+    isWorldSiteSelected: () => false,
+    showFirstCitySiteOpenHighlight: (siteId) => {
+      highlights.push({ type: 'openWorldSite', siteId });
+      return true;
+    },
+    showHighlight: (type, _predicate, _message, allowedAction) => {
+      highlights.push({ type, allowedAction });
+      return true;
+    },
+  };
+  return { host, highlights };
+}
+
+test('the picker follow-through rules highlight the guided site candidate at every site-guide step', () => {
+  const registry = TutorialGuideFlowRegistry.create();
+  const cases = [
+    { step: 'famousCardViewed', pickerSiteId: CAPITAL_ID },
+    { step: 'firstCityDiscovered', pickerSiteId: SITE_ID },
+    { step: 'firstCityConquestStarted', pickerSiteId: SITE_ID },
+    { step: 'firstCityOccupied', pickerSiteId: SITE_ID },
+  ];
+  for (const { step, pickerSiteId } of cases) {
+    const { host, highlights } = makeGuideHost({ step, pickerSiteId });
+    assert.equal(registry.refresh(host), true, `refresh should render at ${step}`);
+    assert.equal(highlights.length, 1, `one highlight at ${step}`);
+    assert.deepEqual(
+      highlights[0],
+      {
+        type: 'chooseWorldTarget',
+        allowedAction: { type: 'chooseWorldTarget', targetId: 'site-1' },
+      },
+      `chooseWorldTarget candidate highlighted at ${step}`,
+    );
+  }
+});
+
+test('without an open picker the firstCityDiscovered guide falls back to opening the site', () => {
+  const registry = TutorialGuideFlowRegistry.create();
+  const { host, highlights } = makeGuideHost({ step: 'firstCityDiscovered', pickerSiteId: '' });
+  assert.equal(registry.refresh(host), true);
+  assert.deepEqual(highlights, [{ type: 'openWorldSite', siteId: SITE_ID }]);
+});
 
 function makeShell() {
   return Object.assign(new CanvasGameShell({}), {});

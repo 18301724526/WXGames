@@ -188,20 +188,29 @@
     );
   }
 
+  // A guided click on a world site whose tile also carries an actor (the intro
+  // march on the capital, the arrived scout on the discovered city) resolves to
+  // the multi-candidate world target picker instead of opening the site. The
+  // picker blocks every canvas click, so whenever it is open during a step that
+  // guides towards a known site, the guide must follow into it and highlight
+  // choosing that site's candidate.
+  function renderChooseGuidedSiteCandidate(host, siteId, message) {
+    const candidate = host.getWorldTargetPickerSiteCandidate?.(siteId);
+    if (!candidate) return false;
+    return host.showHighlight(
+      'chooseWorldTarget',
+      (action) => !action.disabled && String(action.targetId || '') === String(candidate.id),
+      message,
+      { type: 'chooseWorldTarget', targetId: candidate.id },
+    );
+  }
+
+  function hasGuidedSitePickerCandidate(getSiteId) {
+    return (host) => Boolean(host.getWorldTargetPickerSiteCandidate?.(getSiteId(host) || ''));
+  }
+
   function renderFirstCityDiscovered(host) {
     const siteId = host.getFirstExploreCityId?.() || '';
-    // Scout actor still on the site tile -> the click opened the multi-candidate
-    // world target picker; guide choosing the site candidate out of it.
-    const pickerCandidate = host.getWorldTargetPickerSiteCandidate?.(siteId);
-    if (pickerCandidate) {
-      return host.showHighlight(
-        'chooseWorldTarget',
-        (action) =>
-          !action.disabled && String(action.targetId || '') === String(pickerCandidate.id),
-        t('tutorial.highlight.chooseFirstCitySite'),
-        { type: 'chooseWorldTarget', targetId: pickerCandidate.id },
-      );
-    }
     if (!host.isWorldSiteSelected?.(siteId)) {
       const highlighted = host.showFirstCitySiteOpenHighlight?.(siteId);
       if (highlighted) return true;
@@ -383,12 +392,45 @@
       not(isCityManagementOpen),
     );
 
+    const getCapitalSiteId = (host) => host.getCapitalCityId?.() || '';
+    const getFirstCitySiteId = (host) => host.getFirstExploreCityId?.() || '';
+
     return [
       { id: 'advisor-open', matches: (host) => host.isAdvisorOpen?.(), render: hideHighlight },
       {
         id: 'reward-reveal-open',
         matches: (host) => host.isRewardRevealOpen?.(),
         render: hideHighlight,
+      },
+      // World-target-picker follow-through: these run before every segment rule
+      // because the open picker is modal — any highlight the segment rules would
+      // draw sits underneath it and cannot be clicked.
+      {
+        id: 'capital-site-picker-follow-through',
+        matches: all(famousCardViewed, hasGuidedSitePickerCandidate(getCapitalSiteId)),
+        render: (host) =>
+          renderChooseGuidedSiteCandidate(
+            host,
+            getCapitalSiteId(host),
+            t('tutorial.highlight.chooseCapitalSite'),
+          ),
+      },
+      {
+        id: 'first-city-site-picker-follow-through',
+        matches: all(
+          stepIs(
+            steps.firstCityDiscovered,
+            steps.firstCityConquestStarted,
+            steps.firstCityOccupied,
+          ),
+          hasGuidedSitePickerCandidate(getFirstCitySiteId),
+        ),
+        render: (host) =>
+          renderChooseGuidedSiteCandidate(
+            host,
+            getFirstCitySiteId(host),
+            t('tutorial.highlight.chooseFirstCitySite'),
+          ),
       },
       // Homestead claim pair: at cityEntered the house supplies are claimed
       // from the task center BEFORE the house-build guide takes over.
