@@ -196,7 +196,8 @@
     if (pickerCandidate) {
       return host.showHighlight(
         'chooseWorldTarget',
-        (action) => !action.disabled && String(action.targetId || '') === String(pickerCandidate.id),
+        (action) =>
+          !action.disabled && String(action.targetId || '') === String(pickerCandidate.id),
         t('tutorial.highlight.chooseFirstCitySite'),
         { type: 'chooseWorldTarget', targetId: pickerCandidate.id },
       );

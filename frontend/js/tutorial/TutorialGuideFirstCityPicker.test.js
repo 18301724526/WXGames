@@ -33,7 +33,9 @@ test('matchesTutorialAllowedAction accepts the same-site target picker for an op
   // A picker for a DIFFERENT site is not accepted.
   const otherPicker = {
     type: 'openWorldTargetPicker',
-    candidates: [{ id: 'site-x', kind: 'site', action: { type: 'openWorldSite', siteId: 'site_9_9' } }],
+    candidates: [
+      { id: 'site-x', kind: 'site', action: { type: 'openWorldSite', siteId: 'site_9_9' } },
+    ],
   };
   assert.equal(shell.matchesTutorialAllowedAction(otherPicker, allowed), false);
 
@@ -42,7 +44,10 @@ test('matchesTutorialAllowedAction accepts the same-site target picker for an op
     shell.matchesTutorialAllowedAction({ type: 'openWorldSite', siteId: SITE_ID }, allowed),
     true,
   );
-  assert.equal(shell.matchesTutorialAllowedAction({ type: 'conquer', territoryId: SITE_ID }, allowed), false);
+  assert.equal(
+    shell.matchesTutorialAllowedAction({ type: 'conquer', territoryId: SITE_ID }, allowed),
+    false,
+  );
 });
 
 test('getWorldTargetPickerSiteCandidate returns the site candidate from an open world target picker', () => {
@@ -64,7 +69,12 @@ test('getWorldTargetPickerSiteCandidate returns the site candidate from an open 
 
   // Wrong picker kind (formation) is ignored.
   const formationController = new TutorialGuideController({
-    game: { getTargetPickerSnapshot: () => ({ pickerKind: 'worldMarchFormation', picker: { candidates: [] } }) },
+    game: {
+      getTargetPickerSnapshot: () => ({
+        pickerKind: 'worldMarchFormation',
+        picker: { candidates: [] },
+      }),
+    },
   });
   assert.equal(formationController.getWorldTargetPickerSiteCandidate(SITE_ID), null);
 });

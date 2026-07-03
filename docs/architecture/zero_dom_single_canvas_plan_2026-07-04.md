@@ -34,9 +34,11 @@ H5 渲染宿主去除全部运行期 DOM 机器（多 DOM `<canvas>`、`document
 ## 分阶段（每阶段独立可上线，全门禁 + 提交 + 双推送）
 
 ### ZD-0 基线 + 深读（本文档）✅
+
 基线截图 `tmp/zerodom-baseline/`；机制清单（上文）；无生产码改动。
 
 ### ZD-A fog + spine WebGL 迁离屏
+
 - `H5CanvasRuntime`：`createOffscreenSurface` / `syncLayerDrawSurface` / `presentLayer(name)` / `getLayerDrawSurface(name)`；`ensureLayerCanvas` 对 `contextType!=='2d'` 的层创建并返回离屏绘制面（DOM 画布降为 2d 呈现面）；`resizeCanvas` 同步离屏尺寸。无 `OffscreenCanvas` 时优雅回退旧行为（node 测试/老浏览器）。
 - `SpineWebglPlayer`：新增 `onFrame` 回调（每帧渲染后触发 present）+ `cssWidth/cssHeight` 显式尺寸。
 - `TutorialAdvisorCanvasRenderer`：创建 player 时传 `cssWidth/cssHeight` + `onFrame → runtime.presentLayer('tutorialSpine')`。
@@ -44,15 +46,18 @@ H5 渲染宿主去除全部运行期 DOM 机器（多 DOM `<canvas>`、`document
 - 效果：DOM 里不再有任何 webgl 画布 → 永久消灭 webgl-vs-2d 跨上下文合成怪癖（上一轮 spine 盖对话框 bug 的整个类别）。
 
 ### ZD-B CanvasLayerCompositor + 世界层离屏
+
 - 新增 DOM-free `CanvasLayerCompositor`（注入 surface 工厂；持层状态 translate/visible/alpha；按 PHYSICAL_LAYER_ORDER 向目标 ctx 合成；世界层 pan 用 source-rect 偏移 blit，复用 `WorldMapLayerCacheStore.getVisibleBlit` 语义）。
 - worldMap/worldFog/worldActor 变离屏 surface；`setLayerTranslate` 变合成状态写 + 请求合成（替代 CSS transform 兜底）；`_layerName` 标记补到 surface。
 
 ### ZD-C 折叠单画布
+
 - mainHud 可见画布成为唯一 DOM 画布 + 合成目标；spine/dialogue 并入合成 pass（spine present → 合成序内 drawImage + globalAlpha）。
 - 删除 `insertLayerElementInStackOrder` / `collectManagedStackElements` / `ensureLayerHost` / `applyCanvasLayerStyle` / `applyLayerHostStyle` / `setLayerTransform` DOM 半边 / `setLayerVisible` 的 style.display 半边（变合成 visible 标志）。
 - DOM 收敛进 boot 适配器（取画布 + `H5CanvasInputController.bindEvents` + viewport/dpr + rAF）。
 
 ### ZD-D 清扫 + 守卫 + 终验
+
 - `H5UpdateRuntimeAdapter` 更新提示画布归入 boot 适配器职责（平台 chrome，非游戏渲染）或并入合成顶层 pass。
 - 移除 `CanvasAssetRenderer` 的 `ownerDocument`/`document.createElement` 离屏兜底。
 - 新增 DOM 边界守卫测试：boot 适配器之外的 platform 层禁 `document.`/`appendChild`/`.style.`。

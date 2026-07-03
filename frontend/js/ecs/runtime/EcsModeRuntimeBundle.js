@@ -136,9 +136,9 @@ var EcsModeRuntime = (() => {
     },
   });
 
-  // node_modules/bitecs/dist/core/index.min.cjs
+  // ../../../node_modules/bitecs/dist/core/index.min.cjs
   var require_index_min = __commonJS({
-    'node_modules/bitecs/dist/core/index.min.cjs'(exports, module) {
+    '../../../node_modules/bitecs/dist/core/index.min.cjs'(exports, module) {
       var ne = Object.defineProperty;
       var It = Object.getOwnPropertyDescriptor;
       var Et = Object.getOwnPropertyNames;
@@ -1055,9 +1055,9 @@ var EcsModeRuntime = (() => {
     },
   });
 
-  // node_modules/bitecs/dist/legacy/index.min.cjs
+  // ../../../node_modules/bitecs/dist/legacy/index.min.cjs
   var require_index_min2 = __commonJS({
-    'node_modules/bitecs/dist/legacy/index.min.cjs'(exports, module) {
+    '../../../node_modules/bitecs/dist/legacy/index.min.cjs'(exports, module) {
       var j = Object.defineProperty;
       var ee = Object.getOwnPropertyDescriptor;
       var re = Object.getOwnPropertyNames;

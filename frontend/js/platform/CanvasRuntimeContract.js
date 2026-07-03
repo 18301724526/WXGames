@@ -70,7 +70,8 @@
     if (typeof runtime.getLayerCanvas === 'function') present.push('getLayerCanvas');
     if (typeof runtime.getLayerDrawSurface === 'function') present.push('getLayerDrawSurface');
     if (typeof runtime.presentLayer === 'function') present.push('presentLayer');
-    if (typeof runtime.refreshLayerPresentCache === 'function') present.push('refreshLayerPresentCache');
+    if (typeof runtime.refreshLayerPresentCache === 'function')
+      present.push('refreshLayerPresentCache');
     if (typeof runtime.compositeStage === 'function') present.push('compositeStage');
     if (typeof runtime.getLayerMetrics === 'function') present.push('getLayerMetrics');
     if (typeof runtime.getLayerBackingStoreState === 'function')
