@@ -271,6 +271,8 @@
       if (active?.mode === 'layer' && active?.player && active.canvas === canvas) {
         active.player.logicalWidth = logicalWidth;
         active.player.logicalHeight = logicalHeight;
+        active.player.cssWidth = layerRect.width;
+        active.player.cssHeight = layerRect.height;
         active.player.maxDevicePixelRatio = pixelRatio;
         active.player.setViewTransform?.({ ...viewOptions, viewportRect });
         active.targetRect = targetRect;
@@ -288,10 +290,17 @@
         targetFps: 60,
         logicalWidth,
         logicalHeight,
+        cssWidth: layerRect.width,
+        cssHeight: layerRect.height,
         viewportRect,
         maxDevicePixelRatio: pixelRatio,
         premultipliedAlpha: false,
         preserveDrawingBuffer: false,
+        // The spine surface is an offscreen webgl canvas; present each rendered frame onto
+        // the 2d DOM presentation layer in the same task (preserveDrawingBuffer:false).
+        onFrame: () => {
+          this.h5Runtime?.presentLayer?.(TUTORIAL_SPINE_LAYER_NAME);
+        },
         onBounds: (event = {}) => {
           if (!this.tutorialAdvisorSpine || this.tutorialAdvisorSpine.player !== player) return;
           this.tutorialAdvisorSpine.bounds = event.bounds || null;
@@ -321,6 +330,8 @@
         targetFps: 60,
         logicalWidth,
         logicalHeight,
+        cssWidth: layerRect.width,
+        cssHeight: layerRect.height,
         viewportRect,
         maxDevicePixelRatio: pixelRatio,
         preserveDrawingBuffer: false,

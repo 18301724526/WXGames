@@ -102,7 +102,7 @@
         });
         this.ensureLayerHost(key, existing, options);
         this.resizeCanvas(existing);
-        return existing;
+        return existing._drawSurface || existing;
       }
       if (!this.document || typeof this.document.createElement !== 'function') return null;
       const canvas = this.document.createElement('canvas');
@@ -134,7 +134,61 @@
         this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
       }
       this.resizeCanvas(canvas);
-      return canvas;
+      return canvas._drawSurface || canvas;
+    }
+
+    // WebGL layers draw on a non-DOM OffscreenCanvas surface; the DOM layer canvas stays a 2d
+    // presentation target that presentLayer() blits onto. A canvas can hold only one context
+    // type forever, so this keeps the visible DOM stack free of webgl canvases (which WebView
+    // compositors stack unreliably against 2d siblings) and is the same surface model the
+    // wx mini-program runtime uses (wx.createOffscreenCanvas + drawImage).
+    createOffscreenSurface(width = 1, height = 1) {
+      const OffscreenCanvasCtor = this.runtime.OffscreenCanvas || global.OffscreenCanvas || null;
+      if (typeof OffscreenCanvasCtor !== 'function') return null;
+      return new OffscreenCanvasCtor(
+        Math.max(1, Number(width) || 1),
+        Math.max(1, Number(height) || 1),
+      );
+    }
+
+    syncLayerDrawSurface(canvas) {
+      if (!canvas || !canvas._contextType || canvas._contextType === '2d') return null;
+      const width = Math.max(1, Number(canvas.width) || 1);
+      const height = Math.max(1, Number(canvas.height) || 1);
+      let surface = canvas._drawSurface || null;
+      if (!surface) {
+        surface = this.createOffscreenSurface(width, height);
+        // Without OffscreenCanvas support consumers keep drawing on the DOM canvas directly.
+        if (!surface) return null;
+        canvas._drawSurface = surface;
+      }
+      if (Number(surface.width) !== width) surface.width = width;
+      if (Number(surface.height) !== height) surface.height = height;
+      return surface;
+    }
+
+    getLayerDrawSurface(name = 'worldMap') {
+      const canvas = this.getLayerCanvas(name);
+      return canvas?._drawSurface || canvas || null;
+    }
+
+    // Blit a webgl layer's offscreen draw surface onto its 2d presentation canvas. Must run in
+    // the same synchronous task as the webgl render: with preserveDrawingBuffer:false the
+    // drawing buffer is only guaranteed readable before the task yields to the event loop.
+    presentLayer(name = 'worldMap') {
+      const canvas = this.getLayerCanvas(name);
+      const surface = canvas?._drawSurface || null;
+      if (!canvas || !surface) return false;
+      const ctx = canvas.getContext?.('2d') || null;
+      if (!ctx) return false;
+      const width = Math.max(1, Number(canvas.width) || 1);
+      const height = Math.max(1, Number(canvas.height) || 1);
+      if (typeof ctx.setTransform === 'function') ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect?.(0, 0, width, height);
+      if (typeof ctx.drawImage === 'function' && Number(surface.width) > 0 && Number(surface.height) > 0) {
+        ctx.drawImage(surface, 0, 0);
+      }
+      return true;
     }
 
     // Keep DOM sibling order aligned with the physical z-index so layers stack correctly even
@@ -359,7 +413,9 @@
     }
 
     resizeCanvas(canvas) {
-      return H5CanvasViewport.resizeCanvas(canvas, this);
+      const result = H5CanvasViewport.resizeCanvas(canvas, this);
+      this.syncLayerDrawSurface(canvas);
+      return result;
     }
 
     bindEvents() {

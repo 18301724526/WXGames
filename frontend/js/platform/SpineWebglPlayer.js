@@ -24,6 +24,10 @@
         || (this.targetFps > 0 ? 1000 / this.targetFps : 16);
       this.logicalWidth = Number(options.logicalWidth) || 0;
       this.logicalHeight = Number(options.logicalHeight) || 0;
+      // Explicit surface size in CSS pixels for canvases without getBoundingClientRect
+      // (OffscreenCanvas draw surfaces): resize() falls back to these before logicalWidth.
+      this.cssWidth = Number(options.cssWidth) || 0;
+      this.cssHeight = Number(options.cssHeight) || 0;
       this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || Infinity;
       this.viewportRect = options.viewportRect || null;
       this.viewScale = Math.max(0.01, Number(options.viewScale) || 1);
@@ -41,6 +45,10 @@
       this.onStatus = typeof options.onStatus === 'function' ? options.onStatus : null;
       this.onError = typeof options.onError === 'function' ? options.onError : null;
       this.onBounds = typeof options.onBounds === 'function' ? options.onBounds : null;
+      // Fires synchronously after each rendered frame, before the next frame is scheduled —
+      // the hook offscreen-surface hosts use to present the frame (preserveDrawingBuffer:false
+      // keeps the drawing buffer readable only within the same task).
+      this.onFrame = typeof options.onFrame === 'function' ? options.onFrame : null;
       this.lastBoundsSignature = '';
     }
 
@@ -110,6 +118,9 @@
           || 16;
         this.logicalWidth = Number(options.logicalWidth) || this.logicalWidth;
         this.logicalHeight = Number(options.logicalHeight) || this.logicalHeight;
+        this.cssWidth = Number(options.cssWidth) || this.cssWidth || 0;
+        this.cssHeight = Number(options.cssHeight) || this.cssHeight || 0;
+        if (typeof options.onFrame === 'function') this.onFrame = options.onFrame;
         this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || this.maxDevicePixelRatio || Infinity;
         this.viewportRect = options.viewportRect || this.viewportRect || null;
         this.viewScale = Math.max(0.01, Number(options.viewScale ?? this.viewScale) || 1);
@@ -202,8 +213,8 @@
       const rect = this.canvas.getBoundingClientRect?.() || {};
       const baseWidth = this.logicalWidth || this.canvas.clientWidth || this.canvas.width || 1;
       const baseHeight = this.logicalHeight || this.canvas.clientHeight || this.canvas.height || 1;
-      const cssWidth = Math.max(1, Math.floor(rect.width || baseWidth));
-      const cssHeight = Math.max(1, Math.floor(rect.height || baseHeight));
+      const cssWidth = Math.max(1, Math.floor(rect.width || this.cssWidth || baseWidth));
+      const cssHeight = Math.max(1, Math.floor(rect.height || this.cssHeight || baseHeight));
       const maxRatio = Math.max(1, Number(this.maxDevicePixelRatio) || 1);
       const ratio = Math.max(1, Math.min(maxRatio, Number(this.runtime.devicePixelRatio) || 1));
       const width = Math.floor(cssWidth * ratio);
@@ -290,6 +301,7 @@
         this.skeletonRenderer.draw(this.batcher, this.skeleton);
         this.batcher.end();
         this.shader.unbind();
+        if (this.onFrame) this.onFrame(this);
         this.animationFrame = this.scheduleRenderFrame();
       } catch (error) {
         this.handleError(error);

@@ -173,6 +173,63 @@ test('CanvasGameShell owns canvas layer lifecycle through the registry', () => {
   ]);
 });
 
+test('CanvasGameShell presents the fog layer after every fog render or clear', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: false } },
+    runtime: {
+      presentLayer(name) {
+        calls.push(['presentLayer', name]);
+        return true;
+      },
+    },
+  });
+  shell.worldFogRenderer = {
+    clear() {
+      calls.push(['clear']);
+      return true;
+    },
+  };
+
+  // Fog disabled → the content pass clears the webgl surface; the wrapper must still present
+  // so the 2d presentation canvas reflects the cleared surface in the same task.
+  assert.equal(shell.renderWorldFogLayer({ tileMapView: {}, viewport: {}, frame: {} }), false);
+  assert.deepEqual(calls, [['clear'], ['presentLayer', 'worldFog']]);
+});
+
+test('CanvasGameShell presents the fog layer when hiding the world map stack', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
+    runtime: {
+      setLayerVisible(name, visible) {
+        calls.push(['setLayerVisible', name, visible]);
+        return true;
+      },
+      presentLayer(name) {
+        calls.push(['presentLayer', name]);
+        return true;
+      },
+    },
+  });
+  shell.worldFogRenderer = {
+    clear() {
+      calls.push(['clear']);
+      return true;
+    },
+  };
+
+  shell.setWorldMapLayerVisible(false);
+
+  assert.deepEqual(calls, [
+    ['setLayerVisible', 'worldMap', false],
+    ['setLayerVisible', 'worldFog', false],
+    ['setLayerVisible', 'worldActor', false],
+    ['clear'],
+    ['presentLayer', 'worldFog'],
+  ]);
+});
+
 test('CanvasGameShell maps the main HUD layer to the primary input canvas', () => {
   const calls = [];
   const primaryCanvas = { id: 'main' };

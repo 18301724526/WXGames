@@ -354,6 +354,179 @@ test('H5CanvasRuntime orders layer inserts even when host.children is a live HTM
   assert.equal(stored.indexOf(higher), 1);
 });
 
+function createRecordingContext2d() {
+  const ctx = {
+    calls: [],
+    setTransform(...args) {
+      this.calls.push(['setTransform', ...args]);
+    },
+    clearRect(...args) {
+      this.calls.push(['clearRect', ...args]);
+    },
+    drawImage(...args) {
+      this.calls.push(['drawImage', ...args]);
+    },
+  };
+  return ctx;
+}
+
+class FakeOffscreenCanvas {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.isFakeOffscreen = true;
+  }
+
+  getContext(type) {
+    if (type === 'webgl') return { isFakeGl: true };
+    return null;
+  }
+}
+
+function createOffscreenRuntime() {
+  const document = createDocument();
+  const recordingCtxByCanvas = new Map();
+  const originalCreateElement = document.createElement.bind(document);
+  document.createElement = (tag) => {
+    const element = originalCreateElement(tag);
+    const recordingCtx = createRecordingContext2d();
+    element.getContext = (type) => {
+      if (type === '2d') return recordingCtx;
+      return null;
+    };
+    recordingCtxByCanvas.set(element, recordingCtx);
+    return element;
+  };
+  const runtime = new H5CanvasRuntime({
+    document,
+    runtime: {
+      innerWidth: 390,
+      innerHeight: 844,
+      devicePixelRatio: 1,
+      OffscreenCanvas: FakeOffscreenCanvas,
+      addEventListener() {},
+    },
+  });
+  return { runtime, document, recordingCtxByCanvas };
+}
+
+test('H5CanvasRuntime gives webgl layers an offscreen draw surface and keeps the DOM canvas 2d', () => {
+  const { runtime } = createOffscreenRuntime();
+
+  runtime.ensureCanvas();
+  const surface = runtime.ensureLayerCanvas('tutorialSpine', {
+    zIndex: 1001,
+    contextType: 'webgl',
+    pixelRatio: 2,
+    rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+  const domCanvas = runtime.getLayerCanvas('tutorialSpine');
+
+  assert.equal(surface instanceof FakeOffscreenCanvas, true, 'ensureLayerCanvas must return the offscreen draw surface');
+  assert.notEqual(surface, domCanvas, 'DOM presentation canvas and draw surface are distinct');
+  assert.equal(domCanvas._drawSurface, surface);
+  assert.equal(runtime.getLayerDrawSurface('tutorialSpine'), surface);
+  // surface tracks the presentation canvas backing-store size (fixedRect * pixelRatio)
+  assert.equal(surface.width, domCanvas.width);
+  assert.equal(surface.height, domCanvas.height);
+  assert.equal(domCanvas.width, 216);
+  assert.equal(domCanvas.height, 480);
+  // re-ensure returns the SAME surface (stable identity for player reuse checks)
+  const again = runtime.ensureLayerCanvas('tutorialSpine', {
+    zIndex: 1001,
+    contextType: 'webgl',
+    pixelRatio: 2,
+    rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+  assert.equal(again, surface);
+});
+
+test('H5CanvasRuntime presentLayer blits the offscreen surface onto the 2d presentation canvas', () => {
+  const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
+
+  runtime.ensureCanvas();
+  const surface = runtime.ensureLayerCanvas('worldFog', {
+    zIndex: 998,
+    contextType: 'webgl',
+    padding: 120,
+  });
+  const domCanvas = runtime.getLayerCanvas('worldFog');
+  const ctx = recordingCtxByCanvas.get(domCanvas);
+
+  assert.equal(runtime.presentLayer('worldFog'), true);
+  assert.deepEqual(ctx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0], 'present blits in raw pixel space');
+  assert.deepEqual(ctx.calls[1], ['clearRect', 0, 0, domCanvas.width, domCanvas.height]);
+  assert.deepEqual(ctx.calls[2], ['drawImage', surface, 0, 0]);
+});
+
+test('H5CanvasRuntime presentLayer no-ops for 2d layers and missing surfaces', () => {
+  const { runtime } = createOffscreenRuntime();
+
+  runtime.ensureCanvas();
+  const mapCanvas = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
+
+  assert.equal(mapCanvas._drawSurface, undefined, '2d layers draw directly on the layer canvas');
+  assert.equal(runtime.presentLayer('worldMap'), false);
+  assert.equal(runtime.presentLayer('missingLayer'), false);
+});
+
+test('H5CanvasRuntime falls back to the DOM canvas when OffscreenCanvas is unavailable', () => {
+  const document = createDocument();
+  const runtime = new H5CanvasRuntime({
+    document,
+    runtime: {
+      innerWidth: 390,
+      innerHeight: 844,
+      devicePixelRatio: 1,
+      addEventListener() {},
+    },
+  });
+
+  runtime.ensureCanvas();
+  const canvas = runtime.ensureLayerCanvas('worldFog', {
+    zIndex: 998,
+    contextType: 'webgl',
+    padding: 120,
+  });
+
+  assert.equal(canvas, runtime.getLayerCanvas('worldFog'), 'without OffscreenCanvas consumers keep the DOM canvas');
+  assert.equal(runtime.presentLayer('worldFog'), false);
+});
+
+test('H5CanvasRuntime resize keeps offscreen surfaces in sync with the presentation canvas', () => {
+  const viewport = {
+    innerWidth: 390,
+    innerHeight: 844,
+    devicePixelRatio: 1,
+    OffscreenCanvas: FakeOffscreenCanvas,
+    addEventListener() {},
+  };
+  const document = createDocument();
+  const originalCreateElement = document.createElement.bind(document);
+  document.createElement = (tag) => {
+    const element = originalCreateElement(tag);
+    element.getContext = (type) => (type === '2d' ? createRecordingContext2d() : null);
+    return element;
+  };
+  const runtime = new H5CanvasRuntime({ document, runtime: viewport });
+
+  runtime.ensureCanvas();
+  const surface = runtime.ensureLayerCanvas('worldFog', {
+    zIndex: 998,
+    contextType: 'webgl',
+    padding: 120,
+  });
+  const domCanvas = runtime.getLayerCanvas('worldFog');
+  const initialWidth = surface.width;
+
+  viewport.devicePixelRatio = 2;
+  runtime.resize();
+
+  assert.equal(surface.width, domCanvas.width, 'surface width follows the resized presentation canvas');
+  assert.equal(surface.height, domCanvas.height);
+  assert.equal(surface.width, initialWidth * 2);
+});
+
 test('H5CanvasRuntime browser dependencies load before the runtime script', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const viewportIndex = html.indexOf('js/platform/H5CanvasViewport.js');

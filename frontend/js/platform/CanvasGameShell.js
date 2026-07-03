@@ -1997,6 +1997,14 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           }
 
     renderWorldFogLayer(context = null, options = {}) {
+            const rendered = this.renderWorldFogLayerContent(context, options);
+            // Fog draws on an offscreen webgl surface; present it onto the 2d DOM layer canvas
+            // in the same synchronous task (preserveDrawingBuffer:false semantics).
+            this.runtime?.presentLayer?.('worldFog');
+            return rendered;
+          }
+
+    renderWorldFogLayerContent(context = null, options = {}) {
             if (this.isFogOfWarEnabled?.() !== true) {
               this.worldFogRenderer?.clear?.();
               return false;
@@ -2027,7 +2035,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const mapVisible = this.setCanvasLayerVisible?.('worldMap', visible !== false) || false;
             const fogVisible = this.setCanvasLayerVisible?.('worldFog', visible !== false) || false;
             const actorVisible = this.setCanvasLayerVisible?.('worldActor', visible !== false) || false;
-            if (visible === false && fogVisible) this.worldFogRenderer?.clear?.();
+            if (visible === false && fogVisible) {
+              this.worldFogRenderer?.clear?.();
+              this.runtime?.presentLayer?.('worldFog');
+            }
             if (visible === false && actorVisible) this.worldActorLayerRenderer?.clearAll?.();
             return mapVisible;
           }

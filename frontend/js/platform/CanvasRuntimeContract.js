@@ -24,6 +24,8 @@
     'getContext',
     'ensureLayerCanvas',
     'getLayerCanvas',
+    'getLayerDrawSurface',
+    'presentLayer',
     'getLayerMetrics',
     'getLayerBackingStoreState',
     'resize',
@@ -64,6 +66,8 @@
     if (typeof runtime.getContext === 'function') present.push('getContext');
     if (typeof runtime.ensureLayerCanvas === 'function') present.push('ensureLayerCanvas');
     if (typeof runtime.getLayerCanvas === 'function') present.push('getLayerCanvas');
+    if (typeof runtime.getLayerDrawSurface === 'function') present.push('getLayerDrawSurface');
+    if (typeof runtime.presentLayer === 'function') present.push('presentLayer');
     if (typeof runtime.getLayerMetrics === 'function') present.push('getLayerMetrics');
     if (typeof runtime.getLayerBackingStoreState === 'function')
       present.push('getLayerBackingStoreState');
