@@ -145,7 +145,10 @@
     insertLayerElementInStackOrder(host, element, zIndex) {
       if (!host || !element) return element;
       const stackZ = this.readStackZIndex(zIndex);
-      const siblings = Array.isArray(host.children) ? host.children : null;
+      // host.children is a live HTMLCollection in the browser (not an Array), so normalise
+      // through Array.from before scanning; falling back to appendChild here silently
+      // reintroduces the append-order bug this method exists to fix.
+      const siblings = host.children ? Array.from(host.children) : null;
       if (!siblings || typeof host.insertBefore !== 'function') {
         host.appendChild?.(element);
         return element;

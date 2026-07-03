@@ -312,6 +312,48 @@ test('H5CanvasRuntime appends layer canvases in physical z-order regardless of e
   assert.ok(spineIndex < dialogueIndex, 'tutorialSpine (1001) must precede tutorialDialogue (1002) in DOM order');
 });
 
+test('H5CanvasRuntime orders layer inserts even when host.children is a live HTMLCollection', () => {
+  // In the browser host.children is an HTMLCollection (array-like, not an Array). The ordering
+  // helper must not depend on Array.isArray, or it silently degrades to appendChild and the
+  // spine/dialogue stacking regresses. This host mimics that live-collection shape.
+  const document = createDocument();
+  const runtime = new H5CanvasRuntime({
+    document,
+    runtime: { innerWidth: 390, innerHeight: 844, devicePixelRatio: 1, addEventListener() {} },
+  });
+
+  const stored = [];
+  const higher = { style: { zIndex: '1002' } };
+  const host = {
+    get children() {
+      // array-like collection object, deliberately NOT an Array instance
+      const collection = { length: stored.length };
+      stored.forEach((item, index) => {
+        collection[index] = item;
+      });
+      collection[Symbol.iterator] = Array.prototype[Symbol.iterator];
+      return collection;
+    },
+    appendChild(child) {
+      stored.push(child);
+    },
+    insertBefore(child, reference) {
+      const index = stored.indexOf(reference);
+      if (index < 0) stored.push(child);
+      else stored.splice(index, 0, child);
+    },
+  };
+  stored.push(higher);
+  runtime.canvas = null;
+  runtime.layerCanvases = new Map([['tutorialDialogue', higher]]);
+
+  const lower = { style: { zIndex: '1001' } };
+  runtime.insertLayerElementInStackOrder(host, lower, '1001');
+
+  assert.equal(stored.indexOf(lower), 0, 'lower z-index element must be inserted before the higher one');
+  assert.equal(stored.indexOf(higher), 1);
+});
+
 test('H5CanvasRuntime browser dependencies load before the runtime script', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const viewportIndex = html.indexOf('js/platform/H5CanvasViewport.js');
