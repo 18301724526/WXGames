@@ -1259,7 +1259,11 @@ async function fillNamingIfOpen(page) {
     await page.waitForFunction(() => {
       const game = window.Game;
       const shell = game?.canvasShell;
-      return Boolean(String(shell?.naming?.inputValue || game?.naming?.inputValue || '').trim());
+      // Batch 8F retired the direct shell.naming property; the input value lives in
+      // the naming snapshot now.
+      const snapshot = shell?.getNamingSnapshot?.() || game?.getNamingSnapshot?.() || null;
+      const inputValue = snapshot?.inputValue ?? shell?.naming?.inputValue ?? game?.naming?.inputValue ?? '';
+      return Boolean(String(inputValue || '').trim());
     }, null, { timeout: 6000 });
     await waitForRender(page, 300);
   }
