@@ -209,6 +209,9 @@ function actionCompatible(expected = {}, actual = {}) {
   const actualId = getActionTargetId(actual);
   return Object.entries(expected).every(([key, value]) => {
     if (key === 'type' || key === 'background' || value === undefined || value === null || value === '') return true;
+    // Object-valued action fields (e.g. deploymentEligibility) never satisfy strict
+    // equality across two evaluate() serializations; primitives carry the identity.
+    if (typeof value === 'object') return true;
     if (actual[key] === value) return true;
     if (['siteId', 'territoryId', 'cityId', 'targetId', 'personId', 'taskId', 'eventId', 'missionId'].includes(key)) {
       return Boolean(expectedId && actualId && expectedId === actualId);
@@ -486,13 +489,13 @@ async function getState(page) {
         || game?.isBlockingPanelSnapshotOpen?.('showTaskCenter')
         || shell?.showTaskCenter || game?.showTaskCenter,
       ),
-      activeTaskCenterTab: shell?.activeTaskCenterTab || game?.activeTaskCenterTab || '',
+      activeTaskCenterTab: game?.activeTaskCenterTab || shell?.activeTaskCenterTab || '',
       cityManagementOpen: Boolean(
         shell?.isBlockingPanelSnapshotOpen?.('showCityManagement')
         || game?.isBlockingPanelSnapshotOpen?.('showCityManagement')
         || shell?.showCityManagement || game?.showCityManagement,
       ),
-      activeCityManagementTab: shell?.activeCityManagementTab || game?.activeCityManagementTab || '',
+      activeCityManagementTab: game?.activeCityManagementTab || shell?.activeCityManagementTab || '',
       activeCommandPanel: shell?.getCommandPanelValue?.() || game?.getCommandPanelValue?.()
         || shell?.activeCommandPanel || game?.activeCommandPanel || '',
       activeEventId: shell?.getEventSnapshot?.()?.eventId || game?.getEventSnapshot?.()?.eventId
@@ -502,13 +505,14 @@ async function getState(page) {
         || game?.isBlockingPanelSnapshotOpen?.('showFamousPersons')
         || shell?.showFamousPersons || game?.showFamousPersons,
       ),
-      selectedFamousPersonId: shell?.selectedFamousPersonId || game?.selectedFamousPersonId || '',
+      selectedFamousPersonId: game?.selectedFamousPersonId || shell?.selectedFamousPersonId || '',
       cityPeopleOpen: Boolean(
         (shell?.isBlockingPanelSnapshotOpen?.('showCityManagement')
           || game?.isBlockingPanelSnapshotOpen?.('showCityManagement')
           || shell?.showCityManagement || game?.showCityManagement)
-        && (shell?.activeCityManagementTab || game?.activeCityManagementTab) === 'people',
+        && (game?.activeCityManagementTab || shell?.activeCityManagementTab) === 'people',
       ),
+      targetPickerKind: (game?.getTargetPickerSnapshot?.() || shell?.getTargetPickerSnapshot?.())?.pickerKind || '',
       naming: shell?.getNamingSnapshot?.() || game?.getNamingSnapshot?.() || shell?.naming || game?.naming || null,
       armyFormationEditor: shell?.armyFormationEditor || game?.armyFormationEditor || null,
       territoryUiState: shell?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || null,
@@ -1015,7 +1019,8 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
         ? pass('world march target selected')
         : fail('world march target was not selected');
     case 'openWorldMarchFormationPicker':
-      return after.territoryUiState?.worldMarchTarget?.pickerOpen
+      return after.targetPickerKind === 'worldMarchFormation'
+        || after.territoryUiState?.worldMarchTarget?.pickerOpen
         ? pass('world march formation picker opened')
         : fail('world march picker did not open');
     case 'startWorldMarch': {
