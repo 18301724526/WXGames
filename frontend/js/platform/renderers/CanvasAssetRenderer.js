@@ -655,10 +655,13 @@
     }
 
     getTemplateCanvasFactory() {
-      const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
-      if (doc?.createElement) return () => doc.createElement('canvas');
+      // OffscreenCanvas first: work canvases are pure pixel buffers and must not touch the
+      // DOM (zero-DOM stage rendering; wx mini-program has no document). The document path
+      // only remains as a legacy-browser fallback.
       if (typeof global.OffscreenCanvas === 'function') return (width = 1, height = 1) => new global.OffscreenCanvas(width, height);
       if (typeof OffscreenCanvas === 'function') return (width = 1, height = 1) => new OffscreenCanvas(width, height);
+      const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+      if (doc?.createElement) return () => doc.createElement('canvas');
       return null;
     }
 
