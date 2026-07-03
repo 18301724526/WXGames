@@ -30,6 +30,11 @@
       this.canvas = options.canvas || null;
       this.layerCanvases = new Map();
       this.layerHosts = new Map();
+      // Composite groups: members draw on offscreen surfaces and are engine-composited onto
+      // one shared presentation canvas per group (registry COMPOSITE_GROUPS).
+      this.layerSurfaces = new Map();
+      this.layerCompositeState = new Map();
+      this.groupCanvases = new Map();
       this.container = options.container || null;
       this.id = options.id || 'h5CanvasLayer';
       this.worldMapLayerId = options.worldMapLayerId || 'h5WorldMapLayer';
@@ -87,8 +92,33 @@
       return H5CanvasViewport.applyCanvasLayerStyle(canvas, options);
     }
 
+    getCanvasLayerRegistry() {
+      // CanvasLayerRegistry.js loads after this file in the classic-script bundle, so the
+      // reference must resolve lazily at call time.
+      if (global.CanvasLayerRegistry) return global.CanvasLayerRegistry;
+      if (typeof module !== 'undefined' && module.exports && typeof require === 'function') {
+        try {
+          return require('./CanvasLayerRegistry');
+        } catch (_error) {
+          return null;
+        }
+      }
+      return null;
+    }
+
+    getCompositeGroupForLayer(name = '') {
+      return this.getCanvasLayerRegistry()?.getCompositeGroupForLayer?.(name) || null;
+    }
+
     ensureLayerCanvas(name = 'worldMap', options = {}) {
       const key = String(name || 'worldMap');
+      const group = this.getCompositeGroupForLayer(key);
+      if (group) {
+        const surface = this.ensureCompositeLayerSurface(group, key, options);
+        // Without OffscreenCanvas support the group path degrades to the per-layer DOM
+        // canvas stack below.
+        if (surface) return surface;
+      }
       const existing = this.layerCanvases.get(key);
       if (existing) {
         if (options.contextType) existing._contextType = options.contextType;
@@ -168,6 +198,9 @@
     }
 
     getLayerDrawSurface(name = 'worldMap') {
+      const key = String(name || 'worldMap');
+      const memberSurface = this.layerSurfaces.get(key);
+      if (memberSurface) return memberSurface;
       const canvas = this.getLayerCanvas(name);
       return canvas?._drawSurface || canvas || null;
     }
@@ -175,7 +208,151 @@
     // Blit a webgl layer's offscreen draw surface onto its 2d presentation canvas. Must run in
     // the same synchronous task as the webgl render: with preserveDrawingBuffer:false the
     // drawing buffer is only guaranteed readable before the task yields to the event loop.
+    ensureCompositeLayerSurface(group, key, options = {}) {
+      const surface = this.ensureCompositeMemberSurface(key, options);
+      if (!surface) return null;
+      this.ensureCompositeGroupCanvas(group);
+      return surface;
+    }
+
+    ensureCompositeMemberSurface(key, options = {}) {
+      let surface = this.layerSurfaces.get(key);
+      if (!surface) {
+        surface = this.createOffscreenSurface(1, 1);
+        if (!surface) return null;
+        surface._layerName = key;
+        this.layerSurfaces.set(key, surface);
+      }
+      if (options.contextType) surface._contextType = options.contextType;
+      if (options.pixelRatio) surface._pixelRatioOverride = Number(options.pixelRatio) || 0;
+      surface._fixedRect = options.rect || null;
+      surface._viewportPadding = Math.max(0, Number(options.padding ?? surface._viewportPadding) || 0);
+      if (!this.width || !this.height) {
+        this.applyViewportFrame(this.getViewportSize());
+        this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
+      }
+      // Reuses the viewport sizing/backing-epoch logic; surfaces have no style so the DOM
+      // half of resizeCanvas is skipped automatically.
+      H5CanvasViewport.resizeCanvas(surface, this);
+      return surface;
+    }
+
+    ensureCompositeGroupCanvas(group) {
+      let canvas = this.groupCanvases.get(group.key);
+      if (canvas) {
+        this.resizeCanvas(canvas);
+        return canvas;
+      }
+      if (!this.document || typeof this.document.createElement !== 'function') return null;
+      canvas = this.document.createElement('canvas');
+      canvas.id = `${this.id}-${group.key}`;
+      canvas.setAttribute?.('aria-hidden', 'true');
+      canvas.setAttribute?.('data-canvas-layer', group.key);
+      canvas._contextType = '2d';
+      this.applyCanvasLayerStyle(canvas, {
+        pointerEvents: 'none',
+        zIndex: group.zIndex,
+      });
+      const host = this.container || this.document.body;
+      this.insertLayerElementInStackOrder(host, canvas, canvas.style?.zIndex);
+      this.groupCanvases.set(group.key, canvas);
+      if (!this.width || !this.height) {
+        this.applyViewportFrame(this.getViewportSize());
+        this.pixelRatio = this.runtime.devicePixelRatio || this.pixelRatio || 1;
+      }
+      this.resizeCanvas(canvas);
+      return canvas;
+    }
+
+    getLayerCompositeState(key) {
+      let state = this.layerCompositeState.get(key);
+      if (!state) {
+        state = { translateX: 0, translateY: 0, visible: true };
+        this.layerCompositeState.set(key, state);
+      }
+      return state;
+    }
+
+    // WebGL surfaces (preserveDrawingBuffer:false) are only reliably readable in the same
+    // task as their render, so presentLayer snapshots them into a persistent 2d cache that
+    // group composites can safely read on any later frame.
+    refreshWebglPresentCache(surface) {
+      if (!surface || surface._contextType === '2d' || !surface._contextType) return surface;
+      let cache = surface._presentCache;
+      if (!cache) {
+        cache = this.createOffscreenSurface(surface.width, surface.height);
+        if (!cache) return surface;
+        surface._presentCache = cache;
+      }
+      if (Number(cache.width) !== Number(surface.width)) cache.width = surface.width;
+      if (Number(cache.height) !== Number(surface.height)) cache.height = surface.height;
+      const cacheCtx = cache.getContext?.('2d') || null;
+      if (!cacheCtx) return surface;
+      if (typeof cacheCtx.setTransform === 'function') cacheCtx.setTransform(1, 0, 0, 1, 0, 0);
+      cacheCtx.clearRect?.(0, 0, Math.max(1, Number(cache.width) || 1), Math.max(1, Number(cache.height) || 1));
+      if (typeof cacheCtx.drawImage === 'function' && Number(surface.width) > 0 && Number(surface.height) > 0) {
+        cacheCtx.drawImage(surface, 0, 0);
+      }
+      return cache;
+    }
+
+    // Engine-side replacement for the retired per-layer DOM canvas stack: draws every visible
+    // member surface (in registry members order == z-order) onto the group's presentation
+    // canvas. Pan is a source-rect offset over the padded surface — the drawImage equivalent
+    // of the old CSS translate3d.
+    compositeLayerGroup(group) {
+      if (!group) return false;
+      const canvas = this.groupCanvases.get(group.key);
+      const ctx = canvas?.getContext?.('2d') || null;
+      if (!canvas || !ctx) return false;
+      const targetWidth = Math.max(1, Number(canvas.width) || 1);
+      const targetHeight = Math.max(1, Number(canvas.height) || 1);
+      const targetRatio = Math.max(1, Number(canvas._backingStorePixelRatio) || this.pixelRatio || 1);
+      if (typeof ctx.setTransform === 'function') ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect?.(0, 0, targetWidth, targetHeight);
+      for (const member of group.members) {
+        const surface = this.layerSurfaces.get(member);
+        if (!surface) continue;
+        const state = this.layerCompositeState.get(member) || null;
+        if (state && state.visible === false) continue;
+        const source = surface._presentCache || surface;
+        if (!(Number(source.width) > 0 && Number(source.height) > 0)) continue;
+        const surfaceRatio = Math.max(1, Number(surface._backingStorePixelRatio) || 1);
+        const padding = Math.max(0, Number(surface._viewportPadding) || 0);
+        const translateX = Number(state?.translateX) || 0;
+        const translateY = Number(state?.translateY) || 0;
+        const sourceX = (padding - translateX) * surfaceRatio;
+        const sourceY = (padding - translateY) * surfaceRatio;
+        const sourceWidth = targetWidth * (surfaceRatio / targetRatio);
+        const sourceHeight = targetHeight * (surfaceRatio / targetRatio);
+        if (typeof ctx.drawImage !== 'function') continue;
+        ctx.drawImage(source, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, targetWidth, targetHeight);
+      }
+      return true;
+    }
+
+    compositeAllLayerGroups() {
+      const registry = this.getCanvasLayerRegistry();
+      const groups = registry?.COMPOSITE_GROUPS || null;
+      if (!groups) return false;
+      let composited = false;
+      for (const groupKey of Object.keys(groups)) {
+        if (!this.groupCanvases.has(groupKey)) continue;
+        if (this.compositeLayerGroup(groups[groupKey])) composited = true;
+      }
+      return composited;
+    }
+
     presentLayer(name = 'worldMap') {
+      const key = String(name || 'worldMap');
+      const group = this.getCompositeGroupForLayer(key);
+      if (group && this.layerSurfaces.has(key)) {
+        const surface = this.layerSurfaces.get(key);
+        if (surface && surface._contextType && surface._contextType !== '2d') {
+          this.refreshWebglPresentCache(surface);
+        }
+        return this.compositeLayerGroup(group);
+      }
       const canvas = this.getLayerCanvas(name);
       const surface = canvas?._drawSurface || null;
       if (!canvas || !surface) return false;
@@ -273,14 +450,26 @@
     }
 
     getLayerCanvas(name = 'worldMap') {
-      return this.layerCanvases.get(String(name || 'worldMap')) || null;
+      const key = String(name || 'worldMap');
+      if (this.layerSurfaces.has(key)) {
+        const group = this.getCompositeGroupForLayer(key);
+        const groupCanvas = group ? this.groupCanvases.get(group.key) : null;
+        if (groupCanvas) return groupCanvas;
+      }
+      return this.layerCanvases.get(key) || null;
     }
 
     getLayerMetrics(name = 'worldMap') {
+      // Composite members carry their own padding/rect/backing state on the offscreen
+      // surface; the shared group presentation canvas has none of that.
+      const surface = this.layerSurfaces.get(String(name || 'worldMap'));
+      if (surface) return H5CanvasViewport.getLayerMetrics(surface, this);
       return H5CanvasViewport.getLayerMetrics(this.getLayerCanvas(name), this);
     }
 
     getLayerBackingStoreState(name = 'worldMap') {
+      const surface = this.layerSurfaces.get(String(name || 'worldMap'));
+      if (surface) return H5CanvasViewport.getCanvasBackingStoreState(surface);
       return H5CanvasViewport.getCanvasBackingStoreState(this.getLayerCanvas(name));
     }
 
@@ -302,14 +491,35 @@
       const ty = Number(y);
       const safeX = Number.isFinite(tx) ? tx : 0;
       const safeY = Number.isFinite(ty) ? ty : 0;
+      const key = String(name || 'worldMap');
+      if (this.layerSurfaces.has(key)) {
+        // Composite members pan via the group blit's source-rect offset instead of a CSS
+        // transform; re-composite immediately so the drag frame lands this task.
+        const state = this.getLayerCompositeState(key);
+        state.translateX = safeX;
+        state.translateY = safeY;
+        return this.compositeLayerGroup(this.getCompositeGroupForLayer(key));
+      }
       return this.setLayerTransform(name, `translate3d(${safeX}px, ${safeY}px, 0)`);
     }
 
     clearLayerTransform(name = 'worldMap') {
+      const key = String(name || 'worldMap');
+      if (this.layerSurfaces.has(key)) {
+        const state = this.getLayerCompositeState(key);
+        if (state.translateX === 0 && state.translateY === 0) return true;
+        return this.setLayerTranslate(name, 0, 0);
+      }
       return this.setLayerTransform(name, '');
     }
 
     setLayerVisible(name = 'worldMap', visible = true) {
+      const key = String(name || 'worldMap');
+      if (this.layerSurfaces.has(key)) {
+        const state = this.getLayerCompositeState(key);
+        state.visible = visible !== false;
+        return this.compositeLayerGroup(this.getCompositeGroupForLayer(key));
+      }
       const canvas = this.getLayerCanvas(name);
       if (!canvas?.style) return false;
       const host = canvas._layerHost || this.layerHosts.get(String(name || 'worldMap')) || null;
@@ -408,6 +618,11 @@
       this.applyViewportFrame(this.getViewportSize());
       this.resizeCanvas(canvas);
       this.layerCanvases.forEach((layerCanvas) => this.resizeCanvas(layerCanvas));
+      this.groupCanvases.forEach((groupCanvas) => this.resizeCanvas(groupCanvas));
+      this.layerSurfaces.forEach((surface) => H5CanvasViewport.resizeCanvas(surface, this));
+      // Surfaces were cleared by their backing resize; composite once so the presentation
+      // canvases reflect that until the next content render repaints them.
+      this.compositeAllLayerGroups();
       this.resizeHandlers.forEach((handler) => handler({ width: this.width, height: this.height, pixelRatio: this.pixelRatio }));
       return { width: this.width, height: this.height, pixelRatio: this.pixelRatio };
     }

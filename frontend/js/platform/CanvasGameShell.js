@@ -2039,7 +2039,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               this.worldFogRenderer?.clear?.();
               this.runtime?.presentLayer?.('worldFog');
             }
-            if (visible === false && actorVisible) this.worldActorLayerRenderer?.clearAll?.();
+            if (visible === false && actorVisible) {
+              this.worldActorLayerRenderer?.clearAll?.();
+              this.runtime?.presentLayer?.('worldActor');
+            }
             return mapVisible;
           }
 
@@ -2076,6 +2079,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
                 preserveOnEmpty: options.preserveRuntimeHitTargetsOnEmpty === true,
               });
             }
+            this.runtime?.presentLayer?.('worldActor');
             return rendered;
           }
 
@@ -2122,6 +2126,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             });
             if (options.commitCamera !== false) runtime?.markBakedCamera?.(runtime.camera);
             if (options.clearTransform !== false) this.clearWorldMapLayerTransform();
+            this.runtime?.presentLayer?.('worldMap');
             return true;
           }
 
@@ -2353,6 +2358,9 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               },
             );
             if (rendered) this.lastWorldMapLayerRenderAt = this.now();
+            // The map draws on an offscreen surface; composite the world stack so the
+            // presentation canvas reflects this frame in the same task.
+            this.runtime?.presentLayer?.('worldMap');
             return rendered;
           }
 
@@ -2492,6 +2500,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               epochNowMs: options.epochNowMs,
               state,
             });
+            this.runtime?.presentLayer?.('worldMap');
             return rendered;
           }
 
@@ -3073,6 +3082,12 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             this.updateWorldActorAnimationLoop?.({ ...renderOptions, state });
             if (homeView.activeTab === 'military' && (waterAnimated || (explorerAnimated && !this.worldActorLayerRenderer))) this.startTileMapWaterTimer();
             else this.stopTileMapWaterTimer();
+            // Per-frame safety net for the offscreen world stack: any surface repaint that
+            // reached no explicit presentLayer hook (e.g. WorldMapRuntime's self-queued rAF
+            // frames) still lands on the presentation canvas within one HUD frame. 2d
+            // surfaces persist across tasks and webgl members composite from their present
+            // cache, so this is safe outside the painting task.
+            this.runtime?.compositeAllLayerGroups?.();
             return true;
           }
 

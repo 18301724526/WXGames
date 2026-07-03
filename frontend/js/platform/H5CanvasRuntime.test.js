@@ -375,10 +375,15 @@ class FakeOffscreenCanvas {
     this.width = width;
     this.height = height;
     this.isFakeOffscreen = true;
+    this.ctx2d = null;
   }
 
   getContext(type) {
     if (type === 'webgl') return { isFakeGl: true };
+    if (type === '2d') {
+      if (!this.ctx2d) this.ctx2d = createRecordingContext2d();
+      return this.ctx2d;
+    }
     return null;
   }
 }
@@ -441,33 +446,128 @@ test('H5CanvasRuntime gives webgl layers an offscreen draw surface and keeps the
   assert.equal(again, surface);
 });
 
-test('H5CanvasRuntime presentLayer blits the offscreen surface onto the 2d presentation canvas', () => {
+test('H5CanvasRuntime presentLayer blits standalone webgl layers onto their presentation canvas', () => {
   const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
 
   runtime.ensureCanvas();
-  const surface = runtime.ensureLayerCanvas('worldFog', {
-    zIndex: 998,
+  const surface = runtime.ensureLayerCanvas('tutorialSpine', {
+    zIndex: 1001,
     contextType: 'webgl',
-    padding: 120,
+    rect: { x: 18, y: 44, width: 108, height: 240 },
   });
-  const domCanvas = runtime.getLayerCanvas('worldFog');
+  const domCanvas = runtime.getLayerCanvas('tutorialSpine');
   const ctx = recordingCtxByCanvas.get(domCanvas);
 
-  assert.equal(runtime.presentLayer('worldFog'), true);
+  assert.equal(runtime.presentLayer('tutorialSpine'), true);
   assert.deepEqual(ctx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0], 'present blits in raw pixel space');
   assert.deepEqual(ctx.calls[1], ['clearRect', 0, 0, domCanvas.width, domCanvas.height]);
   assert.deepEqual(ctx.calls[2], ['drawImage', surface, 0, 0]);
 });
 
-test('H5CanvasRuntime presentLayer no-ops for 2d layers and missing surfaces', () => {
+test('H5CanvasRuntime presentLayer no-ops for standalone 2d layers and missing surfaces', () => {
   const { runtime } = createOffscreenRuntime();
 
   runtime.ensureCanvas();
-  const mapCanvas = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
+  const dialogueCanvas = runtime.ensureLayerCanvas('tutorialDialogue', {
+    zIndex: 1002,
+    rect: { x: 0, y: 0, width: 390, height: 693 },
+  });
 
-  assert.equal(mapCanvas._drawSurface, undefined, '2d layers draw directly on the layer canvas');
-  assert.equal(runtime.presentLayer('worldMap'), false);
+  assert.equal(dialogueCanvas._drawSurface, undefined, 'standalone 2d layers draw directly on the layer canvas');
+  assert.equal(runtime.presentLayer('tutorialDialogue'), false);
   assert.equal(runtime.presentLayer('missingLayer'), false);
+});
+
+test('H5CanvasRuntime composites world stack members onto one shared presentation canvas', () => {
+  const { runtime, document, recordingCtxByCanvas } = createOffscreenRuntime();
+
+  runtime.ensureCanvas();
+  const mapSurface = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
+  const fogSurface = runtime.ensureLayerCanvas('worldFog', { zIndex: 998, contextType: 'webgl', padding: 120 });
+  const actorSurface = runtime.ensureLayerCanvas('worldActor', { zIndex: 999, padding: 120 });
+
+  // Members draw on distinct offscreen surfaces...
+  assert.equal(mapSurface instanceof FakeOffscreenCanvas, true);
+  assert.equal(fogSurface instanceof FakeOffscreenCanvas, true);
+  assert.equal(actorSurface instanceof FakeOffscreenCanvas, true);
+  assert.notEqual(mapSurface, fogSurface);
+  assert.notEqual(fogSurface, actorSurface);
+  assert.equal(mapSurface._layerName, 'worldMap');
+  // ...and share ONE presentation canvas in the DOM: no per-member DOM canvases exist.
+  const domLayers = document.body.children
+    .map((el) => el.attributes?.['data-canvas-layer'])
+    .filter(Boolean);
+  assert.deepEqual(domLayers, ['worldStack']);
+  const groupCanvas = runtime.getLayerCanvas('worldMap');
+  assert.equal(groupCanvas.attributes['data-canvas-layer'], 'worldStack');
+  assert.equal(groupCanvas.style.zIndex, '997');
+  assert.equal(runtime.getLayerCanvas('worldFog'), groupCanvas);
+  assert.equal(runtime.getLayerCanvas('worldActor'), groupCanvas);
+  // The group canvas is frame-sized (no padding); member surfaces are padded.
+  assert.equal(groupCanvas.width, 390);
+  assert.equal(groupCanvas.height, 693);
+  assert.equal(mapSurface.width, 630);
+  assert.equal(mapSurface.height, 933);
+
+  // Presenting the webgl fog member snapshots it into a persistent 2d cache first (raw webgl
+  // buffers are only same-task readable with preserveDrawingBuffer:false).
+  assert.equal(runtime.presentLayer('worldFog'), true);
+  assert.equal(fogSurface._presentCache instanceof FakeOffscreenCanvas, true);
+
+  // Composite draws every visible member in registry order with the pan source-rect.
+  const groupCtx = recordingCtxByCanvas.get(groupCanvas);
+  groupCtx.calls.length = 0;
+  assert.equal(runtime.presentLayer('worldMap'), true);
+  assert.deepEqual(groupCtx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0]);
+  assert.deepEqual(groupCtx.calls[1], ['clearRect', 0, 0, 390, 693]);
+  assert.deepEqual(groupCtx.calls[2], ['drawImage', mapSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
+  // worldFog composites from its webgl present cache, not the raw surface.
+  assert.deepEqual(groupCtx.calls[3], ['drawImage', fogSurface._presentCache, 120, 120, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(groupCtx.calls[4], ['drawImage', actorSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
+});
+
+test('H5CanvasRuntime pans and hides world stack members through the composite state', () => {
+  const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
+
+  runtime.ensureCanvas();
+  const mapSurface = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
+  runtime.ensureLayerCanvas('worldActor', { zIndex: 999, padding: 120 });
+  const groupCanvas = runtime.getLayerCanvas('worldMap');
+  const groupCtx = recordingCtxByCanvas.get(groupCanvas);
+
+  // Translate becomes a source-rect offset: CSS translate3d(7px,-3px) == reading the padded
+  // surface from (padding-7, padding+3).
+  groupCtx.calls.length = 0;
+  assert.equal(runtime.setLayerTranslate('worldMap', 7, -3), true);
+  assert.deepEqual(groupCtx.calls[2], ['drawImage', mapSurface, 113, 123, 390, 693, 0, 0, 390, 693]);
+
+  // clearLayerTransform resets the offset.
+  groupCtx.calls.length = 0;
+  assert.equal(runtime.clearLayerTransform('worldMap'), true);
+  assert.deepEqual(groupCtx.calls[2], ['drawImage', mapSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
+
+  // Hidden members are skipped by the composite (map hidden → only actor drawn).
+  groupCtx.calls.length = 0;
+  assert.equal(runtime.setLayerVisible('worldMap', false), true);
+  const drawnSurfaces = groupCtx.calls.filter((call) => call[0] === 'drawImage').map((call) => call[1]);
+  assert.equal(drawnSurfaces.includes(mapSurface), false);
+  assert.equal(drawnSurfaces.length, 1);
+});
+
+test('H5CanvasRuntime serves metrics and backing state from the member surface', () => {
+  const { runtime } = createOffscreenRuntime();
+
+  runtime.ensureCanvas();
+  const mapSurface = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
+
+  const metrics = runtime.getLayerMetrics('worldMap');
+  assert.equal(metrics.padding, 120);
+  assert.equal(metrics.width, 630);
+  assert.equal(metrics.height, 933);
+
+  const backing = runtime.getLayerBackingStoreState('worldMap');
+  assert.equal(backing.width, mapSurface.width);
+  assert.equal(backing.epoch >= 1, true);
 });
 
 test('H5CanvasRuntime falls back to the DOM canvas when OffscreenCanvas is unavailable', () => {
@@ -516,15 +616,15 @@ test('H5CanvasRuntime resize keeps offscreen surfaces in sync with the presentat
     contextType: 'webgl',
     padding: 120,
   });
-  const domCanvas = runtime.getLayerCanvas('worldFog');
-  const initialWidth = surface.width;
+  const groupCanvas = runtime.getLayerCanvas('worldFog');
+  const initialSurfaceWidth = surface.width;
+  const initialGroupWidth = groupCanvas.width;
 
   viewport.devicePixelRatio = 2;
   runtime.resize();
 
-  assert.equal(surface.width, domCanvas.width, 'surface width follows the resized presentation canvas');
-  assert.equal(surface.height, domCanvas.height);
-  assert.equal(surface.width, initialWidth * 2);
+  assert.equal(surface.width, initialSurfaceWidth * 2, 'padded member surface follows the pixel ratio');
+  assert.equal(groupCanvas.width, initialGroupWidth * 2, 'group presentation canvas follows the pixel ratio');
 });
 
 test('H5CanvasRuntime browser dependencies load before the runtime script', () => {

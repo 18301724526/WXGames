@@ -218,6 +218,12 @@ test('CanvasGameShell presents the fog layer when hiding the world map stack', (
       return true;
     },
   };
+  shell.worldActorLayerRenderer = {
+    clearAll() {
+      calls.push(['actorClearAll']);
+      return true;
+    },
+  };
 
   shell.setWorldMapLayerVisible(false);
 
@@ -227,6 +233,8 @@ test('CanvasGameShell presents the fog layer when hiding the world map stack', (
     ['setLayerVisible', 'worldActor', false],
     ['clear'],
     ['presentLayer', 'worldFog'],
+    ['actorClearAll'],
+    ['presentLayer', 'worldActor'],
   ]);
 });
 
