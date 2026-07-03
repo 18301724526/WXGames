@@ -204,6 +204,22 @@ function getActionTargetId(action = {}) {
 
 function actionCompatible(expected = {}, actual = {}) {
   if (!expected?.type || !actual?.type || actual.disabled) return false;
+  // Mirror the product tutorial gate (matchesTutorialAllowedAction): a guided
+  // openWorldSite tile the scout actor still overlaps resolves to the multi-candidate
+  // world target picker; that click is valid (the guide then highlights choosing the
+  // site candidate), so treat the picker as compatible when it carries the site.
+  if (expected.type === 'openWorldSite' && actual.type === 'openWorldTargetPicker') {
+    const wanted = getActionTargetId(expected);
+    const candidates = Array.isArray(actual.candidates) ? actual.candidates : [];
+    return candidates.some((candidate) => {
+      const candidateAction = candidate?.action || candidate || {};
+      const candidateId = String(
+        candidateAction.siteId || candidateAction.cityId || candidateAction.territoryId || '',
+      );
+      return (candidateAction.type === 'openWorldSite' || candidate?.kind === 'site')
+        && (!wanted || candidateId === wanted);
+    });
+  }
   if (expected.type !== actual.type) return false;
   const expectedId = getActionTargetId(expected);
   const actualId = getActionTargetId(actual);
@@ -960,8 +976,12 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
     case 'openWorldSite': {
       const siteId = action.siteId || action.cityId || action.territoryId || '';
       const selected = after.territoryUiState?.selectedSiteId || '';
-      return (siteId && selected === siteId) || after.cityManagementOpen || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
-        ? pass('world site opened or intro advanced')
+      // When the scout actor overlaps the tile, the click opens the world target
+      // picker instead; that is a valid intermediate step (the guide then highlights
+      // choosing the site candidate), so treat an opened picker as progress.
+      const pickerOpened = after.targetPickerKind === 'worldTargetPicker';
+      return (siteId && selected === siteId) || after.cityManagementOpen || pickerOpened || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
+        ? pass('world site opened, picker opened, or intro advanced')
         : fail('world site did not open');
     }
     case 'enterCity':
@@ -1029,6 +1049,16 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
       return stepAdvanced || afterCounts.active > beforeCounts.active || afterCounts.idle > beforeCounts.idle || apiOk
         ? pass('world march started')
         : fail('world march did not start');
+    }
+    case 'chooseWorldTarget': {
+      // Choosing the site candidate dispatches its openWorldSite; the action
+      // carries targetId (not siteId), so progress = picker closed and a world
+      // site is now selected (or city management opened).
+      const selected = after.territoryUiState?.selectedSiteId || '';
+      const pickerClosed = after.targetPickerKind !== 'worldTargetPicker';
+      return (pickerClosed && (Boolean(selected) || after.cityManagementOpen)) || stepAdvanced
+        ? pass('world target candidate chosen')
+        : fail('world target picker choice did not resolve');
     }
     case 'conquer':
       return stepAdvanced || apiOk ? pass('conquest started') : fail('conquest did not start');
