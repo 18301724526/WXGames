@@ -49,8 +49,20 @@ function createDocument() {
   const body = {
     children: [],
     appendChild(child) {
+      this.children = this.children.filter((item) => item !== child);
       this.children.push(child);
       child.parentNode = this;
+    },
+    insertBefore(child, reference) {
+      this.children = this.children.filter((item) => item !== child);
+      const index = this.children.indexOf(reference);
+      if (index < 0) this.children.push(child);
+      else this.children.splice(index, 0, child);
+      child.parentNode = this;
+    },
+    removeChild(child) {
+      this.children = this.children.filter((item) => item !== child);
+      child.parentNode = null;
     },
   };
   return {
@@ -261,6 +273,43 @@ test('H5CanvasRuntime clips fixed screen overlay layers to their declared rect',
     padding: 0,
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
+});
+
+test('H5CanvasRuntime appends layer canvases in physical z-order regardless of ensure order', () => {
+  const document = createDocument();
+  const runtime = new H5CanvasRuntime({
+    document,
+    runtime: {
+      innerWidth: 390,
+      innerHeight: 844,
+      devicePixelRatio: 1,
+      addEventListener() {},
+    },
+  });
+
+  const mainCanvas = runtime.ensureCanvas();
+  // The tutorial dialogue layer is ensured FIRST (begin()) but must sit ABOVE the spine
+  // layer that is ensured LATER (portrait). DOM order must follow z-index so that
+  // WebView compositors which break ties by document order still stack correctly.
+  const dialogue = runtime.ensureLayerCanvas('tutorialDialogue', {
+    zIndex: 1002,
+    contextType: '2d',
+    rect: { x: 126, y: 560, width: 288, height: 136 },
+  });
+  const spine = runtime.ensureLayerCanvas('tutorialSpine', {
+    zIndex: 1001,
+    contextType: 'webgl',
+    rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+
+  const order = document.body.children;
+  const mainIndex = order.indexOf(mainCanvas);
+  const spineIndex = order.indexOf(spine);
+  const dialogueIndex = order.indexOf(dialogue);
+
+  assert.ok(mainIndex >= 0 && spineIndex >= 0 && dialogueIndex >= 0);
+  assert.ok(mainIndex < spineIndex, 'mainHud (1000) must precede tutorialSpine (1001) in DOM order');
+  assert.ok(spineIndex < dialogueIndex, 'tutorialSpine (1001) must precede tutorialDialogue (1002) in DOM order');
 });
 
 test('H5CanvasRuntime browser dependencies load before the runtime script', () => {

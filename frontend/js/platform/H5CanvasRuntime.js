@@ -123,10 +123,10 @@
       const host = this.container || this.document.body;
       const layerHost = this.ensureLayerHost(key, canvas, options);
       if (layerHost) {
-        host?.appendChild?.(layerHost);
+        this.insertLayerElementInStackOrder(host, layerHost, canvas.style?.zIndex);
         layerHost.appendChild?.(canvas);
       } else {
-        host?.appendChild?.(canvas);
+        this.insertLayerElementInStackOrder(host, canvas, canvas.style?.zIndex);
       }
       this.layerCanvases.set(key, canvas);
       if (!this.width || !this.height) {
@@ -135,6 +135,48 @@
       }
       this.resizeCanvas(canvas);
       return canvas;
+    }
+
+    // Keep DOM sibling order aligned with the physical z-index so layers stack correctly even
+    // on WebView compositors that break equal-stacking-context ties by document order (and can
+    // otherwise float a webgl-backed canvas above a later 2d canvas that carries a higher
+    // z-index). Layer canvases are ensured lazily on first paint, so append-order alone does
+    // not match the canonical PHYSICAL_LAYER_ORDER; this insertion restores that invariant.
+    insertLayerElementInStackOrder(host, element, zIndex) {
+      if (!host || !element) return element;
+      const stackZ = this.readStackZIndex(zIndex);
+      const siblings = Array.isArray(host.children) ? host.children : null;
+      if (!siblings || typeof host.insertBefore !== 'function') {
+        host.appendChild?.(element);
+        return element;
+      }
+      const managed = this.collectManagedStackElements();
+      let reference = null;
+      for (const sibling of siblings) {
+        if (sibling === element || !managed.has(sibling)) continue;
+        if (this.readStackZIndex(sibling.style?.zIndex) > stackZ) {
+          reference = sibling;
+          break;
+        }
+      }
+      if (reference) host.insertBefore(element, reference);
+      else host.appendChild?.(element);
+      return element;
+    }
+
+    collectManagedStackElements() {
+      const managed = new Set();
+      if (this.canvas) managed.add(this.canvas);
+      this.layerCanvases?.forEach((canvas) => {
+        if (!canvas) return;
+        managed.add(canvas._layerHost || canvas);
+      });
+      return managed;
+    }
+
+    readStackZIndex(value) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
     }
 
     shouldClipLayerToFrame(options = {}, canvas = null) {
@@ -146,7 +188,8 @@
         const existingHost = this.layerHosts.get(key) || canvas?._layerHost || null;
         if (existingHost?.parentNode && existingHost.removeChild && canvas) {
           existingHost.removeChild(canvas);
-          (this.container || this.document?.body)?.appendChild?.(canvas);
+          const reflowHost = this.container || this.document?.body;
+          this.insertLayerElementInStackOrder(reflowHost, canvas, canvas.style?.zIndex);
         }
         if (existingHost) this.layerHosts.delete(key);
         if (canvas) canvas._layerHost = null;

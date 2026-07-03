@@ -50,6 +50,11 @@ test('CanvasLayerRegistry defines the mature engine physical canvas stack', () =
     'tutorialDialogue',
   ]);
   assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 1000, 1001, 1002]);
+  // PHYSICAL_LAYER_ORDER must stay monotonic in z-index: H5CanvasRuntime inserts layer
+  // canvases into the DOM ordered by z-index so that document order matches this canonical
+  // stack (guarding WebView compositors that break stacking-context ties by document order).
+  const zIndexes = stack.map((layer) => layer.zIndex);
+  assert.deepEqual(zIndexes, [...zIndexes].sort((a, b) => a - b));
   assert.equal(stack[0].cameraSpace, 'world');
   assert.equal(stack[1].cameraSpace, 'world-overlay');
   assert.equal(stack[2].cameraSpace, 'world-dynamic');
