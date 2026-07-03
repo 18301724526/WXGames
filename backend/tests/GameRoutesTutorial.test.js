@@ -140,6 +140,92 @@ test('game action route builds the tutorial house before era one', () => {
   assert.equal(savedStates[0].cities.capital.buildings.house.level, 1);
   assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
+  assert.equal(res.payload.command.type, 'BuildBuilding');
+  assert.equal(res.payload.command.target, 'house');
+  assert.equal(res.payload.command.phase, 'responding');
+  assert.equal(res.payload.command.committed, true);
+  assert.equal(res.payload.committed, true);
+});
+
+test('game action route reports committed build commands when projection fails after save', () => {
+  const { app, routes } = createAppHarness();
+  const initialTutorial = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.houseGuideReady,
+  );
+  const gameState = {
+    playerId: 'route-build-projection-failure-test',
+    revision: 7,
+    tutorial: initialTutorial,
+    resources: { food: 130, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    buildings: {},
+    population: { total: 3, max: 3, farmers: 3 },
+    techs: {},
+    currentEra: 0,
+    updatedAt: '2026-06-04T00:00:00.000Z',
+  };
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(playerId) {
+      assert.equal(playerId, 'route-build-projection-failure-test');
+      return JSON.parse(JSON.stringify(gameState));
+    },
+    save(state) {
+      state.revision = 8;
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+      return state;
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return state;
+    },
+    getClientGameState() {
+      throw new Error('forced projection failure');
+    },
+    calculateEraProgress() {
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = {
+    playerId: 'route-build-projection-failure-test',
+    headers: { 'x-client-request-id': 'api-build-projection-1' },
+    body: { action: 'build', target: 'house' },
+  };
+  const res = createResponse();
+  const errorLogs = [];
+  const originalError = console.error;
+  console.error = (...args) => {
+    errorLogs.push(args);
+  };
+
+  try {
+    route.handlers[0](req, res, () => route.handlers[1](req, res));
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.equal(res.statusCode, 202);
+  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates[0].cities.capital.buildings.house.level, 1);
+  assert.equal(res.payload.success, true);
+  assert.equal(res.payload.error, 'PROJECTION_FAILED_AFTER_COMMIT');
+  assert.equal(res.payload.command.type, 'BuildBuilding');
+  assert.equal(res.payload.command.requestId, 'api-build-projection-1');
+  assert.equal(res.payload.command.phase, 'projecting');
+  assert.equal(res.payload.command.committed, true);
+  assert.equal(res.payload.command.revisionBefore, 7);
+  assert.equal(res.payload.command.revisionAfter, 8);
+  assert.equal(res.payload.committed, true);
+  assert.equal(res.payload.resyncRequired, true);
+  assert.equal(errorLogs.length, 1);
+  assert.equal(errorLogs[0][1].command.phase, 'projecting');
+  assert.equal(errorLogs[0][1].command.committed, true);
+  assert.match(errorLogs[0][1].error.stack, /forced projection failure/);
 });
 
 test('game tasks route returns task definitions from task center service', () => {

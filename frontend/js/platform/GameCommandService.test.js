@@ -115,6 +115,47 @@ test('GameCommandService blocks non-house building during tutorial house guide',
   assert.deepEqual(calls.filter(([name]) => name === 'refreshCurrentHighlight'), [['refreshCurrentHighlight']]);
 });
 
+test('GameCommandService propagates BuildingController build failures', async () => {
+  const { host, calls } = createCommandHost({});
+  host.buildingController = {
+    async handleAction({ buildingId, action }) {
+      calls.push(['handleAction', buildingId, action]);
+      return false;
+    },
+  };
+  const service = new GameCommandService({ host });
+
+  assert.equal(await service.buildBuilding('barracks'), false);
+  assert.deepEqual(calls.filter(([name]) => name === 'handleAction'), [['handleAction', 'barracks', 'build']]);
+  assert.deepEqual(host.pendingBuildingAction, null);
+});
+
+test('GameCommandService resyncs committed building commands after projection failure', async () => {
+  const apiCalls = [];
+  const api = {
+    async build(buildingId) {
+      apiCalls.push(['build', buildingId]);
+      return {
+        success: true,
+        committed: true,
+        resyncRequired: true,
+        message: 'Command committed; client state must resync.',
+      };
+    },
+    async getState() {
+      apiCalls.push(['getState']);
+      return { gameState: { playerId: 'player-1', buildings: { barracks: { level: 1 } } } };
+    },
+  };
+  const { host, calls } = createCommandHost(api);
+  const service = new GameCommandService({ host });
+
+  assert.equal(await service.buildBuilding('barracks'), true);
+  assert.deepEqual(apiCalls, [['build', 'barracks'], ['getState']]);
+  assert.equal(host.state.buildings.barracks.level, 1);
+  assert.equal(calls.filter(([name]) => name === 'applyApiState').length, 1);
+});
+
 test('GameCommandService switchCity closes picker, calls API, and applies state', async () => {
   const apiCalls = [];
   const api = {

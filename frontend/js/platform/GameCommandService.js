@@ -53,8 +53,29 @@
       return error?.payload?.message || error?.message || fallback;
     }
 
+    async resyncAfterCommittedCommand(result) {
+      const host = this.host || {};
+      const api = this.getApi();
+      if (!result?.committed || !result?.resyncRequired || typeof api?.getState !== 'function') return false;
+      try {
+        const data = await api.getState();
+        if (data?.gameState) {
+          host.applyApiState?.(data);
+          return true;
+        }
+      } catch (error) {
+        host.log?.(t('command.building.failed', { message: this.getErrorMessage(error) }));
+      }
+      return false;
+    }
+
     async handleBuildingSuccess(result, action, buildingId) {
       const host = this.host || {};
+      if (result?.committed && result?.resyncRequired) {
+        await this.resyncAfterCommittedCommand(result);
+        host.log?.(result?.message || t('command.building.buildSuccess', {}));
+        return true;
+      }
       host.applyApiState?.(result);
       if (buildingId === 'farm' && action === 'build') {
         host.showFloatingText?.(t('command.building.farmBuilt', {}));
@@ -94,8 +115,8 @@
       host.setPendingBuildingAction?.({ buildingId, action: normalizedAction });
       if (host.buildingController?.handleAction) {
         try {
-          await host.buildingController.handleAction({ buildingId, action: normalizedAction });
-          return true;
+          const result = await host.buildingController.handleAction({ buildingId, action: normalizedAction });
+          return result !== false;
         } finally {
           host.setPendingBuildingAction?.(null);
         }

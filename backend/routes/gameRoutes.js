@@ -5,6 +5,9 @@ const GameActionRegistry = require('../actions/GameActionRegistry');
 const WorldCombatSessionService = require('../services/worldCombat/WorldCombatSessionService');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
 const WorldMarchVerification = require('../services/worldExplorer/WorldMarchVerification');
+const { createBuildBuildingCommand } = require('../application/commands/CommandEnvelope');
+const { BuildBuildingCommandHandler } = require('../application/commands/BuildBuildingCommandHandler');
+const GameActionProjection = require('../application/projections/GameActionProjection');
 
 // Interactive world-combat actions are resolved directly here (not via the
 // territory/registry pipeline) so the deterministic battle session lives on the
@@ -31,21 +34,7 @@ function executeWorldCombatAction(action, gameState, body = {}) {
 }
 
 function buildGameView(gameState, tutorial, gameStateService, projection = {}) {
-  const clientState = gameStateService.getClientGameStateFromNormalized
-    ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
-    : gameStateService.getClientGameState(gameState, projection);
-  const eraProgress = gameStateService.calculateEraProgressFromNormalized
-    ? gameStateService.calculateEraProgressFromNormalized(gameState)
-    : gameStateService.calculateEraProgress(gameState);
-  const taskCenter = TaskCenterService.getTaskCenter(gameState);
-  return {
-    gameState: clientState,
-    tutorial,
-    softGuide: null,
-    guideTasks: { visible: false, tasks: [] },
-    taskCenter,
-    eraProgress,
-  };
+  return GameActionProjection.buildGameActionView(gameState, tutorial, gameStateService, projection);
 }
 
 function syncEra2Tutorial(gameState, gameStateService) {
@@ -182,6 +171,7 @@ function buildRevisionConflictPayload(error = {}) {
     retryable: true,
     expectedRevision: error.expectedRevision ?? null,
     actualRevision: error.actualRevision ?? null,
+    command: error.commandFailure || null,
   };
 }
 
@@ -344,6 +334,10 @@ function executeGameActionRequest({
 
 function registerGameRoutes(app, deps) {
   const { authMiddleware, repository, gameStateService, presenceService } = deps;
+  const buildBuildingCommandHandler = new BuildBuildingCommandHandler({
+    repository,
+    gameStateService,
+  });
 
   app.get('/api/game/state', authMiddleware, (req, res) => {
     const traceEnabled = shouldTraceWorldMarchRequest(req);
@@ -469,6 +463,23 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/action', authMiddleware, (req, res) => {
+    if (req.body?.action === 'build') {
+      const command = createBuildBuildingCommand(req);
+      try {
+        const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 0 });
+        return res.status(response.statusCode).json(response.payload);
+      } catch (error) {
+        if (!isGameStateRevisionConflict(error)) throw error;
+        try {
+          const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 1 });
+          return res.status(response.statusCode).json(response.payload);
+        } catch (retryError) {
+          if (!isGameStateRevisionConflict(retryError)) throw retryError;
+          return res.status(409).json(buildRevisionConflictPayload(retryError));
+        }
+      }
+    }
+
     const traceEnabled = shouldTraceWorldMarch(req.body);
     return WorldExplorerTrace.run(traceEnabled, () => {
       try {

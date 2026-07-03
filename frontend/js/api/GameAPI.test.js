@@ -153,6 +153,35 @@ test('GameAPI sends compact client input intent evidence for world march command
   assert.equal(calls[1].clientInputIntent.target.tileId, 'tile_3_-2');
 });
 
+test('GameAPI sends build commands with a client command envelope', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request(request) {
+        calls.push({
+          requestId: request.headers['X-Client-Request-ID'],
+          body: JSON.parse(request.body),
+        });
+        return createResponse(200, { success: true, gameState: { playerId: 'player-1' } });
+      },
+    },
+  });
+
+  await api.build('barracks');
+
+  assert.equal(calls[0].requestId, 'api-1');
+  assert.equal(calls[0].body.action, 'build');
+  assert.equal(calls[0].body.target, 'barracks');
+  assert.deepEqual(calls[0].body.clientCommand, {
+    schema: 'game-command-v1',
+    type: 'BuildBuilding',
+    commandId: 'cmd-api-1',
+    idempotencyKey: 'cmd-api-1',
+    requestId: 'api-1',
+    buildingId: 'barracks',
+  });
+});
+
 test('GameAPI sends world march heartbeat reports with POST only when present', async () => {
   const requests = [];
   const api = new GameAPI('/api', 'token-a', {

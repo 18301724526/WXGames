@@ -136,6 +136,23 @@
     return error?.name === 'AbortError' || error?.code === 'ABORT_ERR';
   }
 
+  function attachClientCommand(body = {}, requestId = '') {
+    if (!body || typeof body !== 'object') return body;
+    if (body.action !== 'build') return body;
+    const commandId = `cmd-${requestId}`;
+    return {
+      ...body,
+      clientCommand: {
+        schema: 'game-command-v1',
+        type: 'BuildBuilding',
+        commandId,
+        idempotencyKey: commandId,
+        requestId,
+        buildingId: body.target || body.buildingId || '',
+      },
+    };
+  }
+
   class GameAPI {
     constructor(baseUrl, token, options = {}) {
       this.baseUrl = baseUrl;
@@ -181,16 +198,17 @@
       const actionBody = body && typeof body === 'object' ? body : {};
       const requestId = `api-${++this.requestSeq}`;
       headers['X-Client-Request-ID'] = requestId;
+      const commandBody = attachClientCommand(actionBody, requestId);
       if (path === '/version' && this.versionEtag) {
         headers['If-None-Match'] = this.versionEtag;
       }
       const isWorldMarchAction = path === '/game/action'
         && ['startWorldMarch', 'returnWorldMarch', 'stopWorldMarch']
-          .includes(actionBody.action);
+          .includes(commandBody.action);
       const isWorldMarchSync = trace?.enabled?.() && ['/game/state', '/game/heartbeat'].includes(path);
       const tracedBody = isWorldMarchAction && trace?.enabled?.()
-        ? { ...actionBody, debugTrace: true, worldMarchTrace: true }
-        : actionBody;
+        ? { ...commandBody, debugTrace: true, worldMarchTrace: true }
+        : commandBody;
       const requestPayload = {
         url: this.buildUrl(path),
         method,
@@ -204,10 +222,11 @@
         requestId,
         method,
         path,
-        action: actionBody.action || '',
-        clientInput: summarizeClientInputIntent(actionBody.clientInputIntent),
-        body: global.WorldMarchTrace?.summarizeActionBody?.(actionBody) || {
-          action: actionBody.action || '',
+        action: commandBody.action || '',
+        clientInput: summarizeClientInputIntent(commandBody.clientInputIntent),
+        body: global.WorldMarchTrace?.summarizeActionBody?.(commandBody) || {
+          action: commandBody.action || '',
+          commandId: commandBody.clientCommand?.commandId || '',
         },
       });
       const loadTrace = this.trace;
@@ -261,8 +280,9 @@
           requestId,
           method,
           path,
-          action: actionBody.action || '',
-          clientInput: summarizeClientInputIntent(actionBody.clientInputIntent),
+          action: commandBody.action || '',
+          commandId: commandBody.clientCommand?.commandId || '',
+          clientInput: summarizeClientInputIntent(commandBody.clientInputIntent),
           message: requestError.message,
           status: requestError.status || 0,
           attempts,
@@ -320,8 +340,9 @@
           requestId,
           method,
           path,
-          action: actionBody.action || '',
-          clientInput: summarizeClientInputIntent(actionBody.clientInputIntent),
+          action: commandBody.action || '',
+          commandId: commandBody.clientCommand?.commandId || '',
+          clientInput: summarizeClientInputIntent(commandBody.clientInputIntent),
           status: response.status,
           error: data.error || '',
           message: data.message || '',
@@ -387,7 +408,8 @@
         requestId,
         method,
         path,
-        action: actionBody.action || '',
+        action: commandBody.action || '',
+        commandId: commandBody.clientCommand?.commandId || data?.commandId || data?.command?.commandId || '',
         status: response.status,
         attempts,
         durationMs: Math.max(0, Math.round(getNow(this.scheduler) - startedAt)),
