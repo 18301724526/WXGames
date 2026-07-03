@@ -4,8 +4,12 @@ const { chromium } = require('playwright');
 const { PNG } = require('pngjs');
 
 const CONFIG = {
-  gameUrl: process.env.PLAYTEST_GAME_URL || 'http://47.116.32.216/wxgame/',
-  apiBase: process.env.PLAYTEST_API_BASE || 'http://47.116.32.216:3000/api',
+  // Default to THIS branch's isolated deploy (docs/server_environment_refactor_tutorial_2026-06-25.md).
+  // The main-server '/wxgame/' + ':3000/api' pair runs main's OLD numeric step
+  // table: pointing the harness there mislabels every step and resets a
+  // production account. Override via env only for other refactor deploys.
+  gameUrl: process.env.PLAYTEST_GAME_URL || 'http://47.116.32.216/wxgame-refactor/',
+  apiBase: process.env.PLAYTEST_API_BASE || 'http://47.116.32.216/wxgame-refactor-api',
   username: process.env.PLAYTEST_USERNAME || 'codexqa',
   password: process.env.PLAYTEST_PASSWORD || '123456',
   resetAccount: process.env.PLAYTEST_RESET_ACCOUNT !== '0',
@@ -921,6 +925,11 @@ function countBuildings(state = {}) {
   return 0;
 }
 
+// The guided tutorial march is 2 tiles x EXPLORE_STEP_DURATION_MS (10s), so
+// 20 waits of 1.5-3s comfortably cover it while still bounding the stall.
+const MAX_CONSECUTIVE_MARCH_WAITS = 20;
+let consecutiveMarchWaits = 0;
+
 function missionCounts(state = {}) {
   const explorer = state.stateSummary?.worldExplorerState || {};
   return {
@@ -1333,15 +1342,25 @@ async function chooseNextAction(page, iteration) {
   }
 
   const allowed = state.tutorialHighlight?.allowedAction || null;
-  // A guided openWorldSite towards a site the active march has not reached yet cannot
-  // advance the step machine (the guide points at the discovered empty city while the
-  // exploration march is still travelling). Wait the march out instead of click-spamming.
+  // A guided openWorldSite towards the tutorial's first empty city can race the
+  // exploration march (firstCityDiscovered only advances once the march goes idle,
+  // but the client mission mirror may lag a beat). Wait that race out — only for
+  // that one site, and bounded: an uncapped wait once burned the whole action
+  // budget against a server whose march never ticked.
   if (allowed?.type === 'openWorldSite' && missionCounts(state).active > 0) {
-    return recordWaitAction(page, `wait-march-before-${allowed.type}-${iteration}`, state, {
-      type: 'wait',
-      reason: 'active march has not arrived yet',
-    }, 1500, 3000);
+    const firstExploreSiteId = String(state.tutorial?.grants?.firstExploreEmptyCity?.siteId || '');
+    const highlightSiteId = String(allowed.siteId || '');
+    const racesGuidedMarch = firstExploreSiteId && highlightSiteId === firstExploreSiteId;
+    if (racesGuidedMarch && consecutiveMarchWaits < MAX_CONSECUTIVE_MARCH_WAITS) {
+      consecutiveMarchWaits += 1;
+      return recordWaitAction(page, `wait-march-before-${allowed.type}-${iteration}`, state, {
+        type: 'wait',
+        reason: 'active march has not arrived yet',
+        consecutiveMarchWaits,
+      }, 1500, 3000);
+    }
   }
+  consecutiveMarchWaits = 0;
   if (allowed?.type) {
     const target = findTarget(state, (action) => actionMatches(allowed, action))
       || findTarget(state, (action) => action.type === allowed.type && !action.disabled);
@@ -1767,6 +1786,19 @@ async function main() {
 
   await page.goto(normalizeUrl(CONFIG.gameUrl), { waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.waitForFunction(() => Boolean(window.Game && window.Game.canvasShell), null, { timeout: 45000 });
+  // Refuse to interpret a foreign build. Every step label in the evidence comes
+  // from this branch's shared/tutorialFlowConfig.js; a deploy without that table
+  // (e.g. the main server) reports legacy numeric steps that would be silently
+  // mislabelled with this branch's step names, corrupting the whole run's evidence.
+  const sharedFlowLoaded = await page.evaluate(
+    () => Boolean(globalThis.TutorialFlowShared && globalThis.TutorialFlowShared.STEP_ORDER),
+  );
+  if (!sharedFlowLoaded) {
+    throw new Error(
+      `Target ${CONFIG.gameUrl} is not running this branch's build (window.TutorialFlowShared missing). `
+      + 'Point PLAYTEST_GAME_URL / PLAYTEST_API_BASE at the tutorial-refactor deploy of this branch.',
+    );
+  }
   await page.waitForTimeout(9000);
   await writeSnapshot(page, '00-start');
 
