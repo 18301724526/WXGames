@@ -54,18 +54,11 @@
     }),
   });
 
+  // PHYSICAL_LAYER_ORDER is the stage composite order: every layer draws on an offscreen
+  // surface and the engine composites them (in this order == z-order) onto the ONE visible
+  // canvas each frame. zIndex values are kept for the legacy per-layer DOM fallback used
+  // when OffscreenCanvas is unavailable.
   const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'mainHud', 'tutorialSpine', 'tutorialDialogue']);
-
-  // Layers in a composite group draw on offscreen surfaces and are engine-composited (in
-  // members order) onto ONE shared presentation canvas, instead of stacking one DOM canvas
-  // per layer. The group's zIndex positions that single presentation canvas.
-  const COMPOSITE_GROUPS = Object.freeze({
-    worldStack: Object.freeze({
-      key: 'worldStack',
-      zIndex: 997,
-      members: Object.freeze(['worldMap', 'worldFog', 'worldActor']),
-    }),
-  });
 
   const RENDER_QUEUE = Object.freeze([
     'worldPanel',
@@ -101,18 +94,6 @@
 
   function getLayer(name = '') {
     return LAYERS[String(name || '')] || null;
-  }
-
-  function getCompositeGroup(key = '') {
-    return COMPOSITE_GROUPS[String(key || '')] || null;
-  }
-
-  function getCompositeGroupForLayer(name = '') {
-    const layerName = String(name || '');
-    for (const groupKey of Object.keys(COMPOSITE_GROUPS)) {
-      if (COMPOSITE_GROUPS[groupKey].members.includes(layerName)) return COMPOSITE_GROUPS[groupKey];
-    }
-    return null;
   }
 
   function getLayerName(name = '') {
@@ -184,14 +165,11 @@
   const api = {
     LAYERS,
     PHYSICAL_LAYER_ORDER,
-    COMPOSITE_GROUPS,
     RENDER_QUEUE,
     HIT_PRIORITY_QUEUE,
     getLayer,
     getLayerName,
     getLayerOptions,
-    getCompositeGroup,
-    getCompositeGroupForLayer,
     getPhysicalLayerStack,
     getRenderQueue,
     getHitPriorityQueue,

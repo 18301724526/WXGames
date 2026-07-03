@@ -123,24 +123,6 @@ test('CanvasLayerRegistry locks logical render queue and hit priority order', ()
   assert.equal(CanvasLayerRegistry.compareHitPriority('tutorialShield', 'modal') > 0, true);
 });
 
-test('CanvasLayerRegistry locks the world composite group', () => {
-  // worldStack members are engine-composited (offscreen surfaces → one presentation canvas)
-  // in members order, which therefore must stay a monotonic z-index slice of the physical
-  // layer order.
-  const group = CanvasLayerRegistry.getCompositeGroup('worldStack');
-  assert.deepEqual(group.members, ['worldMap', 'worldFog', 'worldActor']);
-  assert.equal(group.zIndex, 997);
-  assert.equal(CanvasLayerRegistry.getCompositeGroupForLayer('worldMap'), group);
-  assert.equal(CanvasLayerRegistry.getCompositeGroupForLayer('worldFog'), group);
-  assert.equal(CanvasLayerRegistry.getCompositeGroupForLayer('worldActor'), group);
-  assert.equal(CanvasLayerRegistry.getCompositeGroupForLayer('mainHud'), null);
-  assert.equal(CanvasLayerRegistry.getCompositeGroupForLayer('tutorialSpine'), null);
-  assert.equal(CanvasLayerRegistry.getCompositeGroupForLayer('tutorialDialogue'), null);
-  const physicalIndexes = group.members.map((name) => CanvasLayerRegistry.PHYSICAL_LAYER_ORDER.indexOf(name));
-  assert.deepEqual(physicalIndexes, [...physicalIndexes].sort((a, b) => a - b));
-  assert.equal(physicalIndexes.every((index) => index >= 0), true);
-});
-
 test('CanvasLayerRegistry rejects unknown layer lifecycle requests', () => {
   assert.equal(CanvasLayerRegistry.getLayer('unknown'), null);
   assert.equal(CanvasLayerRegistry.isLayerEnabled('unknown'), false);

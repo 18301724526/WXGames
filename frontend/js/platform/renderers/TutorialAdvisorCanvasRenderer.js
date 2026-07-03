@@ -296,10 +296,17 @@
         maxDevicePixelRatio: pixelRatio,
         premultipliedAlpha: false,
         preserveDrawingBuffer: false,
-        // The spine surface is an offscreen webgl canvas; present each rendered frame onto
-        // the 2d DOM presentation layer in the same task (preserveDrawingBuffer:false).
+        // The spine surface is an offscreen webgl canvas; snapshot each rendered frame into
+        // its present cache in the same task (preserveDrawingBuffer:false) and let the
+        // per-frame HUD composite fold it into the visible canvas.
         onFrame: () => {
-          this.h5Runtime?.presentLayer?.(TUTORIAL_SPINE_LAYER_NAME);
+          const runtime = this.h5Runtime;
+          if (!runtime) return;
+          if (typeof runtime.refreshLayerPresentCache === 'function') {
+            runtime.refreshLayerPresentCache(TUTORIAL_SPINE_LAYER_NAME);
+          } else {
+            runtime.presentLayer?.(TUTORIAL_SPINE_LAYER_NAME);
+          }
         },
         onBounds: (event = {}) => {
           if (!this.tutorialAdvisorSpine || this.tutorialAdvisorSpine.player !== player) return;

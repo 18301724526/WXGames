@@ -415,27 +415,29 @@ function createOffscreenRuntime() {
   return { runtime, document, recordingCtxByCanvas };
 }
 
-test('H5CanvasRuntime gives webgl layers an offscreen draw surface and keeps the DOM canvas 2d', () => {
-  const { runtime } = createOffscreenRuntime();
+test('H5CanvasRuntime gives every layer an offscreen draw surface with no DOM canvas per layer', () => {
+  const { runtime, document } = createOffscreenRuntime();
 
-  runtime.ensureCanvas();
   const surface = runtime.ensureLayerCanvas('tutorialSpine', {
     zIndex: 1001,
     contextType: 'webgl',
     pixelRatio: 2,
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
-  const domCanvas = runtime.getLayerCanvas('tutorialSpine');
 
   assert.equal(surface instanceof FakeOffscreenCanvas, true, 'ensureLayerCanvas must return the offscreen draw surface');
-  assert.notEqual(surface, domCanvas, 'DOM presentation canvas and draw surface are distinct');
-  assert.equal(domCanvas._drawSurface, surface);
   assert.equal(runtime.getLayerDrawSurface('tutorialSpine'), surface);
-  // surface tracks the presentation canvas backing-store size (fixedRect * pixelRatio)
-  assert.equal(surface.width, domCanvas.width);
-  assert.equal(surface.height, domCanvas.height);
-  assert.equal(domCanvas.width, 216);
-  assert.equal(domCanvas.height, 480);
+  assert.equal(runtime.getLayerCanvas('tutorialSpine'), surface, 'the draw surface IS the layer canvas in stage mode');
+  // surface sized from fixedRect * pixelRatio override
+  assert.equal(surface.width, 216);
+  assert.equal(surface.height, 480);
+  // ensuring a layer also ensures the ONE visible canvas (the composite target)...
+  assert.notEqual(runtime.canvas, null);
+  // ...and adds NO per-layer DOM canvas to the document.
+  const domLayers = document.body.children
+    .map((el) => el.attributes?.['data-canvas-layer'])
+    .filter(Boolean);
+  assert.deepEqual(domLayers, []);
   // re-ensure returns the SAME surface (stable identity for player reuse checks)
   const again = runtime.ensureLayerCanvas('tutorialSpine', {
     zIndex: 1001,
@@ -446,110 +448,113 @@ test('H5CanvasRuntime gives webgl layers an offscreen draw surface and keeps the
   assert.equal(again, surface);
 });
 
-test('H5CanvasRuntime presentLayer blits standalone webgl layers onto their presentation canvas', () => {
+test('H5CanvasRuntime presentLayer composites the stage onto the visible canvas', () => {
   const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
 
-  runtime.ensureCanvas();
+  const surface = runtime.ensureLayerCanvas('tutorialSpine', {
+    zIndex: 1001,
+    contextType: 'webgl',
+    pixelRatio: 1,
+    rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+  const visibleCanvas = runtime.canvas;
+  const ctx = recordingCtxByCanvas.get(visibleCanvas);
+
+  ctx.calls.length = 0;
+  assert.equal(runtime.presentLayer('tutorialSpine'), true);
+  // webgl layers composite from their persistent present cache, placed at their fixed rect
+  assert.equal(surface._presentCache instanceof FakeOffscreenCanvas, true);
+  assert.deepEqual(ctx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0]);
+  assert.deepEqual(ctx.calls[1], ['clearRect', 0, 0, visibleCanvas.width, visibleCanvas.height]);
+  assert.deepEqual(ctx.calls[2], [
+    'drawImage', surface._presentCache, 0, 0, 108, 240, 18, 44, 108, 240,
+  ]);
+  assert.equal(runtime.presentLayer('missingLayer'), false);
+});
+
+test('H5CanvasRuntime refreshLayerPresentCache snapshots webgl layers without compositing', () => {
+  const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
+
   const surface = runtime.ensureLayerCanvas('tutorialSpine', {
     zIndex: 1001,
     contextType: 'webgl',
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
-  const domCanvas = runtime.getLayerCanvas('tutorialSpine');
-  const ctx = recordingCtxByCanvas.get(domCanvas);
+  const ctx = recordingCtxByCanvas.get(runtime.canvas);
+  ctx.calls.length = 0;
 
-  assert.equal(runtime.presentLayer('tutorialSpine'), true);
-  assert.deepEqual(ctx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0], 'present blits in raw pixel space');
-  assert.deepEqual(ctx.calls[1], ['clearRect', 0, 0, domCanvas.width, domCanvas.height]);
-  assert.deepEqual(ctx.calls[2], ['drawImage', surface, 0, 0]);
+  assert.equal(runtime.refreshLayerPresentCache('tutorialSpine'), true);
+  assert.equal(surface._presentCache instanceof FakeOffscreenCanvas, true);
+  assert.equal(ctx.calls.length, 0, 'cache refresh must not composite; the HUD frame folds it in');
+  assert.equal(runtime.refreshLayerPresentCache('missingLayer'), false);
 });
 
-test('H5CanvasRuntime presentLayer no-ops for standalone 2d layers and missing surfaces', () => {
-  const { runtime } = createOffscreenRuntime();
+test('H5CanvasRuntime composites the full stack onto the visible canvas in physical order', () => {
+  const { runtime, document, recordingCtxByCanvas } = createOffscreenRuntime();
 
-  runtime.ensureCanvas();
-  const dialogueCanvas = runtime.ensureLayerCanvas('tutorialDialogue', {
+  const mapSurface = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
+  const fogSurface = runtime.ensureLayerCanvas('worldFog', { zIndex: 998, contextType: 'webgl', padding: 120 });
+  const actorSurface = runtime.ensureLayerCanvas('worldActor', { zIndex: 999, padding: 120 });
+  const hudSurface = runtime.ensureLayerCanvas('mainHud', { zIndex: 1000, pointerEvents: 'auto' });
+  const dialogueSurface = runtime.ensureLayerCanvas('tutorialDialogue', {
     zIndex: 1002,
     rect: { x: 0, y: 0, width: 390, height: 693 },
   });
 
-  assert.equal(dialogueCanvas._drawSurface, undefined, 'standalone 2d layers draw directly on the layer canvas');
-  assert.equal(runtime.presentLayer('tutorialDialogue'), false);
-  assert.equal(runtime.presentLayer('missingLayer'), false);
-});
-
-test('H5CanvasRuntime composites world stack members onto one shared presentation canvas', () => {
-  const { runtime, document, recordingCtxByCanvas } = createOffscreenRuntime();
-
-  runtime.ensureCanvas();
-  const mapSurface = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
-  const fogSurface = runtime.ensureLayerCanvas('worldFog', { zIndex: 998, contextType: 'webgl', padding: 120 });
-  const actorSurface = runtime.ensureLayerCanvas('worldActor', { zIndex: 999, padding: 120 });
-
-  // Members draw on distinct offscreen surfaces...
-  assert.equal(mapSurface instanceof FakeOffscreenCanvas, true);
-  assert.equal(fogSurface instanceof FakeOffscreenCanvas, true);
-  assert.equal(actorSurface instanceof FakeOffscreenCanvas, true);
-  assert.notEqual(mapSurface, fogSurface);
-  assert.notEqual(fogSurface, actorSurface);
+  // All layers draw on distinct offscreen surfaces; the DOM holds ONLY the visible canvas.
+  assert.equal(new Set([mapSurface, fogSurface, actorSurface, hudSurface, dialogueSurface]).size, 5);
   assert.equal(mapSurface._layerName, 'worldMap');
-  // ...and share ONE presentation canvas in the DOM: no per-member DOM canvases exist.
   const domLayers = document.body.children
     .map((el) => el.attributes?.['data-canvas-layer'])
     .filter(Boolean);
-  assert.deepEqual(domLayers, ['worldStack']);
-  const groupCanvas = runtime.getLayerCanvas('worldMap');
-  assert.equal(groupCanvas.attributes['data-canvas-layer'], 'worldStack');
-  assert.equal(groupCanvas.style.zIndex, '997');
-  assert.equal(runtime.getLayerCanvas('worldFog'), groupCanvas);
-  assert.equal(runtime.getLayerCanvas('worldActor'), groupCanvas);
-  // The group canvas is frame-sized (no padding); member surfaces are padded.
-  assert.equal(groupCanvas.width, 390);
-  assert.equal(groupCanvas.height, 693);
+  assert.deepEqual(domLayers, []);
+  const canvasCount = document.body.children.filter((el) => el.tagName === 'canvas').length;
+  assert.equal(canvasCount, 1, 'exactly one visible canvas in the DOM');
+  // World surfaces are padded; hud is frame-sized.
   assert.equal(mapSurface.width, 630);
   assert.equal(mapSurface.height, 933);
+  assert.equal(hudSurface.width, 390);
+  assert.equal(hudSurface.height, 693);
 
-  // Presenting the webgl fog member snapshots it into a persistent 2d cache first (raw webgl
-  // buffers are only same-task readable with preserveDrawingBuffer:false).
+  // Prime the webgl present cache (raw buffers are only same-task readable).
   assert.equal(runtime.presentLayer('worldFog'), true);
   assert.equal(fogSurface._presentCache instanceof FakeOffscreenCanvas, true);
 
-  // Composite draws every visible member in registry order with the pan source-rect.
-  const groupCtx = recordingCtxByCanvas.get(groupCanvas);
-  groupCtx.calls.length = 0;
-  assert.equal(runtime.presentLayer('worldMap'), true);
-  assert.deepEqual(groupCtx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0]);
-  assert.deepEqual(groupCtx.calls[1], ['clearRect', 0, 0, 390, 693]);
-  assert.deepEqual(groupCtx.calls[2], ['drawImage', mapSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
-  // worldFog composites from its webgl present cache, not the raw surface.
-  assert.deepEqual(groupCtx.calls[3], ['drawImage', fogSurface._presentCache, 120, 120, 390, 693, 0, 0, 390, 693]);
-  assert.deepEqual(groupCtx.calls[4], ['drawImage', actorSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
+  const visibleCtx = recordingCtxByCanvas.get(runtime.canvas);
+  visibleCtx.calls.length = 0;
+  assert.equal(runtime.compositeStage(), true);
+  assert.deepEqual(visibleCtx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0]);
+  assert.deepEqual(visibleCtx.calls[1], ['clearRect', 0, 0, 390, 693]);
+  // PHYSICAL_LAYER_ORDER: worldMap, worldFog(cache), worldActor, mainHud, tutorialDialogue
+  assert.deepEqual(visibleCtx.calls[2], ['drawImage', mapSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(visibleCtx.calls[3], ['drawImage', fogSurface._presentCache, 120, 120, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(visibleCtx.calls[4], ['drawImage', actorSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(visibleCtx.calls[5], ['drawImage', hudSurface, 0, 0, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(visibleCtx.calls[6], ['drawImage', dialogueSurface, 0, 0, 390, 693, 0, 0, 390, 693]);
 });
 
-test('H5CanvasRuntime pans and hides world stack members through the composite state', () => {
+test('H5CanvasRuntime pans and hides stage layers through the composite state', () => {
   const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
 
-  runtime.ensureCanvas();
   const mapSurface = runtime.ensureLayerCanvas('worldMap', { zIndex: 997, padding: 120 });
   runtime.ensureLayerCanvas('worldActor', { zIndex: 999, padding: 120 });
-  const groupCanvas = runtime.getLayerCanvas('worldMap');
-  const groupCtx = recordingCtxByCanvas.get(groupCanvas);
+  const visibleCtx = recordingCtxByCanvas.get(runtime.canvas);
 
   // Translate becomes a source-rect offset: CSS translate3d(7px,-3px) == reading the padded
   // surface from (padding-7, padding+3).
-  groupCtx.calls.length = 0;
+  visibleCtx.calls.length = 0;
   assert.equal(runtime.setLayerTranslate('worldMap', 7, -3), true);
-  assert.deepEqual(groupCtx.calls[2], ['drawImage', mapSurface, 113, 123, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(visibleCtx.calls[2], ['drawImage', mapSurface, 113, 123, 390, 693, 0, 0, 390, 693]);
 
   // clearLayerTransform resets the offset.
-  groupCtx.calls.length = 0;
+  visibleCtx.calls.length = 0;
   assert.equal(runtime.clearLayerTransform('worldMap'), true);
-  assert.deepEqual(groupCtx.calls[2], ['drawImage', mapSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(visibleCtx.calls[2], ['drawImage', mapSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
 
-  // Hidden members are skipped by the composite (map hidden → only actor drawn).
-  groupCtx.calls.length = 0;
+  // Hidden layers are skipped by the composite (map hidden → only actor drawn).
+  visibleCtx.calls.length = 0;
   assert.equal(runtime.setLayerVisible('worldMap', false), true);
-  const drawnSurfaces = groupCtx.calls.filter((call) => call[0] === 'drawImage').map((call) => call[1]);
+  const drawnSurfaces = visibleCtx.calls.filter((call) => call[0] === 'drawImage').map((call) => call[1]);
   assert.equal(drawnSurfaces.includes(mapSurface), false);
   assert.equal(drawnSurfaces.length, 1);
 });

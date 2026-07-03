@@ -488,8 +488,11 @@ isCanvasLayerEnabled(name = '') {
 
 ensureCanvasLayer(name = '', overrides = {}) {
       if (this.isCanvasLayerEnabled(name) !== true) return null;
-      if (this.getCanvasLayerName(name) === 'mainHud') return this.runtime?.ensureCanvas?.() || null;
-      if (typeof this.runtime?.ensureLayerCanvas !== 'function') return null;
+      if (typeof this.runtime?.ensureLayerCanvas !== 'function') {
+        // Minimal runtimes without layer support only expose the visible canvas.
+        if (this.getCanvasLayerName(name) === 'mainHud') return this.runtime?.ensureCanvas?.() || null;
+        return null;
+      }
       return this.runtime.ensureLayerCanvas(this.getCanvasLayerName(name), this.getCanvasLayerOptions(name, overrides));
     }
 
@@ -740,7 +743,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           if (!this.runtime || typeof this.runtime.ensureCanvas !== 'function') return false;
           const canvas = this.runtime.ensureCanvas();
           if (!canvas) return false;
-          this.createRenderer(canvas);
+          // Stage compositing: the renderer draws the HUD on an offscreen surface and the
+          // visible canvas is the composite target. Falls back to the visible canvas when
+          // the runtime has no offscreen layer support.
+          const hudTarget = this.ensureCanvasLayer?.('mainHud') || canvas;
+          this.createRenderer(hudTarget);
           this.mounted = true;
           this.lastGame = game || null;
           const shouldHoldInitialLoading = Boolean(game?.token && !game?.hasServerState);
@@ -3082,12 +3089,12 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             this.updateWorldActorAnimationLoop?.({ ...renderOptions, state });
             if (homeView.activeTab === 'military' && (waterAnimated || (explorerAnimated && !this.worldActorLayerRenderer))) this.startTileMapWaterTimer();
             else this.stopTileMapWaterTimer();
-            // Per-frame safety net for the offscreen world stack: any surface repaint that
-            // reached no explicit presentLayer hook (e.g. WorldMapRuntime's self-queued rAF
-            // frames) still lands on the presentation canvas within one HUD frame. 2d
-            // surfaces persist across tasks and webgl members composite from their present
-            // cache, so this is safe outside the painting task.
-            this.runtime?.compositeAllLayerGroups?.();
+            // Per-frame stage composite: the HUD surface just repainted, and any layer
+            // repaint that reached no explicit presentLayer hook (e.g. WorldMapRuntime's
+            // self-queued rAF frames) also lands on the visible canvas here. 2d surfaces
+            // persist across tasks and webgl layers composite from their present cache, so
+            // this is safe outside the painting task.
+            this.runtime?.compositeStage?.();
             return true;
           }
 

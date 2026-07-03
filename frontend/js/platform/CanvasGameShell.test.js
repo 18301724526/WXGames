@@ -238,7 +238,29 @@ test('CanvasGameShell presents the fog layer when hiding the world map stack', (
   ]);
 });
 
-test('CanvasGameShell maps the main HUD layer to the primary input canvas', () => {
+test('CanvasGameShell routes the main HUD layer through the runtime layer surface', () => {
+  const calls = [];
+  const hudSurface = { id: 'hudSurface' };
+  const shell = new CanvasGameShell({
+    runtime: {
+      ensureCanvas() {
+        calls.push(['ensureCanvas']);
+        return { id: 'visible' };
+      },
+      ensureLayerCanvas(name, options) {
+        calls.push(['ensureLayerCanvas', name, options]);
+        return hudSurface;
+      },
+    },
+  });
+
+  assert.equal(shell.ensureCanvasLayer('mainHud'), hudSurface);
+  assert.deepEqual(calls, [
+    ['ensureLayerCanvas', 'mainHud', { zIndex: 1000, pointerEvents: 'auto', role: 'screen-hud-input' }],
+  ]);
+});
+
+test('CanvasGameShell falls back to the visible canvas for mainHud without layer support', () => {
   const calls = [];
   const primaryCanvas = { id: 'main' };
   const shell = new CanvasGameShell({
@@ -246,10 +268,6 @@ test('CanvasGameShell maps the main HUD layer to the primary input canvas', () =
       ensureCanvas() {
         calls.push(['ensureCanvas']);
         return primaryCanvas;
-      },
-      ensureLayerCanvas(name, options) {
-        calls.push(['ensureLayerCanvas', name, options]);
-        return { name, options };
       },
     },
   });
