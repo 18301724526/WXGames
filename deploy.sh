@@ -720,6 +720,77 @@ NODE
     echo "[Deploy] Frontend environment override applied: environment=$DEPLOY_ENVIRONMENT label=${label:-none} apiBase=${api_base:-default}"
 }
 
+# Skip the multi-minute npm install when backend/package-lock.json is unchanged since the
+# last successful install. The hash is only written AFTER a successful install, so an
+# aborted install re-runs next deploy.
+install_backend_dependencies_if_needed() {
+    local lockfile="$BACKEND_DIR/package-lock.json"
+    local hash_file="$DEPLOY_STATE_DIR/backend-deps.lock.sha256"
+    local current_hash=""
+
+    if [ -f "$lockfile" ] && command -v sha256sum >/dev/null 2>&1; then
+        current_hash="$(sha256sum "$lockfile" | awk '{print $1}')"
+    fi
+    if [ -n "$current_hash" ] \
+        && [ -d "$BACKEND_DIR/node_modules" ] \
+        && [ -f "$hash_file" ] \
+        && [ "$(cat "$hash_file" 2>/dev/null)" = "$current_hash" ]; then
+        echo "[Deploy] 后端依赖未变化（lockfile hash 一致），跳过安装。"
+        return 0
+    fi
+    run_with_deploy_status_heartbeat npm install --omit=dev --no-audit --no-fund
+    if [ -n "$current_hash" ]; then
+        mkdir -p "$DEPLOY_STATE_DIR"
+        printf '%s' "$current_hash" > "$hash_file"
+    fi
+}
+
+# Hardlink snapshot of the running backend before we touch it. npm/rsync replace files
+# with new inodes, so the snapshot stays intact; runtime data (db/env/logs) is excluded
+# from restore so a rollback never rolls back player data.
+BACKEND_ROLLBACK_SNAPSHOT=""
+snapshot_backend_for_rollback() {
+    local snapshot_dir="${BACKEND_DIR}.rollback-prev"
+    if [ ! -d "$BACKEND_DIR" ]; then
+        return 0
+    fi
+    rm -rf "$snapshot_dir" 2>/dev/null || true
+    if cp -al "$BACKEND_DIR" "$snapshot_dir" 2>/dev/null; then
+        BACKEND_ROLLBACK_SNAPSHOT="$snapshot_dir"
+        echo "[Deploy] 已创建回滚快照: $snapshot_dir"
+    else
+        echo "[Deploy] 回滚快照创建失败（继续部署，但失败时无法自动回滚）" >&2
+    fi
+}
+
+rollback_backend_and_restart() {
+    if [ -z "$BACKEND_ROLLBACK_SNAPSHOT" ] || [ ! -d "$BACKEND_ROLLBACK_SNAPSHOT" ]; then
+        echo "[Deploy] 无可用回滚快照，服务可能停留在坏版本！" >&2
+        return 1
+    fi
+    echo "[Deploy] 健康检查失败，自动回滚到上一版本..." >&2
+    rsync -a --delete \
+        --exclude '.env' \
+        --exclude '.env.*' \
+        --exclude 'logs' \
+        --exclude '*.db' \
+        --exclude '*.db-shm' \
+        --exclude '*.db-wal' \
+        "$BACKEND_ROLLBACK_SNAPSHOT/" "$BACKEND_DIR/" || return 1
+    pm2 restart "$PM2_APP_NAME" --update-env >/dev/null 2>&1 || true
+    pm2 restart "$WORLD_WORKER_PM2_NAME" --update-env >/dev/null 2>&1 || true
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        if curl -fsS "http://localhost:${API_PORT}/api/health" >/dev/null 2>&1; then
+            echo "[Deploy] 回滚成功：上一版本已恢复运行。" >&2
+            return 0
+        fi
+        sleep 2
+    done
+    echo "[Deploy] 回滚后健康检查仍失败，需要人工介入！" >&2
+    return 1
+}
+
 run_deploy_gate() {
     local gate_script="$DEPLOY_GATE_SCRIPT"
 
@@ -853,13 +924,15 @@ set_deploy_stage "backend-dependencies"
 
 echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"
-run_with_deploy_status_heartbeat npm install --omit=dev --no-audit --no-fund
+install_backend_dependencies_if_needed
 echo "[Deploy] Cleaning retired world-explorer ready state..."
 run_with_deploy_status_heartbeat env DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
 set_deploy_stage "config-release"
 publish_runtime_config_release
 
 set_deploy_stage "pm2-restart"
+
+snapshot_backend_for_rollback
 
 echo "[Deploy] 重启 PM2 服务..."
 if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
@@ -872,8 +945,11 @@ if pm2 describe "$WORLD_WORKER_PM2_NAME" >/dev/null 2>&1; then
 else
     pm2 start world-worker.js --name "$WORLD_WORKER_PM2_NAME" --update-env
 fi
-verify_pm2_listener "$PM2_APP_NAME" 1
-verify_pm2_listener "$WORLD_WORKER_PM2_NAME" 0
+if ! verify_pm2_listener "$PM2_APP_NAME" 1 || ! verify_pm2_listener "$WORLD_WORKER_PM2_NAME" 0; then
+    record_deploy_failure 1 "pm2 verification failed after restart; automatic rollback attempted"
+    rollback_backend_and_restart || true
+    exit 1
+fi
 restart_ops_agent_if_configured
 
 set_deploy_stage "health-check"
@@ -903,4 +979,6 @@ done
 
 echo "[Deploy] 健康检查失败，最近的 PM2 状态如下:" >&2
 pm2 show "$PM2_APP_NAME" >&2 || true
+record_deploy_failure 1 "health check failed after pm2 restart; automatic rollback attempted"
+rollback_backend_and_restart || true
 exit 1

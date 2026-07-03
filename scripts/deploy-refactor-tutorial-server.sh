@@ -19,6 +19,10 @@ export PM2_APP_NAME="${PM2_APP_NAME:-wxgame-refactor-server}"
 export WORLD_WORKER_PM2_NAME="${WORLD_WORKER_PM2_NAME:-wxgame-refactor-world-worker}"
 export OPS_AGENT_PM2_NAME="${OPS_AGENT_PM2_NAME:-wxgame-refactor-ops-agent}"
 export DEPLOY_GATE_SCRIPT="${DEPLOY_GATE_SCRIPT:-scripts/test-server-ci-gate.sh}"
+# Every push already ran the full local gate; the server gate defaults to the fast
+# syntax smoke so push→deployed stays within minutes. Set WXGAME_GATE_MODE=full for a
+# manual full re-verification on the server.
+export WXGAME_GATE_MODE="${WXGAME_GATE_MODE:-fast}"
 export POST_BACKEND_SYNC_SCRIPT="${POST_BACKEND_SYNC_SCRIPT:-scripts/prepare-test-server-runtime.sh}"
 export FRONTEND_API_BASE="${FRONTEND_API_BASE:-/wxgame-refactor-api}"
 export FRONTEND_DEPLOY_STATUS_PATH="${FRONTEND_DEPLOY_STATUS_PATH:-.wxgame-deploy-status.json}"

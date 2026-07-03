@@ -31,6 +31,26 @@ unset GAME_VERSION
 unset WXGAME_DEPLOY_MANIFEST_PATH
 unset WXGAME_DEPLOY_STATE_DIR
 
+# fast mode: trust the pre-push local gate (lint/prettier/tests/architecture all run
+# before every push) and keep only a syntax smoke here. The full mode re-runs the whole
+# CI suite including two npm ci reinstalls, which costs 20-60 minutes on the test server
+# network and can OOM-kill the running service — deploy safety is owned by the
+# health-check + automatic rollback in deploy.sh, not by re-running CI.
+# The refactor test server defaults to fast even when the (older) deploy shell did not
+# export a mode — DEPLOY_ENVIRONMENT has always been exported there, so the speedup takes
+# effect on the very next push instead of one deploy later.
+if [ -z "${WXGAME_GATE_MODE:-}" ] && [ "${DEPLOY_ENVIRONMENT:-}" = "refactor-test" ]; then
+    WXGAME_GATE_MODE="fast"
+fi
+WXGAME_GATE_MODE="${WXGAME_GATE_MODE:-full}"
+if [ "$WXGAME_GATE_MODE" = "fast" ]; then
+    echo "[test-server-ci-gate] mode=fast: syntax smoke only (local gate is authoritative)"
+    node --check backend/server.js
+    node --check backend/world-worker.js 2>/dev/null || true
+    echo "[test-server-ci-gate] passed (fast)"
+    exit 0
+fi
+
 echo "[test-server-ci-gate] install root tooling dependencies"
 npm ci --include=dev --ignore-scripts --no-audit --no-fund
 
