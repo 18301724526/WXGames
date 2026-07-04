@@ -15,6 +15,7 @@
 // re-applied verbatim and re-judged by the deterministic core.
 
 const WorldCombatEncounterService = require('./WorldCombatEncounterService');
+const WorldExplorerActions = require('../worldExplorer/WorldExplorerActions');
 const BattleSimService = require('../battle/BattleSimService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const WorldMapService = require('../WorldMapService');
@@ -256,6 +257,17 @@ function resolveSession(
       resolvedAt,
       battleReportId: report.id,
     };
+    // AUTHORITATIVE retreat-return (connection point 2): after a non-victory (the player
+    // pulled back / was beaten) the formation is still standing next to a live enemy. Send
+    // it marching home so it 远离野怪, reusing WorldExplorerActions.returnWorldMarch (same
+    // route/status/homeOrigin bookkeeping any manual return uses). A victory does NOT
+    // return: the camp is cleared and the squad idles on the spot (spoils already applied).
+    // The frontend onResolve only refreshes; this backend hook is the single source of the
+    // return march. ROLLBACK: delete this block and the squad idles in place after retreat.
+    const survivors = Math.max(0, toInteger(attackerSnapshot?.soldiersRemaining, 0));
+    if (winner !== 'attacker' && survivors > 0 && mission.id) {
+      WorldExplorerActions.returnWorldMarch(gameState, mission.id, now);
+    }
   }
 
   gameState.worldCombat.recentReports = [

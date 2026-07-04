@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
 const WorldCampSpawner = require('../services/worldCombat/WorldCampSpawner');
+const WorldMapService = require('../services/WorldMapService');
 
 const CAMP_SEED = 'combat-camp-seed';
 
@@ -206,4 +207,120 @@ test('WorldCampSpawner is not required for the stub to exist (rollback safety)',
     client.encounters.some((e) => e.id === WorldCombatEncounterService.ENCOUNTER_ID),
     'stub must survive independent of camp spawning',
   );
+});
+
+// --- auto-engage + timeout fallback (2026-07-05) ---
+
+// A camp encounter + an idle mission standing ON the camp tile, with a real attacking
+// squad snapshot. Mirrors WorldCombatSessionService.test.js setup but shaped for the
+// arrival/timeout hooks (mission.combat pre-tagged with the marching encounter).
+function createEngagedGameState({ soldiers = 500 } = {}) {
+  const gameState = {
+    worldMap: { seed: 'combat-engage-seed', origin: { q: 0, r: 0 } },
+    territories: [{ id: 'capital', q: 0, r: 0 }],
+    activeCityId: 'capital',
+    cities: { capital: { id: 'capital', resources: { food: 100, wood: 100, knowledge: 100 } } },
+    resources: null,
+    famousPeople: [{ id: 'hero-1', name: 'Test Hero', attributes: { force: 90, command: 80 } }],
+    worldCombat: { encounters: [] },
+    exploreMissions: [],
+  };
+  gameState.resources = gameState.cities.capital.resources;
+  const now = new Date('2026-07-05T00:00:00.000Z');
+  WorldCombatEncounterService.normalizeCombatState(gameState, now);
+  const camp = gameState.worldCombat.encounters.find((e) => e.campArchetypeKey);
+  // Weaken the garrison so the overwhelming attacker deterministically wins on allOut.
+  camp.defender.soldiers = 1;
+  camp.defender.leader = null;
+  const campTileId = camp.tileId || WorldMapService.getTileId(camp.q, camp.r);
+  gameState.exploreMissions = [
+    {
+      id: 'mission-attacker',
+      status: 'idle',
+      position: { q: camp.q, r: camp.r, tileId: campTileId },
+      target: { q: camp.q, r: camp.r, tileId: campTileId },
+      formation: { cityId: 'capital', slot: 1 },
+      formationSnapshot: {
+        schema: 'formation-snapshot-v1',
+        cityId: 'capital',
+        slot: 1,
+        soldiersCommitted: soldiers,
+        soldiersRemaining: soldiers,
+        members: [{ personId: 'hero-1', soldiersCommitted: soldiers, soldiersRemaining: soldiers }],
+      },
+      combat: { encounterId: camp.id, status: 'marching', startedAt: now.toISOString() },
+    },
+  ];
+  return { gameState, camp, now };
+}
+
+test('resolveMissionArrival marks the mission engaged and does NOT settle the battle', () => {
+  const { gameState, camp, now } = createEngagedGameState();
+  const mission = gameState.exploreMissions[0];
+  const marker = WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now);
+
+  assert.ok(marker && marker.engaged === true, 'expected an engaged marker');
+  assert.equal(marker.encounter.id, camp.id);
+  assert.equal(mission.combat.status, 'engaged');
+  assert.equal(mission.combat.encounterId, camp.id);
+  assert.equal(typeof mission.combat.engagedAt, 'string');
+  assert.equal(mission.combat.battleReportId, null);
+  // No settlement: no report, camp still active at full (weakened) strength.
+  assert.equal(gameState.worldCombat.recentReports.length, 0);
+  const encounter = gameState.worldCombat.encounters.find((e) => e.id === camp.id);
+  assert.equal(encounter.status, 'active');
+});
+
+test('resolveMissionArrival is idempotent: re-running does not re-arm engagedAt', () => {
+  const { gameState, now } = createEngagedGameState();
+  const mission = gameState.exploreMissions[0];
+  WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now);
+  const firstEngagedAt = mission.combat.engagedAt;
+  const later = new Date(now.getTime() + 10000);
+  WorldCombatEncounterService.resolveMissionArrival(gameState, mission, later);
+  assert.equal(mission.combat.engagedAt, firstEngagedAt, 'engagedAt must not reset on re-run');
+  assert.equal(mission.combat.status, 'engaged');
+});
+
+test('resolveEngagedTimeouts force-settles an engaged mission only after the fallback window', () => {
+  const { gameState, camp, now } = createEngagedGameState();
+  const mission = gameState.exploreMissions[0];
+  WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now);
+
+  // Inside the window: no settlement yet.
+  const beforeWindow = new Date(
+    now.getTime() + WorldCombatEncounterService.AUTO_ENGAGE_FALLBACK_MS - 1,
+  );
+  assert.equal(WorldCombatEncounterService.resolveEngagedTimeouts(gameState, beforeWindow), 0);
+  assert.equal(mission.combat.status, 'engaged');
+
+  // Past the window: allOut fallback settles it.
+  const afterWindow = new Date(
+    now.getTime() + WorldCombatEncounterService.AUTO_ENGAGE_FALLBACK_MS + 1,
+  );
+  assert.equal(WorldCombatEncounterService.resolveEngagedTimeouts(gameState, afterWindow), 1);
+  assert.equal(mission.combat.status, 'resolved');
+  assert.equal(Boolean(mission.combat.battleReportId), true);
+  assert.equal(gameState.worldCombat.recentReports.length, 1);
+  const encounter = gameState.worldCombat.encounters.find((e) => e.id === camp.id);
+  assert.equal(encounter.status, 'resolved');
+});
+
+test('resolveEngagedTimeouts defers when an interactive session is open for that encounter', () => {
+  const { gameState, camp, now } = createEngagedGameState();
+  const mission = gameState.exploreMissions[0];
+  WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now);
+  // Simulate an open interactive session on the SAME encounter (player is mid-fight).
+  gameState.worldCombat.session = { status: 'open', encounterId: camp.id, battleId: 'wcs_x' };
+
+  const afterWindow = new Date(
+    now.getTime() + WorldCombatEncounterService.AUTO_ENGAGE_FALLBACK_MS + 1,
+  );
+  assert.equal(
+    WorldCombatEncounterService.resolveEngagedTimeouts(gameState, afterWindow),
+    0,
+    'must NOT settle while the player is playing the interactive battle',
+  );
+  assert.equal(mission.combat.status, 'engaged');
+  assert.equal(gameState.worldCombat.recentReports.length, 0);
 });

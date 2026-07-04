@@ -305,6 +305,11 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       newlyRevealedIds: getTileIdentities(newlyRevealedTiles).slice(0, 12),
     });
   }
+  // Offline safety net: force-settle any mission that has sat 'engaged' on an enemy tile
+  // longer than the fallback window (a player who never opened the interactive battle).
+  // Runs every tick/heartbeat that advances missions; defers to an open interactive
+  // session so it never double-settles a fight the player is actively playing.
+  WorldCombatEncounterService.resolveEngagedTimeouts(gameState, now);
   if (options.marchVerification?.enabled === true) {
     WorldMarchVerification.verifyMissions(gameState, now, options.marchVerification);
   }

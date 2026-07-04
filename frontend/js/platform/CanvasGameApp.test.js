@@ -1951,6 +1951,106 @@ test('CanvasGameApp publishes the live entityBattle session into BattleStore', (
   }
 });
 
+// --- auto-engage: maybeAutoEnterEngagedBattle (connection point 1, 2026-07-05) ---
+
+function makeEngagedMissionState({ status = 'idle', combatStatus = 'engaged', engagedAt = 't1' } = {}) {
+  return {
+    activeCityId: 'capital',
+    worldExplorerState: {
+      idleMissions: [
+        {
+          id: 'm1',
+          status,
+          position: { q: 2, r: -1 },
+          formation: { cityId: 'capital', slot: 1 },
+          combat: combatStatus
+            ? { status: combatStatus, encounterId: 'enc1', engagedAt }
+            : null,
+        },
+      ],
+    },
+  };
+}
+
+test('maybeAutoEnterEngagedBattle opens the interactive battle once per engagement', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: null }, // no scene open
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  const state = makeEngagedMissionState();
+
+  assert.equal(host.maybeAutoEnterEngagedBattle(state), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].missionId, 'm1');
+  assert.equal(calls[0].targetQ, 2);
+  assert.equal(calls[0].targetR, -1);
+  assert.equal(calls[0].engagement.encounterId, 'enc1');
+  assert.equal(calls[0].engagement.engagedAt, 't1');
+
+  // Same engagement on a re-sync: deduped, no second open.
+  assert.equal(host.maybeAutoEnterEngagedBattle(state), false);
+  assert.equal(calls.length, 1);
+});
+
+test('maybeAutoEnterEngagedBattle does not open while a battle scene is already open', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: { visible: true } }, // a scene IS open
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  assert.equal(host.maybeAutoEnterEngagedBattle(makeEngagedMissionState()), false);
+  assert.equal(calls.length, 0);
+});
+
+test('maybeAutoEnterEngagedBattle ignores non-engaged and non-idle missions', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: null },
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  // marching (not engaged) -> ignored
+  assert.equal(
+    host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ combatStatus: 'marching' })),
+    false,
+  );
+  // active (not idle) -> ignored
+  assert.equal(
+    host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ status: 'active' })),
+    false,
+  );
+  assert.equal(calls.length, 0);
+});
+
+test('a dismissed engagement is not re-opened until a NEW engagement arrives', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: null },
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  // Player closed the retreat window for engagement (m1/enc1/t1) without resolving.
+  host.markEngagementDismissed('m1', 'enc1', 't1');
+  assert.equal(host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ engagedAt: 't1' })), false);
+  assert.equal(calls.length, 0);
+
+  // A fresh engagement (new engagedAt) re-opens.
+  assert.equal(host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ engagedAt: 't2' })), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].engagement.engagedAt, 't2');
+});
+
 // Characterization tests for the entity-battle session cluster (god-file
 // re-decomposition slice 8). Written against the pre-extraction CanvasGameApp
 // bodies and kept UNCHANGED through the EntityBattleController extraction.

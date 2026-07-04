@@ -649,7 +649,7 @@ test('world march client state does not expose retired ready reports', () => {
   assert.equal(Object.prototype.hasOwnProperty.call(clientState, 'readyMissions'), false);
 });
 
-test('world combat encounter is seeded near capital and resolves when a formation arrives', () => {
+test('world combat encounter is seeded near capital, engages on arrival, and force-settles on timeout', () => {
   const now = new Date('2026-06-22T00:00:00.000Z');
   const gameState = GameStateNormalizer.createInitialGameState('world-combat-chain-test', { now });
   gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
@@ -693,11 +693,29 @@ test('world combat encounter is seeded near capital and resolves when a formatio
   assert.equal(started.mission.combat.encounterId, encounter.id);
   assert.equal(gameState.exploreMissions[0].combat.status, 'marching');
 
+  // Arrival now ENGAGES (opens the interactive "retreat window") instead of auto-settling.
   const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
   WorldExplorerService.advanceExploreMissions(gameState, finishAt);
+  const engagedMission = gameState.exploreMissions[0];
+  assert.equal(engagedMission.status, 'idle');
+  assert.equal(engagedMission.combat.status, 'engaged');
+  assert.equal(engagedMission.combat.encounterId, encounter.id);
+  assert.equal(typeof engagedMission.combat.engagedAt, 'string');
+  assert.equal(engagedMission.combat.battleReportId, null);
+  // Not settled yet: no report written, encounter still active.
+  assert.equal(gameState.worldCombat.recentReports.length, 0);
+  assert.equal(
+    gameState.worldCombat.encounters.find((item) => item.id === encounter.id).status,
+    'active',
+  );
+
+  // Offline fallback: nobody opened the battle. Advancing past AUTO_ENGAGE_FALLBACK_MS
+  // force-settles the engagement with an allOut resolveEncounterBattle.
+  const timeoutAt = new Date(finishAt.getTime() + WorldCombatEncounterService.AUTO_ENGAGE_FALLBACK_MS + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, timeoutAt);
   const resolvedMission = gameState.exploreMissions[0];
   const resolvedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
-  const clientState = WorldExplorerService.getClientState(gameState, finishAt);
+  const clientState = WorldExplorerService.getClientState(gameState, timeoutAt);
 
   assert.equal(resolvedMission.status, 'idle');
   assert.equal(resolvedMission.combat.status, 'resolved');
@@ -709,7 +727,7 @@ test('world combat encounter is seeded near capital and resolves when a formatio
   assert.equal(clientState.combat.activeEncounters.some((item) => item.id === encounter.id), true);
   assert.equal(clientState.combat.activeEncounters.find((item) => item.id === encounter.id).resolvedAt, null);
   assert.ok(resolvedMission.formationSnapshot.soldiersRemaining <= 180);
-  WorldCombatEncounterService.normalizeCombatState(gameState, finishAt);
+  WorldCombatEncounterService.normalizeCombatState(gameState, timeoutAt);
   const renormalizedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
   assert.equal(renormalizedEncounter.status, 'active');
 });
