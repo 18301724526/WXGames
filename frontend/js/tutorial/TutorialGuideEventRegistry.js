@@ -161,18 +161,13 @@
           TutorialFlowShared.stepBefore(step, steps.scoutFormationSaved)
         ) {
           return (
-            host.showSoftGuide?.(
-              'famous-persons-button',
-              '\u57ce\u90a6\u7684\u9053\u8def\u5df2\u7ecf\u6253\u5f00\uff0c\u4e00\u4f4d\u5584\u4e8e\u4fa6\u5bdf\u7684\u540d\u4eba\u52a0\u5165\u4e86\u6211\u4eec\u3002\u5148\u53bb\u540d\u4eba\u91cc\u770b\u770b\u4ed6\u7684\u5361\u7247\u3002',
-            ) || false
+            host.showSoftGuide?.('famous-persons-button', t('tutorial.guide.scoutFamousJoined')) ||
+            false
           );
         }
         if (stepEquals(step, steps.eraAdvancedTo2)) {
           return (
-            host.showSoftGuide?.(
-              'events-button',
-              '\u68ee\u6797\u8fb9\u7f18\u4f20\u6765\u4e86\u52a8\u9759\u3002\u5148\u53bb\u4e8b\u4ef6\u91cc\u770b\u4e00\u770b\uff0c\u628a\u6728\u6750\u5e26\u56de\u6765\u3002',
-            ) || false
+            host.showSoftGuide?.('events-button', t('tutorial.guide.forestEventHint')) || false
           );
         }
         if (!stepEquals(step, steps.eraAdvancedTo1)) return false;

@@ -102,7 +102,7 @@ class BuildBuildingCommandHandler {
           statusCode: 404,
           payload: buildFailurePayload(new Error('Game state not found'), trace, {
             error: 'GAME_STATE_NOT_FOUND',
-            message: 'Game state not found',
+            message: '游戏状态不存在',
           }),
         };
       }
@@ -206,7 +206,7 @@ class BuildBuildingCommandHandler {
           payload: buildFailurePayload(error, trace, {
             success: true,
             error: 'PROJECTION_FAILED_AFTER_COMMIT',
-            message: 'Command committed; client state must resync.',
+            message: '操作已生效，请重新同步游戏状态',
             committed: true,
             phase: trace.phase,
             resyncRequired: true,
@@ -219,7 +219,7 @@ class BuildBuildingCommandHandler {
         statusCode: 500,
         payload: buildFailurePayload(error, trace, {
           error: 'COMMAND_INTERNAL_ERROR',
-          message: 'BuildBuilding failed before commit.',
+          message: '建造操作未能完成，请重试',
           committed: false,
           phase: trace.phase,
         }),

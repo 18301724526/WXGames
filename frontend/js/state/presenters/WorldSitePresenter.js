@@ -43,7 +43,7 @@
         }));
       }
       if (effects.threatDefense) parts.push(this.t('world.site.effect.threatDefense', { value: effects.threatDefense }));
-      return parts.join('，') || this.t('world.site.summary.none');
+      return parts.join(this.t('common.inlineSeparator')) || this.t('world.site.summary.none');
     }
 
     static formatWorldSiteStatus(site = {}) {

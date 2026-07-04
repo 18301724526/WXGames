@@ -1,4 +1,22 @@
 (function (global) {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function t(key = '', params = {}) {
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params) : key;
+  }
+
   const sharedTileMapManifest = (() => {
     if (global.TileMapAssetManifest) return global.TileMapAssetManifest;
     if (typeof module !== 'undefined' && module.exports) {
@@ -242,11 +260,13 @@
 
     getWorldTileCachePrewarmLoadingMessage(assetPath = '') {
       const path = String(assetPath || '');
-      if (path.includes('/river-template/') || path.includes('/ocean-template/')) return '\u6b63\u5728\u51c6\u5907\u6c34\u9762\u6a21\u677f';
-      if (path.includes('/transition-template/')) return '\u6b63\u5728\u751f\u6210\u5730\u5757\u8fc7\u6e21\u7f13\u5b58';
-      if (path.startsWith('assets/art/world-site-')) return '\u6b63\u5728\u51c6\u5907\u636e\u70b9\u8d44\u6e90';
-      if (path.startsWith('assets/art/tile-map/')) return '\u6b63\u5728\u51c6\u5907\u5927\u5730\u56fe\u8d44\u6e90';
-      return '\u6b63\u5728\u751f\u6210\u5730\u5757\u7f13\u5b58';
+      if (path.includes('/river-template/') || path.includes('/ocean-template/')) {
+        return t('shell.loading.prewarm.waterTemplate');
+      }
+      if (path.includes('/transition-template/')) return t('shell.loading.prewarm.transitionCache');
+      if (path.startsWith('assets/art/world-site-')) return t('shell.loading.prewarm.siteAssets');
+      if (path.startsWith('assets/art/tile-map/')) return t('shell.loading.prewarm.tileMapAssets');
+      return t('shell.loading.prewarm.tileCache');
     }
 
     getWorldTileCachePrewarmLoadingChunkDelayMs() {

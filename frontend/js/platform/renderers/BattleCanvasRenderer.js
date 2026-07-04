@@ -700,7 +700,14 @@
         stroke: 'rgba(255, 226, 177, 0.5)',
         width: 2,
       });
-      this.drawText(String(sideView.leaderName || sideView.name || '\u5c06').slice(0, 1), x, y, {
+      this.drawText(
+        String(sideView.leaderName || sideView.name || this.t('battle.fallback.general')).slice(
+          0,
+          1,
+        ),
+        x,
+        y,
+        {
         size: 22,
         bold: true,
         color: '#f6e8c8',
@@ -747,7 +754,7 @@
       });
       const total = Math.max(1, view.turnCount || 1);
       const current = view.ended ? total : Math.min((view.turnIndex ?? requestedTurnIndex) + 1, total);
-      const turnText = '\u7b2c' + current + '/' + total + ' \u624b';
+      const turnText = this.t('battle.turnCounter', { current, total });
       this.drawText(`${turnText} - ${view.resultText || ''}`, this.width / 2, layout.topY + 40, {
         size: 12,
         color: '#d6b16e',

@@ -1,5 +1,6 @@
 (function (global) {
-  const LocaleText = (() => {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
@@ -9,7 +10,7 @@
       }
     }
     return null;
-  })();
+  }
 
   const TutorialFlowShared = (() => {
     if (global.TutorialFlowShared) return global.TutorialFlowShared;
@@ -24,7 +25,8 @@
   })();
 
   function t(key, params = {}) {
-    return LocaleText ? LocaleText.t(key, params) : key;
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params) : key;
   }
   function normalizeTutorialState(apiResponse) {
     const tutorial = apiResponse && apiResponse.tutorial;

@@ -15,6 +15,9 @@
     <script src="js/config/GameConfig.js?v=army-formation-v1"></script>
     <script src="js/config/FeatureFlags.js?v=architecture-refactor-feature-flags-v1"></script>
     <script src="js/config/LocaleTextRegistry.js?v=locale-text-registry-v1"></script>
+    <!-- Locale core loads right after its registry, before every t() consumer. -->
+    <script src="js/ecs/resource/LocaleText.js?v=locale-text-v1"></script>
+    <script src="js/ecs/resource/RewardText.js?v=reward-text-v1"></script>
     <script src="js/debug/ClientOperationLog.js?v=client-op-log-coord-collapse-v1"></script>
     <script src="js/debug/CodexWorldMapDiag.js?v=world-map-data-diag-v1"></script>
     <script src="js/debug/WorldMarchTrace.js?v=world-march-trace-replay-correlation-v1"></script>
@@ -56,8 +59,6 @@
     <script src="js/ecs/input/WorldMapInputIntent.js?v=world-map-input-intent-coord-collapse-v1"></script>
     <script src="js/ecs/input/WorldMapInputActionMap.js?v=world-map-input-action-coord-collapse-v1"></script>
     <script src="js/ecs/debug/DebugOverlaySnapshot.js?v=architecture-refactor-debug-overlay-snapshot-v1"></script>
-    <script src="js/ecs/resource/LocaleText.js?v=locale-text-v1"></script>
-    <script src="js/ecs/resource/RewardText.js?v=reward-text-v1"></script>
     <script src="js/config/AssetKeyRegistry.js?v=architecture-refactor-asset-key-registry-v1"></script>
     <script src="js/config/TileMapAssetManifest.js?v=army-formation-v1"></script>
     <script src="js/config/UnitSpriteManifest.js?v=unit-sprite-manifest-v1"></script>

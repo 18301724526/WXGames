@@ -177,7 +177,7 @@
       const soldiers = Number(requirements.soldiers);
       if (Number.isFinite(defense)) parts.push(this.t('event.requirement.defense', { value: this.formatResourceAmount(defense) }));
       if (Number.isFinite(soldiers)) parts.push(this.t('event.requirement.soldiers', { value: this.formatResourceAmount(soldiers) }));
-      return parts.join('，');
+      return parts.join(this.t('common.inlineSeparator'));
     }
 
     static buildEventRequirementParts(requirements = {}) {
@@ -266,7 +266,11 @@
       if (option?.reward) return this.formatEventReward(option.reward);
       const rows = this.buildEventOptionRows(option);
       const visibleRows = rows.filter((row) => !row.empty);
-      if (visibleRows.length) return visibleRows.map((row) => `${row.label} ${row.text}`).join('；');
+      if (visibleRows.length) {
+        return visibleRows
+          .map((row) => `${row.label} ${row.text}`)
+          .join(this.t('common.clauseSeparator'));
+      }
       return this.formatEventReward(option?.reward);
     }
 

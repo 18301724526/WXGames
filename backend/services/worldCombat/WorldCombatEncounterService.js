@@ -209,7 +209,7 @@ function resolveMarchTarget(gameState = {}, options = {}, now = new Date()) {
       return {
         success: false,
         error: 'WORLD_COMBAT_ENCOUNTER_NOT_FOUND',
-        message: 'Combat encounter is no longer available.',
+        message: '该敌军已不在此处。',
       };
     }
   } else {

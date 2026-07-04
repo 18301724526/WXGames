@@ -132,7 +132,7 @@ class AuthService {
   authMiddleware(req, res, next) {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '').trim();
-    if (!token) return res.status(401).json({ error: 'Unauthorized', message: 'Token missing' });
+    if (!token) return res.status(401).json({ error: 'Unauthorized', message: '登录凭证缺失，请重新登录' });
     try {
       const decoded = jwt.verify(token, this.JWT_SECRET, { clockTolerance: 60 });
       const username = this.normalizeUsername(decoded.username || decoded.playerId);
@@ -201,7 +201,7 @@ class AuthService {
     }
     const player = this.ensureWhitelistPlayer(username, getDefaultGameState, saveGameState);
     const gameState = getGameState(player.playerId);
-    if (!gameState) return { error: 'Game state not found' };
+    if (!gameState) return { error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在，请重新登录' };
     const lastOnline = new Date(gameState.updatedAt);
     const now = new Date();
     const offlineSeconds = Math.floor((now - lastOnline) / 1000);

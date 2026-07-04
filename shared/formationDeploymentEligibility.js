@@ -195,14 +195,14 @@ function getCombatDeploymentFailure(source = {}) {
     return {
       success: false,
       error: COMBAT_ERROR_PRIMARY_NO_SOLDIERS,
-      message: 'Primary general has no assigned soldiers.',
+      message: '主将没有配置士兵。',
       blocker,
     };
   }
   return {
     success: false,
     error: COMBAT_ERROR_NO_TROOPS,
-    message: 'No troops available to attack.',
+    message: '没有可出战的部队。',
     blocker,
   };
 }

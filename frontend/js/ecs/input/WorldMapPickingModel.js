@@ -44,7 +44,8 @@
     }
     return null;
   })();
-  const LocaleText = (() => {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
@@ -54,7 +55,7 @@
       }
     }
     return null;
-  })();
+  }
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -66,7 +67,8 @@
   }
 
   function t(key = '', params = {}) {
-    return LocaleText ? LocaleText.t(key, params) : key;
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params) : key;
   }
 
   function getActorTargetCoordSource(actor = {}) {

@@ -27,6 +27,7 @@
       'common.listSeparator': '、',
       'common.clauseSeparator': '；',
       'common.inlineSeparator': '，',
+      'common.parenthesized': '{text}（{note}）',
       'common.none': '无',
       'common.log.empty': '暂无日志',
       'common.requestLog.empty': '暂无请求记录',
@@ -193,6 +194,16 @@
       'tech.row.routeDirection': '路线倾向',
       'tech.route.default': '路线',
       'tech.route.civilization': '文明路线',
+      'tech.lane.agriculture': '农业',
+      'tech.lane.livelihood': '民生',
+      'tech.lane.administration': '秩序',
+      'tech.lane.knowledge': '知识',
+      'tech.lane.culture': '文化',
+      'tech.lane.engineering': '工程',
+      'tech.lane.industry': '工业',
+      'tech.lane.exploration': '探索',
+      'tech.lane.trade': '贸易',
+      'tech.lane.military': '军事',
       'tech.generic': '科技',
       'tech.era': '时代 {era}',
       'tech.action.research': '研究',
@@ -490,6 +501,47 @@
       'tutorial.highlight.openFamousPanel': '打开名人面板，进行一次寻访。',
       'tutorial.highlight.seekFamous': '点击寻访名人，新的候选人会进入名人馆等待你后续处理。',
       'tutorial.highlight.buildFirstHouse': '建造第一处民居，让族人有稳定的居所。',
+      'tutorial.guide.openScoutFamous': '打开名人，查看刚加入的侦察型英杰。',
+      'tutorial.guide.openScoutFamousDetail': '点开这张侦察型名人卡，记住他会带队出城探路。',
+      'tutorial.guide.pickScoutLeader': '选中这位侦察名人，他将成为首支侦察队的主将。',
+      'tutorial.guide.saveScoutFormation': '保存编队，接下来就可以出城侦察土地了。',
+      'tutorial.guide.conquerEmptyCity': '这是一座无主空城，点击占领，派人建立新据点。',
+      'tutorial.guide.renameNewCity': '给{name}取一个名字，让它成为真正的城市。',
+      'tutorial.guide.renameNewCity.fallbackName': '这座新城',
+      'tutorial.guide.focusCityNameInput': '先点击输入框，为新城填入一个名字。',
+      'tutorial.guide.submitCityName': '确认城市名称，接下来为我们的文明命名。',
+      'tutorial.guide.namePolityTitle': '为文明命名',
+      'tutorial.guide.namePolityMessage': '新城已经并入我们的版图，现在给这个新生文明一个名字。',
+      'tutorial.guide.focusPolityNameInput': '输入文明名称，这个名字会记录在势力档案里。',
+      'tutorial.guide.submitPolityName': '确认文明名称，这条强引导就只剩最后的科技说明了。',
+      'tutorial.guide.buildFirstFarm': '建造第一块农田，让食物供应先稳定下来。',
+      'tutorial.guide.openCivilizationForEra2': '回到文明，把聚落推向下一个时代。',
+      'tutorial.guide.advanceToEra2': '条件已经准备好，点击进阶进入聚落时代。',
+      'tutorial.guide.openEventsForForest': '打开事件，处理森林里的木材线索。',
+      'tutorial.guide.openForestEvent': '点开森林低语事件，先把可用的木材收下。',
+      'tutorial.guide.claimForestWood': '领取这批木材，我们马上建起伐木场。',
+      'tutorial.guide.buildLumbermill': '建造伐木场，让木材开始持续流入仓库。',
+      'tutorial.guide.openLumbermillTask': '打开任务，领取伐木场完成后的主线奖励。',
+      'tutorial.guide.claimLumbermillReward': '领取“让木材流入仓房”，下一次进阶的物资就到位了。',
+      'tutorial.guide.openCivilizationForEra3': '打开文明，用伐木场的物资推进到城邦时代。',
+      'tutorial.guide.advanceToEra3': '进阶到城邦时代，侦察与名人编队就会正式开放。',
+      'tutorial.guide.closeScoutFamousDetail': '卡片已经看过，先返回名人列表。',
+      'tutorial.guide.closeFamousPanel': '关闭名人面板，接下来回主城配置第一支侦察编队。',
+      'tutorial.guide.switchCityMilitaryTab': '切到城内军事，我们要把这位名人放进侦察编队。',
+      'tutorial.guide.openFirstFormation': '点击第一张编队卡片，把侦察名人放进队伍。',
+      'tutorial.guide.selectScoutTarget': '点选大地图上的一块目标地，我们会把侦察队派往那里。',
+      'tutorial.guide.openMarchFormationPicker': '目标已经标出，点击行军，选择本次出城的队伍。',
+      'tutorial.guide.startScoutMarch': '选择第一支侦察队出城，路线会留在大地图上。',
+      'tutorial.guide.claimFirstCityConquest': '队伍已经到达，点击完成占领，把这里纳入我们的版图。',
+      'tutorial.guide.openTechFinal': '打开科技，看看文明未来的发展路线。',
+      'tutorial.guide.techSoftGuide':
+        '科技点会影响文明的发展进程，不同路线会把聚落带向农业、军事或工业等不同侧重。接下来由你来决定第一项研究。',
+      'tutorial.guide.openDiscoveredEmptyCity': '点开侦察队发现的空城，准备建立第二处据点。',
+      'tutorial.guide.openCapitalForScout': '点开主城，去城内军事页配置第一支侦察编队。',
+      'tutorial.guide.enterCapitalForScout': '进入主城，在城内军事页配置侦察编队。',
+      'tutorial.guide.scoutFamousJoined':
+        '城邦的道路已经打开，一位善于侦察的名人加入了我们。先去名人里看看他的卡片。',
+      'tutorial.guide.forestEventHint': '森林边缘传来了动静。先去事件里看一看，把木材带回来。',
       'battle.scene.status.fighting': '交战中…',
       'battle.scene.status.settling': '结算中…',
       'battle.scene.result.win': '胜利',
@@ -583,6 +635,10 @@
       'battle.title.vs': '{attacker} vs {defender}',
       'battle.leader.unnamed': '无名领队',
       'battle.map.frontier': '边境战场',
+      'battle.turnCounter': '第{current}/{total} 手',
+      'battle.fallback.general': '将',
+      'battle.fallback.skill': '技能',
+      'battle.fallback.tactic': '战法',
       'battle.skill.none': '无战法',
       'battle.skill.basicOnly': '只普攻',
       'battle.status.noneLine': '状态：无',
@@ -636,6 +692,11 @@
       'shell.loading.assets': '正在加载游戏资源',
       'shell.loading.worldMapAssets': '正在准备大地图资源',
       'shell.loading.assetsReady': '资源准备完成',
+      'shell.loading.prewarm.waterTemplate': '正在准备水面模板',
+      'shell.loading.prewarm.transitionCache': '正在生成地块过渡缓存',
+      'shell.loading.prewarm.siteAssets': '正在准备据点资源',
+      'shell.loading.prewarm.tileMapAssets': '正在准备大地图资源',
+      'shell.loading.prewarm.tileCache': '正在生成地块缓存',
       'shell.network.title': '网络连接不稳定',
       'shell.network.reconnecting': '正在重连中',
       'shell.network.failureCount': '连续丢失 {count} 次心跳',
@@ -786,6 +847,8 @@
         '主将{name}兵力为 0，无法出征。请先为该编队分配士兵。',
       'world.march.deploy.deputyNoSoldiers': '副将{name}兵力为 0，出征后将无法加入战斗。',
       'world.march.deploy.deputiesNoSoldiers': '副将{names}兵力为 0，出征后将无法加入战斗。',
+      'world.march.deploy.blocked': '{name}当前无法出征。',
+      'world.march.deploy.warning': '{names}出征存在风险。',
       'world.march.deploy.blockedTitle': '无法出征',
       'world.march.deploy.confirmTitle': '确认出征',
       'world.march.deploy.confirmDeploy': '继续出征',
@@ -913,6 +976,7 @@
       'common.listSeparator': ', ',
       'common.clauseSeparator': '; ',
       'common.inlineSeparator': ', ',
+      'common.parenthesized': '{text} ({note})',
       'common.none': 'None',
       'common.log.empty': 'No logs',
       'common.requestLog.empty': 'No request records',
@@ -1079,6 +1143,16 @@
       'tech.row.routeDirection': 'Route direction',
       'tech.route.default': 'Route',
       'tech.route.civilization': 'Civilization route',
+      'tech.lane.agriculture': 'Agriculture',
+      'tech.lane.livelihood': 'Livelihood',
+      'tech.lane.administration': 'Order',
+      'tech.lane.knowledge': 'Knowledge',
+      'tech.lane.culture': 'Culture',
+      'tech.lane.engineering': 'Engineering',
+      'tech.lane.industry': 'Industry',
+      'tech.lane.exploration': 'Exploration',
+      'tech.lane.trade': 'Trade',
+      'tech.lane.military': 'Military',
       'tech.generic': 'Tech',
       'tech.era': 'Era {era}',
       'tech.action.research': 'Research',
@@ -1406,6 +1480,78 @@
         'Tap Seek — new candidates enter the hall for you to handle.',
       'tutorial.highlight.buildFirstHouse':
         'Build your first house so your people have a stable home.',
+      'tutorial.guide.openScoutFamous': 'Open Famous to meet the scout hero who just joined.',
+      'tutorial.guide.openScoutFamousDetail':
+        'Open this scout famous-person card — he will lead the team that scouts beyond the city.',
+      'tutorial.guide.pickScoutLeader':
+        'Select this scout famous person — he becomes the leader of your first scout team.',
+      'tutorial.guide.saveScoutFormation':
+        'Save the formation, and you can head out to scout the land.',
+      'tutorial.guide.conquerEmptyCity':
+        'This empty city is unclaimed — tap Conquer and send people to found a new outpost.',
+      'tutorial.guide.renameNewCity': 'Give {name} a name and make it a true city.',
+      'tutorial.guide.renameNewCity.fallbackName': 'this new city',
+      'tutorial.guide.focusCityNameInput':
+        'Tap the input box first and enter a name for the new city.',
+      'tutorial.guide.submitCityName':
+        'Confirm the city name — next we will name our civilization.',
+      'tutorial.guide.namePolityTitle': 'Name Your Civilization',
+      'tutorial.guide.namePolityMessage':
+        'The new city has joined our realm. Now give this newborn civilization a name.',
+      'tutorial.guide.focusPolityNameInput':
+        'Enter the civilization name — it will be recorded in the polity archives.',
+      'tutorial.guide.submitPolityName':
+        'Confirm the civilization name — only the final tech briefing remains in this guide.',
+      'tutorial.guide.buildFirstFarm': 'Build your first farm to stabilize the food supply.',
+      'tutorial.guide.openCivilizationForEra2':
+        'Return to Civilization and push the settlement into the next era.',
+      'tutorial.guide.advanceToEra2':
+        'Conditions are ready — tap Advance to enter the Settlement era.',
+      'tutorial.guide.openEventsForForest':
+        'Open Events and follow up on the timber lead in the forest.',
+      'tutorial.guide.openForestEvent':
+        'Open the forest whispers event and collect the available wood first.',
+      'tutorial.guide.claimForestWood':
+        'Claim this batch of wood — we will build a lumbermill right away.',
+      'tutorial.guide.buildLumbermill':
+        'Build the lumbermill so wood keeps flowing into the warehouse.',
+      'tutorial.guide.openLumbermillTask':
+        'Open Tasks and claim the main-line reward for finishing the lumbermill.',
+      'tutorial.guide.claimLumbermillReward':
+        'Claim “Wood into the Storehouse” — the supplies for the next advance are in place.',
+      'tutorial.guide.openCivilizationForEra3':
+        'Open Civilization and use the lumbermill supplies to advance to the City-State era.',
+      'tutorial.guide.advanceToEra3':
+        'Advance to the City-State era to unlock scouting and famous-person formations.',
+      'tutorial.guide.closeScoutFamousDetail':
+        'You have seen the card — return to the famous list first.',
+      'tutorial.guide.closeFamousPanel':
+        'Close the Famous panel, then return to the capital to set up the first scout formation.',
+      'tutorial.guide.switchCityMilitaryTab':
+        'Switch to the city Military tab — we will put this famous person into the scout formation.',
+      'tutorial.guide.openFirstFormation':
+        'Tap the first formation card and add the scout famous person to the team.',
+      'tutorial.guide.selectScoutTarget':
+        'Tap a target tile on the world map — we will send the scout team there.',
+      'tutorial.guide.openMarchFormationPicker':
+        'The target is marked — tap March and choose the team for this trip.',
+      'tutorial.guide.startScoutMarch':
+        'Send the first scout team out — the route stays on the world map.',
+      'tutorial.guide.claimFirstCityConquest':
+        'The team has arrived — tap Finish Conquest to bring this place into our realm.',
+      'tutorial.guide.openTechFinal': 'Open Tech and see the future routes of your civilization.',
+      'tutorial.guide.techSoftGuide':
+        'Tech points shape how your civilization develops; different routes lead the settlement toward agriculture, military, industry, and more. Now the first research is yours to choose.',
+      'tutorial.guide.openDiscoveredEmptyCity':
+        'Open the empty city your scouts discovered and prepare a second outpost.',
+      'tutorial.guide.openCapitalForScout':
+        'Open the capital and set up the first scout formation on the city Military page.',
+      'tutorial.guide.enterCapitalForScout':
+        'Enter the capital and configure the scout formation on the city Military page.',
+      'tutorial.guide.scoutFamousJoined':
+        'The road of the city-state is open, and a famous person skilled in scouting has joined us. Check the card in Famous first.',
+      'tutorial.guide.forestEventHint':
+        'Something stirs at the forest edge. Check Events first and bring the wood back.',
       'battle.scene.status.fighting': 'In battle…',
       'battle.scene.status.settling': 'Resolving…',
       'battle.scene.result.win': 'Victory',
@@ -1501,6 +1647,10 @@
       'battle.title.vs': '{attacker} vs {defender}',
       'battle.leader.unnamed': 'Unnamed Leader',
       'battle.map.frontier': 'Frontier Battlefield',
+      'battle.turnCounter': 'Turn {current}/{total}',
+      'battle.fallback.general': 'G',
+      'battle.fallback.skill': 'Skill',
+      'battle.fallback.tactic': 'Tactic',
       'battle.skill.none': 'No tactic',
       'battle.skill.basicOnly': 'Basic attacks only',
       'battle.status.noneLine': 'Status: None',
@@ -1555,6 +1705,11 @@
       'shell.loading.assets': 'Loading game assets',
       'shell.loading.worldMapAssets': 'Preparing world map assets',
       'shell.loading.assetsReady': 'Assets ready',
+      'shell.loading.prewarm.waterTemplate': 'Preparing water templates',
+      'shell.loading.prewarm.transitionCache': 'Building tile transition cache',
+      'shell.loading.prewarm.siteAssets': 'Preparing site assets',
+      'shell.loading.prewarm.tileMapAssets': 'Preparing world map assets',
+      'shell.loading.prewarm.tileCache': 'Building tile cache',
       'shell.network.title': 'Network connection is unstable',
       'shell.network.reconnecting': 'Reconnecting',
       'shell.network.failureCount': '{count} missed heartbeats',
@@ -1710,6 +1865,8 @@
         'Deputy {name} has 0 soldiers and will not join the battle after deployment.',
       'world.march.deploy.deputiesNoSoldiers':
         'Deputies {names} have 0 soldiers and will not join the battle after deployment.',
+      'world.march.deploy.blocked': '{name} cannot deploy right now.',
+      'world.march.deploy.warning': '{names} may be at risk after deployment.',
       'world.march.deploy.blockedTitle': 'Cannot Deploy',
       'world.march.deploy.confirmTitle': 'Confirm Deployment',
       'world.march.deploy.confirmDeploy': 'Deploy Anyway',

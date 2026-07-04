@@ -693,6 +693,12 @@ function main() {
   run('frontend ECS blockingPanel mirror retirement blocking guard', process.execPath, [
     'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.js',
   ]);
+  run('frontend locale lazy-resolution blocking guard', process.execPath, [
+    'scripts/check-frontend-locale-lazy-resolution.js',
+  ]);
+  run('frontend locale key coverage blocking guard', process.execPath, [
+    'scripts/check-frontend-locale-key-coverage.js',
+  ]);
   run('duplicate shared helpers blocking guard', process.execPath, [
     'scripts/check-duplicate-shared-helpers.js',
   ]);
