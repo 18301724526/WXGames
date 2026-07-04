@@ -15,7 +15,7 @@ const WATER_FEATURE_CACHE_LIMIT = 64;
 const HOME_RIVER_LENGTH = 7;
 const RIVER_MOUTH_SCAN_RADIUS = 32;
 
-const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
+const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean', 'shore'];
 const TILE_VISIBILITY_LEVELS = ['unknown', 'hidden', 'hinted', 'scouted', 'controlled'];
 const SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
 const SIDE_DIRECTIONS = {

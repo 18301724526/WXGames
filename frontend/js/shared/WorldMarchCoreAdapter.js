@@ -25,7 +25,14 @@
     // Single source for the manual-route length cap (mirrors shared/worldMarchCore.js;
     // the adapter test locks the export lists in sync).
     const MAX_MANUAL_ROUTE_LENGTH = 16;
+    // Mirrors shared/worldMarchCore.js: land units stop at shore tile centers and never
+    // enter tiles whose center is water (open ocean, river channels).
+    const MARCH_BLOCKED_TERRAINS = Object.freeze(['ocean', 'river']);
     const EPOCH_MILLISECONDS_THRESHOLD = 1000000000000;
+
+    function isMarchBlockedTerrain(terrain) {
+      return MARCH_BLOCKED_TERRAINS.includes(terrain);
+    }
 
     function toNumber(value, fallback = 0) {
       const number = Number(value);
@@ -538,6 +545,8 @@
       ARRIVAL_IDLE,
       FINISHED_STATUSES,
       MAX_MANUAL_ROUTE_LENGTH,
+      MARCH_BLOCKED_TERRAINS,
+      isMarchBlockedTerrain,
       toNumber,
       toInteger,
       toTimestamp,

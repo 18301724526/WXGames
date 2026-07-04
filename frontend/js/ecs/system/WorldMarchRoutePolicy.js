@@ -33,7 +33,8 @@
   }
 
   function isRouteTerrainBlocked(tile = null) {
-    return tile?.terrain === 'ocean';
+    // Single source: shared/worldMarchCore blocks ocean + river; shore stays passable.
+    return WorldMarchCore.isMarchBlockedTerrain(tile?.terrain);
   }
 
   function getMarchOrigin(state = {}, options = {}) {

@@ -8,7 +8,16 @@ const FINISHED_STATUSES = Object.freeze([STATUS_READY, STATUS_IDLE, STATUS_CANCE
 // Single source for the manual-route length cap: the backend route planner, the DTO the
 // server sends to clients, and the client-side march target policy must all agree.
 const MAX_MANUAL_ROUTE_LENGTH = 16;
+// Single source for march-blocking terrain: land units may stand on every tile whose
+// CENTER is on land (including 'shore' coast tiles) but never enter tiles whose center
+// is water — open ocean and river-channel tiles. Frontend button disabling, the backend
+// route planner (known and fogged branches), and tests must all consult this set.
+const MARCH_BLOCKED_TERRAINS = Object.freeze(['ocean', 'river']);
 const EPOCH_MILLISECONDS_THRESHOLD = 1000000000000;
+
+function isMarchBlockedTerrain(terrain) {
+  return MARCH_BLOCKED_TERRAINS.includes(terrain);
+}
 
 function toNumber(value, fallback = 0) {
   const number = Number(value);
@@ -513,6 +522,8 @@ module.exports = {
   ARRIVAL_IDLE,
   FINISHED_STATUSES,
   MAX_MANUAL_ROUTE_LENGTH,
+  MARCH_BLOCKED_TERRAINS,
+  isMarchBlockedTerrain,
   toNumber,
   toInteger,
   toTimestamp,

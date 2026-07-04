@@ -61,11 +61,41 @@ function resolveTransitionKey(tile, seed, q, r, terrain) {
   return getTerrainTransitionKey(seed, q, r, terrain);
 }
 
+// Water-family classification of ocean template sets: a tile whose CENTER sits in
+// water carries a 'full' template or any 'river-mouth-*' template; a tile that only
+// carries edge/corner templates has its center on land and is coastline ('shore').
+// Returns '' when the template set is empty (no ocean influence at all).
+function classifyOceanTemplates(templates = []) {
+  if (!Array.isArray(templates) || !templates.length) return '';
+  const centerInWater = templates.some((template) => (
+    template === 'full' || String(template).startsWith('river-mouth-')
+  ));
+  return centerInWater ? 'ocean' : 'shore';
+}
+
+// Terrains fully determined by the world seed's water pass. Stored values for these
+// are never authoritative: recomputing them is lossless and lets legacy saves written
+// before 'shore' existed self-heal ('ocean' on a coastline tile becomes 'shore').
+const WATER_FAMILY_TERRAINS = ['ocean', 'river', 'shore'];
+
+function isWaterFamilyTerrain(terrain) {
+  return WATER_FAMILY_TERRAINS.includes(terrain);
+}
+
+// Stored LAND terrain stays unconditionally authoritative (generation-context
+// materialized overrides must survive persistence); stored water-family terrain is
+// recomputed from the seed instead.
+function getAuthoritativeLandTerrain(terrain) {
+  if (isWaterFamilyTerrain(terrain)) return '';
+  return TERRAIN_TYPES.includes(terrain) || terrain === 'capital' ? terrain : '';
+}
+
 function chooseTerrain(seed, q, r) {
   const generation = WorldMapTopology.getGenerationCoord({ q, r });
   if (generation.q === 0 && generation.r === 0) return 'capital';
   if (isStartSafeLandCoord(generation.q, generation.r)) return chooseBaseTerrain(seed, generation.q, generation.r);
-  if (chooseOceanTemplates(seed, generation.q, generation.r).length) return 'ocean';
+  const waterTerrain = classifyOceanTemplates(chooseOceanTemplates(seed, generation.q, generation.r));
+  if (waterTerrain) return waterTerrain;
   if (getRiverPorts(seed, generation.q, generation.r).length) return 'river';
   return chooseBaseTerrain(seed, generation.q, generation.r);
 }
@@ -117,7 +147,7 @@ function getGenerationContextSalt(context = {}) {
 
 function chooseMaterializedTerrain(seed, q, r, generationContext = null) {
   const natural = chooseTerrain(seed, q, r);
-  if (['capital', 'ocean', 'river'].includes(natural)) return natural;
+  if (['capital', 'ocean', 'river', 'shore'].includes(natural)) return natural;
   const salt = getGenerationContextSalt(generationContext);
   if (!salt) return natural;
   const generation = WorldMapTopology.getGenerationCoord({ q, r });
@@ -146,9 +176,7 @@ function decorateTile(tile, seed) {
     };
   }
   const generation = WorldMapTopology.getGenerationCoord(tile);
-  const authoritativeTerrain = TERRAIN_TYPES.includes(tile?.terrain) || tile?.terrain === 'capital' || tile?.terrain === 'ocean'
-    ? tile.terrain
-    : '';
+  const authoritativeTerrain = getAuthoritativeLandTerrain(tile?.terrain);
   if (isStartSafeLandCoord(generation.q, generation.r)) {
     const terrain = authoritativeTerrain || chooseBaseTerrain(seed, generation.q, generation.r);
     return {
@@ -165,12 +193,12 @@ function decorateTile(tile, seed) {
   }
   const naturalOceanTemplates = chooseOceanTemplates(seed, generation.q, generation.r);
   const naturalRiverPorts = getRiverPorts(seed, generation.q, generation.r);
-  const terrain = authoritativeTerrain || (naturalOceanTemplates.length
-    ? 'ocean'
-    : naturalRiverPorts.length
+  const naturalWaterTerrain = classifyOceanTemplates(naturalOceanTemplates);
+  const terrain = authoritativeTerrain || naturalWaterTerrain
+    || (naturalRiverPorts.length
       ? 'river'
       : chooseBaseTerrain(seed, generation.q, generation.r));
-  const oceanTemplates = terrain === 'ocean' ? naturalOceanTemplates : [];
+  const oceanTemplates = ['ocean', 'shore'].includes(terrain) ? naturalOceanTemplates : [];
   const riverPorts = terrain === 'river' ? naturalRiverPorts : [];
   return {
     ...tile,
@@ -230,9 +258,7 @@ function normalizeTile(rawTile, seed, now = new Date()) {
     canonicalId: rawTile.canonicalId || topology.canonicalId,
     worldQ: rawTile.worldQ ?? topology.worldQ,
     worldR: rawTile.worldR ?? topology.worldR,
-    terrain: TERRAIN_TYPES.includes(rawTile.terrain) || rawTile.terrain === 'capital' || rawTile.terrain === 'ocean'
-      ? rawTile.terrain
-      : chooseTerrain(seed, q, r),
+    terrain: getAuthoritativeLandTerrain(rawTile.terrain) || chooseTerrain(seed, q, r),
     discovered: rawTile.discovered !== false,
     visible: rawTile.visible !== false,
     visibility: rawTile.visibility,
@@ -252,9 +278,11 @@ module.exports = {
   chooseBaseTerrain,
   chooseMaterializedTerrain,
   chooseTerrain,
+  classifyOceanTemplates,
   createTile,
   decorateTile,
   getTerrainTransitionKey,
   isStartSafeLandCoord,
+  isWaterFamilyTerrain,
   normalizeTile,
 };

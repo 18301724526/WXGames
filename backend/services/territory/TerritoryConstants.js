@@ -15,7 +15,7 @@ const MAX_MIGRATION_SITE_SEARCH_DISTANCE = 48;
 const POST_WAR_FAMOUS_PERSON_ENABLED = false;
 const MIN_EXPEDITION_SOLDIERS = 100;
 const SOLDIER_SCALE = 100;
-const MAP_TERRAIN_TYPES = new Set(['capital', 'plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean']);
+const MAP_TERRAIN_TYPES = new Set(['capital', 'plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean', 'shore']);
 const PLANNING_TERRAIN_BY_MAP_TERRAIN = {
   capital: 'plains',
   plains: 'plains',
@@ -26,6 +26,7 @@ const PLANNING_TERRAIN_BY_MAP_TERRAIN = {
   desert: 'hills',
   river: 'river',
   ocean: 'coast',
+  shore: 'coast',
 };
 
 const DIRECTIONS = {

@@ -12,6 +12,10 @@
     desert: { label: 'Desert', labelKey: 'home.planning.terrain.desert', path: `${TILE_ROOT}tile-terrain-desert.png` },
     river: { label: 'River', labelKey: 'home.planning.terrain.river', path: `${TILE_ROOT}tile-terrain-river.png`, water: 'river' },
     ocean: { label: 'Ocean', labelKey: 'home.planning.terrain.ocean', path: `${TILE_ROOT}ocean-template/tile-ocean-water-full.png`, water: 'ocean' },
+    // Passable coastline: pixel-identical to ocean (same water animation + shoreline
+    // templates); only the display name differs. Without this entry getTerrainAsset()
+    // silently falls back to plains and shore tiles lose their water base.
+    shore: { label: 'Ocean', labelKey: 'home.planning.terrain.shore', path: `${TILE_ROOT}ocean-template/tile-ocean-water-full.png`, water: 'ocean' },
   };
 
   const FEATURE_ASSETS = {
@@ -160,7 +164,7 @@
   }
 
   function getTileTemplateAssets(tile = {}) {
-    if (tile.terrain === 'ocean') {
+    if (tile.terrain === 'ocean' || tile.terrain === 'shore') {
       const keys = Array.isArray(tile.oceanTemplates) && tile.oceanTemplates.length
         ? tile.oceanTemplates
         : ['full'];
