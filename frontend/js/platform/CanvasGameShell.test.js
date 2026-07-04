@@ -3007,3 +3007,29 @@ test('CanvasGameShell routes active missions kept in mission list to actor anima
   assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
   assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
 });
+
+test('CanvasGameShell re-renders fog on the actor animation cadence (throttled ~8fps)', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
+    runtime: {},
+  });
+  let nowMs = 100000;
+  shell.now = () => nowMs;
+  shell.getWorldEpochNowMs = () => nowMs;
+  shell.worldMapRuntime = { getLastTileMapContext: () => ({ tileMapView: {}, viewport: {}, frame: {} }) };
+  shell.renderWorldFogLayer = (context, options) => {
+    calls.push(['fog', nowMs, Boolean(context), options?.epochNowMs]);
+    return true;
+  };
+
+  // First call renders; a second call inside the 125ms window is throttled; after the
+  // window it renders again — the smooth-reveal cadence while a march animates.
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), true);
+  nowMs += 50;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
+  nowMs += 100;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), true);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0][2], true, 'fog render receives the runtime frame context');
+});
