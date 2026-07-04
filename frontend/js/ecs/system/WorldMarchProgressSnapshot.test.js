@@ -136,6 +136,42 @@ test('WorldMarchProgressSnapshot exposes render-ready route tiles without reveal
   assert.deepEqual(nextSegmentActor.renderReadyTileIds, ['tile_1_0', 'tile_2_0']);
 });
 
+test('WorldMarchProgressSnapshot projects the current route-segment grid facing onto the actor', () => {
+  // L-shaped axis-aligned route: (0,0)->(1,0)->(2,0) walks +q (右下 = '3'), then the last
+  // leg (2,0)->(2,-1) walks -r (右上 = '1'). Facing follows the segment being traversed.
+  const lMission = createMission({
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    position: { q: 0, r: 0, tileId: 'tile_0_0' },
+    target: { q: 2, r: -1, tileId: 'tile_2_-1' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1 },
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 2 },
+      { q: 2, r: -1, tileId: 'tile_2_-1', step: 3 },
+    ],
+    startedAt: '2026-06-06T00:00:00.000Z',
+    nextStepAt: '2026-06-06T00:00:10.000Z',
+    completesAt: '2026-06-06T00:00:30.000Z',
+  });
+
+  const firstLeg = WorldMarchProgressSnapshot.buildActorFromMission(lMission, {
+    nowMs: new Date('2026-06-06T00:00:05.000Z').getTime(),
+  });
+  const lastLeg = WorldMarchProgressSnapshot.buildActorFromMission(lMission, {
+    nowMs: new Date('2026-06-06T00:00:25.000Z').getTime(),
+  });
+
+  assert.equal(firstLeg.facing, '3');
+  assert.equal(lastLeg.facing, '1');
+
+  // Idle units keep the facing of their final segment; unit key defaults to the manifest.
+  const idle = WorldMarchProgressSnapshot.buildActorFromMission(
+    createMission({ status: 'idle' }),
+    { nowMs: new Date('2026-06-06T00:00:25.000Z').getTime() },
+  );
+  assert.equal(idle.facing, '3');
+  assert.equal(idle.unitKey, 'scout_squad_default');
+});
+
 test('WorldMarchProgressSnapshot canonicalizes stale tile ids through stable axes', () => {
   const coord = WorldMarchProgressSnapshot.normalizeCoord({
     x: 4,

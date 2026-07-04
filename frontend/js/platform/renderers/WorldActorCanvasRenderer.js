@@ -98,7 +98,7 @@
     }
 
     getActorFramePath(actor = {}, options = {}) {
-      const unitKey = actor.unitKey || 'scout_squad_default';
+      const unitKey = actor.unitKey || UnitSpriteManifest?.DEFAULT_MARCH_UNIT_KEY || 'scout_squad_default';
       const animationId = actor.status === 'idle' ? 'move' : (actor.animationId || 'move');
       const frames = UnitSpriteManifest?.getFramePaths?.(unitKey, animationId) || [];
       if (!frames.length) return '';
@@ -201,20 +201,54 @@
       return true;
     }
 
+    // The world-actor spine renderer (a single-context multi-skeleton webgl layer) is an
+    // optional plugin resolved from the renderer dependency registry. When absent, every
+    // actor draws through the 2D sprite path — so this seam is fully removable.
+    getWorldActorSpineRenderer() {
+      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldActorSpineRenderer') || null;
+    }
+
+    getActorRenderScale(viewport = {}) {
+      return Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
+    }
+
+    buildActorSpineFrame(actor = {}, point = {}, viewport = {}) {
+      return {
+        id: actor.id || actor.missionId || '',
+        unitKey: actor.unitKey || UnitSpriteManifest?.DEFAULT_MARCH_UNIT_KEY || 'scout_squad_default',
+        facing: actor.facing || '',
+        status: actor.status || 'active',
+        x: Number(point.x) || 0,
+        y: Number(point.y) || 0,
+        scale: this.getActorRenderScale(viewport),
+      };
+    }
+
     renderActors(actors = [], viewport = {}, geometry = {}, options = {}) {
       const ctx = this.getActorRenderCtx(options);
       const diag = this.getActorOverlayDiag(options);
       if (diag) diag.drawnCanvasId = getCanvasId(ctx);
-      if (!Array.isArray(actors) || !actors.length) return false;
+      const spine = this.getWorldActorSpineRenderer();
+      if (!Array.isArray(actors) || !actors.length) {
+        spine?.syncActors?.([], viewport);
+        return false;
+      }
       let rendered = false;
+      const spineFrames = [];
       actors.forEach((actor) => {
         const point = this.getActorScreenPoint(actor, viewport, geometry);
         const targetPoint = this.getActorTargetScreenPoint(actor, viewport, geometry);
         const actorRenderOptions = { ...options, ctx };
         if (actor.status === 'active') this.drawMarchArrow(point, targetPoint, actorRenderOptions);
-        if (this.drawActorUnit(actor, point, viewport, actorRenderOptions)) rendered = true;
+        if (spine?.canRenderActor?.(actor)) {
+          spineFrames.push(this.buildActorSpineFrame(actor, point, viewport));
+          rendered = true;
+        } else if (this.drawActorUnit(actor, point, viewport, actorRenderOptions)) {
+          rendered = true;
+        }
         this.addActorHitTarget(actor, point);
       });
+      spine?.syncActors?.(spineFrames, viewport);
       return rendered;
     }
 
