@@ -189,3 +189,65 @@ test('WorldWorkerService keeps its interval referenced for standalone PM2 worker
     global.clearInterval = originalClearInterval;
   }
 });
+
+test('WorldWorkerService re-reads the latest revision and retries on conflict', () => {
+  // Active players write through the API while the worker ticks; the worker must not
+  // starve them: on GAME_STATE_REVISION_CONFLICT it re-reads the fresh state and retries.
+  let saves = 0;
+  let reads = 0;
+  const service = new WorldWorkerService({
+    repository: {
+      findRecentlyActive() {
+        return [{ playerId: 'hot-player', revision: 1 }];
+      },
+      findByPlayerId(playerId) {
+        reads += 1;
+        return { playerId, revision: 1 + reads };
+      },
+      save() {
+        saves += 1;
+        if (saves === 1) {
+          const error = new Error('Game state revision conflict');
+          error.code = 'GAME_STATE_REVISION_CONFLICT';
+          throw error;
+        }
+      },
+    },
+    gameStateService: { advanceRuntimeState: (state) => state },
+    now: () => new Date('2026-07-04T00:00:05.000Z'),
+  });
+
+  const summary = service.tickOnce();
+
+  assert.equal(summary.processedCount, 1, 'conflicted player is retried and advanced');
+  assert.equal(summary.errorCount, 0);
+  assert.equal(saves, 2);
+  assert.equal(reads >= 2, true, 'fresh state re-read after the conflict');
+});
+
+test('WorldWorkerService gives up after bounded conflict retries without erroring', () => {
+  const service = new WorldWorkerService({
+    repository: {
+      findRecentlyActive() {
+        return [{ playerId: 'hottest-player' }];
+      },
+      findByPlayerId(playerId) {
+        return { playerId };
+      },
+      save() {
+        const error = new Error('Game state revision conflict');
+        error.code = 'GAME_STATE_REVISION_CONFLICT';
+        throw error;
+      },
+    },
+    gameStateService: { advanceRuntimeState: (state) => state },
+    now: () => new Date('2026-07-04T00:00:05.000Z'),
+  });
+
+  const summary = service.tickOnce();
+
+  // The player just waits for the next tick — a delayed march, never a starved one,
+  // and never a crash-loop error entry.
+  assert.equal(summary.processedCount, 0);
+  assert.equal(summary.errorCount, 1);
+});

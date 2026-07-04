@@ -65,6 +65,33 @@ class WorldWorkerService {
     return advanced;
   }
 
+  // ACTIVE players (the ones watching their march move) are exactly the ones whose API
+  // writes race this worker. The old flow advanced a snapshot taken before the loop and
+  // dropped the player on a revision conflict — under steady client traffic every tick
+  // conflicted and marches starved forever. Re-read the LATEST revision per player and
+  // retry the advance on conflict; a player hot enough to win every retry just waits for
+  // the next tick (5s), which only delays a march, never starves it.
+  advancePlayerWithRetry(playerId, now, attempts = 3, initialState = null) {
+    let candidate = initialState;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const fresh = playerId && typeof this.repository?.findByPlayerId === 'function'
+        ? this.repository.findByPlayerId(playerId)
+        : null;
+      if (fresh) candidate = fresh;
+      if (!candidate) return { advanced: false, reason: 'missing-state' };
+      try {
+        this.advanceState(candidate, now);
+        return { advanced: true, attempts: attempt };
+      } catch (error) {
+        if (error?.code !== 'GAME_STATE_REVISION_CONFLICT' || attempt === attempts) {
+          throw error;
+        }
+        candidate = null;
+      }
+    }
+    return { advanced: false, reason: 'conflict-exhausted' };
+  }
+
   tickOnce() {
     if (this.running) {
       return {
@@ -84,8 +111,9 @@ class WorldWorkerService {
       const gameStates = this.getRecentlyActive(now);
       for (const rawState of gameStates) {
         try {
-          this.advanceState(rawState, now);
-          processedCount += 1;
+          const playerId = rawState?.playerId || '';
+          const result = this.advancePlayerWithRetry(playerId, now, 3, rawState);
+          if (result.advanced) processedCount += 1;
         } catch (error) {
           errors.push({
             playerId: rawState?.playerId || '',
