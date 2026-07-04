@@ -499,6 +499,8 @@
       'battle.scene.cannotOpenHere': '无法在此格开战',
       'battle.scene.settleFailed': '战斗结算失败: {message}',
       'worldMap.exploreProgress': '探索中 {done}/{total}',
+      'worldMap.marchEta': '目标 {steps} 格 · 预计 {seconds} 秒',
+      'worldMap.marchEta.blocked': '路线受阻，换个目标试试',
       'worldMap.marchHint.title': '点选地图行军',
       'worldMap.marchHint.subtitle': '选择目标后派出队伍',
       'worldMap.backToCity': '回到本城',
