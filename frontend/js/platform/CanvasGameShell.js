@@ -610,6 +610,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const layerMetrics = this.getCanvasLayerMetrics?.('worldMap', {}) || {};
             this.worldMapRenderer = new RendererCtor({
               canvas: mapCanvas,
+              getWorldActorSpineRenderer: this.getWorldActorSpineRenderer?.bind(this),
               presenter: this.presenter,
               loadTrace: this.loadTrace || this.lastGame?.loadTrace || null,
               pixelRatio: this.runtime?.pixelRatio,
@@ -640,6 +641,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const actorMetrics = this.getCanvasLayerMetrics?.('worldActor', this.getCanvasLayerMetrics?.('worldMap', {}) || {}) || {};
             this.worldActorLayerRenderer = new RendererCtor({
               canvas: actorCanvas,
+              getWorldActorSpineRenderer: this.getWorldActorSpineRenderer?.bind(this),
               presenter: this.presenter,
               loadTrace: this.loadTrace || this.lastGame?.loadTrace || null,
               pixelRatio: this.runtime?.pixelRatio,
@@ -731,6 +733,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             getCanvasLayerMetrics: this.getCanvasLayerMetrics?.bind(this),
             setCanvasLayerVisible: this.setCanvasLayerVisible?.bind(this),
             requestOverlayRenderFrame: this.requestOverlayRenderFrame?.bind(this),
+            getWorldActorSpineRenderer: this.getWorldActorSpineRenderer?.bind(this),
             assetCache: sharedAssetCache,
             assetMetricsCache: sharedAssetMetricsCache,
             worldTileMaskCache: sharedWorldTileMaskCache,

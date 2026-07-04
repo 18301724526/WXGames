@@ -333,6 +333,38 @@ test('WorldActorCanvasRenderer falls back to host frame time without render epoc
   );
 });
 
+test('WorldActorCanvasRenderer walks the host chain to reach the shell-owned spine renderer', () => {
+  const spine = { canRenderActor: () => false };
+  const shell = { getWorldActorSpineRenderer: () => spine };
+  // Deep chain like production: actorRenderer.host -> mapRenderer -> h5Renderer -> shell.
+  const h5 = { host: shell };
+  const mapRenderer = { host: h5 };
+  const renderer = new WorldActorCanvasRenderer({ host: mapRenderer });
+  assert.equal(renderer.getWorldActorSpineRenderer(), spine);
+});
+
+test('WorldActorCanvasRenderer resolves the spine renderer through a .shell backref hop', () => {
+  const spine = { canRenderActor: () => false };
+  const shell = { getWorldActorSpineRenderer: () => spine };
+  const renderer = new WorldActorCanvasRenderer({ host: { shell } });
+  assert.equal(renderer.getWorldActorSpineRenderer(), spine);
+});
+
+test('WorldActorCanvasRenderer keeps walking past a host whose spine getter returns null', () => {
+  // Reproduces the production break: an intermediate forwarder (WorldMapCanvasRenderer) has the
+  // method but its own chain is dead, so it returns null — the walk must continue to the shell.
+  const spine = { canRenderActor: () => false };
+  const shell = { getWorldActorSpineRenderer: () => spine };
+  const deadForwarder = { getWorldActorSpineRenderer: () => null, host: shell };
+  const renderer = new WorldActorCanvasRenderer({ host: deadForwarder });
+  assert.equal(renderer.getWorldActorSpineRenderer(), spine);
+});
+
+test('WorldActorCanvasRenderer returns null when no host in the chain owns a spine renderer', () => {
+  const renderer = new WorldActorCanvasRenderer({ host: { host: { host: null } } });
+  assert.equal(renderer.getWorldActorSpineRenderer(), null);
+});
+
 test('WorldActorCanvasRenderer routes spine-capable actors to the spine renderer instead of 2D', () => {
   const host = createHost();
   const renderer = new WorldActorCanvasRenderer({ host });

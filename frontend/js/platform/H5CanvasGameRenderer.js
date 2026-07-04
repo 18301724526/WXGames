@@ -42,6 +42,13 @@
       this.requestOverlayRenderFrame = typeof options.requestOverlayRenderFrame === 'function'
         ? options.requestOverlayRenderFrame
         : null;
+      // Terminal host of the world-map render tree: expose the shell-owned world actor spine
+      // renderer accessor here so the render host chain (WorldActorCanvasRenderer ->
+      // WorldMapCanvasRenderer -> this) can reach it. Only set when provided so absence leaves
+      // the host-chain walk to keep looking.
+      if (typeof options.getWorldActorSpineRenderer === 'function') {
+        this.getWorldActorSpineRenderer = options.getWorldActorSpineRenderer;
+      }
     }
 
     createImage(src) {
