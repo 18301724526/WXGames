@@ -1417,6 +1417,8 @@
       'battle.scene.cannotOpenHere': 'Cannot start a battle on this tile',
       'battle.scene.settleFailed': 'Failed to resolve battle: {message}',
       'worldMap.exploreProgress': 'Exploring {done}/{total}',
+      'worldMap.marchEta': 'Target {steps} tiles away · ~{seconds}s march',
+      'worldMap.marchEta.blocked': 'Route blocked — try another target',
       'worldMap.marchHint.title': 'Tap the map to march',
       'worldMap.marchHint.subtitle': 'Pick a target, then send your troops',
       'worldMap.backToCity': 'Back to City',
