@@ -42,12 +42,23 @@ function makeHost(state = {}, nowMs = Date.parse('2026-06-21T00:00:05.000Z')) {
   };
 }
 
-test('WorldMarchOptimisticState keeps local predicted mission when authority is only stale', () => {
+test('WorldMarchOptimisticState keeps smooth predicted position while taking authority fields', () => {
   const nowMs = Date.parse('2026-06-21T00:00:05.000Z');
   const localMission = makeMission();
   const serverMission = makeMission({
     position: { q: 0, r: 0, tileId: 'tile_0_0' },
-    revealedTileIds: [],
+    revealedTileIds: ['tile_1_0'],
+    route: [
+      {
+        q: 1,
+        r: 0,
+        step: 1,
+        tileId: 'tile_1_0',
+        revealed: true,
+        revealedAt: '2026-06-21T00:00:04.000Z',
+      },
+      { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false, revealedAt: null },
+    ],
   });
   const host = makeHost(
     {
@@ -82,6 +93,72 @@ test('WorldMarchOptimisticState keeps local predicted mission when authority is 
   const current = WorldMarchCore.getCurrentCoord(reconciled.activeMission, nowMs);
   assert.equal(current.q, 0.5);
   assert.equal(reconciled.activeMission._optimistic.pending, true);
+  assert.deepEqual(reconciled.activeMission.revealedTileIds, ['tile_1_0']);
+  assert.equal(reconciled.activeMission.route[0].revealed, true);
+  assert.equal(host.networkState.status, 'online');
+});
+
+test('WorldMarchOptimisticState converges a stale active mirror to authority idle in one pass', () => {
+  const nowMs = Date.parse('2026-06-21T00:00:25.000Z');
+  const localMission = makeMission({
+    _optimistic: { pending: false, pendingId: '', action: 'startWorldMarch', reconciled: true },
+  });
+  const serverMission = makeMission({
+    status: 'idle',
+    position: { q: 2, r: 0, tileId: 'tile_2_0' },
+    revealedTileIds: ['tile_1_0', 'tile_2_0'],
+    route: [
+      {
+        q: 1,
+        r: 0,
+        step: 1,
+        tileId: 'tile_1_0',
+        revealed: true,
+        revealedAt: '2026-06-21T00:00:10.000Z',
+      },
+      {
+        q: 2,
+        r: 0,
+        step: 2,
+        tileId: 'tile_2_0',
+        revealed: true,
+        revealedAt: '2026-06-21T00:00:20.000Z',
+      },
+    ],
+    nextStepAt: null,
+    completedAt: '2026-06-21T00:00:20.000Z',
+  });
+  const host = makeHost(
+    {
+      worldExplorerState: {
+        missions: [localMission],
+        activeMission: localMission,
+        idleMissions: [],
+      },
+    },
+    nowMs,
+  );
+
+  const reconciled = WorldMarchOptimisticState.reconcileWorldExplorerState(
+    host,
+    {
+      missions: [serverMission],
+      activeMission: null,
+      idleMissions: [serverMission],
+    },
+    { epochNowMs: nowMs },
+  );
+
+  assert.equal(reconciled.activeMission, null);
+  assert.equal(reconciled.idleMissions.length, 1);
+  assert.equal(reconciled.idleMissions[0].status, 'idle');
+  assert.equal(reconciled.idleMissions[0].completedAt, '2026-06-21T00:00:20.000Z');
+  assert.deepEqual(reconciled.idleMissions[0].revealedTileIds, ['tile_1_0', 'tile_2_0']);
+  assert.equal(
+    reconciled.idleMissions[0].route.every((step) => step.revealed),
+    true,
+  );
+  assert.equal(reconciled.idleMissions[0]._optimistic.reconciled, true);
   assert.equal(host.networkState.status, 'online');
 });
 

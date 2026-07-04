@@ -55,10 +55,14 @@
     );
   }
 
+  // Authority owns every server-side mission field (status, position, route reveal
+  // flags, revealedTileIds, timing): visuals are re-derived per frame from
+  // (mission, nowMs), so the stored mirror must never retain stale local copies.
+  // Local contributes only omitted-field backfill and the _optimistic bookkeeping
+  // that pending reconciliation still needs.
   function mergeAuthorityIntoLocal(localMission = {}, authorityMission = {}, pending = null) {
     return {
       ...clonePlain(authorityMission),
-      ...clonePlain(localMission),
       id: authorityMission.id || localMission.id,
       formation: clonePlain(authorityMission.formation || localMission.formation || {}),
       formationSnapshot: clonePlain(
