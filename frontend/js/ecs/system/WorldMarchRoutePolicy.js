@@ -71,6 +71,10 @@
     const knownTiles = getKnownTileMap(options.tileMapView || state.territoryState?.worldMap || {});
     const serverRouteCap = Number(state.worldExplorerState?.maxManualRouteLength) || 0;
     const routeResult = WorldMarchCore.evaluateLinearMarchRoute(origin, coord, {
+      // Four grid-axis directions only — must match the server's authoritative route
+      // (WorldExplorerRoutePlanner also passes axisAligned) so the previewed route and the
+      // march-button gate agree with what the server will actually walk.
+      axisAligned: true,
       maxLength: options.maxLength || serverRouteCap || MAX_MANUAL_ROUTE_LENGTH,
       width: options.worldWidth || 1024,
       height: options.worldHeight || 1024,

@@ -97,6 +97,53 @@ test('worldMarchCore builds wrapped manual routes with the same linear stepping 
   assert.deepEqual(route.target, { q: 2, r: -1, tileId: 'tile_2_-1' });
 });
 
+test('worldMarchCore axis-aligned route walks the four grid directions only (no diagonal shortcut)', () => {
+  // Same (0,0)->(2,-1) target that the diagonal builder cuts in 2 steps becomes a
+  // 3-step staircase: no step changes both q and r; each carries its facing dir.
+  // Larger-remaining axis first (ties -> q): walk q,q then r for (2,-1).
+  const route = WorldMarchCore.buildAxisAlignedRoute(
+    { q: 0, r: 0 },
+    { q: 2, r: -1 },
+    { maxLength: 16, width: 1024, height: 1024, wrapping: true },
+  );
+  assert.equal(route.success, true);
+  assert.equal(route.distance, 3, 'Manhattan distance |2|+|-1|');
+  assert.deepEqual(route.route, [
+    { q: 1, r: 0, step: 1, tileId: 'tile_1_0', dir: '3' }, // +q => 右下
+    { q: 2, r: 0, step: 2, tileId: 'tile_2_0', dir: '3' }, // +q => 右下
+    { q: 2, r: -1, step: 3, tileId: 'tile_2_-1', dir: '1' }, // -r => 右上
+  ]);
+  // Every step moves exactly one axis.
+  let prev = { q: 0, r: 0 };
+  for (const s of route.route) {
+    const changed = (s.q !== prev.q ? 1 : 0) + (s.r !== prev.r ? 1 : 0);
+    assert.equal(changed, 1, 'exactly one axis changes per step');
+    prev = s;
+  }
+});
+
+test('worldMarchCore axisStepDir maps grid axis to the four march facings', () => {
+  assert.equal(WorldMarchCore.axisStepDir(0, -1), '1'); // -r 右上
+  assert.equal(WorldMarchCore.axisStepDir(-1, 0), '2'); // -q 左上
+  assert.equal(WorldMarchCore.axisStepDir(1, 0), '3'); // +q 右下
+  assert.equal(WorldMarchCore.axisStepDir(0, 1), '4'); // +r 左下
+});
+
+test('evaluateLinearMarchRoute axisAligned delegates to the axis builder', () => {
+  const diag = WorldMarchCore.evaluateLinearMarchRoute({ q: 0, r: 0 }, { q: 2, r: 2 }, {});
+  const axis = WorldMarchCore.evaluateLinearMarchRoute(
+    { q: 0, r: 0 },
+    { q: 2, r: 2 },
+    { axisAligned: true },
+  );
+  assert.equal(diag.route.length, 2, 'Chebyshev diagonal = 2 steps');
+  assert.equal(axis.route.length, 4, 'axis staircase = 4 steps (Manhattan)');
+  assert.ok(
+    axis.route.every((s) => typeof s.dir === 'string' && s.dir),
+    'axis steps carry a facing dir',
+  );
+});
+
 test('worldMarchCore evaluates blocked and too-far manual routes deterministically', () => {
   const blocked = WorldMarchCore.evaluateLinearMarchRoute(
     { q: 0, r: 0 },

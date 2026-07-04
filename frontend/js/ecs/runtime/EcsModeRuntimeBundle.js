@@ -2747,8 +2747,65 @@ var EcsModeRuntime = (() => {
           distance,
         };
       }
+      function axisStepDir(dq, dr) {
+        if (dr < 0) return '1';
+        if (dq < 0) return '2';
+        if (dq > 0) return '3';
+        if (dr > 0) return '4';
+        return '';
+      }
+      function buildAxisAlignedRoute(origin = {}, target = {}, options = {}) {
+        const start = normalizeCoord(origin);
+        const end = normalizeCoord(target, start);
+        const delta = getWrappedDelta(start, end, options);
+        const distance = Math.abs(delta.q) + Math.abs(delta.r);
+        const maxLength = toInteger(options.maxLength ?? options.maxManualRouteLength, 0);
+        if (distance <= 0) {
+          return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', route: [], target: end };
+        }
+        if (maxLength > 0 && distance > maxLength) {
+          return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', route: [], target: end };
+        }
+        const route = [];
+        let q = start.q;
+        let r = start.r;
+        let remainingQ = delta.q;
+        let remainingR = delta.r;
+        for (let step = 1; step <= distance; step += 1) {
+          let stepQ = 0;
+          let stepR = 0;
+          if (Math.abs(remainingQ) >= Math.abs(remainingR) && remainingQ !== 0) {
+            stepQ = Math.sign(remainingQ);
+          } else if (remainingR !== 0) {
+            stepR = Math.sign(remainingR);
+          } else {
+            stepQ = Math.sign(remainingQ);
+          }
+          q += stepQ;
+          r += stepR;
+          remainingQ -= stepQ;
+          remainingR -= stepR;
+          const coord = normalizeCoord({ q, r });
+          route.push({
+            q: coord.q,
+            r: coord.r,
+            step,
+            tileId: coord.tileId,
+            dir: axisStepDir(stepQ, stepR),
+          });
+        }
+        const routeTarget = route.at(-1) || end;
+        return {
+          success: true,
+          route,
+          target: normalizeCoord(routeTarget, end),
+          distance,
+        };
+      }
       function evaluateLinearMarchRoute(origin = {}, target = {}, options = {}) {
-        const plan = buildLinearMarchRoute(origin, target, options);
+        const plan = options.axisAligned
+          ? buildAxisAlignedRoute(origin, target, options)
+          : buildLinearMarchRoute(origin, target, options);
         if (!plan.success) return plan;
         const canTraverse =
           typeof options.canTraverse === 'function' ? options.canTraverse : () => true;
@@ -3126,6 +3183,8 @@ var EcsModeRuntime = (() => {
         normalizeRoute,
         getWrappedDelta,
         buildLinearMarchRoute,
+        buildAxisAlignedRoute,
+        axisStepDir,
         evaluateLinearMarchRoute,
         getMissionPath,
         getMissionDurationMs,
@@ -3295,8 +3354,65 @@ var EcsModeRuntime = (() => {
               distance,
             };
           }
+          function axisStepDir(dq, dr) {
+            if (dr < 0) return '1';
+            if (dq < 0) return '2';
+            if (dq > 0) return '3';
+            if (dr > 0) return '4';
+            return '';
+          }
+          function buildAxisAlignedRoute(origin = {}, target = {}, options = {}) {
+            const start = normalizeCoord(origin);
+            const end = normalizeCoord(target, start);
+            const delta = getWrappedDelta(start, end, options);
+            const distance = Math.abs(delta.q) + Math.abs(delta.r);
+            const maxLength = toInteger(options.maxLength ?? options.maxManualRouteLength, 0);
+            if (distance <= 0) {
+              return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', route: [], target: end };
+            }
+            if (maxLength > 0 && distance > maxLength) {
+              return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', route: [], target: end };
+            }
+            const route = [];
+            let q = start.q;
+            let r = start.r;
+            let remainingQ = delta.q;
+            let remainingR = delta.r;
+            for (let step = 1; step <= distance; step += 1) {
+              let stepQ = 0;
+              let stepR = 0;
+              if (Math.abs(remainingQ) >= Math.abs(remainingR) && remainingQ !== 0) {
+                stepQ = Math.sign(remainingQ);
+              } else if (remainingR !== 0) {
+                stepR = Math.sign(remainingR);
+              } else {
+                stepQ = Math.sign(remainingQ);
+              }
+              q += stepQ;
+              r += stepR;
+              remainingQ -= stepQ;
+              remainingR -= stepR;
+              const coord = normalizeCoord({ q, r });
+              route.push({
+                q: coord.q,
+                r: coord.r,
+                step,
+                tileId: coord.tileId,
+                dir: axisStepDir(stepQ, stepR),
+              });
+            }
+            const routeTarget = route.at(-1) || end;
+            return {
+              success: true,
+              route,
+              target: normalizeCoord(routeTarget, end),
+              distance,
+            };
+          }
           function evaluateLinearMarchRoute(origin = {}, target = {}, options = {}) {
-            const plan = buildLinearMarchRoute(origin, target, options);
+            const plan = options.axisAligned
+              ? buildAxisAlignedRoute(origin, target, options)
+              : buildLinearMarchRoute(origin, target, options);
             if (!plan.success) return plan;
             const canTraverse =
               typeof options.canTraverse === 'function' ? options.canTraverse : () => true;
@@ -3684,6 +3800,8 @@ var EcsModeRuntime = (() => {
             normalizeRoute,
             getWrappedDelta,
             buildLinearMarchRoute,
+            buildAxisAlignedRoute,
+            axisStepDir,
             evaluateLinearMarchRoute,
             getMissionPath,
             getMissionDurationMs,

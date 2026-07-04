@@ -1,0 +1,216 @@
+
+barbarian_infantry.png
+size: 512,214
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+frame_0003
+  rotate: true
+  xy: 434, 3
+  size: 38, 76
+  orig: 172, 99
+  offset: 65, 11
+  index: -1
+frame_0004
+  rotate: true
+  xy: 214, 22
+  size: 38, 76
+  orig: 172, 99
+  offset: 64, 11
+  index: -1
+frame_0005
+  rotate: true
+  xy: 178, 54
+  size: 38, 77
+  orig: 172, 99
+  offset: 64, 10
+  index: -1
+frame_0006
+  rotate: true
+  xy: 46, 86
+  size: 37, 77
+  orig: 172, 99
+  offset: 66, 10
+  index: -1
+frame_0007
+  rotate: 270
+  xy: 2, 59
+  size: 39, 79
+  orig: 172, 99
+  offset: 67, 9
+  index: -1
+frame_0008
+  rotate: 270
+  xy: 252, 70
+  size: 43, 79
+  orig: 172, 99
+  offset: 66, 9
+  index: -1
+frame_0009
+  rotate: 270
+  xy: 431, 73
+  size: 46, 80
+  orig: 172, 99
+  offset: 65, 8
+  index: -1
+frame_0010
+  rotate: 270
+  xy: 40, 20
+  size: 47, 78
+  orig: 172, 99
+  offset: 63, 9
+  index: -1
+frame_0011
+  rotate: 270
+  xy: 135, 22
+  size: 44, 78
+  orig: 172, 99
+  offset: 65, 9
+  index: -1
+frame_0012
+  rotate: 270
+  xy: 291, 40
+  size: 42, 78
+  orig: 172, 99
+  offset: 65, 9
+  index: -1
+frame_0013
+  rotate: true
+  xy: 429, 37
+  size: 37, 77
+  orig: 172, 99
+  offset: 67, 11
+  index: -1
+frame_0014
+  rotate: 270
+  xy: 371, 57
+  size: 35, 76
+  orig: 172, 99
+  offset: 68, 12
+  index: -1
+frame_0015
+  rotate: 270
+  xy: 96, 57
+  size: 35, 76
+  orig: 172, 99
+  offset: 68, 12
+  index: -1
+frame_0016
+  rotate: true
+  xy: 354, 21
+  size: 37, 76
+  orig: 172, 99
+  offset: 67, 12
+  index: -1
+shadow
+  rotate: false
+  xy: 2, 161
+  size: 122, 51
+  orig: 122, 51
+  offset: 0, 0
+  index: -1
+walk_0001
+  rotate: true
+  xy: 243, 137
+  size: 44, 81
+  orig: 216, 124
+  offset: 133, 21
+  index: -1
+walk_0002
+  rotate: true
+  xy: 2, 119
+  size: 42, 82
+  orig: 216, 124
+  offset: 134, 20
+  index: -1
+walk_0003
+  rotate: true
+  xy: 389, 112
+  size: 42, 81
+  orig: 216, 124
+  offset: 134, 21
+  index: -1
+walk_0004
+  rotate: true
+  xy: 126, 86
+  size: 41, 80
+  orig: 216, 124
+  offset: 134, 23
+  index: -1
+walk_0005
+  rotate: 270
+  xy: 343, 89
+  size: 39, 77
+  orig: 216, 124
+  offset: 135, 25
+  index: -1
+walk_0006
+  rotate: true
+  xy: 159, 137
+  size: 38, 76
+  orig: 216, 124
+  offset: 136, 25
+  index: -1
+walk_0007
+  rotate: true
+  xy: 275, 105
+  size: 39, 79
+  orig: 216, 124
+  offset: 135, 25
+  index: -1
+walk_0008
+  rotate: true
+  xy: 200, 97
+  size: 40, 77
+  orig: 216, 124
+  offset: 135, 25
+  index: -1
+walk_0009
+  rotate: true
+  xy: 84, 121
+  size: 40, 82
+  orig: 216, 124
+  offset: 135, 21
+  index: -1
+walk_0010
+  rotate: true
+  xy: 429, 147
+  size: 45, 81
+  orig: 216, 124
+  offset: 131, 22
+  index: -1
+walk_0011
+  rotate: true
+  xy: 329, 137
+  size: 44, 81
+  orig: 216, 124
+  offset: 132, 21
+  index: -1
+walk_0012
+  rotate: true
+  xy: 284, 166
+  size: 48, 81
+  orig: 216, 124
+  offset: 129, 20
+  index: -1
+walk_0013
+  rotate: 270
+  xy: 202, 165
+  size: 48, 82
+  orig: 216, 124
+  offset: 129, 18
+  index: -1
+walk_0014
+  rotate: 270
+  xy: 365, 165
+  size: 48, 83
+  orig: 216, 124
+  offset: 129, 18
+  index: -1
+walk_0015
+  rotate: true
+  xy: 126, 168
+  size: 45, 82
+  orig: 216, 124
+  offset: 131, 19
+  index: -1

@@ -44,6 +44,10 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
   const targetQ = toInteger(target?.q ?? target?.x, origin.q);
   const targetR = toInteger(target?.r ?? target?.y, origin.r);
   const routeResult = WorldMarchCore.evaluateLinearMarchRoute(origin, { q: targetQ, r: targetR }, {
+    // Armies march the four grid-axis directions only (no diagonal corner-cutting); the
+    // client's WorldMarchRoutePolicy previews with the same axisAligned flag so its route
+    // matches this authoritative one byte-for-byte.
+    axisAligned: true,
     maxLength: MAX_MANUAL_ROUTE_LENGTH,
     width: WorldMapService.DEFAULT_WORLD_WIDTH,
     height: WorldMapService.DEFAULT_WORLD_HEIGHT,
