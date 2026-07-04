@@ -324,3 +324,44 @@ test('resolveEngagedTimeouts defers when an interactive session is open for that
   assert.equal(mission.combat.status, 'engaged');
   assert.equal(gameState.worldCombat.recentReports.length, 0);
 });
+
+test('an orphaned open session (stale, tab closed) is forfeited and its mission reset to engaged', () => {
+  const now = new Date('2026-07-05T12:00:00.000Z');
+  const staleStart = new Date(now.getTime() - 6 * 60 * 1000).toISOString(); // 6 min ago (> 5 min)
+  const gameState = createCampGameState();
+  gameState.exploreMissions = [
+    {
+      id: 'mission-1',
+      status: 'idle',
+      combat: { status: 'inBattle', encounterId: 'camp_x', battleId: 'wcs_stale' },
+    },
+  ];
+  gameState.worldCombat.session = {
+    schema: 'world-combat-session-v1',
+    battleId: 'wcs_stale',
+    status: 'open',
+    encounterId: 'camp_x',
+    missionId: 'mission-1',
+    startedAt: staleStart,
+  };
+  WorldCombatEncounterService.normalizeCombatState(gameState, now);
+  assert.equal(gameState.worldCombat.session, null, 'stale open session forfeited');
+  assert.equal(gameState.exploreMissions[0].combat.status, 'engaged', 'mission reset to engaged');
+  assert.equal(gameState.exploreMissions[0].combat.battleId, null);
+});
+
+test('a fresh open session (player still fighting) is NOT forfeited', () => {
+  const now = new Date('2026-07-05T12:00:00.000Z');
+  const freshStart = new Date(now.getTime() - 20 * 1000).toISOString(); // 20s ago
+  const gameState = createCampGameState();
+  gameState.worldCombat.session = {
+    schema: 'world-combat-session-v1',
+    battleId: 'wcs_fresh',
+    status: 'open',
+    missionId: 'mission-1',
+    startedAt: freshStart,
+  };
+  WorldCombatEncounterService.normalizeCombatState(gameState, now);
+  assert.ok(gameState.worldCombat.session, 'live session kept');
+  assert.equal(gameState.worldCombat.session.battleId, 'wcs_fresh');
+});

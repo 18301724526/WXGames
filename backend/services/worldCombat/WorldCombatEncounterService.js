@@ -24,6 +24,11 @@ const RECENT_REPORT_LIMIT = 5;
 // interactive path clears 'engaged' the moment resolveSession runs, so the timeout only
 // ever fires when nobody is playing the fight. Exported so tests + tuning share one value.
 const AUTO_ENGAGE_FALLBACK_MS = 45000;
+// How long an interactive battle session may stay 'open' (a player playing the fight)
+// before it is forfeited as orphaned. Generous — a real fight is seconds — so this only
+// reaps sessions abandoned by a closed tab. Longer than AUTO_ENGAGE_FALLBACK_MS so a live
+// fight is never reaped out from under the player.
+const SESSION_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_OFFSET = Object.freeze({ q: 2, r: -1 });
 const DEFAULT_FORCE = Object.freeze({
   soldiers: 40,
@@ -271,11 +276,39 @@ function normalizeCombatState(gameState = {}, now = new Date()) {
     encounters: [...encountersById.values()],
     recentReports,
     // Carry the active interactive battle session through normalization so it is
-    // not dropped while re-seeding encounters (the session service writes/reads it).
-    session: rawState.session && typeof rawState.session === 'object' ? rawState.session : null,
+    // not dropped while re-seeding encounters (the session service writes/reads it) —
+    // UNLESS it has gone stale (see below), in which case it is forfeited.
+    session: reapStaleSession(rawState.session, gameState, now),
     updatedAt: rawState.updatedAt || now.toISOString(),
   };
   return gameState.worldCombat;
+}
+
+// Orphaned-session self-heal. A player who closes the tab mid-battle (or any client that
+// opens a session and never resolves it) would otherwise leave worldCombat.session 'open'
+// forever, permanently blocking new combat with WORLD_COMBAT_SESSION_BUSY. If an open
+// session has been sitting past SESSION_STALE_MS, forfeit it: drop the session and reset
+// its mission from 'inBattle' back to 'engaged' (fresh engagedAt) so the normal engaged
+// flow (frontend re-open or the allOut timeout fallback) takes over. No result is applied
+// — the abandoned fight simply did not happen.
+function reapStaleSession(session, gameState = {}, now = new Date()) {
+  if (!session || typeof session !== 'object') return null;
+  if (session.status !== 'open') return session;
+  const startedMs = session.startedAt ? Date.parse(session.startedAt) : Number.NaN;
+  // Only reap a session we can PROVE is stale: a valid startedAt older than the threshold.
+  // A session with no parseable startedAt is kept (we cannot show it is abandoned).
+  if (!Number.isFinite(startedMs) || now.getTime() - startedMs <= SESSION_STALE_MS) return session;
+  const missions = Array.isArray(gameState.exploreMissions) ? gameState.exploreMissions : [];
+  const mission = missions.find((m) => m && m.id && m.id === session.missionId);
+  if (mission && mission.combat && mission.combat.status === 'inBattle') {
+    mission.combat = {
+      ...mission.combat,
+      status: 'engaged',
+      engagedAt: now.toISOString(),
+      battleId: null,
+    };
+  }
+  return null;
 }
 
 function getActiveEncounter(gameState = {}, encounterId = '') {
