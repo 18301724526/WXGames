@@ -74,6 +74,38 @@ test('resolve: stronger attacker wins and keeps survivors', () => {
   assert.ok((out.result.survivorsByGid.p1 || 0) > 0, 'attacker keeps soldiers');
 });
 
+test('full retreat (allRetreat) pulls the army out ALIVE: fled soldiers are survivors, not casualties', () => {
+  // Side 0 orders an immediate full retreat vs a stronger enemy. Under the old accounting
+  // every fleeing soldier (u.left) counted as a casualty, so a retreat wiped the army; the
+  // retreat window is only meaningful if the escaped troops are retained. The general
+  // (attacker) loses the FIELD (defender remains) yet keeps most of its soldiers.
+  const out = BattleSimService.resolve(
+    Object.assign(
+      {
+        seed: 5,
+        attacker: force([
+          { gid: 'p1', attributes: { force: 40, command: 40, speed: 60 }, soldiers: 100 },
+        ]),
+        defender: force([
+          { gid: 'd1', attributes: { force: 95, command: 95, speed: 40 }, soldiers: 100 },
+        ]),
+      },
+      SMALL_ARENA,
+      {
+        inputStream: [
+          { tick: 0, type: 'order', side: 0, order: 'allRetreat' },
+          { tick: 0, type: 'order', side: 1, order: 'allOut' },
+        ],
+      },
+    ),
+  );
+  assert.notStrictEqual(out.result.winner, 'attacker', 'retreating side does not hold the field');
+  assert.ok(
+    (out.result.survivorsByGid.p1 || 0) > 50,
+    'most retreating soldiers escape alive and are retained (not counted as casualties)',
+  );
+});
+
 test('resolve is deterministic for the same seed', () => {
   const input = Object.assign(
     {
