@@ -518,6 +518,32 @@
         color: intel.known ? '#74d3a0' : '#aeb0b8',
         align: 'right',
       });
+      // Design: show the route preview (distance + ETA) right where the player commits
+      // the march — computed from the same shared route policy the server enforces.
+      const routePolicy = global.WorldMarchRoutePolicy || null;
+      if (routePolicy?.evaluateMarchTarget && target?.tileId) {
+        const evaluated = routePolicy.evaluateMarchTarget(state, target, {
+          tileMapView: state.territoryState?.worldMap || {},
+        });
+        const stepSeconds = Math.max(
+          1,
+          Number(state.worldExplorerState?.stepDurationSeconds) || 10,
+        );
+        const etaText = evaluated?.canMarch && Array.isArray(evaluated.route) && evaluated.route.length
+          ? this.t('worldMap.marchEta', {
+              steps: evaluated.route.length,
+              seconds: evaluated.route.length * stepSeconds,
+            })
+          : evaluated && !evaluated.canMarch
+            ? this.t('worldMap.marchEta.blocked')
+            : '';
+        if (etaText) {
+          this.drawText(etaText, x + 12, y + 25, {
+            size: 10,
+            color: evaluated.canMarch ? '#ffe6b5' : '#e08f5f',
+          });
+        }
+      }
       const gap = 8;
       const cardY = y + 38;
       const cardH = 84;
