@@ -41,8 +41,15 @@ const repository = new GameStateRepository(db);
 repository.init();
 
 const authService = new AuthService(db, jwtSecret);
-const logService = new LogService(db);
+// Observability logs (api_logs / client_operation_logs) live in their OWN sqlite file:
+// they are high-volume append-only data and must never share a write-lock domain with
+// game state (a 1.2M-row api_logs table was the main "database is locked" contributor).
+const observabilityDbPath =
+  process.env.LOGS_DB_PATH || path.join(path.dirname(dbPath), 'observability.db');
+const { db: observabilityDb } = openDatabase(Database, observabilityDbPath);
+const logService = new LogService(observabilityDb);
 logService.initLogTable();
+logService.startCleanupInterval();
 const presenceService = new PresenceService({
   repository,
   minPersistIntervalMs: process.env.PRESENCE_PERSIST_INTERVAL_MS,

@@ -52,6 +52,9 @@ class SchemaMigrationService {
     this.db = db;
     this.migrations = migrations.map(normalizeMigration);
     this.now = options.now || (() => new Date());
+    this.lockWaitMs = Number(options.lockWaitMs ?? 60000);
+    this.lockPollMs = Number(options.lockPollMs ?? 250);
+    this.staleLockMs = Number(options.staleLockMs ?? 10 * 60 * 1000);
   }
 
   initTables() {
@@ -116,24 +119,64 @@ class SchemaMigrationService {
     });
   }
 
-  acquireLock() {
+  tryAcquireLock() {
     const timestamp = nowIsoSafe(this.now());
     try {
       this.db
         .prepare('INSERT INTO schema_migration_locks (id, lockedAt) VALUES (?, ?)')
         .run(MIGRATION_LOCK_ID, timestamp);
+      return { acquired: true, lockedAt: timestamp };
     } catch (error) {
       if (String(error.message || '').includes('UNIQUE constraint failed')) {
         const lock = this.db
           .prepare('SELECT lockedAt FROM schema_migration_locks WHERE id = ?')
           .get(MIGRATION_LOCK_ID);
+        return { acquired: false, lockedAt: lock?.lockedAt || '' };
+      }
+      throw error;
+    }
+  }
+
+  // server.js and world-worker.js start together after every deploy and both run
+  // migrations. The loser must WAIT for the winner (who usually finishes in
+  // milliseconds and leaves nothing pending), not crash the process — the old
+  // throw-on-locked semantics caused a crash+pm2-restart on nearly every deploy.
+  // A lock older than staleLockMs is a crash leftover and gets reclaimed.
+  acquireLock(options = {}) {
+    const waitMs = Number(options.waitMs ?? this.lockWaitMs ?? 60000);
+    const pollMs = Math.max(25, Number(options.pollMs ?? this.lockPollMs ?? 250));
+    const staleLockMs = Number(options.staleLockMs ?? this.staleLockMs ?? 10 * 60 * 1000);
+    const startedAt = Date.now();
+    for (;;) {
+      const attempt = this.tryAcquireLock();
+      if (attempt.acquired) return;
+      const lockedAtMs = Date.parse(attempt.lockedAt || '');
+      const nowMs = this.now() instanceof Date ? this.now().getTime() : Date.now();
+      if (Number.isFinite(lockedAtMs) && nowMs - lockedAtMs > staleLockMs) {
+        this.db
+          .prepare('DELETE FROM schema_migration_locks WHERE id = ? AND lockedAt = ?')
+          .run(MIGRATION_LOCK_ID, attempt.lockedAt);
+        continue;
+      }
+      if (Date.now() - startedAt >= waitMs) {
         const conflict = new Error(
-          `Schema migration lock is already held since ${lock?.lockedAt || 'unknown'}`,
+          `Schema migration lock is already held since ${attempt.lockedAt || 'unknown'}`,
         );
         conflict.code = 'SCHEMA_MIGRATION_LOCKED';
         throw conflict;
       }
-      throw error;
+      this.sleepSync(pollMs);
+    }
+  }
+
+  sleepSync(ms) {
+    if (typeof Atomics !== 'undefined' && typeof SharedArrayBuffer !== 'undefined') {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+      return;
+    }
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      // busy-wait fallback; only reachable on runtimes without Atomics.wait
     }
   }
 
@@ -198,9 +241,14 @@ class SchemaMigrationService {
 
     this.acquireLock();
     const applied = [];
+    let lockedPlan;
     try {
+      // Re-plan under the lock: while we waited, the peer process (server vs
+      // world-worker after a deploy) may have applied everything already.
+      lockedPlan = this.plan();
+      this.assertPlanCanApply(lockedPlan);
       const pendingIds = new Set(
-        plan.filter((item) => item.status === 'pending').map((item) => item.id),
+        lockedPlan.filter((item) => item.status === 'pending').map((item) => item.id),
       );
       for (const migration of this.migrations) {
         if (!pendingIds.has(migration.id)) continue;
@@ -214,7 +262,7 @@ class SchemaMigrationService {
     return {
       schema: 'schema-migration-result-v1',
       dryRun: false,
-      plan,
+      plan: lockedPlan,
       applied,
     };
   }

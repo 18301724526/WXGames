@@ -76,20 +76,53 @@ test('SchemaMigrationService blocks checksum drift and concurrent migration lock
         error.blockers[0].status === 'checksum-mismatch',
     );
 
-    const locked = new SchemaMigrationService(db, [
-      {
-        id: '002-locked',
-        statements: ['CREATE TABLE locked_table (id TEXT PRIMARY KEY)'],
-      },
-    ]);
+    // A FRESH foreign lock makes the loser wait; with a tiny wait budget it times out
+    // with SCHEMA_MIGRATION_LOCKED instead of crashing immediately (deploy-restart peers
+    // normally finish within the wait window).
+    const locked = new SchemaMigrationService(
+      db,
+      [
+        {
+          id: '002-locked',
+          statements: ['CREATE TABLE locked_table (id TEXT PRIMARY KEY)'],
+        },
+      ],
+      { lockWaitMs: 120, lockPollMs: 30 },
+    );
     locked.initTables();
     db.prepare('INSERT INTO schema_migration_locks (id, lockedAt) VALUES (?, ?)').run(
       'schema-migration',
-      '2026-06-24T00:00:00.000Z',
+      new Date().toISOString(),
     );
     assert.throws(
       () => locked.migrate(),
       (error) => error.code === 'SCHEMA_MIGRATION_LOCKED',
+    );
+    db.prepare('DELETE FROM schema_migration_locks WHERE id = ?').run('schema-migration');
+
+    // A STALE lock (crash leftover, older than staleLockMs) is reclaimed and migration
+    // proceeds instead of wedging every future restart.
+    const stale = new SchemaMigrationService(
+      db,
+      [
+        {
+          id: '003-stale-lock',
+          statements: ['CREATE TABLE stale_lock_table (id TEXT PRIMARY KEY)'],
+        },
+      ],
+      { lockWaitMs: 500, lockPollMs: 30, staleLockMs: 60000 },
+    );
+    db.prepare('INSERT INTO schema_migration_locks (id, lockedAt) VALUES (?, ?)').run(
+      'schema-migration',
+      new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    );
+    const staleResult = stale.migrate();
+    assert.deepEqual(staleResult.applied, ['003-stale-lock']);
+    assert.equal(
+      db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='stale_lock_table'")
+        .get()?.name,
+      'stale_lock_table',
     );
   } finally {
     db.close();
