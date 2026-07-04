@@ -2539,12 +2539,14 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             return rendered;
           }
 
-    // Fog reveal strength is a continuous function of time (shared worldMarchCore eases
-    // it inside each route step), but the fog layer only repainted on drag frames or
-    // state syncs — so idle viewers saw reveals JUMP once per sync while dragging looked
-    // smooth. While actors animate (a march is running), re-render the fog at ~8fps
-    // (mask upload cost matches the water animation cadence).
-    renderWorldFogAnimationFrame(now = this.now?.() ?? Date.now(), options = {}) {
+    // Fog reveal strength is a continuous function of time, but the fog projection only
+    // recomputes when the world frame re-renders: cached tile-map contexts carry a BAKED
+    // visibilitySnapshot and stale mission renderRevealSources, so re-drawing the fog from
+    // a cached context changes nothing. Drag frames look smooth because every drag frame
+    // runs refreshWorldMapLayerFromSnapshot (terrain blit + FRESH fog/actor projection).
+    // While a march animates, run that same snapshot path at ~8fps so idle viewers get the
+    // same continuous reveal as draggers.
+    renderWorldFogAnimationFrame(now = this.now?.() ?? Date.now()) {
             if (this.isFogOfWarEnabled?.() !== true) return false;
             const fogFrameMs = 125;
             if (
@@ -2553,19 +2555,13 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             ) {
               return false;
             }
-            const runtime =
-              this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-            const frameContext =
-              runtime?.getLastTileMapContext?.() ||
-              runtime?.lastTileMapContext ||
-              this.getWorldMapRenderState?.()?.lastWorldTileMapContext ||
-              this.worldMapRenderer?.lastWorldTileMapContext ||
-              null;
-            if (!frameContext) return false;
+            if (this.isWorldMapDragging?.()) return false; // drag frames already do this
             this.lastWorldFogAnimationRenderAt = now;
-            return this.renderWorldFogLayer(frameContext, {
-              epochNowMs: options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now(),
-              state: options.state || this.lastGame?.state,
+            return this.refreshWorldMapLayerFromSnapshot({
+              waterTimeMs: now,
+              commitCamera: false,
+              clearTransform: false,
+              preserveOnMiss: true,
             });
           }
 
