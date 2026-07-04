@@ -213,6 +213,12 @@
       return this.host?.canvas || null;
     }
 
+    // The world actor renderer (a composed child whose host is this renderer) reaches the
+    // shell-owned world actor spine layer renderer through here.
+    getWorldActorSpineRenderer() {
+      return this.host?.getWorldActorSpineRenderer?.() || null;
+    }
+
     get width() {
       // Host chain may not expose width on every composition path (the overlay
       // render reads this.width directly, unlike render() which takes it as a param);

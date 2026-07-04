@@ -527,6 +527,24 @@ isFogOfWarEnabled() {
       return this.isCanvasLayerEnabled('worldFog') === true;
     }
 
+    // Lazily own the world actor spine layer renderer (single webgl context, many skeletons).
+    // Optional: if the class is absent or construction throws, marching armies keep the 2D
+    // sprite path. Failure is remembered so we never retry a broken webgl init every frame.
+    getWorldActorSpineRenderer() {
+      if (this.worldActorSpineRendererFailed) return null;
+      if (this.worldActorSpineRenderer) return this.worldActorSpineRenderer;
+      const RendererClass = global.WorldActorSpineRenderer;
+      if (typeof RendererClass !== 'function') return null;
+      try {
+        this.worldActorSpineRenderer = new RendererClass({ host: this, runtime: this.runtime });
+      } catch (_error) {
+        this.worldActorSpineRendererFailed = true;
+        this.worldActorSpineRenderer = null;
+        return null;
+      }
+      return this.worldActorSpineRenderer;
+    }
+
 isDebugOverlayEnabled(name = '') {
       const registry = DebugOverlayRegistryBase || global.DebugOverlayRegistry;
       return registry?.isOverlayEnabled?.(name, this.config, { FeatureFlags: FeatureFlagsBase || global.FeatureFlags }) === true;

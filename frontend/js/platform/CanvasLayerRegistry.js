@@ -25,6 +25,18 @@
       inputSurface: false,
       role: 'world-actor-layer',
     }),
+    // Spine skeletons for marching armies. Shares worldActor's z-index (composite order is the
+    // array below; the DOM fallback breaks the tie by document order == PHYSICAL_LAYER_ORDER, so
+    // spine still stacks directly above the 2D actor layer) and stays below the HUD's fixed 1000.
+    worldActorSpine: Object.freeze({
+      key: 'worldActorSpine',
+      zIndex: 999,
+      contextType: 'webgl',
+      pointerEvents: 'none',
+      cameraSpace: 'world-dynamic',
+      inputSurface: false,
+      role: 'world-actor-spine',
+    }),
     mainHud: Object.freeze({
       key: 'mainHud',
       zIndex: 1000,
@@ -58,7 +70,7 @@
   // surface and the engine composites them (in this order == z-order) onto the ONE visible
   // canvas each frame. zIndex values are kept for the legacy per-layer DOM fallback used
   // when OffscreenCanvas is unavailable.
-  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'mainHud', 'tutorialSpine', 'tutorialDialogue']);
+  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'worldActorSpine', 'mainHud', 'tutorialSpine', 'tutorialDialogue']);
 
   const RENDER_QUEUE = Object.freeze([
     'worldPanel',

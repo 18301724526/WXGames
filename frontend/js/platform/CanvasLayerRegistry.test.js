@@ -40,31 +40,44 @@ test('CanvasLayerRegistry defines the mature engine physical canvas stack', () =
     padding: 240,
   });
 
+  assert.deepEqual(CanvasLayerRegistry.getLayerOptions('worldActorSpine', { padding: 0 }), {
+    zIndex: 999,
+    contextType: 'webgl',
+    pointerEvents: 'none',
+    padding: 0,
+  });
+
   const stack = CanvasLayerRegistry.getPhysicalLayerStack();
   assert.deepEqual(stack.map((layer) => layer.key), [
     'worldMap',
     'worldFog',
     'worldActor',
+    'worldActorSpine',
     'mainHud',
     'tutorialSpine',
     'tutorialDialogue',
   ]);
-  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 1000, 1001, 1002]);
-  // PHYSICAL_LAYER_ORDER must stay monotonic in z-index: H5CanvasRuntime inserts layer
-  // canvases into the DOM ordered by z-index so that document order matches this canonical
-  // stack (guarding WebView compositors that break stacking-context ties by document order).
+  // worldActorSpine shares worldActor's z-index (999): composite order is the array above, and
+  // the DOM fallback breaks the tie by document order (which follows this same array).
+  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 999, 1000, 1001, 1002]);
+  // PHYSICAL_LAYER_ORDER must stay monotonic (non-decreasing) in z-index: H5CanvasRuntime
+  // inserts layer canvases into the DOM ordered by z-index so that document order matches this
+  // canonical stack (guarding WebView compositors that break stacking-context ties by order).
   const zIndexes = stack.map((layer) => layer.zIndex);
   assert.deepEqual(zIndexes, [...zIndexes].sort((a, b) => a - b));
   assert.equal(stack[0].cameraSpace, 'world');
   assert.equal(stack[1].cameraSpace, 'world-overlay');
   assert.equal(stack[2].cameraSpace, 'world-dynamic');
   assert.equal(stack[2].inputSurface, false);
-  assert.equal(stack[3].cameraSpace, 'screen');
-  assert.equal(stack[3].inputSurface, true);
-  assert.equal(stack[4].cameraSpace, 'screen-overlay');
-  assert.equal(stack[4].inputSurface, false);
+  assert.equal(stack[3].cameraSpace, 'world-dynamic');
+  assert.equal(stack[3].inputSurface, false);
+  assert.equal(stack[3].contextType, 'webgl');
+  assert.equal(stack[4].cameraSpace, 'screen');
+  assert.equal(stack[4].inputSurface, true);
   assert.equal(stack[5].cameraSpace, 'screen-overlay');
   assert.equal(stack[5].inputSurface, false);
+  assert.equal(stack[6].cameraSpace, 'screen-overlay');
+  assert.equal(stack[6].inputSurface, false);
   assert.equal(stack.filter((layer) => layer.inputSurface).length, 1);
 });
 
