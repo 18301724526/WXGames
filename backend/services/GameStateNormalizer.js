@@ -140,6 +140,10 @@ function normalizeStateStructure(rawState) {
     ? state.worldMarchVerification
     : null;
   CityService.normalizeCities(state);
+  // The top-level rebuilds above only seed pre-cities legacy saves through the migration
+  // pipeline; from here on the city objects are the single source of truth and the
+  // top-level fields become references to the active city (never sibling copies).
+  CityService.aliasTopLevelToActiveCity(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
   state.happiness = state.happiness || 100;

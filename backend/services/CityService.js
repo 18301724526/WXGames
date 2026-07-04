@@ -155,12 +155,38 @@ function normalizeCities(gameState, now = new Date()) {
 
   gameState.cities = cities;
   if (!cities[gameState.activeCityId]) gameState.activeCityId = CAPITAL_CITY_ID;
+  // Whoever rebuilds the city objects must rebuild the top-level aliases: the top-level
+  // resources/buildings/population/military ARE the active city's objects (same
+  // reference), so no later caller can ever observe diverged sibling copies.
+  const activeCity = cities[gameState.activeCityId] || cities[CAPITAL_CITY_ID];
+  if (activeCity) {
+    gameState.resources = activeCity.resources;
+    gameState.buildings = activeCity.buildings;
+    gameState.population = activeCity.population;
+    gameState.military = activeCity.military;
+  }
   return cities;
 }
 
 function getActiveCity(gameState) {
   if (!gameState.cities?.[gameState.activeCityId]) normalizeCities(gameState);
   return gameState.cities[gameState.activeCityId] || gameState.cities[CAPITAL_CITY_ID];
+}
+
+// Single source of truth: after normalization the top-level resources/buildings/
+// population/military fields ARE the active city's objects (same reference), never
+// sibling copies. Post-CUT7 saves persist these facts only city-scoped, so the legacy
+// top-level rebuild reads as zeros — every legacy reader that still goes through
+// gameState.<field> must transparently hit the city truth, and every legacy field-level
+// writer must mutate it. Divergence becomes structurally impossible.
+function aliasTopLevelToActiveCity(gameState) {
+  const city = getActiveCity(gameState);
+  if (!city) return gameState;
+  gameState.resources = city.resources;
+  gameState.buildings = city.buildings;
+  gameState.population = city.population;
+  gameState.military = city.military;
+  return gameState;
 }
 
 function getCapitalCity(gameState) {
@@ -194,6 +220,15 @@ function applyDerivedStatsToCity(city, gameState) {
     buildings: city.buildings,
     military: city.military,
   });
+  // This replaces the city's military object; keep the top-level alias pointing at the
+  // active city's CURRENT object (top-level fields are references, never copies).
+  if (
+    gameState &&
+    gameState.cities?.[city.id] === city &&
+    (gameState.activeCityId || CAPITAL_CITY_ID) === city.id
+  ) {
+    gameState.military = city.military;
+  }
   CityPlanningService.applyPlanningToCity(city, gameState);
   return effects;
 }
@@ -202,6 +237,8 @@ function setActiveCity(gameState, cityId) {
   normalizeCities(gameState);
   if (!gameState.cities[cityId]) return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
   gameState.activeCityId = cityId;
+  // Re-point the top-level aliases at the newly active city.
+  aliasTopLevelToActiveCity(gameState);
   return { success: true, message: `已切换到${gameState.cities[cityId].name}`, city: gameState.cities[cityId] };
 }
 
@@ -346,6 +383,7 @@ module.exports = {
   createCityForTerritory,
   normalizeCities,
   getActiveCity,
+  aliasTopLevelToActiveCity,
   getCapitalCity,
   applyDerivedStatsToCity,
   setActiveCity,

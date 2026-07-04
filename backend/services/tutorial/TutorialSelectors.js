@@ -1,8 +1,13 @@
 const { TUTORIAL_STEPS, stepBefore } = require('../../../shared/tutorialFlowConfig');
 const { normalizeTutorialState } = require('./TutorialState');
+const buildingConfig = require('../../../shared/buildingConfig.json');
 
 const SCOUT_FAMOUS_GRANT_KEY = 'scoutFamousPerson';
 const FIRST_ARMY_GRANT_KEY = 'firstArmy';
+const LUMBERMILL_BUILD_COST = buildingConfig?.buildings?.lumbermill?.buildCost || {
+  food: 50,
+  wood: 15,
+};
 
 function getBuildingLevel(gameState, buildingId) {
   const cityId = gameState?.activeCityId || 'capital';
@@ -20,9 +25,21 @@ function hasBuiltFarm(gameState) {
   return getBuildingLevel(gameState, 'farm') > 0;
 }
 
+function getActiveCityResources(gameState) {
+  const cityId = gameState?.activeCityId || 'capital';
+  const city = gameState?.cities?.[cityId] || gameState?.cities?.capital || null;
+  // The persisted truth is city-scoped (cities[cityId].resources); the top-level
+  // gameState.resources sibling is a legacy in-memory rebuild that reads as zeros on
+  // normalized saves — reading it made this gate permanently false.
+  return city?.resources || gameState?.resources || {};
+}
+
 function canAffordLumbermill(gameState) {
-  const resources = gameState?.resources || {};
-  return (resources.food || 0) >= 50 && (resources.wood || 0) >= 15;
+  const resources = getActiveCityResources(gameState);
+  return (
+    (Number(resources.food) || 0) >= (Number(LUMBERMILL_BUILD_COST.food) || 0) &&
+    (Number(resources.wood) || 0) >= (Number(LUMBERMILL_BUILD_COST.wood) || 0)
+  );
 }
 
 function getTutorialScoutPersonId(gameState = {}) {

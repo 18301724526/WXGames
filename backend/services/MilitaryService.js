@@ -236,6 +236,9 @@ function getCityResources(gameState = {}, cityId = 'capital') {
 function setCityMilitary(gameState = {}, cityId = 'capital', military = {}) {
   if (gameState.cities?.[cityId]) {
     gameState.cities[cityId].military = military;
+    // Maintain the top-level alias (same reference as the active city) so legacy readers
+    // keep seeing the city truth until the next normalize pass re-aliases.
+    if (cityId === (gameState.activeCityId || 'capital')) gameState.military = military;
   } else {
     // No city slot to write to (an uninitialized object reached this service directly).
     // Fall back to the top-level field so the value is not silently dropped; once
@@ -248,6 +251,7 @@ function setCityMilitary(gameState = {}, cityId = 'capital', military = {}) {
 function setCityResources(gameState = {}, cityId = 'capital', resources = {}) {
   if (gameState.cities?.[cityId]) {
     gameState.cities[cityId].resources = resources;
+    if (cityId === (gameState.activeCityId || 'capital')) gameState.resources = resources;
   } else {
     gameState.resources = resources;
   }
@@ -473,4 +477,10 @@ module.exports = {
   setArmyFormation,
   settleFormationSnapshot,
   advanceTraining,
+  // Canonical city-scoped accessors — the single read/write doorway for military and
+  // resource facts (top-level fields are aliases of the active city, never copies).
+  getCityMilitary,
+  setCityMilitary,
+  getCityResources,
+  setCityResources,
 };

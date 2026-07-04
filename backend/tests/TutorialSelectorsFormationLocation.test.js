@@ -75,3 +75,33 @@ test('getFormationMembers still falls back to top-level military when no city sl
     [scoutId],
   );
 });
+
+test('canAffordLumbermill reads the active city resources (post-CUT7 truth)', () => {
+  const TutorialSelectors = require('../services/tutorial/TutorialSelectors');
+  // Normalized saves keep resources ONLY on the city; the legacy top-level sibling is
+  // zeros. The affordability gate must track the city's real stock.
+  const richCity = {
+    activeCityId: 'capital',
+    resources: { food: 0, wood: 0 },
+    cities: { capital: { id: 'capital', resources: { food: 120, wood: 40 } } },
+  };
+  assert.equal(TutorialSelectors.canAffordLumbermill(richCity), true);
+
+  const poorCity = {
+    activeCityId: 'capital',
+    resources: { food: 999, wood: 999 },
+    cities: { capital: { id: 'capital', resources: { food: 10, wood: 2 } } },
+  };
+  assert.equal(
+    TutorialSelectors.canAffordLumbermill(poorCity),
+    false,
+    'city truth wins over the stale top-level sibling',
+  );
+
+  const legacyShape = { resources: { food: 60, wood: 20 } };
+  assert.equal(
+    TutorialSelectors.canAffordLumbermill(legacyShape),
+    true,
+    'pre-cities legacy saves still resolve',
+  );
+});
