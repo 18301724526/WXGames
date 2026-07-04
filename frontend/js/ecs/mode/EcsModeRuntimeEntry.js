@@ -8,6 +8,7 @@ const InputIntent = require('../input/InputIntent');
 const InputIntentResolver = require('../input/InputIntentResolver');
 const RendererSnapshotBoundary = require('../snapshot/RendererSnapshotBoundary');
 const FogProjection = require('../projection/FogProjection');
+const FogRevealModel = require('../system/FogRevealModel');
 const WorldClock = require('../foundation/WorldClock');
 const WorldMapVisibilityModel = require('../projection/WorldMapVisibilityModel');
 
@@ -18,6 +19,7 @@ const EcsModeRuntime = Object.freeze({
   ...InputIntentResolver,
   ModeComponents,
   FogProjection,
+  FogRevealModel,
   WorldClock,
   WorldMapVisibilityModel,
   RendererSnapshotBoundary,
