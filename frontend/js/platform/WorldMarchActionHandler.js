@@ -144,8 +144,7 @@
   // notification. Shared with TargetPickerActionHandler via the class static.
   function refreshTutorialHighlightAfterAction(core) {
     const game = core.getGameHost();
-    const tutorialController =
-      game?.tutorialController || core.host?.tutorialController || null;
+    const tutorialController = game?.tutorialController || core.host?.tutorialController || null;
     if (!tutorialController || typeof tutorialController.refreshCurrentHighlight !== 'function')
       return false;
     tutorialController.refreshCurrentHighlight();
@@ -495,11 +494,10 @@
         if (missionId) options.missionId = missionId;
         if (combatEncounterId) options.combatEncounterId = combatEncounterId;
         if (meta.inputIntent) options.clientInputIntent = meta.inputIntent;
-        // LIVE attack on an active encounter tile 鈫?open the INTERACTIVE battle
-        // scene (decoupled session) instead of the passive explore-march combat.
-        if (combatEncounterId && typeof game?.enterInteractiveBattle === 'function') {
-          return game.enterInteractiveBattle(options);
-        }
+        // Attacking a hostile force means MARCHING the formation to its tile — the
+        // battle resolves on arrival (or immediately if the formation is already
+        // standing on it). We never open a battle from afar; the backend session
+        // service also refuses out-of-range attacks (WORLD_COMBAT_NOT_IN_RANGE).
         if (typeof game?.startWorldMarch === 'function') return game.startWorldMarch(options);
         return this.core.runAction(() => this.core.host.api.startWorldMarch(options));
       };

@@ -204,6 +204,20 @@ function awardCampLoot(gameState = {}, lootTable = null) {
   return granted;
 }
 
+// SINGLE SOURCE for camp victory rewards, called by BOTH resolution paths (the passive
+// march-arrival battle in resolveEncounterBattle AND the interactive session in
+// WorldCombatSessionService.resolveSession) so loot + respawn cooldown are identical
+// however the camp was defeated. Assumes the caller has already set status='resolved'.
+// The legacy stub has no lootTable/respawnCooldownMs, so it grants nothing and never
+// sets respawnAt — normalizeCombatState keeps respawning it unconditionally (unchanged).
+function applyCampVictorySpoils(gameState = {}, encounter = {}, now = new Date()) {
+  if (!isCampEncounter(encounter)) return {};
+  const loot = awardCampLoot(gameState, encounter.lootTable);
+  const cooldownMs = Math.max(0, toInteger(encounter.respawnCooldownMs, 0));
+  encounter.respawnAt = cooldownMs > 0 ? new Date(now.getTime() + cooldownMs).toISOString() : null;
+  return loot;
+}
+
 function normalizeCombatState(gameState = {}, now = new Date()) {
   const rawState =
     gameState.worldCombat && typeof gameState.worldCombat === 'object' ? gameState.worldCombat : {};
@@ -499,16 +513,7 @@ function resolveEncounterBattle(gameState = {}, mission = {}, encounter = {}, no
   if (battle.winner === 'attacker') {
     encounter.status = 'resolved';
     encounter.defender.soldiers = 0;
-    // Camp victory: pay out the loot table via the canonical city-resource entry and set
-    // the cooldown-gated respawn. The legacy stub has no lootTable/respawnCooldownMs, so
-    // it grants nothing and never sets respawnAt — normalizeCombatState keeps respawning
-    // it unconditionally (behavior unchanged).
-    if (isCampEncounter(encounter)) {
-      battleReport.loot = awardCampLoot(gameState, encounter.lootTable);
-      const cooldownMs = Math.max(0, toInteger(encounter.respawnCooldownMs, 0));
-      encounter.respawnAt =
-        cooldownMs > 0 ? new Date(now.getTime() + cooldownMs).toISOString() : null;
-    }
+    battleReport.loot = applyCampVictorySpoils(gameState, encounter, now);
   } else {
     const defenderSurvivors = battle.result?.survivorsByGid || {};
     const defenderGid = getDefenderGenerals(encounter)[0]?.gid || '';
@@ -677,5 +682,6 @@ module.exports = {
   resolveMissionArrival,
   respawnCampIfReady,
   awardCampLoot,
+  applyCampVictorySpoils,
   isCampEncounter,
 };

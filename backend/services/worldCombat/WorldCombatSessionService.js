@@ -17,11 +17,22 @@
 const WorldCombatEncounterService = require('./WorldCombatEncounterService');
 const BattleSimService = require('../battle/BattleSimService');
 const FormationStrengthService = require('../military/FormationStrengthService');
+const WorldMapService = require('../WorldMapService');
 const { toInteger } = require('../../../shared/numberUtils');
 const { cloneIfObject } = require('../../../shared/objectUtils');
 const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
 
 const SCHEMA = 'world-combat-session-v1';
+
+// The attacking formation must be standing ON the encounter tile to open a battle — the
+// same arrival condition the passive path (resolveMissionArrival) enforces. This is the
+// authoritative gate: a garrison still in its city, or a mission that has not yet reached
+// the target, cannot open a battle from afar. You march there first.
+function getMissionTileId(mission = null) {
+  const pos = mission && mission.position;
+  if (!pos || typeof pos !== 'object') return null;
+  return WorldMapService.getTileId(toInteger(pos.q ?? pos.x, 0), toInteger(pos.r ?? pos.y, 0));
+}
 
 function normalizeFormationSlot(value) {
   const slot = toInteger(value, 1);
@@ -85,6 +96,15 @@ function openSession(
   }
 
   const mission = findSourceMission(gameState, { missionId, cityId, formationSlot });
+
+  // Position gate: the attacking formation must already be standing on the encounter
+  // tile. A garrison in its city (no arrived mission) must march there first — attacking
+  // from afar is refused so combat always requires reaching the target.
+  const encounterTileId = encounter.tileId || WorldMapService.getTileId(encounter.q, encounter.r);
+  if (getMissionTileId(mission) !== encounterTileId) {
+    return failure('WORLD_COMBAT_NOT_IN_RANGE', '部队尚未抵达，请先行军到敌军所在位置再发起进攻。');
+  }
+
   const rawSnapshot = mission ? mission.formationSnapshot : null;
   const snapshot = FormationStrengthService.normalizeFormationSnapshot(rawSnapshot);
   const deploymentFailure =
@@ -183,11 +203,15 @@ function resolveSession(
   // Encounter may have been resolved/respawned concurrently; if it is gone we
   // still settle the session and return a report for the client.
   let battleTargetEncounter = encounter;
+  let loot = {};
   if (encounter) {
     const defenderGid = WorldCombatEncounterService.getDefenderGenerals(encounter)[0]?.gid || '';
     if (winner === 'attacker') {
       encounter.status = 'resolved';
       encounter.defender.soldiers = 0;
+      // Same single-source victory spoils (loot + cooldown respawn) the passive
+      // march-arrival path uses, so a camp pays identically however it was beaten.
+      loot = WorldCombatEncounterService.applyCampVictorySpoils(gameState, encounter, now);
     } else {
       const survivors = (result && result.survivorsByGid) || {};
       encounter.defender.soldiers = Math.max(1, toInteger(survivors[defenderGid], 0));
@@ -209,6 +233,7 @@ function resolveSession(
     },
     now,
   });
+  report.loot = loot;
 
   if (encounter) {
     encounter.battleReport = report;
