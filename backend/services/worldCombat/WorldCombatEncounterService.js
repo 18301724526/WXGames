@@ -3,9 +3,16 @@ const BattleSimService = require('../battle/BattleSimService');
 const WorldMapService = require('../WorldMapService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const DefenderLeaderService = require('../DefenderLeaderService');
+const WorldCampSpawner = require('./WorldCampSpawner');
+const CityService = require('../CityService');
 const { toInteger } = require('../../../shared/numberUtils');
 const { cloneIfObject } = require('../../../shared/objectUtils');
 const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
+
+// City resource keys a camp loot table may pay out. Kept in sync with the canonical
+// resource set the rest of the backend accepts; anything outside this is dropped so a
+// bad loot table can never invent a resource.
+const LOOT_RESOURCE_KEYS = Object.freeze(['food', 'wood', 'knowledge', 'iron', 'stone', 'metal']);
 
 const SCHEMA = 'world-combat-encounters-v1';
 const ENCOUNTER_ID = 'hostile_force_capital_ridge';
@@ -132,14 +139,69 @@ function normalizeEncounter(rawEncounter = {}, gameState = {}, now = new Date())
       quality: defenderRaw.quality || fallback.defender.quality,
       threat: Math.max(0, toInteger(defenderRaw.threat, fallback.defender.threat)),
       scale: Math.max(1, toInteger(defenderRaw.scale, fallback.defender.scale)),
+      // Camp garrison at full strength (used to restore a resolved camp on respawn).
+      // Absent on the stub/legacy saves ⇒ 0, which the respawn helper treats as "no
+      // camp reset applies".
+      baseSoldiers: Math.max(0, toInteger(defenderRaw.baseSoldiers, 0)),
       leader: defenderRaw.leader || null,
     },
     battleReport: raw.battleReport || null,
     resolvedAt: raw.resolvedAt || null,
     resolvedByMissionId: raw.resolvedByMissionId || null,
+    // Camp passthrough fields (slice 1a). Absent on the legacy stub / legacy saves, so
+    // they normalize to inert defaults (null / []) and legacy readers ignore them.
+    campArchetypeKey:
+      typeof raw.campArchetypeKey === 'string' && raw.campArchetypeKey
+        ? raw.campArchetypeKey
+        : null,
+    lootTable: raw.lootTable && typeof raw.lootTable === 'object' ? { ...raw.lootTable } : null,
+    respawnCooldownMs: Math.max(0, toInteger(raw.respawnCooldownMs, 0)),
+    respawnAt: raw.respawnAt || null,
   };
   encounter.defender.leader = createDefenderLeader(encounter, now);
   return encounter;
+}
+
+function isCampEncounter(encounter = {}) {
+  return Boolean(encounter && encounter.campArchetypeKey);
+}
+
+// Reset a resolved camp back to active once its respawn cooldown has elapsed. No-op for
+// the legacy stub (not a camp) and for camps still inside their cooldown window. Restores
+// the original garrison, clears the finished-battle bookkeeping, and drops respawnAt.
+function respawnCampIfReady(encounter = {}, now = new Date()) {
+  if (!isCampEncounter(encounter) || encounter.status !== 'resolved') return false;
+  const respawnAtMs = encounter.respawnAt ? Date.parse(encounter.respawnAt) : Number.NaN;
+  // A resolved camp with no respawnAt (e.g. hand-authored) never revives on its own.
+  if (!Number.isFinite(respawnAtMs) || now.getTime() < respawnAtMs) return false;
+  const baseSoldiers = Math.max(1, toInteger(encounter.defender?.baseSoldiers, 1));
+  encounter.status = 'active';
+  encounter.defender.soldiers = baseSoldiers;
+  encounter.battleReport = null;
+  encounter.resolvedAt = null;
+  encounter.resolvedByMissionId = null;
+  encounter.respawnAt = null;
+  encounter.updatedAt = now.toISOString();
+  return true;
+}
+
+// Canonical resource credit: mutate the active city's resource object (the top-level
+// gameState.resources is an alias of it), clamped at zero, exactly like EventService's
+// resource effects. Returns the {key:amount} map actually granted (filtered to valid
+// resource keys and positive amounts) for the battle report's loot field.
+function awardCampLoot(gameState = {}, lootTable = null) {
+  if (!lootTable || typeof lootTable !== 'object') return {};
+  const city = CityService.getActiveCity(gameState);
+  if (!city) return {};
+  city.resources = city.resources || {};
+  const granted = {};
+  LOOT_RESOURCE_KEYS.forEach((key) => {
+    const amount = toInteger(lootTable[key], 0);
+    if (amount <= 0) return;
+    city.resources[key] = Math.max(0, (city.resources[key] || 0) + amount);
+    granted[key] = amount;
+  });
+  return granted;
 }
 
 function normalizeCombatState(gameState = {}, now = new Date()) {
@@ -151,14 +213,35 @@ function normalizeCombatState(gameState = {}, now = new Date()) {
     const normalized = normalizeEncounter(encounter, gameState, now);
     if (normalized.id) encountersById.set(normalized.id, normalized);
   });
-  // Respawn the seeded encounter when it is missing or already resolved so the
-  // hostile force is available to attack again (re-seeding keeps it active while
-  // recentReports below preserves the finished battle reports).
+  // Respawn the LEGACY single stub when it is missing or already resolved so the hostile
+  // force is available to attack again (re-seeding keeps it active while recentReports
+  // below preserves the finished battle reports). The stub keeps its original
+  // unconditional-respawn behavior for backward compatibility — it carries no respawn
+  // cooldown, whereas the camps below are cooldown-gated.
   const seededExisting = encountersById.get(ENCOUNTER_ID);
   if (!seededExisting || seededExisting.status === 'resolved') {
     const seeded = normalizeEncounter(createEncounter(gameState, now), gameState, now);
     encountersById.set(seeded.id, seeded);
   }
+  // Deterministically lay out the wild camps (idempotent — will not duplicate or
+  // overwrite live camp progress). Writing back through gameState.worldCombat first so
+  // the spawner appends into the array we then re-read; each appended camp is normalized.
+  gameState.worldCombat = {
+    ...(gameState.worldCombat || {}),
+    encounters: [...encountersById.values()],
+  };
+  WorldCampSpawner.seedCampEncounters(gameState, now).forEach((encounter) => {
+    const normalized = normalizeEncounter(encounter, gameState, now);
+    if (normalized.id && !encountersById.has(normalized.id)) {
+      encountersById.set(normalized.id, normalized);
+    }
+  });
+  // Cooldown-gated respawn for resolved camps: a camp only returns to 'active' once the
+  // wall-clock has passed its respawnAt. Removing this block reverts camps to the stub's
+  // unconditional respawn (safe rollback).
+  encountersById.forEach((encounter) => {
+    respawnCampIfReady(encounter, now);
+  });
   const recentReports = Array.isArray(rawState.recentReports)
     ? rawState.recentReports.filter(Boolean).slice(0, RECENT_REPORT_LIMIT)
     : [];
@@ -412,9 +495,20 @@ function resolveEncounterBattle(gameState = {}, mission = {}, encounter = {}, no
   encounter.resolvedAt = now.toISOString();
   encounter.resolvedByMissionId = mission.id || null;
   encounter.updatedAt = now.toISOString();
+  battleReport.loot = {};
   if (battle.winner === 'attacker') {
     encounter.status = 'resolved';
     encounter.defender.soldiers = 0;
+    // Camp victory: pay out the loot table via the canonical city-resource entry and set
+    // the cooldown-gated respawn. The legacy stub has no lootTable/respawnCooldownMs, so
+    // it grants nothing and never sets respawnAt — normalizeCombatState keeps respawning
+    // it unconditionally (behavior unchanged).
+    if (isCampEncounter(encounter)) {
+      battleReport.loot = awardCampLoot(gameState, encounter.lootTable);
+      const cooldownMs = Math.max(0, toInteger(encounter.respawnCooldownMs, 0));
+      encounter.respawnAt =
+        cooldownMs > 0 ? new Date(now.getTime() + cooldownMs).toISOString() : null;
+    }
   } else {
     const defenderSurvivors = battle.result?.survivorsByGid || {};
     const defenderGid = getDefenderGenerals(encounter)[0]?.gid || '';
@@ -581,4 +675,7 @@ module.exports = {
   resolveImmediateArrival,
   resolveMarchTarget,
   resolveMissionArrival,
+  respawnCampIfReady,
+  awardCampLoot,
+  isCampEncounter,
 };
