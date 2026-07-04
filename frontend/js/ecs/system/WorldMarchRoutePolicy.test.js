@@ -26,7 +26,7 @@ test('WorldMarchRoutePolicy blocks known ocean tiles on the planned manual route
 
   assert.equal(result.canMarch, false);
   assert.equal(result.reason, 'EXPLORE_ROUTE_BLOCKED');
-  assert.deepEqual(result.blockedStep, { q: 2, r: 0, step: 2, tileId: 'tile_2_0' });
+  assert.deepEqual(result.blockedStep, { q: 2, r: 0, step: 2, tileId: 'tile_2_0', dir: '3' });
   assert.deepEqual(result.origin, { q: 0, r: 0, tileId: 'tile_0_0' });
 });
 
@@ -54,8 +54,8 @@ test('WorldMarchRoutePolicy allows shore tiles as intermediate steps and march t
   assert.equal(result.canMarch, true);
   assert.equal(result.reason, '');
   assert.deepEqual(result.route, [
-    { q: 1, r: 0, step: 1, tileId: 'tile_1_0' },
-    { q: 2, r: 0, step: 2, tileId: 'tile_2_0' },
+    { q: 1, r: 0, step: 1, tileId: 'tile_1_0', dir: '3' },
+    { q: 2, r: 0, step: 2, tileId: 'tile_2_0', dir: '3' },
   ]);
 });
 
@@ -82,7 +82,7 @@ test('WorldMarchRoutePolicy blocks known river tiles on the planned manual route
 
   assert.equal(result.canMarch, false);
   assert.equal(result.reason, 'EXPLORE_ROUTE_BLOCKED');
-  assert.deepEqual(result.blockedStep, { q: 1, r: 0, step: 1, tileId: 'tile_1_0' });
+  assert.deepEqual(result.blockedStep, { q: 1, r: 0, step: 1, tileId: 'tile_1_0', dir: '3' });
 });
 
 test('WorldMarchRoutePolicy derives origin from an idle selected mission before city fallback', () => {
@@ -116,5 +116,5 @@ test('WorldMarchRoutePolicy derives origin from an idle selected mission before 
 
   assert.equal(result.canMarch, true);
   assert.deepEqual(result.origin, { q: 4, r: -2, tileId: 'tile_4_-2' });
-  assert.deepEqual(result.route, [{ q: 5, r: -2, step: 1, tileId: 'tile_5_-2' }]);
+  assert.deepEqual(result.route, [{ q: 5, r: -2, step: 1, tileId: 'tile_5_-2', dir: '3' }]);
 });

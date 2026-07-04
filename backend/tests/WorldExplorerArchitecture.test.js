@@ -70,8 +70,10 @@ test('world explorer modules preserve the public exploration contract', () => {
   };
 
   assert.equal(manual.success, true);
-  assert.equal(mission.route.length, 2);
-  Progression.normalizeExploreState(state, new Date(now.getTime() + 30000));
+  // Axis-aligned route: (0,0)->(2,1) is a 3-step staircase (Manhattan |2|+|1|), not the
+  // old 2-step diagonal. Advance long enough for all 3 steps (10s each) to complete.
+  assert.equal(mission.route.length, 3);
+  Progression.normalizeExploreState(state, new Date(now.getTime() + 60000));
   assert.equal(state.exploreMissions[0].status, 'idle');
   assert.equal(ClientState.getClientState(state, now).idleMissions.length, 1);
 });
