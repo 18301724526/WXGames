@@ -205,15 +205,41 @@
     // optional plugin resolved from the renderer dependency registry. When absent, every
     // actor draws through the 2D sprite path — so this seam is fully removable.
     getWorldActorSpineRenderer() {
-      // Explicit override (tests / future dependency injection) wins; otherwise the shell owns
-      // the stateful spine layer renderer and reaches it through the render host chain.
+      // Explicit override (tests / future dependency injection) wins.
       const override = global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldActorSpineRenderer');
       if (override) return override;
-      return this.host?.getWorldActorSpineRenderer?.() || null;
+      // The shell owns the stateful spine layer renderer. The render host chain that reaches it is
+      // deeply nested (WorldActorCanvasRenderer -> WorldMapCanvasRenderer -> H5CanvasGameRenderer
+      // -> shell) and its exact shape depends on which composition built this instance, so walk
+      // the .host/.shell hops and return the first host that resolves a non-null renderer.
+      let node = this.host;
+      for (let hops = 0; node && hops < 8; hops += 1) {
+        if (node !== this && typeof node.getWorldActorSpineRenderer === 'function') {
+          const resolved = node.getWorldActorSpineRenderer();
+          if (resolved) return resolved;
+        }
+        node = node.shell || node.host || null;
+      }
+      return null;
     }
 
     getActorRenderScale(viewport = {}) {
       return Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
+    }
+
+    // One-shot observability for the "still 2D" class of bug: if the world actor spine renderer
+    // never resolves through the host chain, log the exact chain once (browser only) so the break
+    // is visible without a debugger. Silent when the renderer resolves (the healthy case).
+    probeWorldActorSpineWiring(spine) {
+      if (spine || global.__worldActorSpineProbe || typeof global.window === 'undefined') return;
+      global.__worldActorSpineProbe = 1;
+      const chain = [];
+      let node = this.host;
+      for (let hops = 0; node && hops < 8; hops += 1) {
+        chain.push(node.constructor?.name || typeof node);
+        node = node.shell || node.host || null;
+      }
+      console.info(`[spine-probe] world actor spine renderer NULL — host chain: ${chain.join(' -> ') || '(no host)'}`);
     }
 
     buildActorSpineFrame(actor = {}, point = {}, viewport = {}) {
@@ -233,6 +259,7 @@
       const diag = this.getActorOverlayDiag(options);
       if (diag) diag.drawnCanvasId = getCanvasId(ctx);
       const spine = this.getWorldActorSpineRenderer();
+      this.probeWorldActorSpineWiring(spine);
       if (!Array.isArray(actors) || !actors.length) {
         spine?.syncActors?.([], viewport);
         return false;
