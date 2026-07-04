@@ -348,10 +348,7 @@
       isMapHome: true,
       territoryUiState,
       worldMapRuntimeContext: options.worldMapRuntimeContext
-        || runtime?.getLastTileMapContext?.()
-        || runtime?.lastTileMapContext
-        || host.renderer?.worldMapRenderState?.lastWorldTileMapContext
-        || host.renderer?.lastWorldTileMapContext
+        || host.getCanonicalWorldTileMapContext?.()
         || null,
       preserveCanvas: true,
       showFpsOverlay: false,
@@ -542,10 +539,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         renderer: this.renderer || null,
         surface: this.renderer || null,
         worldMapRuntime: this.worldMapRuntime || this.worldMapRuntimeCoordinator?.getMapRuntime?.() || null,
-        visibilitySnapshot: this.getLastFogProjection?.()?.visibilitySnapshot
-          || this.getWorldMapRenderState?.()?.lastWorldTileMapContext?.visibilitySnapshot
-          || this.worldMapRenderer?.lastWorldTileMapContext?.visibilitySnapshot
-          || null,
+        visibilitySnapshot: this.getLastFogProjection?.()?.visibilitySnapshot || null,
         inputTrace: this.lastDebugInputTrace || null,
         config: this.config,
         ...context,
@@ -2003,6 +1997,21 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             return this.__ecsFogProjection || null;
           }
 
+    // Single canonical accessor for "the last committed world tile-map context".
+    // The context supplies GEOMETRY only (tileMapView/viewport/frame); fog and actor
+    // FACTS are always projected fresh from (state, worldClock) — never read from here.
+    getCanonicalWorldTileMapContext() {
+            const runtime =
+              this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+            return (
+              runtime?.getLastTileMapContext?.()
+              || runtime?.lastTileMapContext
+              || this.getWorldMapRenderState?.()?.lastWorldTileMapContext
+              || this.worldMapRenderer?.lastWorldTileMapContext
+              || null
+            );
+          }
+
     renderWorldFogLayer(context = null, options = {}) {
             const rendered = this.renderWorldFogLayerContent(context, options);
             // Fog draws on an offscreen webgl surface; present it onto the 2d DOM layer canvas
@@ -2073,12 +2082,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               isMapHome: true,
               territoryUiState,
               worldMapRuntimeContext:
-                options.worldMapRuntimeContext ||
-                runtime?.getLastTileMapContext?.() ||
-                runtime?.lastTileMapContext ||
-                this.getWorldMapRenderState?.()?.lastWorldTileMapContext ||
-                this.worldMapRenderer.lastWorldTileMapContext ||
-                null,
+                options.worldMapRuntimeContext || this.getCanonicalWorldTileMapContext(),
               showFpsOverlay: false,
             });
             if (rendered && runtime?.syncHitTargetsFromRenderer) {
@@ -2499,11 +2503,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             if (!options.snapshotOnly) this.clearWorldMapLayerTransform();
             const rendered = coordinator.render(state, options);
             this.worldMapRuntime = coordinator.getMapRuntime();
-            if (rendered) this.renderWorldFogLayer(this.worldMapRuntime?.getLastTileMapContext?.()
-              || this.worldMapRuntime?.lastTileMapContext
-              || this.getWorldMapRenderState?.()?.lastWorldTileMapContext
-              || this.worldMapRenderer?.lastWorldTileMapContext
-              || null, {
+            if (rendered) this.renderWorldFogLayer(this.getCanonicalWorldTileMapContext(), {
               epochNowMs: options.epochNowMs,
               state,
             });
@@ -2539,13 +2539,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             return rendered;
           }
 
-    // Fog reveal strength is a continuous function of time, but the fog projection only
-    // recomputes when the world frame re-renders: cached tile-map contexts carry a BAKED
-    // visibilitySnapshot and stale mission renderRevealSources, so re-drawing the fog from
-    // a cached context changes nothing. Drag frames look smooth because every drag frame
-    // runs refreshWorldMapLayerFromSnapshot (terrain blit + FRESH fog/actor projection).
-    // While a march animates, run that same snapshot path at ~8fps so idle viewers get the
-    // same continuous reveal as draggers.
+    // Fog reveal strength is a continuous function of time. The fog projection derives
+    // its FACTS (missions, reveal strength, actors) fresh from (state, worldClock) on
+    // every call — the cached tile-map context only supplies geometry. So animating fog
+    // is just re-rendering the fog layer at ~8fps; no terrain re-blit, no full stack.
     renderWorldFogAnimationFrame(now = this.now?.() ?? Date.now()) {
             if (this.isFogOfWarEnabled?.() !== true) return false;
             const fogFrameMs = 125;
@@ -2555,13 +2552,13 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             ) {
               return false;
             }
-            if (this.isWorldMapDragging?.()) return false; // drag frames already do this
+            if (this.isWorldMapDragging?.()) return false; // drag frames refresh the full stack
             this.lastWorldFogAnimationRenderAt = now;
-            return this.refreshWorldMapLayerFromSnapshot({
-              waterTimeMs: now,
-              commitCamera: false,
-              clearTransform: false,
-              preserveOnMiss: true,
+            const frameContext = this.getCanonicalWorldTileMapContext();
+            if (!frameContext) return false;
+            return this.renderWorldFogLayer(frameContext, {
+              epochNowMs: this.getWorldEpochNowMs?.() ?? now,
+              state: this.lastGame?.state,
             });
           }
 
@@ -2822,11 +2819,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             famousPersonsPage: uiOwner.famousPersonsPage,
             selectedFamousPersonId: uiOwner.selectedFamousPersonId,
             armyFormationEditor: this.armyFormationEditor,
-            worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
-              || this.worldMapRuntime?.lastTileMapContext
-              || this.getWorldMapRenderState?.()?.lastWorldTileMapContext
-              || this.worldMapRenderer?.lastWorldTileMapContext
-              || null,
+            worldMapRuntimeContext: this.getCanonicalWorldTileMapContext(),
             activeCommandPanel: panel.activeCommandPanel || '',
             logs: this.lastGame?.requestLogs || [],
             tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
@@ -3035,11 +3028,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             ? this.refreshTutorialHighlightTarget(this.tutorialHighlight)
             : this.tutorialHighlight;
           this.tutorialHighlight = refreshedTutorialHighlight || null;
-          const liveWorldMapRuntimeContext = this.worldMapRuntime?.getLastTileMapContext?.()
-            || this.worldMapRuntime?.lastTileMapContext
-            || this.getWorldMapRenderState?.()?.lastWorldTileMapContext
-            || this.worldMapRenderer?.lastWorldTileMapContext
-            || null;
+          const liveWorldMapRuntimeContext = this.getCanonicalWorldTileMapContext();
           const liveWorldMapAnchorSource = this.worldMapRenderer || null;
           const runtimeCompositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
             ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions({

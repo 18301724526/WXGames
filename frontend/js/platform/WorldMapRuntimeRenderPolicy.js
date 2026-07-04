@@ -171,15 +171,15 @@
 
   function getMissionTraceParts(state = {}, epochNowMs = Date.now()) {
     const activeMission = state?.worldExplorerState?.activeMission || null;
-    const renderRevealSignature = activeMission && SharedWorldMarchSystem?.getRouteRenderRevealSignature
+    const revealSignature = activeMission && SharedWorldMarchSystem?.getRouteRenderRevealSignature
       ? SharedWorldMarchSystem.getRouteRenderRevealSignature(activeMission, epochNowMs)
-      : (activeMission?.renderRevealSignature || '');
+      : '';
     return {
       activeMission,
       missionId: activeMission?.id || '',
       missionStatus: activeMission?.status || '',
-      revealedCount: (activeMission?.renderRevealSources || activeMission?.revealedTileIds || []).length,
-      renderRevealSignature,
+      revealedCount: (activeMission?.revealedTileIds || []).length,
+      revealSignature,
       epochBucket: Math.floor(Number(epochNowMs) / 1000),
     };
   }
@@ -206,7 +206,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
-        parts.renderRevealSignature,
+        parts.revealSignature,
         parts.epochBucket,
       ],
       data: {
@@ -243,7 +243,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
-        parts.renderRevealSignature,
+        parts.revealSignature,
         parts.epochBucket,
       ],
       data: {
@@ -294,7 +294,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
-        parts.renderRevealSignature,
+        parts.revealSignature,
         parts.epochBucket,
       ],
       data: {

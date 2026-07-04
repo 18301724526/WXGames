@@ -1,16 +1,4 @@
 (function (global) {
-  const SignatureHash = (() => {
-    if (global.SignatureHash) return global.SignatureHash;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../shared/SignatureHash');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
   const sharedTileCoord = (() => {
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
@@ -146,21 +134,10 @@
       ?? options.epochNowMs
       ?? options.serverNowMs
       ?? sharedWorldClock?.getEpochNowMs?.(options, Number.NaN);
-    if (mission.renderRevealSignature) return mission.renderRevealSignature;
     if (sharedWorldMarchSystem?.getRouteRenderRevealSignature) {
       return sharedWorldMarchSystem.getRouteRenderRevealSignature(mission, nowMs);
     }
-    const sources = Array.isArray(mission.renderRevealSources) ? mission.renderRevealSources : [];
-    if (!sources.length) return '';
-    let hash = SignatureHash.FNV_OFFSET_BASIS;
-    sources.forEach((source) => {
-      const text = [
-        source.tileId || '',
-        Math.round(toNumber(source.strength, 1) * 1000),
-      ].join(':');
-      hash = SignatureHash.hashStep(hash, text);
-    });
-    return `${sources.length}:${(hash >>> 0).toString(36)}`;
+    return '';
   }
 
   function summarizeTile(tile = {}) {

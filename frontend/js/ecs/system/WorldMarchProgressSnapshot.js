@@ -266,8 +266,6 @@
       route,
       renderAheadTileId: getRouteRenderAheadTileId(mission, nowMs),
       renderReadyTileIds: getRouteRenderReadyTileIds(mission, nowMs),
-      renderRevealSources: getRouteRenderRevealSources(mission, nowMs),
-      renderRevealSignature: getRouteRenderRevealSignature(mission, nowMs),
       formation: normalizeFormation(formation, origin),
       progress: getMissionProgress(effectiveMission, nowMs),
       remainingSeconds: getRemainingSeconds(effectiveMission, nowMs),
@@ -330,8 +328,6 @@
     const stopTile = chooseStopTile(effectiveMission, nowMs);
     const renderAheadTileId = getRouteRenderAheadTileId(source, nowMs);
     const renderReadyTileIds = getRouteRenderReadyTileIds(source, nowMs);
-    const renderRevealSources = getRouteRenderRevealSources(source, nowMs);
-    const renderRevealSignature = getRouteRenderRevealSignature(source, nowMs);
     const remainingSeconds = getRemainingSeconds(effectiveMission, nowMs);
     const travelRemainingSeconds = getTravelRemainingSeconds(effectiveMission, nowMs);
     const arrivalKind = getArrivalKind(status);
@@ -350,8 +346,6 @@
       stopTile,
       renderAheadTileId,
       renderReadyTileIds,
-      renderRevealSources,
-      renderRevealSignature,
       route,
       routeLength: route.length,
       revealedCount: Array.isArray(source.revealedTileIds)
@@ -398,8 +392,6 @@
       stopTile: row.stopTile,
       renderAheadTileId: row.renderAheadTileId || null,
       renderReadyTileIds: Array.isArray(row.renderReadyTileIds) ? row.renderReadyTileIds : [],
-      renderRevealSources: Array.isArray(row.renderRevealSources) ? row.renderRevealSources : [],
-      renderRevealSignature: row.renderRevealSignature || '',
       route: row.route,
       formation: row.formation,
       formationSnapshot: row.formationSnapshot || null,
@@ -468,7 +460,6 @@
       hash = hashStep(hash, Math.round(mission.progress.progress * 10000));
       hash = hashStep(hash, Math.round(toNumber(mission.current?.q) * 1000));
       hash = hashStep(hash, Math.round(toNumber(mission.current?.r) * 1000));
-      hash = hashStep(hash, mission.renderRevealSignature);
       hash = hashStep(hash, mission.remainingSeconds);
     }
     counts.actors = actors.length;
