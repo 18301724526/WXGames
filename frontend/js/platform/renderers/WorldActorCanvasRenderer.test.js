@@ -333,6 +333,88 @@ test('WorldActorCanvasRenderer falls back to host frame time without render epoc
   );
 });
 
+test('WorldActorCanvasRenderer routes spine-capable actors to the spine renderer instead of 2D', () => {
+  const host = createHost();
+  const renderer = new WorldActorCanvasRenderer({ host });
+  const synced = [];
+  const spine = {
+    canRenderActor(actor) { return actor.unitKey === 'scout_squad_default'; },
+    syncActors(frames, viewport) { synced.push({ frames, viewport }); },
+  };
+  const actor = {
+    id: 'explore-1',
+    missionId: 'explore-1',
+    status: 'active',
+    unitKey: 'scout_squad_default',
+    facing: '1',
+    current: { q: 0, r: 0 },
+    target: { q: 1, r: 0 },
+  };
+
+  withRendererDependencyRegistry({ worldActorSpineRenderer: spine }, () => {
+    assert.equal(renderer.renderActors([actor], {
+      originX: 100, originY: 100, panX: 0, panY: 0, scale: 0.5,
+    }, { stepX: 96, stepY: 48 }), true);
+  });
+
+  // The spine renderer received the actor's frame; the 2D sprite path (getAsset) was skipped.
+  assert.equal(synced.length, 1);
+  assert.equal(synced[0].frames.length, 1);
+  assert.equal(synced[0].frames[0].id, 'explore-1');
+  assert.equal(synced[0].frames[0].facing, '1');
+  assert.equal(synced[0].frames[0].unitKey, 'scout_squad_default');
+  assert.equal(host.calls.some((call) => call[0] === 'getAsset'), false);
+  // March arrow and selection hit target still run for spine actors.
+  assert.equal(host.calls.some((call) => call[0] === 'stroke'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});
+
+test('WorldActorCanvasRenderer falls back to 2D sprites for actors the spine renderer declines', () => {
+  const host = createHost();
+  const renderer = new WorldActorCanvasRenderer({ host });
+  const synced = [];
+  const spine = {
+    canRenderActor() { return false; },
+    syncActors(frames) { synced.push(frames); },
+  };
+  const actor = {
+    id: 'x',
+    missionId: 'x',
+    status: 'active',
+    unitKey: 'scout_squad_default',
+    current: { q: 0, r: 0 },
+    target: { q: 1, r: 0 },
+  };
+
+  withRendererDependencyRegistry({ worldActorSpineRenderer: spine }, () => {
+    assert.equal(renderer.renderActors([actor], {
+      originX: 100, originY: 100, panX: 0, panY: 0, scale: 0.5,
+    }, { stepX: 96, stepY: 48 }), true);
+  });
+
+  // Declined -> the 2D path drew the sprite; the spine layer received an empty frame set.
+  assert.equal(host.calls.some((call) => call[0] === 'getAsset'), true);
+  assert.deepEqual(synced, [[]]);
+});
+
+test('WorldActorCanvasRenderer clears the spine layer when no actors are present', () => {
+  const host = createHost();
+  const renderer = new WorldActorCanvasRenderer({ host });
+  const synced = [];
+  const spine = {
+    canRenderActor() { return true; },
+    syncActors(frames) { synced.push(frames); },
+  };
+
+  withRendererDependencyRegistry({ worldActorSpineRenderer: spine }, () => {
+    assert.equal(renderer.renderActors([], {
+      originX: 100, originY: 100, panX: 0, panY: 0, scale: 0.5,
+    }, { stepX: 96, stepY: 48 }), false);
+  });
+
+  assert.deepEqual(synced, [[]]);
+});
+
 test('WorldActorCanvasRenderer keeps idle units on first frame without march arrow', () => {
   const host = createHost();
   const renderer = new WorldActorCanvasRenderer({ host });

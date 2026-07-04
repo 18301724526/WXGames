@@ -62,6 +62,24 @@
     );
   })();
 
+  // Resolved at call time so the snapshot stays immune to script load order and works both
+  // as a bare browser global and inside the bundled ECS runtime.
+  function resolveUnitSpriteManifest() {
+    if (global.UnitSpriteManifest) return global.UnitSpriteManifest;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UnitSpriteManifest');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function defaultMarchUnitKey() {
+    return resolveUnitSpriteManifest()?.DEFAULT_MARCH_UNIT_KEY || 'scout_squad_default';
+  }
+
   const STATUS_ACTIVE = 'active';
   const STATUS_IDLE = 'idle';
   const ARRIVAL_NONE = 'none';
@@ -224,6 +242,23 @@
     return formation.name || t('military.formation.default', { slot });
   }
 
+  // The current grid facing of a marching actor: the direction of the route segment it is
+  // traversing right now (single-axis for axis-aligned player routes). Returns '' when it
+  // cannot be determined (no route, or a diagonal legacy step) — the renderer then maps ''
+  // to the unit's default facing.
+  function computeActorFacing(origin = {}, route = [], progress = {}) {
+    const steps = Array.isArray(route) ? route : [];
+    if (!steps.length) return '';
+    const path = [origin, ...steps];
+    const lastSegment = path.length - 2;
+    let segmentIndex = toInteger(progress?.segmentIndex, 0);
+    if (segmentIndex < 0) segmentIndex = 0;
+    if (segmentIndex > lastSegment) segmentIndex = lastSegment;
+    const from = path[segmentIndex];
+    const to = path[segmentIndex + 1];
+    return WorldMarchCore.axisStepDir(toNumber(to.q) - toNumber(from.q), toNumber(to.r) - toNumber(from.r));
+  }
+
   function normalizeFormation(formation = {}, origin = {}) {
     return {
       cityId: formation.cityId || origin.cityId || 'capital',
@@ -254,13 +289,15 @@
         : getCurrentCoord(effectiveMission, nowMs);
     const stopTile = chooseStopTile(effectiveMission, nowMs);
     const formation = mission.formation || {};
+    const progress = getMissionProgress(effectiveMission, nowMs);
     return {
       id: mission.id || '',
       missionId: mission.id || '',
       type: 'scout',
       status,
-      unitKey: mission.unitKey || 'scout_squad_default',
+      unitKey: mission.unitKey || defaultMarchUnitKey(),
       animationId: status === STATUS_IDLE ? 'idle' : 'move',
+      facing: computeActorFacing(origin, route, progress),
       origin,
       target,
       current,
@@ -269,7 +306,7 @@
       renderAheadTileId: getRouteRenderAheadTileId(mission, nowMs),
       renderReadyTileIds: getRouteRenderReadyTileIds(mission, nowMs),
       formation: normalizeFormation(formation, origin),
-      progress: getMissionProgress(effectiveMission, nowMs),
+      progress,
       remainingSeconds: getRemainingSeconds(effectiveMission, nowMs),
       travelRemainingSeconds: getTravelRemainingSeconds(effectiveMission, nowMs),
     };
@@ -339,7 +376,7 @@
       mode: source.mode || '',
       status,
       rawStatus: source.status || '',
-      unitKey: source.unitKey || 'scout_squad_default',
+      unitKey: source.unitKey || defaultMarchUnitKey(),
       origin,
       homeOrigin,
       target,
@@ -386,8 +423,9 @@
       missionId: row.id || '',
       type: 'scout',
       status: row.status,
-      unitKey: row.unitKey || 'scout_squad_default',
+      unitKey: row.unitKey || defaultMarchUnitKey(),
       animationId: row.status === STATUS_IDLE ? 'idle' : 'move',
+      facing: computeActorFacing(row.origin, row.route, row.progress),
       origin: row.origin,
       target: row.target,
       current: row.status === STATUS_IDLE ? row.current || row.position || row.target : row.current,

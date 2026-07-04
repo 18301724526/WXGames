@@ -3,6 +3,7 @@ node_modules/
 backend/logs/
 .local-logs/
 tmp/
+.codegraph/
 spine源文件/
 frontend/assets/art/tutorial/
 frontend/js/vendor/spine-3.8/spine-ts/
