@@ -3008,7 +3008,7 @@ test('CanvasGameShell routes active missions kept in mission list to actor anima
   assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
 });
 
-test('CanvasGameShell re-renders fog on the actor animation cadence (throttled ~8fps)', () => {
+test('CanvasGameShell animates fog via the snapshot path on the actor cadence', () => {
   const calls = [];
   const shell = new CanvasGameShell({
     config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
@@ -3016,20 +3016,25 @@ test('CanvasGameShell re-renders fog on the actor animation cadence (throttled ~
   });
   let nowMs = 100000;
   shell.now = () => nowMs;
-  shell.getWorldEpochNowMs = () => nowMs;
-  shell.worldMapRuntime = { getLastTileMapContext: () => ({ tileMapView: {}, viewport: {}, frame: {} }) };
-  shell.renderWorldFogLayer = (context, options) => {
-    calls.push(['fog', nowMs, Boolean(context), options?.epochNowMs]);
+  shell.isWorldMapDragging = () => false;
+  // Cached contexts carry a baked visibilitySnapshot, so fog animation must run the
+  // SAME fresh-projection snapshot path the drag frames use, not a cached-context blit.
+  shell.refreshWorldMapLayerFromSnapshot = (options) => {
+    calls.push(['snapshot', nowMs, options.commitCamera, options.clearTransform]);
     return true;
   };
 
-  // First call renders; a second call inside the 125ms window is throttled; after the
-  // window it renders again — the smooth-reveal cadence while a march animates.
   assert.equal(shell.renderWorldFogAnimationFrame(nowMs), true);
   nowMs += 50;
-  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false, 'throttled inside 125ms');
   nowMs += 100;
   assert.equal(shell.renderWorldFogAnimationFrame(nowMs), true);
   assert.equal(calls.length, 2);
-  assert.equal(calls[0][2], true, 'fog render receives the runtime frame context');
+  assert.deepEqual(calls[0].slice(2), [false, false], 'no camera commit / no transform clear side effects');
+
+  // Drag frames already refresh the snapshot every frame — the animator must yield.
+  shell.isWorldMapDragging = () => true;
+  nowMs += 200;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
+  assert.equal(calls.length, 2);
 });
