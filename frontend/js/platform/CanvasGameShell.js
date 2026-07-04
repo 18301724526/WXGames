@@ -2534,7 +2534,39 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const frameMs = Math.max(1, this.getWorldActorAnimationFrameMs() - 1);
             if (!options.force && this.lastWorldActorAnimationRenderAt && now - this.lastWorldActorAnimationRenderAt < frameMs) return false;
             this.lastWorldActorAnimationRenderAt = now;
-            return renderWorldActorLayerFrame(this, options);
+            const rendered = renderWorldActorLayerFrame(this, options);
+            this.renderWorldFogAnimationFrame(now, options);
+            return rendered;
+          }
+
+    // Fog reveal strength is a continuous function of time (shared worldMarchCore eases
+    // it inside each route step), but the fog layer only repainted on drag frames or
+    // state syncs — so idle viewers saw reveals JUMP once per sync while dragging looked
+    // smooth. While actors animate (a march is running), re-render the fog at ~8fps
+    // (mask upload cost matches the water animation cadence).
+    renderWorldFogAnimationFrame(now = this.now?.() ?? Date.now(), options = {}) {
+            if (this.isFogOfWarEnabled?.() !== true) return false;
+            const fogFrameMs = 125;
+            if (
+              this.lastWorldFogAnimationRenderAt &&
+              now - this.lastWorldFogAnimationRenderAt < fogFrameMs
+            ) {
+              return false;
+            }
+            const runtime =
+              this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
+            const frameContext =
+              runtime?.getLastTileMapContext?.() ||
+              runtime?.lastTileMapContext ||
+              this.getWorldMapRenderState?.()?.lastWorldTileMapContext ||
+              this.worldMapRenderer?.lastWorldTileMapContext ||
+              null;
+            if (!frameContext) return false;
+            this.lastWorldFogAnimationRenderAt = now;
+            return this.renderWorldFogLayer(frameContext, {
+              epochNowMs: options.epochNowMs ?? this.getWorldEpochNowMs?.() ?? Date.now(),
+              state: options.state || this.lastGame?.state,
+            });
           }
 
     requestWorldActorAnimationFrame(options = {}) {
