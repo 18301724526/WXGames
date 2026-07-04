@@ -677,7 +677,7 @@ test('game routes walk the barracks, first-army, and scout-officer chain into fo
   const reNormalized = GameStateService.normalizeState(JSON.parse(JSON.stringify(savedStates.at(-1))));
   assert.equal(reNormalized.cities.capital.military.soldiers, 300);
   assert.equal(
-    reNormalized.cities.capital.military.formations.capital[0].soldierAssignments[personId],
+    reNormalized.cities.capital.military.formations[0].soldierAssignments[personId],
     1000,
   );
 });

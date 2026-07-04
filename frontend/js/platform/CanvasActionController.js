@@ -911,15 +911,16 @@
             const cityId =
               action.cityId || game?.state?.activeCityId || state?.activeCityId || 'capital';
             const slot = Math.max(1, Math.floor(Number(action.formationSlot || action.slot || 1)));
-            const rootFormations = state?.military?.formations || null;
-            const rootCityFormations = Array.isArray(rootFormations?.[cityId])
-              ? rootFormations[cityId]
-              : null;
-            const cityFormations = state?.cities?.[cityId]?.military?.formations || null;
-            const cityMilitaryFormations = Array.isArray(cityFormations?.[cityId])
-              ? cityFormations[cityId]
-              : null;
-            const rawFormations = rootCityFormations || cityMilitaryFormations;
+            // Owned shape: formations is a plain 3-slot array on the (city-scoped)
+            // military; the keyed arms only read legacy double-keyed payloads.
+            const pickFormationsArray = (formations) => {
+              if (Array.isArray(formations)) return formations;
+              if (formations && Array.isArray(formations[cityId])) return formations[cityId];
+              return null;
+            };
+            const rawFormations =
+              pickFormationsArray(state?.military?.formations) ||
+              pickFormationsArray(state?.cities?.[cityId]?.military?.formations);
             if (rawFormations) {
               return (
                 rawFormations.find(

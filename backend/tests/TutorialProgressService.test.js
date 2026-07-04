@@ -407,15 +407,13 @@ test('tutorial blocks guided world march until the granted scout formation is sa
     activeCityId: 'capital',
     tutorial,
     military: {
-      formations: {
-        capital: [{ slot: 1, memberIds: [] }],
-      },
+      formations: [{ slot: 1, memberIds: [] }],
     },
   };
 
   assert.equal(TutorialService.validateAction(tutorial, 'startWorldMarch', { formationSlot: 1 }, gameState).allowed, false);
 
-  gameState.military.formations.capital[0].memberIds = [scoutPersonId];
+  gameState.military.formations[0].memberIds = [scoutPersonId];
   assert.equal(TutorialService.validateAction(tutorial, 'startWorldMarch', { formationSlot: 1 }, gameState).allowed, true);
 
   const started = TutorialService.manualAdvance(tutorial, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);

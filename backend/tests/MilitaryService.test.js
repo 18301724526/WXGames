@@ -202,7 +202,7 @@ test('settleFormationSnapshot writes surviving march troops back to saved format
   }, { now: new Date('2026-06-06T00:10:00.000Z') });
 
   assert.equal(result.success, true);
-  assert.deepEqual(state.cities.capital.military.formations.capital[0].soldierAssignments, { 'hero-1': 75 });
+  assert.deepEqual(state.cities.capital.military.formations[0].soldierAssignments, { 'hero-1': 75 });
   assert.equal(result.snapshot.settledAt, '2026-06-06T00:10:00.000Z');
 });
 

@@ -169,19 +169,20 @@ function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
   }));
 }
 
-function normalizeArmyFormations(rawFormations, gameState = {}) {
-  const validPersonIds = collectValidPersonIds(gameState);
-  const source = rawFormations && typeof rawFormations === 'object' ? rawFormations : {};
-  const cityIds = new Set(Object.keys(source).filter(Boolean));
-  cityIds.add(gameState.activeCityId || 'capital');
-  cityIds.add('capital');
-  const formations = {};
-  cityIds.forEach((cityId) => {
-    const key = String(cityId || '').trim();
-    if (!key) return;
-    formations[key] = normalizeCityFormations(source[key], validPersonIds);
-  });
-  return formations;
+// Formations used to be double-keyed: cities[X].military.formations[X] — the outer
+// cities map already scopes by city, so the inner cityId map was pure duplication, and a
+// key mismatch silently read as an empty formation (the world-march 403 family). The
+// owned shape is a plain 3-slot ARRAY on the city's military; the map arms below exist
+// only to migrate legacy saves on read ('capital' covers historical mis-keyed writes).
+function pickCityFormationsSource(rawFormations, cityId = 'capital') {
+  if (Array.isArray(rawFormations)) return rawFormations;
+  if (rawFormations && typeof rawFormations === 'object') {
+    if (Array.isArray(rawFormations[cityId])) return rawFormations[cityId];
+    if (Array.isArray(rawFormations.capital)) return rawFormations.capital;
+    const firstArray = Object.values(rawFormations).find(Array.isArray);
+    if (firstArray) return firstArray;
+  }
+  return [];
 }
 
 function normalizeMilitaryState(rawMilitary, gameState) {
@@ -213,7 +214,10 @@ function normalizeMilitaryState(rawMilitary, gameState) {
     trainingBatchSize: batchSize,
     defensePerSoldier,
     defense: soldiers * defensePerSoldier,
-    formations: normalizeArmyFormations(rawMilitary?.formations, gameState || {}),
+    formations: normalizeCityFormations(
+      pickCityFormationsSource(rawMilitary?.formations, gameState?.activeCityId || 'capital'),
+      collectValidPersonIds(gameState || {}),
+    ),
   };
 }
 
@@ -324,11 +328,11 @@ function setArmyFormation(gameState, payload = {}) {
       cap: assignmentValidation.cap,
     };
   }
-  const formations = {
-    ...(normalizedMilitary.formations || {}),
-    [cityId]: normalizeCityFormations(normalizedMilitary.formations?.[cityId], validPersonIds),
-  };
-  const previousFormation = formations[cityId][slot - 1] || {};
+  const formations = normalizeCityFormations(
+    pickCityFormationsSource(normalizedMilitary.formations, cityId),
+    validPersonIds,
+  );
+  const previousFormation = formations[slot - 1] || {};
   const requestedAssignments = FormationStrengthService.normalizeSoldierAssignments(
     payload.soldierAssignments || payload.memberSoldiers || previousFormation.soldierAssignments || {},
     memberIds,
@@ -349,8 +353,8 @@ function setArmyFormation(gameState, payload = {}) {
       { round: 'floor' },
     )
     : {};
-  formations[cityId][slot - 1] = {
-    ...formations[cityId][slot - 1],
+  formations[slot - 1] = {
+    ...formations[slot - 1],
     slot,
     name: FORMATION_NAMES[slot - 1] || `Formation ${slot}`,
     memberIds,
@@ -374,7 +378,7 @@ function setArmyFormation(gameState, payload = {}) {
   return {
     success: true,
     message: `${FORMATION_NAMES[slot - 1] || `Formation ${slot}`} saved`,
-    formation: getCityMilitary(gameState, cityId).formations?.[cityId]?.[slot - 1] || null,
+    formation: (getCityMilitary(gameState, cityId).formations || [])[slot - 1] || null,
     reserveDelta,
     refund,
     tutorial,
@@ -435,18 +439,18 @@ function settleFormationSnapshot(gameState, snapshot = {}, options = {}) {
   const context = createMilitaryContext(gameState, cityId, sourceMilitary);
   const normalizedMilitary = normalizeMilitaryState(sourceMilitary, context);
   const validPersonIds = collectValidPersonIds(gameState);
-  const formations = {
-    ...(normalizedMilitary.formations || {}),
-    [cityId]: normalizeCityFormations(normalizedMilitary.formations?.[cityId], validPersonIds),
-  };
-  const formation = formations[cityId][slot - 1] || null;
+  const formations = normalizeCityFormations(
+    pickCityFormationsSource(normalizedMilitary.formations, cityId),
+    validPersonIds,
+  );
+  const formation = formations[slot - 1] || null;
   if (!formation) return { success: false, error: 'FORMATION_NOT_FOUND' };
   const assignments = FormationStrengthService.normalizeSoldierAssignments(
     FormationStrengthService.getSnapshotAssignments(normalizedSnapshot),
     formation.memberIds,
     getFormationStrengthPolicy(),
   );
-  formations[cityId][slot - 1] = {
+  formations[slot - 1] = {
     ...formation,
     soldierAssignments: assignments,
     soldiersAssigned: FormationStrengthService.sumAssignments(assignments),
@@ -459,7 +463,7 @@ function settleFormationSnapshot(gameState, snapshot = {}, options = {}) {
   const settledAt = options.now instanceof Date ? options.now.toISOString() : new Date(options.now || Date.now()).toISOString();
   return {
     success: true,
-    formation: nextMilitary.formations?.[cityId]?.[slot - 1] || null,
+    formation: (nextMilitary.formations || [])[slot - 1] || null,
     snapshot: {
       ...normalizedSnapshot,
       settledAt,
@@ -473,7 +477,8 @@ module.exports = {
   getFormationStrengthPolicy,
   getTrainingStats,
   normalizeMilitaryState,
-  normalizeArmyFormations,
+  normalizeCityFormations,
+  pickCityFormationsSource,
   setArmyFormation,
   settleFormationSnapshot,
   advanceTraining,

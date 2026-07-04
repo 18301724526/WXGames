@@ -76,3 +76,37 @@ test('re-normalizing a saved state keeps city truth as the only source', () => {
   assert.equal(reloaded.resources, city.resources);
   assert.equal(reloaded.resources.food, 888, 'value round-trips through the city truth');
 });
+
+test('city formations are a plain slot array — no inner cityId keying survives', () => {
+  // The double-keyed shape (cities[X].military.formations[X]) was the root of the
+  // world-march 403: a key mismatch silently read as an empty formation. The owned
+  // shape is a 3-slot array; legacy maps (including historically mis-keyed 'capital'
+  // entries) migrate on read.
+  const legacy = {
+    playerId: 'shape-test',
+    activeCityId: 'capital',
+    military: {
+      soldiers: 100,
+      formations: {
+        capital: [{ slot: 1, memberIds: [], soldierAssignments: {} }],
+        site_ghost: [{ slot: 2, memberIds: [] }],
+      },
+    },
+  };
+  const state = gameStateService.normalizeState(legacy);
+  const formations = CityService.getActiveCity(state).military.formations;
+
+  assert.equal(Array.isArray(formations), true, 'owned shape is an array');
+  assert.equal(formations.length, 3, 'always exactly 3 slots');
+  assert.deepEqual(
+    formations.map((f) => f.slot),
+    [1, 2, 3],
+  );
+  for (const city of Object.values(state.cities)) {
+    assert.equal(
+      Array.isArray(city.military.formations),
+      true,
+      `city ${city.id} carries only its own slots`,
+    );
+  }
+});

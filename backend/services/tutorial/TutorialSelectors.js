@@ -52,17 +52,15 @@ function getTutorialScoutPersonId(gameState = {}) {
 function getFormationSnapshot(gameState = {}, payload = {}) {
   const cityId = String(payload.cityId || gameState.activeCityId || 'capital').trim() || 'capital';
   const slot = Math.max(1, Math.min(3, Math.floor(Number(payload.formationSlot ?? payload.slot ?? 1) || 1)));
-  // Formation writes land on cities[cityId].military (setCityMilitary) whenever the
-  // city slot exists; the top-level gameState.military is a stale/empty sibling copy
-  // in that case. Resolve city-scoped FIRST (matching getCityMilitary precedence) so
-  // the tutorial world-march gate reads the same formation the save wrote -- reading
-  // the top-level copy first saw an empty formation and 403'd despite a deployed scout.
-  const cityFormations = gameState.cities?.[cityId]?.military?.formations?.[cityId];
-  const directFormations = gameState.military?.formations?.[cityId];
-  const formations = Array.isArray(cityFormations)
-    ? cityFormations
-    : Array.isArray(directFormations)
-      ? directFormations
+  // The owned shape is a plain 3-slot array on the city's military (the top-level
+  // gameState.military is an alias of the active city). The map arms only migrate
+  // legacy double-keyed saves on read.
+  const rawFormations =
+    gameState.cities?.[cityId]?.military?.formations ?? gameState.military?.formations;
+  const formations = Array.isArray(rawFormations)
+    ? rawFormations
+    : rawFormations && typeof rawFormations === 'object'
+      ? rawFormations[cityId] || rawFormations.capital || []
       : [];
   const formation = formations.find((item) => Number(item?.slot) === slot) || formations[slot - 1] || null;
   return {

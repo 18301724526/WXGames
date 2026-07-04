@@ -99,7 +99,13 @@
       const people = Array.isArray(state.famousPersons?.people) ? state.famousPersons.people : [];
       const peopleById = new Map(people.map((person) => [person.id, person]));
       const rawFormations = military.formations && typeof military.formations === 'object' ? military.formations : {};
-      const cityFormations = Array.isArray(rawFormations[cityId]) ? rawFormations[cityId] : [];
+      // Owned shape: a plain 3-slot array (server military is city-scoped); the keyed
+      // arm only reads legacy double-keyed payloads from older servers.
+      const cityFormations = Array.isArray(rawFormations)
+        ? rawFormations
+        : Array.isArray(rawFormations[cityId])
+          ? rawFormations[cityId]
+          : [];
       const maxFormationMembers = 5;
       const formationNames = [
         this.t('military.formation.default.1', {}),

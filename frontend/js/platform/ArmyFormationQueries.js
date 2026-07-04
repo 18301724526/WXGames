@@ -16,7 +16,13 @@
     const targetCityId = cityId || state.activeCityId || state.cityState?.activeCityId || 'capital';
     const targetSlot = Math.max(1, Math.min(3, Number(slot) || 1));
     const formations = state.military?.formations || {};
-    const cityFormations = Array.isArray(formations[targetCityId]) ? formations[targetCityId] : [];
+    // Owned shape: a plain 3-slot array (the server's military is city-scoped); the map
+    // arm only reads legacy double-keyed payloads from older servers.
+    const cityFormations = Array.isArray(formations)
+      ? formations
+      : Array.isArray(formations[targetCityId])
+        ? formations[targetCityId]
+        : [];
     return (
       cityFormations.find((item) => Number(item?.slot) === targetSlot) ||
       cityFormations[targetSlot - 1] ||

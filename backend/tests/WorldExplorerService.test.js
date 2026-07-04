@@ -40,9 +40,7 @@ function createTutorialExploreState() {
     military: {
       soldiers: 300,
       soldierCap: 300,
-      formations: {
-        capital: [{ slot: 1, memberIds: [scoutPersonId], soldierAssignments: { [scoutPersonId]: 120 } }],
-      },
+      formations: [{ slot: 1, memberIds: [scoutPersonId], soldierAssignments: { [scoutPersonId]: 120 } }],
     },
     cities: {
       capital: {
@@ -53,9 +51,7 @@ function createTutorialExploreState() {
         military: {
           soldiers: 300,
           soldierCap: 300,
-          formations: {
-            capital: [{ slot: 1, memberIds: [scoutPersonId], soldierAssignments: { [scoutPersonId]: 120 } }],
-          },
+          formations: [{ slot: 1, memberIds: [scoutPersonId], soldierAssignments: { [scoutPersonId]: 120 } }],
         },
       },
     },
@@ -140,8 +136,8 @@ test('guided world march materializes the first neutral empty city without claim
 test('guided world march rejects a formation without the tutorial scout', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
-  gameState.military.formations.capital[0].memberIds = ['fp-other'];
-  gameState.cities.capital.military.formations.capital[0].memberIds = ['fp-other'];
+  gameState.military.formations[0].memberIds = ['fp-other'];
+  gameState.cities.capital.military.formations[0].memberIds = ['fp-other'];
 
   const result = WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
 
@@ -539,7 +535,7 @@ test('returned-home world march settles surviving snapshot troops back to the sa
 
   WorldExplorerService.advanceExploreMissions(gameState, returnedAt);
 
-  const formation = gameState.cities.capital.military.formations.capital[0];
+  const formation = gameState.cities.capital.military.formations[0];
   assert.deepEqual(formation.soldierAssignments, { 'fp-tutorial-scout': 77 });
   assert.equal(gameState.exploreMissions[0].formationSnapshot.settledAt, returnedAt.toISOString());
 });
@@ -641,13 +637,11 @@ test('world combat encounter is seeded near capital and resolves when a formatio
     ...(gameState.military || {}),
     soldiers: 300,
     soldierCap: 300,
-    formations: {
-      capital: [{
-        slot: 1,
-        memberIds: ['fp-commander'],
-        soldierAssignments: { 'fp-commander': 180 },
-      }],
-    },
+    formations: [{
+      slot: 1,
+      memberIds: ['fp-commander'],
+      soldierAssignments: { 'fp-commander': 180 },
+    }],
   };
   gameState.cities.capital = gameState.cities.capital || { id: 'capital', territoryId: 'capital' };
   gameState.cities.capital.military = {
@@ -699,7 +693,7 @@ test('world combat encounter rejects deployment when primary general has zero so
   const now = new Date('2026-06-22T00:00:00.000Z');
   const gameState = createTutorialExploreState();
   gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
-  gameState.military.formations.capital[0].soldierAssignments = { 'fp-tutorial-scout': 0 };
+  gameState.military.formations[0].soldierAssignments = { 'fp-tutorial-scout': 0 };
   gameState.cities.capital.military.formations = gameState.military.formations;
   const combatState = WorldCombatEncounterService.normalizeCombatState(gameState, now);
   const encounter = combatState.encounters.find((item) => item.id === WorldCombatEncounterService.ENCOUNTER_ID);
@@ -721,7 +715,7 @@ test('world combat encounter allows deployment when only a deputy has zero soldi
   const gameState = createTutorialExploreState();
   gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
   gameState.famousPeople.push({ id: 'fp-deputy', name: 'Deputy' });
-  gameState.military.formations.capital[0] = {
+  gameState.military.formations[0] = {
     slot: 1,
     memberIds: ['fp-tutorial-scout', 'fp-deputy'],
     soldierAssignments: { 'fp-tutorial-scout': 120, 'fp-deputy': 0 },
