@@ -165,7 +165,7 @@
       const manifest = this.getTileMapAssetManifest();
       const terrainAsset = manifest.getTerrainAsset?.(tile.terrain) || manifest.terrain?.[tile.terrain] || null;
       const assetPath = terrainAsset?.sourceTerrainPath || terrainAsset?.path || '';
-      if (!assetPath || tile.feature?.asset || ['plains', 'capital', 'river', 'desert', 'ocean'].includes(tile.terrain)) return false;
+      if (!assetPath || tile.feature?.asset || ['plains', 'capital', 'river', 'desert', 'ocean', 'shore'].includes(tile.terrain)) return false;
       const profileByTerrain = {
         hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
         waste: { chance: 0.32, scale: 0.48, alpha: 0.58, lift: 0.06, squash: 0.7 },

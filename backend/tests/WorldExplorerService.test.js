@@ -594,22 +594,26 @@ test('returned-home idle world march can start a new march from home', () => {
 test('returned world march respects materialized home terrain when natural terrain is blocked', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
+  // (-214,-14) is an open-ocean core tile ('full' template); the march walks the
+  // marchable shore tile (-214,-15) and ends on land at (-214,-16), where the
+  // tutorial empty-city guarantee can still plan its site.
   gameState.territories[0] = {
     ...gameState.territories[0],
-    x: -200,
-    y: -15,
+    x: -214,
+    y: -14,
   };
   gameState.worldMap = WorldMapService.createInitialWorldMap(
     WorldMapService.DEFAULT_WORLD_SEED,
     now,
-    { origin: { q: -200, r: -15 } },
+    { origin: { q: -214, r: -14 } },
   );
 
-  assert.equal(WorldMapService.chooseTerrain(WorldMapService.DEFAULT_WORLD_SEED, -200, -15), 'ocean');
-  assert.equal(gameState.worldMap.tiles.find((tile) => tile.q === -200 && tile.r === -15)?.terrain, 'capital');
+  assert.equal(WorldMapService.chooseTerrain(WorldMapService.DEFAULT_WORLD_SEED, -214, -14), 'ocean');
+  assert.equal(WorldMapService.chooseTerrain(WorldMapService.DEFAULT_WORLD_SEED, -214, -15), 'shore');
+  assert.equal(gameState.worldMap.tiles.find((tile) => tile.q === -214 && tile.r === -14)?.terrain, 'capital');
 
   const started = WorldExplorerService.startWorldMarch(gameState, {
-    targetQ: -200,
+    targetQ: -214,
     targetR: -16,
     formationSlot: 1,
   }, now);
@@ -627,9 +631,9 @@ test('returned world march respects materialized home terrain when natural terra
 
   assert.equal(started.success, true);
   assert.equal(returned.success, true);
-  assert.equal(returned.mission.target.tileId, 'tile_-200_-15');
-  assert.equal(gameState.exploreMissions[0].position.tileId, 'tile_-200_-15');
-  assert.equal(clientState.idleMissions[0].position.tileId, 'tile_-200_-15');
+  assert.equal(returned.mission.target.tileId, 'tile_-214_-14');
+  assert.equal(gameState.exploreMissions[0].position.tileId, 'tile_-214_-14');
+  assert.equal(clientState.idleMissions[0].position.tileId, 'tile_-214_-14');
 });
 
 test('world march client state does not expose retired ready reports', () => {

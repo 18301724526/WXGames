@@ -2632,7 +2632,11 @@ var EcsModeRuntime = (() => {
       var ARRIVAL_IDLE = 'idle';
       var FINISHED_STATUSES = Object.freeze([STATUS_READY, STATUS_IDLE, STATUS_CANCELLED]);
       var MAX_MANUAL_ROUTE_LENGTH = 16;
+      var MARCH_BLOCKED_TERRAINS = Object.freeze(['ocean', 'river']);
       var EPOCH_MILLISECONDS_THRESHOLD = 1e12;
+      function isMarchBlockedTerrain(terrain) {
+        return MARCH_BLOCKED_TERRAINS.includes(terrain);
+      }
       function toNumber(value, fallback = 0) {
         const number = Number(value);
         return Number.isFinite(number) ? number : fallback;
@@ -3112,6 +3116,8 @@ var EcsModeRuntime = (() => {
         ARRIVAL_IDLE,
         FINISHED_STATUSES,
         MAX_MANUAL_ROUTE_LENGTH,
+        MARCH_BLOCKED_TERRAINS,
+        isMarchBlockedTerrain,
         toNumber,
         toInteger,
         toTimestamp,
@@ -3172,7 +3178,11 @@ var EcsModeRuntime = (() => {
           const ARRIVAL_IDLE = 'idle';
           const FINISHED_STATUSES = Object.freeze([STATUS_READY, STATUS_IDLE, STATUS_CANCELLED]);
           const MAX_MANUAL_ROUTE_LENGTH = 16;
+          const MARCH_BLOCKED_TERRAINS = Object.freeze(['ocean', 'river']);
           const EPOCH_MILLISECONDS_THRESHOLD = 1e12;
+          function isMarchBlockedTerrain(terrain) {
+            return MARCH_BLOCKED_TERRAINS.includes(terrain);
+          }
           function toNumber(value, fallback = 0) {
             const number = Number(value);
             return Number.isFinite(number) ? number : fallback;
@@ -3664,6 +3674,8 @@ var EcsModeRuntime = (() => {
             ARRIVAL_IDLE,
             FINISHED_STATUSES,
             MAX_MANUAL_ROUTE_LENGTH,
+            MARCH_BLOCKED_TERRAINS,
+            isMarchBlockedTerrain,
             toNumber,
             toInteger,
             toTimestamp,

@@ -1,5 +1,6 @@
 const WorldMapService = require('../WorldMapService');
 const TerritoryService = require('../TerritoryService');
+const { getPlanningTerrainForMapTerrain } = require('../territory/TerritoryShared');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 const WorldMarchCore = require('../../../shared/worldMarchCore');
@@ -74,7 +75,7 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: '目标太远，无法行军。' };
   }
   if (routeResult.error === 'EXPLORE_ROUTE_BLOCKED') {
-    return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: '行军路线被海洋阻断。' };
+    return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: '行军路线被水域阻断。' };
   }
   const route = (routeResult.route || []).map((step) => ({
     q: step.q,
@@ -92,9 +93,9 @@ function canTraverseRouteTile(seed, q, r, options = {}) {
   const gameState = options.gameState || null;
   if (gameState) {
     const existing = getExistingWorldTileById(gameState, q, r, options.now || new Date());
-    if (existing) return existing.terrain !== 'ocean';
+    if (existing) return !WorldMarchCore.isMarchBlockedTerrain(existing.terrain);
   }
-  return WorldMapService.chooseTerrain(seed, q, r) !== 'ocean';
+  return !WorldMarchCore.isMarchBlockedTerrain(WorldMapService.chooseTerrain(seed, q, r));
 }
 
 function getStepDirection(from = {}, to = {}) {
@@ -251,19 +252,11 @@ function pickTutorialCityName(gameState = {}, q = 0, r = 0) {
   return TUTORIAL_EMPTY_CITY_NAMES[seed % TUTORIAL_EMPTY_CITY_NAMES.length];
 }
 
-function getPlanningTerrainForMapTerrain(mapTerrain = 'plains') {
-  if (mapTerrain === 'forest') return 'forest';
-  if (['hills', 'mountain', 'waste', 'desert'].includes(mapTerrain)) return 'hills';
-  if (mapTerrain === 'river') return 'river';
-  if (mapTerrain === 'ocean') return 'coast';
-  return 'plains';
-}
-
 function createTutorialEmptyCitySite(gameState = {}, step = {}, plannedTile = {}, now = new Date()) {
   const q = toInteger(step.q, 0);
   const r = toInteger(step.r, 0);
   const siteId = `site_${q}_${r}`;
-  const mapTerrain = plannedTile.terrain && !['ocean', 'river'].includes(plannedTile.terrain)
+  const mapTerrain = plannedTile.terrain && !['ocean', 'river', 'shore'].includes(plannedTile.terrain)
     ? plannedTile.terrain
     : 'plains';
   return {
@@ -304,7 +297,7 @@ function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], no
     if (existingCoords.has(getCoordinateKey(step.q, step.r))) return false;
     const planned = plannedById.get(WorldMapService.getTileId(step.q, step.r)) || {};
     const terrain = planned.terrain || WorldMapService.chooseTerrain(worldMap.seed, step.q, step.r);
-    return !['ocean', 'river'].includes(terrain);
+    return !['ocean', 'river', 'shore'].includes(terrain);
   });
   if (!chosen) return [];
   const tileId = WorldMapService.getTileId(chosen.q, chosen.r);
@@ -315,7 +308,7 @@ function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], no
       visibility: 'scouted',
     });
   }
-  if (['ocean', 'river'].includes(plannedTile.terrain)) {
+  if (['ocean', 'river', 'shore'].includes(plannedTile.terrain)) {
     plannedTile.terrain = 'plains';
     plannedTile.riverPorts = [];
     plannedTile.oceanTemplates = [];
@@ -346,7 +339,6 @@ module.exports = {
   createPlannedTiles,
   shouldGuaranteeTutorialEmptyCity,
   pickTutorialCityName,
-  getPlanningTerrainForMapTerrain,
   createTutorialEmptyCitySite,
   createTutorialPlannedSites,
 };

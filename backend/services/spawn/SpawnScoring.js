@@ -29,7 +29,9 @@ function getDistance(a = {}, b = {}) {
 }
 
 function isBlockedTerrain(terrain) {
-  return terrain === 'ocean' || terrain === 'river';
+  // 'shore' is marchable, but spawn points and tutorial targets conservatively
+  // stay off the coastline (same footprint as before the shore terrain existed).
+  return terrain === 'ocean' || terrain === 'river' || terrain === 'shore';
 }
 
 function chooseTerrain(seed, q, r) {

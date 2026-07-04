@@ -133,6 +133,20 @@ test('world map tile normalization preserves server-materialized terrain authori
 
   assert.equal(materialized.terrain, 'forest');
   assert.equal(normalized.terrain, 'forest');
+
+  // Water-family exception: stored ocean/river/shore is seed-pure, so it is NOT
+  // authoritative — normalization recomputes it from the seed (legacy self-heal).
+  const naturalTerrain = Tiles.chooseTerrain('architecture-context-seed', 9, 2);
+  const storedWater = Tiles.normalizeTile({
+    q: 9,
+    r: 2,
+    terrain: 'ocean',
+    discovered: true,
+    visibility: 'scouted',
+  }, 'architecture-context-seed', now);
+
+  assert.notEqual(naturalTerrain, 'ocean');
+  assert.equal(storedWater.terrain, naturalTerrain);
 });
 
 test('world map tile transition authority preserves explicit empty keys', () => {
@@ -359,6 +373,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'getWorldWaterFeatures',
     'getWrappedDelta',
     'getWrappedDistance',
+    'isWaterFamilyTerrain',
     'normalizeWorldCoord',
     'normalizeWorldMap',
     'normalizeWorldSize',

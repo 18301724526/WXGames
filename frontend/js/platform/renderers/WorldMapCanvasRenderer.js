@@ -515,6 +515,7 @@
         desert: 'rgba(165, 132, 78, 0.9)',
         river: 'rgba(54, 116, 139, 0.92)',
         ocean: 'rgba(35, 87, 120, 0.94)',
+        shore: 'rgba(35, 87, 120, 0.94)',
       };
       return fills[terrain] || fills.plains;
     }

@@ -1,4 +1,5 @@
 const WorldMapService = require('./WorldMapService');
+const WorldMarchCore = require('../../shared/worldMarchCore');
 const { hashString } = require('../../shared/signatureHash');
 const { toInteger } = require('../../shared/numberUtils');
 
@@ -91,9 +92,10 @@ function normalizeWorldAi(rawWorldAi = {}, now = new Date()) {
 
 function getTerrainPenalty(seed, coord) {
   const terrain = WorldMapService.chooseTerrain(seed, coord.q, coord.r);
-  if (terrain === 'ocean') return 1000;
+  // Same water rule as player marches: ocean and river tiles are no-go; 'shore'
+  // is plain marchable land (no penalty entry).
+  if (WorldMarchCore.isMarchBlockedTerrain(terrain)) return 1000;
   if (terrain === 'mountain') return 8;
-  if (terrain === 'river') return 3;
   return 0;
 }
 

@@ -46,6 +46,7 @@ const {
   chooseTerrain,
   createTile,
   isStartSafeLandCoord,
+  isWaterFamilyTerrain,
   normalizeTile,
 } = require('./worldMap/WorldMapTiles');
 const VisionHistory = require('./worldMap/WorldMapVisionHistory');
@@ -347,7 +348,9 @@ function revealScoutArea(gameState, revealArea = [], now = new Date()) {
 }
 
 function canPlaceSiteOnTerrain(seed, q, r) {
-  return !['ocean', 'river'].includes(chooseTerrain(seed, q, r));
+  // 'shore' tiles are marchable land, but sites conservatively stay off the
+  // coastline for now (keeps pre-shore placement semantics unchanged).
+  return !['ocean', 'river', 'shore'].includes(chooseTerrain(seed, q, r));
 }
 
 function bindSiteToTile(gameState, q, r, siteId, now = new Date(), options = {}) {
@@ -457,6 +460,7 @@ module.exports = {
   getTileId,
   chooseBaseTerrain,
   chooseTerrain,
+  isWaterFamilyTerrain,
   chooseOceanTemplates,
   getRiverPorts,
   getRiverMouthTemplateForNeighborOfOcean,

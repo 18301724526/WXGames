@@ -57,7 +57,12 @@ function normalizeGenerationContext(tile = {}, fallback = {}) {
 
 function getNaturalGlobalTerrain(tile = {}, seed = WorldMapService.DEFAULT_WORLD_SEED) {
   const { q, r } = getTileCoord(tile);
-  if (tile.terrain && tile.terrain !== 'capital') return tile.terrain;
+  // Land terrain stays authoritative (context-materialized overrides survive), but
+  // water-family terrain is seed-pure: recompute it so blobs written before 'shore'
+  // existed self-heal ('ocean' on a coastline tile becomes 'shore').
+  if (tile.terrain && tile.terrain !== 'capital' && !WorldMapService.isWaterFamilyTerrain(tile.terrain)) {
+    return tile.terrain;
+  }
   const terrain = WorldMapService.chooseTerrain(seed, q, r);
   return terrain === 'capital' ? 'plains' : terrain;
 }
@@ -87,10 +92,19 @@ function createGlobalTilePayload(tile = {}, options = {}) {
   return payload;
 }
 
-function shouldRepairGlobalTilePayload(existingPayload = {}, nextPayload = {}) {
+function hasStaleWaterFamilyTerrain(payload = {}, seed = WorldMapService.DEFAULT_WORLD_SEED) {
+  if (!WorldMapService.isWaterFamilyTerrain(payload?.terrain)) return false;
+  const { q, r } = getTileCoord(payload);
+  return WorldMapService.chooseTerrain(seed, q, r) !== payload.terrain;
+}
+
+function shouldRepairGlobalTilePayload(existingPayload = {}, nextPayload = {}, options = {}) {
   if (!existingPayload || typeof existingPayload !== 'object') return true;
   if ('siteId' in existingPayload || 'controlled' in existingPayload) return true;
   if (existingPayload.terrain === 'capital') return true;
+  // Lazy DB self-heal: stored water-family terrain that disagrees with the seed
+  // recompute (e.g. legacy 'ocean' on a tile that is now 'shore') gets rewritten.
+  if (hasStaleWaterFamilyTerrain(existingPayload, options.seed)) return true;
   void nextPayload;
   return false;
 }
@@ -251,7 +265,7 @@ class WorldMapAuthorityRepository {
     const payload = createGlobalTilePayload(tile, { seed: options.seed });
     if (existing) {
       const existingPayload = parseJson(existing.tile, null);
-      if (shouldRepairGlobalTilePayload(existingPayload, payload)) {
+      if (shouldRepairGlobalTilePayload(existingPayload, payload, { seed: options.seed })) {
         const repairedPayload = repairGlobalTilePayload(existingPayload, payload, { seed: options.seed });
         this.db.prepare('UPDATE global_world_tiles SET tile = ?, updatedAt = ? WHERE canonicalId = ?')
           .run(JSON.stringify(repairedPayload), nowIso, canonicalId);
