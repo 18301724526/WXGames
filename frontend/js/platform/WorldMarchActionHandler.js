@@ -136,6 +136,26 @@
     return nextTarget;
   }
 
+  // Every action in the world-march/target-picker cluster that changes what the
+  // player should click next (HUD, pickers, selection) must re-run the tutorial
+  // guide registry: the guide's follow-through rules (e.g. into an open picker)
+  // only fire on refreshCurrentHighlight, and nothing else re-runs them — on a
+  // restored session there is no march-poll render loop to catch up for a missed
+  // notification. Shared with TargetPickerActionHandler via the class static.
+  function refreshTutorialHighlightAfterAction(core) {
+    const game = core.getGameHost();
+    const tutorialController =
+      game?.tutorialController || core.host?.tutorialController || null;
+    if (!tutorialController || typeof tutorialController.refreshCurrentHighlight !== 'function')
+      return false;
+    tutorialController.refreshCurrentHighlight();
+    const scheduler = core.host?.runtime || game?.runtime || global;
+    if (typeof scheduler?.setTimeout === 'function') {
+      scheduler.setTimeout(() => tutorialController.refreshCurrentHighlight(), 0);
+    }
+    return true;
+  }
+
   function joinNames(names = []) {
     return (Array.isArray(names) ? names : [])
       .map((name) => String(name || '').trim())
@@ -165,17 +185,7 @@
     }
 
     refreshWorldMarchTutorialHighlight() {
-      const game = this.core.getGameHost();
-      const tutorialController =
-        game?.tutorialController || this.core.host?.tutorialController || null;
-      if (!tutorialController || typeof tutorialController.refreshCurrentHighlight !== 'function')
-        return false;
-      tutorialController.refreshCurrentHighlight();
-      const scheduler = this.core.host?.runtime || game?.runtime || global;
-      if (typeof scheduler?.setTimeout === 'function') {
-        scheduler.setTimeout(() => tutorialController.refreshCurrentHighlight(), 0);
-      }
-      return true;
+      return refreshTutorialHighlightAfterAction(this.core);
     }
 
     getWorldMarchDeploymentEligibility(action = {}) {
@@ -556,6 +566,7 @@
   WorldMarchActionHandler.t = t;
   WorldMarchActionHandler.clonePlain = clonePlain;
   WorldMarchActionHandler.openTargetPickerSnapshot = openTargetPickerSnapshot;
+  WorldMarchActionHandler.refreshTutorialHighlightAfterAction = refreshTutorialHighlightAfterAction;
 
   global.WorldMarchActionHandler = WorldMarchActionHandler;
   if (typeof module !== 'undefined' && module.exports) module.exports = WorldMarchActionHandler;

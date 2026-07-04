@@ -99,6 +99,50 @@ test('chooseWorldTarget closes the picker and dispatches the candidate action vi
   assert.deepEqual(core.calls, [['handle', 'selectWorldActor', {}]]);
 });
 
+test('opening and closing the world target picker re-runs the tutorial guide', () => {
+  // Regression for the restored-session picker stall: without this notification
+  // nothing re-runs the guide registry when the picker opens (the in-session
+  // flow only recovered via incidental march-poll renders), so the follow-through
+  // rule never registered chooseWorldTarget and the input shield blocked the
+  // picker entries.
+  const refreshes = [];
+  const scheduled = [];
+  const game = {
+    tutorialController: {
+      refreshCurrentHighlight() {
+        refreshes.push('refresh');
+        return true;
+      },
+    },
+  };
+  const host = {
+    openTargetPickerSnapshot: () => true,
+    runtime: { setTimeout: (callback) => scheduled.push(callback) },
+  };
+  const core = makeCore({ host });
+  core.getGameHost = () => game;
+  const handler = new TargetPickerActionHandler({ core, helpers: makeHelpers() });
+
+  assert.equal(
+    handler.openWorldTargetPicker({
+      type: 'openWorldTargetPicker',
+      q: 0,
+      r: 0,
+      tileId: 'tile_0_0',
+      candidates: [{ id: 'capital', action: { type: 'openWorldSite', siteId: 'capital' } }],
+    }),
+    true,
+  );
+  assert.equal(refreshes.length, 1, 'open refreshes the guide synchronously');
+  assert.equal(scheduled.length, 1, 'open schedules the settle refresh');
+  scheduled.pop()();
+  assert.equal(refreshes.length, 2, 'the scheduled refresh re-runs the guide');
+
+  assert.equal(handler.closeWorldTargetPicker({ type: 'closeWorldTargetPicker' }), true);
+  assert.equal(refreshes.length, 3, 'close refreshes the guide synchronously');
+  assert.equal(scheduled.length, 1, 'close schedules its settle refresh');
+});
+
 test('closeWorldTargetPicker closes the snapshot and refreshes the march layer', () => {
   const calls = [];
   const core = makeCore({});
