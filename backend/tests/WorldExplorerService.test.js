@@ -133,6 +133,27 @@ test('guided world march materializes the first neutral empty city without claim
   assert.equal(gameState.exploreMissions.length, 1);
 });
 
+test('stranded guided-explore tutorial step self-heals on the next mission pass', () => {
+  // A revision race can persist the completed (idle) mission while losing the
+  // tutorial-step write. The advance condition must converge on later passes,
+  // not fire only on the one tick that flipped the mission to idle.
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
+  const mission = gameState.exploreMissions[0];
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt);
+  assert.equal(gameState.exploreMissions[0].status, 'idle');
+
+  // Simulate the lost tutorial write: mission stayed idle, step snapped back.
+  gameState.tutorial.currentStep = TutorialService.TUTORIAL_STEPS.scoutExploreStarted;
+  gameState.tutorial.completed = false;
+
+  WorldExplorerService.advanceExploreMissions(gameState, new Date(finishAt.getTime() + 5000));
+
+  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityDiscovered);
+});
+
 test('guided world march rejects a formation without the tutorial scout', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
