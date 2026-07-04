@@ -1183,33 +1183,89 @@ async function clickTarget(page, label, state, target) {
 
 // Marches take real time (stepDurationSeconds defaults to 10s/step, and the tutorial
 // explore mission visits 2 targets — minutes of wall clock). Wait them out in ONE
-// action-budget slot with progress awareness: any change in the active missions resets
-// the stall clock, so a genuinely starved march (a worker bug) still fails fast.
+// action-budget slot, judging both arrival and progress from the RAW /game/state
+// payload that syncOnce() returns — NOT from the client mirror.
+//
+// The mirror (game.state.worldExplorerState) is the wrong signal on both counts:
+// MarchReconciler.mergeAuthorityIntoLocal spreads {...authority, ...local}, so once a
+// server mission has been reconciled its stored copy keeps the stale local snapshot of
+// position/route-reveal/status between syncs (visuals are re-projected per frame from
+// (mission, nowMs), not stored). Comparing that JSON false-stalled every march leg
+// longer than stallMs, and the same local-wins merge can hold status:'active' after
+// the server already reports idle. The raw DTO has neither problem: getMissionDto runs
+// deriveMissionForTime per fetch, so active-mission JSON changes every round while a
+// march moves, and the active set empties the moment the server considers it done.
 async function waitForActiveMarchToArrive(page, maxWaitMs = 5 * 60 * 1000, stallMs = 60 * 1000) {
   const startedAt = Date.now();
   let lastProgressKey = '';
   let lastProgressAt = Date.now();
+  let consecutiveSyncFailures = 0;
   for (;;) {
-    // The page does not poll /game/state on its own while idle — pull a fresh server
-    // snapshot each round or the mission mirror never moves and we false-stall.
-    await page.evaluate(() => window.Game?.syncOnce?.().catch(() => {}));
+    // The page does not poll /game/state while idle — pull a fresh snapshot each round
+    // and read the returned payload directly (pre-reconcile server truth).
+    const sync = await page.evaluate(async () => {
+      const game = window.Game || null;
+      if (!game || typeof game.syncOnce !== 'function') {
+        return { ok: false, error: 'window.Game.syncOnce unavailable' };
+      }
+      try {
+        const payload = await game.syncOnce();
+        const explorer = (payload?.gameState || payload?.state || {}).worldExplorerState;
+        if (!explorer || typeof explorer !== 'object') {
+          return { ok: false, error: 'sync payload has no worldExplorerState' };
+        }
+        const missions = [];
+        const seen = new Set();
+        const append = (mission) => {
+          if (!mission || typeof mission !== 'object') return;
+          const id = mission.id || `mission-${missions.length}`;
+          if (seen.has(id)) return;
+          seen.add(id);
+          missions.push(mission);
+        };
+        (Array.isArray(explorer.missions) ? explorer.missions : []).forEach(append);
+        append(explorer.activeMission);
+        (Array.isArray(explorer.activeMissions) ? explorer.activeMissions : []).forEach(append);
+        const active = missions.filter((mission) => mission.status === 'active');
+        return { ok: true, activeCount: active.length, progressKey: JSON.stringify(active) };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error) };
+      }
+    });
     await waitForRender(page, 200);
-    const state = await getState(page);
-    const counts = missionCounts(state);
-    if (counts.active === 0) return { arrived: true, waitedMs: Date.now() - startedAt };
-    const explorer = state.stateSummary?.worldExplorerState || {};
-    const missions = Array.isArray(explorer.activeMissions)
-      ? explorer.activeMissions
-      : explorer.activeMission
-        ? [explorer.activeMission]
-        : [];
-    const progressKey = JSON.stringify(missions);
-    if (progressKey !== lastProgressKey) {
-      lastProgressKey = progressKey;
-      lastProgressAt = Date.now();
-    }
-    if (Date.now() - lastProgressAt > stallMs) {
-      return { arrived: false, reason: 'march-stalled-no-progress', waitedMs: Date.now() - startedAt };
+    if (sync.ok) {
+      consecutiveSyncFailures = 0;
+      if (sync.activeCount === 0) {
+        // Server truth: arrived. The outer click loop reads the client mirror, so give
+        // the reconciler a few extra rounds to converge before handing control back;
+        // report (never fail on) a mirror that still lags the server.
+        let mirrorActive = missionCounts(await getState(page)).active;
+        for (let round = 0; mirrorActive > 0 && round < 3; round += 1) {
+          await page.waitForTimeout(1000);
+          await page.evaluate(() => window.Game?.syncOnce?.().catch(() => {}));
+          await waitForRender(page, 200);
+          mirrorActive = missionCounts(await getState(page)).active;
+        }
+        return { arrived: true, waitedMs: Date.now() - startedAt, clientMirrorActive: mirrorActive };
+      }
+      if (sync.progressKey !== lastProgressKey) {
+        lastProgressKey = sync.progressKey;
+        lastProgressAt = Date.now();
+      }
+      if (Date.now() - lastProgressAt > stallMs) {
+        return { arrived: false, reason: 'march-stalled-no-progress', waitedMs: Date.now() - startedAt };
+      }
+    } else {
+      // A failed pull is neither progress nor stall evidence — the stall clock only
+      // judges successfully synced rounds. A hard outage fails fast on its own.
+      consecutiveSyncFailures += 1;
+      if (consecutiveSyncFailures >= 8) {
+        return {
+          arrived: false,
+          reason: `march-sync-failed:${sync.error || 'unknown'}`,
+          waitedMs: Date.now() - startedAt,
+        };
+      }
     }
     if (Date.now() - startedAt > maxWaitMs) {
       return { arrived: false, reason: 'max-wait-exceeded', waitedMs: Date.now() - startedAt };
@@ -1391,6 +1447,21 @@ async function chooseNextAction(page, iteration) {
         throw createVerificationFailure(`march-wait-${iteration}`, `active march did not arrive: ${waited.reason}`, {
           waitedMs: waited.waitedMs,
         });
+      }
+      // Server truth: the march is idle. When the client mirror also cleared, spend
+      // this iteration on the wait record. When the mirror lags (the local-wins merge
+      // in MarchReconciler can hold status:'active' past server idle on the syncOnce
+      // path), a wait record would re-trip this gate every iteration until the action
+      // budget dies — click the highlighted site instead: the click is what advances
+      // the step machine, and the server already accepts it.
+      if (waited.clientMirrorActive > 0) {
+        const fresh = await getState(page);
+        const freshAllowed = fresh.tutorialHighlight?.allowedAction || null;
+        const target = freshAllowed?.type
+          ? (findTarget(fresh, (action) => actionMatches(freshAllowed, action))
+            || findTarget(fresh, (action) => action.type === freshAllowed.type && !action.disabled))
+          : null;
+        if (target) return clickTarget(page, `highlight-${freshAllowed.type}-${iteration}`, fresh, target);
       }
       return recordWaitAction(page, `march-arrived-${iteration}`, await getState(page), {
         type: 'wait',
