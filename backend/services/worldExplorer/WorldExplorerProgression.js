@@ -240,6 +240,18 @@ function revealStep(gameState, mission, step, now = new Date(), options = {}) {
   return [...byId.values()];
 }
 
+// The guided-explore tutorial advance must CONVERGE, not fire once: the completion
+// tick's write can lose a revision race, leaving the mission idle forever while the
+// step stays scoutExploreStarted. Re-evaluating on every pass (manualAdvance is
+// monotonic and idempotent) makes that stranded state self-heal on the next tick.
+function advanceTutorialAfterGuidedExplore(gameState, mission, TUTORIAL_STEPS) {
+  if (mission.status !== 'idle') return;
+  const route = Array.isArray(mission.route) ? mission.route : [];
+  if (!route.length || !route.every((step) => step.revealed)) return;
+  if (!SharedTutorialFlowConfig.stepEquals(gameState.tutorial?.currentStep, TUTORIAL_STEPS.scoutExploreStarted)) return;
+  gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.firstCityDiscovered);
+}
+
 function advanceExploreMissions(gameState, now = new Date(), options = {}) {
   const TUTORIAL_STEPS = getTutorialSteps();
   gameState.exploreMissions = normalizeMissions(gameState.exploreMissions);
@@ -248,6 +260,7 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
   for (const mission of gameState.exploreMissions) {
     if (mission.status === 'idle') {
       settleReturnedFormationSnapshot(gameState, mission, now);
+      advanceTutorialAfterGuidedExplore(gameState, mission, TUTORIAL_STEPS);
       continue;
     }
     if (mission.status !== 'active') continue;
@@ -284,9 +297,7 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       mission.nextStepAt = null;
       WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now);
       settleReturnedFormationSnapshot(gameState, mission, now);
-      if (mission.status === 'idle' && SharedTutorialFlowConfig.stepEquals(gameState.tutorial?.currentStep, TUTORIAL_STEPS.scoutExploreStarted)) {
-        gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.firstCityDiscovered);
-      }
+      advanceTutorialAfterGuidedExplore(gameState, mission, TUTORIAL_STEPS);
     }
     WorldExplorerTrace.log('progression:advanceMission:after', {
       mission: summarizeMission(mission),
