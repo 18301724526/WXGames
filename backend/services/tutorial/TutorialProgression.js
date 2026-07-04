@@ -33,7 +33,7 @@ function advanceClientStep(tutorialState, requestedStep) {
     return {
       success: false,
       error: 'TUTORIAL_STEP_INVALID',
-      message: 'Tutorial step is invalid.',
+      message: '引导步骤无效。',
       tutorial,
     };
   }
@@ -43,7 +43,7 @@ function advanceClientStep(tutorialState, requestedStep) {
     return {
       success: false,
       error: 'TUTORIAL_STEP_LOCKED',
-      message: 'Tutorial step must be advanced by a real game action.',
+      message: '该引导步骤需由实际游戏操作推进。',
       tutorial,
     };
   }
@@ -51,7 +51,7 @@ function advanceClientStep(tutorialState, requestedStep) {
     return {
       success: false,
       error: 'TUTORIAL_STEP_LOCKED',
-      message: 'Tutorial step prerequisite is not complete.',
+      message: '引导前置步骤尚未完成。',
       tutorial,
     };
   }

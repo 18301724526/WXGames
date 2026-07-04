@@ -463,14 +463,14 @@
     showFirstCitySiteOpenHighlight(siteId = '') {
       return this.targetResolver?.showOpenWorldSiteHighlight({
         siteId,
-        message: '\u70b9\u5f00\u4fa6\u5bdf\u961f\u53d1\u73b0\u7684\u7a7a\u57ce\uff0c\u51c6\u5907\u5efa\u7acb\u7b2c\u4e8c\u5904\u636e\u70b9\u3002',
+        message: t('tutorial.guide.openDiscoveredEmptyCity'),
       }) || false;
     }
 
     showCapitalSiteOpenHighlight(siteId = this.getCapitalCityId()) {
       return this.targetResolver?.showOpenWorldSiteHighlight({
         siteId,
-        message: '\u70b9\u5f00\u4e3b\u57ce\uff0c\u53bb\u57ce\u5185\u519b\u4e8b\u9875\u914d\u7f6e\u7b2c\u4e00\u652f\u4fa6\u5bdf\u7f16\u961f\u3002',
+        message: t('tutorial.guide.openCapitalForScout'),
       }) || false;
     }
 
@@ -605,7 +605,7 @@
         return this.showHighlight(
           'enterCity',
           (action) => !action.disabled && (!siteId || action.cityId === siteId || action.territoryId === siteId || action.siteId === siteId),
-          '\u8fdb\u5165\u4e3b\u57ce\uff0c\u5728\u57ce\u5185\u519b\u4e8b\u9875\u914d\u7f6e\u4fa6\u5bdf\u7f16\u961f\u3002',
+          t('tutorial.guide.enterCapitalForScout'),
           { type: 'enterCity', cityId: siteId },
         );
       }

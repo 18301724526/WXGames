@@ -26,13 +26,13 @@ function isTutorialHouseBuild(tutorialState, buildingId) {
 
 function validateBuild(gameState, tutorialState, buildingId) {
   if (!BuildingConfig.hasBuilding(buildingId)) {
-    return { allowed: false, code: 'BUILDING_NOT_FOUND', message: 'Building not found' };
+    return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
   }
   if (!isTutorialHouseBuild(tutorialState, buildingId) && !BuildingUnlockService.isUnlocked(buildingId, gameState.currentEra, gameState)) {
-    return { allowed: false, code: 'ERA_NOT_UNLOCKED', message: 'Era not unlocked' };
+    return { allowed: false, code: 'ERA_NOT_UNLOCKED', message: '时代尚未解锁' };
   }
   if (BuildingState.isBuilt(getActiveCityBuildings(gameState), buildingId)) {
-    return { allowed: false, code: 'BUILDING_ALREADY_EXISTS', message: 'Building already exists' };
+    return { allowed: false, code: 'BUILDING_ALREADY_EXISTS', message: '建筑已存在' };
   }
   const cost = BuildingCostCalculator.getBuildCost(buildingId);
   if (!hasEnoughResources(getActiveCityResources(gameState), cost)) {
@@ -43,10 +43,10 @@ function validateBuild(gameState, tutorialState, buildingId) {
 
 function validateUpgrade(gameState, tutorialState, buildingId) {
   if (!BuildingConfig.hasBuilding(buildingId)) {
-    return { allowed: false, code: 'BUILDING_NOT_FOUND', message: 'Building not found' };
+    return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
   }
   if (!BuildingState.isBuilt(getActiveCityBuildings(gameState), buildingId)) {
-    return { allowed: false, code: 'BUILDING_NOT_BUILT', message: 'Building not built' };
+    return { allowed: false, code: 'BUILDING_NOT_BUILT', message: '建筑尚未建造' };
   }
   const currentLevel = BuildingState.getLevel(getActiveCityBuildings(gameState), buildingId);
   if (!BuildingConfig.canUpgrade(buildingId, currentLevel)) {

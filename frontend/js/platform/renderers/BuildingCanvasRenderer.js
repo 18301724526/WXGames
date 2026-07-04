@@ -37,8 +37,8 @@
       return this.host?.presenter;
     }
 
-    t(key, params = {}) {
-      return LocaleText ? LocaleText.t(key, params) : key;
+    t(key, params = {}, options = {}) {
+      return LocaleText ? LocaleText.t(key, params, options) : (options.fallback ?? key);
     }
 
     addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
@@ -348,7 +348,9 @@
         stone: 'resource.stone',
         metal: 'resource.metal',
       };
-      return labelKeys[resource] ? this.t(labelKeys[resource]) : resource;
+      return labelKeys[resource]
+        ? this.t(labelKeys[resource])
+        : this.t(`resource.${resource}`, {}, { fallback: resource });
     }
 
     resourceIconPath(resource) {

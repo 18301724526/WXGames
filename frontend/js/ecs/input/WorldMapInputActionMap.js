@@ -43,7 +43,8 @@
     }
     return null;
   })();
-  const LocaleText = (() => {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
@@ -53,7 +54,7 @@
       }
     }
     return null;
-  })();
+  }
   const ActorPickingDiagnostics = (() => {
     if (global.ActorPickingDiagnostics) return global.ActorPickingDiagnostics;
     if (typeof module !== 'undefined' && module.exports) {
@@ -100,7 +101,8 @@
   }
 
   function t(key = '', params = {}) {
-    return LocaleText ? LocaleText.t(key, params) : key;
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params) : key;
   }
 
   function isActorPickingDiagEnabled() {

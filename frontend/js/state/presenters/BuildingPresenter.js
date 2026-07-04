@@ -228,7 +228,9 @@
           deltaText = this.t('building.effect.delta', { value: valueText });
         }
       }
-      return deltaText ? `${totalText}（${deltaText}）` : totalText;
+      return deltaText
+        ? this.t('common.parenthesized', { text: totalText, note: deltaText })
+        : totalText;
     }
 
     static formatMilitaryEffectParts(config = {}, level = 0, previousLevel = null) {
@@ -274,7 +276,7 @@
         ))
         .filter(Boolean);
       parts.push(...this.formatMilitaryEffectParts(config, level, previousLevel));
-      return parts.join('，');
+      return parts.join(this.t('common.inlineSeparator'));
     }
 
     static getBuildingEffectText(config, buildingEffects = {}) {

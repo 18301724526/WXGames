@@ -1,5 +1,6 @@
 (function (global) {
-  const LocaleText = (() => {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
@@ -9,13 +10,14 @@
       }
     }
     return null;
-  })();
+  }
 
   // Canonical display order for known resources; unknown positive keys are appended after.
   const RESOURCE_KEYS = ['food', 'wood', 'iron', 'knowledge', 'stone', 'metal'];
 
-  function translate(key, params) {
-    return LocaleText ? LocaleText.t(key, params) : key;
+  function translate(key, params, options = {}) {
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params, options) : (options.fallback ?? key);
   }
 
   // Localize a structured reward { food: 120, knowledge: 5 } into "粮食+120 / 知识+5",
@@ -28,7 +30,11 @@
     for (const key of Object.keys(safe)) {
       if (!RESOURCE_KEYS.includes(key) && Number(safe[key]) > 0) keys.push(key);
     }
-    const parts = keys.map((key) => `${translate(`resource.${key}`)}+${safe[key]}`);
+    // Unknown reward fields (new backend reward types) fall back to the raw field
+    // name instead of leaking the bare `resource.*` key.
+    const parts = keys.map(
+      (key) => `${translate(`resource.${key}`, {}, { fallback: key })}+${safe[key]}`,
+    );
     return parts.length ? parts.join(' / ') : translate('task.reward.none');
   }
 

@@ -137,7 +137,7 @@
     return host.showHighlight(
       'openFamousPersons',
       (action) => !action.disabled,
-      '\u6253\u5f00\u540d\u4eba\uff0c\u67e5\u770b\u521a\u52a0\u5165\u7684\u4fa6\u5bdf\u578b\u82f1\u6770\u3002',
+      t('tutorial.guide.openScoutFamous'),
       { type: 'openFamousPersons' },
     );
   }
@@ -147,7 +147,7 @@
     return host.showHighlight(
       'openFamousPersonDetail',
       (action) => !action.disabled && (!scoutPersonId || action.personId === scoutPersonId),
-      '\u70b9\u5f00\u8fd9\u5f20\u4fa6\u5bdf\u578b\u540d\u4eba\u5361\uff0c\u8bb0\u4f4f\u4ed6\u4f1a\u5e26\u961f\u51fa\u57ce\u63a2\u8def\u3002',
+      t('tutorial.guide.openScoutFamousDetail'),
       { type: 'openFamousPersonDetail', personId: scoutPersonId },
     );
   }
@@ -160,7 +160,7 @@
       return host.showHighlight(
         'toggleArmyFormationMember',
         (action) => !action.disabled && action.personId === scoutPersonId,
-        '\u9009\u4e2d\u8fd9\u4f4d\u4fa6\u5bdf\u540d\u4eba\uff0c\u4ed6\u5c06\u6210\u4e3a\u9996\u652f\u4fa6\u5bdf\u961f\u7684\u4e3b\u5c06\u3002',
+        t('tutorial.guide.pickScoutLeader'),
         { type: 'toggleArmyFormationMember', personId: scoutPersonId },
       );
     }
@@ -183,7 +183,7 @@
     return host.showHighlight(
       'saveArmyFormation',
       (action) => !action.disabled,
-      '\u4fdd\u5b58\u7f16\u961f\uff0c\u63a5\u4e0b\u6765\u5c31\u53ef\u4ee5\u51fa\u57ce\u4fa6\u5bdf\u571f\u5730\u4e86\u3002',
+      t('tutorial.guide.saveScoutFormation'),
       { type: 'saveArmyFormation' },
     );
   }
@@ -220,7 +220,7 @@
       'conquer',
       (action) =>
         !action.disabled && (!siteId || action.territoryId === siteId || action.cityId === siteId),
-      '\u8fd9\u662f\u4e00\u5ea7\u65e0\u4e3b\u7a7a\u57ce\uff0c\u70b9\u51fb\u5360\u9886\uff0c\u6d3e\u4eba\u5efa\u7acb\u65b0\u636e\u70b9\u3002',
+      t('tutorial.guide.conquerEmptyCity'),
       { type: 'conquer', territoryId: siteId },
     );
   }
@@ -234,7 +234,9 @@
         (action) =>
           !action.disabled &&
           (!siteId || action.territoryId === siteId || action.cityId === siteId),
-        `\u7ed9${site.naturalName || '\u8fd9\u5ea7\u65b0\u57ce'}\u53d6\u4e00\u4e2a\u540d\u5b57\uff0c\u8ba9\u5b83\u6210\u4e3a\u771f\u6b63\u7684\u57ce\u5e02\u3002`,
+        t('tutorial.guide.renameNewCity', {
+          name: site.naturalName || t('tutorial.guide.renameNewCity.fallbackName'),
+        }),
         { type: 'renameCity', territoryId: siteId },
       );
     }
@@ -242,14 +244,14 @@
       return host.showHighlight(
         'requestNamingInput',
         (action) => !action.disabled,
-        '\u5148\u70b9\u51fb\u8f93\u5165\u6846\uff0c\u4e3a\u65b0\u57ce\u586b\u5165\u4e00\u4e2a\u540d\u5b57\u3002',
+        t('tutorial.guide.focusCityNameInput'),
         { type: 'requestNamingInput' },
       );
     }
     return host.showHighlight(
       'submitNaming',
       (action) => !action.disabled,
-      '\u786e\u8ba4\u57ce\u5e02\u540d\u79f0\uff0c\u63a5\u4e0b\u6765\u4e3a\u6211\u4eec\u7684\u6587\u660e\u547d\u540d\u3002',
+      t('tutorial.guide.submitCityName'),
       { type: 'submitNaming' },
     );
   }
@@ -258,23 +260,22 @@
     if (!host.isNamingOpen?.('polity')) {
       host.game?.openNaming?.({
         type: 'polity',
-        title: '\u4e3a\u6587\u660e\u547d\u540d',
-        message:
-          '\u65b0\u57ce\u5df2\u7ecf\u5e76\u5165\u6211\u4eec\u7684\u7248\u56fe\uff0c\u73b0\u5728\u7ed9\u8fd9\u4e2a\u65b0\u751f\u6587\u660e\u4e00\u4e2a\u540d\u5b57\u3002',
+        title: t('tutorial.guide.namePolityTitle'),
+        message: t('tutorial.guide.namePolityMessage'),
       });
     }
     if (!host.getNamingInputValue?.()) {
       return host.showHighlight(
         'requestNamingInput',
         (action) => !action.disabled,
-        '\u8f93\u5165\u6587\u660e\u540d\u79f0\uff0c\u8fd9\u4e2a\u540d\u5b57\u4f1a\u8bb0\u5f55\u5728\u52bf\u529b\u6863\u6848\u91cc\u3002',
+        t('tutorial.guide.focusPolityNameInput'),
         { type: 'requestNamingInput' },
       );
     }
     return host.showHighlight(
       'submitNaming',
       (action) => !action.disabled,
-      '\u786e\u8ba4\u6587\u660e\u540d\u79f0\uff0c\u8fd9\u6761\u5f3a\u5f15\u5bfc\u5c31\u53ea\u5269\u6700\u540e\u7684\u79d1\u6280\u8bf4\u660e\u4e86\u3002',
+      t('tutorial.guide.submitPolityName'),
       { type: 'submitNaming' },
     );
   }
@@ -465,31 +466,24 @@
         id: 'farm-build',
         matches: (host) => host.isFarmGuideActive?.(),
         buildingId: 'farm',
-        message:
-          '\u5efa\u9020\u7b2c\u4e00\u5757\u519c\u7530\uff0c\u8ba9\u98df\u7269\u4f9b\u5e94\u5148\u7a33\u5b9a\u4e0b\u6765\u3002',
+        message: () => t('tutorial.guide.buildFirstFarm'),
       }),
       makeTabOpenRule({
         id: 'era2-open-civilization',
         steps: [steps.era2AdvanceReady],
         panel: 'civilization',
-        message:
-          '\u56de\u5230\u6587\u660e\uff0c\u628a\u805a\u843d\u63a8\u5411\u4e0b\u4e00\u4e2a\u65f6\u4ee3\u3002',
+        message: () => t('tutorial.guide.openCivilizationForEra2'),
       }),
       {
         id: 'era2-advance',
         matches: all(stepIs(steps.era2AdvanceReady), isCommandPanelOpen('civilization')),
-        render: (host) =>
-          renderAdvanceEra(
-            host,
-            '\u6761\u4ef6\u5df2\u7ecf\u51c6\u5907\u597d\uff0c\u70b9\u51fb\u8fdb\u9636\u8fdb\u5165\u805a\u843d\u65f6\u4ee3\u3002',
-          ),
+        render: (host) => renderAdvanceEra(host, t('tutorial.guide.advanceToEra2')),
       },
       makeTabOpenRule({
         id: 'era2-open-events',
         steps: [steps.eraAdvancedTo2],
         panel: 'events',
-        message:
-          '\u6253\u5f00\u4e8b\u4ef6\uff0c\u5904\u7406\u68ee\u6797\u91cc\u7684\u6728\u6750\u7ebf\u7d22\u3002',
+        message: () => t('tutorial.guide.openEventsForForest'),
       }),
       {
         id: 'era2-open-forest-event',
@@ -498,7 +492,7 @@
           host.showHighlight(
             'openEvent',
             (action) => !action.disabled && action.eventId === 'evt_settlement_forest_001',
-            '\u70b9\u5f00\u68ee\u6797\u4f4e\u8bed\u4e8b\u4ef6\uff0c\u5148\u628a\u53ef\u7528\u7684\u6728\u6750\u6536\u4e0b\u3002',
+            t('tutorial.guide.openForestEvent'),
             { type: 'openEvent', eventId: 'evt_settlement_forest_001' },
           ),
       },
@@ -512,7 +506,7 @@
               !action.disabled &&
               action.eventId === 'evt_settlement_forest_001' &&
               action.optionId === 'opt_collect_wood',
-            '\u9886\u53d6\u8fd9\u6279\u6728\u6750\uff0c\u6211\u4eec\u9a6c\u4e0a\u5efa\u8d77\u4f10\u6728\u573a\u3002',
+            t('tutorial.guide.claimForestWood'),
             {
               type: 'claimEvent',
               eventId: 'evt_settlement_forest_001',
@@ -527,34 +521,26 @@
           stepIs(steps.buildingsTabOpenedForLumbermill),
         ),
         buildingId: 'lumbermill',
-        message:
-          '\u5efa\u9020\u4f10\u6728\u573a\uff0c\u8ba9\u6728\u6750\u5f00\u59cb\u6301\u7eed\u6d41\u5165\u4ed3\u5e93\u3002',
+        message: () => t('tutorial.guide.buildLumbermill'),
       }),
       ...makeTaskClaimPairRules({
         openId: 'lumbermill-open-task-center',
         claimId: 'lumbermill-claim-task',
         step: steps.lumbermillBuilt,
         taskId: 'main_lumbermill_supplies',
-        openMessage:
-          '\u6253\u5f00\u4efb\u52a1\uff0c\u9886\u53d6\u4f10\u6728\u573a\u5b8c\u6210\u540e\u7684\u4e3b\u7ebf\u5956\u52b1\u3002',
-        claimMessage:
-          '\u9886\u53d6\u201c\u8ba9\u6728\u6750\u6d41\u5165\u4ed3\u623f\u201d\uff0c\u4e0b\u4e00\u6b21\u8fdb\u9636\u7684\u7269\u8d44\u5c31\u5230\u4f4d\u4e86\u3002',
+        openMessage: () => t('tutorial.guide.openLumbermillTask'),
+        claimMessage: () => t('tutorial.guide.claimLumbermillReward'),
       }),
       makeTabOpenRule({
         id: 'era3-open-civilization',
         steps: [steps.era3AdvanceReady],
         panel: 'civilization',
-        message:
-          '\u6253\u5f00\u6587\u660e\uff0c\u7528\u4f10\u6728\u573a\u7684\u7269\u8d44\u63a8\u8fdb\u5230\u57ce\u90a6\u65f6\u4ee3\u3002',
+        message: () => t('tutorial.guide.openCivilizationForEra3'),
       }),
       {
         id: 'era3-advance',
         matches: all(stepIs(steps.era3AdvanceReady), isCommandPanelOpen('civilization')),
-        render: (host) =>
-          renderAdvanceEra(
-            host,
-            '\u8fdb\u9636\u5230\u57ce\u90a6\u65f6\u4ee3\uff0c\u4fa6\u5bdf\u4e0e\u540d\u4eba\u7f16\u961f\u5c31\u4f1a\u6b63\u5f0f\u5f00\u653e\u3002',
-          ),
+        render: (host) => renderAdvanceEra(host, t('tutorial.guide.advanceToEra3')),
       },
       // Barracks segment: claim supplies, open the buildings tab, build the
       // barracks, claim the first army, then recruit the scout officer.
@@ -614,7 +600,7 @@
           host.showHighlight(
             'closeFamousPersonDetail',
             (action) => !action.disabled,
-            '\u5361\u7247\u5df2\u7ecf\u770b\u8fc7\uff0c\u5148\u8fd4\u56de\u540d\u4eba\u5217\u8868\u3002',
+            t('tutorial.guide.closeScoutFamousDetail'),
             { type: 'closeFamousPersonDetail' },
           ),
       },
@@ -625,7 +611,7 @@
           host.showHighlight(
             'closeFamousPersons',
             (action) => !action.disabled,
-            '\u5173\u95ed\u540d\u4eba\u9762\u677f\uff0c\u63a5\u4e0b\u6765\u56de\u4e3b\u57ce\u914d\u7f6e\u7b2c\u4e00\u652f\u4fa6\u5bdf\u7f16\u961f\u3002',
+            t('tutorial.guide.closeFamousPanel'),
             { type: 'closeFamousPersons' },
           ),
       },
@@ -652,7 +638,7 @@
           host.showHighlight(
             'switchCityManagementTab',
             (action) => !action.disabled && action.tab === 'military',
-            '\u5207\u5230\u57ce\u5185\u519b\u4e8b\uff0c\u6211\u4eec\u8981\u628a\u8fd9\u4f4d\u540d\u4eba\u653e\u8fdb\u4fa6\u5bdf\u7f16\u961f\u3002',
+            t('tutorial.guide.switchCityMilitaryTab'),
             { type: 'switchCityManagementTab', tab: 'military' },
           ),
       },
@@ -668,7 +654,7 @@
           host.showHighlight(
             'openArmyFormation',
             (action) => !action.disabled && Number(action.slot || 1) === 1,
-            '\u70b9\u51fb\u7b2c\u4e00\u5f20\u7f16\u961f\u5361\u7247\uff0c\u628a\u4fa6\u5bdf\u540d\u4eba\u653e\u8fdb\u961f\u4f0d\u3002',
+            t('tutorial.guide.openFirstFormation'),
             { type: 'openArmyFormation', cityId: host.getCapitalCityId?.(), slot: 1 },
           ),
       },
@@ -688,7 +674,7 @@
           return host.showHighlight(
             'selectWorldMarchTarget',
             (action) => !action.disabled,
-            '\u70b9\u9009\u5927\u5730\u56fe\u4e0a\u7684\u4e00\u5757\u76ee\u6807\u5730\uff0c\u6211\u4eec\u4f1a\u628a\u4fa6\u5bdf\u961f\u6d3e\u5f80\u90a3\u91cc\u3002',
+            t('tutorial.guide.selectScoutTarget'),
             { type: 'selectWorldMarchTarget' },
           );
         },
@@ -704,7 +690,7 @@
           return host.showHighlight(
             'openWorldMarchFormationPicker',
             (action) => !action.disabled,
-            '\u76ee\u6807\u5df2\u7ecf\u6807\u51fa\uff0c\u70b9\u51fb\u884c\u519b\uff0c\u9009\u62e9\u672c\u6b21\u51fa\u57ce\u7684\u961f\u4f0d\u3002',
+            t('tutorial.guide.openMarchFormationPicker'),
             { type: 'openWorldMarchFormationPicker' },
           );
         },
@@ -718,7 +704,7 @@
           host.showHighlight(
             'startWorldMarch',
             (action) => !action.disabled && Number(action.formationSlot || action.slot || 1) === 1,
-            '\u9009\u62e9\u7b2c\u4e00\u652f\u4fa6\u5bdf\u961f\u51fa\u57ce\uff0c\u8def\u7ebf\u4f1a\u7559\u5728\u5927\u5730\u56fe\u4e0a\u3002',
+            t('tutorial.guide.startScoutMarch'),
             { type: 'startWorldMarch', formationSlot: 1 },
           ),
       },
@@ -744,7 +730,7 @@
             (action) =>
               !action.disabled &&
               (!siteId || action.territoryId === siteId || action.cityId === siteId),
-            '\u961f\u4f0d\u5df2\u7ecf\u5230\u8fbe\uff0c\u70b9\u51fb\u5b8c\u6210\u5360\u9886\uff0c\u628a\u8fd9\u91cc\u7eb3\u5165\u6211\u4eec\u7684\u7248\u56fe\u3002',
+            t('tutorial.guide.claimFirstCityConquest'),
             { type: 'claimConquest', territoryId: siteId },
           );
         },
@@ -832,17 +818,13 @@
         id: 'final-tech-open',
         steps: [steps.famousSeekCompleted, steps.finalTechOpened],
         panel: 'tech',
-        message:
-          '\u6253\u5f00\u79d1\u6280\uff0c\u770b\u770b\u6587\u660e\u672a\u6765\u7684\u53d1\u5c55\u8def\u7ebf\u3002',
+        message: () => t('tutorial.guide.openTechFinal'),
       }),
       {
         id: 'final-tech-soft-guide',
         matches: stepIs(steps.famousSeekCompleted, steps.finalTechOpened),
         render: (host) =>
-          host.showSoftGuide?.(
-            'tech-tree',
-            '\u79d1\u6280\u70b9\u4f1a\u5f71\u54cd\u6587\u660e\u7684\u53d1\u5c55\u8fdb\u7a0b\uff0c\u4e0d\u540c\u8def\u7ebf\u4f1a\u628a\u805a\u843d\u5e26\u5411\u519c\u4e1a\u3001\u519b\u4e8b\u6216\u5de5\u4e1a\u7b49\u4e0d\u540c\u4fa7\u91cd\u3002\u63a5\u4e0b\u6765\u7531\u4f60\u6765\u51b3\u5b9a\u7b2c\u4e00\u9879\u7814\u7a76\u3002',
-          ) || false,
+          host.showSoftGuide?.('tech-tree', t('tutorial.guide.techSoftGuide')) || false,
       },
       makeBuildRule({
         id: 'house-build',

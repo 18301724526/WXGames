@@ -10,7 +10,8 @@
     }
     return null;
   })();
-  const LocaleText = (() => {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
     if (global.LocaleText) return global.LocaleText;
     if (typeof module !== 'undefined' && module.exports) {
       try {
@@ -20,7 +21,7 @@
       }
     }
     return null;
-  })();
+  }
 
   const WORLD_ENTITY_ACTIONS = Object.freeze(['openWorldSite', 'selectWorldActor']);
   const WORLD_ENTITY_ACTION_SET = new Set(WORLD_ENTITY_ACTIONS);
@@ -36,7 +37,8 @@
   }
 
   function t(key = '', params = {}) {
-    return LocaleText ? LocaleText.t(key, params) : key;
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params) : key;
   }
 
   function parseTileId(tileId = '') {

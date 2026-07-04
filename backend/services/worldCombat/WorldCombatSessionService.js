@@ -73,7 +73,7 @@ function openSession(
 
   const existing = gameState.worldCombat.session;
   if (existing && existing.status === 'open') {
-    return failure('WORLD_COMBAT_SESSION_BUSY', 'An interactive battle is already in progress.');
+    return failure('WORLD_COMBAT_SESSION_BUSY', '已有战斗正在进行中。');
   }
 
   const encounter = WorldCombatEncounterService.getActiveEncounterAt(gameState, {
@@ -81,7 +81,7 @@ function openSession(
     r: targetR,
   });
   if (!encounter) {
-    return failure('WORLD_COMBAT_ENCOUNTER_NOT_FOUND', 'Combat encounter is no longer available.');
+    return failure('WORLD_COMBAT_ENCOUNTER_NOT_FOUND', '该敌军已不在此处。');
   }
 
   const mission = findSourceMission(gameState, { missionId, cityId, formationSlot });
@@ -160,10 +160,10 @@ function resolveSession(
 
   const session = gameState.worldCombat.session;
   if (!session || session.status !== 'open') {
-    return failure('WORLD_COMBAT_SESSION_NOT_FOUND', 'No active battle to resolve.');
+    return failure('WORLD_COMBAT_SESSION_NOT_FOUND', '当前没有进行中的战斗。');
   }
   if (session.battleId !== battleId) {
-    return failure('WORLD_COMBAT_SESSION_MISMATCH', 'Battle id does not match the active session.');
+    return failure('WORLD_COMBAT_SESSION_MISMATCH', '战斗信息不匹配，请重新发起战斗。');
   }
 
   const stream = Array.isArray(inputStream) ? inputStream : [];

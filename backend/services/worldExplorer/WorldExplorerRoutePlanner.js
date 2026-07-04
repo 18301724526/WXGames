@@ -68,13 +68,13 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
         target: { q: targetQ, r: targetR },
       };
     }
-    return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: 'Explore target is already the origin.' };
+    return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: '目标就是部队当前位置。' };
   }
   if (routeResult.error === 'EXPLORE_TARGET_TOO_FAR') {
-    return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: 'Explore target is too far.' };
+    return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: '目标太远，无法行军。' };
   }
   if (routeResult.error === 'EXPLORE_ROUTE_BLOCKED') {
-    return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
+    return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: '行军路线被海洋阻断。' };
   }
   const route = (routeResult.route || []).map((step) => ({
     q: step.q,

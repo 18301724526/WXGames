@@ -167,7 +167,7 @@ function buildRevisionConflictPayload(error = {}) {
   return {
     success: false,
     error: 'GAME_STATE_REVISION_CONFLICT',
-    message: 'Game state changed while processing this action. Please retry.',
+    message: '操作时游戏状态已更新，请重试',
     retryable: true,
     expectedRevision: error.expectedRevision ?? null,
     actualRevision: error.actualRevision ?? null,

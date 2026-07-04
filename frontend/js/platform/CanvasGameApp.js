@@ -1802,7 +1802,7 @@
             this.loading = {
               visible: true,
               percentage: 0,
-              message: message || '姝ｅ湪鏁寸悊钀ュ湴璧勬簮',
+              message: message || t('shell.loading.defaultMessage'),
             };
             this.canvasShell?.showLoading?.(this.loading.message);
             this.renderCanvasSurface();
@@ -1846,7 +1846,7 @@
           }
 
     async loadGameAssets(options = {}) {
-            const message = options.message || '姝ｅ湪鏁寸悊钀ュ湴璧勬簮';
+            const message = options.message || t('shell.loading.defaultMessage');
             const hideWhenDone = options.hideWhenDone !== false;
             const minimumDurationMs = Number.isFinite(options.minimumDurationMs)
               ? Math.max(0, options.minimumDurationMs)
@@ -1883,7 +1883,7 @@
               trace?.phaseFail?.('assets:preload', error);
               throw error;
             } finally {
-              this.updateLoading({ percentage: 100, message: '璧勬簮鍑嗗瀹屾垚' });
+              this.updateLoading({ percentage: 100, message: t('shell.loading.assetsReady') });
               if (hideWhenDone) this.hideLoading();
             }
           }
@@ -2395,7 +2395,7 @@
                 try {
                   this.applyApiState(result);
                   this.showFloatingText(action === 'upgrade' ? t('command.building.upgradeSuccess') : t('command.building.buildSuccess'));
-                  this.log(`Success: ${result?.message || ''}`);
+                  this.log(t('command.success.detail', { message: result?.message || '' }));
                   this.tutorialController?.sync?.(this.tutorial);
                   this.maybeShowHouseBuiltAdvisor(action, buildingId);
                   return true;

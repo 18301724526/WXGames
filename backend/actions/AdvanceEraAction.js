@@ -61,10 +61,10 @@ function execute(gameState, tutorial) {
   const capital = CityService.getCapitalCity(gameState);
   const config = EraConfig.getAdvanceConfig(gameState.currentEra);
   if (!config) {
-    return { success: false, error: 'ERA_MAX_REACHED', message: 'Max era reached', tutorial };
+    return { success: false, error: 'ERA_MAX_REACHED', message: '已达到最高时代', tutorial };
   }
   if (!hasEnoughResources(capital.resources, config.cost) || !meetsConditions(gameState, config.conditions)) {
-    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: 'Insufficient resources', tutorial };
+    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法进入下一时代', tutorial };
   }
 
   capital.resources = deductResources(capital.resources, config.cost);
@@ -88,7 +88,7 @@ function execute(gameState, tutorial) {
 
   return {
     success: true,
-    message: `Advanced to ${EraConfig.getEraName(config.nextEra)}${techGrant.granted ? `, tech points +${techGrant.granted}` : ''}`,
+    message: `已进入${EraConfig.getEraName(config.nextEra)}${techGrant.granted ? `，科技点 +${techGrant.granted}` : ''}`,
     currentEra: config.nextEra,
     techGrant,
     tutorial: nextTutorial,

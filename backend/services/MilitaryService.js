@@ -7,14 +7,19 @@ const FormationStrengthService = require('./military/FormationStrengthService');
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
-const FORMATION_NAMES = ['Formation 1', 'Formation 2', 'Formation 3'];
 // Formations have no user-set name (the client never sends one), so the slot label is purely a
 // localized default rendered by the client. Persisting the English default ('Formation N') leaked
 // it into zh-CN UI, so store an empty name and let the client localize via military.formation.*.
+// The pattern also self-heals legacy saves that still carry the baked English default.
 const DEFAULT_FORMATION_NAME_PATTERN = /^Formation \d+$/;
 function toStoredFormationName(rawName) {
   const name = String(rawName || '').trim();
   return DEFAULT_FORMATION_NAME_PATTERN.test(name) ? '' : name;
+}
+
+// Transient zh display name for server messages only — never persisted.
+function getFormationDisplayName(formation = {}, slot = 1) {
+  return toStoredFormationName(formation.name) || `${slot}号编队`;
 }
 
 function getBarracksLevel(buildings) {
@@ -296,13 +301,13 @@ function setArmyFormation(gameState, payload = {}) {
   const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
   const slot = normalizeFormationSlot(payload.slot);
   if (!slot) {
-    return { success: false, error: 'FORMATION_SLOT_INVALID', message: 'Formation slot invalid' };
+    return { success: false, error: 'FORMATION_SLOT_INVALID', message: '编队槽位无效' };
   }
   if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
-    return { success: false, error: 'CITY_NOT_FOUND', message: 'City not found' };
+    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
   }
   if (isFormationLocked(gameState, cityId, slot)) {
-    return { success: false, error: 'FORMATION_LOCKED_BY_MISSION', message: 'Formation is away from the city.' };
+    return { success: false, error: 'FORMATION_LOCKED_BY_MISSION', message: '编队正在城外执行任务，无法调整' };
   }
   const sourceMilitary = getCityMilitary(gameState, cityId);
   const context = createMilitaryContext(gameState, cityId, sourceMilitary);
@@ -322,8 +327,8 @@ function setArmyFormation(gameState, payload = {}) {
       success: false,
       error: assignmentValidation.error,
       message: assignmentValidation.error === 'FORMATION_SOLDIER_CAP_EXCEEDED'
-        ? 'Formation soldier cap exceeded'
-        : 'Formation soldier assignment invalid',
+        ? '编队士兵数超过上限'
+        : '编队士兵分配无效',
       personId: assignmentValidation.personId,
       cap: assignmentValidation.cap,
     };
@@ -343,7 +348,7 @@ function setArmyFormation(gameState, payload = {}) {
   const reserveDelta = nextAssigned - previousAssigned;
   const cityResources = getCityResources(gameState, cityId);
   if (reserveDelta > normalizedMilitary.soldiers) {
-    return { success: false, error: 'INSUFFICIENT_CITY_SOLDIERS', message: 'City reserve soldiers are insufficient' };
+    return { success: false, error: 'INSUFFICIENT_CITY_SOLDIERS', message: '城内预备兵力不足' };
   }
   const refund = reserveDelta < 0
     ? FormationStrengthService.scaleResourceCost(
@@ -356,7 +361,9 @@ function setArmyFormation(gameState, payload = {}) {
   formations[slot - 1] = {
     ...formations[slot - 1],
     slot,
-    name: FORMATION_NAMES[slot - 1] || `Formation ${slot}`,
+    // No default name is persisted: '' lets the client render its localized
+    // military.formation.default label (user-set names pass through untouched).
+    name: toStoredFormationName(formations[slot - 1]?.name),
     memberIds,
     maxMembers: MAX_FORMATION_MEMBERS,
     maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
@@ -377,7 +384,7 @@ function setArmyFormation(gameState, payload = {}) {
   gameState.tutorial = tutorial;
   return {
     success: true,
-    message: `${FORMATION_NAMES[slot - 1] || `Formation ${slot}`} saved`,
+    message: `${getFormationDisplayName(formations[slot - 1], slot)}已保存`,
     formation: (getCityMilitary(gameState, cityId).formations || [])[slot - 1] || null,
     reserveDelta,
     refund,

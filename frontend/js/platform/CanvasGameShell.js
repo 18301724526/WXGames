@@ -749,7 +749,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             this.loading = {
               visible: true,
               percentage: 0,
-              message: '\u6b63\u5728\u6574\u7406\u5927\u5730\u56fe',
+              message: t('world.map.loading.default'),
             };
           }
           if (game?.authView) this.applyAuthShell(game.authView);

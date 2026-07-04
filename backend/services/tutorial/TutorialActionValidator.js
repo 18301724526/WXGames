@@ -139,17 +139,17 @@ function validateScoutFormationAction(step, action, payload, gameState) {
 function validateScoutExploreAction(step, action, payload, gameState) {
   if (action === 'returnWorldMarch' || action === 'stopWorldMarch') {
     if (stepBefore(step, TUTORIAL_STEPS.firstCityDiscovered)) {
-      return blocked('Please finish the guided exploration first.');
+      return blocked('请先完成引导侦察行军。');
     }
     return { allowed: true };
   }
   if (action === 'startWorldMarch') {
     if (stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered)) return { allowed: true };
     if (stepBefore(step, TUTORIAL_STEPS.scoutFormationSaved)) {
-      return blocked('Please finish the scout formation guide before exploring.');
+      return blocked('请先完成侦察编队引导，再进行探索。');
     }
     if (!hasTutorialScoutFormation(gameState, payload)) {
-      return blocked('Please keep the tutorial scout famous person in formation 1 before exploring.');
+      return blocked('请让教程赠送的侦察名人留在一号编队后再探索。');
     }
     return { allowed: true };
   }
@@ -165,35 +165,35 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
 
   if (action === 'startConquest') {
     if (!stepEquals(step, TUTORIAL_STEPS.firstCityDiscovered)) {
-      return blocked('Please finish the current guided city step first.');
+      return blocked('请先完成当前的占城引导步骤。');
     }
     if (!isFirstCity || !target || target.status !== 'discovered' || target.owner !== 'neutral') {
-      return blocked('Please claim the empty city discovered by the guided exploration first.');
+      return blocked('请先占领引导侦察发现的空城。');
     }
     return { allowed: true };
   }
 
   if (action === 'claimConquest') {
     if (!stepEquals(step, TUTORIAL_STEPS.firstCityConquestStarted)) {
-      return blocked('Please start the guided city claim first.');
+      return blocked('请先按照引导发起空城占领。');
     }
-    if (!isFirstCity) return blocked('Please finish claiming the guided empty city.');
+    if (!isFirstCity) return blocked('请先完成引导空城的占领。');
     return { allowed: true };
   }
 
   if (action === 'renameCity') {
     if (!stepEquals(step, TUTORIAL_STEPS.firstCityOccupied)) {
-      return blocked('Please finish claiming the guided empty city before naming it.');
+      return blocked('请先完成空城占领，再进行命名。');
     }
     if (!isFirstCity || !target || target.status !== 'occupied') {
-      return blocked('Please name the newly claimed guided city.');
+      return blocked('请为新占领的引导城市命名。');
     }
     return { allowed: true };
   }
 
   if (action === 'renamePolity') {
     if (!stepEquals(step, TUTORIAL_STEPS.firstCityNamed)) {
-      return blocked('Please name the new city before naming the civilization.');
+      return blocked('请先为新城命名，再为势力命名。');
     }
     return { allowed: true };
   }
@@ -213,7 +213,7 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
     'returnWorldMarch',
     'stopWorldMarch',
   ].includes(action)) {
-    return blocked('Please finish claiming and naming the new city first.');
+    return blocked('请先完成新城的占领与命名。');
   }
 
   return { allowed: true };
@@ -232,7 +232,7 @@ function validatePostNamingSystemGuideAction(step, action, payload = {}) {
     ) {
       return { allowed: true };
     }
-    return blocked('Please follow the current guided system step.');
+    return blocked('请按照当前引导步骤操作。');
   }
 
   if (stepEquals(step, TUTORIAL_STEPS.talentPolicyOpened) && action === 'applyTalentPolicy') {
@@ -240,14 +240,14 @@ function validatePostNamingSystemGuideAction(step, action, payload = {}) {
   }
   if (stepEquals(step, TUTORIAL_STEPS.talentPolicyApplied) && action === 'assign') {
     const amount = Number(payload?.count) || 0;
-    if (!payload?.target || amount === 0) return blocked('Please manually adjust one talent assignment.');
+    if (!payload?.target || amount === 0) return blocked('请手动调整一次人才分配。');
     return { allowed: true };
   }
   if (stepEquals(step, TUTORIAL_STEPS.famousSeekOpened) && action === 'seekFamousPerson') {
     return { allowed: true };
   }
 
-  return blocked('Please finish the current post-naming guide before using other systems.');
+  return blocked('请先完成当前引导，再使用其他系统。');
 }
 
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
