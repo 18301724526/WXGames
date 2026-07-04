@@ -9,14 +9,21 @@ const SEED = 'combat-session-seed';
 
 // A camp encounter plus an idle mission whose formation is a real attacking squad. The
 // mission position is a parameter so we can place the squad ON or OFF the camp tile.
-function createGameState({ missionAtCamp = true } = {}) {
+function createGameState({
+  missionAtCamp = true,
+  attackerSoldiers = 500,
+  defenderSoldiers = null,
+  attackerForce = 60,
+} = {}) {
   const gameState = {
     worldMap: { seed: SEED, origin: { q: 0, r: 0 } },
     territories: [{ id: 'capital', q: 0, r: 0 }],
     activeCityId: 'capital',
     cities: { capital: { id: 'capital', resources: { food: 100, wood: 100, knowledge: 100 } } },
     resources: null,
-    famousPeople: [{ id: 'hero-1', name: 'Test Hero', attributes: { force: 60, command: 55 } }],
+    famousPeople: [
+      { id: 'hero-1', name: 'Test Hero', attributes: { force: attackerForce, command: 55 } },
+    ],
     worldCombat: { encounters: [] },
     exploreMissions: [],
   };
@@ -24,6 +31,7 @@ function createGameState({ missionAtCamp = true } = {}) {
 
   WorldCombatEncounterService.normalizeCombatState(gameState, new Date());
   const camp = gameState.worldCombat.encounters.find((e) => e.campArchetypeKey);
+  if (defenderSoldiers != null) camp.defender.soldiers = defenderSoldiers;
   const campTileId = camp.tileId || WorldMapService.getTileId(camp.q, camp.r);
 
   const position = missionAtCamp
@@ -35,14 +43,24 @@ function createGameState({ missionAtCamp = true } = {}) {
       id: 'mission-attacker',
       status: 'idle',
       position,
+      // homeOrigin/origin/stepDurationMs let returnWorldMarch build a real return route.
+      homeOrigin: { q: 0, r: 0, tileId: WorldMapService.getTileId(0, 0) },
+      origin: { q: 0, r: 0, tileId: WorldMapService.getTileId(0, 0) },
+      stepDurationMs: 20000,
       formation: { cityId: 'capital', slot: 1 },
       formationSnapshot: {
         schema: 'formation-snapshot-v1',
         cityId: 'capital',
         slot: 1,
-        soldiersCommitted: 500,
-        soldiersRemaining: 500,
-        members: [{ personId: 'hero-1', soldiersCommitted: 500, soldiersRemaining: 500 }],
+        soldiersCommitted: attackerSoldiers,
+        soldiersRemaining: attackerSoldiers,
+        members: [
+          {
+            personId: 'hero-1',
+            soldiersCommitted: attackerSoldiers,
+            soldiersRemaining: attackerSoldiers,
+          },
+        ],
       },
     },
   ];
@@ -104,4 +122,62 @@ test('resolving an interactive camp victory grants the same loot + respawn coold
   const resolvedCamp = gameState.worldCombat.encounters.find((e) => e.id === camp.id);
   assert.equal(resolvedCamp.status, 'resolved');
   assert.equal(typeof resolvedCamp.respawnAt, 'string', 'respawn cooldown set');
+});
+
+test('a victory does NOT send the formation home: the squad idles on the cleared tile', () => {
+  const { gameState, camp } = createGameState({ missionAtCamp: true });
+  const opened = WorldCombatSessionService.openSession(gameState, {
+    missionId: 'mission-attacker',
+    formationSlot: 1,
+    cityId: 'capital',
+    targetQ: camp.q,
+    targetR: camp.r,
+  });
+  const resolved = WorldCombatSessionService.resolveSession(gameState, {
+    battleId: opened.battleId,
+    inputStream: [
+      { tick: 0, type: 'order', side: 0, order: 'allOut' },
+      { tick: 0, type: 'order', side: 1, order: 'allOut' },
+    ],
+  });
+  assert.equal(resolved.winner, 'attacker');
+  const mission = gameState.exploreMissions[0];
+  // No return march on victory: mission stays idle, no fresh route, still on the camp tile.
+  assert.equal(mission.status, 'idle');
+  assert.equal((mission.route || []).length, 0);
+  assert.equal(mission.position.tileId, camp.tileId || WorldMapService.getTileId(camp.q, camp.r));
+});
+
+test('a non-victory with survivors sends the formation home (retreat return-march)', () => {
+  // Weak attacker vs a strong garrison: deterministically a defender win, but the
+  // attacker's rear survives -> non-victory WITH survivors -> return march.
+  const { gameState, camp } = createGameState({
+    missionAtCamp: true,
+    attackerSoldiers: 60,
+    attackerForce: 40,
+    defenderSoldiers: 400,
+  });
+  const opened = WorldCombatSessionService.openSession(gameState, {
+    missionId: 'mission-attacker',
+    formationSlot: 1,
+    cityId: 'capital',
+    targetQ: camp.q,
+    targetR: camp.r,
+  });
+  const resolved = WorldCombatSessionService.resolveSession(gameState, {
+    battleId: opened.battleId,
+    inputStream: [],
+  });
+  assert.notEqual(resolved.winner, 'attacker');
+  assert.ok(resolved.attackerSnapshot.soldiersRemaining > 0, 'expected surviving soldiers');
+  const mission = gameState.exploreMissions[0];
+  // returnWorldMarch rebuilt an active route heading back to the home origin.
+  assert.equal(mission.status, 'active');
+  assert.ok((mission.route || []).length > 0, 'expected a return route');
+  assert.equal(mission.target.tileId, WorldMapService.getTileId(0, 0));
+  // Combat record stays resolved (the battle is over; the march is the aftermath).
+  assert.equal(mission.combat.status, 'resolved');
+  // The camp is NOT cleared by a repelled attack.
+  const stillActive = gameState.worldCombat.encounters.find((e) => e.id === camp.id);
+  assert.equal(stillActive.status, 'active');
 });

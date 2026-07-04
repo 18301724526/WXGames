@@ -17,6 +17,13 @@ const LOOT_RESOURCE_KEYS = Object.freeze(['food', 'wood', 'knowledge', 'iron', '
 const SCHEMA = 'world-combat-encounters-v1';
 const ENCOUNTER_ID = 'hostile_force_capital_ridge';
 const RECENT_REPORT_LIMIT = 5;
+// How long an 'engaged' mission (arrived on an enemy tile, waiting for the player to
+// play the interactive battle) may sit before the server force-settles it with an
+// allOut fallback. This is the offline safety net: a player who never opens the battle
+// scene (closed the tab, left it engaged) must not strand the formation forever. The
+// interactive path clears 'engaged' the moment resolveSession runs, so the timeout only
+// ever fires when nobody is playing the fight. Exported so tests + tuning share one value.
+const AUTO_ENGAGE_FALLBACK_MS = 45000;
 const DEFAULT_OFFSET = Object.freeze({ q: 2, r: -1 });
 const DEFAULT_FORCE = Object.freeze({
   soldiers: 40,
@@ -545,8 +552,11 @@ function resolveEncounterBattle(gameState = {}, mission = {}, encounter = {}, no
   };
 }
 
-function resolveMissionArrival(gameState = {}, mission = {}, now = new Date()) {
-  normalizeCombatState(gameState, now);
+// Locate the active encounter a mission has ARRIVED on (position tile == encounter tile),
+// or null if the mission has no pending combat, is not standing on its target, or the
+// encounter is gone. Shared by the arrival hook and the engaged-timeout fallback so both
+// agree on "is this mission on top of a live enemy right now".
+function getArrivedEncounterForMission(gameState = {}, mission = {}) {
   const combat = mission.combat && typeof mission.combat === 'object' ? mission.combat : null;
   if (!combat || combat.status === 'resolved') return null;
   const encounter = combat.encounterId
@@ -559,7 +569,61 @@ function resolveMissionArrival(gameState = {}, mission = {}, now = new Date()) {
     toInteger(mission.position?.r ?? mission.position?.y, mission.target?.r ?? 0),
   );
   if (positionTileId !== targetTileId) return null;
-  return resolveEncounterBattle(gameState, mission, encounter, now);
+  return encounter;
+}
+
+// Arrival hook: the formation has reached the enemy tile. Instead of immediately
+// resolving the battle (legacy allOut auto-settle), mark the mission 'engaged' and leave
+// it UNSETTLED. The frontend then opens the interactive battle (the "retreat window"); a
+// player who never plays it is caught by resolveEngagedTimeouts below. Returns an
+// { engaged, encounter } marker so callers can tell an engagement was set up, or null when
+// there is nothing to fight. ROLLBACK: replace the engaged block with
+// `return resolveEncounterBattle(gameState, mission, encounter, now)` to restore the old
+// allOut auto-settle on arrival.
+function resolveMissionArrival(gameState = {}, mission = {}, now = new Date()) {
+  normalizeCombatState(gameState, now);
+  const encounter = getArrivedEncounterForMission(gameState, mission);
+  if (!encounter) return null;
+  // Already engaged (or resolving via a session) on THIS encounter: leave it alone so a
+  // re-run of the arrival pass does not reset engagedAt and re-arm the timeout.
+  if (mission.combat?.status === 'engaged' && mission.combat.encounterId === encounter.id) {
+    return { engaged: true, encounter };
+  }
+  mission.combat = {
+    ...(mission.combat || {}),
+    status: 'engaged',
+    encounterId: encounter.id,
+    engagedAt: now.toISOString(),
+    battleReportId: null,
+  };
+  return { engaged: true, encounter };
+}
+
+// Offline safety net. Walk the missions and force-settle any that have been sitting
+// 'engaged' longer than AUTO_ENGAGE_FALLBACK_MS with an allOut resolveEncounterBattle —
+// UNLESS the player is actively playing that encounter's interactive battle (an open
+// session for the same encounter), in which case we defer to resolveSession so we never
+// double-settle a fight in progress. Runs on the worker tick + heartbeat settlement, so
+// engaged formations can never strand. Returns the number of missions force-settled.
+function resolveEngagedTimeouts(gameState = {}, now = new Date()) {
+  normalizeCombatState(gameState, now);
+  const missions = Array.isArray(gameState.exploreMissions) ? gameState.exploreMissions : [];
+  const nowMs = now.getTime();
+  const session = gameState.worldCombat?.session;
+  const openSessionEncounterId = session && session.status === 'open' ? session.encounterId : null;
+  let settled = 0;
+  for (const mission of missions) {
+    const combat = mission.combat && typeof mission.combat === 'object' ? mission.combat : null;
+    if (!combat || combat.status !== 'engaged') continue;
+    const engagedAtMs = combat.engagedAt ? Date.parse(combat.engagedAt) : Number.NaN;
+    if (!Number.isFinite(engagedAtMs) || nowMs - engagedAtMs <= AUTO_ENGAGE_FALLBACK_MS) continue;
+    // Player is mid-fight on this exact encounter: let the interactive session resolve it.
+    if (openSessionEncounterId && openSessionEncounterId === combat.encounterId) continue;
+    const encounter = getArrivedEncounterForMission(gameState, mission);
+    if (!encounter) continue;
+    if (resolveEncounterBattle(gameState, mission, encounter, now)) settled += 1;
+  }
+  return settled;
 }
 
 // Attacking a hostile force the formation is already standing on resolves with no
@@ -662,6 +726,7 @@ function getClientState(gameState = {}, now = new Date()) {
 module.exports = {
   ENCOUNTER_ID,
   SCHEMA,
+  AUTO_ENGAGE_FALLBACK_MS,
   createEncounter,
   getActiveEncounter,
   getActiveEncounterAt,
@@ -677,6 +742,7 @@ module.exports = {
   normalizeCombatState,
   normalizeEncounter,
   resolveEncounterBattle,
+  resolveEngagedTimeouts,
   resolveImmediateArrival,
   resolveMarchTarget,
   resolveMissionArrival,

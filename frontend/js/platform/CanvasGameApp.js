@@ -789,6 +789,68 @@
                 return false;
               }
 
+    // Auto-engage (connection point 1): the backend marks an arrived mission
+    // combat.status='engaged' instead of auto-settling. When our own idle formation is
+    // engaged on an enemy tile and no battle scene is open, open the interactive battle
+    // (the "retreat window") ONCE per engagement. Dedup key = missionId:encounterId:engagedAt
+    // so a re-sync of the same engagement never re-opens; a NEW engagement (different
+    // engagedAt) opens again. If the player closes the scene without resolving, we remember
+    // the engagement as dismissed so it is not immediately re-opened — the backend timeout
+    // fallback settles it if it stays engaged.
+    maybeAutoEnterEngagedBattle(state = this.state) {
+                if (typeof this.enterInteractiveBattle !== 'function') return false;
+                const explorer = state?.worldExplorerState || {};
+                const missions = [
+                  ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
+                  ...(Array.isArray(explorer.missions) ? explorer.missions : []),
+                ].filter(Boolean);
+                // A live battle scene is already open: never stack a second one.
+                if (this.entityBattle) return false;
+                this.autoEnteredEngagements = this.autoEnteredEngagements || new Set();
+                this.dismissedEngagements = this.dismissedEngagements || new Set();
+                for (const mission of missions) {
+                  const combat = mission.combat;
+                  if (!mission || mission.status !== 'idle' || !combat || combat.status !== 'engaged') continue;
+                  if (!combat.encounterId || !combat.engagedAt) continue;
+                  const key = `${mission.id}:${combat.encounterId}:${combat.engagedAt}`;
+                  if (this.autoEnteredEngagements.has(key) || this.dismissedEngagements.has(key)) continue;
+                  this.autoEnteredEngagements.add(key);
+                  const position = mission.position || mission.target || {};
+                  const engagementKey = key;
+                  Promise.resolve(
+                    this.enterInteractiveBattle({
+                      missionId: mission.id,
+                      formationSlot: mission.formation?.slot ?? 1,
+                      cityId: mission.formation?.cityId || this.state?.activeCityId || 'capital',
+                      targetQ: position.q ?? position.x,
+                      targetR: position.r ?? position.y,
+                      engagement: {
+                        missionId: mission.id,
+                        encounterId: combat.encounterId,
+                        engagedAt: combat.engagedAt,
+                      },
+                    }),
+                  ).then((opened) => {
+                    // Opening failed (e.g. prerequisites missing): drop the dedup mark so a
+                    // later sync of the same still-engaged mission can retry.
+                    if (opened === false) this.autoEnteredEngagements.delete(engagementKey);
+                  }).catch(() => {
+                    this.autoEnteredEngagements.delete(engagementKey);
+                  });
+                  return true; // one engagement per sync
+                }
+                return false;
+              }
+
+    // Called when the player closes an interactive battle scene: remember the engagement
+    // as dismissed so the auto-open hook does not immediately re-open the same fight.
+    markEngagementDismissed(missionId = '', encounterId = '', engagedAt = '') {
+                if (!missionId || !encounterId || !engagedAt) return false;
+                this.dismissedEngagements = this.dismissedEngagements || new Set();
+                this.dismissedEngagements.add(`${missionId}:${encounterId}:${engagedAt}`);
+                return true;
+              }
+
     applyState(payload = {}) {
                 this.syncWorldClock?.(payload);
                 const loadTrace = this.loadTrace || null;
@@ -1022,6 +1084,7 @@
                   after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
                 });
                 this.playUnseenWorldCombatReports?.(this.state);
+                this.maybeAutoEnterEngagedBattle?.(this.state);
                 this.render();
                 loadTrace?.ready?.({
                   source: 'syncFromServer',
@@ -2239,7 +2302,20 @@
                       return null;
                     }
                   },
-                  onClose: () => this.renderCanvasSurface?.(this.state?.currentTab || 'military'),
+                  onClose: () => {
+                    // Player dismissed the retreat window without resolving: remember this
+                    // engagement so the auto-open hook does not immediately re-open it on the
+                    // next sync (the backend timeout fallback settles it if it stays engaged).
+                    const engagement = options.engagement;
+                    if (engagement) {
+                      this.markEngagementDismissed?.(
+                        engagement.missionId,
+                        engagement.encounterId,
+                        engagement.engagedAt,
+                      );
+                    }
+                    this.renderCanvasSurface?.(this.state?.currentTab || 'military');
+                  },
                 });
                 return shown !== false;
               }
