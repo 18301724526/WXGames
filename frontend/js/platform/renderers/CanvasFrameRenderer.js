@@ -378,7 +378,11 @@
         // Design: once a march target is picked, replace the generic hint with the
         // route preview — distance in tiles and the estimated travel time, or the
         // blocked reason when the linear route cannot reach the target.
-        const marchTarget = options.territoryUiState?.worldMarchTarget || null;
+        // Sealed ui facts reach renderers through the render-context snapshot
+        // boundary, not the live territoryUiState bag (snapshot boundary ratchet).
+        const hudContext = this.getMapHomeWorldHudContext(options);
+        const hudUiState = hudContext?.uiState || hudContext?.renderSnapshot?.ui || {};
+        const marchTarget = hudUiState.worldMarchTarget || null;
         const routePolicy = typeof global !== 'undefined' ? global.WorldMarchRoutePolicy : null;
         let etaShown = false;
         if (marchTarget && routePolicy?.evaluateMarchTarget) {
