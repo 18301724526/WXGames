@@ -373,9 +373,40 @@ function registerGameRoutes(app, deps) {
     });
   });
 
+  // March settlement (reveal persistence, arrival, tutorial advance) must not depend on
+  // the world worker alone: a session that only watches a march performs no action
+  // writes, and its player can drop out of the worker's active window. The heartbeat is
+  // the one write-path signal a live session is guaranteed to keep sending, so it
+  // settles due missions itself; the worker covers closed sessions.
+  const settleDueMarchesOnHeartbeat = (playerId, now) => {
+    const rawState = repository.findByPlayerId?.(playerId);
+    if (!rawState) return false;
+    const nowMs = now.getTime();
+    const hasDueMission = (Array.isArray(rawState.exploreMissions) ? rawState.exploreMissions : [])
+      .some((mission) => {
+        if (!mission || mission.status !== 'active') return false;
+        const nextStepAtMs = Date.parse(mission.nextStepAt || '');
+        return Number.isFinite(nextStepAtMs) && nextStepAtMs <= nowMs;
+      });
+    if (!hasDueMission) return false;
+    const projection = loadProjection(repository, playerId);
+    const advanced = gameStateService.advanceRuntimeState(rawState, now, {
+      planningContext: projection,
+    });
+    advanced.updatedAt = now.toISOString();
+    repository.save(advanced);
+    return true;
+  };
+
   const handleHeartbeat = (req, res) => {
     const now = new Date();
     presenceService?.recordHeartbeat?.(req.playerId);
+    try {
+      settleDueMarchesOnHeartbeat(req.playerId, now);
+    } catch (error) {
+      // A lost revision race here is harmless: the next heartbeat or worker tick retries.
+      if (error?.code !== 'GAME_STATE_REVISION_CONFLICT') throw error;
+    }
     const clientReport = recordWorldMarchClientReport(
       repository,
       gameStateService,
