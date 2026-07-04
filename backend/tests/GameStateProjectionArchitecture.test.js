@@ -147,9 +147,11 @@ test('client projection is a read-only DTO boundary for explorer and territory r
     formation: { cityId: 'capital', slot: 1 },
     revealedTileIds: [],
     stepDurationMs: 1000,
-    startedAt: '2026-06-10T00:00:00.000Z',
-    nextStepAt: '2026-06-10T00:00:01.000Z',
-    completesAt: '2026-06-10T00:00:01.000Z',
+    // The DTO serves a TIME-DERIVED mission view; keep this fixture mid-march (future
+    // completesAt) or the projection correctly reports it finished.
+    startedAt: new Date(Date.now() - 200).toISOString(),
+    nextStepAt: new Date(Date.now() + 60 * 1000).toISOString(),
+    completesAt: new Date(Date.now() + 60 * 1000).toISOString(),
   }];
   normalized.warMissions = [{
     id: 'territory-mission-readonly',

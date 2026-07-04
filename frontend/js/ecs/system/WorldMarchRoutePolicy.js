@@ -2,16 +2,16 @@
   const WorldMarchCore = (() => {
     if (global.WorldMarchCore) return global.WorldMarchCore;
     if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../../../../shared/worldMarchCore');
-      } catch (_error) {
-        return null;
-      }
+      return require('../../../../shared/worldMarchCore');
     }
-    return null;
+    throw new Error(
+      'WorldMarchCore is required: load WorldMarchCoreAdapter.js before WorldMarchRoutePolicy.js',
+    );
   })();
 
-  const MAX_MANUAL_ROUTE_LENGTH = 16;
+  // Single source: shared/worldMarchCore owns the cap; the server also delivers its value
+  // in the world-explorer DTO (maxManualRouteLength), which wins when present.
+  const MAX_MANUAL_ROUTE_LENGTH = WorldMarchCore.MAX_MANUAL_ROUTE_LENGTH || 16;
 
   function normalizeCoord(coord = {}, fallback = {}) {
     return WorldMarchCore.normalizeCoord(coord, fallback);
@@ -68,15 +68,14 @@
     const coord = normalizeCoord(target);
     const origin = getMarchOrigin(state, { ...options, target });
     const knownTiles = getKnownTileMap(options.tileMapView || state.territoryState?.worldMap || {});
-    const routeResult = WorldMarchCore?.evaluateLinearMarchRoute
-      ? WorldMarchCore.evaluateLinearMarchRoute(origin, coord, {
-          maxLength: options.maxLength || MAX_MANUAL_ROUTE_LENGTH,
-          width: options.worldWidth || 1024,
-          height: options.worldHeight || 1024,
-          wrapping: options.wrapping !== false,
-          canTraverse: (step) => !isRouteTerrainBlocked(knownTiles.get(getTileKey(step))),
-        })
-      : { success: true, route: [] };
+    const serverRouteCap = Number(state.worldExplorerState?.maxManualRouteLength) || 0;
+    const routeResult = WorldMarchCore.evaluateLinearMarchRoute(origin, coord, {
+      maxLength: options.maxLength || serverRouteCap || MAX_MANUAL_ROUTE_LENGTH,
+      width: options.worldWidth || 1024,
+      height: options.worldHeight || 1024,
+      wrapping: options.wrapping !== false,
+      canTraverse: (step) => !isRouteTerrainBlocked(knownTiles.get(getTileKey(step))),
+    });
     if (routeResult.success) {
       return { canMarch: true, reason: '', origin, target: coord, route: routeResult.route || [] };
     }

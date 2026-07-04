@@ -927,8 +927,6 @@ function countBuildings(state = {}) {
 
 // The guided tutorial march is 2 tiles x EXPLORE_STEP_DURATION_MS (10s), so
 // 20 waits of 1.5-3s comfortably cover it while still bounding the stall.
-const MAX_CONSECUTIVE_MARCH_WAITS = 20;
-let consecutiveMarchWaits = 0;
 
 function missionCounts(state = {}) {
   const explorer = state.stateSummary?.worldExplorerState || {};
@@ -1183,6 +1181,43 @@ async function clickTarget(page, label, state, target) {
   };
 }
 
+// Marches take real time (stepDurationSeconds defaults to 10s/step, and the tutorial
+// explore mission visits 2 targets — minutes of wall clock). Wait them out in ONE
+// action-budget slot with progress awareness: any change in the active missions resets
+// the stall clock, so a genuinely starved march (a worker bug) still fails fast.
+async function waitForActiveMarchToArrive(page, maxWaitMs = 5 * 60 * 1000, stallMs = 60 * 1000) {
+  const startedAt = Date.now();
+  let lastProgressKey = '';
+  let lastProgressAt = Date.now();
+  for (;;) {
+    // The page does not poll /game/state on its own while idle — pull a fresh server
+    // snapshot each round or the mission mirror never moves and we false-stall.
+    await page.evaluate(() => window.Game?.syncOnce?.().catch(() => {}));
+    await waitForRender(page, 200);
+    const state = await getState(page);
+    const counts = missionCounts(state);
+    if (counts.active === 0) return { arrived: true, waitedMs: Date.now() - startedAt };
+    const explorer = state.stateSummary?.worldExplorerState || {};
+    const missions = Array.isArray(explorer.activeMissions)
+      ? explorer.activeMissions
+      : explorer.activeMission
+        ? [explorer.activeMission]
+        : [];
+    const progressKey = JSON.stringify(missions);
+    if (progressKey !== lastProgressKey) {
+      lastProgressKey = progressKey;
+      lastProgressAt = Date.now();
+    }
+    if (Date.now() - lastProgressAt > stallMs) {
+      return { arrived: false, reason: 'march-stalled-no-progress', waitedMs: Date.now() - startedAt };
+    }
+    if (Date.now() - startedAt > maxWaitMs) {
+      return { arrived: false, reason: 'max-wait-exceeded', waitedMs: Date.now() - startedAt };
+    }
+    await page.waitForTimeout(2500);
+  }
+}
+
 async function recordWaitAction(page, label, state, action = {}, waitMs = 900, timeoutMs = 12000) {
   const beforeSnapshot = await writeSnapshot(page, `${label}-before`, state, { action });
   await page.waitForTimeout(waitMs);
@@ -1342,25 +1377,28 @@ async function chooseNextAction(page, iteration) {
   }
 
   const allowed = state.tutorialHighlight?.allowedAction || null;
-  // A guided openWorldSite towards the tutorial's first empty city can race the
-  // exploration march (firstCityDiscovered only advances once the march goes idle,
-  // but the client mission mirror may lag a beat). Wait that race out — only for
-  // that one site, and bounded: an uncapped wait once burned the whole action
-  // budget against a server whose march never ticked.
+  // A guided openWorldSite towards the tutorial's first empty city races the exploration
+  // march: the site cannot advance the step machine until the march goes idle. Wait the
+  // whole march out in one action slot (minutes of real time), with a stall detector so
+  // a genuinely starved march (worker bug) still fails fast instead of hanging.
   if (allowed?.type === 'openWorldSite' && missionCounts(state).active > 0) {
     const firstExploreSiteId = String(state.tutorial?.grants?.firstExploreEmptyCity?.siteId || '');
     const highlightSiteId = String(allowed.siteId || '');
     const racesGuidedMarch = firstExploreSiteId && highlightSiteId === firstExploreSiteId;
-    if (racesGuidedMarch && consecutiveMarchWaits < MAX_CONSECUTIVE_MARCH_WAITS) {
-      consecutiveMarchWaits += 1;
-      return recordWaitAction(page, `wait-march-before-${allowed.type}-${iteration}`, state, {
+    if (racesGuidedMarch) {
+      const waited = await waitForActiveMarchToArrive(page);
+      if (!waited.arrived) {
+        throw createVerificationFailure(`march-wait-${iteration}`, `active march did not arrive: ${waited.reason}`, {
+          waitedMs: waited.waitedMs,
+        });
+      }
+      return recordWaitAction(page, `march-arrived-${iteration}`, await getState(page), {
         type: 'wait',
-        reason: 'active march has not arrived yet',
-        consecutiveMarchWaits,
-      }, 1500, 3000);
+        reason: 'guided march arrived',
+        waitedMs: waited.waitedMs,
+      }, 200, 3000);
     }
   }
-  consecutiveMarchWaits = 0;
   if (allowed?.type) {
     const target = findTarget(state, (action) => actionMatches(allowed, action))
       || findTarget(state, (action) => action.type === allowed.type && !action.disabled);

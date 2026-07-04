@@ -8,6 +8,7 @@ const {
   toInteger,
 } = require('./WorldExplorerShared');
 const FormationStrengthService = require('../military/FormationStrengthService');
+const WorldMarchCore = require('../../../shared/worldMarchCore');
 
 function normalizeCoord(source = {}, fallback = {}) {
   const q = toInteger(source?.q ?? source?.x, fallback.q ?? 0);
@@ -147,7 +148,13 @@ function getRemainingSeconds(mission = {}, now = new Date()) {
   return Math.max(0, Math.ceil((nextStepAtMs - now.getTime()) / 1000));
 }
 
-function getMissionDto(mission = {}, now = new Date()) {
+function getMissionDto(rawMission = {}, now = new Date()) {
+  // A mission is a deterministic time projection (startedAt + route + step cadence).
+  // Serve the DERIVED view so clients see marches move and finish in real time instead
+  // of at the world worker's 5s persistence cadence — the worker remains the only
+  // persistence writer, but reads must not be hostage to its write timing.
+  const mission =
+    WorldMarchCore.deriveMissionForTime(rawMission, { nowMs: now.getTime() }) || rawMission;
   const revealedTileSet = createRevealedTileSet(mission);
   const route = getRouteDto(mission.route || [])
     .map((step) => (
@@ -178,7 +185,7 @@ function getMissionDto(mission = {}, now = new Date()) {
     position,
     revealedTileIds,
     stepDurationSeconds: Math.floor(stepDurationMs / 1000),
-    remainingSeconds: getRemainingSeconds(mission, now),
+    remainingSeconds: WorldMarchCore.getRemainingSeconds(mission, now.getTime()),
     startedAt: mission.startedAt,
     nextStepAt: mission.nextStepAt || null,
     completesAt: mission.completesAt || null,

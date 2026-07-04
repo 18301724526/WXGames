@@ -22,6 +22,9 @@
     const ARRIVAL_NONE = 'none';
     const ARRIVAL_IDLE = 'idle';
     const FINISHED_STATUSES = Object.freeze([STATUS_READY, STATUS_IDLE, STATUS_CANCELLED]);
+    // Single source for the manual-route length cap (mirrors shared/worldMarchCore.js;
+    // the adapter test locks the export lists in sync).
+    const MAX_MANUAL_ROUTE_LENGTH = 16;
     const EPOCH_MILLISECONDS_THRESHOLD = 1000000000000;
 
     function toNumber(value, fallback = 0) {
@@ -534,6 +537,7 @@
       ARRIVAL_NONE,
       ARRIVAL_IDLE,
       FINISHED_STATUSES,
+      MAX_MANUAL_ROUTE_LENGTH,
       toNumber,
       toInteger,
       toTimestamp,
