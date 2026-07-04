@@ -205,7 +205,11 @@
     // optional plugin resolved from the renderer dependency registry. When absent, every
     // actor draws through the 2D sprite path — so this seam is fully removable.
     getWorldActorSpineRenderer() {
-      return global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldActorSpineRenderer') || null;
+      // Explicit override (tests / future dependency injection) wins; otherwise the shell owns
+      // the stateful spine layer renderer and reaches it through the render host chain.
+      const override = global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldActorSpineRenderer');
+      if (override) return override;
+      return this.host?.getWorldActorSpineRenderer?.() || null;
     }
 
     getActorRenderScale(viewport = {}) {
