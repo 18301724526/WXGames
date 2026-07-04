@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const WorldFogCanvasRenderer = require('./WorldFogCanvasRenderer');
 const WorldFogMaskGenerator = require('./WorldFogMaskGenerator');
+const FogRevealModel = require('../../ecs/system/FogRevealModel');
 
 function createFakeGl(calls = []) {
   let shaderId = 0;
@@ -585,28 +586,27 @@ test('WorldFogMaskGenerator derives explored history from revealed route paths w
     }
   }
   const generator = new WorldFogMaskGenerator({ maskSize: 128 });
+  const nowMs = 1720000000000;
+  const mission = {
+    id: 'route-memory',
+    status: 'idle',
+    origin: { q: 0, r: 0 },
+    route: [
+      { q: 1, r: 0, step: 1, revealed: true },
+      { q: 2, r: 0, step: 2, revealed: true },
+    ],
+    revealedTileIds: [],
+  };
   const { sourceSet } = generator.prepare(createWorldContext({
     tileMapView: {
       geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
       tiles,
       sites: [],
+      activeScouts: [mission],
     },
     entries,
     actors: [],
-    renderSnapshot: {
-      march: {
-        missions: [{
-          id: 'route-memory',
-          status: 'idle',
-          origin: { q: 0, r: 0 },
-          route: [
-            { q: 1, r: 0, step: 1, revealed: true },
-            { q: 2, r: 0, step: 2, revealed: true },
-          ],
-          revealedTileIds: [],
-        }],
-      },
-    },
+    revealSnapshot: FogRevealModel.createSnapshot([mission], nowMs),
   }));
 
   assert.equal(sourceSet.memorySources.length > 2, true);
@@ -625,28 +625,33 @@ test('WorldFogMaskGenerator fades route frontier reveals through source strength
       center: { x: 130 + q * 48, y: 120 + q * 24 },
     });
   }
-  const createContext = (strength) => createWorldContext({
-    tileMapView: {
-      geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
-      tiles,
-      sites: [],
-    },
-    entries,
-    actors: [],
-    renderSnapshot: {
-      march: {
-        missions: [{
-          id: 'route-memory',
-          status: 'active',
-          origin: { q: 0, r: 0 },
-          route: [{ q: 1, r: 0, step: 1, revealed: false }],
-          revealedTileIds: [],
-          renderRevealSignature: `frontier:${strength}`,
-          renderRevealSources: [{ q: 1, r: 0, tileId: 'tile_1_0', strength }],
-        }],
+  // Reveal strength = segmentProgress: pick nowMs inside the first route segment so the
+  // frontier tile carries exactly the requested strength (0.25 / 0.75) at that instant.
+  const startedAt = 1720000000000;
+  const stepDurationMs = 10000;
+  const createContext = (strength) => {
+    const mission = {
+      id: 'route-frontier',
+      status: 'active',
+      origin: { q: 0, r: 0 },
+      startedAt,
+      stepDurationMs,
+      route: [{ q: 1, r: 0, step: 1, revealed: false }],
+      revealedTileIds: [],
+    };
+    const nowMs = startedAt + strength * stepDurationMs;
+    return createWorldContext({
+      tileMapView: {
+        geometry: { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 },
+        tiles,
+        sites: [],
+        activeScouts: [mission],
       },
-    },
-  });
+      entries,
+      actors: [],
+      revealSnapshot: FogRevealModel.createSnapshot([mission], nowMs),
+    });
+  };
 
   const low = new WorldFogMaskGenerator({ maskSize: 128 }).prepare(createContext(0.25)).mask;
   const high = new WorldFogMaskGenerator({ maskSize: 128 }).prepare(createContext(0.75)).mask;

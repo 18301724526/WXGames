@@ -8,6 +8,7 @@ require('../ecs/system/WorldMarchProgressSnapshot');
 require('../ecs/projection/WorldMapVisibilityModel');
 require('../ecs/projection/WorldFogVisualSnapshot');
 require('../ecs/system/WorldMarchSystem');
+require('../ecs/system/FogRevealModel');
 require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
@@ -3008,7 +3009,7 @@ test('CanvasGameShell routes active missions kept in mission list to actor anima
   assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
 });
 
-test('CanvasGameShell animates fog via the snapshot path on the actor cadence', () => {
+test('CanvasGameShell animates fog by re-rendering the fog layer only', () => {
   const calls = [];
   const shell = new CanvasGameShell({
     config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
@@ -3016,11 +3017,17 @@ test('CanvasGameShell animates fog via the snapshot path on the actor cadence', 
   });
   let nowMs = 100000;
   shell.now = () => nowMs;
+  shell.getWorldEpochNowMs = () => nowMs;
   shell.isWorldMapDragging = () => false;
-  // Cached contexts carry a baked visibilitySnapshot, so fog animation must run the
-  // SAME fresh-projection snapshot path the drag frames use, not a cached-context blit.
-  shell.refreshWorldMapLayerFromSnapshot = (options) => {
-    calls.push(['snapshot', nowMs, options.commitCamera, options.clearTransform]);
+  const frameContext = { tileMapView: {}, viewport: {}, frame: {} };
+  shell.getCanonicalWorldTileMapContext = () => frameContext;
+  // Fog facts are projected fresh from (state, worldClock) inside the projection, so
+  // animating fog must NOT re-render the terrain stack — only the fog layer.
+  shell.refreshWorldMapLayerFromSnapshot = () => {
+    throw new Error('fog animation must not re-render the terrain stack');
+  };
+  shell.renderWorldFogLayer = (context, options) => {
+    calls.push(['fog', context, options.epochNowMs]);
     return true;
   };
 
@@ -3030,11 +3037,18 @@ test('CanvasGameShell animates fog via the snapshot path on the actor cadence', 
   nowMs += 100;
   assert.equal(shell.renderWorldFogAnimationFrame(nowMs), true);
   assert.equal(calls.length, 2);
-  assert.deepEqual(calls[0].slice(2), [false, false], 'no camera commit / no transform clear side effects');
+  assert.equal(calls[0][1], frameContext, 'geometry comes from the canonical frame context');
+  assert.equal(calls[1][2], nowMs, 'facts are projected for the current world clock instant');
 
-  // Drag frames already refresh the snapshot every frame — the animator must yield.
+  // Drag frames already refresh the full stack every frame — the animator must yield.
   shell.isWorldMapDragging = () => true;
   nowMs += 200;
   assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
   assert.equal(calls.length, 2);
+
+  // Without a committed frame context there is no geometry to draw against.
+  shell.isWorldMapDragging = () => false;
+  shell.getCanonicalWorldTileMapContext = () => null;
+  nowMs += 200;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
 });

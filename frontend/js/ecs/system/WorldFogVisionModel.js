@@ -35,17 +35,18 @@
     return null;
   })();
 
-  const WorldMarchSystem = (() => {
-    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveFogRevealModel() {
+    if (global.FogRevealModel) return global.FogRevealModel;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('./WorldMarchSystem');
+        return require('./FogRevealModel');
       } catch (_error) {
         return null;
       }
     }
     return null;
-  })();
+  }
 
   const SOURCE_RULES = Object.freeze({
     visibleTile: Object.freeze({
@@ -254,9 +255,9 @@
     });
   }
 
-  function getTileById(tileMapView = {}, entries = [], viewport = {}, geometry = {}) {
+  function getTileById(entryList = []) {
     const tileById = new Map();
-    getFogEntries(tileMapView, entries, viewport, geometry).forEach((entry) => {
+    (Array.isArray(entryList) ? entryList : []).forEach((entry) => {
       const coord = normalizeCoord(entry.tile);
       tileById.set(coord.tileId, entry);
       if (entry.tile?.id) tileById.set(String(entry.tile.id), entry);
@@ -281,8 +282,8 @@
     );
   }
 
-  function collectCitySources(tileMapView = {}, entries = [], viewport = {}, geometry = {}) {
-    const tileById = getTileById(tileMapView, entries, viewport, geometry);
+  function collectCitySources(tileMapView = {}, entryList = [], viewport = {}, geometry = {}) {
+    const tileById = getTileById(entryList);
     const sources = [];
     const seen = new Set();
     const append = (site = {}, fallbackTile = null) => {
@@ -308,7 +309,7 @@
       );
     };
     (Array.isArray(tileMapView.sites) ? tileMapView.sites : []).forEach((site) => append(site));
-    getFogEntries(tileMapView, entries, viewport, geometry).forEach((entry) => {
+    entryList.forEach((entry) => {
       const tile = entry.tile || {};
       if (!isControlledTile(tile) && !tile.site) return;
       append(
@@ -393,18 +394,23 @@
       .includes(id);
   }
 
-  function getMissionRevealSources(mission = {}, actor = null) {
-    const fromActor = Array.isArray(actor?.renderRevealSources) ? actor.renderRevealSources : [];
-    if (fromActor.length) return fromActor;
-    if (Array.isArray(mission.renderRevealSources) && mission.renderRevealSources.length)
-      return mission.renderRevealSources;
-    if (WorldMarchSystem?.getRouteRenderRevealSources) {
-      const nowMs = toNumber(mission.nowMs ?? mission.epochNowMs, Number.NaN);
-      if (!Number.isFinite(nowMs)) return [];
-      const computed = WorldMarchSystem.getRouteRenderRevealSources(mission, nowMs);
-      if (Array.isArray(computed) && computed.length) return computed;
+  // Reveal strength is a function of time. It is ALWAYS projected for the current instant
+  // via FogRevealModel — never read from fields baked onto missions/actors/contexts.
+  function resolveRevealSnapshot(context = {}, missions = [], options = {}) {
+    const embedded = context.revealSnapshot;
+    if (embedded && typeof embedded === 'object' && embedded.schema === 'world-fog-reveal-v1') {
+      return embedded;
     }
-    return [];
+    if (!missions.length) return null;
+    const revealModel = resolveFogRevealModel();
+    if (!revealModel?.createSnapshot) {
+      throw new Error(
+        'WorldFogVisionModel requires FogRevealModel to project march reveal fog ' +
+          '(load FogRevealModel.js, or pass context.revealSnapshot from FogProjection)',
+      );
+    }
+    const nowMs = toNumber(options.nowMs ?? context.epochNowMs, Number.NaN);
+    return revealModel.createSnapshot(missions, nowMs);
   }
 
   function samplePathSources(from = {}, to = {}, viewport = {}, geometry = {}, options = {}) {
@@ -447,7 +453,10 @@
         .filter(([id]) => id),
     );
     const sources = [];
-    getMissionList(context).forEach((mission) => {
+    const missions = getMissionList(context);
+    const revealSnapshot = resolveRevealSnapshot(context, missions, options);
+    const revealModel = revealSnapshot ? resolveFogRevealModel() : null;
+    missions.forEach((mission) => {
       const route = (Array.isArray(mission.route) ? mission.route : [])
         .map((step, index) => ({
           ...normalizeCoord(step),
@@ -457,7 +466,9 @@
         .sort((a, b) => a.step - b.step);
       let cursor = normalizeFloatCoord(mission.origin || mission.position || route[0] || {});
       const actor = actorByMissionId.get(mission.id || mission.missionId || '');
-      const revealSources = getMissionRevealSources(mission, actor);
+      const revealSources = revealModel
+        ? revealModel.getMissionRevealSources(revealSnapshot, mission.id || mission.missionId || '')
+        : [];
       if (revealSources.length) {
         revealSources.forEach((source) => {
           const coord = normalizeFloatCoord(source, cursor);

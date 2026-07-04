@@ -243,6 +243,14 @@ test('WorldMapRuntimeRenderPolicy trace key follows continuous fog reveal progre
     hasBakedMapLayer: true,
     mapBakeDirty: false,
   });
+  const firstAgain = Policy.createRenderBeginTrace(state, {
+    snapshotOnly: false,
+    renderOptions: { epochNowMs: startedAt + 1000 },
+  }, {
+    canUseSnapshotLayer: true,
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+  });
   const second = Policy.createRenderBeginTrace(state, {
     snapshotOnly: false,
     renderOptions: { epochNowMs: startedAt + 5000 },
@@ -252,6 +260,7 @@ test('WorldMapRuntimeRenderPolicy trace key follows continuous fog reveal progre
     mapBakeDirty: false,
   });
 
+  assert.equal(first.keyParts.join('|'), firstAgain.keyParts.join('|'));
   assert.notEqual(first.keyParts.join('|'), second.keyParts.join('|'));
   assert.equal(first.keyParts[8], Math.floor((startedAt + 1000) / 1000));
   assert.equal(second.keyParts[8], Math.floor((startedAt + 5000) / 1000));

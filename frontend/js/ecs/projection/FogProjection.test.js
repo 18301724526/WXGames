@@ -6,6 +6,7 @@ require('../system/WorldMarchProgressSnapshot');
 require('./WorldMapVisibilityModel');
 require('./WorldFogVisualSnapshot');
 require('../system/WorldMarchSystem');
+require('../system/FogRevealModel');
 const FogProjection = require('./FogProjection');
 const WorldMapRenderSnapshot = require('./WorldMapRenderSnapshot');
 
@@ -31,10 +32,13 @@ test('FogProjection returns fog renderer context without sharing world-map compo
     height: 300,
   });
   const entries = [{ tile: tileMapView.tiles[0] }];
-  const projection = FogProjection.createFogProjection({
-    renderSnapshot,
-    entries,
-  });
+  const projection = FogProjection.createFogProjection(
+    {
+      renderSnapshot,
+      entries,
+    },
+    { epochNowMs: Date.parse('2026-06-06T00:00:00.000Z') },
+  );
 
   assert.equal(projection.schema, 'fog-projection-v1');
   assert.equal(Object.isFrozen(projection), true);
@@ -81,8 +85,54 @@ test('FogProjection refreshes live fog actors from current epoch', () => {
       later.rendererContext.visibilityActors[0].current.q,
     true,
   );
-  assert.notEqual(
-    early.rendererContext.visibilityActors[0].renderRevealSignature,
-    later.rendererContext.visibilityActors[0].renderRevealSignature,
+  assert.notEqual(early.revealSnapshot.signature, later.revealSnapshot.signature);
+  assert.equal(early.rendererContext.revealSnapshot, early.revealSnapshot);
+});
+
+test('FogProjection ignores stale baked actors and reveals for the requested instant', () => {
+  const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
+  const mission = {
+    id: 'fog-projection-stale-1',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false },
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: false },
+    ],
+    target: { q: 2, r: 0, tileId: 'tile_2_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    stepDurationMs: 10000,
+    revealedTileIds: [],
+  };
+  // A cached render context carries actors baked at an earlier instant. The projection
+  // must NOT trust them: reveal and actor positions follow the requested epochNowMs.
+  const staleActor = {
+    id: mission.id,
+    missionId: mission.id,
+    status: 'active',
+    current: { q: 0.1, r: 0 },
+  };
+  const projection = FogProjection.createFogProjection(
+    {
+      tileMapView: { ...createTileMapView(), activeScouts: [mission] },
+      visibilityActors: [staleActor],
+      renderSnapshot: { actors: [staleActor] },
+      viewport: { originX: 0, originY: 0, scale: 1 },
+      frame: { x: 0, y: 0, width: 100, height: 100 },
+    },
+    { epochNowMs: startedAt + 15000 },
+  );
+
+  assert.equal(projection.rendererContext.visibilityActors[0].current.q > 1, true);
+  const frontierStrength = projection.revealSnapshot.strength.find(
+    (value) => value > 0 && value < 1,
+  );
+  assert.notEqual(frontierStrength, undefined);
+});
+
+test('FogProjection fails closed without a finite epochNowMs', () => {
+  assert.throws(
+    () => FogProjection.createFogProjection({ tileMapView: createTileMapView() }, {}),
+    /finite epochNowMs/,
   );
 });
