@@ -132,6 +132,17 @@ function createGameActionRegistry(overrides = {}) {
       soldierAssignments: body.soldierAssignments,
     })
   ));
+  register('veteranCampWithdraw', ({ gameState, body }) => (
+    deps.MilitaryService.veteranCampWithdraw(gameState, {
+      cityId: body.cityId,
+      soldiers: body.soldiers,
+    })
+  ));
+  register('veteranCampUpgrade', ({ gameState, body }) => (
+    deps.MilitaryService.veteranCampUpgrade(gameState, {
+      cityId: body.cityId,
+    })
+  ));
   register('research', ({ gameState, body }) => (
     deps.TechTreeService.research(gameState, body.techId || body.target || body.tech)
   ));

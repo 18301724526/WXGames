@@ -62,6 +62,23 @@ test('withdraw pulls soldiers back intact, oldest-batch-first, after draining to
   assert.equal(core.parkedTotal(w.camp), 84 + 100 - 50);
 });
 
+test('withdrawn soldiers are NOT resurrected by a later drain projection (regression)', () => {
+  const parked = core.deposit({ level: 1, batches: [] }, ROW, 100, 0).camp;
+  const afterWithdraw = core.withdraw(parked, ROW, 40, 0); // pull 40 at t0, 60 remain
+  assert.equal(afterWithdraw.withdrawnSoldiers, 40);
+  assert.equal(core.parkedTotal(afterWithdraw.camp), 60);
+
+  // Projecting drain forward must never bring the withdrawn 40 back.
+  const later = core.projectDrain(afterWithdraw.camp, ROW, 3 * H); // 1/4 retention -> 25 drained of the ORIGINAL
+  assert.equal(core.parkedTotal(later.camp), 35); // 100 - 40 withdrawn - 25 drained
+  assert.equal(later.drainedSoldiers, 25);
+
+  // And the drain never exceeds what is actually still parkable.
+  const done = core.projectDrain(later.camp, ROW, 100 * H);
+  assert.equal(core.parkedTotal(done.camp), 0);
+  assert.equal(done.drainedSoldiers, 35); // only the 35 that were still parked can drain
+});
+
 test('withdraw is capped at what is actually parked', () => {
   const camp = core.deposit({ level: 1, batches: [] }, ROW, 40, 0).camp;
   const w = core.withdraw(camp, ROW, 999, 0);
@@ -74,6 +91,12 @@ test('normalizeCamp is fail-safe on garbage input', () => {
   assert.deepEqual(core.normalizeCamp({ batches: 'nope' }), { level: 0, batches: [] });
   const clamped = core.normalizeCamp({ level: 2, batches: [{ soldiers: 10, originalSoldiers: 5, atMs: -3 }] });
   assert.equal(clamped.level, 2);
-  assert.equal(clamped.batches[0].soldiers, 5); // soldiers can't exceed original
+  assert.equal(clamped.batches[0].soldiers, 5); // parked can't exceed original
   assert.equal(clamped.batches[0].atMs, 0); // negative time clamped
+});
+
+test('legacy batch shape {soldiers, originalSoldiers} round-trips its parked count', () => {
+  // An old save where 30 had already drained/withdrawn from an original 100 (70 parked).
+  const camp = core.normalizeCamp({ level: 1, batches: [{ soldiers: 70, originalSoldiers: 100, atMs: 0 }] });
+  assert.equal(core.parkedTotal(camp), 70);
 });

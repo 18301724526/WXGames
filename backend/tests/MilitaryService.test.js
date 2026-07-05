@@ -101,7 +101,10 @@ test('setArmyFormation rejects assignments above city reserve or per-member cap'
   assert.equal(aboveCap.error, 'FORMATION_SOLDIER_CAP_EXCEEDED');
 });
 
-test('setArmyFormation refunds resources without returning soldiers when standing troops are reduced', () => {
+const T0 = 1_700_000_000_000; // fixed deposit epoch for deterministic drain math
+const HOUR = 60 * 60 * 1000;
+
+test('setArmyFormation parks dismissed soldiers in the veteran camp instead of instant-refunding', () => {
   const state = createState();
   MilitaryService.setArmyFormation(state, {
     cityId: 'capital',
@@ -109,30 +112,99 @@ test('setArmyFormation refunds resources without returning soldiers when standin
     memberIds: ['hero-1'],
     soldierAssignments: { 'hero-1': 200 },
   });
+  const foodBefore = state.cities.capital.resources.food;
 
   const result = MilitaryService.setArmyFormation(state, {
     cityId: 'capital',
     slot: 1,
     memberIds: ['hero-1'],
     soldierAssignments: { 'hero-1': 80 },
+    nowMs: T0,
   });
 
   assert.equal(result.success, true);
+  // Dismissed soldiers do NOT return to the reserve and are NOT instantly refunded — they park.
   assert.equal(state.cities.capital.military.soldiers, 100);
-  assert.equal(state.cities.capital.resources.food, 560);
-  assert.deepEqual(result.refund, { food: 60 });
+  assert.deepEqual(result.refund, {}); // capacity 300 fits all 120; nothing overflows
+  assert.equal(state.cities.capital.resources.food, foodBefore); // no instant refund
+  const view = MilitaryService.getVeteranCampView(state.cities.capital.military, T0);
+  assert.equal(view.level, 1);
+  assert.equal(view.parkedTotal, 120);
+});
 
-  const oddDeltaResult = MilitaryService.setArmyFormation(state, {
-    cityId: 'capital',
-    slot: 1,
-    memberIds: ['hero-1'],
-    soldierAssignments: { 'hero-1': 75 },
+test('veteran camp drains parked soldiers over time, trickling grain refunds (no floor loss)', () => {
+  const state = createState();
+  MilitaryService.setArmyFormation(state, {
+    cityId: 'capital', slot: 1, memberIds: ['hero-1'], soldierAssignments: { 'hero-1': 200 },
   });
+  MilitaryService.setArmyFormation(state, {
+    cityId: 'capital', slot: 1, memberIds: ['hero-1'], soldierAssignments: { 'hero-1': 80 }, nowMs: T0,
+  }); // park 120 at T0
+  const foodBefore = state.cities.capital.resources.food;
 
-  assert.equal(oddDeltaResult.success, true);
-  assert.equal(state.cities.capital.military.soldiers, 100);
-  assert.equal(state.cities.capital.resources.food, 562);
-  assert.deepEqual(oddDeltaResult.refund, { food: 2 });
+  // Half the 12h retention -> ~60 drained -> 60 * refundRatio(0.5) = 30 food.
+  const settled = MilitaryService.settleVeteranCampDrain(
+    state.cities.capital.military, state.cities.capital.resources, T0 + 6 * HOUR,
+  );
+  assert.equal(MilitaryService.getVeteranCampView(settled.military, T0 + 6 * HOUR).parkedTotal, 60);
+  assert.equal(settled.resources.food - foodBefore, 30);
+
+  // Settling again at the same instant credits nothing more (idempotent).
+  const again = MilitaryService.settleVeteranCampDrain(settled.military, settled.resources, T0 + 6 * HOUR);
+  assert.equal(again.resources.food, settled.resources.food);
+});
+
+test('veteranCampWithdraw pulls parked soldiers back into the reserve, capped by reserve space', () => {
+  const state = createState();
+  MilitaryService.setArmyFormation(state, {
+    cityId: 'capital', slot: 1, memberIds: ['hero-1'], soldierAssignments: { 'hero-1': 200 },
+  });
+  MilitaryService.setArmyFormation(state, {
+    cityId: 'capital', slot: 1, memberIds: ['hero-1'], soldierAssignments: { 'hero-1': 80 }, nowMs: T0,
+  }); // reserve 100, parked 120, cap 300 -> space 200
+
+  const w = MilitaryService.veteranCampWithdraw(state, { cityId: 'capital', soldiers: 50, nowMs: T0 });
+  assert.equal(w.success, true);
+  assert.equal(w.withdrawnSoldiers, 50);
+  assert.equal(state.cities.capital.military.soldiers, 150);
+  assert.equal(w.veteranCamp.parkedTotal, 70);
+
+  // An explicit request of 0 is a no-op — it must NOT be read as "withdraw everything".
+  const zero = MilitaryService.veteranCampWithdraw(state, { cityId: 'capital', soldiers: 0, nowMs: T0 });
+  assert.equal(zero.success, false);
+  assert.equal(state.cities.capital.military.soldiers, 150); // reserve unchanged
+  assert.equal(MilitaryService.getVeteranCampView(state.cities.capital.military, T0).parkedTotal, 70); // camp intact
+});
+
+test('veteranCampUpgrade spends grain to raise the level and capacity', () => {
+  const state = createState();
+  state.cities.capital.resources.food = 5000;
+
+  const up = MilitaryService.veteranCampUpgrade(state, { cityId: 'capital' });
+  assert.equal(up.success, true);
+  assert.equal(up.level, 2);
+  assert.equal(state.cities.capital.resources.food, 5000 - up.cost);
+  assert.equal(MilitaryService.getVeteranCampView(state.cities.capital.military).capacity, 600);
+});
+
+test('veteran camp overflow beyond capacity is refunded immediately', () => {
+  const state = createState();
+  // Pre-seed the camp near capacity (290/300), then dismiss 20 -> 10 park, 10 overflow.
+  state.cities.capital.military.veteranCamp = {
+    level: 1, batches: [{ soldiers: 290, originalSoldiers: 290, atMs: T0 }],
+  };
+  MilitaryService.setArmyFormation(state, {
+    cityId: 'capital', slot: 1, memberIds: ['hero-1'], soldierAssignments: { 'hero-1': 200 },
+  });
+  const foodBefore = state.cities.capital.resources.food;
+  const result = MilitaryService.setArmyFormation(state, {
+    cityId: 'capital', slot: 1, memberIds: ['hero-1'], soldierAssignments: { 'hero-1': 180 }, nowMs: T0,
+  }); // dismiss 20; camp has 10 free -> 10 park, 10 overflow -> refund 10 * 0.5 = 5 food
+
+  assert.equal(result.success, true);
+  assert.equal(result.refund.food, 5);
+  assert.equal(state.cities.capital.resources.food, foodBefore + 5);
+  assert.equal(MilitaryService.getVeteranCampView(state.cities.capital.military, T0).parkedTotal, 300);
 });
 
 test('setArmyFormation rejects editing a formation locked by an active march snapshot', () => {
