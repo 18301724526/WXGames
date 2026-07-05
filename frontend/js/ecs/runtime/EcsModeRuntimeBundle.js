@@ -4219,11 +4219,16 @@ var EcsModeRuntime = (() => {
           const clientMonoMs = Number.isFinite(Number(options.clientMonoMs))
             ? Number(options.clientMonoMs)
             : getMonotonicNow(clockWorld.runtime);
-          Clock.serverEpochAtSyncMs[entity] = serverEpochMs;
+          const previousEpochNowMs = Clock.synced[entity]
+            ? Clock.serverEpochAtSyncMs[entity] +
+              Math.max(0, clientMonoMs - Clock.clientMonoAtSyncMs[entity])
+            : -Infinity;
+          const anchoredEpochMs = Math.max(serverEpochMs, previousEpochNowMs);
+          Clock.serverEpochAtSyncMs[entity] = anchoredEpochMs;
           Clock.clientMonoAtSyncMs[entity] = clientMonoMs;
           Clock.lastSyncedAtEpochMs[entity] = Date.now();
           Clock.elapsedMs[entity] = 0;
-          Clock.epochNowMs[entity] = serverEpochMs;
+          Clock.epochNowMs[entity] = anchoredEpochMs;
           Clock.synced[entity] = 1;
           return true;
         }
