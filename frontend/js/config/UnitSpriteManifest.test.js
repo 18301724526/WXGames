@@ -59,11 +59,12 @@ test('UnitSpriteManifest returns no spine descriptor for unknown units', () => {
 test('UnitSpriteManifest maps the four grid facings to spine animation names', () => {
   assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '1'), '1');
   assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '2'), '2');
-  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '3'), '3');
-  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '4'), '4');
-  // Empty / unknown facing falls back to the descriptor's default direction ('3' = 右下).
-  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', ''), '3');
-  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '9'), '3');
+  // The export swapped the downward walks: facing '3' (右下) plays anim '4', '4' (左下) plays '3'.
+  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '3'), '4');
+  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '4'), '3');
+  // Empty / unknown facing falls back to the descriptor's default direction (facing '3' -> '4').
+  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', ''), '4');
+  assert.equal(UnitSpriteManifest.getDirectionAnimation('scout_squad_default', '9'), '4');
 });
 
 test('UnitSpriteManifest keeps the 2D fallback frame animation for spine units', () => {
