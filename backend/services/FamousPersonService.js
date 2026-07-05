@@ -33,7 +33,7 @@ const {
 const {
   createFamousPersonCandidate: buildFamousPersonCandidate,
   createTutorialScoutFamousPerson: buildTutorialScoutFamousPerson,
-  makeSkillName,
+  isTutorialStarterFamousPerson, makeSkillName,
   normalizeAppearance,
 } = require('./famousPerson/FamousPersonGenerator');
 const FamousPersonRandomAuthority = require('./famousPerson/FamousPersonRandomAuthority');
@@ -331,7 +331,7 @@ function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
 function grantTutorialScoutFamousPerson(gameState, now = new Date()) {
   if (!gameState || typeof gameState !== 'object') return null;
   gameState.famousPeople = normalizeFamousPeople(gameState.famousPeople);
-  const existing = gameState.famousPeople.find((person) => person.source?.type === 'tutorial' && person.archetype === 'scout');
+  const existing = gameState.famousPeople.find(isTutorialStarterFamousPerson);
   if (existing) {
     return { person: clone(existing), grantedAt: existing.joinedAt || existing.createdAt || now.toISOString(), created: false };
   }

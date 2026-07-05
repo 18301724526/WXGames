@@ -648,7 +648,8 @@ test('game routes walk the barracks, first-army, and scout-officer chain into fo
   assert.equal(officerRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
   assert.equal(savedStates.at(-1).famousPeople.length, 1);
   assert.equal(savedStates.at(-1).famousPeople[0].quality, 'great');
-  assert.equal(savedStates.at(-1).famousPeople[0].archetype, 'scout');
+  // Random combat archetype (military role) — never a civil officer, so the player can deploy it.
+  assert.ok(savedStates.at(-1).famousPeople[0].roles.includes('military'));
   const personId = savedStates.at(-1).tutorial.grants.scoutFamousPerson.personId;
   assert.equal(savedStates.at(-1).famousPeople[0].id, personId);
   // The first-army reserve is still floored while the formation guide runs.
