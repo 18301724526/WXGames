@@ -2065,6 +2065,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const mapCleared = this.clearCanvasLayerTransform?.('worldMap') || false;
             this.clearCanvasLayerTransform?.('worldFog');
             this.clearCanvasLayerTransform?.('worldActor');
+            this.clearCanvasLayerTransform?.('worldActorSpine');
             return mapCleared;
           }
 
@@ -2259,6 +2260,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             this.setCanvasLayerTranslate?.('worldMap', offset.x, offset.y);
             this.setCanvasLayerTranslate?.('worldFog', offset.x, offset.y);
             this.setCanvasLayerTranslate?.('worldActor', offset.x, offset.y);
+            this.setCanvasLayerTranslate?.('worldActorSpine', offset.x, offset.y);
             return offset;
           }
 

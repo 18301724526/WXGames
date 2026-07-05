@@ -11,8 +11,8 @@
 
   const LAYER_NAME = 'worldActorSpine';
   // On-screen skeleton height (css px) at frame.scale 1.0; the per-actor frame.scale (0.32..0.62)
-  // scales it down to roughly match the 2D sprite footprint. Tunable during live verification.
-  const SCREEN_HEIGHT_PER_UNIT = 190;
+  // scales it down to roughly match the 2D sprite footprint (~86px). Tunable during live verify.
+  const SCREEN_HEIGHT_PER_UNIT = 90;
 
   function resolveUnitSpriteManifest(runtime) {
     if (runtime?.UnitSpriteManifest) return runtime.UnitSpriteManifest;
@@ -100,16 +100,50 @@
       return { width, height };
     }
 
+    getPixelRatio() {
+      return Math.min(2, Math.max(1, Number(this.runtime?.devicePixelRatio) || Number(global.devicePixelRatio) || 1));
+    }
+
+    // The world map/actor layers are drawn onto a surface padded by the drag-cache pan range, and
+    // actor screen points are computed in THAT padded space. The spine layer must share the same
+    // padding so a point lands on the same pixel and the compositor crops it identically — this is
+    // what keeps the skeleton root pinned to the march route (and lets a pan translate track it).
+    getLayerPadding() {
+      return Math.max(0, Number(this.host?.getWorldMapLayerPadding?.()) || 0);
+    }
+
+    // The padded draw surface's real dimensions. The runtime sizes the layer canvas to the padded
+    // viewport, so read its backing size directly; fall back to the padded host viewport before the
+    // first runtime resize. Everything (ortho camera, gl viewport, root Y-flip) derives from here.
+    resolveSurfaceMetrics() {
+      const ratio = this.getPixelRatio();
+      const canvas = this.canvas;
+      let backingW = Math.max(0, Math.floor(Number(canvas?.width) || 0));
+      let backingH = Math.max(0, Math.floor(Number(canvas?.height) || 0));
+      if (backingW < 2 || backingH < 2) {
+        const pad = this.getLayerPadding();
+        const host = this.getHostViewport();
+        backingW = Math.max(1, Math.round((host.width + pad * 2) * ratio));
+        backingH = Math.max(1, Math.round((host.height + pad * 2) * ratio));
+        if (canvas) {
+          if (canvas.width !== backingW) canvas.width = backingW;
+          if (canvas.height !== backingH) canvas.height = backingH;
+        }
+      }
+      return { ratio, backingW, backingH, cssW: backingW / ratio, cssH: backingH / ratio };
+    }
+
     ensureContext() {
       if (this.failed) return false;
       if (this.gl && this.canvas) return true;
       try {
         const spine = this.getSpine();
         if (!spine) return false;
-        const pixelRatio = Math.min(2, Math.max(1, Number(global.devicePixelRatio) || Number(this.runtime?.devicePixelRatio) || 1));
+        const pixelRatio = this.getPixelRatio();
+        const layerOptions = { contextType: 'webgl', pixelRatio, padding: this.getLayerPadding() };
         const canvas = typeof this.host?.ensureCanvasLayer === 'function'
-          ? this.host.ensureCanvasLayer(this.layerName, { contextType: 'webgl', pixelRatio })
-          : this.runtime?.ensureLayerCanvas?.(this.layerName, { contextType: 'webgl', pixelRatio });
+          ? this.host.ensureCanvasLayer(this.layerName, layerOptions)
+          : this.runtime?.ensureLayerCanvas?.(this.layerName, layerOptions);
         if (!canvas) return false;
         if (typeof canvas.addEventListener !== 'function') canvas.addEventListener = () => {};
         if (typeof canvas.removeEventListener !== 'function') canvas.removeEventListener = () => {};
@@ -239,7 +273,6 @@
         this.failClosed('context');
         return false;
       }
-      this.viewport = this.getHostViewport();
       const manifest = this.getManifest();
       const seen = new Set();
       list.forEach((frame) => {
@@ -323,10 +356,9 @@
         const delta = Math.min(0.08, Math.max(0, now - this.lastFrameTime));
         this.lastFrameTime = now;
 
-        this.resizeBackingStore();
-        const width = Math.max(1, Number(this.viewport.width) || 1);
-        const height = Math.max(1, Number(this.viewport.height) || 1);
-        this.mvp.ortho2d(0, 0, width, height);
+        const surf = this.resolveSurfaceMetrics();
+        gl.viewport(0, 0, surf.backingW, surf.backingH);
+        this.mvp.ortho2d(0, 0, surf.cssW, surf.cssH);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         this.shader.bind();
@@ -339,9 +371,10 @@
           const scale = this.resolveEntryScale(entry);
           skeleton.scaleX = scale;
           skeleton.scaleY = scale;
+          // entry.x/y are the actor's screen point in the padded layer space (root == feet, so
+          // the skeleton root lands exactly on the march route). The spine camera is y-up.
           skeleton.x = entry.x;
-          // Screen space is y-down (frame.y from the top); the spine camera is y-up.
-          skeleton.y = height - entry.y;
+          skeleton.y = surf.cssH - entry.y;
           entry.animationState.update(delta);
           entry.animationState.apply(skeleton);
           skeleton.updateWorldTransform();
@@ -360,20 +393,6 @@
       const nativeHeight = Math.max(1, Number(entry.native?.height) || 1);
       const target = SCREEN_HEIGHT_PER_UNIT * (Number(entry.scale) || 0.5);
       return target / nativeHeight;
-    }
-
-    resizeBackingStore() {
-      const canvas = this.canvas;
-      const gl = this.gl;
-      if (!canvas || !gl) return;
-      const ratio = Math.min(2, Math.max(1, Number(this.runtime?.devicePixelRatio) || Number(global.devicePixelRatio) || 1));
-      const cssWidth = Math.max(1, Number(this.viewport.width) || 1);
-      const cssHeight = Math.max(1, Number(this.viewport.height) || 1);
-      const width = Math.floor(cssWidth * ratio);
-      const height = Math.floor(cssHeight * ratio);
-      if (canvas.width !== width) canvas.width = width;
-      if (canvas.height !== height) canvas.height = height;
-      gl.viewport(0, 0, width, height);
     }
 
     present() {

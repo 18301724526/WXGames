@@ -31,7 +31,10 @@
       assetBase: 'assets/art/spine/march/barbarian/infantry/',
       jsonFile: 'barbarian_infantry.json',
       atlasFile: 'barbarian_infantry.atlas',
-      directions: Object.freeze({ 1: '1', 2: '2', 3: '3', 4: '4' }),
+      // Grid facing (worldMarchCore.axisStepDir) -> exported spine animation name. The export
+      // swapped the two downward walks: animation '4' walks 右下 and '3' walks 左下, so facing
+      // '3' (+q 右下) plays '4' and facing '4' (+r 左下) plays '3'.
+      directions: Object.freeze({ 1: '1', 2: '2', 3: '4', 4: '3' }),
       defaultDirection: '3',
       loop: true,
     }),
