@@ -34,7 +34,7 @@ test('ConfigTables loader exposes the generated garrison + veteran_camp tables',
   // Row-by-id lookup + type fidelity through the whole xlsx -> json -> loader round-trip.
   const safe = ConfigTables.getById('garrison', 'safe');
   assert.equal(safe.defended, false); // the tutorial/spawn safe zone is undefended
-  assert.equal(safe.reclaimHours, 0); // spawn zone is never reclaimed
+  assert.equal(safe.captureChance, 0); // no defender in the spawn zone -> nothing to capture
   assert.equal(typeof safe.maxDistance, 'number');
   const near = ConfigTables.getById('garrison', 'near');
   assert.equal(near.defended, true);

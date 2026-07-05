@@ -13,7 +13,6 @@
       "baseSoldiers": 0,
       "soldiersPerScale": 0,
       "leaderQuality": "",
-      "reclaimHours": 0,
       "captureChance": 0,
       "recruitBaseRate": 0
     },
@@ -25,7 +24,6 @@
       "baseSoldiers": 260,
       "soldiersPerScale": 90,
       "leaderQuality": "",
-      "reclaimHours": 24,
       "captureChance": 0.25,
       "recruitBaseRate": 0.5
     },
@@ -37,7 +35,6 @@
       "baseSoldiers": 360,
       "soldiersPerScale": 130,
       "leaderQuality": "good",
-      "reclaimHours": 18,
       "captureChance": 0.18,
       "recruitBaseRate": 0.4
     },
@@ -49,7 +46,6 @@
       "baseSoldiers": 520,
       "soldiersPerScale": 170,
       "leaderQuality": "great",
-      "reclaimHours": 12,
       "captureChance": 0.12,
       "recruitBaseRate": 0.3
     }
