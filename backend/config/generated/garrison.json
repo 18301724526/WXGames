@@ -13,7 +13,9 @@
       "baseSoldiers": 0,
       "soldiersPerScale": 0,
       "leaderQuality": "",
-      "respawnHours": 0
+      "reclaimHours": 0,
+      "captureChance": 0,
+      "recruitBaseRate": 0
     },
     {
       "bandId": "near",
@@ -23,7 +25,9 @@
       "baseSoldiers": 260,
       "soldiersPerScale": 90,
       "leaderQuality": "",
-      "respawnHours": 0
+      "reclaimHours": 24,
+      "captureChance": 0.25,
+      "recruitBaseRate": 0.5
     },
     {
       "bandId": "frontier",
@@ -33,7 +37,9 @@
       "baseSoldiers": 360,
       "soldiersPerScale": 130,
       "leaderQuality": "good",
-      "respawnHours": 8
+      "reclaimHours": 18,
+      "captureChance": 0.18,
+      "recruitBaseRate": 0.4
     },
     {
       "bandId": "deep",
@@ -43,7 +49,9 @@
       "baseSoldiers": 520,
       "soldiersPerScale": 170,
       "leaderQuality": "great",
-      "respawnHours": 12
+      "reclaimHours": 12,
+      "captureChance": 0.12,
+      "recruitBaseRate": 0.3
     }
   ]
 }
