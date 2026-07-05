@@ -7,6 +7,7 @@ const {
   normalizeSoldierScale,
   toInteger,
 } = require('./TerritoryShared');
+const GarrisonPolicy = require('./GarrisonPolicy');
 
 function createTerritoryCombatTargets(dependencies = {}) {
   const {
@@ -21,18 +22,61 @@ function createTerritoryCombatTargets(dependencies = {}) {
     return WorldMapService.getTileId(q, r);
   }
 
+  // 距首城 ring distance is stamped on the territory by TerritoryStateNormalizer (from the ACTUAL
+  // capital origin). Read it here rather than recomputing from world-origin (which is wrong: the
+  // capital is not at 0,0). Missing distance -> 0 -> safe band -> no garrison (fail-safe).
+  function getCapitalDistance(territory) {
+    return Math.max(0, Number(territory?.capitalDistance) || 0);
+  }
+
   function normalizeGarrison(rawGarrison, territory = {}, now = new Date().toISOString()) {
     const raw = rawGarrison && typeof rawGarrison === 'object' ? rawGarrison : {};
     const owner = territory.owner || raw.owner || 'neutral';
-    if (owner === 'player' || owner === 'neutral' || territory.id === 'capital') return null;
+    if (owner === 'player' || territory.id === 'capital') return null;
     const leaderSource = raw.leader && typeof raw.leader === 'object'
       ? raw.leader
       : territory.defenderLeader;
+    const createdAt = raw.generatedAt || territory.discoveredAt || now;
+
+    // NEUTRAL (empty) cities: defended only in the farther distance bands (config table `garrison`).
+    // The spawn/`safe` band stays frictionless — this branch returns null there, so occupation
+    // takes the settlement path. Must stay in lockstep with getOccupationMode's same check.
+    if (owner === 'neutral') {
+      const distance = getCapitalDistance(territory);
+      if (!GarrisonPolicy.isNeutralCityDefended({ ...territory, owner }, distance)) return null;
+      const band = GarrisonPolicy.resolveBand(distance);
+      const defenderOwner = band?.ownerType || 'city_state';
+      const scale = Math.max(1, toInteger(raw.scale, territory.scale || 1));
+      const soldiers = Math.max(MIN_EXPEDITION_SOLDIERS, GarrisonPolicy.garrisonSoldiers(band, scale));
+      const leader = typeof DefenderLeaderService?.ensureDefenderLeader === 'function'
+        ? DefenderLeaderService.ensureDefenderLeader({
+          ...territory,
+          owner: defenderOwner,
+          defenderLeader: leaderSource || territory.defenderLeader,
+        }, { createdAt })
+        : leaderSource || null;
+      return {
+        id: typeof raw.id === 'string' && raw.id ? raw.id : `garrison_${territory.id || 'site'}`,
+        siteId: territory.id || raw.siteId || '',
+        owner: defenderOwner,
+        soldiers,
+        quality: band?.leaderQuality || leader?.quality || 'common',
+        threat: Math.max(0, toInteger(raw.threat, territory.threat || 0)),
+        scale,
+        leader,
+        band: band?.bandId || '',
+        captureChance: GarrisonPolicy.bandCaptureChance(band),
+        recruitBaseRate: GarrisonPolicy.bandRecruitBaseRate(band),
+        generatedAt: createdAt,
+      };
+    }
+
+    // HOSTILE territory: unchanged garrison logic.
     const leader = typeof DefenderLeaderService?.ensureDefenderLeader === 'function'
       ? DefenderLeaderService.ensureDefenderLeader({
         ...territory,
         defenderLeader: leaderSource || territory.defenderLeader,
-      }, { createdAt: raw.generatedAt || territory.discoveredAt || now })
+      }, { createdAt })
       : leaderSource || null;
     const soldiers = Math.max(
       MIN_EXPEDITION_SOLDIERS,
@@ -47,7 +91,7 @@ function createTerritoryCombatTargets(dependencies = {}) {
       threat: Math.max(0, toInteger(raw.threat, territory.threat || 0)),
       scale: Math.max(1, toInteger(raw.scale, territory.scale || 1)),
       leader,
-      generatedAt: raw.generatedAt || territory.discoveredAt || now,
+      generatedAt: createdAt,
     };
   }
 

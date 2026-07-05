@@ -36,6 +36,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     .sort();
 
   assert.deepEqual(moduleFiles, [
+    'GarrisonPolicy.js',
     'TerritoryCombatTargets.js',
     'TerritoryConquestMissions.js',
     'TerritoryConstants.js',
@@ -1067,6 +1068,7 @@ test('territory conquest missions module owns settlement and battle resolution c
       bindSiteToTile: (_gameState, x, y, siteId, _now, options) => {
         boundTiles.push({ x, y, siteId, options });
       },
+      getDistanceFromCapital: (q, r) => Math.max(Math.abs(Number(q) || 0), Math.abs(Number(r) || 0)),
     },
     allocateSoldiersForMission: (_gameState, required) => [{ cityId: 'capital', soldiers: required }],
     attachBattleTileSnapshot: (report, snapshot, battleTarget) => ({ ...report, snapshot, battleTarget }),
@@ -1093,6 +1095,14 @@ test('territory conquest missions module owns settlement and battle resolution c
 
   assert.equal(Conquest.getOccupationMode({ owner: 'neutral' }), 'settlement');
   assert.equal(Conquest.getOccupationMode({ owner: 'tribe' }), 'conquest');
+  // 占城守军: post-tutorial, a neutral city in the safe spawn band (capitalDistance<=3) still
+  // settles directly, but a farther defended band must be taken by battle. During the tutorial
+  // every neutral city settles (frictionless first city) regardless of distance. capitalDistance
+  // is the 距首城 ring distance stamped on the territory by TerritoryStateNormalizer.
+  const tutorialDone = { tutorial: { completed: true } };
+  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 2 }, tutorialDone), 'settlement');
+  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 6 }, tutorialDone), 'conquest');
+  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 6 }, { tutorial: {} }), 'settlement');
   // Combat expeditions keep the requested amount (floor of 1); settlement needs no soldiers.
   assert.equal(Conquest.normalizeExpeditionConfig({ soldiers: 20 }, { owner: 'tribe', defense: 250 }).soldiers, 20);
   assert.equal(Conquest.normalizeExpeditionConfig({}, { owner: 'tribe', defense: 250 }).soldiers, 250);
@@ -1406,6 +1416,23 @@ test('territory scout mission normalizer derives tile identity from scout coordi
 
   assert.deepEqual(mission.route.map((step) => step.tileId), ['tile_1_-1', 'tile_2_-1']);
   assert.deepEqual(mission.revealArea.map((coord) => coord.tileId), ['tile_2_-1', 'tile_3_-1']);
+});
+
+test('territory normalizer stamps 距首城 distance from the ACTUAL capital origin, not world origin', () => {
+  const Normalizer = createTerritoryStateNormalizer({
+    WorldMapService: { getTileId: (q, r) => `tile_${q}_${r}` },
+    normalizeGarrison: (garrison) => garrison,
+    normalizeBattleTarget: (target) => target,
+  });
+  // Capital spawned off world-origin at (18,-4); a neutral city one tile away at (19,-4).
+  const site = Normalizer.normalizeTerritory(
+    { id: 'site_19_-4', x: 19, y: -4, owner: 'neutral', type: 'outpost', status: 'discovered', defense: 300 },
+    '2026-01-01T00:00:00.000Z',
+    { capitalOrigin: { q: 18, r: -4 } },
+  );
+  // True ring distance from the capital is 1 (safe band) — NOT 19 (distance from world origin),
+  // which was the bug that put a 500-soldier garrison on a city next to home.
+  assert.equal(site.capitalDistance, 1);
 });
 
 test('territory known-world bridging reveals gaps through the world-map batch API', () => {
