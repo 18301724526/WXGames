@@ -33,7 +33,8 @@
 - **1.4 势力级国库（经济大改，决策 01-4）**：玩家资源从 per-city 收敛到势力 treasury。**最敏感**——先特征测试锁现行为、读证等价迁移、对抗 review、**需用户在场终验**。可最后做/或先只给 AI 用势力池、玩家延后。
 
 ### 阶段 2 — 世界人物注册表 + 性格落 person
-- **DONE：人物社交字段逻辑** `backend/services/person/PersonSocialFields.js`（`normalizeSocial(raw, id)` → `{personality, gender, orientation, relationships, factionId}`，消费 personalityCore+relationshipCore，确定性种子=人物 id，老存档自动 backfill；性别/取向比例进 personality_tuning）+ 5 测试。提交见下方。
+- **DONE：人物社交字段逻辑** `backend/services/person/PersonSocialFields.js`（`normalizeSocial(raw, id)` → `{personality, gender, orientation, relationships, factionId}`，消费 personalityCore+relationshipCore，确定性种子=人物 id，老存档自动 backfill；性别/取向比例进 personality_tuning）+ 5 测试。提交 `bd766b24`。
+- **DONE：②b 招降编排** `backend/services/faction/FactionCaptureService.js`（`createFactionCaptureService()`）——把真人/势力数据喂进 captureCore：`rollCapture(garrisonBand, roll)`（守军 captureChance）、`recruitChance(captive, recruiterRuler, inFactionKind, garrisonBand)`（band recruitBaseRate + 主公魅力 + 主公↔俘虏 personalityCore.compatScore 相性 + relationshipCore.recruitModifier 关系加成/宿敌宁死不降）、`resolveDisposition(choice, chance, roll)`（斩杀/招降/放生→captureCore.dispositionOutcome）。纯决策层：读人物不复制、config 从 ConfigTables 可覆盖；实际花名册变更(acceptFamousPerson)+胜利钩子+面板 UI 由调用方接（阶段 3）。6 测试。提交见下方。
 - **待接线（codex 一刀）**：把社交字段挂进 `FamousPersonService.normalizePerson` 的 person 对象——**但 FamousPersonService 现 498 行，god-file 门禁 `<500`，直接加 require+spread=+2 行会破门**。步骤：①先从 FamousPersonService 抽一个既有 helper 到独立模块腾行（如把某段 normalize 逻辑外移），②再在 person 对象里加一行 `...PersonSocialFields.normalizeSocial(raw, id),` + 顶部 require。**这刀要读证等价**（现有 person 形状只增字段不变旧字段）+ 更新 FamousPersonArchitecture 测试的字段清单。
 - **待做：世界人物注册表** 新共享 `world_people` 表 + 仓库（在野武将 + AI 势力武将；玩家花名册仍 `gameState.famousPeople`，逻辑注册表=两者视图并集）。`FamousPersonGenerator` 生成时调 assignPersonality 播种。
 
