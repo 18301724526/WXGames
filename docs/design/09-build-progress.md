@@ -36,7 +36,10 @@
 - **DONE：人物社交字段逻辑** `backend/services/person/PersonSocialFields.js`（`normalizeSocial(raw, id)` → `{personality, gender, orientation, relationships, factionId}`，消费 personalityCore+relationshipCore，确定性种子=人物 id，老存档自动 backfill；性别/取向比例进 personality_tuning）+ 5 测试。提交 `bd766b24`。
 - **DONE：②b 招降编排** `backend/services/faction/FactionCaptureService.js`（`createFactionCaptureService()`）——把真人/势力数据喂进 captureCore：`rollCapture(garrisonBand, roll)`（守军 captureChance）、`recruitChance(captive, recruiterRuler, inFactionKind, garrisonBand)`（band recruitBaseRate + 主公魅力 + 主公↔俘虏 personalityCore.compatScore 相性 + relationshipCore.recruitModifier 关系加成/宿敌宁死不降）、`resolveDisposition(choice, chance, roll)`（斩杀/招降/放生→captureCore.dispositionOutcome）。纯决策层：读人物不复制、config 从 ConfigTables 可覆盖；实际花名册变更(acceptFamousPerson)+胜利钩子+面板 UI 由调用方接（阶段 3）。6 测试。提交见下方。
 - **待接线（codex 一刀）**：把社交字段挂进 `FamousPersonService.normalizePerson` 的 person 对象——**但 FamousPersonService 现 498 行，god-file 门禁 `<500`，直接加 require+spread=+2 行会破门**。步骤：①先从 FamousPersonService 抽一个既有 helper 到独立模块腾行（如把某段 normalize 逻辑外移），②再在 person 对象里加一行 `...PersonSocialFields.normalizeSocial(raw, id),` + 顶部 require。**这刀要读证等价**（现有 person 形状只增字段不变旧字段）+ 更新 FamousPersonArchitecture 测试的字段清单。
-- **待做：世界人物注册表** 新共享 `world_people` 表 + 仓库（在野武将 + AI 势力武将；玩家花名册仍 `gameState.famousPeople`，逻辑注册表=两者视图并集）。`FamousPersonGenerator` 生成时调 assignPersonality 播种。
+- **DONE：世界人物注册表**
+  - `backend/repositories/WorldPeopleRepository.js`（共享 `world_people` 表：在野武将 factionId=null + AI 势力武将 factionId=ai_*；person JSON 权威、社交字段经 PersonSocialFields 单源规范化、id/factionId 镜像列查询）。`upsertPerson` **拒绝写玩家 faction 人物**（玩家花名册仍 `gameState.famousPeople`）；`getRoninPeople`（招募池）/`getPeopleByFaction`/`getAllPeople`/`deletePerson`（俘虏入玩家时移出）。已 compose 进 `GameStateRepository`（`worldPeopleRepo` + init）。5 测试。
+  - `backend/services/person/WorldPeopleRegistryService.js`（**唯一读门**，镜像 FactionRegistryService）：`materializePlayerRoster`（玩家 famousPeople 读证等价投影+盖 player factionId+社交 backfill）、`getPerson`（先自家花名册后共享表）、`getRoninPeople`、`getPeopleByFaction`（自家→花名册/AI→共享）、`getAllPeople`（并集视图）。4 测试。提交见下方。
+  - **待做（阶段2余）：** `FamousPersonService.normalizePerson` 挂 PersonSocialFields（需先腾行，见上）；`FamousPersonGenerator` 生成在野/AI 武将时调 assignPersonality 播种并写入 world_people。
 
 ### 阶段 3 — 关系/外交接线
 - 关系迭代（relationshipCore.meet/drift/events）挂 `WorldWorkerService` tick（每势力 meetPairs），事件（好友来投/背叛/义兄弟）走 EventService。

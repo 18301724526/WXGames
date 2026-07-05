@@ -4,6 +4,7 @@ const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
 const { FactionRepository } = require('./FactionRepository');
 const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
+const { WorldPeopleRepository } = require('./WorldPeopleRepository');
 
 const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
   ['revision', 'revision INTEGER DEFAULT 0'],
@@ -59,6 +60,9 @@ class GameStateRepository {
     // game_states; this holds the world-authored ones. Additive — see FactionRepository.
     this.factionRepo = new FactionRepository(db);
     this.factionDiplomacyRepo = new FactionDiplomacyRepository(db);
+    // Shared-world people registry (docs/design/02): 在野武将 + AI-faction officers. Player rosters
+    // stay in game_states.famousPeople; the logical registry = this table ∪ every player's roster.
+    this.worldPeopleRepo = new WorldPeopleRepository(db);
   }
 
   stripProjectionFields(gameState) {
@@ -134,6 +138,7 @@ class GameStateRepository {
     this.worldMapAuthority.init();
     this.factionRepo.init();
     this.factionDiplomacyRepo.init();
+    this.worldPeopleRepo.init();
     new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
   }
