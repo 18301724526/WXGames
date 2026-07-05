@@ -1,0 +1,29 @@
+{
+  "schema": "config-table-v1",
+  "table": "personality_tuning",
+  "description": "性格/相性系统调参(key-value 行表，主键 paramKey)。相性(rapport)=三条性格轴的加权对齐度；用户确认多维相性向量。数值全在此表，纯核 shared/person/personalityCore.js 读取。",
+  "generatedFrom": "config/tables/personality_tuning.xlsx",
+  "idField": "paramKey",
+  "rows": [
+    {
+      "paramKey": "wBoldness",
+      "value": 1
+    },
+    {
+      "paramKey": "wSociability",
+      "value": 1
+    },
+    {
+      "paramKey": "wIntegrity",
+      "value": 1.4
+    },
+    {
+      "paramKey": "axisJitter",
+      "value": 0.25
+    },
+    {
+      "paramKey": "rapportScale",
+      "value": 100
+    }
+  ]
+}

@@ -53,6 +53,49 @@ const TABLES = [
       { level: 3, upgradeCostGrain: 6000, capacity: 1000, retentionHours: 48, refundRatio: 0.6, unlockEra: 2 },
     ],
   },
+  {
+    table: 'personality_natures',
+    description: '气性(性格)锚点表 — PVPVE/三国志人物系统脊柱B（docs/design/02）。每个气性 = 三条性格轴(胆略/交游/义理, -1~1)空间里的一个命名锚点 + 行为倍率。性格只驱动世界行为(相遇/结羁绊/背叛/结仇/忠诚漂移/君主好战)，不碰战斗数值(留六维+技能，避免双源)。用户确认：多维相性向量(=这三轴本身)、配置表可自由增删气性。',
+    fields: [
+      { key: 'natureId', type: 'string', label: '气性标识(主键)', fill: 'valiant/cautious/... 唯一', effect: '人物 personality.nature 的取值；生成器枚举须覆盖本表(缺一门禁红)' },
+      { key: 'label', type: 'string', label: '中文标签', fill: '勇猛/冷静/...', effect: 'UI 显示；后端直发中文' },
+      { key: 'aBoldness', type: 'float', label: '胆略轴锚点(-1~1)', fill: '慎重 -1 ~ 勇猛 +1', effect: '相性向量第1维；AI 出兵/探索倾向' },
+      { key: 'aSociability', type: 'float', label: '交游轴锚点(-1~1)', fill: '孤高 -1 ~ 风流 +1', effect: '相性向量第2维；认识新人的基础频率(好友来投)' },
+      { key: 'aIntegrity', type: 'float', label: '义理轴锚点(-1~1)', fill: '野心 -1 ~ 义理 +1', effect: '相性向量第3维；忠诚漂移/被登用抗性/羁绊倾向' },
+      { key: 'meetRateMult', type: 'float', label: '认识新人频率倍率', fill: '风流 1.8、孤高 0.5、常人 1.0', effect: '关系网撮合率(03)' },
+      { key: 'bondBias', type: 'float', label: '结羁绊倾向(0~2)', fill: '义理/风流高，如 1.5；野心低', effect: '义兄弟/夫婦生成倾向(03)' },
+      { key: 'betrayalBias', type: 'float', label: '背叛/被挖倾向(0~2)', fill: '野心 1.8、义理 0.2', effect: '被登用抗性反比 + 倒戈来投倾向(03/05)' },
+      { key: 'grudgeBias', type: 'float', label: '结仇/宿敌倾向(0~2)', fill: '剛胆/勇猛高，如 1.4', effect: '宿敌生成倾向(03)' },
+      { key: 'loyaltyDriftMult', type: 'float', label: '忠诚漂移倍率', fill: '义理 0.5(衰减慢)、野心 1.5', effect: '忠诚随时间/待遇漂移速率' },
+      { key: 'aggression', type: 'float', label: '君主好战基线(0~100)', fill: '勇猛/剛胆高，如 70；温厚 25', effect: '当此人做势力君主时的 AI 好战基线(05)' },
+      { key: 'weight', type: 'float', label: '生成权重', fill: '常见气性高，如 1.0；稀有 0.5', effect: '随机生成人物时抽到此气性的权重' },
+    ],
+    rows: [
+      { natureId: 'valiant', label: '勇猛', aBoldness: 0.8, aSociability: 0.1, aIntegrity: 0.2, meetRateMult: 1.0, bondBias: 1.0, betrayalBias: 0.6, grudgeBias: 1.2, loyaltyDriftMult: 1.0, aggression: 70, weight: 1.0 },
+      { natureId: 'cautious', label: '冷静', aBoldness: -0.7, aSociability: -0.2, aIntegrity: 0.3, meetRateMult: 0.8, bondBias: 0.9, betrayalBias: 0.5, grudgeBias: 0.6, loyaltyDriftMult: 0.9, aggression: 35, weight: 1.0 },
+      { natureId: 'dutiful', label: '义理', aBoldness: 0.1, aSociability: 0.0, aIntegrity: 0.9, meetRateMult: 0.9, bondBias: 1.5, betrayalBias: 0.2, grudgeBias: 0.8, loyaltyDriftMult: 0.5, aggression: 45, weight: 1.0 },
+      { natureId: 'ambitious', label: '野心', aBoldness: 0.5, aSociability: 0.2, aIntegrity: -0.8, meetRateMult: 1.1, bondBias: 0.6, betrayalBias: 1.8, grudgeBias: 1.0, loyaltyDriftMult: 1.5, aggression: 75, weight: 0.9 },
+      { natureId: 'romantic', label: '风流', aBoldness: 0.2, aSociability: 0.9, aIntegrity: 0.1, meetRateMult: 1.8, bondBias: 1.4, betrayalBias: 0.7, grudgeBias: 0.7, loyaltyDriftMult: 1.0, aggression: 40, weight: 0.9 },
+      { natureId: 'stoic', label: '温厚', aBoldness: -0.3, aSociability: -0.4, aIntegrity: 0.5, meetRateMult: 0.9, bondBias: 1.1, betrayalBias: 0.3, grudgeBias: 0.4, loyaltyDriftMult: 0.7, aggression: 25, weight: 1.0 },
+      { natureId: 'reckless', label: '剛胆', aBoldness: 0.9, aSociability: 0.3, aIntegrity: -0.3, meetRateMult: 1.2, bondBias: 0.9, betrayalBias: 0.9, grudgeBias: 1.4, loyaltyDriftMult: 1.2, aggression: 80, weight: 0.8 },
+      { natureId: 'sage', label: '达观', aBoldness: -0.1, aSociability: -0.6, aIntegrity: 0.4, meetRateMult: 1.0, bondBias: 1.0, betrayalBias: 0.4, grudgeBias: 0.5, loyaltyDriftMult: 0.8, aggression: 40, weight: 0.9 },
+    ],
+  },
+  {
+    table: 'personality_tuning',
+    description: '性格/相性系统调参(key-value 行表，主键 paramKey)。相性(rapport)=三条性格轴的加权对齐度；用户确认多维相性向量。数值全在此表，纯核 shared/person/personalityCore.js 读取。',
+    fields: [
+      { key: 'paramKey', type: 'string', label: '参数名(主键)', fill: '唯一', effect: '纯核按名取值' },
+      { key: 'value', type: 'float', label: '数值', fill: '见下', effect: '' },
+    ],
+    rows: [
+      { paramKey: 'wBoldness', value: 1.0 },      // 相性对齐里胆略轴权重
+      { paramKey: 'wSociability', value: 1.0 },   // 交游轴权重
+      { paramKey: 'wIntegrity', value: 1.4 },     // 义理轴权重(义利分歧最伤和睦)
+      { paramKey: 'axisJitter', value: 0.25 },    // 从锚点抖动生成实际轴的幅度(同气性也有差异)
+      { paramKey: 'rapportScale', value: 100.0 }, // 对齐度→rapport(-100~100)的缩放
+    ],
+  },
 ];
 
 module.exports = { TABLES };
