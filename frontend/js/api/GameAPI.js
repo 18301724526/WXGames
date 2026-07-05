@@ -652,6 +652,12 @@
     setArmyFormation(cityId, slot, memberIds = [], soldierAssignments = {}) {
       return this.request('POST', '/game/action', { action: 'setArmyFormation', cityId, slot, memberIds, soldierAssignments });
     }
+    veteranCampWithdraw(cityId, soldiers) {
+      return this.request('POST', '/game/action', { action: 'veteranCampWithdraw', cityId, soldiers });
+    }
+    veteranCampUpgrade(cityId) {
+      return this.request('POST', '/game/action', { action: 'veteranCampUpgrade', cityId });
+    }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }

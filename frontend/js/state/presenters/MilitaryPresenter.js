@@ -68,9 +68,9 @@
     }
 
     static buildMilitaryNavigationViewState(state = {}) {
-      const requestedView = ['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army';
+      const requestedView = ['army', 'scout', 'world', 'veteranCamp'].includes(state.militaryView) ? state.militaryView : 'army';
       const activeView = requestedView;
-      const views = ['army', 'scout', 'world'].map((id) => ({
+      const views = ['army', 'scout', 'world', 'veteranCamp'].map((id) => ({
         id,
         isActive: id === activeView,
         disabled: false,
@@ -185,6 +185,54 @@
             'military.formation.summary',
             { maxMembers: maxFormationMembers }),
         },
+      };
+    }
+
+    static formatDurationShort(seconds) {
+      const total = Math.max(0, Math.ceil(this.toNumber(seconds)));
+      if (total >= 3600) {
+        const hours = Math.floor(total / 3600);
+        const mins = Math.floor((total % 3600) / 60);
+        return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+      }
+      if (total >= 60) {
+        const mins = Math.floor(total / 60);
+        const rest = total % 60;
+        return rest > 0 ? `${mins}m${rest}s` : `${mins}m`;
+      }
+      return `${total}s`;
+    }
+
+    // 老兵营地 view: the client reads the projected veteranCamp view off the active city DTO
+    // (parkedTotal / capacity / batches[drainEtaMs] / nextLevel), never the raw military.
+    static buildVeteranCampViewState(state = {}) {
+      const cityId = state.activeCityId || state.cityState?.activeCityId || 'capital';
+      const cities = Array.isArray(state.cityState?.cities) ? state.cityState.cities : [];
+      const activeCity = cities.find((city) => city.id === cityId) || null;
+      const camp = activeCity?.veteranCamp || {};
+      const level = this.toInteger(camp.level);
+      const capacity = this.toInteger(camp.capacity);
+      const parkedTotal = this.toInteger(camp.parkedTotal);
+      const retentionHours = this.toNumber(camp.retentionHours);
+      const batches = Array.isArray(camp.batches) ? camp.batches : [];
+      const nextLevel = camp.nextLevel && typeof camp.nextLevel === 'object'
+        ? { level: this.toInteger(camp.nextLevel.level), cost: this.toInteger(camp.nextLevel.upgradeCostGrain) }
+        : null;
+      const etas = batches
+        .map((batch) => Math.max(0, this.toInteger(batch.drainEtaMs)))
+        .filter((ms) => ms > 0);
+      const nextDrainMs = etas.length ? Math.min(...etas) : 0;
+      return {
+        cityId,
+        level,
+        capacity,
+        parkedTotal,
+        retentionHours,
+        hasParked: parkedTotal > 0,
+        nextDrainText: this.formatDurationShort(nextDrainMs / 1000),
+        hasDrainCountdown: nextDrainMs > 0,
+        canWithdraw: parkedTotal > 0,
+        nextLevel,
       };
     }
 
