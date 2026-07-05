@@ -23,15 +23,16 @@ const TABLES = [
       { key: 'baseSoldiers', type: 'int', label: '守军基础兵力', fill: '如 300', effect: '守军初始兵力（防守方规模基线）' },
       { key: 'soldiersPerScale', type: 'int', label: '每点站点规模额外兵力', fill: '如 120', effect: '站点 scale 越大守军越多：兵力 = base + scale×此值' },
       { key: 'leaderQuality', type: 'string', label: '守将品质（留空=按威胁自动）', fill: 'common / good / great / legendary，或留空', effect: '空=DefenderLeaderService 按威胁度定档；填了则强制此品质' },
-      { key: 'reclaimHours', type: 'float', label: '不驻防被夺回的小时数', fill: '0=永久归你；如 12 表示占领后 12 小时内不留兵驻防则被中立/AI 夺回', effect: '占领后若该城无驻军，经过此时长被重新设防夺走（0=永久，出生区/safe 档用 0）' },
       { key: 'captureChance', type: 'float', label: '打赢后捕获守将的基础概率（0~1）', fill: '如 0.25；品质越高的守将越难捕，deep 档调低', effect: '到达战斗胜利后按此概率进入“捕获守将”面板（斩杀/招降/放生）；0=从不捕获' },
       { key: 'recruitBaseRate', type: 'float', label: '招降基础成功率（0~1）', fill: '如 0.5；后续好感度/羁绊/君主魅力系统会在此基础上加成', effect: '捕获面板选“招降”时的基础成功率（当前无加成系统时即最终值）；失败守将流失' },
     ],
+    // 夺回是“攻击驱动”的（第三方/敌对/中立势力来攻打才触发：无驻防→直接夺走，有驻防→打一场），
+    // 不是定时自动夺回，所以本表不含 reclaim 计时字段；夺回属于“敌对势力攻打玩家城”系统的范畴。
     rows: [
-      { bandId: 'safe', maxDistance: 3, defended: false, ownerType: 'neutral', baseSoldiers: 0, soldiersPerScale: 0, leaderQuality: '', reclaimHours: 0, captureChance: 0, recruitBaseRate: 0 },
-      { bandId: 'near', maxDistance: 8, defended: true, ownerType: 'city_state', baseSoldiers: 260, soldiersPerScale: 90, leaderQuality: '', reclaimHours: 24, captureChance: 0.25, recruitBaseRate: 0.5 },
-      { bandId: 'frontier', maxDistance: 16, defended: true, ownerType: 'tribe', baseSoldiers: 360, soldiersPerScale: 130, leaderQuality: 'good', reclaimHours: 18, captureChance: 0.18, recruitBaseRate: 0.4 },
-      { bandId: 'deep', maxDistance: 9999, defended: true, ownerType: 'ruin_guardians', baseSoldiers: 520, soldiersPerScale: 170, leaderQuality: 'great', reclaimHours: 12, captureChance: 0.12, recruitBaseRate: 0.3 },
+      { bandId: 'safe', maxDistance: 3, defended: false, ownerType: 'neutral', baseSoldiers: 0, soldiersPerScale: 0, leaderQuality: '', captureChance: 0, recruitBaseRate: 0 },
+      { bandId: 'near', maxDistance: 8, defended: true, ownerType: 'city_state', baseSoldiers: 260, soldiersPerScale: 90, leaderQuality: '', captureChance: 0.25, recruitBaseRate: 0.5 },
+      { bandId: 'frontier', maxDistance: 16, defended: true, ownerType: 'tribe', baseSoldiers: 360, soldiersPerScale: 130, leaderQuality: 'good', captureChance: 0.18, recruitBaseRate: 0.4 },
+      { bandId: 'deep', maxDistance: 9999, defended: true, ownerType: 'ruin_guardians', baseSoldiers: 520, soldiersPerScale: 170, leaderQuality: 'great', captureChance: 0.12, recruitBaseRate: 0.3 },
     ],
   },
   {
