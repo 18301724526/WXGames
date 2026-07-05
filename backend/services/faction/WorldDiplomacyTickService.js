@@ -23,10 +23,11 @@ function createWorldDiplomacyTickService(deps = {}) {
   const personalityTuning = deps.personalityTuning || null;
 
   // How many OTHER factions are both `a` and `b` currently hostile toward — a common-enemy bond.
+  // Dedups its input so a repeated id can't double-count a single shared enemy.
   function sharedEnemyCount(a, b, factionIds) {
     if (!diplomacyService) return 0;
     let count = 0;
-    for (const x of factionIds) {
+    for (const x of new Set(Array.isArray(factionIds) ? factionIds : [])) {
       if (x === a || x === b) continue;
       if (HOSTILE_STATES.has(diplomacyService.state(a, x)) && HOSTILE_STATES.has(diplomacyService.state(b, x))) count += 1;
     }
@@ -58,7 +59,8 @@ function createWorldDiplomacyTickService(deps = {}) {
   // personalityTuning}. Returns the number of pairs advanced.
   function advanceAll(opts = {}) {
     if (!diplomacyService) return 0;
-    const ids = Array.isArray(opts.factionIds) ? opts.factionIds.filter(Boolean) : [];
+    // Dedup so a repeated id can't create a self-pair or advance the same edge twice.
+    const ids = Array.isArray(opts.factionIds) ? [...new Set(opts.factionIds.filter(Boolean))] : [];
     let pairs = 0;
     for (let i = 0; i < ids.length; i += 1) {
       for (let j = i + 1; j < ids.length; j += 1) {

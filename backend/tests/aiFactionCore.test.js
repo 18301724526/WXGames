@@ -98,6 +98,50 @@ test('a weak faction with an attack target trains instead of attacking', () => {
   assert.equal(intents[0].type, aiFactionCore.ACTIONS.TRAIN);
 });
 
+// Regression L1: a lone city with EXACTLY 0 soldiers must still TRAIN (not fall through to IDLE) when
+// there is an attack target — a wiped/new city has 0 garrison and needs to conscript.
+test('a 0-soldier city with an attack target trains (does not idle)', () => {
+  const snapshot = {
+    profileRow: profile('aggressive'),
+    natures: NATURES,
+    faction: { factionId: 'ai_z', actionBudget: 1, rulerPersonality: ruler('valiant'), cities: [{ cityId: 'c1', soldiers: 0 }] },
+  };
+  const world = { expansionCandidates: [{ territoryId: 't_def', distance: 4, ownerKind: 'neutral', value: 8, defenderSoldiers: 400 }] };
+  const intents = aiFactionCore.chooseFactionActions(snapshot, world, personalityCore.makePrng('s'));
+  assert.equal(intents[0].type, aiFactionCore.ACTIONS.TRAIN);
+});
+
+// Regression H1: when SETTLE + ATTACK are both available the expand FAMILY must not get more than its
+// single 'expand' weight. With expand vs build the only categories, the first-pick expand share must
+// track the normalized expand weight — not ~double it. Deterministic (fixed seed strings), not flaky.
+test('settle+attack available does not inflate the expand category weight', () => {
+  const snapshot = {
+    profileRow: profile('balanced'),
+    natures: NATURES,
+    faction: {
+      factionId: 'ai_w', actionBudget: 1, rulerPersonality: ruler('stoic'),
+      cities: [{ cityId: 'c1', soldiers: 999, canBuild: true, nextBuildingId: 'barracks' }],
+    },
+  };
+  const world = {
+    expansionCandidates: [
+      { territoryId: 't_open', distance: 3, ownerKind: 'neutral', value: 6, defenderSoldiers: 0 }, // settle
+      { territoryId: 't_def', distance: 4, ownerKind: 'neutral', value: 6, defenderSoldiers: 300 }, // attack
+    ],
+  };
+  const weights = aiFactionCore.personalityToWeights(ruler('stoic'), profile('balanced'), NATURES);
+  const expected = weights.expand / (weights.expand + weights.build); // only expand vs build available
+  let expandFirst = 0;
+  const N = 3000;
+  for (let i = 0; i < N; i += 1) {
+    const intents = aiFactionCore.chooseFactionActions(snapshot, world, personalityCore.makePrng(`h1-${i}`));
+    const t = intents[0].type;
+    if (t === aiFactionCore.ACTIONS.SETTLE_NEUTRAL || t === aiFactionCore.ACTIONS.ATTACK_CITY || t === aiFactionCore.ACTIONS.TRAIN) expandFirst += 1;
+  }
+  const share = expandFirst / N;
+  assert.ok(Math.abs(share - expected) < 0.05, `expand first-pick share ${share.toFixed(3)} should track ${expected.toFixed(3)} (not doubled)`);
+});
+
 test('nothing to do yields a single IDLE intent', () => {
   const snapshot = { profileRow: profile('balanced'), natures: NATURES, faction: { factionId: 'ai_3', actionBudget: 2, rulerPersonality: ruler('stoic'), cities: [] } };
   const intents = aiFactionCore.chooseFactionActions(snapshot, {}, personalityCore.makePrng('s'));

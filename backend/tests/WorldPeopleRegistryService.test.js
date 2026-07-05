@@ -56,3 +56,16 @@ test('getRoninPeople is the shared unaffiliated pool; getAllPeople is the union'
   const all = svc.getAllPeople(GAME_STATE).map((p) => p.id).sort();
   assert.deepEqual(all, ['my_1', 'my_2', 'wei_1', 'wp_ronin']);
 });
+
+// Regression H2: if a person id exists in BOTH the shared table and the player roster (e.g. the
+// mid-recruitment window), getAllPeople must return that identity ONCE, with the authoritative player
+// roster copy winning — never twice with conflicting factionId.
+test('getAllPeople dedups a person present in both roster and shared table (roster wins)', () => {
+  const { worldPeopleRepo, svc } = setup();
+  worldPeopleRepo.upsertPerson({ id: 'my_1', name: '共享幽灵副本' }); // ronin copy of a roster member's id
+  const all = svc.getAllPeople(GAME_STATE);
+  const dupes = all.filter((p) => p.id === 'my_1');
+  assert.equal(dupes.length, 1); // exactly once
+  assert.equal(dupes[0].factionId, factionCore.playerFactionId('p1')); // roster copy wins
+  assert.equal(dupes[0].name, '主公亲信甲'); // the roster person, not the shared ghost
+});

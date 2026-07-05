@@ -118,7 +118,12 @@ function availableActions(snapshot, world) {
   const cities = Array.isArray(faction.cities) ? faction.cities : [];
   const profile = snapshot.profileRow || {};
   const minSoldiers = num(profile.minSoldiersToAttack, 300);
-  const strongestCity = cities.reduce((best, c) => (num(c && c.soldiers) > num(best && best.soldiers) ? c : best), null);
+  // Seed the reduce with the first city so a lone 0-soldier city is still selected (a wiped/new city
+  // has 0 garrison and must still be able to TRAIN — see aiFactionCore review L1).
+  const strongestCity = cities.reduce((best, c) => {
+    if (!best) return c || null;
+    return num(c && c.soldiers) > num(best.soldiers) ? c : best;
+  }, null);
   const available = {};
 
   const targets = scoreExpansionTargets(world.expansionCandidates, {
@@ -151,16 +156,21 @@ function availableActions(snapshot, world) {
   return available;
 }
 
-// Map an available-category key to its decision weight.
-function categoryWeight(key, weights) {
+// Which decision category an available-action key belongs to. Several keys (settle / attack / train)
+// share the ONE 'expand' category so they must share its weight, not each claim the full amount.
+function categoryOf(key) {
   switch (key) {
-    case 'expandSettle': case 'expandAttack': case 'train': return weights.expand;
-    case 'build': return weights.build;
-    case 'research': return weights.research;
-    case 'recruit': return weights.recruit;
-    case 'diplo': return weights.diplo;
-    default: return 0;
+    case 'expandSettle': case 'expandAttack': case 'train': return 'expand';
+    case 'build': return 'build';
+    case 'research': return 'research';
+    case 'recruit': return 'recruit';
+    case 'diplo': return 'diplo';
+    default: return null;
   }
+}
+
+function categoryWeightValue(category, weights) {
+  return category && weights && Number.isFinite(weights[category]) ? weights[category] : 0;
 }
 
 // Produce up to actionBudget intents for this cycle. rng is a seeded [0,1) function.
@@ -176,7 +186,17 @@ function chooseFactionActions(snapshot, world = {}, rng) {
     const available = availableActions({ ...snapshot, faction }, world);
     const keys = Object.keys(available).filter((k) => !usedSingletons.has(k));
     if (!keys.length) break;
-    const wts = keys.map((k) => Math.max(0.0001, categoryWeight(k, weights)));
+    // Split each category's weight evenly across its currently-available sub-keys so a category
+    // (e.g. expand = settle+attack+train) never gets more probability just for offering more actions.
+    const catCounts = {};
+    for (const k of keys) {
+      const c = categoryOf(k);
+      catCounts[c] = (catCounts[c] || 0) + 1;
+    }
+    const wts = keys.map((k) => {
+      const c = categoryOf(k);
+      return Math.max(0.0001, categoryWeightValue(c, weights) / (catCounts[c] || 1));
+    });
     const idx = weightedPick(wts, roll());
     const key = keys[idx];
     intents.push(available[key]);

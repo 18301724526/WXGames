@@ -54,11 +54,16 @@ function createWorldPeopleRegistryService(deps = {}) {
   }
 
   // The union registry visible in this request: the player's own roster + every shared person
-  // (在野 + AI officers). Other real players' rosters arrive via projection in a later slice
-  // (parallel to sharedWorldTerritories) — noted so the merge point is explicit.
+  // (在野 + AI officers). The player's roster is the authoritative copy for that player, so if a person
+  // id somehow exists in BOTH (e.g. the mid-recruitment window before ②b's deletePerson fires, or an
+  // authoring inconsistency), the roster copy WINS and the shared duplicate is dropped — the registry
+  // must never present one identity twice with conflicting factionId. Other real players' rosters
+  // arrive via projection in a later slice (parallel to sharedWorldTerritories).
   function getAllPeople(gameState = {}) {
-    const shared = worldPeopleRepo ? worldPeopleRepo.getAllPeople() : [];
-    return [...materializePlayerRoster(gameState), ...shared];
+    const own = materializePlayerRoster(gameState);
+    const ownIds = new Set(own.map((p) => p.id));
+    const shared = (worldPeopleRepo ? worldPeopleRepo.getAllPeople() : []).filter((p) => p && !ownIds.has(p.id));
+    return [...own, ...shared];
   }
 
   return {

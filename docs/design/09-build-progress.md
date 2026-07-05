@@ -54,6 +54,7 @@
 
 ### 阶段 5 — AI 城（复用 territory/CityService）+ AI 决策循环（动态群雄、AI 互战、进视野投影、出生保护、**首都失守→临时营地+重建任务链**）
 - **DONE：AIF-4 纯决策核** `shared/faction/aiFactionCore.js`（纯、无 IO、确定性）+ 配置表 `ai_faction_profile`（4 原型 aggressive/economic/diplomatic/balanced：行动权重基线+攻城参数；**好战 aggression 不复制，单源=personality_natures.aggression**，本表只给原型基线权重，君主性格调制）。函数：`personalityToWeights`（原型基线×君主 aggression/交游调制，归一）、`scoreExpansionTargets`（距离/守军/价值打分，**排除超程/自城/出生保护玩家**05-1，targetPlayerBias 抬玩家城）、`scoreRecruitCandidates`（品质+角色缺口，compat 占位）、`chooseFactionActions`（按预算加权选可行意图：SETTLE/ATTACK/BUILD/RESEARCH/RECRUIT/TRAIN/DIPLOMACY/IDLE；弱势想攻先 TRAIN；无事 IDLE；注入 PRNG 确定）。9 测试。提交见下方。
+- **DONE：对抗审查修复（阶段 2/3/5 全substrate 单源审查）** 一轮对抗 review 抓 4 缺陷，全修+回归测试锁定：H1 `chooseFactionActions` expand 家族(settle/attack/train 三键)共享 `weights.expand` 权重(原各领全额→扩张概率翻倍系统性偏战，`categoryOf`+按可用子键均分修)；H2 `WorldPeopleRegistryService.getAllPeople` 同 id 双份(花名册+共享表)且 factionId 冲突→按 id 去重、玩家花名册权威胜；L1 强城 reduce 从 null 起→0 兵城选不出连 TRAIN 都不发→IDLE(改首城种子);L2 `WorldDiplomacyTickService` factionIds 未去重→自配对/共敌双计(sharedEnemyCount/advanceAll 均 dedup)。+4 回归测试(含 H1 3000 种子统计)。提交见下方。
 - **待接线（AIF-0/1/2/3/5/6，需先解 doc-05「审查发现」的存储层单源冲突）**：`ai_faction_state`/`ai_faction_cities` 表 + 仓库、Seeder（动态群雄=空城被认领才诞生，非静态铺设）、城成长复用 advanceAllCities、`AiFactionService.tick` 挂 WorldWorkerService（shared 单次）、执行 executeIntent + 复用 startWorldMarch/resolveBattle。⚠️ doc-05 审查已列 6 单源违规 + 10 缺口（advanceAllCities 双源、shared_world_territories 写者冲突、startWorldMarch 无玩家上下文不可调、投影优先级不认 AI…），落地前逐条解决，属**碰现有行为**切片，走 [[refactor-no-debt-for-safety]] + 用户终验。
 
 ## 门禁 & 纪律（每刀）

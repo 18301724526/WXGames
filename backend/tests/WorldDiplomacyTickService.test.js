@@ -44,6 +44,15 @@ test('advanceAll advances every unordered pair once', () => {
   assert.equal(pairs, 3); // C(3,2)
 });
 
+// Regression L2: a duplicated faction id must not double-count a shared enemy or create a self-pair.
+test('duplicate faction ids are deduped (no double-count, no self-pair)', () => {
+  const { diplomacyService, tick } = setup();
+  diplomacyService.applyStateChange('ai_a', 'ai_c', 'hostile', 'now');
+  diplomacyService.applyStateChange('ai_b', 'ai_c', 'hostile', 'now');
+  assert.equal(tick.sharedEnemyCount('ai_a', 'ai_b', ['ai_a', 'ai_b', 'ai_c', 'ai_c']), 1); // c counted once
+  assert.equal(tick.advanceAll({ factionIds: ['ai_a', 'ai_b', 'ai_c', 'ai_c'], now: 'now' }), 3); // C(3,2), no c-c self-pair
+});
+
 test('shared enemies + compatible rulers drift a pair toward friendly over ticks', () => {
   const { diplomacyService, tick } = setup();
   const ids = ['ai_a', 'ai_b', 'ai_c'];
