@@ -51,6 +51,9 @@
 - **②b 捕获面板接线**：胜利钩子 rollCapture → 面板 UI(斩杀/招降/放生) → captureCore.recruitSuccessChance（喂 compatScore + relationshipCore.recruitModifier + 魅力 + garrison recruitBaseRate）→ dispositionOutcome。
 
 ### 阶段 4 — 每势力科技 + 科技树重设计（保留选1、knowledge 产点、战前折算加成、AI 粗粒度可见）
+- **DONE：Slice T1 效果类型框架（纯、零行为变化）** `shared/techEffectSchema.js`（唯一效果 schema：9 类 typed effect `unlockBuilding/unlockUnit/resourceOutput/globalOutput/combatModifier/abilityUnlock/diplomacyModifier/populationBonus/techRateBonus` + `validateEffect`/`normalizeEffect`/`describeEffectKey` i18n key；**op 语义定死解 doc-06 审查#7：`mul`=对基-1 乘子的加法式增量**，两个 +0.2→×1.4 非 ×1.44）+ `shared/tech/techEffectResolver.js`（唯一 fold：`resolve(researched, nodeDefs)`→effects 快照；**兼容读旧 38 节点的 legacy object 形状** `{unlockedBuildings,resourceEntrances}` + 新 typed 数组；`resourceEntrances` 保留为**纯展示**不数值化=解审查#5；非法 effect fail-closed 忽略；`getUnlockedBuildings` 薄封装泛化）。9 测试（含真实 38 节点 union）。提交见下方。
+- **待接（T2-T6，读证等价切片+真机终验）**：T2 `TechEffectAggregator.mergeInto` 接产出管线(applyDerivedStatsToCity)；T3 内容上数值+补科技网；T4 per-faction 签名切换(research/resolve/getClientState 吃 faction)；T5 `tech_nodes`/`tech_era_grants` 迁表+导表 DAG 校验钩子；T6 客户端 typed-effect 渲染+AI 研究循环。⚠️ 落地须解 doc-06「审查发现」4 单源违规(eraChoices 双写/cost vs 字面量1/战斗注入锚点/knowledge 字段两义)+8 缺口。
+
 
 ### 阶段 5 — AI 城（复用 territory/CityService）+ AI 决策循环（动态群雄、AI 互战、进视野投影、出生保护、**首都失守→临时营地+重建任务链**）
 - **DONE：AIF-4 纯决策核** `shared/faction/aiFactionCore.js`（纯、无 IO、确定性）+ 配置表 `ai_faction_profile`（4 原型 aggressive/economic/diplomatic/balanced：行动权重基线+攻城参数；**好战 aggression 不复制，单源=personality_natures.aggression**，本表只给原型基线权重，君主性格调制）。函数：`personalityToWeights`（原型基线×君主 aggression/交游调制，归一）、`scoreExpansionTargets`（距离/守军/价值打分，**排除超程/自城/出生保护玩家**05-1，targetPlayerBias 抬玩家城）、`scoreRecruitCandidates`（品质+角色缺口，compat 占位）、`chooseFactionActions`（按预算加权选可行意图：SETTLE/ATTACK/BUILD/RESEARCH/RECRUIT/TRAIN/DIPLOMACY/IDLE；弱势想攻先 TRAIN；无事 IDLE；注入 PRNG 确定）。9 测试。提交见下方。
