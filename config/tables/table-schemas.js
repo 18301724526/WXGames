@@ -94,6 +94,8 @@ const TABLES = [
       { paramKey: 'wIntegrity', value: 1.4 },     // 义理轴权重(义利分歧最伤和睦)
       { paramKey: 'axisJitter', value: 0.25 },    // 从锚点抖动生成实际轴的幅度(同气性也有差异)
       { paramKey: 'rapportScale', value: 100.0 }, // 对齐度→rapport(-100~100)的缩放
+      { paramKey: 'genderFemaleRatio', value: 0.18 },   // 生成人物为女性的比例(古风武将偏男，可调)
+      { paramKey: 'orientationSameSexRatio', value: 0.05 }, // 取向为同性的比例(决策 03-1 引入性别+取向)
     ],
   },
   {
