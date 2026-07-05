@@ -76,9 +76,14 @@
       // march-button gate agree with what the server will actually walk.
       axisAligned: true,
       maxLength: options.maxLength || serverRouteCap || MAX_MANUAL_ROUTE_LENGTH,
-      width: options.worldWidth || 1024,
-      height: options.worldHeight || 1024,
-      wrapping: options.wrapping !== false,
+      // Single source: the server delivers the route world-bounds in the world-explorer DTO
+      // (worldWidth/worldHeight/worldWrapping = WorldMapConstants). Reading them — not a hardcoded
+      // 1024 — keeps this preview identical to the server's authoritative route on any map size.
+      width: options.worldWidth || state.worldExplorerState?.worldWidth || 1024,
+      height: options.worldHeight || state.worldExplorerState?.worldHeight || 1024,
+      wrapping: options.wrapping !== undefined
+        ? options.wrapping !== false
+        : state.worldExplorerState?.worldWrapping !== false,
       canTraverse: (step) => !isRouteTerrainBlocked(knownTiles.get(getTileKey(step))),
     });
     if (routeResult.success) {

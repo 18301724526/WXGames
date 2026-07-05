@@ -141,6 +141,11 @@ test('WorldExplorerDtoMapper groups active and idle DTOs without retired ready r
   assert.deepEqual(state.idleMissions.map((mission) => mission.id), ['idle-1']);
   assert.deepEqual(state.busyFormations.map((item) => `${item.missionId}:${item.status}`), ['active-1:active']);
   assert.equal(state.stepDurationSeconds, 5); // EXPLORE_STEP_DURATION_MS = 5s (manual-march cadence)
+  // Route world-bounds are delivered so the client's optimistic route + preview compute with the
+  // SAME inputs the backend planner uses (single source = WorldMapConstants) — no divergence.
+  assert.equal(state.worldWidth, 1024);
+  assert.equal(state.worldHeight, 1024);
+  assert.equal(state.worldWrapping, true);
 });
 
 test('WorldExplorerClientState keeps legacy API by delegating to DTO mapper after progression', () => {

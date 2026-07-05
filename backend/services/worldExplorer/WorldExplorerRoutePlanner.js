@@ -49,9 +49,12 @@ function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_S
     // matches this authoritative one byte-for-byte.
     axisAligned: true,
     maxLength: MAX_MANUAL_ROUTE_LENGTH,
+    // Route world-bounds are single-source (WorldMapConstants via WorldMapService); the same three
+    // values are delivered to the client in the world-explorer DTO so the client's optimistic route
+    // and preview run this exact computation with identical inputs — no divergence.
     width: WorldMapService.DEFAULT_WORLD_WIDTH,
     height: WorldMapService.DEFAULT_WORLD_HEIGHT,
-    wrapping: true,
+    wrapping: WorldMapService.DEFAULT_WORLD_WRAPPING,
     canTraverse: (step) => canTraverseRouteTile(seed, step.q, step.r, options),
   });
   if (routeResult.error === 'EXPLORE_TARGET_IS_ORIGIN') {
