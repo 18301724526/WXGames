@@ -146,11 +146,23 @@
     const clientMonoMs = Number.isFinite(Number(options.clientMonoMs))
       ? Number(options.clientMonoMs)
       : getMonotonicNow(clockWorld.runtime);
-    Clock.serverEpochAtSyncMs[entity] = serverEpochMs;
+    // The server stamps serverTime when it BUILDS the response, so by the time this sync runs it
+    // is stale by the response/network latency. Anchoring the epoch straight to that stale value
+    // while anchoring the mono baseline at receipt snaps the reported clock BACKWARD by the
+    // latency on every sync — which drags every time-derived visual (a marching unit's
+    // interpolated position) backward once per sync (the rubber-band). Clamp forward-only: a
+    // stale serverTime can never pull the clock back, but a genuine forward jump still applies.
+    // epochNowMs is the single source of world time; this keeps it monotonic across syncs.
+    const previousEpochNowMs = Clock.synced[entity]
+      ? Clock.serverEpochAtSyncMs[entity]
+        + Math.max(0, clientMonoMs - Clock.clientMonoAtSyncMs[entity])
+      : -Infinity;
+    const anchoredEpochMs = Math.max(serverEpochMs, previousEpochNowMs);
+    Clock.serverEpochAtSyncMs[entity] = anchoredEpochMs;
     Clock.clientMonoAtSyncMs[entity] = clientMonoMs;
     Clock.lastSyncedAtEpochMs[entity] = Date.now();
     Clock.elapsedMs[entity] = 0;
-    Clock.epochNowMs[entity] = serverEpochMs;
+    Clock.epochNowMs[entity] = anchoredEpochMs;
     Clock.synced[entity] = 1;
     return true;
   }

@@ -149,6 +149,33 @@ test('WorldClock syncs from command authority payloads', () => {
   );
 });
 
+test('WorldClock never lets a stale server sync pull the epoch clock backward (rubber-band guard)', () => {
+  let mono = 1000;
+  const clockWorld = createClockWorld({
+    runtime: { performance: { now() { return mono; } } },
+    serverTime: '2026-06-15T00:00:05.000Z',
+  });
+  const t0 = new Date('2026-06-15T00:00:05.000Z').getTime();
+
+  // 1000ms of real (monotonic) time elapses: the clock reads T0 + 1000ms.
+  mono = 2000;
+  const beforeResync = getEpochNowMs({ worldClock: clockWorld });
+  assert.equal(beforeResync, t0 + 1000);
+
+  // A sync arrives whose serverTime was STAMPED 200ms ago (slow response build). Naively
+  // re-anchoring the epoch to that stale value while anchoring mono at receipt would snap the
+  // clock back to T0+800 — the per-sync backstep that rubber-bands marching units. The
+  // forward-only clamp must hold the clock at its current reading instead.
+  runClockSyncSystem(clockWorld, { serverTime: new Date(t0 + 800).toISOString() });
+  const afterStale = getEpochNowMs({ worldClock: clockWorld });
+  assert.equal(afterStale >= beforeResync, true, 'a stale sync must never rewind the clock');
+  assert.equal(afterStale, t0 + 1000);
+
+  // A genuinely forward server time (a real correction ahead) is still adopted.
+  runClockSyncSystem(clockWorld, { serverTime: new Date(t0 + 1500).toISOString() });
+  assert.equal(getEpochNowMs({ worldClock: clockWorld }), t0 + 1500);
+});
+
 test('WorldClock preserves explicit NaN fallback when unsynced', () => {
   const clockWorld = createClockWorld();
 
