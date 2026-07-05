@@ -31,7 +31,7 @@ class FactionDiplomacyRepository {
         worldId TEXT,
         fromFactionId TEXT,
         toFactionId TEXT,
-        favorability INTEGER DEFAULT 0,
+        favorability REAL DEFAULT 0,
         state TEXT DEFAULT 'neutral',
         nemesisStreak INTEGER DEFAULT 0,
         since TEXT,

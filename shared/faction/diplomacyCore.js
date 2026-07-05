@@ -28,8 +28,12 @@ function cfgVal(cfg, key, fallback) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
+// Clamp favorability to [-100, 100] WITHOUT rounding: favorability accumulates fractional per-tick drift
+// (doc 04 §3.2/§5 — 累加后 clamp, moves ~1 point every few dozen ticks). Rounding here would discard any
+// |drift| < 0.5/tick and freeze the passive-drift subsystem, so display rounding (if ever needed) belongs
+// in the DTO layer, not in the stored value.
 function clampFavorability(value) {
-  return Math.max(-100, Math.min(100, Math.round(toNumber(value, 0))));
+  return Math.max(-100, Math.min(100, toNumber(value, 0)));
 }
 function normalizeState(state) {
   return STATES.includes(state) ? state : STATE.NEUTRAL;

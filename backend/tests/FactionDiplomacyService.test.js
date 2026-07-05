@@ -65,6 +65,32 @@ test('advanceEdge: favorability drifts and can flip the symmetric state', () => 
   assert.equal(svc.state('ai_wei', 'ai_wu'), 'friendly'); // mutualFav >= 40 -> friendly
 });
 
+// Regression C1: fractional per-tick drift must ACCUMULATE (no per-tick rounding). Before the fix,
+// clampFavorability rounded every write so any |drift| < 0.5/tick was silently discarded and favorability
+// stayed frozen — the passive-drift subsystem was inert.
+test('fractional favorability accumulates across ticks (no per-tick rounding)', () => {
+  const { svc } = setup();
+  for (let i = 0; i < 10; i += 1) svc.adjustFavorability('ai_a', 'ai_b', 0.3, 'now');
+  assert.ok(svc.getEdge('ai_a', 'ai_b').favorability >= 2.9, `expected ~3, got ${svc.getEdge('ai_a', 'ai_b').favorability}`);
+});
+
+// Regression C2: nemesisStreak drives a SYMMETRIC transition, so it must advance regardless of
+// advanceEdge argument order. Before the fix it lived on only the (a,b) row, so alternating
+// advanceEdge(a,b)/advanceEdge(b,a) split the streak and never reached the threshold.
+test('nemesisStreak advances symmetrically regardless of advanceEdge argument order', () => {
+  const { svc } = setup();
+  // Drive both sides deeply hostile so mutualFav stays <= nemesisAt for well over nemesisTicks.
+  svc.adjustFavorability('ai_a', 'ai_b', -100, 'now');
+  svc.adjustFavorability('ai_b', 'ai_a', -100, 'now');
+  svc.applyStateChange('ai_a', 'ai_b', 'hostile', 'now');
+  const ctx = {};
+  for (let i = 0; i < CFG.nemesisTicks + 2; i += 1) {
+    if (i % 2 === 0) svc.advanceEdge('ai_a', 'ai_b', ctx, ctx, 'now');
+    else svc.advanceEdge('ai_b', 'ai_a', ctx, ctx, 'now');
+  }
+  assert.equal(svc.state('ai_a', 'ai_b'), 'nemesis');
+});
+
 test('effects/canAttack derive from state (allied cannot attack, shares vision)', () => {
   const { svc } = setup();
   svc.applyStateChange('ai_wei', 'ai_wu', 'allied', 'now');

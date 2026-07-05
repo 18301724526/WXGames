@@ -79,6 +79,13 @@ class FactionRepository {
     if (normalized.kind === factionCore.KIND.PLAYER) {
       throw new Error('FactionRepository.upsertFaction: player factions live in game_states, not the shared table');
     }
+    // This repo REPLACES the whole faction blob (document store), so callers must pass a full
+    // read-modify-write faction. As a defensive guard for the one immutable-once-set field, preserve an
+    // existing createdAt when the incoming faction omits it, so a partial write can't null it out.
+    if (!normalized.createdAt) {
+      const existing = this.getFaction(normalized.id);
+      if (existing && existing.createdAt) normalized.createdAt = existing.createdAt;
+    }
     const updatedAt = now || normalized.updatedAt || null;
     normalized.updatedAt = updatedAt;
     this.db.prepare(`

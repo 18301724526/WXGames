@@ -54,8 +54,12 @@ function createFactionDiplomacyService(deps = {}) {
     adjustFavorability(b, a, diplomacyCore.favorabilityDrift(ba0, ctxBtoA, cfg), now);
     const mutual = diplomacyCore.mutualFavorability(ab.favorability, getEdge(b, a).favorability);
     const result = diplomacyCore.passiveTransition(ab.state, mutual, ab.nemesisStreak, cfg);
-    // persist the nemesis streak on the directed edge; mirror state if it changed.
+    // nemesisStreak drives a SYMMETRIC transition, so it must be stored symmetrically — mirror it onto
+    // BOTH directed rows. Storing it on only (a,b) made progress toward NEMESIS argument-order-dependent:
+    // alternating advanceEdge(a,b)/advanceEdge(b,a) would split the streak across two rows and never reach
+    // the threshold. Mirroring keeps the pair's streak single-sourced regardless of call order.
     repo.upsertEdge(a, b, { ...getEdge(a, b), nemesisStreak: result.nemesisStreak }, now);
+    repo.upsertEdge(b, a, { ...getEdge(b, a), nemesisStreak: result.nemesisStreak }, now);
     if (result.state !== ab.state) applyStateChange(a, b, result.state, now);
     return getEdge(a, b);
   }

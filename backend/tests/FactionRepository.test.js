@@ -69,3 +69,12 @@ test('deleteFaction removes the row', () => {
   repo.deleteFaction('ai_wei');
   assert.equal(repo.getFaction('ai_wei'), null);
 });
+
+// Regression C3: a later upsert that omits createdAt must not clobber the stored createdAt to null.
+test('upsertFaction preserves an existing createdAt when the incoming faction omits it', () => {
+  const repo = freshRepo();
+  repo.upsertFaction({ id: 'ai_wu', kind: 'ai', name: '吴', createdAt: '2026-01-01T00:00:00Z' });
+  // a partial-ish later write (e.g. a lifecycle flip authored without re-reading) omits createdAt
+  repo.upsertFaction({ id: 'ai_wu', kind: 'ai', name: '吴' });
+  assert.equal(repo.getFaction('ai_wu').createdAt, '2026-01-01T00:00:00Z');
+});
