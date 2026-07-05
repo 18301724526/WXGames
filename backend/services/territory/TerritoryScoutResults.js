@@ -337,10 +337,20 @@ function createTerritoryScoutResults(dependencies = {}) {
     const title = pickText(template.reportTitles, seed + 1);
     const summary = pickText(template.summaries, seed + 2);
     const defense = template.defense + Math.max(0, distance - 1) * SOLDIER_SCALE;
+    // 距首城 ring distance from the ACTUAL capital origin (not the scout's active city) — drives the
+    // garrison band for the immediate scout-report garrison; the normalizer re-stamps it thereafter.
+    const capitalOrigin = gameState?.worldMap?.origin || {};
+    const capitalDistance = Math.max(0, getRelativeDistance(
+      toInteger(capitalOrigin.q ?? capitalOrigin.x, originX),
+      toInteger(capitalOrigin.r ?? capitalOrigin.y, originY),
+      x,
+      y,
+    ));
     const site = {
       id: `site_${x}_${y}`,
       x,
       y,
+      capitalDistance,
       naturalName,
       cityName: null,
       type: template.type,

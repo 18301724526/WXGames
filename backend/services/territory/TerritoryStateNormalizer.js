@@ -142,6 +142,10 @@ function createTerritoryStateNormalizer(dependencies = {}) {
     };
     if (planningTerrain) normalized.terrain = planningTerrain;
     if (mapTerrain) normalized.mapTerrain = mapTerrain;
+    // 距首城 ring distance from the ACTUAL capital origin (capitals spawn off world-origin), stamped
+    // on the territory so the garrison band decision reads one capital-relative fact everywhere.
+    const bandOrigin = getCapitalOrigin(rawTerritory, options);
+    normalized.capitalDistance = Math.max(0, getRelativeDistance(bandOrigin.q, bandOrigin.r, x, y));
     normalized.garrison = normalizeGarrison(normalized.garrison, normalized, normalized.discoveredAt || now);
     normalized.defenderLeader = normalized.garrison?.leader || null;
     normalized.battleTarget = normalized.battleTarget

@@ -165,19 +165,23 @@ function getClientBattleTargetForIntel(battleTarget, intel) {
   };
 }
 
-function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}) {
+function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}, gameState = {}) {
   const intel = getTerritoryIntelSnapshot(territory, deps);
+  const occupationMode = deps.getOccupationMode(territory, gameState);
+  // A settlement faces no defender — never advertise a band garrison/leader the player won't fight,
+  // keeping the DTO's occupationMode and its defender fields consistent.
+  const settling = occupationMode === 'settlement';
   return {
     ...territory,
     intel,
-    garrison: redactGarrisonForIntel(territory.garrison, intel),
-    defenderLeader: intel.knownLeader ? territory.defenderLeader : null,
-    battleTarget: getClientBattleTargetForIntel(territory.battleTarget, intel),
+    garrison: settling ? null : redactGarrisonForIntel(territory.garrison, intel),
+    defenderLeader: settling ? null : (intel.knownLeader ? territory.defenderLeader : null),
+    battleTarget: settling ? null : getClientBattleTargetForIntel(territory.battleTarget, intel),
     distance: deps.getDistance(territory.x, territory.y),
     originDistance: deps.getRelativeDistance(scoutOrigin.x, scoutOrigin.y, territory.x, territory.y),
     relativeX: territory.x - scoutOrigin.x,
     relativeY: territory.y - scoutOrigin.y,
-    occupationMode: deps.getOccupationMode(territory),
+    occupationMode,
     mission,
   };
 }
@@ -197,7 +201,7 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
   const capitalOrigin = getWorldMapOrigin(gameState.worldMap);
   const territories = mergeProjectedTerritories(ownTerritories, sharedTerritories)
     .map((territory) => projectCapitalTerritoryToOrigin(territory, capitalOrigin))
-    .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps));
+    .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps, gameState));
   const scoutMissions = (gameState.warMissions || []).filter((mission) => deps.getMissionKind(mission) === 'scout');
   const worldMap = typeof WorldMapService.getClientWorldMapFromNormalized === 'function'
     ? WorldMapService.getClientWorldMapFromNormalized(gameState.worldMap)
