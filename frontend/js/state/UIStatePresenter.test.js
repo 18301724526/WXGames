@@ -1284,6 +1284,16 @@ test('UIStatePresenter delegates military and scout view state while preserving 
   assert.deepEqual(UIStatePresenter.buildMilitaryNavigationViewState(state), MilitaryPresenter.buildMilitaryNavigationViewState(state));
   assert.deepEqual(militaryView, directMilitaryView);
   assert.deepEqual(scoutView, directScoutView);
+  // The 老兵营 sub-tab view must be reachable through the facade (a missing delegate crashed the
+  // whole military panel when the tab was tapped), and the map-home resolver must not coerce the
+  // veteranCamp view back to 'army' (which made the tab silently revert).
+  assert.equal(typeof UIStatePresenter.buildVeteranCampViewState, 'function');
+  assert.deepEqual(UIStatePresenter.buildVeteranCampViewState(state), MilitaryPresenter.buildVeteranCampViewState(state));
+  assert.ok(UIStatePresenter.buildMilitaryNavigationViewState(state).views.some((view) => view.id === 'veteranCamp'));
+  assert.equal(
+    UIStatePresenter.resolveMapHomeViewState({ militaryView: 'veteranCamp', currentTab: 'military' }, { requestedTab: 'military', militaryView: 'veteranCamp' }).militaryView,
+    'veteranCamp',
+  );
   assert.equal(militaryView.text.soldierCount, '12/20');
   assert.equal(militaryView.text.militaryDefense, 5);
   assert.equal(militaryView.formations[0].name, '先锋队');

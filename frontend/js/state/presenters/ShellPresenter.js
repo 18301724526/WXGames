@@ -177,9 +177,9 @@
     static resolveMapHomeViewState(state = {}, options = {}) {
       const requestedTab = options.requestedTab || options.activeTab || state.currentTab || 'resources';
       const activeTab = requestedTab === 'territory' ? 'military' : requestedTab;
-      const requestedMilitaryView = ['army', 'scout', 'world'].includes(options.militaryView)
+      const requestedMilitaryView = ['army', 'scout', 'world', 'veteranCamp'].includes(options.militaryView)
         ? options.militaryView
-        : (['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army');
+        : (['army', 'scout', 'world', 'veteranCamp'].includes(state.militaryView) ? state.militaryView : 'army');
       const canUseMapHome = this.canUseMapHome(state);
       const homeRequested = !requestedTab || requestedTab === 'resources' || requestedTab === 'territory';
       const forceMapHome = Boolean(options.forceMapHome || options.isMapHome);

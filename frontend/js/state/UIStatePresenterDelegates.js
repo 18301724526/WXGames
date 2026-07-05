@@ -91,6 +91,7 @@
     MilitaryPresenter: Object.freeze([
       'buildMilitaryNavigationViewState',
       'buildMilitaryViewState',
+      'buildVeteranCampViewState',
       'getScoutMissionRemainingSeconds',
       'formatScoutCountdown',
       'buildScoutControlViewState',
@@ -418,6 +419,9 @@
     });
     defineStaticMethod(UIStatePresenter, 'buildMilitaryViewState', function buildMilitaryViewState(...args) {
       return MilitaryPresenter.buildMilitaryViewState(...args);
+    });
+    defineStaticMethod(UIStatePresenter, 'buildVeteranCampViewState', function buildVeteranCampViewState(...args) {
+      return MilitaryPresenter.buildVeteranCampViewState(...args);
     });
     defineStaticMethod(UIStatePresenter, 'getScoutMissionRemainingSeconds', function getScoutMissionRemainingSeconds(...args) {
       return MilitaryPresenter.getScoutMissionRemainingSeconds(...args);
