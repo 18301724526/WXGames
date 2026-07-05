@@ -146,6 +146,22 @@ const TABLES = [
       { paramKey: 'reputationHitOnBetray', value: -8 }, // 破盟对第三方(接壤/认识)的名声惩罚
     ],
   },
+  {
+    table: 'capture_tuning',
+    description: '占城捕获招降(②b)调参(key-value，主键 paramKey)。打赢守军后按 garrison 表 captureChance 几率捕获守将→面板斩杀/招降/放生。招降成功率=garrison 表 recruitBaseRate + 君主魅力 + 君主↔俘将相性(personalityCore) + 关系加成(relationshipCore.recruitModifier) − 宿敌，封顶 recruitCap；军中有宿敌则宁死不降(=0)。纯核 shared/faction/captureCore.js 读取。',
+    fields: [
+      { key: 'paramKey', type: 'string', label: '参数名(主键)', fill: '唯一', effect: '纯核按名取值' },
+      { key: 'value', type: 'float', label: '数值', fill: '见下', effect: '' },
+    ],
+    rows: [
+      { paramKey: 'charismaWeight', value: 0.30 },  // 君主魅力(0~100)/100 × 此 = 招降加成
+      { paramKey: 'compatWeight', value: 0.20 },    // 君主↔俘将相性(-100~100)/100 × 此 = 招降加成
+      { paramKey: 'recruitCap', value: 0.90 },      // 招降成功率硬上限(保留失败戏剧性)
+      { paramKey: 'recruitFloor', value: 0.0 },     // 招降成功率下限
+      { paramKey: 'nemesisHardRefuse', value: 1 },  // 1=军中有宿敌则宁死不降(成功率=0)；0=只按惩罚扣
+      { paramKey: 'releaseReputation', value: 3 },  // 放生对该俘将母势力的好感/名声加成(仁德)
+    ],
+  },
 ];
 
 module.exports = { TABLES };
