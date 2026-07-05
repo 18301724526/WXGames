@@ -4,9 +4,57 @@ const TerritoryService = require('./TerritoryService');
 const { manualAdvance } = require('./tutorial/TutorialProgression');
 const { getTutorialScoutPersonId, getFirstArmyReserveFloor } = require('./tutorial/TutorialSelectors');
 const FormationStrengthService = require('./military/FormationStrengthService');
+const veteranCampCore = require('../../shared/veteranCampCore');
+const ConfigTables = require('../config/ConfigTables');
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
+// Every city owns a level-1 veteran camp by default (the user's design: no build-from-zero).
+// Existing saves without a camp normalize up to level 1 with an empty parking pool.
+const DEFAULT_VETERAN_CAMP_LEVEL = 1;
+
+function resolveNowMs(source) {
+  const raw = Number(source?.nowMs);
+  return Number.isFinite(raw) && raw > 0 ? raw : Date.now();
+}
+
+// The veteran_camp config row for a level, with a fail-safe fallback (a level with no row
+// behaves like a zero-capacity camp: everything overflows to instant refund).
+function getVeteranCampRow(level) {
+  return ConfigTables.getById('veteran_camp', level)
+    || { level, capacity: 0, retentionHours: 0, refundRatio: 0.5, upgradeCostGrain: 0 };
+}
+
+// Read the camp off a military object, defaulting an absent camp to level 1.
+function readVeteranCamp(military) {
+  const raw = military?.veteranCamp;
+  const level = raw?.level == null ? DEFAULT_VETERAN_CAMP_LEVEL : raw.level;
+  return veteranCampCore.normalizeCamp(raw, level);
+}
+
+// Resolve the camp's refund ratio, defaulting a missing OR non-finite value (e.g. a NaN from a
+// corrupt config cell) to 0.5 — `?? 0.5` alone would let a bad string through as NaN.
+function resolveRefundRatio(row) {
+  const raw = Number(row?.refundRatio);
+  return Math.max(0, Number.isFinite(raw) ? raw : 0.5);
+}
+
+// Refund grain for N soldiers leaving the camp (drained or overflowed). Credited as a
+// FRACTIONAL delta on purpose: the drain trickles a soldier at a time and scaleResourceCost's
+// integer floor would swallow every sub-1 refund (floor(1 * 0.5) = 0). Food is already a
+// float in the resource tick, so fractional credit is lossless and consistent.
+function veteranCampRefundDelta(soldiers, row) {
+  const count = Math.max(0, Number(soldiers) || 0);
+  if (count <= 0) return {};
+  const ratio = resolveRefundRatio(row);
+  const costPerSoldier = getFormationStrengthPolicy().recruitmentCostPerSoldier || { food: 1 };
+  const delta = {};
+  Object.entries(costPerSoldier).forEach(([key, amount]) => {
+    const value = count * (Number(amount) || 0) * ratio;
+    if (value > 0) delta[key] = value;
+  });
+  return delta;
+}
 // Formations have no user-set name (the client never sends one), so the slot label is purely a
 // localized default rendered by the client. Persisting the English default ('Formation N') leaked
 // it into zh-CN UI, so store an empty name and let the client localize via military.formation.*.
@@ -223,6 +271,9 @@ function normalizeMilitaryState(rawMilitary, gameState) {
       pickCityFormationsSource(rawMilitary?.formations, gameState?.activeCityId || 'capital'),
       collectValidPersonIds(gameState || {}),
     ),
+    // 老兵营地 (dismissal regret-buffer): parked soldiers + level. Defaults to level 1 so every
+    // city has a camp; the pure drain/withdraw math lives in shared/veteranCampCore.
+    veteranCamp: readVeteranCamp(rawMilitary),
   };
 }
 
@@ -350,14 +401,20 @@ function setArmyFormation(gameState, payload = {}) {
   if (reserveDelta > normalizedMilitary.soldiers) {
     return { success: false, error: 'INSUFFICIENT_CITY_SOLDIERS', message: '城内预备兵力不足' };
   }
-  const refund = reserveDelta < 0
-    ? FormationStrengthService.scaleResourceCost(
-      strengthPolicy.recruitmentCostPerSoldier,
-      Math.abs(reserveDelta),
-      strengthPolicy.soldierRefundRatio,
-      { round: 'floor' },
-    )
-    : {};
+  // Dismissing soldiers (reserveDelta < 0) parks them in the veteran camp instead of
+  // vanishing for an instant refund. Only what overflows camp capacity — plus any soldiers
+  // that drained during the catch-up projection — is refunded now; the rest drains over time.
+  let refund = {};
+  let nextVeteranCamp = normalizedMilitary.veteranCamp;
+  if (reserveDelta < 0) {
+    const nowMs = resolveNowMs(payload);
+    const dismissed = Math.abs(reserveDelta);
+    const camp = readVeteranCamp(normalizedMilitary);
+    const campRow = getVeteranCampRow(camp.level);
+    const deposited = veteranCampCore.deposit(camp, campRow, dismissed, nowMs);
+    nextVeteranCamp = deposited.camp;
+    refund = veteranCampRefundDelta(deposited.overflowSoldiers + deposited.drainedSoldiers, campRow);
+  }
   formations[slot - 1] = {
     ...formations[slot - 1],
     slot,
@@ -374,9 +431,10 @@ function setArmyFormation(gameState, payload = {}) {
     ...normalizedMilitary,
     soldiers: normalizedMilitary.soldiers - Math.max(0, reserveDelta),
     formations,
+    veteranCamp: nextVeteranCamp,
   }, createMilitaryContext(gameState, cityId, normalizedMilitary));
   setCityMilitary(gameState, cityId, nextMilitary);
-  if (reserveDelta < 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
+  if (Object.keys(refund).length) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
   const scoutPersonId = getTutorialScoutPersonId(gameState);
   const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
     ? manualAdvance(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
@@ -389,6 +447,135 @@ function setArmyFormation(gameState, payload = {}) {
     reserveDelta,
     refund,
     tutorial,
+  };
+}
+
+// Advance a city's veteran camp to `nowMs`: parked soldiers drain (linearly over retention),
+// each drained soldier trickling its refund back into resources. Pure inputs, pure outputs —
+// the caller (real-time tick + offline settlement) assigns the returned military/resources.
+// Idempotent between the same two timestamps (drainedSoldiers is 0 on a repeat call).
+function settleVeteranCampDrain(military = {}, resources = {}, nowMs = Date.now()) {
+  const camp = readVeteranCamp(military);
+  const campRow = getVeteranCampRow(camp.level);
+  const drained = veteranCampCore.projectDrain(camp, campRow, nowMs);
+  const nextMilitary = { ...military, veteranCamp: drained.camp };
+  if (drained.drainedSoldiers <= 0) {
+    return { military: nextMilitary, resources, refund: {} };
+  }
+  const refund = veteranCampRefundDelta(drained.drainedSoldiers, campRow);
+  return {
+    military: nextMilitary,
+    resources: applyResourceDelta(resources, refund),
+    refund,
+  };
+}
+
+// Withdraw parked soldiers back into the city reserve (the "regret" undo). Drains to now first
+// (crediting any pending refund), then pulls up to the reserve's free space so a full reserve
+// never clamps — and never silently destroys — the rescued soldiers.
+function veteranCampWithdraw(gameState, payload = {}) {
+  const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
+  if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
+    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
+  }
+  const nowMs = resolveNowMs(payload);
+  const normalized = normalizeMilitaryState(getCityMilitary(gameState, cityId), createMilitaryContext(gameState, cityId));
+  const settled = settleVeteranCampDrain(normalized, getCityResources(gameState, cityId), nowMs);
+  const camp = readVeteranCamp(settled.military);
+  const campRow = getVeteranCampRow(camp.level);
+  const reserveSpace = Math.max(0, settled.military.soldierCap - settled.military.soldiers);
+  const parked = veteranCampCore.parkedTotal(camp);
+  // Distinguish "soldiers omitted" (withdraw all) from an explicit 0 (a no-op). A bare
+  // `requested || parked` would treat an explicit 0/negative/fractional request as "withdraw
+  // everything" — emptying the camp and forfeiting the accruing drain refund.
+  const hasExplicitRequest = payload.soldiers != null && payload.soldiers !== '';
+  const requested = Math.max(0, Math.floor(Number(payload.soldiers) || 0));
+  const desired = hasExplicitRequest ? requested : parked;
+  const target = Math.min(desired, reserveSpace, parked);
+  if (target <= 0) {
+    if (hasExplicitRequest && requested <= 0) {
+      return { success: false, error: 'NOTHING_REQUESTED', message: '未指定取回数量' };
+    }
+    const reason = reserveSpace <= 0 ? 'RESERVE_FULL' : 'VETERAN_CAMP_EMPTY';
+    return {
+      success: false,
+      error: reason,
+      message: reason === 'RESERVE_FULL' ? '城内预备兵力已满，无法取回' : '老兵营地暂无可取回的士兵',
+    };
+  }
+  const pulled = veteranCampCore.withdraw(camp, campRow, target, nowMs);
+  const nextMilitary = normalizeMilitaryState({
+    ...settled.military,
+    soldiers: settled.military.soldiers + pulled.withdrawnSoldiers,
+    veteranCamp: pulled.camp,
+  }, createMilitaryContext(gameState, cityId, settled.military));
+  setCityMilitary(gameState, cityId, nextMilitary);
+  setCityResources(gameState, cityId, settled.resources);
+  return {
+    success: true,
+    message: `已从老兵营地取回 ${pulled.withdrawnSoldiers} 名士兵`,
+    withdrawnSoldiers: pulled.withdrawnSoldiers,
+    veteranCamp: getVeteranCampView(nextMilitary, nowMs),
+  };
+}
+
+// Upgrade the camp one level for its grain (food) cost. unlockEra is carried in the table but
+// not yet gated here (era wiring is a follow-up, like the garrison reclaim rule).
+function veteranCampUpgrade(gameState, payload = {}) {
+  const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
+  if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
+    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
+  }
+  const normalized = normalizeMilitaryState(getCityMilitary(gameState, cityId), createMilitaryContext(gameState, cityId));
+  const camp = readVeteranCamp(normalized);
+  const nextLevel = camp.level + 1;
+  const nextRow = ConfigTables.getById('veteran_camp', nextLevel);
+  if (!nextRow) {
+    return { success: false, error: 'VETERAN_CAMP_MAX_LEVEL', message: '老兵营地已达最高等级' };
+  }
+  const cost = Math.max(0, Math.floor(Number(nextRow.upgradeCostGrain) || 0));
+  const cityResources = getCityResources(gameState, cityId);
+  if ((Number(cityResources.food) || 0) < cost) {
+    return { success: false, error: 'INSUFFICIENT_GRAIN', message: '粮食不足', cost };
+  }
+  const nextMilitary = normalizeMilitaryState({
+    ...normalized,
+    veteranCamp: { ...camp, level: nextLevel },
+  }, createMilitaryContext(gameState, cityId, normalized));
+  setCityMilitary(gameState, cityId, nextMilitary);
+  if (cost > 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, { food: -cost }));
+  return {
+    success: true,
+    message: `老兵营地升级至 ${nextLevel} 级`,
+    level: nextLevel,
+    cost,
+    veteranCamp: getVeteranCampView(nextMilitary, resolveNowMs(payload)),
+  };
+}
+
+// Read-only client view of the camp: level, capacity, current parked (drained to now), each
+// batch's drain ETA, and the next-level upgrade cost. The projection has no side effects — the
+// authoritative refund settlement stays in settleVeteranCampDrain (the tick).
+function getVeteranCampView(military, nowMs = Date.now()) {
+  // Show the LAST-SETTLED counts (not a fresh drain projection): the parked total then always
+  // matches the grain refund that has actually been credited, instead of racing ahead of it.
+  // The per-batch drain ETA is a pure display projection off atMs, so it stays live.
+  const camp = readVeteranCamp(military);
+  const campRow = getVeteranCampRow(camp.level);
+  const nextRow = ConfigTables.getById('veteran_camp', camp.level + 1);
+  return {
+    level: camp.level,
+    capacity: veteranCampCore.capacityOf(campRow),
+    retentionHours: Math.max(0, Number(campRow.retentionHours) || 0),
+    refundRatio: resolveRefundRatio(campRow),
+    parkedTotal: veteranCampCore.parkedTotal(camp),
+    batches: camp.batches.map((batch) => ({
+      soldiers: veteranCampCore.batchParked(batch),
+      drainEtaMs: veteranCampCore.batchDrainEtaMs(batch, campRow, nowMs),
+    })),
+    nextLevel: nextRow
+      ? { level: camp.level + 1, upgradeCostGrain: Math.max(0, Math.floor(Number(nextRow.upgradeCostGrain) || 0)) }
+      : null,
   };
 }
 
@@ -489,6 +676,10 @@ module.exports = {
   setArmyFormation,
   settleFormationSnapshot,
   advanceTraining,
+  settleVeteranCampDrain,
+  veteranCampWithdraw,
+  veteranCampUpgrade,
+  getVeteranCampView,
   // Canonical city-scoped accessors — the single read/write doorway for military and
   // resource facts (top-level fields are aliases of the active city, never copies).
   getCityMilitary,

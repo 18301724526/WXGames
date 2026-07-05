@@ -6,6 +6,12 @@
 // now lives, paid out over time. While still parked, soldiers can be withdrawn back into the
 // city intact (the "regret" undo). Overflow beyond capacity drains immediately.
 //
+// A batch is canonical as { originalSoldiers, atMs, drained, withdrawn }: parked = original −
+// drained − withdrawn. Tracking drained and withdrawn SEPARATELY is what makes withdraw safe —
+// the time-based drain schedule keys off `originalSoldiers`/`atMs` (never mutated), so pulling
+// soldiers out never resurrects on the next projection. Returned batches also carry a derived
+// `soldiers` (= current parked) for convenience; it is recomputed, never a source of truth.
+//
 // This core is PURE: it only moves soldier COUNTS over time. The config row (capacity /
 // retentionHours / refundRatio) and the grain-per-soldier conversion are supplied by the
 // caller (a service reads ConfigTables + FormationStrengthService and applies the refund),
@@ -27,13 +33,21 @@ function toNonNegativeInt(value) {
   return Math.max(0, toInteger(value, 0));
 }
 
-// A parked batch remembers its deposit time + original size so linear drain is reproducible
-// no matter how often projectDrain runs (idempotent between the same two timestamps).
+// Canonical batch: original size + deposit time + cumulative drained + cumulative withdrawn.
+// Legacy shape { soldiers, originalSoldiers } is read too: a raw `soldiers` below `original`
+// is treated as already-withdrawn so old saves keep their parked count.
 function normalizeBatch(raw) {
   const originalSoldiers = toNonNegativeInt(raw?.originalSoldiers ?? raw?.soldiers);
-  const soldiers = Math.min(originalSoldiers, toNonNegativeInt(raw?.soldiers ?? originalSoldiers));
   const atMs = toNonNegativeInt(raw?.atMs);
-  return { soldiers, originalSoldiers, atMs };
+  const drained = Math.min(originalSoldiers, toNonNegativeInt(raw?.drained));
+  let withdrawn = toNonNegativeInt(raw?.withdrawn);
+  if (raw?.withdrawn == null && raw?.soldiers != null && raw?.originalSoldiers != null) {
+    // Legacy round-trip: infer withdrawn from the gap between original and the stored parked count.
+    withdrawn = Math.max(0, originalSoldiers - drained - toNonNegativeInt(raw.soldiers));
+  }
+  withdrawn = Math.min(withdrawn, Math.max(0, originalSoldiers - drained));
+  const parked = Math.max(0, originalSoldiers - drained - withdrawn);
+  return { originalSoldiers, atMs, drained, withdrawn, soldiers: parked };
 }
 
 function normalizeCamp(raw, level) {
@@ -44,8 +58,12 @@ function normalizeCamp(raw, level) {
   return { level: resolvedLevel, batches };
 }
 
+function batchParked(batch) {
+  return Math.max(0, batch.originalSoldiers - batch.drained - batch.withdrawn);
+}
+
 function parkedTotal(camp) {
-  return normalizeCamp(camp).batches.reduce((sum, batch) => sum + batch.soldiers, 0);
+  return normalizeCamp(camp).batches.reduce((sum, batch) => sum + batchParked(batch), 0);
 }
 
 function retentionMsOf(row) {
@@ -56,13 +74,15 @@ function capacityOf(row) {
   return toNonNegativeInt(row?.capacity);
 }
 
-// How many of a batch's ORIGINAL soldiers have drained by `nowMs` (linear over retention).
-function drainedByNow(batch, retentionMs, nowMs) {
-  if (batch.originalSoldiers <= 0) return batch.originalSoldiers;
-  if (retentionMs <= 0) return batch.originalSoldiers; // no retention -> drains instantly
+// Cumulative soldiers the drain schedule has claimed from a batch by `nowMs` (linear over
+// retention from the ORIGINAL size), capped so drain never eats soldiers already withdrawn.
+function scheduledDrain(batch, retentionMs, nowMs) {
+  const withdrawable = Math.max(0, batch.originalSoldiers - batch.withdrawn);
+  if (batch.originalSoldiers <= 0) return 0;
+  if (retentionMs <= 0) return withdrawable; // no retention -> drains instantly
   const elapsed = Math.max(0, toNumber(nowMs, 0) - batch.atMs);
   const ratio = Math.min(1, elapsed / retentionMs);
-  return Math.min(batch.originalSoldiers, Math.floor(batch.originalSoldiers * ratio));
+  return Math.min(withdrawable, Math.floor(batch.originalSoldiers * ratio));
 }
 
 // Advance drain to `nowMs`. Returns the updated camp + the number of soldiers that drained
@@ -74,10 +94,11 @@ function projectDrain(camp, row, nowMs) {
   let drainedSoldiers = 0;
   const batches = [];
   for (const batch of normalized.batches) {
-    const drainedTotal = drainedByNow(batch, retentionMs, nowMs);
-    const remaining = Math.max(0, batch.originalSoldiers - drainedTotal);
-    drainedSoldiers += Math.max(0, batch.soldiers - remaining);
-    if (remaining > 0) batches.push({ ...batch, soldiers: remaining });
+    const targetDrained = Math.max(batch.drained, scheduledDrain(batch, retentionMs, nowMs));
+    drainedSoldiers += Math.max(0, targetDrained - batch.drained);
+    const next = { ...batch, drained: targetDrained };
+    next.soldiers = batchParked(next);
+    if (next.soldiers > 0) batches.push(next);
   }
   return { camp: { level: normalized.level, batches }, drainedSoldiers };
 }
@@ -93,7 +114,11 @@ function deposit(camp, row, soldiers, nowMs) {
   const parked = Math.min(incoming, free);
   const overflowSoldiers = incoming - parked;
   const batches = drained.camp.batches.slice();
-  if (parked > 0) batches.push({ soldiers: parked, originalSoldiers: parked, atMs: toNonNegativeInt(nowMs) });
+  if (parked > 0) {
+    batches.push({
+      originalSoldiers: parked, atMs: toNonNegativeInt(nowMs), drained: 0, withdrawn: 0, soldiers: parked,
+    });
+  }
   return {
     camp: { level: drained.camp.level, batches },
     parkedSoldiers: parked,
@@ -103,22 +128,25 @@ function deposit(camp, row, soldiers, nowMs) {
 }
 
 // Withdraw up to `soldiers` back out of the camp, intact (the regret undo). Drains first, then
-// pulls oldest-batch-first so the soldiers closest to draining are the ones rescued.
+// pulls oldest-batch-first so the soldiers closest to draining are the ones rescued. Withdrawn
+// soldiers are booked against the batch's `withdrawn` tally, never resurrected by later drains.
 function withdraw(camp, row, soldiers, nowMs) {
   const drained = projectDrain(camp, row, nowMs);
   let want = toNonNegativeInt(soldiers);
   let withdrawnSoldiers = 0;
   const batches = [];
   for (const batch of drained.camp.batches) {
-    if (want <= 0) {
-      batches.push(batch);
+    const parked = batchParked(batch);
+    if (want <= 0 || parked <= 0) {
+      if (parked > 0) batches.push(batch);
       continue;
     }
-    const take = Math.min(want, batch.soldiers);
+    const take = Math.min(want, parked);
     want -= take;
     withdrawnSoldiers += take;
-    const remaining = batch.soldiers - take;
-    if (remaining > 0) batches.push({ ...batch, soldiers: remaining });
+    const next = { ...batch, withdrawn: batch.withdrawn + take };
+    next.soldiers = batchParked(next);
+    if (next.soldiers > 0) batches.push(next);
   }
   return {
     camp: { level: drained.camp.level, batches },
@@ -127,12 +155,21 @@ function withdraw(camp, row, soldiers, nowMs) {
   };
 }
 
+// Milliseconds until a batch fully drains (its parked soldiers reach 0 on the schedule).
+function batchDrainEtaMs(batch, row, nowMs) {
+  const retentionMs = retentionMsOf(row);
+  const deadline = toNonNegativeInt(batch?.atMs) + retentionMs;
+  return Math.max(0, deadline - toNumber(nowMs, 0));
+}
+
 module.exports = {
   HOUR_MS,
   normalizeCamp,
+  batchParked,
   parkedTotal,
   capacityOf,
   retentionMsOf,
+  batchDrainEtaMs,
   projectDrain,
   deposit,
   withdraw,

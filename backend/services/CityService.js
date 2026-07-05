@@ -251,7 +251,7 @@ function updateCityName(gameState, territoryId, name) {
   }
 }
 
-function advanceAllCities(gameState, deltaSeconds = 1) {
+function advanceAllCities(gameState, deltaSeconds = 1, nowMs = Date.now()) {
   normalizeCities(gameState);
   const seconds = Math.max(0, Number(deltaSeconds) || 0);
   for (const city of Object.values(gameState.cities)) {
@@ -286,10 +286,16 @@ function advanceAllCities(gameState, deltaSeconds = 1) {
     };
     MilitaryService.advanceTraining(trainingState, seconds);
     city.military = trainingState.military;
+    // 老兵营地: park pool drains over wall-clock time, trickling grain refunds back. Route the
+    // write through the canonical setters so the active city's top-level military/resources
+    // aliases stay in sync (a direct city.military = would leave gameState.military stale).
+    const campSettled = MilitaryService.settleVeteranCampDrain(city.military, city.resources, nowMs);
+    MilitaryService.setCityMilitary(gameState, city.id, campSettled.military);
+    MilitaryService.setCityResources(gameState, city.id, campSettled.resources);
   }
 }
 
-function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEfficiency) {
+function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEfficiency, nowMs = Date.now()) {
   normalizeCities(gameState);
   const actualOffline = Math.max(0, offlineSeconds);
   const incomeByCity = {};
@@ -328,6 +334,12 @@ function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEffic
     };
     MilitaryService.advanceTraining(trainingState, actualOffline);
     city.military = trainingState.military;
+    // 老兵营地 drains in wall-clock time, so settling to `nowMs` catches up the whole
+    // offline window at once (batch atMs are absolute) and credits the accrued refund. Route
+    // through the canonical setters to keep the active-city top-level aliases in sync.
+    const campSettled = MilitaryService.settleVeteranCampDrain(city.military, city.resources, nowMs);
+    MilitaryService.setCityMilitary(gameState, city.id, campSettled.military);
+    MilitaryService.setCityResources(gameState, city.id, campSettled.resources);
     incomeByCity[city.id] = income;
     if (city.id === gameState.activeCityId) activeIncome = income;
   }
@@ -352,6 +364,16 @@ function getClientCityState(gameState) {
   return getClientCityStateFromNormalized(gameState);
 }
 
+// The projected getVeteranCampView is the single client-facing camp source; the raw
+// military.veteranCamp is server-only settlement state (batches/atMs/drained), so strip it from
+// the client DTO to avoid shipping two divergent copies of the same fact.
+function toClientMilitary(military) {
+  if (!military || typeof military !== 'object') return military;
+  const rest = { ...military };
+  delete rest.veteranCamp;
+  return rest;
+}
+
 function getClientCityStateFromNormalized(gameState) {
   return {
     activeCityId: gameState.activeCityId || CAPITAL_CITY_ID,
@@ -364,7 +386,8 @@ function getClientCityStateFromNormalized(gameState) {
       foundedAt: city.foundedAt,
       population: city.population,
       resources: city.resources,
-      military: city.military,
+      military: toClientMilitary(city.military),
+      veteranCamp: MilitaryService.getVeteranCampView(city.military),
       happiness: city.happiness,
       planning: CityPlanningService.getClientPlanning(city),
       terrain: city.terrain,
