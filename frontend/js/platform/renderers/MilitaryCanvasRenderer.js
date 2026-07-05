@@ -111,7 +111,7 @@
       const pad = 16;
       const textX = x + pad;
       this.drawTextLines(
-        this.wrapTextLimit(this.t('military.veteranCamp.desc', {}), width - pad * 2, { size: 11 }),
+        this.wrapTextLimit(this.t('military.veteranCamp.desc', {}), width - pad * 2, 3, { size: 11 }),
         textX,
         y + 16,
         { size: 11, color: '#9a9ba3', lineHeight: 16 },

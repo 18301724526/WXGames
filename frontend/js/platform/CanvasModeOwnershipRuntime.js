@@ -238,7 +238,7 @@
   }
 
   function setMilitaryView(host, view = 'army') {
-    const normalized = ['army', 'scout', 'world'].includes(view) ? view : 'army';
+    const normalized = ['army', 'scout', 'world', 'veteranCamp'].includes(view) ? view : 'army';
     const game = getStateHost(host);
     if (game && typeof game === 'object') {
       game.militaryView = normalized;
