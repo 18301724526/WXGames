@@ -45,7 +45,9 @@
 - **DONE：关系迭代 tick 逻辑** `backend/services/person/WorldSocialTickService.js`（`createWorldSocialTickService({natures})`）——纯编排：`advanceRelationships(people, {prng, meetPairs, nowMs, personalityTuning, relTuning, decay})` 让高 meetRateMult 的人加权发起相遇→`relationshipCore.meet`（对称有向边、同 compatScore 相性、各自 loyaltyDriftMult 漂移）→返回**更新后的 people + meets + crossings(became_friend/became_enemy)**；`decayAll` 闲置边衰减。**不碰输入**（克隆）、随机全走注入 PRNG（确定性）。6 测试（含高相性对最终结义 became_friend 端到端）。提交见下方。
 - **待接线（codex）**：把 `advanceRelationships` 挂 `WorldWorkerService` tick——喂 `WorldPeopleRegistryService.getAllPeople` 的并集人群、每 tick meetPairs（relationship_tuning.meetPairsPerTick）、种子=worldId+tick，回写 world_people repo（AI/在野）+玩家花名册（自家），crossings→EventService（好友来投/结义/反目）。
 - ~~关系迭代（relationshipCore.meet/drift/events）挂 `WorldWorkerService` tick（每势力 meetPairs），事件（好友来投/背叛/义兄弟）走 EventService。~~（逻辑已建，见上；余接线）
-- 外交漂移/AI 外交（FactionDiplomacyService.advanceEdge）挂 tick。
+- **DONE：外交迭代 tick 逻辑** `backend/services/faction/WorldDiplomacyTickService.js`（`createWorldDiplomacyTickService({diplomacyService, personalityTuning})`）——为每对势力算漂移上下文：`sharedEnemyCount`（同时敌视第三方=共敌抱团）、`bordering`（注入谓词，真实邻接待 1.3 territory.ownerFactionId）、`rulerCompat`（两主公 personalityCore.compatScore 相性）→`FactionDiplomacyService.advanceEdge`（唯一写者）。`advanceAll({factionIds, now, bordering, rulerOf})` 遍历无序对。上下文对称（两向共用）。4 测试（含共敌+相容主公 200 tick 漂移至 friendly 端到端）。提交见下方。
+- **待接线（codex）**：`advanceAll` 挂 `WorldWorkerService` tick——factionIds=FactionRegistryService.getAliveFactions、rulerOf=按 faction.rulerPersonId 查 WorldPeopleRegistryService、bordering=territory.ownerFactionId 邻接（待 1.3）。
+- ~~外交漂移/AI 外交（FactionDiplomacyService.advanceEdge）挂 tick。~~（逻辑已建，见上；余接线）
 - **②b 捕获面板接线**：胜利钩子 rollCapture → 面板 UI(斩杀/招降/放生) → captureCore.recruitSuccessChance（喂 compatScore + relationshipCore.recruitModifier + 魅力 + garrison recruitBaseRate）→ dispositionOutcome。
 
 ### 阶段 4 — 每势力科技 + 科技树重设计（保留选1、knowledge 产点、战前折算加成、AI 粗粒度可见）
