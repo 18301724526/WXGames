@@ -420,3 +420,33 @@ test('WorldMarchOptimisticState still creates a new optimistic mission when no i
   assert.deepEqual(pending.mission.formation, { cityId: 'capital', slot: 1 });
   assert.equal(host.state.worldExplorerState.activeMission.id, pending.mission.id);
 });
+
+test('WorldMarchOptimisticState optimistic route walks the grid-axis staircase (single source with the server)', () => {
+  const host = makeHost({
+    activeCityId: 'capital',
+    worldExplorerState: {
+      missions: [],
+      activeMission: null,
+      idleMissions: [],
+      maxManualRouteLength: 16,
+    },
+    territoryState: {
+      worldMap: { tiles: [{ q: 0, r: 0, siteId: 'capital' }] },
+    },
+  });
+
+  const pending = WorldMarchOptimisticState.beginStart(host, {
+    cityId: 'capital',
+    formationSlot: 1,
+    targetQ: 2,
+    targetR: -1,
+  });
+
+  // (0,0)->(2,-1): the OLD optimistic builder cut the corner diagonally to [(1,-1),(2,-1)]. The
+  // shared axis-aligned core (the SAME the server walks) steps q,q then r, so the optimistic route
+  // is byte-identical to the authoritative one and the reconciler never rubber-bands the unit.
+  assert.deepEqual(
+    pending.mission.route.map((step) => step.tileId),
+    ['tile_1_0', 'tile_2_0', 'tile_2_-1'],
+  );
+});

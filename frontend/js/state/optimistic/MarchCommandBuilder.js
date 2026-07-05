@@ -264,34 +264,34 @@
     );
   }
 
+  // Single source of truth for optimistic march geometry. Delegates to the shared march core's
+  // axis-aligned builder with the SAME options the server's WorldExplorerRoutePlanner.buildManualRoute
+  // and the client's WorldMarchRoutePolicy preview use, so the optimistically-drawn route is
+  // identical (same q,r staircase, same route signature) to the authoritative route the server
+  // returns. Previously this reimplemented a DIAGONAL stepping loop; once the server switched to
+  // grid-axis (staircase) routes it diverged, and the reconciler rubber-banded the marching unit
+  // between the two — the classic two-sources-of-truth bug.
   function buildLinearRoute(origin = {}, target = {}, maxLength = 0) {
     const start = normalizeCoord(origin);
     const end = normalizeCoord(target, start);
-    const distance = Math.max(Math.abs(end.q - start.q), Math.abs(end.r - start.r));
-    const limit = Math.max(0, toInteger(maxLength, distance));
-    if (distance <= 0 || (limit > 0 && distance > limit)) return [];
-    const route = [];
-    let q = start.q;
-    let r = start.r;
-    let remainingQ = end.q - start.q;
-    let remainingR = end.r - start.r;
-    for (let step = 1; step <= distance; step += 1) {
-      const stepQ = Math.sign(remainingQ);
-      const stepR = Math.sign(remainingR);
-      q += stepQ;
-      r += stepR;
-      remainingQ -= stepQ;
-      remainingR -= stepR;
-      route.push({
-        q,
-        r,
-        step,
-        tileId: tileId(q, r),
-        revealed: false,
-        revealedAt: null,
-      });
-    }
-    return route;
+    const cap = Math.max(0, toInteger(maxLength, 0)) || WorldMarchCore.MAX_MANUAL_ROUTE_LENGTH || 16;
+    const result = WorldMarchCore.evaluateLinearMarchRoute(start, end, {
+      axisAligned: true,
+      maxLength: cap,
+      width: 1024,
+      height: 1024,
+      wrapping: true,
+    });
+    if (!result || result.success !== true || !Array.isArray(result.route)) return [];
+    return result.route.map((step) => ({
+      q: step.q,
+      r: step.r,
+      step: step.step,
+      tileId: step.tileId || tileId(step.q, step.r),
+      dir: step.dir,
+      revealed: false,
+      revealedAt: null,
+    }));
   }
 
   function makeMissionTiming(route = [], nowMs = 0, stepDurationMs = DEFAULT_STEP_DURATION_MS) {
