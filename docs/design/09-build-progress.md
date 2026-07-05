@@ -51,7 +51,10 @@
 - **②b 捕获面板接线**：胜利钩子 rollCapture → 面板 UI(斩杀/招降/放生) → captureCore.recruitSuccessChance（喂 compatScore + relationshipCore.recruitModifier + 魅力 + garrison recruitBaseRate）→ dispositionOutcome。
 
 ### 阶段 4 — 每势力科技 + 科技树重设计（保留选1、knowledge 产点、战前折算加成、AI 粗粒度可见）
+
 ### 阶段 5 — AI 城（复用 territory/CityService）+ AI 决策循环（动态群雄、AI 互战、进视野投影、出生保护、**首都失守→临时营地+重建任务链**）
+- **DONE：AIF-4 纯决策核** `shared/faction/aiFactionCore.js`（纯、无 IO、确定性）+ 配置表 `ai_faction_profile`（4 原型 aggressive/economic/diplomatic/balanced：行动权重基线+攻城参数；**好战 aggression 不复制，单源=personality_natures.aggression**，本表只给原型基线权重，君主性格调制）。函数：`personalityToWeights`（原型基线×君主 aggression/交游调制，归一）、`scoreExpansionTargets`（距离/守军/价值打分，**排除超程/自城/出生保护玩家**05-1，targetPlayerBias 抬玩家城）、`scoreRecruitCandidates`（品质+角色缺口，compat 占位）、`chooseFactionActions`（按预算加权选可行意图：SETTLE/ATTACK/BUILD/RESEARCH/RECRUIT/TRAIN/DIPLOMACY/IDLE；弱势想攻先 TRAIN；无事 IDLE；注入 PRNG 确定）。9 测试。提交见下方。
+- **待接线（AIF-0/1/2/3/5/6，需先解 doc-05「审查发现」的存储层单源冲突）**：`ai_faction_state`/`ai_faction_cities` 表 + 仓库、Seeder（动态群雄=空城被认领才诞生，非静态铺设）、城成长复用 advanceAllCities、`AiFactionService.tick` 挂 WorldWorkerService（shared 单次）、执行 executeIntent + 复用 startWorldMarch/resolveBattle。⚠️ doc-05 审查已列 6 单源违规 + 10 缺口（advanceAllCities 双源、shared_world_territories 写者冲突、startWorldMarch 无玩家上下文不可调、投影优先级不认 AI…），落地前逐条解决，属**碰现有行为**切片，走 [[refactor-no-debt-for-safety]] + 用户终验。
 
 ## 门禁 & 纪律（每刀）
 `npm test`（node --test）+ `npm run lint` + `npm run test:architecture`（含 config 新鲜度）全绿再提交。持久层/经济改动按 [[refactor-no-debt-for-safety]]：特征测试→读证等价→对抗 review→（需真机的）用户终验。数值全走配置表。

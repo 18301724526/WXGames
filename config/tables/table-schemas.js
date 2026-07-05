@@ -164,6 +164,28 @@ const TABLES = [
       { paramKey: 'releaseReputation', value: 3 },  // 放生对该俘将母势力的好感/名声加成(仁德)
     ],
   },
+  {
+    table: 'ai_faction_profile',
+    description: 'AI 势力行为原型表(05, AIF-4)——每个原型=一组行动权重基线(扩张/建设/科技/登用/外交)+攻城参数。纯决策核 shared/faction/aiFactionCore.js 读取：原型给基线权重，君主性格(personality_natures.aggression/交游轴)在此基线上调制——好战基线只此一源(personality_natures)，本表不复制 aggression。动态群雄割据(决策05-2)下，新生势力按创始君主性格挑一个最接近的原型。',
+    fields: [
+      { key: 'profileId', type: 'string', label: '原型标识(主键)', fill: 'aggressive/economic/diplomatic/balanced，唯一', effect: '势力 strategyProfile 的取值；决策核按此取基线权重' },
+      { key: 'label', type: 'string', label: '中文标签', fill: '进取/务实/纵横/均衡', effect: 'UI/情报显示' },
+      { key: 'weightExpand', type: 'float', label: '扩张(占城/攻城)权重', fill: '0~1，进取高如 0.5', effect: '决策核意图加权：SETTLE_NEUTRAL/ATTACK_CITY 的基线倾向' },
+      { key: 'weightBuild', type: 'float', label: '建设权重', fill: '0~1，务实高如 0.45', effect: 'BUILD 意图基线倾向' },
+      { key: 'weightResearch', type: 'float', label: '科技权重', fill: '0~1', effect: 'RESEARCH 意图基线倾向' },
+      { key: 'weightRecruit', type: 'float', label: '登用权重', fill: '0~1', effect: 'RECRUIT_OFFICER 意图基线倾向(再乘君主交游)' },
+      { key: 'weightDiplomacy', type: 'float', label: '外交权重', fill: '0~1，纵横高如 0.4', effect: 'DIPLOMACY 意图基线倾向' },
+      { key: 'targetPlayerBias', type: 'float', label: '打玩家城偏置(0~1)', fill: '进取高如 0.6', effect: '同分下优先打玩家城 vs 中立城；出生保护期玩家永不入选(决策05-1)' },
+      { key: 'minSoldiersToAttack', type: 'int', label: '出阵最低兵力', fill: '如 300', effect: '城内兵力低于此不发起 ATTACK(自保阈值)' },
+      { key: 'expansionRange', type: 'int', label: '扩张/攻击半径(格)', fill: '如 14', effect: '从势力城出发的最大攻击/扩张距离；超出的目标不入候选' },
+    ],
+    rows: [
+      { profileId: 'aggressive', label: '进取', weightExpand: 0.50, weightBuild: 0.15, weightResearch: 0.10, weightRecruit: 0.15, weightDiplomacy: 0.10, targetPlayerBias: 0.60, minSoldiersToAttack: 300, expansionRange: 14 },
+      { profileId: 'economic', label: '务实', weightExpand: 0.15, weightBuild: 0.45, weightResearch: 0.25, weightRecruit: 0.10, weightDiplomacy: 0.05, targetPlayerBias: 0.15, minSoldiersToAttack: 450, expansionRange: 9 },
+      { profileId: 'diplomatic', label: '纵横', weightExpand: 0.15, weightBuild: 0.20, weightResearch: 0.15, weightRecruit: 0.10, weightDiplomacy: 0.40, targetPlayerBias: 0.25, minSoldiersToAttack: 380, expansionRange: 11 },
+      { profileId: 'balanced', label: '均衡', weightExpand: 0.25, weightBuild: 0.25, weightResearch: 0.20, weightRecruit: 0.15, weightDiplomacy: 0.15, targetPlayerBias: 0.35, minSoldiersToAttack: 360, expansionRange: 12 },
+    ],
+  },
 ];
 
 module.exports = { TABLES };

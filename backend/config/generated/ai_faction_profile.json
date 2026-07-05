@@ -1,0 +1,57 @@
+{
+  "schema": "config-table-v1",
+  "table": "ai_faction_profile",
+  "description": "AI 势力行为原型表(05, AIF-4)——每个原型=一组行动权重基线(扩张/建设/科技/登用/外交)+攻城参数。纯决策核 shared/faction/aiFactionCore.js 读取：原型给基线权重，君主性格(personality_natures.aggression/交游轴)在此基线上调制——好战基线只此一源(personality_natures)，本表不复制 aggression。动态群雄割据(决策05-2)下，新生势力按创始君主性格挑一个最接近的原型。",
+  "generatedFrom": "config/tables/ai_faction_profile.xlsx",
+  "idField": "profileId",
+  "rows": [
+    {
+      "profileId": "aggressive",
+      "label": "进取",
+      "weightExpand": 0.5,
+      "weightBuild": 0.15,
+      "weightResearch": 0.1,
+      "weightRecruit": 0.15,
+      "weightDiplomacy": 0.1,
+      "targetPlayerBias": 0.6,
+      "minSoldiersToAttack": 300,
+      "expansionRange": 14
+    },
+    {
+      "profileId": "economic",
+      "label": "务实",
+      "weightExpand": 0.15,
+      "weightBuild": 0.45,
+      "weightResearch": 0.25,
+      "weightRecruit": 0.1,
+      "weightDiplomacy": 0.05,
+      "targetPlayerBias": 0.15,
+      "minSoldiersToAttack": 450,
+      "expansionRange": 9
+    },
+    {
+      "profileId": "diplomatic",
+      "label": "纵横",
+      "weightExpand": 0.15,
+      "weightBuild": 0.2,
+      "weightResearch": 0.15,
+      "weightRecruit": 0.1,
+      "weightDiplomacy": 0.4,
+      "targetPlayerBias": 0.25,
+      "minSoldiersToAttack": 380,
+      "expansionRange": 11
+    },
+    {
+      "profileId": "balanced",
+      "label": "均衡",
+      "weightExpand": 0.25,
+      "weightBuild": 0.25,
+      "weightResearch": 0.2,
+      "weightRecruit": 0.15,
+      "weightDiplomacy": 0.15,
+      "targetPlayerBias": 0.35,
+      "minSoldiersToAttack": 360,
+      "expansionRange": 12
+    }
+  ]
+}
