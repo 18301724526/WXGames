@@ -140,7 +140,7 @@ test('WorldExplorerDtoMapper groups active and idle DTOs without retired ready r
   assert.equal(Object.prototype.hasOwnProperty.call(state, 'randomRouteLength'), false);
   assert.deepEqual(state.idleMissions.map((mission) => mission.id), ['idle-1']);
   assert.deepEqual(state.busyFormations.map((item) => `${item.missionId}:${item.status}`), ['active-1:active']);
-  assert.equal(state.stepDurationSeconds, 10);
+  assert.equal(state.stepDurationSeconds, 5); // EXPLORE_STEP_DURATION_MS = 5s (manual-march cadence)
 });
 
 test('WorldExplorerClientState keeps legacy API by delegating to DTO mapper after progression', () => {

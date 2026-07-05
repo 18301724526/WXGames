@@ -20,7 +20,10 @@
     return null;
   })();
 
-  const DEFAULT_STEP_DURATION_MS = 10000;
+  // Safety-net fallback only: a real march reads the server-delivered stepDurationSeconds from
+  // the world-explorer DTO (single source = backend EXPLORE_STEP_DURATION_MS). Keep this aligned
+  // with that value so the optimistic pace never diverges from the server if the fallback fires.
+  const DEFAULT_STEP_DURATION_MS = 5000;
   const DEFAULT_RECONCILE_THRESHOLD_TILES = 0.75;
 
   function toNumber(value, fallback = 0) {
