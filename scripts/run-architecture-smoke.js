@@ -420,6 +420,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/loadtest-bot-heartbeat.test.js',
   'scripts/validate-config-pipeline.js',
   'scripts/validate-config-pipeline.test.js',
+  'scripts/build-config-tables.js',
+  'scripts/build-config-tables.test.js',
   'scripts/verify-refactor-plan-doc.js',
 ]);
 
@@ -590,6 +592,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-duplicate-march-builders.test.js',
+  'scripts/build-config-tables.test.js',
   'scripts/check-tutorial-advance-single-source.test.js',
   'scripts/check-tutorial-step-contract.test.js',
   'shared/tutorialFlowConfig.test.js',
@@ -783,6 +786,10 @@ function main() {
     'scripts/validate-config-pipeline.js',
     '--baseline',
     'docs/config_registry_snapshot_2026-06-11.json',
+  ]);
+  run('config tables freshness guard', process.execPath, [
+    'scripts/build-config-tables.js',
+    '--check',
   ]);
   run('official document guard', process.execPath, ['scripts/verify-refactor-plan-doc.js']);
   run('git diff --check', 'git', ['diff', '--check']);

@@ -1,0 +1,41 @@
+{
+  "schema": "config-table-v1",
+  "table": "veteran_camp",
+  "description": "老兵营地表 — 每城一座；战斗阵亡的一部分转为“伤兵”存入营地，随时间恢复成可用兵。营地等级越高，转化率/容量/恢复越好。",
+  "generatedFrom": "config/tables/veteran_camp.xlsx",
+  "idField": "level",
+  "rows": [
+    {
+      "level": 0,
+      "upgradeCostGrain": 0,
+      "woundedRatio": 0,
+      "capacity": 0,
+      "recoverPerHour": 0,
+      "unlockEra": 0
+    },
+    {
+      "level": 1,
+      "upgradeCostGrain": 800,
+      "woundedRatio": 0.3,
+      "capacity": 300,
+      "recoverPerHour": 30,
+      "unlockEra": 0
+    },
+    {
+      "level": 2,
+      "upgradeCostGrain": 2400,
+      "woundedRatio": 0.4,
+      "capacity": 600,
+      "recoverPerHour": 60,
+      "unlockEra": 1
+    },
+    {
+      "level": 3,
+      "upgradeCostGrain": 6000,
+      "woundedRatio": 0.5,
+      "capacity": 1000,
+      "recoverPerHour": 100,
+      "unlockEra": 2
+    }
+  ]
+}
