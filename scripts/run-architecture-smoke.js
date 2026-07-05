@@ -376,6 +376,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-duplicate-coord-helpers.js',
   'scripts/check-duplicate-coord-helpers.test.js',
+  'scripts/check-duplicate-march-builders.js',
+  'scripts/check-duplicate-march-builders.test.js',
   'scripts/check-tutorial-advance-single-source.js',
   'scripts/check-tutorial-advance-single-source.test.js',
   'scripts/check-tutorial-step-contract.js',
@@ -587,6 +589,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-frontend-ecs-blocking-panel-mirror-retirement.test.js',
   'scripts/check-duplicate-shared-helpers.test.js',
   'scripts/check-duplicate-coord-helpers.test.js',
+  'scripts/check-duplicate-march-builders.test.js',
   'scripts/check-tutorial-advance-single-source.test.js',
   'scripts/check-tutorial-step-contract.test.js',
   'shared/tutorialFlowConfig.test.js',
@@ -704,6 +707,9 @@ function main() {
   ]);
   run('duplicate coord helpers blocking guard', process.execPath, [
     'scripts/check-duplicate-coord-helpers.js',
+  ]);
+  run('duplicate march builders blocking guard', process.execPath, [
+    'scripts/check-duplicate-march-builders.js',
   ]);
   run('tutorial advance single-source blocking guard', process.execPath, [
     'scripts/check-tutorial-advance-single-source.js',
