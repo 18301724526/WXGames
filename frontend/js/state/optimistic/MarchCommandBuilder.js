@@ -274,16 +274,28 @@
   // returns. Previously this reimplemented a DIAGONAL stepping loop; once the server switched to
   // grid-axis (staircase) routes it diverged, and the reconciler rubber-banded the marching unit
   // between the two — the classic two-sources-of-truth bug.
-  function buildLinearRoute(origin = {}, target = {}, maxLength = 0) {
+  // World-bounds for the route come from the server-delivered world-explorer DTO
+  // (worldWidth/worldHeight/worldWrapping = backend WorldMapConstants). Reading the SAME inputs
+  // the server planner uses is what keeps the optimistic route byte-identical to the authoritative
+  // one on any network; the 1024/true literals are only a pre-first-sync fallback.
+  function getExplorerRouteBounds(explorer = {}) {
+    return {
+      width: toInteger(explorer.worldWidth, 1024) || 1024,
+      height: toInteger(explorer.worldHeight, 1024) || 1024,
+      wrapping: explorer.worldWrapping !== false,
+    };
+  }
+
+  function buildLinearRoute(origin = {}, target = {}, maxLength = 0, bounds = {}) {
     const start = normalizeCoord(origin);
     const end = normalizeCoord(target, start);
     const cap = Math.max(0, toInteger(maxLength, 0)) || WorldMarchCore.MAX_MANUAL_ROUTE_LENGTH || 16;
     const result = WorldMarchCore.evaluateLinearMarchRoute(start, end, {
       axisAligned: true,
       maxLength: cap,
-      width: 1024,
-      height: 1024,
-      wrapping: true,
+      width: toInteger(bounds.width, 1024) || 1024,
+      height: toInteger(bounds.height, 1024) || 1024,
+      wrapping: bounds.wrapping !== false,
     });
     if (!result || result.success !== true || !Array.isArray(result.route)) return [];
     return result.route.map((step) => ({
@@ -358,7 +370,7 @@
       },
       origin,
     );
-    const route = buildLinearRoute(origin, target, explorer.maxManualRouteLength || 0);
+    const route = buildLinearRoute(origin, target, explorer.maxManualRouteLength || 0, getExplorerRouteBounds(explorer));
     if (!route.length) return null;
     const stepDurationMs = getStepDurationMs(config, explorer);
     const pendingId = `optimistic_manual_${nowMs}_${toInteger(ctx.sequence, 0)}`;
@@ -425,7 +437,7 @@
       mission.homeOrigin || mission.origin || routeOrigin,
       routeOrigin,
     );
-    const route = buildLinearRoute(routeOrigin, homeOrigin, explorer.maxManualRouteLength || 0);
+    const route = buildLinearRoute(routeOrigin, homeOrigin, explorer.maxManualRouteLength || 0, getExplorerRouteBounds(explorer));
     const nextMission = {
       ...clonePlain(mission),
       id: mission.id,

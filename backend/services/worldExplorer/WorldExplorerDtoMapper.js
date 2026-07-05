@@ -219,6 +219,12 @@ function getClientStateDto(missions = [], options = {}) {
     maxActiveMissions: MAX_ACTIVE_EXPLORE_MISSIONS,
     maxManualRouteLength: MAX_MANUAL_ROUTE_LENGTH,
     stepDurationSeconds: Math.floor(EXPLORE_STEP_DURATION_MS / 1000),
+    // Route world-bounds delivered to the client (single source = WorldMapConstants, the same the
+    // backend planner uses) so the client's optimistic march + preview compute byte-identical
+    // routes to the authoritative one — the last input that could otherwise diverge.
+    worldWidth: WorldMapService.DEFAULT_WORLD_WIDTH,
+    worldHeight: WorldMapService.DEFAULT_WORLD_HEIGHT,
+    worldWrapping: WorldMapService.DEFAULT_WORLD_WRAPPING,
   };
 }
 
