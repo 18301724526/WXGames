@@ -3,6 +3,7 @@ const { SchemaMigrationService } = require('../services/SchemaMigrationService')
 const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
 const { FactionRepository } = require('./FactionRepository');
+const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
 
 const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
   ['revision', 'revision INTEGER DEFAULT 0'],
@@ -57,6 +58,7 @@ class GameStateRepository {
     // Shared-world AI + neutral 势力 registry (docs/design/01). Player factions derive from
     // game_states; this holds the world-authored ones. Additive — see FactionRepository.
     this.factionRepo = new FactionRepository(db);
+    this.factionDiplomacyRepo = new FactionDiplomacyRepository(db);
   }
 
   stripProjectionFields(gameState) {
@@ -131,6 +133,7 @@ class GameStateRepository {
     this.spawnAuthority.init();
     this.worldMapAuthority.init();
     this.factionRepo.init();
+    this.factionDiplomacyRepo.init();
     new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
   }
