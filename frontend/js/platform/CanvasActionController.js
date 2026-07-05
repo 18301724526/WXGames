@@ -443,6 +443,8 @@
         case 'returnWorldMarch': return this.handle_returnWorldMarch;
         case 'stopWorldMarch': return this.handle_stopWorldMarch;
         case 'switchMilitaryView': return this.handle_switchMilitaryView;
+        case 'veteranCampWithdraw': return this.handle_veteranCampWithdraw;
+        case 'veteranCampUpgrade': return this.handle_veteranCampUpgrade;
         case 'openWorldSite': return this.handle_openWorldSite;
         case 'closeWorldSite': return this.handle_closeWorldSite;
         case 'resetWorldPan': return this.handle_resetWorldPan;
@@ -754,6 +756,27 @@
             CanvasModeOwnershipRuntime?.setMilitaryView?.(this.host, view);
             game?.tutorialController?.onMilitaryViewSwitched?.(view);
             return this.afterHandled(action);
+          }
+
+    handle_veteranCampWithdraw(action) {
+            const forwarded = this.forward(action);
+            if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
+            if (action.disabled) return false;
+            const game = this.getGameHost();
+            const api = game?.getGameApi?.() || game?.api || this.host?.api;
+            if (typeof api?.veteranCampWithdraw !== 'function') return false;
+            // soldiers omitted -> the backend withdraws all parked soldiers (the button's intent).
+            return this.finalize(this.runAction(() => api.veteranCampWithdraw(action.cityId, action.soldiers)));
+          }
+
+    handle_veteranCampUpgrade(action) {
+            const forwarded = this.forward(action);
+            if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
+            if (action.disabled) return false;
+            const game = this.getGameHost();
+            const api = game?.getGameApi?.() || game?.api || this.host?.api;
+            if (typeof api?.veteranCampUpgrade !== 'function') return false;
+            return this.finalize(this.runAction(() => api.veteranCampUpgrade(action.cityId)));
           }
 
     handle_openWorldSite(action) {

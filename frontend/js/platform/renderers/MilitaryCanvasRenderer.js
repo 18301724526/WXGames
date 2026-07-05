@@ -44,6 +44,7 @@
         army: this.t('military.tab.army', {}),
         scout: this.t('military.tab.scout', {}),
         world: this.t('military.tab.world', {}),
+        veteranCamp: this.t('military.tab.veteranCamp', {}),
       };
       const tabs = nav.views || [];
       const gap = 6;
@@ -98,6 +99,74 @@
         width,
         formationHeight,
         view.formationMeta || {},
+      );
+    }
+
+    renderVeteranCampView(view = {}, x, y, width, height) {
+      this.drawPanel(x, y, width, height, {
+        fill: 'rgba(28, 22, 17, 0.78)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 10,
+      });
+      const pad = 16;
+      const textX = x + pad;
+      this.drawTextLines(
+        this.wrapTextLimit(this.t('military.veteranCamp.desc', {}), width - pad * 2, { size: 11 }),
+        textX,
+        y + 16,
+        { size: 11, color: '#9a9ba3', lineHeight: 16 },
+      );
+      this.drawText(
+        this.t('military.veteranCamp.levelLine', {
+          level: view.level ?? 0,
+          capacity: view.capacity ?? 0,
+          hours: view.retentionHours ?? 0,
+        }),
+        textX,
+        y + 58,
+        { size: 13, bold: true, color: '#f6e8c8' },
+      );
+      this.drawText(
+        this.t('military.veteranCamp.parked', { count: view.parkedTotal ?? 0, capacity: view.capacity ?? 0 }),
+        textX,
+        y + 84,
+        { size: 16, bold: true, color: view.hasParked ? '#74d3a0' : '#8b8f98' },
+      );
+      const hint = view.hasParked
+        ? (view.hasDrainCountdown ? this.t('military.veteranCamp.drainCountdown', { time: view.nextDrainText || '0s' }) : '')
+        : this.t('military.veteranCamp.emptyHint', {});
+      if (hint) this.drawText(hint, textX, y + 108, { size: 11, color: view.hasParked ? 'rgba(255, 170, 120, 0.85)' : '#8b8f98' });
+
+      const btnHeight = 32;
+      const btnY = y + height - btnHeight - 14;
+      const gap = 12;
+      const btnWidth = Math.max(96, Math.floor((width - pad * 2 - gap) / 2));
+      const cityId = view.cityId || 'capital';
+
+      this.drawButton(textX, btnY, btnWidth, btnHeight, this.t('military.veteranCamp.withdrawAll', {}), {
+        size: 12,
+        radius: 8,
+        active: Boolean(view.canWithdraw),
+        disabled: !view.canWithdraw,
+      });
+      this.addHitTarget(
+        { x: textX, y: btnY, width: btnWidth, height: btnHeight },
+        { type: 'veteranCampWithdraw', cityId, disabled: !view.canWithdraw },
+      );
+
+      const upgradeX = x + width - pad - btnWidth;
+      const upgradeLabel = view.nextLevel
+        ? this.t('military.veteranCamp.upgradeCost', { cost: view.nextLevel.cost })
+        : this.t('military.veteranCamp.maxLevel', {});
+      this.drawButton(upgradeX, btnY, btnWidth, btnHeight, upgradeLabel, {
+        size: 12,
+        radius: 8,
+        active: Boolean(view.nextLevel),
+        disabled: !view.nextLevel,
+      });
+      this.addHitTarget(
+        { x: upgradeX, y: btnY, width: btnWidth, height: btnHeight },
+        { type: 'veteranCampUpgrade', cityId, disabled: !view.nextLevel },
       );
     }
 
@@ -389,6 +458,8 @@
         this.renderMilitaryScoutView(this.presenter.buildScoutControlViewState(state), x + 12, viewY, width - 24, viewHeight);
       } else if (nav.activeView === 'world') {
         this.renderMilitaryWorldView(state, x + 12, viewY, width - 24, viewHeight, options);
+      } else if (nav.activeView === 'veteranCamp') {
+        this.renderVeteranCampView(this.presenter.buildVeteranCampViewState(state), x + 12, viewY, width - 24, viewHeight);
       } else {
         this.renderMilitaryArmyView(this.presenter.buildMilitaryViewState(state), x + 12, viewY, width - 24, viewHeight);
       }

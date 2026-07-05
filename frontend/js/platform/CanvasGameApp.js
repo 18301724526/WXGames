@@ -1799,7 +1799,7 @@
               }
 
     switchMilitaryView(view) {
-                const allowed = ['army', 'scout', 'world'];
+                const allowed = ['army', 'scout', 'world', 'veteranCamp'];
                 this.militaryView = allowed.includes(view) ? view : 'army';
                 this.mapHomeActive = this.militaryView === 'world' && this.resolveMapHomeViewState(this.state, {
                   requestedTab: this.state?.currentTab || this.activeTab,
