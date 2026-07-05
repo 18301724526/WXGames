@@ -323,8 +323,7 @@ test('scout famous person grant core creates one purple scout with grant bookkee
   assert.equal(Boolean(grant?.person), true);
   assert.equal(gameState.famousPeople.length, 1);
   assert.equal(gameState.famousPeople[0].quality, 'great');
-  assert.equal(gameState.famousPeople[0].archetype, 'scout');
-  assert.equal(gameState.famousPeople[0].abilityArchetype, 'scout');
+  assert.ok(gameState.famousPeople[0].roles.includes('military')); // random combat archetype (deployable)
   assert.equal(gameState.tutorial.grants.scoutFamousPerson.personId, gameState.famousPeople[0].id);
   // The step advance is claim-driven (TASK_CLAIM_STEPS), not part of the grant core.
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);

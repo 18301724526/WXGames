@@ -127,7 +127,7 @@ test('claiming the scout-officer task grants the tutorial scout famous person on
 
   assert.equal(result.success, true);
   assert.equal(gameState.famousPeople.length, 1);
-  assert.equal(gameState.famousPeople[0].archetype, 'scout');
+  assert.ok(gameState.famousPeople[0].roles.includes('military')); // random combat archetype (deployable)
   assert.equal(gameState.famousPeople[0].quality, 'great');
   assert.equal(gameState.tutorial.grants.scoutFamousPerson.personId, gameState.famousPeople[0].id);
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
