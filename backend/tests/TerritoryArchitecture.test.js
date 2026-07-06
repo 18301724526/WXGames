@@ -36,6 +36,7 @@ test('TerritoryService starts delegating foundation responsibilities to territor
     .sort();
 
   assert.deepEqual(moduleFiles, [
+    'GarrisonCaptureResolver.js',
     'GarrisonPolicy.js',
     'TerritoryCombatTargets.js',
     'TerritoryConquestMissions.js',
