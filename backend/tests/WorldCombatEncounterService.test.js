@@ -181,6 +181,48 @@ test('an engaged mission standing on the encounter keeps it visible (battle UI n
   assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), true);
 });
 
+test('a party parked in the field after victory is still a vision source (idle away from home)', () => {
+  // The real post-battle chain: a victory does NOT auto-return — the squad idles on the spot
+  // (status 'idle', combat resolved, position = the old battlefield, home elsewhere). The map
+  // draws its sprite there, so it must keep eyes: a live camp one tile away stays visible.
+  const gameState = createLoneEncounterState({
+    exploreMissions: [{
+      id: 'm_victor',
+      status: 'idle',
+      homeOrigin: { q: 0, r: 0 },
+      position: { q: 6, r: 7, tileId: 'tile_6_7' }, // Chebyshev 1 of the camp at (7,7)
+      combat: { status: 'resolved', encounterId: 'camp_won', battleReportId: 'report_1' },
+    }],
+  });
+  const near = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(near.activeEncounters.some((e) => e.id === 'camp_far'), true);
+
+  // Radius upper-bound pin: parked vision is EXPLORE_REVEAL_RADIUS (1) — Chebyshev 2 stays dark.
+  gameState.exploreMissions[0].position = { q: 5, r: 7, tileId: 'tile_5_7' };
+  const far = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(far.activeEncounters.some((e) => e.id === 'camp_far'), false);
+});
+
+test('a defeated party stranded ON a live encounter keeps it visible (re-attack entry stays open)', () => {
+  // Defeat (offline allOut timeout or zero survivors) leaves the squad idle+resolved on the
+  // still-active camp tile. The enemy under the player's own sprite must not vanish.
+  const gameState = createLoneEncounterState({
+    exploreMissions: [{
+      id: 'm_beaten',
+      status: 'idle',
+      homeOrigin: { q: 0, r: 0 },
+      position: { q: 7, r: 7, tileId: 'tile_7_7' }, // standing on the camp itself
+      combat: { status: 'resolved', encounterId: 'camp_far', battleReportId: 'report_2' },
+    }],
+  });
+  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), true);
+  // A mission that never left home (position === homeOrigin) is NOT a lingering vision source.
+  gameState.exploreMissions[0].position = { q: 0, r: 0, tileId: 'tile_0_0' };
+  const home = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(home.activeEncounters.some((e) => e.id === 'camp_far'), false);
+});
+
 // --- "打了才知道": defender strength withheld until the encounter has a battleReport ---
 
 test('a revealed-but-unfought encounter projects NO defender strength (intel all false)', () => {

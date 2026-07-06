@@ -54,13 +54,30 @@ function getCityVisionCoords(gameState = {}) {
       : { q: toInteger(territory.x ?? territory.q, 0), r: toInteger(territory.y ?? territory.r, 0) }));
 }
 
-// A party is FIELDED (out of its home city, eyes on the world) while its march is active or it is
-// standing on an enemy tile fighting. An idle, non-engaged mission means the formation is home —
-// its vision is the city's, not a lingering source at the old destination.
+// Where the party stands RIGHT NOW — deliberately the SAME coord the vision area is drawn from
+// (getFieldedPartyCoords), so the "is it home?" predicate and the vision source can never
+// disagree. Canonical tile ids so the wrapped-world seam cannot split position and home into two
+// keys (the same comparison WorldExplorerProgression.isAtHomeOrigin uses for return settlement;
+// not required from there — Progression → WorldCombatEncounterService → this module would cycle).
+function isPartyAtHomeOrigin(mission = {}) {
+  const position = WorldMarchCore.getConfirmedPosition(mission);
+  const home = mission.homeOrigin || mission.origin || {};
+  return WorldMapService.getCanonicalTileId(position.q, position.r)
+    === WorldMapService.getCanonicalTileId(home.q ?? home.x, home.r ?? home.y);
+}
+
+// A party is FIELDED (out of its home city, eyes on the world) while its march is active, while
+// it is standing on an enemy tile fighting, or while it is parked in the field. Idle does NOT
+// mean home: an arrived march idles at its destination, a victorious squad idles on the
+// battlefield BY DESIGN (WorldCombatSessionService: "a victory does NOT return"), and a defeated
+// one strands on the still-live enemy tile — only a manual returnWorldMarch brings them home.
+// The invariant: wherever the map draws a party sprite (the client's parkedAwayFromHome
+// projection), that party is a vision source — 有兵处必有眼.
 function isFieldedParty(mission) {
   if (!mission || typeof mission !== 'object') return false;
   if (mission.status === WorldMarchCore.STATUS_ACTIVE) return true;
-  return FIELDED_COMBAT_STATUSES.includes(mission.combat?.status);
+  if (FIELDED_COMBAT_STATUSES.includes(mission.combat?.status)) return true;
+  return mission.status === WorldMarchCore.STATUS_IDLE && !isPartyAtHomeOrigin(mission);
 }
 
 function getFieldedPartyCoords(gameState = {}) {
