@@ -31,6 +31,7 @@
 ### 阶段 1 余下
 - **1.3 归属单一源 `territory.ownerFactionId`**：在 `TerritoryStateNormalizer` 加派生字段（`player`→`player_<playerId>`、中立→`neutral_<siteId>`、AI→`ai_<slug>`），旧 `owner` 三态改**派生投影**；`shared_world_territories.ownerPlayerId` 语义扩展。**读证等价 + 特征测试**（碰现有领土渲染，务必对抗 review）。
 - **1.4 势力级国库（经济大改，决策 01-4）**：玩家资源从 per-city 收敛到势力 treasury。**最敏感**——先特征测试锁现行为、读证等价迁移、对抗 review、**需用户在场终验**。可最后做/或先只给 AI 用势力池、玩家延后。
+  - **DONE：纯算术核** `shared/faction/factionTreasuryCore.js`（`normalize`/`deposit`(城结余入库,负额忽略)/`shortfall`/`canAfford`/`spend`(可负担才扣、扣到 0 删键、失败原子不动)/`total`）——**唯一** treasury 加减处，玩家+AI 共用(决策01-4)；纯、不动输入、0===缺省(对齐 factionCore.normalizeTreasury)。6 测试。提交见下方。**余**=真正的 per-city→treasury 迁移(碰经济,特征测试+终验)。
 
 ### 阶段 2 — 世界人物注册表 + 性格落 person
 - **DONE：人物社交字段逻辑** `backend/services/person/PersonSocialFields.js`（`normalizeSocial(raw, id)` → `{personality, gender, orientation, relationships, factionId}`，消费 personalityCore+relationshipCore，确定性种子=人物 id，老存档自动 backfill；性别/取向比例进 personality_tuning）+ 5 测试。提交 `bd766b24`。
