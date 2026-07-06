@@ -27,6 +27,15 @@ and deletable independently (§1, §6-R1).
 
 ## 1. DELETE — scout system + blast radius (ordered)
 
+> **§1.0 CodeGraph-verified before cut (2026-07-06):**
+> - **4 pure modules** (`TerritoryScoutPlanner/Results/Areas/Records`) have **no non-scout production caller** — only `TerritoryService` composes them + tests + smoke manifest. Deletable whole. ✅
+> - **`getScoutOrigin` = KEEP** (codegraph showed "1 caller" but `TerritoryQueries.js` was stale in the index; grep proves `TerritoryClientAssembler` consumes it for the `scoutOrigin`/`originDistance` DTO — an origin-distance util reused beyond scouting). §1.6-4 correct. ✅
+> - **`TerritorySiteMigration.js:23-24,163-164`** consumes `getDirectionProgressScore/getTerrainSiteScore` (legacy scout-site scoring) → dies with scout. Confirmed. ✅
+> - **⚠️ Bigger-than-"15-files" cascade discovered:** `TerritoryService:23-177` weaves **~30 destructured scout fns** (`normalizeScoutState/normalizeScoutReports/upsertScoutAreaRecord/…`) that are **passed INTO other factories** (`TerritoryStateNormalizer` + `TerritoryMilitaryMissions` composition, `:129-140`). Deleting them cascades into those factories' dep-lists AND the fns inside them that consume scout state. **Untangle order:** action seam → strip scout fns FROM the StateNormalizer/MilitaryMissions factory dep-lists (and the scout branches inside) → THEN delete the 4 modules + `TerritoryService` scout fns → THEN constants.
+> - **⚠️ `SCOUT_SITE_MIN_DISTANCE` is used by a KEPT fn** (`TerritoryQueries.getSiteSpacingProfile:78`, site-spacing — reused by pre-placed-city min-spacing). Do NOT blanket-delete it with the other `SCOUT_*` constants; keep or rename to `SITE_MIN_DISTANCE`. Same-check `MAX_SCOUT_DISTANCE` (used by `getNearestSiteDistance:72` fallback).
+> - **Execution note:** this is a genuine multi-iteration atomic untangle — best run on **fresh context runway** so it lands as one gate-green commit, never a half-torn tree.
+
+
 **Ordering rule:** rip the *action seam* first (so nothing new can reach the code), then the *service
 public fns*, then the *pure modules*, then *surgically de-scout* the mixed files, then *frontend*, then
 *tests + manifest* — all deletes for a given layer in **one commit** so the architecture-smoke MANIFEST
