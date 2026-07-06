@@ -16,6 +16,7 @@ const {
 } = require('./territory/TerritoryConstants');
 const createTerritoryCombatTargets = require('./territory/TerritoryCombatTargets');
 const createTerritoryConquestMissions = require('./territory/TerritoryConquestMissions');
+const GarrisonCaptureResolver = require('./territory/GarrisonCaptureResolver');
 const createTerritoryMilitaryMissions = require('./territory/TerritoryMilitaryMissions');
 const createTerritoryNaming = require('./territory/TerritoryNaming');
 const createTerritoryQueries = require('./territory/TerritoryQueries');
@@ -459,6 +460,10 @@ function claimConquest(gameState, territoryId, now = new Date()) {
   normalizeTerritoryState(gameState, now);
   return resolveConquestClaim(gameState, territoryId, now);
 }
+// ②b: resolve a pending captured-general decision (execute/recruit/release).
+function resolveCapture(gameState, decisionId, choice, now = new Date()) {
+  return GarrisonCaptureResolver.resolveCaptureDecision(gameState, decisionId, choice, now);
+}
 function renameCity(gameState, territoryId, cityName) {
   normalizeTerritoryState(gameState);
   return applyCityName(gameState, territoryId, cityName);
@@ -517,6 +522,7 @@ module.exports = {
   scoutTerritory,
   startConquest,
   claimConquest,
+  resolveCapture,
   renameCity,
   renamePolity,
   updateMissionReadiness,

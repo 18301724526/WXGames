@@ -1568,6 +1568,7 @@ test('TerritoryService facade preserves the legacy territory API', () => {
     'claimConquest',
     'claimScout',
     'countSoldiersOnMission',
+    'resolveCapture',
     'createInitialPolity',
     'createInitialTerritories',
     'getActiveScoutMission',

@@ -83,6 +83,9 @@ function execute(action, gameState, payload = {}) {
       payload,
     );
   }
+  if (action === 'resolveCapture') {
+    return TerritoryService.resolveCapture(gameState, payload.decisionId, payload.choice);
+  }
   if (action === 'renameCity') {
     const result = TerritoryService.renameCity(gameState, payload.territoryId, payload.name);
     if (result.success) CityService.updateCityName(gameState, payload.territoryId, result.territory.cityName);

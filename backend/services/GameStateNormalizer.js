@@ -36,6 +36,7 @@ function createInitialGameState(playerId, options = {}) {
     gameDay: 1,
     eventQueue: [],
     eventHistory: [],
+    captureDecisions: [], // ②b: pending captured-general decisions (斩杀/招降/放生)
     regularEventState: EventService.normalizeRegularEventState(null),
     threatEventState: EventService.normalizeThreatEventState(null),
     activeBuffs: [],
@@ -113,6 +114,7 @@ function normalizeStateStructure(rawState) {
   state.techEffects = state.techEffects || {};
   state.eventQueue = state.eventQueue || [];
   state.eventHistory = state.eventHistory || [];
+  state.captureDecisions = Array.isArray(state.captureDecisions) ? state.captureDecisions : [];
   EventService.cleanupRuntimeState(state);
   state.offlineSnapshot = state.offlineSnapshot || {};
   state.offlineEventLog = state.offlineEventLog || [];

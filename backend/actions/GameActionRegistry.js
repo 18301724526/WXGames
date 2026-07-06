@@ -15,6 +15,7 @@ const TERRITORY_ACTIONS = new Set([
   'claimScout',
   'startConquest',
   'claimConquest',
+  'resolveCapture',
   'renameCity',
   'renamePolity',
   'switchCity',
