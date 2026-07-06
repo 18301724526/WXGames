@@ -9,6 +9,33 @@ const {
 // idempotent ensure-* hooks (normalize-time grants) are retired: every grant is
 // paid out exactly once through the task-center claim pipeline.
 
+// Pre-place the tutorial first empty city AT GRANT TIME and record its grant identity
+// (march-discovery refactor S5; docs/design/10 §3.3/§4-6). The city is chosen deterministically near the
+// player's explore origin and carried INSIDE the grant (not pushed into gameState.territories), so it
+// stays hidden until the guided march's vision discovers it (§6-R2). Setting the grant here — when the
+// scout officer is granted, before scoutExploreStarted — makes tutorial.grants.firstExploreEmptyCity the
+// single-source first-city identity from the moment the scout segment begins. Idempotent: the grant is
+// only written once. Lazy requires keep the tutorial module free of the world-explorer/territory chain
+// at load time (and break any require cycle).
+function grantTutorialFirstCity(gameState) {
+  const { TUTORIAL_FIRST_SITE_GRANT_KEY } = require('../worldExplorer/WorldExplorerShared');
+  const tutorial = normalizeTutorialState(gameState.tutorial);
+  if (tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]) return tutorial;
+  const WorldExplorerTutorialCity = require('../worldExplorer/WorldExplorerTutorialCity');
+  const planned = WorldExplorerTutorialCity.planTutorialFirstCityGrant(gameState);
+  if (!planned) return tutorial;
+  const nextTutorial = {
+    ...tutorial,
+    grants: {
+      ...(tutorial.grants || {}),
+      [planned.key]: planned.grant,
+    },
+    updatedAt: nowIso(),
+  };
+  gameState.tutorial = nextTutorial;
+  return nextTutorial;
+}
+
 // Grants the tutorial scout famous person and records the tutorial grant
 // bookkeeping. Idempotent: an existing tutorial scout person is returned
 // without creating a duplicate, and the grant record is only written once.
@@ -30,6 +57,10 @@ function grantScoutFamousPerson(gameState) {
       updatedAt: nowIso(),
     };
   }
+  // Pre-place the tutorial first city + set its grant at the same claim (§3.3): the scout officer and
+  // the first-city target are granted together so the whole guided-explore segment has its single-source
+  // target from the start.
+  grantTutorialFirstCity(gameState);
   return grant;
 }
 
@@ -57,5 +88,6 @@ function recordFirstArmyGrant(gameState, soldiers) {
 
 module.exports = {
   grantScoutFamousPerson,
+  grantTutorialFirstCity,
   recordFirstArmyGrant,
 };

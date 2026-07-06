@@ -351,6 +351,28 @@
         || '';
     }
 
+    // S5 (docs/design/10 §3.3, R-route): the tutorial first city is PRE-PLACED and its coordinate is
+    // carried in the grant (firstExploreEmptyCity.{x,y}). The guide reads it to steer the world-march
+    // target selection AT that tile, so the player marches toward the pre-placed city and its vision
+    // discovery fires — instead of picking an arbitrary tile and never triggering discovery.
+    getFirstExploreCityGrant() {
+      return this.state?.grants?.firstExploreEmptyCity
+        || this.game?.tutorial?.grants?.firstExploreEmptyCity
+        || this.game?.state?.tutorial?.grants?.firstExploreEmptyCity
+        || null;
+    }
+
+    getFirstExploreCityTarget() {
+      const grant = this.getFirstExploreCityGrant();
+      if (!grant) return null;
+      const q = Number(grant.x ?? grant.q ?? grant.city?.x ?? grant.city?.q);
+      const r = Number(grant.y ?? grant.r ?? grant.city?.y ?? grant.city?.r);
+      if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+      // Only the q/r are needed to steer the world-march target selection; the guide matcher compares
+      // the action's targetQ/targetR, so no tileId literal is constructed here (canonical-coord gate).
+      return { q, r };
+    }
+
     getCapitalCityId() {
       return this.game?.state?.cityState?.capitalCityId
         || this.game?.state?.activeCityId

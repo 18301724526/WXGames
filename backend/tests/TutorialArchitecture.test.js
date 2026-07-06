@@ -45,10 +45,12 @@ test('tutorial module responsibilities remain split by public contract', () => {
   assert.equal(TutorialTabAccess.canAccessTab(houseReady, 'buildings'), true);
   assert.equal(TutorialActionValidator.validateAction(houseReady, 'build', { target: 'house' }, gameState).allowed, true);
   assert.equal(TutorialActionValidator.validateAction(houseReady, 'build', { target: 'farm' }, gameState).allowed, false);
-  // Grant cores are claim-driven (task rewards), not normalize-time ensures.
+  // Grant cores are claim-driven (task rewards), not normalize-time ensures. S5 adds
+  // grantTutorialFirstCity: the scout-officer claim also PRE-PLACES the tutorial first city + sets its
+  // grant (docs/design/10 §3.3), so the guided-explore segment has its single-source target from the start.
   assert.deepEqual(
     Object.keys(TutorialGrantService).sort(),
-    ['grantScoutFamousPerson', 'recordFirstArmyGrant'],
+    ['grantScoutFamousPerson', 'grantTutorialFirstCity', 'recordFirstArmyGrant'],
   );
 });
 

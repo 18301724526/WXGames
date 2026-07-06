@@ -39,11 +39,6 @@
       "count": 1
     }
   },
-  "backend/tests/WorldExplorerService.test.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/world-worker.js": {
     "no-empty": {
       "count": 1

@@ -671,6 +671,24 @@
         matches: stepIs(steps.scoutFormationSaved),
         render: (host) => {
           host.ensureMapHomeGuideVisible?.({ clearWorldMarchTarget: true });
+          // S5 (R-route): steer the target selection to the PRE-PLACED first city's tile so the guided
+          // march heads toward it and its vision discovery fires. The city coord is carried in the grant.
+          // If that specific tile's selectWorldMarchTarget action is present (its tile is on-screen /
+          // revealed), highlight it; otherwise fall back to the generic target highlight so the player is
+          // never left without a prompt while the city tile is still fogged.
+          const target = host.getFirstExploreCityTarget?.();
+          if (target) {
+            const steered = host.showHighlight(
+              'selectWorldMarchTarget',
+              (action) =>
+                !action.disabled
+                && Number(action.targetQ ?? action.q ?? action.x) === target.q
+                && Number(action.targetR ?? action.r ?? action.y) === target.r,
+              t('tutorial.guide.selectScoutTarget'),
+              { type: 'selectWorldMarchTarget', targetQ: target.q, targetR: target.r },
+            );
+            if (steered) return true;
+          }
           return host.showHighlight(
             'selectWorldMarchTarget',
             (action) => !action.disabled,

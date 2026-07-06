@@ -6,13 +6,19 @@ const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldMapService = require('../services/WorldMapService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
+const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
 require('../../frontend/js/ecs/foundation/WorldTime');
 require('../../frontend/js/ecs/system/WorldMarchProgressSnapshot');
 const WorldActorProjection = require('../../frontend/js/ecs/projection/WorldActorProjection');
 
+// Build the guided-explore state at scoutFormationSaved. S5: the tutorial FIRST CITY is PRE-PLACED at
+// grant time — grantTutorialFirstCity chooses a deterministic land tile near the explore origin and
+// records tutorial.grants.firstExploreEmptyCity = { siteId, x, y, city }. The city stays HIDDEN (carried
+// in the grant, NOT in gameState.territories) until the guided march's vision discovers it, so this
+// helper mirrors exactly what TaskRewardClaimer.grantScoutFamousPerson leaves on the state.
 function createTutorialExploreState() {
   const scoutPersonId = 'fp-tutorial-scout';
-  return {
+  const gameState = {
     playerId: 'world-explorer-tutorial-test',
     activeCityId: 'capital',
     currentEra: 3,
@@ -57,11 +63,20 @@ function createTutorialExploreState() {
     },
     exploreMissions: [],
   };
+  // Pre-place the tutorial first city + set its grant, exactly as the scout-officer claim does.
+  TutorialGrantService.grantTutorialFirstCity(gameState);
+  return gameState;
 }
 
-test('guided world march returns server-planned tiles and the first empty city plan', () => {
+test('guided world march plans the route toward the pre-placed first city and starts exploring', () => {
+  // S5: the tutorial first city is PRE-PLACED in the grant, not invented on the route. startWorldMarch
+  // just plans the route the player picks (toward the pre-placed city's tile) and advances the step; it
+  // no longer materializes a plannedSite, and the city stays absent from territories until vision finds it.
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
+  // The grant carries the pre-placed city — the single-source first-city identity from grant time.
+  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.siteId, 'site_1_0');
+  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.city.owner, 'neutral');
 
   const result = WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
 
@@ -69,74 +84,48 @@ test('guided world march returns server-planned tiles and the first empty city p
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
   assert.equal(result.mission.route.length, 2);
   assert.equal(result.mission.plannedTiles.length, 12);
-  assert.equal(result.mission.plannedSites.length, 1);
-  assert.equal(result.mission.plannedSites[0].site.id, result.mission.plannedSites[0].siteId);
-  assert.equal(result.mission.plannedSites[0].site.owner, 'neutral');
-  assert.equal(result.mission.plannedSites[0].site.status, 'discovered');
+  // No invented plannedSites — discovery is vision-driven now.
+  assert.equal((result.mission.plannedSites || []).length, 0);
   assert.equal(result.mission.formation.slot, 1);
   assert.equal(result.mission.formationSnapshot.soldiersCommitted, 120);
   assert.equal(result.mission.formationSnapshot.soldiersRemaining, 120);
   assert.equal(result.mission.nextStepAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS).toISOString());
   assert.equal(result.mission.completesAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * 2).toISOString());
   assert.deepEqual(result.mission.formation.memberIds, ['fp-tutorial-scout']);
+  // The pre-placed city is NOT revealed at spawn: absent from territories and unbound (§6-R2).
   assert.equal(gameState.territories.length, 1);
   assert.equal(gameState.territories[0].id, 'capital');
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_1_0'), false);
 });
 
-test('guided world march avoids shared occupied cities when choosing the first empty city target', () => {
+test('guided world march discovers the pre-placed first city by vision and advances the tutorial', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
-
-  const result = WorldExplorerService.startWorldMarch(gameState, {
-    targetQ: 2,
-    targetR: 0,
-    formationSlot: 1,
-    planningContext: {
-      sharedWorldTerritories: [{
-        id: 'other-player-city',
-        x: 2,
-        y: 0,
-        owner: 'player',
-        ownerPlayerId: 'other-player',
-        status: 'occupied',
-      }],
-    },
-  }, now);
-
-  assert.equal(result.success, true);
-  assert.equal(result.mission.target.tileId, 'tile_1_0');
-  assert.equal(result.mission.route.length, 1);
-  assert.equal(result.mission.plannedSites.length, 1);
-  assert.equal(result.mission.plannedSites[0].tileId, 'tile_1_0');
-  assert.equal(result.mission.plannedSites[0].site.id, 'site_1_0');
-});
-
-test('guided world march materializes the first neutral empty city without claim report flow', () => {
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
+  const firstCityId = gameState.tutorial.grants.firstExploreEmptyCity.siteId;
+  WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
   const mission = gameState.exploreMissions[0];
-  const plannedSiteId = mission.plannedSites[0].siteId;
   const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * mission.route.length + 1);
 
   WorldExplorerService.advanceExploreMissions(gameState, finishAt);
 
-  const discovered = gameState.territories.find((territory) => territory.id === plannedSiteId);
-  assert.ok(discovered);
+  const discovered = gameState.territories.find((territory) => territory.id === firstCityId);
+  assert.ok(discovered, 'the pre-placed tutorial city is discovered once its tile enters vision');
   assert.equal(discovered.owner, 'neutral');
   assert.equal(discovered.status, 'discovered');
-  assert.equal(discovered.garrison, null);
-  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.siteId, plannedSiteId);
+  // §4-4: garrison/capitalDistance/battleTarget are DERIVED downstream, never authored here.
+  assert.equal(Object.prototype.hasOwnProperty.call(discovered, 'garrison'), false);
+  // The grant identity is unchanged (set at grant time) — the single source (§4-6).
+  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.siteId, firstCityId);
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityDiscovered);
   assert.equal(gameState.exploreMissions[0].status, 'idle');
-  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === plannedSiteId), true);
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === firstCityId), true);
   assert.equal(gameState.exploreMissions.length, 1);
 });
 
 test('stranded guided-explore tutorial step self-heals on the next mission pass', () => {
   // A revision race can persist the completed (idle) mission while losing the
-  // tutorial-step write. The advance condition must converge on later passes,
-  // not fire only on the one tick that flipped the mission to idle.
+  // tutorial-step write. The convergent advance must re-fire on later passes off the
+  // ACTUAL discovery (the city's tile stays bound), not only on the one tick that discovered it.
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
   WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
@@ -144,8 +133,9 @@ test('stranded guided-explore tutorial step self-heals on the next mission pass'
   const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * mission.route.length + 1);
   WorldExplorerService.advanceExploreMissions(gameState, finishAt);
   assert.equal(gameState.exploreMissions[0].status, 'idle');
+  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityDiscovered);
 
-  // Simulate the lost tutorial write: mission stayed idle, step snapped back.
+  // Simulate the lost tutorial write: mission stayed idle + city stays discovered, step snapped back.
   gameState.tutorial.currentStep = TutorialService.TUTORIAL_STEPS.scoutExploreStarted;
   gameState.tutorial.completed = false;
 
