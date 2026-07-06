@@ -32,7 +32,9 @@ test('TaskDefinitionService loads the tutorial-chain tasks with step-name condit
   });
 
   assert.equal(definitions.errors.length, 0);
-  assert.equal(definitions.version, '0.2.0');
+  // Pinned to backend/config/defaultTaskDefinitions.json's version — bumped by cd9e0982
+  // (config-release drift gate alignment); keep the two in sync when bumping again.
+  assert.equal(definitions.version, '0.3.0');
 
   const homestead = definitions.tasks.find((item) => item.id === 'main_homestead_supplies');
   assert.deepEqual(homestead.condition, { type: 'tutorialStepAtLeast', step: 'cityEntered' });
