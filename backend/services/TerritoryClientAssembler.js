@@ -187,7 +187,12 @@ function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}, game
   const settling = occupationMode === 'settlement';
   // A conquest target the player has NOT fought yet hides its strength scalars. Own/occupied sites
   // (owner 'player') and already-fought sites keep them. Undefined (not 0) so the frontend shows
-  // "未知" rather than a misleading "0 兵 / 0 防御".
+  // "未知" rather than a misleading "0 兵 / 0 防御". `scale` (the garrison-band tier deep=3/city=2/
+  // frontier=1) is a strength scalar too — GarrisonPolicy.garrisonSoldiers scales soldiers by it — so
+  // it is withheld alongside defense/recommendedSoldiers/threat, matching the encounter side
+  // (getClientEncounterBattleTarget). This is only the DTO's "规模数字"; the map sprite's draw size
+  // comes from a SEPARATE art-scale (TileMapAssetManifest.getSiteAsset().scale, keyed by site.type,
+  // via WorldTileMapTileNormalizer.normalizeSite), so hiding it here never changes how the city renders.
   const hideStrength =
     !settling && territory.owner !== 'player' && !hasFoughtTerritory(territory);
   const view = {
@@ -209,6 +214,7 @@ function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}, game
     delete view.defense;
     delete view.recommendedSoldiers;
     delete view.threat;
+    delete view.scale;
   }
   return view;
 }

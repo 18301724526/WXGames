@@ -1359,6 +1359,7 @@ test('UIStatePresenter resolves world site chrome through active locale', () => 
     owner: 'tribe',
     occupationMode: 'conquest',
     naturalName: 'Camp',
+    scale: 1,
     defense: 80,
     recommendedSoldiers: 120,
     threat: 0,
@@ -1420,18 +1421,21 @@ test('UIStatePresenter shows 未知/兵力不明 when defender strength fields a
   assert.equal(detail.text.defense, '防御 未知');
   assert.equal(detail.text.threat, '威胁 未知');
   assert.equal(detail.text.soldiers, '兵力不明（需交战侦知）');
+  // `scale` (garrison band tier) is withheld too — show 规模 未知, not the tier number that leaks the band.
+  assert.equal(detail.text.scale, '规模 未知');
   // The expedition still works: a neutral default of 1 (not 0), so the player can march out.
   assert.equal(detail.action.expeditionConfig.draft.soldiers, 1);
   assert.equal(detail.action.expeditionConfig.fields.soldiers.min, 1);
   // A present value still renders the number (regression guard for the fought/own-site path).
   const foughtDetail = UIStatePresenter.buildWorldSiteDetailViewState(
-    { ...site, defense: 320, recommendedSoldiers: 300, threat: 12 },
+    { ...site, scale: 3, defense: 320, recommendedSoldiers: 300, threat: 12 },
     territoryState,
     uiState,
   );
   assert.equal(foughtDetail.text.defense, '防御 320');
   assert.equal(foughtDetail.text.soldiers, '建议 300 士兵');
   assert.equal(foughtDetail.text.threat, '威胁 12');
+  assert.equal(foughtDetail.text.scale, '规模 3');
 });
 
 test('UIStatePresenter enables direct occupation of an empty site with zero soldiers', () => {

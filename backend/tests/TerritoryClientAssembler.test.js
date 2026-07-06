@@ -209,6 +209,13 @@ test('a revealed-but-unfought neutral city withholds its defender strength scala
   );
   assert.equal(Object.prototype.hasOwnProperty.call(projected, 'recommendedSoldiers'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(projected, 'threat'), false);
+  // `scale` encodes the garrison band (deep=3/city=2/frontier=1) and GarrisonPolicy scales soldiers by
+  // it, so it is a strength scalar too — withheld until fought, matching the encounter side.
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(projected, 'scale'),
+    false,
+    'scale (garrison-band tier) withheld until fought',
+  );
   // The garrison object was already intel-gated (unknown at level 1) — confirm it too is hidden.
   assert.equal(projected.garrison, null);
 });
@@ -224,6 +231,8 @@ test('a fought neutral city (lastBattle present) keeps its defender strength sca
   assert.equal(Object.prototype.hasOwnProperty.call(projected, 'defense'), true);
   assert.ok(projected.defense > 0, 'a fought city reveals its defense strength');
   assert.equal(Object.prototype.hasOwnProperty.call(projected, 'recommendedSoldiers'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'scale'), true, 'a fought city reveals its scale tier');
+  assert.ok(projected.scale > 0, 'the revealed scale is the authored deep-band tier');
 });
 
 test('client world map projection omits stale legacy capital tiles outside current origin', () => {

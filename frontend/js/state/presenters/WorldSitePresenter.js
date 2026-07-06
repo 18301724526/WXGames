@@ -300,10 +300,13 @@
           status: this.formatWorldSiteStatus(site),
           owner: this.formatWorldSiteOwner(site),
           distance: this.t('world.site.metric.distance', { value: site.originDistance ?? site.distance ?? 0 }),
-          scale: this.t('world.site.metric.scale', { value: site.scale || 1 }),
-          // Strength scalars (threat/defense/recommendedSoldiers) are withheld by the backend until the
-          // player has fought this site — "打了才知道". When absent (== null), show 未知/兵力不明 rather
-          // than a misleading 0. A present value (own site, or already fought) renders normally.
+          // Strength scalars (scale/threat/defense/recommendedSoldiers) are withheld by the backend
+          // until the player has fought this site — "打了才知道". When absent (== null), show 未知
+          // rather than a misleading number. A present value (own site, or already fought) renders normally.
+          // `scale` encodes the garrison band (deep=3/city=2/frontier=1), so it is gated just like threat.
+          scale: site.scale != null
+            ? this.t('world.site.metric.scale', { value: site.scale })
+            : this.t('world.site.metric.scaleUnknown'),
           threat: site.threat != null
             ? this.t('world.site.metric.threat', { value: site.threat })
             : this.t('world.site.metric.threatUnknown'),
