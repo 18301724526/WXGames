@@ -417,6 +417,7 @@
         case 'selectTechNode': return this.handle_selectTechNode;
         case 'closeTechDetail': return this.handle_closeTechDetail;
         case 'claimEvent': return this.handle_claimEvent;
+        case 'resolveCapture': return this.handle_resolveCapture;
         case 'claimGuideTaskReward': return this.handle_claimGuideTaskReward;
         case 'claimTaskReward': return this.handle_claimTaskReward;
         case 'scrollBuildings': return this.handle_scrollBuildings;
@@ -1365,6 +1366,29 @@
 
     handle_claimEvent(action) {
             return this.finalize(this.claimEvent(action));
+          }
+
+    getCaptureController() {
+            return this.host?.captureController || this.getGameHost()?.captureController || null;
+          }
+
+    handle_resolveCapture(action) {
+            return this.finalize(this.resolveCapture(action));
+          }
+
+    async resolveCapture(action) {
+            // ②b: player picked 斩杀/招降/放生 for a captured general. Prefer the CaptureController
+            // (owns the localized outcome floating text); fall back to a direct API call. State is
+            // applied through the shared afterEventClaimed commit path (generic gameState merge).
+            const controller = this.getCaptureController();
+            if (controller?.resolve) {
+              const result = await controller.resolve(action.decisionId, action.choice);
+              return this.afterEventClaimed(result);
+            }
+            const api = this.host.api || this.getGameHost()?.getGameApi?.() || this.getGameHost()?.api;
+            if (!api?.resolveCapture) return false;
+            const result = await this.runAction(() => api.resolveCapture(action.decisionId, action.choice));
+            return this.afterEventClaimed(result);
           }
 
     async claimEvent(action) {

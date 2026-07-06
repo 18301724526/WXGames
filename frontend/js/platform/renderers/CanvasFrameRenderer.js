@@ -101,6 +101,7 @@
     renderFamousPersonsPanel(...args) { return this.host?.renderFamousPersonsPanel?.(...args); }
     renderArmyFormationEditor(...args) { return this.host?.renderArmyFormationEditor?.(...args); }
     renderEventModal(...args) { return this.host?.renderEventModal?.(...args); }
+    renderCaptureModal(...args) { return this.host?.renderCaptureModal?.(...args); }
     renderTechDetailModal(...args) { return this.host?.renderTechDetailModal?.(...args); }
     renderNamingModal(...args) { return this.host?.renderNamingModal?.(...args); }
     renderTutorialIntro(...args) { return this.host?.renderTutorialIntro?.(...args); }
@@ -273,6 +274,7 @@
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+      this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists
       this.renderTechDetailIfNeeded(state, activeTab, options);
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
@@ -327,6 +329,7 @@
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+      this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists
       this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
     }

@@ -150,6 +150,10 @@
       return typeof context.closeEvent === 'function' ? context.closeEvent(action) : false;
     },
 
+    resolveCapture(context = {}, action = {}) {
+      return typeof context.resolveCapture === 'function' ? context.resolveCapture(action) : false;
+    },
+
     openWorldSite(context = {}, action = {}) {
       return typeof context.openWorldSite === 'function' ? context.openWorldSite(action) : false;
     },
@@ -321,6 +325,7 @@
     'goToAdvisorTarget',
     'openEvent',
     'closeEvent',
+    'resolveCapture',
     'openWorldSite',
     'closeWorldSite',
     'jumpToSubcity',

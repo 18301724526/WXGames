@@ -1696,6 +1696,14 @@
       return result === undefined ? false : result;
     }
 
+    renderCaptureModal(...args) {
+      const renderer = this.captureRenderer;
+      const result = typeof renderer?.renderCaptureModal === 'function'
+        ? renderer.renderCaptureModal(...args)
+        : undefined;
+      return result === undefined ? false : result;
+    }
+
     renderCivilization(...args) {
       const renderer = this.civilizationRenderer;
       return typeof renderer?.renderCivilization === 'function'
