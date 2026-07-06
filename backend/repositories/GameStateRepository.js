@@ -5,6 +5,8 @@ const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository')
 const { FactionRepository } = require('./FactionRepository');
 const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
 const { WorldPeopleRepository } = require('./WorldPeopleRepository');
+const { WorldCityRepository } = require('./WorldCityRepository');
+const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
 
 const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
   ['revision', 'revision INTEGER DEFAULT 0'],
@@ -75,6 +77,10 @@ class GameStateRepository {
     // Shared-world people registry (docs/design/02): 在野武将 + AI-faction officers. Player rosters
     // stay in game_states.famousPeople; the logical registry = this table ∪ every player's roster.
     this.worldPeopleRepo = new WorldPeopleRepository(db);
+    // Shared-world PRE-PLACED NEUTRAL cities (docs/design/10 §3.2, march-discovery refactor S3). One
+    // canonical copy every player shares, keyed off a FIXED world anchor — projected to players
+    // visibility-gated (hidden until march vision discovers them). Additive — see WorldCityRepository.
+    this.worldCityRepo = new WorldCityRepository(db, { worldSeed: DEFAULT_WORLD_SEED });
   }
 
   stripProjectionFields(gameState) {
@@ -152,8 +158,29 @@ class GameStateRepository {
     this.factionRepo.init();
     this.factionDiplomacyRepo.init();
     this.worldPeopleRepo.init();
+    this.worldCityRepo.init();
     new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
+    this.ensureWorldCitiesSeeded();
+  }
+
+  // Idempotent one-time lay-down of the shared PRE-PLACED NEUTRAL city layer (docs/design/10 §3.2,
+  // §6-R8). World-level (not per-player) — the cities are a shared single copy off the fixed world
+  // anchor, so this seeds once at world init, mirroring where the faction/people world registries are
+  // initialized. WorldCityRepository.ensureSeeded short-circuits on hasAny, so re-running init (a fresh
+  // GameStateRepository over the same DB) never grows or duplicates the set. Placement reserves against
+  // every already-occupied spawn coordinate (player capitals + shared occupied territories + reserved
+  // spawns — §6-R3) so a neutral city never lands on a spawn/capital tile.
+  ensureWorldCitiesSeeded() {
+    const occupiedTileIds = new Set();
+    for (const coordinate of this.spawnAuthority.getOccupiedSpawnCoordinates()) {
+      const q = Number(coordinate?.q);
+      const r = Number(coordinate?.r);
+      if (Number.isFinite(q) && Number.isFinite(r)) {
+        occupiedTileIds.add(`tile_${Math.floor(q)}_${Math.floor(r)}`);
+      }
+    }
+    return this.worldCityRepo.ensureSeeded({ occupiedTileIds });
   }
 
   getOccupiedSpawnCoordinates(options = {}) {
@@ -230,10 +257,19 @@ class GameStateRepository {
   }
 
   getClientProjectionForPlayer(playerId) {
+    // The player-OWNED shared territories (occupied cities of every OTHER player) — the pre-existing
+    // projection, unchanged.
+    const ownedShared = this.getSharedWorldTerritories({ excludePlayerId: playerId });
+    // The shared PRE-PLACED NEUTRAL cities (one canonical copy, docs/design/10 §3.2). Every player
+    // gets the SAME set, so this reads the whole world_cities table with no per-player exclusion. Both
+    // consumers of `sharedWorldTerritories` receive the FULL set: the route/discovery planning context
+    // (WorldExplorerProgression / WorldExplorerRoutePlanner) needs to reserve against and — in S4 —
+    // discover undiscovered cities, so it must see them all. The CLIENT map DTO is visibility-gated
+    // separately, inside TerritoryClientAssembler.getClientTerritoryState (§6-R2): a neutral city whose
+    // tile the player has not yet discovered is dropped there, so it does NOT reveal at spawn.
+    const neutralCities = this.worldCityRepo.getAllCities();
     return {
-      sharedWorldTerritories: this.getSharedWorldTerritories({
-        excludePlayerId: playerId,
-      }),
+      sharedWorldTerritories: [...ownedShared, ...neutralCities],
     };
   }
 

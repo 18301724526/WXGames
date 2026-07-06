@@ -44,6 +44,32 @@ function isSharedOccupiedTerritory(site = {}) {
   return Boolean(site.ownerPlayerId && site.owner === 'player' && site.status === 'occupied');
 }
 
+// A shared PRE-PLACED NEUTRAL city (owner:'neutral', no ownerPlayerId) — the world_cities layer
+// (docs/design/10 §3.2). Player-OWNED shared sites carry an ownerPlayerId and are NOT gated (they keep
+// their pre-existing always-projected behavior).
+function isSharedNeutralCity(site = {}) {
+  return Boolean(site && site.owner === 'neutral' && !site.ownerPlayerId);
+}
+
+// Visibility gate (docs/design/10 §6-R2 — NO reveal-at-spawn). A pre-placed neutral city exists in the
+// shared store from world-init, but must stay HIDDEN in a player's client map until that player's march
+// vision discovers its tile. The player's own worldMap.tiles is already reveal-streamed (only tiles the
+// player has seen are present), so a neutral city is "discovered" for this player exactly when a tile
+// exists at its coordinate. Drop every not-yet-discovered neutral city from the projected set so it is
+// absent from the client territories DTO and never bound to the map. Discovery (S4) simply reveals the
+// tile, which flips the city visible here — this function stays unchanged. Own/occupied shared sites
+// are untouched.
+function filterDiscoveredNeutralCities(sharedTerritories, worldMap = {}) {
+  if (!Array.isArray(sharedTerritories) || !sharedTerritories.length) return sharedTerritories || [];
+  const visibleTileCoords = new Set(
+    (Array.isArray(worldMap.tiles) ? worldMap.tiles : []).map((tile) => getCoordinateKey(tile)),
+  );
+  return sharedTerritories.filter((site) => {
+    if (!isSharedNeutralCity(site)) return true;
+    return visibleTileCoords.has(getCoordinateKey(site));
+  });
+}
+
 function getTerritoryProjectionPriority(site = {}) {
   if (isSharedOccupiedTerritory(site)) return 4;
   if (site.owner === 'player' && site.status === 'occupied') return 3;
@@ -177,7 +203,14 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
       durationSeconds: Math.floor(deps.CONQUEST_DURATION_MS / 1000),
     }]));
   const ownTerritories = Array.isArray(gameState.territories) ? gameState.territories : [];
-  const sharedTerritories = Array.isArray(projection.sharedWorldTerritories) ? projection.sharedWorldTerritories : [];
+  // Visibility-gate the shared projection: undiscovered PRE-PLACED NEUTRAL cities are dropped so they
+  // are absent from the client map (no reveal-at-spawn — docs/design/10 §6-R2). The player's own
+  // worldMap is already reveal-streamed, so its tiles are the discovered set. Player-owned shared sites
+  // pass through unchanged.
+  const sharedTerritories = filterDiscoveredNeutralCities(
+    Array.isArray(projection.sharedWorldTerritories) ? projection.sharedWorldTerritories : [],
+    gameState.worldMap,
+  );
   const capitalOrigin = getWorldMapOrigin(gameState.worldMap);
   const territories = mergeProjectedTerritories(ownTerritories, sharedTerritories)
     .map((territory) => projectCapitalTerritoryToOrigin(territory, capitalOrigin))
@@ -214,4 +247,6 @@ module.exports = {
   getClientTerritoryState,
   getCoordinateKey,
   mergeProjectedTerritories,
+  filterDiscoveredNeutralCities,
+  isSharedNeutralCity,
 };

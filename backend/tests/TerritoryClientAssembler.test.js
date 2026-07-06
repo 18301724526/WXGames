@@ -124,6 +124,57 @@ test('client territory projection lets shared occupied sites win coordinate conf
   assert.equal(conflictTile.siteId, sharedOccupiedSite.id);
 });
 
+test('client territory projection hides an undiscovered shared neutral city (no reveal-at-spawn)', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-hidden-neutral');
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  const neutralCity = {
+    id: 'site_9_0',
+    x: 9,
+    y: 0,
+    naturalName: '河湾城邦',
+    type: 'city',
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+  };
+  TerritoryService.normalizeTerritoryState(state, now);
+
+  // The player has NOT revealed the tile at (9,0), so the pre-placed neutral city must be absent from
+  // the client DTO and never bound to the map (docs/design/10 §6-R2).
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
+    sharedWorldTerritories: [neutralCity],
+  });
+
+  assert.equal(clientState.territories.some((site) => site.id === neutralCity.id), false);
+  assert.equal(clientState.worldMap.tiles.some((tile) => tile.siteId === neutralCity.id), false);
+});
+
+test('client territory projection reveals a shared neutral city once its tile is discovered', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-revealed-neutral');
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  const neutralCity = {
+    id: 'site_9_0',
+    x: 9,
+    y: 0,
+    naturalName: '河湾城邦',
+    type: 'city',
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+  };
+  TerritoryService.normalizeTerritoryState(state, now);
+  // Simulate the player gaining tile visibility at the city coordinate (what S4 discovery will do).
+  WorldMapService.revealTile(state, 9, 0, now, { visibility: 'scouted' });
+
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
+    sharedWorldTerritories: [neutralCity],
+  });
+
+  assert.equal(clientState.territories.some((site) => site.id === neutralCity.id), true);
+  const cityTile = clientState.worldMap.tiles.find((tile) => tile.q === 9 && tile.r === 0);
+  assert.equal(cityTile.siteId, neutralCity.id);
+});
+
 test('client world map projection omits stale legacy capital tiles outside current origin', () => {
   const now = new Date('2026-06-16T00:00:00.000Z');
   const state = GameStateNormalizer.createInitialGameState('territory-client-stale-capital', {
