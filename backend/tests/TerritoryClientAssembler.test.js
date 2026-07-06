@@ -175,6 +175,57 @@ test('client territory projection reveals a shared neutral city once its tile is
   assert.equal(cityTile.siteId, neutralCity.id);
 });
 
+// A discovered DEFENDED neutral city, in the post-S4 shape: present in gameState.territories (so
+// normalizeTerritory derives its garrison from the distance band) with its tile revealed. At (40,0)
+// the deep band is defended (conquest occupation) — the meaningful case for the strength gate.
+function createDefendedNeutralCityState(seed, extraTerritory = {}) {
+  const state = GameStateNormalizer.createInitialGameState(seed);
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  // Tutorial forces settlement mode on every neutral city (getOccupationMode short-circuit); complete
+  // it so the distance band actually decides conquest-vs-settlement, exercising the defended path.
+  state.tutorial = { ...(state.tutorial || {}), completed: true };
+  state.territories.push({
+    id: 'site_40_0', x: 40, y: 0, naturalName: '远疆城邦', type: 'city',
+    owner: 'neutral', status: 'discovered', scale: 3, ...extraTerritory,
+  });
+  TerritoryService.normalizeTerritoryState(state, now);
+  WorldMapService.revealTile(state, 40, 0, now, { visibility: 'scouted' });
+  return { state, now };
+}
+
+test('a revealed-but-unfought neutral city withholds its defender strength scalars', () => {
+  // "打了才知道": strength (defense / recommendedSoldiers / threat) is learned in battle, not by
+  // scouting. A deep-band neutral city IS defended (has a garrison), but until the player has a
+  // lastBattle record, the raw strength scalars must be ABSENT from the DTO (not projected as 0).
+  const { state, now } = createDefendedNeutralCityState('territory-client-unfought-strength');
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now);
+  const projected = clientState.territories.find((site) => site.id === 'site_40_0');
+  assert.ok(projected, 'the revealed city is projected');
+  assert.equal(projected.occupationMode, 'conquest', 'deep-band city is a conquest target');
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(projected, 'defense'),
+    false,
+    'defense scalar withheld until fought',
+  );
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'recommendedSoldiers'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'threat'), false);
+  // The garrison object was already intel-gated (unknown at level 1) — confirm it too is hidden.
+  assert.equal(projected.garrison, null);
+});
+
+test('a fought neutral city (lastBattle present) keeps its defender strength scalars', () => {
+  const { state, now } = createDefendedNeutralCityState('territory-client-fought-strength', {
+    lastBattle: { success: false, casualties: 30, leaderName: '先锋' },
+  });
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now);
+  const projected = clientState.territories.find((site) => site.id === 'site_40_0');
+  assert.ok(projected, 'the revealed city is projected');
+  assert.equal(projected.occupationMode, 'conquest');
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'defense'), true);
+  assert.ok(projected.defense > 0, 'a fought city reveals its defense strength');
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'recommendedSoldiers'), true);
+});
+
 test('client world map projection omits stale legacy capital tiles outside current origin', () => {
   const now = new Date('2026-06-16T00:00:00.000Z');
   const state = GameStateNormalizer.createInitialGameState('territory-client-stale-capital', {

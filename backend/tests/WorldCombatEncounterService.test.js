@@ -31,39 +31,159 @@ function getFirstCamp(gameState, now) {
   return gameState.worldCombat.encounters.find((encounter) => encounter.campArchetypeKey);
 }
 
+// The fog gate only projects encounters whose tile the player has revealed. For tests that assert on
+// the projected DTO, normalize first then reveal every encounter's coordinate so they surface.
+function revealAllEncounterTiles(gameState, now = new Date()) {
+  WorldCombatEncounterService.normalizeCombatState(gameState, now);
+  gameState.worldMap = gameState.worldMap || {};
+  gameState.worldMap.tiles = (gameState.worldCombat.encounters || []).map((encounter) => ({
+    q: encounter.q,
+    r: encounter.r,
+    visibility: 'scouted',
+  }));
+  return gameState;
+}
+
 test('getClientState exposes a localizable nameKey on the seeded hostile encounter', () => {
-  const clientState = WorldCombatEncounterService.getClientState({}, new Date());
-  const encounter = (clientState.activeEncounters || [])[0];
+  const gameState = revealAllEncounterTiles({}, new Date());
+  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  const encounter = (clientState.activeEncounters || []).find(
+    (entry) => entry.id === WorldCombatEncounterService.ENCOUNTER_ID,
+  );
   assert.ok(encounter, 'expected a seeded active encounter');
   assert.equal(encounter.name, 'Frontier Patrol');
   assert.equal(encounter.nameKey, 'world.combat.encounter.frontierPatrol');
 });
 
 test('getClientState backfills nameKey for legacy encounters that only stored an English name', () => {
-  const clientState = WorldCombatEncounterService.getClientState(
-    {
-      worldCombat: {
-        encounters: [
-          {
-            id: 'hostile_force_capital_ridge',
-            kind: 'hostileForce',
-            status: 'active',
-            name: 'Frontier Patrol',
-            q: 2,
-            r: -1,
-            defender: { soldiers: 40 },
-          },
-        ],
-      },
+  const gameState = {
+    worldMap: { tiles: [{ q: 2, r: -1, visibility: 'scouted' }] },
+    worldCombat: {
+      encounters: [
+        {
+          id: 'hostile_force_capital_ridge',
+          kind: 'hostileForce',
+          status: 'active',
+          name: 'Frontier Patrol',
+          q: 2,
+          r: -1,
+          defender: { soldiers: 40 },
+        },
+      ],
     },
-    new Date(),
-  );
+  };
+  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
   const encounter = (clientState.activeEncounters || []).find(
     (entry) => entry.id === 'hostile_force_capital_ridge',
   );
   assert.ok(encounter, 'expected the legacy encounter to survive normalization');
   // The client DTO must carry nameKey so the renderer can localize it (was leaking "Frontier Patrol").
   assert.equal(encounter.nameKey, 'world.combat.encounter.frontierPatrol');
+});
+
+// --- Fog gate: hostile encounters appear only on revealed tiles (docs/design/10 §6 fog parity) ---
+
+// A gameState with NO worldMap.seed does not seed extra camps, so the only encounter is ours —
+// letting us assert the fog gate in isolation (normalizeCombatState still keeps the legacy stub, but
+// its tile (2,-1) is not in our revealed set, so it is gated out too).
+function createLoneEncounterState(revealedTiles) {
+  return {
+    worldMap: { tiles: revealedTiles },
+    worldCombat: {
+      encounters: [
+        { id: 'camp_far', kind: 'hostileForce', status: 'active', q: 7, r: 7, defender: { soldiers: 40 } },
+      ],
+    },
+  };
+}
+
+test('getClientState hides an encounter whose tile the player has NOT revealed', () => {
+  const gameState = createLoneEncounterState([]); // nothing revealed
+  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(
+    clientState.encounters.some((e) => e.id === 'camp_far'),
+    false,
+    'unrevealed encounter must be absent from the DTO',
+  );
+  assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), false);
+  // Server-side encounter state is UNTOUCHED — the gate only filters the projection.
+  assert.equal(
+    gameState.worldCombat.encounters.some((e) => e.id === 'camp_far'),
+    true,
+  );
+  assert.equal(
+    gameState.worldCombat.encounters.find((e) => e.id === 'camp_far').status,
+    'active',
+  );
+});
+
+test('getClientState reveals the encounter once its tile enters the revealed set', () => {
+  const gameState = createLoneEncounterState([{ q: 7, r: 7, visibility: 'scouted' }]);
+  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(clientState.encounters.some((e) => e.id === 'camp_far'), true);
+  assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), true);
+});
+
+// --- "打了才知道": defender strength withheld until the encounter has a battleReport ---
+
+test('a revealed-but-unfought encounter projects NO defender strength (intel all false)', () => {
+  const gameState = {
+    worldMap: { tiles: [{ q: 7, r: 7, visibility: 'scouted' }] },
+    worldCombat: {
+      encounters: [
+        {
+          id: 'camp_far',
+          kind: 'hostileForce',
+          status: 'active',
+          q: 7,
+          r: 7,
+          defender: { soldiers: 80, threat: 5, scale: 3, leader: { abilityKit: { abilities: [] } } },
+          battleReport: null,
+        },
+      ],
+    },
+  };
+  const encounter = WorldCombatEncounterService.getClientState(gameState, new Date()).encounters.find(
+    (e) => e.id === 'camp_far',
+  );
+  assert.equal(encounter.defender, null, 'defender detail must be withheld until fought');
+  assert.equal(encounter.battleTarget.defender, null);
+  assert.equal(encounter.battleTarget.site.threat, 0, 'threat/scale are 0 = unknown, not projected strength');
+  assert.equal(encounter.battleTarget.site.scale, 0);
+  const intel = encounter.battleTarget.intelSnapshot;
+  assert.equal(intel.knownGarrison, false);
+  assert.equal(intel.knownLeader, false);
+  assert.equal(intel.knownSkill, false);
+  // Non-strength facts stay known (needed to render/target the actor).
+  assert.equal(intel.knownTerrain, true);
+  assert.equal(intel.knownSite, true);
+});
+
+test('a fought encounter (battleReport present) projects the defender strength', () => {
+  const gameState = {
+    worldMap: { tiles: [{ q: 7, r: 7, visibility: 'scouted' }] },
+    worldCombat: {
+      encounters: [
+        {
+          id: 'camp_far',
+          kind: 'hostileForce',
+          status: 'active',
+          q: 7,
+          r: 7,
+          defender: { soldiers: 80, threat: 5, scale: 3, leader: { abilityKit: { abilities: [] } } },
+          battleReport: { id: 'report_1', summary: 'fought' },
+        },
+      ],
+    },
+  };
+  const encounter = WorldCombatEncounterService.getClientState(gameState, new Date()).encounters.find(
+    (e) => e.id === 'camp_far',
+  );
+  assert.ok(encounter.defender, 'defender detail is known after a battle');
+  assert.equal(encounter.defender.soldiers, 80);
+  assert.equal(encounter.battleTarget.intelSnapshot.knownGarrison, true);
+  assert.equal(encounter.battleTarget.intelSnapshot.knownLeader, true);
+  assert.equal(encounter.battleTarget.intelSnapshot.knownSkill, true);
 });
 
 test('normalizeEncounter passes through the camp fields with inert defaults for legacy encounters', () => {
@@ -202,6 +322,9 @@ test('WorldCampSpawner is not required for the stub to exist (rollback safety)',
   const gameState = { worldMap: { seed: CAMP_SEED } };
   const seeded = WorldCampSpawner.planCamps(CAMP_SEED, { q: 0, r: 0 });
   assert.ok(Array.isArray(seeded));
+  // Reveal the encounter tiles so the fog gate lets the projected stub through (the stub exists in
+  // state regardless — this test is about state, so we surface it past the client fog gate).
+  revealAllEncounterTiles(gameState, new Date());
   const client = WorldCombatEncounterService.getClientState(gameState, new Date());
   assert.ok(
     client.encounters.some((e) => e.id === WorldCombatEncounterService.ENCOUNTER_ID),

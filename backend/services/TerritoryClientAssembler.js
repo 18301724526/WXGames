@@ -171,13 +171,26 @@ function getClientBattleTargetForIntel(battleTarget, intel) {
   };
 }
 
+// "Fought before" for a defended site = a lastBattle record was written after a resolved fight. It is
+// the SINGLE fact that unlocks defender STRENGTH numbers (defense / recommendedSoldiers / threat) —
+// learned in battle, not by scouting ("打了才知道"). The garrison/leader/battleTarget objects were
+// already intel-gated above; this withholds the raw strength scalars the spread would otherwise leak.
+function hasFoughtTerritory(territory = {}) {
+  return Boolean(territory && territory.lastBattle);
+}
+
 function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}, gameState = {}) {
   const intel = getTerritoryIntelSnapshot(territory, deps);
   const occupationMode = deps.getOccupationMode(territory, gameState);
   // A settlement faces no defender — never advertise a band garrison/leader the player won't fight,
   // keeping the DTO's occupationMode and its defender fields consistent.
   const settling = occupationMode === 'settlement';
-  return {
+  // A conquest target the player has NOT fought yet hides its strength scalars. Own/occupied sites
+  // (owner 'player') and already-fought sites keep them. Undefined (not 0) so the frontend shows
+  // "未知" rather than a misleading "0 兵 / 0 防御".
+  const hideStrength =
+    !settling && territory.owner !== 'player' && !hasFoughtTerritory(territory);
+  const view = {
     ...territory,
     intel,
     garrison: settling ? null : redactGarrisonForIntel(territory.garrison, intel),
@@ -190,6 +203,14 @@ function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}, game
     occupationMode,
     mission,
   };
+  // Strip the strength scalars entirely (delete, not 0) so the key is absent from the DTO and the
+  // frontend renders "未知" instead of a misleading zero.
+  if (hideStrength) {
+    delete view.defense;
+    delete view.recommendedSoldiers;
+    delete view.threat;
+  }
+  return view;
 }
 
 function getClientTerritoryState(gameState, now = new Date(), deps = {}, projection = {}) {
