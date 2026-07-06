@@ -12,10 +12,10 @@ function getMapBounds(territories) {
   };
 }
 
+// Delegates to the WorldMapService SSOT so every coordinate-keyed projection (tiles, territories,
+// encounters) builds keys from the same source. Kept as an export for existing callers.
 function getCoordinateKey(site = {}) {
-  const x = Number(site.x ?? site.q ?? 0);
-  const y = Number(site.y ?? site.r ?? 0);
-  return `${Math.floor(x)},${Math.floor(y)}`;
+  return WorldMapService.getTileCoordinateKey(site);
 }
 
 function getWorldMapOrigin(worldMap = {}) {
@@ -51,19 +51,19 @@ function isSharedNeutralCity(site = {}) {
   return Boolean(site && site.owner === 'neutral' && !site.ownerPlayerId);
 }
 
-// Visibility gate (docs/design/10 §6-R2 — NO reveal-at-spawn). A pre-placed neutral city exists in the
-// shared store from world-init, but must stay HIDDEN in a player's client map until that player's march
-// vision discovers its tile. The player's own worldMap.tiles is already reveal-streamed (only tiles the
-// player has seen are present), so a neutral city is "discovered" for this player exactly when a tile
-// exists at its coordinate. Drop every not-yet-discovered neutral city from the projected set so it is
-// absent from the client territories DTO and never bound to the map. Discovery (S4) simply reveals the
-// tile, which flips the city visible here — this function stays unchanged. Own/occupied shared sites
-// are untouched.
+// Visibility gate (docs/design/10 §6-R2 — NO reveal-at-spawn). A pre-placed neutral city exists in
+// the shared store from world-init, but stays HIDDEN in a player's client map until that player has
+// revealed its tile ("discovered once → shown forever" — the CITY semantic, deliberately different
+// from hostile encounters, which are gated by CURRENT vision in WorldCombatEncounterService).
+// The gate consults WorldMapService.getRevealedTileCoordSet — the SSOT coordinate set of what the
+// client map actually projects — NOT raw worldMap.tiles presence: the raw array also carries
+// AI-explorer tiles written as visibility:'hidden'/visible:false, which must never surface a city.
+// KNOWN RESIDUE (out of scope here): solid-fill bridge tiles (revealSolidKnownWorldTiles) are
+// visible:true, so they are legitimately in the revealed set and a shared neutral city standing on
+// a filled-but-never-marched tile still projects. Own/occupied shared sites are untouched.
 function filterDiscoveredNeutralCities(sharedTerritories, worldMap = {}) {
   if (!Array.isArray(sharedTerritories) || !sharedTerritories.length) return sharedTerritories || [];
-  const visibleTileCoords = new Set(
-    (Array.isArray(worldMap.tiles) ? worldMap.tiles : []).map((tile) => getCoordinateKey(tile)),
-  );
+  const visibleTileCoords = WorldMapService.getRevealedTileCoordSet(worldMap);
   return sharedTerritories.filter((site) => {
     if (!isSharedNeutralCity(site)) return true;
     return visibleTileCoords.has(getCoordinateKey(site));

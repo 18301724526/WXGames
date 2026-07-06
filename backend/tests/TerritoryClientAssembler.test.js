@@ -149,6 +149,38 @@ test('client territory projection hides an undiscovered shared neutral city (no 
   assert.equal(clientState.worldMap.tiles.some((tile) => tile.siteId === neutralCity.id), false);
 });
 
+test('an AI-explorer hidden tile does NOT surface a shared neutral city (coord-set pollution guard)', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-ai-hidden-neutral');
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  const neutralCity = {
+    id: 'site_9_0',
+    x: 9,
+    y: 0,
+    naturalName: '河湾城邦',
+    type: 'city',
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+  };
+  TerritoryService.normalizeTerritoryState(state, now);
+  // An AI explorer walked over (9,0): the tile exists in the RAW worldMap.tiles array but is
+  // hidden from the player (the exact shape WorldAiExplorerService.revealAiArea writes). The
+  // discovery gate reads the SSOT revealed set, so this tile must never surface the city.
+  WorldMapService.revealTile(state, 9, 0, now, {
+    visibility: 'hidden',
+    discovered: true,
+    visible: false,
+    intel: { level: 0 },
+  });
+
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
+    sharedWorldTerritories: [neutralCity],
+  });
+
+  assert.equal(clientState.territories.some((site) => site.id === neutralCity.id), false);
+  assert.equal(clientState.worldMap.tiles.some((tile) => tile.siteId === neutralCity.id), false);
+});
+
 test('client territory projection reveals a shared neutral city once its tile is discovered', () => {
   const state = GameStateNormalizer.createInitialGameState('territory-client-revealed-neutral');
   const now = new Date('2026-07-06T00:00:00.000Z');

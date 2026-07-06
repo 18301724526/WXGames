@@ -31,21 +31,24 @@ function getFirstCamp(gameState, now) {
   return gameState.worldCombat.encounters.find((encounter) => encounter.campArchetypeKey);
 }
 
-// The fog gate only projects encounters whose tile the player has revealed. For tests that assert on
-// the projected DTO, normalize first then reveal every encounter's coordinate so they surface.
-function revealAllEncounterTiles(gameState, now = new Date()) {
+// Hostile encounters project only while inside the player's CURRENT vision (occupied cities +
+// fielded march parties). For tests that assert on the projected DTO regardless of vision,
+// normalize first then park a fielded vision probe on every encounter's coordinate.
+function surfaceAllEncounters(gameState, now = new Date()) {
   WorldCombatEncounterService.normalizeCombatState(gameState, now);
-  gameState.worldMap = gameState.worldMap || {};
-  gameState.worldMap.tiles = (gameState.worldCombat.encounters || []).map((encounter) => ({
-    q: encounter.q,
-    r: encounter.r,
-    visibility: 'scouted',
-  }));
+  gameState.exploreMissions = [
+    ...(gameState.exploreMissions || []),
+    ...(gameState.worldCombat.encounters || []).map((encounter, index) => ({
+      id: `vision_probe_${index}`,
+      status: 'active',
+      position: { q: encounter.q, r: encounter.r },
+    })),
+  ];
   return gameState;
 }
 
 test('getClientState exposes a localizable nameKey on the seeded hostile encounter', () => {
-  const gameState = revealAllEncounterTiles({}, new Date());
+  const gameState = surfaceAllEncounters({}, new Date());
   const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
   const encounter = (clientState.activeEncounters || []).find(
     (entry) => entry.id === WorldCombatEncounterService.ENCOUNTER_ID,
@@ -57,7 +60,9 @@ test('getClientState exposes a localizable nameKey on the seeded hostile encount
 
 test('getClientState backfills nameKey for legacy encounters that only stored an English name', () => {
   const gameState = {
-    worldMap: { tiles: [{ q: 2, r: -1, visibility: 'scouted' }] },
+    // The capital-ridge stub sits at ring distance 2 — inside the capital's city vision.
+    worldMap: { origin: { q: 0, r: 0 } },
+    territories: [{ id: 'capital', x: 0, y: 0 }],
     worldCombat: {
       encounters: [
         {
@@ -81,46 +86,98 @@ test('getClientState backfills nameKey for legacy encounters that only stored an
   assert.equal(encounter.nameKey, 'world.combat.encounter.frontierPatrol');
 });
 
-// --- Fog gate: hostile encounters appear only on revealed tiles (docs/design/10 §6 fog parity) ---
+// --- Current-vision gate: hostile encounters are LIVE units — visible only inside the player's
+// current vision (cities + fielded parties), never via reveal history (anti through-fog leak) ---
 
 // A gameState with NO worldMap.seed does not seed extra camps, so the only encounter is ours —
-// letting us assert the fog gate in isolation (normalizeCombatState still keeps the legacy stub, but
-// its tile (2,-1) is not in our revealed set, so it is gated out too).
-function createLoneEncounterState(revealedTiles) {
+// letting us assert the vision gate in isolation (normalizeCombatState still keeps the legacy stub,
+// but with no territories and no missions there is no vision source, so it is gated out too).
+function createLoneEncounterState(extra = {}) {
   return {
-    worldMap: { tiles: revealedTiles },
+    worldMap: { origin: { q: 0, r: 0 } },
     worldCombat: {
       encounters: [
         { id: 'camp_far', kind: 'hostileForce', status: 'active', q: 7, r: 7, defender: { soldiers: 40 } },
       ],
     },
+    ...extra,
   };
 }
 
-test('getClientState hides an encounter whose tile the player has NOT revealed', () => {
-  const gameState = createLoneEncounterState([]); // nothing revealed
-  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
-  assert.equal(
-    clientState.encounters.some((e) => e.id === 'camp_far'),
-    false,
-    'unrevealed encounter must be absent from the DTO',
-  );
+test('an encounter inside a fielded party\'s current vision projects; after the party moves away it hides', () => {
+  const gameState = createLoneEncounterState({
+    exploreMissions: [{ id: 'm_scout', status: 'active', position: { q: 6, r: 7 } }], // Chebyshev 1 of (7,7)
+  });
+  let clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(clientState.encounters.some((e) => e.id === 'camp_far'), true);
+  assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), true);
+
+  // The party marches on — the camp leaves current vision and hides again (live-unit semantics).
+  gameState.exploreMissions[0].position = { q: 2, r: 2 };
+  clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(clientState.encounters.some((e) => e.id === 'camp_far'), false);
   assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), false);
   // Server-side encounter state is UNTOUCHED — the gate only filters the projection.
+  assert.equal(gameState.worldCombat.encounters.some((e) => e.id === 'camp_far'), true);
+  assert.equal(gameState.worldCombat.encounters.find((e) => e.id === 'camp_far').status, 'active');
+});
+
+test('a revealed-history tile alone (solid-fill shape) does NOT surface an encounter', () => {
+  // The through-fog root cause: revealSolidKnownWorldTiles writes visible bridge tiles into
+  // worldMap.tiles far beyond anything the player has actually seen. Reveal history must never
+  // stand in for current vision.
+  const gameState = createLoneEncounterState();
+  gameState.worldMap.tiles = [{ q: 7, r: 7, visibility: 'scouted', visible: true }];
+  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(clientState.encounters.some((e) => e.id === 'camp_far'), false);
+  assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), false);
+  assert.equal(gameState.worldCombat.encounters.some((e) => e.id === 'camp_far'), true);
+});
+
+test('an AI-explorer hidden tile does NOT surface an encounter', () => {
+  const gameState = createLoneEncounterState();
+  gameState.worldMap.tiles = [{ q: 7, r: 7, visibility: 'hidden', visible: false, discovered: true }];
+  const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
+  assert.equal(clientState.encounters.some((e) => e.id === 'camp_far'), false);
+});
+
+test('an encounter inside an occupied city\'s vision projects; beyond the city radius it hides', () => {
+  const inRange = createLoneEncounterState({
+    territories: [{ id: 'city_east', x: 8, y: 8, owner: 'player', status: 'occupied' }], // Chebyshev 1
+  });
   assert.equal(
-    gameState.worldCombat.encounters.some((e) => e.id === 'camp_far'),
+    WorldCombatEncounterService.getClientState(inRange, new Date()).activeEncounters.some((e) => e.id === 'camp_far'),
     true,
   );
+
+  const outOfRange = createLoneEncounterState({
+    territories: [{ id: 'city_far', x: 10, y: 10, owner: 'player', status: 'occupied' }], // Chebyshev 3 > radius 2
+  });
   assert.equal(
-    gameState.worldCombat.encounters.find((e) => e.id === 'camp_far').status,
-    'active',
+    WorldCombatEncounterService.getClientState(outOfRange, new Date()).activeEncounters.some((e) => e.id === 'camp_far'),
+    false,
+  );
+
+  // A neutral (not occupied) city is nobody's eyes.
+  const neutral = createLoneEncounterState({
+    territories: [{ id: 'city_neutral', x: 8, y: 8, owner: 'neutral', status: 'discovered' }],
+  });
+  assert.equal(
+    WorldCombatEncounterService.getClientState(neutral, new Date()).activeEncounters.some((e) => e.id === 'camp_far'),
+    false,
   );
 });
 
-test('getClientState reveals the encounter once its tile enters the revealed set', () => {
-  const gameState = createLoneEncounterState([{ q: 7, r: 7, visibility: 'scouted' }]);
+test('an engaged mission standing on the encounter keeps it visible (battle UI never loses its target)', () => {
+  const gameState = createLoneEncounterState({
+    exploreMissions: [{
+      id: 'm_engaged',
+      status: 'idle', // arrival already flipped the march idle …
+      position: { q: 7, r: 7, tileId: 'tile_7_7' },
+      combat: { status: 'engaged', encounterId: 'camp_far', engagedAt: new Date().toISOString() },
+    }],
+  });
   const clientState = WorldCombatEncounterService.getClientState(gameState, new Date());
-  assert.equal(clientState.encounters.some((e) => e.id === 'camp_far'), true);
   assert.equal(clientState.activeEncounters.some((e) => e.id === 'camp_far'), true);
 });
 
@@ -128,7 +185,8 @@ test('getClientState reveals the encounter once its tile enters the revealed set
 
 test('a revealed-but-unfought encounter projects NO defender strength (intel all false)', () => {
   const gameState = {
-    worldMap: { tiles: [{ q: 7, r: 7, visibility: 'scouted' }] },
+    worldMap: { origin: { q: 0, r: 0 } },
+    exploreMissions: [{ id: 'm_probe', status: 'active', position: { q: 7, r: 7 } }],
     worldCombat: {
       encounters: [
         {
@@ -161,7 +219,8 @@ test('a revealed-but-unfought encounter projects NO defender strength (intel all
 
 test('a fought encounter (battleReport present) projects the defender strength', () => {
   const gameState = {
-    worldMap: { tiles: [{ q: 7, r: 7, visibility: 'scouted' }] },
+    worldMap: { origin: { q: 0, r: 0 } },
+    exploreMissions: [{ id: 'm_probe', status: 'active', position: { q: 7, r: 7 } }],
     worldCombat: {
       encounters: [
         {
@@ -322,9 +381,9 @@ test('WorldCampSpawner is not required for the stub to exist (rollback safety)',
   const gameState = { worldMap: { seed: CAMP_SEED } };
   const seeded = WorldCampSpawner.planCamps(CAMP_SEED, { q: 0, r: 0 });
   assert.ok(Array.isArray(seeded));
-  // Reveal the encounter tiles so the fog gate lets the projected stub through (the stub exists in
-  // state regardless — this test is about state, so we surface it past the client fog gate).
-  revealAllEncounterTiles(gameState, new Date());
+  // Park vision probes on the encounter tiles so the current-vision gate lets the projected stub
+  // through (the stub exists in state regardless — this test is about state, not visibility).
+  surfaceAllEncounters(gameState, new Date());
   const client = WorldCombatEncounterService.getClientState(gameState, new Date());
   assert.ok(
     client.encounters.some((e) => e.id === WorldCombatEncounterService.ENCOUNTER_ID),

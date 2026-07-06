@@ -5,11 +5,11 @@ const FormationStrengthService = require('../military/FormationStrengthService')
 const DefenderLeaderService = require('../DefenderLeaderService');
 const WorldCampSpawner = require('./WorldCampSpawner');
 const CityService = require('../CityService');
-// SINGLE SOURCE for the "player has revealed this tile" test — the exact same
-// getCoordinateKey + worldMap.tiles pair the neutral-city fog gate
-// (TerritoryClientAssembler.filterDiscoveredNeutralCities) uses. Reused here so a hostile
-// encounter appears on a player's client map under identical fog rules — no second reveal source.
-const TerritoryClientAssembler = require('../TerritoryClientAssembler');
+// Hostile encounters are gated by the player's CURRENT vision (WorldExplorerVision — occupied
+// cities + fielded march parties, computed live), NOT by the reveal history. Cities keep the
+// "discovered once → shown forever" gate (WorldMapService.getRevealedTileCoordSet, used by
+// TerritoryClientAssembler); encounters deliberately do not — walk away and they hide again.
+const WorldExplorerVision = require('../worldExplorer/WorldExplorerVision');
 const { toInteger } = require('../../../shared/numberUtils');
 const { cloneIfObject } = require('../../../shared/objectUtils');
 const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
@@ -764,29 +764,30 @@ function getClientEncounter(encounter = {}) {
   };
 }
 
-// Fog gate for hostile encounters — the client-projection twin of the neutral-city gate.
-// An encounter lives in the shared world state unconditionally (worker/heartbeat settle it all the
-// same), but it must stay HIDDEN in a player's client DTO until that player's march vision has
-// revealed its tile. The player's worldMap.tiles is already reveal-streamed, so an encounter is
-// "discovered" for this player exactly when a revealed tile sits at its coordinate — the identical
-// rule filterDiscoveredNeutralCities applies to cities, via the SAME getCoordinateKey source.
-function isEncounterRevealed(encounter, visibleTileCoords) {
-  return visibleTileCoords.has(TerritoryClientAssembler.getCoordinateKey(encounter));
+// Vision gate for hostile encounters: an encounter is a LIVE unit — it projects into a player's
+// client DTO only while its tile sits inside the player's CURRENT vision (an occupied city or a
+// fielded march party covering it, WorldExplorerVision.computeCurrentVisionCoordSet). Walk away
+// and it hides; come near again and it reappears. This is deliberately NOT the city rule: cities
+// are "discovered once → shown forever" (getRevealedTileCoordSet in WorldMapService, consumed by
+// filterDiscoveredNeutralCities). It is also deliberately NOT the raw worldMap.tiles array — that
+// array is a reveal HISTORY polluted with solid-fill bridge tiles and AI-hidden tiles, and gating
+// on it is exactly the through-fog leak this replaced. The gate only filters the projection: the
+// server-side worldCombat.encounters state (worker/heartbeat settlement) is untouched. Coordinate
+// keys come from the same WorldMapService.getTileCoordinateKey SSOT as every other projection gate.
+function isEncounterVisibleToPlayer(encounter, visionCoordSet) {
+  return visionCoordSet.has(WorldMapService.getTileCoordinateKey(encounter));
 }
 
 function getClientState(gameState = {}, now = new Date()) {
   const state = normalizeCombatState(gameState, now);
-  const tiles = Array.isArray(gameState.worldMap?.tiles) ? gameState.worldMap.tiles : [];
-  const visibleTileCoords = new Set(
-    tiles.map((tile) => TerritoryClientAssembler.getCoordinateKey(tile)),
-  );
-  const revealedEncounters = (state.encounters || []).filter((encounter) =>
-    isEncounterRevealed(encounter, visibleTileCoords),
+  const visionCoordSet = WorldExplorerVision.computeCurrentVisionCoordSet(gameState);
+  const visibleEncounters = (state.encounters || []).filter((encounter) =>
+    isEncounterVisibleToPlayer(encounter, visionCoordSet),
   );
   return {
     schema: state.schema || SCHEMA,
-    encounters: revealedEncounters.map(getClientEncounter),
-    activeEncounters: revealedEncounters
+    encounters: visibleEncounters.map(getClientEncounter),
+    activeEncounters: visibleEncounters
       .filter((encounter) => encounter.status === 'active')
       .map(getClientEncounter),
     recentReports: (state.recentReports || []).map((entry) => cloneIfObject(entry)),

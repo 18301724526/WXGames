@@ -282,14 +282,47 @@ function isLegacyCapitalTileOutsideOrigin(tile = {}, origin = {}) {
   return markedCapital && !isCapitalOriginTile(tile, origin);
 }
 
+// SSOT: "has the player revealed this tile" — the ONE written form of the reveal predicate.
+// gameState.worldMap.tiles is NOT reveal-only: solid-fill bridge tiles (TerritoryStateNormalizer.
+// revealSolidKnownWorldTiles) and AI-explorer tiles (WorldAiExplorerService.revealAiArea, written
+// with visibility:'hidden'/visible:false) live in the same array. Every consumer that needs "what
+// the player can actually see" must come through here (or getRevealedTileCoordSet below) — never
+// hand-roll the visibility check or treat raw tile presence as "revealed".
+function isTileRevealed(tile) {
+  return Boolean(tile) && tile.visibility !== 'hidden' && tile.visible !== false;
+}
+
+// Full client-projection rule for one tile: revealed AND not a legacy capital marker left behind
+// at a stale origin. Shared verbatim by getClientWorldMapFromNormalized (what the client can draw)
+// and getRevealedTileCoordSet (what gates coordinate-keyed projections) so the two can never fork.
+function isClientProjectedTile(tile, origin) {
+  return isTileRevealed(tile) && !isLegacyCapitalTileOutsideOrigin(tile, origin);
+}
+
+// SSOT: coordinate key for coordinate-keyed projection sets (territories, encounters, tiles).
+// Moved here from TerritoryClientAssembler (which now delegates) so lower layers can build the
+// same keys without requiring the client assembler. Accepts x/y or q/r shaped objects.
+function getTileCoordinateKey(site = {}) {
+  const x = Number(site.x ?? site.q ?? 0);
+  const y = Number(site.y ?? site.r ?? 0);
+  return `${Math.floor(x)},${Math.floor(y)}`;
+}
+
+// SSOT: the coordinate-key set of every tile the CLIENT map projects. By construction (same
+// isClientProjectedTile) this set always equals the coordinates of
+// getClientWorldMapFromNormalized(worldMap).tiles — consumers gate against what the client can
+// actually draw, never against the raw persisted tile array.
+function getRevealedTileCoordSet(worldMap = {}) {
+  const origin = getSpawnOrigin(worldMap.origin || {});
+  return new Set((Array.isArray(worldMap.tiles) ? worldMap.tiles : [])
+    .filter((tile) => isClientProjectedTile(tile, origin))
+    .map((tile) => getTileCoordinateKey(tile)));
+}
+
 function getClientWorldMapFromNormalized(worldMap) {
   const clientWorldMap = clone(worldMap || {});
   const origin = getSpawnOrigin(clientWorldMap.origin || {});
-  clientWorldMap.tiles = (clientWorldMap.tiles || []).filter((tile) => (
-    tile.visibility !== 'hidden'
-    && tile.visible !== false
-    && !isLegacyCapitalTileOutsideOrigin(tile, origin)
-  ));
+  clientWorldMap.tiles = (clientWorldMap.tiles || []).filter((tile) => isClientProjectedTile(tile, origin));
   return clientWorldMap;
 }
 
@@ -325,6 +358,9 @@ module.exports = {
   getRiverPorts,
   getRiverMouthTemplateForNeighborOfOcean,
   getRevealArea,
+  getRevealedTileCoordSet,
+  getTileCoordinateKey,
+  isTileRevealed,
   revealTileArea,
   canPlaceSiteOnTerrain,
   createTile,

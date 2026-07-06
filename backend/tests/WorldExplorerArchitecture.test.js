@@ -41,6 +41,7 @@ test('WorldExplorerService stays a facade over focused explorer modules', () => 
     'WorldExplorerTrace.js',
     'WorldExplorerTutorial.js',
     'WorldExplorerTutorialCity.js',
+    'WorldExplorerVision.js',
     'WorldMarchVerification.js',
   ]);
   for (const fileName of moduleFiles) {
