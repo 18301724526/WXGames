@@ -29,6 +29,26 @@ test('GameStateRepository persists task progress with the game state', () => {
   db.close();
 });
 
+test('GameStateRepository persists captureDecisions (②b) with the game state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  const state = GameStateNormalizer.createInitialGameState('capture-decisions-repo-test');
+  state.captureDecisions = [{
+    id: 'cap_1_t_5_5', territoryId: 't_5_5', territoryName: '林城',
+    captive: { id: 'df_1', name: '林烈' }, recruitChance: 0.42, seed: 's', status: 'pending', createdAt: '2026-07-06T00:00:00.000Z',
+  }];
+
+  repository.save(state);
+  const saved = repository.findByPlayerId('capture-decisions-repo-test');
+  assert.equal(saved.captureDecisions.length, 1);
+  assert.equal(saved.captureDecisions[0].id, 'cap_1_t_5_5');
+  assert.equal(saved.captureDecisions[0].captive.name, '林烈');
+  assert.equal(saved.captureDecisions[0].status, 'pending');
+  db.close();
+});
+
 test('GameStateRepository records schema migration ledger during init', () => {
   const db = new Database(':memory:');
   try {
@@ -39,12 +59,15 @@ test('GameStateRepository records schema migration ledger during init', () => {
     assert.deepEqual(rows, [{
       id: '001-game-states-compat-columns',
       status: 'applied',
+    }, {
+      id: '002-capture-decisions-column',
+      status: 'applied',
     }]);
 
     const secondRepository = new GameStateRepository(db);
     secondRepository.init();
     const count = db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count;
-    assert.equal(count, 1);
+    assert.equal(count, 2);
   } finally {
     db.close();
   }

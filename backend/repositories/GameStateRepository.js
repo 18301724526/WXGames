@@ -48,6 +48,18 @@ function createGameStateSchemaMigrations() {
         }
       }
     },
+  }, {
+    // ②b: pending captured-general decisions (斩杀/招降/放生). A new column (not a compat backfill),
+    // so it needs its own migration to land on existing DBs; fresh DBs get it from CREATE TABLE.
+    id: '002-capture-decisions-column',
+    description: 'Add captureDecisions column for the garrison-capture (②b) decision queue.',
+    statements: ['ALTER TABLE game_states ADD COLUMN captureDecisions TEXT'],
+    apply(db) {
+      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
+      if (!columns.has('captureDecisions')) {
+        db.prepare('ALTER TABLE game_states ADD COLUMN captureDecisions TEXT').run();
+      }
+    },
   }];
 }
 
@@ -95,6 +107,7 @@ class GameStateRepository {
         gameDay INTEGER,
         eventQueue TEXT,
         eventHistory TEXT,
+        captureDecisions TEXT,
         regularEventState TEXT,
         threatEventState TEXT,
         activeBuffs TEXT,
@@ -177,6 +190,7 @@ class GameStateRepository {
       gameDay: row.gameDay || 1,
       eventQueue: JSON.parse(row.eventQueue || '[]'),
       eventHistory: JSON.parse(row.eventHistory || '[]'),
+      captureDecisions: JSON.parse(row.captureDecisions || '[]'),
       regularEventState: row.regularEventState ? JSON.parse(row.regularEventState) : null,
       threatEventState: row.threatEventState ? JSON.parse(row.threatEventState) : null,
       activeBuffs: JSON.parse(row.activeBuffs || '[]'),
@@ -311,8 +325,8 @@ class GameStateRepository {
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, worldMarchClientReports, worldMarchVerification,
-        worldCombat, worldAi, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        worldCombat, worldAi, warMissions, scoutReports, updatedAt, captureDecisions
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(playerId) DO UPDATE SET
         revision = excluded.revision,
         saveMetadata = excluded.saveMetadata,
@@ -355,7 +369,8 @@ class GameStateRepository {
         worldAi = excluded.worldAi,
         warMissions = excluded.warMissions,
         scoutReports = excluded.scoutReports,
-        updatedAt = excluded.updatedAt
+        updatedAt = excluded.updatedAt,
+        captureDecisions = excluded.captureDecisions
     `).run(
       gameState.playerId,
       revision,
@@ -403,6 +418,7 @@ class GameStateRepository {
       JSON.stringify(gameState.warMissions || []),
       JSON.stringify(gameState.scoutReports || []),
       updatedAt,
+      JSON.stringify(gameState.captureDecisions || []),
     );
   }
 

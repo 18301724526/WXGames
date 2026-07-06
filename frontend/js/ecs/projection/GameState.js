@@ -81,6 +81,7 @@
       eraHistory: gameState.eraHistory || [],
       eventQueue: gameState.eventQueue || [],
       eventHistory: gameState.eventHistory || [],
+      captureDecisions: gameState.captureDecisions || [], // ②b: pending 斩杀/招降/放生 decisions
       regularEventState: gameState.regularEventState || null,
       threatEventState: gameState.threatEventState || null,
       activeBuffs: gameState.activeBuffs || [],
