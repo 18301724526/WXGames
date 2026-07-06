@@ -779,3 +779,170 @@ test('world combat encounter allows deployment when only a deputy has zero soldi
   assert.equal(started.mission.formationSnapshot.members[0].soldiersRemaining, 120);
   assert.equal(started.mission.formationSnapshot.members[1].soldiersRemaining, 0);
 });
+
+// ---------------------------------------------------------------------------
+// S4 — march-vision → pre-placed neutral city DISCOVERY (docs/design/10 §3.4).
+// A NON-tutorial march whose vision covers a pre-placed neutral city (fed via
+// planningContext.sharedWorldTerritories, S3's shared store) flips that city to
+// discovered + on-map + persistently fog-revealed, without touching the tutorial path.
+// ---------------------------------------------------------------------------
+
+function createDiscoveryExploreState(seed = 'discovery-seed') {
+  const rangerId = 'fp-ranger';
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  return {
+    playerId: 'world-explorer-discovery-test',
+    activeCityId: 'capital',
+    currentEra: 3,
+    // Tutorial COMPLETED — this is the generic (non-tutorial) discovery path; the tutorial
+    // plannedSites/grant branch must be inert so we exercise only §3.4.
+    tutorial: {
+      ...TutorialService.manualAdvance(
+        TutorialService.createInitialTutorialState(),
+        TutorialService.TUTORIAL_STEPS.completed,
+      ),
+    },
+    territories: [{
+      id: 'capital', x: 0, y: 0, naturalName: 'Origin', cityName: 'Capital',
+      type: 'capital', owner: 'player', status: 'occupied',
+    }],
+    worldMap: WorldMapService.createInitialWorldMap(seed, now),
+    famousPeople: [{ id: rangerId, name: 'Ranger' }],
+    military: {
+      soldiers: 300, soldierCap: 300,
+      formations: [{ slot: 1, memberIds: [rangerId], soldierAssignments: { [rangerId]: 120 } }],
+    },
+    cities: {
+      capital: {
+        id: 'capital', territoryId: 'capital', buildings: { barracks: { level: 1 } },
+        resources: { food: 500, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+        military: {
+          soldiers: 300, soldierCap: 300,
+          formations: [{ slot: 1, memberIds: [rangerId], soldierAssignments: { [rangerId]: 120 } }],
+        },
+      },
+    },
+    exploreMissions: [],
+  };
+}
+
+function cityVisionSourceCount(gameState, q, r) {
+  return (gameState.worldMap.visionHistory?.sources || [])
+    .filter((source) => source.kind === 'city' && source.q === q && source.r === r).length;
+}
+
+test('S4 march vision reveals a pre-placed neutral city, flips it discovered + on-map + fog-permanent', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createDiscoveryExploreState();
+  // A pre-placed neutral city at (2,1) — off the route line but inside the 3x3 reveal radius when the
+  // army stands on the (2,0) step. Fed ONLY through the shared projection (S3), never in territories.
+  const planningContext = {
+    sharedWorldTerritories: [{
+      id: 'site_2_1', x: 2, y: 1, owner: 'neutral', type: 'town', status: 'discovered',
+      scale: 1, naturalName: '河湾村镇',
+    }],
+  };
+
+  const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 3, targetR: 0, formationSlot: 1 }, now);
+  assert.equal(started.success, true);
+  // NO reveal-at-spawn: the city is absent from territories and its tile is not yet bound (§6-R2).
+  assert.equal(gameState.territories.some((territory) => territory.id === 'site_2_1'), false);
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_2_1'), false);
+
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt, { planningContext });
+
+  const discovered = gameState.territories.find((territory) => territory.id === 'site_2_1');
+  assert.ok(discovered, 'the pre-placed city is discovered once its tile enters vision');
+  assert.equal(discovered.owner, 'neutral');
+  assert.equal(discovered.status, 'discovered');
+  // Position + names authored; garrison/capitalDistance/battleTarget are NOT hand-authored (§4-4).
+  assert.equal(Object.prototype.hasOwnProperty.call(discovered, 'garrison'), false);
+  // Tile carries the siteId (so the S3 client DTO gate reveals it, and garrison/conquest resolve).
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_2_1'), true);
+  // Persistent 'city' vision source recorded (§6-R-fog).
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1);
+});
+
+test('S4 discovered pre-placed city stays fog-revealed after the army marches away / re-normalizes', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createDiscoveryExploreState();
+  const planningContext = {
+    sharedWorldTerritories: [{
+      id: 'site_2_1', x: 2, y: 1, owner: 'neutral', type: 'town', status: 'discovered', scale: 1, naturalName: '河湾村镇',
+    }],
+  };
+  const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 3, targetR: 0, formationSlot: 1 }, now);
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt, { planningContext });
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1);
+
+  // The army has reached (3,0) and the mission is idle — the transient 'unit' vision decays, but the
+  // persistent 'city' source must survive a full re-normalize (the reload path).
+  WorldMapService.ensureWorldMap(gameState, new Date(finishAt.getTime() + 60000));
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1, 'the city vision source persists across re-normalize');
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_2_1'), true);
+});
+
+test('S4 discovery is idempotent — advancing twice discovers the city exactly once', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createDiscoveryExploreState();
+  const planningContext = {
+    sharedWorldTerritories: [{
+      id: 'site_2_1', x: 2, y: 1, owner: 'neutral', type: 'town', status: 'discovered', scale: 1, naturalName: '河湾村镇',
+    }],
+  };
+  const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 3, targetR: 0, formationSlot: 1 }, now);
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt, { planningContext });
+  // advanceExploreMissions runs on every tick AND action write — a second pass must not re-discover.
+  WorldExplorerService.advanceExploreMissions(gameState, new Date(finishAt.getTime() + 5000), { planningContext });
+
+  assert.equal(gameState.territories.filter((territory) => territory.id === 'site_2_1').length, 1);
+  assert.equal(gameState.worldMap.tiles.filter((tile) => tile.siteId === 'site_2_1').length, 1);
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1);
+});
+
+test('S4 discovery is consistent for a pre-placed city on the wrapped world seam (canonical ids)', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createDiscoveryExploreState();
+  // The city is stored at canonical (1023,0); the army marches through display (-1,0) — the SAME
+  // physical tile across the 1024-wide seam. Square reveal + wrapped distance must agree (§6-R-radius).
+  const planningContext = {
+    sharedWorldTerritories: [{
+      id: 'site_1023_0', x: 1023, y: 0, owner: 'neutral', type: 'town', status: 'discovered', scale: 1, naturalName: '边缘哨所',
+    }],
+  };
+  const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 1022, targetR: 0, formationSlot: 1 }, now);
+  assert.equal(started.success, true);
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt, { planningContext });
+
+  const discovered = gameState.territories.find((territory) => territory.id === 'site_1023_0');
+  assert.ok(discovered, 'a seam-adjacent city is discovered via canonical id matching');
+  assert.equal(discovered.status, 'discovered');
+  assert.equal(
+    gameState.worldMap.tiles.some((tile) => (
+      WorldMapService.getCanonicalTileId(tile.q, tile.r) === 'tile_1023_0' && tile.siteId === 'site_1023_0'
+    )),
+    true,
+  );
+});
+
+test('S4 discovery does NOT re-bind or re-discover a player-occupied territory on a revealed coord (R-guard)', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createDiscoveryExploreState();
+  // A player-owned/occupied territory already sits at (2,1). The march reveals its coord, but discovery
+  // must leave ownership untouched — discovery is separate from ownership (§6-R-guard).
+  gameState.territories.push({ id: 'owned_2_1', x: 2, y: 1, owner: 'player', status: 'occupied' });
+
+  const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 3, targetR: 0, formationSlot: 1 }, now);
+  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, finishAt, { planningContext: { sharedWorldTerritories: [] } });
+
+  const owned = gameState.territories.find((territory) => territory.id === 'owned_2_1');
+  assert.equal(owned.owner, 'player');
+  assert.equal(owned.status, 'occupied');
+  // No spurious neutral discovery was created at that coord.
+  assert.equal(gameState.territories.some((territory) => territory.id.startsWith('site_')), false);
+});
