@@ -301,10 +301,19 @@
           owner: this.formatWorldSiteOwner(site),
           distance: this.t('world.site.metric.distance', { value: site.originDistance ?? site.distance ?? 0 }),
           scale: this.t('world.site.metric.scale', { value: site.scale || 1 }),
-          threat: this.t('world.site.metric.threat', { value: site.threat || 0 }),
+          // Strength scalars (threat/defense/recommendedSoldiers) are withheld by the backend until the
+          // player has fought this site — "打了才知道". When absent (== null), show 未知/兵力不明 rather
+          // than a misleading 0. A present value (own site, or already fought) renders normally.
+          threat: site.threat != null
+            ? this.t('world.site.metric.threat', { value: site.threat })
+            : this.t('world.site.metric.threatUnknown'),
           summary: site.summary || this.formatWorldSiteEffect(site.effects),
-          defense: this.t('world.site.metric.defense', { value: site.defense || 0 }),
-          soldiers: this.t('world.site.metric.recommendedSoldiers', { soldiers: site.recommendedSoldiers || 0 }),
+          defense: site.defense != null
+            ? this.t('world.site.metric.defense', { value: site.defense })
+            : this.t('world.site.metric.defenseUnknown'),
+          soldiers: site.recommendedSoldiers != null
+            ? this.t('world.site.metric.recommendedSoldiers', { soldiers: site.recommendedSoldiers })
+            : this.t('world.site.metric.recommendedSoldiersUnknown'),
           defenderLeader: this.getWorldSiteDefenderLeaderLine(site),
           defenderSkill: this.getWorldSiteDefenderSkillLine(site),
           march: this.getWorldSiteMarchInfo(site, territoryState),

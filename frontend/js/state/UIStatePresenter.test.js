@@ -1361,6 +1361,7 @@ test('UIStatePresenter resolves world site chrome through active locale', () => 
     naturalName: 'Camp',
     defense: 80,
     recommendedSoldiers: 120,
+    threat: 0,
     effects: { foodOutputMultiplier: 0.15 },
     lastBattle: {
       success: false,
@@ -1396,6 +1397,41 @@ test('UIStatePresenter resolves world site chrome through active locale', () => 
   assert.equal(detail.action.expeditionConfig.fields.leader.label, 'Leader');
   assert.equal(detail.action.expeditionConfig.buttons.launch.label, 'Depart');
   LocaleText.setLocale('zh-CN');
+});
+
+test('UIStatePresenter shows 未知/兵力不明 when defender strength fields are withheld (打了才知道)', () => {
+  // The backend withholds defense/recommendedSoldiers/threat for an unfought defended site. The
+  // detail view must show "未知/兵力不明", NOT a misleading 0 — and the expedition must still be usable.
+  const site = {
+    id: 'site-unfought',
+    status: 'discovered',
+    owner: 'neutral',
+    occupationMode: 'conquest',
+    type: 'city',
+    naturalName: '远疆城邦',
+    effects: {},
+    // No defense / recommendedSoldiers / threat keys at all (stripped by the backend gate).
+  };
+  const territoryState = { availableSoldiers: 500, famousPersons: { people: [{ id: 'hero-mil', name: '霍去病', title: '骠骑', roles: ['military'] }] } };
+  const uiState = { selectedSiteId: 'site-unfought', expeditionConfigSiteId: 'site-unfought' };
+
+  const detail = UIStatePresenter.buildWorldSiteDetailViewState(site, territoryState, uiState);
+
+  assert.equal(detail.text.defense, '防御 未知');
+  assert.equal(detail.text.threat, '威胁 未知');
+  assert.equal(detail.text.soldiers, '兵力不明（需交战侦知）');
+  // The expedition still works: a neutral default of 1 (not 0), so the player can march out.
+  assert.equal(detail.action.expeditionConfig.draft.soldiers, 1);
+  assert.equal(detail.action.expeditionConfig.fields.soldiers.min, 1);
+  // A present value still renders the number (regression guard for the fought/own-site path).
+  const foughtDetail = UIStatePresenter.buildWorldSiteDetailViewState(
+    { ...site, defense: 320, recommendedSoldiers: 300, threat: 12 },
+    territoryState,
+    uiState,
+  );
+  assert.equal(foughtDetail.text.defense, '防御 320');
+  assert.equal(foughtDetail.text.soldiers, '建议 300 士兵');
+  assert.equal(foughtDetail.text.threat, '威胁 12');
 });
 
 test('UIStatePresenter enables direct occupation of an empty site with zero soldiers', () => {
