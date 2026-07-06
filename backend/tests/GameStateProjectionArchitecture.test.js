@@ -153,45 +153,28 @@ test('client projection is a read-only DTO boundary for explorer and territory r
     nextStepAt: new Date(Date.now() + 60 * 1000).toISOString(),
     completesAt: new Date(Date.now() + 60 * 1000).toISOString(),
   }];
+  normalized.territories = [
+    ...normalized.territories,
+    { id: 'site_2_0', x: 2, y: 0, type: 'town', owner: 'neutral', status: 'discovered', naturalName: 'Frontier Town' },
+  ];
   normalized.warMissions = [{
     id: 'territory-mission-readonly',
-    kind: 'scout',
+    kind: 'conquest',
     status: 'active',
-    direction: 'e',
-    route: [{ q: 1, r: 0, step: 1, revealed: false }],
-    revealArea: [{ q: 1, r: 0, step: 1, revealed: false }],
-    revealedTileIds: [],
-    actionPoints: 1,
-    actionPointsRemaining: 1,
+    territoryId: 'site_2_0',
+    sourceCityId: 'capital',
+    soldiersCommitted: 100,
+    soldierAllocations: [{ cityId: 'capital', soldiers: 100 }],
     startedAt: '2026-06-10T00:00:00.000Z',
-    nextStepAt: '2026-06-10T00:00:01.000Z',
-    completesAt: '2026-06-10T00:00:01.000Z',
-    soldiersCommitted: 1,
+    completesAt: new Date(Date.now() + 60 * 1000).toISOString(),
   }];
-  normalized.scoutState = {
-    emptyStreak: 0,
-    areas: [{
-      id: 'area-readonly',
-      missionId: 'territory-mission-readonly',
-      direction: 'e',
-      originX: 0,
-      originY: 0,
-      targetX: 1,
-      targetY: 0,
-      result: null,
-      siteId: null,
-      tileIds: [],
-      coords: [],
-      scoutedAt: null,
-    }],
-  };
   const before = clone(normalized);
 
   const clientState = GameStateService.getClientGameStateFromNormalized(normalized);
 
   assert.equal(clientState.worldExplorerState.activeMission.id, 'world-mission-readonly');
   assert.equal(clientState.worldExplorerState.activeMission.route[0].revealed, false);
-  assert.equal(clientState.territoryState.scoutMissions[0].status, 'active');
+  assert.equal(clientState.territoryState.warMissions[0].kind, 'conquest');
   assert.deepEqual(normalized, before);
 });
 

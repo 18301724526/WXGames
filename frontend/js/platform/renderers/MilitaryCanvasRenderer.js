@@ -42,7 +42,6 @@
     renderMilitarySubTabs(nav = {}, x, y, width) {
       const labels = {
         army: this.t('military.tab.army', {}),
-        scout: this.t('military.tab.scout', {}),
         world: this.t('military.tab.world', {}),
         veteranCamp: this.t('military.tab.veteranCamp', {}),
       };
@@ -309,135 +308,6 @@
       });
     }
 
-    getScoutButtonTone(cell = {}) {
-      if (cell.status === 'ready') return { fill: 'rgba(40, 84, 62, 0.72)', stroke: 'rgba(116, 211, 160, 0.42)' };
-      if (cell.status === 'active') return { fill: 'rgba(75, 58, 37, 0.66)', stroke: 'rgba(240, 180, 91, 0.28)' };
-      if (cell.status === 'locked') return { fill: 'rgba(42, 40, 39, 0.62)', stroke: 'rgba(255, 255, 255, 0.08)' };
-      return { fill: 'rgba(63, 47, 32, 0.78)', stroke: 'rgba(240, 180, 91, 0.25)' };
-    }
-
-    renderMilitaryScoutView(scout = {}, x, y, width, height) {
-      this.drawPanel(x, y, width, height, {
-        fill: 'rgba(28, 22, 17, 0.78)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
-      const statusLines = this.wrapTextLimit(scout.statusText || '', width - 28, 2, { size: 12 });
-      this.drawTextLines(statusLines, x + 14, y + 14, { size: 12, color: '#cbbd96', lineHeight: 16 });
-
-      const gridTop = y + 56;
-      const reportReserve = Math.min(126, Math.max(86, height * 0.26));
-      const gridSize = Math.min(width - 28, Math.max(190, Math.min(height - 82 - reportReserve, 286)));
-      const gridX = x + (width - gridSize) / 2;
-      this.drawPanel(gridX, gridTop, gridSize, gridSize, {
-        fill: 'rgba(18, 16, 13, 0.38)',
-        stroke: 'rgba(240, 180, 91, 0.16)',
-        radius: 18,
-      });
-      const order = ['nw', 'n', 'ne', 'w', 'center', 'e', 'sw', 's', 'se'];
-      const cellsById = new Map((scout.cells || []).map((cell) => [cell.id || cell.type, cell]));
-      const cellGap = 7;
-      const cellSize = (gridSize - 28 - cellGap * 2) / 3;
-      order.forEach((id, index) => {
-        const col = index % 3;
-        const row = Math.floor(index / 3);
-        const cellX = gridX + 14 + col * (cellSize + cellGap);
-        const cellY = gridTop + 14 + row * (cellSize + cellGap);
-        const cell = id === 'center'
-          ? {
-            type: 'center',
-            label: this.t('military.scout.centerLabel', {}),
-            subLabel: this.t('military.scout.direction.center', {}),
-          }
-          : cellsById.get(id);
-        if (!cell) return;
-        if (cell.type === 'center') {
-          this.drawPanel(cellX, cellY, cellSize, cellSize, {
-            fill: 'rgba(75, 49, 25, 0.82)',
-            stroke: 'rgba(240, 180, 91, 0.38)',
-            radius: Math.min(22, cellSize / 2),
-            inset: 'rgba(255, 231, 184, 0.12)',
-          });
-          this.drawText(cell.label || this.t('military.scout.centerLabel', {}), cellX + cellSize / 2, cellY + cellSize / 2 - 7, {
-            size: 18,
-            bold: true,
-            color: '#f0b45b',
-            baseline: 'middle',
-            align: 'center',
-          });
-          this.drawText(cell.subLabel || this.t('military.scout.direction.center', {}), cellX + cellSize / 2, cellY + cellSize / 2 + 14, {
-            size: 10,
-            color: '#a0a0a0',
-            baseline: 'middle',
-            align: 'center',
-          });
-          return;
-        }
-        const tone = this.getScoutButtonTone(cell);
-        this.drawPanel(cellX, cellY, cellSize, cellSize, {
-          fill: tone.fill,
-          stroke: tone.stroke,
-          radius: 12,
-          inset: 'rgba(255, 231, 184, 0.05)',
-        });
-        this.drawText(cell.label, cellX + cellSize / 2, cellY + cellSize / 2 - 8, {
-          size: 13,
-          bold: true,
-          color: '#f6e8c8',
-          baseline: 'middle',
-          align: 'center',
-        });
-        this.drawText(cell.actionText, cellX + cellSize / 2, cellY + cellSize / 2 + 12, {
-          size: 10,
-          color: cell.status === 'ready' ? '#74d3a0' : '#aeb0b8',
-          baseline: 'middle',
-          align: 'center',
-        });
-        this.addHitTarget({ x: cellX, y: cellY, width: cellSize, height: cellSize }, {
-          type: cell.action === 'claim' ? 'claimScout' : 'scoutTerritory',
-          value: cell.actionValue,
-          direction: cell.action === 'scout' ? cell.actionValue : undefined,
-          missionId: cell.action === 'claim' ? cell.actionValue : undefined,
-          disabled: cell.disabled || !cell.action,
-        });
-      });
-
-      const reportsY = gridTop + gridSize + 18;
-      if (reportsY < y + height - 42) {
-        this.renderWorldReports(scout.reports || scout.scoutReports || [], x + 14, reportsY, width - 28, y + height - reportsY - 10);
-      }
-    }
-
-    renderWorldReports(reports = [], x, y, width, maxHeight) {
-      this.drawText(this.t('military.scout.reportTitle', {}), x, y, { size: 13, bold: true, color: '#f6e8c8' });
-      if (!reports.length) {
-        this.drawTextLines(this.wrapTextLimit(this.t('military.scout.reportEmpty', {}), width, 2, { size: 11 }), x, y + 24, {
-          size: 11,
-          color: '#aeb0b8',
-          lineHeight: 15,
-        });
-        return;
-      }
-      let cursorY = y + 24;
-      reports.slice().reverse().slice(0, Math.max(1, Math.floor(maxHeight / 54))).forEach((report) => {
-        this.drawPanel(x, cursorY, width, 48, {
-          fill: 'rgba(0, 0, 0, 0.16)',
-          stroke: 'rgba(240, 180, 91, 0.18)',
-          radius: 9,
-        });
-        this.drawText(this.truncateText(report.title || this.t('military.scout.reportTitle', {}), width - 20, { size: 12, bold: true }), x + 10, cursorY + 8, {
-          size: 12,
-          bold: true,
-          color: '#f6e8c8',
-        });
-        this.drawText(this.truncateText(report.text || '', width - 20, { size: 11 }), x + 10, cursorY + 27, {
-          size: 11,
-          color: '#aeb0b8',
-        });
-        cursorY += 56;
-      });
-    }
-
     renderMilitary(state = {}, startY = 210, panelHeight = 310, options = {}) {
       if (!this.presenter) return;
       const nav = this.presenter.buildMilitaryNavigationViewState(state);
@@ -454,9 +324,7 @@
       const contentTop = this.renderMilitarySubTabs(nav, x + 12, startY + 42, width - 24);
       const viewY = contentTop;
       const viewHeight = Math.max(120, startY + panelHeight - viewY - 12);
-      if (nav.activeView === 'scout') {
-        this.renderMilitaryScoutView(this.presenter.buildScoutControlViewState(state), x + 12, viewY, width - 24, viewHeight);
-      } else if (nav.activeView === 'world') {
+      if (nav.activeView === 'world') {
         this.renderMilitaryWorldView(state, x + 12, viewY, width - 24, viewHeight, options);
       } else if (nav.activeView === 'veteranCamp') {
         this.renderVeteranCampView(this.presenter.buildVeteranCampViewState(state), x + 12, viewY, width - 24, viewHeight);

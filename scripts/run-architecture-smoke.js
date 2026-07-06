@@ -220,7 +220,6 @@ const CHECK_FILES = Object.freeze([
   'frontend/minigame/game.js',
   'backend/services/TerritoryService.js',
   'backend/services/territory/TerritoryMilitaryMissions.js',
-  'backend/services/territory/TerritoryScoutResults.js',
   'backend/services/worldExplorer/WorldExplorerDtoMapper.js',
   'backend/services/worldExplorer/WorldExplorerClientState.js',
   'backend/services/worldExplorer/WorldMarchVerification.js',

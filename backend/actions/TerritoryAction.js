@@ -43,14 +43,6 @@ function markTutorialSettlementMissionReady(gameState = {}, territoryId = '') {
 }
 
 function execute(action, gameState, payload = {}) {
-  if (action === 'scoutTerritory') {
-    return attachTerritoryAuthority(
-      TerritoryService.scoutTerritory(gameState, payload.direction || payload.territoryId),
-      gameState,
-      action,
-      payload,
-    );
-  }
   if (action === 'startWorldMarch') {
     return WorldExplorerService.startWorldMarch(gameState, payload);
   }
@@ -59,9 +51,6 @@ function execute(action, gameState, payload = {}) {
   }
   if (action === 'stopWorldMarch') {
     return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, payload);
-  }
-  if (action === 'claimScout') {
-    return attachTerritoryAuthority(TerritoryService.claimScout(gameState, payload.missionId), gameState, action, payload);
   }
   if (action === 'startConquest') {
     const result = TerritoryService.startConquest(gameState, payload.territoryId, payload.expedition || payload.soldiers);

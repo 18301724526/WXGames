@@ -431,8 +431,6 @@
         case 'dismissFamousPersonCandidate': return this.handle_dismissFamousPersonCandidate;
         case 'assignFamousAttributePoint': return this.handle_assignFamousAttributePoint;
         case 'changeFamousPersonsPage': return this.handle_changeFamousPersonsPage;
-        case 'scoutTerritory': return this.handle_scoutTerritory;
-        case 'claimScout': return this.handle_claimScout;
         case 'selectWorldMarchTarget': return this.handle_selectWorldMarchTarget;
         case 'openWorldMarchFormationPicker': return this.handle_openWorldMarchFormationPicker;
         case 'closeWorldMarchHud': return this.handle_closeWorldMarchHud;
@@ -970,32 +968,6 @@
 
     handle_confirmWorldMarchDeployment(action, meta = {}) {
             return this.worldMarchActions.confirmDeployment(action, meta);
-          }
-
-    handle_scoutTerritory(action) {
-            const forwarded = this.forward(action);
-            if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
-            const territory = this.getTerritoryController();
-            if (territory?.handleScoutAction) {
-              territory.handleScoutAction({ direction: action.direction || action.value });
-              return true;
-            }
-            return this.finalize(
-              this.runAction(() => this.host.api.scoutTerritory(action.value || action.direction)),
-            );
-          }
-
-    handle_claimScout(action) {
-            const forwarded = this.forward(action);
-            if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
-            const territory = this.getTerritoryController();
-            if (territory?.handleScoutAction) {
-              territory.handleScoutAction({ missionId: action.missionId || action.value });
-              return true;
-            }
-            return this.finalize(
-              this.runAction(() => this.host.api.claimScout(action.value || action.missionId)),
-            );
           }
 
     handle_selectWorldMarchTarget(action) {

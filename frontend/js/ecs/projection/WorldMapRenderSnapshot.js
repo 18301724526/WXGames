@@ -197,7 +197,6 @@
     const tiles = Array.isArray(tileMapView.tiles) ? tileMapView.tiles : [];
     const sites = Array.isArray(tileMapView.sites) ? tileMapView.sites : [];
     const activeScouts = Array.isArray(tileMapView.activeScouts) ? tileMapView.activeScouts : [];
-    const scoutAreas = Array.isArray(tileMapView.scoutAreas) ? tileMapView.scoutAreas : [];
     const march = buildMarchSnapshot(tileMapView, options);
     const actors = ActorProjection?.projectWorldActors
       ? ActorProjection.projectWorldActors(march, options)
@@ -213,7 +212,6 @@
     hash = hashStep(hash, tiles.length);
     hash = hashStep(hash, sites.length);
     hash = hashStep(hash, activeScouts.length);
-    hash = hashStep(hash, scoutAreas.length);
     hash = hashStep(hash, ui.selectedSiteId);
     hash = hashStep(hash, ui.worldMarchTarget?.tileId || '');
     hash = hashStep(hash, Math.round(viewport.panX));
@@ -239,7 +237,6 @@
         tiles: tiles.length,
         sites: sites.length,
         activeScouts: activeScouts.length,
-        scoutAreas: scoutAreas.length,
         actors: actors.length,
         arrivals: Array.isArray(march.arrivals) ? march.arrivals.length : 0,
       },

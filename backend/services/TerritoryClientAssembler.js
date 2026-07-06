@@ -84,26 +84,6 @@ function bindProjectedSitesToWorldMap(worldMap = {}, territories = []) {
   };
 }
 
-function getClientScoutAreas(gameState, deps = {}) {
-  const scoutState = typeof deps.normalizeScoutState === 'function'
-    ? deps.normalizeScoutState(gameState.scoutState)
-    : (gameState.scoutState || {});
-  return (scoutState.areas || []).map((area) => ({
-    id: area.id,
-    missionId: area.missionId,
-    direction: area.direction,
-    originX: area.originX,
-    originY: area.originY,
-    targetX: area.targetX,
-    targetY: area.targetY,
-    result: area.result,
-    siteId: area.siteId,
-    tileIds: [...area.tileIds],
-    coords: area.coords.map((coord) => ({ ...coord })),
-    scoutedAt: area.scoutedAt,
-  }));
-}
-
 function getTerritoryIntelSnapshot(territory = {}, deps = {}) {
   const rawIntel = territory.intel && typeof territory.intel === 'object' ? territory.intel : {};
   const rawLevel = deps.toInteger(rawIntel.level, territory.owner === 'player' ? 4 : 1);
@@ -202,7 +182,6 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
   const territories = mergeProjectedTerritories(ownTerritories, sharedTerritories)
     .map((territory) => projectCapitalTerritoryToOrigin(territory, capitalOrigin))
     .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps, gameState));
-  const scoutMissions = (gameState.warMissions || []).filter((mission) => deps.getMissionKind(mission) === 'scout');
   const worldMap = typeof WorldMapService.getClientWorldMapFromNormalized === 'function'
     ? WorldMapService.getClientWorldMapFromNormalized(gameState.worldMap)
     : WorldMapService.getClientWorldMap(gameState, now);
@@ -211,16 +190,7 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
     territories,
     worldMap: bindProjectedSitesToWorldMap(worldMap, territories),
     warMissions: gameState.warMissions || [],
-    scoutMissions: scoutMissions.map((mission) => ({
-      ...mission,
-      remainingSeconds: Math.max(0, Math.ceil((new Date(mission.completesAt).getTime() - nowMs) / 1000)),
-    })),
-    activeScoutMission: deps.getActiveScoutMission(gameState),
-    scoutReports: gameState.scoutReports || [],
-    scoutAreas: getClientScoutAreas(gameState, deps),
     scoutOrigin,
-    directions: Object.entries(deps.DIRECTIONS).map(([id, direction]) => ({ id, ...direction })),
-    maxActiveScouts: deps.MAX_ACTIVE_SCOUTS,
     availableSoldiers: deps.getAvailableSoldiers(gameState),
     soldiersOnMission: deps.countTotalSoldiersOnMission(gameState),
     occupiedCount: deps.getOccupiedCount(gameState),
@@ -228,7 +198,6 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
     mapBounds: getMapBounds(territories),
     territoryEffects: deps.getTerritoryEffects(gameState),
     namingPrompt: deps.getNamingPrompt(gameState),
-    scoutDurationSeconds: Math.floor(deps.SCOUT_DURATION_MS / 1000),
     missionDurationSeconds: Math.floor(deps.CONQUEST_DURATION_MS / 1000),
     famousPersons: {
       people: clone(gameState.famousPeople || []),
@@ -238,7 +207,6 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
 
 module.exports = {
   getMapBounds,
-  getClientScoutAreas,
   getTerritoryIntelSnapshot,
   redactGarrisonForIntel,
   getClientBattleTargetForIntel,

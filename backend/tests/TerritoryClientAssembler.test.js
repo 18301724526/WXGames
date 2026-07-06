@@ -20,8 +20,6 @@ test('TerritoryService facade still returns the expected client territory contra
   assert.ok(Array.isArray(clientState.territories));
   assert.ok(clientState.worldMap);
   assert.ok(clientState.mapBounds);
-  assert.deepEqual(clientState.directions.map((item) => item.id), Object.keys(TerritoryService.DIRECTIONS));
-  assert.equal(clientState.scoutDurationSeconds, Math.floor(TerritoryService.SCOUT_DURATION_MS / 1000));
   assert.equal(clientState.missionDurationSeconds, Math.floor(TerritoryService.CONQUEST_DURATION_MS / 1000));
 });
 

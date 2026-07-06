@@ -330,7 +330,7 @@ test('legacy player-derived world seeds normalize to the shared server world', (
   assert.equal(worldMap.generationAuthority.seed, Constants.DEFAULT_WORLD_SEED);
 });
 
-test('WorldMapService facade preserves public map API and scout reveal behavior', () => {
+test('WorldMapService facade preserves public map API', () => {
   const expectedApi = [
     'CAPITAL_TILE_ID',
     'DEFAULT_WORLD_HEIGHT',
@@ -338,10 +338,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'DEFAULT_WORLD_WIDTH',
     'DEFAULT_WORLD_WRAPPING',
     'DIRECTION_VECTORS',
-    'SCOUT_REVEAL_BRANCH_LIMIT',
-    'SCOUT_REVEAL_MAIN_LIMIT',
     'SCOUT_REVEAL_RADIUS',
-    'SCOUT_REVEAL_TILE_LIMIT',
     'SIDE_DIRECTIONS',
     'SIDE_ORDER',
     'START_REVEAL_RADIUS',
@@ -349,7 +346,6 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'WORLD_MAP_VERSION',
     'WORLD_TOPOLOGY_VERSION',
     'bindSiteToTile',
-    'buildScoutRoute',
     'canPlaceSiteOnTerrain',
     'chooseBaseTerrain',
     'chooseOceanTemplates',
@@ -367,7 +363,6 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'getRevealArea',
     'getRiverMouthTemplateForNeighborOfOcean',
     'getRiverPorts',
-    'getScoutRevealArea',
     'getTileId',
     'getWorldMapVersion',
     'getWorldWaterFeatures',
@@ -377,10 +372,8 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'normalizeWorldCoord',
     'normalizeWorldMap',
     'normalizeWorldSize',
-    'recordScoutTrail',
     'recordVisionPath',
     'recordVisionSource',
-    'revealScoutArea',
     'revealTile',
     'revealTileArea',
     'revealTiles',
@@ -400,13 +393,6 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
   });
   assert.equal(worldMap.topology.schema, Topology.SCHEMA);
   assert.equal(worldMap.tiles.some((tile) => tile.id === Constants.CAPITAL_TILE_ID && tile.visibility === 'controlled'), true);
-  const route = WorldMapService.buildScoutRoute({ q: 0, r: 0 }, 'e', 3);
-  assert.deepEqual(route.map((coord) => coord.q), [1, 2, 3]);
-  const revealArea = WorldMapService.getScoutRevealArea(worldMap.seed, route, 'e', { tileLimit: 4, minTileLimit: 4 });
-  const revealed = WorldMapService.revealScoutArea(gameState, revealArea, new Date('2026-06-06T00:00:00.000Z'));
-  assert.equal(revealed.length >= 4, true);
-  const trail = WorldMapService.recordScoutTrail(gameState, { id: 'mission-1', direction: 'e' }, revealed.map((tile) => tile.id), true);
-  assert.equal(trail.returned, true);
 });
 
 test('world map vision history records capital and unit path sources', () => {

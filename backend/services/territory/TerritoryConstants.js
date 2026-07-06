@@ -1,17 +1,10 @@
-const SCOUT_DURATION_MS = 60 * 1000;
-const SCOUT_STEP_DURATION_MS = 12 * 1000;
-const SCOUT_ACTION_POINTS = 5;
 const CONQUEST_DURATION_MS = 2 * 60 * 1000;
 const MAX_NAME_LENGTH = 12;
-const MAX_REPORTS = 12;
+// Site-spacing bounds (reused by TerritoryQueries.getSiteSpacingProfile / getNearestSiteDistance):
+// MAX_SCOUT_DISTANCE is the "no nearby site" fallback distance; SCOUT_SITE_MIN_DISTANCE is the
+// minimum Chebyshev spacing between sites. Named for the retired scout system but generic now.
 const MAX_SCOUT_DISTANCE = 24;
-const MAX_ACTIVE_SCOUTS = 2;
 const SCOUT_SITE_MIN_DISTANCE = 3;
-const SCOUT_SITE_BASE_CHANCE = 0.32;
-const SCOUT_SITE_CHANCE_STEP = 0.14;
-const SCOUT_SITE_GUARANTEE_AFTER = 4;
-const MAX_SCOUT_AREA_RECORDS = 120;
-const MAX_MIGRATION_SITE_SEARCH_DISTANCE = 48;
 const POST_WAR_FAMOUS_PERSON_ENABLED = false;
 const MIN_EXPEDITION_SOLDIERS = 100;
 const SOLDIER_SCALE = 100;
@@ -27,17 +20,6 @@ const PLANNING_TERRAIN_BY_MAP_TERRAIN = {
   river: 'river',
   ocean: 'coast',
   shore: 'coast',
-};
-
-const DIRECTIONS = {
-  n: { label: '北方', dx: 0, dy: -1 },
-  ne: { label: '东北', dx: 1, dy: -1 },
-  e: { label: '东方', dx: 1, dy: 0 },
-  se: { label: '东南', dx: 1, dy: 1 },
-  s: { label: '南方', dx: 0, dy: 1 },
-  sw: { label: '西南', dx: -1, dy: 1 },
-  w: { label: '西方', dx: -1, dy: 0 },
-  nw: { label: '西北', dx: -1, dy: -1 },
 };
 
 const SITE_ART = {
@@ -169,24 +151,13 @@ const SITE_TEMPLATES = [
 
 module.exports = {
   CONQUEST_DURATION_MS,
-  DIRECTIONS,
   MAP_TERRAIN_TYPES,
-  MAX_ACTIVE_SCOUTS,
-  MAX_MIGRATION_SITE_SEARCH_DISTANCE,
   MAX_NAME_LENGTH,
-  MAX_REPORTS,
-  MAX_SCOUT_AREA_RECORDS,
   MAX_SCOUT_DISTANCE,
   MIN_EXPEDITION_SOLDIERS,
   PLANNING_TERRAIN_BY_MAP_TERRAIN,
   POST_WAR_FAMOUS_PERSON_ENABLED,
-  SCOUT_ACTION_POINTS,
-  SCOUT_DURATION_MS,
-  SCOUT_SITE_BASE_CHANCE,
-  SCOUT_SITE_CHANCE_STEP,
-  SCOUT_SITE_GUARANTEE_AFTER,
   SCOUT_SITE_MIN_DISTANCE,
-  SCOUT_STEP_DURATION_MS,
   SITE_ART,
   SITE_TEMPLATES,
   SOLDIER_SCALE,
