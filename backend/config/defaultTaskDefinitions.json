@@ -89,12 +89,12 @@
     {
       "id": "main_scout_officer",
       "category": "main",
-      "title": "侦察官",
-      "description": "军队已经成形，招募一位善于侦察的名人担任侦察官。",
+      "title": "先驱",
+      "description": "军队已经成形，招募一位善于行军探路的名人担任先驱。",
       "target": "tasks",
       "condition": { "type": "tutorialStepAtLeast", "step": "firstArmyClaimed" },
       "reward": { "famousPerson": "scout" },
-      "rewardText": "侦察名人+1",
+      "rewardText": "开拓名人+1",
       "action": { "type": "claimTaskReward", "taskId": "main_scout_officer", "category": "main" },
       "sortOrder": 45,
       "enabled": true

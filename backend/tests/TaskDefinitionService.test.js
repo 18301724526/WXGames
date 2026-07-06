@@ -49,7 +49,7 @@ test('TaskDefinitionService loads the tutorial-chain tasks with step-name condit
 
   const officer = definitions.tasks.find((item) => item.id === 'main_scout_officer');
   assert.equal(officer.reward.famousPerson, 'scout');
-  assert.equal(officer.rewardText, '侦察名人+1');
+  assert.equal(officer.rewardText, '开拓名人+1');
   assert.deepEqual(officer.condition, { type: 'tutorialStepAtLeast', step: 'firstArmyClaimed' });
 });
 

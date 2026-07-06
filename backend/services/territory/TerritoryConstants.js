@@ -42,7 +42,7 @@ const SITE_TEMPLATES = [
     naturalNames: ['河畔前哨', '浅丘据点', '旧猎道营地', '荒原木寨'],
     summaries: [
       '几户猎人与木栅围起了临时营地，尚未形成稳固势力。',
-      '侦察队发现一处低矮据点，火塘仍在冒烟，守备并不严密。',
+      '探索队伍发现一处低矮据点，火塘仍在冒烟，守备并不严密。',
     ],
     reportTitles: ['边界外的第一缕炊烟', '木栅后的陌生脚印'],
     effects: { threatDefense: 1 },
@@ -65,7 +65,7 @@ const SITE_TEMPLATES = [
     naturalNames: ['河湾村镇', '石阶小城', '谷口集落', '渡口镇'],
     summaries: [
       '这里有稳定的屋舍和集市痕迹，适合成为新的城市据点。',
-      '侦察队看见石墙、井台和整齐的道路，这里已经接近一座小城。',
+      '探索队伍看见石墙、井台和整齐的道路，这里已经接近一座小城。',
     ],
     reportTitles: ['远处石墙上的旗影', '道路尽头的村镇'],
     effects: { foodOutputMultiplier: 0.05 },
@@ -134,7 +134,7 @@ const SITE_TEMPLATES = [
     naturalNames: ['旧日遗迹', '断柱废墟', '沉默神殿', '古道残垣'],
     summaries: [
       '破碎石柱之间仍有守卫巡逻，显然这里的遗迹并非无主空壳。',
-      '废墟回廊里传来兵器碰撞声，侦察队判断此地存在遗迹守军。',
+      '废墟回廊里传来兵器碰撞声，探索队伍判断此地存在遗迹守军。',
     ],
     reportTitles: ['断柱间的守望者', '沉默废墟中的兵影'],
     effects: { knowledgeOutputMultiplier: 0.08 },

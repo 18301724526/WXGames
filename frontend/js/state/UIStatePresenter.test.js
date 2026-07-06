@@ -828,7 +828,7 @@ test('UIStatePresenter delegates famous person view state while preserving facad
   assert.deepEqual(view, direct);
   assert.equal(view.people[0].id, 'hero-great');
   assert.equal(view.selectedPerson.id, 'hero-great');
-  assert.equal(view.selectedPerson.skillDetails[0].kindText, '斥候特质');
+  assert.equal(view.selectedPerson.skillDetails[0].kindText, '探路特质');
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'candidate-1' });
   assert.equal(UIStatePresenter.formatFamousPersonSkill({ name: 'Aptitude', effects: [{ key: 'knowledgeOutputPct', value: 0.15 }] }).includes('知识产出提高 15%'), true);
 });
@@ -1420,7 +1420,7 @@ test('UIStatePresenter shows 未知/兵力不明 when defender strength fields a
 
   assert.equal(detail.text.defense, '防御 未知');
   assert.equal(detail.text.threat, '威胁 未知');
-  assert.equal(detail.text.soldiers, '兵力不明（需交战侦知）');
+  assert.equal(detail.text.soldiers, '兵力不明（交战后可知）');
   // `scale` (garrison band tier) is withheld too — show 规模 未知, not the tier number that leaks the band.
   assert.equal(detail.text.scale, '规模 未知');
   // The expedition still works: a neutral default of 1 (not 0), so the player can march out.

@@ -63,7 +63,7 @@ const EFFECT_LABELS = Object.freeze({
   settlementPacifyPct: '安抚效率',
   famousRetentionPct: '名人说服',
   diplomacyBonusPct: '外交加成',
-  scoutReportBonusPct: '侦查情报',
+  scoutReportBonusPct: '军情视野',
   cityStabilityPct: '城市稳定',
 });
 

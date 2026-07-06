@@ -1,7 +1,7 @@
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
 const { clone } = require('../../shared/objectUtils');
 
-const CONFIG_VERSION = '1.0.0';
+const CONFIG_VERSION = '1.1.0';
 const CONFIG_SCHEMA_VERSION = 1;
 const sourcePath = __filename;
 
@@ -123,7 +123,7 @@ const TECH_ERAS = [
         name: '林间小径',
         route: 'exploration',
         routeLabel: '探索',
-        summary: '沿森林路径组织采集，为未来侦察与外部接触预热。',
+        summary: '沿森林路径组织采集，为未来行军探索与外部接触预热。',
         core: '核心入口：木材与探索',
         effects: { resourceEntrances: ['wood'] },
       },
