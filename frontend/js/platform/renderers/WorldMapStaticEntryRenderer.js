@@ -21,6 +21,17 @@
     }
     return null;
   })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class WorldMapStaticEntryRenderer {
     constructor(options = {}) {
@@ -123,6 +134,12 @@
 
     truncateText(text, maxWidth, options = {}) {
       return this.host?.truncateText?.(text, maxWidth, options) ?? String(text ?? '');
+    }
+
+    measureTextWidth(text, options = {}) {
+      const measured = this.host?.measureTextWidth?.(text, options);
+      if (Number.isFinite(Number(measured)) && Number(measured) > 0) return Number(measured);
+      return String(text ?? '').length * (Number(options.size) || 9);
     }
 
     getWorldTileImageAspect(assetPath = '') {
@@ -315,29 +332,7 @@
           },
         );
       }
-      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = 0.82;
-      this.ctx.fillStyle = site.owner === 'player'
-        ? '#7fdca0'
-        : site.owner === 'neutral'
-          ? '#e8edf1'
-          : '#f0c45f';
-      this.ctx.beginPath?.();
-      this.ctx.arc?.(drawX + drawW * 0.78, drawY + drawH * 0.78, Math.max(3, drawW * 0.035), 0, Math.PI * 2);
-      this.ctx.fill?.();
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      this.drawText(
-        this.truncateText(site.name || site.title || this.t('world.site.defaultName'), 74, {
-          size: 9,
-        }),
-        baseX,
-        drawY + drawH + 11,
-        {
-          size: 9,
-          color: '#f6e8c8',
-          align: 'center',
-        },
-      );
+      this.drawWorldTileSiteNameplate(site, baseX, drawY);
       if (options.addHitTarget !== false) {
         const coord = this.normalizeTileCoord(tile);
         this.addHitTarget(layout.hitRect, {
@@ -348,6 +343,57 @@
         });
       }
       return true;
+    }
+
+    // UI-REDO knife 3 city nameplate (layout-reference-v2): dark chip above
+    // the site art with a blue level corner + name. Pure re-skin of the old
+    // under-art label -- site data and the openWorldSite hit rect are
+    // untouched. Level comes pre-normalized off tile.site (intel level).
+    drawWorldTileSiteNameplate(site = {}, baseX = 0, artTopY = 0) {
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const plate = UiThemeTokens?.cityPlate || {};
+      const nameSize = 9;
+      const plateHeight = Number(plate.heightPx) || 16;
+      const levelBox = Number(plate.levelBoxPx) || 12;
+      const paddingX = Number(plate.paddingXPx) || 5;
+      const gap = Number(plate.gapPx) || 4;
+      const name = this.truncateText(
+        site.name || site.title || this.t('world.site.defaultName'),
+        Number(plate.maxNameWidthPx) || 84,
+        { size: nameSize },
+      );
+      const level = Math.max(0, Math.floor(Number(site.level) || 0));
+      const nameWidth = this.measureTextWidth(name, { size: nameSize });
+      const levelSpan = level > 0 ? levelBox + gap : 0;
+      const plateWidth = Math.ceil(paddingX * 2 + levelSpan + nameWidth);
+      const plateX = Math.round(baseX - plateWidth / 2);
+      const plateY = Math.round(artTopY - plateHeight - (Number(plate.liftPx) || 6));
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = 0.88;
+      this.ctx.fillStyle = palette.plateIronBottom || '#0B0E0D';
+      this.ctx.fillRect?.(plateX, plateY, plateWidth, plateHeight);
+      this.ctx.fillStyle = hairline.insetHighlight || 'rgba(229, 208, 165, 0.06)';
+      this.ctx.fillRect?.(plateX, plateY, plateWidth, 1);
+      if (level > 0) {
+        this.ctx.fillStyle = palette.accentCityLevelBlue || '#263F4B';
+        this.ctx.fillRect?.(plateX + paddingX - 1, plateY + Math.floor((plateHeight - levelBox) / 2), levelBox, levelBox);
+      }
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      if (level > 0) {
+        this.drawText(String(level), plateX + paddingX - 1 + levelBox / 2, plateY + plateHeight / 2, {
+          size: 8,
+          bold: true,
+          color: palette.textPrimary || '#E1D3B7',
+          align: 'center',
+          baseline: 'middle',
+        });
+      }
+      this.drawText(name, plateX + paddingX + levelSpan, plateY + plateHeight / 2, {
+        size: nameSize,
+        color: site.owner === 'player' ? (palette.accentJade || '#55AB73') : (palette.textPrimary || '#E1D3B7'),
+        baseline: 'middle',
+      });
     }
 
     renderWorldTileStaticEntries(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}, options = {}) {

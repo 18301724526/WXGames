@@ -704,6 +704,7 @@
         push(tile.site?.owner || '');
         push(tile.site?.status || '');
         push(tile.site?.name || tile.site?.title || '');
+        push(tile.site?.level || 0);
         push(tile.site?.scale || '');
         push(tile.site?.offset?.x || 0);
         push(tile.site?.offset?.y || 0);

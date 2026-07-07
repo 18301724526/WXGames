@@ -156,6 +156,7 @@
         tile.site?.owner || '',
         tile.site?.status || '',
         tile.site?.name || tile.site?.title || '',
+        tile.site?.level || 0,
         tile.site?.scale || '',
         tile.site?.offset?.x || 0,
         tile.site?.offset?.y || 0,

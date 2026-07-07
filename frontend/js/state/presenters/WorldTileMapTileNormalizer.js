@@ -131,6 +131,9 @@
       owner: site.owner || '',
       name: site.cityName || site.naturalName || '',
       title: site.naturalName || site.cityName || '',
+      // Nameplate level corner = intel level (same defaulting rule as
+      // WorldMapEntitySnapshot.intelLevel: own sites read fully scouted).
+      level: toInteger(site.intel?.level, site.owner === 'player' ? 4 : 1),
       art: site.art || siteAsset?.path || '',
       overlayKey,
       offset: manifest.getOverlayOffset?.(overlayKey) || { x: 0, y: 0 },
