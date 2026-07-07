@@ -16,7 +16,19 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./FamousPersonPresenter');
-      } catch (error) {
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const SharedWorldMarchSystem = (() => {
+    if (global.WorldMarchSystem) return global.WorldMarchSystem;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/system/WorldMarchSystem');
+      } catch (_error) {
         return null;
       }
     }
@@ -185,6 +197,61 @@
             'military.formation.summary',
             { maxMembers: maxFormationMembers }),
         },
+      };
+    }
+
+    // Marching lookup for the squad quick panel: worldExplorerState.busyFormations
+    // pins {cityId, slot} pairs to missions; a mission whose EFFECTIVE status has
+    // already decayed to idle (time projection) must not count as marching.
+    static getBusyFormationSlots(state = {}, nowMs = Date.now()) {
+      const explorer = state.worldExplorerState || {};
+      const busyFormations = Array.isArray(explorer.busyFormations) ? explorer.busyFormations : [];
+      const missions = Array.isArray(explorer.missions)
+        ? explorer.missions
+        : [
+          explorer.activeMission,
+          ...(Array.isArray(explorer.idleMissions) ? explorer.idleMissions : []),
+        ].filter(Boolean);
+      const missionById = new Map(missions.filter((mission) => mission?.id).map((mission) => [mission.id, mission]));
+      const busy = new Set();
+      busyFormations.forEach((item = {}) => {
+        const mission = missionById.get(item.missionId || '');
+        const status = mission && SharedWorldMarchSystem?.getEffectiveMissionStatus
+          ? SharedWorldMarchSystem.getEffectiveMissionStatus(mission, nowMs)
+          : item.status;
+        if (status === 'idle') return;
+        const cityId = item.cityId || 'capital';
+        const slot = Math.max(1, Math.floor(this.toNumber(item.slot, 1)));
+        busy.add(`${cityId}:${slot}`);
+      });
+      return busy;
+    }
+
+    // View state for the map-home bottom-left squad quick panel: only slots
+    // with members become rows, zero rows hides the whole panel. Row actions
+    // reuse the existing openArmyFormation flow (formation editor focused on
+    // the tapped slot) -- the renderer must not read gameState for any of this.
+    static buildSquadQuickPanelViewState(state = {}, options = {}) {
+      const nowMs = this.toNumber(options.nowMs, Date.now());
+      const view = this.buildMilitaryViewState(state);
+      const busySlots = this.getBusyFormationSlots(state, nowMs);
+      const rows = (Array.isArray(view.formations) ? view.formations : [])
+        .filter((formation) => !formation.isEmpty)
+        .map((formation) => {
+          const slot = Math.max(1, Math.floor(this.toNumber(formation.slot, 1)));
+          const cityId = formation.cityId || 'capital';
+          return {
+            slot,
+            cityId,
+            name: formation.name || this.t('military.formation.default', { slot }),
+            memberCount: this.toInteger(formation.memberCount),
+            marching: busySlots.has(`${cityId}:${slot}`),
+            action: { type: 'openArmyFormation', cityId, slot, source: 'squadQuickPanel' },
+          };
+        });
+      return {
+        hidden: rows.length === 0,
+        rows,
       };
     }
 

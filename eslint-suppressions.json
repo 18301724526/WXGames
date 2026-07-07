@@ -280,11 +280,6 @@
       "count": 1
     }
   },
-  "frontend/js/state/presenters/MilitaryPresenter.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/state/presenters/TaskGuidePresenter.js": {
     "no-unused-vars": {
       "count": 1

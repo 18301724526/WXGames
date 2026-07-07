@@ -35,6 +35,18 @@
     return null;
   })();
 
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasFrameRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -341,77 +353,178 @@
       if (options.naming) this.renderNamingModal(options.naming);
     }
 
-    getMapHomeSquadBanners(state = {}) {
-      const view = typeof this.presenter?.buildMilitaryViewState === 'function'
-        ? this.presenter.buildMilitaryViewState({ ...state, militaryView: 'army' })
-        : null;
-      const presentedFormations = Array.isArray(view?.formations) ? view.formations : [];
-      if (presentedFormations.length) {
-        return presentedFormations.slice(0, 3).map((formation, index) => ({
-          slot: Number(formation.slot) || index + 1,
-          name: formation.name || formation.label || this.t('military.formation.default', { slot: index + 1 }),
-          isEmpty: Boolean(formation.isEmpty),
-        }));
-      }
-      const cityId = state.activeCityId || state.cityState?.activeCityId || state.cityState?.capitalCityId || 'capital';
-      const rawFormations = state.military?.formations && typeof state.military.formations === 'object'
-        ? state.military.formations
-        : {};
-      const cityFormations = Array.isArray(rawFormations)
-        ? rawFormations
-        : (Array.isArray(rawFormations[cityId]) ? rawFormations[cityId] : []);
-      return [1, 2, 3].map((slot) => {
-        const formation = cityFormations.find((item) => Number(item?.slot) === slot) || cityFormations[slot - 1] || {};
-        return {
-          slot,
-          name: formation.name || formation.label || this.t('military.formation.default', { slot }),
-          isEmpty: false,
-        };
-      });
+    getDockTop() {
+      return UiThemeTokens?.getDockMetrics?.(this.width, this.height)?.top ?? (this.height - 64);
     }
 
+    // UI-REDO knife 3 map-home explorer HUD = two independent pieces:
+    //   - bottom-left squad quick panel (presenter-projected rows)
+    //   - top strip explore-progress chip + back-to-city button
     renderMapHomeExplorerHud(state = {}, topBarBottom = 84, options = {}) {
       const layout = this.getWorldMapLayerLayout?.(state, topBarBottom, { ...options, isMapHome: true }) || null;
       const map = layout?.map || { x: 0, y: topBarBottom, width: this.width, height: Math.max(160, this.height - topBarBottom - 64) };
-      const squads = this.getMapHomeSquadBanners(state);
-      const visibleSquads = squads.length ? squads : [1, 2, 3].map((slot) => ({
-        slot,
-        name: this.t('military.formation.default', { slot }),
-        isEmpty: false,
-      }));
-      const rowHeight = 30;
-      const gap = 6;
-      const panelWidth = Math.min(156, Math.max(126, Math.floor(map.width * 0.42)));
-      const panelHeight = visibleSquads.length * rowHeight + (visibleSquads.length - 1) * gap;
-      const dockTop = this.height - 64;
-      const x = Math.max(8, map.x + 12);
-      const y = Math.max(map.y + 10, Math.min(dockTop - panelHeight - 12, map.y + map.height - panelHeight - 14));
-      visibleSquads.forEach((squad, index) => {
-        const rowY = y + index * (rowHeight + gap);
-        const active = !squad.isEmpty;
-        this.drawPanel(x, rowY, panelWidth, rowHeight, {
-          fill: active ? 'rgba(28, 27, 23, 0.82)' : 'rgba(20, 20, 18, 0.62)',
-          stroke: active ? 'rgba(229, 201, 144, 0.28)' : 'rgba(214, 199, 164, 0.14)',
-          radius: 5,
-          inset: 'rgba(255, 255, 255, 0.035)',
+      this.renderMapHomeSquadPanel(state, map);
+      this.renderMapHomeExploreChip(state, map, topBarBottom, options);
+      return true;
+    }
+
+    // Bottom-left squad quick panel (layout-reference-v2): dark plate list,
+    // row = colored crest chip + real formation name + march dot + chevron.
+    // ALL row data/visibility comes from the presenter projection -- this
+    // renderer never reads military/explorer state itself. Empty slots are
+    // absent from the projection; zero rows hides the whole panel.
+    renderMapHomeSquadPanel(state = {}, map = {}) {
+      const view = typeof this.presenter?.buildSquadQuickPanelViewState === 'function'
+        ? this.presenter.buildSquadQuickPanelViewState(state, { nowMs: this.getEpochNowMs() })
+        : { hidden: true, rows: [] };
+      if (view.hidden || !Array.isArray(view.rows) || !view.rows.length) return false;
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
+      const tokens = UiThemeTokens?.squadPanel || {};
+      const rows = view.rows.slice(0, 3);
+      const rowHeight = Number(tokens.rowHeightPx) || 32;
+      const rowGap = Number(tokens.rowGapPx) || 6;
+      const pad = 6;
+      const layout = this.getLayout();
+      const panelWidth = Math.min(
+        Number(tokens.maxWidthPx) || 156,
+        Math.max(Number(tokens.minWidthPx) || 118, Math.floor(this.width * (Number(tokens.widthRatio) || 0.3))),
+      );
+      const panelHeight = pad * 2 + rows.length * rowHeight + (rows.length - 1) * rowGap;
+      const dockTop = this.getDockTop();
+      // Anchor on the safe-area content box, never the raw map rect, so the
+      // crest chips cannot clip off the left canvas edge on device.
+      const x = Math.max(8, (Number(layout.contentX) || 0) + (Number(tokens.edgeInsetPx) || 10) - 4);
+      const y = Math.max((Number(map.y) || 84) + 10, dockTop - panelHeight - 12);
+      this.drawPanel(x, y, panelWidth, panelHeight, {
+        fill: 'rgba(15, 13, 10, 0.78)',
+        stroke: hairline.dividerOnIron,
+        radius: UiThemeTokens?.radius?.plate || 8,
+        inset: hairline.insetHighlight,
+      });
+      const chipColorBySlot = {
+        1: palette.squadChipBlue,
+        2: palette.squadChipRed,
+        3: palette.squadChipGreen,
+      };
+      rows.forEach((row, index) => {
+        const rowX = x + pad;
+        const rowY = y + pad + index * (rowHeight + rowGap);
+        const rowWidth = panelWidth - pad * 2;
+        this.drawPanel(rowX, rowY, rowWidth, rowHeight, {
+          fill: palette.squadPanelBg,
+          stroke: hairline.dividerOnIron,
+          radius: UiThemeTokens?.radius?.panel || 6,
+          inset: hairline.insetHighlight,
         });
-        const iconSize = 18;
-        if (!this.drawAsset('assets/art/ui-hud/hud-icon-squad.png', x + 8, rowY + 6, iconSize, iconSize)) {
-          this.drawText(String(squad.slot || index + 1), x + 17, rowY + 15, {
-            size: 10,
+        const chipSize = Number(tokens.chipSizePx) || 22;
+        const chipX = rowX + 5;
+        const chipY = rowY + Math.floor((rowHeight - chipSize) / 2);
+        this.drawPanel(chipX, chipY, chipSize, chipSize, {
+          fill: chipColorBySlot[row.slot] || palette.squadChipBlue,
+          stroke: hairline.insetHighlight,
+          radius: UiThemeTokens?.radius?.chip || 4,
+        });
+        const crestInset = 2;
+        if (!this.drawAsset(`assets/art/ui-hud/hud-squad-crest-${row.slot}.png`, chipX + crestInset, chipY + crestInset, chipSize - crestInset * 2, chipSize - crestInset * 2)) {
+          this.drawText(String(row.slot), chipX + chipSize / 2, chipY + chipSize / 2, {
+            size: typeScale.label || 10,
             bold: true,
-            color: '#d8cba8',
+            color: palette.textPrimary,
             baseline: 'middle',
             align: 'center',
           });
         }
-        this.drawText(this.truncateText(squad.name, panelWidth - 38, { size: 12, bold: true }), x + 32, rowY + 15, {
-          size: 12,
+        const chevronReserve = 18;
+        const dotReserve = row.marching ? 12 : 0;
+        const nameX = chipX + chipSize + 8;
+        const nameMax = rowX + rowWidth - chevronReserve - dotReserve - nameX;
+        this.drawText(this.truncateText(row.name, nameMax, { size: typeScale.body || 12, bold: true }), nameX, rowY + rowHeight / 2, {
+          size: typeScale.body || 12,
           bold: true,
-          color: active ? '#f3e6c4' : 'rgba(222, 211, 181, 0.68)',
+          color: palette.textPrimary,
           baseline: 'middle',
         });
+        if (row.marching && this.ctx && typeof this.ctx.arc === 'function') {
+          this.ctx.save?.();
+          this.ctx.beginPath();
+          this.ctx.arc(rowX + rowWidth - chevronReserve - 5, rowY + rowHeight / 2, 3, 0, Math.PI * 2);
+          this.ctx.fillStyle = palette.accentJade;
+          this.ctx.fill();
+          this.ctx.restore?.();
+        }
+        this.drawText('»', rowX + rowWidth - 8, rowY + rowHeight / 2, {
+          size: typeScale.value || 14,
+          bold: true,
+          color: palette.badgeTextGold,
+          baseline: 'middle',
+          align: 'right',
+        });
+        this.addHitTarget({ x: rowX, y: rowY, width: rowWidth, height: rowHeight }, row.action);
       });
+      return true;
+    }
+
+    // Top strip right below the top bar: explore-progress chip (dark plate +
+    // thin jade progress line, only while a mission is actively exploring)
+    // and the back-to-city button (action stays resetWorldPan).
+    renderMapHomeExploreChip(state = {}, map = {}, topBarBottom = 84, _options = {}) {
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
+      const explorer = state.worldExplorerState || {};
+      const nowMs = this.getEpochNowMs();
+      const derivedMission = explorer.activeMission && SharedWorldMarchSystem?.deriveMissionForTime
+        ? SharedWorldMarchSystem.deriveMissionForTime(explorer.activeMission, { nowMs })
+        : explorer.activeMission || null;
+      const active = derivedMission?.status === 'active' ? derivedMission : null;
+      const chipTop = Math.max((Number(map.y) || 84) + 10, topBarBottom + 10);
+      const buttonWidth = 76;
+      const buttonHeight = 28;
+      const buttonX = Math.max(8, (Number(map.x) || 0) + (Number(map.width) || this.width) - buttonWidth - 12);
+      this.drawPanel(buttonX, chipTop, buttonWidth, buttonHeight, {
+        fill: 'rgba(15, 13, 10, 0.82)',
+        stroke: hairline.dividerOnIron,
+        radius: UiThemeTokens?.radius?.plate || 8,
+        inset: hairline.insetHighlight,
+      });
+      this.drawText(this.t('worldMap.backToCity'), buttonX + buttonWidth / 2, chipTop + buttonHeight / 2, {
+        size: typeScale.label || 10,
+        bold: true,
+        color: palette.badgeTextGold,
+        baseline: 'middle',
+        align: 'center',
+      });
+      this.addHitTarget({ x: buttonX, y: chipTop, width: buttonWidth, height: buttonHeight }, { type: 'resetWorldPan' });
+      if (!active) return true;
+      const route = Array.isArray(active.route) ? active.route : [];
+      const done = route.filter((step) => step.revealed).length;
+      const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);
+      const chipWidth = Math.min(168, Math.max(128, Math.floor((Number(map.width) || this.width) * 0.4)));
+      const chipHeight = 30;
+      const chipX = Math.max(8, (Number(map.x) || 0) + 12);
+      this.drawPanel(chipX, chipTop, chipWidth, chipHeight, {
+        fill: 'rgba(15, 13, 10, 0.82)',
+        stroke: hairline.dividerOnIron,
+        radius: UiThemeTokens?.radius?.plate || 8,
+        inset: hairline.insetHighlight,
+      });
+      this.drawText(this.t('worldMap.exploreProgress', { done, total }), chipX + 10, chipTop + 6, {
+        size: typeScale.label || 10,
+        bold: true,
+        color: palette.textPrimary,
+      });
+      if (this.ctx) {
+        const barX = chipX + 10;
+        const barY = chipTop + chipHeight - 7;
+        const barWidth = chipWidth - 20;
+        const progress = Math.max(0, Math.min(1, done / total));
+        this.ctx.fillStyle = hairline.dividerOnIron;
+        this.ctx.fillRect(barX, barY, barWidth, 2);
+        this.ctx.fillStyle = palette.accentJade;
+        this.ctx.fillRect(barX, barY, Math.max(2, Math.round(barWidth * progress)), 2);
+      }
       return true;
     }
 
@@ -434,16 +547,31 @@
     renderCanvasDebugResetButton(options = {}) {
       if (options.debugResetAccount === false) return false;
       if (this.isCanvasDebugResetBlocked(options)) return false;
+      // Map home already exposes the same requestResetGame action through the
+      // right-edge account float button -- drawing this chip there too stacked
+      // two reset controls on top of each other (device report, knife 3).
+      if (options.isMapHome) return false;
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
       const width = 76;
       const height = 28;
       const margin = 8;
       const dockTop = this.height - 60 - (Number(this.bottomSafeArea) || 0);
       const x = Math.max(margin, this.width - width - margin);
       const y = Math.max(92, Math.min(dockTop - height - margin, this.height - height - margin));
-      this.drawButton(x, y, width, height, this.t('worldMap.resetAccount'), {
-        size: 11,
-        radius: 8,
-        active: false,
+      this.drawPanel(x, y, width, height, {
+        fill: 'rgba(15, 13, 10, 0.82)',
+        stroke: hairline.dividerOnIron,
+        radius: UiThemeTokens?.radius?.plate || 8,
+        inset: hairline.insetHighlight,
+      });
+      this.drawText(this.t('worldMap.resetAccount'), x + width / 2, y + height / 2, {
+        size: typeScale.label || 10,
+        bold: true,
+        color: palette.badgeTextGold,
+        baseline: 'middle',
+        align: 'center',
       });
       this.addHitTarget({ x, y, width, height }, { type: 'requestResetGame', source: 'debugResetAccount' });
       return true;

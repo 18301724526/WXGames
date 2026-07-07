@@ -91,6 +91,7 @@
     MilitaryPresenter: Object.freeze([
       'buildMilitaryNavigationViewState',
       'buildMilitaryViewState',
+      'buildSquadQuickPanelViewState',
       'buildVeteranCampViewState',
     ]),
     BuildingPresenter: Object.freeze([
@@ -416,6 +417,9 @@
     });
     defineStaticMethod(UIStatePresenter, 'buildMilitaryViewState', function buildMilitaryViewState(...args) {
       return MilitaryPresenter.buildMilitaryViewState(...args);
+    });
+    defineStaticMethod(UIStatePresenter, 'buildSquadQuickPanelViewState', function buildSquadQuickPanelViewState(...args) {
+      return MilitaryPresenter.buildSquadQuickPanelViewState(...args);
     });
     defineStaticMethod(UIStatePresenter, 'buildVeteranCampViewState', function buildVeteranCampViewState(...args) {
       return MilitaryPresenter.buildVeteranCampViewState(...args);

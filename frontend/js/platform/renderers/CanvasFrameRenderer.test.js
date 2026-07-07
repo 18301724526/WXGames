@@ -348,13 +348,8 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   assert.equal(names.includes('renderNamingModal'), true);
 });
 
-test('CanvasFrameRenderer renders map-home squad banners instead of explorer countdown controls', () => {
-  const activeHost = createHost({
-    getNow() {
-      return new Date('2026-06-06T00:00:04.250Z').getTime();
-    },
-  });
-  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud({
+function createActiveExplorerState() {
+  return {
     worldExplorerState: {
       activeMission: {
         status: 'active',
@@ -364,74 +359,90 @@ test('CanvasFrameRenderer renders map-home squad banners instead of explorer cou
         completesAt: '2026-06-06T00:00:20.000Z',
         stepDurationSeconds: 10,
         route: [
-          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
+          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: true },
           { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
         ],
       },
     },
-  }, 96, {});
+  };
+}
 
+test('CanvasFrameRenderer squad quick panel consumes the presenter projection only', () => {
+  const activeHost = createHost({
+    epochNowMs: new Date('2026-06-06T00:00:04.250Z').getTime(),
+    presenter: {
+      buildSquadQuickPanelViewState() {
+        return {
+          hidden: false,
+          rows: [
+            { slot: 1, cityId: 'capital', name: '第一队', memberCount: 3, marching: false, action: { type: 'openArmyFormation', cityId: 'capital', slot: 1, source: 'squadQuickPanel' } },
+            { slot: 3, cityId: 'capital', name: '侦察队', memberCount: 1, marching: true, action: { type: 'openArmyFormation', cityId: 'capital', slot: 3, source: 'squadQuickPanel' } },
+          ],
+        };
+      },
+    },
+  });
+  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud(createActiveExplorerState(), 96, {});
+
+  // Only presenter rows render: slot 2 was projected away (empty formation).
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '第一队'), true);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), false);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('探索中')), false);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'claimExplore'), false);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), false);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '侦察队'), true);
+  const rowTargets = activeHost.calls
+    .filter((call) => call[0] === 'addHitTarget' && call[1][1]?.type === 'openArmyFormation');
+  assert.equal(rowTargets.length, 2);
+  assert.deepEqual(rowTargets.map((call) => call[1][1].slot), [1, 3]);
+  assert.equal(rowTargets.every((call) => call[1][1].source === 'squadQuickPanel'), true);
+  // Crest chips request the squad crest asset per row slot.
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawAsset' && call[1][0].includes('hud-squad-crest-1')), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawAsset' && call[1][0].includes('hud-squad-crest-3')), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawAsset' && call[1][0].includes('hud-squad-crest-2')), false);
+  // Rows never clip off the left canvas edge (device regression).
+  const rowRects = rowTargets.map((call) => call[1][0]);
+  assert.equal(rowRects.every((rect) => rect.x >= 8), true);
 });
 
-test('CanvasFrameRenderer keeps squad banner rendering independent from explorer mission time', () => {
-  const epochNowMs = new Date('2026-06-06T00:00:04.250Z').getTime();
+test('CanvasFrameRenderer hides the squad quick panel when the projection is empty', () => {
   const activeHost = createHost({
-    epochNowMs,
-    getNow() {
-      return 4321.25;
-    },
-  });
-  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud({
-    worldExplorerState: {
-      activeMission: {
-        status: 'active',
-        mode: 'manual',
-        startedAt: '2026-06-06T00:00:00.000Z',
-        nextStepAt: '2026-06-06T00:00:10.000Z',
-        completesAt: '2026-06-06T00:00:20.000Z',
-        stepDurationSeconds: 10,
-        route: [
-          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
-          { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
-        ],
+    presenter: {
+      buildSquadQuickPanelViewState() {
+        return { hidden: true, rows: [] };
       },
     },
-  }, 96, {});
+  });
+  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud({}, 96, {});
 
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '第一队'), true);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), false);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('1780')), false);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1]?.type === 'openArmyFormation'), false);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '第一队'), false);
+});
+
+test('CanvasFrameRenderer explore chip shows progress while a mission is active', () => {
+  const activeHost = createHost({
+    epochNowMs: new Date('2026-06-06T00:00:04.250Z').getTime(),
+    presenter: { buildSquadQuickPanelViewState() { return { hidden: true, rows: [] }; } },
+  });
+  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud(createActiveExplorerState(), 96, {});
+
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('探索中')), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '回到本城'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), true);
+  // The redesigned chip has no countdown text -- just the thin progress line.
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).endsWith('s') && /^\d+s$/.test(String(call[1][0]))), false);
 });
 
 test('CanvasFrameRenderer treats expired manual active mission as idle in explorer HUD', () => {
   const activeHost = createHost({
     epochNowMs: new Date('2026-06-06T00:00:25.000Z').getTime(),
+    presenter: { buildSquadQuickPanelViewState() { return { hidden: true, rows: [] }; } },
   });
-  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud({
-    worldExplorerState: {
-      activeMission: {
-        id: 'manual-1',
-        status: 'active',
-        mode: 'manual',
-        startedAt: '2026-06-06T00:00:00.000Z',
-        completesAt: '2026-06-06T00:00:20.000Z',
-        stepDurationSeconds: 10,
-        route: [
-          { q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false },
-          { q: 2, r: 0, step: 2, tileId: 'tile_2_0', revealed: false },
-        ],
-      },
-    },
-  }, 96, {});
+  const state = createActiveExplorerState();
+  delete state.worldExplorerState.activeMission.nextStepAt;
+  state.worldExplorerState.activeMission.id = 'manual-1';
+  state.worldExplorerState.activeMission.route.forEach((step) => { step.revealed = false; });
+  new CanvasFrameRenderer({ host: activeHost }).renderMapHomeExplorerHud(state, 96, {});
 
+  // Mission expired -> no explore progress chip, but back-to-city stays.
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('探索中')), false);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '0s'), false);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '第一队'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), true);
 });
 
 test('CanvasFrameRenderer hides debug reset while tutorial shields are active', () => {

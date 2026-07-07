@@ -1250,6 +1250,65 @@ test('UIStatePresenter delegates military view state while preserving facade con
   assert.equal(militaryView.formationMeta.summary, '3 支部队 · 每队最多 5 名名人');
 });
 
+test('UIStatePresenter projects the squad quick panel from formations and march state', () => {
+  const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const state = {
+    activeCityId: 'capital',
+    military: {
+      formations: [
+        { slot: 1, name: '第一队', memberIds: ['hero-scout'] },
+        { slot: 2, memberIds: [] },
+        { slot: 3, name: '侦察队', memberIds: ['hero-builder'] },
+      ],
+    },
+    famousPersons: {
+      people: [
+        { id: 'hero-scout', name: 'Scout Hero', attributes: {} },
+        { id: 'hero-builder', name: 'Builder Hero', attributes: {} },
+      ],
+    },
+    worldExplorerState: {
+      busyFormations: [
+        { cityId: 'capital', slot: 3, missionId: 'mission-1', status: 'active' },
+      ],
+      activeMission: {
+        id: 'mission-1',
+        status: 'active',
+        mode: 'manual',
+        startedAt: '2026-06-06T00:00:00.000Z',
+        completesAt: '2026-06-06T00:00:20.000Z',
+        stepDurationSeconds: 10,
+        route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false }],
+      },
+    },
+  };
+
+  assert.equal(typeof UIStatePresenter.buildSquadQuickPanelViewState, 'function');
+  const view = UIStatePresenter.buildSquadQuickPanelViewState(state, { nowMs });
+  assert.deepEqual(view, MilitaryPresenter.buildSquadQuickPanelViewState(state, { nowMs }));
+
+  // Empty slot 2 is projected away; slot 3 marches, slot 1 does not.
+  assert.equal(view.hidden, false);
+  assert.deepEqual(view.rows.map((row) => row.slot), [1, 3]);
+  assert.deepEqual(view.rows.map((row) => row.marching), [false, true]);
+  assert.equal(view.rows[0].name, '第一队');
+  assert.deepEqual(view.rows[0].action, { type: 'openArmyFormation', cityId: 'capital', slot: 1, source: 'squadQuickPanel' });
+
+  // A mission whose effective status decayed to idle no longer pins the slot.
+  const settledView = UIStatePresenter.buildSquadQuickPanelViewState(
+    state,
+    { nowMs: new Date('2026-06-06T00:01:00.000Z').getTime() },
+  );
+  assert.deepEqual(settledView.rows.map((row) => row.marching), [false, false]);
+
+  // Zero non-empty formations hides the panel entirely.
+  const emptyView = UIStatePresenter.buildSquadQuickPanelViewState({
+    military: { formations: [{ slot: 1, memberIds: [] }] },
+  }, { nowMs });
+  assert.equal(emptyView.hidden, true);
+  assert.deepEqual(emptyView.rows, []);
+});
+
 test('UIStatePresenter delegates world site dialog view state while preserving facade contracts', () => {
   const territories = [
     {
