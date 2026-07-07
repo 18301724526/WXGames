@@ -84,7 +84,7 @@ function createFakeSpine(hooks = {}) {
 }
 
 function createFakeHost(overrides = {}) {
-  const events = { visible: [], present: [] };
+  const events = { visible: [], present: [], cache: [] };
   const runtime = {
     devicePixelRatio: 1,
     performance: { now: () => 0 },
@@ -92,7 +92,8 @@ function createFakeHost(overrides = {}) {
     setTimeout: () => 2, // render loop scheduling: recorded but never auto-fires in tests
     clearTimeout: () => {},
     cancelAnimationFrame: () => {},
-    refreshLayerPresentCache: (name) => { events.present.push(name); },
+    presentLayer: (name) => { events.present.push(name); return true; },
+    refreshLayerPresentCache: (name) => { events.cache.push(name); return true; },
   };
   return {
     events,
@@ -152,7 +153,7 @@ test('WorldActorSpineRenderer adds, retargets by facing, and removes actor skele
   assert.deepEqual(host.events.visible.at(-1), { name: 'worldActorSpine', visible: false });
 });
 
-test('WorldActorSpineRenderer renders a frame and presents the layer cache', () => {
+test('WorldActorSpineRenderer renders a frame and presents the stage layer', () => {
   const host = createFakeHost();
   const renderer = new WorldActorSpineRenderer({ host, runtime: host.runtime, spine: createFakeSpine() });
   renderer.canRenderActor({ unitKey: 'scout_squad_default' });
@@ -162,9 +163,25 @@ test('WorldActorSpineRenderer renders a frame and presents the layer cache', () 
   renderer.renderFrame();
 
   assert.deepEqual(host.events.present, ['worldActorSpine']);
+  assert.deepEqual(host.events.cache, []);
   const entry = renderer.actors.get('a1');
   assert.equal(entry.skeleton.x, 40);
   assert.equal(entry.skeleton.y, 693 - 60); // screen y-down -> spine y-up
+});
+
+test('WorldActorSpineRenderer falls back to cache refresh only on runtimes without presentLayer', () => {
+  const host = createFakeHost();
+  delete host.runtime.presentLayer;
+  const renderer = new WorldActorSpineRenderer({ host, runtime: host.runtime, spine: createFakeSpine() });
+  renderer.canRenderActor({ unitKey: 'scout_squad_default' });
+  renderer.syncActors([{ id: 'a1', unitKey: 'scout_squad_default', facing: '3', x: 40, y: 60, scale: 0.5 }]);
+
+  host.events.present.length = 0;
+  host.events.cache.length = 0;
+  renderer.renderFrame();
+
+  assert.deepEqual(host.events.present, []);
+  assert.deepEqual(host.events.cache, ['worldActorSpine']);
 });
 
 test('WorldActorSpineRenderer fails closed on a render error and hands back to 2D', () => {

@@ -397,8 +397,11 @@
 
     present() {
       const runtime = this.host?.h5Runtime || this.host?.runtime || this.runtime;
-      if (typeof runtime?.refreshLayerPresentCache === 'function') runtime.refreshLayerPresentCache(this.layerName);
-      else runtime?.presentLayer?.(this.layerName);
+      if (typeof runtime?.presentLayer === 'function') return runtime.presentLayer(this.layerName);
+      if (typeof runtime?.refreshLayerPresentCache === 'function') {
+        return runtime.refreshLayerPresentCache(this.layerName);
+      }
+      return false;
     }
 
     clearSurface() {

@@ -380,6 +380,7 @@ test('CanvasGameShell falls back to layer transform when drag snapshot refresh m
   assert.deepEqual(offset, { x: 32, y: -18 });
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldMap', 32, -18])), true);
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldActor', 32, -18])), true);
+  assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldActorSpine', 32, -18])), true);
 });
 
 test('CanvasGameShell does not mount world fog by default', () => {
