@@ -248,6 +248,24 @@ test('SystemCanvasRenderer preserves settings and logs actions', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'logout'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeSettings' && target.action.background === true), true);
 
+  // UI-REDO ⑦c: settings is a CENTERED modal (was a top-right dropdown) —
+  // dim mask + horizontally centered panel block + explicit ✕ close target.
+  const settingsBlock = host.hitTargets.find((target) => target.action.type === 'blockCanvasModal');
+  assert.ok(settingsBlock, 'centered settings panel must block taps behind it');
+  const panelRect = settingsBlock.rect;
+  assert.equal(Math.abs((panelRect.x + panelRect.width / 2) - host.width / 2) <= 1, true);
+  assert.equal(panelRect.y >= 86, true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeSettings' && !target.action.background), true);
+  // Every settings button must sit INSIDE the panel block (hit targets moved with the panel).
+  ['requestResetGame', 'downloadClientOperationLog', 'logout'].forEach((type) => {
+    const target = host.hitTargets.find((item) => item.action.type === type);
+    assert.ok(target, `${type} target exists`);
+    assert.equal(target.rect.x >= panelRect.x && target.rect.x + target.rect.width <= panelRect.x + panelRect.width, true);
+    assert.equal(target.rect.y >= panelRect.y && target.rect.y + target.rect.height <= panelRect.y + panelRect.height, true);
+  });
+  // The dim mask actually painted (mask regression guard).
+  assert.equal(host.calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 0 && call[3] === host.width && call[4] === host.height), true);
+
   host.hitTargets.length = 0;
   renderer.renderLogsPanel([{ timestamp: '10:00', method: 'GET', path: '/api', statusCode: 200 }]);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeLogs'), true);

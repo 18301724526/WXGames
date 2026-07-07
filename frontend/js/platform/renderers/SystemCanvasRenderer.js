@@ -298,60 +298,79 @@
     }
 
     renderSettingsPanel() {
+      // UI-REDO ⑦c: centered modal (was a top-right dropdown). Positioning mirrors
+      // the confirm/tech-detail modal logic (dim mask + centered panel + block
+      // target + background/✕ close). Visual polish is deferred to the style
+      // unification knife -- this knife only fixes placement/mask/close.
+      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
+      if (this.ctx) {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.56)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
+
       const layout = this.getLayout();
-      const panelWidth = 200;
-      const panelHeight = 164;
-      const x = layout.contentRight - panelWidth - 8;
-      const y = 62;
+      const panelWidth = Math.min(300, layout.contentWidth - 24);
+      const panelHeight = 208;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.max(86, Math.floor((this.height - panelHeight) / 2) - 12);
 
       this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: 'rgba(42, 35, 24, 0.96)',
-        stroke: 'rgba(255, 226, 177, 0.2)',
-        radius: 10,
+        fill: this.createGradient(
+          x, y, x, y + panelHeight,
+          [
+            [0, 'rgba(58, 42, 28, 0.98)'],
+            [1, 'rgba(23, 18, 13, 0.98)'],
+          ],
+          'rgba(36, 28, 20, 0.98)',
+        ),
+        stroke: 'rgba(255, 226, 177, 0.26)',
+        radius: 13,
+        inset: 'rgba(255, 231, 184, 0.1)',
       });
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
       this.drawText(this.t('shell.settings.title'), x + panelWidth / 2, y + 18, {
-        size: 14,
+        size: 16,
         bold: true,
         color: '#ffd98a',
         align: 'center',
       });
 
+      const closeSize = 28;
+      const closeX = x + panelWidth - closeSize - 10;
+      const closeY = y + 10;
+      this.drawButton(closeX, closeY, closeSize, closeSize, '✕', {
+        size: 14,
+        radius: 7,
+        active: false,
+      });
+      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeSettings' });
+
       if (this.ctx) {
         this.ctx.strokeStyle = 'rgba(255, 226, 177, 0.1)';
         this.ctx.lineWidth = 1;
         this.ctx.beginPath();
-        this.ctx.moveTo(x + 10, y + 28);
-        this.ctx.lineTo(x + panelWidth - 10, y + 28);
+        this.ctx.moveTo(x + 14, y + 46);
+        this.ctx.lineTo(x + panelWidth - 14, y + 46);
         this.ctx.stroke();
       }
 
-      const btnHeight = 36;
-      const btnY1 = y + 38;
-      this.drawButton(x + 10, btnY1, panelWidth - 20, btnHeight, this.t('shell.settings.resetGame'), {
-        size: 12,
-        radius: 8,
-        active: false,
+      const btnHeight = 38;
+      const btnX = x + 16;
+      const btnWidth = panelWidth - 32;
+      [
+        { label: this.t('shell.settings.resetGame'), action: { type: 'requestResetGame' } },
+        { label: this.t('shell.settings.exportOperationLog'), action: { type: 'downloadClientOperationLog' } },
+        { label: this.t('shell.settings.logout'), action: { type: 'logout' } },
+      ].forEach((item, index) => {
+        const btnY = y + 58 + index * (btnHeight + 10);
+        this.drawButton(btnX, btnY, btnWidth, btnHeight, item.label, {
+          size: 13,
+          radius: 9,
+          active: false,
+        });
+        this.addHitTarget({ x: btnX, y: btnY, width: btnWidth, height: btnHeight }, item.action);
       });
-      this.addHitTarget({ x: x + 10, y: btnY1, width: panelWidth - 20, height: btnHeight }, { type: 'requestResetGame' });
-
-      const btnY2 = btnY1 + btnHeight + 8;
-      this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, this.t('shell.settings.exportOperationLog'), {
-        size: 12,
-        radius: 8,
-        active: false,
-      });
-      this.addHitTarget({ x: x + 10, y: btnY2, width: panelWidth - 20, height: btnHeight }, { type: 'downloadClientOperationLog' });
-
-      const btnY3 = btnY2 + btnHeight + 8;
-      this.drawButton(x + 10, btnY3, panelWidth - 20, btnHeight, this.t('shell.settings.logout'), {
-        size: 12,
-        radius: 8,
-        active: false,
-      });
-      this.addHitTarget({ x: x + 10, y: btnY3, width: panelWidth - 20, height: btnHeight }, { type: 'logout' });
-
-      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
     }
 
     renderConfirmDialog(dialog = {}) {
