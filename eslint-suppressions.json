@@ -165,11 +165,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/MapCommandCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
   "frontend/js/platform/renderers/TechCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1

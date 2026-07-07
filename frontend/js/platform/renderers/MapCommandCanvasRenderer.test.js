@@ -199,9 +199,11 @@ test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('icon-knowledge')), false);
 });
 
-test('MapCommandCanvasRenderer dock renders two round badges and four square cells', () => {
+test('MapCommandCanvasRenderer dock renders two round badges and a recessed four-cell strip', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });
+  const UiThemeTokens = require('../../config/UiThemeTokens');
+  const metrics = UiThemeTokens.getDockMetrics(390, 844);
 
   renderer.renderMapCommandDock({}, {});
 
@@ -209,24 +211,49 @@ test('MapCommandCanvasRenderer dock renders two round badges and four square cel
   const capital = host.hitTargets.find((target) => target.action.type === 'openWorldSite');
   const tasks = host.hitTargets.find((target) => target.action.type === 'openTaskCenter');
   const cells = host.hitTargets.filter((target) => target !== capital && target !== tasks);
-  // Edge badges: 76px round plates (rect hit approximation), overshooting the 64px bar top.
+  const trayTop = 844 - metrics.height;
+  // Reference proportions (%W of 390): badge ~23%W, tray ~19.6%W, strip ~13.7%W.
+  assert.equal(metrics.badgeDiameter, 90);
+  assert.equal(metrics.height, 76);
+  assert.equal(metrics.stripHeight, 53);
+  // Edge badges: round plates overshooting the tray top by ~35% of their diameter.
   [capital, tasks].forEach((badge) => {
-    assert.equal(badge.rect.width, 76);
-    assert.equal(badge.rect.height, 76);
-    assert.equal(badge.rect.y < 844 - 64, true);
+    assert.equal(badge.rect.width, metrics.badgeDiameter);
+    assert.equal(badge.rect.height, metrics.badgeDiameter);
+    assert.equal(badge.rect.y, trayTop - metrics.badgeOvershoot);
   });
-  // Center cells: uniform 46px squares inside the bar.
+  // Strip cells: equal split of the band between the badges, inside the tray.
   assert.equal(cells.length, 4);
   cells.forEach((cell) => {
-    assert.equal(cell.rect.width, 46);
-    assert.equal(cell.rect.height, 46);
-    assert.equal(cell.rect.y >= 844 - 64, true);
+    assert.equal(cell.rect.height, metrics.stripHeight);
+    assert.equal(cell.rect.y >= trayTop, true);
+  });
+  const stripLeft = 10 + metrics.badgeDiameter + metrics.stripGap;
+  const stripWidth = 360 - 2 * (metrics.badgeDiameter + metrics.stripGap);
+  assert.equal(Math.min(...cells.map((cell) => cell.rect.x)), stripLeft);
+  cells.forEach((cell) => {
+    assert.equal(cell.rect.width, Math.round(stripWidth / 4));
   });
   // Plates + per-item gold icons are requested through the new dock asset set.
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-badge-round')), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-button-cell')), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-icon-capital')), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-icon-tasks')), true);
+});
+
+test('MapCommandCanvasRenderer dock 9-slices the aged cell plate across the strip band', () => {
+  const clipped = [];
+  const host = createHost({
+    drawAssetClipped(assetPath, source, x, y, width, height) {
+      clipped.push({ assetPath, source, x, y, width, height });
+      return true;
+    },
+  });
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  renderer.renderMapCommandDock({}, {});
+
+  assert.equal(clipped.length, 9);
+  assert.equal(clipped.every((call) => call.assetPath.includes('hud-dock-button-cell')), true);
 });
 
 test('MapCommandCanvasRenderer dock falls back to token panels while plate assets are missing', () => {
@@ -236,12 +263,15 @@ test('MapCommandCanvasRenderer dock falls back to token panels while plate asset
     drawPanel(x, y, width, height, options = {}) { panels.push({ x, y, width, height, options }); },
   });
   const renderer = new MapCommandCanvasRenderer({ host });
+  const UiThemeTokens = require('../../config/UiThemeTokens');
+  const metrics = UiThemeTokens.getDockMetrics(390, 844);
 
   renderer.renderMapCommandDock({}, {});
 
-  // Badge fallback: full-circle radius token panel; cell fallback: square panel.
-  assert.equal(panels.some((panel) => panel.width === 76 && panel.options.radius === 38), true);
-  assert.equal(panels.some((panel) => panel.width === 46 && panel.height === 46), true);
+  // Badge fallback: full-circle radius token panel; strip fallback: recessed band panel.
+  assert.equal(panels.some((panel) => panel.width === metrics.badgeDiameter && panel.options.radius === metrics.badgeDiameter / 2), true);
+  const stripWidth = 360 - 2 * (metrics.badgeDiameter + metrics.stripGap);
+  assert.equal(panels.some((panel) => panel.width === stripWidth && panel.height === metrics.stripHeight), true);
 });
 
 test('MapCommandCanvasRenderer dock lights active cells from pre-decided owner facts only', () => {
@@ -292,12 +322,16 @@ test('MapCommandCanvasRenderer preserves floating map button contracts', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSubcityList'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'events'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'requestResetGame' && target.action.source === 'debugResetAccount'), true);
+  // Knife 3: the float buttons request the gold-line icon set.
+  ['hud-float-icon-subcity', 'hud-float-icon-event', 'hud-float-icon-account'].forEach((assetName) => {
+    assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes(assetName)), true);
+  });
 });
 
 test('MapCommandCanvasRenderer lights active states only from the pre-decided dock id list', () => {
-  const panelFills = [];
+  const labelColors = [];
   const host = createHost({
-    drawPanel(...args) { panelFills.push(args[4] && args[4].fill); },
+    drawText(text, x, y, options = {}) { labelColors.push(options.color); },
   });
   const renderer = new MapCommandCanvasRenderer({ host });
 
@@ -308,11 +342,18 @@ test('MapCommandCanvasRenderer lights active states only from the pre-decided do
   assert.equal(renderer.isDockItemActive({ id: 'tasks' }, { activeDockItemIds: true }), false);
   assert.equal(renderer.isDockItemActive({ id: 'tech' }, { activeCommandPanel: 'tech' }), true);
 
+  // Float button active state now shows through the label color (the disc
+  // fill is a constant aged-iron gradient in both states).
   renderer.renderFloatingAccountButton({}, { activeDockItemIds: Object.freeze(['account']) });
+  const activeLabelColor = labelColors.at(-1);
+  labelColors.length = 0;
   renderer.renderFloatingAccountButton({}, { activeDockItemIds: true });
+  const collapsedLabelColor = labelColors.at(-1);
+  labelColors.length = 0;
   renderer.renderFloatingAccountButton({}, {});
-  assert.notEqual(panelFills[0], panelFills[2]);
-  assert.equal(panelFills[1], panelFills[2]);
+  const inactiveLabelColor = labelColors.at(-1);
+  assert.notEqual(activeLabelColor, inactiveLabelColor);
+  assert.equal(collapsedLabelColor, inactiveLabelColor);
 });
 
 test('MapCommandCanvasRenderer ignores legacy capital command panel state', () => {

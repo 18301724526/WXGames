@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class AdvisorCanvasRenderer {
     constructor(options = {}) {
@@ -97,7 +108,7 @@
     getMapHomeFloatingButtonLayout(slot = 0) {
       const layout = this.getLayout();
       const size = 48;
-      const dockTop = this.height - 64;
+      const dockTop = UiThemeTokens?.getDockMetrics?.(this.width, this.height)?.top ?? (this.height - 64);
       const x = layout.contentRight - size - 8;
       const gap = 10;
       const y = Math.max(82, dockTop - (slot + 1) * size - 14 - slot * gap);

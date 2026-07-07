@@ -57,6 +57,17 @@
     }
     return null;
   })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const WORLD_ACTOR_OVERLAY_DIAG_LOG_INTERVAL_MS = 1000;
 
@@ -394,7 +405,7 @@
         const mapX = 0;
         const mapY = Math.max(0, topBarBottom ?? 84);
         const mapW = this.width;
-        const mapBottom = this.height - 64;
+        const mapBottom = UiThemeTokens?.getDockMetrics?.(this.width, this.height)?.top ?? (this.height - 64);
         const mapH = Math.max(160, mapBottom - mapY);
         return {
           nav,

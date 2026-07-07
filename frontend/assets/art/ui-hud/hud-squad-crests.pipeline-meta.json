@@ -1,0 +1,36 @@
+{
+  "version": "ui-redo-squad-v1",
+  "target": "ui-icons",
+  "assets": [
+    "hud-squad-crest-1.png",
+    "hud-squad-crest-2.png",
+    "hud-squad-crest-3.png"
+  ],
+  "cell_size": [128, 128],
+  "source": "docs/design/ui-hud-reference/source-sheets/raw/hud-squad-crests-raw.png",
+  "reference": "docs/design/ui-hud-reference/user-references/layout-reference-v2.webp",
+  "generation": {
+    "model": "nano-banana-pro",
+    "endpoint": "images/edits (reference-anchored)",
+    "calls": 1,
+    "sheet": "requested 1x3, model returned 3x3 (3 variant rows per emblem) on solid #FF00FF, raw 1408x768"
+  },
+  "processing": {
+    "note": "model over-delivered a 3x3 variant grid; components are grouped into 3 columns (helmet / tiger / horse) and the middle variant row is picked per column",
+    "steps": [
+      "chroma key magenta via generate2dsprite.py remove_bg_magenta (threshold 100, edge 150)",
+      "connected-component detection (alpha>8): 9 components, grouped by x into 3 columns, middle row picked",
+      "per-component crop +6px pad, shared scale to fit 128*0.92, center paste",
+      "defringe pass 1: r>g+40 && b>g+40 -> clamp r<=g+45, b<=g+25",
+      "defringe pass 2 (bronze rule): b>g+8 && r>g+8 -> clamp b<=g-4",
+      "QC: 0 magenta-residual pixels on all 3 cells"
+    ],
+    "slice_meta": "docs/design/ui-hud-reference/source-sheets/processed/squad-v1/slice-meta.json"
+  },
+  "icon_semantics": {
+    "crest-1": "war helmet with plume (formation slot 1, blue chip)",
+    "crest-2": "tiger head (formation slot 2, red chip)",
+    "crest-3": "horse head (formation slot 3 / scout, green chip)"
+  },
+  "intended_use": "world-map home bottom-left squad quick panel row crests (CanvasFrameRenderer.renderMapHomeSquadPanel), tinted chips come from UiThemeTokens.palette.squadChipBlue/Red/Green"
+}

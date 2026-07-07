@@ -60,6 +60,12 @@
     asset('ui-hud:dock-icon:civilization', 'ui', 'assets/art/ui-hud/hud-dock-icon-civilization.png'),
     asset('ui-hud:dock-icon:famous', 'ui', 'assets/art/ui-hud/hud-dock-icon-famous.png'),
     asset('ui-hud:dock-icon:settings', 'ui', 'assets/art/ui-hud/hud-dock-icon-settings.png'),
+    asset('ui-hud:float-icon:subcity', 'ui', 'assets/art/ui-hud/hud-float-icon-subcity.png'),
+    asset('ui-hud:float-icon:event', 'ui', 'assets/art/ui-hud/hud-float-icon-event.png'),
+    asset('ui-hud:float-icon:account', 'ui', 'assets/art/ui-hud/hud-float-icon-account.png'),
+    asset('ui-hud:squad-crest:1', 'ui', 'assets/art/ui-hud/hud-squad-crest-1.png'),
+    asset('ui-hud:squad-crest:2', 'ui', 'assets/art/ui-hud/hud-squad-crest-2.png'),
+    asset('ui-hud:squad-crest:3', 'ui', 'assets/art/ui-hud/hud-squad-crest-3.png'),
 
     asset('tech:route:agriculture', 'tech', 'assets/art/tech-agriculture-cutout.png'),
     asset('tech:route:livelihood', 'tech', 'assets/art/tech-livelihood-cutout.png'),

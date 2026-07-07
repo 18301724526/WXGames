@@ -1,0 +1,36 @@
+{
+  "version": "ui-redo-float-v1",
+  "target": "ui-icons",
+  "assets": [
+    "hud-float-icon-subcity.png",
+    "hud-float-icon-event.png",
+    "hud-float-icon-account.png"
+  ],
+  "cell_size": [128, 128],
+  "source": "docs/design/ui-hud-reference/source-sheets/raw/hud-float-icons-raw.png",
+  "reference": "docs/design/ui-hud-reference/user-references/layout-reference-v2.webp",
+  "generation": {
+    "model": "nano-banana-pro",
+    "endpoint": "images/edits (reference-anchored)",
+    "calls": 1,
+    "sheet": "1x3 on solid #FF00FF, raw 1792x592"
+  },
+  "processing": {
+    "note": "raw sheet carried an off-white band along the bottom that bridged neighbouring icons after the magenta key, so the sheet is cut into its 3 grid columns first and the largest alpha component is taken per column",
+    "steps": [
+      "chroma key magenta via generate2dsprite.py remove_bg_magenta (threshold 100, edge 150)",
+      "white/pale-pink residue key: r>=195 && b>=190 && g>=165 -> alpha 0 (gold linework never keeps blue high)",
+      "per-column largest connected component (alpha>8), crop +6px pad, shared scale to fit 128*0.92, center paste",
+      "defringe pass 1: r>g+40 && b>g+40 -> clamp r<=g+45, b<=g+25",
+      "defringe pass 2 (bronze rule): b>g+8 && r>g+8 -> clamp b<=g-4",
+      "QC: 0 magenta-residual pixels (r>180 && b>180 && g<100) on all 3 cells"
+    ],
+    "slice_meta": "docs/design/ui-hud-reference/source-sheets/processed/float-v1/slice-meta.json"
+  },
+  "icon_semantics": {
+    "subcity": "ancient city wall gatehouse (right-edge float button)",
+    "event": "unfurled bamboo slip scroll (right-edge float button)",
+    "account": "person bust with shoulder robe (right-edge float button; action stays requestResetGame for now)"
+  },
+  "intended_use": "world-map home right-edge floating round buttons (MapCommandCanvasRenderer.renderFloatingMapButton); replaces the painterly hud-icon-subcity/event/account.png set on these buttons only"
+}

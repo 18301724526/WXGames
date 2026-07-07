@@ -194,7 +194,9 @@ test('WorldMapLayerCanvasRenderer preserves map layer layout contracts', () => {
   const mapHome = renderer.getWorldMapLayerLayout({}, 96, { isMapHome: true });
   const panel = renderer.getWorldMapLayerLayout({}, 96, {});
 
-  assert.deepEqual(mapHome.map, { x: 0, y: 96, width: 390, height: 684 });
+  // Map bottom = dock top from UiThemeTokens.getDockMetrics (knife-3 dock is
+  // 19.6%W tall -> 76px on a 390-wide canvas, so 844 - 76 - 96 = 672).
+  assert.deepEqual(mapHome.map, { x: 0, y: 96, width: 390, height: 672 });
   assert.equal(panel.panel.x, 10);
   assert.equal(panel.map.width, 312);
 });

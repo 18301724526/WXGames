@@ -117,21 +117,112 @@
   });
 
   // Bottom map-command dock composition (world-map home HUD).
-  // Bar height 64 is a cross-renderer layout contract (Advisor/CityCanvas/
-  // CanvasFrame/WorldMapLayer all position against `height - 64`); the round
-  // badges intentionally overshoot the bar's top edge by drawing taller.
+  //
+  // UI-REDO knife 3: the dock geometry is now RELATIVE TO CANVAS WIDTH
+  // (reference anchors measured on layout-reference-v2.webp, 853px wide;
+  // the pt values below are the 390pt-canvas equivalents):
+  //   - badge diameter  ~23.0%W  (~90pt)   ref circle x0-194 at the tray
+  //   - tray height     ~19.6%W  (~76pt)   coordinator anchor (was fixed 64)
+  //   - center strip    ~13.7%W  (~53pt)   ref y1600-1717 recessed band
+  //   - badge overshoot ~35% of its diameter above the tray top edge
+  // No fixed-px dock sizing anywhere else: every consumer that used the old
+  // `height - 64` contract must call getDockMetrics(width).top instead.
   const dock = Object.freeze({
-    height: 64,
-    badgeDiameter: 76,
-    badgeBottomInset: 2,
-    badgeIconSize: 34,
+    heightRatio: 0.196,
+    minHeightPx: 56,
+    maxHeightPx: 104,
+    badgeDiameterRatio: 0.23,
+    badgeOvershootRatio: 0.35,
+    badgeIconRatio: 0.42,
+    stripHeightRatio: 0.137,
+    stripGapPx: 8,
+    stripCellIconRatio: 0.5,
     badgeAssetPath: 'assets/art/ui-hud/hud-dock-badge-round.png',
-    cellSize: 46,
-    cellGap: 8,
-    cellTopInset: 3,
-    cellIconSize: 24,
     cellAssetPath: 'assets/art/ui-hud/hud-dock-button-cell.png',
+    // 9-slice insets for stretching the aged square cell plate into the
+    // recessed strip band (same technique as topBar.plateSlice).
+    stripSlice: Object.freeze({
+      sourceWidth: 256,
+      sourceHeight: 256,
+      sourceInset: 26,
+      destInset: 10,
+    }),
     disabledAlpha: 0.38,
+  });
+
+  // Single source for the reworked dock geometry. The effective width clamps
+  // so tablet canvases do not blow the bar up; every px value derives from
+  // the same clamped width, keeping the reference proportions intact.
+  function getDockMetrics(width, height) {
+    const canvasWidth = Number(width) || 0;
+    const canvasHeight = Number(height) || 0;
+    const effectiveWidth = Math.max(
+      dock.minHeightPx / dock.heightRatio,
+      Math.min(canvasWidth, dock.maxHeightPx / dock.heightRatio),
+    );
+    const barHeight = Math.round(effectiveWidth * dock.heightRatio);
+    const badgeDiameter = Math.round(effectiveWidth * dock.badgeDiameterRatio);
+    const stripHeight = Math.min(barHeight - 6, Math.round(effectiveWidth * dock.stripHeightRatio));
+    return {
+      height: barHeight,
+      top: canvasHeight ? canvasHeight - barHeight : 0,
+      badgeDiameter,
+      badgeOvershoot: Math.round(badgeDiameter * dock.badgeOvershootRatio),
+      badgeIconSize: Math.round(badgeDiameter * dock.badgeIconRatio),
+      stripHeight,
+      stripGap: dock.stripGapPx,
+      stripCellIconSize: Math.round(stripHeight * dock.stripCellIconRatio),
+    };
+  }
+
+  // Right-edge floating round buttons (subcity / events / account).
+  // Reference anchors: ring diameter ~10.5%W (~41pt), vertical pitch ~11.5%W,
+  // right inset ~8px.
+  const floatButton = Object.freeze({
+    diameterRatio: 0.105,
+    minDiameterPx: 40,
+    maxDiameterPx: 56,
+    gapPx: 10,
+    rightInsetPx: 8,
+    iconRatio: 0.46,
+    ringWidthPx: 1.5,
+  });
+
+  function getFloatButtonMetrics(width) {
+    const canvasWidth = Number(width) || 0;
+    const size = Math.max(
+      floatButton.minDiameterPx,
+      Math.min(floatButton.maxDiameterPx, Math.round(canvasWidth * floatButton.diameterRatio)),
+    );
+    return {
+      size,
+      gap: floatButton.gapPx,
+      rightInset: floatButton.rightInsetPx,
+      iconSize: Math.round(size * floatButton.iconRatio),
+      ringWidth: floatButton.ringWidthPx,
+    };
+  }
+
+  // Bottom-left squad quick panel (map home). Reference anchors: panel width
+  // ~25.6%W, row chips with colored crest square + name + chevron.
+  const squadPanel = Object.freeze({
+    widthRatio: 0.3,
+    minWidthPx: 118,
+    maxWidthPx: 156,
+    rowHeightPx: 32,
+    rowGapPx: 6,
+    chipSizePx: 22,
+    edgeInsetPx: 10,
+  });
+
+  // World-map city nameplate chip (dark plate + level corner + name).
+  const cityPlate = Object.freeze({
+    heightPx: 16,
+    levelBoxPx: 12,
+    paddingXPx: 5,
+    gapPx: 4,
+    maxNameWidthPx: 84,
+    liftPx: 6,
   });
 
   const UiThemeTokens = Object.freeze({
@@ -145,6 +236,11 @@
     radius,
     topBar,
     dock,
+    getDockMetrics,
+    floatButton,
+    getFloatButtonMetrics,
+    squadPanel,
+    cityPlate,
   });
 
   global.UiThemeTokens = UiThemeTokens;

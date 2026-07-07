@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class CityCanvasRenderer {
     constructor(options = {}) {
@@ -150,7 +161,7 @@
 
     renderCityManagementPanel(state = {}, options = {}) {
       const layout = this.getLayout();
-      const dockTop = this.height - 64;
+      const dockTop = UiThemeTokens?.getDockMetrics?.(this.width, this.height)?.top ?? (this.height - 64);
       const top = Math.max(82, this.getTopBarBottom(state, { isMapHome: true }) + 8);
       const panelHeight = Math.max(360, dockTop - top - 10);
       const x = layout.contentX;
@@ -322,7 +333,7 @@
       const visibleCount = Math.min(Math.max(1, cities.length), 6);
       const panelHeight = Math.max(142, 76 + visibleCount * itemHeight);
       const x = (this.width - panelWidth) / 2;
-      const dockTop = this.height - 64;
+      const dockTop = UiThemeTokens?.getDockMetrics?.(this.width, this.height)?.top ?? (this.height - 64);
       const y = Math.max(82, dockTop - panelHeight - 10);
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSubcityList', background: true });
       this.drawPanel(x, y, panelWidth, panelHeight, {
