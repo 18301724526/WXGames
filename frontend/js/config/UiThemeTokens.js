@@ -71,6 +71,9 @@
     accentJade: '#55AB73', // march arrow body [280,700,330,730]
     accentMarchGreen: '#15A46A', // march arrow saturated core
     accentCityLevelBlue: '#263F4B', // city level corner chip [108,676,130,698]
+    // UI-REDO knife 8: shared modal accents (single source for panel painters).
+    accentAlertRed: '#E94560', // tab badge / alert dot (legacy #e94560 normalized)
+    textDisabled: '#8D8F99', // disabled button label (legacy scattered #8d8f99)
   });
 
   // Hairlines: 1px separators/edges drawn over the iron plate.
@@ -98,6 +101,9 @@
 
   const fontFamily = Object.freeze({
     numeric: '"Roboto Mono", "SF Mono", Consolas, "Courier New", monospace',
+    // UI-REDO knife 8: modal title serif register (falls back to the platform
+    // CJK serif; Android WebView maps generic serif to Noto Serif CJK).
+    display: '"Songti SC", "STSong", "STZhongsong", SimSun, serif',
   });
 
   const spacing = Object.freeze({
@@ -113,6 +119,7 @@
     chip: 4,
     panel: 6,
     plate: 8,
+    modal: 10, // UI-REDO knife 8: forged modal plate corner (restrained, sub-button)
     button: 12,
   });
 
@@ -264,6 +271,79 @@
     levelFontPx: 9,
   });
 
+  // UI-REDO knife 8: shared modal panel anatomy (single source for
+  // ModalPlateRenderer). One forged-iron language for every sub-UI panel:
+  // task center / civilization / famous / settings / city command overlay.
+  // Face gradients reuse the knife-6 dock tray family (dockTrayLedge -> apron)
+  // so modals and the dock read as the same forged metal.
+  const modal = Object.freeze({
+    maskFill: 'rgba(0, 0, 0, 0.52)', // dim backdrop behind blocking modals (unifies 0.42/0.48/0.56)
+    plateGradientStops: Object.freeze([
+      Object.freeze([0, '#2A2622']), // lit upper face (one step above dockTrayLedge)
+      Object.freeze([0.42, '#1D1C19']),
+      Object.freeze([1, '#121110']), // apron-dark base
+    ]),
+    plateStroke: 'rgba(0, 0, 0, 0.62)', // outer dark edge
+    plateBevelLight: 'rgba(109, 100, 87, 0.85)', // top lit ridge (dockBevelLight family)
+    plateBottomWarmLine: 'rgba(60, 53, 43, 0.9)', // bottom warm edge (plateEdgeWarmLine family)
+    titleBarHeight: 46,
+    closeButtonSizePx: 28,
+    closeInsetPx: 10,
+    closeFill: 'rgba(0, 0, 0, 0.34)',
+    tabHeight: 34,
+    tabWellGradientStops: Object.freeze([
+      Object.freeze([0, '#191917']),
+      Object.freeze([1, '#111312']),
+    ]),
+    tabActiveUnderlinePx: 2,
+    cardGradientStops: Object.freeze([
+      Object.freeze([0, '#232019']),
+      Object.freeze([1, '#181613']),
+    ]),
+    cardAccentGradientStops: Object.freeze([
+      Object.freeze([0, '#3A2E1D']), // warm claimable/highlight face
+      Object.freeze([1, '#211A12']),
+    ]),
+    cardMutedFill: '#1A1917', // completed/inactive card face
+    cardStroke: 'rgba(229, 208, 165, 0.12)', // hairline card edge
+    cardAccentStroke: 'rgba(210, 181, 126, 0.45)',
+    cardMutedStroke: 'rgba(229, 208, 165, 0.07)',
+    cardMetStroke: 'rgba(85, 171, 115, 0.35)', // requirement-met row edge (accentJade family)
+    cardPadPx: 12,
+    progressTrackFill: '#141513',
+    progressFillStops: Object.freeze([
+      Object.freeze([0, '#A98F60']), // champagne fill, dark -> bright
+      Object.freeze([1, '#E5D0A5']),
+    ]),
+    button: Object.freeze({
+      radius: 8,
+      textSize: 13,
+      primaryFaceStops: Object.freeze([
+        Object.freeze([0, '#4A3823']), // warm lit face
+        Object.freeze([1, '#241A10']),
+      ]),
+      primaryStroke: 'rgba(210, 181, 126, 0.85)', // champagne edge
+      primaryText: '#F2E2BE',
+      primaryInset: 'rgba(229, 208, 165, 0.12)',
+      secondaryFaceStops: Object.freeze([
+        Object.freeze([0, '#262420']),
+        Object.freeze([1, '#161514']),
+      ]),
+      secondaryStroke: 'rgba(229, 208, 165, 0.22)',
+      secondaryText: '#B4A98F',
+      secondaryInset: 'rgba(229, 208, 165, 0.05)',
+      dangerFaceStops: Object.freeze([
+        Object.freeze([0, '#3B1D17']), // dark ember red face
+        Object.freeze([1, '#1E100D']),
+      ]),
+      dangerStroke: 'rgba(201, 91, 74, 0.6)',
+      dangerText: '#E3AC9C',
+      dangerInset: 'rgba(201, 91, 74, 0.1)',
+      disabledFill: '#1D1B18',
+      disabledStroke: 'rgba(229, 208, 165, 0.1)',
+    }),
+  });
+
   const UiThemeTokens = Object.freeze({
     version: UI_THEME_TOKENS_VERSION,
     source: 'docs/design/ui-hud-reference/user-references/layout-reference-v2.webp',
@@ -280,6 +360,7 @@
     getFloatButtonMetrics,
     squadPanel,
     cityPlate,
+    modal,
   });
 
   global.UiThemeTokens = UiThemeTokens;

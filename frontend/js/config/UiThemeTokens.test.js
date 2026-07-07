@@ -67,6 +67,39 @@ test('UiThemeTokens type/spacing/radius scales are ascending positive numbers', 
   assertAscending(UiThemeTokens.radius, ['chip', 'panel', 'plate', 'button']);
 });
 
+test('UiThemeTokens modal block is the frozen single source for the shared panel painter', () => {
+  const modal = UiThemeTokens.modal;
+  assert.equal(Object.isFrozen(modal), true);
+  assert.equal(Object.isFrozen(modal.button), true);
+  assert.match(String(modal.maskFill), RGBA_COLOR);
+  assert.equal(typeof UiThemeTokens.radius.modal, 'number');
+  assert.equal(UiThemeTokens.radius.plate < UiThemeTokens.radius.modal, true);
+  assert.equal(UiThemeTokens.radius.modal < UiThemeTokens.radius.button, true);
+  [
+    'plateGradientStops',
+    'tabWellGradientStops',
+    'cardGradientStops',
+    'cardAccentGradientStops',
+    'progressFillStops',
+  ].forEach((key) => {
+    const stops = modal[key];
+    assert.equal(Array.isArray(stops) && stops.length >= 2, true, key);
+    stops.forEach((stop) => {
+      assert.equal(typeof stop[0], 'number', `${key} offset`);
+      assert.match(String(stop[1]), HEX_COLOR, `${key} color`);
+    });
+  });
+  ['primaryFaceStops', 'secondaryFaceStops', 'dangerFaceStops'].forEach((key) => {
+    assert.equal(Array.isArray(modal.button[key]) && modal.button[key].length === 2, true, key);
+  });
+  ['primaryText', 'secondaryText', 'dangerText', 'disabledFill'].forEach((key) => {
+    assert.match(String(modal.button[key]), HEX_COLOR, `button.${key}`);
+  });
+  assert.equal(typeof UiThemeTokens.fontFamily.display, 'string');
+  assert.match(String(UiThemeTokens.palette.accentAlertRed), HEX_COLOR);
+  assert.match(String(UiThemeTokens.palette.textDisabled), HEX_COLOR);
+});
+
 test('UiThemeTokens top bar block matches the map-home top bar contract', () => {
   const topBar = UiThemeTokens.topBar;
   assert.equal(topBar.height, 64);
