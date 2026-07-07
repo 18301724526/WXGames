@@ -1,0 +1,1 @@
+UI redo v2 (layout-reference-v2.webp anchored): champagne-gold engraved resource icons, generated 4x2 on pure magenta via nano-banana-pro images/edits (1 call), sliced by generate2dsprite.py, magenta-defringe post pass. Frame picks: food=1 wood=3 stone=4 iron=5 knowledge=7 population=8.

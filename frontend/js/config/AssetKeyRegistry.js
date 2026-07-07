@@ -45,6 +45,7 @@
     asset('ui-hud:icon:account', 'ui', 'assets/art/ui-hud/hud-icon-account.png'),
     asset('ui-hud:icon:signal', 'ui', 'assets/art/ui-hud/hud-icon-signal.png'),
     asset('ui-hud:icon:squad', 'ui', 'assets/art/ui-hud/hud-icon-squad.png'),
+    asset('ui-hud:plate:top', 'ui', 'assets/art/ui-hud/hud-plate-top.png'),
     asset('ui-hud:resource:food', 'ui', 'assets/art/ui-hud/hud-resource-food.png'),
     asset('ui-hud:resource:wood', 'ui', 'assets/art/ui-hud/hud-resource-wood.png'),
     asset('ui-hud:resource:stone', 'ui', 'assets/art/ui-hud/hud-resource-stone.png'),

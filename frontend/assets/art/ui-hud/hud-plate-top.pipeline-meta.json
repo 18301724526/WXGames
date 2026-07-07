@@ -1,0 +1,22 @@
+{
+  "version": "ui-redo-v2",
+  "target": "ui-plate",
+  "asset": "hud-plate-top.png",
+  "size": [256, 101],
+  "source": "docs/design/ui-hud-reference/user-references/layout-reference-v2.webp",
+  "method": "clean-margin reconstruction (reference plate carries baked-in HUD content, so the plate was rebuilt from content-free bands)",
+  "recipe": [
+    "plate bbox in reference: x 4..848, y 38..138 (845x101)",
+    "left cap: real crop x 4..24 (bevel + corner)",
+    "right cap: real crop x 829..849 (bevel + corner)",
+    "interior: clean strip x 796..844 (rows 42..135) tiled horizontally, mirrored alternation, 12px cross-fade seams",
+    "top/bottom bevel bands (4px): clean segment x 300..790 stretched (avoids ornament studs at x 21..115 / 200..207 / 834..847)",
+    "alpha: rounded-rect mask radius 6 (reference has ~2px chamfer + AA)"
+  ],
+  "nine_slice": {
+    "source_inset_px": 20,
+    "recommended_dest_inset_logical_px": 10,
+    "note": "corners fixed, edges/center stretch; draw via drawAssetClipped 9-patch"
+  },
+  "intended_use": "world-map home top resource bar background (ResourceTopBarCanvasRenderer.renderMapHomeTopBar)"
+}
