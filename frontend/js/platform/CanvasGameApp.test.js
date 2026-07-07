@@ -893,6 +893,35 @@ test('CanvasGameApp clears quiet world march verification heartbeat without over
   assert.equal(host.networkState.failureCount, 0);
 });
 
+test('CanvasGameApp writes the measured heartbeat RTT into networkState.latencyMs', () => {
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    networkState: { status: 'online', failureCount: 0 },
+    api: { lastHeartbeatLatencyMs: 87 },
+    renderCanvasSurface() {},
+    ensureWorldClock() {
+      return null;
+    },
+  });
+
+  host.applyHeartbeat({
+    type: 'heartbeat',
+    serverTime: '2026-06-21T00:00:04.000Z',
+    heartbeatSeq: 4,
+  });
+  // Real measured value lands on the networkState the HUD latency readout consumes.
+  assert.equal(host.networkState.latencyMs, 87);
+
+  // A missing measurement keeps the previous reading instead of fabricating one.
+  host.api.lastHeartbeatLatencyMs = null;
+  host.applyHeartbeat({
+    type: 'heartbeat',
+    serverTime: '2026-06-21T00:00:05.000Z',
+    heartbeatSeq: 5,
+  });
+  assert.equal(host.networkState.latencyMs, 87);
+});
+
 test('CanvasGameApp routes active march animation to actor loop instead of map water timer redraw', () => {
   const calls = [];
   let intervalCallback = null;

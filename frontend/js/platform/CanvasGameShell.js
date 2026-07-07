@@ -2554,6 +2554,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
     renderWorldActorAnimationFrame(options = {}) {
             if (!this.shouldAnimateWorldActors(options)) return false;
             const now = this.now?.() ?? Date.now();
+            // Feed the shared FPS meter from the ONLY continuous rAF loop on
+            // the map home: its callback cadence IS the live frame rate. The
+            // HUD's event-driven renders are too sparse for the meter's 250ms
+            // sample window, which left `FPS --` on device while animating.
+            this.renderer?.updateFps?.(now);
             const frameMs = Math.max(1, this.getWorldActorAnimationFrameMs() - 1);
             if (!options.force && this.lastWorldActorAnimationRenderAt && now - this.lastWorldActorAnimationRenderAt < frameMs) return false;
             this.lastWorldActorAnimationRenderAt = now;

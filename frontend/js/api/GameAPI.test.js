@@ -207,6 +207,32 @@ test('GameAPI sends world march heartbeat reports with POST only when present', 
   assert.equal(JSON.parse(requests[1].body).worldMarchClientReport.missions[0].position.q, 1.25);
 });
 
+test('GameAPI measures the heartbeat round-trip and clears it on failure', async () => {
+  let nowMs = 1000;
+  let failNext = false;
+  const api = new GameAPI('/api', 'token-a', {
+    maxRetries: 0,
+    scheduler: { now: () => nowMs },
+    transport: {
+      async request() {
+        if (failNext) throw new Error('offline');
+        nowMs += 87; // the transport "takes" 87ms
+        return createResponse(200, { type: 'heartbeat', serverTime: '2026-06-21T00:00:00.000Z' });
+      },
+    },
+  });
+
+  assert.equal(api.lastHeartbeatLatencyMs, null);
+  await api.heartbeat();
+  // Real measured RTT (never fabricated): elapsed scheduler time around the request.
+  assert.equal(api.lastHeartbeatLatencyMs, 87);
+
+  failNext = true;
+  await assert.rejects(() => api.heartbeat());
+  // A failed heartbeat must not leave a stale "measured" latency behind.
+  assert.equal(api.lastHeartbeatLatencyMs, null);
+});
+
 test('GameAPI sends formation soldier assignments with saved formations', async () => {
   const calls = [];
   const api = new GameAPI('/api', 'token-a', {

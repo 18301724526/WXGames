@@ -1109,12 +1109,23 @@
                 const largeDrift = marchVerification?.status === 'pullback'
                   || (Array.isArray(marchVerification?.results)
                     && marchVerification.results.some((result) => result?.severity === 'large'));
+                // Measured heartbeat round-trip from the API layer (real RTT,
+                // never fabricated); keeps the previous reading while a
+                // heartbeat is mid-flight or failed. Number(null) is 0, so a
+                // cleared measurement must stay out of the readout explicitly.
+                const rawHeartbeatLatency = this.api?.lastHeartbeatLatencyMs;
+                const measuredLatencyMs = rawHeartbeatLatency === null || rawHeartbeatLatency === undefined
+                  ? Number.NaN
+                  : Number(rawHeartbeatLatency);
                 this.networkState = {
                   ...(this.networkState || {}),
                   status: largeDrift ? 'reconnecting' : 'online',
                   failureCount: largeDrift ? Math.max(1, Number(this.networkState?.failureCount) || 0) : 0,
                   serverTime: data.serverTime || this.networkState?.serverTime || null,
                   heartbeatSeq: Number(data.heartbeatSeq) || this.networkState?.heartbeatSeq || 0,
+                  latencyMs: Number.isFinite(measuredLatencyMs) && measuredLatencyMs >= 0
+                    ? measuredLatencyMs
+                    : (this.networkState?.latencyMs ?? null),
                   message: largeDrift
                     ? (WorldMarchOptimisticState?.SLOW_SYNC_MESSAGE || this.networkState?.message || null)
                     : null,

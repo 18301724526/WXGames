@@ -253,6 +253,51 @@ test('ResourceTopBarCanvasRenderer falls back when presenter resource view is un
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-resource-food.png'), true);
 });
 
+test('ResourceTopBarCanvasRenderer map-home FPS reads live currentFps through a 0 painted value', () => {
+  // Real-device regression (proven on the live deploy): surfaceState.currentFps
+  // was 97 while fpsLastPaintedValue stayed 0 (nothing calls updatePaintedFps on
+  // the map home), and `painted ?? current` resolved 0 -> 'FPS --'. The stats
+  // block must surface the live meter and refresh the painted value through the
+  // same FrameClock seam the old FPS chip used.
+  const surfaceState = { currentFps: 97, fpsLastPaintedValue: 0, fpsLastPaintAt: 0, frameNow: 0 };
+  const host = createHost({ presenter: null, surfaceState });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({
+    resources: { food: 20, wood: 10, stone: 8, iron: 5, knowledge: 3 },
+    population: { total: 12 },
+  }, {
+    network: { latencyMs: 42 },
+    showTopBarDebugStats: true,
+  });
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'FPS 97'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'FPS --'), false);
+  // The painted value was refreshed through FrameClock so the readout holds steady.
+  assert.equal(surfaceState.fpsLastPaintedValue, 97);
+});
+
+test('ResourceTopBarCanvasRenderer map-home latency reads the measured heartbeat RTT from networkState', () => {
+  // networkState.latencyMs is the measured heartbeat round-trip written by
+  // CanvasGameApp.applyHeartbeat (GameAPI.lastHeartbeatLatencyMs) — no fake data.
+  const host = createHost({ presenter: null });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({}, {
+    network: { status: 'online', latencyMs: 87 },
+    showTopBarDebugStats: true,
+  });
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '87ms'), true);
+
+  // Without any measured RTT the readout must show '--ms', never a fabricated number.
+  const host2 = createHost({ presenter: null });
+  new ResourceTopBarCanvasRenderer({ host: host2 }).renderMapHomeTopBar({}, {
+    network: { status: 'online' },
+    showTopBarDebugStats: true,
+  });
+  assert.equal(host2.calls.some((call) => call[0] === 'drawText' && call[1] === '--ms'), true);
+});
+
 test('ResourceTopBarCanvasRenderer hides the map-home debug stats block by default', () => {
   const host = createHost({ presenter: null });
   const renderer = new ResourceTopBarCanvasRenderer({ host });

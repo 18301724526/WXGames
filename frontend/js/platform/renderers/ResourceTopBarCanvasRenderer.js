@@ -25,6 +25,21 @@
     return null;
   })();
 
+  // Shared FPS meter (single source: surfaceState fed by CanvasSurfaceFrameClock).
+  // The map-home stats block reads the SAME painted-value seam the retired
+  // renderFpsOverlay chip used, so both readouts can never diverge.
+  const FrameClock = (() => {
+    if (global.CanvasSurfaceFrameClock) return global.CanvasSurfaceFrameClock;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasSurfaceFrameClock');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class ResourceTopBarCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -243,9 +258,29 @@
       return y + barHeight + 12;
     }
 
+    // Real FPS source = the shared surfaceState frame meter (fed by
+    // CanvasSurfaceFrameClock.updateFps from beginFrame AND the map-home
+    // world-actor rAF loop). Bug fixed here: `fpsLastPaintedValue ?? currentFps`
+    // masked a live currentFps behind a 0 painted value (0 is not nullish), so
+    // the map home showed 'FPS --' while currentFps was 97 (proven on the live
+    // deploy). The painted value is refreshed through the SAME
+    // updatePaintedFps seam the old FPS chip used (180ms hold for readability).
     resolveMapHomeFps(options = {}) {
-      const fps = Number(options.fps ?? this.host?.surfaceState?.fpsLastPaintedValue ?? this.host?.surfaceState?.currentFps);
-      return Number.isFinite(fps) && fps > 0 ? Math.round(fps) : 0;
+      const optionFps = Number(options.fps);
+      if (Number.isFinite(optionFps) && optionFps > 0) return Math.round(optionFps);
+      const surfaceState = this.host?.surfaceState || null;
+      if (surfaceState && typeof FrameClock?.updatePaintedFps === 'function') {
+        const painted = FrameClock.updatePaintedFps(
+          surfaceState,
+          options,
+          Number(surfaceState.frameNow) || Date.now(),
+        );
+        if (painted > 0) return painted;
+      }
+      const painted = Number(surfaceState?.fpsLastPaintedValue);
+      if (Number.isFinite(painted) && painted > 0) return Math.round(painted);
+      const current = Number(surfaceState?.currentFps);
+      return Number.isFinite(current) && current > 0 ? Math.round(current) : 0;
     }
 
     resolveMapHomeLatencyMs(state = {}, options = {}) {
@@ -412,6 +447,12 @@
       const plateWidth = Math.max(0, width - plateX * 2);
       const plateHeight = Number(topBar.plateHeight) || 56;
       this.drawMapHomeTopBarPlate(plateX, plateY, plateWidth, plateHeight);
+      // Knife 6 (气质收敛): the same warm edge line the dock tray wears —
+      // shared plate language along the top plate's bottom edge.
+      if (this.ctx && typeof this.ctx.fillRect === 'function') {
+        this.ctx.fillStyle = palette.plateEdgeWarmLine;
+        this.ctx.fillRect(plateX, plateY + plateHeight - 1, plateWidth, UiThemeTokens?.hairline?.widthPx || 1);
+      }
 
       const contentPaddingX = Number(topBar.contentPaddingX) || 12;
       const contentLeft = Math.max(plateX + contentPaddingX, Number(layout.contentX) || 0);

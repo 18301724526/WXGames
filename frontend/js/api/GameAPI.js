@@ -170,6 +170,10 @@
       this.requestSeq = 0;
       this.versionEtag = '';
       this.cachedVersionInfo = null;
+      // Measured heartbeat round-trip (ms). Written by heartbeat(); consumed
+      // by CanvasGameApp.applyHeartbeat -> networkState.latencyMs -> the
+      // map-home HUD latency readout. Real measurement, never fabricated.
+      this.lastHeartbeatLatencyMs = null;
       this.scheduler = {
         setTimeout: options.scheduler?.setTimeout || global.setTimeout?.bind?.(global) || setTimeout,
         clearTimeout: options.scheduler?.clearTimeout || global.clearTimeout?.bind?.(global) || clearTimeout,
@@ -611,11 +615,20 @@
     }
 
     getState() { return this.request('GET', '/game/state'); }
-    heartbeat(options = {}) {
+    async heartbeat(options = {}) {
       const report = options?.worldMarchClientReport || null;
-      return report
-        ? this.request('POST', '/game/heartbeat', { worldMarchClientReport: report })
-        : this.request('GET', '/game/heartbeat');
+      const startedAt = this.scheduler.now();
+      try {
+        const data = report
+          ? await this.request('POST', '/game/heartbeat', { worldMarchClientReport: report })
+          : await this.request('GET', '/game/heartbeat');
+        const elapsed = Math.round(this.scheduler.now() - startedAt);
+        this.lastHeartbeatLatencyMs = Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : null;
+        return data;
+      } catch (error) {
+        this.lastHeartbeatLatencyMs = null;
+        throw error;
+      }
     }
     getTasks() { return this.request('GET', '/game/tasks'); }
     getVersion() { return this.request('GET', '/version'); }
