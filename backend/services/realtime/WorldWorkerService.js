@@ -203,25 +203,36 @@ class WorldWorkerService {
   // retry the advance on conflict; a player hot enough to win every retry just waits for
   // the next tick (5s), which only delays a march, never starves it.
   advancePlayerWithRetry(playerId, now, attempts = 3, initialState = null, rosterPatch = null) {
-    let candidate = initialState;
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      const fresh = playerId && typeof this.repository?.findByPlayerId === 'function'
-        ? this.repository.findByPlayerId(playerId)
-        : null;
-      if (fresh) candidate = fresh;
-      if (!candidate) return { advanced: false, reason: 'missing-state' };
-      this.applyRosterPatch(candidate, rosterPatch);
-      try {
-        this.advanceState(candidate, now);
-        return { advanced: true, attempts: attempt };
-      } catch (error) {
-        if (error?.code !== 'GAME_STATE_REVISION_CONFLICT' || attempt === attempts) {
-          throw error;
+    const runAdvance = () => {
+      let candidate = initialState;
+      for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        const fresh = playerId && typeof this.repository?.findByPlayerId === 'function'
+          ? this.repository.findByPlayerId(playerId)
+          : null;
+        if (fresh) candidate = fresh;
+        if (!candidate) return { advanced: false, reason: 'missing-state' };
+        this.applyRosterPatch(candidate, rosterPatch);
+        try {
+          this.advanceState(candidate, now);
+          return { advanced: true, attempts: attempt };
+        } catch (error) {
+          if (error?.code !== 'GAME_STATE_REVISION_CONFLICT' || attempt === attempts) {
+            throw error;
+          }
+          candidate = null;
         }
-        candidate = null;
       }
+      return { advanced: false, reason: 'conflict-exhausted' };
+    };
+    if (playerId && typeof this.repository?.withPlayerStateLock === 'function') {
+      return this.repository.withPlayerStateLock(playerId, runAdvance, {
+        scope: 'world-worker',
+        waitMs: 0,
+        ttlMs: Math.max(this.intervalMs * 4, 30 * 1000),
+        timeoutResult: { advanced: false, reason: 'player-state-locked' },
+      });
     }
-    return { advanced: false, reason: 'conflict-exhausted' };
+    return runAdvance();
   }
 
   tickOnce() {

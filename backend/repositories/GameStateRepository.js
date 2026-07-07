@@ -2,6 +2,7 @@ const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget
 const { SchemaMigrationService } = require('../services/SchemaMigrationService');
 const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
+const { PlayerStateLockRepository } = require('./PlayerStateLockRepository');
 const { FactionRepository } = require('./FactionRepository');
 const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
 const { WorldPeopleRepository } = require('./WorldPeopleRepository');
@@ -69,6 +70,7 @@ function createGameStateSchemaMigrations() {
 class GameStateRepository {
   constructor(db) {
     this.db = db;
+    this.playerStateLocks = new PlayerStateLockRepository(db);
     this.spawnAuthority = new SpawnAuthorityRepository(db);
     this.worldMapAuthority = new WorldMapAuthorityRepository(db);
     // Shared-world AI + neutral 势力 registry (docs/design/01). Player factions derive from
@@ -155,6 +157,7 @@ class GameStateRepository {
       CREATE INDEX IF NOT EXISTS idx_players_last_active_at ON players(lastActiveAt DESC);
       CREATE INDEX IF NOT EXISTS idx_shared_world_territories_owner ON shared_world_territories(ownerPlayerId);
     `);
+    this.playerStateLocks.init();
     this.spawnAuthority.init();
     this.worldMapAuthority.init();
     this.factionRepo.init();
@@ -615,6 +618,10 @@ class GameStateRepository {
 
   touchPlayerActiveAt(playerId) {
     this.db.prepare('UPDATE players SET lastActiveAt = ? WHERE playerId = ?').run(new Date().toISOString(), playerId);
+  }
+
+  withPlayerStateLock(playerId, callback, options = {}) {
+    return this.playerStateLocks.withLock(playerId, callback, options);
   }
 }
 

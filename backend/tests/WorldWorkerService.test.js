@@ -329,6 +329,40 @@ test('WorldWorkerService re-reads the latest revision and retries on conflict', 
   assert.equal(reads >= 2, true, 'fresh state re-read after the conflict');
 });
 
+test('WorldWorkerService yields to foreground player-state writers', () => {
+  const calls = [];
+  const service = new WorldWorkerService({
+    repository: {
+      findRecentlyActive() {
+        calls.push(['findRecentlyActive']);
+        return [{ playerId: 'foreground-player' }];
+      },
+      withPlayerStateLock(playerId, callback, options) {
+        calls.push(['withPlayerStateLock', playerId, options.scope, options.waitMs]);
+        assert.equal(typeof callback, 'function');
+        return options.timeoutResult;
+      },
+      findByPlayerId() {
+        throw new Error('worker must not read while foreground action owns the player lock');
+      },
+      save() {
+        throw new Error('worker must not save while foreground action owns the player lock');
+      },
+    },
+    gameStateService: { advanceRuntimeState: (state) => state },
+    now: () => new Date('2026-07-07T00:00:05.000Z'),
+  });
+
+  const summary = service.tickOnce();
+
+  assert.equal(summary.processedCount, 0);
+  assert.equal(summary.errorCount, 0);
+  assert.deepEqual(calls, [
+    ['findRecentlyActive'],
+    ['withPlayerStateLock', 'foreground-player', 'world-worker', 0],
+  ]);
+});
+
 test('WorldWorkerService gives up after bounded conflict retries without erroring', () => {
   const service = new WorldWorkerService({
     repository: {

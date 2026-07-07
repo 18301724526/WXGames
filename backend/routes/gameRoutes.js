@@ -175,6 +175,39 @@ function buildRevisionConflictPayload(error = {}) {
   };
 }
 
+function isPlayerStateLockTimeout(error = {}) {
+  return error?.code === 'PLAYER_STATE_LOCK_TIMEOUT';
+}
+
+function buildPlayerStateBusyPayload(error = {}) {
+  return {
+    success: false,
+    error: 'PLAYER_STATE_BUSY',
+    message: '上一条操作仍在处理，请稍后重试',
+    retryable: true,
+    playerId: error.playerId || null,
+  };
+}
+
+function withPlayerStateLock(repository, playerId, callback, options = {}) {
+  if (typeof repository?.withPlayerStateLock !== 'function') return callback();
+  return repository.withPlayerStateLock(playerId, callback, options);
+}
+
+const ACTION_PLAYER_STATE_LOCK = Object.freeze({
+  scope: 'game-action',
+  waitMs: 20000,
+  ttlMs: 60000,
+  pollMs: 50,
+});
+
+const HEARTBEAT_PLAYER_STATE_LOCK = Object.freeze({
+  scope: 'heartbeat',
+  waitMs: 0,
+  ttlMs: 15000,
+  timeoutResult: null,
+});
+
 function executeGameActionRequest({
   req,
   repository,
@@ -410,19 +443,23 @@ function registerGameRoutes(app, deps) {
   const handleHeartbeat = (req, res) => {
     const now = new Date();
     presenceService?.recordHeartbeat?.(req.playerId);
+    let clientReport = null;
     try {
-      settleDueMarchesOnHeartbeat(req.playerId, now);
+      const heartbeatWrites = withPlayerStateLock(repository, req.playerId, () => {
+        settleDueMarchesOnHeartbeat(req.playerId, now);
+        return recordWorldMarchClientReport(
+          repository,
+          gameStateService,
+          req.playerId,
+          req.body?.worldMarchClientReport,
+          now,
+        );
+      }, HEARTBEAT_PLAYER_STATE_LOCK);
+      clientReport = heartbeatWrites || null;
     } catch (error) {
       // A lost revision race here is harmless: the next heartbeat or worker tick retries.
-      if (error?.code !== 'GAME_STATE_REVISION_CONFLICT') throw error;
+      if (error?.code !== 'GAME_STATE_REVISION_CONFLICT' && !isPlayerStateLockTimeout(error)) throw error;
     }
-    const clientReport = recordWorldMarchClientReport(
-      repository,
-      gameStateService,
-      req.playerId,
-      req.body?.worldMarchClientReport,
-      now,
-    );
     const verificationState = repository.findByPlayerId?.(req.playerId)?.worldMarchVerification || null;
     if (shouldTraceWorldMarchRequest(req)) {
       traceWorldMarch('route:heartbeat', {
@@ -488,14 +525,22 @@ function registerGameRoutes(app, deps) {
     // conflict, which previously escaped this route as an unhandled 500. Retry once, then fall
     // back to a clean 409 instead of crashing the request.
     try {
-      const response = runClaim();
+      const response = withPlayerStateLock(repository, req.playerId, runClaim, {
+        ...ACTION_PLAYER_STATE_LOCK,
+        scope: 'task-claim',
+      });
       return res.status(response.statusCode).json(response.payload);
     } catch (error) {
+      if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
       if (!isGameStateRevisionConflict(error)) throw error;
       try {
-        const response = runClaim();
+        const response = withPlayerStateLock(repository, req.playerId, runClaim, {
+          ...ACTION_PLAYER_STATE_LOCK,
+          scope: 'task-claim',
+        });
         return res.status(response.statusCode).json(response.payload);
       } catch (retryError) {
+        if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
         if (!isGameStateRevisionConflict(retryError)) throw retryError;
         return res.status(409).json(buildRevisionConflictPayload(retryError));
       }
@@ -509,11 +554,13 @@ function registerGameRoutes(app, deps) {
         const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 0 });
         return res.status(response.statusCode).json(response.payload);
       } catch (error) {
+        if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
         if (!isGameStateRevisionConflict(error)) throw error;
         try {
           const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 1 });
           return res.status(response.statusCode).json(response.payload);
         } catch (retryError) {
+          if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
           if (!isGameStateRevisionConflict(retryError)) throw retryError;
           return res.status(409).json(buildRevisionConflictPayload(retryError));
         }
@@ -523,15 +570,19 @@ function registerGameRoutes(app, deps) {
     const traceEnabled = shouldTraceWorldMarch(req.body);
     return WorldExplorerTrace.run(traceEnabled, () => {
       try {
-        const response = executeGameActionRequest({
-          req,
-          repository,
-          gameStateService,
-          traceEnabled,
-          retryAttempt: 0,
+        const response = withPlayerStateLock(repository, req.playerId, () => executeGameActionRequest({
+            req,
+            repository,
+            gameStateService,
+            traceEnabled,
+            retryAttempt: 0,
+          }), {
+          ...ACTION_PLAYER_STATE_LOCK,
+          scope: `game-action:${req.body?.action || 'unknown'}`,
         });
         return res.status(response.statusCode).json(response.payload);
       } catch (error) {
+        if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
         if (!isGameStateRevisionConflict(error)) throw error;
         if (traceEnabled) {
           traceWorldMarch('route:revisionConflictRetry', {
@@ -542,15 +593,19 @@ function registerGameRoutes(app, deps) {
           });
         }
         try {
-          const response = executeGameActionRequest({
-            req,
-            repository,
-            gameStateService,
-            traceEnabled,
-            retryAttempt: 1,
+          const response = withPlayerStateLock(repository, req.playerId, () => executeGameActionRequest({
+              req,
+              repository,
+              gameStateService,
+              traceEnabled,
+              retryAttempt: 1,
+            }), {
+            ...ACTION_PLAYER_STATE_LOCK,
+            scope: `game-action:${req.body?.action || 'unknown'}`,
           });
           return res.status(response.statusCode).json(response.payload);
         } catch (retryError) {
+          if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
           if (!isGameStateRevisionConflict(retryError)) throw retryError;
           return res.status(409).json(buildRevisionConflictPayload(retryError));
         }

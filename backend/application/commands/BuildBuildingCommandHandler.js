@@ -78,6 +78,18 @@ class BuildBuildingCommandHandler {
   }
 
   execute(command = {}, options = {}) {
+    if (!options.lockHeld && typeof this.repository?.withPlayerStateLock === 'function') {
+      return this.repository.withPlayerStateLock(
+        command.playerId,
+        () => this.execute(command, { ...options, lockHeld: true }),
+        {
+          scope: 'game-action:build',
+          waitMs: 20000,
+          ttlMs: 60000,
+          pollMs: 50,
+        },
+      );
+    }
     const trace = new CommandTrace(command, { retryAttempt: options.retryAttempt || 0 });
     let projection = {};
     let gameState = null;

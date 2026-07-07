@@ -49,12 +49,25 @@ test('game action route persists tutorial returned by action handlers', () => {
     currentEra: 0,
   };
   const savedStates = [];
+  const lockScopes = [];
+  let lockDepth = 0;
   const repository = {
+    withPlayerStateLock(playerId, callback, options) {
+      assert.equal(playerId, 'route-tutorial-test');
+      lockScopes.push(options.scope);
+      lockDepth += 1;
+      try {
+        return callback();
+      } finally {
+        lockDepth -= 1;
+      }
+    },
     findByPlayerId(playerId) {
       assert.equal(playerId, 'route-tutorial-test');
       return gameState;
     },
     save(state) {
+      assert.equal(lockDepth, 1);
       savedStates.push(JSON.parse(JSON.stringify(state)));
     },
   };
@@ -83,6 +96,7 @@ test('game action route persists tutorial returned by action handlers', () => {
 
   assert.equal(res.statusCode, 200);
   assert.equal(savedStates.length, 1);
+  assert.deepEqual(lockScopes, ['game-action:tutorialAdvance']);
   assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.buildingsTabOpened);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.buildingsTabOpened);
 });

@@ -104,6 +104,41 @@ test('GameStateRepository increments revision and rejects stale expected revisio
   }
 });
 
+test('GameStateRepository serializes player state locks across repository instances', () => {
+  const db = new Database(':memory:');
+  const firstRepository = new GameStateRepository(db);
+  firstRepository.init();
+  const secondRepository = new GameStateRepository(db);
+  secondRepository.init();
+
+  try {
+    const heldLock = firstRepository.playerStateLocks.acquire('locked-player', {
+      scope: 'test-held-lock',
+      waitMs: 0,
+      ttlMs: 60000,
+    });
+    let entered = false;
+    assert.throws(
+      () => secondRepository.withPlayerStateLock('locked-player', () => {
+        entered = true;
+      }, { scope: 'test-contender', waitMs: 0 }),
+      (error) => error.code === 'PLAYER_STATE_LOCK_TIMEOUT'
+        && error.playerId === 'locked-player',
+    );
+    assert.equal(entered, false);
+
+    firstRepository.playerStateLocks.release(heldLock);
+    const result = secondRepository.withPlayerStateLock(
+      'locked-player',
+      () => 'acquired-after-release',
+      { scope: 'test-after-release', waitMs: 0 },
+    );
+    assert.equal(result, 'acquired-after-release');
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository persists save metadata with the game state', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
