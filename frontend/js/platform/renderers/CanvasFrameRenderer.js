@@ -466,7 +466,25 @@
       return true;
     }
 
-    // Top strip right below the top bar: explore-progress chip (dark plate +
+    // UI-REDO knife 6 (气质收敛): small map chips share the dock tray's forged
+    // treatment — same token gradient stops, warm edge line and inner bevel
+    // light (single source: UiThemeTokens.dock.trayGradientStops +
+    // palette.plateEdgeWarmLine + hairline.insetHighlight).
+    drawForgedChipPlate(x, y, width, height) {
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const stops = Array.isArray(UiThemeTokens?.dock?.trayGradientStops) && UiThemeTokens.dock.trayGradientStops.length
+        ? UiThemeTokens.dock.trayGradientStops.map((stop) => [stop[0], stop[1]])
+        : [[0, palette.dockTrayLedge], [1, palette.dockApron]];
+      this.drawPanel(x, y, width, height, {
+        fill: this.createGradient(x, y, x, y + height, stops, palette.dockTrayLedge),
+        stroke: palette.plateEdgeWarmLine,
+        radius: UiThemeTokens?.radius?.plate || 8,
+        inset: hairline.insetHighlight,
+      });
+    }
+
+    // Top strip right below the top bar: explore-progress chip (forged plate +
     // thin jade progress line, only while a mission is actively exploring)
     // and the back-to-city button (action stays resetWorldPan).
     renderMapHomeExploreChip(state = {}, map = {}, topBarBottom = 84, _options = {}) {
@@ -483,12 +501,7 @@
       const buttonWidth = 76;
       const buttonHeight = 28;
       const buttonX = Math.max(8, (Number(map.x) || 0) + (Number(map.width) || this.width) - buttonWidth - 12);
-      this.drawPanel(buttonX, chipTop, buttonWidth, buttonHeight, {
-        fill: 'rgba(15, 13, 10, 0.82)',
-        stroke: hairline.dividerOnIron,
-        radius: UiThemeTokens?.radius?.plate || 8,
-        inset: hairline.insetHighlight,
-      });
+      this.drawForgedChipPlate(buttonX, chipTop, buttonWidth, buttonHeight);
       this.drawText(this.t('worldMap.backToCity'), buttonX + buttonWidth / 2, chipTop + buttonHeight / 2, {
         size: typeScale.label || 10,
         bold: true,
@@ -504,12 +517,7 @@
       const chipWidth = Math.min(168, Math.max(128, Math.floor((Number(map.width) || this.width) * 0.4)));
       const chipHeight = 30;
       const chipX = Math.max(8, (Number(map.x) || 0) + 12);
-      this.drawPanel(chipX, chipTop, chipWidth, chipHeight, {
-        fill: 'rgba(15, 13, 10, 0.82)',
-        stroke: hairline.dividerOnIron,
-        radius: UiThemeTokens?.radius?.plate || 8,
-        inset: hairline.insetHighlight,
-      });
+      this.drawForgedChipPlate(chipX, chipTop, chipWidth, chipHeight);
       this.drawText(this.t('worldMap.exploreProgress', { done, total }), chipX + 10, chipTop + 6, {
         size: typeScale.label || 10,
         bold: true,

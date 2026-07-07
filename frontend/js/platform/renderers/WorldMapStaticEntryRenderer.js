@@ -349,18 +349,19 @@
     // the site art with a blue level corner + name. Pure re-skin of the old
     // under-art label -- site data and the openWorldSite hit rect are
     // untouched. Level comes pre-normalized off tile.site (intel level).
+    // Knife 6: plate/type sizes come off cityPlate tokens (one notch larger).
     drawWorldTileSiteNameplate(site = {}, baseX = 0, artTopY = 0) {
       const palette = UiThemeTokens?.palette || {};
       const hairline = UiThemeTokens?.hairline || {};
       const plate = UiThemeTokens?.cityPlate || {};
-      const nameSize = 9;
-      const plateHeight = Number(plate.heightPx) || 16;
-      const levelBox = Number(plate.levelBoxPx) || 12;
-      const paddingX = Number(plate.paddingXPx) || 5;
+      const nameSize = Number(plate.nameFontPx) || 10;
+      const plateHeight = Number(plate.heightPx) || 18;
+      const levelBox = Number(plate.levelBoxPx) || 14;
+      const paddingX = Number(plate.paddingXPx) || 6;
       const gap = Number(plate.gapPx) || 4;
       const name = this.truncateText(
         site.name || site.title || this.t('world.site.defaultName'),
-        Number(plate.maxNameWidthPx) || 84,
+        Number(plate.maxNameWidthPx) || 96,
         { size: nameSize },
       );
       const level = Math.max(0, Math.floor(Number(site.level) || 0));
@@ -382,7 +383,7 @@
       if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
       if (level > 0) {
         this.drawText(String(level), plateX + paddingX - 1 + levelBox / 2, plateY + plateHeight / 2, {
-          size: 8,
+          size: Number(plate.levelFontPx) || 9,
           bold: true,
           color: palette.textPrimary || '#E1D3B7',
           align: 'center',
