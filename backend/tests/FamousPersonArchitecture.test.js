@@ -8,6 +8,7 @@ const Constants = require('../services/famousPerson/FamousPersonConstants');
 const Shared = require('../services/famousPerson/FamousPersonShared');
 const Progression = require('../services/famousPerson/FamousPersonProgression');
 const Generator = require('../services/famousPerson/FamousPersonGenerator');
+const SkillNormalizer = require('../services/famousPerson/FamousPersonSkillNormalizer');
 const FamousPersonRandomAuthority = require('../services/famousPerson/FamousPersonRandomAuthority');
 const ServerRandomAuthorityContract = require('../services/random/ServerRandomAuthorityContract');
 
@@ -31,6 +32,7 @@ test('FamousPersonService delegates static and progression responsibilities to f
     'FamousPersonProgression.js',
     'FamousPersonRandomAuthority.js',
     'FamousPersonShared.js',
+    'FamousPersonSkillNormalizer.js',
   ]);
   for (const fileName of moduleFiles) {
     assert.ok(lineCount(path.join(famousRoot, fileName)) < 500, `${fileName} should stay below 500 lines`);
@@ -101,6 +103,25 @@ test('famous person generator preserves candidate and tutorial scout contracts',
 
   assert.equal(Generator.makeSkillName([{ key: 'lifesteal' }, { key: 'secondHit' }]), '血刃连袭');
   assert.equal(Generator.getArchetypePool('seek').some((item) => item.id === 'scout'), true);
+  assert.equal(typeof SkillNormalizer.normalizeSkill, 'function');
+});
+
+test('famous person normalization backfills social fields through PersonSocialFields', () => {
+  const [person] = FamousPersonService.normalizeFamousPeople([{
+    id: 'fp-social',
+    name: 'Social',
+    personality: { nature: 'stale', axes: { boldness: 0.85, sociability: 0.1, integrity: 0.2 } },
+    gender: 'female',
+    orientation: 'same',
+    relationships: [{ toPersonId: 'fp-friend', affinity: 50, meetCount: 5 }],
+    factionId: 'ai_wei',
+  }]);
+
+  assert.equal(person.personality.nature, 'valiant');
+  assert.equal(person.gender, 'female');
+  assert.equal(person.orientation, 'same');
+  assert.equal(person.relationships[0].kind, 'friend');
+  assert.equal(person.factionId, 'ai_wei');
 });
 
 test('famous person candidate generation consumes server random authority by default', () => {

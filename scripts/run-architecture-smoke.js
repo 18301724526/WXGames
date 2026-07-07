@@ -266,6 +266,7 @@ const CHECK_FILES = Object.freeze([
   'backend/services/famousPerson/FamousPersonProgression.js',
   'backend/services/famousPerson/FamousPersonRandomAuthority.js',
   'backend/services/famousPerson/FamousPersonShared.js',
+  'backend/services/famousPerson/FamousPersonSkillNormalizer.js',
   'backend/services/event/EventCatalog.js',
   'backend/services/population/PopulationAssignment.js',
   'backend/services/TalentPolicyService.js',
