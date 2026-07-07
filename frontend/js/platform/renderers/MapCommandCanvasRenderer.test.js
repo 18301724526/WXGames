@@ -229,6 +229,27 @@ test('MapCommandCanvasRenderer preserves floating map button contracts', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'requestResetGame' && target.action.source === 'debugResetAccount'), true);
 });
 
+test('MapCommandCanvasRenderer lights active states only from the pre-decided dock id list', () => {
+  const panelFills = [];
+  const host = createHost({
+    drawPanel(...args) { panelFills.push(args[4] && args[4].fill); },
+  });
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  assert.equal(renderer.isDockItemActive({ id: 'tasks' }, { activeDockItemIds: ['tasks', 'settings'] }), true);
+  assert.equal(renderer.isDockItemActive({ id: 'tech' }, { activeDockItemIds: ['tasks'] }), false);
+  // Regression: the snapshot boundary once collapsed the id list to Boolean `true`;
+  // that shape must stay inert instead of lighting every dock item.
+  assert.equal(renderer.isDockItemActive({ id: 'tasks' }, { activeDockItemIds: true }), false);
+  assert.equal(renderer.isDockItemActive({ id: 'tech' }, { activeCommandPanel: 'tech' }), true);
+
+  renderer.renderFloatingAccountButton({}, { activeDockItemIds: Object.freeze(['account']) });
+  renderer.renderFloatingAccountButton({}, { activeDockItemIds: true });
+  renderer.renderFloatingAccountButton({}, {});
+  assert.notEqual(panelFills[0], panelFills[2]);
+  assert.equal(panelFills[1], panelFills[2]);
+});
+
 test('MapCommandCanvasRenderer ignores legacy capital command panel state', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });
