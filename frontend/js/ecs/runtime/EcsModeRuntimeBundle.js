@@ -2125,6 +2125,7 @@ var EcsModeRuntime = (() => {
         'activeCommandPanel',
         'techDetailOpen',
         'activeDockItemIds',
+        'showTopBarDebugStats',
       ]);
       var PANEL_DEFAULTS = Object.freeze({
         showSettings: false,
@@ -2140,6 +2141,7 @@ var EcsModeRuntime = (() => {
         activeCommandPanel: '',
         techDetailOpen: false,
         activeDockItemIds: Object.freeze([]),
+        showTopBarDebugStats: false,
       });
       var MODE_DEFAULTS = Object.freeze({
         baseModeId: 0,

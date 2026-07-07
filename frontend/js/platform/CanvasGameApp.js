@@ -1410,6 +1410,7 @@
                   armyFormationEditor: this.armyFormationEditor,
                   activeCommandPanel: panel.activeCommandPanel || '',
                   activeDockItemIds: panel.activeDockItemIds,
+                  showTopBarDebugStats: panel.showTopBarDebugStats === true,
                   rewardReveal: snapshotRewardReveal,
                   buildingOffset: this.buildingOffset,
                   techTreePanX: this.techTreePanX,

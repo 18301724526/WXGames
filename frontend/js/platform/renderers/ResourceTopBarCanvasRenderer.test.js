@@ -240,6 +240,7 @@ test('ResourceTopBarCanvasRenderer falls back when presenter resource view is un
     fps: 58,
     network: { latencyMs: 42 },
     serverNowMs: new Date('2026-07-07T11:22:33+08:00').getTime(),
+    showTopBarDebugStats: true,
   });
 
   assert.equal(bottom, 64);
@@ -250,6 +251,71 @@ test('ResourceTopBarCanvasRenderer falls back when presenter resource view is un
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '11:22:33'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-icon-signal.png'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-resource-food.png'), true);
+});
+
+test('ResourceTopBarCanvasRenderer hides the map-home debug stats block by default', () => {
+  const host = createHost({ presenter: null });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  const bottom = renderer.renderMapHomeTopBar({
+    resources: { food: 20, wood: 10, stone: 8, iron: 5, knowledge: 3 },
+    population: { total: 12 },
+  }, {
+    fps: 58,
+    network: { latencyMs: 42 },
+  });
+
+  assert.equal(bottom, 64);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && String(call[1]).startsWith('FPS')), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && String(call[1]).endsWith('ms')), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-icon-signal.png'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-resource-food.png'), true);
+  assert.equal(host.hitTargets.filter((target) => target.action.type === 'openResourceDetails').length, 6);
+});
+
+test('ResourceTopBarCanvasRenderer renders map-home resources in the approved order', () => {
+  const host = createHost();
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({ population: { total: 12 } }, {});
+
+  const resourceIcons = host.calls
+    .filter((call) => call[0] === 'drawAsset' && String(call[1]).includes('hud-resource-'))
+    .map((call) => call[1]);
+  assert.deepEqual(resourceIcons, [
+    'assets/art/ui-hud/hud-resource-food.png',
+    'assets/art/ui-hud/hud-resource-wood.png',
+    'assets/art/ui-hud/hud-resource-stone.png',
+    'assets/art/ui-hud/hud-resource-iron.png',
+    'assets/art/ui-hud/hud-resource-knowledge.png',
+    'assets/art/ui-hud/hud-resource-population.png',
+  ]);
+});
+
+test('ResourceTopBarCanvasRenderer draws the map-home plate as a 9-slice of hud-plate-top', () => {
+  const clippedCalls = [];
+  const host = createHost({
+    drawAssetClipped(assetPath, sourceRect, x, y, width, height) {
+      clippedCalls.push({ assetPath, sourceRect, x, y, width, height });
+      return true;
+    },
+  });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({ population: { total: 12 } }, {});
+
+  assert.equal(clippedCalls.length, 9);
+  assert.equal(clippedCalls.every((call) => call.assetPath === 'assets/art/ui-hud/hud-plate-top.png'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel'), false);
+});
+
+test('ResourceTopBarCanvasRenderer falls back to a token gradient plate without the asset', () => {
+  const host = createHost();
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({ population: { total: 12 } }, {});
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel'), true);
 });
 
 test('ResourceTopBarCanvasRenderer does not own city people, policy, or home feature rendering', () => {

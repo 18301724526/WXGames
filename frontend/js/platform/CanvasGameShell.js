@@ -2845,6 +2845,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             worldMapRuntimeContext: this.getCanonicalWorldTileMapContext(),
             activeCommandPanel: panel.activeCommandPanel || '',
             activeDockItemIds: panel.activeDockItemIds,
+            showTopBarDebugStats: panel.showTopBarDebugStats === true,
             logs: this.lastGame?.requestLogs || [],
             tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
             buildingOffset: uiOwner.buildingOffset,

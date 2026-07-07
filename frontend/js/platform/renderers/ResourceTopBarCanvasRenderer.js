@@ -11,6 +11,20 @@
     return null;
   })();
 
+  // UI-REDO token single source (docs/design/ui-hud-reference/user-references/
+  // layout-reference-v2.webp). All redesigned top-bar colors/metrics come from here.
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class ResourceTopBarCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -32,10 +46,12 @@
     addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
     createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
     drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawAssetClipped(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAssetClipped === 'function' ? surface.drawAssetClipped(...args) : this.host?.drawAssetClipped?.(...args); }
     drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
     drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
     drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
     getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
     truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
 
     t(key = '', params = {}) {
@@ -275,57 +291,145 @@
       ].join(':');
     }
 
-    renderMapHomeTopBar(state = {}, options = {}) {
-      const layout = this.getLayout();
-      const resourceView = this.buildResourceViewState(state);
-      const text = resourceView.text || {};
-      const x = 0;
-      const y = 0;
-      const width = this.width;
-      const height = 64;
-      if (this.ctx) {
-        this.ctx.fillStyle = this.createGradient(
-          x, y, x, y + height,
-          [
-            [0, 'rgba(35, 35, 31, 0.82)'],
-            [1, 'rgba(14, 15, 14, 0.88)'],
-          ],
-          'rgba(24, 24, 21, 0.86)',
-        );
-        this.ctx.fillRect(x, y, width, height);
-        this.ctx.fillStyle = 'rgba(255, 231, 184, 0.06)';
-        this.ctx.fillRect(0, 0, width, 1);
-        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.16)';
-        this.ctx.fillRect(0, height - 1, width, 1);
+    // UI-REDO: 9-slice iron plate sliced from layout-reference-v2 (see
+    // hud-plate-top.pipeline-meta.json). Falls back to a token gradient panel
+    // until the asset is loaded (or when the runtime lacks drawAssetClipped).
+    drawMapHomeTopBarPlate(x, y, width, height) {
+      const topBar = UiThemeTokens?.topBar || {};
+      const slice = topBar.plateSlice || {};
+      const assetPath = topBar.plateAssetPath || '';
+      const sourceWidth = Number(slice.sourceWidth) || 0;
+      const sourceHeight = Number(slice.sourceHeight) || 0;
+      const sourceInset = Number(slice.sourceInset) || 0;
+      const destInset = Number(slice.destInset) || 0;
+      let drewAsset = Boolean(assetPath)
+        && sourceInset > 0
+        && destInset > 0
+        && sourceWidth > sourceInset * 2
+        && sourceHeight > sourceInset * 2
+        && width > destInset * 2
+        && height > destInset * 2;
+      if (drewAsset) {
+        const sourceX = [0, sourceInset, sourceWidth - sourceInset, sourceWidth];
+        const sourceY = [0, sourceInset, sourceHeight - sourceInset, sourceHeight];
+        const destX = [x, x + destInset, x + width - destInset, x + width];
+        const destY = [y, y + destInset, y + height - destInset, y + height];
+        for (let row = 0; row < 3 && drewAsset; row += 1) {
+          for (let col = 0; col < 3 && drewAsset; col += 1) {
+            drewAsset = this.drawAssetClipped(
+              assetPath,
+              {
+                x: sourceX[col],
+                y: sourceY[row],
+                width: sourceX[col + 1] - sourceX[col],
+                height: sourceY[row + 1] - sourceY[row],
+              },
+              destX[col],
+              destY[row],
+              destX[col + 1] - destX[col],
+              destY[row + 1] - destY[row],
+            ) === true;
+          }
+        }
       }
-      const statusX = x + 8;
-      const statusY = y + 7;
+      if (!drewAsset) {
+        const palette = UiThemeTokens?.palette || {};
+        this.drawPanel(x, y, width, height, {
+          fill: this.createGradient(
+            x, y, x, y + height,
+            [
+              [0, palette.plateIronTop],
+              [1, palette.plateIronBottom],
+            ],
+            palette.plateIronBottom,
+          ),
+          stroke: palette.plateFrameLine,
+          radius: UiThemeTokens?.radius?.panel || 6,
+          inset: UiThemeTokens?.hairline?.insetHighlight,
+        });
+      }
+      return drewAsset;
+    }
+
+    drawMapHomeTopBarHairline(x, y0, y1) {
+      if (!this.ctx || typeof this.ctx.fillRect !== 'function') return;
+      const hairline = UiThemeTokens?.hairline || {};
+      this.ctx.fillStyle = hairline.dividerOnIron;
+      this.ctx.fillRect(x, y0, hairline.widthPx || 1, Math.max(0, y1 - y0));
+    }
+
+    // Debug chrome (FPS/latency/clock). Rendering capability is preserved but the
+    // caller decides visibility: CanvasModeOwnershipRuntime.buildRendererPanelFacts
+    // computes panel.showTopBarDebugStats from the DebugOverlayRegistry 'fps' gate.
+    renderMapHomeTopBarDebugStats(state = {}, options = {}, layout = {}) {
+      const palette = UiThemeTokens?.palette || {};
+      const numericFont = UiThemeTokens?.fontFamily?.numeric;
+      const size = UiThemeTokens?.typeScale?.caption || 9;
       const fps = this.resolveMapHomeFps(options);
       const latencyMs = this.resolveMapHomeLatencyMs(state, options);
       const clockText = this.formatMapHomeClock(this.resolveMapHomeServerTimeMs(state, options));
-      this.drawPanel(statusX, statusY, 66, 50, {
-        fill: 'rgba(8, 12, 11, 0.44)',
-        stroke: 'rgba(214, 199, 164, 0.16)',
-        radius: 6,
-        inset: 'rgba(255, 255, 255, 0.025)',
-      });
-      this.drawText(fps ? `FPS ${fps}` : 'FPS --', statusX + 7, statusY + 12, {
-        size: 9,
+      const x = Number(layout.x) || 0;
+      const rowY = Array.isArray(layout.rowY) ? layout.rowY : [12, 28, 44];
+      this.drawText(fps ? `FPS ${fps}` : 'FPS --', x, rowY[0], {
+        size,
         bold: true,
-        color: fps >= 55 ? '#86dca8' : (fps >= 30 ? '#d9c37a' : '#e07b65'),
+        color: palette.debugFpsGreen,
         baseline: 'middle',
+        fontFamily: numericFont,
       });
-      this.drawAsset('assets/art/ui-hud/hud-icon-signal.png', statusX + 7, statusY + 19, 12, 12);
-      this.drawText(latencyMs === null ? '--ms' : `${latencyMs}ms`, statusX + 23, statusY + 25, {
-        size: 9,
-        color: latencyMs === null || latencyMs <= 120 ? '#d8e8dc' : '#d9c37a',
+      this.drawAsset('assets/art/ui-hud/hud-icon-signal.png', x, rowY[1] - 6, 12, 12);
+      this.drawText(latencyMs === null ? '--ms' : `${latencyMs}ms`, x + 16, rowY[1], {
+        size,
+        color: palette.debugLatencyText,
         baseline: 'middle',
+        fontFamily: numericFont,
       });
-      this.drawText(clockText, statusX + 7, statusY + 39, {
-        size: 9,
-        color: 'rgba(238, 230, 207, 0.72)',
+      this.drawText(clockText, x, rowY[2], {
+        size,
+        color: palette.textSecondary,
         baseline: 'middle',
+        fontFamily: numericFont,
       });
+    }
+
+    // UI-REDO map-home top bar: iron plate + 6 resource slots in the approved
+    // order 粮食/木材/石料/铁矿/知识/人口, hairline slot dividers, mono digits.
+    // All colors/metrics come from UiThemeTokens (single source).
+    renderMapHomeTopBar(state = {}, options = {}) {
+      const layout = this.getLayout();
+      const topBar = UiThemeTokens?.topBar || {};
+      const palette = UiThemeTokens?.palette || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
+      const spacing = UiThemeTokens?.spacing || {};
+      const numericFont = UiThemeTokens?.fontFamily?.numeric;
+      const resourceView = this.buildResourceViewState(state);
+      const text = resourceView.text || {};
+      const width = this.width;
+      const height = Number(topBar.height) || 64;
+      const plateX = Number(topBar.plateMarginX) || 4;
+      const plateY = Number(topBar.plateMarginTop) || 4;
+      const plateWidth = Math.max(0, width - plateX * 2);
+      const plateHeight = Number(topBar.plateHeight) || 56;
+      this.drawMapHomeTopBarPlate(plateX, plateY, plateWidth, plateHeight);
+
+      const contentPaddingX = Number(topBar.contentPaddingX) || 12;
+      const contentLeft = Math.max(plateX + contentPaddingX, Number(layout.contentX) || 0);
+      const contentRight = Math.min(plateX + plateWidth - contentPaddingX, Number(layout.contentRight) || width);
+      const dividerTop = plateY + 10;
+      const dividerBottom = plateY + plateHeight - 10;
+
+      let resourcesLeft = contentLeft;
+      if (options.showTopBarDebugStats === true) {
+        const debugWidth = Number(topBar.debugBlockWidth) || 66;
+        this.renderMapHomeTopBarDebugStats(state, options, {
+          x: contentLeft,
+          rowY: [plateY + 12, plateY + 28, plateY + 44],
+        });
+        const dividerX = contentLeft + debugWidth + (spacing.sm || 6);
+        this.drawMapHomeTopBarHairline(dividerX, dividerTop, dividerBottom);
+        resourcesLeft = dividerX + (spacing.lg || 12);
+      }
+
       const resources = [
         { label: this.t('resource.food'), value: text.foodValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-food.png' },
         { label: this.t('resource.wood'), value: text.woodValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-wood.png' },
@@ -334,29 +438,50 @@
         { label: this.t('resource.knowledge'), value: text.knowledgeValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-knowledge.png' },
         { label: this.t('resource.population'), value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/ui-hud/hud-resource-population.png' },
       ];
-      const contentX = Math.max(layout.contentX, statusX + 72);
-      const contentWidth = Math.max(0, Math.min(layout.contentRight || width, width - 4) - contentX);
-      const gap = 3;
-      const itemWidth = Math.max(36, Math.floor((contentWidth - 8 - gap * (resources.length - 1)) / resources.length));
-      const itemY = y + 7;
+      const slotCount = resources.length;
+      const resourcesWidth = Math.max(0, contentRight - resourcesLeft);
+      const slotWidth = slotCount ? resourcesWidth / slotCount : 0;
+      const iconSize = Number(topBar.iconSize) || 18;
+      const labelIconGap = Number(topBar.labelIconGap) || 4;
+      const labelSize = typeScale.label || 10;
+      const valueSize = typeScale.value || 14;
+      const labelRowCenterY = plateY + 17;
+      const valueTop = plateY + 30;
       resources.forEach((resource, index) => {
-        const itemX = contentX + 4 + index * (itemWidth + gap);
-        const iconSize = 18;
-        const centerX = itemX + itemWidth / 2;
-        this.drawAsset(resource.icon, centerX - iconSize / 2, itemY + 2, iconSize, iconSize);
-        this.drawText(resource.label, centerX, itemY + 25, {
-          size: 8,
+        const slotX = resourcesLeft + index * slotWidth;
+        const centerX = slotX + slotWidth / 2;
+        if (index > 0) this.drawMapHomeTopBarHairline(Math.round(slotX), dividerTop, dividerBottom);
+        const label = this.truncateText(
+          resource.label,
+          Math.max(16, slotWidth - iconSize - labelIconGap - 8),
+          { size: labelSize, bold: true },
+        );
+        const measured = Number(this.measureTextWidth(label, { size: labelSize, bold: true }));
+        const labelWidth = Number.isFinite(measured) && measured > 0
+          ? measured
+          : String(label).length * labelSize;
+        const groupWidth = iconSize + labelIconGap + labelWidth;
+        const iconX = centerX - groupWidth / 2;
+        this.drawAsset(resource.icon, iconX, labelRowCenterY - iconSize / 2, iconSize, iconSize);
+        this.drawText(label, iconX + iconSize + labelIconGap, labelRowCenterY, {
+          size: labelSize,
           bold: true,
-          color: 'rgba(222, 211, 181, 0.78)',
-          align: 'center',
+          color: palette.textLabel,
+          baseline: 'middle',
         });
-        this.drawText(this.truncateText(String(resource.value), itemWidth - 4, { size: 9, bold: true }), centerX, itemY + 41, {
-          size: 9,
+        const value = this.truncateText(
+          String(resource.value ?? '0'),
+          Math.max(20, slotWidth - 8),
+          { size: valueSize, bold: true, fontFamily: numericFont },
+        );
+        this.drawText(value, centerX, valueTop, {
+          size: valueSize,
           bold: true,
-          color: '#d8efe1',
+          color: palette.textPrimary,
           align: 'center',
+          fontFamily: numericFont,
         });
-        this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: 50 }, { type: 'openResourceDetails' });
+        this.addHitTarget({ x: slotX, y: plateY, width: slotWidth, height: plateHeight }, { type: 'openResourceDetails' });
       });
       return height;
     }

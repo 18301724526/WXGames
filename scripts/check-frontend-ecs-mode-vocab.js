@@ -41,6 +41,10 @@ const CANONICAL_PANEL_KEYS = Object.freeze([
   // ids, computed owner-side in buildRendererPanelFacts so renderers never derive
   // mode decisions from modal facts (Batch-3 ratchet).
   'activeDockItemIds',
+  // Derived (not a modal subtype): UI-REDO map-home top bar debug chrome
+  // visibility, decided owner-side in buildRendererPanelFacts through the
+  // DebugOverlayRegistry 'fps' gate; ResourceTopBarCanvasRenderer only consumes.
+  'showTopBarDebugStats',
 ]);
 
 function arrayEqual(a, b) {

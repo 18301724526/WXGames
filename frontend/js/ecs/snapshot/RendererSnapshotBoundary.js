@@ -29,6 +29,7 @@ const PANEL_KEYS = Object.freeze([
   'activeCommandPanel',
   'techDetailOpen',
   'activeDockItemIds',
+  'showTopBarDebugStats',
 ]);
 
 const PANEL_DEFAULTS = Object.freeze({
@@ -45,6 +46,7 @@ const PANEL_DEFAULTS = Object.freeze({
   activeCommandPanel: '',
   techDetailOpen: false,
   activeDockItemIds: Object.freeze([]),
+  showTopBarDebugStats: false,
 });
 
 const MODE_DEFAULTS = Object.freeze({

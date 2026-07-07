@@ -383,7 +383,7 @@
   // reads of snapshot.panel.showX keep working unchanged. buildRendererSnapshot
   // passes the same modalWorld it builds so the panel facts and the modal block
   // are guaranteed to agree.
-  function buildRendererPanelFacts(modalWorld) {
+  function buildRendererPanelFacts(modalWorld, host = null) {
     const world = modalWorld || buildRendererModalWorld();
     const entries = (world && world.entries) || {};
     const isOpen = (subtype) => Boolean(entries[subtype]?.open);
@@ -415,6 +415,13 @@
           || (isOpen('modal:confirmDialog')
             && entries['modal:confirmDialog']?.payload?.kind === 'resetGame')) && 'account',
       ].filter(Boolean),
+      // UI-REDO: the map-home top bar FPS/latency/clock block is debug chrome.
+      // Its visibility is DECIDED here on the owner side through the existing
+      // DebugOverlayRegistry 'fps' gate (FeatureFlags DEBUG_OVERLAYS_ENABLED, default
+      // off); ResourceTopBarCanvasRenderer only consumes the pre-decided boolean.
+      showTopBarDebugStats: typeof host?.isDebugOverlayEnabled === 'function'
+        ? host.isDebugOverlayEnabled('fps') === true
+        : false,
     };
   }
 
@@ -439,7 +446,7 @@
     const modalWorld = buildRendererModalWorld();
     const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
       modalWorld,
-      panel: buildRendererPanelFacts(modalWorld),
+      panel: buildRendererPanelFacts(modalWorld, host),
       mode,
       battle: buildRendererBattleFacts(),
     });
