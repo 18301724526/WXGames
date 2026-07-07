@@ -116,6 +116,11 @@ function buildModalSnapshot(modalWorld = null) {
 
 function normalizePanelValue(panelKey, value) {
   if (panelKey === 'activeCommandPanel') return String(value || '');
+  // Pre-decided id lists must survive as arrays — Boolean() would collapse them to
+  // `true` and the dock active-state consumers (Array.isArray guards) would never fire.
+  if (panelKey === 'activeDockItemIds') {
+    return Object.freeze(Array.isArray(value) ? value.map(String) : []);
+  }
   return Boolean(value);
 }
 

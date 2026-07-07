@@ -27,6 +27,7 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
       showTaskCenter: true,
       activeCommandPanel: 'tech',
       techDetailOpen: true,
+      activeDockItemIds: ['tasks', 'more'],
     },
     mode: {
       baseModeKey: 'techTree',
@@ -58,6 +59,11 @@ test('RendererSnapshotBoundary builds frozen serializable modal and panel snapsh
   assert.equal(snapshot.panel.showTaskCenter, true);
   assert.equal(snapshot.panel.activeCommandPanel, 'tech');
   assert.equal(snapshot.panel.techDetailOpen, true);
+  // Regression: the pre-decided dock id list must survive the snapshot as an ARRAY —
+  // a Boolean() normalization here once collapsed it to `true` and dock active states
+  // could never light up through the snapshot path.
+  assert.deepEqual(snapshot.panel.activeDockItemIds, ['tasks', 'more']);
+  assert.equal(Object.isFrozen(snapshot.panel.activeDockItemIds), true);
   assert.deepEqual(snapshot.battle, {
     schema: 'battle-owner-v1',
     battleScene: {

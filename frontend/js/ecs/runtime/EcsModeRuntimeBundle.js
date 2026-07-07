@@ -2203,6 +2203,9 @@ var EcsModeRuntime = (() => {
       }
       function normalizePanelValue(panelKey, value) {
         if (panelKey === 'activeCommandPanel') return String(value || '');
+        if (panelKey === 'activeDockItemIds') {
+          return Object.freeze(Array.isArray(value) ? value.map(String) : []);
+        }
         return Boolean(value);
       }
       function buildPanelSnapshot(panelFacts = {}) {
