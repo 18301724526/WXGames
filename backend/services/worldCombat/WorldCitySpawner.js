@@ -31,6 +31,7 @@ const WorldCityConfig = require('../../config/WorldCityConfig');
 
 const CITY_PLACEMENT_SALT = 'city-place';
 const CITY_NAME_SALT = 'city-name';
+const COMPANION_CITY_NAME = '\u65e0\u540d\u7a7a\u57ce';
 
 function chebyshev(dq, dr) {
   return Math.max(Math.abs(dq), Math.abs(dr));
@@ -170,6 +171,46 @@ function toRawTerritory(spec) {
   };
 }
 
+function getCompanionTarget(spawn = {}) {
+  const target = spawn?.allocation?.companionCity
+    || spawn?.allocation?.tutorialTarget
+    || spawn?.companionCity
+    || spawn?.tutorialTarget
+    || null;
+  if (!target || typeof target !== 'object') return null;
+  return {
+    q: toInteger(target.q ?? target.x, 0),
+    r: toInteger(target.r ?? target.y, 0),
+    terrain: target.terrain || target.mapTerrain || '',
+  };
+}
+
+function planCompanionCity(worldSeed, spawn = {}, opts = {}) {
+  const target = getCompanionTarget(spawn);
+  if (!target) return null;
+  const terrain = target.terrain || WorldMapService.chooseTerrain(worldSeed, target.q, target.r) || 'plains';
+  if (isMarchBlockedTerrain(terrain) || terrain === 'shore') return null;
+  const tileId = WorldMapService.getTileId(target.q, target.r);
+  if (opts.occupiedTileIds instanceof Set && opts.occupiedTileIds.has(tileId)) return null;
+  return {
+    id: cityId(target.q, target.r),
+    q: target.q,
+    r: target.r,
+    ring: 0,
+    tileId,
+    archetypeKey: 'spawn-companion',
+    x: target.q,
+    y: target.r,
+    owner: 'neutral',
+    type: 'town',
+    status: 'discovered',
+    scale: 2,
+    naturalName: COMPANION_CITY_NAME,
+    nameKey: 'spawnCompanion',
+    mapTerrain: terrain,
+  };
+}
+
 function hasAnyPlannedCity(territories = []) {
   return (Array.isArray(territories) ? territories : []).some(
     (territory) => territory && typeof territory.id === 'string' && territory.id.startsWith('site_'),
@@ -198,9 +239,11 @@ function planCitiesForState(worldSeed, worldAnchor, existingTerritories = [], op
 module.exports = {
   CITY_PLACEMENT_SALT,
   CITY_NAME_SALT,
+  COMPANION_CITY_NAME,
   cityId,
   planCities,
   planCitiesForState,
+  planCompanionCity,
   toRawTerritory,
   hasAnyPlannedCity,
 };

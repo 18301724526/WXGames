@@ -17,9 +17,8 @@
 // are re-derived by normalizeTerritory downstream, never stored here — §4-4). id/tileId are mirrored
 // into indexed columns purely for queries.
 //
-// Discovery is SEPARATE from storage: a city lives here from world-init, but stays HIDDEN in each
-// player's client map until that player's march vision discovers it (§4-3, §6-R2). This repo does not
-// model per-player discovery — it is the shared single copy; the projection layer visibility-gates.
+// Discovery is SEPARATE from storage: this repo stores the shared single copy, while each player's
+// world map decides whether that city is currently visible/materialized for that player (§4-3, §6-R2).
 
 const WorldCitySpawner = require('../services/worldCombat/WorldCitySpawner');
 const { toInteger } = require('../../shared/numberUtils');
@@ -137,6 +136,17 @@ class WorldCityRepository {
     });
     upsert(specs.map((spec) => WorldCitySpawner.toRawTerritory(spec)));
     return this.getAllCities();
+  }
+
+  ensureCompanionCityForSpawn(_playerId, spawn = {}, options = {}) {
+    const worldSeed = options.worldSeed || this.worldSeed;
+    if (!worldSeed) return null;
+    const spec = WorldCitySpawner.planCompanionCity(worldSeed, spawn, options);
+    if (!spec) return null;
+    const existing = this.getCity(spec.id);
+    if (existing) return existing;
+    const now = options.now instanceof Date ? options.now.toISOString() : (options.now || new Date().toISOString());
+    return this.upsertCity(WorldCitySpawner.toRawTerritory(spec), now);
   }
 }
 

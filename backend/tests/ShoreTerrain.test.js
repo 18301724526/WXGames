@@ -8,7 +8,7 @@ const GameStateService = require('../services/GameStateService');
 const WorldMapService = require('../services/WorldMapService');
 const Tiles = require('../services/worldMap/WorldMapTiles');
 const RoutePlanner = require('../services/worldExplorer/WorldExplorerRoutePlanner');
-const TutorialCity = require('../services/worldExplorer/WorldExplorerTutorialCity');
+const WorldCitySpawner = require('../services/worldCombat/WorldCitySpawner');
 const TerritoryShared = require('../services/territory/TerritoryShared');
 const SpawnScoring = require('../services/spawn/SpawnScoring');
 const WorldMarchCore = require('../../shared/worldMarchCore');
@@ -312,11 +312,14 @@ test('shore maps to the coast planning archive and stays off spawn/site/tutorial
   assert.ok(shore);
   assert.equal(WorldMapService.canPlaceSiteOnTerrain(SEED, shore.q, shore.r), false);
 
-  // The pre-placed tutorial city (S5) never lands on shore/water: chooseTutorialCityTile skips every
-  // march-blocked and shore tile, so the chosen tile is always solid land.
+  // The spawn target search and companion city planner keep the companion city on solid land.
   const originShore = { q: shore.q, r: shore.r };
-  const tile = TutorialCity.chooseTutorialCityTile(SEED, originShore);
-  assert.ok(tile, 'a land tile is chosen near even a shore origin');
-  assert.notEqual(WorldMapService.chooseTerrain(SEED, tile.q, tile.r), 'shore');
-  assert.equal(WorldMarchCore.isMarchBlockedTerrain(WorldMapService.chooseTerrain(SEED, tile.q, tile.r)), false);
+  const target = SpawnScoring.findTutorialTarget(originShore, { seed: SEED });
+  assert.ok(target, 'a land target is chosen near even a shore origin');
+  assert.notEqual(WorldMapService.chooseTerrain(SEED, target.q, target.r), 'shore');
+  assert.equal(WorldMarchCore.isMarchBlockedTerrain(WorldMapService.chooseTerrain(SEED, target.q, target.r)), false);
+  assert.ok(WorldCitySpawner.planCompanionCity(SEED, { allocation: { tutorialTarget: target } }));
+  assert.equal(WorldCitySpawner.planCompanionCity(SEED, {
+    allocation: { tutorialTarget: { q: shore.q, r: shore.r, terrain: 'shore' } },
+  }), null);
 });

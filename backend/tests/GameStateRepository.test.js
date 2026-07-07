@@ -1098,12 +1098,14 @@ test('GameStateRepository exposes occupied spawn coordinates from saves, shared 
     repository.save(ownerState);
     repository.reserveSpawnForPlayer('spawn-reserved-owner', { q: -14, r: 21 });
 
+    const neutralCity = repository.worldCityRepo.getAllCities()[0];
     const occupied = repository.getOccupiedSpawnCoordinates();
     const keys = new Set(occupied.map((coord) => `${coord.source}:${coord.q},${coord.r}`));
 
     assert.ok(keys.has('game-state-capital:12,4'));
     assert.ok(keys.has('shared-world-territory:19,6'));
     assert.ok(keys.has('spawn-allocation:-14,21'));
+    assert.ok(keys.has(`world-city:${neutralCity.x},${neutralCity.y}`));
   } finally {
     db.close();
   }

@@ -51,10 +51,10 @@ function isSharedNeutralCity(site = {}) {
   return Boolean(site && site.owner === 'neutral' && !site.ownerPlayerId);
 }
 
-// Visibility gate (docs/design/10 §6-R2 — NO reveal-at-spawn). A pre-placed neutral city exists in
-// the shared store from world-init, but stays HIDDEN in a player's client map until that player has
-// revealed its tile ("discovered once → shown forever" — the CITY semantic, deliberately different
-// from hostile encounters, which are gated by CURRENT vision in WorldCombatEncounterService).
+// Visibility gate (docs/design/10 §6-R2). A neutral city exists in the shared store, but only appears
+// in a player's client map once that player's world map has revealed its tile ("discovered once → shown
+// forever" — the CITY semantic, deliberately different from hostile encounters, which are gated by
+// CURRENT vision in WorldCombatEncounterService).
 // The gate consults WorldMapService.getRevealedTileCoordSet — the SSOT coordinate set of what the
 // client map actually projects — NOT raw worldMap.tiles presence: the raw array also carries
 // AI-explorer tiles written as visibility:'hidden'/visible:false, which must never surface a city.

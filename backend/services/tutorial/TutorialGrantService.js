@@ -1,4 +1,5 @@
 const FamousPersonService = require('../FamousPersonService');
+const WorldMapService = require('../WorldMapService');
 const { normalizeTutorialState, nowIso } = require('./TutorialState');
 const {
   SCOUT_FAMOUS_GRANT_KEY,
@@ -9,26 +10,41 @@ const {
 // idempotent ensure-* hooks (normalize-time grants) are retired: every grant is
 // paid out exactly once through the task-center claim pipeline.
 
-// Pre-place the tutorial first empty city AT GRANT TIME and record its grant identity
-// (march-discovery refactor S5; docs/design/10 §3.3/§4-6). The city is chosen deterministically near the
-// player's explore origin and carried INSIDE the grant (not pushed into gameState.territories), so it
-// stays hidden until the guided march's vision discovers it (§6-R2). Setting the grant here — when the
-// scout officer is granted, before scoutExploreStarted — makes tutorial.grants.firstExploreEmptyCity the
-// single-source first-city identity from the moment the scout segment begins. Idempotent: the grant is
-// only written once. Lazy requires keep the tutorial module free of the world-explorer/territory chain
-// at load time (and break any require cycle).
+// The tutorial grant references the already-materialized companion city. City creation belongs to the
+// spawn/world-city pipeline; this grant only pins the guided task to that single source of truth.
+function getNearestDiscoveredNeutralCity(gameState = {}) {
+  const origin = gameState.worldMap?.origin || { q: 0, r: 0 };
+  const cities = (Array.isArray(gameState.territories) ? gameState.territories : [])
+    .filter((territory) => (
+      territory
+      && territory.id
+      && territory.owner === 'neutral'
+      && territory.status === 'discovered'
+      && !territory.ownerPlayerId
+    ));
+  return cities.sort((a, b) => (
+    WorldMapService.getWrappedDistance(origin, { q: a.x ?? a.q, r: a.y ?? a.r })
+    - WorldMapService.getWrappedDistance(origin, { q: b.x ?? b.q, r: b.y ?? b.r })
+    || String(a.id).localeCompare(String(b.id))
+  ))[0] || null;
+}
+
 function grantTutorialFirstCity(gameState) {
   const { TUTORIAL_FIRST_SITE_GRANT_KEY } = require('../worldExplorer/WorldExplorerShared');
   const tutorial = normalizeTutorialState(gameState.tutorial);
   if (tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]) return tutorial;
-  const WorldExplorerTutorialCity = require('../worldExplorer/WorldExplorerTutorialCity');
-  const planned = WorldExplorerTutorialCity.planTutorialFirstCityGrant(gameState);
-  if (!planned) return tutorial;
+  const city = getNearestDiscoveredNeutralCity(gameState);
+  if (!city) return tutorial;
   const nextTutorial = {
     ...tutorial,
     grants: {
       ...(tutorial.grants || {}),
-      [planned.key]: planned.grant,
+      [TUTORIAL_FIRST_SITE_GRANT_KEY]: {
+        siteId: city.id,
+        x: city.x ?? city.q,
+        y: city.y ?? city.r,
+        plannedAt: nowIso(),
+      },
     },
     updatedAt: nowIso(),
   };
@@ -57,9 +73,7 @@ function grantScoutFamousPerson(gameState) {
       updatedAt: nowIso(),
     };
   }
-  // Pre-place the tutorial first city + set its grant at the same claim (§3.3): the scout officer and
-  // the first-city target are granted together so the whole guided-explore segment has its single-source
-  // target from the start.
+  // Pin the guide to the companion city that was created with the player's spawn.
   grantTutorialFirstCity(gameState);
   return grant;
 }

@@ -7,15 +7,13 @@ const WorldMapService = require('../services/WorldMapService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
 const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
+const { materializeDiscoveredNeutralCity } = require('../services/worldCity/WorldCityPlayerDiscovery');
 require('../../frontend/js/ecs/foundation/WorldTime');
 require('../../frontend/js/ecs/system/WorldMarchProgressSnapshot');
 const WorldActorProjection = require('../../frontend/js/ecs/projection/WorldActorProjection');
 
-// Build the guided-explore state at scoutFormationSaved. S5: the tutorial FIRST CITY is PRE-PLACED at
-// grant time — grantTutorialFirstCity chooses a deterministic land tile near the explore origin and
-// records tutorial.grants.firstExploreEmptyCity = { siteId, x, y, city }. The city stays HIDDEN (carried
-// in the grant, NOT in gameState.territories) until the guided march's vision discovers it, so this
-// helper mirrors exactly what TaskRewardClaimer.grantScoutFamousPerson leaves on the state.
+// Build the guided-explore state at scoutFormationSaved. The companion city already exists in the
+// player's map; the tutorial grant only records its site id and coordinate for guide targeting.
 function createTutorialExploreState() {
   const scoutPersonId = 'fp-tutorial-scout';
   const gameState = {
@@ -63,20 +61,28 @@ function createTutorialExploreState() {
     },
     exploreMissions: [],
   };
-  // Pre-place the tutorial first city + set its grant, exactly as the scout-officer claim does.
+  materializeDiscoveredNeutralCity(gameState, {
+    id: 'site_1_0',
+    x: 1,
+    y: 0,
+    owner: 'neutral',
+    type: 'town',
+    status: 'discovered',
+    scale: 2,
+    naturalName: 'First Companion',
+    mapTerrain: 'plains',
+  }, new Date('2026-06-06T00:00:00.000Z'));
   TutorialGrantService.grantTutorialFirstCity(gameState);
   return gameState;
 }
 
-test('guided world march plans the route toward the pre-placed first city and starts exploring', () => {
-  // S5: the tutorial first city is PRE-PLACED in the grant, not invented on the route. startWorldMarch
-  // just plans the route the player picks (toward the pre-placed city's tile) and advances the step; it
-  // no longer materializes a plannedSite, and the city stays absent from territories until vision finds it.
+test('guided world march plans the route toward the spawn companion city and starts exploring', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
-  // The grant carries the pre-placed city — the single-source first-city identity from grant time.
+  // The grant references the existing companion city; it does not carry its own city payload.
   assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.siteId, 'site_1_0');
-  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.city.owner, 'neutral');
+  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.x, 1);
+  assert.equal(Object.prototype.hasOwnProperty.call(gameState.tutorial.grants.firstExploreEmptyCity, 'city'), false);
 
   const result = WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
 
@@ -92,13 +98,12 @@ test('guided world march plans the route toward the pre-placed first city and st
   assert.equal(result.mission.nextStepAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS).toISOString());
   assert.equal(result.mission.completesAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * 2).toISOString());
   assert.deepEqual(result.mission.formation.memberIds, ['fp-tutorial-scout']);
-  // The pre-placed city is NOT revealed at spawn: absent from territories and unbound (§6-R2).
-  assert.equal(gameState.territories.length, 1);
-  assert.equal(gameState.territories[0].id, 'capital');
-  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_1_0'), false);
+  // The companion city is already present when the player state is created.
+  assert.equal(gameState.territories.some((territory) => territory.id === 'site_1_0'), true);
+  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_1_0'), true);
 });
 
-test('guided world march discovers the pre-placed first city by vision and advances the tutorial', () => {
+test('guided world march keeps the same companion city identity and advances the tutorial', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
   const firstCityId = gameState.tutorial.grants.firstExploreEmptyCity.siteId;
@@ -109,7 +114,7 @@ test('guided world march discovers the pre-placed first city by vision and advan
   WorldExplorerService.advanceExploreMissions(gameState, finishAt);
 
   const discovered = gameState.territories.find((territory) => territory.id === firstCityId);
-  assert.ok(discovered, 'the pre-placed tutorial city is discovered once its tile enters vision');
+  assert.ok(discovered, 'the companion city remains the same neutral city after the guided march');
   assert.equal(discovered.owner, 'neutral');
   assert.equal(discovered.status, 'discovered');
   // §4-4: garrison/capitalDistance/battleTarget are DERIVED downstream, never authored here.
@@ -835,7 +840,7 @@ test('S4 march vision reveals a pre-placed neutral city, flips it discovered + o
 
   const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 3, targetR: 0, formationSlot: 1 }, now);
   assert.equal(started.success, true);
-  // NO reveal-at-spawn: the city is absent from territories and its tile is not yet bound (§6-R2).
+  // This shared city is still invisible to the player before its tile enters vision (§6-R2).
   assert.equal(gameState.territories.some((territory) => territory.id === 'site_2_1'), false);
   assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_2_1'), false);
 

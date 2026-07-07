@@ -78,8 +78,7 @@ class GameStateRepository {
     // stay in game_states.famousPeople; the logical registry = this table ∪ every player's roster.
     this.worldPeopleRepo = new WorldPeopleRepository(db);
     // Shared-world PRE-PLACED NEUTRAL cities (docs/design/10 §3.2, march-discovery refactor S3). One
-    // canonical copy every player shares, keyed off a FIXED world anchor — projected to players
-    // visibility-gated (hidden until march vision discovers them). Additive — see WorldCityRepository.
+    // canonical copy every player shares; per-player world-map visibility controls what each player sees.
     this.worldCityRepo = new WorldCityRepository(db, { worldSeed: DEFAULT_WORLD_SEED });
   }
 
@@ -183,8 +182,27 @@ class GameStateRepository {
     return this.worldCityRepo.ensureSeeded({ occupiedTileIds });
   }
 
+  getOccupiedWorldCityCoordinates() {
+    return this.worldCityRepo.getAllCities()
+      .map((city) => {
+        const q = Number(city?.x ?? city?.q);
+        const r = Number(city?.y ?? city?.r);
+        if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+        return {
+          q: Math.floor(q),
+          r: Math.floor(r),
+          territoryId: city.id,
+          source: 'world-city',
+        };
+      })
+      .filter(Boolean);
+  }
+
   getOccupiedSpawnCoordinates(options = {}) {
-    return this.spawnAuthority.getOccupiedSpawnCoordinates(options);
+    return [
+      ...this.spawnAuthority.getOccupiedSpawnCoordinates(options),
+      ...(options.includeWorldCities === false ? [] : this.getOccupiedWorldCityCoordinates()),
+    ];
   }
 
   getSpawnForPlayer(playerId) {
@@ -193,6 +211,10 @@ class GameStateRepository {
 
   reserveSpawnForPlayer(playerId, assignment, options = {}) {
     return this.spawnAuthority.reserveSpawn(playerId, assignment, options);
+  }
+
+  ensureCompanionCityForPlayerSpawn(playerId, spawn, options = {}) {
+    return this.worldCityRepo.ensureCompanionCityForSpawn(playerId, spawn, options);
   }
 
   releaseSpawnForPlayer(playerId) {
@@ -263,10 +285,11 @@ class GameStateRepository {
     // The shared PRE-PLACED NEUTRAL cities (one canonical copy, docs/design/10 §3.2). Every player
     // gets the SAME set, so this reads the whole world_cities table with no per-player exclusion. Both
     // consumers of `sharedWorldTerritories` receive the FULL set: the route/discovery planning context
-    // (WorldExplorerProgression / WorldExplorerRoutePlanner) needs to reserve against and — in S4 —
-    // discover undiscovered cities, so it must see them all. The CLIENT map DTO is visibility-gated
-    // separately, inside TerritoryClientAssembler.getClientTerritoryState (§6-R2): a neutral city whose
-    // tile the player has not yet discovered is dropped there, so it does NOT reveal at spawn.
+    // (WorldExplorerProgression / WorldExplorerRoutePlanner) needs to reserve against and discover
+    // undiscovered cities, so it must see them all. The CLIENT map DTO is visibility-gated separately,
+    // inside TerritoryClientAssembler.getClientTerritoryState (§6-R2): a neutral city whose tile the
+    // player has not revealed is dropped there; a spawn companion city is visible because spawn
+    // materialization binds its tile in that player's world map.
     const neutralCities = this.worldCityRepo.getAllCities();
     return {
       sharedWorldTerritories: [...ownedShared, ...neutralCities],

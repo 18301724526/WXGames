@@ -16,6 +16,7 @@ const MilitaryService = require('../MilitaryService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const WorldMarchVerification = require('./WorldMarchVerification');
 const WorldCombatEncounterService = require('../worldCombat/WorldCombatEncounterService');
+const { materializeDiscoveredNeutralCity } = require('../worldCity/WorldCityPlayerDiscovery');
 
 function getTutorialSteps() {
   return TutorialFlowConfig.TUTORIAL_STEPS;
@@ -105,22 +106,11 @@ function isDiscoverableNeutralCity(territory = {}) {
   );
 }
 
-// The TUTORIAL first city is PRE-PLACED at grant time and carried inside the grant
-// (tutorial.grants.firstExploreEmptyCity.city — WorldExplorerTutorialCity / TutorialGrantService, S5).
-// It is deliberately NOT in gameState.territories until the guided march's vision discovers it (§6-R2),
-// so the generic discovery pass reads it straight off the grant and treats it as one more pre-placed
-// neutral city candidate. Returns the raw city spec, or null when there is no tutorial city grant.
-function getTutorialGrantCity(gameState = {}) {
-  const city = gameState.tutorial?.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.city;
-  return city && typeof city === 'object' && city.id ? city : null;
-}
-
-// Has the tutorial's granted first city been DISCOVERED for this player? Discovery = its tile carries
-// the site id (the S4/S5 vision pass bound it). Used by the convergent tutorial advance so
-// firstCityDiscovered fires off the ACTUAL vision discovery, not merely "the whole route was revealed".
+// Has the tutorial's referenced first city been materialized for this player? The companion city is a
+// regular world city, so discovery here means its tile carries the site id in the player's world map.
 function isTutorialFirstCityDiscovered(gameState = {}) {
   const grant = gameState.tutorial?.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY];
-  const siteId = grant?.siteId || grant?.city?.id || '';
+  const siteId = grant?.siteId || '';
   if (!siteId) return false;
   return (Array.isArray(gameState.worldMap?.tiles) ? gameState.worldMap.tiles : [])
     .some((tile) => tile && tile.siteId === siteId);
@@ -152,19 +142,16 @@ function discoverPrePlacedCitiesInVision(gameState, revealCoords = [], now = new
   const revealCanonicalIds = new Set(coords
     .map((coord) => WorldMapService.getCanonicalTileId(coord.q ?? coord.x, coord.r ?? coord.y))
     .filter(Boolean));
-  // Candidate pre-placed cities: the shared projection (S3 feeds the FULL neutral-city set), then the
-  // TUTORIAL first city carried in the grant (S5 — pre-placed near the player's origin, hidden until
-  // discovered), then the player's own territories (a city discovered earlier). Only neutral, not-owned
-  // cities are discoverable — an owned/AI territory on the coord is skipped, preserving the occupy-guard
-  // intent for ownership (§6-R-guard). Own entries are added LAST so a city already present is not
-  // re-pushed from the shared/grant copy.
+  // Candidate pre-placed cities: the shared projection feeds the full neutral-city set, then the
+  // player's own territories provide cities already materialized earlier. Only neutral, not-owned cities
+  // are discoverable — an owned/AI territory on the coord is skipped, preserving the occupy-guard intent
+  // for ownership (§6-R-guard). Own entries are added LAST so an existing city is not re-pushed from the
+  // shared copy.
   const candidates = new Map();
   (Array.isArray(planningContext.sharedWorldTerritories) ? planningContext.sharedWorldTerritories : [])
     .forEach((territory) => {
       if (isDiscoverableNeutralCity(territory)) candidates.set(territory.id, territory);
     });
-  const tutorialCity = getTutorialGrantCity(gameState);
-  if (tutorialCity && isDiscoverableNeutralCity(tutorialCity)) candidates.set(tutorialCity.id, tutorialCity);
   (Array.isArray(gameState.territories) ? gameState.territories : [])
     .forEach((territory) => {
       if (isDiscoverableNeutralCity(territory)) candidates.set(territory.id, territory);
@@ -183,32 +170,8 @@ function discoverPrePlacedCitiesInVision(gameState, revealCoords = [], now = new
     if (existingTile && existingTile.siteId === city.id) continue;
     // Ensure the raw city lives in gameState.territories so normalizeTerritory derives its garrison
     // (§4-4). Author only position+owner+type+status+names; never hand-author derived fields.
-    const alreadyPresent = (gameState.territories || []).some((territory) => territory.id === city.id);
-    if (!alreadyPresent) {
-      gameState.territories = [
-        ...(gameState.territories || []),
-        {
-          id: city.id,
-          x: q,
-          y: r,
-          owner: 'neutral',
-          type: city.type,
-          status: 'discovered',
-          scale: city.scale,
-          naturalName: city.naturalName,
-          mapTerrain: city.mapTerrain,
-        },
-      ];
-    } else {
-      gameState.territories = gameState.territories.map((territory) => (
-        territory.id === city.id ? { ...territory, status: 'discovered' } : territory
-      ));
-    }
-    // Bind the site to its tile as a DISCOVERED (not owned) neutral city.
-    const tile = WorldMapService.bindSiteToTile(gameState, q, r, city.id, now, { visibility: 'scouted' });
-    // Persistent 'city' vision source so the fog keeps this tile revealed after the army leaves (§6-R-fog).
-    WorldMapService.recordVisionSource(gameState, { kind: 'city', q, r }, now);
-    if (tile) discovered.push({ city, tile });
+    const materialized = materializeDiscoveredNeutralCity(gameState, city, now);
+    if (materialized?.tile) discovered.push({ city, tile: materialized.tile });
   }
   if (discovered.length) {
     WorldExplorerTrace.log('progression:discoverPrePlacedCitiesInVision', {
@@ -277,11 +240,9 @@ function revealStep(gameState, mission, step, now = new Date(), options = {}) {
         : { visibility: 'scouted' };
     },
   });
-  // March-vision → discovery (docs/design/10 §3.4 generic S4 + §3.3 tutorial S5). Any PRE-PLACED neutral
-  // city whose tile just entered vision flips to discovered + on-map + fog-permanent here: the shared
-  // world_cities layer (planningContext.sharedWorldTerritories), the tutorial first city (carried in the
-  // grant), and any own neutral city discovered earlier — all through ONE pass. Orthogonal to the occupy
-  // guard: this pass only ever touches neutral, not-owned cities (§6-R-guard).
+  // March-vision → discovery: any neutral world city whose tile just entered vision is materialized
+  // through the same player-discovery helper. Orthogonal to the occupy guard: this pass only ever touches
+  // neutral, not-owned cities (§6-R-guard).
   const discovered = discoverPrePlacedCitiesInVision(gameState, coords, now, {
     planningContext: options.planningContext,
   });

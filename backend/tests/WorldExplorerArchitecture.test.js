@@ -6,15 +6,14 @@ const path = require('node:path');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldAiExplorerService = require('../services/WorldAiExplorerService');
 const WorldMapService = require('../services/WorldMapService');
+const WorldCitySpawner = require('../services/worldCombat/WorldCitySpawner');
 const RoutePlanner = require('../services/worldExplorer/WorldExplorerRoutePlanner');
-const TutorialCity = require('../services/worldExplorer/WorldExplorerTutorialCity');
 const MissionNormalizer = require('../services/worldExplorer/WorldExplorerMissionNormalizer');
 const Progression = require('../services/worldExplorer/WorldExplorerProgression');
 const ClientState = require('../services/worldExplorer/WorldExplorerClientState');
   const Shared = require('../services/worldExplorer/WorldExplorerShared');
 const Actions = require('../services/worldExplorer/WorldExplorerActions');
 const Realtime = require('../services/realtime');
-const { TutorialFlowConfig } = require('../services/config/GameplayConfigRuntime');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const explorerRoot = path.join(serviceRoot, 'worldExplorer');
@@ -40,7 +39,6 @@ test('WorldExplorerService stays a facade over focused explorer modules', () => 
     'WorldExplorerShared.js',
     'WorldExplorerTrace.js',
     'WorldExplorerTutorial.js',
-    'WorldExplorerTutorialCity.js',
     'WorldExplorerVision.js',
     'WorldMarchVerification.js',
   ]);
@@ -131,10 +129,8 @@ test('WorldExplorerMissionNormalizer derives revealed route identity from coordi
   assert.equal(JSON.stringify(mission).includes('legacy-route'), false);
 });
 
-// The plannedSites materialization path (Progression.materializePlannedSitesForStep) is DELETED with the
-// invent-city engine (S5, docs/design/10 §3.3). Its observable behavior — a pre-placed neutral city
-// discovered by march vision, NOT re-bound over an occupied/AI coordinate (R-guard) — is now covered by
-// the S4 discovery tests + the tutorial discovery tests in WorldExplorerService.test.js.
+// The plannedSites materialization path is deleted. World cities are authored once, then projected or
+// materialized through the shared discovery helper without route-local invented sites.
 
 test('WorldExplorerService facade exposes only the actor march API', () => {
   const expectedApi = [
@@ -223,49 +219,33 @@ test('world explorer generation context hashes nearby state instead of the full 
   assert.notEqual(nearbyContext.nearbyStateHash, baseContext.nearbyStateHash);
 });
 
-test('tutorial-city planner pre-places a deterministic neutral first city near the explore origin', () => {
-  // S5: the invent-city engine is replaced by WorldExplorerTutorialCity — a PURE deterministic planner
-  // that chooses a land tile near getExploreOrigin and authors ONLY position + owner + type + status +
-  // scale + names (§4-4). Same seed + origin => same tile => stable across reloads.
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = {
-    playerId: 'tutorial-city-planner-test',
-    activeCityId: 'capital',
-    territories: [{ id: 'capital', x: 0, y: 0, owner: 'player', status: 'occupied', type: 'capital' }],
-    worldMap: WorldMapService.createInitialWorldMap('tutorial-explorer-seed', now),
-    tutorial: { completed: false, currentStep: TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved, grants: {} },
-  };
+test('companion city planner authors a neutral city from the spawn allocation target', () => {
+  const planned = WorldCitySpawner.planCompanionCity('tutorial-explorer-seed', {
+    allocation: { tutorialTarget: { q: 1, r: 0, terrain: 'plains' } },
+  });
 
-  const planned = TutorialCity.planTutorialFirstCityGrant(gameState, now);
-
-  assert.equal(planned.key, 'firstExploreEmptyCity');
-  assert.equal(planned.grant.siteId, 'site_1_0');
-  assert.equal(planned.grant.city.id, 'site_1_0');
-  assert.equal(planned.grant.city.owner, 'neutral');
-  assert.equal(planned.grant.city.type, 'town');
-  assert.equal(planned.grant.city.status, 'discovered');
+  assert.equal(planned.id, 'site_1_0');
+  assert.equal(planned.owner, 'neutral');
+  assert.equal(planned.type, 'town');
+  assert.equal(planned.status, 'discovered');
   // §4-4: no derived fields authored.
-  assert.equal(Object.prototype.hasOwnProperty.call(planned.grant.city, 'garrison'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(planned.grant.city, 'battleTarget'), false);
-  // Determinism: a second plan for the same seed + origin returns the identical tile.
-  const again = TutorialCity.planTutorialFirstCityGrant(gameState, now);
-  assert.equal(again.grant.siteId, planned.grant.siteId);
+  assert.equal(Object.prototype.hasOwnProperty.call(planned, 'garrison'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(planned, 'battleTarget'), false);
 });
 
-test('tutorial-city planner skips march-blocked tiles when choosing the first city', (t) => {
+test('companion city planner skips march-blocked target tiles', (t) => {
   const originalChooseTerrain = WorldMapService.chooseTerrain;
   t.after(() => {
     WorldMapService.chooseTerrain = originalChooseTerrain;
   });
-  // Force the immediate +q neighbour to water; the planner must fall through the deterministic candidate
-  // order to the next LAND tile rather than place a city on an un-marchable tile.
+  // A blocked allocation target must not produce a companion city.
   WorldMapService.chooseTerrain = (_seed, q, r) => (q === 1 && r === 0 ? 'ocean' : 'plains');
 
-  const tile = TutorialCity.chooseTutorialCityTile('any-seed', { q: 0, r: 0 });
+  const planned = WorldCitySpawner.planCompanionCity('any-seed', {
+    allocation: { tutorialTarget: { q: 1, r: 0 } },
+  });
 
-  assert.ok(tile, 'a land tile is still chosen');
-  assert.equal(tile.q === 1 && tile.r === 0, false, 'the water tile at (1,0) is skipped');
-  assert.equal(WorldMapService.chooseTerrain('any-seed', tile.q, tile.r) === 'ocean', false);
+  assert.equal(planned, null);
 });
 
 test('world explorer progression reveals a step through the world-map batch API', (t) => {
