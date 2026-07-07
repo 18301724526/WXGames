@@ -146,7 +146,6 @@
     'assets/art/ui-hud/hud-resource-knowledge.png',
     'assets/art/ui-hud/hud-resource-population.png',
     'assets/art/ui-hud/hud-dock-badge-round.png',
-    'assets/art/ui-hud/hud-dock-button-cell.png',
     'assets/art/ui-hud/hud-dock-icon-capital.png',
     'assets/art/ui-hud/hud-dock-icon-tasks.png',
     'assets/art/ui-hud/hud-dock-icon-tech.png',

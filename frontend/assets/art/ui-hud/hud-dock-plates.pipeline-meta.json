@@ -1,28 +1,28 @@
 {
-  "version": "ui-redo-dock-v2",
+  "version": "ui-redo-dock-v3",
   "target": "ui-plates",
   "assets": [
     "hud-dock-badge-round.png",
     "hud-dock-button-cell.png"
   ],
   "cell_size": [256, 256],
-  "source": "docs/design/ui-hud-reference/source-sheets/raw/hud-dock-plates-v2-raw.png",
-  "reference": "docs/design/ui-hud-reference/user-references/layout-reference-v2.webp (badge/strip crop tmp anchor, 0,1540-660,1780 x2)",
+  "source": "docs/design/ui-hud-reference/source-sheets/raw/hud-dock-badge-v3-raw.png (badge); hud-dock-plates-v2-raw.png (cell, unchanged at v2)",
+  "reference": "docs/design/ui-hud-reference/user-references/layout-reference-v2.webp (badge anchor = clean circular crop centered (105,1655) r=98, upscaled 512)",
+  "v3_rationale": "user judged the v2 badge wrong against the approved reference on device: wide flat red-copper ring with a near-black face ('black hole'). PIL comparison against the reference medallion confirmed: reference is a dark AGED-IRON outer ring with four diamond compass accents, a THIN worn-gold inner accent line, and a textured dark olive-bronze face with a subtle radial sheen (face upper #5A472E / lower #2C2216). v3 regenerates the badge anchored on the exact reference medallion crop; same filename and asset key, content swapped in place. hud-dock-button-cell stays at v2 but is no longer drawn by the dock (the recessed well is token-painted since knife 6).",
   "v2_rationale": "user rejected the v1 plates on device: badge read too bright / polished-new (shiny champagne rim, brushed specular face) versus the approved reference's aged matte bronze. v2 regenerates both plates as aged weathered bronze with dark patina, muted worn ring, matte finish; same filenames and asset keys, content swapped in place.",
   "v1_source_kept": "docs/design/ui-hud-reference/source-sheets/raw/hud-dock-plates-raw.png",
   "generation": {
     "model": "nano-banana-pro",
-    "endpoint": "images/edits (anchored on a 2x upscaled crop of the reference dock badge + strip)",
+    "endpoint": "images/edits (v3: anchored on the reference medallion circular crop, single element on solid #FF00FF)",
     "calls": 1,
-    "sheet": "1x2 on solid #FF00FF, raw 1584x672"
+    "sheet": "v3: single 1024x1024 badge on solid #FF00FF; gen-1 accepted (face tone medians #48412A/#332C1C vs reference #5A472E/#2C2216 - in family)"
   },
   "processing": {
     "steps": [
-      "chroma key magenta via generate2dsprite.py remove_bg_magenta (threshold 100, edge 150)",
-      "2 largest connected components, crop +4px pad, scale to fit 256*0.985, center paste",
-      "defringe: r>g+40 && b>g+40 -> clamp r<=g+45, b<=g+25",
-      "QC: 0 magenta-residual pixels on both plates",
-      "old-vs-new acceptance board: docs/design/ui-hud-reference/source-sheets/processed/dock-v2/badge-compare-old-top-new-bottom.png"
+      "chroma key magenta inline PIL (r>100 && b>100 && r-g>60 && b-g>60 -> alpha 0)",
+      "opaque bbox crop +2px pad, square canvas, scale to 256*0.985, center paste",
+      "defringe: a>0 && r>g+40 && b>g+40 -> clamp r<=g+45, b<=g+25",
+      "QC: 0 magenta-residual pixels"
     ]
   },
   "states": {

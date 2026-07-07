@@ -50,7 +50,7 @@
     getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
     getDockMetrics() {
       return UiThemeTokens?.getDockMetrics?.(this.width, this.height)
-        || { height: 64, top: this.height - 64, badgeDiameter: 76, badgeOvershoot: 27, badgeIconSize: 32, stripHeight: 53, stripGap: 8, stripCellIconSize: 26 };
+        || { height: 92, top: this.height - 92, badgeDiameter: 85, badgeOvershoot: 0, badgeInset: 12, badgeIconSize: 34, ledgeHeight: 21, wellHeight: 53, wellGap: 8, wellPadX: 3, cellIconSize: 26 };
     }
 
     getMapHomeFloatingButtonLayout(slot = 0) {
@@ -121,18 +121,39 @@
       return Array.isArray(options.activeDockItemIds) && options.activeDockItemIds.includes(item.id);
     }
 
-    // UI-REDO: big round edge badge (capital / tasks). Aged bronze plate asset
-    // with a token-gradient circle fallback while the asset is not loaded yet.
+    // UI-REDO knife 6: big round edge badge (capital / tasks), fully EMBEDDED
+    // in the tray (zero overshoot, PIL-verified). A socket shadow disc under
+    // the sprite plus a light-catching lower lip make it sit IN the plate
+    // instead of floating on it. Aged iron/bronze medallion asset (v3) with a
+    // token-gradient circle fallback while the asset is not loaded yet.
     // Active state is a code overlay (champagne ring highlight), not extra art.
     renderDockBadge(item = {}, rect = {}, options = {}) {
       const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
       const dock = UiThemeTokens?.dock || {};
       const typeScale = UiThemeTokens?.typeScale || {};
       const active = this.isDockItemActive(item, options);
       const { x, y, width, height } = rect;
       const size = Math.min(width, height);
       const centerX = x + width / 2;
-      const iconSize = Number(rect.iconSize) || Math.round(size * 0.42);
+      const centerY = y + size / 2;
+      const iconSize = Number(rect.iconSize) || Math.round(size * 0.4);
+      // Socket: the tray is visibly darker in a ring under the badge, and the
+      // socket's lower lip catches the shared top light — one light source.
+      const socketPad = Number(dock.badgeSocketPadPx) || 3;
+      if (this.ctx && typeof this.ctx.arc === 'function') {
+        this.ctx.save?.();
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, size / 2 + socketPad, 0, Math.PI * 2);
+        this.ctx.fillStyle = hairline.badgeSocketShadow || 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, size / 2 + socketPad, Math.PI * 0.15, Math.PI * 0.85);
+        this.ctx.strokeStyle = hairline.badgeSocketRim || 'rgba(109, 100, 87, 0.35)';
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+        this.ctx.restore?.();
+      }
       const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = item.disabled ? (dock.disabledAlpha || 0.38) : previousAlpha;
       if (!this.drawAsset(dock.badgeAssetPath, x, y, size, size)) {
@@ -150,7 +171,9 @@
           inset: UiThemeTokens?.hairline?.insetHighlight,
         });
       }
-      const iconY = y + size * 0.16;
+      // Reference medallion composition: icon center at ~0.36 of the circle,
+      // caption center at ~0.66 (both inside the ring).
+      const iconY = y + size * 0.36 - iconSize / 2;
       if (!item.icon || !this.drawAsset(item.icon, centerX - iconSize / 2, iconY, iconSize, iconSize)) {
         this.drawText(String(item.label || '').slice(0, 1), centerX, iconY + iconSize / 2, {
           size: typeScale.title || 16,
@@ -160,17 +183,18 @@
           align: 'center',
         });
       }
-      this.drawText(this.truncateText(item.label, size - 18, { size: typeScale.title || 16, bold: true }), centerX, y + size * 0.64, {
+      this.drawText(this.truncateText(item.label, size - 22, { size: typeScale.title || 16, bold: true }), centerX, y + size * 0.66, {
         size: typeScale.title || 16,
         bold: true,
         color: active ? palette.champagneGoldBright : palette.badgeTextGold,
+        baseline: 'middle',
         align: 'center',
       });
       if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
       if (active && this.ctx && typeof this.ctx.arc === 'function') {
         this.ctx.save?.();
         this.ctx.beginPath();
-        this.ctx.arc(centerX, y + size / 2, size / 2 - 1, 0, Math.PI * 2);
+        this.ctx.arc(centerX, centerY, size / 2 - 1, 0, Math.PI * 2);
         this.ctx.strokeStyle = palette.champagneGoldBright;
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
@@ -179,58 +203,67 @@
       this.addHitTarget({ x, y, width: size, height: size }, item.action);
     }
 
-    // UI-REDO knife 3: the recessed strip band chrome. 9-slices the aged
-    // hud-dock-button-cell plate across the band (same technique as the top
-    // bar plate); falls back to a token recessed panel until the asset loads.
-    drawDockStripPlate(x, y, width, height) {
+    // UI-REDO knife 6: the tray is ONE forged plate (拼图感修正的"地").
+    // Token-painted per the reference anatomy: warm vertical face gradient,
+    // 1px top bevel light + shadow under it, warm bottom edge line over the
+    // terminal dark row. All colors/stops come from UiThemeTokens.
+    drawDockTrayPlate(x, y, width, height) {
+      if (!this.ctx || typeof this.ctx.fillRect !== 'function') return false;
       const palette = UiThemeTokens?.palette || {};
       const hairline = UiThemeTokens?.hairline || {};
       const dock = UiThemeTokens?.dock || {};
-      const slice = dock.stripSlice || {};
-      const assetPath = dock.cellAssetPath || '';
-      const sourceWidth = Number(slice.sourceWidth) || 0;
-      const sourceHeight = Number(slice.sourceHeight) || 0;
-      const sourceInset = Number(slice.sourceInset) || 0;
-      const destInset = Number(slice.destInset) || 0;
-      let drewAsset = Boolean(assetPath)
-        && sourceInset > 0
-        && destInset > 0
-        && sourceWidth > sourceInset * 2
-        && sourceHeight > sourceInset * 2
-        && width > destInset * 2
-        && height > destInset * 2;
-      if (drewAsset) {
-        const sourceX = [0, sourceInset, sourceWidth - sourceInset, sourceWidth];
-        const sourceY = [0, sourceInset, sourceHeight - sourceInset, sourceHeight];
-        const destX = [x, x + destInset, x + width - destInset, x + width];
-        const destY = [y, y + destInset, y + height - destInset, y + height];
-        for (let row = 0; row < 3 && drewAsset; row += 1) {
-          for (let col = 0; col < 3 && drewAsset; col += 1) {
-            drewAsset = this.drawAssetClipped(
-              assetPath,
-              {
-                x: sourceX[col],
-                y: sourceY[row],
-                width: sourceX[col + 1] - sourceX[col],
-                height: sourceY[row + 1] - sourceY[row],
-              },
-              destX[col],
-              destY[row],
-              destX[col + 1] - destX[col],
-              destY[row + 1] - destY[row],
-            ) === true;
-          }
-        }
-      }
-      if (!drewAsset) {
-        this.drawPanel(x, y, width, height, {
-          fill: palette.dockTrayCell,
-          stroke: hairline.dividerOnIron,
-          radius: UiThemeTokens?.radius?.panel || 6,
-          inset: hairline.frameShadow,
-        });
-      }
-      return drewAsset;
+      const stops = Array.isArray(dock.trayGradientStops) && dock.trayGradientStops.length
+        ? dock.trayGradientStops.map((stop) => [stop[0], stop[1]])
+        : [[0, palette.dockTrayLedge], [1, palette.dockApron]];
+      this.ctx.fillStyle = this.createGradient(x, y, x, y + height, stops, palette.dockTrayLedge);
+      this.ctx.fillRect(x, y, width, height);
+      const px = hairline.widthPx || 1;
+      this.ctx.fillStyle = palette.dockBevelLight;
+      this.ctx.fillRect(x, y, width, px);
+      this.ctx.fillStyle = hairline.frameShadow;
+      this.ctx.fillRect(x, y + px, width, px);
+      this.ctx.fillStyle = palette.plateEdgeWarmLine;
+      this.ctx.fillRect(x, y + height - 2 * px, width, px);
+      this.ctx.fillStyle = hairline.frameShadow;
+      this.ctx.fillRect(x, y + height - px, width, px);
+      return true;
+    }
+
+    // UI-REDO knife 6: the center command area is a RECESSED WELL sunk into
+    // the tray, not a floating box: ridge light above the lip, darker
+    // interior gradient, inner top shadow, faint rim light at the bottom
+    // edge. Same single top-light logic as the tray bevel and badge sockets.
+    drawDockWell(x, y, width, height) {
+      if (!this.ctx || typeof this.ctx.fillRect !== 'function') return false;
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const dock = UiThemeTokens?.dock || {};
+      const px = hairline.widthPx || 1;
+      const stops = Array.isArray(dock.wellGradientStops) && dock.wellGradientStops.length
+        ? dock.wellGradientStops.map((stop) => [stop[0], stop[1]])
+        : [[0, palette.dockWellTop], [1, palette.dockWellBottom]];
+      // Ridge light on the tray just above the well lip.
+      this.ctx.fillStyle = palette.dockBevelLight;
+      this.ctx.fillRect(x - px, y - px, width + 2 * px, px);
+      // Recessed interior.
+      this.ctx.fillStyle = this.createGradient(x, y, x, y + height, stops, palette.dockWellTop);
+      this.ctx.fillRect(x, y, width, height);
+      // Inner top shadow (2px falloff) — the lip shades the interior.
+      this.ctx.fillStyle = hairline.wellInnerShadow;
+      this.ctx.fillRect(x + px, y + px, width - 2 * px, px);
+      this.ctx.fillStyle = hairline.wellInnerShadowSoft;
+      this.ctx.fillRect(x + px, y + 2 * px, width - 2 * px, px);
+      // Bottom inner rim catching the light (just inside the frame).
+      this.ctx.fillStyle = palette.dockWellRim;
+      this.ctx.fillRect(x + px, y + height - 2 * px, width - 2 * px, px);
+      // Cell frame outline around the well band (the reference cells read as
+      // framed boxes; the matching dividers are drawn by the cell loop).
+      this.ctx.fillStyle = palette.dockCellFrame;
+      this.ctx.fillRect(x, y, width, px);
+      this.ctx.fillRect(x, y + height - px, width, px);
+      this.ctx.fillRect(x, y, px, height);
+      this.ctx.fillRect(x + width - px, y, px, height);
+      return true;
     }
 
     // UI-REDO knife 3: one cell inside the recessed center strip. The cell has
@@ -274,65 +307,54 @@
       this.addHitTarget({ x, y, width, height }, item.action);
     }
 
-    // UI-REDO bottom dock (layout-reference-v2, knife-3 geometry): full-width
-    // copper bar sized off the canvas width (UiThemeTokens.getDockMetrics),
-    // two round edge badges overshooting the bar top by ~35% of their
-    // diameter, and one RECESSED STRIP between them holding the four command
-    // cells (equal split, hairline separators, icon over label).
+    // UI-REDO knife 6 (dock 一体化): the dock is ONE forged tray, not three
+    // floating parts. Full-width token-painted tray plate (visible warm face,
+    // bevel, apron), a recessed well sunk between the badges holding the four
+    // command cells (equal split, hairline separators), and two round badges
+    // fully EMBEDDED in the tray (zero overshoot — PIL-verified against the
+    // reference) sitting in socket shadows. One top-light for everything.
     renderMapCommandDock(state = {}, options = {}) {
-      const layout = this.getLayout();
-      const palette = UiThemeTokens?.palette || {};
       const hairline = UiThemeTokens?.hairline || {};
       const metrics = this.getDockMetrics();
       const width = this.width;
       const dockHeight = metrics.height;
       const y = this.height - dockHeight;
-      if (this.ctx) {
-        this.ctx.fillStyle = this.createGradient(
-          0, y, 0, y + dockHeight,
-          [
-            [0, palette.dockCopperTop],
-            [1, palette.dockCopperBottom],
-          ],
-          palette.dockCopperTop,
-        );
-        this.ctx.fillRect(0, y, width, dockHeight);
-        this.ctx.fillStyle = hairline.dividerOnIron;
-        this.ctx.fillRect(0, y, width, hairline.widthPx || 1);
-        this.ctx.fillStyle = hairline.insetHighlight;
-        this.ctx.fillRect(0, y + 1, width, hairline.widthPx || 1);
-      }
-      const contentX = layout.contentX;
-      const contentWidth = layout.contentWidth;
+      this.drawDockTrayPlate(0, y, width, dockHeight);
       const dockItems = this.getDockCommandItems(state);
       const badgeSize = metrics.badgeDiameter;
-      const badgeY = y - metrics.badgeOvershoot;
-      // Recessed strip: spans between the two badges minus a small gap, its
-      // top inset keeps the reference's slightly bottom-heavy placement.
-      const stripGap = metrics.stripGap;
-      const stripX = contentX + badgeSize + stripGap;
-      const stripWidth = Math.max(60, contentWidth - 2 * (badgeSize + stripGap));
-      const stripHeight = metrics.stripHeight;
-      const stripY = y + Math.max(3, Math.floor((dockHeight - stripHeight) * 0.72));
-      this.drawDockStripPlate(stripX, stripY, stripWidth, stripHeight);
+      const badgeInset = metrics.badgeInset;
+      // Embedded: badge circle vertically centered in the tray band.
+      const badgeY = y + Math.round((dockHeight - badgeSize) / 2) - metrics.badgeOvershoot;
+      // Recessed well: runs badge-to-badge (small gap), top edge at the
+      // ledge/well ridge from the reference anatomy.
+      const wellGap = metrics.wellGap;
+      const wellX = badgeInset + badgeSize + wellGap;
+      const wellWidth = Math.max(60, width - 2 * (badgeInset + badgeSize + wellGap));
+      const wellY = y + metrics.ledgeHeight;
+      const wellHeight = metrics.wellHeight;
+      this.drawDockWell(wellX, wellY, wellWidth, wellHeight);
+      const padX = metrics.wellPadX || 0;
+      const cellsX = wellX + padX;
+      const cellsWidth = wellWidth - 2 * padX;
       const centerCount = dockItems.center.length;
-      const cellWidth = centerCount > 0 ? stripWidth / centerCount : stripWidth;
+      const cellWidth = centerCount > 0 ? cellsWidth / centerCount : cellsWidth;
       dockItems.center.forEach((item, index) => {
-        const cellX = stripX + index * cellWidth;
+        const cellX = cellsX + index * cellWidth;
         if (index > 0 && this.ctx) {
-          this.ctx.fillStyle = hairline.dividerOnIron;
-          this.ctx.fillRect(Math.round(cellX), stripY + 4, hairline.widthPx || 1, stripHeight - 8);
+          // Full-height cell frame divider (reference cells are framed boxes).
+          this.ctx.fillStyle = UiThemeTokens?.palette?.dockCellFrame || hairline.dividerOnIron;
+          this.ctx.fillRect(Math.round(cellX), wellY, hairline.widthPx || 1, wellHeight);
         }
         this.renderDockStripCell(item, {
           x: Math.round(cellX),
-          y: stripY,
+          y: wellY,
           width: Math.round(cellWidth),
-          height: stripHeight,
-          iconSize: metrics.stripCellIconSize,
+          height: wellHeight,
+          iconSize: metrics.cellIconSize,
         }, options);
       });
-      this.renderDockBadge(dockItems.capital, { x: contentX, y: badgeY, width: badgeSize, height: badgeSize, iconSize: metrics.badgeIconSize }, options);
-      this.renderDockBadge(dockItems.tasks, { x: contentX + contentWidth - badgeSize, y: badgeY, width: badgeSize, height: badgeSize, iconSize: metrics.badgeIconSize }, options);
+      this.renderDockBadge(dockItems.capital, { x: badgeInset, y: badgeY, width: badgeSize, height: badgeSize, iconSize: metrics.badgeIconSize }, options);
+      this.renderDockBadge(dockItems.tasks, { x: width - badgeInset - badgeSize, y: badgeY, width: badgeSize, height: badgeSize, iconSize: metrics.badgeIconSize }, options);
     }
 
     // UI-REDO knife 3 (layout-reference-v2 right edge): dark iron disc + thin

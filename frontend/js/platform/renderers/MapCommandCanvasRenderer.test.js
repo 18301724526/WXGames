@@ -14,9 +14,11 @@ function createHost(overrides = {}) {
     height: 844,
     bottomSafeArea: 12,
     ctx: {
-      fillRect(...args) { calls.push(['fillRect', ...args]); },
+      _fillStyle: '',
+      set fillStyle(value) { this._fillStyle = value; },
+      get fillStyle() { return this._fillStyle; },
+      fillRect(...args) { calls.push(['fillRect', this._fillStyle, ...args]); },
       globalAlpha: 1,
-      fillStyle: '',
     },
     hitTargets,
     calls,
@@ -199,7 +201,7 @@ test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('icon-knowledge')), false);
 });
 
-test('MapCommandCanvasRenderer dock renders two round badges and a recessed four-cell strip', () => {
+test('MapCommandCanvasRenderer dock renders two EMBEDDED badges and a recessed four-cell well', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });
   const UiThemeTokens = require('../../config/UiThemeTokens');
@@ -212,35 +214,41 @@ test('MapCommandCanvasRenderer dock renders two round badges and a recessed four
   const tasks = host.hitTargets.find((target) => target.action.type === 'openTaskCenter');
   const cells = host.hitTargets.filter((target) => target !== capital && target !== tasks);
   const trayTop = 844 - metrics.height;
-  // Reference proportions (%W of 390): badge ~23%W, tray ~19.6%W, strip ~13.7%W.
-  assert.equal(metrics.badgeDiameter, 90);
-  assert.equal(metrics.height, 76);
-  assert.equal(metrics.stripHeight, 53);
-  // Edge badges: round plates overshooting the tray top by ~35% of their diameter.
+  // Knife-6 reference proportions (%W of 390): tray 23.7%W, badge 21.8%W,
+  // well 57.8% of tray height; badge overshoot ZERO (PIL-verified embedded).
+  assert.equal(metrics.badgeDiameter, 85);
+  assert.equal(metrics.height, 92);
+  assert.equal(metrics.wellHeight, 53);
+  assert.equal(metrics.badgeOvershoot, 0);
+  assert.equal(metrics.badgeInset, 12);
+  // Edge badges: fully embedded, vertically centered in the tray band.
   [capital, tasks].forEach((badge) => {
     assert.equal(badge.rect.width, metrics.badgeDiameter);
     assert.equal(badge.rect.height, metrics.badgeDiameter);
-    assert.equal(badge.rect.y, trayTop - metrics.badgeOvershoot);
+    assert.equal(badge.rect.y, trayTop + Math.round((metrics.height - metrics.badgeDiameter) / 2));
+    assert.equal(badge.rect.y >= trayTop, true, 'badge must not overshoot the tray top');
   });
-  // Strip cells: equal split of the band between the badges, inside the tray.
+  assert.equal(capital.rect.x, metrics.badgeInset);
+  assert.equal(tasks.rect.x, 390 - metrics.badgeInset - metrics.badgeDiameter);
+  // Well cells: equal split of the recessed band between the badges.
   assert.equal(cells.length, 4);
   cells.forEach((cell) => {
-    assert.equal(cell.rect.height, metrics.stripHeight);
-    assert.equal(cell.rect.y >= trayTop, true);
+    assert.equal(cell.rect.height, metrics.wellHeight);
+    assert.equal(cell.rect.y, trayTop + metrics.ledgeHeight);
   });
-  const stripLeft = 10 + metrics.badgeDiameter + metrics.stripGap;
-  const stripWidth = 360 - 2 * (metrics.badgeDiameter + metrics.stripGap);
-  assert.equal(Math.min(...cells.map((cell) => cell.rect.x)), stripLeft);
+  const wellX = metrics.badgeInset + metrics.badgeDiameter + metrics.wellGap;
+  const wellWidth = 390 - 2 * (metrics.badgeInset + metrics.badgeDiameter + metrics.wellGap);
+  assert.equal(Math.min(...cells.map((cell) => cell.rect.x)), wellX + metrics.wellPadX);
   cells.forEach((cell) => {
-    assert.equal(cell.rect.width, Math.round(stripWidth / 4));
+    assert.equal(cell.rect.width, Math.round((wellWidth - 2 * metrics.wellPadX) / 4));
   });
-  // Plates + per-item gold icons are requested through the new dock asset set.
+  // Badge plate + per-item gold icons are requested through the dock asset set.
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-badge-round')), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-icon-capital')), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-icon-tasks')), true);
 });
 
-test('MapCommandCanvasRenderer dock 9-slices the aged cell plate across the strip band', () => {
+test('MapCommandCanvasRenderer dock paints the tray plate and recessed well from tokens (no 9-slice band)', () => {
   const clipped = [];
   const host = createHost({
     drawAssetClipped(assetPath, source, x, y, width, height) {
@@ -249,14 +257,60 @@ test('MapCommandCanvasRenderer dock 9-slices the aged cell plate across the stri
     },
   });
   const renderer = new MapCommandCanvasRenderer({ host });
+  const UiThemeTokens = require('../../config/UiThemeTokens');
+  const palette = UiThemeTokens.palette;
+  const metrics = UiThemeTokens.getDockMetrics(390, 844);
+  const trayTop = 844 - metrics.height;
 
   renderer.renderMapCommandDock({}, {});
 
-  assert.equal(clipped.length, 9);
-  assert.equal(clipped.every((call) => call.assetPath.includes('hud-dock-button-cell')), true);
+  // Knife 6 retired the hud-dock-button-cell 9-slice band — the well is token-painted.
+  assert.equal(clipped.length, 0);
+  const fills = host.calls.filter((call) => call[0] === 'fillRect');
+  // Tray face: full-width gradient rect over the whole tray band.
+  assert.equal(fills.some((call) => call[2] === 0 && call[3] === trayTop && call[4] === 390 && call[5] === metrics.height), true);
+  // Unified top light: tray bevel light line at the tray top edge...
+  assert.equal(fills.some((call) => call[1] === palette.dockBevelLight && call[3] === trayTop && call[5] === 1), true);
+  // ...and the well ridge light right above the recessed lip.
+  const wellY = trayTop + metrics.ledgeHeight;
+  assert.equal(fills.some((call) => call[1] === palette.dockBevelLight && call[3] === wellY - 1), true);
+  // Well bottom inner rim light + cell frame outline + tray bottom warm edge line.
+  assert.equal(fills.some((call) => call[1] === palette.dockWellRim && call[3] === wellY + metrics.wellHeight - 2), true);
+  assert.equal(fills.some((call) => call[1] === palette.dockCellFrame && call[3] === wellY), true);
+  assert.equal(fills.some((call) => call[1] === palette.plateEdgeWarmLine && call[3] === trayTop + metrics.height - 2), true);
 });
 
-test('MapCommandCanvasRenderer dock falls back to token panels while plate assets are missing', () => {
+test('MapCommandCanvasRenderer dock badges sit in socket shadows on the tray', () => {
+  const arcs = [];
+  const ctx = {
+    _fillStyle: '',
+    set fillStyle(value) { this._fillStyle = value; },
+    get fillStyle() { return this._fillStyle; },
+    strokeStyle: '',
+    lineWidth: 0,
+    globalAlpha: 1,
+    fillRect() {},
+    beginPath() {},
+    arc(x, y, radius) { arcs.push({ x, y, radius, fillStyle: this._fillStyle }); },
+    fill() { if (arcs.length) arcs[arcs.length - 1].filled = this._fillStyle; },
+    stroke() {},
+    save() {},
+    restore() {},
+  };
+  const host = createHost({ ctx });
+  const renderer = new MapCommandCanvasRenderer({ host });
+  const UiThemeTokens = require('../../config/UiThemeTokens');
+  const metrics = UiThemeTokens.getDockMetrics(390, 844);
+
+  renderer.renderMapCommandDock({}, {});
+
+  // Each badge draws a socket disc slightly larger than the badge circle.
+  const socketRadius = metrics.badgeDiameter / 2 + UiThemeTokens.dock.badgeSocketPadPx;
+  const sockets = arcs.filter((arc) => arc.radius === socketRadius && arc.filled === UiThemeTokens.hairline.badgeSocketShadow);
+  assert.equal(sockets.length, 2);
+});
+
+test('MapCommandCanvasRenderer dock falls back to token panels while the badge asset is missing', () => {
   const panels = [];
   const host = createHost({
     drawAsset() { return false; },
@@ -268,10 +322,8 @@ test('MapCommandCanvasRenderer dock falls back to token panels while plate asset
 
   renderer.renderMapCommandDock({}, {});
 
-  // Badge fallback: full-circle radius token panel; strip fallback: recessed band panel.
+  // Badge fallback: full-circle radius token panel.
   assert.equal(panels.some((panel) => panel.width === metrics.badgeDiameter && panel.options.radius === metrics.badgeDiameter / 2), true);
-  const stripWidth = 360 - 2 * (metrics.badgeDiameter + metrics.stripGap);
-  assert.equal(panels.some((panel) => panel.width === stripWidth && panel.height === metrics.stripHeight), true);
 });
 
 test('MapCommandCanvasRenderer dock lights active cells from pre-decided owner facts only', () => {

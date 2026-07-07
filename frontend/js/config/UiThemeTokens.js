@@ -25,6 +25,21 @@
     dockLabelGold: '#AEA491', // dock button label [205,1690,265,1720]
     dockIconGold: '#BCA37C', // dock icon strokes [205,1600,265,1665]
 
+    // --- knife-6 dock tray anatomy (reference tray band y1553-1755) ---
+    // The tray is ONE forged plate: top bevel light, upper ledge, recessed
+    // well ridge, well interior, dark apron, warm bottom edge line.
+    dockTrayLedge: '#25221F', // upper ledge face [320,1558,760,1568]
+    dockTrayLedgeLow: '#22211F', // ledge lower band [320,1586,760,1597]
+    dockWellTop: '#23221F', // recessed well interior top [600,1604,650,1614]
+    dockWellBottom: '#111313', // recessed well interior bottom [600,1690,650,1712]
+    dockApron: '#101211', // tray apron below the well [300,1722,700,1748]
+    dockBevelLight: '#6D6457', // tray top bevel + well ridge light (max-of-window medians y1552-1558 / y1598-1603)
+    dockWellRim: '#332D27', // well bottom inner rim light (max-of-window y1714-1719)
+    dockCellFrame: '#3D3A35', // command cell frame hairline (median of divider cols x286/386/484/574 y1610-1700)
+    // 用户在定稿里读到的"极细暗红勾线": PIL 全帧红色猎扫(r-max(g,b) 最大仅 18)
+    // 证明定稿并无真红线 — 它是近黑底上的暖棕边线, 观感偏暗红. 按实测色收录.
+    plateEdgeWarmLine: '#3C352B', // tray bottom edge warm line (max-of-window y1750-1756)
+
     // --- bronze badges / round buttons (后续刀使用) ---
     badgeBronzeFace: '#604C31', // capital badge face [55,1600,130,1640]
     badgeRing: '#CCB48E', // badge ring highlight [20,1570,170,1740]
@@ -64,6 +79,10 @@
     dividerOnIron: 'rgba(229, 208, 165, 0.10)', // slot divider (ref divider col x=261 is +4 lum over plate)
     insetHighlight: 'rgba(229, 208, 165, 0.06)', // inner top light edge
     frameShadow: 'rgba(0, 0, 0, 0.55)', // outer drop edge under plates
+    wellInnerShadow: 'rgba(0, 0, 0, 0.55)', // recessed well top inner shadow (1st px)
+    wellInnerShadowSoft: 'rgba(0, 0, 0, 0.28)', // recessed well top inner shadow (2nd px)
+    badgeSocketShadow: 'rgba(0, 0, 0, 0.50)', // socket disc under the embedded dock badges
+    badgeSocketRim: 'rgba(109, 100, 87, 0.35)', // socket lower lip catching the top light (dockBevelLight @ 0.35)
   });
 
   // Type scale (logical px). Numeric values render with the mono stack.
@@ -118,36 +137,48 @@
 
   // Bottom map-command dock composition (world-map home HUD).
   //
-  // UI-REDO knife 3: the dock geometry is now RELATIVE TO CANVAS WIDTH
-  // (reference anchors measured on layout-reference-v2.webp, 853px wide;
-  // the pt values below are the 390pt-canvas equivalents):
-  //   - badge diameter  ~23.0%W  (~90pt)   ref circle x0-194 at the tray
-  //   - tray height     ~19.6%W  (~76pt)   coordinator anchor (was fixed 64)
-  //   - center strip    ~13.7%W  (~53pt)   ref y1600-1717 recessed band
-  //   - badge overshoot ~35% of its diameter above the tray top edge
+  // UI-REDO knife 6 (dock 一体化): geometry re-measured with PIL on
+  // layout-reference-v2.webp (853px wide; pt values = 390pt equivalents):
+  //   - tray band       y1553-1755 => 23.7%W (~92pt), ONE forged plate
+  //   - badge diameter  ring outer x14-195 => ~21.2%W; drawn sprite covers
+  //     the diamond-accent envelope so the ratio is 0.218 (~85pt)
+  //   - badge overshoot ZERO — every row above the tray top (y<1553) is pure
+  //     black across the badge zone; the badge is fully EMBEDDED and
+  //     vertically centered in the tray (previous 0.35 overshoot was wrong)
+  //   - ledge           tray top -> well ridge (1600-1553)/202 = 23.3% of tray
+  //   - recessed well   y1600-1717 => 57.8% of tray height (~53pt @390)
+  //   - badge edge inset: ref ring solid edge ~x30-36 (~4.2%W to the circle);
+  //     our sprite bbox includes the diamond tips, so 3.0%W sprite inset puts
+  //     the visible ring at the reference distance
   // No fixed-px dock sizing anywhere else: every consumer that used the old
   // `height - 64` contract must call getDockMetrics(width).top instead.
   const dock = Object.freeze({
-    heightRatio: 0.196,
-    minHeightPx: 56,
-    maxHeightPx: 104,
-    badgeDiameterRatio: 0.23,
-    badgeOvershootRatio: 0.35,
-    badgeIconRatio: 0.42,
-    stripHeightRatio: 0.137,
-    stripGapPx: 8,
-    stripCellIconRatio: 0.5,
+    heightRatio: 0.237,
+    minHeightPx: 68,
+    maxHeightPx: 118,
+    badgeDiameterRatio: 0.218,
+    badgeOvershootRatio: 0,
+    badgeEdgeInsetRatio: 0.03,
+    badgeIconRatio: 0.4,
+    ledgeRatio: 0.233,
+    wellHeightRatio: 0.578,
+    wellGapPx: 8,
+    wellPadX: 3,
+    cellIconRatio: 0.5,
     badgeAssetPath: 'assets/art/ui-hud/hud-dock-badge-round.png',
-    cellAssetPath: 'assets/art/ui-hud/hud-dock-button-cell.png',
-    // 9-slice insets for stretching the aged square cell plate into the
-    // recessed strip band (same technique as topBar.plateSlice).
-    stripSlice: Object.freeze({
-      sourceWidth: 256,
-      sourceHeight: 256,
-      sourceInset: 26,
-      destInset: 10,
-    }),
+    badgeSocketPadPx: 3,
     disabledAlpha: 0.38,
+    // Gradient stops (single-source; consumed via createGradient):
+    // tray face ledge -> apron, and recessed well top -> bottom.
+    trayGradientStops: Object.freeze([
+      Object.freeze([0, '#25221F']),
+      Object.freeze([0.35, '#201F1D']),
+      Object.freeze([1, '#101211']),
+    ]),
+    wellGradientStops: Object.freeze([
+      Object.freeze([0, '#23221F']),
+      Object.freeze([1, '#111313']),
+    ]),
   });
 
   // Single source for the reworked dock geometry. The effective width clamps
@@ -162,16 +193,20 @@
     );
     const barHeight = Math.round(effectiveWidth * dock.heightRatio);
     const badgeDiameter = Math.round(effectiveWidth * dock.badgeDiameterRatio);
-    const stripHeight = Math.min(barHeight - 6, Math.round(effectiveWidth * dock.stripHeightRatio));
+    const ledgeHeight = Math.round(barHeight * dock.ledgeRatio);
+    const wellHeight = Math.min(barHeight - 6, Math.round(barHeight * dock.wellHeightRatio));
     return {
       height: barHeight,
       top: canvasHeight ? canvasHeight - barHeight : 0,
       badgeDiameter,
       badgeOvershoot: Math.round(badgeDiameter * dock.badgeOvershootRatio),
+      badgeInset: Math.round(effectiveWidth * dock.badgeEdgeInsetRatio),
       badgeIconSize: Math.round(badgeDiameter * dock.badgeIconRatio),
-      stripHeight,
-      stripGap: dock.stripGapPx,
-      stripCellIconSize: Math.round(stripHeight * dock.stripCellIconRatio),
+      ledgeHeight,
+      wellHeight,
+      wellGap: dock.wellGapPx,
+      wellPadX: dock.wellPadX,
+      cellIconSize: Math.round(wellHeight * dock.cellIconRatio),
     };
   }
 
@@ -216,13 +251,17 @@
   });
 
   // World-map city nameplate chip (dark plate + level corner + name).
+  // Knife 6 (气质收敛): one notch more presence on device — slightly larger
+  // plate and type (user judged the knife-5 plate too faint on the map).
   const cityPlate = Object.freeze({
-    heightPx: 16,
-    levelBoxPx: 12,
-    paddingXPx: 5,
+    heightPx: 18,
+    levelBoxPx: 14,
+    paddingXPx: 6,
     gapPx: 4,
-    maxNameWidthPx: 84,
+    maxNameWidthPx: 96,
     liftPx: 6,
+    nameFontPx: 10,
+    levelFontPx: 9,
   });
 
   const UiThemeTokens = Object.freeze({
