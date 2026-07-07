@@ -3124,14 +3124,6 @@
                 return this.renderCanvasSurface(this.state?.currentTab);
               }
 
-    getMissionRemainingSeconds(mission) {
-                return this.presenter?.getScoutMissionRemainingSeconds?.(mission);
-              }
-
-    formatScoutCountdown(seconds) {
-                return this.presenter?.formatScoutCountdown?.(seconds);
-              }
-
     maybeShowNamingPrompt() {
                 const prompt = this.state?.territoryState?.namingPrompt;
                 const key = prompt ? `${prompt.type}:${prompt.territoryId || 'polity'}` : null;

@@ -8,6 +8,7 @@ const GameStateService = require('../services/GameStateService');
 const WorldMapService = require('../services/WorldMapService');
 const Tiles = require('../services/worldMap/WorldMapTiles');
 const RoutePlanner = require('../services/worldExplorer/WorldExplorerRoutePlanner');
+const TutorialCity = require('../services/worldExplorer/WorldExplorerTutorialCity');
 const TerritoryShared = require('../services/territory/TerritoryShared');
 const SpawnScoring = require('../services/spawn/SpawnScoring');
 const WorldMarchCore = require('../../shared/worldMarchCore');
@@ -311,13 +312,11 @@ test('shore maps to the coast planning archive and stays off spawn/site/tutorial
   assert.ok(shore);
   assert.equal(WorldMapService.canPlaceSiteOnTerrain(SEED, shore.q, shore.r), false);
 
-  // Tutorial empty cities sanitize shore just like the other water-family terrains.
-  const site = RoutePlanner.createTutorialEmptyCitySite(
-    { playerId: 'shore-tutorial-site-test' },
-    { q: 3, r: 4 },
-    { q: 3, r: 4, terrain: 'shore' },
-    new Date('2026-07-04T00:00:00.000Z'),
-  );
-  assert.equal(site.mapTerrain, 'plains');
-  assert.equal(site.terrain, 'plains');
+  // The pre-placed tutorial city (S5) never lands on shore/water: chooseTutorialCityTile skips every
+  // march-blocked and shore tile, so the chosen tile is always solid land.
+  const originShore = { q: shore.q, r: shore.r };
+  const tile = TutorialCity.chooseTutorialCityTile(SEED, originShore);
+  assert.ok(tile, 'a land tile is chosen near even a shore origin');
+  assert.notEqual(WorldMapService.chooseTerrain(SEED, tile.q, tile.r), 'shore');
+  assert.equal(WorldMarchCore.isMarchBlockedTerrain(WorldMapService.chooseTerrain(SEED, tile.q, tile.r)), false);
 });

@@ -65,9 +65,6 @@
         onWorldDragStart: (pointer) => this.startWorldDrag(pointer),
         onWorldDragMove: (pointer) => this.moveWorldDrag(pointer),
         onWorldDragEnd: (pointer) => this.endWorldDrag(pointer),
-        onScoutAction: (action) => this.handleScoutAction(action).catch((error) => {
-          this.onLog(`✖ ${error.payload?.message || error.message}`);
-        }),
       });
     }
 
@@ -224,16 +221,6 @@
         }
       } finally {
         this.actionAdapter?.setLoading?.(button, false);
-      }
-    }
-
-    async handleScoutAction(action = {}) {
-      if (action.direction) {
-        await this.runButton(action.button, () => this.api.scoutTerritory(action.direction));
-        return;
-      }
-      if (action.missionId) {
-        await this.runButton(action.button, () => this.api.claimScout(action.missionId));
       }
     }
 

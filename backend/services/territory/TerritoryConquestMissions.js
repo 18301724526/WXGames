@@ -6,6 +6,7 @@ const {
   clone,
 } = require('./TerritoryShared');
 const GarrisonPolicy = require('./GarrisonPolicy');
+const GarrisonCaptureResolver = require('./GarrisonCaptureResolver');
 
 const OCCUPIED_CITY_TERRAIN_REVEAL_RADIUS = 3;
 
@@ -213,6 +214,9 @@ function createTerritoryConquestMissions(dependencies = {}) {
     territory.lastBattle.leaderGrowth = leaderGrowth;
     if (territory.lastBattle.report) territory.lastBattle.report.leaderGrowth = leaderGrowth;
     if (success) {
+      // ②b: before the defender leader/garrison are cleared, maybe capture the defeated general and
+      // stage a 斩杀/招降/放生 decision. Side-track only — the occupy path below is unchanged.
+      GarrisonCaptureResolver.maybeCaptureOnVictory(gameState, territory, mission, now);
       territory.status = 'occupied';
       territory.owner = 'player';
       territory.defenderLeader = null;

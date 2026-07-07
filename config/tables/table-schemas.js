@@ -94,6 +94,96 @@ const TABLES = [
       { paramKey: 'wIntegrity', value: 1.4 },     // 义理轴权重(义利分歧最伤和睦)
       { paramKey: 'axisJitter', value: 0.25 },    // 从锚点抖动生成实际轴的幅度(同气性也有差异)
       { paramKey: 'rapportScale', value: 100.0 }, // 对齐度→rapport(-100~100)的缩放
+      { paramKey: 'genderFemaleRatio', value: 0.18 },   // 生成人物为女性的比例(古风武将偏男，可调)
+      { paramKey: 'orientationSameSexRatio', value: 0.05 }, // 取向为同性的比例(决策 03-1 引入性别+取向)
+    ],
+  },
+  {
+    table: 'relationship_tuning',
+    description: '人物关系网(03)调参(key-value，主键 paramKey)。关系=存在人身上的有向稀疏边(person.relationships)，网络=所有边的并集，无全局矩阵。affinity 随相性(compat)漂移、随事件跳变；kind 由 affinity 阈值(普通轴)或事件 flags(特殊态)决定。纯核 shared/person/relationshipCore.js 读取。',
+    fields: [
+      { key: 'paramKey', type: 'string', label: '参数名(主键)', fill: '唯一', effect: '纯核按名取值' },
+      { key: 'value', type: 'float', label: '数值', fill: '见下', effect: '' },
+    ],
+    rows: [
+      { paramKey: 'friendAt', value: 40 },        // affinity ≥ 此 + meetCount≥friendMeets → 好友
+      { paramKey: 'friendMeets', value: 3 },      // 晋级好友所需相遇次数
+      { paramKey: 'enemyAt', value: -40 },        // affinity ≤ 此 → 政敌
+      { paramKey: 'swornAt', value: 80 },         // 双向 affinity ≥ 此(+相性近+结拜事件)→ 义兄弟
+      { paramKey: 'nemesisAt', value: -80 },      // 双向 affinity ≤ 此(+战场触发)→ 宿敌
+      { paramKey: 'hysteresis', value: 8 },       // kind 升降迟滞带(防抖)
+      { paramKey: 'driftRate', value: 0.1 },      // affinity 每次向相性 setpoint 靠拢的比例
+      { paramKey: 'initialFactor', value: 0.3 },  // 新建边初始 affinity = 相性 × 此
+      { paramKey: 'decayPerDay', value: 3 },      // 久未互动的边 affinity 每日向 0 衰减量
+      { paramKey: 'maxEdgesPerPerson', value: 64 }, // 每人边数上限(超限淘汰最弱非特殊边)
+      { paramKey: 'meetPairsPerTick', value: 3 },   // 每势力每 tick 撮合对数(有界，与人口无关)
+      { paramKey: 'recruitFriendBonus', value: 0.25 },  // ②b 招降：被俘将在你势力有好友时的成功率加成
+      { paramKey: 'recruitSwornBonus', value: 0.40 },   // 有义兄弟
+      { paramKey: 'recruitNemesisPenalty', value: -0.30 }, // 军中有宿敌
+    ],
+  },
+  {
+    table: 'diplomacy_tuning',
+    description: '外交(04)调参(key-value，主键 paramKey)。势力↔势力：好感度有向(每侧独立 -100..100)、状态对称(neutral/friendly/allied/hostile/nemesis)。对称态由 mutualFav=min(favAtoB,favBtoA) 驱动被动阈值迁移(带迟滞)；宣战/提盟/破盟/求和是主动迁移。纯核 shared/faction/diplomacyCore.js 读取，不硬编码数字。',
+    fields: [
+      { key: 'paramKey', type: 'string', label: '参数名(主键)', fill: '唯一', effect: '纯核按名取值' },
+      { key: 'value', type: 'float', label: '数值', fill: '见下', effect: '' },
+    ],
+    rows: [
+      { paramKey: 'friendlyAt', value: 40 },      // mutualFav ≥ → neutral 升 friendly
+      { paramKey: 'friendlyExit', value: 25 },    // mutualFav < → friendly 退 neutral(迟滞)
+      { paramKey: 'hostileAt', value: -40 },      // mutualFav ≤ → neutral 降 hostile
+      { paramKey: 'hostileExit', value: -25 },    // mutualFav > → hostile 回 neutral(迟滞)
+      { paramKey: 'nemesisAt', value: -80 },      // mutualFav ≤ 且持续 nemesisTicks → hostile 升 nemesis
+      { paramKey: 'nemesisTicks', value: 20 },    // 仇视所需持续 tick 数
+      { paramKey: 'allyProposeMinFav', value: 50 }, // 提盟被接受所需的对方对你好感下限
+      { paramKey: 'driftToNeutralPerTick', value: 0.5 }, // 好感每 tick 向 0 的自然回落
+      { paramKey: 'sharedEnemyBonusPerTick', value: 0.4 }, // 每个共同敌人每 tick 的好感加成
+      { paramKey: 'borderPressurePerTick', value: -0.3 },  // 接壤压力每 tick 好感惩罚
+      { paramKey: 'rulerCompatScale', value: 0.02 },  // 君主相性(-100~100)×此 = 每 tick 好感漂移
+      { paramKey: 'actGiftFav', value: 8 },       // 赠礼即时好感
+      { paramKey: 'actDeclareWarFav', value: -50 }, // 宣战即时好感(对方对你)
+      { paramKey: 'actBetrayAllyFav', value: -70 }, // 背盟偷袭
+      { paramKey: 'actSueForPeaceFav', value: 10 }, // 求和
+      { paramKey: 'reputationHitOnBetray', value: -8 }, // 破盟对第三方(接壤/认识)的名声惩罚
+    ],
+  },
+  {
+    table: 'capture_tuning',
+    description: '占城捕获招降(②b)调参(key-value，主键 paramKey)。打赢守军后按 garrison 表 captureChance 几率捕获守将→面板斩杀/招降/放生。招降成功率=garrison 表 recruitBaseRate + 君主魅力 + 君主↔俘将相性(personalityCore) + 关系加成(relationshipCore.recruitModifier) − 宿敌，封顶 recruitCap；军中有宿敌则宁死不降(=0)。纯核 shared/faction/captureCore.js 读取。',
+    fields: [
+      { key: 'paramKey', type: 'string', label: '参数名(主键)', fill: '唯一', effect: '纯核按名取值' },
+      { key: 'value', type: 'float', label: '数值', fill: '见下', effect: '' },
+    ],
+    rows: [
+      { paramKey: 'charismaWeight', value: 0.30 },  // 君主魅力(0~100)/100 × 此 = 招降加成
+      { paramKey: 'compatWeight', value: 0.20 },    // 君主↔俘将相性(-100~100)/100 × 此 = 招降加成
+      { paramKey: 'recruitCap', value: 0.90 },      // 招降成功率硬上限(保留失败戏剧性)
+      { paramKey: 'recruitFloor', value: 0.0 },     // 招降成功率下限
+      { paramKey: 'nemesisHardRefuse', value: 1 },  // 1=军中有宿敌则宁死不降(成功率=0)；0=只按惩罚扣
+      { paramKey: 'releaseReputation', value: 3 },  // 放生对该俘将母势力的好感/名声加成(仁德)
+    ],
+  },
+  {
+    table: 'ai_faction_profile',
+    description: 'AI 势力行为原型表(05, AIF-4)——每个原型=一组行动权重基线(扩张/建设/科技/登用/外交)+攻城参数。纯决策核 shared/faction/aiFactionCore.js 读取：原型给基线权重，君主性格(personality_natures.aggression/交游轴)在此基线上调制——好战基线只此一源(personality_natures)，本表不复制 aggression。动态群雄割据(决策05-2)下，新生势力按创始君主性格挑一个最接近的原型。',
+    fields: [
+      { key: 'profileId', type: 'string', label: '原型标识(主键)', fill: 'aggressive/economic/diplomatic/balanced，唯一', effect: '势力 strategyProfile 的取值；决策核按此取基线权重' },
+      { key: 'label', type: 'string', label: '中文标签', fill: '进取/务实/纵横/均衡', effect: 'UI/情报显示' },
+      { key: 'weightExpand', type: 'float', label: '扩张(占城/攻城)权重', fill: '0~1，进取高如 0.5', effect: '决策核意图加权：SETTLE_NEUTRAL/ATTACK_CITY 的基线倾向' },
+      { key: 'weightBuild', type: 'float', label: '建设权重', fill: '0~1，务实高如 0.45', effect: 'BUILD 意图基线倾向' },
+      { key: 'weightResearch', type: 'float', label: '科技权重', fill: '0~1', effect: 'RESEARCH 意图基线倾向' },
+      { key: 'weightRecruit', type: 'float', label: '登用权重', fill: '0~1', effect: 'RECRUIT_OFFICER 意图基线倾向(再乘君主交游)' },
+      { key: 'weightDiplomacy', type: 'float', label: '外交权重', fill: '0~1，纵横高如 0.4', effect: 'DIPLOMACY 意图基线倾向' },
+      { key: 'targetPlayerBias', type: 'float', label: '打玩家城偏置(0~1)', fill: '进取高如 0.6', effect: '同分下优先打玩家城 vs 中立城；出生保护期玩家永不入选(决策05-1)' },
+      { key: 'minSoldiersToAttack', type: 'int', label: '出阵最低兵力', fill: '如 300', effect: '城内兵力低于此不发起 ATTACK(自保阈值)' },
+      { key: 'expansionRange', type: 'int', label: '扩张/攻击半径(格)', fill: '如 14', effect: '从势力城出发的最大攻击/扩张距离；超出的目标不入候选' },
+    ],
+    rows: [
+      { profileId: 'aggressive', label: '进取', weightExpand: 0.50, weightBuild: 0.15, weightResearch: 0.10, weightRecruit: 0.15, weightDiplomacy: 0.10, targetPlayerBias: 0.60, minSoldiersToAttack: 300, expansionRange: 14 },
+      { profileId: 'economic', label: '务实', weightExpand: 0.15, weightBuild: 0.45, weightResearch: 0.25, weightRecruit: 0.10, weightDiplomacy: 0.05, targetPlayerBias: 0.15, minSoldiersToAttack: 450, expansionRange: 9 },
+      { profileId: 'diplomatic', label: '纵横', weightExpand: 0.15, weightBuild: 0.20, weightResearch: 0.15, weightRecruit: 0.10, weightDiplomacy: 0.40, targetPlayerBias: 0.25, minSoldiersToAttack: 380, expansionRange: 11 },
+      { profileId: 'balanced', label: '均衡', weightExpand: 0.25, weightBuild: 0.25, weightResearch: 0.20, weightRecruit: 0.15, weightDiplomacy: 0.15, targetPlayerBias: 0.35, minSoldiersToAttack: 360, expansionRange: 12 },
     ],
   },
 ];

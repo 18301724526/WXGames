@@ -661,8 +661,7 @@
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
-    scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }
-    claimScout(missionId) { return this.request('POST', '/game/action', { action: 'claimScout', missionId }); }
+    resolveCapture(decisionId, choice) { return this.request('POST', '/game/action', { action: 'resolveCapture', decisionId, choice }); }
     startWorldMarch(options = {}) {
       const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
       return this.request('POST', '/game/action', {

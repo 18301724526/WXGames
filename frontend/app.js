@@ -107,6 +107,16 @@ class H5GameHost extends CanvasGameAppBase {
       onLog: (message) => this.log(message),
       formatReward: (reward) => this.presenter.formatEventReward(reward),
     });
+    if (constructors.CaptureController) {
+      // ②b: captured-general decision controller (斩杀/招降/放生). Panel auto-surfaces from state.
+      this.captureController = new constructors.CaptureController({
+        api: this.gameAPI,
+        getState: () => this.state,
+        onStateApplied: (result) => this.applyApiState(result),
+        onFloatingText: (message) => this.showFloatingText(message),
+        onLog: (message) => this.log(message),
+      });
+    }
     this.buildingController = new constructors.BuildingController({
       api: this.gameAPI,
       onSuccess: (result, action, buildingId) => this.handleBuildingSuccess(result, action, buildingId),

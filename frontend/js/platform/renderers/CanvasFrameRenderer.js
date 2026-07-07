@@ -101,6 +101,7 @@
     renderFamousPersonsPanel(...args) { return this.host?.renderFamousPersonsPanel?.(...args); }
     renderArmyFormationEditor(...args) { return this.host?.renderArmyFormationEditor?.(...args); }
     renderEventModal(...args) { return this.host?.renderEventModal?.(...args); }
+    renderCaptureModal(...args) { return this.host?.renderCaptureModal?.(...args); }
     renderTechDetailModal(...args) { return this.host?.renderTechDetailModal?.(...args); }
     renderNamingModal(...args) { return this.host?.renderNamingModal?.(...args); }
     renderTutorialIntro(...args) { return this.host?.renderTutorialIntro?.(...args); }
@@ -273,6 +274,7 @@
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+      this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists
       this.renderTechDetailIfNeeded(state, activeTab, options);
       if (activeTab === 'military') this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
@@ -327,6 +329,7 @@
       if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
+      this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists
       this.renderWorldSiteModal(state, options);
       if (options.naming) this.renderNamingModal(options.naming);
     }
@@ -375,12 +378,46 @@
         this.ctx.fillStyle = '#74d3a0';
         this.ctx.fillRect(barX, barY, Math.max(3, barW * progress), 4);
       } else {
-        this.drawText(this.t('worldMap.marchHint.title'), x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
-        this.drawText(this.t('worldMap.marchHint.subtitle'), x + panelWidth - 12, y + 12, {
-          size: 10,
-          color: '#74d3a0',
-          align: 'right',
-        });
+        // Design: once a march target is picked, replace the generic hint with the
+        // route preview — distance in tiles and the estimated travel time, or the
+        // blocked reason when the linear route cannot reach the target.
+        // Sealed ui facts reach renderers through the render-context snapshot
+        // boundary, not the live territoryUiState bag (snapshot boundary ratchet).
+        const hudContext = this.getMapHomeWorldHudContext(options);
+        const hudUiState = hudContext?.uiState || hudContext?.renderSnapshot?.ui || {};
+        const marchTarget = hudUiState.worldMarchTarget || null;
+        const routePolicy = typeof global !== 'undefined' ? global.WorldMarchRoutePolicy : null;
+        let etaShown = false;
+        if (marchTarget && routePolicy?.evaluateMarchTarget) {
+          const evaluated = routePolicy.evaluateMarchTarget(state, marchTarget, {
+            tileMapView: state.territoryState?.worldMap || {},
+          });
+          if (evaluated?.canMarch && Array.isArray(evaluated.route) && evaluated.route.length) {
+            const steps = evaluated.route.length;
+            const stepSeconds = Math.max(1, Number(explorer.stepDurationSeconds) || 10);
+            this.drawText(this.t('worldMap.marchEta', { steps, seconds: steps * stepSeconds }), x + 12, y + 12, {
+              size: 11,
+              bold: true,
+              color: '#ffe6b5',
+            });
+            etaShown = true;
+          } else if (evaluated && !evaluated.canMarch) {
+            this.drawText(this.t('worldMap.marchEta.blocked'), x + 12, y + 12, {
+              size: 11,
+              bold: true,
+              color: '#e08f5f',
+            });
+            etaShown = true;
+          }
+        }
+        if (!etaShown) {
+          this.drawText(this.t('worldMap.marchHint.title'), x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
+          this.drawText(this.t('worldMap.marchHint.subtitle'), x + panelWidth - 12, y + 12, {
+            size: 10,
+            color: '#74d3a0',
+            align: 'right',
+          });
+        }
       }
       const resetW = 76;
       const resetH = 28;

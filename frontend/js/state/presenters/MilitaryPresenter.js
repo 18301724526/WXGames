@@ -68,9 +68,9 @@
     }
 
     static buildMilitaryNavigationViewState(state = {}) {
-      const requestedView = ['army', 'scout', 'world', 'veteranCamp'].includes(state.militaryView) ? state.militaryView : 'army';
+      const requestedView = ['army', 'world', 'veteranCamp'].includes(state.militaryView) ? state.militaryView : 'army';
       const activeView = requestedView;
-      const views = ['army', 'scout', 'world', 'veteranCamp'].map((id) => ({
+      const views = ['army', 'world', 'veteranCamp'].map((id) => ({
         id,
         isActive: id === activeView,
         disabled: false,
@@ -236,138 +236,6 @@
       };
     }
 
-    static getScoutMissionRemainingSeconds(mission, nowMs = Date.now()) {
-      if (!mission) return 0;
-      if (mission.status === 'ready') return 0;
-      const completesAtMs = new Date(mission.completesAt).getTime();
-      if (Number.isFinite(completesAtMs)) {
-        return Math.max(0, Math.ceil((completesAtMs - nowMs) / 1000));
-      }
-      return Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
-    }
-
-    static formatScoutCountdown(seconds) {
-      const value = Math.max(0, Math.ceil(Number(seconds) || 0));
-      const minutes = Math.floor(value / 60);
-      const rest = value % 60;
-      return `${minutes}:${String(rest).padStart(2, '0')}`;
-    }
-
-    static buildScoutControlViewState(state = {}, options = {}) {
-      const nowMs = options.nowMs ?? Date.now();
-      const territoryState = state.territoryState || {};
-      const directions = Array.isArray(territoryState.directions) ? territoryState.directions : [];
-      const scoutMissions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
-      const scoutReports = Array.isArray(territoryState.scoutReports) ? territoryState.scoutReports : [];
-      const activeByDirection = new Map(scoutMissions.map((mission) => [mission.direction, mission]));
-      const activeScouts = scoutMissions.filter((mission) => mission.status === 'active');
-      const activeScout = activeScouts[0];
-      const readyCount = scoutMissions.filter((mission) => mission.status === 'ready').length;
-      const maxActiveScouts = Math.max(1, this.toInteger(territoryState.maxActiveScouts || 1));
-
-      let statusText = this.t(
-        'military.scout.status.default',
-        { maxActiveScouts });
-      if (readyCount > 0 && activeScouts.length > 0) {
-        statusText = this.t(
-          'military.scout.status.readyAndActive',
-          { readyCount, activeCount: activeScouts.length });
-      } else if (readyCount > 0) {
-        statusText = this.t(
-          'military.scout.status.ready',
-          { readyCount });
-      } else if (activeScouts.length > 1) {
-        const remaining = this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs));
-        statusText = this.t(
-          'military.scout.status.activeMany',
-          { activeCount: activeScouts.length, remaining });
-      } else if (activeScout) {
-        const label = directions.find((direction) => direction.id === activeScout.direction)?.label || this.t('military.scout.direction.outside', {});
-        const remaining = this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(activeScout, nowMs));
-        statusText = this.t(
-          'military.scout.status.activeOne',
-          { direction: label, remaining });
-      }
-
-      const labels = new Map(directions.map((direction) => [direction.id, direction.label]));
-      const order = [
-        ['nw', this.t('military.scout.direction.nw', {})], ['n', this.t('military.scout.direction.n', {})], ['ne', this.t('military.scout.direction.ne', {})],
-        ['w', this.t('military.scout.direction.w', {})], ['center', this.t('military.scout.direction.center', {})], ['e', this.t('military.scout.direction.e', {})],
-        ['sw', this.t('military.scout.direction.sw', {})], ['s', this.t('military.scout.direction.s', {})], ['se', this.t('military.scout.direction.se', {})],
-      ];
-      const cells = order.map(([id, fallbackLabel]) => {
-        if (id === 'center') {
-          return {
-            type: 'center',
-            label: this.t('military.scout.centerLabel', {}),
-            subLabel: this.t('military.scout.direction.center', {}),
-          };
-        }
-        if (!labels.has(id)) return null;
-        const label = labels.get(id) || fallbackLabel;
-        const mission = activeByDirection.get(id);
-        if (mission?.status === 'ready') {
-          return {
-            type: 'button',
-            id,
-            direction: id,
-            status: 'ready',
-            disabled: false,
-            action: 'claim',
-            actionValue: mission.id,
-            ariaLabel: this.t('military.scout.reportAria', { direction: label }),
-            label,
-            actionText: this.t('military.scout.report', {}),
-          };
-        }
-        if (mission) {
-          return {
-            type: 'button',
-            id,
-            direction: id,
-            status: 'active',
-            disabled: true,
-            action: '',
-            actionValue: '',
-            ariaLabel: this.t('military.scout.activeAria', { direction: label }),
-            label,
-            actionText: this.formatScoutCountdown(this.getScoutMissionRemainingSeconds(mission, nowMs)),
-          };
-        }
-        if (activeScouts.length >= maxActiveScouts) {
-          return {
-            type: 'button',
-            id,
-            direction: id,
-            status: 'locked',
-            disabled: true,
-            action: '',
-            actionValue: '',
-            ariaLabel: this.t('military.scout.lockedAria', { direction: label }),
-            label,
-            actionText: this.t('military.scout.wait', {}),
-          };
-        }
-        return {
-          type: 'button',
-          id,
-          direction: id,
-          status: 'available',
-          disabled: false,
-          action: 'scout',
-          actionValue: id,
-          ariaLabel: this.t('military.scout.sendAria', { direction: label }),
-          label,
-          actionText: this.t('military.scout.send', {}),
-        };
-      }).filter(Boolean);
-
-      return {
-        statusText,
-        cells,
-        reports: scoutReports,
-      };
-    }
   }
 
   global.MilitaryPresenter = MilitaryPresenter;

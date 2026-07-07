@@ -18,9 +18,6 @@ function createHost(overrides = {}) {
       buildMilitaryViewState() {
         return createMilitaryView();
       },
-      buildScoutControlViewState() {
-        return createScoutView();
-      },
     },
     hitTargets,
     calls,
@@ -48,7 +45,6 @@ function createMilitaryNav(activeView = 'army') {
     activeView,
     views: [
       { id: 'army', isActive: activeView === 'army' },
-      { id: 'scout', isActive: activeView === 'scout' },
       { id: 'world', isActive: activeView === 'world', disabled: false },
     ],
   };
@@ -75,18 +71,6 @@ function createMilitaryView() {
   };
 }
 
-function createScoutView() {
-  return {
-    statusText: 'Scout nearby tiles.',
-    cells: [
-      { id: 'n', label: 'North', actionText: 'Scout', action: 'scout', actionValue: 'n', status: 'ready' },
-      { id: 'e', label: 'East', actionText: 'Claim', action: 'claim', actionValue: 'mission-1', status: 'active' },
-      { id: 's', label: 'South', actionText: 'Locked', action: null, actionValue: 's', status: 'locked', disabled: true },
-    ],
-    reports: [{ title: 'Found river', text: 'Fresh water nearby.' }],
-  };
-}
-
 const MILITARY_DRAWING_METHODS = [
   'addHitTarget',
   'drawAsset',
@@ -95,12 +79,10 @@ const MILITARY_DRAWING_METHODS = [
   'drawPanel',
   'drawProgressBar',
   'drawText',
-  'drawTextLines',
   'getLayout',
   'renderMilitaryWorldView',
   'renderSectionHeader',
   'truncateText',
-  'wrapTextLimit',
 ];
 
 function createDrawingSurfaceSentinel(label, calls = [], overrides = {}) {
@@ -224,21 +206,9 @@ test('MilitaryCanvasRenderer preserves military tab and formation hit targets', 
   renderer.renderMilitary({}, 100, 480, {});
 
   assert.equal(host.calls.some((call) => call[0] === 'renderSectionHeader' && call[1] === '军事'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'switchMilitaryView' && target.action.view === 'scout'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'switchMilitaryView' && target.action.view === 'world'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openArmyFormation' && target.action.slot === 1), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawProgressBar' && call[1] === 35), true);
-});
-
-test('MilitaryCanvasRenderer preserves scout and claim hit target contracts', () => {
-  const host = createHost({ activeView: 'scout' });
-  const renderer = new MilitaryCanvasRenderer({ host });
-
-  renderer.renderMilitary({}, 100, 520, {});
-
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'scoutTerritory' && target.action.direction === 'n'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'claimScout' && target.action.missionId === 'mission-1'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'scoutTerritory' && target.action.disabled === true), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '侦察报告'), true);
 });
 
 test('CanvasGameRenderer exposes military rendering through facade', () => {

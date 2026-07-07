@@ -11,8 +11,6 @@ const {
   getExploreOrigin,
   buildManualRoute,
   createPlannedTiles,
-  createTutorialPlannedSites,
-  shouldGuaranteeTutorialEmptyCity,
 } = require('./WorldExplorerRoutePlanner');
 const {
   validateTutorialFormation,
@@ -200,7 +198,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     routeIds: (routeResult.route || []).slice(0, 8).map((step) => WorldMapService.getTileId(step.q, step.r)),
   });
   if (!routeResult.success) return routeResult;
-  let route = routeResult.route || [];
+  const route = routeResult.route || [];
   if (!route.length) {
     traceWorldMarch('actions:startWorldMarch:emptyRoute', options, {
       origin: summarizeCoord(origin),
@@ -208,42 +206,22 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: '无法生成行军路线。' };
   }
-  let plannedTiles = createPlannedTiles(gameState, route, now, {
+  const plannedTiles = createPlannedTiles(gameState, route, now, {
     mode: 'manual',
     origin: marchOrigin,
     target: routeResult.target || route.at(-1),
   });
-  let plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now, {
-    planningContext: options.planningContext,
-  });
-  if (!combatTarget.encounter && shouldGuaranteeTutorialEmptyCity(gameState)) {
-    if (!plannedSites.length) {
-      return {
-        success: false,
-        error: 'EXPLORE_TUTORIAL_TARGET_OCCUPIED',
-        message: '该路线上没有可用的引导空城目标。',
-      };
-    }
-    const tutorialTargetId = plannedSites[0].tileId;
-    const tutorialTargetIndex = route.findIndex((step) => WorldMapService.getTileId(step.q, step.r) === tutorialTargetId);
-    if (tutorialTargetIndex >= 0 && tutorialTargetIndex < route.length - 1) {
-      route = route.slice(0, tutorialTargetIndex + 1);
-      plannedTiles = createPlannedTiles(gameState, route, now, {
-        mode: 'manual',
-        origin: marchOrigin,
-        target: route.at(-1),
-      });
-      plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now, {
-        planningContext: options.planningContext,
-      });
-    }
-  }
+  // The invent-city engine (createTutorialPlannedSites + route-truncation-to-invented-city) is DELETED
+  // (march-discovery refactor S5, docs/design/10 §3.3). The tutorial first city is now PRE-PLACED at grant
+  // time and DISCOVERED by the march's vision (WorldExplorerProgression.discoverPrePlacedCitiesInVision) —
+  // the player marches to a target THEY pick and the pre-placed city flips to discovered when its tile
+  // enters vision. Missions no longer carry planned sites; the field stays empty for shape compatibility.
+  const plannedSites = [];
   traceWorldMarch('actions:startWorldMarch:planned', options, {
     plannedTileCount: plannedTiles.length,
     plannedTileIds: plannedTiles.slice(0, 8).map((tile) => WorldMapService.getTileId(tile.q, tile.r)),
     plannedTerrain: plannedTiles.slice(0, 8).map((tile) => `${WorldMapService.getTileId(tile.q, tile.r)}:${tile.terrain}`),
     plannedSiteCount: plannedSites.length,
-    plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
     idleMission: summarizeMission(idleMission),
   });
   const missionFormation = explicitMission

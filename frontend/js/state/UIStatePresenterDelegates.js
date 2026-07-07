@@ -92,9 +92,6 @@
       'buildMilitaryNavigationViewState',
       'buildMilitaryViewState',
       'buildVeteranCampViewState',
-      'getScoutMissionRemainingSeconds',
-      'formatScoutCountdown',
-      'buildScoutControlViewState',
     ]),
     BuildingPresenter: Object.freeze([
       'getBuildingLevel',
@@ -422,15 +419,6 @@
     });
     defineStaticMethod(UIStatePresenter, 'buildVeteranCampViewState', function buildVeteranCampViewState(...args) {
       return MilitaryPresenter.buildVeteranCampViewState(...args);
-    });
-    defineStaticMethod(UIStatePresenter, 'getScoutMissionRemainingSeconds', function getScoutMissionRemainingSeconds(...args) {
-      return MilitaryPresenter.getScoutMissionRemainingSeconds(...args);
-    });
-    defineStaticMethod(UIStatePresenter, 'formatScoutCountdown', function formatScoutCountdown(...args) {
-      return MilitaryPresenter.formatScoutCountdown(...args);
-    });
-    defineStaticMethod(UIStatePresenter, 'buildScoutControlViewState', function buildScoutControlViewState(...args) {
-      return MilitaryPresenter.buildScoutControlViewState(...args);
     });
     const BuildingPresenter = dependencies.BuildingPresenter;
     defineStaticMethod(UIStatePresenter, 'getBuildingLevel', function getBuildingLevel(...args) {

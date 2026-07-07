@@ -7,6 +7,7 @@ const GameStateService = require('../services/GameStateService');
 const TerritoryService = require('../services/TerritoryService');
 const WorldMapService = require('../services/WorldMapService');
 const WorldExplorerService = require('../services/WorldExplorerService');
+const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
 
 function createAppHarness() {
   const routes = [];
@@ -727,6 +728,8 @@ test('game action route starts guided world march with planned tiles in client s
       },
     },
   };
+  // S5: pre-place the tutorial first city + set its grant (as the scout-officer claim would).
+  TutorialGrantService.grantTutorialFirstCity(gameState);
   const savedStates = [];
   const repository = {
     findByPlayerId(id) {
@@ -760,9 +763,10 @@ test('game action route starts guided world march with planned tiles in client s
   assert.equal(res.payload.success, true);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
   assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedTiles.length, 12);
-  assert.equal(res.payload.gameState.worldExplorerState.activeMission.plannedSites.length, 1);
+  // S5: no invented plannedSites — the pre-placed first city is discovered by vision.
+  assert.equal((res.payload.gameState.worldExplorerState.activeMission.plannedSites || []).length, 0);
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 12);
-  assert.equal(savedStates.at(-1).exploreMissions[0].plannedSites.length, 1);
+  assert.equal((savedStates.at(-1).exploreMissions[0].plannedSites || []).length, 0);
 });
 
 test('heartbeat stores compact world march client reports without returning game state', () => {
@@ -862,6 +866,8 @@ test('game action route uses shared world projection when planning guided first 
       },
     },
   };
+  // S5: pre-place the tutorial first city + set its grant (as the scout-officer claim would).
+  TutorialGrantService.grantTutorialFirstCity(gameState);
   const savedStates = [];
   const repository = {
     findByPlayerId(id) {
@@ -906,9 +912,11 @@ test('game action route uses shared world projection when planning guided first 
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.success, true);
-  assert.equal(res.payload.mission.target.tileId, 'tile_1_0');
-  assert.equal(res.payload.mission.plannedSites[0].tileId, 'tile_1_0');
-  assert.equal(savedStates.at(-1).exploreMissions[0].target.tileId, 'tile_1_0');
+  // S5: no route truncation to an invented city — the march goes to the target the player picks, and the
+  // shared world projection is passed through to the discovery pass (not used to invent/truncate).
+  assert.equal(res.payload.mission.target.tileId, 'tile_2_0');
+  assert.equal((res.payload.mission.plannedSites || []).length, 0);
+  assert.equal(savedStates.at(-1).exploreMissions[0].target.tileId, 'tile_2_0');
 });
 
 test('game action route rejects unknown world exploration report actions without saving', () => {
@@ -995,6 +1003,8 @@ test('game action route returns stopped world march as an idle client mission', 
       },
     },
   };
+  // S5: pre-place the tutorial first city + set its grant (as the scout-officer claim would).
+  TutorialGrantService.grantTutorialFirstCity(gameState);
   const savedStates = [];
   const repository = {
     findByPlayerId(id) {

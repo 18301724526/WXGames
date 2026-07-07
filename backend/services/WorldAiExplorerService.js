@@ -156,7 +156,8 @@ function revealAiArea(gameState, explorer, q, r, now = new Date()) {
 
 function getPlayerRevealedTiles(gameState) {
   const worldMap = WorldMapService.ensureWorldMap(gameState);
-  return (worldMap.tiles || []).filter((tile) => tile && tile.visible !== false && tile.visibility !== 'hidden');
+  // Reveal predicate SSOT lives in WorldMapService — no hand-rolled visibility check here.
+  return (worldMap.tiles || []).filter((tile) => WorldMapService.isTileRevealed(tile));
 }
 
 function getAiTilesByCanonicalId(gameState) {

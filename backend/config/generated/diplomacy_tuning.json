@@ -1,0 +1,73 @@
+{
+  "schema": "config-table-v1",
+  "table": "diplomacy_tuning",
+  "description": "外交(04)调参(key-value，主键 paramKey)。势力↔势力：好感度有向(每侧独立 -100..100)、状态对称(neutral/friendly/allied/hostile/nemesis)。对称态由 mutualFav=min(favAtoB,favBtoA) 驱动被动阈值迁移(带迟滞)；宣战/提盟/破盟/求和是主动迁移。纯核 shared/faction/diplomacyCore.js 读取，不硬编码数字。",
+  "generatedFrom": "config/tables/diplomacy_tuning.xlsx",
+  "idField": "paramKey",
+  "rows": [
+    {
+      "paramKey": "friendlyAt",
+      "value": 40
+    },
+    {
+      "paramKey": "friendlyExit",
+      "value": 25
+    },
+    {
+      "paramKey": "hostileAt",
+      "value": -40
+    },
+    {
+      "paramKey": "hostileExit",
+      "value": -25
+    },
+    {
+      "paramKey": "nemesisAt",
+      "value": -80
+    },
+    {
+      "paramKey": "nemesisTicks",
+      "value": 20
+    },
+    {
+      "paramKey": "allyProposeMinFav",
+      "value": 50
+    },
+    {
+      "paramKey": "driftToNeutralPerTick",
+      "value": 0.5
+    },
+    {
+      "paramKey": "sharedEnemyBonusPerTick",
+      "value": 0.4
+    },
+    {
+      "paramKey": "borderPressurePerTick",
+      "value": -0.3
+    },
+    {
+      "paramKey": "rulerCompatScale",
+      "value": 0.02
+    },
+    {
+      "paramKey": "actGiftFav",
+      "value": 8
+    },
+    {
+      "paramKey": "actDeclareWarFav",
+      "value": -50
+    },
+    {
+      "paramKey": "actBetrayAllyFav",
+      "value": -70
+    },
+    {
+      "paramKey": "actSueForPeaceFav",
+      "value": 10
+    },
+    {
+      "paramKey": "reputationHitOnBetray",
+      "value": -8
+    }
+  ]
+}

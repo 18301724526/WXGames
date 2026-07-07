@@ -105,9 +105,9 @@ const ARCHETYPES = Object.freeze([
   },
   {
     id: 'scout',
-    label: '斥候游骑',
+    label: '先驱游骑',
     roles: ['military', 'knowledge'],
-    titlePool: ['山林斥候', '疾行游骑', '探路前锋'],
+    titlePool: ['山林先驱', '疾行游骑', '探路前锋'],
     namePool: ['迅', '隼', '遥', '踪', '越'],
     abilityArchetype: 'scout',
     attributes: { command: 44, force: 48, intelligence: 62, strategy: 62, politics: 28, governance: 28, charisma: 52, speed: 82 },

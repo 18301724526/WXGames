@@ -181,7 +181,7 @@ test('WorldMapMilitaryViewRenderer shows empty exploration copy without site tar
   renderer.renderMilitaryWorldView({ territoryState: { territories: [] } }, 10, 20, 360, 300, {});
 
   assert.equal(host.calls.some((call) => call[0] === 'drawTextLines'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawTextLines' && call[1][0] === '派遣侦察队揭开外部世界。'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawTextLines' && call[1][0] === '派遣军队行军揭开外部世界。'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite'), false);
 });
 

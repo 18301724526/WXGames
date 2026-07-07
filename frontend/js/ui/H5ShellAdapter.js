@@ -47,6 +47,7 @@
           UpdateChecker: registry.UpdateChecker,
           GameStateManager: registry.GameStateManager,
           EventController: registry.EventController,
+          CaptureController: registry.CaptureController,
           BuildingController: registry.BuildingController,
           TerritoryController: registry.TerritoryController,
         },

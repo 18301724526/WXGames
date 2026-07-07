@@ -4,6 +4,7 @@ const DEFAULT_INTERVAL_MS = 5000;
 const DEFAULT_ACTIVE_WINDOW_MS = 2 * 60 * 1000;
 const DEFAULT_ACTIVE_LIMIT = 25;
 const DEFAULT_SLOW_TICK_MS = 1500;
+const DEFAULT_SOCIAL_MEET_PAIRS = 3;
 
 function positiveInteger(value, fallback, max = Number.MAX_SAFE_INTEGER) {
   const number = Math.floor(toNumber(value, fallback));
@@ -22,6 +23,14 @@ class WorldWorkerService {
     this.cityService = options.cityService || {};
     this.territoryService = options.territoryService || {};
     this.eventService = options.eventService || {};
+    this.worldPeopleRepo = options.worldPeopleRepo || null;
+    this.worldPeopleRegistryService = options.worldPeopleRegistryService || {};
+    this.worldSocialTickService = options.worldSocialTickService || {};
+    this.factionRegistryService = options.factionRegistryService || {};
+    this.worldDiplomacyTickService = options.worldDiplomacyTickService || {};
+    this.getSocialTickOptions = typeof options.getSocialTickOptions === 'function'
+      ? options.getSocialTickOptions
+      : () => ({});
     this.now = options.now || (() => new Date());
     this.monotonicNow = options.monotonicNow || (() => Date.now());
     this.intervalMs = positiveInteger(options.intervalMs, DEFAULT_INTERVAL_MS);
@@ -31,6 +40,126 @@ class WorldWorkerService {
     this.running = false;
     this.timer = null;
     this.lastSummary = null;
+  }
+
+  collectSocialTickPeople(gameStates) {
+    const peopleById = new Map();
+    const ownerById = new Map();
+    const states = Array.isArray(gameStates) ? gameStates : [];
+    for (const state of states) {
+      const playerId = state?.playerId || '';
+      const roster = typeof this.worldPeopleRegistryService.materializePlayerRoster === 'function'
+        ? this.worldPeopleRegistryService.materializePlayerRoster(state)
+        : (Array.isArray(state?.famousPeople) ? state.famousPeople : []);
+      for (const person of roster) {
+        if (!person?.id || peopleById.has(person.id)) continue;
+        peopleById.set(person.id, person);
+        ownerById.set(person.id, { type: 'player', playerId });
+      }
+    }
+    const shared = this.worldPeopleRepo && typeof this.worldPeopleRepo.getAllPeople === 'function'
+      ? this.worldPeopleRepo.getAllPeople()
+      : [];
+    for (const person of shared) {
+      if (!person?.id || peopleById.has(person.id)) continue;
+      peopleById.set(person.id, person);
+      ownerById.set(person.id, { type: 'shared' });
+    }
+    return { people: [...peopleById.values()], ownerById };
+  }
+
+  applySocialUpdates(gameStates, socialResult, ownership, now) {
+    const updatedById = new Map((socialResult?.people || []).filter((p) => p?.id).map((p) => [p.id, p]));
+    const rosterPatchesByPlayer = new Map();
+    for (const [personId, owner] of ownership.ownerById.entries()) {
+      const updated = updatedById.get(personId);
+      if (!updated) continue;
+      if (owner.type === 'shared') {
+        if (this.worldPeopleRepo && typeof this.worldPeopleRepo.upsertPerson === 'function') {
+          this.worldPeopleRepo.upsertPerson(updated, now.toISOString());
+        }
+      } else if (owner.type === 'player') {
+        if (!rosterPatchesByPlayer.has(owner.playerId)) rosterPatchesByPlayer.set(owner.playerId, new Map());
+        rosterPatchesByPlayer.get(owner.playerId).set(personId, updated);
+      }
+    }
+    for (const state of (Array.isArray(gameStates) ? gameStates : [])) {
+      this.applyRosterPatch(state, rosterPatchesByPlayer.get(state?.playerId || ''));
+    }
+    return rosterPatchesByPlayer;
+  }
+
+  applyRosterPatch(gameState, patch) {
+    if (!gameState || !patch || patch.size === 0 || !Array.isArray(gameState.famousPeople)) return gameState;
+    gameState.famousPeople = gameState.famousPeople.map((person) => {
+      const updated = patch.get(person?.id);
+      return updated ? { ...person, ...updated } : person;
+    });
+    return gameState;
+  }
+
+  collectAliveFactionIds(gameStates) {
+    const ids = new Set();
+    const states = Array.isArray(gameStates) ? gameStates : [];
+    for (const state of states) {
+      if (typeof this.factionRegistryService.getAliveFactions !== 'function') continue;
+      for (const faction of this.factionRegistryService.getAliveFactions(state)) {
+        if (faction?.id) ids.add(faction.id);
+      }
+    }
+    return [...ids];
+  }
+
+  advanceSharedWorldState(gameStates, now) {
+    const summary = {
+      socialPeople: 0,
+      socialMeets: 0,
+      socialCrossings: 0,
+      diplomacyPairs: 0,
+      rosterPatchesByPlayer: new Map(),
+      peopleById: new Map(),
+    };
+    const states = Array.isArray(gameStates) ? gameStates : [];
+    if (!states.length) return summary;
+    const ownership = this.collectSocialTickPeople(states);
+    summary.peopleById = new Map(ownership.people.filter((p) => p?.id).map((p) => [p.id, p]));
+    if (ownership.people.length > 1 && typeof this.worldSocialTickService.advanceRelationships === 'function') {
+      const socialOptions = this.getSocialTickOptions(now) || {};
+      const socialResult = this.worldSocialTickService.advanceRelationships(ownership.people, {
+        meetPairs: socialOptions.meetPairs ?? DEFAULT_SOCIAL_MEET_PAIRS,
+        nowMs: now.getTime(),
+        prng: socialOptions.prng,
+        natures: socialOptions.natures,
+        personalityTuning: socialOptions.personalityTuning,
+        relTuning: socialOptions.relTuning,
+        decay: socialOptions.decay,
+      });
+      summary.socialPeople = socialResult.people.length;
+      summary.socialMeets = socialResult.meets.length;
+      summary.socialCrossings = socialResult.crossings.length;
+      summary.rosterPatchesByPlayer = this.applySocialUpdates(states, socialResult, ownership, now);
+      summary.peopleById = new Map((socialResult.people || []).filter((p) => p?.id).map((p) => [p.id, p]));
+    }
+
+    if (typeof this.worldDiplomacyTickService.advanceAll === 'function') {
+      const factionIds = this.collectAliveFactionIds(states);
+      if (factionIds.length > 1) {
+        summary.diplomacyPairs = this.worldDiplomacyTickService.advanceAll({
+          factionIds,
+          now: now.toISOString(),
+          rulerOf: (factionId) => {
+            for (const state of states) {
+              const faction = this.factionRegistryService.getFaction?.(factionId, state);
+              const rulerId = faction?.rulerPersonId;
+              if (rulerId && summary.peopleById.has(rulerId)) return summary.peopleById.get(rulerId);
+            }
+            return null;
+          },
+          bordering: () => false,
+        });
+      }
+    }
+    return summary;
   }
 
   getNow() {
@@ -71,7 +200,7 @@ class WorldWorkerService {
   // conflicted and marches starved forever. Re-read the LATEST revision per player and
   // retry the advance on conflict; a player hot enough to win every retry just waits for
   // the next tick (5s), which only delays a march, never starves it.
-  advancePlayerWithRetry(playerId, now, attempts = 3, initialState = null) {
+  advancePlayerWithRetry(playerId, now, attempts = 3, initialState = null, rosterPatch = null) {
     let candidate = initialState;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const fresh = playerId && typeof this.repository?.findByPlayerId === 'function'
@@ -79,6 +208,7 @@ class WorldWorkerService {
         : null;
       if (fresh) candidate = fresh;
       if (!candidate) return { advanced: false, reason: 'missing-state' };
+      this.applyRosterPatch(candidate, rosterPatch);
       try {
         this.advanceState(candidate, now);
         return { advanced: true, attempts: attempt };
@@ -107,12 +237,20 @@ class WorldWorkerService {
     const now = this.getNow();
     const errors = [];
     let processedCount = 0;
+    let shared = {
+      socialPeople: 0,
+      socialMeets: 0,
+      socialCrossings: 0,
+      diplomacyPairs: 0,
+      rosterPatchesByPlayer: new Map(),
+    };
     try {
       const gameStates = this.getRecentlyActive(now);
+      shared = this.advanceSharedWorldState(gameStates, now);
       for (const rawState of gameStates) {
         try {
           const playerId = rawState?.playerId || '';
-          const result = this.advancePlayerWithRetry(playerId, now, 3, rawState);
+          const result = this.advancePlayerWithRetry(playerId, now, 3, rawState, shared.rosterPatchesByPlayer.get(playerId));
           if (result.advanced) processedCount += 1;
         } catch (error) {
           errors.push({
@@ -134,6 +272,12 @@ class WorldWorkerService {
       processedCount,
       errorCount: errors.length,
       errors,
+      shared: {
+        socialPeople: shared.socialPeople,
+        socialMeets: shared.socialMeets,
+        socialCrossings: shared.socialCrossings,
+        diplomacyPairs: shared.diplomacyPairs,
+      },
       durationMs,
       slow: durationMs >= this.slowTickMs,
     };

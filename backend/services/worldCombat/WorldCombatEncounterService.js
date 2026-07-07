@@ -5,6 +5,11 @@ const FormationStrengthService = require('../military/FormationStrengthService')
 const DefenderLeaderService = require('../DefenderLeaderService');
 const WorldCampSpawner = require('./WorldCampSpawner');
 const CityService = require('../CityService');
+// Hostile encounters are gated by the player's CURRENT vision (WorldExplorerVision — occupied
+// cities + fielded march parties, computed live), NOT by the reveal history. Cities keep the
+// "discovered once → shown forever" gate (WorldMapService.getRevealedTileCoordSet, used by
+// TerritoryClientAssembler); encounters deliberately do not — walk away and they hide again.
+const WorldExplorerVision = require('../worldExplorer/WorldExplorerVision');
 const { toInteger } = require('../../../shared/numberUtils');
 const { cloneIfObject } = require('../../../shared/objectUtils');
 const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
@@ -678,7 +683,20 @@ function resolveImmediateArrival(gameState = {}, mission = {}, coord = {}, now =
   return resolveMissionArrival(gameState, mission, now);
 }
 
+// "Fought before" = a battleReport was written by a resolved battle (buildBattleReport /
+// resolveSession). It is the SINGLE fact that unlocks defender strength for this player: strength is
+// learned from the battle, not from scouting. A respawn clears battleReport (normalizeEncounter /
+// respawn), so a reborn camp is unknown again — "打了才知道" holds across the lifecycle.
+function hasFoughtEncounter(encounter = {}) {
+  return Boolean(encounter && encounter.battleReport);
+}
+
 function getClientEncounterBattleTarget(encounter = {}) {
+  // Strength intel (garrison count / leader / threat / scale) is projected ONLY after the player has
+  // fought this encounter. Until then defender is null and the intel flags read false, so the DTO
+  // never carries a number the player has not earned in battle. The tile/site/terrain (needed to
+  // render + target the actor) stay known.
+  const fought = hasFoughtEncounter(encounter);
   return {
     source: 'world-combat',
     tile: {
@@ -693,12 +711,13 @@ function getClientEncounterBattleTarget(encounter = {}) {
       owner: 'hostile',
       status: encounter.status || 'active',
       name: encounter.name || 'Hostile Force',
-      scale: Math.max(1, toInteger(encounter.defender?.scale, 1)),
-      threat: Math.max(0, toInteger(encounter.defender?.threat, 0)),
+      // scale/threat describe defender strength — withheld until fought (0 = unknown, not "no threat").
+      scale: fought ? Math.max(1, toInteger(encounter.defender?.scale, 1)) : 0,
+      threat: fought ? Math.max(0, toInteger(encounter.defender?.threat, 0)) : 0,
       mapTerrain: encounter.terrain || 'plains',
       terrain: encounter.terrain || 'plains',
     },
-    defender: encounter.defender
+    defender: fought && encounter.defender
       ? {
           id: encounter.defender.id || '',
           owner: encounter.defender.owner || 'hostile',
@@ -714,9 +733,9 @@ function getClientEncounterBattleTarget(encounter = {}) {
       knownTerrain: true,
       knownSite: true,
       knownOwner: true,
-      knownGarrison: true,
-      knownLeader: Boolean(encounter.defender?.leader),
-      knownSkill: Boolean(encounter.defender?.leader?.abilityKit),
+      knownGarrison: fought,
+      knownLeader: fought && Boolean(encounter.defender?.leader),
+      knownSkill: fought && Boolean(encounter.defender?.leader?.abilityKit),
     },
   };
 }
@@ -725,6 +744,7 @@ function getClientEncounter(encounter = {}) {
   const q = toInteger(encounter.q, 0);
   const r = toInteger(encounter.r, 0);
   const tileId = encounter.tileId || WorldMapService.getTileId(q, r);
+  const battleTarget = getClientEncounterBattleTarget(encounter);
   return {
     id: encounter.id || '',
     kind: encounter.kind || 'hostileForce',
@@ -736,19 +756,38 @@ function getClientEncounter(encounter = {}) {
     tileId,
     terrain: encounter.terrain || 'plains',
     unitKey: encounter.unitKey || 'hostile_squad_default',
-    defender: getClientEncounterBattleTarget(encounter).defender,
-    battleTarget: getClientEncounterBattleTarget(encounter),
+    // defender is already fog-gated inside getClientEncounterBattleTarget (null until fought).
+    defender: battleTarget.defender,
+    battleTarget,
     resolvedAt: encounter.resolvedAt || null,
     resolvedByMissionId: encounter.resolvedByMissionId || null,
   };
 }
 
+// Vision gate for hostile encounters: an encounter is a LIVE unit — it projects into a player's
+// client DTO only while its tile sits inside the player's CURRENT vision (an occupied city or a
+// fielded march party covering it, WorldExplorerVision.computeCurrentVisionCoordSet). Walk away
+// and it hides; come near again and it reappears. This is deliberately NOT the city rule: cities
+// are "discovered once → shown forever" (getRevealedTileCoordSet in WorldMapService, consumed by
+// filterDiscoveredNeutralCities). It is also deliberately NOT the raw worldMap.tiles array — that
+// array is a reveal HISTORY polluted with solid-fill bridge tiles and AI-hidden tiles, and gating
+// on it is exactly the through-fog leak this replaced. The gate only filters the projection: the
+// server-side worldCombat.encounters state (worker/heartbeat settlement) is untouched. Coordinate
+// keys come from the same WorldMapService.getTileCoordinateKey SSOT as every other projection gate.
+function isEncounterVisibleToPlayer(encounter, visionCoordSet) {
+  return visionCoordSet.has(WorldMapService.getTileCoordinateKey(encounter));
+}
+
 function getClientState(gameState = {}, now = new Date()) {
   const state = normalizeCombatState(gameState, now);
+  const visionCoordSet = WorldExplorerVision.computeCurrentVisionCoordSet(gameState);
+  const visibleEncounters = (state.encounters || []).filter((encounter) =>
+    isEncounterVisibleToPlayer(encounter, visionCoordSet),
+  );
   return {
     schema: state.schema || SCHEMA,
-    encounters: (state.encounters || []).map(getClientEncounter),
-    activeEncounters: (state.encounters || [])
+    encounters: visibleEncounters.map(getClientEncounter),
+    activeEncounters: visibleEncounters
       .filter((encounter) => encounter.status === 'active')
       .map(getClientEncounter),
     recentReports: (state.recentReports || []).map((entry) => cloneIfObject(entry)),

@@ -2,6 +2,11 @@ const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget
 const { SchemaMigrationService } = require('../services/SchemaMigrationService');
 const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
+const { FactionRepository } = require('./FactionRepository');
+const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
+const { WorldPeopleRepository } = require('./WorldPeopleRepository');
+const { WorldCityRepository } = require('./WorldCityRepository');
+const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
 
 const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
   ['revision', 'revision INTEGER DEFAULT 0'],
@@ -45,6 +50,18 @@ function createGameStateSchemaMigrations() {
         }
       }
     },
+  }, {
+    // ②b: pending captured-general decisions (斩杀/招降/放生). A new column (not a compat backfill),
+    // so it needs its own migration to land on existing DBs; fresh DBs get it from CREATE TABLE.
+    id: '002-capture-decisions-column',
+    description: 'Add captureDecisions column for the garrison-capture (②b) decision queue.',
+    statements: ['ALTER TABLE game_states ADD COLUMN captureDecisions TEXT'],
+    apply(db) {
+      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
+      if (!columns.has('captureDecisions')) {
+        db.prepare('ALTER TABLE game_states ADD COLUMN captureDecisions TEXT').run();
+      }
+    },
   }];
 }
 
@@ -53,6 +70,17 @@ class GameStateRepository {
     this.db = db;
     this.spawnAuthority = new SpawnAuthorityRepository(db);
     this.worldMapAuthority = new WorldMapAuthorityRepository(db);
+    // Shared-world AI + neutral 势力 registry (docs/design/01). Player factions derive from
+    // game_states; this holds the world-authored ones. Additive — see FactionRepository.
+    this.factionRepo = new FactionRepository(db);
+    this.factionDiplomacyRepo = new FactionDiplomacyRepository(db);
+    // Shared-world people registry (docs/design/02): 在野武将 + AI-faction officers. Player rosters
+    // stay in game_states.famousPeople; the logical registry = this table ∪ every player's roster.
+    this.worldPeopleRepo = new WorldPeopleRepository(db);
+    // Shared-world PRE-PLACED NEUTRAL cities (docs/design/10 §3.2, march-discovery refactor S3). One
+    // canonical copy every player shares, keyed off a FIXED world anchor — projected to players
+    // visibility-gated (hidden until march vision discovers them). Additive — see WorldCityRepository.
+    this.worldCityRepo = new WorldCityRepository(db, { worldSeed: DEFAULT_WORLD_SEED });
   }
 
   stripProjectionFields(gameState) {
@@ -85,6 +113,7 @@ class GameStateRepository {
         gameDay INTEGER,
         eventQueue TEXT,
         eventHistory TEXT,
+        captureDecisions TEXT,
         regularEventState TEXT,
         threatEventState TEXT,
         activeBuffs TEXT,
@@ -126,8 +155,32 @@ class GameStateRepository {
     `);
     this.spawnAuthority.init();
     this.worldMapAuthority.init();
+    this.factionRepo.init();
+    this.factionDiplomacyRepo.init();
+    this.worldPeopleRepo.init();
+    this.worldCityRepo.init();
     new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
+    this.ensureWorldCitiesSeeded();
+  }
+
+  // Idempotent one-time lay-down of the shared PRE-PLACED NEUTRAL city layer (docs/design/10 §3.2,
+  // §6-R8). World-level (not per-player) — the cities are a shared single copy off the fixed world
+  // anchor, so this seeds once at world init, mirroring where the faction/people world registries are
+  // initialized. WorldCityRepository.ensureSeeded short-circuits on hasAny, so re-running init (a fresh
+  // GameStateRepository over the same DB) never grows or duplicates the set. Placement reserves against
+  // every already-occupied spawn coordinate (player capitals + shared occupied territories + reserved
+  // spawns — §6-R3) so a neutral city never lands on a spawn/capital tile.
+  ensureWorldCitiesSeeded() {
+    const occupiedTileIds = new Set();
+    for (const coordinate of this.spawnAuthority.getOccupiedSpawnCoordinates()) {
+      const q = Number(coordinate?.q);
+      const r = Number(coordinate?.r);
+      if (Number.isFinite(q) && Number.isFinite(r)) {
+        occupiedTileIds.add(`tile_${Math.floor(q)}_${Math.floor(r)}`);
+      }
+    }
+    return this.worldCityRepo.ensureSeeded({ occupiedTileIds });
   }
 
   getOccupiedSpawnCoordinates(options = {}) {
@@ -164,6 +217,7 @@ class GameStateRepository {
       gameDay: row.gameDay || 1,
       eventQueue: JSON.parse(row.eventQueue || '[]'),
       eventHistory: JSON.parse(row.eventHistory || '[]'),
+      captureDecisions: JSON.parse(row.captureDecisions || '[]'),
       regularEventState: row.regularEventState ? JSON.parse(row.regularEventState) : null,
       threatEventState: row.threatEventState ? JSON.parse(row.threatEventState) : null,
       activeBuffs: JSON.parse(row.activeBuffs || '[]'),
@@ -203,10 +257,19 @@ class GameStateRepository {
   }
 
   getClientProjectionForPlayer(playerId) {
+    // The player-OWNED shared territories (occupied cities of every OTHER player) — the pre-existing
+    // projection, unchanged.
+    const ownedShared = this.getSharedWorldTerritories({ excludePlayerId: playerId });
+    // The shared PRE-PLACED NEUTRAL cities (one canonical copy, docs/design/10 §3.2). Every player
+    // gets the SAME set, so this reads the whole world_cities table with no per-player exclusion. Both
+    // consumers of `sharedWorldTerritories` receive the FULL set: the route/discovery planning context
+    // (WorldExplorerProgression / WorldExplorerRoutePlanner) needs to reserve against and — in S4 —
+    // discover undiscovered cities, so it must see them all. The CLIENT map DTO is visibility-gated
+    // separately, inside TerritoryClientAssembler.getClientTerritoryState (§6-R2): a neutral city whose
+    // tile the player has not yet discovered is dropped there, so it does NOT reveal at spawn.
+    const neutralCities = this.worldCityRepo.getAllCities();
     return {
-      sharedWorldTerritories: this.getSharedWorldTerritories({
-        excludePlayerId: playerId,
-      }),
+      sharedWorldTerritories: [...ownedShared, ...neutralCities],
     };
   }
 
@@ -298,8 +361,8 @@ class GameStateRepository {
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, worldMarchClientReports, worldMarchVerification,
-        worldCombat, worldAi, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        worldCombat, worldAi, warMissions, scoutReports, updatedAt, captureDecisions
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(playerId) DO UPDATE SET
         revision = excluded.revision,
         saveMetadata = excluded.saveMetadata,
@@ -342,7 +405,8 @@ class GameStateRepository {
         worldAi = excluded.worldAi,
         warMissions = excluded.warMissions,
         scoutReports = excluded.scoutReports,
-        updatedAt = excluded.updatedAt
+        updatedAt = excluded.updatedAt,
+        captureDecisions = excluded.captureDecisions
     `).run(
       gameState.playerId,
       revision,
@@ -390,6 +454,7 @@ class GameStateRepository {
       JSON.stringify(gameState.warMissions || []),
       JSON.stringify(gameState.scoutReports || []),
       updatedAt,
+      JSON.stringify(gameState.captureDecisions || []),
     );
   }
 

@@ -330,7 +330,7 @@ test('legacy player-derived world seeds normalize to the shared server world', (
   assert.equal(worldMap.generationAuthority.seed, Constants.DEFAULT_WORLD_SEED);
 });
 
-test('WorldMapService facade preserves public map API and scout reveal behavior', () => {
+test('WorldMapService facade preserves public map API', () => {
   const expectedApi = [
     'CAPITAL_TILE_ID',
     'DEFAULT_WORLD_HEIGHT',
@@ -338,10 +338,7 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'DEFAULT_WORLD_WIDTH',
     'DEFAULT_WORLD_WRAPPING',
     'DIRECTION_VECTORS',
-    'SCOUT_REVEAL_BRANCH_LIMIT',
-    'SCOUT_REVEAL_MAIN_LIMIT',
     'SCOUT_REVEAL_RADIUS',
-    'SCOUT_REVEAL_TILE_LIMIT',
     'SIDE_DIRECTIONS',
     'SIDE_ORDER',
     'START_REVEAL_RADIUS',
@@ -349,7 +346,6 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'WORLD_MAP_VERSION',
     'WORLD_TOPOLOGY_VERSION',
     'bindSiteToTile',
-    'buildScoutRoute',
     'canPlaceSiteOnTerrain',
     'chooseBaseTerrain',
     'chooseOceanTemplates',
@@ -365,22 +361,22 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
     'getClientWorldMapFromNormalized',
     'getDistanceFromCapital',
     'getRevealArea',
+    'getRevealedTileCoordSet',
     'getRiverMouthTemplateForNeighborOfOcean',
     'getRiverPorts',
-    'getScoutRevealArea',
+    'getTileCoordinateKey',
     'getTileId',
     'getWorldMapVersion',
     'getWorldWaterFeatures',
     'getWrappedDelta',
     'getWrappedDistance',
+    'isTileRevealed',
     'isWaterFamilyTerrain',
     'normalizeWorldCoord',
     'normalizeWorldMap',
     'normalizeWorldSize',
-    'recordScoutTrail',
     'recordVisionPath',
     'recordVisionSource',
-    'revealScoutArea',
     'revealTile',
     'revealTileArea',
     'revealTiles',
@@ -400,13 +396,6 @@ test('WorldMapService facade preserves public map API and scout reveal behavior'
   });
   assert.equal(worldMap.topology.schema, Topology.SCHEMA);
   assert.equal(worldMap.tiles.some((tile) => tile.id === Constants.CAPITAL_TILE_ID && tile.visibility === 'controlled'), true);
-  const route = WorldMapService.buildScoutRoute({ q: 0, r: 0 }, 'e', 3);
-  assert.deepEqual(route.map((coord) => coord.q), [1, 2, 3]);
-  const revealArea = WorldMapService.getScoutRevealArea(worldMap.seed, route, 'e', { tileLimit: 4, minTileLimit: 4 });
-  const revealed = WorldMapService.revealScoutArea(gameState, revealArea, new Date('2026-06-06T00:00:00.000Z'));
-  assert.equal(revealed.length >= 4, true);
-  const trail = WorldMapService.recordScoutTrail(gameState, { id: 'mission-1', direction: 'e' }, revealed.map((tile) => tile.id), true);
-  assert.equal(trail.returned, true);
 });
 
 test('world map vision history records capital and unit path sources', () => {
@@ -424,4 +413,56 @@ test('world map vision history records capital and unit path sources', () => {
   const unitSources = gameState.worldMap.visionHistory.sources.filter((source) => source.kind === 'unit');
   assert.equal(unitSources.length > 2, true);
   assert.equal(unitSources.some((source) => source.q > 0 && source.q < 1), true);
+});
+
+// --- Reveal predicate / coordinate-set SSOT (anti through-fog leak, 2026-07-07) ---
+
+// A worldMap whose tile array carries every pollution source the raw store can hold: a plain
+// revealed tile, an AI-explorer hidden tile, a solid-fill-style visible bridge tile, and a legacy
+// capital marker stranded off-origin. The SSOT set and the client projection must agree on it.
+function createMixedVisibilityWorldMap() {
+  return {
+    origin: { q: 3, r: 3 },
+    tiles: [
+      { id: 'tile_3_3', q: 3, r: 3, terrain: 'capital', siteId: 'capital', visibility: 'controlled', visible: true },
+      { id: 'tile_5_5', q: 5, r: 5, terrain: 'plains', visibility: 'scouted', visible: true },
+      { id: 'tile_7_7', q: 7, r: 7, terrain: 'plains', visibility: 'hidden', visible: false, discovered: true },
+      { id: 'tile_9_9', q: 9, r: 9, terrain: 'plains', visibility: 'scouted' }, // solid-fill shape: visible defaults true
+      { id: 'tile_6_6', q: 6, r: 6, terrain: 'plains', visibility: 'scouted', visible: false },
+      { id: 'tile_0_0', q: 0, r: 0, terrain: 'capital', siteId: 'capital', visibility: 'controlled', visible: true }, // legacy capital off-origin
+    ],
+  };
+}
+
+test('getRevealedTileCoordSet always equals the coordinates of the client-projected tiles', () => {
+  const worldMap = createMixedVisibilityWorldMap();
+
+  const coordSet = WorldMapService.getRevealedTileCoordSet(worldMap);
+  const clientCoords = WorldMapService.getClientWorldMapFromNormalized(worldMap).tiles
+    .map((tile) => WorldMapService.getTileCoordinateKey(tile));
+
+  // The gate set IS the drawable set — no fork between "what gates projections" and "what renders".
+  assert.deepEqual([...coordSet].sort(), [...new Set(clientCoords)].sort());
+  // And the semantics hold: hidden / visible:false / stranded legacy capital are out, the rest in.
+  assert.deepEqual([...coordSet].sort(), ['3,3', '5,5', '9,9'].sort());
+});
+
+test('getClientWorldMapFromNormalized output is unchanged by the predicate refactor', () => {
+  const worldMap = createMixedVisibilityWorldMap();
+
+  // The pre-refactor inline rule, verbatim (visibility/visible checks + legacy-capital-off-origin).
+  const origin = { q: 3, r: 3 };
+  const legacyRuleTiles = worldMap.tiles.filter((tile) => (
+    tile.visibility !== 'hidden'
+    && tile.visible !== false
+    && !((tile.id === Constants.CAPITAL_TILE_ID || tile.siteId === 'capital' || tile.terrain === 'capital')
+      && !(tile.q === origin.q && tile.r === origin.r))
+  ));
+
+  const projected = WorldMapService.getClientWorldMapFromNormalized(worldMap);
+
+  assert.equal(JSON.stringify(projected.tiles), JSON.stringify(legacyRuleTiles));
+  assert.equal(WorldMapService.isTileRevealed(null), false);
+  assert.equal(WorldMapService.isTileRevealed({ visibility: 'scouted' }), true);
+  assert.equal(WorldMapService.isTileRevealed({ visibility: 'hidden', visible: false }), false);
 });

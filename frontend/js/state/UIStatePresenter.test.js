@@ -121,26 +121,6 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
       status: 'occupied',
       cityName: 'Capital',
     }],
-    scoutMissions: [{
-      id: 'legacy-scout',
-      kind: 'scout',
-      direction: 'east',
-      status: 'active',
-      actionPoints: 3,
-      actionPointsRemaining: 1,
-      route: [{ q: 0, r: 0, step: 1, revealed: true }],
-      revealArea: [{ q: 1, r: 0, step: 2, kind: 'branch', revealed: false }],
-      revealedTileIds: ['tile_0_0'],
-    }],
-    scoutAreas: [{
-      id: 'area-1',
-      missionId: 'legacy-scout',
-      direction: 'east',
-      result: 'empty',
-      targetX: 1,
-      targetY: 0,
-      coords: [{ q: 1, r: 0 }],
-    }],
   };
   const options = {
     panX: 12.5,
@@ -208,10 +188,9 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_0' && tile.site?.id === 'site_1_0'), true);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_0_1').templateAssets.length, 2);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_-1_0').mountainNeighbors, 1);
-  assert.equal(view.activeScouts.length, 2);
+  assert.equal(view.activeScouts.length, 1);
   assert.equal(view.activeScouts.some((mission) => mission.kind === 'worldExplore'), true);
   assert.equal(view.activeScouts.find((mission) => mission.kind === 'worldExplore').route.length, 2);
-  assert.equal(view.scoutAreas[0].coords[0].tileId, 'tile_1_0');
   assert.equal(typeof UIStatePresenter.getTileMapManifest().getTerrainAsset, 'function');
   assert.equal(typeof UIStatePresenter.getTileMapGeometry().sortTilesForIsoDraw, 'function');
   assert.deepEqual(UIStatePresenter.normalizeWorldTile({ q: 3, r: -1, terrain: 'forest' }).feature.key, 'treeCluster');
@@ -680,17 +659,6 @@ test('UIStatePresenter canonicalizes stable x/y world tile ids before map view m
       status: 'discovered',
       naturalName: 'Stable Ford',
     }],
-    scoutMissions: [{
-      id: 'legacy-scout-stable',
-      kind: 'scout',
-      status: 'active',
-      route: [{ x: 2, y: -1, step: 1, tileId: 'legacy-route-id', revealed: true }],
-      revealArea: [{ x: 3, y: -1, step: 2, revealed: false }],
-    }],
-    scoutAreas: [{
-      id: 'area-stable',
-      coords: [{ x: 3, y: -1, tileId: 'legacy-area-id' }],
-    }],
   };
 
   const view = UIStatePresenter.buildWorldTileMapViewState(territoryState);
@@ -701,9 +669,6 @@ test('UIStatePresenter canonicalizes stable x/y world tile ids before map view m
   assert.equal(tile?.siteId, 'site_2_-1');
   assert.equal(view.sites.some((site) => site.id === 'site_2_-1' && site.tileId === 'tile_2_-1'), true);
   assert.equal(view.tiles.some((item) => item.id === 'legacy-renderer-id'), false);
-  assert.equal(view.activeScouts[0].route[0].tileId, 'tile_2_-1');
-  assert.equal(view.activeScouts[0].revealArea[0].tileId, 'tile_3_-1');
-  assert.equal(view.scoutAreas[0].coords[0].tileId, 'tile_3_-1');
 });
 
 test('UIStatePresenter derives world-site view tile ids from normalized tile coordinates', () => {
@@ -863,7 +828,7 @@ test('UIStatePresenter delegates famous person view state while preserving facad
   assert.deepEqual(view, direct);
   assert.equal(view.people[0].id, 'hero-great');
   assert.equal(view.selectedPerson.id, 'hero-great');
-  assert.equal(view.selectedPerson.skillDetails[0].kindText, '斥候特质');
+  assert.equal(view.selectedPerson.skillDetails[0].kindText, '探路特质');
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'candidate-1' });
   assert.equal(UIStatePresenter.formatFamousPersonSkill({ name: 'Aptitude', effects: [{ key: 'knowledgeOutputPct', value: 0.15 }] }).includes('知识产出提高 15%'), true);
 });
@@ -1221,11 +1186,9 @@ test('UIStatePresenter delegates talent policy view state while preserving facad
   assert.deepEqual(UIStatePresenter.getTalentPolicyAvailableRoles(state), ['farmer', 'scholar', 'craftsman']);
 });
 
-test('UIStatePresenter delegates military and scout view state while preserving facade contracts', () => {
-  const nowMs = Date.UTC(2026, 5, 6, 10, 0, 0);
+test('UIStatePresenter delegates military view state while preserving facade contracts', () => {
   const state = {
     activeCityId: 'capital',
-    militaryView: 'scout',
     buildingEffects: { threatDefense: 2 },
     military: {
       soldiers: 12,
@@ -1262,28 +1225,14 @@ test('UIStatePresenter delegates military and scout view state while preserving 
     territoryState: {
       availableSoldiers: 9,
       soldiersOnMission: 3,
-      maxActiveScouts: 1,
-      directions: [
-        { id: 'n', label: '北' },
-        { id: 'e', label: '东' },
-        { id: 's', label: '南' },
-      ],
-      scoutMissions: [
-        { id: 'mission-ready', direction: 'n', status: 'ready' },
-        { id: 'mission-active', direction: 'e', status: 'active', completesAt: new Date(nowMs + 65_000).toISOString() },
-      ],
-      scoutReports: [{ id: 'report-1', direction: 'n' }],
     },
   };
 
   const militaryView = UIStatePresenter.buildMilitaryViewState(state);
   const directMilitaryView = MilitaryPresenter.buildMilitaryViewState(state);
-  const scoutView = UIStatePresenter.buildScoutControlViewState(state, { nowMs });
-  const directScoutView = MilitaryPresenter.buildScoutControlViewState(state, { nowMs });
 
   assert.deepEqual(UIStatePresenter.buildMilitaryNavigationViewState(state), MilitaryPresenter.buildMilitaryNavigationViewState(state));
   assert.deepEqual(militaryView, directMilitaryView);
-  assert.deepEqual(scoutView, directScoutView);
   // The 老兵营 sub-tab view must be reachable through the facade (a missing delegate crashed the
   // whole military panel when the tab was tapped), and the map-home resolver must not coerce the
   // veteranCamp view back to 'army' (which made the tab silently revert).
@@ -1299,12 +1248,6 @@ test('UIStatePresenter delegates military and scout view state while preserving 
   assert.equal(militaryView.formations[0].name, '先锋队');
   assert.equal(militaryView.formations[0].leader.id, 'hero-scout');
   assert.equal(militaryView.formationMeta.summary, '3 支部队 · 每队最多 5 名名人');
-  assert.equal(UIStatePresenter.getScoutMissionRemainingSeconds(state.territoryState.scoutMissions[1], nowMs), 65);
-  assert.equal(UIStatePresenter.formatScoutCountdown(65), '1:05');
-  assert.equal(scoutView.statusText, '1 份报告待查看，另有 1 支侦察队仍在外。');
-  assert.equal(scoutView.cells.find((cell) => cell.id === 'n').action, 'claim');
-  assert.equal(scoutView.cells.find((cell) => cell.id === 'e').actionText, '1:05');
-  assert.equal(scoutView.cells.find((cell) => cell.id === 's').status, 'locked');
 });
 
 test('UIStatePresenter delegates world site dialog view state while preserving facade contracts', () => {
@@ -1416,8 +1359,10 @@ test('UIStatePresenter resolves world site chrome through active locale', () => 
     owner: 'tribe',
     occupationMode: 'conquest',
     naturalName: 'Camp',
+    scale: 1,
     defense: 80,
     recommendedSoldiers: 120,
+    threat: 0,
     effects: { foodOutputMultiplier: 0.15 },
     lastBattle: {
       success: false,
@@ -1453,6 +1398,44 @@ test('UIStatePresenter resolves world site chrome through active locale', () => 
   assert.equal(detail.action.expeditionConfig.fields.leader.label, 'Leader');
   assert.equal(detail.action.expeditionConfig.buttons.launch.label, 'Depart');
   LocaleText.setLocale('zh-CN');
+});
+
+test('UIStatePresenter shows 未知/兵力不明 when defender strength fields are withheld (打了才知道)', () => {
+  // The backend withholds defense/recommendedSoldiers/threat for an unfought defended site. The
+  // detail view must show "未知/兵力不明", NOT a misleading 0 — and the expedition must still be usable.
+  const site = {
+    id: 'site-unfought',
+    status: 'discovered',
+    owner: 'neutral',
+    occupationMode: 'conquest',
+    type: 'city',
+    naturalName: '远疆城邦',
+    effects: {},
+    // No defense / recommendedSoldiers / threat keys at all (stripped by the backend gate).
+  };
+  const territoryState = { availableSoldiers: 500, famousPersons: { people: [{ id: 'hero-mil', name: '霍去病', title: '骠骑', roles: ['military'] }] } };
+  const uiState = { selectedSiteId: 'site-unfought', expeditionConfigSiteId: 'site-unfought' };
+
+  const detail = UIStatePresenter.buildWorldSiteDetailViewState(site, territoryState, uiState);
+
+  assert.equal(detail.text.defense, '防御 未知');
+  assert.equal(detail.text.threat, '威胁 未知');
+  assert.equal(detail.text.soldiers, '兵力不明（交战后可知）');
+  // `scale` (garrison band tier) is withheld too — show 规模 未知, not the tier number that leaks the band.
+  assert.equal(detail.text.scale, '规模 未知');
+  // The expedition still works: a neutral default of 1 (not 0), so the player can march out.
+  assert.equal(detail.action.expeditionConfig.draft.soldiers, 1);
+  assert.equal(detail.action.expeditionConfig.fields.soldiers.min, 1);
+  // A present value still renders the number (regression guard for the fought/own-site path).
+  const foughtDetail = UIStatePresenter.buildWorldSiteDetailViewState(
+    { ...site, scale: 3, defense: 320, recommendedSoldiers: 300, threat: 12 },
+    territoryState,
+    uiState,
+  );
+  assert.equal(foughtDetail.text.defense, '防御 320');
+  assert.equal(foughtDetail.text.soldiers, '建议 300 士兵');
+  assert.equal(foughtDetail.text.threat, '威胁 12');
+  assert.equal(foughtDetail.text.scale, '规模 3');
 });
 
 test('UIStatePresenter enables direct occupation of an empty site with zero soldiers', () => {
@@ -1632,12 +1615,6 @@ test('UIStatePresenter resolves business module UI chrome through active locale'
   });
   assert.equal(militaryView.formations[0].name, 'Unit One');
   assert.equal(militaryView.text.soldierTrainingText, 'Waiting for barracks');
-
-  const scoutView = UIStatePresenter.buildScoutControlViewState({
-    territoryState: { directions: [{ id: 'n', label: 'North' }], scoutMissions: [], maxActiveScouts: 1 },
-  });
-  assert.equal(scoutView.statusText, 'Choose a direction to send scouts; up to 1 scout teams can be out at once.');
-  assert.equal(scoutView.cells.find((cell) => cell.id === 'n').actionText, 'Send');
 
   const battleView = UIStatePresenter.buildBattleSceneViewState({
     report: {

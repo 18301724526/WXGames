@@ -11,10 +11,9 @@ const TutorialService = require('../services/TutorialService');
 const SharedTutorialFlowConfig = require('../../shared/tutorialFlowConfig');
 
 const TERRITORY_ACTIONS = new Set([
-  'scoutTerritory',
-  'claimScout',
   'startConquest',
   'claimConquest',
+  'resolveCapture',
   'renameCity',
   'renamePolity',
   'switchCity',

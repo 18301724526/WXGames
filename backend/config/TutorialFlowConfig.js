@@ -18,8 +18,6 @@ const PASS_THROUGH_ACTIONS = Object.freeze([
   'acceptFamousPerson',
   'dismissFamousPersonCandidate',
   'assignFamousAttributePoint',
-  'scoutTerritory',
-  'claimScout',
   'switchCity',
 ]);
 
@@ -32,7 +30,12 @@ const { clone } = require('../../shared/objectUtils');
 // buildingsTabOpenedForBarracks, barracksBuilt, firstArmyClaimed) plus the
 // barracksBuilt event and buildingsTabOpenedForBarracks client gate
 // (added entries -> minor bump).
-const CONFIG_VERSION = '3.1.0';
+// 4.0.0: march-discovery refactor S5 — the tutorial first city is now PRE-PLACED
+// and discovered by march vision (the invent-city engine + its route-truncation are
+// deleted). The 6 tutorial steps are UNCHANGED; the retired directional-scout
+// passThrough actions (scoutTerritory/claimScout, deleted with the scout system in
+// S1) are removed here (removed entries -> major bump).
+const CONFIG_VERSION = '4.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
 const sourcePath = __filename;
 

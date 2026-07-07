@@ -122,13 +122,13 @@ function validateScoutFormationAction(step, action, payload, gameState) {
 
   if (action === 'setArmyFormation') {
     if (stepBefore(step, TUTORIAL_STEPS.formationPanelOpened)) {
-      return blocked('请先按照引导打开编队并配置侦察名人。');
+      return blocked('请先按照引导打开编队并配置先驱名人。');
     }
     const tutorial = normalizeTutorialState(gameState.tutorial);
     const scoutPersonId = tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]?.personId;
     const memberIds = Array.isArray(payload?.memberIds) ? payload.memberIds.map(String) : [];
     if (!scoutPersonId || !memberIds.includes(String(scoutPersonId))) {
-      return blocked('请把教程赠送的侦察名人加入编队。');
+      return blocked('请把教程赠送的先驱名人加入编队。');
     }
     return { allowed: true };
   }
@@ -139,17 +139,17 @@ function validateScoutFormationAction(step, action, payload, gameState) {
 function validateScoutExploreAction(step, action, payload, gameState) {
   if (action === 'returnWorldMarch' || action === 'stopWorldMarch') {
     if (stepBefore(step, TUTORIAL_STEPS.firstCityDiscovered)) {
-      return blocked('请先完成引导侦察行军。');
+      return blocked('请先完成引导探索行军。');
     }
     return { allowed: true };
   }
   if (action === 'startWorldMarch') {
     if (stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered)) return { allowed: true };
     if (stepBefore(step, TUTORIAL_STEPS.scoutFormationSaved)) {
-      return blocked('请先完成侦察编队引导，再进行探索。');
+      return blocked('请先完成探索编队引导，再进行探索。');
     }
     if (!hasTutorialScoutFormation(gameState, payload)) {
-      return blocked('请让教程赠送的侦察名人留在一号编队后再探索。');
+      return blocked('请让教程赠送的先驱名人留在一号编队后再探索。');
     }
     return { allowed: true };
   }
@@ -168,7 +168,7 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
       return blocked('请先完成当前的占城引导步骤。');
     }
     if (!isFirstCity || !target || target.status !== 'discovered' || target.owner !== 'neutral') {
-      return blocked('请先占领引导侦察发现的空城。');
+      return blocked('请先占领引导探索发现的空城。');
     }
     return { allowed: true };
   }
