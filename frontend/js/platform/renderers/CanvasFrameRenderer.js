@@ -83,9 +83,15 @@
     withSlideClip(...args) { return this.host?.withSlideClip?.(...args) ?? args[5]?.(); }
     withSuppressedHitTargets(...args) { return this.host?.withSuppressedHitTargets?.(...args) ?? args[0]?.(); }
     createGradient(...args) { return this.host?.createGradient?.(...args) ?? args[5] ?? '#000'; }
+    drawAsset(...args) { return this.host?.drawAsset?.(...args) || false; }
     drawPanel(...args) { return this.host?.drawPanel?.(...args); }
     drawText(...args) { return this.host?.drawText?.(...args); }
     drawButton(...args) { return this.host?.drawButton?.(...args); }
+    truncateText(...args) {
+      return typeof this.host?.truncateText === 'function'
+        ? this.host.truncateText(...args)
+        : String(args[0] ?? '');
+    }
     renderLoginPanel(...args) { return this.host?.renderLoginPanel?.(...args); }
     renderLoadingScreen(...args) { return this.host?.renderLoadingScreen?.(...args); }
     renderEntityBattleOverlay(...args) { return this.host?.renderEntityBattleOverlay?.(...args); }
@@ -114,6 +120,7 @@
     renderFloatingSubcityButton(...args) { return this.host?.renderFloatingSubcityButton?.(...args); }
     renderFloatingEventButton(...args) { return this.host?.renderFloatingEventButton?.(...args); }
     renderFloatingAdvisorButton(...args) { return this.host?.renderFloatingAdvisorButton?.(...args); }
+    renderFloatingAccountButton(...args) { return this.host?.renderFloatingAccountButton?.(...args); }
     renderMapCommandPanel(...args) { return this.host?.renderMapCommandPanel?.(...args); }
     renderSubcityListPanel(...args) { return this.host?.renderSubcityListPanel?.(...args); }
     renderCityManagementPanel(...args) { return this.host?.renderCityManagementPanel?.(...args); }
@@ -311,7 +318,7 @@
     renderMapHomeOverlays(state = {}, options = {}) {
       this.renderFloatingSubcityButton(state, options);
       this.renderFloatingEventButton(state, options);
-      this.renderFloatingAdvisorButton(state, options);
+      this.renderFloatingAccountButton(state, options);
       if (options.activeCommandPanel) this.renderMapCommandPanel(state, options);
       if (options.showSubcityList) this.renderSubcityListPanel(state, options);
       if (options.showCityManagement) this.renderCityManagementPanel(state, options);
@@ -334,97 +341,77 @@
       if (options.naming) this.renderNamingModal(options.naming);
     }
 
+    getMapHomeSquadBanners(state = {}) {
+      const view = typeof this.presenter?.buildMilitaryViewState === 'function'
+        ? this.presenter.buildMilitaryViewState({ ...state, militaryView: 'army' })
+        : null;
+      const presentedFormations = Array.isArray(view?.formations) ? view.formations : [];
+      if (presentedFormations.length) {
+        return presentedFormations.slice(0, 3).map((formation, index) => ({
+          slot: Number(formation.slot) || index + 1,
+          name: formation.name || formation.label || this.t('military.formation.default', { slot: index + 1 }),
+          isEmpty: Boolean(formation.isEmpty),
+        }));
+      }
+      const cityId = state.activeCityId || state.cityState?.activeCityId || state.cityState?.capitalCityId || 'capital';
+      const rawFormations = state.military?.formations && typeof state.military.formations === 'object'
+        ? state.military.formations
+        : {};
+      const cityFormations = Array.isArray(rawFormations)
+        ? rawFormations
+        : (Array.isArray(rawFormations[cityId]) ? rawFormations[cityId] : []);
+      return [1, 2, 3].map((slot) => {
+        const formation = cityFormations.find((item) => Number(item?.slot) === slot) || cityFormations[slot - 1] || {};
+        return {
+          slot,
+          name: formation.name || formation.label || this.t('military.formation.default', { slot }),
+          isEmpty: false,
+        };
+      });
+    }
+
     renderMapHomeExplorerHud(state = {}, topBarBottom = 84, options = {}) {
       const layout = this.getWorldMapLayerLayout?.(state, topBarBottom, { ...options, isMapHome: true }) || null;
       const map = layout?.map || { x: 0, y: topBarBottom, width: this.width, height: Math.max(160, this.height - topBarBottom - 64) };
-      const explorer = state.worldExplorerState || {};
-      const nowMs = this.getEpochNowMs();
-      const activeMission = explorer.activeMission && SharedWorldMarchSystem?.deriveMissionForTime
-        ? SharedWorldMarchSystem.deriveMissionForTime(explorer.activeMission, { nowMs })
-        : explorer.activeMission || null;
-      const active = activeMission?.status === 'active' ? activeMission : null;
-      const panelWidth = Math.min(184, Math.max(132, map.width - 24));
-      const panelHeight = active ? 48 : 34;
+      const squads = this.getMapHomeSquadBanners(state);
+      const visibleSquads = squads.length ? squads : [1, 2, 3].map((slot) => ({
+        slot,
+        name: this.t('military.formation.default', { slot }),
+        isEmpty: false,
+      }));
+      const rowHeight = 30;
+      const gap = 6;
+      const panelWidth = Math.min(156, Math.max(126, Math.floor(map.width * 0.42)));
+      const panelHeight = visibleSquads.length * rowHeight + (visibleSquads.length - 1) * gap;
+      const dockTop = this.height - 64;
       const x = Math.max(8, map.x + 12);
-      const y = Math.max(map.y + 10, topBarBottom + 10);
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: 'rgba(19, 18, 14, 0.78)',
-        stroke: 'rgba(255, 226, 177, 0.18)',
-        radius: 8,
-        inset: 'rgba(255, 231, 184, 0.06)',
-      });
-      if (active) {
-
-        const route = Array.isArray(active.route) ? active.route : [];
-        const done = route.filter((step) => step.revealed).length;
-        const total = Math.max(1, route.length || active.revealedTileIds?.length || 1);
-        const remainingSeconds = this.getExplorerMissionRemainingSeconds(active);
-        this.drawText(this.t('worldMap.exploreProgress', { done, total }), x + 12, y + 14, {
-          size: 11,
-          bold: true,
-          color: '#ffe6b5',
+      const y = Math.max(map.y + 10, Math.min(dockTop - panelHeight - 12, map.y + map.height - panelHeight - 14));
+      visibleSquads.forEach((squad, index) => {
+        const rowY = y + index * (rowHeight + gap);
+        const active = !squad.isEmpty;
+        this.drawPanel(x, rowY, panelWidth, rowHeight, {
+          fill: active ? 'rgba(28, 27, 23, 0.82)' : 'rgba(20, 20, 18, 0.62)',
+          stroke: active ? 'rgba(229, 201, 144, 0.28)' : 'rgba(214, 199, 164, 0.14)',
+          radius: 5,
+          inset: 'rgba(255, 255, 255, 0.035)',
         });
-        this.drawText(`${remainingSeconds}s`, x + panelWidth - 12, y + 14, {
-          size: 11,
-          color: '#f0b45b',
-          align: 'right',
-        });
-        const barX = x + 12;
-        const barY = y + 32;
-        const barW = panelWidth - 24;
-        const progress = Math.max(0, Math.min(1, done / total));
-        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.14)';
-        this.ctx.fillRect(barX, barY, barW, 4);
-        this.ctx.fillStyle = '#74d3a0';
-        this.ctx.fillRect(barX, barY, Math.max(3, barW * progress), 4);
-      } else {
-        // Design: once a march target is picked, replace the generic hint with the
-        // route preview — distance in tiles and the estimated travel time, or the
-        // blocked reason when the linear route cannot reach the target.
-        // Sealed ui facts reach renderers through the render-context snapshot
-        // boundary, not the live territoryUiState bag (snapshot boundary ratchet).
-        const hudContext = this.getMapHomeWorldHudContext(options);
-        const hudUiState = hudContext?.uiState || hudContext?.renderSnapshot?.ui || {};
-        const marchTarget = hudUiState.worldMarchTarget || null;
-        const routePolicy = typeof global !== 'undefined' ? global.WorldMarchRoutePolicy : null;
-        let etaShown = false;
-        if (marchTarget && routePolicy?.evaluateMarchTarget) {
-          const evaluated = routePolicy.evaluateMarchTarget(state, marchTarget, {
-            tileMapView: state.territoryState?.worldMap || {},
-          });
-          if (evaluated?.canMarch && Array.isArray(evaluated.route) && evaluated.route.length) {
-            const steps = evaluated.route.length;
-            const stepSeconds = Math.max(1, Number(explorer.stepDurationSeconds) || 10);
-            this.drawText(this.t('worldMap.marchEta', { steps, seconds: steps * stepSeconds }), x + 12, y + 12, {
-              size: 11,
-              bold: true,
-              color: '#ffe6b5',
-            });
-            etaShown = true;
-          } else if (evaluated && !evaluated.canMarch) {
-            this.drawText(this.t('worldMap.marchEta.blocked'), x + 12, y + 12, {
-              size: 11,
-              bold: true,
-              color: '#e08f5f',
-            });
-            etaShown = true;
-          }
-        }
-        if (!etaShown) {
-          this.drawText(this.t('worldMap.marchHint.title'), x + 12, y + 12, { size: 11, bold: true, color: '#ffe6b5' });
-          this.drawText(this.t('worldMap.marchHint.subtitle'), x + panelWidth - 12, y + 12, {
+        const iconSize = 18;
+        if (!this.drawAsset('assets/art/ui-hud/hud-icon-squad.png', x + 8, rowY + 6, iconSize, iconSize)) {
+          this.drawText(String(squad.slot || index + 1), x + 17, rowY + 15, {
             size: 10,
-            color: '#74d3a0',
-            align: 'right',
+            bold: true,
+            color: '#d8cba8',
+            baseline: 'middle',
+            align: 'center',
           });
         }
-      }
-      const resetW = 76;
-      const resetH = 28;
-      const resetX = Math.max(8, map.x + map.width - resetW - 12);
-      const resetY = Math.max(map.y + 10, topBarBottom + 10);
-      this.drawButton(resetX, resetY, resetW, resetH, this.t('worldMap.backToCity'), { size: 11, radius: 8 });
-      this.addHitTarget({ x: resetX, y: resetY, width: resetW, height: resetH }, { type: 'resetWorldPan' });
+        this.drawText(this.truncateText(squad.name, panelWidth - 38, { size: 12, bold: true }), x + 32, rowY + 15, {
+          size: 12,
+          bold: true,
+          color: active ? '#f3e6c4' : 'rgba(222, 211, 181, 0.68)',
+          baseline: 'middle',
+        });
+      });
       return true;
     }
 

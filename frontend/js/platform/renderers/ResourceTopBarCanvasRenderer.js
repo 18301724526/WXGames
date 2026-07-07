@@ -84,7 +84,7 @@
     }
 
     renderTopBar(state = {}, options = {}) {
-      if (options.isMapHome) return this.renderMapHomeTopBar(state);
+      if (options.isMapHome) return this.renderMapHomeTopBar(state, options);
       const layout = this.getLayout();
       const resourceView = this.buildResourceViewState(state);
       const cityView = this.presenter?.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
@@ -227,22 +227,70 @@
       return y + barHeight + 12;
     }
 
-    renderMapHomeTopBar(state = {}) {
+    resolveMapHomeFps(options = {}) {
+      const fps = Number(options.fps ?? this.host?.surfaceState?.fpsLastPaintedValue ?? this.host?.surfaceState?.currentFps);
+      return Number.isFinite(fps) && fps > 0 ? Math.round(fps) : 0;
+    }
+
+    resolveMapHomeLatencyMs(state = {}, options = {}) {
+      const network = options.network || state.networkState || this.host?.networkState || {};
+      const value = network.latencyMs
+        ?? network.pingMs
+        ?? network.roundTripMs
+        ?? network.rttMs
+        ?? network.lastLatencyMs;
+      const latency = Number(value);
+      return Number.isFinite(latency) && latency >= 0 ? Math.round(latency) : null;
+    }
+
+    resolveMapHomeServerTimeMs(state = {}, options = {}) {
+      const candidates = [
+        options.serverNowMs,
+        this.host?.serverNowMs,
+        this.host?.surfaceState?.serverNowMs,
+        options.epochNowMs,
+        this.host?.epochNowMs,
+        this.host?.surfaceState?.epochNowMs,
+        state.serverNowMs,
+        state.epochNowMs,
+        options.network?.serverTime,
+        state.networkState?.serverTime,
+        state.serverTime,
+      ];
+      for (let index = 0; index < candidates.length; index += 1) {
+        const value = candidates[index];
+        const parsed = value instanceof Date ? value.getTime() : (typeof value === 'string' ? Date.parse(value) : Number(value));
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      return Date.now();
+    }
+
+    formatMapHomeClock(ms = Date.now()) {
+      const date = new Date(ms);
+      if (Number.isNaN(date.getTime())) return '--:--:--';
+      return [
+        String(date.getHours()).padStart(2, '0'),
+        String(date.getMinutes()).padStart(2, '0'),
+        String(date.getSeconds()).padStart(2, '0'),
+      ].join(':');
+    }
+
+    renderMapHomeTopBar(state = {}, options = {}) {
       const layout = this.getLayout();
       const resourceView = this.buildResourceViewState(state);
       const text = resourceView.text || {};
       const x = 0;
       const y = 0;
       const width = this.width;
-      const height = 72;
+      const height = 64;
       if (this.ctx) {
         this.ctx.fillStyle = this.createGradient(
           x, y, x, y + height,
           [
-            [0, 'rgba(46, 37, 25, 0.86)'],
-            [1, 'rgba(19, 18, 14, 0.88)'],
+            [0, 'rgba(35, 35, 31, 0.82)'],
+            [1, 'rgba(14, 15, 14, 0.88)'],
           ],
-          'rgba(32, 26, 19, 0.86)',
+          'rgba(24, 24, 21, 0.86)',
         );
         this.ctx.fillRect(x, y, width, height);
         this.ctx.fillStyle = 'rgba(255, 231, 184, 0.06)';
@@ -250,39 +298,67 @@
         this.ctx.fillStyle = 'rgba(255, 226, 177, 0.16)';
         this.ctx.fillRect(0, height - 1, width, 1);
       }
+      const statusX = x + 8;
+      const statusY = y + 7;
+      const fps = this.resolveMapHomeFps(options);
+      const latencyMs = this.resolveMapHomeLatencyMs(state, options);
+      const clockText = this.formatMapHomeClock(this.resolveMapHomeServerTimeMs(state, options));
+      this.drawPanel(statusX, statusY, 66, 50, {
+        fill: 'rgba(8, 12, 11, 0.44)',
+        stroke: 'rgba(214, 199, 164, 0.16)',
+        radius: 6,
+        inset: 'rgba(255, 255, 255, 0.025)',
+      });
+      this.drawText(fps ? `FPS ${fps}` : 'FPS --', statusX + 7, statusY + 12, {
+        size: 9,
+        bold: true,
+        color: fps >= 55 ? '#86dca8' : (fps >= 30 ? '#d9c37a' : '#e07b65'),
+        baseline: 'middle',
+      });
+      this.drawAsset('assets/art/ui-hud/hud-icon-signal.png', statusX + 7, statusY + 19, 12, 12);
+      this.drawText(latencyMs === null ? '--ms' : `${latencyMs}ms`, statusX + 23, statusY + 25, {
+        size: 9,
+        color: latencyMs === null || latencyMs <= 120 ? '#d8e8dc' : '#d9c37a',
+        baseline: 'middle',
+      });
+      this.drawText(clockText, statusX + 7, statusY + 39, {
+        size: 9,
+        color: 'rgba(238, 230, 207, 0.72)',
+        baseline: 'middle',
+      });
       const resources = [
-        { label: this.t('resource.food'), value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
-        { label: this.t('resource.wood'), value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
-        { label: this.t('resource.stone'), value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
-        { label: this.t('resource.iron'), value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
-        { label: this.t('resource.knowledge'), value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
-        { label: this.t('resource.population'), value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
+        { label: this.t('resource.food'), value: text.foodValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-food.png' },
+        { label: this.t('resource.wood'), value: text.woodValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-wood.png' },
+        { label: this.t('resource.stone'), value: text.stoneValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-stone.png' },
+        { label: this.t('resource.iron'), value: text.ironValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-iron.png' },
+        { label: this.t('resource.knowledge'), value: text.knowledgeValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-knowledge.png' },
+        { label: this.t('resource.population'), value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/ui-hud/hud-resource-population.png' },
       ];
-      const contentX = layout.contentX;
-      const contentWidth = layout.contentWidth;
+      const contentX = Math.max(layout.contentX, statusX + 72);
+      const contentWidth = Math.max(0, Math.min(layout.contentRight || width, width - 4) - contentX);
       const gap = 3;
-      const itemWidth = Math.max(42, Math.floor((contentWidth - 16 - gap * (resources.length - 1)) / resources.length));
-      const itemY = y + 8;
+      const itemWidth = Math.max(36, Math.floor((contentWidth - 8 - gap * (resources.length - 1)) / resources.length));
+      const itemY = y + 7;
       resources.forEach((resource, index) => {
-        const itemX = contentX + 8 + index * (itemWidth + gap);
-        const iconSize = 14;
+        const itemX = contentX + 4 + index * (itemWidth + gap);
+        const iconSize = 18;
         const centerX = itemX + itemWidth / 2;
-        this.drawAsset(resource.icon, centerX - iconSize / 2, itemY + 5, iconSize, iconSize);
-        this.drawText(resource.label, centerX, itemY + 23, {
+        this.drawAsset(resource.icon, centerX - iconSize / 2, itemY + 2, iconSize, iconSize);
+        this.drawText(resource.label, centerX, itemY + 25, {
           size: 8,
           bold: true,
-          color: '#cbbd96',
+          color: 'rgba(222, 211, 181, 0.78)',
           align: 'center',
         });
-        this.drawText(this.truncateText(String(resource.value), itemWidth - 4, { size: 9, bold: true }), centerX, itemY + 40, {
+        this.drawText(this.truncateText(String(resource.value), itemWidth - 4, { size: 9, bold: true }), centerX, itemY + 41, {
           size: 9,
           bold: true,
-          color: '#d5ffe8',
+          color: '#d8efe1',
           align: 'center',
         });
-        this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: 42 }, { type: 'openResourceDetails' });
+        this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: 50 }, { type: 'openResourceDetails' });
       });
-      return 72;
+      return height;
     }
 
   }

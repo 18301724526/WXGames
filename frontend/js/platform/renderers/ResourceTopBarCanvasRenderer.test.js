@@ -236,11 +236,20 @@ test('ResourceTopBarCanvasRenderer falls back when presenter resource view is un
   const bottom = renderer.renderMapHomeTopBar({
     resources: { food: 20, wood: 10, stone: 8, iron: 5, knowledge: 3 },
     population: { total: 12 },
+  }, {
+    fps: 58,
+    network: { latencyMs: 42 },
+    serverNowMs: new Date('2026-07-07T11:22:33+08:00').getTime(),
   });
 
-  assert.equal(bottom, 72);
+  assert.equal(bottom, 64);
   assert.equal(host.hitTargets.filter((target) => target.action.type === 'openResourceDetails').length, 6);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '1200'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'FPS 58'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '42ms'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '11:22:33'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-icon-signal.png'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-resource-food.png'), true);
 });
 
 test('ResourceTopBarCanvasRenderer does not own city people, policy, or home feature rendering', () => {

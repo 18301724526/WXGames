@@ -60,6 +60,7 @@
     renderFloatingSubcityButton(...args) { return this.host?.renderFloatingSubcityButton?.(...args); }
     renderFloatingEventButton(...args) { return this.host?.renderFloatingEventButton?.(...args); }
     renderFloatingAdvisorButton(...args) { return this.host?.renderFloatingAdvisorButton?.(...args); }
+    renderFloatingAccountButton(...args) { return this.host?.renderFloatingAccountButton?.(...args); }
     renderMapCommandPanel(...args) { return this.host?.renderMapCommandPanel?.(...args); }
     renderSubcityListPanel(...args) { return this.host?.renderSubcityListPanel?.(...args); }
     renderCityManagementPanel(...args) { return this.host?.renderCityManagementPanel?.(...args); }

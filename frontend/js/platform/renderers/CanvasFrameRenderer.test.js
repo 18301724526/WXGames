@@ -20,6 +20,16 @@ function createHost(overrides = {}) {
         calls.push(['buildTechViewState', input]);
         return { detail: { id: input.selectedTechId || input.techUiState?.selectedTechId || 'tech-1' } };
       },
+      buildMilitaryViewState(input) {
+        calls.push(['buildMilitaryViewState', input]);
+        return {
+          formations: [
+            { slot: 1, name: '第一队', isEmpty: false },
+            { slot: 2, name: '第二队', isEmpty: false },
+            { slot: 3, name: '侦察队', isEmpty: false },
+          ],
+        };
+      },
     },
     beginFrame(options) { calls.push(['beginFrame', options]); },
     clear() { calls.push(['clear']); },
@@ -34,8 +44,10 @@ function createHost(overrides = {}) {
     },
     addHitTarget(...args) { calls.push(['addHitTarget', args]); },
     drawButton(...args) { calls.push(['drawButton', args]); },
+    drawAsset(...args) { calls.push(['drawAsset', args]); return false; },
     drawPanel(...args) { calls.push(['drawPanel', args]); },
     drawText(...args) { calls.push(['drawText', args]); },
+    truncateText(text) { return String(text || ''); },
     ctx: {
       fillRect(...args) { calls.push(['fillRect', args]); },
       fillStyle: '',
@@ -55,6 +67,7 @@ function createHost(overrides = {}) {
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
     renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
+    renderFloatingAccountButton(...args) { calls.push(['renderFloatingAccountButton', args]); },
     renderFloatingEventButton(...args) { calls.push(['renderFloatingEventButton', args]); },
     renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
@@ -159,6 +172,8 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   assert.equal(names.includes('renderMapCommandPanel'), true);
   assert.equal(names.includes('renderSubcityListPanel'), true);
   assert.equal(names.includes('renderSettingsPanel'), true);
+  assert.equal(names.includes('renderFloatingAccountButton'), true);
+  assert.equal(names.includes('renderFloatingAdvisorButton'), false);
   assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.at(-1), 'endFrame');
 });
@@ -325,14 +340,15 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   const names = callNames(host);
   assert.equal(names.includes('renderFloatingSubcityButton'), true);
   assert.equal(names.includes('renderFloatingEventButton'), true);
-  assert.equal(names.includes('renderFloatingAdvisorButton'), true);
+  assert.equal(names.includes('renderFloatingAccountButton'), true);
+  assert.equal(names.includes('renderFloatingAdvisorButton'), false);
   assert.equal(names.includes('renderCityManagementPanel'), true);
   assert.equal(names.includes('renderAdvisorPanel'), true);
   assert.equal(names.includes('renderWorldSiteModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
 });
 
-test('CanvasFrameRenderer renders explorer countdown without scout report controls', () => {
+test('CanvasFrameRenderer renders map-home squad banners instead of explorer countdown controls', () => {
   const activeHost = createHost({
     getNow() {
       return new Date('2026-06-06T00:00:04.250Z').getTime();
@@ -355,12 +371,14 @@ test('CanvasFrameRenderer renders explorer countdown without scout report contro
     },
   }, 96, {});
 
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), true);
-  assert.equal(activeHost.calls.some((call) => call[0] === 'fillRect'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '第一队'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), false);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('探索中')), false);
   assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'claimExplore'), false);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), false);
 });
 
-test('CanvasFrameRenderer keeps explorer countdown on epoch time, not animation frame time', () => {
+test('CanvasFrameRenderer keeps squad banner rendering independent from explorer mission time', () => {
   const epochNowMs = new Date('2026-06-06T00:00:04.250Z').getTime();
   const activeHost = createHost({
     epochNowMs,
@@ -385,7 +403,8 @@ test('CanvasFrameRenderer keeps explorer countdown on epoch time, not animation 
     },
   }, 96, {});
 
-  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '第一队'), true);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '6s'), false);
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('1780')), false);
 });
 
@@ -412,6 +431,7 @@ test('CanvasFrameRenderer treats expired manual active mission as idle in explor
 
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('探索中')), false);
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '0s'), false);
+  assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && call[1][0] === '第一队'), true);
 });
 
 test('CanvasFrameRenderer hides debug reset while tutorial shields are active', () => {

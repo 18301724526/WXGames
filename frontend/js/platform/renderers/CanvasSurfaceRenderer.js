@@ -344,7 +344,7 @@
     }
 
     renderFpsOverlay(options = {}) {
-      if (!this.showFpsOverlay || options.showFpsOverlay === false || !this.ctx) return;
+      if (options.isMapHome || !this.showFpsOverlay || options.showFpsOverlay === false || !this.ctx) return;
       const fps = FrameClock.updatePaintedFps(this.surfaceState, options, this.getNow());
       const label = fps ? `FPS ${fps}` : 'FPS --';
       const width = Math.max(66, Math.min(84, Math.ceil(this.measureTextWidth(label, { size: 11, bold: true }) + 18)));
@@ -474,7 +474,7 @@
     }
 
     getTopBarBottom(state = {}, options = {}) {
-      if (options.isMapHome) return 72;
+      if (options.isMapHome) return 64;
       if (!this.presenter) return 84;
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       return 12 + (cityView.hidden ? 128 : 166) + 12;

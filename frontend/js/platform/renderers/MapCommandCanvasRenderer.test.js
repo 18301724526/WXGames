@@ -48,7 +48,6 @@ const MAP_COMMAND_DRAWING_METHODS = [
   'drawPanel',
   'drawText',
   'getLayout',
-  'getMapHomeFloatingButtonLayout',
   'getTopBarBottom',
   'renderMainPanel',
   'truncateText',
@@ -116,6 +115,7 @@ function renderMapCommandSentinelPaths(renderer) {
   renderer.renderMapCommandDock({}, { activeCommandPanel: 'tech', showTaskCenter: true });
   renderer.renderFloatingSubcityButton({}, { showSubcityList: true });
   renderer.renderFloatingEventButton({}, { activeCommandPanel: 'events' });
+  renderer.renderFloatingAccountButton({}, { showSettings: true });
   renderer.renderMapCommandPanel({ militaryView: 'world' }, { activeCommandPanel: 'military', activeBuildingCategory: 'housing' });
 }
 
@@ -181,15 +181,20 @@ test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   const host = createHost();
   const renderer = new MapCommandCanvasRenderer({ host });
 
-  renderer.renderMapCommandDock({}, { activeCommandPanel: 'tech', showTaskCenter: true });
+  renderer.renderMapCommandDock({
+    cityState: { capitalCityId: 'capital_1' },
+  }, { activeCommandPanel: 'tech', showTaskCenter: true });
 
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldSite' && target.action.siteId === 'capital_1'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'tech'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'civilization'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'military'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openFamousPersons'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'openTaskCenter' && target.action.source === 'taskIcon'), true);
+  assert.equal(host.hitTargets.filter((target) => target.action.type === 'openTaskCenter' && target.action.source === 'taskIcon').length, 1);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openGuidebook' && target.action.source === 'mapCommandMore'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSettings'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('icon-knowledge')), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('ui-hud/hud-icon-tech')), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('icon-knowledge')), false);
 });
 
 test('MapCommandCanvasRenderer resolves command chrome through active locale', () => {
@@ -200,9 +205,10 @@ test('MapCommandCanvasRenderer resolves command chrome through active locale', (
   renderer.renderMapCommandDock({}, { activeCommandPanel: 'tech', showTaskCenter: true });
   renderer.renderFloatingSubcityButton({}, { showSubcityList: true });
   renderer.renderFloatingEventButton({}, { activeCommandPanel: 'events' });
+  renderer.renderFloatingAccountButton({}, {});
   renderer.renderMapCommandPanel({ militaryView: 'world' }, { activeCommandPanel: 'tech' });
 
-  ['Tech', 'Civilization', 'Famous', 'Tasks', 'Settings', 'Subcity', 'Events'].forEach((label) => {
+  ['Capital', 'Tech', 'Civilization', 'Famous', 'More', 'Tasks', 'Settings', 'Subcity', 'Events', 'Account'].forEach((label) => {
     assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === label), true);
   });
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Tech'), true);
@@ -216,9 +222,11 @@ test('MapCommandCanvasRenderer preserves floating map button contracts', () => {
 
   renderer.renderFloatingSubcityButton({}, { showSubcityList: true });
   renderer.renderFloatingEventButton({}, { activeCommandPanel: 'events' });
+  renderer.renderFloatingAccountButton({}, {});
 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSubcityList'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'events'), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'requestResetGame' && target.action.source === 'debugResetAccount'), true);
 });
 
 test('MapCommandCanvasRenderer ignores legacy capital command panel state', () => {
@@ -258,6 +266,10 @@ test('CanvasGameRenderer exposes map command rendering through facade', () => {
     renderMapCommandPanel(...args) {
       return { method: 'renderMapCommandPanel', host: this.host, args };
     }
+
+    renderFloatingAccountButton(...args) {
+      return { method: 'renderFloatingAccountButton', host: this.host, args };
+    }
   }
 
   const renderer = new CanvasGameRenderer({
@@ -270,9 +282,11 @@ test('CanvasGameRenderer exposes map command rendering through facade', () => {
 
   const dockResult = renderer.renderMapCommandDock(state, options);
   const panelResult = renderer.renderMapCommandPanel(state, options);
+  const accountResult = renderer.renderFloatingAccountButton(state, options);
 
   assert.equal(dockResult.host, renderer);
   assert.equal(dockResult.method, 'renderMapCommandDock');
   assert.deepEqual(dockResult.args, [state, options]);
   assert.equal(panelResult.method, 'renderMapCommandPanel');
+  assert.equal(accountResult.method, 'renderFloatingAccountButton');
 });

@@ -6,6 +6,9 @@ const AssetKeyRegistry = require('./AssetKeyRegistry');
 test('AssetKeyRegistry resolves stable keys to current asset paths', () => {
   assert.equal(AssetKeyRegistry.getAssetPath('background:civilization'), 'assets/art/civilization-bg.webp');
   assert.equal(AssetKeyRegistry.getAssetPath('ui:icon:food'), 'assets/art/icon-food-cutout.webp');
+  assert.equal(AssetKeyRegistry.getAssetPath('ui-hud:icon:capital'), 'assets/art/ui-hud/hud-icon-capital.png');
+  assert.equal(AssetKeyRegistry.getAssetPath('ui-hud:icon:account'), 'assets/art/ui-hud/hud-icon-account.png');
+  assert.equal(AssetKeyRegistry.getAssetPath('ui-hud:resource:food'), 'assets/art/ui-hud/hud-resource-food.png');
   assert.equal(AssetKeyRegistry.getAssetPath('world-site:city'), 'assets/art/world-site-city-cutout.png');
   assert.equal(AssetKeyRegistry.getAssetPath('battle:background:forest-camp'), 'assets/art/battle/battlefield-forest-camp.png');
 });
@@ -22,8 +25,12 @@ test('AssetKeyRegistry exposes grouped preload keys and deduped paths', () => {
   const paths = AssetKeyRegistry.getPreloadAssetPaths('base');
 
   assert.equal(keys.includes('ui:icon:home'), true);
+  assert.equal(keys.includes('ui-hud:icon:tasks'), true);
+  assert.equal(keys.includes('ui-hud:resource:knowledge'), true);
   assert.equal(keys.includes('world-site:town'), true);
   assert.equal(paths.includes('assets/art/icon-home-cutout.png'), true);
+  assert.equal(paths.includes('assets/art/ui-hud/hud-icon-tasks.png'), true);
+  assert.equal(paths.includes('assets/art/ui-hud/hud-resource-knowledge.png'), true);
   assert.equal(paths.includes('assets/art/world-site-town-cutout.png'), true);
   assert.equal(new Set(paths).size, paths.length);
 

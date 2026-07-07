@@ -34,6 +34,7 @@ function createHost(overrides = {}) {
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
     renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
+    renderFloatingAccountButton(...args) { calls.push(['renderFloatingAccountButton', args]); },
     renderFloatingEventButton(...args) { calls.push(['renderFloatingEventButton', args]); },
     renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
@@ -124,7 +125,8 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   assert.equal(names.includes('renderMapHomeExplorerHud'), true);
   assert.equal(names.includes('renderFloatingSubcityButton'), true);
   assert.equal(names.includes('renderFloatingEventButton'), true);
-  assert.equal(names.includes('renderFloatingAdvisorButton'), true);
+  assert.equal(names.includes('renderFloatingAccountButton'), true);
+  assert.equal(names.includes('renderFloatingAdvisorButton'), false);
   assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.includes('renderResourceDetailsPanel'), false);
   assert.equal(names.at(-1), 'endFrame');
@@ -360,6 +362,7 @@ test('HudOverlayCanvasRenderer hides debug reset while tutorial dialogue is visi
 
   const names = callNames(host);
   assert.equal(names.includes('renderFloatingSubcityButton'), true);
+  assert.equal(names.includes('renderFloatingAccountButton'), true);
   assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
   assert.equal(names.includes('renderCanvasDebugResetButton'), false);
   assert.equal(names.includes('renderConfirmDialog'), true);

@@ -1287,7 +1287,7 @@
         : undefined;
       if (result !== undefined) return result;
       const [state = {}, options = {}] = args;
-      if (options.isMapHome) return 72;
+      if (options.isMapHome) return 64;
       if (!this.presenter) return 84;
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       return 12 + (cityView.hidden ? 128 : 166) + 12;
@@ -1306,7 +1306,7 @@
       const result = typeof renderer?.renderMapHomeTopBar === 'function'
         ? renderer.renderMapHomeTopBar(...args)
         : undefined;
-      return result === undefined ? 72 : result;
+      return result === undefined ? 64 : result;
     }
 
     renderGuideTasks(...args) {
@@ -1486,7 +1486,7 @@
     }
 
     getMapHomeFloatingButtonLayout(...args) {
-      const renderer = this.advisorRenderer;
+      const renderer = this.mapCommandRenderer;
       const result = typeof renderer?.getMapHomeFloatingButtonLayout === 'function'
         ? renderer.getMapHomeFloatingButtonLayout(...args)
         : undefined;
@@ -2127,6 +2127,13 @@
       const renderer = this.mapCommandRenderer;
       return typeof renderer?.renderFloatingEventButton === 'function'
         ? renderer.renderFloatingEventButton(...args)
+        : undefined;
+    }
+
+    renderFloatingAccountButton(...args) {
+      const renderer = this.mapCommandRenderer;
+      return typeof renderer?.renderFloatingAccountButton === 'function'
+        ? renderer.renderFloatingAccountButton(...args)
         : undefined;
     }
 
