@@ -23,6 +23,30 @@
     return null;
   })();
 
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapSiteOverlayRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -225,31 +249,14 @@
       const buttons = actionView.buttons || [];
       if (!buttons.length) return y;
       if (actionView.kind === 'city-command') {
+        // UI-REDO knife 8: the fallback city-command cluster reuses the same
+        // painter-backed primary/side button helpers as the anchored overlay.
         const primary = buttons.find((button) => button.action === 'enter-city') || buttons[0];
         const sideButtons = buttons.filter((button) => button !== primary).slice(0, 5);
         const primarySize = 74;
         const primaryX = x + Math.max(8, Math.floor(width * 0.26));
         const primaryY = y + 12;
-        this.drawPanel(primaryX, primaryY, primarySize, primarySize, {
-          fill: this.createGradient(
-            primaryX, primaryY, primaryX, primaryY + primarySize,
-            [
-              [0, 'rgba(191, 90, 55, 0.98)'],
-              [1, 'rgba(99, 35, 24, 0.98)'],
-            ],
-            'rgba(146, 56, 38, 0.98)',
-          ),
-          stroke: 'rgba(255, 218, 142, 0.86)',
-          radius: primarySize / 2,
-          inset: 'rgba(255, 248, 210, 0.22)',
-        });
-        this.drawText(primary.label || this.t('world.site.action.enterCity'), primaryX + primarySize / 2, primaryY + primarySize / 2, {
-          size: 20,
-          bold: true,
-          color: '#ffe6b5',
-          baseline: 'middle',
-          align: 'center',
-        });
+        this.drawWorldCityCommandPrimaryButton(primary, primaryX, primaryY, primarySize);
         this.addHitTarget({ x: primaryX, y: primaryY, width: primarySize, height: primarySize }, {
           type: 'enterCity',
           territoryId: primary.territoryId,
@@ -264,12 +271,7 @@
           const type = button.action === 'rename-city'
             ? 'renameCity'
             : (button.action === 'labor-city' ? 'enterCity' : 'territoryAction');
-          this.drawButton(commandX, buttonY, 108, 32, button.label, {
-            size: 13,
-            radius: 8,
-            disabled: button.disabled || !button.action,
-            active: !button.secondary && !button.disabled,
-          });
+          this.drawWorldCityCommandSideButton(button, commandX, buttonY, 108, 32);
           this.addHitTarget({ x: commandX, y: buttonY, width: 108, height: 32 }, {
             type,
             territoryId: button.territoryId,
@@ -725,55 +727,26 @@
       };
     }
 
+    // UI-REDO knife 8: unified painter buttons. Primary (入城) = warm forged
+    // face + champagne edge, round; side commands = secondary iron; disabled
+    // (行军/调动/驻守 before their systems land) = flat grey, clearly apart.
     drawWorldCityCommandPrimaryButton(button = {}, x, y, size) {
-      this.drawPanel(x, y, size, size, {
-        fill: button.disabled || !button.action
-          ? 'rgba(60, 52, 46, 0.78)'
-          : this.createGradient(
-            x, y, x, y + size,
-            [
-              [0, 'rgba(214, 113, 66, 0.98)'],
-              [0.58, 'rgba(163, 58, 39, 0.98)'],
-              [1, 'rgba(92, 30, 23, 0.98)'],
-            ],
-            'rgba(155, 54, 38, 0.98)',
-          ),
-        stroke: button.disabled || !button.action ? 'rgba(240, 180, 91, 0.28)' : 'rgba(255, 225, 150, 0.9)',
+      ModalPlate.drawModalButton(this, x, y, size, size, button.label || this.t('world.site.action.enterCity'), {
+        variant: 'primary',
+        disabled: button.disabled || !button.action,
         radius: size / 2,
-        inset: button.disabled || !button.action ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 248, 210, 0.24)',
-      });
-      this.drawText(button.label || this.t('world.site.action.enterCity'), x + size / 2, y + size / 2, {
         size: Math.max(13, Math.floor(size * 0.27)),
-        bold: true,
-        color: button.disabled || !button.action ? '#8d8f99' : '#ffe6b5',
-        baseline: 'middle',
-        align: 'center',
       });
     }
 
     drawWorldCityCommandSideButton(button = {}, x, y, width, height) {
       const active = !button.secondary && !button.disabled && Boolean(button.action);
-      this.drawPanel(x, y, width, height, {
-        fill: button.disabled || !button.action
-          ? 'rgba(44, 39, 34, 0.72)'
-          : this.createGradient(
-            x, y, x, y + height,
-            [
-              [0, active ? 'rgba(79, 55, 35, 0.96)' : 'rgba(49, 39, 28, 0.94)'],
-              [1, active ? 'rgba(37, 25, 18, 0.98)' : 'rgba(29, 24, 20, 0.96)'],
-            ],
-            'rgba(42, 31, 23, 0.96)',
-          ),
-        stroke: active ? 'rgba(255, 214, 138, 0.62)' : 'rgba(240, 180, 91, 0.26)',
+      ModalPlate.drawModalButton(this, x, y, width, height, button.label || '', {
+        variant: active ? 'primary' : 'secondary',
+        disabled: button.disabled || !button.action,
         radius: 5,
-        inset: active ? 'rgba(255, 231, 184, 0.12)' : 'rgba(255, 231, 184, 0.06)',
-      });
-      this.drawText(this.truncateText(button.label || '', width - 12, { size: 12, bold: active }), x + width / 2, y + height / 2, {
         size: 12,
         bold: active,
-        color: button.disabled || !button.action ? '#8d8f99' : '#f6e8c8',
-        baseline: 'middle',
-        align: 'center',
       });
     }
 
@@ -829,17 +802,17 @@
       const badgeYRaw = Math.min(anchor.titleY - 25 - hudLift, Math.min(primaryY, sideY) - 24 - titleGap);
       const badgeY = Math.max(topLimit + 6, Math.min(badgeYRaw, bottomLimit - 30));
 
-      this.drawPanel(badgeX, badgeY, badgeWidth, 24, {
-        fill: 'rgba(18, 16, 13, 0.78)',
-        stroke: 'rgba(116, 211, 160, 0.42)',
-        radius: 6,
-        inset: 'rgba(255, 231, 184, 0.06)',
+      // Knife 8: the floating name badge is a small forged plate (iron card
+      // face + hairline edge) with champagne title, matching the modal family.
+      const palette = UiThemeTokens?.palette || {};
+      ModalPlate.drawModalCard(this, badgeX, badgeY, badgeWidth, 24, {
+        radius: UiThemeTokens?.radius?.panel || 6,
       });
       const titleMaxWidth = badgeWidth - renameWidth - 22;
       this.drawText(this.truncateText(title, titleMaxWidth, { size: 12, bold: true }), badgeX + 12 + titleMaxWidth / 2, badgeY + 12, {
         size: 12,
         bold: true,
-        color: '#ffe6b5',
+        color: palette.champagneGoldBright,
         baseline: 'middle',
         align: 'center',
       });
@@ -848,7 +821,7 @@
         const renameY = badgeY + 4;
         this.drawText(this.t('world.site.action.rename'), renameX + renameWidth / 2, badgeY + 12, {
           size: 10,
-          color: renameButton.disabled || !renameButton.action ? '#8d8f99' : '#74d3a0',
+          color: renameButton.disabled || !renameButton.action ? palette.textDisabled : palette.champagneGold,
           baseline: 'middle',
           align: 'center',
         });

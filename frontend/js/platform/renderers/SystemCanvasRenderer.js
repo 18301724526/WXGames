@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class SystemCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -298,15 +310,11 @@
     }
 
     renderSettingsPanel() {
-      // UI-REDO ⑦c: centered modal (was a top-right dropdown). Positioning mirrors
-      // the confirm/tech-detail modal logic (dim mask + centered panel + block
-      // target + background/✕ close). Visual polish is deferred to the style
-      // unification knife -- this knife only fixes placement/mask/close.
+      // UI-REDO knife 8: forged-iron modal via the shared ModalPlate painter
+      // (⑦c fixed placement/mask/close; this knife swaps the skin only).
+      // Reset game uses the unified danger button; export/logout secondary.
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
-      if (this.ctx) {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.56)';
-        this.ctx.fillRect(0, 0, this.width, this.height);
-      }
+      ModalPlate.drawModalMask(this);
 
       const layout = this.getLayout();
       const panelWidth = Math.min(300, layout.contentWidth - 24);
@@ -314,60 +322,28 @@
       const x = Math.floor((this.width - panelWidth) / 2);
       const y = Math.max(86, Math.floor((this.height - panelHeight) / 2) - 12);
 
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(58, 42, 28, 0.98)'],
-            [1, 'rgba(23, 18, 13, 0.98)'],
-          ],
-          'rgba(36, 28, 20, 0.98)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.26)',
-        radius: 13,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight);
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
-      this.drawText(this.t('shell.settings.title'), x + panelWidth / 2, y + 18, {
-        size: 16,
-        bold: true,
-        color: '#ffd98a',
+      const titleBar = ModalPlate.drawModalTitleBar(this, x, y, panelWidth, {
+        title: this.t('shell.settings.title'),
         align: 'center',
+        withClose: true,
       });
-
-      const closeSize = 28;
-      const closeX = x + panelWidth - closeSize - 10;
-      const closeY = y + 10;
-      this.drawButton(closeX, closeY, closeSize, closeSize, '✕', {
-        size: 14,
-        radius: 7,
-        active: false,
-      });
-      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeSettings' });
-
-      if (this.ctx) {
-        this.ctx.strokeStyle = 'rgba(255, 226, 177, 0.1)';
-        this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x + 14, y + 46);
-        this.ctx.lineTo(x + panelWidth - 14, y + 46);
-        this.ctx.stroke();
-      }
+      if (titleBar.closeRect) this.addHitTarget(titleBar.closeRect, { type: 'closeSettings' });
 
       const btnHeight = 38;
       const btnX = x + 16;
       const btnWidth = panelWidth - 32;
       [
-        { label: this.t('shell.settings.resetGame'), action: { type: 'requestResetGame' } },
-        { label: this.t('shell.settings.exportOperationLog'), action: { type: 'downloadClientOperationLog' } },
-        { label: this.t('shell.settings.logout'), action: { type: 'logout' } },
+        { label: this.t('shell.settings.resetGame'), action: { type: 'requestResetGame' }, variant: 'danger' },
+        { label: this.t('shell.settings.exportOperationLog'), action: { type: 'downloadClientOperationLog' }, variant: 'secondary' },
+        { label: this.t('shell.settings.logout'), action: { type: 'logout' }, variant: 'secondary' },
       ].forEach((item, index) => {
         const btnY = y + 58 + index * (btnHeight + 10);
-        this.drawButton(btnX, btnY, btnWidth, btnHeight, item.label, {
+        ModalPlate.drawModalButton(this, btnX, btnY, btnWidth, btnHeight, item.label, {
+          variant: item.variant,
           size: 13,
-          radius: 9,
-          active: false,
         });
         this.addHitTarget({ x: btnX, y: btnY, width: btnWidth, height: btnHeight }, item.action);
       });

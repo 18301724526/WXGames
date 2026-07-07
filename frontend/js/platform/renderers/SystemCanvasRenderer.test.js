@@ -293,7 +293,9 @@ test('SystemCanvasRenderer resolves system chrome through active locale', () => 
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Preparing settlement resources'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Network connection is unstable'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '2 missed heartbeats'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Reset Game'), true);
+  // UI-REDO knife 8: settings buttons go through the shared ModalPlate painter
+  // (drawPanel + drawText), no longer through host.drawButton.
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Reset Game'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Confirm'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Recent Request Log'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'No logs'), true);

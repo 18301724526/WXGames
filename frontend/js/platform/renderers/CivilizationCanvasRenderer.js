@@ -11,6 +11,30 @@
     return null;
   })();
 
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CivilizationCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -67,35 +91,27 @@
       const featureY = eraY + eraHeight + sectionGap;
       const featureHeight = canShowFeature ? Math.max(58, innerBottom - featureY) : 0;
 
-      this.drawPanel(x, startY, width, panelHeight, {
-        fill: 'rgba(37, 29, 21, 0.88)',
-        stroke: 'rgba(255, 226, 177, 0.14)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      // UI-REDO knife 8: forged-iron skin via the shared ModalPlate painter;
+      // layout/presenter/hit targets unchanged.
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      ModalPlate.drawModalPlate(this, x, startY, width, panelHeight);
 
-      this.drawPanel(overviewX, overviewY, overviewWidth, overviewHeight, {
-        fill: this.createGradient(
-          overviewX, overviewY, overviewX, overviewY + overviewHeight,
-          [
-            [0, 'rgba(54, 40, 28, 0.92)'],
-            [1, 'rgba(28, 22, 17, 0.9)'],
-          ],
-          'rgba(44, 32, 23, 0.9)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.14)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      ModalPlate.drawModalCard(this, overviewX, overviewY, overviewWidth, overviewHeight);
       this.drawAsset('assets/art/icon-fire-cutout.webp', overviewX + 12, overviewY + 12, 32, 32);
-      this.drawText(view.text.eraName, overviewX + 50, overviewY + 19, { size: 16, bold: true, color: '#f0b45b' });
+      this.drawText(view.text.eraName, overviewX + 50, overviewY + 19, {
+        size: 16,
+        bold: true,
+        color: palette.champagneGoldBright,
+        fontFamily: UiThemeTokens?.fontFamily?.display,
+      });
       this.drawText(view.text.civOverviewDay, overviewX + overviewWidth - 12, overviewY + 20, {
         size: 12,
-        color: '#a0a0a0',
+        color: palette.textSecondary,
         align: 'right',
       });
       this.drawLine(overviewX + 12, overviewY + 54, overviewX + overviewWidth - 12, overviewY + 54, {
-        color: 'rgba(255, 226, 177, 0.14)',
+        color: hairline.dividerOnIron,
       });
 
       const stats = [
@@ -119,43 +135,30 @@
         const row = Math.floor(index / 2);
         const statX = col === 0 ? statLeft : statRight - statWidth;
         const statY = row === 0 ? statTop : statBottom - statHeight;
-        this.drawPanel(statX, statY, statWidth, statHeight, {
-          fill: 'rgba(63, 47, 32, 0.82)',
-          stroke: 'rgba(255, 226, 177, 0.1)',
-          radius: 8,
+        ModalPlate.drawModalCard(this, statX, statY, statWidth, statHeight, {
+          tone: 'muted',
+          radius: UiThemeTokens?.radius?.panel || 6,
         });
         this.drawAsset(item.icon, statX + 8, statY + (statHeight - statIconSize) / 2, statIconSize, statIconSize);
-        this.drawText(item.label, statX + 34, statY + (compactOverview ? 3 : 6), { size: compactOverview ? 9 : 10, color: '#a0a0a0' });
-        this.drawText(String(item.value), statX + 34, statY + (compactOverview ? 16 : 21), { size: compactOverview ? 12 : 14, bold: true, color: '#74d3a0' });
+        this.drawText(item.label, statX + 34, statY + (compactOverview ? 3 : 6), { size: compactOverview ? 9 : 10, color: palette.textLabel });
+        this.drawText(String(item.value), statX + 34, statY + (compactOverview ? 16 : 21), { size: compactOverview ? 12 : 14, bold: true, color: palette.accentJade });
       });
 
       const eraX = x + 12;
       const eraWidth = width - 24;
-      this.drawPanel(eraX, eraY, eraWidth, eraHeight, {
-        fill: this.createGradient(
-          eraX, eraY, eraX, eraY + eraHeight,
-          [
-            [0, 'rgba(54, 40, 28, 0.92)'],
-            [1, 'rgba(28, 22, 17, 0.9)'],
-          ],
-          'rgba(44, 32, 23, 0.9)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.14)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      ModalPlate.drawModalCard(this, eraX, eraY, eraWidth, eraHeight);
       this.renderSectionHeader(this.t('civilization.section.advance', {}), eraX + 12, eraY + 14, '🔥');
       this.drawAsset('assets/art/icon-food-cutout.webp', eraX + eraWidth / 2 - 42, eraY + 40, 38, 38);
       this.drawText(this.truncateText(view.text.eraTargetName, eraWidth - 112, { size: 15, bold: true }), eraX + eraWidth / 2 + 4, eraY + 59, {
         size: 15,
         bold: true,
-        color: '#f6e8c8',
+        color: palette.textPrimary,
         baseline: 'middle',
       });
-      this.drawProgressBar(eraX + 12, eraY + 84, eraWidth - 24, 10, view.progress.percentage);
+      ModalPlate.drawModalProgressBar(this, eraX + 12, eraY + 84, eraWidth - 24, 10, view.progress.percentage);
       this.drawText(this.truncateText(view.text.eraProgressText, eraWidth - 32, { size: 11 }), eraX + eraWidth / 2, eraY + 102, {
         size: 11,
-        color: '#a0a0a0',
+        color: palette.textSecondary,
         align: 'center',
       });
 
@@ -174,35 +177,35 @@
         const row = Math.floor(index / 2);
         const itemX = eraX + 12 + col * (conditionWidth + 8);
         const itemY = conditionTop + row * (conditionRowHeight + conditionRowGap);
-        this.drawPanel(itemX, itemY, conditionWidth, conditionRowHeight, {
-          fill: 'rgba(63, 47, 32, 0.62)',
-          stroke: condition.met ? 'rgba(78, 204, 163, 0.3)' : 'rgba(233, 69, 96, 0.15)',
-          radius: 7,
+        // 达标勾 = 青玉描边+青玉勾;未达标 = 灰点+默认发丝边 (knife 8 spec).
+        ModalPlate.drawModalCard(this, itemX, itemY, conditionWidth, conditionRowHeight, {
+          tone: 'muted',
+          radius: UiThemeTokens?.radius?.panel || 6,
+          stroke: condition.met ? UiThemeTokens?.modal?.cardMetStroke : undefined,
         });
         this.drawText(condition.met ? '✓' : '•', itemX + 9, itemY + 11, {
           size: 12,
           bold: true,
-          color: condition.met ? '#4ecca3' : '#d6b16e',
+          color: condition.met ? palette.accentJade : palette.textDisabled,
           baseline: 'middle',
         });
         this.drawText(this.truncateText(condition.name, conditionWidth - 52, { size: 11, bold: true }), itemX + 24, itemY + 6, {
           size: 11,
           bold: true,
-          color: '#f6e8c8',
+          color: palette.textPrimary,
         });
         this.drawText(condition.progressText, itemX + conditionWidth - 8, itemY + 6, {
           size: 10,
-          color: condition.met ? '#4ecca3' : '#a0a0a0',
+          color: condition.met ? palette.accentJade : palette.textSecondary,
           align: 'right',
         });
       });
 
       const advanceLabel = this.truncateText(view.text.advanceLabel, eraWidth - 52, { size: 13, bold: true });
-      this.drawButton(eraX + 12, buttonY, eraWidth - 24, 32, advanceLabel, {
+      ModalPlate.drawModalButton(this, eraX + 12, buttonY, eraWidth - 24, 32, advanceLabel, {
+        variant: 'primary',
         disabled: view.advanceButton.disabled,
-        bold: true,
-        radius: 8,
-        active: !view.advanceButton.disabled,
+        size: 13,
       });
       this.addHitTarget(
         { x: eraX + 12, y: buttonY, width: eraWidth - 24, height: 32 },
@@ -210,17 +213,13 @@
       );
 
       if (featureHeight > 0) {
-        this.drawPanel(x + 12, featureY, width - 24, featureHeight, {
-          fill: 'rgba(37, 29, 21, 0.82)',
-          stroke: 'rgba(255, 226, 177, 0.12)',
-          radius: 10,
-        });
+        ModalPlate.drawModalCard(this, x + 12, featureY, width - 24, featureHeight);
         this.renderSectionHeader(this.t('civilization.section.features', {}), x + 26, featureY + 14, '✓');
         const featureLineLimit = Math.max(1, Math.floor((featureHeight - 44) / 18));
         const featureLines = this.wrapTextLimit(view.text.featureDescription, width - 58, featureLineLimit, { size: 12 });
         this.drawTextLines(featureLines, x + 26, featureY + 44, {
           size: 12,
-          color: '#f6e8c8',
+          color: palette.textPrimary,
           lineHeight: 18,
         });
       }

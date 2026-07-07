@@ -69,6 +69,7 @@ require('../js/platform/WorldMapRuntimeCoordinator');
   require('../js/platform/renderers/CanvasSurfaceState');
   require('../js/platform/renderers/CanvasSurfaceFrameClock');
   require('../js/platform/renderers/CanvasSurfaceRenderer');
+require('../js/platform/renderers/ModalPlateRenderer');
 require('../js/platform/renderers/CanvasAssetRenderer');
 require('../js/platform/renderers/CanvasPreloadAssetManifest');
 require('../js/platform/renderers/WorldTileWaterCanvasRenderer');

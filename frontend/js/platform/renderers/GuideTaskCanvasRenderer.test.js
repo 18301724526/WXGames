@@ -157,7 +157,6 @@ test('GuideTaskCanvasRenderer prefers explicit drawing surface over proxy fallba
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), [
     'addHitTarget',
     'createGradient',
-    'drawButton',
     'drawPanel',
     'drawText',
     'drawTextLines',
@@ -183,7 +182,6 @@ test('GuideTaskCanvasRenderer falls back to host drawing surface when none is in
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), [
     'addHitTarget',
     'createGradient',
-    'drawButton',
     'drawPanel',
     'drawText',
     'drawTextLines',

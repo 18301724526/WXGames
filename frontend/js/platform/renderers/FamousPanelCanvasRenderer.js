@@ -1,19 +1,27 @@
 (function (global) {
   const FamousSkillCanvasRenderer = global.FamousSkillCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousSkillCanvasRenderer') : null);
+  // UI-REDO knife 8: shared forged-iron painter + theme tokens. Card plates
+  // switch to the iron face while the QUALITY frame colors keep their
+  // existing logic (style.stroke passes through as the card edge).
+  const UiThemeTokens = global.UiThemeTokens || (typeof require !== 'undefined' ? require('../../config/UiThemeTokens') : null);
+  const ModalPlate = global.ModalPlateRenderer || (typeof require !== 'undefined' ? require('./ModalPlateRenderer') : null);
+
+  function paletteTokens() {
+    return UiThemeTokens?.palette || {};
+  }
 
   function drawFamousAvatarCard(renderer, card = {}, x, y, width, height, options = {}) {
     const style = renderer.getFamousQualityStyle(card.qualityFrame);
+    const palette = paletteTokens();
     const selected = Boolean(options.selected);
     renderer.drawPanel(x - 2, y - 2, width + 4, height + 4, {
       fill: selected ? style.glow : 'rgba(0, 0, 0, 0.18)',
       stroke: selected ? style.stroke : 'rgba(255, 255, 255, 0.06)',
       radius: 10,
     });
-    renderer.drawPanel(x, y, width, height, {
-      fill: style.fill,
+    ModalPlate.drawModalCard(renderer, x, y, width, height, {
       stroke: style.stroke,
       radius: 9,
-      inset: style.inset,
     });
     const portraitSize = Math.min(width - 14, height - 42);
     const portraitX = x + (width - portraitSize) / 2;
@@ -54,7 +62,7 @@
     if (freePoints > 0) {
       const dotSize = 22;
       renderer.drawPanel(x + width - dotSize - 4, y + 4, dotSize, dotSize, {
-        fill: '#e94560',
+        fill: paletteTokens().accentAlertRed,
         stroke: 'rgba(255, 255, 255, 0.24)',
         radius: 11,
       });
@@ -69,12 +77,12 @@
     renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}), width - 10, { size: 11, bold: true }), x + width / 2, y + height - 28, {
       size: 11,
       bold: true,
-      color: '#fff1cf',
+      color: palette.textPrimary,
       align: 'center',
     });
     renderer.drawText(`Lv.${card.level || 1}`, x + width / 2, y + height - 12, {
       size: 9,
-      color: freePoints > 0 ? '#f4c86d' : 'rgba(234, 234, 234, 0.62)',
+      color: freePoints > 0 ? palette.champagneGold : palette.textLabel,
       align: 'center',
     });
     renderer.addHitTarget(
@@ -111,12 +119,11 @@
 
   function renderFamousPersonDetail(renderer, card = {}, x, y, width, height) {
     const style = renderer.getFamousQualityStyle(card.qualityFrame);
+    const palette = paletteTokens();
     const headerH = 144;
-    renderer.drawPanel(x, y, width, height, {
-      fill: 'rgba(23, 21, 18, 0.74)',
+    ModalPlate.drawModalCard(renderer, x, y, width, height, {
       stroke: style.stroke,
       radius: 10,
-      inset: style.inset,
     });
     const portraitW = 96;
     const portraitH = 116;
@@ -142,11 +149,12 @@
     renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}), textWidth, { size: 18, bold: true }), textX, y + 15, {
       size: 18,
       bold: true,
-      color: '#fff1cf',
+      color: palette.textPrimary,
+      fontFamily: UiThemeTokens?.fontFamily?.display,
     });
     renderer.drawText(renderer.truncateText(card.title || renderer.t?.('famous.genericTitle', {}), textWidth, { size: 11 }), textX, y + 41, {
       size: 11,
-      color: '#cbbd96',
+      color: palette.textLabel,
     });
     renderer.drawText(renderer.t?.(
       'famous.detailMeta',
@@ -160,23 +168,23 @@
     });
     renderer.drawText(card.growthText || renderer.t?.('famous.growth.level', { level: card.level || 1 }), textX, y + 82, {
       size: 11,
-      color: '#f4c86d',
+      color: palette.champagneGold,
     });
     renderer.drawText(card.pointText || renderer.t?.('famous.pointText', { points: 0 }), textX, y + 101, {
       size: 11,
       bold: true,
-      color: Number(card.freeAttributePoints) > 0 ? '#f4c86d' : 'rgba(234, 234, 234, 0.62)',
+      color: Number(card.freeAttributePoints) > 0 ? palette.champagneGold : palette.textLabel,
     });
     if (card.attributePointHint) {
       renderer.drawText(renderer.truncateText(card.attributePointHint, textWidth, { size: 10 }), textX, y + 118, {
         size: 10,
-        color: Number(card.freeAttributePoints) > 0 ? '#ffd98a' : '#aeb0b8',
+        color: Number(card.freeAttributePoints) > 0 ? palette.champagneGoldBright : palette.textSecondary,
       });
     }
     if (card.autoGrowthText) {
       renderer.drawText(renderer.truncateText(card.autoGrowthText, textWidth, { size: 10 }), textX, y + 136, {
         size: 10,
-        color: '#74d3a0',
+        color: palette.accentJade,
       });
     }
 
@@ -187,12 +195,12 @@
     const attrX = x + 14;
     const attrY = y + headerH + 14;
     const attrWidth = Math.max(150, radarX - attrX - 12);
-    renderer.drawText(renderer.t?.('famous.attribute.title', {}), attrX, attrY - 2, { size: 13, bold: true, color: '#ffe6b5' });
+    renderer.drawText(renderer.t?.('famous.attribute.title', {}), attrX, attrY - 2, { size: 13, bold: true, color: palette.champagneGoldBright });
     const controlsHeight = renderer.drawFamousAttributePointControls(card, attrX, attrY + 18, attrWidth);
     if (!controlsHeight) renderReadOnlyAttributes(renderer, card, attrX, attrY, attrWidth);
 
     const skillY = Math.min(y + height - 92, y + headerH + 150);
-    renderer.drawText(renderer.t?.('famous.skill.title', {}), x + 14, skillY, { size: 13, bold: true, color: '#ffe6b5' });
+    renderer.drawText(renderer.t?.('famous.skill.title', {}), x + 14, skillY, { size: 13, bold: true, color: palette.champagneGoldBright });
     renderer.renderSkillBadges(card, x + 14, skillY + 20, width - 28, {
       cardId: card.id || '',
       badgeHeight: 24,
@@ -225,13 +233,11 @@
 
   function renderFamousPersonItem(renderer, card = {}, x, y, width, options = {}) {
     const candidate = Boolean(options.candidate);
+    const palette = paletteTokens();
     const hasAttributeControls = !candidate && Number(card.freeAttributePoints) > 0 && Array.isArray(card.attributeActions) && card.attributeActions.length > 0;
     const height = candidate ? 136 : (hasAttributeControls ? 204 : (card.pointText ? 136 : 124));
-    renderer.drawPanel(x, y, width, height, {
-      fill: candidate ? 'rgba(52, 39, 27, 0.86)' : 'rgba(27, 23, 18, 0.74)',
-      stroke: candidate ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.12)',
-      radius: 8,
-      inset: candidate ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
+    ModalPlate.drawModalCard(renderer, x, y, width, height, {
+      tone: candidate ? 'accent' : 'default',
     });
     const portraitWidth = 74;
     const portraitHeight = 98;
@@ -271,14 +277,14 @@
     renderer.drawText(renderer.truncateText(card.name || renderer.t?.('famous.unknown', {}), textWidth, { size: 15, bold: true }), textX, y + 13, {
       size: 15,
       bold: true,
-      color: '#fff1cf',
+      color: palette.textPrimary,
     });
     renderer.drawText(renderer.truncateText(card.title || renderer.t?.('famous.genericTitle', {}), textWidth, { size: 10 }), textX, y + 35, {
       size: 10,
-      color: '#cbbd96',
+      color: palette.textLabel,
     });
     if (!candidate && card.growthText) {
-      const growthColor = card.pointText ? '#f4c86d' : 'rgba(234, 234, 234, 0.64)';
+      const growthColor = card.pointText ? palette.champagneGold : palette.textLabel;
       renderer.drawText(renderer.truncateText(card.growthText, textWidth, { size: 10 }), textX, y + 48, {
         size: 10,
         color: growthColor,
@@ -287,7 +293,7 @@
         renderer.drawText(renderer.truncateText(card.pointText, textWidth, { size: 10, bold: true }), textX, y + 61, {
           size: 10,
           bold: true,
-          color: '#f4c86d',
+          color: palette.champagneGold,
         });
       }
     }
@@ -301,8 +307,8 @@
     });
     if (candidate) {
       const acceptX = x + width - buttonW - 10;
-      renderer.drawButton(acceptX, y + 30, buttonW, 28, renderer.t?.('famous.action.accept', {}), { size: 12, bold: true, active: true, radius: 8 });
-      renderer.drawButton(acceptX, y + 70, buttonW, 28, renderer.t?.('famous.action.dismiss', {}), { size: 12, radius: 8 });
+      ModalPlate.drawModalButton(renderer, acceptX, y + 30, buttonW, 28, renderer.t?.('famous.action.accept', {}), { variant: 'primary', size: 12 });
+      ModalPlate.drawModalButton(renderer, acceptX, y + 70, buttonW, 28, renderer.t?.('famous.action.dismiss', {}), { variant: 'secondary', size: 12 });
       renderer.addHitTarget({ x: acceptX, y: y + 30, width: buttonW, height: 28 }, card.acceptAction);
       renderer.addHitTarget({ x: acceptX, y: y + 70, width: buttonW, height: 28 }, card.dismissAction);
     }
@@ -311,21 +317,22 @@
 
   function renderFamousPersonsPager(renderer, x, y, width, page, pages) {
     if (pages <= 1) return;
+    const palette = paletteTokens();
     const buttonW = 64;
     const buttonH = 24;
     const prevX = x;
     const nextX = x + width - buttonW;
     const canPrev = page > 0;
     const canNext = page < pages - 1;
-    renderer.drawButton(prevX, y, buttonW, buttonH, renderer.t?.('common.previousPage', {}), { disabled: !canPrev, size: 11, radius: 7 });
+    ModalPlate.drawModalButton(renderer, prevX, y, buttonW, buttonH, renderer.t?.('common.previousPage', {}), { variant: 'secondary', disabled: !canPrev, size: 11 });
     renderer.drawText(`${page + 1}/${pages}`, x + width / 2, y + buttonH / 2, {
       size: 11,
       bold: true,
-      color: '#ffe6b5',
+      color: palette.textPrimary,
       baseline: 'middle',
       align: 'center',
     });
-    renderer.drawButton(nextX, y, buttonW, buttonH, renderer.t?.('common.nextPage', {}), { disabled: !canNext, size: 11, radius: 7 });
+    ModalPlate.drawModalButton(renderer, nextX, y, buttonW, buttonH, renderer.t?.('common.nextPage', {}), { variant: 'secondary', disabled: !canNext, size: 11 });
     renderer.addHitTarget({ x: prevX, y, width: buttonW, height: buttonH }, { type: 'changeFamousPersonsPage', delta: -1, disabled: !canPrev });
     renderer.addHitTarget({ x: nextX, y, width: buttonW, height: buttonH }, { type: 'changeFamousPersonsPage', delta: 1, disabled: !canNext });
   }
@@ -343,45 +350,25 @@
     const selectedPerson = view.selectedPerson || null;
 
     renderer.addHitTarget({ x: 0, y: 0, width: renderer.width, height: renderer.height }, { type: 'closeFamousPersons' });
-    if (renderer.ctx) {
-      renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
-      renderer.ctx.fillRect(0, 0, renderer.width, renderer.height);
-    }
-    renderer.drawPanel(x, y, panelWidth, panelHeight, {
-      fill: renderer.createGradient(
-        x, y, x, y + panelHeight,
-        [
-          [0, 'rgba(49, 38, 26, 0.99)'],
-          [1, 'rgba(20, 18, 15, 0.99)'],
-        ],
-        'rgba(34, 27, 21, 0.99)',
-      ),
-      stroke: 'rgba(255, 226, 177, 0.24)',
-      radius: 12,
-      inset: 'rgba(255, 231, 184, 0.1)',
-    });
+    ModalPlate.drawModalMask(renderer);
+    ModalPlate.drawModalPlate(renderer, x, y, panelWidth, panelHeight);
     renderer.addHitTarget(
       { x, y, width: panelWidth, height: panelHeight },
       renderer.pinnedFamousSkillTooltip ? { type: 'clearFamousSkillTooltip' } : { type: 'blockCanvasModal' },
     );
 
+    const palette = paletteTokens();
+    ModalPlate.drawModalTitleBar(renderer, x, y, panelWidth, {
+      title: view.title || renderer.t?.('famous.title', {}),
+      subtitle: renderer.truncateText(view.subtitle || '', panelWidth - 32, { size: 11 }),
+      align: 'center',
+    });
     const backW = 58;
-    renderer.drawButton(x + 12, y + 12, backW, 30, renderer.t?.('common.back', {}), { size: 12, radius: 8 });
+    ModalPlate.drawModalButton(renderer, x + 12, y + 12, backW, 30, renderer.t?.('common.back', {}), { variant: 'secondary', size: 12 });
     renderer.addHitTarget(
       { x: x + 12, y: y + 12, width: backW, height: 30 },
       selectedPerson ? { type: 'closeFamousPersonDetail' } : { type: 'closeFamousPersons' },
     );
-    renderer.drawText(view.title || renderer.t?.('famous.title', {}), x + panelWidth / 2, y + 18, {
-      size: 18,
-      bold: true,
-      color: '#ffe6b5',
-      align: 'center',
-    });
-    renderer.drawText(renderer.truncateText(view.subtitle || '', panelWidth - 32, { size: 11 }), x + panelWidth / 2, y + 46, {
-      size: 11,
-      color: '#cbbd96',
-      align: 'center',
-    });
 
     const innerX = x + 14;
     const innerWidth = panelWidth - 28;
@@ -393,37 +380,31 @@
       return;
     }
 
-    renderer.drawPanel(innerX, cursorY, innerWidth, 58, {
-      fill: 'rgba(24, 22, 17, 0.62)',
-      stroke: 'rgba(240, 180, 91, 0.2)',
-      radius: 9,
-    });
+    ModalPlate.drawModalCard(renderer, innerX, cursorY, innerWidth, 58);
     renderer.drawText(renderer.t?.(
       'famous.summary',
       { peopleCount: view.peopleCount, candidateCount: view.candidateCount, maxCandidates: view.maxCandidates }), innerX + 12, cursorY + 10, {
       size: 12,
       bold: true,
-      color: '#ffd98a',
+      color: palette.champagneGoldBright,
     });
     renderer.drawText(renderer.truncateText(view.seek.message || '', innerWidth - 104, { size: 10 }), innerX + 12, cursorY + 33, {
       size: 10,
-      color: '#aeb0b8',
+      color: palette.textLabel,
     });
     const seekW = 82;
     const seekX = innerX + innerWidth - seekW - 10;
-    renderer.drawButton(seekX, cursorY + 14, seekW, 30, view.seek.text || renderer.t?.('famous.seek.available', {}), {
+    ModalPlate.drawModalButton(renderer, seekX, cursorY + 14, seekW, 30, view.seek.text || renderer.t?.('famous.seek.available', {}), {
+      variant: 'primary',
       disabled: !view.seek.available,
-      active: view.seek.available,
       size: 12,
-      bold: true,
-      radius: 8,
     });
     renderer.addHitTarget({ x: seekX, y: cursorY + 14, width: seekW, height: 30 }, view.seek.action);
     cursorY += 72;
 
     const candidates = Array.isArray(view.candidates) ? view.candidates : [];
     if (candidates.length) {
-      renderer.drawText(renderer.t?.('famous.section.candidates', {}), innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+      renderer.drawText(renderer.t?.('famous.section.candidates', {}), innerX, cursorY, { size: 13, bold: true, color: palette.champagneGoldBright });
       cursorY += 22;
       candidates.slice(0, 2).forEach((card) => {
         if (cursorY + 158 > y + panelHeight - 94) return;
@@ -432,17 +413,13 @@
     }
 
     const people = Array.isArray(view.people) ? view.people : [];
-    renderer.drawText(renderer.t?.('famous.section.joined', {}), innerX, cursorY, { size: 13, bold: true, color: '#ffe6b5' });
+    renderer.drawText(renderer.t?.('famous.section.joined', {}), innerX, cursorY, { size: 13, bold: true, color: palette.champagneGoldBright });
     cursorY += 22;
     if (!people.length) {
-      renderer.drawPanel(innerX, cursorY, innerWidth, 78, {
-        fill: 'rgba(27, 23, 18, 0.6)',
-        stroke: 'rgba(255, 226, 177, 0.1)',
-        radius: 9,
-      });
+      ModalPlate.drawModalCard(renderer, innerX, cursorY, innerWidth, 78, { tone: 'muted' });
       renderer.drawTextLines(renderer.wrapTextLimit(view.emptyText || '', innerWidth - 28, 2, { size: 12 }), innerX + 14, cursorY + 18, {
         size: 12,
-        color: '#aeb0b8',
+        color: palette.textLabel,
         lineHeight: 17,
       });
     } else {
