@@ -122,6 +122,12 @@ test('SpawnLifecycleService creates the spawn companion city in the shared world
     assert.equal(companion.owner, 'neutral');
     assert.equal(state.territories.some((territory) => territory.id === companion.id), true);
     assert.equal(state.worldMap.tiles.some((tile) => tile.siteId === companion.id), true);
+    assert.equal(
+      state.worldMap.visionHistory.sources.some((source) => (
+        source.kind === 'city' && source.q === companion.x && source.r === companion.y
+      )),
+      false,
+    );
   } finally {
     db.close();
   }

@@ -226,6 +226,10 @@ function recordVisionPath(gameState, from, to, now = new Date(), options = {}) {
   }, now, options);
 }
 
+function normalizeVisionHistory(history = {}) {
+  return VisionHistory.normalizeHistory(history);
+}
+
 function getRevealArea(q, r, radius = SCOUT_REVEAL_RADIUS) {
   const centerQ = toInteger(q, 0);
   const centerR = toInteger(r, 0);
@@ -368,6 +372,7 @@ module.exports = {
   createInitialWorldMap,
   normalizeWorldMap,
   ensureWorldMap,
+  normalizeVisionHistory,
   recordVisionPath,
   recordVisionSource,
   revealTile,

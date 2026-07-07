@@ -108,4 +108,5 @@ module.exports = {
   CITY_VISION_RADIUS,
   UNIT_VISION_RADIUS,
   computeCurrentVisionCoordSet,
+  getCityVisionCoords,
 };

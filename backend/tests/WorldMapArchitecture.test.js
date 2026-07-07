@@ -373,6 +373,7 @@ test('WorldMapService facade preserves public map API', () => {
     'isTileRevealed',
     'isWaterFamilyTerrain',
     'normalizeWorldCoord',
+    'normalizeVisionHistory',
     'normalizeWorldMap',
     'normalizeWorldSize',
     'recordVisionPath',

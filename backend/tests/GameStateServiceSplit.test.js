@@ -160,6 +160,35 @@ test('state normalization preserves an assigned real-world capital coordinate', 
   assert.equal(clientState.territoryState.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), false);
 });
 
+test('state normalization removes neutral-city pollution from fog vision history', () => {
+  const raw = GameStateNormalizer.createInitialGameState('vision-history-neutral-city-cleanup-test', {
+    now: new Date('2026-07-07T00:00:00.000Z'),
+  });
+  raw.territories.push(
+    { id: 'neutral-town', x: 3, y: 1, owner: 'neutral', status: 'discovered', type: 'town' },
+    { id: 'frontier', x: 4, y: 1, owner: 'player', status: 'occupied', type: 'town' },
+    { id: 'other-player-city', x: 5, y: 1, owner: 'player', ownerPlayerId: 'other-player', status: 'occupied', type: 'town' },
+  );
+  raw.worldMap.visionHistory = {
+    sources: [
+      { kind: 'city', q: 0, r: 0 },
+      { kind: 'city', q: 3, r: 1 },
+      { kind: 'city', q: 4, r: 1 },
+      { kind: 'city', q: 5, r: 1 },
+      { kind: 'unit', q: 2, r: 1 },
+    ],
+  };
+
+  const normalized = GameStateService.normalizeState(clone(raw));
+  const sources = normalized.worldMap.visionHistory.sources;
+
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 0 && source.r === 0), true);
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 4 && source.r === 1), true);
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 3 && source.r === 1), false);
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 5 && source.r === 1), false);
+  assert.equal(sources.some((source) => source.kind === 'unit' && source.q === 2 && source.r === 1), true);
+});
+
 test('initial game state keeps the legacy origin when no spawn assignment is provided', () => {
   const initial = GameStateNormalizer.createInitialGameState('legacy-origin-initial-state-test', {
     now: new Date('2026-06-16T00:00:00.000Z'),

@@ -951,11 +951,11 @@ test('S4 march vision reveals a pre-placed neutral city, flips it discovered + o
   assert.equal(Object.prototype.hasOwnProperty.call(discovered, 'garrison'), false);
   // Tile carries the siteId (so the S3 client DTO gate reveals it, and garrison/conquest resolve).
   assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_2_1'), true);
-  // Persistent 'city' vision source recorded (§6-R-fog).
-  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1);
+  // Discovery reveals the city tile but does not turn a neutral city into a vision source.
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 0);
 });
 
-test('S4 discovered pre-placed city stays fog-revealed after the army marches away / re-normalizes', () => {
+test('S4 discovered pre-placed city stays discovered without gaining city vision after re-normalize', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createDiscoveryExploreState();
   const planningContext = {
@@ -966,12 +966,12 @@ test('S4 discovered pre-placed city stays fog-revealed after the army marches aw
   const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 3, targetR: 0, formationSlot: 1 }, now);
   const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
   WorldExplorerService.advanceExploreMissions(gameState, finishAt, { planningContext });
-  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1);
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 0);
 
-  // The army has reached (3,0) and the mission is idle — the transient 'unit' vision decays, but the
-  // persistent 'city' source must survive a full re-normalize (the reload path).
+  // The army has reached (3,0) and the mission is idle. Re-normalization must preserve the
+  // discovered tile/site binding without inventing a city vision source for the neutral city.
   WorldMapService.ensureWorldMap(gameState, new Date(finishAt.getTime() + 60000));
-  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1, 'the city vision source persists across re-normalize');
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 0);
   assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_2_1'), true);
 });
 
@@ -991,7 +991,7 @@ test('S4 discovery is idempotent — advancing twice discovers the city exactly 
 
   assert.equal(gameState.territories.filter((territory) => territory.id === 'site_2_1').length, 1);
   assert.equal(gameState.worldMap.tiles.filter((tile) => tile.siteId === 'site_2_1').length, 1);
-  assert.equal(cityVisionSourceCount(gameState, 2, 1), 1);
+  assert.equal(cityVisionSourceCount(gameState, 2, 1), 0);
 });
 
 test('S4 discovery is consistent for a pre-placed city on the wrapped world seam (canonical ids)', () => {

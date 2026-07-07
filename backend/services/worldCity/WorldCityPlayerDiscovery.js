@@ -35,7 +35,6 @@ function materializeDiscoveredNeutralCity(gameState = {}, city = {}, now = new D
   const tile = WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, {
     visibility: 'scouted',
   });
-  WorldMapService.recordVisionSource(gameState, { kind: 'city', q: territory.x, r: territory.y }, now);
   return { city: territory, tile };
 }
 

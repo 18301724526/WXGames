@@ -7,6 +7,7 @@ const EventService = require('./EventService');
 const TerritoryService = require('./TerritoryService');
 const WorldMapService = require('./WorldMapService');
 const WorldExplorerService = require('./WorldExplorerService');
+const WorldExplorerVision = require('./worldExplorer/WorldExplorerVision');
 const WorldAiExplorerService = require('./WorldAiExplorerService');
 const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
@@ -14,6 +15,20 @@ const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateMigrationPipeline = require('./GameStateMigrationPipeline');
 const WorldCombatEncounterService = require('./worldCombat/WorldCombatEncounterService');
+
+function sanitizeWorldMapVisionHistory(gameState = {}) {
+  const worldMap = gameState.worldMap;
+  if (!worldMap || typeof worldMap !== 'object') return null;
+  const cityVisionKeys = new Set(WorldExplorerVision.getCityVisionCoords(gameState)
+    .map((coord) => WorldMapService.getTileCoordinateKey(coord)));
+  const history = WorldMapService.normalizeVisionHistory(worldMap.visionHistory || worldMap.visionHistorySources);
+  worldMap.visionHistory = WorldMapService.normalizeVisionHistory({
+    sources: history.sources.filter((source) => (
+      source.kind !== 'city' || cityVisionKeys.has(WorldMapService.getTileCoordinateKey(source))
+    )),
+  });
+  return worldMap.visionHistory;
+}
 
 function createInitialGameState(playerId, options = {}) {
   const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
@@ -131,6 +146,7 @@ function normalizeStateStructure(rawState) {
     ? state.taskProgress.claimed
     : {};
   WorldMapService.ensureWorldMap(state);
+  sanitizeWorldMapVisionHistory(state);
   WorldCombatEncounterService.normalizeCombatState(state);
   state.exploreMissions = Array.isArray(state.exploreMissions)
     ? state.exploreMissions.map((mission) => WorldExplorerService.normalizeMission(mission)).filter(Boolean)
