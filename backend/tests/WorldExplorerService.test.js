@@ -626,6 +626,44 @@ test('returned-home idle world march can start a new march from home', () => {
   assert.equal(next.mission.route.at(-1).tileId, 'tile_1_1');
 });
 
+test('returned-home idle world march with mission id redeploys saved formation troops', () => {
+  const now = new Date('2026-06-06T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  const started = WorldExplorerService.startWorldMarch(gameState, {
+    targetQ: 2,
+    targetR: 0,
+    formationSlot: 1,
+  }, now);
+  const reachedTargetAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, reachedTargetAt);
+  const returned = WorldExplorerService.returnWorldMarch(
+    gameState,
+    started.mission.id,
+    new Date(reachedTargetAt.getTime() + 1),
+  );
+  const returnedAt = new Date(new Date(returned.mission.completesAt).getTime() + 1);
+  WorldExplorerService.advanceExploreMissions(gameState, returnedAt);
+
+  assert.equal(gameState.exploreMissions[0].formationSnapshot.settledAt, returnedAt.toISOString());
+  assert.deepEqual(gameState.cities.capital.military.formations[0].soldierAssignments, {
+    'fp-tutorial-scout': 120,
+  });
+
+  const next = WorldExplorerService.startWorldMarch(gameState, {
+    missionId: started.mission.id,
+    targetQ: 1,
+    targetR: 1,
+    formationSlot: 1,
+  }, new Date(returnedAt.getTime() + 1));
+
+  assert.equal(next.success, true);
+  assert.equal(next.mission.formationSnapshot.soldiersCommitted, 120);
+  assert.equal(next.mission.formationSnapshot.soldiersRemaining, 120);
+  assert.equal(next.mission.formationSnapshot.members[0].soldiersRemaining, 120);
+  assert.equal(next.mission.formationSnapshot.settledAt, null);
+  assert.equal(Object.prototype.hasOwnProperty.call(gameState.exploreMissions[0].formation, 'soldierAssignments'), false);
+});
+
 test('returned world march respects materialized home terrain when natural terrain is blocked', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();

@@ -55,6 +55,12 @@ function getIdleFormationMission(gameState, formation = {}) {
       && normalizeFormationSlot(missionFormation.slot) === slot;
   }) || null;
 }
+
+function toMissionFormationIdentity(formation = {}) {
+  const memberIds = Array.isArray(formation.memberIds) ? formation.memberIds.map(String) : [];
+  return { cityId: formation.cityId || 'capital', slot: normalizeFormationSlot(formation.slot), memberIds };
+}
+
 function isTraceEnabled(options = {}) {
   return Boolean(options?.debugTrace || options?.worldMarchTrace);
 }
@@ -228,9 +234,10 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     plannedSiteCount: plannedSites.length,
     idleMission: summarizeMission(idleMission),
   });
-  const missionFormation = explicitMission
+  const missionFormationIdentity = toMissionFormationIdentity(explicitMission
     ? (idleMission?.formation || formationValidation.formation)
-    : formationValidation.formation;
+    : formationValidation.formation);
+  const snapshotFormation = formationValidation.formation;
   const mission = idleMission || normalizeMission({
     id: `explore_manual_${now.getTime()}`,
     mode: 'manual',
@@ -238,9 +245,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     origin: marchOrigin,
     homeOrigin: idleMission?.homeOrigin || origin,
     route,
-    formation: missionFormation,
-    formationSnapshot: FormationStrengthService.buildFormationSnapshot(missionFormation, {
-      cityId: missionFormation.cityId,
+    formation: missionFormationIdentity,
+    formationSnapshot: FormationStrengthService.buildFormationSnapshot(snapshotFormation, {
+      cityId: snapshotFormation.cityId,
       now,
     }),
     stepDurationMs: EXPLORE_STEP_DURATION_MS,
@@ -252,9 +259,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     !idleMission.formationSnapshot
     || FormationStrengthService.isSnapshotSettled(idleMission.formationSnapshot)
   )) {
-    idleMission.formation = missionFormation;
-    idleMission.formationSnapshot = FormationStrengthService.buildFormationSnapshot(missionFormation, {
-      cityId: missionFormation.cityId,
+    idleMission.formation = missionFormationIdentity;
+    idleMission.formationSnapshot = FormationStrengthService.buildFormationSnapshot(snapshotFormation, {
+      cityId: snapshotFormation.cityId,
       now,
     });
   }
