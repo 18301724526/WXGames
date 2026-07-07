@@ -1648,21 +1648,48 @@
             const panel = String(action.panel || '');
             if (!panel) return false;
             const nextPanel = getCommandPanelValue(this.host) === panel ? '' : panel;
+            const game = this.getGameHost();
+            const tutorialController = game?.tutorialController;
+            // UI-REDO ⑦a: consult the tutorial tab gate BEFORE mutating the modal owner.
+            // The old order opened modal:commandPanel eagerly; when the tutorial vetoed
+            // (onCommandPanelOpened -> canOpenTab false) nothing rolled back, so an
+            // unrendered "ghost" panel stayed open. For panel:'tech' that flipped
+            // deriveModeFacts.techTreeActive on, routed every drag/gesture to the
+            // invisible tech tree (resolveInputIntent -> 'tech-tree') and froze the
+            // world map. The gate below is the same sync policy the event registry
+            // consults (canOpenTab), so a veto is now a pure no-op + player feedback,
+            // and the allowed path keeps its exact previous order.
+            if (nextPanel && typeof tutorialController?.canOpenTab === 'function') {
+              const gateTab = tutorialController.normalizePanelTab?.(nextPanel) || nextPanel;
+              if (!tutorialController.canOpenTab(gateTab)) {
+                const message = t('guide.completeCurrentStep');
+                if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);
+                else if (typeof game?.showFloatingText === 'function') game.showFloatingText(message);
+                else this.log?.(message);
+                return false;
+              }
+            }
             CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'activeCommandPanel', nextPanel);
             this.closePanels(nextPanel ? ['activeCommandPanel'] : []);
-            const game = this.getGameHost();
             const openedPanel = nextPanel;
-            const tutorialResult = openedPanel && typeof game?.tutorialController?.onCommandPanelOpened === 'function'
-              ? game.tutorialController.onCommandPanelOpened(openedPanel)
+            const tutorialResult = openedPanel && typeof tutorialController?.onCommandPanelOpened === 'function'
+              ? tutorialController.onCommandPanelOpened(openedPanel)
               : true;
             return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
-              if (allowed !== false) {
+              if (allowed === false) {
+                // Late veto (step changed between gate and async registry): never leave
+                // the modal owner holding a panel the mode system refuses to render.
+                if (getCommandPanelValue(this.host) === openedPanel) {
+                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
+                }
                 this.afterHandled(action);
-                game?.tutorialController?.refreshCurrentHighlight?.();
-                const scheduler = this.host?.runtime || game?.runtime || global;
-                scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+                return false;
               }
-              return allowed !== false;
+              this.afterHandled(action);
+              game?.tutorialController?.refreshCurrentHighlight?.();
+              const scheduler = this.host?.runtime || game?.runtime || global;
+              scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+              return true;
             }));
           }
 

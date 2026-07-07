@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const TechTreeInteractionModel = require('./TechTreeInteractionModel');
 const CanvasActionController = require('../CanvasActionController');
 const GameAPI = require('../../api/GameAPI');
+const ModalStore = require('../../state/ModalStore');
 const { makeModalOwnerHost } = require('../../../test-support/CanvasOwnerTestHarness');
 
 const makeModalHost = makeModalOwnerHost;
@@ -373,6 +374,143 @@ test('CanvasActionController notifies tutorial when opening civilization command
   assert.equal(host.getCommandPanelValue(), 'civilization');
   assert.deepEqual(calls, [
     ['onCommandPanelOpened', 'civilization'],
+    ['render'],
+  ]);
+});
+
+// UI-REDO ⑦a characterization: a tutorial-locked dock tap must be a pure no-op on the
+// modal owner. The regression this locks: an eagerly-opened ghost 'tech' panel flipped
+// deriveModeFacts.techTreeActive on, routed every drag to the invisible tech tree
+// (resolveInputIntent -> 'tech-tree') and froze the world map.
+test('CanvasActionController vetoes tutorial-locked command panel without mutating the modal owner', () => {
+  ModalStore.closeAll();
+  const calls = [];
+  const game = makeModalHost({
+    tutorialController: {
+      canOpenTab(tabId) {
+        calls.push(['canOpenTab', tabId]);
+        return false;
+      },
+      normalizePanelTab(panelId) {
+        return panelId === 'capital' ? 'buildings' : panelId;
+      },
+      async onCommandPanelOpened(panelId) {
+        calls.push(['onCommandPanelOpened', panelId]);
+        return false;
+      },
+    },
+  });
+  const host = makeModalHost({
+    getCanvasGameHost() {
+      return game;
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+      return true;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  });
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  assert.equal(controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), false);
+
+  // No ghost panel on the modal owner...
+  assert.equal(host.getCommandPanelValue(), '');
+  // ...so world-map input routing stays alive (the freeze proxy).
+  const facts = host.deriveModeFacts();
+  assert.equal(facts.techTreeActive, false);
+  assert.equal(facts.blockingOverlayActive, false);
+  // The veto is decided by the sync gate with player feedback; the async registry
+  // never runs and no render is forced (nothing changed).
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0], ['canOpenTab', 'tech']);
+  assert.equal(calls[1][0], 'showFloatingText');
+  assert.ok(String(calls[1][1] || '').length > 0);
+});
+
+test('CanvasActionController rolls back the command panel when the tutorial registry vetoes late', async () => {
+  ModalStore.closeAll();
+  const calls = [];
+  const game = makeModalHost({
+    tutorialController: {
+      // Sync gate passes (step raced forward), but the async registry still vetoes:
+      // the eager open must be rolled back so the owner never keeps a panel the mode
+      // system refuses to render.
+      canOpenTab() {
+        return true;
+      },
+      normalizePanelTab(panelId) {
+        return panelId;
+      },
+      async onCommandPanelOpened(panelId) {
+        calls.push(['onCommandPanelOpened', panelId]);
+        return false;
+      },
+    },
+  });
+  const host = makeModalHost({
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  });
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), false);
+
+  assert.equal(host.getCommandPanelValue(), '');
+  assert.equal(host.deriveModeFacts().techTreeActive, false);
+  assert.deepEqual(calls, [
+    ['onCommandPanelOpened', 'tech'],
+    ['render'],
+  ]);
+});
+
+test('CanvasActionController opens the tech command panel when the tutorial gate allows it', async () => {
+  ModalStore.closeAll();
+  const calls = [];
+  const game = makeModalHost({
+    tutorialController: {
+      canOpenTab(tabId) {
+        calls.push(['canOpenTab', tabId]);
+        return true;
+      },
+      normalizePanelTab(panelId) {
+        return panelId;
+      },
+      async onCommandPanelOpened(panelId) {
+        calls.push(['onCommandPanelOpened', panelId]);
+        return true;
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+  });
+  const host = makeModalHost({
+    getCanvasGameHost() {
+      return game;
+    },
+    render() {
+      calls.push(['render']);
+      return true;
+    },
+  });
+  const controller = new CanvasActionController({ host, awaitAsync: true });
+
+  assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), true);
+
+  assert.equal(host.getCommandPanelValue(), 'tech');
+  assert.equal(host.deriveModeFacts().techTreeActive, true);
+  assert.deepEqual(calls.slice(0, 3), [
+    ['canOpenTab', 'tech'],
+    ['onCommandPanelOpened', 'tech'],
     ['render'],
   ]);
 });
