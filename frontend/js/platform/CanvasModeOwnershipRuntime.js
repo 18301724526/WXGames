@@ -383,7 +383,7 @@
   // reads of snapshot.panel.showX keep working unchanged. buildRendererSnapshot
   // passes the same modalWorld it builds so the panel facts and the modal block
   // are guaranteed to agree.
-  function buildRendererPanelFacts(modalWorld, host = null) {
+  function buildRendererPanelFacts(modalWorld, _host = null) {
     const world = modalWorld || buildRendererModalWorld();
     const entries = (world && world.entries) || {};
     const isOpen = (subtype) => Boolean(entries[subtype]?.open);
