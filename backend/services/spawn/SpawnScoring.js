@@ -18,9 +18,17 @@ function normalizeCoord(coord = {}) {
   };
 }
 
+function normalizeOccupiedCoordinate(coord = {}) {
+  return {
+    ...normalizeCoord(coord),
+    blocksTile: coord.blocksTile !== false,
+    blocksDistance: coord.blocksDistance !== false,
+  };
+}
+
 function normalizeOccupiedCoordinates(coordinates = []) {
   return (Array.isArray(coordinates) ? coordinates : [])
-    .map(normalizeCoord)
+    .map(normalizeOccupiedCoordinate)
     .filter((coord) => Number.isFinite(coord.q) && Number.isFinite(coord.r));
 }
 
@@ -39,14 +47,17 @@ function chooseTerrain(seed, q, r) {
 }
 
 function getNearestDistance(candidate = {}, occupiedCoordinates = []) {
-  if (!occupiedCoordinates.length) return Infinity;
-  return occupiedCoordinates.reduce((best, occupied) => (
+  const distanceBlockers = occupiedCoordinates.filter((coord) => coord.blocksDistance !== false);
+  if (!distanceBlockers.length) return Infinity;
+  return distanceBlockers.reduce((best, occupied) => (
     Math.min(best, getDistance(candidate, occupied))
   ), Infinity);
 }
 
 function countCrowdedCoordinates(candidate = {}, occupiedCoordinates = [], radius = DEFAULT_MIN_CAPITAL_DISTANCE) {
-  return occupiedCoordinates.filter((occupied) => getDistance(candidate, occupied) < radius).length;
+  return occupiedCoordinates
+    .filter((occupied) => occupied.blocksDistance !== false)
+    .filter((occupied) => getDistance(candidate, occupied) < radius).length;
 }
 
 function hasTutorialTarget(candidate = {}, options = {}) {
@@ -56,6 +67,7 @@ function hasTutorialTarget(candidate = {}, options = {}) {
 function findTutorialTarget(candidate = {}, options = {}) {
   const seed = options.seed || WorldMapService.DEFAULT_WORLD_SEED;
   const occupied = new Set(normalizeOccupiedCoordinates(options.occupiedCoordinates)
+    .filter((coord) => coord.blocksTile !== false)
     .map((coord) => getCoordinateKey(coord.q, coord.r)));
   const minDistance = Math.max(1, toInteger(options.tutorialTargetMinDistance, DEFAULT_TUTORIAL_TARGET_MIN_DISTANCE));
   const maxDistance = Math.max(minDistance, toInteger(options.tutorialTargetMaxDistance, DEFAULT_TUTORIAL_TARGET_MAX_DISTANCE));
@@ -97,6 +109,9 @@ function scoreSpawnCandidate(candidate = {}, options = {}) {
   const terrain = chooseTerrain(seed, coord.q, coord.r);
   const nearestCapitalDistance = getNearestDistance(coord, occupiedCoordinates);
   const crowding = countCrowdedCoordinates(coord, occupiedCoordinates, minCapitalDistance);
+  const occupiedTiles = new Set(occupiedCoordinates
+    .filter((occupied) => occupied.blocksTile !== false)
+    .map((occupied) => getCoordinateKey(occupied.q, occupied.r)));
   const tutorialTarget = findTutorialTarget(coord, {
     ...options,
     occupiedCoordinates,
@@ -105,6 +120,7 @@ function scoreSpawnCandidate(candidate = {}, options = {}) {
   const reasons = [];
 
   if (isBlockedTerrain(terrain)) reasons.push('BLOCKED_TERRAIN');
+  if (occupiedTiles.has(getCoordinateKey(coord.q, coord.r))) reasons.push('OCCUPIED_TILE');
   if (nearestCapitalDistance < minCapitalDistance) reasons.push('TOO_CLOSE_TO_CAPITAL');
   if (!tutorialTarget) reasons.push('NO_TUTORIAL_TARGET');
 
@@ -137,6 +153,7 @@ module.exports = {
   getNearestDistance,
   hasTutorialTarget,
   isBlockedTerrain,
+  normalizeOccupiedCoordinate,
   normalizeCoord,
   normalizeOccupiedCoordinates,
   scoreSpawnCandidate,

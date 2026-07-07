@@ -53,6 +53,35 @@ test('spawn scorer default capital spacing requires more than twenty tiles', (t)
   assert.equal(accepted.valid, true);
 });
 
+test('spawn scorer treats world cities as exact tile blockers without capital spacing', (t) => {
+  const originalChooseTerrain = WorldMapService.chooseTerrain;
+  t.after(() => {
+    WorldMapService.chooseTerrain = originalChooseTerrain;
+  });
+  WorldMapService.chooseTerrain = () => 'plains';
+
+  const exact = SpawnScoring.scoreSpawnCandidate({ q: 4, r: 0 }, {
+    seed: 'spawn-world-city-block-test',
+    occupiedCoordinates: [{ q: 4, r: 0, source: 'world-city', blocksDistance: false }],
+    minCapitalDistance: 10,
+  });
+  assert.equal(exact.valid, false);
+  assert.ok(exact.reasons.includes('OCCUPIED_TILE'));
+  assert.equal(exact.reasons.includes('TOO_CLOSE_TO_CAPITAL'), false);
+
+  const nearby = SpawnScoring.scoreSpawnCandidate({ q: 4, r: 0 }, {
+    seed: 'spawn-world-city-nearby-test',
+    occupiedCoordinates: [{ q: 5, r: 0, source: 'world-city', blocksDistance: false }],
+    minCapitalDistance: 10,
+  });
+  assert.equal(nearby.valid, true);
+  assert.equal(nearby.nearestCapitalDistance, Infinity);
+  assert.notDeepEqual(
+    { q: nearby.tutorialTarget.q, r: nearby.tutorialTarget.r },
+    { q: 5, r: 0 },
+  );
+});
+
 test('spawn allocator selects a valid uncrowded candidate with tutorial target', (t) => {
   const originalChooseTerrain = WorldMapService.chooseTerrain;
   t.after(() => {

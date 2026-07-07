@@ -193,6 +193,8 @@ class GameStateRepository {
           r: Math.floor(r),
           territoryId: city.id,
           source: 'world-city',
+          blocksTile: true,
+          blocksDistance: false,
         };
       })
       .filter(Boolean);
