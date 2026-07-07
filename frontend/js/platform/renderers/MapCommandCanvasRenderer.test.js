@@ -191,10 +191,75 @@ test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'military'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openFamousPersons'), true);
   assert.equal(host.hitTargets.filter((target) => target.action.type === 'openTaskCenter' && target.action.source === 'taskIcon').length, 1);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'openGuidebook' && target.action.source === 'mapCommandMore'), true);
+  // UI-REDO: the 'more' guidebook dock item was removed with the redesign
+  // (openGuidebook stays a valid action handler; it just has no dock entry).
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'openGuidebook'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSettings'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('ui-hud/hud-icon-tech')), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('ui-hud/hud-dock-icon-tech')), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('icon-knowledge')), false);
+});
+
+test('MapCommandCanvasRenderer dock renders two round badges and four square cells', () => {
+  const host = createHost();
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  renderer.renderMapCommandDock({}, {});
+
+  assert.equal(host.hitTargets.length, 6);
+  const capital = host.hitTargets.find((target) => target.action.type === 'openWorldSite');
+  const tasks = host.hitTargets.find((target) => target.action.type === 'openTaskCenter');
+  const cells = host.hitTargets.filter((target) => target !== capital && target !== tasks);
+  // Edge badges: 76px round plates (rect hit approximation), overshooting the 64px bar top.
+  [capital, tasks].forEach((badge) => {
+    assert.equal(badge.rect.width, 76);
+    assert.equal(badge.rect.height, 76);
+    assert.equal(badge.rect.y < 844 - 64, true);
+  });
+  // Center cells: uniform 46px squares inside the bar.
+  assert.equal(cells.length, 4);
+  cells.forEach((cell) => {
+    assert.equal(cell.rect.width, 46);
+    assert.equal(cell.rect.height, 46);
+    assert.equal(cell.rect.y >= 844 - 64, true);
+  });
+  // Plates + per-item gold icons are requested through the new dock asset set.
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-badge-round')), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-button-cell')), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-icon-capital')), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('hud-dock-icon-tasks')), true);
+});
+
+test('MapCommandCanvasRenderer dock falls back to token panels while plate assets are missing', () => {
+  const panels = [];
+  const host = createHost({
+    drawAsset() { return false; },
+    drawPanel(x, y, width, height, options = {}) { panels.push({ x, y, width, height, options }); },
+  });
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  renderer.renderMapCommandDock({}, {});
+
+  // Badge fallback: full-circle radius token panel; cell fallback: square panel.
+  assert.equal(panels.some((panel) => panel.width === 76 && panel.options.radius === 38), true);
+  assert.equal(panels.some((panel) => panel.width === 46 && panel.height === 46), true);
+});
+
+test('MapCommandCanvasRenderer dock lights active cells from pre-decided owner facts only', () => {
+  const drawnText = [];
+  const host = createHost({
+    drawText(text, x, y, options = {}) { drawnText.push({ text, options }); },
+  });
+  const renderer = new MapCommandCanvasRenderer({ host });
+
+  renderer.renderMapCommandDock({}, { activeDockItemIds: ['tasks', 'settings'] });
+
+  const UiThemeTokens = require('../../config/UiThemeTokens');
+  const activeColor = UiThemeTokens.palette.champagneGoldBright;
+  const activeLabels = drawnText.filter((entry) => entry.options.color === activeColor).map((entry) => entry.text);
+  assert.equal(activeLabels.includes(LocaleText.t('world.map.command.tasks')), true);
+  assert.equal(activeLabels.includes(LocaleText.t('world.map.command.settings')), true);
+  assert.equal(activeLabels.includes(LocaleText.t('world.map.command.tech')), false);
+  assert.equal(activeLabels.includes(LocaleText.t('world.map.command.capital')), false);
 });
 
 test('MapCommandCanvasRenderer resolves command chrome through active locale', () => {
@@ -208,7 +273,7 @@ test('MapCommandCanvasRenderer resolves command chrome through active locale', (
   renderer.renderFloatingAccountButton({}, {});
   renderer.renderMapCommandPanel({ militaryView: 'world' }, { activeCommandPanel: 'tech' });
 
-  ['Capital', 'Tech', 'Civilization', 'Famous', 'More', 'Tasks', 'Settings', 'Subcity', 'Events', 'Account'].forEach((label) => {
+  ['Capital', 'Tech', 'Civilization', 'Famous', 'Tasks', 'Settings', 'Subcity', 'Events', 'Account'].forEach((label) => {
     assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === label), true);
   });
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Tech'), true);

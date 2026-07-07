@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class MapCommandCanvasRenderer {
     constructor(options = {}) {
@@ -39,7 +50,7 @@
     getMapHomeFloatingButtonLayout(slot = 0) {
       const layout = this.getLayout();
       const size = 48;
-      const dockTop = this.height - 64;
+      const dockTop = this.height - (Number(UiThemeTokens?.dock?.height) || 64);
       const x = layout.contentRight - size - 8;
       const gap = 10;
       const y = Math.max(82, dockTop - (slot + 1) * size - 14 - slot * gap);
@@ -65,26 +76,30 @@
       return cityState.capitalCityId || state.capitalCityId || capital?.id || 'capital';
     }
 
+    // UI-REDO dock item set (layout-reference-v2): two round edge badges
+    // (capital / tasks) + four square center buttons. The former 'more'
+    // (openGuidebook) dock item was removed with the redesign -- no tutorial
+    // rule or highlight ever targeted it (TutorialGuideFlowRegistry has zero
+    // guidebook references); the openGuidebook action handler stays intact.
     getDockCommandItems(state = {}) {
       return {
         capital: {
           id: 'capital',
           label: this.t('world.map.command.capital'),
-          icon: 'assets/art/ui-hud/hud-icon-capital.png',
+          icon: 'assets/art/ui-hud/hud-dock-icon-capital.png',
           action: { type: 'openWorldSite', siteId: this.resolveCapitalSiteId(state) },
         },
         tasks: {
           id: 'tasks',
           label: this.t('world.map.command.tasks'),
-          icon: 'assets/art/ui-hud/hud-icon-tasks.png',
+          icon: 'assets/art/ui-hud/hud-dock-icon-tasks.png',
           action: { type: 'openTaskCenter', tab: 'main', source: 'taskIcon' },
         },
         center: [
-          { id: 'tech', label: this.t('world.map.command.tech'), icon: 'assets/art/ui-hud/hud-icon-tech.png', action: { type: 'openCommandPanel', panel: 'tech' } },
-          { id: 'civilization', label: this.t('world.map.command.civilization'), icon: 'assets/art/ui-hud/hud-icon-civilization.png', action: { type: 'openCommandPanel', panel: 'civilization' } },
-          { id: 'famousPersons', label: this.t('world.map.command.famousPersons'), icon: 'assets/art/ui-hud/hud-icon-famous.png', action: { type: 'openFamousPersons' } },
-          { id: 'more', label: this.t('world.map.command.more'), icon: 'assets/art/ui-hud/hud-icon-more.png', action: { type: 'openGuidebook', tab: 'planning', source: 'mapCommandMore' } },
-          { id: 'settings', label: this.t('world.map.command.settings'), icon: 'assets/art/ui-hud/hud-icon-settings.png', action: { type: 'openSettings' } },
+          { id: 'tech', label: this.t('world.map.command.tech'), icon: 'assets/art/ui-hud/hud-dock-icon-tech.png', action: { type: 'openCommandPanel', panel: 'tech' } },
+          { id: 'civilization', label: this.t('world.map.command.civilization'), icon: 'assets/art/ui-hud/hud-dock-icon-civilization.png', action: { type: 'openCommandPanel', panel: 'civilization' } },
+          { id: 'famousPersons', label: this.t('world.map.command.famousPersons'), icon: 'assets/art/ui-hud/hud-dock-icon-famous.png', action: { type: 'openFamousPersons' } },
+          { id: 'settings', label: this.t('world.map.command.settings'), icon: 'assets/art/ui-hud/hud-dock-icon-settings.png', action: { type: 'openSettings' } },
         ],
       };
     }
@@ -96,85 +111,158 @@
       return Array.isArray(options.activeDockItemIds) && options.activeDockItemIds.includes(item.id);
     }
 
-    renderDockItem(item = {}, rect = {}, options = {}) {
+    // UI-REDO: big round edge badge (capital / tasks). Bronze plate asset with
+    // a token-gradient circle fallback while the asset is not loaded yet.
+    // Active state is a code overlay (champagne ring highlight), not extra art.
+    renderDockBadge(item = {}, rect = {}, options = {}) {
+      const palette = UiThemeTokens?.palette || {};
+      const dock = UiThemeTokens?.dock || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
       const active = this.isDockItemActive(item, options);
-      const isMajor = Boolean(options.major);
       const { x, y, width, height } = rect;
-      const iconSize = isMajor ? 32 : 23;
-      const iconX = x + width / 2 - iconSize / 2;
-      const iconY = y + (isMajor ? 8 : 7) - (active ? 1 : 0);
-      if (isMajor) {
-        this.drawPanel(x + 3, y + 4, width - 6, height - 8, {
-          fill: active ? 'rgba(96, 55, 34, 0.9)' : 'rgba(21, 20, 17, 0.58)',
-          stroke: active ? 'rgba(247, 215, 116, 0.58)' : 'rgba(220, 203, 164, 0.18)',
-          radius: Math.min(16, Math.floor((height - 8) / 2)),
-          inset: 'rgba(255, 255, 255, 0.045)',
-        });
-      } else if (active && this.ctx) {
-        this.ctx.fillStyle = '#d6a85d';
-        this.ctx.fillRect(x + width * 0.22, y + 2, width * 0.56, 2);
-      }
+      const size = Math.min(width, height);
+      const centerX = x + width / 2;
       const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = item.disabled ? 0.38 : previousAlpha;
-      if (!item.icon || !this.drawAsset(item.icon, iconX, iconY, iconSize, iconSize)) {
-        this.drawText(String(item.label || '').slice(0, 1), x + width / 2, iconY + iconSize / 2, {
-          size: isMajor ? 16 : 12,
+      if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = item.disabled ? (dock.disabledAlpha || 0.38) : previousAlpha;
+      if (!this.drawAsset(dock.badgeAssetPath, x, y, size, size)) {
+        this.drawPanel(x, y, size, size, {
+          fill: this.createGradient(
+            x, y, x, y + size,
+            [
+              [0, palette.badgeBronzeFace],
+              [1, palette.dockCopperBottom],
+            ],
+            palette.badgeBronzeFace,
+          ),
+          stroke: palette.badgeRing,
+          radius: size / 2,
+          inset: UiThemeTokens?.hairline?.insetHighlight,
+        });
+      }
+      const iconSize = Number(dock.badgeIconSize) || 34;
+      const iconY = y + size * 0.16;
+      if (!item.icon || !this.drawAsset(item.icon, centerX - iconSize / 2, iconY, iconSize, iconSize)) {
+        this.drawText(String(item.label || '').slice(0, 1), centerX, iconY + iconSize / 2, {
+          size: typeScale.title || 16,
           bold: true,
-          color: active ? '#ffe6b5' : '#cbbd96',
+          color: palette.champagneGold,
           baseline: 'middle',
           align: 'center',
         });
       }
-      if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      this.drawText(this.truncateText(item.label, width - 8, { size: isMajor ? 12 : 9, bold: active }), x + width / 2, y + height - (isMajor ? 16 : 15), {
-        size: isMajor ? 12 : 9,
-        bold: active || isMajor,
-        color: active ? '#f0b45b' : '#d2c5a4',
+      this.drawText(this.truncateText(item.label, size - 16, { size: typeScale.value || 14, bold: true }), centerX, y + size * 0.66, {
+        size: typeScale.value || 14,
+        bold: true,
+        color: active ? palette.champagneGoldBright : palette.badgeTextGold,
         align: 'center',
       });
+      if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      if (active && this.ctx && typeof this.ctx.arc === 'function') {
+        this.ctx.save?.();
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, y + size / 2, size / 2 - 1, 0, Math.PI * 2);
+        this.ctx.strokeStyle = palette.champagneGoldBright;
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+        this.ctx.restore?.();
+      }
+      this.addHitTarget({ x, y, width: size, height: size }, item.action);
+    }
+
+    // UI-REDO: square center dock button. Dark iron cell asset with a token
+    // panel fallback; active = champagne border + brightened label overlay.
+    renderDockCell(item = {}, rect = {}, options = {}) {
+      const palette = UiThemeTokens?.palette || {};
+      const dock = UiThemeTokens?.dock || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
+      const active = this.isDockItemActive(item, options);
+      const { x, y, width, height } = rect;
+      const previousAlpha = typeof this.ctx?.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = item.disabled ? (dock.disabledAlpha || 0.38) : previousAlpha;
+      if (!this.drawAsset(dock.cellAssetPath, x, y, width, height)) {
+        this.drawPanel(x, y, width, height, {
+          fill: palette.dockTrayCell,
+          stroke: palette.dockIconGold,
+          radius: UiThemeTokens?.radius?.plate || 8,
+          inset: UiThemeTokens?.hairline?.insetHighlight,
+        });
+      }
+      const iconSize = Number(dock.cellIconSize) || 24;
+      const iconY = y + 4;
+      if (!item.icon || !this.drawAsset(item.icon, x + width / 2 - iconSize / 2, iconY, iconSize, iconSize)) {
+        this.drawText(String(item.label || '').slice(0, 1), x + width / 2, iconY + iconSize / 2, {
+          size: typeScale.body || 12,
+          bold: true,
+          color: palette.dockIconGold,
+          baseline: 'middle',
+          align: 'center',
+        });
+      }
+      this.drawText(this.truncateText(item.label, width - 6, { size: typeScale.caption || 9, bold: active }), x + width / 2, y + height - 12, {
+        size: typeScale.caption || 9,
+        bold: active,
+        color: active ? palette.champagneGoldBright : palette.dockLabelGold,
+        align: 'center',
+      });
+      if (typeof this.ctx?.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      if (active) {
+        this.drawPanel(x, y, width, height, {
+          fill: 'rgba(0, 0, 0, 0)',
+          stroke: palette.champagneGoldBright,
+          radius: UiThemeTokens?.radius?.plate || 8,
+        });
+      }
       this.addHitTarget({ x, y, width, height }, item.action);
     }
 
+    // UI-REDO bottom dock (layout-reference-v2): full-width copper bar, two
+    // round edge badges overshooting the bar's top edge, four square buttons
+    // centered between them. The 64px bar height stays a layout contract
+    // (UiThemeTokens.dock.height) -- panels/floating buttons key off it.
     renderMapCommandDock(state = {}, options = {}) {
       const layout = this.getLayout();
-      const x = 0;
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const dock = UiThemeTokens?.dock || {};
       const width = this.width;
-      const dockHeight = 64;
+      const dockHeight = Number(dock.height) || 64;
       const y = this.height - dockHeight;
       if (this.ctx) {
         this.ctx.fillStyle = this.createGradient(
-          x, y, x, y + dockHeight,
+          0, y, 0, y + dockHeight,
           [
-            [0, 'rgba(44, 35, 25, 0.88)'],
-            [1, 'rgba(18, 16, 13, 0.96)'],
+            [0, palette.dockCopperTop],
+            [1, palette.dockCopperBottom],
           ],
-          'rgba(30, 24, 18, 0.94)',
+          palette.dockCopperTop,
         );
-        this.ctx.fillRect(x, y, width, dockHeight);
-        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.16)';
-        this.ctx.fillRect(0, y, width, 1);
-        this.ctx.fillStyle = 'rgba(255, 231, 184, 0.04)';
-        this.ctx.fillRect(0, y + 1, width, 1);
+        this.ctx.fillRect(0, y, width, dockHeight);
+        this.ctx.fillStyle = hairline.dividerOnIron;
+        this.ctx.fillRect(0, y, width, hairline.widthPx || 1);
+        this.ctx.fillStyle = hairline.insetHighlight;
+        this.ctx.fillRect(0, y + 1, width, hairline.widthPx || 1);
       }
       const contentX = layout.contentX;
       const contentWidth = layout.contentWidth;
       const dockItems = this.getDockCommandItems(state);
-      const edgeWidth = Math.max(62, Math.min(76, Math.floor(contentWidth * 0.2)));
-      const gutter = 4;
-      const centerWidth = Math.max(0, contentWidth - edgeWidth * 2 - gutter * 2);
-      const centerItemWidth = centerWidth / dockItems.center.length;
-      const itemY = y;
-      const itemHeight = dockHeight;
-      this.renderDockItem(dockItems.capital, { x: contentX, y: itemY, width: edgeWidth, height: itemHeight }, { ...options, major: true });
+      const badgeSize = Number(dock.badgeDiameter) || 76;
+      const badgeY = this.height - badgeSize - (Number(dock.badgeBottomInset) || 2);
+      const cellSize = Number(dock.cellSize) || 46;
+      const cellGap = Number(dock.cellGap) || 8;
+      const cellY = y + (Number(dock.cellTopInset) || 3);
+      const centerCount = dockItems.center.length;
+      const centerSpan = centerCount * cellSize + Math.max(0, centerCount - 1) * cellGap;
+      const centerStart = contentX + Math.floor((contentWidth - centerSpan) / 2);
+      this.renderDockBadge(dockItems.capital, { x: contentX, y: badgeY, width: badgeSize, height: badgeSize }, options);
       dockItems.center.forEach((item, index) => {
-        this.renderDockItem(item, {
-          x: contentX + edgeWidth + gutter + index * centerItemWidth,
-          y: itemY,
-          width: centerItemWidth,
-          height: itemHeight,
+        this.renderDockCell(item, {
+          x: centerStart + index * (cellSize + cellGap),
+          y: cellY,
+          width: cellSize,
+          height: cellSize,
         }, options);
       });
-      this.renderDockItem(dockItems.tasks, { x: contentX + contentWidth - edgeWidth, y: itemY, width: edgeWidth, height: itemHeight }, { ...options, major: true });
+      this.renderDockBadge(dockItems.tasks, { x: contentX + contentWidth - badgeSize, y: badgeY, width: badgeSize, height: badgeSize }, options);
     }
 
     renderFloatingMapButton(slot = 0, config = {}) {
@@ -239,7 +327,7 @@
       const renderablePanels = new Set(['buildings', 'military', 'tech', 'civilization', 'events']);
       if (!renderablePanels.has(panel)) return;
       const layout = this.getLayout();
-      const dockTop = this.height - 64;
+      const dockTop = this.height - (Number(UiThemeTokens?.dock?.height) || 64);
       const top = Math.max(82, this.getTopBarBottom(state, { isMapHome: true }) + 8);
       const height = Math.max(220, dockTop - top - 12);
       const panelHeight = Math.min(height, 470);

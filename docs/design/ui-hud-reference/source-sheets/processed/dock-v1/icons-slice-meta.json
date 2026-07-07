@@ -1,0 +1,104 @@
+{
+  "shared_scale": 0.36571,
+  "cell_size": 128,
+  "fit_scale": 0.92,
+  "pad": 6,
+  "frames": {
+    "capital": {
+      "source_bbox": [
+        24,
+        92,
+        333,
+        361
+      ],
+      "output_size": [
+        118,
+        103
+      ],
+      "paste_position": [
+        5,
+        12
+      ]
+    },
+    "tasks": {
+      "source_bbox": [
+        379,
+        83,
+        676,
+        383
+      ],
+      "output_size": [
+        113,
+        114
+      ],
+      "paste_position": [
+        7,
+        7
+      ]
+    },
+    "tech": {
+      "source_bbox": [
+        30,
+        492,
+        325,
+        801
+      ],
+      "output_size": [
+        113,
+        118
+      ],
+      "paste_position": [
+        7,
+        5
+      ]
+    },
+    "civilization": {
+      "source_bbox": [
+        398,
+        507,
+        657,
+        807
+      ],
+      "output_size": [
+        99,
+        114
+      ],
+      "paste_position": [
+        14,
+        7
+      ]
+    },
+    "famous": {
+      "source_bbox": [
+        59,
+        878,
+        295,
+        1199
+      ],
+      "output_size": [
+        91,
+        122
+      ],
+      "paste_position": [
+        18,
+        3
+      ]
+    },
+    "settings": {
+      "source_bbox": [
+        382,
+        885,
+        673,
+        1176
+      ],
+      "output_size": [
+        111,
+        111
+      ],
+      "paste_position": [
+        8,
+        8
+      ]
+    }
+  }
+}

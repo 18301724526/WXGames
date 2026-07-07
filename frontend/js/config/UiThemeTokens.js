@@ -18,8 +18,9 @@
     plateBevelHighlight: '#59503F', // top bevel rows [20,38,830,41]
     plateFrameLine: '#3C3935', // bottom outer frame line [20,137,830,139]
 
-    // --- bottom dock warm copper (下暖层, 后续刀使用) ---
+    // --- bottom dock warm copper (下暖层) ---
     dockCopperTop: '#23211F', // dock bar upper band [250,1575,620,1595]
+    dockCopperBottom: '#141311', // dock bar lower band [250,1790,620,1820]
     dockTrayCell: '#1A1A17', // dock tray cell face (mean of [196,1690,250,1730] / [590,1610,650,1640])
     dockLabelGold: '#AEA491', // dock button label [205,1690,265,1720]
     dockIconGold: '#BCA37C', // dock icon strokes [205,1600,265,1665]
@@ -115,6 +116,24 @@
     labelIconGap: 4,
   });
 
+  // Bottom map-command dock composition (world-map home HUD).
+  // Bar height 64 is a cross-renderer layout contract (Advisor/CityCanvas/
+  // CanvasFrame/WorldMapLayer all position against `height - 64`); the round
+  // badges intentionally overshoot the bar's top edge by drawing taller.
+  const dock = Object.freeze({
+    height: 64,
+    badgeDiameter: 76,
+    badgeBottomInset: 2,
+    badgeIconSize: 34,
+    badgeAssetPath: 'assets/art/ui-hud/hud-dock-badge-round.png',
+    cellSize: 46,
+    cellGap: 8,
+    cellTopInset: 3,
+    cellIconSize: 24,
+    cellAssetPath: 'assets/art/ui-hud/hud-dock-button-cell.png',
+    disabledAlpha: 0.38,
+  });
+
   const UiThemeTokens = Object.freeze({
     version: UI_THEME_TOKENS_VERSION,
     source: 'docs/design/ui-hud-reference/user-references/layout-reference-v2.webp',
@@ -125,6 +144,7 @@
     spacing,
     radius,
     topBar,
+    dock,
   });
 
   global.UiThemeTokens = UiThemeTokens;
