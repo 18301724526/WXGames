@@ -401,6 +401,20 @@
       showFamousPersons: isOpen('modal:famousPersons'),
       activeCommandPanel: commandEntry?.open ? String(commandEntry.payload?.value || '') : '',
       techDetailOpen: isOpen('modal:techDetail'),
+      // Map-command dock active states are DECIDED here on the owner side (Batch-3
+      // ratchet: renderers may not derive mode decisions from modal facts). Each id
+      // lights its dock item; MapCommandCanvasRenderer only consumes the list.
+      activeDockItemIds: [
+        isOpen('modal:taskCenter') && 'tasks',
+        isOpen('modal:famousPersons') && 'famousPersons',
+        isOpen('modal:settings') && 'settings',
+        isOpen('modal:guidebook') && 'more',
+        // The floating account button lights while settings are open OR the
+        // reset-game confirm dialog (its own action's confirmation) is up.
+        (isOpen('modal:settings')
+          || (isOpen('modal:confirmDialog')
+            && entries['modal:confirmDialog']?.payload?.kind === 'resetGame')) && 'account',
+      ].filter(Boolean),
     };
   }
 

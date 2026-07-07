@@ -90,12 +90,10 @@
     }
 
     isDockItemActive(item = {}, options = {}) {
-      const activePanel = options.activeCommandPanel || '';
-      return activePanel === item.id
-        || (item.id === 'tasks' && options.showTaskCenter)
-        || (item.id === 'famousPersons' && options.showFamousPersons)
-        || (item.id === 'settings' && options.showSettings)
-        || (item.id === 'more' && options.showGuidebook);
+      // Active-state decisions live on the mode-owner side (buildRendererPanelFacts →
+      // panel.activeDockItemIds); this renderer only consumes the pre-decided list.
+      if ((options.activeCommandPanel || '') === item.id) return true;
+      return Array.isArray(options.activeDockItemIds) && options.activeDockItemIds.includes(item.id);
     }
 
     renderDockItem(item = {}, rect = {}, options = {}) {
@@ -230,7 +228,7 @@
       this.renderFloatingMapButton(0, {
         label: this.t('world.map.command.account'),
         icon: 'assets/art/ui-hud/hud-icon-account.png',
-        active: Boolean(options.showSettings || options.confirmDialog?.kind === 'resetGame'),
+        active: Array.isArray(options.activeDockItemIds) && options.activeDockItemIds.includes('account'),
         action: { type: 'requestResetGame', source: 'debugResetAccount' },
       });
     }

@@ -7,7 +7,6 @@ const WorldCampSpawner = require('../services/worldCombat/WorldCampSpawner');
 const WorldMapService = require('../services/WorldMapService');
 const GameStateRepository = require('../repositories/GameStateRepository');
 const { WorldEncounterRepository } = require('../repositories/WorldEncounterRepository');
-const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
 
 const CAMP_SEED = 'combat-camp-seed';
 

@@ -2844,6 +2844,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             armyFormationEditor: this.armyFormationEditor,
             worldMapRuntimeContext: this.getCanonicalWorldTileMapContext(),
             activeCommandPanel: panel.activeCommandPanel || '',
+            activeDockItemIds: panel.activeDockItemIds,
             logs: this.lastGame?.requestLogs || [],
             tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
             buildingOffset: uiOwner.buildingOffset,

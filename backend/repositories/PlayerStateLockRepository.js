@@ -22,7 +22,7 @@ function sleepSync(ms) {
     return;
   }
   const until = Date.now() + waitMs;
-  while (Date.now() < until) {}
+  while (Date.now() < until) { /* busy-wait fallback when Atomics.wait is unavailable */ }
 }
 
 class PlayerStateLockRepository {

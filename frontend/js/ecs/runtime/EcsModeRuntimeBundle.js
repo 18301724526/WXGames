@@ -2124,6 +2124,7 @@ var EcsModeRuntime = (() => {
         'showFamousPersons',
         'activeCommandPanel',
         'techDetailOpen',
+        'activeDockItemIds',
       ]);
       var PANEL_DEFAULTS = Object.freeze({
         showSettings: false,
@@ -2138,6 +2139,7 @@ var EcsModeRuntime = (() => {
         showFamousPersons: false,
         activeCommandPanel: '',
         techDetailOpen: false,
+        activeDockItemIds: Object.freeze([]),
       });
       var MODE_DEFAULTS = Object.freeze({
         baseModeId: 0,

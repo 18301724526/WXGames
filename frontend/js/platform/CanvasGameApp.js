@@ -1409,6 +1409,7 @@
                   selectedFamousPersonId: this.selectedFamousPersonId,
                   armyFormationEditor: this.armyFormationEditor,
                   activeCommandPanel: panel.activeCommandPanel || '',
+                  activeDockItemIds: panel.activeDockItemIds,
                   rewardReveal: snapshotRewardReveal,
                   buildingOffset: this.buildingOffset,
                   techTreePanX: this.techTreePanX,

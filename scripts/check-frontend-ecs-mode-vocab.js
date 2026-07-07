@@ -14,14 +14,14 @@ const path = require('node:path');
 //   - ModeKeys.CAPTURE_PRIORITY                 (a permutation of BASE+MODAL; its
 //                                                ORDER is semantic so we can only
 //                                                assert completeness, not order)
-//   - RendererSnapshotBoundary.PANEL_KEYS       (the 12 panel-tier view keys)
+//   - RendererSnapshotBoundary.PANEL_KEYS       (the 13 panel-tier view keys)
 // This guard re-derives the expectations from the canonical and fails on any drift.
 
 // Modals that are intentionally NON-blocking (commandPanel carries a payload and is
 // handled separately). If another conditional-blocking modal is added, update here.
 const NON_BLOCKING_MODAL_KEYS = Object.freeze(['modal:commandPanel']);
 
-// The 12 panel-tier view keys, in canonical order. Locked so a panel cannot be
+// The 13 panel-tier view keys, in canonical order. Locked so a panel cannot be
 // added/removed/renamed without a conscious edit here (which forces the matching
 // ModeKeys subtype + snapshot wiring to be reviewed together).
 const CANONICAL_PANEL_KEYS = Object.freeze([
@@ -37,6 +37,10 @@ const CANONICAL_PANEL_KEYS = Object.freeze([
   'showFamousPersons',
   'activeCommandPanel',
   'techDetailOpen',
+  // Derived (not a modal subtype): the map-command dock's pre-decided active item
+  // ids, computed owner-side in buildRendererPanelFacts so renderers never derive
+  // mode decisions from modal facts (Batch-3 ratchet).
+  'activeDockItemIds',
 ]);
 
 function arrayEqual(a, b) {

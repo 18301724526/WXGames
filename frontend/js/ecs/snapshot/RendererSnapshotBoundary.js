@@ -28,6 +28,7 @@ const PANEL_KEYS = Object.freeze([
   'showFamousPersons',
   'activeCommandPanel',
   'techDetailOpen',
+  'activeDockItemIds',
 ]);
 
 const PANEL_DEFAULTS = Object.freeze({
@@ -43,6 +44,7 @@ const PANEL_DEFAULTS = Object.freeze({
   showFamousPersons: false,
   activeCommandPanel: '',
   techDetailOpen: false,
+  activeDockItemIds: Object.freeze([]),
 });
 
 const MODE_DEFAULTS = Object.freeze({

@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 const Database = require('better-sqlite3');
 
 const WorldCombatSessionService = require('../services/worldCombat/WorldCombatSessionService');
-const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
 const WorldCampSpawner = require('../services/worldCombat/WorldCampSpawner');
 const WorldMapService = require('../services/WorldMapService');
 const { WorldEncounterRepository } = require('../repositories/WorldEncounterRepository');

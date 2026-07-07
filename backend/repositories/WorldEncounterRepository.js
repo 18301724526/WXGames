@@ -4,6 +4,7 @@ const WorldCombatEncounterService = require('../services/worldCombat/WorldCombat
 const { WORLD_ANCHOR } = require('./WorldCityRepository');
 const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
 const { toInteger } = require('../../shared/numberUtils');
+const { clone } = require('../../shared/objectUtils');
 
 const DEFAULT_WORLD_ID = 'default';
 
@@ -13,10 +14,6 @@ function parseJson(value, fallback = null) {
   } catch (_) {
     return fallback;
   }
-}
-
-function clone(value) {
-  return value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
 }
 
 function toTimestamp(value = null) {
