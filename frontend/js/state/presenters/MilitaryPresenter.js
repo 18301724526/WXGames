@@ -146,6 +146,10 @@
           slot,
           cityId,
           name: rawFormation.name || formationNames[slot - 1] || this.t('military.formation.default', { slot }),
+          // Raw player-entered name (may be empty): downstream naming decisions
+          // (e.g. the squad quick panel leader chain) need it BEFORE the default
+          // fallback collapses it into `name`.
+          customName: String(rawFormation.name || ''),
           memberIds: members.map((member) => member.id),
           members,
           leader: members[0] || null,
@@ -240,10 +244,19 @@
         .map((formation) => {
           const slot = Math.max(1, Math.floor(this.toNumber(formation.slot, 1)));
           const cityId = formation.cityId || 'capital';
+          // UI-REDO ⑦b row label priority: player rename > leader "{name}队"
+          // (leader = slot-1 member, already resolved through famousPersons by
+          // buildMilitaryViewState) > localized 部队N default.
+          const customName = String(formation.customName || '').trim();
+          const leaderName = String(formation.leader?.name || '').trim();
+          const name = customName
+            || (leaderName ? this.t('military.formation.leaderSquad', { name: leaderName }) : '')
+            || formation.name
+            || this.t('military.formation.default', { slot });
           return {
             slot,
             cityId,
-            name: formation.name || this.t('military.formation.default', { slot }),
+            name,
             memberCount: this.toInteger(formation.memberCount),
             marching: busySlots.has(`${cityId}:${slot}`),
             action: { type: 'openArmyFormation', cityId, slot, source: 'squadQuickPanel' },

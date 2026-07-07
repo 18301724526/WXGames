@@ -1309,22 +1309,23 @@ test('UIStatePresenter projects the squad quick panel from formations and march 
   assert.deepEqual(emptyView.rows, []);
 });
 
-test('UIStatePresenter squad quick panel resolves default names on the REAL server formation shape', () => {
+test('UIStatePresenter squad quick panel names rows by leader on the REAL server formation shape', () => {
   // Verbatim /game/state DTO shape (captured from a live server): the server
-  // persists NO formation name (name: '') so the localized default chain must
-  // produce the row label. The earlier harness mock used explicit names and
-  // never exercised this chain — this fixture is the real shape.
+  // persists NO formation name (name: '') for untouched slots. UI-REDO ⑦b row
+  // label priority: player rename > leader "{name}队" (slot-1 member resolved
+  // through famousPersons) > localized 部队N default.
   const state = {
     activeCityId: 'capital',
     famousPersons: {
       people: [
         { id: 'fp_tutorial_scout_180t6mi', name: '斥候', attributes: {} },
+        { id: 'fp_hero_zhangfei_9k2m1x', name: '张飞', attributes: {} },
       ],
     },
     military: {
       formations: [
         { slot: 1, name: '', memberIds: ['fp_tutorial_scout_180t6mi'], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: { fp_tutorial_scout_180t6mi: 1000 }, soldiersAssigned: 1000 },
-        { slot: 2, name: '', memberIds: [], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: {}, soldiersAssigned: 0 },
+        { slot: 2, name: '虎豹骑', memberIds: ['fp_hero_zhangfei_9k2m1x'], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: { fp_hero_zhangfei_9k2m1x: 500 }, soldiersAssigned: 500 },
         { slot: 3, name: '', memberIds: [], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: {}, soldiersAssigned: 0 },
       ],
     },
@@ -1332,13 +1333,19 @@ test('UIStatePresenter squad quick panel resolves default names on the REAL serv
 
   const view = UIStatePresenter.buildSquadQuickPanelViewState(state, { nowMs: Date.now() });
   assert.equal(view.hidden, false);
-  assert.equal(view.rows.length, 1);
+  assert.equal(view.rows.length, 2);
   assert.equal(view.rows[0].slot, 1);
-  // The localized default name must resolve to real text — never an empty
-  // string (blank row label) and never a raw i18n key leak.
-  assert.equal(view.rows[0].name, LocaleText.t('military.formation.default.1'));
-  assert.equal(view.rows[0].name.length > 0, true);
-  assert.equal(view.rows[0].name.includes('military.formation'), false);
+  // No player rename -> leader chain: "斥候" + 队 through the paired i18n key.
+  assert.equal(view.rows[0].name, LocaleText.t('military.formation.leaderSquad', { name: '斥候' }));
+  // Player rename wins over the leader name.
+  assert.equal(view.rows[1].slot, 2);
+  assert.equal(view.rows[1].name, '虎豹骑');
+  // Never a blank label and never a raw i18n key leak.
+  view.rows.forEach((row) => {
+    assert.equal(row.name.length > 0, true);
+    assert.equal(row.name.includes('military.formation'), false);
+    assert.equal(row.name.includes('{name}'), false);
+  });
 });
 
 test('UIStatePresenter delegates world site dialog view state while preserving facade contracts', () => {
