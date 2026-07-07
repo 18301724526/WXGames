@@ -5,13 +5,16 @@ function getClientMission(mission, now = new Date()) {
   return DtoMapper.getMissionDto(mission, now);
 }
 
-function getClientState(gameState, now = new Date()) {
+function getClientState(gameState, now = new Date(), projection = {}) {
   return {
     ...DtoMapper.getClientStateDto(gameState.exploreMissions || [], {
       now,
       marchVerification: gameState.worldMarchVerification || null,
     }),
-    combat: WorldCombatEncounterService.getClientState(gameState, now),
+    combat: WorldCombatEncounterService.getClientState(gameState, now, {
+      sharedWorldEncounters: projection.sharedWorldEncounters,
+      worldEncounterRepo: projection.worldEncounterRepo,
+    }),
   };
 }
 

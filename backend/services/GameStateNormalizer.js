@@ -159,6 +159,9 @@ function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldExplorerService.normalizeExploreState(state, now, {
     planningContext: options.planningContext,
+    worldEncounterRepo: options.worldEncounterRepo,
+    sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
+    marchVerification: options.marchVerification,
   });
   WorldCombatEncounterService.normalizeCombatState(state, now);
   if (options.advanceWorldAi === true) {

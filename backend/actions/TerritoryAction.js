@@ -42,15 +42,29 @@ function markTutorialSettlementMissionReady(gameState = {}, territoryId = '') {
   mission.returnedAt = now;
 }
 
-function execute(action, gameState, payload = {}) {
+function withWorldContext(payload = {}, context = {}) {
+  return {
+    ...payload,
+    planningContext: context.planningContext || payload.planningContext || null,
+    worldEncounterRepo: context.worldEncounterRepo || payload.worldEncounterRepo || null,
+    sharedWorldEncounters:
+      context.sharedWorldEncounters
+      || payload.sharedWorldEncounters
+      || context.planningContext?.sharedWorldEncounters
+      || payload.planningContext?.sharedWorldEncounters
+      || null,
+  };
+}
+
+function execute(action, gameState, payload = {}, context = {}) {
   if (action === 'startWorldMarch') {
-    return WorldExplorerService.startWorldMarch(gameState, payload);
+    return WorldExplorerService.startWorldMarch(gameState, withWorldContext(payload, context));
   }
   if (action === 'returnWorldMarch') {
-    return WorldExplorerService.returnWorldMarch(gameState, payload.missionId, payload);
+    return WorldExplorerService.returnWorldMarch(gameState, payload.missionId, withWorldContext(payload, context));
   }
   if (action === 'stopWorldMarch') {
-    return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, payload);
+    return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, withWorldContext(payload, context));
   }
   if (action === 'startConquest') {
     const result = TerritoryService.startConquest(gameState, payload.territoryId, payload.expedition || payload.soldiers);

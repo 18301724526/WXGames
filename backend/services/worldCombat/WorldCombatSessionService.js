@@ -80,6 +80,7 @@ function openSession(
   gameState = {},
   { missionId = '', formationSlot, cityId = 'capital', targetQ, targetR } = {},
   now = new Date(),
+  options = {},
 ) {
   WorldCombatEncounterService.normalizeCombatState(gameState, now);
 
@@ -91,7 +92,7 @@ function openSession(
   const encounter = WorldCombatEncounterService.getActiveEncounterAt(gameState, {
     q: targetQ,
     r: targetR,
-  });
+  }, now, options);
   if (!encounter) {
     return failure('WORLD_COMBAT_ENCOUNTER_NOT_FOUND', '该敌军已不在此处。');
   }
@@ -164,8 +165,11 @@ function openSession(
     battleId,
     seed,
     setup: cloneIfObject(setup),
-    encounter: WorldCombatEncounterService.getClientEncounter(encounter),
-    battleTarget: WorldCombatEncounterService.getClientEncounterBattleTarget(encounter),
+    encounter: WorldCombatEncounterService.getClientEncounter(encounter, gameState.worldCombat.encounterIntel),
+    battleTarget: WorldCombatEncounterService.getClientEncounterBattleTarget(
+      encounter,
+      gameState.worldCombat.encounterIntel,
+    ),
     session: cloneIfObject(session),
   };
 }
@@ -176,6 +180,7 @@ function resolveSession(
   gameState = {},
   { battleId = '', inputStream = [] } = {},
   now = new Date(),
+  options = {},
 ) {
   WorldCombatEncounterService.normalizeCombatState(gameState, now);
 
@@ -199,7 +204,12 @@ function resolveSession(
   );
 
   const resolvedAt = now.toISOString();
-  const encounter = WorldCombatEncounterService.getActiveEncounter(gameState, session.encounterId);
+  const encounter = WorldCombatEncounterService.getActiveEncounter(
+    gameState,
+    session.encounterId,
+    now,
+    options,
+  );
 
   // Encounter may have been resolved/respawned concurrently; if it is gone we
   // still settle the session and return a report for the client.
@@ -218,7 +228,7 @@ function resolveSession(
       encounter.defender.soldiers = Math.max(1, toInteger(survivors[defenderGid], 0));
     }
     encounter.resolvedAt = resolvedAt;
-    encounter.resolvedByMissionId = session.missionId || null;
+    encounter.resolvedByMissionId = null;
     encounter.updatedAt = resolvedAt;
   }
 
@@ -236,9 +246,10 @@ function resolveSession(
   });
   report.loot = loot;
 
-  if (encounter) {
-    encounter.battleReport = report;
+  if (encounter && options.worldEncounterRepo?.upsertEncounter) {
+    options.worldEncounterRepo.upsertEncounter(encounter, now);
   }
+  WorldCombatEncounterService.markEncounterFought(gameState, session.encounterId, report, now);
 
   // Transition the squad/mission back: write casualties onto the live mission's
   // snapshot and mark its combat record resolved.
@@ -290,7 +301,9 @@ function resolveSession(
     result,
     report,
     winner,
-    encounter: encounter ? WorldCombatEncounterService.getClientEncounter(encounter) : null,
+    encounter: encounter
+      ? WorldCombatEncounterService.getClientEncounter(encounter, gameState.worldCombat.encounterIntel)
+      : null,
     attackerSnapshot,
   };
 }

@@ -6,6 +6,7 @@ const { FactionRepository } = require('./FactionRepository');
 const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
 const { WorldPeopleRepository } = require('./WorldPeopleRepository');
 const { WorldCityRepository } = require('./WorldCityRepository');
+const { WorldEncounterRepository } = require('./WorldEncounterRepository');
 const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
 
 const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
@@ -80,11 +81,13 @@ class GameStateRepository {
     // Shared-world PRE-PLACED NEUTRAL cities (docs/design/10 §3.2, march-discovery refactor S3). One
     // canonical copy every player shares; per-player world-map visibility controls what each player sees.
     this.worldCityRepo = new WorldCityRepository(db, { worldSeed: DEFAULT_WORLD_SEED });
+    this.worldEncounterRepo = new WorldEncounterRepository(db, { worldSeed: DEFAULT_WORLD_SEED });
   }
 
   stripProjectionFields(gameState) {
     if (!gameState || typeof gameState !== 'object') return gameState;
     delete gameState.sharedWorldTerritories;
+    delete gameState.sharedWorldEncounters;
     return gameState;
   }
 
@@ -158,9 +161,11 @@ class GameStateRepository {
     this.factionDiplomacyRepo.init();
     this.worldPeopleRepo.init();
     this.worldCityRepo.init();
+    this.worldEncounterRepo.init();
     new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
     this.ensureWorldCitiesSeeded();
+    this.ensureWorldEncountersSeeded();
   }
 
   // Idempotent one-time lay-down of the shared PRE-PLACED NEUTRAL city layer (docs/design/10 §3.2,
@@ -180,6 +185,18 @@ class GameStateRepository {
       }
     }
     return this.worldCityRepo.ensureSeeded({ occupiedTileIds });
+  }
+
+  ensureWorldEncountersSeeded() {
+    const occupiedTileIds = new Set();
+    for (const coordinate of this.getOccupiedSpawnCoordinates()) {
+      const q = Number(coordinate?.q);
+      const r = Number(coordinate?.r);
+      if (Number.isFinite(q) && Number.isFinite(r)) {
+        occupiedTileIds.add(`tile_${Math.floor(q)}_${Math.floor(r)}`);
+      }
+    }
+    return this.worldEncounterRepo.ensureSeeded({ occupiedTileIds });
   }
 
   getOccupiedWorldCityCoordinates() {
@@ -293,8 +310,10 @@ class GameStateRepository {
     // player has not revealed is dropped there; a spawn companion city is visible because spawn
     // materialization binds its tile in that player's world map.
     const neutralCities = this.worldCityRepo.getAllCities();
+    const sharedWorldEncounters = this.worldEncounterRepo.getAllEncounters();
     return {
       sharedWorldTerritories: [...ownedShared, ...neutralCities],
+      sharedWorldEncounters,
     };
   }
 

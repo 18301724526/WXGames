@@ -6,7 +6,7 @@
 //   1. ANCHOR: camps key off the PLAYER capital (which spawns off world-origin, on a ring). A SHARED
 //      city layout must key off a FIXED WORLD anchor (e.g. worldMap.origin) so every player sees the
 //      SAME cities. planCities takes worldAnchor as a param — never a player capital.
-//   2. OUTPUT: camps emit worldCombat encounters stored per-player. Cities emit MINIMAL RAW TERRITORY
+//   2. OUTPUT: camps emit shared world encounter rows. Cities emit MINIMAL RAW TERRITORY
 //      objects destined for the shared store (S3 wires storage; S4 wires vision discovery). This slice
 //      is PURE + additive — no live wiring.
 //
@@ -18,7 +18,7 @@
 //        load, so hand-authored values would silently drift. A test asserts the raw city has NO
 //        garrison field.
 //   §4-5 Idempotent seeding — planCitiesForState is an ensure*-style, id-keyed, never-re-push helper
-//        mirroring seedCampEncounters' hasAny short-circuit (pure here: it returns the merged array,
+//        using the same has-any shared seeding short-circuit (pure here: it returns the merged array,
 //        no live wiring). Distance banding guarantees every placed city is >safeRadius from the anchor,
 //        i.e. in a DEFENDED garrison band (garrison.json) — an attackable conquest target, not a
 //        frictionless settlement.
@@ -220,7 +220,7 @@ function hasAnyPlannedCity(territories = []) {
 // Idempotent, deterministic, ONE-TIME lay-down (PURE — returns the merged raw-territory array; no
 // gameState mutation, no live wiring; S3 wires it into the shared store). Folds the planned cities into
 // an existing territory list WITHOUT overwriting any city already present (id-keyed, never re-push),
-// mirroring seedCampEncounters' hasAny short-circuit (docs/design/10 §4-5). Safe to call on every
+// using the same has-any shared seeding short-circuit (docs/design/10 §4-5). Safe to call on every
 // normalize (init/load/tick) — the count stays stable.
 function planCitiesForState(worldSeed, worldAnchor, existingTerritories = [], opts = {}) {
   const territories = Array.isArray(existingTerritories) ? [...existingTerritories] : [];

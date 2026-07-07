@@ -74,8 +74,10 @@ test('WorldWorkerService owns runtime advancement outside the gateway API proces
 
 test('WorldWorkerService advances player runtime without background AI world expansion', () => {
   const calls = [];
+  const worldEncounterRepo = { getAllEncounters: () => [] };
   const service = new WorldWorkerService({
     repository: {
+      worldEncounterRepo,
       findRecentlyActive() {
         return [{
           playerId: 'test1',
@@ -98,7 +100,10 @@ test('WorldWorkerService advances player runtime without background AI world exp
       },
       getClientProjectionForPlayer(playerId) {
         calls.push(['getClientProjectionForPlayer', playerId]);
-        return { sharedWorldTerritories: [{ id: 'worker-shared-site' }] };
+        return {
+          sharedWorldTerritories: [{ id: 'worker-shared-site' }],
+          sharedWorldEncounters: [{ id: 'worker-shared-camp' }],
+        };
       },
       save(state) {
         calls.push(['save', state.playerId]);
@@ -126,7 +131,12 @@ test('WorldWorkerService advances player runtime without background AI world exp
     ['advanceRuntimeState', 'test1', {
       advanceWorldAi: false,
       marchVerification: { enabled: true },
-      planningContext: { sharedWorldTerritories: [{ id: 'worker-shared-site' }] },
+      planningContext: {
+        sharedWorldTerritories: [{ id: 'worker-shared-site' }],
+        sharedWorldEncounters: [{ id: 'worker-shared-camp' }],
+      },
+      worldEncounterRepo,
+      sharedWorldEncounters: [{ id: 'worker-shared-camp' }],
     }],
     ['save', 'test1'],
   ]);

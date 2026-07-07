@@ -1,13 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const Database = require('better-sqlite3');
 
 const TutorialService = require('../services/TutorialService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldMapService = require('../services/WorldMapService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
+const WorldCampSpawner = require('../services/worldCombat/WorldCampSpawner');
 const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
 const { materializeDiscoveredNeutralCity } = require('../services/worldCity/WorldCityPlayerDiscovery');
+const { WorldEncounterRepository } = require('../repositories/WorldEncounterRepository');
 require('../../frontend/js/ecs/foundation/WorldTime');
 require('../../frontend/js/ecs/system/WorldMarchProgressSnapshot');
 const WorldActorProjection = require('../../frontend/js/ecs/projection/WorldActorProjection');
@@ -74,6 +77,43 @@ function createTutorialExploreState() {
   }, new Date('2026-06-06T00:00:00.000Z'));
   TutorialGrantService.grantTutorialFirstCity(gameState);
   return gameState;
+}
+
+function createSharedCombatContext(gameState, now = new Date('2026-06-22T00:00:00.000Z'), overrides = {}) {
+  const db = new Database(':memory:');
+  const repo = new WorldEncounterRepository(db, { worldSeed: gameState.worldMap?.seed || 'tutorial-explorer-seed' });
+  repo.init();
+  const planned = WorldCampSpawner.planCamps(gameState.worldMap?.seed || 'tutorial-explorer-seed', { q: 0, r: 0 }, {
+    densityRoll: 1,
+    maxCamps: 1,
+    minSpacing: 1,
+    chooseTerrain: () => 'plains',
+  })[0];
+  assert.ok(planned, 'expected a deterministic shared camp fixture');
+  const spec = {
+    ...planned,
+    id: 'camp_2_-1',
+    q: 2,
+    r: -1,
+    tileId: WorldMapService.getTileId(2, -1),
+    ring: 2,
+  };
+  const base = WorldCampSpawner.campSpecToEncounter(spec, now);
+  const encounter = WorldCombatEncounterService.normalizeEncounter({
+    ...base,
+    ...overrides,
+    defender: {
+      ...base.defender,
+      ...(overrides.defender || {}),
+    },
+  }, gameState, now);
+  const stored = repo.upsertEncounter(encounter, now);
+  return {
+    db,
+    repo,
+    encounter: stored,
+    worldContext: { worldEncounterRepo: repo },
+  };
 }
 
 test('guided world march plans the route toward the spawn companion city and starts exploring', () => {
@@ -670,61 +710,71 @@ test('world combat encounter is seeded near capital, engages on arrival, and for
     soldierCap: 300,
     formations: gameState.military.formations,
   };
-  const combatState = WorldCombatEncounterService.normalizeCombatState(gameState, now);
-  const encounter = combatState.encounters.find((item) => item.id === WorldCombatEncounterService.ENCOUNTER_ID);
+  const {
+    db,
+    repo,
+    encounter,
+    worldContext,
+  } = createSharedCombatContext(gameState, now, {
+    defender: { soldiers: 1, baseSoldiers: 1 },
+  });
 
-  assert.ok(encounter);
-  assert.equal(WorldMapService.getWrappedDistance({ q: 0, r: 0 }, encounter), 2);
+  try {
+    assert.ok(encounter);
+    assert.equal(WorldMapService.getWrappedDistance({ q: 0, r: 0 }, encounter), 2);
 
-  const started = WorldExplorerService.startWorldMarch(gameState, {
-    combatEncounterId: encounter.id,
-    targetQ: 999,
-    targetR: 999,
-    formationSlot: 1,
-  }, now);
+    const started = WorldExplorerService.startWorldMarch(gameState, {
+      combatEncounterId: encounter.id,
+      targetQ: 999,
+      targetR: 999,
+      formationSlot: 1,
+      ...worldContext,
+    }, now);
 
-  assert.equal(started.success, true);
-  assert.equal(started.mission.target.tileId, encounter.tileId);
-  assert.equal(started.mission.combat.encounterId, encounter.id);
-  assert.equal(gameState.exploreMissions[0].combat.status, 'marching');
+    assert.equal(started.success, true);
+    assert.equal(started.mission.target.tileId, encounter.tileId);
+    assert.equal(started.mission.combat.encounterId, encounter.id);
+    assert.equal(gameState.exploreMissions[0].combat.status, 'marching');
+    assert.equal(Object.prototype.hasOwnProperty.call(gameState.worldCombat, 'encounters'), false);
 
-  // Arrival now ENGAGES (opens the interactive "retreat window") instead of auto-settling.
-  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
-  WorldExplorerService.advanceExploreMissions(gameState, finishAt);
-  const engagedMission = gameState.exploreMissions[0];
-  assert.equal(engagedMission.status, 'idle');
-  assert.equal(engagedMission.combat.status, 'engaged');
-  assert.equal(engagedMission.combat.encounterId, encounter.id);
-  assert.equal(typeof engagedMission.combat.engagedAt, 'string');
-  assert.equal(engagedMission.combat.battleReportId, null);
-  // Not settled yet: no report written, encounter still active.
-  assert.equal(gameState.worldCombat.recentReports.length, 0);
-  assert.equal(
-    gameState.worldCombat.encounters.find((item) => item.id === encounter.id).status,
-    'active',
-  );
+    // Arrival now ENGAGES (opens the interactive "retreat window") instead of auto-settling.
+    const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
+    WorldExplorerService.advanceExploreMissions(gameState, finishAt, worldContext);
+    const engagedMission = gameState.exploreMissions[0];
+    assert.equal(engagedMission.status, 'idle');
+    assert.equal(engagedMission.combat.status, 'engaged');
+    assert.equal(engagedMission.combat.encounterId, encounter.id);
+    assert.equal(typeof engagedMission.combat.engagedAt, 'string');
+    assert.equal(engagedMission.combat.battleReportId, null);
+    // Not settled yet: no report written, shared encounter still active.
+    assert.equal(gameState.worldCombat.recentReports.length, 0);
+    assert.equal(repo.getEncounter(encounter.id, { refreshRespawns: false }).status, 'active');
 
-  // Offline fallback: nobody opened the battle. Advancing past AUTO_ENGAGE_FALLBACK_MS
-  // force-settles the engagement with an allOut resolveEncounterBattle.
-  const timeoutAt = new Date(finishAt.getTime() + WorldCombatEncounterService.AUTO_ENGAGE_FALLBACK_MS + 1);
-  WorldExplorerService.advanceExploreMissions(gameState, timeoutAt);
-  const resolvedMission = gameState.exploreMissions[0];
-  const resolvedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
-  const clientState = WorldExplorerService.getClientState(gameState, timeoutAt);
+    // Offline fallback: nobody opened the battle. Advancing past AUTO_ENGAGE_FALLBACK_MS
+    // force-settles the engagement with an allOut resolveEncounterBattle.
+    const timeoutAt = new Date(finishAt.getTime() + WorldCombatEncounterService.AUTO_ENGAGE_FALLBACK_MS + 1);
+    WorldExplorerService.advanceExploreMissions(gameState, timeoutAt, worldContext);
+    const resolvedMission = gameState.exploreMissions[0];
+    const resolvedEncounter = repo.getEncounter(encounter.id, { refreshRespawns: false });
+    const clientState = WorldExplorerService.getClientState(gameState, timeoutAt, worldContext);
 
-  assert.equal(resolvedMission.status, 'idle');
-  assert.equal(resolvedMission.combat.status, 'resolved');
-  assert.equal(Boolean(resolvedMission.combat.battleReportId), true);
-  assert.equal(gameState.worldCombat.recentReports.length, 1);
-  assert.equal(gameState.worldCombat.recentReports[0].report.mode, 'entity-battle');
-  assert.equal(clientState.combat.recentReports.length, 1);
-  assert.equal(resolvedEncounter.status, 'resolved');
-  assert.equal(clientState.combat.activeEncounters.some((item) => item.id === encounter.id), true);
-  assert.equal(clientState.combat.activeEncounters.find((item) => item.id === encounter.id).resolvedAt, null);
-  assert.ok(resolvedMission.formationSnapshot.soldiersRemaining <= 180);
-  WorldCombatEncounterService.normalizeCombatState(gameState, timeoutAt);
-  const renormalizedEncounter = gameState.worldCombat.encounters.find((item) => item.id === encounter.id);
-  assert.equal(renormalizedEncounter.status, 'active');
+    assert.equal(resolvedMission.status, 'idle');
+    assert.equal(resolvedMission.combat.status, 'resolved');
+    assert.equal(Boolean(resolvedMission.combat.battleReportId), true);
+    assert.equal(gameState.worldCombat.recentReports.length, 1);
+    assert.equal(gameState.worldCombat.recentReports[0].report.mode, 'entity-battle');
+    assert.equal(gameState.worldCombat.encounterIntel.byEncounterId[encounter.id].battleReportId, resolvedMission.combat.battleReportId);
+    assert.equal(clientState.combat.recentReports.length, 1);
+    assert.equal(resolvedEncounter.status, 'resolved');
+    assert.equal(resolvedEncounter.battleReport, undefined);
+    assert.equal(clientState.combat.activeEncounters.some((item) => item.id === encounter.id), false);
+    assert.ok(resolvedMission.formationSnapshot.soldiersRemaining <= 180);
+    WorldCombatEncounterService.normalizeCombatState(gameState, timeoutAt);
+    assert.equal(Object.prototype.hasOwnProperty.call(gameState.worldCombat, 'encounters'), false);
+    assert.equal(repo.getEncounter(encounter.id, { refreshRespawns: false }).status, 'resolved');
+  } finally {
+    db.close();
+  }
 });
 
 test('world combat encounter rejects deployment when primary general has zero soldiers', () => {
@@ -733,19 +783,23 @@ test('world combat encounter rejects deployment when primary general has zero so
   gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
   gameState.military.formations[0].soldierAssignments = { 'fp-tutorial-scout': 0 };
   gameState.cities.capital.military.formations = gameState.military.formations;
-  const combatState = WorldCombatEncounterService.normalizeCombatState(gameState, now);
-  const encounter = combatState.encounters.find((item) => item.id === WorldCombatEncounterService.ENCOUNTER_ID);
+  const { db, encounter, worldContext } = createSharedCombatContext(gameState, now);
 
-  const started = WorldExplorerService.startWorldMarch(gameState, {
-    combatEncounterId: encounter.id,
-    targetQ: encounter.q,
-    targetR: encounter.r,
-    formationSlot: 1,
-  }, now);
+  try {
+    const started = WorldExplorerService.startWorldMarch(gameState, {
+      combatEncounterId: encounter.id,
+      targetQ: encounter.q,
+      targetR: encounter.r,
+      formationSlot: 1,
+      ...worldContext,
+    }, now);
 
-  assert.equal(started.success, false);
-  assert.equal(started.error, 'WORLD_COMBAT_PRIMARY_NO_SOLDIERS');
-  assert.equal(gameState.exploreMissions.length, 0);
+    assert.equal(started.success, false);
+    assert.equal(started.error, 'WORLD_COMBAT_PRIMARY_NO_SOLDIERS');
+    assert.equal(gameState.exploreMissions.length, 0);
+  } finally {
+    db.close();
+  }
 });
 
 test('world combat encounter allows deployment when only a deputy has zero soldiers', () => {
@@ -759,20 +813,24 @@ test('world combat encounter allows deployment when only a deputy has zero soldi
     soldierAssignments: { 'fp-tutorial-scout': 120, 'fp-deputy': 0 },
   };
   gameState.cities.capital.military.formations = gameState.military.formations;
-  const combatState = WorldCombatEncounterService.normalizeCombatState(gameState, now);
-  const encounter = combatState.encounters.find((item) => item.id === WorldCombatEncounterService.ENCOUNTER_ID);
+  const { db, encounter, worldContext } = createSharedCombatContext(gameState, now);
 
-  const started = WorldExplorerService.startWorldMarch(gameState, {
-    combatEncounterId: encounter.id,
-    targetQ: encounter.q,
-    targetR: encounter.r,
-    formationSlot: 1,
-  }, now);
+  try {
+    const started = WorldExplorerService.startWorldMarch(gameState, {
+      combatEncounterId: encounter.id,
+      targetQ: encounter.q,
+      targetR: encounter.r,
+      formationSlot: 1,
+      ...worldContext,
+    }, now);
 
-  assert.equal(started.success, true);
-  assert.equal(started.mission.formationSnapshot.members.length, 2);
-  assert.equal(started.mission.formationSnapshot.members[0].soldiersRemaining, 120);
-  assert.equal(started.mission.formationSnapshot.members[1].soldiersRemaining, 0);
+    assert.equal(started.success, true);
+    assert.equal(started.mission.formationSnapshot.members.length, 2);
+    assert.equal(started.mission.formationSnapshot.members[0].soldiersRemaining, 120);
+    assert.equal(started.mission.formationSnapshot.members[1].soldiersRemaining, 0);
+  } finally {
+    db.close();
+  }
 });
 
 // ---------------------------------------------------------------------------

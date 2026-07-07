@@ -94,6 +94,8 @@ class BuildBuildingCommandHandler {
         command.playerId,
         {
           planningContext: projection,
+          worldEncounterRepo: this.repository.worldEncounterRepo,
+          sharedWorldEncounters: projection.sharedWorldEncounters,
         },
       );
       if (!gameState) {
@@ -169,11 +171,12 @@ class BuildBuildingCommandHandler {
       trace.setCommitted(savedState?.revision ?? gameState.revision);
 
       trace.mark('projecting');
+      const responseProjection = loadProjection(this.repository, command.playerId);
       const view = this.projectionService.buildGameActionView(
         gameState,
         syncedTutorial,
         this.gameStateService,
-        projection,
+        responseProjection,
       );
 
       trace.mark('responding');

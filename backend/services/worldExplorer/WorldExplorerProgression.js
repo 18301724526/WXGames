@@ -321,7 +321,10 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       mission.status = 'idle';
       mission.completedAt = mission.completedAt || now.toISOString();
       mission.nextStepAt = null;
-      WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now);
+      WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now, {
+        worldEncounterRepo: options.worldEncounterRepo,
+        sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
+      });
       settleReturnedFormationSnapshot(gameState, mission, now);
     }
     WorldExplorerTrace.log('progression:advanceMission:after', {
@@ -339,7 +342,10 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
   // longer than the fallback window (a player who never opened the interactive battle).
   // Runs every tick/heartbeat that advances missions; defers to an open interactive
   // session so it never double-settles a fight the player is actively playing.
-  WorldCombatEncounterService.resolveEngagedTimeouts(gameState, now);
+  WorldCombatEncounterService.resolveEngagedTimeouts(gameState, now, {
+    worldEncounterRepo: options.worldEncounterRepo,
+    sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
+  });
   if (options.marchVerification?.enabled === true) {
     WorldMarchVerification.verifyMissions(gameState, now, options.marchVerification);
   }
@@ -351,6 +357,8 @@ function normalizeExploreState(gameState, now = new Date(), options = {}) {
   gameState.exploreMissions = normalizeMissions(gameState.exploreMissions);
   advanceExploreMissions(gameState, now, {
     planningContext: options.planningContext,
+    worldEncounterRepo: options.worldEncounterRepo,
+    sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
     marchVerification: options.marchVerification,
   });
   return gameState.exploreMissions;

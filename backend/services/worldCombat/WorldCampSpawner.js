@@ -1,16 +1,16 @@
-// Deterministic, idempotent generator for the "wild camp" world-combat content layer
-// (P0 slice 1a). Pure planning (planCamps) + a single side-effecting seeder
-// (seedCampEncounters) that folds the plan into gameState.worldCombat.encounters.
+// Deterministic generator for the shared "wild camp" world-combat content layer.
+// Production persistence lives in WorldEncounterRepository: it calls the pure
+// planCamps/campSpecToEncounter pair once per shared world and stores the result in the
+// world_encounters table. This module does not write player save state.
 //
-// Determinism contract: planCamps is a pure function of (seed, capitalCoord, opts). The
-// world seed and capital never change mid-game, so the SAME seed always produces the
-// SAME camps (same ids, coords, garrisons) — that is what makes seedCampEncounters safe
-// to call on every normalize without duplicating or drifting.
+// Determinism contract: planCamps is a pure function of (seed, anchorCoord, opts).
+// The world seed and anchor never change mid-game, so the same inputs always produce
+// the same camps (ids, coords, garrisons). Repository seeding relies on that
+// idempotency.
 //
-// Rollback contract: if seedCampEncounters is never called, only the legacy single stub
-// remains. Nothing here mutates battle state; camp encounters are ordinary encounters
+// Nothing here mutates battle progress; camp encounters are ordinary shared encounters
 // carrying three extra passthrough fields (campArchetypeKey / lootTable /
-// respawnCooldownMs) that legacy readers ignore.
+// respawnCooldownMs).
 
 const WorldMapService = require('../WorldMapService');
 const { roll01 } = require('../worldMap/WorldMapGenerationAuthority');
@@ -116,42 +116,6 @@ function planCamps(seed, capitalCoord = {}, opts = {}) {
   return placed;
 }
 
-function collectOccupiedTileIds(gameState = {}, existingEncounters = []) {
-  const occupied = new Set();
-  const capital = getCapitalCoordSafe(gameState);
-  occupied.add(WorldMapService.getTileId(capital.q, capital.r));
-  (Array.isArray(gameState.territories) ? gameState.territories : []).forEach((territory) => {
-    if (!territory || typeof territory !== 'object') return;
-    const q = toInteger(territory.q ?? territory.x, null);
-    const r = toInteger(territory.r ?? territory.y, null);
-    if (q === null || r === null) return;
-    occupied.add(WorldMapService.getTileId(q, r));
-  });
-  // Do NOT add existing camp/encounter tiles here: a camp keeps its own tile across
-  // respawns, so treating it as "occupied" would (harmlessly) skip re-planning it, but
-  // we rely on the id-merge below for idempotency instead. Non-camp encounters (the
-  // legacy stub) still get their tile reserved so a camp never lands on top of it.
-  existingEncounters.forEach((encounter) => {
-    if (!encounter || encounter.kind !== 'hostileForce') return;
-    if (String(encounter.campArchetypeKey || '')) return; // skip camps (id-merge owns them)
-    const tileId = encounter.tileId || WorldMapService.getTileId(encounter.q, encounter.r);
-    if (tileId) occupied.add(tileId);
-  });
-  return occupied;
-}
-
-function getCapitalCoordSafe(gameState = {}) {
-  const capital =
-    (Array.isArray(gameState.territories) ? gameState.territories : []).find(
-      (territory) => territory?.id === 'capital',
-    ) || {};
-  const origin = gameState.worldMap?.origin || {};
-  return {
-    q: toInteger(capital.q ?? capital.x ?? origin.q ?? origin.x, 0),
-    r: toInteger(capital.r ?? capital.y ?? origin.r ?? origin.y, 0),
-  };
-}
-
 // Convert a camp spec into the WorldCombatEncounterService encounter contract, plus the
 // three camp passthrough fields. Kept minimal — normalizeEncounter fills defaults and
 // builds the defender leader, so this only needs the identifying + tuning fields.
@@ -191,45 +155,9 @@ function campSpecToEncounter(spec, now = new Date()) {
   };
 }
 
-function hasAnyCamp(encounters = []) {
-  return encounters.some((encounter) => encounter && encounter.campArchetypeKey);
-}
-
-// Idempotent, deterministic, ONE-TIME lay-down. Folds the planned camps into
-// gameState.worldCombat.encounters WITHOUT overwriting the live progress of any camp
-// that already exists. Once ANY camp is present the seeding is considered done and no
-// new camps are added — so re-normalizing (including via the read-only client
-// projection) never grows the camp set, even if the world seed appears to change on a
-// re-materialized worldMap. The initial lay-down happens the first time a state carries
-// zero camps (the canonical normalize path). Returns the mutated encounter array.
-function seedCampEncounters(gameState = {}, now = new Date()) {
-  const worldCombat =
-    gameState.worldCombat && typeof gameState.worldCombat === 'object'
-      ? gameState.worldCombat
-      : (gameState.worldCombat = {});
-  const encounters = Array.isArray(worldCombat.encounters) ? worldCombat.encounters : [];
-  worldCombat.encounters = encounters;
-  // Already laid down: keep the existing camps exactly as they are (progress + coords).
-  if (hasAnyCamp(encounters)) return encounters;
-  const seed = gameState.worldMap?.seed;
-  const capital = getCapitalCoordSafe(gameState);
-  const occupiedTileIds = collectOccupiedTileIds(gameState, encounters);
-  const specs = planCamps(seed, capital, { occupiedTileIds });
-  const existingIds = new Set(encounters.map((encounter) => encounter && encounter.id));
-  specs.forEach((spec) => {
-    if (existingIds.has(spec.id)) return; // keep live progress — never overwrite.
-    encounters.push(campSpecToEncounter(spec, now));
-    existingIds.add(spec.id);
-  });
-  return encounters;
-}
-
 module.exports = {
   CAMP_PLACEMENT_SALT,
   campId,
   planCamps,
-  seedCampEncounters,
   campSpecToEncounter,
-  collectOccupiedTileIds,
-  hasAnyCamp,
 };

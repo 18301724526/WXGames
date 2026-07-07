@@ -170,7 +170,11 @@ function createGameActionRegistry(overrides = {}) {
 
   for (const action of TERRITORY_ACTIONS) {
     register(action, ({ gameState, body }) => (
-      deps.TerritoryAction.execute(action, gameState, buildTerritoryPayload(body, action))
+      deps.TerritoryAction.execute(action, gameState, buildTerritoryPayload(body, action), {
+        planningContext: body.planningContext || null,
+        worldEncounterRepo: body.worldEncounterRepo || null,
+        sharedWorldEncounters: body.sharedWorldEncounters || body.planningContext?.sharedWorldEncounters || null,
+      })
     ));
   }
 
@@ -182,6 +186,8 @@ function createGameActionRegistry(overrides = {}) {
       const body = {
         ...(context.body || {}),
         ...(context.planningContext ? { planningContext: context.planningContext } : {}),
+        ...(context.worldEncounterRepo ? { worldEncounterRepo: context.worldEncounterRepo } : {}),
+        ...(context.sharedWorldEncounters ? { sharedWorldEncounters: context.sharedWorldEncounters } : {}),
       };
       return handler({ ...context, action, body });
     },

@@ -99,52 +99,14 @@ test('planCamps avoids pre-occupied tiles', () => {
   );
 });
 
-function createSeededState() {
-  return {
-    worldMap: { seed: SEED, origin: { q: 0, r: 0 } },
-    territories: [{ id: 'capital', q: 0, r: 0 }],
-    worldCombat: { encounters: [] },
-  };
-}
-
-test('seedCampEncounters is idempotent: a second call does not duplicate camps', () => {
-  const state = createSeededState();
+test('campSpecToEncounter emits shared encounter rows carrying the camp passthrough fields', () => {
   const now = new Date('2026-07-05T00:00:00.000Z');
-  WorldCampSpawner.seedCampEncounters(state, now);
-  const firstCount = state.worldCombat.encounters.length;
-  assert.ok(firstCount > 0, 'expected camps to be seeded');
-  WorldCampSpawner.seedCampEncounters(state, now);
-  assert.equal(
-    state.worldCombat.encounters.length,
-    firstCount,
-    'second seed must not add duplicates',
-  );
-  const ids = state.worldCombat.encounters.map((encounter) => encounter.id);
-  assert.equal(new Set(ids).size, ids.length, 'camp ids must be unique');
-});
-
-test('seedCampEncounters does not overwrite the live progress of an existing camp', () => {
-  const state = createSeededState();
-  const now = new Date('2026-07-05T00:00:00.000Z');
-  WorldCampSpawner.seedCampEncounters(state, now);
-  const target = state.worldCombat.encounters[0];
-  // Simulate a resolved camp mid-cooldown.
-  target.status = 'resolved';
-  target.resolvedAt = now.toISOString();
-  target.respawnAt = new Date(now.getTime() + 60000).toISOString();
-  target.defender.soldiers = 0;
-  WorldCampSpawner.seedCampEncounters(state, now);
-  const after = state.worldCombat.encounters.find((encounter) => encounter.id === target.id);
-  assert.equal(after.status, 'resolved', 'resolved status must be preserved');
-  assert.equal(after.respawnAt, target.respawnAt, 'respawnAt must be preserved');
-  assert.equal(after.defender.soldiers, 0, 'depleted garrison must be preserved');
-});
-
-test('seedCampEncounters emits encounters carrying the camp passthrough fields', () => {
-  const state = createSeededState();
-  const now = new Date('2026-07-05T00:00:00.000Z');
-  const encounters = WorldCampSpawner.seedCampEncounters(state, now);
-  const camp = encounters.find((encounter) => encounter.campArchetypeKey);
+  const spec = WorldCampSpawner.planCamps(SEED, CAPITAL, {
+    densityRoll: 1,
+    minSpacing: 1,
+    chooseTerrain: () => 'plains',
+  })[0];
+  const camp = WorldCampSpawner.campSpecToEncounter(spec, now);
   assert.ok(camp, 'expected at least one camp encounter');
   assert.equal(camp.kind, 'hostileForce');
   assert.equal(typeof camp.lootTable, 'object');

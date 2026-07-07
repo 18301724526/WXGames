@@ -122,8 +122,12 @@ function traceWorldMarch(stage, options = {}, payload = {}) {
 
 function startWorldMarch(gameState, options = {}, now = new Date()) {
   const TUTORIAL_STEPS = TutorialFlowConfig.TUTORIAL_STEPS;
-  normalizeExploreState(gameState, now);
-  const combatTarget = WorldCombatEncounterService.resolveMarchTarget(gameState, options, now);
+  const worldContext = {
+    worldEncounterRepo: options.worldEncounterRepo || null,
+    sharedWorldEncounters: options.sharedWorldEncounters || null,
+  };
+  normalizeExploreState(gameState, now, worldContext);
+  const combatTarget = WorldCombatEncounterService.resolveMarchTarget(gameState, options, now, worldContext);
   if (!combatTarget.success) return combatTarget;
   const targetInput = combatTarget.target
     || { q: options.targetQ ?? options.q ?? options.x, r: options.targetR ?? options.r ?? options.y };
@@ -266,7 +270,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     gameState.exploreMissions = [...(gameState.exploreMissions || []), mission];
   }
   setMissionCombatTarget(mission, combatTarget.encounter, now);
-  if (routeResult.inPlace && combatTarget.encounter) WorldCombatEncounterService.resolveImmediateArrival(gameState, mission, targetInput, now);
+  if (routeResult.inPlace && combatTarget.encounter) {
+    WorldCombatEncounterService.resolveImmediateArrival(gameState, mission, targetInput, now, worldContext);
+  }
   gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
   const result = {
     success: true,
@@ -293,13 +299,13 @@ function setMissionCombatTarget(mission = {}, encounter = null, now = new Date()
   return mission.combat;
 }
 
-function findActiveMission(gameState, missionId, now = new Date()) {
-  normalizeExploreState(gameState, now);
+function findActiveMission(gameState, missionId, now = new Date(), options = {}) {
+  normalizeExploreState(gameState, now, options);
   return (gameState.exploreMissions || []).find((item) => item.id === missionId && item.status === 'active') || null;
 }
 
-function findReturnableMission(gameState, missionId, now = new Date()) {
-  normalizeExploreState(gameState, now);
+function findReturnableMission(gameState, missionId, now = new Date(), options = {}) {
+  normalizeExploreState(gameState, now, options);
   return (gameState.exploreMissions || []).find((item) => (
     item.id === missionId && ['active', 'idle'].includes(item.status)
   )) || null;
@@ -405,7 +411,12 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
     resolvedNow = options;
     resolvedOptions = {};
   }
-  const mission = findReturnableMission(gameState, missionId, resolvedNow);
+  const worldContext = {
+    worldEncounterRepo: resolvedOptions.worldEncounterRepo || null,
+    sharedWorldEncounters: resolvedOptions.sharedWorldEncounters || null,
+    planningContext: resolvedOptions.planningContext || null,
+  };
+  const mission = findReturnableMission(gameState, missionId, resolvedNow, worldContext);
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: '未找到该行军任务。' };
   const current = getReturnRouteOrigin(mission);
   const origin = mission.homeOrigin || mission.origin || { q: 0, r: 0 };
@@ -440,7 +451,12 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
 }
 
 function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
-  const mission = findActiveMission(gameState, missionId, now);
+  const worldContext = {
+    worldEncounterRepo: options.worldEncounterRepo || null,
+    sharedWorldEncounters: options.sharedWorldEncounters || null,
+    planningContext: options.planningContext || null,
+  };
+  const mission = findActiveMission(gameState, missionId, now, worldContext);
   if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: '未找到该行军任务。' };
   const timeline = ServerTimelineSnapshot.createMissionSnapshot(mission, { now });
   const current = getLastRevealedOrOrigin(mission);

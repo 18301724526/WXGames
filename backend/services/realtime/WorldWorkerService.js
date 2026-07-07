@@ -180,6 +180,8 @@ class WorldWorkerService {
         advanceWorldAi: false,
         marchVerification: { enabled: true },
         planningContext: projection,
+        worldEncounterRepo: this.repository?.worldEncounterRepo,
+        sharedWorldEncounters: projection.sharedWorldEncounters,
       })
       : rawState;
     if (typeof this.cityService.advanceAllCities === 'function') {

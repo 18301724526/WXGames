@@ -38,18 +38,23 @@ function registerBuildingRoutes(app, deps) {
     if (!rawState) return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     const projection = repository.getClientProjectionForPlayer?.(req.playerId) || {};
     const gameState = gameStateService.applyOnlineProgress
-      ? gameStateService.applyOnlineProgress(rawState, new Date(), { planningContext: projection })
+      ? gameStateService.applyOnlineProgress(rawState, new Date(), {
+        planningContext: projection,
+        worldEncounterRepo: repository.worldEncounterRepo,
+        sharedWorldEncounters: projection.sharedWorldEncounters,
+      })
       : gameStateService.normalizeState(rawState);
     const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     const { buildingType } = req.body || {};
     const result = BuildingActionService.build(gameState, tutorial, buildingType);
     gameState.tutorial = result.tutorial || tutorial;
     repository.save(gameState);
+    const responseProjection = repository.getClientProjectionForPlayer?.(req.playerId) || {};
     return res.status(result.success ? 200 : 400).json({
       ...result,
       gameState: gameStateService.getClientGameStateFromNormalized
-        ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
-        : gameStateService.getClientGameState(gameState, projection),
+        ? gameStateService.getClientGameStateFromNormalized(gameState, responseProjection)
+        : gameStateService.getClientGameState(gameState, responseProjection),
       tutorial: gameState.tutorial,
     });
   });

@@ -14,7 +14,7 @@ const GameActionProjection = require('../application/projections/GameActionProje
 // persisted worldCombat column and flows back through the normal game view.
 const WORLD_COMBAT_ACTIONS = new Set(['startWorldCombat', 'resolveWorldCombat']);
 
-function executeWorldCombatAction(action, gameState, body = {}) {
+function executeWorldCombatAction(action, gameState, body = {}, context = {}) {
   if (action === 'startWorldCombat') {
     return WorldCombatSessionService.openSession(gameState, {
       missionId: body.missionId,
@@ -22,13 +22,13 @@ function executeWorldCombatAction(action, gameState, body = {}) {
       cityId: body.cityId,
       targetQ: body.targetQ ?? body.q ?? body.x,
       targetR: body.targetR ?? body.r ?? body.y,
-    });
+    }, new Date(), context);
   }
   if (action === 'resolveWorldCombat') {
     return WorldCombatSessionService.resolveSession(gameState, {
       battleId: body.battleId,
       inputStream: body.inputStream,
-    });
+    }, new Date(), context);
   }
   return { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
 }
@@ -185,6 +185,8 @@ function executeGameActionRequest({
   const planningProjection = loadProjection(repository, req.playerId);
   const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
     planningContext: planningProjection,
+    worldEncounterRepo: repository.worldEncounterRepo,
+    sharedWorldEncounters: planningProjection.sharedWorldEncounters,
   });
   if (!gameState) {
     return {
@@ -281,13 +283,17 @@ function executeGameActionRequest({
   }
   result = WorldExplorerTrace.run(traceEnabled, () => (
     isWorldCombatAction
-      ? executeWorldCombatAction(action, gameState, req.body || {})
+      ? executeWorldCombatAction(action, gameState, req.body || {}, {
+        worldEncounterRepo: repository.worldEncounterRepo,
+        sharedWorldEncounters: planningProjection.sharedWorldEncounters,
+      })
       : GameActionRegistry.execute({
         action,
         body: req.body || {},
         gameState,
         tutorial,
         planningContext: planningProjection,
+        worldEncounterRepo: repository.worldEncounterRepo,
       })
   ));
   if (traceEnabled) {
@@ -312,9 +318,10 @@ function executeGameActionRequest({
   EventService.maybeGenerateRegularEvent(gameState);
   EventService.maybeGenerateThreatEvent(gameState);
   repository.save(gameState);
+  const responseProjection = loadProjection(repository, req.playerId);
   const responsePayload = {
     ...result,
-    ...buildGameView(gameState, syncedTutorial, gameStateService, planningProjection),
+    ...buildGameView(gameState, syncedTutorial, gameStateService, responseProjection),
   };
   if (traceEnabled) {
     traceWorldMarch('route:response', {
@@ -392,6 +399,8 @@ function registerGameRoutes(app, deps) {
     const projection = loadProjection(repository, playerId);
     const advanced = gameStateService.advanceRuntimeState(rawState, now, {
       planningContext: projection,
+      worldEncounterRepo: repository.worldEncounterRepo,
+      sharedWorldEncounters: projection.sharedWorldEncounters,
     });
     advanced.updatedAt = now.toISOString();
     repository.save(advanced);

@@ -33,13 +33,14 @@ function getCapitalOriginCoord(worldMap = {}) {
   return { q: Math.floor(q), r: Math.floor(r) };
 }
 
-function isPlayerVisionCity(territory) {
+function isPlayerVisionCity(territory, playerId = '') {
   if (!territory || typeof territory !== 'object') return false;
   // The capital is BY DEFINITION the player's occupied home city (createCapital always stamps
   // owner:'player'/status:'occupied'); raw saves may carry it without those fields, and losing
   // capital vision would blind the whole home area, so it qualifies by id.
   if (territory.id === 'capital') return true;
-  return territory.owner === 'player' && territory.status === 'occupied';
+  if (territory.owner !== 'player' || territory.status !== 'occupied') return false;
+  return !territory.ownerPlayerId || territory.ownerPlayerId === playerId;
 }
 
 // Occupied player cities as vision sources. The capital is projected onto worldMap.origin (the
@@ -48,7 +49,7 @@ function isPlayerVisionCity(territory) {
 function getCityVisionCoords(gameState = {}) {
   const origin = getCapitalOriginCoord(gameState.worldMap);
   return (Array.isArray(gameState.territories) ? gameState.territories : [])
-    .filter(isPlayerVisionCity)
+    .filter((territory) => isPlayerVisionCity(territory, gameState.playerId || ''))
     .map((territory) => (territory.id === 'capital' && origin
       ? origin
       : { q: toInteger(territory.x ?? territory.q, 0), r: toInteger(territory.y ?? territory.r, 0) }));

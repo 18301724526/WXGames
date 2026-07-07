@@ -118,7 +118,7 @@ class WorldCityRepository {
   }
 
   // Idempotent, deterministic, ONE-TIME lay-down of the shared neutral city layer (docs/design/10
-  // §4-5, §6-R8). Mirrors WorldCampSpawner.seedCampEncounters' hasAny short-circuit: once ANY city
+  // §4-5, §6-R8). Uses the same has-any shared seeding short-circuit: once ANY city
   // exists the seeding is considered done and never re-runs, so calling this on every world init (and
   // any future normalize hook) keeps the shared city count STABLE — no duplication, no
   // write-amplification of shared rows, even though the plan is a pure function of the fixed seed +

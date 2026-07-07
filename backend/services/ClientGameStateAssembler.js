@@ -115,7 +115,7 @@ function getClientGameStateFromNormalized(normalized, projection = {}) {
     threatEventState: normalized.threatEventState,
     activeBuffs: normalized.activeBuffs,
     territoryState: TerritoryService.getClientTerritoryState(normalized, new Date(), projection),
-    worldExplorerState: WorldExplorerService.getClientState(normalized),
+    worldExplorerState: WorldExplorerService.getClientState(normalized, new Date(), projection),
     totalBuildings,
   };
 }
