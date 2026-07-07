@@ -369,9 +369,11 @@ test('WorldActorCanvasRenderer routes spine-capable actors to the spine renderer
   const host = createHost();
   const renderer = new WorldActorCanvasRenderer({ host });
   const synced = [];
+  const renderedFrames = [];
   const spine = {
     canRenderActor(actor) { return actor.unitKey === 'scout_squad_default'; },
-    syncActors(frames, viewport) { synced.push({ frames, viewport }); },
+    syncActors(frames, viewport) { synced.push({ frames, viewport }); return frames.length > 0; },
+    renderFrame() { renderedFrames.push('renderFrame'); return true; },
   };
   const actor = {
     id: 'explore-1',
@@ -395,6 +397,7 @@ test('WorldActorCanvasRenderer routes spine-capable actors to the spine renderer
   assert.equal(synced[0].frames[0].id, 'explore-1');
   assert.equal(synced[0].frames[0].facing, '1');
   assert.equal(synced[0].frames[0].unitKey, 'scout_squad_default');
+  assert.deepEqual(renderedFrames, ['renderFrame']);
   assert.equal(host.calls.some((call) => call[0] === 'getAsset'), false);
   // March arrow and selection hit target still run for spine actors.
   assert.equal(host.calls.some((call) => call[0] === 'stroke'), true);
@@ -405,9 +408,11 @@ test('WorldActorCanvasRenderer falls back to 2D sprites for actors the spine ren
   const host = createHost();
   const renderer = new WorldActorCanvasRenderer({ host });
   const synced = [];
+  const renderedFrames = [];
   const spine = {
     canRenderActor() { return false; },
-    syncActors(frames) { synced.push(frames); },
+    syncActors(frames) { synced.push(frames); return frames.length > 0; },
+    renderFrame() { renderedFrames.push('renderFrame'); return true; },
   };
   const actor = {
     id: 'x',
@@ -427,6 +432,7 @@ test('WorldActorCanvasRenderer falls back to 2D sprites for actors the spine ren
   // Declined -> the 2D path drew the sprite; the spine layer received an empty frame set.
   assert.equal(host.calls.some((call) => call[0] === 'getAsset'), true);
   assert.deepEqual(synced, [[]]);
+  assert.deepEqual(renderedFrames, []);
 });
 
 test('WorldActorCanvasRenderer clears the spine layer when no actors are present', () => {

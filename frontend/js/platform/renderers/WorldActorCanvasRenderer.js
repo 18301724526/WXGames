@@ -279,7 +279,7 @@
         }
         this.addActorHitTarget(actor, point);
       });
-      spine?.syncActors?.(spineFrames, viewport);
+      if (spine?.syncActors?.(spineFrames, viewport)) spine.renderFrame?.();
       return rendered;
     }
 

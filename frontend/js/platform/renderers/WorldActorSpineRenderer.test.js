@@ -84,12 +84,12 @@ function createFakeSpine(hooks = {}) {
 }
 
 function createFakeHost(overrides = {}) {
-  const events = { visible: [], present: [], cache: [] };
+  const events = { visible: [], present: [], cache: [], timeouts: [] };
   const runtime = {
     devicePixelRatio: 1,
     performance: { now: () => 0 },
     requestAnimationFrame: (cb) => { cb(); return 1; }, // synchronous: drives the asset pump
-    setTimeout: () => 2, // render loop scheduling: recorded but never auto-fires in tests
+    setTimeout: (_cb, delayMs) => { events.timeouts.push(delayMs); return 2; },
     clearTimeout: () => {},
     cancelAnimationFrame: () => {},
     presentLayer: (name) => { events.present.push(name); return true; },
@@ -141,11 +141,13 @@ test('WorldActorSpineRenderer adds, retargets by facing, and removes actor skele
   assert.equal(entry.animName, '1');
   assert.equal(entry.x, 40);
   assert.deepEqual(host.events.visible.at(-1), { name: 'worldActorSpine', visible: true });
+  assert.deepEqual(host.events.timeouts, []);
 
   // Facing change re-targets the animation on the same skeleton (no rebuild).
   renderer.syncActors([{ id: 'a1', unitKey: 'scout_squad_default', facing: '2', x: 40, y: 60, scale: 0.5 }]);
   assert.equal(renderer.actors.get('a1').animName, '2');
   assert.equal(renderer.actors.size, 1);
+  assert.deepEqual(host.events.timeouts, []);
 
   // Dropped from the frame list -> skeleton removed, layer hidden.
   renderer.syncActors([]);
@@ -160,7 +162,7 @@ test('WorldActorSpineRenderer renders a frame and presents the stage layer', () 
   renderer.syncActors([{ id: 'a1', unitKey: 'scout_squad_default', facing: '3', x: 40, y: 60, scale: 0.5 }]);
 
   host.events.present.length = 0;
-  renderer.renderFrame();
+  assert.equal(renderer.renderFrame(), true);
 
   assert.deepEqual(host.events.present, ['worldActorSpine']);
   assert.deepEqual(host.events.cache, []);
@@ -178,7 +180,7 @@ test('WorldActorSpineRenderer falls back to cache refresh only on runtimes witho
 
   host.events.present.length = 0;
   host.events.cache.length = 0;
-  renderer.renderFrame();
+  assert.equal(renderer.renderFrame(), true);
 
   assert.deepEqual(host.events.present, []);
   assert.deepEqual(host.events.cache, ['worldActorSpine']);
@@ -190,7 +192,7 @@ test('WorldActorSpineRenderer fails closed on a render error and hands back to 2
   renderer.canRenderActor({ unitKey: 'scout_squad_default' });
   renderer.syncActors([{ id: 'a1', unitKey: 'scout_squad_default', facing: '3', x: 40, y: 60, scale: 0.5 }]);
 
-  renderer.renderFrame(); // batcher.begin throws -> failClosed
+  assert.equal(renderer.renderFrame(), false); // batcher.begin throws -> failClosed
 
   assert.equal(renderer.failed, true);
   assert.equal(renderer.canRenderActor({ unitKey: 'scout_squad_default' }), false);

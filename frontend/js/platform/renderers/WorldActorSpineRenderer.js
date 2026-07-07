@@ -258,9 +258,9 @@
       }
     }
 
-    // Reconcile the live skeleton pool with the frame list produced by the 2D renderer:
-    // (id, unitKey, facing, screen x/y, scale). Add new armies, retarget the ones present,
-    // drop the ones gone, and keep the animation loop alive only while anything is on screen.
+    // Reconcile the live skeleton pool with the frame list produced by the world-actor pass:
+    // (id, unitKey, facing, projected x/y, scale). These coordinates are render-pass facts
+    // derived from the current camera/viewport; this renderer must not run its own world loop.
     syncActors(frames = [], _viewport = null) {
       if (this.failed) return false;
       const list = Array.isArray(frames) ? frames : [];
@@ -304,19 +304,12 @@
       }
       if (this.actors.size) {
         this.setLayerVisible(true);
-        this.startLoop();
       } else {
         this.setLayerVisible(false);
         this.stopLoop();
         this.clearSurface();
       }
       return true;
-    }
-
-    startLoop() {
-      if (this.failed || this.animationFrame) return;
-      this.lastFrameTime = this.nowSeconds();
-      this.animationFrame = this.scheduleFrame();
     }
 
     stopLoop() {
@@ -326,15 +319,6 @@
       else this.runtime?.clearTimeout?.(this.animationFrame);
       this.animationFrame = null;
       this.animationFrameType = '';
-    }
-
-    scheduleFrame() {
-      const interval = Math.max(16, Number(this.frameIntervalMs) || 33);
-      if (interval > 20 && typeof this.runtime?.setTimeout === 'function') {
-        this.animationFrameType = 'timeout';
-        return this.runtime.setTimeout(() => this.renderFrame(), interval);
-      }
-      return this.requestFrame(() => this.renderFrame());
     }
 
     requestFrame(callback) {
@@ -348,7 +332,7 @@
 
     renderFrame() {
       this.animationFrame = null;
-      if (this.failed || !this.gl || !this.actors.size) return;
+      if (this.failed || !this.gl || !this.actors.size) return false;
       try {
         const spine = this.getSpine();
         const gl = this.gl;
@@ -383,9 +367,10 @@
         this.batcher.end();
         this.shader.unbind();
         this.present();
-        this.animationFrame = this.scheduleFrame();
+        return true;
       } catch (error) {
         this.failClosed(error);
+        return false;
       }
     }
 
