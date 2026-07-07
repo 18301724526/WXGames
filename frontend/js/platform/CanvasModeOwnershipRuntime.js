@@ -417,13 +417,11 @@
           || (isOpen('modal:confirmDialog')
             && entries['modal:confirmDialog']?.payload?.kind === 'resetGame')) && 'account',
       ].filter(Boolean),
-      // UI-REDO: the map-home top bar FPS/latency/clock block is debug chrome.
-      // Its visibility is DECIDED here on the owner side through the existing
-      // DebugOverlayRegistry 'fps' gate (FeatureFlags DEBUG_OVERLAYS_ENABLED, default
-      // off); ResourceTopBarCanvasRenderer only consumes the pre-decided boolean.
-      showTopBarDebugStats: typeof host?.isDebugOverlayEnabled === 'function'
-        ? host.isDebugOverlayEnabled('fps') === true
-        : false,
+      // UI-REDO: the map-home FPS/latency/clock block is STANDARD HUD chrome per the
+      // approved reference (layout-reference-v2) — always on, user-confirmed 2026-07-08.
+      // The decision stays owner-side so future policy (e.g. a settings toggle) lands
+      // here; ResourceTopBarCanvasRenderer only consumes the pre-decided boolean.
+      showTopBarDebugStats: true,
     };
   }
 

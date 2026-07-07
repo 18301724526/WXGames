@@ -358,9 +358,10 @@
       this.ctx.fillRect(x, y0, hairline.widthPx || 1, Math.max(0, y1 - y0));
     }
 
-    // Debug chrome (FPS/latency/clock). Rendering capability is preserved but the
+    // Standard HUD stats block (FPS/latency/clock) per the approved reference — the
     // caller decides visibility: CanvasModeOwnershipRuntime.buildRendererPanelFacts
-    // computes panel.showTopBarDebugStats from the DebugOverlayRegistry 'fps' gate.
+    // supplies panel.showTopBarDebugStats (always on since 2026-07-08); this renderer
+    // only consumes the pre-decided boolean and never reads mode facts itself.
     renderMapHomeTopBarDebugStats(state = {}, options = {}, layout = {}) {
       const palette = UiThemeTokens?.palette || {};
       const numericFont = UiThemeTokens?.fontFamily?.numeric;
