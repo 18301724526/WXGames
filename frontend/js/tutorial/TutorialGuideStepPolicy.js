@@ -48,8 +48,12 @@
     if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.scoutFamousGranted)) {
       return ['resources', 'buildings', 'tasks'].includes(tabId);
     }
+    // Early famous segment (scoutFamousGranted..famousCardViewed lives inside this
+    // window): the guide directs the player to open 「名人」 and view the scout
+    // officer's card, so 'famousPersons' must open here — the pre-gate table only
+    // listed the tabs the OLD leak-through open path never consulted it for.
     if (stepAtLeast(step, TUTORIAL_STEPS.scoutFamousGranted) && stepBefore(step, TUTORIAL_STEPS.firstCityDiscovered)) {
-      return ['civilization', 'resources', 'military'].includes(tabId);
+      return ['civilization', 'resources', 'military', 'famousPersons'].includes(tabId);
     }
     if (stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered) && stepBefore(step, TUTORIAL_STEPS.polityNamed)) {
       return ['resources', 'military'].includes(tabId);

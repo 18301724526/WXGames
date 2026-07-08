@@ -54,6 +54,21 @@ test('tutorial module responsibilities remain split by public contract', () => {
   );
 });
 
+test('famous persons tab is accessible on the guide-directed early famous steps', () => {
+  // scoutFamousGranted -> famousPanelOpened -> famousCardViewed: the guide directs
+  // the player to open 「名人」 here, so the access table must allow the tab it is
+  // pointing at (regression: the client gate showed 「请先完成当前引导步骤」 on the
+  // guide's own target and the tutorial deadlocked).
+  for (const step of ['scoutFamousGranted', 'famousPanelOpened', 'famousCardViewed']) {
+    const state = TutorialState.normalizeTutorialState({ currentStep: step, completed: false });
+    assert.equal(
+      TutorialTabAccess.canAccessTab(state, 'famousPersons'),
+      true,
+      `famousPersons must be accessible at ${step}`,
+    );
+  }
+});
+
 test('TutorialService facade preserves the legacy tutorial API', () => {
   const expectedApi = [
     'TUTORIAL_STEPS',

@@ -28,8 +28,10 @@ function canAccessTab(tutorialState, tabKey) {
   if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.scoutFamousGranted)) {
     return ['resources', 'buildings', 'tasks'].includes(tabKey);
   }
+  // Early famous segment: scoutFamousGranted -> famousPanelOpened -> famousCardViewed
+  // requires opening the famous persons panel, so its tab must be accessible here.
   if (stepAtLeast(step, TUTORIAL_STEPS.scoutFamousGranted) && stepBefore(step, TUTORIAL_STEPS.scoutFormationSaved)) {
-    return ['resources', 'military', 'civilization'].includes(tabKey);
+    return ['resources', 'military', 'civilization', 'famousPersons'].includes(tabKey);
   }
   if (stepAtLeast(step, TUTORIAL_STEPS.polityNamed) && stepAtMost(step, TUTORIAL_STEPS.talentPolicyApplied)) {
     return tabKey === 'military';

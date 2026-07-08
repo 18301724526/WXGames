@@ -35,6 +35,19 @@ test('TutorialGuideStepPolicy gates tab access by current tutorial step', () => 
     step: TUTORIAL_STEPS.manualTalentAssigned,
     completed: false,
   }), true);
+  // Early famous segment: the guide itself directs the 「名人」 click on these
+  // steps, so the gate table must open the tab it is pointing at — the regression
+  // this locks showed 「请先完成当前引导步骤」 on the guide's own target.
+  for (const step of [
+    TUTORIAL_STEPS.scoutFamousGranted,
+    TUTORIAL_STEPS.famousPanelOpened,
+    TUTORIAL_STEPS.famousCardViewed,
+  ]) {
+    assert.equal(TutorialGuideStepPolicy.canOpenTab('famousPersons', {
+      step,
+      completed: false,
+    }), true, `famousPersons must open at ${step}`);
+  }
   assert.equal(TutorialGuideStepPolicy.canOpenTab('tech', {
     step: TUTORIAL_STEPS.famousSeekCompleted,
     completed: false,
