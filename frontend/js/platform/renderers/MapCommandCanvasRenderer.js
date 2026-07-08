@@ -21,6 +21,17 @@
     }
     return null;
   })();
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class MapCommandCanvasRenderer {
     constructor(options = {}) {
@@ -45,6 +56,7 @@
     drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
     drawAssetClipped(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAssetClipped === 'function' ? surface.drawAssetClipped(...args) : this.host?.drawAssetClipped?.(...args); }
     drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
     drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
     drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
     getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
@@ -459,29 +471,16 @@
         events: this.t('world.map.panel.events'),
       };
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeCommandPanel', background: true });
-      this.drawPanel(x, y, width, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(50, 39, 27, 0.96)'],
-            [1, 'rgba(19, 17, 13, 0.97)'],
-          ],
-          'rgba(34, 27, 20, 0.96)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.22)',
-        radius: 12,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      ModalPlate.drawModalPlate(this, x, y, width, panelHeight);
       this.addHitTarget({ x, y, width, height: panelHeight }, { type: 'blockCanvasModal' });
-      const closeSize = 28;
-      const closeX = x + width - closeSize - 10;
-      const closeY = y + 10;
-      this.drawText(titleByPanel[panel] || this.t('world.map.panel.fallback'), x + 16, y + 16, { size: 17, bold: true, color: '#ffe6b5' });
-      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
-      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeCommandPanel' });
+      const titleBar = ModalPlate.drawModalTitleBar(this, x, y, width, {
+        title: titleByPanel[panel] || this.t('world.map.panel.fallback'),
+        withClose: true,
+      });
+      if (titleBar.closeRect) this.addHitTarget(titleBar.closeRect, { type: 'closeCommandPanel' });
 
-      const contentTop = y + 50;
-      const contentHeight = Math.max(120, panelHeight - 62);
+      const contentTop = titleBar.contentTop;
+      const contentHeight = Math.max(120, y + panelHeight - contentTop - 12);
       const panelTab = panel === 'military' ? 'military' : panel;
       const renderState = panelTab === 'military'
         ? { ...state, militaryView: state.militaryView === 'world' ? 'army' : (state.militaryView || 'army') }

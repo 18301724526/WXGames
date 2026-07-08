@@ -308,6 +308,7 @@ test('CanvasFrameRenderer preserves standard tab transition and modal overlays',
   assert.equal(names.filter((name) => name === 'withSlideClip').length, 2);
   assert.equal(names.includes('withSuppressedHitTargets'), true);
   assert.equal(names.includes('renderResourceDetailsPanel'), true);
+  assert.equal(names.includes('renderFamousPersonsPanel'), false);
   assert.equal(names.includes('renderTechDetailModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
   assert.equal(names.at(-1), 'endFrame');

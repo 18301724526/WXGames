@@ -7,14 +7,17 @@ const { spawn } = require('child_process');
 const { URL } = require('url');
 const XLSX = require('../backend/node_modules/xlsx');
 
+const ConfigPipeline = require('../backend/services/config/ConfigPipeline');
+const ConfigReleaseService = require('../backend/services/config/ConfigReleaseService');
+
 const REPO_ROOT = path.resolve(__dirname, '..');
 const FRONTEND_ROOT = path.join(REPO_ROOT, 'frontend');
 const OUT_DIR = path.join(REPO_ROOT, 'tmp');
 const USERNAME = process.env.VERIFY_USER || 'codexqa';
 const PASSWORD = process.env.VERIFY_PASSWORD || '123456';
 const REMOTE_BASE_URL = process.env.REMOTE_BASE_URL || '';
-const VERIFY_TITLE = `策划导入验证-${Date.now()}`;
-const VERIFY_DESC = '浏览器真实上传 Excel 后，任务中心应该读取这段新描述。';
+const VERIFY_TITLE = `策划预览验证-${Date.now()}`;
+const VERIFY_DESC = '浏览器真实上传 Excel 后，只应通过预览校验看到这段新描述。';
 
 function assert(condition, message, details = null) {
   if (!condition) {
@@ -55,7 +58,20 @@ async function waitForHttp(url, timeoutMs = 20000) {
   throw lastError || new Error(`Timed out waiting for ${url}`);
 }
 
-function startBackend(port, dbPath, taskDefinitionsPath, historyPath) {
+function publishLocalActiveRelease(activePath, historyPath) {
+  const now = new Date('2026-07-08T00:00:00.000Z');
+  const snapshot = ConfigPipeline.buildCurrentSnapshot({ generatedAt: now.toISOString() });
+  const publish = ConfigReleaseService.publishRelease(
+    { snapshot, source: 'verify:current-config' },
+    { activePath, historyPath, operator: USERNAME, now },
+  );
+  if (!publish.success) {
+    throw new Error(`Failed to publish local active release: ${(publish.errors || []).join('; ')}`);
+  }
+  return publish.release;
+}
+
+function startBackend(port, dbPath, activePath, historyPath) {
   const child = spawn(process.execPath, ['backend/server.js'], {
     cwd: REPO_ROOT,
     env: {
@@ -63,8 +79,9 @@ function startBackend(port, dbPath, taskDefinitionsPath, historyPath) {
       PORT: String(port),
       DB_PATH: dbPath,
       JWT_SECRET: 'codex-temp-p2-task-uploader',
-      TASK_DEFINITIONS_PATH: taskDefinitionsPath,
-      TASK_DEFINITIONS_IMPORT_HISTORY_PATH: historyPath,
+      CONFIG_RELEASE_GATE: 'required',
+      CONFIG_ACTIVE_RELEASE_PATH: activePath,
+      CONFIG_RELEASE_HISTORY_PATH: historyPath,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -206,7 +223,7 @@ function createTaskWorkbook(filePath) {
 }
 
 async function login(page, baseUrl) {
-  await page.goto(`${baseUrl}/`, { waitUntil: 'load' });
+  await page.goto(`${baseUrl}/tools/task-table-uploader.html`, { waitUntil: 'load' });
   await page.evaluate(async ({ username, password }) => {
     localStorage.clear();
     const login = await fetch('/api/player/login', {
@@ -219,6 +236,18 @@ async function login(page, baseUrl) {
     localStorage.setItem('cf_token', data.token);
     localStorage.setItem('cf_username', username);
   }, { username: USERNAME, password: PASSWORD });
+}
+
+async function getCurrentDefinitions(page) {
+  return page.evaluate(async () => {
+    const token = localStorage.getItem('cf_token');
+    const response = await fetch('/api/admin/task-definitions', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || data.error || 'current definitions failed');
+    return data.definitions;
+  });
 }
 
 async function getTaskCenter(page) {
@@ -245,15 +274,16 @@ async function main() {
   const webPort = await getFreePort();
   const stamp = Date.now();
   const dbPath = path.join(OUT_DIR, `p2-task-uploader-${stamp}.db`);
-  const taskDefinitionsPath = path.join(OUT_DIR, `p2-task-definitions-${stamp}.json`);
-  const historyPath = path.join(OUT_DIR, `p2-task-history-${stamp}.json`);
+  const activePath = path.join(OUT_DIR, `p2-config-active-${stamp}.json`);
+  const historyPath = path.join(OUT_DIR, `p2-config-releases-${stamp}.json`);
   const workbookPath = path.join(OUT_DIR, `p2-task-uploader-${stamp}.xlsx`);
 
   try {
     fs.mkdirSync(OUT_DIR, { recursive: true });
     createTaskWorkbook(workbookPath);
     if (!isRemote) {
-      backend = startBackend(apiPort, dbPath, taskDefinitionsPath, historyPath);
+      publishLocalActiveRelease(activePath, historyPath);
+      backend = startBackend(apiPort, dbPath, activePath, historyPath);
       await waitForHttp(`http://127.0.0.1:${apiPort}/api/health`);
       previewServer = await createPreviewServer(webPort, `http://127.0.0.1:${apiPort}`);
       baseUrl = `http://127.0.0.1:${webPort}`;
@@ -265,62 +295,31 @@ async function main() {
     page.on('pageerror', (err) => pageLogs.push(`PAGEERROR: ${err.message}`));
 
     await login(page, baseUrl);
-    const original = await page.evaluate(async () => {
-      const token = localStorage.getItem('cf_token');
-      const response = await fetch('/api/admin/task-definitions', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || data.error || 'current definitions failed');
-      return data.definitions;
-    });
+    const original = await getCurrentDefinitions(page);
+    const originalTask = original.tasks.find((task) => task.id === 'main_build_house');
+    assert(originalTask?.title !== VERIFY_TITLE, 'active release should start from committed task title', originalTask);
 
     await page.goto(`${baseUrl}/tools/task-table-uploader.html`, { waitUntil: 'load' });
     await page.waitForSelector('#fileInput', { timeout: 10000 });
+    assert(await page.locator('#importButton').count() === 0, 'preview tool must not expose a confirm import button');
     await page.setInputFiles('#fileInput', workbookPath);
     await page.click('#previewButton');
     await page.waitForFunction((title) => document.body.innerText.includes(title), VERIFY_TITLE, { timeout: 15000 });
     const previewText = await page.locator('#preview').innerText();
     assert(previewText.includes('修改'), 'preview should show changed diff', previewText);
-    assert(previewText.includes(VERIFY_DESC), 'preview should show imported description', previewText);
+    assert(previewText.includes(VERIFY_DESC), 'preview should show uploaded description', previewText);
+    await page.waitForFunction(() => document.body.innerText.includes('配置发布链路'), null, { timeout: 15000 });
 
-    await page.click('#importButton');
-    await page.waitForFunction(() => document.body.innerText.includes('保存了导入报告'), null, { timeout: 15000 });
+    const afterPreview = await getCurrentDefinitions(page);
+    const unchangedTask = afterPreview.tasks.find((task) => task.id === 'main_build_house');
+    assert(unchangedTask?.title === originalTask.title, 'preview must not mutate active task definitions', unchangedTask);
+    assert(unchangedTask?.description === originalTask.description, 'preview must not mutate active task description', unchangedTask);
 
     const taskCenter = await getTaskCenter(page);
-    const importedTask = taskCenter.categories.main.tasks.find((task) => task.id === 'main_build_house');
-    assert(importedTask?.title === VERIFY_TITLE, 'task center should read imported task title', importedTask);
-    assert(importedTask?.description === VERIFY_DESC, 'task center should read imported task description', importedTask);
-    assert(importedTask?.reward?.resources?.food === 7, 'task center should read imported food reward', importedTask);
-    assert(importedTask?.reward?.resources?.wood === 3, 'task center should read imported wood reward', importedTask);
+    const liveTask = taskCenter.categories.main.tasks.find((task) => task.id === 'main_build_house');
+    assert(liveTask?.title !== VERIFY_TITLE, 'task center must still read the active release, not uploaded preview rows', liveTask);
+    assert(liveTask?.description !== VERIFY_DESC, 'task center must not read uploaded preview description', liveTask);
 
-    const history = await page.evaluate(async () => {
-      const token = localStorage.getItem('cf_token');
-      const response = await fetch('/api/admin/task-definitions/history', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || data.error || 'history failed');
-      return data.history;
-    });
-    assert(history.imports.length >= 1, 'history should include import record', history);
-
-    const restore = await page.evaluate(async ({ definitions }) => {
-      const token = localStorage.getItem('cf_token');
-      const response = await fetch('/api/admin/task-definitions/import', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ fileName: 'codex-restore-original.json', definitions }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || data.error || 'restore failed');
-      return data.definitions;
-    }, { definitions: original });
-
-    assert(restore.tasks.some((task) => task.id === 'main_build_house' && task.title !== VERIFY_TITLE), 'restore should bring original title back', restore);
     await page.screenshot({ path: path.join(OUT_DIR, 'p2-task-uploader-browser-verify.png'), fullPage: true });
     const badLogs = pageLogs.filter((line) => /PAGEERROR|TypeError|ReferenceError|Unhandled/i.test(line));
     assert(badLogs.length === 0, 'browser should not report runtime errors', badLogs);
@@ -329,10 +328,9 @@ async function main() {
       ok: true,
       mode: isRemote ? 'remote' : 'local',
       baseUrl,
-      importedTitle: importedTask.title,
-      importedDescription: importedTask.description,
-      importedReward: importedTask.reward.resources,
-      historyCount: history.imports.length,
+      previewOnly: true,
+      activeTitle: liveTask.title,
+      uploadedPreviewTitle: VERIFY_TITLE,
       screenshot: path.join(OUT_DIR, 'p2-task-uploader-browser-verify.png'),
     }, null, 2));
   } catch (error) {

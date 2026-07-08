@@ -433,16 +433,6 @@
             t('tutorial.highlight.chooseFirstCitySite'),
           ),
       },
-      // Homestead claim pair: at cityEntered the house supplies are claimed
-      // from the task center BEFORE the house-build guide takes over.
-      ...makeTaskClaimPairRules({
-        openId: 'homestead-open-task-center',
-        claimId: 'homestead-claim-supplies',
-        step: steps.cityEntered,
-        taskId: 'main_homestead_supplies',
-        openMessage: () => t('tutorial.highlight.openHomesteadTask'),
-        claimMessage: () => t('tutorial.highlight.claimHomesteadSupplies'),
-      }),
       {
         id: 'first-era-open-civilization',
         matches: all(stepIs(steps.houseBuilt), (host) => !host.isOnTab?.('civilization')),

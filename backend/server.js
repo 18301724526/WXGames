@@ -20,6 +20,7 @@ const registerVersionRoutes = require('./routes/versionRoutes');
 const registerMetricsRoutes = require('./routes/metricsRoutes');
 const registerClientEventsRoutes = require('./routes/clientEventsRoutes');
 const gameStateService = require('./services/GameStateService');
+const TaskDefinitionService = require('./services/TaskDefinitionService');
 const { SpawnLifecycleService } = require('./services/spawn/SpawnLifecycleService');
 const PresenceService = require('./services/realtime/PresenceService');
 const { BuildingConfig, initializeRuntimeConfig, getRuntimeConfigStatus } = require('./services/config/GameplayConfigRuntime');
@@ -150,6 +151,7 @@ app.get('/api/health', (req, res) => {
   const configRuntimePolicy = configReleaseService.resolveRuntimeGatePolicy();
   const configLoaderStatus = configRuntimeLoader.getRuntimeLoaderStatus();
   const gameplayConfigStatus = getRuntimeConfigStatus();
+  const taskDefinitionsStatus = TaskDefinitionService.getDefinitionsSummary();
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -191,6 +193,7 @@ app.get('/api/health', (req, res) => {
         errors: gameplayConfigStatus.errors,
         warnings: gameplayConfigStatus.warnings,
       },
+      taskDefinitions: taskDefinitionsStatus,
     },
   });
 });

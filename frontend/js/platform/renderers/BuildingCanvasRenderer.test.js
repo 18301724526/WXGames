@@ -85,7 +85,6 @@ const BUILDING_DRAWING_METHODS = [
   'addHitTarget',
   'createGradient',
   'drawAsset',
-  'drawButton',
   'drawIconCard',
   'drawLine',
   'drawPanel',
@@ -316,13 +315,13 @@ test('BuildingCanvasRenderer locks non-house cards during tutorial house guide',
     resources: { food: 130, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
     unlockedBuildings: ['house', 'farm'],
     buildings: {},
-    tutorial: { completed: false, currentStep: 3 },
+    tutorial: { completed: false, currentStep: 'cityEntered' },
     buildingDefinitions: {
       house: { id: 'house', name: 'House', category: 'livelihood', effects: { perLevel: { populationCap: 3 } } },
       farm: { id: 'farm', name: 'Farm', category: 'agriculture', effects: { perLevel: { foodOutputMultiplier: 0.5 } } },
     },
     buildingCosts: {
-      house: { food: 30 },
+      house: {},
       farm: { food: 0 },
     },
   };

@@ -1,4 +1,4 @@
-const test = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const registerGameRoutes = require('../routes/gameRoutes');
@@ -8,6 +8,18 @@ const TerritoryService = require('../services/TerritoryService');
 const WorldMapService = require('../services/WorldMapService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
+const {
+  publishCurrentConfigRuntime,
+  resetConfigRuntime,
+} = require('./helpers/configRuntimeTestHarness');
+
+before(() => {
+  publishCurrentConfigRuntime();
+});
+
+after(() => {
+  resetConfigRuntime();
+});
 
 function createAppHarness() {
   const routes = [];
@@ -105,12 +117,12 @@ test('game action route builds the tutorial house before era one', () => {
   const { app, routes } = createAppHarness();
   const initialTutorial = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.houseGuideReady,
+    TutorialService.TUTORIAL_STEPS.cityEntered,
   );
   const gameState = {
     playerId: 'route-tutorial-house-test',
     tutorial: initialTutorial,
-    resources: { food: 130, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
     buildings: {},
     population: { total: 3, max: 3, farmers: 3 },
     techs: {},
@@ -153,6 +165,8 @@ test('game action route builds the tutorial house before era one', () => {
   assert.equal(res.statusCode, 200);
   assert.equal(savedStates.length, 1);
   assert.equal(savedStates[0].cities.capital.buildings.house.level, 1);
+  assert.deepEqual(res.payload.cost, {});
+  assert.equal(savedStates[0].cities.capital.resources.food, 0);
   assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
   assert.equal(res.payload.command.type, 'BuildBuilding');
@@ -166,13 +180,13 @@ test('game action route reports committed build commands when projection fails a
   const { app, routes } = createAppHarness();
   const initialTutorial = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.houseGuideReady,
+    TutorialService.TUTORIAL_STEPS.cityEntered,
   );
   const gameState = {
     playerId: 'route-build-projection-failure-test',
     revision: 7,
     tutorial: initialTutorial,
-    resources: { food: 130, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
+    resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
     buildings: {},
     population: { total: 3, max: 3, farmers: 3 },
     techs: {},
@@ -468,7 +482,7 @@ test('game action route syncs farm-built tutorial before second era advancement'
   assert.equal(savedStates[0].eventQueue.some((event) => event.id === 'evt_settlement_forest_001'), true);
 });
 
-test('game task claim route pays homestead supplies and advances the house guide', () => {
+test('game task claim route rejects the removed homestead supplies task', () => {
   const { app, routes } = createAppHarness();
   const gameState = {
     playerId: 'route-homestead-claim-test',
@@ -532,14 +546,13 @@ test('game task claim route pays homestead supplies and advances the house guide
 
   route.handlers[0](req, res, () => route.handlers[1](req, res));
 
-  assert.equal(res.statusCode, 200);
-  assert.equal(res.payload.success, true);
-  // Reward = buildCost:house (food 30) paid into the active city resources.
-  assert.deepEqual(res.payload.reward.resources, { food: 30 });
-  assert.equal(res.payload.gameState.resources.food, 40);
-  assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseGuideReady);
-  assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseGuideReady);
-  assert.equal(Boolean(savedStates[0].taskProgress.claimed.main_homestead_supplies), true);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.payload.success, false);
+  assert.equal(res.payload.error, 'TASK_NOT_FOUND');
+  assert.equal(res.payload.gameState.resources.food, 10);
+  assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.cityEntered);
+  assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.cityEntered);
+  assert.equal(Boolean(savedStates[0].taskProgress.claimed.main_homestead_supplies), false);
 });
 
 test('game routes walk the barracks, first-army, and scout-officer chain into formation save', () => {

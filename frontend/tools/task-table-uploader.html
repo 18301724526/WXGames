@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>任务表导入工具</title>
+  <title>任务表预览校验工具</title>
   <style>
     :root {
       color-scheme: light;
@@ -28,7 +28,7 @@
     h2 { margin: 0 0 12px; font-size: 17px; letter-spacing: 0; }
     p { margin: 0; color: var(--muted); line-height: 1.6; }
     .toolbar, .panel, .status { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
-    .toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) auto auto auto; gap: 12px; align-items: center; margin: 20px 0; padding: 14px; }
+    .toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) auto auto; gap: 12px; align-items: center; margin: 20px 0; padding: 14px; }
     input[type="file"] { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #fbfaf7; }
     button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: 6px; background: var(--accent); color: #fff; font-size: 14px; cursor: pointer; white-space: nowrap; }
     button.secondary { background: #fff; color: var(--accent-dark); border-color: var(--accent); }
@@ -41,11 +41,8 @@
     .status.ok { color: var(--accent-dark); background: var(--soft); border-color: #b9d7ce; }
     .status.error { color: var(--danger); background: #fff1ef; border-color: #e4b9b4; }
     .meta { display: grid; gap: 10px; }
-    .meta div, .history-item { display: grid; grid-template-columns: minmax(86px, auto) 1fr; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #eee9de; color: var(--muted); font-size: 13px; }
-    .meta strong, .history-item strong { color: var(--ink); word-break: break-word; }
-    .history { display: grid; gap: 12px; max-height: 360px; overflow: auto; padding-right: 4px; }
-    .history-item { grid-template-columns: 1fr auto; align-items: center; padding: 10px; border: 1px solid #eee9de; border-radius: 6px; }
-    .history-item small { display: block; color: var(--muted); line-height: 1.5; }
+    .meta div { display: grid; grid-template-columns: minmax(86px, auto) 1fr; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #eee9de; color: var(--muted); font-size: 13px; }
+    .meta strong { color: var(--ink); word-break: break-word; }
     .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
     .pill { padding: 5px 9px; border-radius: 999px; border: 1px solid #d7e8df; color: var(--accent-dark); background: var(--soft); font-size: 12px; }
     .pill.danger { color: var(--danger); background: #fff1ef; border-color: #e4b9b4; }
@@ -71,8 +68,8 @@
   <main>
     <header>
       <div>
-        <h1>任务表导入工具</h1>
-        <p>选择任务 Excel 或 JSON，先预览差异和校验错误，确认无误后提交到服务器。</p>
+        <h1>任务表预览校验工具</h1>
+        <p>选择任务 Excel 或 JSON，预览差异和校验错误；通过后提交代码并走配置发布链路。</p>
       </div>
       <button class="secondary" id="downloadTemplate" type="button">下载模板</button>
     </header>
@@ -80,7 +77,6 @@
     <section class="toolbar">
       <input id="fileInput" type="file" accept=".xlsx,.xls,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
       <button id="previewButton" type="button">预览校验</button>
-      <button id="importButton" type="button" disabled>确认提交</button>
       <button id="refreshButton" class="secondary" type="button">刷新当前表</button>
     </section>
 
@@ -91,10 +87,6 @@
         <section class="panel">
           <h2>当前服务器任务表</h2>
           <div class="meta" id="currentMeta"></div>
-        </section>
-        <section class="panel">
-          <h2>导入历史</h2>
-          <div class="history" id="historyList"></div>
         </section>
       </aside>
 
@@ -114,13 +106,11 @@
     const el = (id) => document.getElementById(id);
     const fileInput = el('fileInput');
     const previewButton = el('previewButton');
-    const importButton = el('importButton');
     const refreshButton = el('refreshButton');
     const templateButton = el('downloadTemplate');
     const statusEl = el('status');
     const previewEl = el('preview');
     const currentMetaEl = el('currentMeta');
-    const historyListEl = el('historyList');
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -153,30 +143,12 @@
       currentMetaEl.innerHTML = [
         ['版本', definitions.version || '-'],
         ['哈希', definitions.hash || '-'],
-        ['导入人', definitions.importedBy || '-'],
-        ['导入时间', definitions.importedAt || '-'],
+        ['发布人', definitions.importedBy || '-'],
+        ['发布时间', definitions.importedAt || '-'],
         ['来源', definitions.source || '-'],
         ['任务数', summary.totalCount ?? '-'],
         ['主线', byCategory.main ?? 0],
       ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
-    }
-
-    function renderHistory(history = {}) {
-      const imports = history.imports || [];
-      if (!imports.length) {
-        historyListEl.innerHTML = '<div class="empty">暂无导入历史。</div>';
-        return;
-      }
-      historyListEl.innerHTML = imports.map((item) => `
-        <div class="history-item">
-          <div>
-            <strong>${escapeHtml(item.version || '-')} / ${escapeHtml(item.hash || '-')}</strong>
-            <small>${escapeHtml(item.action || 'import')} · ${escapeHtml(item.importedBy || '-')} · ${escapeHtml(item.importedAt || '-')}</small>
-            <small>${escapeHtml(item.source || '-')}</small>
-          </div>
-          <button class="warning rollbackButton" type="button" data-id="${escapeHtml(item.id)}">回滚</button>
-        </div>
-      `).join('');
     }
 
     function renderDiff(report = {}) {
@@ -247,12 +219,8 @@
         setStatus('未检测到登录 token，请先在游戏页面登录，再打开本工具。', 'error');
         return;
       }
-      const [current, history] = await Promise.all([
-        request('/admin/task-definitions'),
-        request('/admin/task-definitions/history'),
-      ]);
+      const current = await request('/admin/task-definitions');
       renderMeta(current.definitions);
-      renderHistory(history.history);
       setStatus(message, 'ok');
     }
 
@@ -285,45 +253,20 @@
       state.preview = data.definitions;
       state.report = data.report;
       renderPreview(data.definitions, data.errors || [], data.report || {});
-      importButton.disabled = !data.success;
-      setStatus(data.success ? '预览校验通过，可以确认提交。' : '预览校验未通过。', data.success ? 'ok' : 'error');
-    }
-
-    async function importDefinitions() {
-      if (!state.file || !state.contentBase64) return setStatus('请先预览校验文件。', 'error');
-      const data = await request('/admin/task-definitions/import', {
-        method: 'POST',
-        body: JSON.stringify({ fileName: state.file.name, contentBase64: state.contentBase64 }),
-      });
-      state.preview = data.definitions;
-      state.report = data.report;
-      renderPreview(data.definitions, data.errors || [], data.report || {});
-      importButton.disabled = true;
-      await refreshAll('任务表已提交到服务器，并保存了导入报告。');
-    }
-
-    async function rollbackImport(importId) {
-      if (!confirm('确认回滚到这条任务表版本？')) return;
-      const data = await request('/admin/task-definitions/rollback', {
-        method: 'POST',
-        body: JSON.stringify({ importId }),
-      });
-      renderPreview(data.definitions, data.errors || [], data.report || {});
-      await refreshAll('任务表已回滚，并保存了回滚报告。');
+      setStatus(
+        data.success
+          ? '预览校验通过，请将配置提交到代码仓库并走配置发布链路。'
+          : '预览校验未通过。',
+        data.success ? 'ok' : 'error',
+      );
     }
 
     previewButton.addEventListener('click', () => previewImport().catch((error) => setStatus(error.message, 'error')));
-    importButton.addEventListener('click', () => importDefinitions().catch((error) => setStatus(error.message, 'error')));
     refreshButton.addEventListener('click', () => refreshAll().catch((error) => setStatus(error.message, 'error')));
     templateButton.addEventListener('click', () => downloadTemplate().catch((error) => setStatus(error.message, 'error')));
-    historyListEl.addEventListener('click', (event) => {
-      const button = event.target.closest('.rollbackButton');
-      if (button?.dataset.id) rollbackImport(button.dataset.id).catch((error) => setStatus(error.message, 'error'));
-    });
     fileInput.addEventListener('change', () => {
       state.preview = null;
       state.report = null;
-      importButton.disabled = true;
       setStatus(fileInput.files?.[0] ? `已选择：${fileInput.files[0].name}` : '等待选择文件。');
     });
 

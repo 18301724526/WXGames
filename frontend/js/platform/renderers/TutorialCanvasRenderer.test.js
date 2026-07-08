@@ -857,7 +857,7 @@ test('TutorialAdvisorCanvasRenderer keeps runtime fallback inside registered spi
 
     const ensureCall = calls.find((call) => call[0] === 'ensureLayerCanvas');
     assert.equal(ensureCall[1], 'tutorialSpine');
-    assert.equal(ensureCall[2].zIndex, 1001);
+    assert.equal(ensureCall[2].zIndex, 1002);
     assert.equal(ensureCall[2].contextType, 'webgl');
     assert.equal(ensureCall[2].pointerEvents, 'none');
     assert.deepEqual(ensureCall[2].rect, { x: 8, y: 40, width: 128, height: 248 });
@@ -1009,7 +1009,7 @@ test('TutorialDialogueLayer renders above the spine layer without replacing host
   assert.equal(TutorialDialogueLayer.begin(renderer), dialogueCtx);
   const ensureCall = calls.find((call) => call[0] === 'ensureLayerCanvas');
   assert.equal(ensureCall[1], 'tutorialDialogue');
-  assert.equal(ensureCall[2].zIndex, 1002);
+  assert.equal(ensureCall[2].zIndex, 1003);
   assert.equal(ensureCall[2].pointerEvents, 'none');
   assert.deepEqual(ensureCall[2].rect, { x: 0, y: 0, width: 390, height: 693 });
   assert.equal(calls.some((call) => call[0] === 'clearRect'), true);

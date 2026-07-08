@@ -17,6 +17,7 @@ const officialDocPaths = [
   'docs/project_decomposition_2026-06-27.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/world_map_hud_transparency_contract_2026-06-19.md',
+  'docs/server_environment_main_2026-06-22.md',
   'docs/world-combat-interactive-architecture.md',
   'docs/server_environment_test_2026-06-22.md',
   'docs/server_environment_refactor_tutorial_2026-06-25.md',
@@ -100,6 +101,14 @@ const requiredText = {
     'transparent area of `mainHud`',
     'must not use `clearRect(mapX, mapY, mapW, mapH)`',
     'Hit-target collection is separate from visual drawing',
+  ],
+  'docs/server_environment_main_2026-06-22.md': [
+    'WXGame Main Server Environment Report',
+    '310eb0b73d9012b43b14cbf94402d78dc5608344',
+    'codex/battle-core-test-server',
+    '/wxgame-test-api/',
+    'wxgame-test-server',
+    'one-way',
   ],
   'docs/server_environment_test_2026-06-22.md': [
     'WXGame Test Server Environment Report',

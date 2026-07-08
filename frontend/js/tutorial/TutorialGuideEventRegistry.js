@@ -93,9 +93,6 @@
       tabClicked: async (host, payload = {}) => {
         const tabId = payload.tabId || payload.panelId || payload.tab || '';
         if (!host.canOpenTab?.(tabId)) return false;
-        if (tabId === 'buildings' && stepEquals(getStep(host), steps.cityEntered)) {
-          await host.advanceTo?.(steps.houseGuideReady);
-        }
         if (tabId === 'civilization' && stepEquals(getStep(host), steps.houseBuilt)) {
           await host.advanceTo?.(steps.civilizationTabOpened);
         }
@@ -125,8 +122,6 @@
 
       cityEntered: async (host) => {
         if (host.isCompleted?.()) return host.state;
-        // houseGuideReady is no longer auto-advanced here: it is reached by
-        // claiming the homestead-supplies task (TASK_CLAIM_STEPS).
         if (TutorialFlowShared.stepBefore(getStep(host), steps.cityEntered)) {
           return host.advanceTo?.(steps.cityEntered) || host.state;
         }

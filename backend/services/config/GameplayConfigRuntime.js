@@ -193,6 +193,12 @@ function getTechPayload() {
   return getRuntimePayload('tech-tree-config') || FallbackTechTreeConfig.raw();
 }
 
+function getTaskDefinitionsPayload() {
+  ensureInitialized();
+  const payload = getRuntimePayload('task-definitions');
+  return payload ? clone(payload) : null;
+}
+
 const GameConfig = {
   get resources() {
     return getGamePayload().resources || {};
@@ -404,6 +410,7 @@ module.exports = {
   TutorialFlowConfig,
   TechTreeConfig,
   configureRuntimeConfig,
+  getTaskDefinitionsPayload,
   getRuntimeConfigStatus,
   initializeRuntimeConfig,
   resetRuntimeConfig,

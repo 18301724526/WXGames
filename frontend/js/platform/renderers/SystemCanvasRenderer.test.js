@@ -289,7 +289,7 @@ test('SystemCanvasRenderer resolves system chrome through active locale', () => 
   renderer.renderLogsPanel([]);
 
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Civilization Spark'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Log In'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Log In'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Preparing settlement resources'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Network connection is unstable'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '2 missed heartbeats'), true);

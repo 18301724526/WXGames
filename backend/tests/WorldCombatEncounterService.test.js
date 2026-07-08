@@ -33,7 +33,6 @@ function createPlayerState(playerId = 'player-a') {
 
 function createSharedCamp(overrides = {}, now = new Date('2026-07-05T00:00:00.000Z')) {
   const spec = WorldCampSpawner.planCamps(CAMP_SEED, { q: 0, r: 0 }, {
-    densityRoll: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   })[0];
@@ -223,6 +222,38 @@ test('GameStateRepository projects the same shared encounters to two players and
     assert.deepEqual(idsA, idsB);
     assert.equal(Boolean(savedA.worldCombat.encounters), false);
     assert.equal(idsA.length, repository.worldEncounterRepo.getAllEncounters().length);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository reconciles shared camps by activity region, not by player copy', () => {
+  const db = new Database(':memory:');
+  try {
+    const repository = new GameStateRepository(db);
+    repository.init();
+    const playerA = createPlayerState('activity-region-a');
+    const playerB = createPlayerState('activity-region-b');
+    const playerC = createPlayerState('activity-region-c');
+    playerB.worldMap.origin = { q: 3, r: 3 };
+    playerC.worldMap.origin = { q: 32, r: 0 };
+
+    repository.save(playerA);
+    const oneRegionIds = repository.getClientProjectionForPlayer(playerA.playerId)
+      .sharedWorldEncounters.map((encounter) => encounter.id).sort();
+
+    repository.save(playerB);
+    const sameRegionIds = repository.getClientProjectionForPlayer(playerB.playerId)
+      .sharedWorldEncounters.map((encounter) => encounter.id).sort();
+
+    repository.save(playerC);
+    const distantRegionIds = repository.getClientProjectionForPlayer(playerC.playerId)
+      .sharedWorldEncounters.map((encounter) => encounter.id).sort();
+
+    assert.ok(oneRegionIds.length > 0);
+    assert.deepEqual(sameRegionIds, oneRegionIds);
+    assert.ok(distantRegionIds.length > sameRegionIds.length);
+    assert.equal(new Set(distantRegionIds).size, distantRegionIds.length);
   } finally {
     db.close();
   }

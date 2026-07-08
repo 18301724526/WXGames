@@ -9,11 +9,6 @@
       "count": 1
     }
   },
-  "backend/services/TaskDefinitionService.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/services/VersionService.js": {
     "no-unused-vars": {
       "count": 3

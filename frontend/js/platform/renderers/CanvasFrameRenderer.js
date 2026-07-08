@@ -290,7 +290,6 @@
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
-      if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists
@@ -345,7 +344,6 @@
       else if (options.showAdvisor) this.renderAdvisorPanel(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
-      if (options.showFamousPersons) this.renderFamousPersonsPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists

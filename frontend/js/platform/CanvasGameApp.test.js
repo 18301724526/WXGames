@@ -22,6 +22,25 @@ function makeAppHost(fields = {}) {
   return Object.assign(Object.create(CanvasGameApp.prototype), fields);
 }
 
+test('CanvasGameApp uses the shell panel surface manager when mounted', () => {
+  const shell = new CanvasGameShell({
+    previewEnabled: false,
+    inputEnabled: false,
+  });
+  const shellManager = shell.getPanelSurfaceManager();
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    useWorldMapRuntime: false,
+    canvasShell: shell,
+  });
+  shell.lastGame = app;
+
+  assert.equal(app.panelSurfaceManager, null);
+  assert.equal(app.getPanelSurfaceManager(), shellManager);
+});
+
 test('CanvasGameApp owns retired responsibility methods directly', () => {
   const proto = CanvasGameApp.prototype;
   const expectedMethods = {
@@ -73,6 +92,121 @@ test('html and minigame entries load CanvasGameApp without retired split modules
     true,
     'state/optimistic/index should require before CanvasGameApp',
   );
+});
+
+test('seekFamousPerson syncs the single API state source and redraws only the panel surface', async () => {
+  const calls = [];
+  const result = {
+    message: 'seek complete',
+    gameState: { currentTab: 'military', famousPersons: { candidates: [{ id: 'candidate-1' }] } },
+    tutorial: { currentStep: 'famousSeekCompleted' },
+  };
+  const host = makeAppHost({
+    state: { currentTab: 'military', militaryView: 'world' },
+    activeTab: 'military',
+    militaryView: 'world',
+    mapHomeActive: true,
+    famousPersonsPage: 4,
+    selectedFamousPersonId: 'fp-old',
+    getGameApi() {
+      return {
+        async seekFamousPerson(source) {
+          calls.push(['api.seekFamousPerson', source]);
+          return result;
+        },
+      };
+    },
+    applyApiState(data, options) {
+      calls.push(['applyApiState', data, options]);
+      this.state = {
+        ...(this.state || {}),
+        ...(data.gameState || {}),
+      };
+      this.tutorial = data.tutorial;
+    },
+    renderPanelOverlaySurface(panelKey, manager, options) {
+      calls.push(['renderPanelOverlaySurface', panelKey, options.state.famousPersons.candidates.length]);
+      return true;
+    },
+    render() {
+      calls.push(['render']);
+    },
+    renderCanvasSurface(activeTab) {
+      calls.push(['renderCanvasSurface', activeTab]);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  const returned = await host.seekFamousPerson('guide');
+
+  assert.equal(returned, result);
+  assert.equal(host.famousPersonsPage, 0);
+  assert.equal(host.selectedFamousPersonId, '');
+  assert.deepEqual(calls, [
+    ['api.seekFamousPerson', 'guide'],
+    ['applyApiState', result, { render: false }],
+    ['log', 'seek complete'],
+    ['renderPanelOverlaySurface', 'famousPersons', 1],
+  ]);
+});
+
+test('acceptFamousPerson keeps famous panel updates on the panel surface manager', async () => {
+  const calls = [];
+  const result = {
+    message: 'accepted',
+    gameState: { currentTab: 'military', famousPersons: { people: [{ id: 'fp-1' }] } },
+  };
+  const host = makeAppHost({
+    state: { currentTab: 'military', militaryView: 'world' },
+    getGameApi() {
+      return {
+        async acceptFamousPerson(candidateId) {
+          calls.push(['api.acceptFamousPerson', candidateId]);
+          return result;
+        },
+      };
+    },
+    applyApiState(data, options) {
+      calls.push(['applyApiState', data, options]);
+      this.state = {
+        ...(this.state || {}),
+        ...(data.gameState || {}),
+      };
+    },
+    getPanelSurfaceManager() {
+      return {
+        openPanel(panelKey) {
+          calls.push(['manager.openPanel', panelKey]);
+          return true;
+        },
+      };
+    },
+    render() {
+      calls.push(['render']);
+    },
+    renderCanvasSurface(activeTab) {
+      calls.push(['renderCanvasSurface', activeTab]);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  assert.equal(await host.acceptFamousPerson('candidate-1'), true);
+  assert.deepEqual(calls, [
+    ['api.acceptFamousPerson', 'candidate-1'],
+    ['applyApiState', result, { render: false }],
+    ['log', 'accepted'],
+    ['manager.openPanel', 'famousPersons'],
+  ]);
 });
 
 test('saveArmyFormation lets tutorial own the post-save map transition', async () => {

@@ -801,7 +801,9 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
     handlePointerMove(point) {
           if (!this.renderer || typeof this.renderer.setHoverPoint !== 'function') return false;
           const changed = this.renderer.setHoverPoint(point);
-          if (changed && this.isBlockingPanelSnapshotOpen('showFamousPersons')) this.renderActive();
+          if (changed && this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
+            this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons');
+          }
           return changed;
         }
 
@@ -1316,14 +1318,26 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const handled = typeof this.renderer.setPinnedFamousSkillTooltip === 'function'
               ? this.renderer.setPinnedFamousSkillTooltip(action)
               : false;
-            if (handled) this.renderActive();
+            if (handled) {
+              if (this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
+                this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons', { action });
+              } else {
+                this.renderActive();
+              }
+            }
             return handled;
           }
           if (action.type === 'clearFamousSkillTooltip') {
             const handled = typeof this.renderer.clearFamousSkillTooltip === 'function'
               ? this.renderer.clearFamousSkillTooltip()
               : false;
-            if (handled) this.renderActive();
+            if (handled) {
+              if (this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
+                this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons', { action });
+              } else {
+                this.renderActive();
+              }
+            }
             return handled;
           }
           const handled = this.handleAction(action, event, { tapTraceId });
@@ -1465,39 +1479,22 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     openFamousPersons() {
-          const owner = getUiStateOwner(this);
-          CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
-          owner.famousPersonsPage = 0;
-          owner.selectedFamousPersonId = '';
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
-          return true;
+          return this.getPanelSurfaceManager?.()?.openPanel?.('famousPersons') !== false;
         }
 
     closeFamousPersons() {
-          const owner = getUiStateOwner(this);
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
-          owner.famousPersonsPage = 0;
-          owner.selectedFamousPersonId = '';
+          this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons');
           const game = this.lastGame || null;
-          this.renderer?.clearFamousSkillTooltip?.();
           game?.tutorialController?.onFamousPersonsClosed?.();
           return true;
         }
 
     openFamousPersonDetail(action = {}) {
-          getUiStateOwner(this).selectedFamousPersonId = action.personId || '';
-          this.renderer?.clearFamousSkillTooltip?.();
-          this.renderActive();
-          return true;
+          return this.getPanelSurfaceManager?.()?.runPanelAction?.('famousPersons', 'openDetail', action) !== false;
         }
 
     closeFamousPersonDetail() {
-          getUiStateOwner(this).selectedFamousPersonId = '';
-          this.renderer?.clearFamousSkillTooltip?.();
-          this.renderActive();
-          return true;
+          return this.getPanelSurfaceManager?.()?.runPanelAction?.('famousPersons', 'closeDetail') !== false;
         }
 
     // getArmyFormation was a divergent copy that read this.lastGame.state; it now lives in
@@ -1552,13 +1549,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     changeFamousPersonsPage(action = {}) {
-          const owner = getUiStateOwner(this);
-          const delta = Number(action.delta) || 0;
-          owner.famousPersonsPage = Math.max(0, (Number(owner.famousPersonsPage) || 0) + delta);
-          owner.selectedFamousPersonId = '';
-          this.renderer?.clearFamousSkillTooltip?.();
-          this.renderActive();
-          return true;
+          return this.getPanelSurfaceManager?.()?.runPanelAction?.('famousPersons', 'changePage', action) !== false;
         }
 
     resetForCanvasTabSwitch() {
@@ -1574,13 +1565,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           this.buildingTransition = null;
           this.closeEventSnapshot?.();
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+          this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
           this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
           this.closeRewardRevealSnapshot?.();
-          owner.famousPersonsPage = 0;
-          owner.selectedFamousPersonId = '';
-          this.renderer?.clearFamousSkillTooltip?.();
         }
 
     resetLocalViewToResources(options = {}) {
@@ -1612,12 +1600,9 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+          this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
-          owner.famousPersonsPage = 0;
-          owner.selectedFamousPersonId = '';
-          this.renderer?.clearFamousSkillTooltip?.();
           this.activeTaskCenterTab = 'main';
           this.activeGuidebookTab = 'planning';
           const game = this.lastGame;
@@ -1663,7 +1648,8 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return false;
         }
 
-    renderCanvasAction() {
+    renderCanvasAction(action = {}) {
+          if (this.renderPanelCanvasAction?.(action)) return true;
           this.renderActive();
           return true;
         }
@@ -2668,7 +2654,8 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return this.renderActive();
         }
 
-    render() {
+    render(action = {}) {
+          if (this.renderPanelCanvasAction?.(action)) return true;
           return this.renderActive();
         }
 
@@ -2846,6 +2833,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             showFamousPersons: panel.showFamousPersons,
             famousPersonsPage: uiOwner.famousPersonsPage,
             selectedFamousPersonId: uiOwner.selectedFamousPersonId,
+            panelSurfaceManager: this.getPanelSurfaceManager?.(),
             armyFormationEditor: this.armyFormationEditor,
             worldMapRuntimeContext: this.getCanonicalWorldTileMapContext(),
             activeCommandPanel: panel.activeCommandPanel || '',
@@ -2906,6 +2894,18 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             );
           }
           return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
+        }
+
+    renderPanelSurface(state = this.lastGame?.state, activeTab = this.getActiveTab(), options = {}) {
+          if (!this.previewEnabled || !this.renderer || !state) return false;
+          const renderOptions = {
+            ...this.buildRenderOptions(activeTab, options.territoryUiState, options),
+            ...options,
+            mode: 'hud',
+          };
+          this.renderer.render(state, renderOptions);
+          this.runtime?.compositeStage?.();
+          return true;
         }
 
     renderReadOnly(state, activeTab = 'resources', options = {}) {
@@ -3319,7 +3319,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+          this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
           this.closeEventSnapshot?.();
           this.renderActive();
@@ -3552,7 +3552,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+          this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
           this.closeEventSnapshot?.();
           this.renderActive();

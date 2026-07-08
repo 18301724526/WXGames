@@ -2,12 +2,12 @@
 //
 // A pure constant module — NOT registered with the config pipeline. It carries no
 // runtime state and no gameState reads; WorldCampSpawner consumes these tables to
-// deterministically lay out respawning enemy camps around the capital, and
+// deterministically lay out respawning enemy camps around shared activity regions, and
 // WorldCombatEncounterService consumes the loot/respawn fields when a camp is beaten.
 //
 // Design intent (mirrors docs/architecture/p0-combat-in-world-design-2026-07-05.md):
 //   - Near-weak / far-strong: a camp's garrison = soldiersBase + soldiersPerRing * ring
-//     (ring = Chebyshev distance from the capital), so the difficulty gradient is a pure
+//     (ring = Chebyshev distance from an activity-region anchor), so the difficulty gradient is a pure
 //     function of placement, not extra config per tile.
 //   - Each archetype owns its loot table and respawn cooldown so tuning is one-table.
 //   - Removal is a rollback: nothing here mutates state; if WorldCampSpawner is never
@@ -53,29 +53,34 @@ const CAMP_ARCHETYPES = Object.freeze([
   }),
 ]);
 
-// Placement parameters. All distances are Chebyshev rings measured from the capital
-// coordinate (the same metric the archetype gradient uses).
+// Placement parameters. All distances are Chebyshev rings measured from the activity-region
+// anchor (the same metric the archetype gradient uses). Camps are global shared rows; activity
+// regions only decide where the world should maintain encounter density.
 const PLACEMENT = Object.freeze({
-  // Do not place inside the player's starting safe land (reuses the spawn safe-ring
-  // concept: START_SAFE_LAND_RADIUS is 1, so ring 1 stays camp-free) — the first camp
+  // Player cities/field parties are grouped to stable anchors so nearby players share one camp
+  // budget. This is not a per-player layer; overlapping activity sources reconcile to the same
+  // world encounters.
+  activityRegionSize: 8,
+  // Do not place inside the immediate safe land around an activity source. The first possible camp
   // sits at ring 2.
-  safeRadiusFromCapital: 1,
-  minRingFromCapital: 2,
-  maxRingFromCapital: 6,
-  // Per-tile spawn threshold: roll01(...) < densityRoll ⇒ candidate. Kept low so the
-  // world stays sparse (a handful of camps, not a minefield).
-  densityRoll: 0.16,
-  // Hard cap on live camps regardless of how many candidates the rings produce.
-  maxCamps: 8,
+  safeRadiusFromActivity: 1,
   // Minimum Chebyshev spacing between any two camps, so they do not clump on one tile
   // cluster.
   minSpacing: 2,
+  // Per-active-region budgets by ring band:
+  // every active region may maintain a small local ecology, and distant activity creates more
+  // shared encounters without forking private player copies.
+  ringBands: Object.freeze([
+    Object.freeze({ minRing: 2, maxRing: 3, targetCamps: 3 }),
+    Object.freeze({ minRing: 4, maxRing: 5, targetCamps: 2 }),
+    Object.freeze({ minRing: 6, maxRing: 8, targetCamps: 1 }),
+  ]),
 });
 
 // Ring → archetype band. Bands are inclusive lower bounds walked strongest-first so a
 // far ring resolves to the strongest archetype whose band it reaches. Rings below the
 // first band fall back to the weakest archetype (defensive; placement never emits a ring
-// below minRingFromCapital).
+// below the first placement band).
 const RING_ARCHETYPE_BANDS = Object.freeze([
   Object.freeze({ minRing: 5, key: 'warband' }),
   Object.freeze({ minRing: 4, key: 'raiders' }),

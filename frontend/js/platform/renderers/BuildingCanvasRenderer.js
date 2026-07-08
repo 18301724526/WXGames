@@ -22,6 +22,17 @@
     }
     return null;
   })();
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class BuildingCanvasRenderer {
     constructor(options = {}) {
@@ -87,19 +98,7 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const panelBottom = startY + panelHeight;
-      this.drawPanel(x, startY, width, panelHeight, {
-        fill: this.createGradient(
-          x, startY, x + width, panelBottom,
-          [
-            [0, 'rgba(54, 40, 28, 0.94)'],
-            [1, 'rgba(24, 19, 14, 0.94)'],
-          ],
-          'rgba(37, 29, 21, 0.92)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.18)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
+      ModalPlate.drawModalCard(this, x, startY, width, panelHeight);
       this.drawIconCard(x + 14, startY + 14, 38, 38, 'assets/art/building-house-cutout.png');
       this.drawText(this.t('building.panel.title', {}), x + 62, startY + 17, { size: 15, bold: true, color: '#ffe6b5' });
       this.drawText(this.t('building.panel.subtitle', {}), x + 62, startY + 38, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
@@ -143,22 +142,18 @@
               : this.t('building.action.building', {}))
             : card.button.label;
           const isMuted = Boolean(card.isMuted || card.button.disabled);
-          this.drawPanel(x + 10, y, width - 20, rowHeight, {
-            fill: isMuted
-              ? 'rgba(35, 31, 27, 0.78)'
-              : this.createGradient(
-                x + 10, y, x + width - 10, y + rowHeight,
-                [
-                  [0, 'rgba(79, 57, 38, 0.88)'],
-                  [1, 'rgba(28, 22, 16, 0.86)'],
-                ],
-                'rgba(48, 36, 26, 0.86)',
-              ),
-            stroke: isMuted ? 'rgba(255, 226, 177, 0.1)' : 'rgba(255, 226, 177, 0.16)',
-            radius: 8,
-            inset: 'rgba(255, 231, 184, 0.07)',
+          ModalPlate.drawModalCard(this, x + 10, y, width - 20, rowHeight, {
+            tone: isMuted ? 'muted' : 'accent',
+            fill: isMuted ? undefined : 'rgba(20, 20, 18, 0.92)',
+            stroke: isMuted ? undefined : 'rgba(229, 208, 165, 0.28)',
           });
-          if (card.art) this.drawAsset(card.art, x + 20, y + 14, 46, 46, isMuted ? 0.62 : 1);
+          ModalPlate.drawModalCard(this, x + 18, y + 12, 50, 50, {
+            tone: isMuted ? 'muted' : 'accent',
+            radius: 9,
+            fill: isMuted ? 'rgba(22, 21, 18, 0.78)' : 'rgba(24, 24, 21, 0.9)',
+            stroke: isMuted ? undefined : 'rgba(229, 208, 165, 0.24)',
+          });
+          if (card.art) this.drawAsset(card.art, x + 22, y + 16, 42, 42, isMuted ? 0.62 : 1);
           else this.drawText(card.icon || '', x + 43, y + 37, { size: 24, align: 'center', baseline: 'middle' });
 
           const textX = x + 76;
@@ -215,14 +210,14 @@
         const canPrev = pageIndex > 0;
         const canNext = pageIndex < pageCount - 1;
         const currentPage = pageIndex + 1;
-        this.drawButton(prevX, pagerY, buttonWidth, 24, this.t('common.previousPage', {}), { disabled: !canPrev, size: 11, radius: 7 });
+        ModalPlate.drawModalButton(this, prevX, pagerY, buttonWidth, 24, this.t('common.previousPage', {}), { disabled: !canPrev, size: 11, radius: 7 });
         this.drawText(`${currentPage}/${pageCount}`, x + width / 2, pagerY + 12, {
           size: 10,
           color: 'rgba(234, 234, 234, 0.62)',
           baseline: 'middle',
           align: 'center',
         });
-        this.drawButton(nextX, pagerY, buttonWidth, 24, this.t('common.nextPage', {}), { disabled: !canNext, size: 11, radius: 7 });
+        ModalPlate.drawModalButton(this, nextX, pagerY, buttonWidth, 24, this.t('common.nextPage', {}), { disabled: !canNext, size: 11, radius: 7 });
         this.addHitTarget({ x: prevX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: -1, disabled: !canPrev });
         this.addHitTarget({ x: nextX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: 1, disabled: !canNext });
       }
@@ -248,11 +243,12 @@
         const tabWidth = Math.max(36, Math.floor(rawWidths[index] * scale));
         const actualWidth = Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap));
         const active = Boolean(tab.active);
-        this.drawButton(cursorX, y, actualWidth, height, this.truncateText(tab.label || tab.id, Math.max(18, actualWidth - 12), {
+        const label = this.truncateText(tab.label || tab.id, Math.max(18, actualWidth - 12), {
           size: 11,
           bold: active,
-        }), {
-          active,
+        });
+        ModalPlate.drawModalButton(this, cursorX, y, actualWidth, height, label, {
+          variant: active ? 'primary' : 'secondary',
           size: 11,
           bold: active,
           radius: 13,
@@ -297,7 +293,7 @@
           color: '#b7d4c2',
         },
         pressure: {
-          fill: 'rgba(88, 58, 34, 0.52)',
+          fill: 'rgba(28, 25, 21, 0.68)',
           stroke: 'rgba(240, 180, 91, 0.26)',
           color: '#f1c27d',
         },
@@ -323,7 +319,8 @@
           badgeWidth = Math.min(88, Math.max(38, this.measureTextWidth(label, { size: 9, bold: true }) + 12));
         }
         if (available < 34) return;
-        this.drawPanel(cursorX, cursorY, badgeWidth, height, {
+        ModalPlate.drawModalCard(this, cursorX, cursorY, badgeWidth, height, {
+          tone: 'muted',
           fill: options.muted ? 'rgba(45, 42, 38, 0.46)' : style.fill,
           stroke: options.muted ? 'rgba(255, 226, 177, 0.08)' : style.stroke,
           radius: 6,
@@ -421,14 +418,29 @@
     drawBuildingActionButton(x, y, width, height, label, cost = {}, options = {}) {
       const knowledge = this.getBuildingCostSlot(cost, 'knowledge');
       if (cost?.isMax || !knowledge.present || knowledge.value <= 0) {
-        this.drawButton(x, y, width, height, label, { disabled: options.disabled, size: 12, radius: 8 });
+        ModalPlate.drawModalButton(this, x, y, width, height, label, {
+          variant: 'primary',
+          disabled: options.disabled,
+          size: 12,
+          radius: 8,
+        });
         return;
       }
-      this.drawPanel(x, y, width, height, {
-        fill: options.disabled ? 'rgba(60, 52, 46, 0.72)' : 'rgba(50, 35, 22, 0.94)',
-        stroke: 'rgba(240, 180, 91, 0.32)',
+      ModalPlate.drawModalCard(this, x, y, width, height, {
+        tone: options.disabled ? 'muted' : 'accent',
+        fill: options.disabled
+          ? '#1D1B18'
+          : this.createGradient(
+            x, y, x, y + height,
+            [
+              [0, '#2A2823'],
+              [1, '#171715'],
+            ],
+            '#211F1B',
+          ),
+        stroke: options.disabled ? 'rgba(229, 208, 165, 0.1)' : 'rgba(210, 181, 126, 0.85)',
         radius: 8,
-        inset: 'rgba(255, 231, 184, 0.08)',
+        inset: options.disabled ? undefined : 'rgba(229, 208, 165, 0.12)',
       });
       const amountText = this.truncateText(String(knowledge.text), Math.max(20, width * 0.32), { size: 10, bold: true });
       const amountWidth = this.measureTextWidth(amountText, { size: 10, bold: true });
@@ -469,9 +481,14 @@
     drawBuildingCostChips(cost = {}, x, y, width, height, options = {}) {
       if (cost?.isMax) {
         const text = cost?.text || this.t('building.action.maxLevel', {});
-        const fill = cost?.isMax ? 'rgba(60, 52, 46, 0.48)' : 'rgba(116, 211, 160, 0.12)';
-        const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.1)' : 'rgba(116, 211, 160, 0.26)';
-        this.drawPanel(x, y + 7, width, 24, { fill, stroke, radius: 7 });
+        const fill = cost?.isMax ? 'rgba(21, 20, 18, 0.66)' : 'rgba(24, 36, 29, 0.58)';
+        const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.12)' : 'rgba(116, 211, 160, 0.24)';
+        ModalPlate.drawModalCard(this, x, y + 7, width, 24, {
+          tone: 'muted',
+          fill,
+          stroke,
+          radius: 7,
+        });
         this.drawText(this.truncateText(text, width - 14, { size: 10, bold: true }), x + width / 2, y + 19, {
           size: 10,
           bold: true,
@@ -496,13 +513,18 @@
         const owned = this.getOwnedBuildingResource(options.resources || {}, resource);
         const insufficient = part.present && required > 0 && owned < required;
         const fill = insufficient
-          ? 'rgba(116, 47, 39, 0.58)'
-          : (part.present ? 'rgba(40, 48, 34, 0.62)' : 'rgba(50, 44, 36, 0.42)');
+          ? 'rgba(93, 36, 31, 0.66)'
+          : (part.present ? 'rgba(27, 29, 24, 0.72)' : 'rgba(24, 23, 20, 0.52)');
         const stroke = insufficient
-          ? 'rgba(235, 116, 100, 0.46)'
-          : (part.present ? 'rgba(116, 211, 160, 0.24)' : 'rgba(255, 226, 177, 0.12)');
+          ? 'rgba(235, 116, 100, 0.5)'
+          : (part.present ? 'rgba(210, 181, 126, 0.28)' : 'rgba(255, 226, 177, 0.12)');
         const textColor = insufficient ? '#ffb0a5' : (part.present ? '#f6e8c8' : '#9a927e');
-        this.drawPanel(chipX, chipY, chipWidth, chipHeight, { fill, stroke, radius: 6, inset: 'rgba(255, 255, 255, 0.04)' });
+        ModalPlate.drawModalCard(this, chipX, chipY, chipWidth, chipHeight, {
+          tone: 'muted',
+          fill,
+          stroke,
+          radius: 6,
+        });
         const iconPath = this.resourceIconPath(resource);
         if (!this.drawAsset(iconPath, chipX + 4, chipY + 3, 12, 12, options.muted || !part.present ? 0.5 : 1)) {
           this.drawText(this.resourceShortName(resource), chipX + 8, chipY + 9, {

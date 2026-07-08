@@ -750,7 +750,7 @@ install_backend_dependencies_if_needed() {
 # from restore so a rollback never rolls back player data.
 BACKEND_ROLLBACK_SNAPSHOT=""
 snapshot_backend_for_rollback() {
-    local snapshot_dir="${BACKEND_DIR}.rollback-prev"
+    local snapshot_dir="${DEPLOY_STATE_DIR}/backend.rollback-prev"
     if [ ! -d "$BACKEND_DIR" ]; then
         return 0
     fi

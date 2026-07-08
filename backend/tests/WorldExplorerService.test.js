@@ -84,8 +84,6 @@ function createSharedCombatContext(gameState, now = new Date('2026-06-22T00:00:0
   const repo = new WorldEncounterRepository(db, { worldSeed: gameState.worldMap?.seed || 'tutorial-explorer-seed' });
   repo.init();
   const planned = WorldCampSpawner.planCamps(gameState.worldMap?.seed || 'tutorial-explorer-seed', { q: 0, r: 0 }, {
-    densityRoll: 1,
-    maxCamps: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   })[0];

@@ -1,4 +1,4 @@
-const test = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const registerGameRoutes = require('../routes/gameRoutes');
@@ -9,6 +9,18 @@ const TerritoryService = require('../services/TerritoryService');
 const WorldAiExplorerService = require('../services/WorldAiExplorerService');
 const WorldMapService = require('../services/WorldMapService');
 const ClientGameStateAssembler = require('../services/ClientGameStateAssembler');
+const {
+  publishCurrentConfigRuntime,
+  resetConfigRuntime,
+} = require('./helpers/configRuntimeTestHarness');
+
+before(() => {
+  publishCurrentConfigRuntime();
+});
+
+after(() => {
+  resetConfigRuntime();
+});
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));

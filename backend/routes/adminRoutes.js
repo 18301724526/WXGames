@@ -9,37 +9,41 @@ function registerAdminRoutes(app, deps) {
   const requireAdmin = adminMiddleware || ((req, res, next) => next());
   const adminHandlers = [authMiddleware, requireAdmin];
   const getOperator = (req) => req.adminUser || req.username || req.playerId;
-
-  app.get('/api/admin/task-definitions', ...adminHandlers, (req, res) => {
-    const definitions = TaskDefinitionService.loadDefinitions();
-    return res.json({ success: true, definitions });
+  const taskDefinitionErrorStatus = (error) => (
+    error?.code === 'TASK_DEFINITIONS_RUNTIME_NOT_READY' ? 503 : 500
+  );
+  const sendTaskDefinitionError = (res, error) => res.status(taskDefinitionErrorStatus(error)).json({
+    success: false,
+    error: error?.code || 'TASK_DEFINITIONS_RUNTIME_ERROR',
+    message: error?.message || '任务定义运行时不可用',
   });
 
-  app.get('/api/admin/task-definitions/history', ...adminHandlers, (req, res) => {
-    const history = TaskDefinitionService.getImportHistory({ limit: req.query?.limit });
-    return res.json({ success: true, history });
+  app.get('/api/admin/task-definitions', ...adminHandlers, (req, res) => {
+    try {
+      const definitions = TaskDefinitionService.loadDefinitions();
+      return res.json({ success: true, definitions });
+    } catch (error) {
+      return sendTaskDefinitionError(res, error);
+    }
   });
 
   app.post('/api/admin/task-definitions/preview', ...adminHandlers, (req, res) => {
     const result = TaskDefinitionService.previewImport(req.body || {}, { importedBy: getOperator(req) });
-    return res.status(result.success ? 200 : 400).json(result);
-  });
-
-  app.post('/api/admin/task-definitions/import', ...adminHandlers, (req, res) => {
-    const result = TaskDefinitionService.importDefinitions(req.body || {}, { importedBy: getOperator(req) });
-    return res.status(result.success ? 200 : 400).json(result);
-  });
-
-  app.post('/api/admin/task-definitions/rollback', ...adminHandlers, (req, res) => {
-    const result = TaskDefinitionService.rollbackImport(req.body?.importId, { importedBy: getOperator(req) });
-    return res.status(result.success ? 200 : 404).json(result);
+    const statusCode = result.success
+      ? 200
+      : (result.error === 'TASK_DEFINITIONS_RUNTIME_NOT_READY' ? 503 : 400);
+    return res.status(statusCode).json(result);
   });
 
   app.get('/api/admin/task-definitions/template.xlsx', ...adminHandlers, (req, res) => {
-    const buffer = TaskDefinitionService.buildTemplateWorkbookBuffer();
-    res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.set('Content-Disposition', 'attachment; filename="task-definitions-template.xlsx"');
-    return res.send(buffer);
+    try {
+      const buffer = TaskDefinitionService.buildTemplateWorkbookBuffer();
+      res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.set('Content-Disposition', 'attachment; filename="task-definitions-template.xlsx"');
+      return res.send(buffer);
+    } catch (error) {
+      return sendTaskDefinitionError(res, error);
+    }
   });
 
   app.get('/api/admin/config-releases', ...adminHandlers, (req, res) => {

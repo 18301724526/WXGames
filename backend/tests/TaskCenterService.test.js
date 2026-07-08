@@ -1,9 +1,21 @@
-const test = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const CityService = require('../services/CityService');
 const TaskCenterService = require('../services/TaskCenterService');
 const TutorialService = require('../services/TutorialService');
+const {
+  publishCurrentConfigRuntime,
+  resetConfigRuntime,
+} = require('./helpers/configRuntimeTestHarness');
+
+before(() => {
+  publishCurrentConfigRuntime();
+});
+
+after(() => {
+  resetConfigRuntime();
+});
 
 function createMainTaskState(options = {}) {
   const resources = {

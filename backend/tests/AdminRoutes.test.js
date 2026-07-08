@@ -1,8 +1,20 @@
-const test = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const registerAdminRoutes = require('../routes/adminRoutes');
 const createAdminMiddleware = require('../middleware/adminMiddleware');
+const {
+  publishCurrentConfigRuntime,
+  resetConfigRuntime,
+} = require('./helpers/configRuntimeTestHarness');
+
+before(() => {
+  publishCurrentConfigRuntime();
+});
+
+after(() => {
+  resetConfigRuntime();
+});
 
 function createAppHarness() {
   const routes = [];
@@ -78,7 +90,7 @@ test('admin task definition routes expose current definitions and template downl
   assert.equal(templateRes.payload.length > 0, true);
 });
 
-test('admin task definition routes expose history and rollback handlers', () => {
+test('admin task definition routes do not expose direct import history or rollback handlers', () => {
   const { app, routes } = createAppHarness();
   const authMiddleware = (req, res, next) => {
     req.username = 'codexqa';
@@ -88,24 +100,12 @@ test('admin task definition routes expose history and rollback handlers', () => 
   registerAdminRoutes(app, { authMiddleware, adminMiddleware });
 
   const historyRoute = routes.find((item) => item.method === 'GET' && item.path === '/api/admin/task-definitions/history');
+  const importRoute = routes.find((item) => item.method === 'POST' && item.path === '/api/admin/task-definitions/import');
   const rollbackRoute = routes.find((item) => item.method === 'POST' && item.path === '/api/admin/task-definitions/rollback');
 
-  assert.equal(Boolean(historyRoute), true);
-  assert.equal(Boolean(rollbackRoute), true);
-
-  const historyRes = createResponse();
-  const historyReq = { query: { limit: 2 } };
-  invokeRoute(historyRoute, historyReq, historyRes);
-  assert.equal(historyRes.statusCode, 200);
-  assert.equal(historyRes.payload.success, true);
-  assert.equal(Array.isArray(historyRes.payload.history.imports), true);
-
-  const rollbackRes = createResponse();
-  const rollbackReq = { body: { importId: 'missing-import' } };
-  invokeRoute(rollbackRoute, rollbackReq, rollbackRes);
-  assert.equal(rollbackRes.statusCode, 404);
-  assert.equal(rollbackRes.payload.success, false);
-  assert.equal(rollbackRes.payload.error, 'IMPORT_RECORD_NOT_FOUND');
+  assert.equal(historyRoute, undefined);
+  assert.equal(importRoute, undefined);
+  assert.equal(rollbackRoute, undefined);
 });
 
 test('admin task definition routes reject authenticated non-admin players', () => {

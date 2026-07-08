@@ -34,9 +34,7 @@
     if (context.completed) return true;
     const step = normalizeStep(context.step);
     const { stepEquals, stepAtLeast, stepAtMost, stepBefore } = TutorialFlowShared;
-    // 'tasks' opens from the very start: the homestead-supplies task is
-    // claimed at cityEntered, before the first house exists.
-    if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'military', 'buildings', 'tasks'].includes(tabId);
+    if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'military', 'buildings'].includes(tabId);
     if (stepBefore(step, TUTORIAL_STEPS.eraAdvancedTo1)) return ['resources', 'military', 'buildings', 'civilization'].includes(tabId);
     if (stepAtMost(step, TUTORIAL_STEPS.farmBuilt)) return ['buildings', 'civilization', 'tasks'].includes(tabId);
     if (stepEquals(step, TUTORIAL_STEPS.era2AdvanceReady)) return tabId === 'civilization';
