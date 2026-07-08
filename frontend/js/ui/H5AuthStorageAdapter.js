@@ -12,7 +12,6 @@
     'tutorialAutoStarted',
     'tutorialStep',
     'tutorialCompleted',
-    'tutorialIntroAdvisorSeen.v1',
     'tutorialIntroAdvisorSeen.v2',
   ];
 

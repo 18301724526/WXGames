@@ -18,18 +18,6 @@ function advanceTutorialAfterTerritoryAction(gameState = {}, result = {}, nextSt
   };
 }
 
-function ensureTutorialSettlementSoldiers(gameState = {}, territoryId = '') {
-  if (!isTutorialFirstCity(gameState, territoryId)) return;
-  const activeCityId = gameState.activeCityId || CityService.CAPITAL_CITY_ID;
-  const city = gameState.cities?.[activeCityId] || gameState.cities?.[CityService.CAPITAL_CITY_ID] || null;
-  const military = city?.military || gameState.military || {};
-  const required = TerritoryService.MIN_EXPEDITION_SOLDIERS;
-  if ((Number(military.soldiers) || 0) < required) military.soldiers = required;
-  if ((Number(military.soldierCap) || 0) < required) military.soldierCap = required;
-  if (city) city.military = military;
-  gameState.military = military;
-}
-
 function attachTerritoryAuthority(result = {}, gameState = {}, action = '', payload = {}) {
   return CommandAuthorityContract.attach(result, {
     type: action,
@@ -54,29 +42,31 @@ function markTutorialSettlementMissionReady(gameState = {}, territoryId = '') {
   mission.returnedAt = now;
 }
 
-function execute(action, gameState, payload = {}) {
-  if (action === 'scoutTerritory') {
-    return attachTerritoryAuthority(
-      TerritoryService.scoutTerritory(gameState, payload.direction || payload.territoryId),
-      gameState,
-      action,
-      payload,
-    );
-  }
+function withWorldContext(payload = {}, context = {}) {
+  return {
+    ...payload,
+    planningContext: context.planningContext || payload.planningContext || null,
+    worldEncounterRepo: context.worldEncounterRepo || payload.worldEncounterRepo || null,
+    sharedWorldEncounters:
+      context.sharedWorldEncounters
+      || payload.sharedWorldEncounters
+      || context.planningContext?.sharedWorldEncounters
+      || payload.planningContext?.sharedWorldEncounters
+      || null,
+  };
+}
+
+function execute(action, gameState, payload = {}, context = {}) {
   if (action === 'startWorldMarch') {
-    return WorldExplorerService.startWorldMarch(gameState, payload);
+    return WorldExplorerService.startWorldMarch(gameState, withWorldContext(payload, context));
   }
   if (action === 'returnWorldMarch') {
-    return WorldExplorerService.returnWorldMarch(gameState, payload.missionId, payload);
+    return WorldExplorerService.returnWorldMarch(gameState, payload.missionId, withWorldContext(payload, context));
   }
   if (action === 'stopWorldMarch') {
-    return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, payload);
-  }
-  if (action === 'claimScout') {
-    return attachTerritoryAuthority(TerritoryService.claimScout(gameState, payload.missionId), gameState, action, payload);
+    return WorldExplorerService.stopWorldMarch(gameState, payload.missionId, withWorldContext(payload, context));
   }
   if (action === 'startConquest') {
-    ensureTutorialSettlementSoldiers(gameState, payload.territoryId);
     const result = TerritoryService.startConquest(gameState, payload.territoryId, payload.expedition || payload.soldiers);
     if (result.success) markTutorialSettlementMissionReady(gameState, payload.territoryId);
     return attachTerritoryAuthority(
@@ -95,6 +85,9 @@ function execute(action, gameState, payload = {}) {
       action,
       payload,
     );
+  }
+  if (action === 'resolveCapture') {
+    return TerritoryService.resolveCapture(gameState, payload.decisionId, payload.choice);
   }
   if (action === 'renameCity') {
     const result = TerritoryService.renameCity(gameState, payload.territoryId, payload.name);

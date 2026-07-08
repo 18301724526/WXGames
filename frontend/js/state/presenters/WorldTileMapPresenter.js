@@ -15,7 +15,7 @@
     if (global.TileMapGeometry) return global.TileMapGeometry;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileMapGeometry');
+        return require('../../ecs/foundation/TileMapGeometry');
       } catch (error) {
         return null;
       }
@@ -81,7 +81,6 @@
       const worldMap = territoryState.worldMap || {};
       const tiles = Array.isArray(worldMap.tiles) ? worldMap.tiles : [];
       const sites = Array.isArray(territoryState.territories) ? territoryState.territories : [];
-      const missions = Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [];
       const explorerMissions = this.getWorldExplorerMissions(worldExplorerState, options);
       return JSON.stringify({
         version: worldMap.version || 0,
@@ -89,7 +88,6 @@
         origin: this.summarizeCoordForSignature(worldMap.origin || {}),
         tiles: tiles.map((tile) => this.summarizeTileForSignature(tile)),
         sites: sites.map((site) => this.summarizeSiteForSignature(site)),
-        missions: missions.map((mission) => this.summarizeScoutMissionForSignature(mission)),
         explorerMissions: explorerMissions.map((mission) => this.summarizeExplorerMissionForSignature(mission)),
       });
     }
@@ -204,18 +202,6 @@
         type: site.type,
         art: site.art,
         name: site.cityName || site.naturalName,
-      };
-    }
-
-    static summarizeScoutMissionForSignature(mission = {}) {
-      return {
-        id: mission.id,
-        status: mission.status,
-        position: mission.position ? this.summarizeCoordForSignature(mission.position) : null,
-        route: (mission.route || []).map((step) => this.summarizeRouteCoordForSignature(step)),
-        revealArea: (mission.revealArea || []).map((coord) => this.summarizeRouteCoordForSignature(coord)),
-        revealedTileIds: mission.revealedTileIds || [],
-        actionPointsRemaining: mission.actionPointsRemaining,
       };
     }
 
@@ -350,61 +336,10 @@
         if (terrainDelta) return terrainDelta;
         return 0;
       });
-      const activeScouts = (Array.isArray(territoryState.scoutMissions) ? territoryState.scoutMissions : [])
-        .filter((mission) => mission.kind === 'scout' && ['active', 'ready'].includes(mission.status))
-        .map((mission) => ({
-          id: mission.id || '',
-          direction: mission.direction || '',
-          status: mission.status || '',
-          actionPoints: this.toInteger(mission.actionPoints),
-          actionPointsRemaining: this.toInteger(mission.actionPointsRemaining),
-          route: (Array.isArray(mission.route) ? mission.route : []).map((step) => {
-            const coord = this.normalizeCoord(step);
-            return {
-              q: coord.q,
-              r: coord.r,
-              step: this.toInteger(step.step),
-              tileId: coord.tileId,
-              revealed: Boolean(step.revealed),
-            };
-          }),
-          revealArea: (Array.isArray(mission.revealArea) ? mission.revealArea : []).map((areaCoord) => {
-            const coord = this.normalizeCoord(areaCoord);
-            return {
-              q: coord.q,
-              r: coord.r,
-              step: this.toInteger(areaCoord.step),
-              kind: areaCoord.kind === 'branch' ? 'branch' : 'main',
-              tileId: coord.tileId,
-              revealed: Boolean(areaCoord.revealed),
-            };
-          }),
-          revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.map(String) : [],
-        }));
       const explorerScouts = this.getWorldExplorerMissions(worldExplorerState, options)
         .filter((mission) => ['active', 'ready', 'idle'].includes(mission.status))
         .map((mission) => this.normalizeWorldExplorerMission(mission))
         .filter(Boolean);
-      const scoutAreas = (Array.isArray(territoryState.scoutAreas) ? territoryState.scoutAreas : [])
-        .map((area) => ({
-          id: area.id || '',
-          missionId: area.missionId || null,
-          direction: area.direction || null,
-          result: area.result === 'site' ? 'site' : 'empty',
-          siteId: area.siteId || null,
-          targetX: this.toInteger(area.targetX),
-          targetY: this.toInteger(area.targetY),
-          tileIds: Array.isArray(area.tileIds) ? area.tileIds.map(String) : [],
-          coords: (Array.isArray(area.coords) ? area.coords : []).map((areaCoord) => {
-            const coord = this.normalizeCoord(areaCoord);
-            return {
-              q: coord.q,
-              r: coord.r,
-              tileId: coord.tileId,
-            };
-          }),
-          scoutedAt: area.scoutedAt || '',
-        }));
       const bounds = geometry?.getBounds ? geometry.getBounds(sortedTiles) : { width: 0, height: 0 };
       const origin = this.summarizeCoordForSignature(worldMap.origin || {});
       const viewState = {
@@ -427,8 +362,7 @@
           q: tile.q,
           r: tile.r,
         })),
-        activeScouts: [...activeScouts, ...explorerScouts],
-        scoutAreas,
+        activeScouts: explorerScouts,
       };
       global.WorldMarchTrace?.logDedup?.(
         'presenter:buildWorldTileMapViewState',

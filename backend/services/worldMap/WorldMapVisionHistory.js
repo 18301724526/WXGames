@@ -3,16 +3,12 @@ const {
   toInteger,
 } = require('./WorldMapShared');
 const { hashStep, FNV_OFFSET_BASIS } = require('../../../shared/signatureHash');
+const { toNumber } = require('../../../shared/numberUtils');
 
 const SCHEMA = 'world-fog-vision-history-v1';
 const VERSION = 1;
 const DEFAULT_SAMPLE_STEP_TILES = 0.45;
 const MAX_HISTORY_SOURCES = 4096;
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 function normalizeKind(value = '') {
   return value === 'city' ? 'city' : 'unit';

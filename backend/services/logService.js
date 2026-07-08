@@ -193,18 +193,32 @@ class LogService {
     return this.db.prepare(`SELECT method, path, body, statusCode, response, duration, timestamp FROM api_logs WHERE playerId = ? ORDER BY timestamp DESC LIMIT ?`).all(playerId, limit);
   }
 
-  cleanupOldLogs() {
-    try {
-      const cutoff = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-      const result = this.db.prepare('DELETE FROM api_logs WHERE timestamp < ?').run(cutoff);
-      if (result.changes > 0) console.log(`[Log cleanup] Removed ${result.changes} old api_logs`);
-      return result.changes;
-    } catch(e) { console.error('[Log cleanup error]', e.message); return 0; }
+  // Retention runs in SHORT batched transactions: a single unbounded DELETE over a large
+  // log table can hold the write lock for tens of seconds, which is exactly the failure
+  // mode this service exists to avoid.
+  cleanupOldLogs({ retentionMs = 7*24*60*60*1000, batchSize = 5000, maxBatches = 200 } = {}) {
+    const cutoff = new Date(Date.now() - retentionMs).toISOString();
+    let total = 0;
+    for (const table of ['api_logs', 'client_operation_logs']) {
+      try {
+        for (let i = 0; i < maxBatches; i++) {
+          const result = this.db.prepare(
+            `DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} WHERE timestamp < ? LIMIT ?)`
+          ).run(cutoff, batchSize);
+          total += result.changes;
+          if (result.changes < batchSize) break;
+        }
+      } catch(e) { console.error(`[Log cleanup error] ${table}:`, e.message); }
+    }
+    if (total > 0) console.log(`[Log cleanup] Removed ${total} old log rows`);
+    return total;
   }
 
   startCleanupInterval() {
     this.cleanupOldLogs();
-    return setInterval(() => this.cleanupOldLogs(), 60*60*1000);
+    const timer = setInterval(() => this.cleanupOldLogs(), 60*60*1000);
+    if (typeof timer.unref === 'function') timer.unref();
+    return timer;
   }
 }
 module.exports = LogService;

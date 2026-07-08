@@ -1,27 +1,73 @@
-﻿const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
-const BuildingState = require('../domain/BuildingState');
+const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
+const BuildingState = require('../modules/BuildingState');
 const TerritoryService = require('./TerritoryService');
+const { manualAdvance } = require('./tutorial/TutorialProgression');
+const { getTutorialScoutPersonId, getFirstArmyReserveFloor } = require('./tutorial/TutorialSelectors');
 const FormationStrengthService = require('./military/FormationStrengthService');
+const veteranCampCore = require('../../shared/veteranCampCore');
+const ConfigTables = require('../config/ConfigTables');
 
 const MAX_FORMATION_SLOTS = 3;
 const MAX_FORMATION_MEMBERS = 5;
-const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
-const FORMATION_NAMES = ['Formation 1', 'Formation 2', 'Formation 3'];
+// Every city owns a level-1 veteran camp by default (the user's design: no build-from-zero).
+// Existing saves without a camp normalize up to level 1 with an empty parking pool.
+const DEFAULT_VETERAN_CAMP_LEVEL = 1;
 
-function advanceTutorialStep(tutorial = {}, nextStep = 0) {
-  const step = Math.floor(Number(nextStep) || 0);
-  const currentStep = Math.floor(Number(tutorial.currentStep) || 0);
-  if (tutorial.completed || tutorial.disabled || step <= currentStep) return tutorial;
-  return {
-    ...tutorial,
-    currentStep: step,
-    phaseCompleted: {
-      ...(tutorial.phaseCompleted || {}),
-      ...TutorialFlowConfig.createPhaseCompleted(step),
-    },
-    completed: step >= TutorialFlowConfig.TUTORIAL_STEPS.completed,
-    updatedAt: new Date().toISOString(),
-  };
+function resolveNowMs(source) {
+  const raw = Number(source?.nowMs);
+  return Number.isFinite(raw) && raw > 0 ? raw : Date.now();
+}
+
+// The veteran_camp config row for a level, with a fail-safe fallback (a level with no row
+// behaves like a zero-capacity camp: everything overflows to instant refund).
+function getVeteranCampRow(level) {
+  return ConfigTables.getById('veteran_camp', level)
+    || { level, capacity: 0, retentionHours: 0, refundRatio: 0.5, upgradeCostGrain: 0 };
+}
+
+// Read the camp off a military object, defaulting an absent camp to level 1.
+function readVeteranCamp(military) {
+  const raw = military?.veteranCamp;
+  const level = raw?.level == null ? DEFAULT_VETERAN_CAMP_LEVEL : raw.level;
+  return veteranCampCore.normalizeCamp(raw, level);
+}
+
+// Resolve the camp's refund ratio, defaulting a missing OR non-finite value (e.g. a NaN from a
+// corrupt config cell) to 0.5 — `?? 0.5` alone would let a bad string through as NaN.
+function resolveRefundRatio(row) {
+  const raw = Number(row?.refundRatio);
+  return Math.max(0, Number.isFinite(raw) ? raw : 0.5);
+}
+
+// Refund grain for N soldiers leaving the camp (drained or overflowed). Credited as a
+// FRACTIONAL delta on purpose: the drain trickles a soldier at a time and scaleResourceCost's
+// integer floor would swallow every sub-1 refund (floor(1 * 0.5) = 0). Food is already a
+// float in the resource tick, so fractional credit is lossless and consistent.
+function veteranCampRefundDelta(soldiers, row) {
+  const count = Math.max(0, Number(soldiers) || 0);
+  if (count <= 0) return {};
+  const ratio = resolveRefundRatio(row);
+  const costPerSoldier = getFormationStrengthPolicy().recruitmentCostPerSoldier || { food: 1 };
+  const delta = {};
+  Object.entries(costPerSoldier).forEach(([key, amount]) => {
+    const value = count * (Number(amount) || 0) * ratio;
+    if (value > 0) delta[key] = value;
+  });
+  return delta;
+}
+// Formations have no user-set name (the client never sends one), so the slot label is purely a
+// localized default rendered by the client. Persisting the English default ('Formation N') leaked
+// it into zh-CN UI, so store an empty name and let the client localize via military.formation.*.
+// The pattern also self-heals legacy saves that still carry the baked English default.
+const DEFAULT_FORMATION_NAME_PATTERN = /^Formation \d+$/;
+function toStoredFormationName(rawName) {
+  const name = String(rawName || '').trim();
+  return DEFAULT_FORMATION_NAME_PATTERN.test(name) ? '' : name;
+}
+
+// Transient zh display name for server messages only — never persisted.
+function getFormationDisplayName(formation = {}, slot = 1) {
+  return toStoredFormationName(formation.name) || `${slot}号编队`;
 }
 
 function getBarracksLevel(buildings) {
@@ -63,29 +109,6 @@ function toNonNegativeNumber(value) {
   return number;
 }
 
-function migrateLegacySoldiers(rawMilitary, stats) {
-  const soldiers = Math.max(0, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers)));
-  const cap = Math.max(0, Math.floor(stats.soldierCap || 0));
-  if (soldiers <= 0 || cap < 100) return soldiers;
-  const hasHundredScaleFields = Object.prototype.hasOwnProperty.call(rawMilitary || {}, 'trainingBatchSize')
-    || Number(rawMilitary?.defensePerSoldier) === Number(stats.defensePerSoldier);
-  if (!hasHundredScaleFields && soldiers < 100) return Math.min(cap, soldiers * 100);
-  return soldiers;
-}
-
-function getTutorialSettlementSoldierFloor(gameState = {}) {
-  const tutorial = gameState?.tutorial || {};
-  if (tutorial.completed || tutorial.disabled) return 0;
-  const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TutorialFlowConfig.TUTORIAL_STEPS.firstCityDiscovered || step > TutorialFlowConfig.TUTORIAL_STEPS.firstCityConquestStarted) return 0;
-  const siteId = tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
-  if (!siteId) return 0;
-  const target = (Array.isArray(gameState.territories) ? gameState.territories : [])
-    .find((territory) => String(territory?.id || '') === String(siteId));
-  if (!target || target.owner === 'player' || target.status === 'occupied') return 0;
-  return TerritoryService.MIN_EXPEDITION_SOLDIERS;
-}
-
 function buildSoldierAvailabilityState(gameState = {}, soldiers = 0) {
   const military = {
     ...(gameState?.military || {}),
@@ -120,6 +143,26 @@ function normalizeFormationSlot(slot) {
   return value;
 }
 
+// Formation members are validated against the famous-person roster. The roster
+// lives in TWO places: the persisted single-source `famousPersons.people` and the
+// legacy flat `famousPeople` (kept populated only while an ensure-grant ran on
+// every load). Reading only the flat field silently drops every formation member
+// once the flat copy is gone (e.g. after the tutorial scout grant became a
+// one-shot task reward), which then trips the world-march tutorial gate. Union
+// both so validation matches the persisted truth regardless of collection.
+function collectValidPersonIds(gameState = {}) {
+  const ids = new Set();
+  const add = (list) => {
+    (Array.isArray(list) ? list : []).forEach((person) => {
+      const id = String(person?.id || '').trim();
+      if (id) ids.add(id);
+    });
+  };
+  add(gameState.famousPeople);
+  add(gameState.famousPersons?.people);
+  return ids;
+}
+
 function normalizeFormationMemberIds(memberIds, validPersonIds = null) {
   const rawIds = Array.isArray(memberIds) ? memberIds : [];
   const seen = new Set();
@@ -139,7 +182,7 @@ function createEmptyFormations() {
   const strengthPolicy = getFormationStrengthPolicy();
   return Array.from({ length: MAX_FORMATION_SLOTS }, (_, index) => ({
     slot: index + 1,
-    name: FORMATION_NAMES[index] || `Formation ${index + 1}`,
+    name: '',
     memberIds: [],
     maxMembers: MAX_FORMATION_MEMBERS,
     maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
@@ -165,7 +208,7 @@ function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
     }, strengthPolicy);
     bySlot.set(slot, {
       slot,
-      name: String(raw.name || FORMATION_NAMES[slot - 1] || `Formation ${slot}`).trim(),
+      name: toStoredFormationName(raw.name),
       memberIds,
       maxMembers: MAX_FORMATION_MEMBERS,
       maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
@@ -179,30 +222,36 @@ function normalizeCityFormations(rawCityFormations, validPersonIds = null) {
   }));
 }
 
-function normalizeArmyFormations(rawFormations, gameState = {}) {
-  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
-    .map((person) => String(person?.id || '').trim())
-    .filter(Boolean));
-  const source = rawFormations && typeof rawFormations === 'object' ? rawFormations : {};
-  const cityIds = new Set(Object.keys(source).filter(Boolean));
-  cityIds.add(gameState.activeCityId || 'capital');
-  cityIds.add('capital');
-  const formations = {};
-  cityIds.forEach((cityId) => {
-    const key = String(cityId || '').trim();
-    if (!key) return;
-    formations[key] = normalizeCityFormations(source[key], validPersonIds);
-  });
-  return formations;
+// Formations used to be double-keyed: cities[X].military.formations[X] — the outer
+// cities map already scopes by city, so the inner cityId map was pure duplication, and a
+// key mismatch silently read as an empty formation (the world-march 403 family). The
+// owned shape is a plain 3-slot ARRAY on the city's military; the map arms below exist
+// only to migrate legacy saves on read ('capital' covers historical mis-keyed writes).
+function pickCityFormationsSource(rawFormations, cityId = 'capital') {
+  if (Array.isArray(rawFormations)) return rawFormations;
+  if (rawFormations && typeof rawFormations === 'object') {
+    if (Array.isArray(rawFormations[cityId])) return rawFormations[cityId];
+    if (Array.isArray(rawFormations.capital)) return rawFormations.capital;
+    const firstArray = Object.values(rawFormations).find(Array.isArray);
+    if (firstArray) return firstArray;
+  }
+  return [];
 }
 
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
-  const tutorialSoldierFloor = getTutorialSettlementSoldierFloor(gameState);
-  const cap = Math.max(0, Math.floor(stats.soldierCap || 0), tutorialSoldierFloor);
+  // Tutorial first-army grant floor: while the formation guide runs, the
+  // granted reserve must survive the barracks cap clamp (cap AND soldiers are
+  // floored at the granted amount; after scoutFormationSaved the floor is 0 and
+  // the residual reserve re-clamps to the barracks cap).
+  const reserveFloor = getFirstArmyReserveFloor(gameState || {});
+  const cap = Math.max(0, Math.floor(stats.soldierCap || 0), reserveFloor);
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
   const batchSize = Math.max(0, Math.floor(Number(stats.trainingBatchSize || 0)));
-  const soldiers = Math.min(cap, Math.max(migrateLegacySoldiers(rawMilitary, stats), tutorialSoldierFloor));
+  const soldiers = Math.max(
+    reserveFloor,
+    Math.min(cap, Math.floor(toNonNegativeNumber(rawMilitary?.soldiers))),
+  );
   const trainingProgress = cap > 0 && soldiers < cap && interval > 0
     ? Math.min(interval, toNonNegativeNumber(rawMilitary?.trainingProgress))
     : 0;
@@ -218,7 +267,13 @@ function normalizeMilitaryState(rawMilitary, gameState) {
     trainingBatchSize: batchSize,
     defensePerSoldier,
     defense: soldiers * defensePerSoldier,
-    formations: normalizeArmyFormations(rawMilitary?.formations, gameState || {}),
+    formations: normalizeCityFormations(
+      pickCityFormationsSource(rawMilitary?.formations, gameState?.activeCityId || 'capital'),
+      collectValidPersonIds(gameState || {}),
+    ),
+    // 老兵营地 (dismissal regret-buffer): parked soldiers + level. Defaults to level 1 so every
+    // city has a camp; the pure drain/withdraw math lives in shared/veteranCampCore.
+    veteranCamp: readVeteranCamp(rawMilitary),
   };
 }
 
@@ -239,14 +294,27 @@ function getCityResources(gameState = {}, cityId = 'capital') {
 }
 
 function setCityMilitary(gameState = {}, cityId = 'capital', military = {}) {
-  if (gameState.cities?.[cityId]) gameState.cities[cityId].military = military;
-  if (cityId === (gameState.activeCityId || 'capital') || !gameState.military) gameState.military = military;
+  if (gameState.cities?.[cityId]) {
+    gameState.cities[cityId].military = military;
+    // Maintain the top-level alias (same reference as the active city) so legacy readers
+    // keep seeing the city truth until the next normalize pass re-aliases.
+    if (cityId === (gameState.activeCityId || 'capital')) gameState.military = military;
+  } else {
+    // No city slot to write to (an uninitialized object reached this service directly).
+    // Fall back to the top-level field so the value is not silently dropped; once
+    // cities[] exists it is the sole truth.
+    gameState.military = military;
+  }
   return military;
 }
 
 function setCityResources(gameState = {}, cityId = 'capital', resources = {}) {
-  if (gameState.cities?.[cityId]) gameState.cities[cityId].resources = resources;
-  if (cityId === (gameState.activeCityId || 'capital') || !gameState.resources) gameState.resources = resources;
+  if (gameState.cities?.[cityId]) {
+    gameState.cities[cityId].resources = resources;
+    if (cityId === (gameState.activeCityId || 'capital')) gameState.resources = resources;
+  } else {
+    gameState.resources = resources;
+  }
   return resources;
 }
 
@@ -284,21 +352,19 @@ function setArmyFormation(gameState, payload = {}) {
   const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
   const slot = normalizeFormationSlot(payload.slot);
   if (!slot) {
-    return { success: false, error: 'FORMATION_SLOT_INVALID', message: 'Formation slot invalid' };
+    return { success: false, error: 'FORMATION_SLOT_INVALID', message: '编队槽位无效' };
   }
   if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
-    return { success: false, error: 'CITY_NOT_FOUND', message: 'City not found' };
+    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
   }
   if (isFormationLocked(gameState, cityId, slot)) {
-    return { success: false, error: 'FORMATION_LOCKED_BY_MISSION', message: 'Formation is away from the city.' };
+    return { success: false, error: 'FORMATION_LOCKED_BY_MISSION', message: '编队正在城外执行任务，无法调整' };
   }
   const sourceMilitary = getCityMilitary(gameState, cityId);
   const context = createMilitaryContext(gameState, cityId, sourceMilitary);
   const normalizedMilitary = normalizeMilitaryState(sourceMilitary, context);
   setCityMilitary(gameState, cityId, normalizedMilitary);
-  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
-    .map((person) => String(person?.id || '').trim())
-    .filter(Boolean));
+  const validPersonIds = collectValidPersonIds(gameState);
   const memberIds = normalizeFormationMemberIds(payload.memberIds || payload.members, validPersonIds);
   const strengthPolicy = getFormationStrengthPolicy();
   const requestedSource = payload.soldierAssignments || payload.memberSoldiers || {};
@@ -312,17 +378,17 @@ function setArmyFormation(gameState, payload = {}) {
       success: false,
       error: assignmentValidation.error,
       message: assignmentValidation.error === 'FORMATION_SOLDIER_CAP_EXCEEDED'
-        ? 'Formation soldier cap exceeded'
-        : 'Formation soldier assignment invalid',
+        ? '编队士兵数超过上限'
+        : '编队士兵分配无效',
       personId: assignmentValidation.personId,
       cap: assignmentValidation.cap,
     };
   }
-  const formations = {
-    ...(normalizedMilitary.formations || {}),
-    [cityId]: normalizeCityFormations(normalizedMilitary.formations?.[cityId], validPersonIds),
-  };
-  const previousFormation = formations[cityId][slot - 1] || {};
+  const formations = normalizeCityFormations(
+    pickCityFormationsSource(normalizedMilitary.formations, cityId),
+    validPersonIds,
+  );
+  const previousFormation = formations[slot - 1] || {};
   const requestedAssignments = FormationStrengthService.normalizeSoldierAssignments(
     payload.soldierAssignments || payload.memberSoldiers || previousFormation.soldierAssignments || {},
     memberIds,
@@ -332,27 +398,29 @@ function setArmyFormation(gameState, payload = {}) {
   const nextAssigned = FormationStrengthService.sumAssignments(requestedAssignments);
   const reserveDelta = nextAssigned - previousAssigned;
   const cityResources = getCityResources(gameState, cityId);
-  const resourceCost = reserveDelta > 0
-    ? FormationStrengthService.scaleResourceCost(strengthPolicy.recruitmentCostPerSoldier, reserveDelta)
-    : {};
   if (reserveDelta > normalizedMilitary.soldiers) {
-    return { success: false, error: 'INSUFFICIENT_CITY_SOLDIERS', message: 'City reserve soldiers are insufficient' };
+    return { success: false, error: 'INSUFFICIENT_CITY_SOLDIERS', message: '城内预备兵力不足' };
   }
-  if (reserveDelta > 0 && !FormationStrengthService.hasEnoughResources(cityResources, resourceCost)) {
-    return { success: false, error: 'INSUFFICIENT_RECRUITMENT_RESOURCES', message: 'Recruitment resources are insufficient' };
+  // Dismissing soldiers (reserveDelta < 0) parks them in the veteran camp instead of
+  // vanishing for an instant refund. Only what overflows camp capacity — plus any soldiers
+  // that drained during the catch-up projection — is refunded now; the rest drains over time.
+  let refund = {};
+  let nextVeteranCamp = normalizedMilitary.veteranCamp;
+  if (reserveDelta < 0) {
+    const nowMs = resolveNowMs(payload);
+    const dismissed = Math.abs(reserveDelta);
+    const camp = readVeteranCamp(normalizedMilitary);
+    const campRow = getVeteranCampRow(camp.level);
+    const deposited = veteranCampCore.deposit(camp, campRow, dismissed, nowMs);
+    nextVeteranCamp = deposited.camp;
+    refund = veteranCampRefundDelta(deposited.overflowSoldiers + deposited.drainedSoldiers, campRow);
   }
-  const refund = reserveDelta < 0
-    ? FormationStrengthService.scaleResourceCost(
-      strengthPolicy.recruitmentCostPerSoldier,
-      Math.abs(reserveDelta),
-      strengthPolicy.soldierRefundRatio,
-      { round: 'floor' },
-    )
-    : {};
-  formations[cityId][slot - 1] = {
-    ...formations[cityId][slot - 1],
+  formations[slot - 1] = {
+    ...formations[slot - 1],
     slot,
-    name: FORMATION_NAMES[slot - 1] || `Formation ${slot}`,
+    // No default name is persisted: '' lets the client render its localized
+    // military.formation.default label (user-set names pass through untouched).
+    name: toStoredFormationName(formations[slot - 1]?.name),
     memberIds,
     maxMembers: MAX_FORMATION_MEMBERS,
     maxSoldiersPerMember: strengthPolicy.perMemberSoldierCap,
@@ -363,34 +431,162 @@ function setArmyFormation(gameState, payload = {}) {
     ...normalizedMilitary,
     soldiers: normalizedMilitary.soldiers - Math.max(0, reserveDelta),
     formations,
+    veteranCamp: nextVeteranCamp,
   }, createMilitaryContext(gameState, cityId, normalizedMilitary));
   setCityMilitary(gameState, cityId, nextMilitary);
-  if (reserveDelta > 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, createNegativeCost(resourceCost)));
-  if (reserveDelta < 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
-  const scoutPersonId = gameState.tutorial?.grants?.scoutFamousPerson?.personId;
+  if (Object.keys(refund).length) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
+  const scoutPersonId = getTutorialScoutPersonId(gameState);
   const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
-    ? advanceTutorialStep(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
+    ? manualAdvance(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
     : gameState.tutorial;
   gameState.tutorial = tutorial;
   return {
     success: true,
-    message: `${FORMATION_NAMES[slot - 1] || `Formation ${slot}`} saved`,
-    formation: getCityMilitary(gameState, cityId).formations?.[cityId]?.[slot - 1] || null,
+    message: `${getFormationDisplayName(formations[slot - 1], slot)}已保存`,
+    formation: (getCityMilitary(gameState, cityId).formations || [])[slot - 1] || null,
     reserveDelta,
-    resourceCost,
     refund,
     tutorial,
   };
 }
 
+// Advance a city's veteran camp to `nowMs`: parked soldiers drain (linearly over retention),
+// each drained soldier trickling its refund back into resources. Pure inputs, pure outputs —
+// the caller (real-time tick + offline settlement) assigns the returned military/resources.
+// Idempotent between the same two timestamps (drainedSoldiers is 0 on a repeat call).
+function settleVeteranCampDrain(military = {}, resources = {}, nowMs = Date.now()) {
+  const camp = readVeteranCamp(military);
+  const campRow = getVeteranCampRow(camp.level);
+  const drained = veteranCampCore.projectDrain(camp, campRow, nowMs);
+  const nextMilitary = { ...military, veteranCamp: drained.camp };
+  if (drained.drainedSoldiers <= 0) {
+    return { military: nextMilitary, resources, refund: {} };
+  }
+  const refund = veteranCampRefundDelta(drained.drainedSoldiers, campRow);
+  return {
+    military: nextMilitary,
+    resources: applyResourceDelta(resources, refund),
+    refund,
+  };
+}
+
+// Withdraw parked soldiers back into the city reserve (the "regret" undo). Drains to now first
+// (crediting any pending refund), then pulls up to the reserve's free space so a full reserve
+// never clamps — and never silently destroys — the rescued soldiers.
+function veteranCampWithdraw(gameState, payload = {}) {
+  const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
+  if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
+    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
+  }
+  const nowMs = resolveNowMs(payload);
+  const normalized = normalizeMilitaryState(getCityMilitary(gameState, cityId), createMilitaryContext(gameState, cityId));
+  const settled = settleVeteranCampDrain(normalized, getCityResources(gameState, cityId), nowMs);
+  const camp = readVeteranCamp(settled.military);
+  const campRow = getVeteranCampRow(camp.level);
+  const reserveSpace = Math.max(0, settled.military.soldierCap - settled.military.soldiers);
+  const parked = veteranCampCore.parkedTotal(camp);
+  // Distinguish "soldiers omitted" (withdraw all) from an explicit 0 (a no-op). A bare
+  // `requested || parked` would treat an explicit 0/negative/fractional request as "withdraw
+  // everything" — emptying the camp and forfeiting the accruing drain refund.
+  const hasExplicitRequest = payload.soldiers != null && payload.soldiers !== '';
+  const requested = Math.max(0, Math.floor(Number(payload.soldiers) || 0));
+  const desired = hasExplicitRequest ? requested : parked;
+  const target = Math.min(desired, reserveSpace, parked);
+  if (target <= 0) {
+    if (hasExplicitRequest && requested <= 0) {
+      return { success: false, error: 'NOTHING_REQUESTED', message: '未指定取回数量' };
+    }
+    const reason = reserveSpace <= 0 ? 'RESERVE_FULL' : 'VETERAN_CAMP_EMPTY';
+    return {
+      success: false,
+      error: reason,
+      message: reason === 'RESERVE_FULL' ? '城内预备兵力已满，无法取回' : '老兵营地暂无可取回的士兵',
+    };
+  }
+  const pulled = veteranCampCore.withdraw(camp, campRow, target, nowMs);
+  const nextMilitary = normalizeMilitaryState({
+    ...settled.military,
+    soldiers: settled.military.soldiers + pulled.withdrawnSoldiers,
+    veteranCamp: pulled.camp,
+  }, createMilitaryContext(gameState, cityId, settled.military));
+  setCityMilitary(gameState, cityId, nextMilitary);
+  setCityResources(gameState, cityId, settled.resources);
+  return {
+    success: true,
+    message: `已从老兵营地取回 ${pulled.withdrawnSoldiers} 名士兵`,
+    withdrawnSoldiers: pulled.withdrawnSoldiers,
+    veteranCamp: getVeteranCampView(nextMilitary, nowMs),
+  };
+}
+
+// Upgrade the camp one level for its grain (food) cost. unlockEra is carried in the table but
+// not yet gated here (era wiring is a follow-up, like the garrison reclaim rule).
+function veteranCampUpgrade(gameState, payload = {}) {
+  const cityId = String(payload.cityId || gameState?.activeCityId || 'capital').trim() || 'capital';
+  if (gameState?.cities && Object.keys(gameState.cities).length && !gameState.cities[cityId]) {
+    return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
+  }
+  const normalized = normalizeMilitaryState(getCityMilitary(gameState, cityId), createMilitaryContext(gameState, cityId));
+  const camp = readVeteranCamp(normalized);
+  const nextLevel = camp.level + 1;
+  const nextRow = ConfigTables.getById('veteran_camp', nextLevel);
+  if (!nextRow) {
+    return { success: false, error: 'VETERAN_CAMP_MAX_LEVEL', message: '老兵营地已达最高等级' };
+  }
+  const cost = Math.max(0, Math.floor(Number(nextRow.upgradeCostGrain) || 0));
+  const cityResources = getCityResources(gameState, cityId);
+  if ((Number(cityResources.food) || 0) < cost) {
+    return { success: false, error: 'INSUFFICIENT_GRAIN', message: '粮食不足', cost };
+  }
+  const nextMilitary = normalizeMilitaryState({
+    ...normalized,
+    veteranCamp: { ...camp, level: nextLevel },
+  }, createMilitaryContext(gameState, cityId, normalized));
+  setCityMilitary(gameState, cityId, nextMilitary);
+  if (cost > 0) setCityResources(gameState, cityId, applyResourceDelta(cityResources, { food: -cost }));
+  return {
+    success: true,
+    message: `老兵营地升级至 ${nextLevel} 级`,
+    level: nextLevel,
+    cost,
+    veteranCamp: getVeteranCampView(nextMilitary, resolveNowMs(payload)),
+  };
+}
+
+// Read-only client view of the camp: level, capacity, current parked (drained to now), each
+// batch's drain ETA, and the next-level upgrade cost. The projection has no side effects — the
+// authoritative refund settlement stays in settleVeteranCampDrain (the tick).
+function getVeteranCampView(military, nowMs = Date.now()) {
+  // Show the LAST-SETTLED counts (not a fresh drain projection): the parked total then always
+  // matches the grain refund that has actually been credited, instead of racing ahead of it.
+  // The per-batch drain ETA is a pure display projection off atMs, so it stays live.
+  const camp = readVeteranCamp(military);
+  const campRow = getVeteranCampRow(camp.level);
+  const nextRow = ConfigTables.getById('veteran_camp', camp.level + 1);
+  return {
+    level: camp.level,
+    capacity: veteranCampCore.capacityOf(campRow),
+    retentionHours: Math.max(0, Number(campRow.retentionHours) || 0),
+    refundRatio: resolveRefundRatio(campRow),
+    parkedTotal: veteranCampCore.parkedTotal(camp),
+    batches: camp.batches.map((batch) => ({
+      soldiers: veteranCampCore.batchParked(batch),
+      drainEtaMs: veteranCampCore.batchDrainEtaMs(batch, campRow, nowMs),
+    })),
+    nextLevel: nextRow
+      ? { level: camp.level + 1, upgradeCostGrain: Math.max(0, Math.floor(Number(nextRow.upgradeCostGrain) || 0)) }
+      : null,
+  };
+}
+
 function advanceTraining(gameState, deltaSeconds = 0) {
   const elapsed = Math.max(0, Math.floor(toNonNegativeNumber(deltaSeconds)));
-  const current = normalizeMilitaryState(gameState.military, gameState);
+  const cityId = gameState.activeCityId || 'capital';
+  const current = normalizeMilitaryState(getCityMilitary(gameState, cityId), gameState);
   let soldiers = current.soldiers;
   let trainingProgress = current.trainingProgress;
   let trained = 0;
   const strengthPolicy = getFormationStrengthPolicy();
-  const cityId = gameState.activeCityId || 'capital';
   const cityResources = getCityResources(gameState, cityId);
 
   if (
@@ -436,21 +632,19 @@ function settleFormationSnapshot(gameState, snapshot = {}, options = {}) {
   const sourceMilitary = getCityMilitary(gameState, cityId);
   const context = createMilitaryContext(gameState, cityId, sourceMilitary);
   const normalizedMilitary = normalizeMilitaryState(sourceMilitary, context);
-  const validPersonIds = new Set((Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
-    .map((person) => String(person?.id || '').trim())
-    .filter(Boolean));
-  const formations = {
-    ...(normalizedMilitary.formations || {}),
-    [cityId]: normalizeCityFormations(normalizedMilitary.formations?.[cityId], validPersonIds),
-  };
-  const formation = formations[cityId][slot - 1] || null;
+  const validPersonIds = collectValidPersonIds(gameState);
+  const formations = normalizeCityFormations(
+    pickCityFormationsSource(normalizedMilitary.formations, cityId),
+    validPersonIds,
+  );
+  const formation = formations[slot - 1] || null;
   if (!formation) return { success: false, error: 'FORMATION_NOT_FOUND' };
   const assignments = FormationStrengthService.normalizeSoldierAssignments(
     FormationStrengthService.getSnapshotAssignments(normalizedSnapshot),
     formation.memberIds,
     getFormationStrengthPolicy(),
   );
-  formations[cityId][slot - 1] = {
+  formations[slot - 1] = {
     ...formation,
     soldierAssignments: assignments,
     soldiersAssigned: FormationStrengthService.sumAssignments(assignments),
@@ -463,7 +657,7 @@ function settleFormationSnapshot(gameState, snapshot = {}, options = {}) {
   const settledAt = options.now instanceof Date ? options.now.toISOString() : new Date(options.now || Date.now()).toISOString();
   return {
     success: true,
-    formation: nextMilitary.formations?.[cityId]?.[slot - 1] || null,
+    formation: (nextMilitary.formations || [])[slot - 1] || null,
     snapshot: {
       ...normalizedSnapshot,
       settledAt,
@@ -477,8 +671,19 @@ module.exports = {
   getFormationStrengthPolicy,
   getTrainingStats,
   normalizeMilitaryState,
-  normalizeArmyFormations,
+  normalizeCityFormations,
+  pickCityFormationsSource,
   setArmyFormation,
   settleFormationSnapshot,
   advanceTraining,
+  settleVeteranCampDrain,
+  veteranCampWithdraw,
+  veteranCampUpgrade,
+  getVeteranCampView,
+  // Canonical city-scoped accessors — the single read/write doorway for military and
+  // resource facts (top-level fields are aliases of the active city, never copies).
+  getCityMilitary,
+  setCityMilitary,
+  getCityResources,
+  setCityResources,
 };

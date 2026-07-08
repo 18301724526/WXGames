@@ -49,7 +49,7 @@ function createHost(overrides = {}) {
     drawAsset(assetPath) { calls.push(['drawAsset', assetPath]); return false; },
     drawButton(x, y, width, height, label, options = {}) { calls.push(['drawButton', label, options]); },
     drawLine() { calls.push(['drawLine']); },
-    drawPanel() { calls.push(['drawPanel']); },
+    drawPanel(x, y, width, height) { calls.push(['drawPanel', x, y, width, height]); },
     drawProgressBar(x, y, width, height, percentage) { calls.push(['drawProgressBar', percentage]); },
     drawText(text) { calls.push(['drawText', text]); },
     drawTextLines(lines) { calls.push(['drawTextLines', lines]); },
@@ -62,14 +62,15 @@ function createHost(overrides = {}) {
   return host;
 }
 
+// UI-REDO knife 8: buttons and the era progress bar are painted by the shared
+// ModalPlateRenderer (drawPanel/drawText/createGradient/drawLine), so
+// drawButton/drawProgressBar are no longer part of the drawing surface set.
 const CIVILIZATION_DRAWING_METHODS = [
   'addHitTarget',
   'createGradient',
   'drawAsset',
-  'drawButton',
   'drawLine',
   'drawPanel',
-  'drawProgressBar',
   'drawText',
   'drawTextLines',
   'getLayout',
@@ -193,7 +194,10 @@ test('CivilizationCanvasRenderer renders overview, era and feature areas', () =>
   assert.ok(host.calls.filter((call) => call[0] === 'drawPanel').length >= 4);
   assert.equal(host.calls.some((call) => call[0] === 'renderSectionHeader' && call[1] === '时代进阶'), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderSectionHeader' && call[1] === '当前时代特性'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawProgressBar' && call[1] === 50), true);
+  // Era progress goes through ModalPlateRenderer.drawModalProgressBar: the
+  // 50% fill panel is exactly half of the 312px track (contentWidth 360).
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel' && call[3] === 312), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel' && call[3] === 156), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'advanceEra' && target.action.disabled === false), true);
 });
 
@@ -230,7 +234,8 @@ test('CivilizationCanvasRenderer preserves disabled advance hit target contract'
 
   const advanceTarget = host.hitTargets.find((target) => target.action.type === 'advanceEra');
   assert.equal(advanceTarget.action.disabled, true);
-  const buttonCall = host.calls.find((call) => call[0] === 'drawButton' && call[1] === 'Locked');
-  assert.equal(buttonCall[2].disabled, true);
-  assert.equal(buttonCall[2].active, false);
+  // Advance button paints through ModalPlateRenderer (disabled grey face +
+  // token disabled label color); the label still lands via drawText.
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Locked'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton'), false);
 });

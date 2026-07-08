@@ -110,7 +110,8 @@ test('dispatches tutorialAdvance through the tutorial client-step gate', () => {
   });
 
   assert.equal(result.success, true);
-  assert.equal(result.tutorial.currentStep, 5);
+  // Persisted step is the insertion-proof NAME (legacy numeric payloads map onto it).
+  assert.equal(result.tutorial.currentStep, 'civilizationTabOpened');
 });
 
 test('blocks tutorialAdvance for business-only tutorial steps', () => {
@@ -201,12 +202,34 @@ test('dispatches compact client input evidence with world march payloads', () =>
   assert.equal(calls[0].payload.clientInputIntent, clientInputIntent);
 });
 
+test('dispatches combat encounter identity with world march payloads', () => {
+  const { calls, registry } = createRegistryWithCalls();
+
+  registry.execute({
+    action: 'startWorldMarch',
+    body: {
+      action: 'startWorldMarch',
+      mode: 'manual',
+      targetQ: 2,
+      targetR: -1,
+      formationSlot: 1,
+      combatEncounterId: 'hostile_force_capital_ridge',
+      encounterId: 'hostile_force_capital_ridge',
+    },
+    gameState: {},
+    tutorial: {},
+  });
+
+  assert.equal(calls[0].payload.combatEncounterId, 'hostile_force_capital_ridge');
+  assert.equal(calls[0].payload.encounterId, 'hostile_force_capital_ridge');
+});
+
 test('returns a stable result for unknown actions', () => {
   const { registry } = createRegistryWithCalls();
 
   assert.deepEqual(registry.execute({ action: 'missingAction', body: {} }), {
     success: false,
-    message: '鏈煡鎿嶄綔',
+    message: '未知操作',
     error: 'UNKNOWN_ACTION',
   });
 });

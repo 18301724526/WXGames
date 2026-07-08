@@ -17,6 +17,7 @@ const EXCLUDED_PATH_PATTERNS = Object.freeze([
 
 const RETIRED_SYMBOLS = Object.freeze([
   'HomeCanvasRenderer',
+  'CanvasBlockingPanelSnapshotCalls',
   'openTalentPolicy',
   'startExplore',
   'claimExplore',
@@ -32,10 +33,33 @@ const RETIRED_SYMBOLS = Object.freeze([
 ]);
 
 const RETIRED_FILES = Object.freeze([
+  'frontend/js/platform/CanvasBlockingPanelSnapshotCalls.js',
   'frontend/js/platform/renderers/HomeCanvasRenderer.js',
   'frontend/js/platform/renderers/TalentPolicyCanvasRenderer.js',
   'frontend/js/state/presenters/WorldRadarPresenter.js',
 ]);
+
+const RETIRED_LAYER_NAME = ['do', 'main'].join('');
+const RETIRED_LAYER_PATHS = Object.freeze([
+  `backend/${RETIRED_LAYER_NAME}/`,
+  `frontend/js/${RETIRED_LAYER_NAME}/`,
+  `frontend/js/ecs/${RETIRED_LAYER_NAME}/`,
+]);
+
+const RETIRED_LAYER_IMPORT_PATTERNS = Object.freeze([
+  new RegExp(`require\\(\\s*['"][^'"]*/${RETIRED_LAYER_NAME}/`),
+  new RegExp(`from\\s+['"][^'"]*/${RETIRED_LAYER_NAME}/`),
+  new RegExp(`import\\(\\s*['"][^'"]*/${RETIRED_LAYER_NAME}/`),
+]);
+
+const RETIRED_LAYER_TOKEN_PATTERN = new RegExp(
+  [
+    `\\.${escapeRegExp(RETIRED_LAYER_NAME)}\\b`,
+    `\\b${escapeRegExp(RETIRED_LAYER_NAME)}\\s*:`,
+    `\\b[A-Z0-9_]*${escapeRegExp(RETIRED_LAYER_NAME.toUpperCase())}[A-Z0-9_]*\\b`,
+    `['"\`]${escapeRegExp(RETIRED_LAYER_NAME)}['"\`]`,
+  ].join('|'),
+);
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -75,6 +99,60 @@ function findRetiredFileOffenders(files = [], options = {}) {
   return RETIRED_FILES.filter((file) => tracked.has(file) && exists(file));
 }
 
+function findRetiredLayerPathOffenders(files = [], options = {}) {
+  const exists = typeof options.exists === 'function' ? options.exists : fs.existsSync;
+  return files
+    .map((file) => String(file || '').replace(/\\/g, '/'))
+    .filter((file) => RETIRED_LAYER_PATHS.some((prefix) => file.startsWith(prefix)))
+    .filter((file) => exists(file));
+}
+
+function findRetiredLayerImportOffendersInText(file, text = '') {
+  const offenders = [];
+  String(text || '').split(/\r?\n/).forEach((line, index) => {
+    if (!RETIRED_LAYER_IMPORT_PATTERNS.some((pattern) => pattern.test(line))) return;
+    offenders.push({
+      file: String(file || '').replace(/\\/g, '/'),
+      line: index + 1,
+      evidence: line.trim().replace(/\s+/g, ' '),
+    });
+  });
+  return offenders;
+}
+
+function findRetiredLayerImportOffenders(files = []) {
+  const offenders = [];
+  const sourceFiles = files.filter(isActiveProductionSource);
+  for (const file of sourceFiles) {
+    if (!fs.existsSync(file)) continue;
+    offenders.push(...findRetiredLayerImportOffendersInText(file, fs.readFileSync(file, 'utf8')));
+  }
+  return offenders;
+}
+
+function findRetiredLayerTokenOffendersInText(file, text = '') {
+  const offenders = [];
+  String(text || '').split(/\r?\n/).forEach((line, index) => {
+    if (!RETIRED_LAYER_TOKEN_PATTERN.test(line)) return;
+    offenders.push({
+      file: String(file || '').replace(/\\/g, '/'),
+      line: index + 1,
+      evidence: line.trim().replace(/\s+/g, ' '),
+    });
+  });
+  return offenders;
+}
+
+function findRetiredLayerTokenOffenders(files = []) {
+  const offenders = [];
+  const sourceFiles = files.filter(isActiveProductionSource);
+  for (const file of sourceFiles) {
+    if (!fs.existsSync(file)) continue;
+    offenders.push(...findRetiredLayerTokenOffendersInText(file, fs.readFileSync(file, 'utf8')));
+  }
+  return offenders;
+}
+
 function findRetiredSymbolOffenders(files = []) {
   const offenders = [];
   const sourceFiles = files.filter(isActiveProductionSource);
@@ -89,12 +167,21 @@ function findRetiredSymbolOffenders(files = []) {
 function findOffenders(files = runGitLsFiles()) {
   return {
     files: findRetiredFileOffenders(files),
+    retiredLayerPaths: findRetiredLayerPathOffenders(files),
+    retiredLayerImports: findRetiredLayerImportOffenders(files),
+    retiredLayerTokens: findRetiredLayerTokenOffenders(files),
     symbols: findRetiredSymbolOffenders(files),
   };
 }
 
 function hasOffenders(offenders = {}) {
-  return Boolean(offenders.files?.length || offenders.symbols?.length);
+  return Boolean(
+    offenders.files?.length
+      || offenders.retiredLayerPaths?.length
+      || offenders.retiredLayerImports?.length
+      || offenders.retiredLayerTokens?.length
+      || offenders.symbols?.length,
+  );
 }
 
 function main() {
@@ -102,6 +189,15 @@ function main() {
   if (hasOffenders(offenders)) {
     console.error('[retired-legacy-code] retired active code found:');
     offenders.files.forEach((file) => console.error(`- retired file still tracked: ${file}`));
+    offenders.retiredLayerPaths.forEach((file) =>
+      console.error(`- retired layer file still tracked: ${file}`),
+    );
+    offenders.retiredLayerImports.forEach(({ file, line, evidence }) =>
+      console.error(`- retired layer import ${file}:${line}: ${evidence}`),
+    );
+    offenders.retiredLayerTokens.forEach(({ file, line, evidence }) =>
+      console.error(`- retired layer token ${file}:${line}: ${evidence}`),
+    );
     offenders.symbols.forEach(({ file, symbol }) => console.error(`- ${file}: ${symbol}`));
     process.exit(1);
   }
@@ -116,9 +212,18 @@ module.exports = {
   ACTIVE_SOURCE_PREFIXES,
   EXCLUDED_PATH_PATTERNS,
   RETIRED_FILES,
+  RETIRED_LAYER_NAME,
+  RETIRED_LAYER_IMPORT_PATTERNS,
+  RETIRED_LAYER_PATHS,
+  RETIRED_LAYER_TOKEN_PATTERN,
   RETIRED_SYMBOLS,
   findOffenders,
   findRetiredFileOffenders,
+  findRetiredLayerImportOffenders,
+  findRetiredLayerImportOffendersInText,
+  findRetiredLayerPathOffenders,
+  findRetiredLayerTokenOffenders,
+  findRetiredLayerTokenOffendersInText,
   findRetiredSymbolsInText,
   findRetiredSymbolOffenders,
   hasRetiredSymbol,

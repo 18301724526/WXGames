@@ -17,6 +17,7 @@
         ctx,
         canvas,
         presenter: options.presenter || null,
+        loadTrace: options.loadTrace || null,
         pixelRatio,
         width,
         height,
@@ -25,6 +26,7 @@
         worldTileMaskCache: options.worldTileMaskCache,
         worldTileMaskMetricsCache: options.worldTileMaskMetricsCache,
         worldTileDryCompositeCache: options.worldTileDryCompositeCache,
+        worldMapRenderState: options.worldMapRenderState,
         showFpsOverlay: options.showFpsOverlay,
         maxContentWidth: options.maxContentWidth || 480,
         edgePadding: options.edgePadding || 12,
@@ -32,6 +34,21 @@
       });
 
       this.h5Runtime = options.h5Runtime || null;
+      this.canvasLayerRegistry = options.canvasLayerRegistry || null;
+      this.ensureCanvasLayer = typeof options.ensureCanvasLayer === 'function' ? options.ensureCanvasLayer : null;
+      this.getCanvasLayerCanvas = typeof options.getCanvasLayerCanvas === 'function' ? options.getCanvasLayerCanvas : null;
+      this.getCanvasLayerMetrics = typeof options.getCanvasLayerMetrics === 'function' ? options.getCanvasLayerMetrics : null;
+      this.setCanvasLayerVisible = typeof options.setCanvasLayerVisible === 'function' ? options.setCanvasLayerVisible : null;
+      this.requestOverlayRenderFrame = typeof options.requestOverlayRenderFrame === 'function'
+        ? options.requestOverlayRenderFrame
+        : null;
+      // Terminal host of the world-map render tree: expose the shell-owned world actor spine
+      // renderer accessor here so the render host chain (WorldActorCanvasRenderer ->
+      // WorldMapCanvasRenderer -> this) can reach it. Only set when provided so absence leaves
+      // the host-chain walk to keep looking.
+      if (typeof options.getWorldActorSpineRenderer === 'function') {
+        this.getWorldActorSpineRenderer = options.getWorldActorSpineRenderer;
+      }
     }
 
     createImage(src) {

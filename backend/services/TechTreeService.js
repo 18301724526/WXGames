@@ -1,8 +1,5 @@
 const { TechTreeConfig } = require('./config/GameplayConfigRuntime');
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+const { clone } = require('../../shared/objectUtils');
 
 function normalizeTechState(raw = {}) {
   const legacyCompleted = {};

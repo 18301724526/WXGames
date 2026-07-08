@@ -77,7 +77,11 @@ test('guided first empty city occupation and naming advance tutorial by real ter
   const started = TerritoryAction.execute('startConquest', state, { territoryId: siteId });
   assert.equal(started.success, true);
   assert.equal(started.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityConquestStarted);
-  assert.equal(state.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  // Settlement occupation succeeds with zero reserve soldiers, commits zero, and
+  // no tutorial soldier grant is written along the way.
+  assert.equal(state.cities.capital.military.soldiers, 0);
+  assert.equal(state.warMissions[0].soldiersCommitted, 0);
+  assert.equal(state.tutorial.grants[WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY].settlementSoldiersGranted, undefined);
   assert.equal(state.warMissions[0].status, 'ready');
   assert.equal(state.territories[1].status, 'contested');
 

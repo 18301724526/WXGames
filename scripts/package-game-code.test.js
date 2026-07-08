@@ -17,7 +17,7 @@ test('package code bundle includes core frontend and backend source', () => {
     'frontend/index.html',
     'frontend/style.css',
     'frontend/js/platform/CanvasGameShell.js',
-    'frontend/js/domain/WorldMarchSystem.test.js',
+    'frontend/js/ecs/system/WorldMarchSystem.test.js',
     'frontend/minigame/game.js',
     'frontend/minigame/game.json',
     'shared/buildingConfig.json',
@@ -57,7 +57,7 @@ test('package code bundle collection does not include obvious non-code files', (
   const files = collectPackageFiles();
   const offenders = files.filter((file) => !shouldIncludeFile(file));
   assert.deepEqual(offenders, []);
-  assert.ok(files.includes('frontend/js/domain/WorldMarchSystem.js'));
+  assert.ok(files.includes('frontend/js/ecs/system/WorldMarchSystem.js'));
   assert.ok(!files.some((file) => file.startsWith('frontend/assets/')));
   assert.ok(!files.some((file) => file.includes('/vendor/')));
   assert.ok(!files.some((file) => /\.(png|webp|zip|db|sqlite)$/i.test(file)));

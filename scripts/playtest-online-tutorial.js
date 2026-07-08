@@ -4,13 +4,18 @@ const { chromium } = require('playwright');
 const { PNG } = require('pngjs');
 
 const CONFIG = {
-  gameUrl: process.env.PLAYTEST_GAME_URL || 'http://47.116.32.216/wxgame/',
-  apiBase: process.env.PLAYTEST_API_BASE || 'http://47.116.32.216:3000/api',
+  // Default to THIS branch's isolated deploy (docs/server_environment_refactor_tutorial_2026-06-25.md).
+  // The main-server '/wxgame/' + ':3000/api' pair runs main's OLD numeric step
+  // table: pointing the harness there mislabels every step and resets a
+  // production account. Override via env only for other refactor deploys.
+  gameUrl: process.env.PLAYTEST_GAME_URL || 'http://47.116.32.216/wxgame-refactor/',
+  apiBase: process.env.PLAYTEST_API_BASE || 'http://47.116.32.216/wxgame-refactor-api',
   username: process.env.PLAYTEST_USERNAME || 'codexqa',
   password: process.env.PLAYTEST_PASSWORD || '123456',
   resetAccount: process.env.PLAYTEST_RESET_ACCOUNT !== '0',
   headless: process.env.PLAYTEST_HEADLESS !== '0',
   maxActions: Number(process.env.PLAYTEST_MAX_ACTIONS || 72),
+  continueOnFailure: process.env.PLAYTEST_CONTINUE_ON_FAILURE === '1',
   viewportWidth: Number(process.env.PLAYTEST_VIEWPORT_WIDTH || 1365),
   viewportHeight: Number(process.env.PLAYTEST_VIEWPORT_HEIGHT || 768),
   outputRoot: process.env.PLAYTEST_OUTPUT_DIR || path.join('.local-logs', 'online-tutorial'),
@@ -21,45 +26,16 @@ const CONFIG = {
   minHighlightGoldPixels: Number(process.env.PLAYTEST_MIN_HIGHLIGHT_GOLD_PIXELS || 24),
 };
 
-const STEP_NAMES = {
-  0: 'initial',
-  1: 'tutorialStarted',
-  2: 'cityEntered',
-  3: 'houseGuideReady',
-  4: 'houseBuilt',
-  5: 'civilizationTabOpened',
-  6: 'eraAdvancedTo1',
-  7: 'buildingsTabOpened',
-  8: 'farmPrepReserved',
-  9: 'farmBuilt',
-  10: 'era2AdvanceReady',
-  11: 'eraAdvancedTo2',
-  12: 'specialEventTabOpened',
-  13: 'specialEventClaimed',
-  14: 'buildingsTabOpenedForLumbermill',
-  15: 'lumbermillBuilt',
-  16: 'era3AdvanceReady',
-  17: 'era3Advanced',
-  18: 'scoutFamousGranted',
-  19: 'famousPanelOpened',
-  20: 'famousCardViewed',
-  21: 'formationPanelOpened',
-  22: 'scoutFormationSaved',
-  23: 'scoutWorldPanelOpened',
-  24: 'scoutExploreStarted',
-  25: 'firstCityDiscovered',
-  26: 'firstCityConquestStarted',
-  27: 'firstCityOccupied',
-  28: 'firstCityNamed',
-  29: 'polityNamed',
-  30: 'talentPolicyOpened',
-  31: 'talentPolicyApplied',
-  32: 'manualTalentAssigned',
-  33: 'famousSeekOpened',
-  34: 'famousSeekCompleted',
-  35: 'finalTechOpened',
-  36: 'completed',
-};
+// Single source: shared/tutorialFlowConfig.js (index -> step name).
+const TutorialFlowShared = require('../shared/tutorialFlowConfig');
+const STEP_NAMES = TutorialFlowShared.STEP_ORDER;
+const STEPS = TutorialFlowShared.TUTORIAL_STEPS;
+// Scripted fallbacks compare the runtime numeric index against named steps so
+// STEP_ORDER insertions never silently retarget a branch.
+const stepIndexOf = (name) => TutorialFlowShared.stepIndex(name);
+const COMPLETED_STEP_INDEX = TutorialFlowShared.stepIndex(
+  TutorialFlowShared.TUTORIAL_STEPS.completed,
+);
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = path.resolve(CONFIG.outputRoot, runId);
@@ -232,11 +208,42 @@ function getActionTargetId(action = {}) {
 
 function actionCompatible(expected = {}, actual = {}) {
   if (!expected?.type || !actual?.type || actual.disabled) return false;
+  // Mirror the product tutorial gate (matchesTutorialAllowedAction): a guided
+  // openWorldSite tile the scout actor still overlaps resolves to the multi-candidate
+  // world target picker; that click is valid (the guide then highlights choosing the
+  // site candidate), so treat the picker as compatible when it carries the site.
+  if (expected.type === 'openWorldSite' && actual.type === 'openWorldTargetPicker') {
+    const wanted = getActionTargetId(expected);
+    const candidates = Array.isArray(actual.candidates) ? actual.candidates : [];
+    return candidates.some((candidate) => {
+      const candidateAction = candidate?.action || candidate || {};
+      const candidateId = String(
+        candidateAction.siteId || candidateAction.cityId || candidateAction.territoryId || '',
+      );
+      return (candidateAction.type === 'openWorldSite' || candidate?.kind === 'site')
+        && (!wanted || candidateId === wanted);
+    });
+  }
+  // openWorldSite and enterCity are interchangeable entrances to the same city (which one
+  // owns the tile's clickable center depends on hit-target stacking).
+  const cityEntranceTypes = ['openWorldSite', 'enterCity'];
+  if (
+    cityEntranceTypes.includes(expected.type)
+    && cityEntranceTypes.includes(actual.type)
+    && expected.type !== actual.type
+  ) {
+    const wantedCity = getActionTargetId(expected);
+    const actualCity = getActionTargetId(actual);
+    return Boolean(wantedCity && actualCity && wantedCity === actualCity);
+  }
   if (expected.type !== actual.type) return false;
   const expectedId = getActionTargetId(expected);
   const actualId = getActionTargetId(actual);
   return Object.entries(expected).every(([key, value]) => {
     if (key === 'type' || key === 'background' || value === undefined || value === null || value === '') return true;
+    // Object-valued action fields (e.g. deploymentEligibility) never satisfy strict
+    // equality across two evaluate() serializations; primitives carry the identity.
+    if (typeof value === 'object') return true;
     if (actual[key] === value) return true;
     if (['siteId', 'territoryId', 'cityId', 'targetId', 'personId', 'taskId', 'eventId', 'missionId'].includes(key)) {
       return Boolean(expectedId && actualId && expectedId === actualId);
@@ -495,24 +502,56 @@ async function getState(page) {
       hasServerState: Boolean(game?.hasServerState),
       currentTab: game?.state?.currentTab || game?.currentTab || shell?.currentTab || '',
       militaryView: game?.state?.militaryView || shell?.militaryView || '',
-      tutorialStep: Number(game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0) || 0,
+      tutorialStep: (() => {
+        const raw = game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0;
+        const index = globalThis.TutorialFlowShared?.stepIndex?.(raw);
+        return Number.isFinite(index) && index >= 0 ? index : Number(raw) || 0;
+      })(),
       tutorialCompleted: Boolean(game?.tutorial?.completed || game?.state?.tutorial?.completed),
       tutorial: game?.tutorial || game?.state?.tutorial || null,
       tutorialIntro: game?.tutorialIntro || shell?.tutorialIntro || null,
       tutorialHighlight: shell?.tutorialHighlight || null,
       tutorialAdvisorDialogue: shell?.tutorialAdvisorDialogue || game?.tutorialAdvisorDialogue || null,
-      rewardReveal: shell?.rewardReveal || game?.rewardReveal || null,
-      taskCenterOpen: Boolean(shell?.showTaskCenter || game?.showTaskCenter),
-      activeTaskCenterTab: shell?.activeTaskCenterTab || game?.activeTaskCenterTab || '',
-      cityManagementOpen: Boolean(shell?.showCityManagement || game?.showCityManagement),
-      activeCityManagementTab: shell?.activeCityManagementTab || game?.activeCityManagementTab || '',
-      activeCommandPanel: shell?.activeCommandPanel || game?.activeCommandPanel || '',
-      activeEventId: shell?.activeEventId || game?.activeEventId || game?.eventController?.activeEventId || '',
-      showFamousPersons: Boolean(shell?.showFamousPersons || game?.showFamousPersons),
-      selectedFamousPersonId: shell?.selectedFamousPersonId || game?.selectedFamousPersonId || '',
-      cityPeopleOpen: Boolean((shell?.showCityManagement || game?.showCityManagement)
-        && (shell?.activeCityManagementTab || game?.activeCityManagementTab) === 'people'),
-      naming: shell?.naming || game?.naming || null,
+      rewardReveal: shell?.getRewardRevealSnapshot?.() || game?.getRewardRevealSnapshot?.() || shell?.rewardReveal || game?.rewardReveal || null,
+      // Blocking panels live in the modal snapshot (Batch 8F retired the direct
+      // showX properties); probe the snapshot API, keep legacy reads as fallback
+      // for older deployments.
+      taskCenterOpen: Boolean(
+        shell?.isBlockingPanelSnapshotOpen?.('showTaskCenter')
+        || game?.isBlockingPanelSnapshotOpen?.('showTaskCenter')
+        || shell?.showTaskCenter || game?.showTaskCenter,
+      ),
+      activeTaskCenterTab: game?.activeTaskCenterTab || shell?.activeTaskCenterTab || '',
+      cityManagementOpen: Boolean(
+        shell?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+        || game?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+        || shell?.showCityManagement || game?.showCityManagement,
+      ),
+      activeCityManagementTab: game?.activeCityManagementTab || shell?.activeCityManagementTab || '',
+      activeCommandPanel: shell?.getCommandPanelValue?.() || game?.getCommandPanelValue?.()
+        || shell?.activeCommandPanel || game?.activeCommandPanel || '',
+      activeEventId: shell?.getEventSnapshot?.()?.eventId || game?.getEventSnapshot?.()?.eventId
+        || shell?.activeEventId || game?.activeEventId || game?.eventController?.activeEventId || '',
+      showFamousPersons: Boolean(
+        shell?.isBlockingPanelSnapshotOpen?.('showFamousPersons')
+        || game?.isBlockingPanelSnapshotOpen?.('showFamousPersons')
+        || shell?.showFamousPersons || game?.showFamousPersons,
+      ),
+      selectedFamousPersonId: game?.selectedFamousPersonId || shell?.selectedFamousPersonId || '',
+      cityPeopleOpen: Boolean(
+        (shell?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+          || game?.isBlockingPanelSnapshotOpen?.('showCityManagement')
+          || shell?.showCityManagement || game?.showCityManagement)
+        && (game?.activeCityManagementTab || shell?.activeCityManagementTab) === 'people',
+      ),
+      targetPickerKind: (game?.getTargetPickerSnapshot?.() || shell?.getTargetPickerSnapshot?.())?.pickerKind || '',
+      // The rendered hit targets are the most reliable "world target picker is open"
+      // signal: the picker always registers its candidate buttons there, while the modal
+      // snapshot can lag behind on click-opened pickers.
+      worldTargetPickerCandidates: hitTargets
+        .filter((target) => target?.action?.type === 'chooseWorldTarget')
+        .map((target) => String(target.action.targetId || target.action.siteId || '')),
+      naming: shell?.getNamingSnapshot?.() || game?.getNamingSnapshot?.() || shell?.naming || game?.naming || null,
       armyFormationEditor: shell?.armyFormationEditor || game?.armyFormationEditor || null,
       territoryUiState: shell?.territoryUiState || game?.territoryUiState || game?.territoryController?.uiState || null,
       territoryState: {
@@ -571,6 +610,10 @@ async function getState(page) {
         activeCityId: game.state.activeCityId,
         buildings: game.state.buildings,
         resources: game.state.resources,
+        military: game.state.military ? {
+          soldiers: Number(game.state.military.soldiers) || 0,
+          soldierCap: Number(game.state.military.soldierCap) || 0,
+        } : null,
         eventQueue: Array.isArray(game.state.eventQueue) ? game.state.eventQueue.map((event) => ({
           id: event.id,
           status: event.status,
@@ -615,10 +658,14 @@ async function refreshAuthorityStateAndWorldMap(page, label = 'refresh-authority
     const coordinator = shell?.worldMapRuntimeCoordinator || game?.worldMapRuntimeCoordinator || null;
     const runtime = coordinator?.getMapRuntime?.() || shell?.worldMapRuntime || game?.worldMapRuntime || null;
     const api = game?.gameAPI || game?.api || game?.syncService?.api || null;
+    const toStepIndex = (raw) => {
+      const index = globalThis.TutorialFlowShared?.stepIndex?.(raw);
+      return Number.isFinite(index) && index >= 0 ? index : Number(raw) || 0;
+    };
     const summary = {
       fetchedAuthorityState: false,
       appliedAuthorityState: false,
-      tutorialStep: Number(game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0) || 0,
+      tutorialStep: toStepIndex(game?.tutorial?.currentStep ?? game?.state?.tutorial?.currentStep ?? 0),
       invalidated: [],
     };
 
@@ -626,7 +673,7 @@ async function refreshAuthorityStateAndWorldMap(page, label = 'refresh-authority
       if (typeof api?.getState === 'function') {
         const data = await api.getState();
         summary.fetchedAuthorityState = true;
-        summary.responseTutorialStep = Number(data?.tutorial?.currentStep ?? data?.gameState?.tutorial?.currentStep ?? 0) || 0;
+        summary.responseTutorialStep = toStepIndex(data?.tutorial?.currentStep ?? data?.gameState?.tutorial?.currentStep ?? 0);
         if (typeof game?.applyApiState === 'function') {
           game.applyApiState(data);
           summary.appliedAuthorityState = true;
@@ -878,6 +925,9 @@ function countBuildings(state = {}) {
   return 0;
 }
 
+// The guided tutorial march is 2 tiles x EXPLORE_STEP_DURATION_MS (10s), so
+// 20 waits of 1.5-3s comfortably cover it while still bounding the stall.
+
 function missionCounts(state = {}) {
   const explorer = state.stateSummary?.worldExplorerState || {};
   return {
@@ -891,7 +941,7 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
   const actionType = action?.type || '';
   const apiCall = getSuccessfulApiCall(after, action, before);
   const stepAdvanced = Number(after.tutorialStep) > Number(before.tutorialStep);
-  const completed = Boolean(after.tutorialCompleted || after.tutorialStep >= 36);
+  const completed = Boolean(after.tutorialCompleted || after.tutorialStep >= COMPLETED_STEP_INDEX);
   const apiRequired = isApiAction(actionType);
   const apiOk = !apiRequired || Boolean(apiCall);
   const authorityOk = !actionRequiresAuthority(action) || (
@@ -951,8 +1001,16 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
     case 'openWorldSite': {
       const siteId = action.siteId || action.cityId || action.territoryId || '';
       const selected = after.territoryUiState?.selectedSiteId || '';
-      return (siteId && selected === siteId) || after.cityManagementOpen || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
-        ? pass('world site opened or intro advanced')
+      // When a march actor overlaps the tile, the click opens the world target
+      // picker instead; that is a valid intermediate step (the next iteration clicks
+      // the site candidate). Only a FRESHLY opened picker counts as progress — an
+      // already-open picker would otherwise turn every click into a false pass.
+      const pickerOpened = (after.targetPickerKind === 'worldTargetPicker'
+        || (after.worldTargetPickerCandidates || []).length > 0)
+        && !(before.worldTargetPickerCandidates || []).length
+        && before.targetPickerKind !== 'worldTargetPicker';
+      return (siteId && selected === siteId) || after.cityManagementOpen || pickerOpened || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
+        ? pass('world site opened, picker opened, or intro advanced')
         : fail('world site did not open');
     }
     case 'enterCity':
@@ -1010,7 +1068,8 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
         ? pass('world march target selected')
         : fail('world march target was not selected');
     case 'openWorldMarchFormationPicker':
-      return after.territoryUiState?.worldMarchTarget?.pickerOpen
+      return after.targetPickerKind === 'worldMarchFormation'
+        || after.territoryUiState?.worldMarchTarget?.pickerOpen
         ? pass('world march formation picker opened')
         : fail('world march picker did not open');
     case 'startWorldMarch': {
@@ -1019,6 +1078,16 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
       return stepAdvanced || afterCounts.active > beforeCounts.active || afterCounts.idle > beforeCounts.idle || apiOk
         ? pass('world march started')
         : fail('world march did not start');
+    }
+    case 'chooseWorldTarget': {
+      // Choosing the site candidate dispatches its openWorldSite; the action
+      // carries targetId (not siteId), so progress = picker closed and a world
+      // site is now selected (or city management opened).
+      const selected = after.territoryUiState?.selectedSiteId || '';
+      const pickerClosed = after.targetPickerKind !== 'worldTargetPicker';
+      return (pickerClosed && (Boolean(selected) || after.cityManagementOpen)) || stepAdvanced
+        ? pass('world target candidate chosen')
+        : fail('world target picker choice did not resolve');
     }
     case 'conquer':
       return stepAdvanced || apiOk ? pass('conquest started') : fail('conquest did not start');
@@ -1093,7 +1162,13 @@ async function clickTarget(page, label, state, target) {
   };
   verificationReports.push(report);
   if (!outcome.pass) {
-    throw createVerificationFailure(label, 'click did not produce the expected result', report);
+    // Opt-in (PLAYTEST_CONTINUE_ON_FAILURE=1): keep driving past a verification miss so a single
+    // run can capture the full tutorial trajectory (e.g. the later formation/battle/conquest steps)
+    // for manual review, instead of stopping at the first unexpected click outcome. Default stays
+    // strict (throws) so CI behaviour is unchanged.
+    if (!CONFIG.continueOnFailure) {
+      throw createVerificationFailure(label, 'click did not produce the expected result', report);
+    }
   }
   return {
     label,
@@ -1104,6 +1179,99 @@ async function clickTarget(page, label, state, target) {
     afterStepName: STEP_NAMES[after.tutorialStep] || '',
     outcome,
   };
+}
+
+// Marches take real time (stepDurationSeconds defaults to 10s/step, and the tutorial
+// explore mission visits 2 targets — minutes of wall clock). Wait them out in ONE
+// action-budget slot, judging both arrival and progress from the RAW /game/state
+// payload that syncOnce() returns — NOT from the client mirror.
+//
+// The mirror (game.state.worldExplorerState) is the wrong signal on both counts:
+// MarchReconciler.mergeAuthorityIntoLocal spreads {...authority, ...local}, so once a
+// server mission has been reconciled its stored copy keeps the stale local snapshot of
+// position/route-reveal/status between syncs (visuals are re-projected per frame from
+// (mission, nowMs), not stored). Comparing that JSON false-stalled every march leg
+// longer than stallMs, and the same local-wins merge can hold status:'active' after
+// the server already reports idle. The raw DTO has neither problem: getMissionDto runs
+// deriveMissionForTime per fetch, so active-mission JSON changes every round while a
+// march moves, and the active set empties the moment the server considers it done.
+async function waitForActiveMarchToArrive(page, maxWaitMs = 5 * 60 * 1000, stallMs = 60 * 1000) {
+  const startedAt = Date.now();
+  let lastProgressKey = '';
+  let lastProgressAt = Date.now();
+  let consecutiveSyncFailures = 0;
+  for (;;) {
+    // The page does not poll /game/state while idle — pull a fresh snapshot each round
+    // and read the returned payload directly (pre-reconcile server truth).
+    const sync = await page.evaluate(async () => {
+      const game = window.Game || null;
+      if (!game || typeof game.syncOnce !== 'function') {
+        return { ok: false, error: 'window.Game.syncOnce unavailable' };
+      }
+      try {
+        const payload = await game.syncOnce();
+        const explorer = (payload?.gameState || payload?.state || {}).worldExplorerState;
+        if (!explorer || typeof explorer !== 'object') {
+          return { ok: false, error: 'sync payload has no worldExplorerState' };
+        }
+        const missions = [];
+        const seen = new Set();
+        const append = (mission) => {
+          if (!mission || typeof mission !== 'object') return;
+          const id = mission.id || `mission-${missions.length}`;
+          if (seen.has(id)) return;
+          seen.add(id);
+          missions.push(mission);
+        };
+        (Array.isArray(explorer.missions) ? explorer.missions : []).forEach(append);
+        append(explorer.activeMission);
+        (Array.isArray(explorer.activeMissions) ? explorer.activeMissions : []).forEach(append);
+        const active = missions.filter((mission) => mission.status === 'active');
+        return { ok: true, activeCount: active.length, progressKey: JSON.stringify(active) };
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error) };
+      }
+    });
+    await waitForRender(page, 200);
+    if (sync.ok) {
+      consecutiveSyncFailures = 0;
+      if (sync.activeCount === 0) {
+        // Server truth: arrived. The outer click loop reads the client mirror, so give
+        // the reconciler a few extra rounds to converge before handing control back;
+        // report (never fail on) a mirror that still lags the server.
+        let mirrorActive = missionCounts(await getState(page)).active;
+        for (let round = 0; mirrorActive > 0 && round < 3; round += 1) {
+          await page.waitForTimeout(1000);
+          await page.evaluate(() => window.Game?.syncOnce?.().catch(() => {}));
+          await waitForRender(page, 200);
+          mirrorActive = missionCounts(await getState(page)).active;
+        }
+        return { arrived: true, waitedMs: Date.now() - startedAt, clientMirrorActive: mirrorActive };
+      }
+      if (sync.progressKey !== lastProgressKey) {
+        lastProgressKey = sync.progressKey;
+        lastProgressAt = Date.now();
+      }
+      if (Date.now() - lastProgressAt > stallMs) {
+        return { arrived: false, reason: 'march-stalled-no-progress', waitedMs: Date.now() - startedAt };
+      }
+    } else {
+      // A failed pull is neither progress nor stall evidence — the stall clock only
+      // judges successfully synced rounds. A hard outage fails fast on its own.
+      consecutiveSyncFailures += 1;
+      if (consecutiveSyncFailures >= 8) {
+        return {
+          arrived: false,
+          reason: `march-sync-failed:${sync.error || 'unknown'}`,
+          waitedMs: Date.now() - startedAt,
+        };
+      }
+    }
+    if (Date.now() - startedAt > maxWaitMs) {
+      return { arrived: false, reason: 'max-wait-exceeded', waitedMs: Date.now() - startedAt };
+    }
+    await page.waitForTimeout(2500);
+  }
 }
 
 async function recordWaitAction(page, label, state, action = {}, waitMs = 900, timeoutMs = 12000) {
@@ -1213,7 +1381,11 @@ async function fillNamingIfOpen(page) {
     await page.waitForFunction(() => {
       const game = window.Game;
       const shell = game?.canvasShell;
-      return Boolean(String(shell?.naming?.inputValue || game?.naming?.inputValue || '').trim());
+      // Batch 8F retired the direct shell.naming property; the input value lives in
+      // the naming snapshot now.
+      const snapshot = shell?.getNamingSnapshot?.() || game?.getNamingSnapshot?.() || null;
+      const inputValue = snapshot?.inputValue ?? shell?.naming?.inputValue ?? game?.naming?.inputValue ?? '';
+      return Boolean(String(inputValue || '').trim());
     }, null, { timeout: 6000 });
     await waitForRender(page, 300);
   }
@@ -1246,7 +1418,58 @@ async function chooseNextAction(page, iteration) {
     ));
   }
 
+  // The world target picker blocks every click behind it. Whenever it is open (its
+  // candidate buttons are registered as hit targets), resolve it first — a real player
+  // taps the site candidate — otherwise the guide-highlight fallback below keeps
+  // clicking through it without ever advancing.
+  if ((state.worldTargetPickerCandidates || []).length) {
+    const candidates = state.worldTargetPickerCandidates;
+    const wanted = candidates.find((id) => id === 'capital' || String(id).startsWith('site_')) || '';
+    return clickByPredicate(page, `resolve-world-target-picker-${iteration}`, (action) => (
+      action.type === 'chooseWorldTarget'
+      && (!wanted || String(action.targetId || action.siteId || '') === wanted)
+      && !action.disabled
+    ));
+  }
+
   const allowed = state.tutorialHighlight?.allowedAction || null;
+  // A guided openWorldSite towards the tutorial's first empty city races the exploration
+  // march: the site cannot advance the step machine until the march goes idle. Wait the
+  // whole march out in one action slot (minutes of real time), with a stall detector so
+  // a genuinely starved march (worker bug) still fails fast instead of hanging.
+  if (allowed?.type === 'openWorldSite' && missionCounts(state).active > 0) {
+    const firstExploreSiteId = String(state.tutorial?.grants?.firstExploreEmptyCity?.siteId || '');
+    const highlightSiteId = String(allowed.siteId || '');
+    const racesGuidedMarch = firstExploreSiteId && highlightSiteId === firstExploreSiteId;
+    if (racesGuidedMarch) {
+      const waited = await waitForActiveMarchToArrive(page);
+      if (!waited.arrived) {
+        throw createVerificationFailure(`march-wait-${iteration}`, `active march did not arrive: ${waited.reason}`, {
+          waitedMs: waited.waitedMs,
+        });
+      }
+      // Server truth: the march is idle. When the client mirror also cleared, spend
+      // this iteration on the wait record. When the mirror lags (the local-wins merge
+      // in MarchReconciler can hold status:'active' past server idle on the syncOnce
+      // path), a wait record would re-trip this gate every iteration until the action
+      // budget dies — click the highlighted site instead: the click is what advances
+      // the step machine, and the server already accepts it.
+      if (waited.clientMirrorActive > 0) {
+        const fresh = await getState(page);
+        const freshAllowed = fresh.tutorialHighlight?.allowedAction || null;
+        const target = freshAllowed?.type
+          ? (findTarget(fresh, (action) => actionMatches(freshAllowed, action))
+            || findTarget(fresh, (action) => action.type === freshAllowed.type && !action.disabled))
+          : null;
+        if (target) return clickTarget(page, `highlight-${freshAllowed.type}-${iteration}`, fresh, target);
+      }
+      return recordWaitAction(page, `march-arrived-${iteration}`, await getState(page), {
+        type: 'wait',
+        reason: 'guided march arrived',
+        waitedMs: waited.waitedMs,
+      }, 200, 3000);
+    }
+  }
   if (allowed?.type) {
     const target = findTarget(state, (action) => actionMatches(allowed, action))
       || findTarget(state, (action) => action.type === allowed.type && !action.disabled);
@@ -1254,81 +1477,188 @@ async function chooseNextAction(page, iteration) {
   }
 
   const step = state.tutorialStep;
-  if (step === 3 || step === 8 || step === 14) {
-    const buildingId = step === 3 ? 'house' : (step === 8 ? 'farm' : 'lumbermill');
+  const stepIs = (name) => step === stepIndexOf(name);
+  if (stepIs(STEPS.cityEntered) && !state.taskCenterOpen) {
+    return clickByPredicate(page, `open-task-center-homestead-${iteration}`, (action) => (
+      action.type === 'openTaskCenter' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.cityEntered) && state.taskCenterOpen) {
+    return clickByPredicate(page, `claim-homestead-task-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_homestead_supplies' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.houseGuideReady) || stepIs(STEPS.farmPrepReserved) || stepIs(STEPS.buildingsTabOpenedForLumbermill)) {
+    const buildingId = stepIs(STEPS.houseGuideReady) ? 'house' : (stepIs(STEPS.farmPrepReserved) ? 'farm' : 'lumbermill');
     return clickByPredicate(page, `build-${buildingId}-${iteration}`, (action) => (
       action.type === 'buildBuilding' && action.buildingId === buildingId && !action.disabled
     ));
   }
-  if (step === 4 || step === 10 || step === 16) {
+  if (stepIs(STEPS.houseBuilt) || stepIs(STEPS.era2AdvanceReady) || stepIs(STEPS.era3AdvanceReady)) {
+    if (stepIs(STEPS.era3AdvanceReady) && state.taskCenterOpen) {
+      return clickByPredicate(page, `claim-lumber-task-${iteration}`, (action) => (
+        action.type === 'claimTaskReward' && action.taskId === 'main_lumbermill_supplies' && !action.disabled
+      ));
+    }
     return clickByPredicate(page, `open-civilization-${iteration}`, (action) => (
       action.type === 'openCommandPanel' && action.panel === 'civilization' && !action.disabled
     ));
   }
-  if (step === 5 || step === 11 || step === 17) {
+  if (stepIs(STEPS.civilizationTabOpened) || stepIs(STEPS.eraAdvancedTo2)) {
     return clickByPredicate(page, `advance-era-${iteration}`, (action) => action.type === 'advanceEra' && !action.disabled);
   }
-  if (step === 6 || step === 15) {
+  if (stepIs(STEPS.eraAdvancedTo1) || stepIs(STEPS.lumbermillBuilt)) {
     return clickByPredicate(page, `open-task-center-${iteration}`, (action) => action.type === 'openTaskCenter' && !action.disabled);
   }
-  if (step === 7) {
+  if (stepIs(STEPS.buildingsTabOpened)) {
     return clickByPredicate(page, `claim-first-task-${iteration}`, (action) => (
       action.type === 'claimTaskReward' && action.taskId === 'main_first_supplies' && !action.disabled
     ));
   }
-  if (step === 12) {
+  if (stepIs(STEPS.specialEventTabOpened)) {
     return clickByPredicate(page, `open-events-${iteration}`, (action) => (
       action.type === 'openCommandPanel' && action.panel === 'events' && !action.disabled
     ));
   }
-  if (step === 13 && !state.activeEventId) {
+  if (stepIs(STEPS.specialEventClaimed) && !state.activeEventId) {
     return clickByPredicate(page, `open-forest-event-${iteration}`, (action) => (
       action.type === 'openEvent' && !action.disabled
     ));
   }
-  if (step === 13 && state.activeEventId) {
+  if (stepIs(STEPS.specialEventClaimed) && state.activeEventId) {
     return clickByPredicate(page, `claim-forest-event-${iteration}`, (action) => (
       action.type === 'claimEvent' && !action.disabled
     ));
   }
-  if (step === 16 && state.taskCenterOpen) {
-    return clickByPredicate(page, `claim-lumber-task-${iteration}`, (action) => (
-      action.type === 'claimTaskReward' && action.taskId === 'main_lumbermill_supplies' && !action.disabled
+  // Barracks segment: claim supplies -> open buildings -> build barracks ->
+  // claim the first army -> claim the scout officer.
+  if (stepIs(STEPS.era3Advanced) && !state.taskCenterOpen) {
+    return clickByPredicate(page, `open-task-center-barracks-${iteration}`, (action) => (
+      action.type === 'openTaskCenter' && !action.disabled
     ));
   }
-  if (step === 18) {
+  if (stepIs(STEPS.era3Advanced) && state.taskCenterOpen) {
+    return clickByPredicate(page, `claim-barracks-supplies-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_barracks_supplies' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.barracksSuppliesClaimed)) {
+    return clickByPredicate(page, `open-buildings-for-barracks-${iteration}`, (action) => (
+      action.type === 'openCommandPanel' && action.panel === 'buildings' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.buildingsTabOpenedForBarracks)) {
+    return clickByPredicate(page, `build-barracks-${iteration}`, (action) => (
+      action.type === 'buildBuilding' && action.buildingId === 'barracks' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.barracksBuilt) && !state.taskCenterOpen) {
+    return clickByPredicate(page, `open-task-center-first-army-${iteration}`, (action) => (
+      action.type === 'openTaskCenter' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.barracksBuilt) && state.taskCenterOpen) {
+    return clickByPredicate(page, `claim-first-army-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_first_army' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.firstArmyClaimed)) {
+    // In-window invariant: the claimed 1000-soldier army must survive every
+    // server normalize (barracks L1 cap is 300; the tutorial floor keeps it).
+    const reserveSoldiers = Number(state.stateSummary?.military?.soldiers ?? 0);
+    if (reserveSoldiers < 1000) {
+      await writeSnapshot(page, `first-army-reserve-too-low-${iteration}`, state);
+      throw createVerificationFailure('first-army-reserve', 'first-army reserve dropped below the granted 1000 soldiers', {
+        reserveSoldiers,
+        military: state.stateSummary?.military || null,
+      });
+    }
+    if (!state.taskCenterOpen) {
+      return clickByPredicate(page, `open-task-center-officer-${iteration}`, (action) => (
+        action.type === 'openTaskCenter' && !action.disabled
+      ));
+    }
+    return clickByPredicate(page, `claim-scout-officer-${iteration}`, (action) => (
+      action.type === 'claimTaskReward' && action.taskId === 'main_scout_officer' && !action.disabled
+    ));
+  }
+  if (stepIs(STEPS.scoutFamousGranted)) {
     return clickByPredicate(page, `open-famous-${iteration}`, (action) => action.type === 'openFamousPersons' && !action.disabled);
   }
-  if (step === 19) {
+  if (stepIs(STEPS.famousPanelOpened)) {
     return clickByPredicate(page, `open-famous-detail-${iteration}`, (action) => action.type === 'openFamousPersonDetail' && !action.disabled);
   }
-  if (step === 20 && state.selectedFamousPersonId) {
+  if (stepIs(STEPS.famousCardViewed) && state.selectedFamousPersonId) {
     return clickByPredicate(page, `close-famous-detail-${iteration}`, (action) => action.type === 'closeFamousPersonDetail' && !action.disabled);
   }
-  if (step === 20 && state.showFamousPersons) {
+  if (stepIs(STEPS.famousCardViewed) && state.showFamousPersons) {
     return clickByPredicate(page, `close-famous-${iteration}`, (action) => action.type === 'closeFamousPersons' && !action.disabled);
   }
-  if (step === 20 && !state.cityManagementOpen) {
+  if (stepIs(STEPS.famousCardViewed) && !state.cityManagementOpen) {
+    // Both openWorldSite and enterCity land in capital city management; which one owns the
+    // tile's clickable center depends on hit-target stacking, so accept either.
     return clickByPredicate(page, `open-capital-for-formation-${iteration}`, (action) => (
-      action.type === 'openWorldSite' && (!action.siteId || action.siteId === 'capital') && !action.disabled
+      (action.type === 'openWorldSite' || action.type === 'enterCity')
+      && (!(action.siteId || action.cityId || action.territoryId)
+        || (action.siteId || action.cityId || action.territoryId) === 'capital')
+      && !action.disabled
     ));
   }
-  if (step === 20 && state.cityManagementOpen && state.activeCityManagementTab !== 'military') {
+  if (stepIs(STEPS.famousCardViewed) && state.cityManagementOpen && state.activeCityManagementTab !== 'military') {
     return clickByPredicate(page, `switch-city-military-${iteration}`, (action) => (
       action.type === 'switchCityManagementTab' && action.tab === 'military' && !action.disabled
     ));
   }
-  if (step === 20 && state.cityManagementOpen) {
+  if (stepIs(STEPS.famousCardViewed) && state.cityManagementOpen) {
     return clickByPredicate(page, `open-army-formation-${iteration}`, (action) => (
       action.type === 'openArmyFormation' && !action.disabled
     ));
   }
-  if (step === 21 && state.armyFormationEditor?.open) {
+  if (stepIs(STEPS.formationPanelOpened) && state.armyFormationEditor?.open) {
     const memberTarget = findTarget(state, (action) => action.type === 'toggleArmyFormationMember' && !action.disabled);
     if (memberTarget) return clickTarget(page, `toggle-formation-member-${iteration}`, state, memberTarget);
-    return clickByPredicate(page, `save-army-formation-${iteration}`, (action) => action.type === 'saveArmyFormation' && !action.disabled);
+    const editor = state.armyFormationEditor;
+    const scoutId = String((editor.memberIds || [])[0] || '');
+    const draftSoldiers = Number(
+      (editor.soldierDraftAssignments || {})[scoutId]
+      ?? (editor.soldierAssignments || {})[scoutId]
+      ?? 0,
+    );
+    if (draftSoldiers <= 0) {
+      const replenished = await clickByPredicate(page, `auto-replenish-formation-${iteration}`, (action) => (
+        action.type === 'autoReplenishArmyFormation' && !action.disabled
+      ));
+      const afterReplenish = await getState(page);
+      const afterDraft = Number(
+        (afterReplenish.armyFormationEditor?.soldierDraftAssignments || {})[scoutId]
+        ?? (afterReplenish.armyFormationEditor?.soldierAssignments || {})[scoutId]
+        ?? 0,
+      );
+      if (afterDraft < 1000) {
+        await writeSnapshot(page, `replenish-draft-too-low-${iteration}`, afterReplenish);
+        throw createVerificationFailure('auto-replenish-draft', 'auto-replenish did not fill the scout draft to 1000 soldiers', {
+          scoutId,
+          afterDraft,
+          editor: afterReplenish.armyFormationEditor || null,
+        });
+      }
+      return replenished;
+    }
+    const foodBeforeSave = Number(state.stateSummary?.resources?.food ?? NaN);
+    const saved = await clickByPredicate(page, `save-army-formation-${iteration}`, (action) => action.type === 'saveArmyFormation' && !action.disabled);
+    const afterSave = await getState(page);
+    const foodAfterSave = Number(afterSave.stateSummary?.resources?.food ?? NaN);
+    // Assignment is free (recruit-time food cost only): saving must not deduct food.
+    if (Number.isFinite(foodBeforeSave) && Number.isFinite(foodAfterSave) && foodAfterSave < foodBeforeSave) {
+      await writeSnapshot(page, `formation-save-food-deducted-${iteration}`, afterSave);
+      throw createVerificationFailure('formation-save-food', 'formation save deducted food (assignment must be free)', {
+        foodBeforeSave,
+        foodAfterSave,
+      });
+    }
+    return saved;
   }
-  if (step === 22) {
+  if (stepIs(STEPS.scoutFormationSaved)) {
     const mapTarget = findTarget(state, (action) => action.type === 'selectWorldMarchTarget' && !action.disabled);
     if (mapTarget) return clickTarget(page, `select-world-march-target-${iteration}`, state, mapTarget);
     await writeSnapshot(page, `missing-world-march-target-step-${step}-${iteration}`, state);
@@ -1339,20 +1669,20 @@ async function chooseNextAction(page, iteration) {
       targets: state.hitTargets.map((item) => item.action).slice(-100),
     });
   }
-  if (step === 23 && !state.territoryUiState?.worldMarchTarget?.pickerOpen) {
+  if (stepIs(STEPS.scoutWorldPanelOpened) && !state.territoryUiState?.worldMarchTarget?.pickerOpen) {
     return clickByPredicate(page, `open-world-march-picker-${iteration}`, (action) => (
       action.type === 'openWorldMarchFormationPicker' && !action.disabled
     ));
   }
-  if (step === 23 && state.territoryUiState?.worldMarchTarget?.pickerOpen) {
+  if (stepIs(STEPS.scoutWorldPanelOpened) && state.territoryUiState?.worldMarchTarget?.pickerOpen) {
     return clickByPredicate(page, `start-world-march-${iteration}`, (action) => (
       action.type === 'startWorldMarch' && !action.disabled
     ));
   }
-  if (step === 24) {
+  if (stepIs(STEPS.scoutExploreStarted)) {
     return recordWaitAction(page, `wait-explore-${iteration}`, state, { type: 'waitExplore' }, 2000, 3600);
   }
-  if (step === 25) {
+  if (stepIs(STEPS.firstCityDiscovered)) {
     let siteId = getFirstCitySiteId(state);
     if (!state.territoryUiState?.selectedSiteId || (siteId && state.territoryUiState.selectedSiteId !== siteId)) {
       return clickByPredicate(
@@ -1389,24 +1719,24 @@ async function chooseNextAction(page, iteration) {
       action.type === 'conquer' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
     ));
   }
-  if (step === 26) {
+  if (stepIs(STEPS.firstCityConquestStarted)) {
     const siteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId || state.territoryUiState?.selectedSiteId || '';
     return clickByPredicate(page, `claim-first-city-${iteration}`, (action) => (
       action.type === 'claimConquest' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
     ));
   }
-  if (step === 27) {
+  if (stepIs(STEPS.firstCityOccupied)) {
     const siteId = state.tutorial?.grants?.firstExploreEmptyCity?.siteId || state.territoryUiState?.selectedSiteId || '';
     return clickByPredicate(page, `rename-first-city-${iteration}`, (action) => (
       action.type === 'renameCity' && (!siteId || action.territoryId === siteId || action.cityId === siteId) && !action.disabled
     ));
   }
-  if (step === 29) {
+  if (stepIs(STEPS.polityNamed)) {
     return clickByPredicate(page, `open-city-people-${iteration}`, (action) => (
       action.type === 'openCityManagement' && (action.tab || 'people') === 'people' && !action.disabled
     ));
   }
-  if (step === 30) {
+  if (stepIs(STEPS.talentPolicyOpened)) {
     if (!state.cityManagementOpen) {
       const opened = findTarget(state, (action) => (
         action.type === 'openCityManagement' && (action.tab || 'people') === 'people' && !action.disabled
@@ -1417,17 +1747,17 @@ async function chooseNextAction(page, iteration) {
       action.type === 'switchCityManagementTab' && action.tab === 'people' && !action.disabled
     ));
   }
-  if (step === 31) {
+  if (stepIs(STEPS.talentPolicyApplied)) {
     return clickByPredicate(page, `assign-manual-talent-${iteration}`, (action) => (
       action.type === 'assignJob' && Number(action.delta) !== 0 && !action.disabled
     ));
   }
-  if (step === 32) {
+  if (stepIs(STEPS.manualTalentAssigned)) {
     return clickByPredicate(page, `open-famous-for-seek-${iteration}`, (action) => (
       action.type === 'openFamousPersons' && !action.disabled
     ));
   }
-  if (step === 33) {
+  if (stepIs(STEPS.famousSeekOpened)) {
     if (!state.showFamousPersons) {
       const openFamous = findTarget(state, (action) => action.type === 'openFamousPersons' && !action.disabled);
       if (openFamous) return clickTarget(page, `open-famous-for-seek-${iteration}`, state, openFamous);
@@ -1436,12 +1766,12 @@ async function chooseNextAction(page, iteration) {
       action.type === 'seekFamousPerson' && !action.disabled
     ));
   }
-  if (step === 34) {
+  if (stepIs(STEPS.famousSeekCompleted)) {
     return clickByPredicate(page, `open-final-tech-${iteration}`, (action) => (
       action.type === 'openCommandPanel' && action.panel === 'tech' && !action.disabled
     ));
   }
-  if (step === 35) {
+  if (stepIs(STEPS.finalTechOpened)) {
     const advisor = await closeAdvisorDialogueIfOpen(page);
     if (advisor) return advisor;
     await writeSnapshot(page, `blocked-final-tech-step-${step}-${iteration}`, state);
@@ -1482,7 +1812,7 @@ async function main() {
   page.on('response', (resp) => {
     if (resp.status() >= 400) badResponses.push({ url: resp.url(), status: resp.status() });
   });
-  await page.addInitScript(({ token, username }) => {
+  await page.addInitScript(({ token, username, apiBasePath }) => {
     const originalPrompt = window.prompt;
     const originalFetch = window.fetch.bind(window);
     window.__codexPromptCalls = [];
@@ -1510,7 +1840,15 @@ async function main() {
         index: window.__codexApiCalls.length,
         url,
         path: (() => {
-          try { return new URL(url, location.href).pathname.replace(/^\/api/, '') || '/'; } catch (_) { return url; }
+          // Strip the deployment's api base (e.g. '/api' on the remote test server,
+          // '/wxgame-test-api' on the WSL mirror) so matching sees '/game/...'.
+          try {
+            const pathname = new URL(url, location.href).pathname;
+            if (apiBasePath && apiBasePath !== '/' && pathname.startsWith(apiBasePath)) {
+              return pathname.slice(apiBasePath.length) || '/';
+            }
+            return pathname.replace(/^\/api/, '') || '/';
+          } catch (_) { return url; }
         })(),
         method,
         body,
@@ -1547,10 +1885,29 @@ async function main() {
       'tutorialIntroAdvisorSeen.v2',
       'civilizationFirePhase2',
     ].forEach((key) => localStorage.removeItem(key));
-  }, { token: login.token, username: CONFIG.username });
+  }, {
+    token: login.token,
+    username: CONFIG.username,
+    apiBasePath: (() => {
+      try { return new URL(CONFIG.apiBase).pathname.replace(/\/$/, ''); } catch (_) { return '/api'; }
+    })(),
+  });
 
   await page.goto(normalizeUrl(CONFIG.gameUrl), { waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.waitForFunction(() => Boolean(window.Game && window.Game.canvasShell), null, { timeout: 45000 });
+  // Refuse to interpret a foreign build. Every step label in the evidence comes
+  // from this branch's shared/tutorialFlowConfig.js; a deploy without that table
+  // (e.g. the main server) reports legacy numeric steps that would be silently
+  // mislabelled with this branch's step names, corrupting the whole run's evidence.
+  const sharedFlowLoaded = await page.evaluate(
+    () => Boolean(globalThis.TutorialFlowShared && globalThis.TutorialFlowShared.STEP_ORDER),
+  );
+  if (!sharedFlowLoaded) {
+    throw new Error(
+      `Target ${CONFIG.gameUrl} is not running this branch's build (window.TutorialFlowShared missing). `
+      + 'Point PLAYTEST_GAME_URL / PLAYTEST_API_BASE at the tutorial-refactor deploy of this branch.',
+    );
+  }
   await page.waitForTimeout(9000);
   await writeSnapshot(page, '00-start');
 
@@ -1558,7 +1915,7 @@ async function main() {
   let stopReason = '';
   for (let index = 1; index <= CONFIG.maxActions; index += 1) {
     const state = await getState(page);
-    if (state.tutorialCompleted || state.tutorialStep >= 36) {
+    if (state.tutorialCompleted || state.tutorialStep >= COMPLETED_STEP_INDEX) {
       stopReason = 'tutorial-completed';
       break;
     }

@@ -2,25 +2,39 @@ const TutorialService = require('../services/TutorialService');
 const TaskCenterService = require('../services/TaskCenterService');
 const EventService = require('../services/EventService');
 const GameActionRegistry = require('../actions/GameActionRegistry');
+const WorldCombatSessionService = require('../services/worldCombat/WorldCombatSessionService');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
 const WorldMarchVerification = require('../services/worldExplorer/WorldMarchVerification');
+const { createBuildBuildingCommand } = require('../application/commands/CommandEnvelope');
+const { BuildBuildingCommandHandler } = require('../application/commands/BuildBuildingCommandHandler');
+const GameActionProjection = require('../application/projections/GameActionProjection');
+
+// Interactive world-combat actions are resolved directly here (not via the
+// territory/registry pipeline) so the deterministic battle session lives on the
+// persisted worldCombat column and flows back through the normal game view.
+const WORLD_COMBAT_ACTIONS = new Set(['startWorldCombat', 'resolveWorldCombat']);
+
+function executeWorldCombatAction(action, gameState, body = {}, context = {}) {
+  if (action === 'startWorldCombat') {
+    return WorldCombatSessionService.openSession(gameState, {
+      missionId: body.missionId,
+      formationSlot: body.formationSlot ?? body.slot,
+      cityId: body.cityId,
+      targetQ: body.targetQ ?? body.q ?? body.x,
+      targetR: body.targetR ?? body.r ?? body.y,
+    }, new Date(), context);
+  }
+  if (action === 'resolveWorldCombat') {
+    return WorldCombatSessionService.resolveSession(gameState, {
+      battleId: body.battleId,
+      inputStream: body.inputStream,
+    }, new Date(), context);
+  }
+  return { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
+}
 
 function buildGameView(gameState, tutorial, gameStateService, projection = {}) {
-  const clientState = gameStateService.getClientGameStateFromNormalized
-    ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
-    : gameStateService.getClientGameState(gameState, projection);
-  const eraProgress = gameStateService.calculateEraProgressFromNormalized
-    ? gameStateService.calculateEraProgressFromNormalized(gameState)
-    : gameStateService.calculateEraProgress(gameState);
-  const taskCenter = TaskCenterService.getTaskCenter(gameState);
-  return {
-    gameState: clientState,
-    tutorial,
-    softGuide: null,
-    guideTasks: { visible: false, tasks: [] },
-    taskCenter,
-    eraProgress,
-  };
+  return GameActionProjection.buildGameActionView(gameState, tutorial, gameStateService, projection);
 }
 
 function syncEra2Tutorial(gameState, gameStateService) {
@@ -153,12 +167,46 @@ function buildRevisionConflictPayload(error = {}) {
   return {
     success: false,
     error: 'GAME_STATE_REVISION_CONFLICT',
-    message: 'Game state changed while processing this action. Please retry.',
+    message: '操作时游戏状态已更新，请重试',
     retryable: true,
     expectedRevision: error.expectedRevision ?? null,
     actualRevision: error.actualRevision ?? null,
+    command: error.commandFailure || null,
   };
 }
+
+function isPlayerStateLockTimeout(error = {}) {
+  return error?.code === 'PLAYER_STATE_LOCK_TIMEOUT';
+}
+
+function buildPlayerStateBusyPayload(error = {}) {
+  return {
+    success: false,
+    error: 'PLAYER_STATE_BUSY',
+    message: '上一条操作仍在处理，请稍后重试',
+    retryable: true,
+    playerId: error.playerId || null,
+  };
+}
+
+function withPlayerStateLock(repository, playerId, callback, options = {}) {
+  if (typeof repository?.withPlayerStateLock !== 'function') return callback();
+  return repository.withPlayerStateLock(playerId, callback, options);
+}
+
+const ACTION_PLAYER_STATE_LOCK = Object.freeze({
+  scope: 'game-action',
+  waitMs: 20000,
+  ttlMs: 60000,
+  pollMs: 50,
+});
+
+const HEARTBEAT_PLAYER_STATE_LOCK = Object.freeze({
+  scope: 'heartbeat',
+  waitMs: 0,
+  ttlMs: 15000,
+  timeoutResult: null,
+});
 
 function executeGameActionRequest({
   req,
@@ -170,6 +218,8 @@ function executeGameActionRequest({
   const planningProjection = loadProjection(repository, req.playerId);
   const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
     planningContext: planningProjection,
+    worldEncounterRepo: repository.worldEncounterRepo,
+    sharedWorldEncounters: planningProjection.sharedWorldEncounters,
   });
   if (!gameState) {
     return {
@@ -210,7 +260,8 @@ function executeGameActionRequest({
 
   EventService.maybeGenerateRegularEvent(gameState);
   EventService.maybeGenerateThreatEvent(gameState);
-  if (!GameActionRegistry.has(action)) {
+  const isWorldCombatAction = WORLD_COMBAT_ACTIONS.has(action);
+  if (!isWorldCombatAction && !GameActionRegistry.has(action)) {
     return { statusCode: 400, payload: result };
   }
   const tutorialCheck = TutorialService.validateAction(tutorial, action, {
@@ -264,13 +315,19 @@ function executeGameActionRequest({
     });
   }
   result = WorldExplorerTrace.run(traceEnabled, () => (
-    GameActionRegistry.execute({
-      action,
-      body: req.body || {},
-      gameState,
-      tutorial,
-      planningContext: planningProjection,
-    })
+    isWorldCombatAction
+      ? executeWorldCombatAction(action, gameState, req.body || {}, {
+        worldEncounterRepo: repository.worldEncounterRepo,
+        sharedWorldEncounters: planningProjection.sharedWorldEncounters,
+      })
+      : GameActionRegistry.execute({
+        action,
+        body: req.body || {},
+        gameState,
+        tutorial,
+        planningContext: planningProjection,
+        worldEncounterRepo: repository.worldEncounterRepo,
+      })
   ));
   if (traceEnabled) {
     traceWorldMarch('route:afterExecute', {
@@ -294,9 +351,10 @@ function executeGameActionRequest({
   EventService.maybeGenerateRegularEvent(gameState);
   EventService.maybeGenerateThreatEvent(gameState);
   repository.save(gameState);
+  const responseProjection = loadProjection(repository, req.playerId);
   const responsePayload = {
     ...result,
-    ...buildGameView(gameState, syncedTutorial, gameStateService, planningProjection),
+    ...buildGameView(gameState, syncedTutorial, gameStateService, responseProjection),
   };
   if (traceEnabled) {
     traceWorldMarch('route:response', {
@@ -316,6 +374,10 @@ function executeGameActionRequest({
 
 function registerGameRoutes(app, deps) {
   const { authMiddleware, repository, gameStateService, presenceService } = deps;
+  const buildBuildingCommandHandler = new BuildBuildingCommandHandler({
+    repository,
+    gameStateService,
+  });
 
   app.get('/api/game/state', authMiddleware, (req, res) => {
     const traceEnabled = shouldTraceWorldMarchRequest(req);
@@ -351,16 +413,53 @@ function registerGameRoutes(app, deps) {
     });
   });
 
+  // March settlement (reveal persistence, arrival, tutorial advance) must not depend on
+  // the world worker alone: a session that only watches a march performs no action
+  // writes, and its player can drop out of the worker's active window. The heartbeat is
+  // the one write-path signal a live session is guaranteed to keep sending, so it
+  // settles due missions itself; the worker covers closed sessions.
+  const settleDueMarchesOnHeartbeat = (playerId, now) => {
+    const rawState = repository.findByPlayerId?.(playerId);
+    if (!rawState) return false;
+    const nowMs = now.getTime();
+    const hasDueMission = (Array.isArray(rawState.exploreMissions) ? rawState.exploreMissions : [])
+      .some((mission) => {
+        if (!mission || mission.status !== 'active') return false;
+        const nextStepAtMs = Date.parse(mission.nextStepAt || '');
+        return Number.isFinite(nextStepAtMs) && nextStepAtMs <= nowMs;
+      });
+    if (!hasDueMission) return false;
+    const projection = loadProjection(repository, playerId);
+    const advanced = gameStateService.advanceRuntimeState(rawState, now, {
+      planningContext: projection,
+      worldEncounterRepo: repository.worldEncounterRepo,
+      sharedWorldEncounters: projection.sharedWorldEncounters,
+    });
+    advanced.updatedAt = now.toISOString();
+    repository.save(advanced);
+    return true;
+  };
+
   const handleHeartbeat = (req, res) => {
     const now = new Date();
     presenceService?.recordHeartbeat?.(req.playerId);
-    const clientReport = recordWorldMarchClientReport(
-      repository,
-      gameStateService,
-      req.playerId,
-      req.body?.worldMarchClientReport,
-      now,
-    );
+    let clientReport = null;
+    try {
+      const heartbeatWrites = withPlayerStateLock(repository, req.playerId, () => {
+        settleDueMarchesOnHeartbeat(req.playerId, now);
+        return recordWorldMarchClientReport(
+          repository,
+          gameStateService,
+          req.playerId,
+          req.body?.worldMarchClientReport,
+          now,
+        );
+      }, HEARTBEAT_PLAYER_STATE_LOCK);
+      clientReport = heartbeatWrites || null;
+    } catch (error) {
+      // A lost revision race here is harmless: the next heartbeat or worker tick retries.
+      if (error?.code !== 'GAME_STATE_REVISION_CONFLICT' && !isPlayerStateLockTimeout(error)) throw error;
+    }
     const verificationState = repository.findByPlayerId?.(req.playerId)?.worldMarchVerification || null;
     if (shouldTraceWorldMarchRequest(req)) {
       traceWorldMarch('route:heartbeat', {
@@ -392,48 +491,98 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/tasks/claim', authMiddleware, (req, res) => {
-    const projection = loadProjection(repository, req.playerId);
-    const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
-      planningContext: projection,
-    });
-    if (!gameState) {
-      return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
+    const runClaim = () => {
+      const projection = loadProjection(repository, req.playerId);
+      const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
+        planningContext: projection,
+      });
+      if (!gameState) {
+        return { statusCode: 404, payload: { error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' } };
+      }
+
+      const tutorial = syncEra2Tutorial(gameState, gameStateService);
+      EventService.maybeGenerateRegularEvent(gameState);
+      EventService.maybeGenerateThreatEvent(gameState);
+
+      const { taskId, category } = req.body || {};
+      const result = TaskCenterService.claimTask(gameState, taskId, category);
+      const nextTutorial = result.tutorial
+        ? TutorialService.normalizeTutorialState(result.tutorial)
+        : TutorialService.normalizeTutorialState(gameState.tutorial || tutorial);
+      gameState.tutorial = nextTutorial;
+      const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
+      EventService.maybeGenerateRegularEvent(gameState);
+      EventService.maybeGenerateThreatEvent(gameState);
+      repository.save(gameState);
+
+      return {
+        statusCode: result.success ? 200 : 400,
+        payload: { ...result, ...buildGameView(gameState, syncedTutorial, gameStateService, projection) },
+      };
+    };
+
+    // Mirror the /api/game/action contract: a concurrent save can raise a game-state revision
+    // conflict, which previously escaped this route as an unhandled 500. Retry once, then fall
+    // back to a clean 409 instead of crashing the request.
+    try {
+      const response = withPlayerStateLock(repository, req.playerId, runClaim, {
+        ...ACTION_PLAYER_STATE_LOCK,
+        scope: 'task-claim',
+      });
+      return res.status(response.statusCode).json(response.payload);
+    } catch (error) {
+      if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
+      if (!isGameStateRevisionConflict(error)) throw error;
+      try {
+        const response = withPlayerStateLock(repository, req.playerId, runClaim, {
+          ...ACTION_PLAYER_STATE_LOCK,
+          scope: 'task-claim',
+        });
+        return res.status(response.statusCode).json(response.payload);
+      } catch (retryError) {
+        if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
+        if (!isGameStateRevisionConflict(retryError)) throw retryError;
+        return res.status(409).json(buildRevisionConflictPayload(retryError));
+      }
     }
-
-    const tutorial = syncEra2Tutorial(gameState, gameStateService);
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-
-    const { taskId, category } = req.body || {};
-    const result = TaskCenterService.claimTask(gameState, taskId, category);
-    const nextTutorial = result.tutorial
-      ? TutorialService.normalizeTutorialState(result.tutorial)
-      : TutorialService.normalizeTutorialState(gameState.tutorial || tutorial);
-    gameState.tutorial = nextTutorial;
-    const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
-    EventService.maybeGenerateRegularEvent(gameState);
-    EventService.maybeGenerateThreatEvent(gameState);
-    repository.save(gameState);
-
-    return res.status(result.success ? 200 : 400).json({
-      ...result,
-      ...buildGameView(gameState, syncedTutorial, gameStateService, projection),
-    });
   });
 
   app.post('/api/game/action', authMiddleware, (req, res) => {
+    if (req.body?.action === 'build') {
+      const command = createBuildBuildingCommand(req);
+      try {
+        const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 0 });
+        return res.status(response.statusCode).json(response.payload);
+      } catch (error) {
+        if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
+        if (!isGameStateRevisionConflict(error)) throw error;
+        try {
+          const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 1 });
+          return res.status(response.statusCode).json(response.payload);
+        } catch (retryError) {
+          if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
+          if (!isGameStateRevisionConflict(retryError)) throw retryError;
+          return res.status(409).json(buildRevisionConflictPayload(retryError));
+        }
+      }
+    }
+
     const traceEnabled = shouldTraceWorldMarch(req.body);
     return WorldExplorerTrace.run(traceEnabled, () => {
       try {
-        const response = executeGameActionRequest({
-          req,
-          repository,
-          gameStateService,
-          traceEnabled,
-          retryAttempt: 0,
+        const response = withPlayerStateLock(repository, req.playerId, () => executeGameActionRequest({
+            req,
+            repository,
+            gameStateService,
+            traceEnabled,
+            retryAttempt: 0,
+          }), {
+          ...ACTION_PLAYER_STATE_LOCK,
+          scope: `game-action:${req.body?.action || 'unknown'}`,
         });
         return res.status(response.statusCode).json(response.payload);
       } catch (error) {
+        if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
         if (!isGameStateRevisionConflict(error)) throw error;
         if (traceEnabled) {
           traceWorldMarch('route:revisionConflictRetry', {
@@ -444,15 +593,19 @@ function registerGameRoutes(app, deps) {
           });
         }
         try {
-          const response = executeGameActionRequest({
-            req,
-            repository,
-            gameStateService,
-            traceEnabled,
-            retryAttempt: 1,
+          const response = withPlayerStateLock(repository, req.playerId, () => executeGameActionRequest({
+              req,
+              repository,
+              gameStateService,
+              traceEnabled,
+              retryAttempt: 1,
+            }), {
+            ...ACTION_PLAYER_STATE_LOCK,
+            scope: `game-action:${req.body?.action || 'unknown'}`,
           });
           return res.status(response.statusCode).json(response.payload);
         } catch (retryError) {
+          if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
           if (!isGameStateRevisionConflict(retryError)) throw retryError;
           return res.status(409).json(buildRevisionConflictPayload(retryError));
         }

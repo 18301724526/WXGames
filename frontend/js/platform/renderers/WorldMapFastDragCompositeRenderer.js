@@ -2,28 +2,56 @@
   class WorldMapFastDragCompositeRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
+    }
+
+    get ctx() {
+      return this.host?.ctx || null;
+    }
+
+    withRenderCtx(ctx, callback) {
+      if (typeof this.host?.withRenderCtx === 'function') return this.host.withRenderCtx(ctx, callback);
+      return callback?.();
+    }
+
+    get worldTileStaticCacheKey() {
+      return this.worldMapCacheState?.worldTileStaticCacheKey || '';
+    }
+
+    get worldTileWaterLayerCacheKey() {
+      return this.worldMapCacheState?.worldTileWaterLayerCacheKey || '';
+    }
+
+    get worldTileStaticCache() {
+      return this.worldMapCacheState?.worldTileStaticCache || null;
+    }
+
+    get worldTileWaterLayerCache() {
+      return this.worldMapCacheState?.worldTileWaterLayerCache || null;
+    }
+
+    get worldTileFastDragComposite() {
+      return this.worldMapCacheState?.worldTileFastDragComposite || null;
+    }
+
+    set worldTileFastDragComposite(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileFastDragComposite = value || null;
+    }
+
+    resolveWorldTileStaticCacheLayout(...args) {
+      return this.host?.resolveWorldTileStaticCacheLayout?.(...args) || null;
+    }
+
+    drawWorldTileLayerCache(...args) {
+      return this.host?.drawWorldTileLayerCache?.(...args) || false;
+    }
+
+    getWorldTileStaticCacheScale(...args) {
+      return this.host?.getWorldTileStaticCacheScale?.(...args) || 1;
+    }
+
+    getWorldTileLayerCacheContext(...args) {
+      return this.host?.getWorldTileLayerCacheContext?.(...args) || null;
     }
 
     getWorldTileFastDragCompositeSignature() {
@@ -49,18 +77,16 @@
 
     withFastDragCompositeContext(work = {}, callback = null) {
       if (!work?.ctx || typeof callback !== 'function') return false;
-      const previousCtx = this.ctx;
-      this.ctx = work.ctx;
-      try {
+      // The composite bake draws through host-resolved helpers (drawWorldTileLayerCache),
+      // so the work ctx must be scoped on the ctx owner for the duration of the bake.
+      return this.withRenderCtx(work.ctx, () => {
         work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
         work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
         work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
         work.ctx.globalAlpha = 1;
         work.ctx.globalCompositeOperation = 'source-over';
         return callback(work);
-      } finally {
-        this.ctx = previousCtx;
-      }
+      });
     }
 
     updateWorldTileFastDragComposite(layout = null, frame = null) {

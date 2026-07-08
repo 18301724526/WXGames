@@ -8,12 +8,12 @@ const TechTreeService = require('../services/TechTreeService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
 const TutorialService = require('../services/TutorialService');
+const SharedTutorialFlowConfig = require('../../shared/tutorialFlowConfig');
 
 const TERRITORY_ACTIONS = new Set([
-  'scoutTerritory',
-  'claimScout',
   'startConquest',
   'claimConquest',
+  'resolveCapture',
   'renameCity',
   'renamePolity',
   'switchCity',
@@ -51,6 +51,8 @@ function buildTerritoryPayload(body = {}, actionOverride = '') {
     stopR: body.stopR,
     formationSlot: body.formationSlot,
     slot: body.slot,
+    combatEncounterId: body.combatEncounterId,
+    encounterId: body.encounterId,
     q: body.q,
     r: body.r,
     x: body.x,
@@ -129,6 +131,17 @@ function createGameActionRegistry(overrides = {}) {
       soldierAssignments: body.soldierAssignments,
     })
   ));
+  register('veteranCampWithdraw', ({ gameState, body }) => (
+    deps.MilitaryService.veteranCampWithdraw(gameState, {
+      cityId: body.cityId,
+      soldiers: body.soldiers,
+    })
+  ));
+  register('veteranCampUpgrade', ({ gameState, body }) => (
+    deps.MilitaryService.veteranCampUpgrade(gameState, {
+      cityId: body.cityId,
+    })
+  ));
   register('research', ({ gameState, body }) => (
     deps.TechTreeService.research(gameState, body.techId || body.target || body.tech)
   ));
@@ -136,7 +149,7 @@ function createGameActionRegistry(overrides = {}) {
     const result = deps.FamousPersonService.seekFamousPerson(gameState, { source: body.source || body.target });
     if (result?.success) {
       const normalizedTutorial = deps.TutorialService.normalizeTutorialState(tutorial || gameState.tutorial);
-      if (normalizedTutorial.currentStep === deps.TutorialService.TUTORIAL_STEPS.famousSeekOpened) {
+      if (SharedTutorialFlowConfig.stepEquals(normalizedTutorial.currentStep, deps.TutorialService.TUTORIAL_STEPS.famousSeekOpened)) {
         return {
           ...result,
           tutorial: deps.TutorialService.advanceTutorial(normalizedTutorial, 'famousSeekCompleted'),
@@ -157,7 +170,11 @@ function createGameActionRegistry(overrides = {}) {
 
   for (const action of TERRITORY_ACTIONS) {
     register(action, ({ gameState, body }) => (
-      deps.TerritoryAction.execute(action, gameState, buildTerritoryPayload(body, action))
+      deps.TerritoryAction.execute(action, gameState, buildTerritoryPayload(body, action), {
+        planningContext: body.planningContext || null,
+        worldEncounterRepo: body.worldEncounterRepo || null,
+        sharedWorldEncounters: body.sharedWorldEncounters || body.planningContext?.sharedWorldEncounters || null,
+      })
     ));
   }
 
@@ -165,10 +182,12 @@ function createGameActionRegistry(overrides = {}) {
     execute(context = {}) {
       const action = context.action || context.body?.action || '';
       const handler = handlers.get(action);
-      if (!handler) return { success: false, message: '鏈煡鎿嶄綔', error: 'UNKNOWN_ACTION' };
+      if (!handler) return { success: false, message: '未知操作', error: 'UNKNOWN_ACTION' };
       const body = {
         ...(context.body || {}),
         ...(context.planningContext ? { planningContext: context.planningContext } : {}),
+        ...(context.worldEncounterRepo ? { worldEncounterRepo: context.worldEncounterRepo } : {}),
+        ...(context.sharedWorldEncounters ? { sharedWorldEncounters: context.sharedWorldEncounters } : {}),
       };
       return handler({ ...context, action, body });
     },

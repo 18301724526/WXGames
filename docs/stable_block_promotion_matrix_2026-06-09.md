@@ -100,7 +100,7 @@
 
 这些领域确定会长期存在，但具体设计仍会变化。当前只能封接口、协议和扩展点，不能封实现细节。
 
-| 领域 / Domain | 可以封 / Freeze Interface | 暂不封 / Keep Flexible |
+| 领域 / Scope | 可以封 / Freeze Interface | 暂不封 / Keep Flexible |
 | --- | --- | --- |
 | 实时时间模型 | `TimeSource`、`ProgressPolicy`、服务器时间线输入 | tick 间隔、实时和准实时取舍 |
 | 多人同步 | command/event/snapshot/AOI 协议 | 局域网、网游、服务器拓扑 |
@@ -173,7 +173,7 @@
 ## 5. 后续硬化任务 / Next Hardening Tasks
 
 1. Add a stable block manifest and architecture guard script that can detect stable file edits.
-2. Add dependency direction checks for domain, state, platform, renderer, config, and backend boundaries.
+2. Add dependency direction checks for ECS, state, platform, renderer, config, and backend boundaries.
 3. Add `TileCoord` and `WorldTopology` contracts before promoting map geometry modules.
 4. Add `WorldChunkAddress`, `WorldInterestWindow`, and `WorldRevealStore` before promoting large-map rendering contracts.
 5. Add `CommandAuthorityContract`, `ServerTimelineSnapshot`, and `AoiSyncSnapshot` before hardening realtime multiplayer paths.

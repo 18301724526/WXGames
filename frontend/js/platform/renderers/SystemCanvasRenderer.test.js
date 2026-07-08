@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../ecs/resource/LocaleText');
 const SystemCanvasRenderer = require('./SystemCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
@@ -246,11 +248,58 @@ test('SystemCanvasRenderer preserves settings and logs actions', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'logout'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeSettings' && target.action.background === true), true);
 
+  // UI-REDO ⑦c: settings is a CENTERED modal (was a top-right dropdown) —
+  // dim mask + horizontally centered panel block + explicit ✕ close target.
+  const settingsBlock = host.hitTargets.find((target) => target.action.type === 'blockCanvasModal');
+  assert.ok(settingsBlock, 'centered settings panel must block taps behind it');
+  const panelRect = settingsBlock.rect;
+  assert.equal(Math.abs((panelRect.x + panelRect.width / 2) - host.width / 2) <= 1, true);
+  assert.equal(panelRect.y >= 86, true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'closeSettings' && !target.action.background), true);
+  // Every settings button must sit INSIDE the panel block (hit targets moved with the panel).
+  ['requestResetGame', 'downloadClientOperationLog', 'logout'].forEach((type) => {
+    const target = host.hitTargets.find((item) => item.action.type === type);
+    assert.ok(target, `${type} target exists`);
+    assert.equal(target.rect.x >= panelRect.x && target.rect.x + target.rect.width <= panelRect.x + panelRect.width, true);
+    assert.equal(target.rect.y >= panelRect.y && target.rect.y + target.rect.height <= panelRect.y + panelRect.height, true);
+  });
+  // The dim mask actually painted (mask regression guard).
+  assert.equal(host.calls.some((call) => call[0] === 'fillRect' && call[1] === 0 && call[2] === 0 && call[3] === host.width && call[4] === host.height), true);
+
   host.hitTargets.length = 0;
   renderer.renderLogsPanel([{ timestamp: '10:00', method: 'GET', path: '/api', statusCode: 200 }]);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'clearLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeLogs' && target.action.background === true), true);
+});
+
+test('SystemCanvasRenderer resolves system chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost({
+    drawTextLines(lines) { this.calls.push(['drawTextLines', lines]); },
+    wrapTextLimit(text) { return [String(text || '')]; },
+  });
+  const renderer = new SystemCanvasRenderer({ host });
+
+  renderer.renderLoginPanel({ view: { loginPanelVisible: true }, credentials: {} });
+  renderer.renderLoadingScreen({ visible: true, percentage: 12 });
+  renderer.renderNetworkOverlay({ status: 'reconnecting', failureCount: 2 });
+  renderer.renderSettingsPanel();
+  renderer.renderConfirmDialog({ visible: true, message: 'Reset?' });
+  renderer.renderLogsPanel([]);
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Civilization Spark'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Log In'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Preparing settlement resources'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Network connection is unstable'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '2 missed heartbeats'), true);
+  // UI-REDO knife 8: settings buttons go through the shared ModalPlate painter
+  // (drawPanel + drawText), no longer through host.drawButton.
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Reset Game'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Confirm'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Recent Request Log'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'No logs'), true);
+  LocaleText.setLocale('zh-CN');
 });
 
 test('SystemCanvasRenderer renders reset confirmation as canvas actions', () => {
@@ -274,6 +323,29 @@ test('SystemCanvasRenderer renders reset confirmation as canvas actions', () => 
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeConfirmDialog' && !target.action.background), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'confirmResetGame' && target.action.source === 'settings'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
+});
+
+test('SystemCanvasRenderer renders custom confirm actions from dialog payload', () => {
+  const host = createHost({
+    drawTextLines(lines) { this.calls.push(['drawTextLines', lines]); },
+    wrapTextLimit(text) { return [String(text || '')]; },
+  });
+  const renderer = new SystemCanvasRenderer({ host });
+
+  renderer.renderConfirmDialog({
+    visible: true,
+    kind: 'worldMarchDeploymentWarning',
+    title: 'Confirm Deployment',
+    message: 'Deputy has no soldiers.',
+    confirmAction: {
+      type: 'confirmWorldMarchDeployment',
+      action: { type: 'startWorldMarch', targetQ: 2, targetR: -1, formationSlot: 1 },
+    },
+  });
+
+  const confirmTarget = host.hitTargets.find((target) => target.action.type === 'confirmWorldMarchDeployment');
+  assert.equal(Boolean(confirmTarget), true);
+  assert.equal(confirmTarget.action.action.type, 'startWorldMarch');
 });
 
 test('CanvasGameRenderer exposes system rendering through facade', () => {

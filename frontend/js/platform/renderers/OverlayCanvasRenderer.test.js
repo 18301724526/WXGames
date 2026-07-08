@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../ecs/resource/LocaleText');
 const OverlayCanvasRenderer = require('./OverlayCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
@@ -253,6 +255,33 @@ test('OverlayCanvasRenderer preserves resource details modal contract', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeResourceDetails'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
   assert.equal(host.calls.filter((call) => call[0] === 'drawAsset').length, 5);
+});
+
+test('OverlayCanvasRenderer resolves overlay chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost();
+  const renderer = new OverlayCanvasRenderer({ host });
+
+  renderer.renderNamingModal({
+    visible: true,
+    inputValue: '',
+    submitting: true,
+    view: { message: 'Pick a name.' },
+  });
+  renderer.renderRewardReveal({ subtitle: 'Task', rewardText: '+10 wood', createdAt: 1000 });
+  renderer.renderResourceDetailsPanel({});
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'City'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Name'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Enter a name'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Cancel'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Submitting'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Reward Acquired'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Accept'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Resource Details'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Food'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawTextLines' && call[1].includes('Output +2')), true);
+  LocaleText.setLocale('zh-CN');
 });
 
 test('OverlayCanvasRenderer preserves floating text and reward reveal feedback', () => {

@@ -1,0 +1,108 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const RendererSnapshotBoundary = require('./RendererSnapshotBoundary');
+
+test('RendererSnapshotBoundary builds frozen serializable modal and panel snapshots', () => {
+  // modalWorld is the ModalStore.buildModalSnapshot() projection shape: presence is
+  // the entry's `open` flag (closed subtypes are absent).
+  const modalWorld = {
+    entries: {
+      'modal:event': {
+        open: true,
+        token: 'modal:event#1',
+        payload: { eventId: 'event-1', ignored: undefined },
+      },
+      'modal:commandPanel': {
+        open: true,
+        token: 'modal:commandPanel#2',
+        payload: { value: 'tech' },
+      },
+    },
+  };
+
+  const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
+    modalWorld,
+    panel: {
+      showTaskCenter: true,
+      activeCommandPanel: 'tech',
+      techDetailOpen: true,
+      activeDockItemIds: ['tasks', 'more'],
+    },
+    mode: {
+      baseModeKey: 'techTree',
+      modalKeys: ['modal:commandPanel'],
+      canRouteTechTree: true,
+    },
+    battle: {
+      schema: 'battle-owner-v1',
+      battleScene: { visible: true, report: { id: 'report-1' }, turnIndex: 0 },
+      entityBattle: null,
+      activeOverlay: 'battleScene',
+    },
+  });
+
+  assert.equal(snapshot.schema, 'renderer-snapshot-v1');
+  assert.equal(Object.isFrozen(snapshot), true);
+  assert.equal(Object.isFrozen(snapshot.modal), true);
+  assert.equal(Object.isFrozen(snapshot.panel), true);
+  assert.equal(Object.isFrozen(snapshot.mode), true);
+  assert.equal(Object.isFrozen(snapshot.battle), true);
+  assert.deepEqual(snapshot.modal['modal:event'], {
+    open: true,
+    token: 'modal:event#1',
+    payload: { eventId: 'event-1' },
+  });
+  assert.deepEqual(snapshot.modal['modal:commandPanel'].payload, {
+    value: 'tech',
+  });
+  assert.equal(snapshot.panel.showTaskCenter, true);
+  assert.equal(snapshot.panel.activeCommandPanel, 'tech');
+  assert.equal(snapshot.panel.techDetailOpen, true);
+  // Regression: the pre-decided dock id list must survive the snapshot as an ARRAY —
+  // a Boolean() normalization here once collapsed it to `true` and dock active states
+  // could never light up through the snapshot path.
+  assert.deepEqual(snapshot.panel.activeDockItemIds, ['tasks', 'more']);
+  assert.equal(Object.isFrozen(snapshot.panel.activeDockItemIds), true);
+  assert.deepEqual(snapshot.battle, {
+    schema: 'battle-owner-v1',
+    battleScene: {
+      report: { id: 'report-1' },
+      turnIndex: 0,
+      visible: true,
+    },
+    entityBattle: null,
+    activeOverlay: 'battleScene',
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot)).schema, 'renderer-snapshot-v1');
+});
+
+test('RendererSnapshotBoundary defaults covered panels and excludes raw gameplay state', () => {
+  const snapshot = RendererSnapshotBoundary.buildRendererSnapshot({
+    panel: {
+      showFamousPersons: true,
+      selectedTechId: 'tech-1',
+      taskTab: 'available',
+      famousPersonDetail: { id: 'hero-1' },
+    },
+    mode: {
+      baseModeKey: 'city',
+      selectedTechId: 'tech-1',
+      famousPersonPage: 2,
+      worldMarchTarget: { tileId: 'tile_0_0' },
+    },
+  });
+
+  assert.equal(snapshot.panel.showSettings, false);
+  assert.equal(snapshot.panel.showFamousPersons, true);
+  assert.equal(snapshot.panel.selectedTechId, undefined);
+  assert.equal(snapshot.panel.taskTab, undefined);
+  assert.equal(snapshot.panel.famousPersonDetail, undefined);
+  assert.equal(snapshot.mode.baseModeKey, 'city');
+  assert.equal(snapshot.mode.selectedTechId, undefined);
+  assert.equal(snapshot.mode.famousPersonPage, undefined);
+  assert.equal(snapshot.mode.worldMarchTarget, undefined);
+  assert.deepEqual(snapshot.battle, RendererSnapshotBoundary.BATTLE_DEFAULTS);
+  assert.equal(RendererSnapshotBoundary.isRendererSnapshot(snapshot), true);
+  assert.equal(RendererSnapshotBoundary.isRendererSnapshot({ schema: 'other' }), false);
+});

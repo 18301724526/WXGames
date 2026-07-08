@@ -1,11 +1,8 @@
+const { toNumber } = require('../../../shared/numberUtils');
+
 const DEFAULT_ONLINE_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_MIN_PERSIST_INTERVAL_MS = 60 * 1000;
 const DEFAULT_MAX_ENTRIES = 20000;
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 function toPositiveInteger(value, fallback, max = Number.MAX_SAFE_INTEGER) {
   const number = Math.floor(toNumber(value, fallback));

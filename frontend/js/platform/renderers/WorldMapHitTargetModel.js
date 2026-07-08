@@ -3,7 +3,7 @@
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileCoord');
+        return require('../../ecs/foundation/TileCoord');
       } catch (_error) {
         return null;
       }
@@ -25,6 +25,13 @@
 
   function getLayoutModel(options = {}) {
     return options.layoutModel || sharedWorldMapLayoutModel || null;
+  }
+
+  function evaluateMarchTarget(tile = {}, tileMapView = {}, options = {}) {
+    if (typeof options.evaluateMarchTarget === 'function') {
+      return options.evaluateMarchTarget(tile, tileMapView, options);
+    }
+    return null;
   }
 
   function normalizeTileCoord(tile = {}, options = {}) {
@@ -100,6 +107,8 @@
         || center.y < frameY - marginY
         || center.y > frameY + frameHeight + marginY
       ) continue;
+      const marchCheck = evaluateMarchTarget(tile, tileMapView, options);
+      const marchDisabled = marchCheck?.canMarch === false;
       hitTargets.push(toTarget({
         x: center.x - tileWidth / 2,
         y: center.y - tileHeight / 2,
@@ -113,6 +122,8 @@
         known: tile.visibility !== 'unknown' && tile.discovered !== false,
         terrain: tile.terrain || '',
         terrainLabel: tile.terrainLabel || tile.terrain || '',
+        marchDisabled,
+        marchDisabledReason: marchDisabled ? (marchCheck.reason || 'EXPLORE_ROUTE_BLOCKED') : '',
         background: true,
         inputSurface: 'worldMap',
       }));

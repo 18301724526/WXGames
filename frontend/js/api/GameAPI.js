@@ -136,18 +136,44 @@
     return error?.name === 'AbortError' || error?.code === 'ABORT_ERR';
   }
 
+  function attachClientCommand(body = {}, requestId = '') {
+    if (!body || typeof body !== 'object') return body;
+    if (body.action !== 'build') return body;
+    const commandId = `cmd-${requestId}`;
+    return {
+      ...body,
+      clientCommand: {
+        schema: 'game-command-v1',
+        type: 'BuildBuilding',
+        commandId,
+        idempotencyKey: commandId,
+        requestId,
+        buildingId: body.target || body.buildingId || '',
+      },
+    };
+  }
+
   class GameAPI {
     constructor(baseUrl, token, options = {}) {
       this.baseUrl = baseUrl;
       this.token = token || null;
       this.transport = options.transport || null;
+      this.trace = options.trace || null;
+      this.abortControllerFactory = typeof options.abortControllerFactory === 'function'
+        ? options.abortControllerFactory
+        : null;
       this.timeoutMs = Math.max(0, toNumber(options.timeoutMs, DEFAULT_TIMEOUT_MS));
       this.maxRetries = Math.max(0, Math.floor(toNumber(options.maxRetries, DEFAULT_MAX_RETRIES)));
       this.retryBaseDelayMs = Math.max(0, toNumber(options.retryBaseDelayMs, DEFAULT_RETRY_BASE_DELAY_MS));
       this.retryMaxDelayMs = Math.max(this.retryBaseDelayMs, toNumber(options.retryMaxDelayMs, DEFAULT_RETRY_MAX_DELAY_MS));
+      this.deployStatusPath = options.deployStatusPath || '/.wxgame-deploy-status.json';
       this.requestSeq = 0;
       this.versionEtag = '';
       this.cachedVersionInfo = null;
+      // Measured heartbeat round-trip (ms). Written by heartbeat(); consumed
+      // by CanvasGameApp.applyHeartbeat -> networkState.latencyMs -> the
+      // map-home HUD latency readout. Real measurement, never fabricated.
+      this.lastHeartbeatLatencyMs = null;
       this.scheduler = {
         setTimeout: options.scheduler?.setTimeout || global.setTimeout?.bind?.(global) || setTimeout,
         clearTimeout: options.scheduler?.clearTimeout || global.clearTimeout?.bind?.(global) || clearTimeout,
@@ -176,16 +202,17 @@
       const actionBody = body && typeof body === 'object' ? body : {};
       const requestId = `api-${++this.requestSeq}`;
       headers['X-Client-Request-ID'] = requestId;
+      const commandBody = attachClientCommand(actionBody, requestId);
       if (path === '/version' && this.versionEtag) {
         headers['If-None-Match'] = this.versionEtag;
       }
       const isWorldMarchAction = path === '/game/action'
         && ['startWorldMarch', 'returnWorldMarch', 'stopWorldMarch']
-          .includes(actionBody.action);
+          .includes(commandBody.action);
       const isWorldMarchSync = trace?.enabled?.() && ['/game/state', '/game/heartbeat'].includes(path);
       const tracedBody = isWorldMarchAction && trace?.enabled?.()
-        ? { ...actionBody, debugTrace: true, worldMarchTrace: true }
-        : actionBody;
+        ? { ...commandBody, debugTrace: true, worldMarchTrace: true }
+        : commandBody;
       const requestPayload = {
         url: this.buildUrl(path),
         method,
@@ -199,13 +226,14 @@
         requestId,
         method,
         path,
-        action: actionBody.action || '',
-        clientInput: summarizeClientInputIntent(actionBody.clientInputIntent),
-        body: global.WorldMarchTrace?.summarizeActionBody?.(actionBody) || {
-          action: actionBody.action || '',
+        action: commandBody.action || '',
+        clientInput: summarizeClientInputIntent(commandBody.clientInputIntent),
+        body: global.WorldMarchTrace?.summarizeActionBody?.(commandBody) || {
+          action: commandBody.action || '',
+          commandId: commandBody.clientCommand?.commandId || '',
         },
       });
-      const loadTrace = global.H5LoadTrace;
+      const loadTrace = this.trace;
       const loadTraceSpan = loadTrace?.apiStart?.(method, path, requestPayload.url, {
         requestId,
         hasToken: Boolean(this.token),
@@ -256,8 +284,9 @@
           requestId,
           method,
           path,
-          action: actionBody.action || '',
-          clientInput: summarizeClientInputIntent(actionBody.clientInputIntent),
+          action: commandBody.action || '',
+          commandId: commandBody.clientCommand?.commandId || '',
+          clientInput: summarizeClientInputIntent(commandBody.clientInputIntent),
           message: requestError.message,
           status: requestError.status || 0,
           attempts,
@@ -315,8 +344,9 @@
           requestId,
           method,
           path,
-          action: actionBody.action || '',
-          clientInput: summarizeClientInputIntent(actionBody.clientInputIntent),
+          action: commandBody.action || '',
+          commandId: commandBody.clientCommand?.commandId || '',
+          clientInput: summarizeClientInputIntent(commandBody.clientInputIntent),
           status: response.status,
           error: data.error || '',
           message: data.message || '',
@@ -382,7 +412,8 @@
         requestId,
         method,
         path,
-        action: actionBody.action || '',
+        action: commandBody.action || '',
+        commandId: commandBody.clientCommand?.commandId || data?.commandId || data?.command?.commandId || '',
         status: response.status,
         attempts,
         durationMs: Math.max(0, Math.round(getNow(this.scheduler) - startedAt)),
@@ -403,23 +434,22 @@
     }
 
     async performRequest(requestPayload) {
-      const abortController = typeof global.AbortController === 'function'
-        ? new global.AbortController()
-        : null;
+      const abortController = this.abortControllerFactory?.() || null;
       let timeoutId = null;
       let didTimeout = false;
       const payload = {
         ...requestPayload,
         signal: abortController?.signal,
       };
-      const requestPromise = this.transport && typeof this.transport.request === 'function'
-        ? this.transport.request(payload)
-        : fetch(payload.url, {
-          method: payload.method,
-          headers: payload.headers,
-          body: payload.body,
-          signal: payload.signal,
+      if (!this.transport || typeof this.transport.request !== 'function') {
+        throw createApiError('GameAPI transport is not configured', {
+          code: 'GAME_API_TRANSPORT_MISSING',
+          status: 0,
+          path: payload.path,
+          requestId: payload.requestId,
         });
+      }
+      const requestPromise = this.transport.request(payload);
       const timeoutPromise = this.timeoutMs > 0
         ? new Promise((_, reject) => {
           timeoutId = this.scheduler.setTimeout(() => {
@@ -585,14 +615,42 @@
     }
 
     getState() { return this.request('GET', '/game/state'); }
-    heartbeat(options = {}) {
+    async heartbeat(options = {}) {
       const report = options?.worldMarchClientReport || null;
-      return report
-        ? this.request('POST', '/game/heartbeat', { worldMarchClientReport: report })
-        : this.request('GET', '/game/heartbeat');
+      const startedAt = this.scheduler.now();
+      try {
+        const data = report
+          ? await this.request('POST', '/game/heartbeat', { worldMarchClientReport: report })
+          : await this.request('GET', '/game/heartbeat');
+        const elapsed = Math.round(this.scheduler.now() - startedAt);
+        this.lastHeartbeatLatencyMs = Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : null;
+        return data;
+      } catch (error) {
+        this.lastHeartbeatLatencyMs = null;
+        throw error;
+      }
     }
     getTasks() { return this.request('GET', '/game/tasks'); }
     getVersion() { return this.request('GET', '/version'); }
+    async getDeployStatus() {
+      if (!this.deployStatusPath) return null;
+      const requestId = `deploy-status-${++this.requestSeq}`;
+      const response = await this.performRequest({
+        url: this.deployStatusPath,
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'X-Client-Request-ID': requestId,
+        },
+        path: this.deployStatusPath,
+        requestId,
+        timeoutMs: this.timeoutMs,
+        attempt: 1,
+        maxRetries: 0,
+      });
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    }
     build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }
     upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
     assignJob(job, count) { return this.request('POST', '/game/action', { action: 'assign', target: job, count }); }
@@ -607,11 +665,16 @@
     setArmyFormation(cityId, slot, memberIds = [], soldierAssignments = {}) {
       return this.request('POST', '/game/action', { action: 'setArmyFormation', cityId, slot, memberIds, soldierAssignments });
     }
+    veteranCampWithdraw(cityId, soldiers) {
+      return this.request('POST', '/game/action', { action: 'veteranCampWithdraw', cityId, soldiers });
+    }
+    veteranCampUpgrade(cityId) {
+      return this.request('POST', '/game/action', { action: 'veteranCampUpgrade', cityId });
+    }
     advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
     claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }
     claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
-    scoutTerritory(direction) { return this.request('POST', '/game/action', { action: 'scoutTerritory', direction }); }
-    claimScout(missionId) { return this.request('POST', '/game/action', { action: 'claimScout', missionId }); }
+    resolveCapture(decisionId, choice) { return this.request('POST', '/game/action', { action: 'resolveCapture', decisionId, choice }); }
     startWorldMarch(options = {}) {
       const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
       return this.request('POST', '/game/action', {
@@ -634,6 +697,23 @@
         action: 'stopWorldMarch',
         missionId,
         ...(clientInputIntent ? { clientInputIntent } : {}),
+      });
+    }
+    startWorldCombat(options = {}) {
+      return this.request('POST', '/game/action', {
+        action: 'startWorldCombat',
+        missionId: options.missionId || '',
+        formationSlot: options.formationSlot ?? options.slot ?? 1,
+        cityId: options.cityId || 'capital',
+        targetQ: options.targetQ ?? options.q ?? options.x,
+        targetR: options.targetR ?? options.r ?? options.y,
+      });
+    }
+    resolveWorldCombat(battleId, inputStream = []) {
+      return this.request('POST', '/game/action', {
+        action: 'resolveWorldCombat',
+        battleId,
+        inputStream,
       });
     }
     startConquest(territoryId, expedition = {}) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, expedition }); }

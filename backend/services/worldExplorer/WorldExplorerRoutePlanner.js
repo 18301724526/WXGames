@@ -1,25 +1,11 @@
 const WorldMapService = require('../WorldMapService');
-const TerritoryService = require('../TerritoryService');
-const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const WorldMarchCore = require('../../../shared/worldMarchCore');
 const {
   MAX_MANUAL_ROUTE_LENGTH,
-  TUTORIAL_FIRST_SITE_GRANT_KEY,
   toInteger,
   hashString,
-  getCoordinateKey,
   getDistance,
 } = require('./WorldExplorerShared');
-
-const TUTORIAL_EMPTY_CITY_NAMES = [
-  '\u6e05\u6cc9\u57ce',
-  '\u77f3\u6e21\u9547',
-  '\u9752\u6797\u57ce',
-  '\u6cb3\u6e7e\u57ce',
-];
-
-function getTutorialSteps() {
-  return TutorialFlowConfig.TUTORIAL_STEPS;
-}
 
 function getExploreOrigin(gameState) {
   const activeCityId = gameState?.activeCityId || 'capital';
@@ -40,38 +26,55 @@ function getExploreOrigin(gameState) {
 function buildManualRoute(origin, target, seed = WorldMapService.DEFAULT_WORLD_SEED, options = {}) {
   const targetQ = toInteger(target?.q ?? target?.x, origin.q);
   const targetR = toInteger(target?.r ?? target?.y, origin.r);
-  const delta = WorldMapService.getWrappedDelta(origin, { q: targetQ, r: targetR });
-  const distance = Math.max(Math.abs(delta.q), Math.abs(delta.r));
-  if (distance <= 0) {
-    return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: 'Explore target is already the origin.' };
-  }
-  if (distance > MAX_MANUAL_ROUTE_LENGTH) {
-    return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: 'Explore target is too far.' };
-  }
-  const route = [];
-  let q = origin.q;
-  let r = origin.r;
-  let remainingQ = delta.q;
-  let remainingR = delta.r;
-  for (let step = 1; step <= distance; step += 1) {
-    const stepQ = Math.sign(remainingQ);
-    const stepR = Math.sign(remainingR);
-    q += stepQ;
-    r += stepR;
-    remainingQ -= stepQ;
-    remainingR -= stepR;
-    if (!canTraverseRouteTile(seed, q, r, options)) {
-      return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: 'Explorer route is blocked by ocean.' };
+  const routeResult = WorldMarchCore.evaluateLinearMarchRoute(origin, { q: targetQ, r: targetR }, {
+    // Armies march the four grid-axis directions only (no diagonal corner-cutting); the
+    // client's WorldMarchRoutePolicy previews with the same axisAligned flag so its route
+    // matches this authoritative one byte-for-byte.
+    axisAligned: true,
+    maxLength: MAX_MANUAL_ROUTE_LENGTH,
+    // Route world-bounds are single-source (WorldMapConstants via WorldMapService); the same three
+    // values are delivered to the client in the world-explorer DTO so the client's optimistic route
+    // and preview run this exact computation with identical inputs — no divergence.
+    width: WorldMapService.DEFAULT_WORLD_WIDTH,
+    height: WorldMapService.DEFAULT_WORLD_HEIGHT,
+    wrapping: WorldMapService.DEFAULT_WORLD_WRAPPING,
+    canTraverse: (step) => canTraverseRouteTile(seed, step.q, step.r, options),
+  });
+  if (routeResult.error === 'EXPLORE_TARGET_IS_ORIGIN') {
+    // A formation already standing on a hostile encounter tile attacks it in
+    // place: there is no travel, so engage on the spot via a single-step route
+    // instead of rejecting the march as targeting its own origin.
+    if (options.combatEncounter) {
+      return {
+        success: true,
+        inPlace: true,
+        route: [{
+          q: targetQ,
+          r: targetR,
+          step: 1,
+          tileId: WorldMapService.getTileId(targetQ, targetR),
+          revealed: false,
+          revealedAt: null,
+        }],
+        target: { q: targetQ, r: targetR },
+      };
     }
-    route.push({
-      q,
-      r,
-      step,
-      tileId: WorldMapService.getTileId(q, r),
-      revealed: false,
-      revealedAt: null,
-    });
+    return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', message: '目标就是部队当前位置。' };
   }
+  if (routeResult.error === 'EXPLORE_TARGET_TOO_FAR') {
+    return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', message: '目标太远，无法行军。' };
+  }
+  if (routeResult.error === 'EXPLORE_ROUTE_BLOCKED') {
+    return { success: false, error: 'EXPLORE_ROUTE_BLOCKED', message: '行军路线被水域阻断。' };
+  }
+  const route = (routeResult.route || []).map((step) => ({
+    q: step.q,
+    r: step.r,
+    step: step.step,
+    tileId: WorldMapService.getTileId(step.q, step.r),
+    revealed: false,
+    revealedAt: null,
+  }));
   const routeTarget = route.at(-1) || { q: origin.q, r: origin.r };
   return { success: true, route, target: { q: routeTarget.q, r: routeTarget.r } };
 }
@@ -80,9 +83,9 @@ function canTraverseRouteTile(seed, q, r, options = {}) {
   const gameState = options.gameState || null;
   if (gameState) {
     const existing = getExistingWorldTileById(gameState, q, r, options.now || new Date());
-    if (existing) return existing.terrain !== 'ocean';
+    if (existing) return !WorldMarchCore.isMarchBlockedTerrain(existing.terrain);
   }
-  return WorldMapService.chooseTerrain(seed, q, r) !== 'ocean';
+  return !WorldMarchCore.isMarchBlockedTerrain(WorldMapService.chooseTerrain(seed, q, r));
 }
 
 function getStepDirection(from = {}, to = {}) {
@@ -136,14 +139,6 @@ function getNearbyGenerationState(gameState = {}, center = {}, radius = 8) {
       }))
       .sort((a, b) => a.q - b.q || a.r - b.r || a.id.localeCompare(b.id)),
   };
-}
-
-function getPlanningTerritories(gameState = {}, planningContext = {}) {
-  const own = Array.isArray(gameState.territories) ? gameState.territories : [];
-  const shared = Array.isArray(planningContext.sharedWorldTerritories)
-    ? planningContext.sharedWorldTerritories
-    : [];
-  return [...own, ...shared].filter((territory) => territory && typeof territory === 'object');
 }
 
 function createGenerationContext(gameState = {}, step = {}, options = {}) {
@@ -223,102 +218,6 @@ function createPlannedTiles(gameState, route, now = new Date(), options = {}) {
   });
 }
 
-function shouldGuaranteeTutorialEmptyCity(gameState = {}) {
-  const TUTORIAL_STEPS = getTutorialSteps();
-  const tutorial = gameState.tutorial || {};
-  if (tutorial.completed || tutorial.disabled) return false;
-  const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TUTORIAL_STEPS.scoutFormationSaved || step >= TUTORIAL_STEPS.firstCityDiscovered) return false;
-  return !tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY];
-}
-
-function pickTutorialCityName(gameState = {}, q = 0, r = 0) {
-  const seed = hashString(`${gameState.playerId || 'tutorial'}|${q}|${r}|first-empty-city`);
-  return TUTORIAL_EMPTY_CITY_NAMES[seed % TUTORIAL_EMPTY_CITY_NAMES.length];
-}
-
-function getPlanningTerrainForMapTerrain(mapTerrain = 'plains') {
-  if (mapTerrain === 'forest') return 'forest';
-  if (['hills', 'mountain', 'waste', 'desert'].includes(mapTerrain)) return 'hills';
-  if (mapTerrain === 'river') return 'river';
-  if (mapTerrain === 'ocean') return 'coast';
-  return 'plains';
-}
-
-function createTutorialEmptyCitySite(gameState = {}, step = {}, plannedTile = {}, now = new Date()) {
-  const q = toInteger(step.q, 0);
-  const r = toInteger(step.r, 0);
-  const siteId = `site_${q}_${r}`;
-  const mapTerrain = plannedTile.terrain && !['ocean', 'river'].includes(plannedTile.terrain)
-    ? plannedTile.terrain
-    : 'plains';
-  return {
-    id: siteId,
-    x: q,
-    y: r,
-    naturalName: pickTutorialCityName(gameState, q, r),
-    cityName: null,
-    type: 'town',
-    terrain: getPlanningTerrainForMapTerrain(mapTerrain),
-    mapTerrain,
-    owner: 'neutral',
-    status: 'discovered',
-    scale: 2,
-    threat: 0,
-    defense: TerritoryService.MIN_EXPEDITION_SOLDIERS,
-    recommendedSoldiers: TerritoryService.MIN_EXPEDITION_SOLDIERS,
-    art: TerritoryService.SITE_ART.town,
-    visualOffset: { x: 0, y: 0 },
-    discoveredAt: now.toISOString(),
-    occupiedAt: null,
-    effects: { foodOutputMultiplier: 0.05 },
-    summary: '\u4e00\u5ea7\u672a\u8bbe\u9632\u7684\u7a7a\u57ce\uff0c\u9002\u5408\u4f5c\u4e3a\u7b2c\u4e00\u5904\u5916\u90e8\u636e\u70b9\u3002',
-    lastBattle: null,
-    garrison: null,
-    defenderLeader: null,
-    battleTarget: null,
-  };
-}
-
-function createTutorialPlannedSites(gameState, route = [], plannedTiles = [], now = new Date(), options = {}) {
-  if (!shouldGuaranteeTutorialEmptyCity(gameState)) return [];
-  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
-  const plannedById = new Map(plannedTiles.map((tile) => [WorldMapService.getTileId(tile.q, tile.r), tile]));
-  const existingCoords = new Set(getPlanningTerritories(gameState, options.planningContext)
-    .map((site) => getCoordinateKey(site.x ?? site.q, site.y ?? site.r)));
-  const chosen = [...route].reverse().find((step) => {
-    if (existingCoords.has(getCoordinateKey(step.q, step.r))) return false;
-    const planned = plannedById.get(WorldMapService.getTileId(step.q, step.r)) || {};
-    const terrain = planned.terrain || WorldMapService.chooseTerrain(worldMap.seed, step.q, step.r);
-    return !['ocean', 'river'].includes(terrain);
-  });
-  if (!chosen) return [];
-  const tileId = WorldMapService.getTileId(chosen.q, chosen.r);
-  let plannedTile = plannedById.get(tileId);
-  if (!plannedTile) {
-    plannedTile = WorldMapService.createTile(worldMap.seed, chosen.q, chosen.r, now, {
-      terrain: 'plains',
-      visibility: 'scouted',
-    });
-  }
-  if (['ocean', 'river'].includes(plannedTile.terrain)) {
-    plannedTile.terrain = 'plains';
-    plannedTile.riverPorts = [];
-    plannedTile.oceanTemplates = [];
-    plannedTile.transitionKey = '';
-  }
-  const site = createTutorialEmptyCitySite(gameState, chosen, plannedTile, now);
-  return [{
-    tileId,
-    q: chosen.q,
-    r: chosen.r,
-    siteId: site.id,
-    materialized: false,
-    revealedAt: null,
-    site,
-  }];
-}
-
 module.exports = {
   getExploreOrigin,
   buildManualRoute,
@@ -327,12 +226,6 @@ module.exports = {
   getStepDirection,
   canTraverseRouteTile,
   createGenerationContext,
-  getPlanningTerritories,
   getRouteFootprint,
   createPlannedTiles,
-  shouldGuaranteeTutorialEmptyCity,
-  pickTutorialCityName,
-  getPlanningTerrainForMapTerrain,
-  createTutorialEmptyCitySite,
-  createTutorialPlannedSites,
 };

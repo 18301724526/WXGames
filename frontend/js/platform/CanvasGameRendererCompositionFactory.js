@@ -11,6 +11,7 @@
     { property: 'tutorialRenderer', classOption: 'tutorialRendererClass', dependencyKey: 'tutorialCanvasRenderer', globalName: 'TutorialCanvasRenderer', requirePath: './renderers/TutorialCanvasRenderer' },
     { property: 'buildingRenderer', classOption: 'buildingRendererClass', dependencyKey: 'buildingCanvasRenderer', globalName: 'BuildingCanvasRenderer', requirePath: './renderers/BuildingCanvasRenderer' },
     { property: 'eventRenderer', classOption: 'eventRendererClass', dependencyKey: 'eventCanvasRenderer', globalName: 'EventCanvasRenderer', requirePath: './renderers/EventCanvasRenderer' },
+    { property: 'captureRenderer', classOption: 'captureRendererClass', dependencyKey: 'captureCanvasRenderer', globalName: 'CaptureCanvasRenderer', requirePath: './renderers/CaptureCanvasRenderer' },
     { property: 'civilizationRenderer', classOption: 'civilizationRendererClass', dependencyKey: 'civilizationCanvasRenderer', globalName: 'CivilizationCanvasRenderer', requirePath: './renderers/CivilizationCanvasRenderer' },
     { property: 'militaryRenderer', classOption: 'militaryRendererClass', dependencyKey: 'militaryCanvasRenderer', globalName: 'MilitaryCanvasRenderer', requirePath: './renderers/MilitaryCanvasRenderer' },
     { property: 'armyFormationEditorRenderer', classOption: 'armyFormationEditorRendererClass', dependencyKey: 'armyFormationEditorCanvasRenderer', globalName: 'ArmyFormationEditorCanvasRenderer', requirePath: './renderers/ArmyFormationEditorCanvasRenderer' },
@@ -38,12 +39,31 @@
     'cityRenderer',
     'systemRenderer',
     'battleRenderer',
+    'tutorialRenderer',
     'eventRenderer',
+    'captureRenderer',
     'buildingRenderer',
     'overlayRenderer',
     'mapCommandRenderer',
     'cityPeopleRenderer',
     'armyFormationEditorRenderer',
+  ]);
+
+  const SURFACE_STATE_RENDERER_PROPERTIES = new Set([
+    'surfaceRenderer',
+    'famousRenderer',
+  ]);
+
+  const WORLD_MAP_RENDER_STATE_RENDERER_PROPERTIES = new Set([
+    'worldMapRenderer',
+    'worldMapLayerRenderer',
+  ]);
+
+  const WORLD_MAP_CACHE_STATE_RENDERER_PROPERTIES = new Set([
+    'assetRenderer',
+    'worldTileWaterRenderer',
+    'worldMapRenderer',
+    'worldMapLayerRenderer',
   ]);
 
   function resolveSharedDependency(spec) {
@@ -82,7 +102,23 @@
       if (this.options[spec.property]) return this.options[spec.property];
       const RendererClass = this.getRendererClass(spec);
       if (!RendererClass) return null;
-      const extraOptions = DRAWING_SURFACE_RENDERER_PROPERTIES.has(spec.property) ? { drawingSurface: this.host } : {};
+      const extraOptions = {
+        ...(DRAWING_SURFACE_RENDERER_PROPERTIES.has(spec.property)
+          ? { drawingSurface: this.host }
+          : {}),
+        ...(SURFACE_STATE_RENDERER_PROPERTIES.has(spec.property)
+          ? { surfaceState: this.host?.surfaceState || null }
+          : {}),
+        ...(WORLD_MAP_RENDER_STATE_RENDERER_PROPERTIES.has(spec.property)
+          ? { worldMapRenderState: this.host?.worldMapRenderState || null }
+          : {}),
+        ...(WORLD_MAP_CACHE_STATE_RENDERER_PROPERTIES.has(spec.property)
+          ? { worldMapCacheState: this.host?.worldMapCacheState || null }
+          : {}),
+        ...(spec.property === 'techRenderer'
+          ? { techRenderState: this.host?.techRenderState || null }
+          : {}),
+      };
       return new RendererClass({ host: this.host, ...extraOptions });
     }
 
@@ -92,6 +128,13 @@
       CHILD_RENDERER_SPECS.forEach((spec) => {
         rendererMap[spec.property] = this.createRenderer(spec);
       });
+      if (
+        rendererMap.hudOverlayRenderer &&
+        rendererMap.frameRenderer &&
+        !rendererMap.hudOverlayRenderer.mapHomeOverlayRenderer
+      ) {
+        rendererMap.hudOverlayRenderer.mapHomeOverlayRenderer = rendererMap.frameRenderer;
+      }
       return {
         rendererMap,
         rendererKeys,

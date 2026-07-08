@@ -1,17 +1,11 @@
 const ConfigPipeline = require('./ConfigPipeline');
 const ConfigReleaseService = require('./ConfigReleaseService');
 const ConfigRegistryContract = require('./ConfigRegistryContract');
+const { clone } = require('../../../shared/objectUtils');
+const { nowIso } = require('../../../shared/timeUtils');
 
 const RUNTIME_BUNDLE_SCHEMA = 'config-runtime-bundle-v1';
 const RUNTIME_LOADER_STATUS_SCHEMA = 'config-runtime-loader-status-v1';
-
-function nowIso(now = new Date()) {
-  return now instanceof Date ? now.toISOString() : new Date(now).toISOString();
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 function summarizeRegistry(registry = {}) {
   return {

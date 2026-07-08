@@ -2,52 +2,119 @@
   class WorldMapStaticLayerRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
+    }
+
+    get ctx() {
+      return this.host?.ctx || null;
+    }
+
+    withRenderCtx(ctx, callback) {
+      if (typeof this.host?.withRenderCtx === 'function') return this.host.withRenderCtx(ctx, callback);
+      return callback?.();
+    }
+
+    get worldTileFastDragActive() {
+      return Boolean(this.worldMapCacheState?.worldTileFastDragActive);
+    }
+
+    get worldTileStaticCache() {
+      return this.worldMapCacheState?.worldTileStaticCache || null;
+    }
+
+    set worldTileStaticCache(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCache = value || null;
+    }
+
+    get worldTileStaticCacheKey() {
+      return this.worldMapCacheState?.worldTileStaticCacheKey || '';
+    }
+
+    set worldTileStaticCacheKey(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCacheKey = value || '';
+    }
+
+    get worldTileStaticCacheLayoutKind() {
+      return this.worldMapCacheState?.worldTileStaticCacheLayoutKind || '';
+    }
+
+    set worldTileStaticCacheLayoutKind(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCacheLayoutKind = value || '';
+    }
+
+    get worldTileStaticCacheLayout() {
+      return this.worldMapCacheState?.worldTileStaticCacheLayout || null;
+    }
+
+    set worldTileStaticCacheLayout(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileStaticCacheLayout = value || null;
+    }
+
+    resolveWorldTileStaticCacheLayout(...args) {
+      return this.host?.resolveWorldTileStaticCacheLayout?.(...args) || null;
+    }
+
+    renderWorldTileStaticChunks(...args) {
+      return this.host?.renderWorldTileStaticChunks?.(...args) || false;
+    }
+
+    getWorldTileStaticCacheScale(...args) {
+      return this.host?.getWorldTileStaticCacheScale?.(...args) || 1;
+    }
+
+    getWorldTileStaticCacheContext(...args) {
+      return this.host?.getWorldTileStaticCacheContext?.(...args) || null;
+    }
+
+    getWorldTileStaticCacheKey(...args) {
+      return this.host?.getWorldTileStaticCacheKey?.(...args) || '';
+    }
+
+    drawWorldTileLayerCache(...args) {
+      return this.host?.drawWorldTileLayerCache?.(...args) || false;
+    }
+
+    withSuppressedHitTargets(callback) {
+      if (typeof this.host?.withSuppressedHitTargets === 'function') return this.host.withSuppressedHitTargets(callback);
+      return callback?.();
+    }
+
+    renderWorldTileStaticEntries(...args) {
+      return this.host?.renderWorldTileStaticEntries?.(...args) || false;
     }
 
     withCacheContext(work = {}, callback = null) {
       if (!work?.ctx || typeof callback !== 'function') return false;
-      const previousCtx = this.ctx;
-      this.ctx = work.ctx;
-      try {
+      // The cache bake draws through host-resolved renderers, so the work ctx must be
+      // scoped on the ctx owner for the duration of the bake.
+      return this.withRenderCtx(work.ctx, () => {
         work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
         work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
         work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
         work.ctx.globalAlpha = 1;
         work.ctx.globalCompositeOperation = 'source-over';
         work.ctx.save?.();
-        return callback(work);
-      } finally {
-        work.ctx.restore?.();
-        this.ctx = previousCtx;
-      }
+        try {
+          return callback(work);
+        } finally {
+          work.ctx.restore?.();
+        }
+      });
     }
 
     renderStaticEntriesIntoCache(tileMapView = {}, layout = {}, uiState = {}) {
       const rendered = this.withCacheContext(layout.work, () => {
         layout.work.ctx.translate?.(-layout.frame.x, -layout.frame.y);
-        this.withSuppressedHitTargets?.(() => {
+        this.withSuppressedHitTargets(() => {
+          const entryRenderer = this.host?.worldMapStaticEntryRenderer || null;
+          if (entryRenderer?.withRenderCtx) {
+            entryRenderer.withRenderCtx(layout.work.ctx, () => {
+              this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState, {
+                addHitTargets: false,
+              });
+            });
+            return;
+          }
           this.renderWorldTileStaticEntries(tileMapView, layout.renderViewport, layout.frame, layout.entries, uiState, {
             addHitTargets: false,
           });

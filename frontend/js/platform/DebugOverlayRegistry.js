@@ -15,7 +15,7 @@
     if (global.DebugOverlaySnapshot) return global.DebugOverlaySnapshot;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/DebugOverlaySnapshot');
+        return require('../ecs/debug/DebugOverlaySnapshot');
       } catch (error) {
         return null;
       }

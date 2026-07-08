@@ -14,7 +14,11 @@ const {
 test('shell script guard tracks project-owned shell entrypoints', () => {
   assert.deepEqual(SHELL_SCRIPTS, [
     'deploy.sh',
+    'scripts/deploy-test-server.sh',
+    'scripts/deploy-refactor-tutorial-server.sh',
     'scripts/pre-deploy-gate.sh',
+    'scripts/prepare-test-server-runtime.sh',
+    'scripts/test-server-ci-gate.sh',
     'scripts/verify-deploy-hook.sh',
     'scripts/rollback-deploy.sh',
     'scripts/backup-runtime-state.sh',
@@ -24,6 +28,23 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
     'scripts/rotate-production-secrets.sh',
     'scripts/install-ops-agent-pm2.sh',
   ]);
+});
+
+test('refactor tutorial test server keeps isolated runtime surfaces', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const script = fs.readFileSync(path.join(repoRoot, 'scripts', 'deploy-refactor-tutorial-server.sh'), 'utf8');
+
+  assert.match(script, /codex\/refactor-tutorial-guide-architecture/);
+  assert.match(script, /WORK_TREE="\$\{WORK_TREE:-\/www\/wwwroot\/h5-refactor-worktree\}"/);
+  assert.match(script, /FRONTEND_PUBLIC_DIR="\$\{FRONTEND_PUBLIC_DIR:-\/www\/wwwroot\/h5-refactor\}"/);
+  assert.match(script, /BACKEND_DIR="\$\{BACKEND_DIR:-\/opt\/wxgame-refactor\/backend\}"/);
+  assert.match(script, /DEPLOY_STATE_DIR="\$\{DEPLOY_STATE_DIR:-\/opt\/wxgame-refactor\/\.wxgame\}"/);
+  assert.match(script, /PORT="\$\{PORT:-3003\}"/);
+  assert.match(script, /PM2_APP_NAME="\$\{PM2_APP_NAME:-wxgame-refactor-server\}"/);
+  assert.match(script, /WORLD_WORKER_PM2_NAME="\$\{WORLD_WORKER_PM2_NAME:-wxgame-refactor-world-worker\}"/);
+  assert.match(script, /FRONTEND_API_BASE="\$\{FRONTEND_API_BASE:-\/wxgame-refactor-api\}"/);
+  assert.match(script, /FRONTEND_DEPLOY_STATUS_PATH="\$\{FRONTEND_DEPLOY_STATUS_PATH:-\.wxgame-deploy-status\.json\}"/);
+  assert.match(script, /FRONTEND_ENVIRONMENT_LABEL="\$\{FRONTEND_ENVIRONMENT_LABEL:-TUTORIAL REFACTOR\}"/);
 });
 
 test('shell script guard can find bash in PATH or Git for Windows fallback', () => {
@@ -45,10 +66,44 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
 
   assert.match(deployScript, /rev-parse --verify "\$BRANCH\^\{commit\}"/);
   assert.match(deployScript, /checkout -f "\$DEPLOY_COMMIT"/);
-  assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$WORK_TREE\/scripts\/pre-deploy-gate\.sh" "\$WORK_TREE"/);
+  assert.match(deployScript, /DEPLOY_GATE_SCRIPT="\$\{DEPLOY_GATE_SCRIPT:-scripts\/pre-deploy-gate\.sh\}"/);
+  assert.match(deployScript, /run_deploy_gate\(\)/);
+  assert.match(deployScript, /REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$gate_script" "\$WORK_TREE"/);
+  assert.match(deployScript, /apply_frontend_environment_overrides/);
+  assert.match(deployScript, /FRONTEND_API_BASE="\$\{FRONTEND_API_BASE:-\}"/);
+  assert.match(deployScript, /FRONTEND_DEPLOY_STATUS_PATH="\$\{FRONTEND_DEPLOY_STATUS_PATH:-\}"/);
+  assert.equal(deployScript.includes("DEPLOY_STATUS_PATH:\\s*['\"][^'\"]+['\"],"), true);
+  assert.match(deployScript, /POST_BACKEND_SYNC_SCRIPT="\$\{POST_BACKEND_SYNC_SCRIPT:-\}"/);
+  assert.match(deployScript, /run_post_backend_sync_script/);
   assert.match(deployScript, /publish_runtime_config_release\(\)/);
   assert.match(deployScript, /ConfigReleaseService\.publishRelease/);
-  assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+publish_runtime_config_release\s+echo "\[Deploy\]/s);
+  assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+set_deploy_stage "config-release"\s+publish_runtime_config_release\s+set_deploy_stage "pm2-restart"/s);
+  assert.match(deployScript, /DEPLOY_STATUS_PATH="\$DEPLOY_STATE_DIR\/deploy-status\.json"/);
+  assert.match(deployScript, /WXGAME_DEPLOY_STATUS_PATH="\$DEPLOY_STATUS_PATH"/);
+  assert.match(deployScript, /set_deploy_stage\(\)/);
+  assert.match(deployScript, /run_with_deploy_status_heartbeat\(\)/);
+  assert.match(deployScript, /record_deploy_failure\(\)/);
+  assert.match(deployScript, /write_deploy_status "failed" "\$message" "\$exit_code"/);
+  assert.equal(deployScript.includes('if "$@"; then\n        command_status=0\n    else\n        command_status="$?"'), true);
+  assert.equal(deployScript.includes('record_deploy_failure "$command_status" "command failed: $(describe_deploy_command "$@")"'), true);
+  assert.equal(
+    deployScript.indexOf('kill "$heartbeat_pid"'),
+    deployScript.indexOf('kill "$heartbeat_pid"', deployScript.indexOf('run_with_deploy_status_heartbeat()')),
+  );
+  assert.equal(
+    deployScript.indexOf('kill "$heartbeat_pid"', deployScript.indexOf('run_with_deploy_status_heartbeat()'))
+      < deployScript.indexOf('record_deploy_failure "$command_status"', deployScript.indexOf('run_with_deploy_status_heartbeat()')),
+    true,
+  );
+  assert.match(deployScript, /record_deploy_failure "\$exit_code" "deploy exited before completion"/);
+  assert.match(deployScript, /record_deploy_failure "\$exit_code" "command failed: \$failed_command"/);
+  assert.match(deployScript, /return "\$command_status"/);
+  assert.match(deployScript, /run_with_deploy_status_heartbeat env REPO_GIT_DIR="\$GIT_DIR_PATH" bash "\$gate_script" "\$WORK_TREE"/);
+  assert.match(deployScript, /set_deploy_stage "deploy-gate"/);
+  assert.match(deployScript, /set_deploy_stage "health-check"/);
+  assert.match(deployScript, /write_deploy_status "running"/);
+  assert.match(deployScript, /write_deploy_status "failed"/);
+  assert.match(deployScript, /write_deploy_status "succeeded"/);
   assert.match(deployScript, /OPS_AGENT_PM2_NAME="\$\{OPS_AGENT_PM2_NAME:-wxgame-ops-agent\}"/);
   assert.match(deployScript, /restart_ops_agent_if_configured/);
   assert.match(deployScript, /ENABLE_OPS_AGENT:-0/);
@@ -57,6 +112,30 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(rollbackScript, /bash "\$DEPLOY_SCRIPT" "\$TARGET_COMMIT"/);
   assert.match(verifyHookScript, /bash -n "\$HOOK_PATH"/);
   assert.match(verifyHookScript, /current deploy commit is reachable/);
+});
+
+test('deploy release marker is written only after backend health passes', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const deployScript = fs.readFileSync(path.join(repoRoot, 'deploy.sh'), 'utf8');
+  const deployStageStart = deployScript.indexOf('run_deploy_gate');
+  const firstHealthCheck = deployScript.indexOf('if health_payload="$(curl -fsS "http://localhost:${API_PORT}/api/health")"; then');
+  const verifyRuntimeAfterHealth = deployScript.indexOf('verify_runtime_config "$health_payload"', firstHealthCheck);
+  const publishAfterHealth = deployScript.indexOf('publish_frontend_assets', verifyRuntimeAfterHealth);
+  const writeVersionAfterPublish = deployScript.indexOf('write_deploy_version', publishAfterHealth);
+  const deployComplete = deployScript.indexOf('[Deploy]', writeVersionAfterPublish);
+  const beforeHealthRuntimeStage = deployScript.slice(deployStageStart, firstHealthCheck);
+  const earlyPublish = beforeHealthRuntimeStage.includes('publish_frontend_assets');
+  const earlyVersionWrite = beforeHealthRuntimeStage.includes('write_deploy_version');
+
+  assert.notEqual(deployStageStart, -1);
+  assert.notEqual(firstHealthCheck, -1);
+  assert.notEqual(verifyRuntimeAfterHealth, -1);
+  assert.notEqual(publishAfterHealth, -1);
+  assert.notEqual(writeVersionAfterPublish, -1);
+  assert.notEqual(deployComplete, -1);
+  assert.equal(earlyPublish, false);
+  assert.equal(earlyVersionWrite, false);
+  assert.match(deployScript, /export WXGAME_DEPLOY_MANIFEST_PATH="\$DEPLOY_STATE_DIR\/current-deploy\.json"/);
 });
 
 test('pre-deploy gate auto-installs architecture dependencies for server hooks', () => {

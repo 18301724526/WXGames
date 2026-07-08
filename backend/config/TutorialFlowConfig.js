@@ -1,76 +1,13 @@
-const TUTORIAL_STEPS = Object.freeze({
-  initial: 0,
-  tutorialStarted: 1,
-  cityEntered: 2,
-  houseGuideReady: 3,
-  houseBuilt: 4,
-  civilizationTabOpened: 5,
-  eraAdvancedTo1: 6,
-  buildingsTabOpened: 7,
-  farmPrepReserved: 8,
-  farmBuilt: 9,
-  era2AdvanceReady: 10,
-  eraAdvancedTo2: 11,
-  specialEventTabOpened: 12,
-  specialEventClaimed: 13,
-  buildingsTabOpenedForLumbermill: 14,
-  lumbermillBuilt: 15,
-  era3AdvanceReady: 16,
-  era3Advanced: 17,
-  scoutFamousGranted: 18,
-  famousPanelOpened: 19,
-  famousCardViewed: 20,
-  formationPanelOpened: 21,
-  scoutFormationSaved: 22,
-  scoutWorldPanelOpened: 23,
-  scoutExploreStarted: 24,
-  firstCityDiscovered: 25,
-  firstCityConquestStarted: 26,
-  firstCityOccupied: 27,
-  firstCityNamed: 28,
-  polityNamed: 29,
-  talentPolicyOpened: 30,
-  talentPolicyApplied: 31,
-  manualTalentAssigned: 32,
-  famousSeekOpened: 33,
-  famousSeekCompleted: 34,
-  finalTechOpened: 35,
-  completed: 36,
-});
+// Thin re-export of the shared tutorial flow table. The step data and ALL
+// ordering helpers live in shared/tutorialFlowConfig.js (single source shared
+// with the frontend). This module only keeps the config-pipeline registry
+// surface (raw/version/registry metadata) stable for require sites.
+const SharedTutorialFlowConfig = require('../../shared/tutorialFlowConfig');
 
-const TUTORIAL_EVENT_STEPS = Object.freeze({
-  tutorialStarted: TUTORIAL_STEPS.tutorialStarted,
-  cityEntered: TUTORIAL_STEPS.cityEntered,
-  houseGuideReady: TUTORIAL_STEPS.houseGuideReady,
-  houseBuilt: TUTORIAL_STEPS.houseBuilt,
-  civilizationTabOpened: TUTORIAL_STEPS.civilizationTabOpened,
-  eraAdvanced: TUTORIAL_STEPS.eraAdvancedTo1,
-  eraAdvancedTo2: TUTORIAL_STEPS.eraAdvancedTo2,
-  buildingsTabOpened: TUTORIAL_STEPS.buildingsTabOpened,
-  farmBuilt: TUTORIAL_STEPS.farmBuilt,
-  era2AdvanceReady: TUTORIAL_STEPS.era2AdvanceReady,
-  specialEventTabOpened: TUTORIAL_STEPS.specialEventTabOpened,
-  specialEventClaimed: TUTORIAL_STEPS.specialEventClaimed,
-  buildingsTabOpenedForLumbermill: TUTORIAL_STEPS.buildingsTabOpenedForLumbermill,
-  lumbermillBuilt: TUTORIAL_STEPS.lumbermillBuilt,
-  era3AdvanceReady: TUTORIAL_STEPS.era3AdvanceReady,
-  era3Advanced: TUTORIAL_STEPS.era3Advanced,
-  scoutFamousGranted: TUTORIAL_STEPS.scoutFamousGranted,
-  famousPanelOpened: TUTORIAL_STEPS.famousPanelOpened,
-  famousCardViewed: TUTORIAL_STEPS.famousCardViewed,
-  formationPanelOpened: TUTORIAL_STEPS.formationPanelOpened,
-  scoutFormationSaved: TUTORIAL_STEPS.scoutFormationSaved,
-  scoutWorldPanelOpened: TUTORIAL_STEPS.scoutWorldPanelOpened,
-  scoutExploreStarted: TUTORIAL_STEPS.scoutExploreStarted,
-  firstCityDiscovered: TUTORIAL_STEPS.firstCityDiscovered,
-  firstCityConquestStarted: TUTORIAL_STEPS.firstCityConquestStarted,
-  firstCityOccupied: TUTORIAL_STEPS.firstCityOccupied,
-  firstCityNamed: TUTORIAL_STEPS.firstCityNamed,
-  polityNamed: TUTORIAL_STEPS.polityNamed,
-  talentPolicyApplied: TUTORIAL_STEPS.talentPolicyApplied,
-  manualTalentAssigned: TUTORIAL_STEPS.manualTalentAssigned,
-  famousSeekCompleted: TUTORIAL_STEPS.famousSeekCompleted,
-});
+const TUTORIAL_STEPS = SharedTutorialFlowConfig.TUTORIAL_STEPS;
+const TUTORIAL_EVENT_STEPS = SharedTutorialFlowConfig.EVENT_STEPS;
+const CLIENT_TUTORIAL_STEP_GATES = SharedTutorialFlowConfig.CLIENT_STEP_GATES;
+const TASK_CLAIM_STEPS = SharedTutorialFlowConfig.TASK_CLAIM_STEPS;
 
 const PASS_THROUGH_ACTIONS = Object.freeze([
   'applyTalentPolicy',
@@ -81,47 +18,33 @@ const PASS_THROUGH_ACTIONS = Object.freeze([
   'acceptFamousPerson',
   'dismissFamousPersonCandidate',
   'assignFamousAttributePoint',
-  'scoutTerritory',
-  'claimScout',
   'switchCity',
 ]);
 
-const CLIENT_TUTORIAL_STEP_GATES = Object.freeze({
-  [TUTORIAL_STEPS.tutorialStarted]: TUTORIAL_STEPS.initial,
-  [TUTORIAL_STEPS.cityEntered]: TUTORIAL_STEPS.initial,
-  [TUTORIAL_STEPS.houseGuideReady]: TUTORIAL_STEPS.cityEntered,
-  [TUTORIAL_STEPS.civilizationTabOpened]: TUTORIAL_STEPS.houseBuilt,
-  [TUTORIAL_STEPS.buildingsTabOpened]: TUTORIAL_STEPS.eraAdvancedTo1,
-  [TUTORIAL_STEPS.specialEventTabOpened]: TUTORIAL_STEPS.eraAdvancedTo2,
-  [TUTORIAL_STEPS.buildingsTabOpenedForLumbermill]: TUTORIAL_STEPS.specialEventClaimed,
-  [TUTORIAL_STEPS.famousPanelOpened]: TUTORIAL_STEPS.scoutFamousGranted,
-  [TUTORIAL_STEPS.famousCardViewed]: TUTORIAL_STEPS.famousPanelOpened,
-  [TUTORIAL_STEPS.formationPanelOpened]: TUTORIAL_STEPS.famousCardViewed,
-  [TUTORIAL_STEPS.scoutWorldPanelOpened]: TUTORIAL_STEPS.scoutFormationSaved,
-  [TUTORIAL_STEPS.talentPolicyOpened]: TUTORIAL_STEPS.polityNamed,
-  [TUTORIAL_STEPS.talentPolicyApplied]: TUTORIAL_STEPS.talentPolicyOpened,
-  [TUTORIAL_STEPS.famousSeekOpened]: TUTORIAL_STEPS.manualTalentAssigned,
-  [TUTORIAL_STEPS.finalTechOpened]: TUTORIAL_STEPS.famousSeekCompleted,
-  [TUTORIAL_STEPS.completed]: TUTORIAL_STEPS.finalTechOpened,
-});
-
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+const { clone } = require('../../shared/objectUtils');
 
-const CONFIG_VERSION = '2.0.0';
+// 3.0.0: steps are persisted/projected as NAMES; clientGate entry ids changed
+// from numeric step keys to step names (removed entries -> major bump).
+// 3.1.0: barracks segment inserted (barracksSuppliesClaimed,
+// buildingsTabOpenedForBarracks, barracksBuilt, firstArmyClaimed) plus the
+// barracksBuilt event and buildingsTabOpenedForBarracks client gate
+// (added entries -> minor bump).
+// 4.0.0: march-discovery refactor S5 — the tutorial first city is now PRE-PLACED
+// and discovered by march vision (the invent-city engine + its route-truncation are
+// deleted). The 6 tutorial steps are UNCHANGED; the retired directional-scout
+// passThrough actions (scoutTerritory/claimScout, deleted with the scout system in
+// S1) are removed here (removed entries -> major bump).
+const CONFIG_VERSION = '4.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
 const sourcePath = __filename;
 
 function createPhaseCompleted(currentStep) {
-  const step = Number.isFinite(currentStep) ? currentStep : TUTORIAL_STEPS.initial;
   return {
-    newbie: step >= TUTORIAL_STEPS.eraAdvancedTo1,
-    era2: step >= TUTORIAL_STEPS.lumbermillBuilt,
-    scoutFormation: step >= TUTORIAL_STEPS.scoutFormationSaved,
+    newbie: SharedTutorialFlowConfig.stepAtLeast(currentStep, TUTORIAL_STEPS.eraAdvancedTo1),
+    era2: SharedTutorialFlowConfig.stepAtLeast(currentStep, TUTORIAL_STEPS.lumbermillBuilt),
+    scoutFormation: SharedTutorialFlowConfig.stepAtLeast(currentStep, TUTORIAL_STEPS.scoutFormationSaved),
   };
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 function raw() {
@@ -149,7 +72,7 @@ function createRegistryEntries() {
   });
   Object.entries(CLIENT_TUTORIAL_STEP_GATES).forEach(([step, minimumStep]) => {
     const id = `clientGate:${step}`;
-    entries[id] = { id, step: Number(step), minimumStep };
+    entries[id] = { id, step, minimumStep };
   });
   return entries;
 }
@@ -183,10 +106,12 @@ function validateRegistry() {
 }
 
 module.exports = {
+  STEP_ORDER: SharedTutorialFlowConfig.STEP_ORDER,
   TUTORIAL_STEPS,
   TUTORIAL_EVENT_STEPS,
   PASS_THROUGH_ACTIONS,
   CLIENT_TUTORIAL_STEP_GATES,
+  TASK_CLAIM_STEPS,
   raw,
   getVersion: () => CONFIG_VERSION,
   getSourcePath: () => sourcePath,

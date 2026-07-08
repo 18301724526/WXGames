@@ -2,16 +2,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const GameCommandService = require('./GameCommandService');
+const LocaleText = require('../ecs/resource/LocaleText');
 const CanvasGameApp = require('./CanvasGameApp');
 const UIStatePresenter = require('../state/UIStatePresenter');
 const TutorialGuideController = require('../tutorial/TutorialGuideController');
+const { CanvasModalOwnerTestHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 function createCommandHost(api) {
   const calls = [];
   const host = {
     api,
     state: { activeCityId: 'capital', currentTab: 'resources', techUiState: { detailOpen: true } },
-    canvasShell: {},
+    canvasShell: new CanvasModalOwnerTestHost(),
     pendingBuildingAction: null,
     closeCitySwitcher(options) {
       calls.push(['closeCitySwitcher', options]);
@@ -76,14 +78,16 @@ test('GameCommandService research applies API state and keeps selected tech UI s
     },
   };
   const { host, calls } = createCommandHost(api);
+  host.canvasShell.openBlockingPanelSnapshot('techDetailOpen', true);
+  assert.equal(host.canvasShell.isBlockingPanelSnapshotOpen('techDetailOpen'), true);
   const service = new GameCommandService({ host });
 
   assert.equal(await service.research('writing'), true);
 
   assert.equal(host.state.techUiState.selectedTechId, 'writing');
   assert.equal(host.state.techUiState.detailOpen, false);
-  assert.equal(host.canvasShell.selectedTechId, 'writing');
-  assert.equal(host.canvasShell.techDetailOpen, false);
+  assert.equal(host.canvasShell.selectedTechId, undefined);
+  assert.equal(host.canvasShell.isBlockingPanelSnapshotOpen('techDetailOpen'), false);
   assert.deepEqual(calls.find(([name]) => name === 'showFloatingText'), ['showFloatingText', 'researched writing']);
 });
 
@@ -111,6 +115,47 @@ test('GameCommandService blocks non-house building during tutorial house guide',
   assert.deepEqual(calls.filter(([name]) => name === 'refreshCurrentHighlight'), [['refreshCurrentHighlight']]);
 });
 
+test('GameCommandService propagates BuildingController build failures', async () => {
+  const { host, calls } = createCommandHost({});
+  host.buildingController = {
+    async handleAction({ buildingId, action }) {
+      calls.push(['handleAction', buildingId, action]);
+      return false;
+    },
+  };
+  const service = new GameCommandService({ host });
+
+  assert.equal(await service.buildBuilding('barracks'), false);
+  assert.deepEqual(calls.filter(([name]) => name === 'handleAction'), [['handleAction', 'barracks', 'build']]);
+  assert.deepEqual(host.pendingBuildingAction, null);
+});
+
+test('GameCommandService resyncs committed building commands after projection failure', async () => {
+  const apiCalls = [];
+  const api = {
+    async build(buildingId) {
+      apiCalls.push(['build', buildingId]);
+      return {
+        success: true,
+        committed: true,
+        resyncRequired: true,
+        message: 'Command committed; client state must resync.',
+      };
+    },
+    async getState() {
+      apiCalls.push(['getState']);
+      return { gameState: { playerId: 'player-1', buildings: { barracks: { level: 1 } } } };
+    },
+  };
+  const { host, calls } = createCommandHost(api);
+  const service = new GameCommandService({ host });
+
+  assert.equal(await service.buildBuilding('barracks'), true);
+  assert.deepEqual(apiCalls, [['build', 'barracks'], ['getState']]);
+  assert.equal(host.state.buildings.barracks.level, 1);
+  assert.equal(calls.filter(([name]) => name === 'applyApiState').length, 1);
+});
+
 test('GameCommandService switchCity closes picker, calls API, and applies state', async () => {
   const apiCalls = [];
   const api = {
@@ -129,6 +174,28 @@ test('GameCommandService switchCity closes picker, calls API, and applies state'
     'applyApiState',
     { message: 'switched harbor', gameState: { activeCityId: 'harbor', currentTab: 'resources' } },
   ]);
+});
+
+test('GameCommandService resolves command fallback text through active locale', async () => {
+  const previousLocale = LocaleText.getLocale();
+  LocaleText.setLocale('en-US');
+  try {
+    const api = {
+      async switchCity(cityId) {
+        return { gameState: { activeCityId: cityId, currentTab: 'resources' } };
+      },
+    };
+    const { host, calls: hostCalls } = createCommandHost(api);
+    const localizedService = new GameCommandService({ host });
+
+    assert.equal(await localizedService.switchCity('harbor'), true);
+    assert.deepEqual(hostCalls.find(([name]) => name === 'showFloatingText'), [
+      'showFloatingText',
+      'City switched',
+    ]);
+  } finally {
+    LocaleText.setLocale(previousLocale);
+  }
 });
 
 test('CanvasGameApp keeps command facades and delegates to command service', async () => {
@@ -314,9 +381,8 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
       },
     },
   });
-  app.showAdvisor = true;
+  app.openBlockingPanelSnapshot('showAdvisor', true);
   app.canvasShell = {
-    showAdvisor: true,
     hideTutorialHighlight() {
       calls.push(['hideTutorialHighlight']);
       return true;
@@ -335,8 +401,7 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
   app.activeAdvisor = { target: 'task-center-button' };
 
   assert.equal(app.goToAdvisorTarget(), true);
-  assert.equal(app.showAdvisor, false);
-  assert.equal(app.canvasShell.showAdvisor, false);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showAdvisor'), false);
   assert.equal(app.showTaskCenter, true);
   assert.equal(app.canvasShell.showTaskCenter, true);
   assert.equal(app.activeTaskCenterTab, 'main');
@@ -356,33 +421,25 @@ test('CanvasGameApp shows tutorial spine advisor dialogue after first house buil
     currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
   };
   app.tutorialController = new TutorialGuideController({ game: app });
-  app.showCityManagement = true;
-  app.showSubcityList = true;
-  app.activeCommandPanel = 'capital';
-  app.activeEventId = 'event-1';
-  app.canvasShell = {
-    showCityManagement: true,
-    showSubcityList: true,
-    activeCommandPanel: 'capital',
-    activeEventId: 'event-1',
-  };
+  app.openBlockingPanelSnapshot('showCityManagement', true);
+  app.openBlockingPanelSnapshot('showSubcityList', true);
+  app.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
+  app.openEventSnapshot('event-1');
+  app.canvasShell = {};
   app.renderCanvasSurface = (tab) => calls.push(['renderCanvasSurface', tab]);
 
+  assert.equal(app.isEventSnapshotOpen(), true);
   assert.equal(app.maybeShowHouseBuiltAdvisor('build', 'house'), true);
 
-  assert.equal(app.showAdvisor, false);
-  assert.equal(app.showCityManagement, false);
-  assert.equal(app.showSubcityList, false);
-  assert.equal(app.activeCommandPanel, '');
-  assert.equal(app.activeEventId, null);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showCityManagement'), false);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showSubcityList'), false);
+  assert.equal(app.getCommandPanelValue(), '');
+  assert.equal(app.isEventSnapshotOpen(), false);
   assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
   assert.equal(app.tutorialAdvisorDialogue.advisorName, '谋士');
   assert.match(app.tutorialAdvisorDialogue.message, /民居已经建立起来/);
   assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
-  assert.equal(app.canvasShell.showCityManagement, false);
-  assert.equal(app.canvasShell.showSubcityList, false);
-  assert.equal(app.canvasShell.activeCommandPanel, '');
-  assert.equal(app.canvasShell.activeEventId, null);
   assert.equal(app.state.softGuide.target, 'tab-civilization');
   assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
 });
@@ -429,13 +486,10 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
     calls.push(['refreshCurrentHighlight', Boolean(app.pendingTutorialAdvisorDialogue)]);
     return true;
   };
-  app.showCityManagement = true;
-  app.activeCommandPanel = 'capital';
-  app.activeEventId = 'event-1';
+  app.openBlockingPanelSnapshot('showCityManagement', true);
+  app.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
+  app.openEventSnapshot('event-1');
   app.canvasShell = {
-    showCityManagement: true,
-    activeCommandPanel: 'capital',
-    activeEventId: 'event-1',
     renderReadOnly() {
       calls.push(['renderReadOnly', Boolean(app.pendingTutorialAdvisorDialogue)]);
     },
@@ -467,10 +521,9 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   assert.equal(app.pendingTutorialAdvisorDialogue, false);
   assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
   assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
-  assert.equal(app.showCityManagement, false);
-  assert.equal(app.canvasShell.showCityManagement, false);
-  assert.equal(app.canvasShell.activeCommandPanel, '');
-  assert.equal(app.canvasShell.activeEventId, null);
+  assert.equal(app.isBlockingPanelSnapshotOpen('showCityManagement'), false);
+  assert.equal(app.getCommandPanelValue(), '');
+  assert.equal(app.isEventSnapshotOpen(), false);
   assert.equal(app.canvasShell.tutorialHighlight, null);
   assert.equal(calls.some(([name]) => name === 'refreshCurrentHighlight'), false);
   assert.deepEqual(
@@ -479,7 +532,7 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   );
 });
 
-test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highlight refresh', () => {
+test('CanvasGameApp openNaming writes owner snapshot before delayed tutorial highlight refresh', () => {
   const calls = [];
   const timers = [];
   const app = new CanvasGameApp({
@@ -511,14 +564,14 @@ test('CanvasGameApp openNaming syncs shell naming before delayed tutorial highli
       },
     },
   });
-  app.canvasShell = { naming: { visible: false } };
+  app.canvasShell = {};
   app.render = () => calls.push(['render']);
 
   app.openNaming({ type: 'city', territoryId: 'site_1' });
 
-  assert.equal(app.naming.visible, true);
-  assert.equal(app.naming.prompt.territoryId, 'site_1');
-  assert.equal(app.canvasShell.naming, app.naming);
+  const naming = app.getRendererSnapshot().modal['modal:naming'].payload;
+  assert.equal(naming.visible, true);
+  assert.equal(naming.prompt.territoryId, 'site_1');
   assert.deepEqual(calls, [['render'], ['setTimeout', 80]]);
 
   timers[0]();
@@ -552,19 +605,18 @@ test('CanvasGameApp refreshes tutorial highlight after naming input is filled', 
       },
     },
   });
-  app.naming = {
+  app.openNamingSnapshot({
     visible: true,
     view: { title: 'Name', maxLength: 12 },
     inputValue: '',
     submitting: false,
-  };
-  app.canvasShell = { naming: app.naming };
-  app.render = () => calls.push(['render', app.naming.inputValue]);
+  });
+  app.canvasShell = {};
+  app.render = () => calls.push(['render', app.getNamingInputValue()]);
 
   await app.requestNamingInput();
 
-  assert.equal(app.naming.inputValue, 'River League');
-  assert.equal(app.canvasShell.naming, app.naming);
+  assert.equal(app.getRendererSnapshot().modal['modal:naming'].payload.inputValue, 'River League');
   assert.deepEqual(calls, [
     ['requestTextInput'],
     ['render', 'River League'],

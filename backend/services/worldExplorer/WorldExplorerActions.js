@@ -11,27 +11,22 @@ const {
   getExploreOrigin,
   buildManualRoute,
   createPlannedTiles,
-  createTutorialPlannedSites,
-  shouldGuaranteeTutorialEmptyCity,
 } = require('./WorldExplorerRoutePlanner');
 const {
-  advanceTutorialStep,
   validateTutorialFormation,
-  ensureTutorialFirstCityClaimSoldiers,
 } = require('./WorldExplorerTutorial');
+const { manualAdvance } = require('../tutorial/TutorialProgression');
 const {
   AoiSyncSnapshot,
   CommandAuthorityContract,
   ServerTimelineSnapshot,
 } = require('../realtime');
 const FormationStrengthService = require('../military/FormationStrengthService');
+const WorldCombatEncounterService = require('../worldCombat/WorldCombatEncounterService');
+const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
 
 function countActiveMissions(gameState) {
   return (gameState.exploreMissions || []).filter((mission) => mission.status === 'active').length;
-}
-
-function getTutorialSteps() {
-  return TutorialFlowConfig.TUTORIAL_STEPS;
 }
 
 function normalizeFormationSlot(value, fallback = 1) {
@@ -60,6 +55,12 @@ function getIdleFormationMission(gameState, formation = {}) {
       && normalizeFormationSlot(missionFormation.slot) === slot;
   }) || null;
 }
+
+function toMissionFormationIdentity(formation = {}) {
+  const memberIds = Array.isArray(formation.memberIds) ? formation.memberIds.map(String) : [];
+  return { cityId: formation.cityId || 'capital', slot: normalizeFormationSlot(formation.slot), memberIds };
+}
+
 function isTraceEnabled(options = {}) {
   return Boolean(options?.debugTrace || options?.worldMarchTrace);
 }
@@ -126,24 +127,32 @@ function traceWorldMarch(stage, options = {}, payload = {}) {
 }
 
 function startWorldMarch(gameState, options = {}, now = new Date()) {
-  const TUTORIAL_STEPS = getTutorialSteps();
-  normalizeExploreState(gameState, now);
+  const TUTORIAL_STEPS = TutorialFlowConfig.TUTORIAL_STEPS;
+  const worldContext = {
+    worldEncounterRepo: options.worldEncounterRepo || null,
+    sharedWorldEncounters: options.sharedWorldEncounters || null,
+  };
+  normalizeExploreState(gameState, now, worldContext);
+  const combatTarget = WorldCombatEncounterService.resolveMarchTarget(gameState, options, now, worldContext);
+  if (!combatTarget.success) return combatTarget;
+  const targetInput = combatTarget.target
+    || { q: options.targetQ ?? options.q ?? options.x, r: options.targetR ?? options.r ?? options.y };
   traceWorldMarch('actions:startWorldMarch:begin', options, {
     target: {
-      q: options.targetQ ?? options.q ?? options.x ?? null,
-      r: options.targetR ?? options.r ?? options.y ?? null,
+      q: targetInput.q ?? null,
+      r: targetInput.r ?? null,
     },
     formationSlot: options.formationSlot ?? options.slot ?? null,
     existingMissions: (gameState.exploreMissions || []).map(summarizeMission),
   });
-  const explicitMissionId = String(options.missionId || options.actorId || '').trim();
+  const explicitMissionId = String(options.missionId || '').trim();
   const explicitMission = explicitMissionId
     ? (gameState.exploreMissions || []).find((mission) => mission.id === explicitMissionId) || null
     : null;
-  if (explicitMissionId && !explicitMission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
+  if (explicitMissionId && !explicitMission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: '未找到该行军任务。' };
   if (explicitMission && explicitMission.status !== 'idle') {
     traceWorldMarch('actions:startWorldMarch:missionBusy', options, { mission: summarizeMission(explicitMission) });
-    return { success: false, error: 'EXPLORE_FORMATION_BUSY', message: 'This explorer is already marching.', mission: getClientMission(explicitMission, now) };
+    return { success: false, error: 'EXPLORE_FORMATION_BUSY', message: '该编队已在行军中。', mission: getClientMission(explicitMission, now) };
   }
   const formationValidation = validateTutorialFormation(gameState, explicitMission ? {
     ...options, cityId: explicitMission.formation?.cityId || options.cityId,
@@ -155,6 +164,10 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return formationValidation;
   }
+  if (combatTarget.encounter) {
+    const deploymentFailure = FormationDeploymentEligibility.getCombatDeploymentFailure(formationValidation.formation);
+    if (deploymentFailure) return deploymentFailure;
+  }
   const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formationValidation.formation);
   if (busyMission) {
     traceWorldMarch('actions:startWorldMarch:busyFormation', options, {
@@ -164,7 +177,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     return {
       success: false,
       error: 'EXPLORE_FORMATION_BUSY',
-      message: 'This formation is already marching.',
+      message: '该编队已在行军中。',
       mission: getClientMission(busyMission, now),
     };
   }
@@ -173,7 +186,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
       activeCount: countActiveMissions(gameState),
       maxActive: MAX_ACTIVE_EXPLORE_MISSIONS,
     });
-    return { success: false, error: 'EXPLORE_LIMIT_REACHED', message: 'An explorer mission is already active.' };
+    return { success: false, error: 'EXPLORE_LIMIT_REACHED', message: '已有行军任务进行中。' };
   }
   const origin = getExploreOrigin(gameState);
   const idleMission = explicitMission || getIdleFormationMission(gameState, formationValidation.formation);
@@ -182,71 +195,49 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     : origin;
   const worldMap = WorldMapService.ensureWorldMap(gameState, now);
   const routeResult = buildManualRoute(marchOrigin, {
-    q: options.targetQ ?? options.q ?? options.x,
-    r: options.targetR ?? options.r ?? options.y,
-  }, worldMap.seed, { gameState, now });
+    q: targetInput.q,
+    r: targetInput.r,
+  }, worldMap.seed, { gameState, now, combatEncounter: combatTarget.encounter });
   traceWorldMarch('actions:startWorldMarch:routeResult', options, {
     origin: summarizeCoord(origin),
     marchOrigin: summarizeCoord(marchOrigin),
-    target: summarizeCoord(routeResult.target || {
-      q: options.targetQ ?? options.q ?? options.x,
-      r: options.targetR ?? options.r ?? options.y,
-    }),
+    target: summarizeCoord(routeResult.target || targetInput),
     success: routeResult.success,
     error: routeResult.error || '',
     routeCount: Array.isArray(routeResult.route) ? routeResult.route.length : 0,
     routeIds: (routeResult.route || []).slice(0, 8).map((step) => WorldMapService.getTileId(step.q, step.r)),
   });
   if (!routeResult.success) return routeResult;
-  let route = routeResult.route || [];
+  const route = routeResult.route || [];
   if (!route.length) {
     traceWorldMarch('actions:startWorldMarch:emptyRoute', options, {
       origin: summarizeCoord(origin),
       marchOrigin: summarizeCoord(marchOrigin),
     });
-    return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: 'No explorer route could be generated.' };
+    return { success: false, error: 'EXPLORE_ROUTE_EMPTY', message: '无法生成行军路线。' };
   }
-  let plannedTiles = createPlannedTiles(gameState, route, now, {
+  const plannedTiles = createPlannedTiles(gameState, route, now, {
     mode: 'manual',
     origin: marchOrigin,
     target: routeResult.target || route.at(-1),
   });
-  let plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now, {
-    planningContext: options.planningContext,
-  });
-  if (shouldGuaranteeTutorialEmptyCity(gameState)) {
-    if (!plannedSites.length) {
-      return {
-        success: false,
-        error: 'EXPLORE_TUTORIAL_TARGET_OCCUPIED',
-        message: 'No valid guided empty city target is available on this route.',
-      };
-    }
-    const tutorialTargetId = plannedSites[0].tileId;
-    const tutorialTargetIndex = route.findIndex((step) => WorldMapService.getTileId(step.q, step.r) === tutorialTargetId);
-    if (tutorialTargetIndex >= 0 && tutorialTargetIndex < route.length - 1) {
-      route = route.slice(0, tutorialTargetIndex + 1);
-      plannedTiles = createPlannedTiles(gameState, route, now, {
-        mode: 'manual',
-        origin: marchOrigin,
-        target: route.at(-1),
-      });
-      plannedSites = createTutorialPlannedSites(gameState, route, plannedTiles, now, {
-        planningContext: options.planningContext,
-      });
-    }
-  }
+  // The invent-city engine (createTutorialPlannedSites + route-truncation-to-invented-city) is DELETED
+  // (march-discovery refactor S5, docs/design/10 §3.3). The tutorial first city is now PRE-PLACED at grant
+  // time and DISCOVERED by the march's vision (WorldExplorerProgression.discoverPrePlacedCitiesInVision) —
+  // the player marches to a target THEY pick and the pre-placed city flips to discovered when its tile
+  // enters vision. Missions no longer carry planned sites; the field stays empty for shape compatibility.
+  const plannedSites = [];
   traceWorldMarch('actions:startWorldMarch:planned', options, {
     plannedTileCount: plannedTiles.length,
     plannedTileIds: plannedTiles.slice(0, 8).map((tile) => WorldMapService.getTileId(tile.q, tile.r)),
     plannedTerrain: plannedTiles.slice(0, 8).map((tile) => `${WorldMapService.getTileId(tile.q, tile.r)}:${tile.terrain}`),
     plannedSiteCount: plannedSites.length,
-    plannedSiteIds: plannedSites.slice(0, 8).map((site) => site.siteId || site.site?.id || site.tileId),
     idleMission: summarizeMission(idleMission),
   });
-  const missionFormation = explicitMission
+  const missionFormationIdentity = toMissionFormationIdentity(explicitMission
     ? (idleMission?.formation || formationValidation.formation)
-    : formationValidation.formation;
+    : formationValidation.formation);
+  const snapshotFormation = formationValidation.formation;
   const mission = idleMission || normalizeMission({
     id: `explore_manual_${now.getTime()}`,
     mode: 'manual',
@@ -254,9 +245,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     origin: marchOrigin,
     homeOrigin: idleMission?.homeOrigin || origin,
     route,
-    formation: missionFormation,
-    formationSnapshot: FormationStrengthService.buildFormationSnapshot(missionFormation, {
-      cityId: missionFormation.cityId,
+    formation: missionFormationIdentity,
+    formationSnapshot: FormationStrengthService.buildFormationSnapshot(snapshotFormation, {
+      cityId: snapshotFormation.cityId,
       now,
     }),
     stepDurationMs: EXPLORE_STEP_DURATION_MS,
@@ -268,9 +259,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     !idleMission.formationSnapshot
     || FormationStrengthService.isSnapshotSettled(idleMission.formationSnapshot)
   )) {
-    idleMission.formation = missionFormation;
-    idleMission.formationSnapshot = FormationStrengthService.buildFormationSnapshot(missionFormation, {
-      cityId: missionFormation.cityId,
+    idleMission.formation = missionFormationIdentity;
+    idleMission.formationSnapshot = FormationStrengthService.buildFormationSnapshot(snapshotFormation, {
+      cityId: snapshotFormation.cityId,
       now,
     });
   }
@@ -285,10 +276,14 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     mission.plannedSites = plannedSites;
     gameState.exploreMissions = [...(gameState.exploreMissions || []), mission];
   }
-  gameState.tutorial = advanceTutorialStep(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
+  setMissionCombatTarget(mission, combatTarget.encounter, now);
+  if (routeResult.inPlace && combatTarget.encounter) {
+    WorldCombatEncounterService.resolveImmediateArrival(gameState, mission, targetInput, now, worldContext);
+  }
+  gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
   const result = {
     success: true,
-    message: 'Explorer mission started.',
+    message: '部队已出发。',
     mission: getClientMission(mission, now),
     tutorial: gameState.tutorial,
   };
@@ -304,13 +299,20 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   });
 }
 
-function findActiveMission(gameState, missionId, now = new Date()) {
-  normalizeExploreState(gameState, now);
+function setMissionCombatTarget(mission = {}, encounter = null, now = new Date()) {
+  mission.combat = encounter
+    ? { encounterId: encounter.id, status: 'marching', startedAt: now.toISOString(), resolvedAt: null, battleReportId: null }
+    : null;
+  return mission.combat;
+}
+
+function findActiveMission(gameState, missionId, now = new Date(), options = {}) {
+  normalizeExploreState(gameState, now, options);
   return (gameState.exploreMissions || []).find((item) => item.id === missionId && item.status === 'active') || null;
 }
 
-function findReturnableMission(gameState, missionId, now = new Date()) {
-  normalizeExploreState(gameState, now);
+function findReturnableMission(gameState, missionId, now = new Date(), options = {}) {
+  normalizeExploreState(gameState, now, options);
   return (gameState.exploreMissions || []).find((item) => (
     item.id === missionId && ['active', 'idle'].includes(item.status)
   )) || null;
@@ -416,8 +418,13 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
     resolvedNow = options;
     resolvedOptions = {};
   }
-  const mission = findReturnableMission(gameState, missionId, resolvedNow);
-  if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
+  const worldContext = {
+    worldEncounterRepo: resolvedOptions.worldEncounterRepo || null,
+    sharedWorldEncounters: resolvedOptions.sharedWorldEncounters || null,
+    planningContext: resolvedOptions.planningContext || null,
+  };
+  const mission = findReturnableMission(gameState, missionId, resolvedNow, worldContext);
+  if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: '未找到该行军任务。' };
   const current = getReturnRouteOrigin(mission);
   const origin = mission.homeOrigin || mission.origin || { q: 0, r: 0 };
   const worldMap = WorldMapService.ensureWorldMap(gameState, resolvedNow);
@@ -439,7 +446,7 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
   }
   const result = {
     success: true,
-    message: 'Explorer returning.',
+    message: '部队正在返回。',
     mission: getClientMission(mission, resolvedNow),
     tutorial: gameState.tutorial,
   };
@@ -451,8 +458,13 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
 }
 
 function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
-  const mission = findActiveMission(gameState, missionId, now);
-  if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: 'Explorer mission not found.' };
+  const worldContext = {
+    worldEncounterRepo: options.worldEncounterRepo || null,
+    sharedWorldEncounters: options.sharedWorldEncounters || null,
+    planningContext: options.planningContext || null,
+  };
+  const mission = findActiveMission(gameState, missionId, now, worldContext);
+  if (!mission) return { success: false, error: 'EXPLORE_MISSION_NOT_FOUND', message: '未找到该行军任务。' };
   const timeline = ServerTimelineSnapshot.createMissionSnapshot(mission, { now });
   const current = getLastRevealedOrOrigin(mission);
   const target = timeline.stopTile || current;
@@ -472,7 +484,7 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
   }
   const result = {
     success: true,
-    message: 'Explorer stopping.',
+    message: '部队已原地停驻。',
     mission: getClientMission(mission, now),
     tutorial: gameState.tutorial,
   };
@@ -483,9 +495,4 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
   });
 }
 
-module.exports = {
-  countActiveMissions,
-  startWorldMarch,
-  returnWorldMarch,
-  stopWorldMarch,
-};
+module.exports = { countActiveMissions, startWorldMarch, returnWorldMarch, stopWorldMarch };

@@ -3,7 +3,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('../../ecs/system/WorldMarchSystem');
       } catch (error) {
         return null;
       }
@@ -58,14 +58,11 @@
   class WorldActorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.worldMapRenderState = options.worldMapRenderState || this.host?.worldMapRenderState || null;
     }
 
     get ctx() {
       return this.host?.ctx;
-    }
-
-    get __worldActorOverlayActiveDiag() {
-      return this.host?.__worldActorOverlayActiveDiag;
     }
 
     addHitTarget(...args) {
@@ -92,33 +89,41 @@
       return WorldMarchSystem.getTileScreenCenter(actor.target || actor.current || {}, viewport, geometry);
     }
 
-    getActorFramePath(actor = {}) {
-      const unitKey = actor.unitKey || 'scout_squad_default';
+    getActorFrameNowMs(options = {}) {
+      const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
+      const resolvedOptionNow = Number(optionNow);
+      if (Number.isFinite(resolvedOptionNow)) return resolvedOptionNow;
+      const hostNow = Number(this.getNow?.());
+      return Number.isFinite(hostNow) ? hostNow : Date.now();
+    }
+
+    getActorFramePath(actor = {}, options = {}) {
+      const unitKey = actor.unitKey || UnitSpriteManifest?.DEFAULT_MARCH_UNIT_KEY || 'scout_squad_default';
       const animationId = actor.status === 'idle' ? 'move' : (actor.animationId || 'move');
       const frames = UnitSpriteManifest?.getFramePaths?.(unitKey, animationId) || [];
       if (!frames.length) return '';
       if (actor.status === 'idle') return frames[0];
       const frameMs = UnitSpriteManifest?.getFrameDurationMs?.(unitKey, animationId) || 80;
-      const nowMs = this.getNow?.() || Date.now();
+      const nowMs = this.getActorFrameNowMs(options);
       return frames[Math.floor(Number(nowMs) / Math.max(1, frameMs)) % frames.length] || frames[0];
     }
 
     getActorRenderCtx(options = {}) {
-      return options?.ctx || this.__worldActorOverlayTargetCtx || this.ctx || null;
+      return options?.ctx || this.worldMapRenderState?.worldActorOverlayTargetCtx || this.ctx || null;
+    }
+
+    getActorOverlayDiag(options = {}) {
+      return options.worldActorOverlayDiag || null;
     }
 
     withActorRenderCtx(ctx = null, callback = null) {
-      const hadOwnCtx = Object.prototype.hasOwnProperty.call(this, '__worldActorOverlayTargetCtx');
-      const previousCtx = this.__worldActorOverlayTargetCtx;
-      if (ctx) this.__worldActorOverlayTargetCtx = ctx;
+      const renderState = this.worldMapRenderState;
+      const previousCtx = renderState?.worldActorOverlayTargetCtx || null;
+      if (renderState) renderState.worldActorOverlayTargetCtx = ctx || null;
       try {
         return typeof callback === 'function' ? callback() : false;
       } finally {
-        if (hadOwnCtx) {
-          this.__worldActorOverlayTargetCtx = previousCtx;
-        } else {
-          delete this.__worldActorOverlayTargetCtx;
-        }
+        if (renderState) renderState.worldActorOverlayTargetCtx = previousCtx;
       }
     }
 
@@ -152,7 +157,7 @@
       const dy = Number(to.y) - Number(from.y);
       const length = Math.hypot(dx, dy);
       if (!Number.isFinite(length) || length < 8) return false;
-      const diag = this.__worldActorOverlayActiveDiag;
+      const diag = this.getActorOverlayDiag(options);
       if (diag) diag.arrowCanvasId = getCanvasId(ctx);
       const ux = dx / length;
       const uy = dy / length;
@@ -180,7 +185,7 @@
 
     drawActorUnit(actor = {}, point = {}, viewport = {}, options = {}) {
       const ctx = this.getActorRenderCtx(options);
-      const framePath = this.getActorFramePath(actor);
+      const framePath = this.getActorFramePath(actor, options);
       const scale = Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
       const unitRenderer = global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('tutorialIntroUnitRenderer')
         || this.host?.constructor?.getTutorialIntroUnitRenderer?.()
@@ -196,19 +201,85 @@
       return true;
     }
 
+    // The world-actor spine renderer (a single-context multi-skeleton webgl layer) is an
+    // optional plugin resolved from the renderer dependency registry. When absent, every
+    // actor draws through the 2D sprite path — so this seam is fully removable.
+    getWorldActorSpineRenderer() {
+      // Explicit override (tests / future dependency injection) wins.
+      const override = global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldActorSpineRenderer');
+      if (override) return override;
+      // The shell owns the stateful spine layer renderer. The render host chain that reaches it is
+      // deeply nested (WorldActorCanvasRenderer -> WorldMapCanvasRenderer -> H5CanvasGameRenderer
+      // -> shell) and its exact shape depends on which composition built this instance, so walk
+      // the .host/.shell hops and return the first host that resolves a non-null renderer.
+      let node = this.host;
+      for (let hops = 0; node && hops < 8; hops += 1) {
+        if (node !== this && typeof node.getWorldActorSpineRenderer === 'function') {
+          const resolved = node.getWorldActorSpineRenderer();
+          if (resolved) return resolved;
+        }
+        node = node.shell || node.host || null;
+      }
+      return null;
+    }
+
+    getActorRenderScale(viewport = {}) {
+      return Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
+    }
+
+    // One-shot observability for the "still 2D" class of bug: if the world actor spine renderer
+    // never resolves through the host chain, log the exact chain once (browser only) so the break
+    // is visible without a debugger. Silent when the renderer resolves (the healthy case).
+    probeWorldActorSpineWiring(spine) {
+      if (spine || global.__worldActorSpineProbe || typeof global.window === 'undefined') return;
+      global.__worldActorSpineProbe = 1;
+      const chain = [];
+      let node = this.host;
+      for (let hops = 0; node && hops < 8; hops += 1) {
+        chain.push(node.constructor?.name || typeof node);
+        node = node.shell || node.host || null;
+      }
+      console.info(`[spine-probe] world actor spine renderer NULL — host chain: ${chain.join(' -> ') || '(no host)'}`);
+    }
+
+    buildActorSpineFrame(actor = {}, point = {}, viewport = {}) {
+      return {
+        id: actor.id || actor.missionId || '',
+        unitKey: actor.unitKey || UnitSpriteManifest?.DEFAULT_MARCH_UNIT_KEY || 'scout_squad_default',
+        facing: actor.facing || '',
+        status: actor.status || 'active',
+        x: Number(point.x) || 0,
+        y: Number(point.y) || 0,
+        scale: this.getActorRenderScale(viewport),
+      };
+    }
+
     renderActors(actors = [], viewport = {}, geometry = {}, options = {}) {
       const ctx = this.getActorRenderCtx(options);
-      const diag = this.__worldActorOverlayActiveDiag;
+      const diag = this.getActorOverlayDiag(options);
       if (diag) diag.drawnCanvasId = getCanvasId(ctx);
-      if (!Array.isArray(actors) || !actors.length) return false;
+      const spine = this.getWorldActorSpineRenderer();
+      this.probeWorldActorSpineWiring(spine);
+      if (!Array.isArray(actors) || !actors.length) {
+        spine?.syncActors?.([], viewport);
+        return false;
+      }
       let rendered = false;
+      const spineFrames = [];
       actors.forEach((actor) => {
         const point = this.getActorScreenPoint(actor, viewport, geometry);
         const targetPoint = this.getActorTargetScreenPoint(actor, viewport, geometry);
-        if (actor.status === 'active') this.drawMarchArrow(point, targetPoint, { ctx });
-        if (this.drawActorUnit(actor, point, viewport, { ctx })) rendered = true;
+        const actorRenderOptions = { ...options, ctx };
+        if (actor.status === 'active') this.drawMarchArrow(point, targetPoint, actorRenderOptions);
+        if (spine?.canRenderActor?.(actor)) {
+          spineFrames.push(this.buildActorSpineFrame(actor, point, viewport));
+          rendered = true;
+        } else if (this.drawActorUnit(actor, point, viewport, actorRenderOptions)) {
+          rendered = true;
+        }
         this.addActorHitTarget(actor, point);
       });
+      if (spine?.syncActors?.(spineFrames, viewport)) spine.renderFrame?.();
       return rendered;
     }
 
@@ -224,6 +295,10 @@
         actorId: actor.id,
         missionId: actor.missionId,
         inputSurface: 'worldMap',
+        ...(actor.combatTarget ? {
+          combatEncounterId: actor.combatTarget.encounterId,
+          combatTarget: actor.combatTarget,
+        } : {}),
       });
       return true;
     }

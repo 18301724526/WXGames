@@ -132,7 +132,7 @@ function normalizeScoutTrait(raw = {}) {
 function completeAbilitySlots(abilities = [], abilityArchetype, quality, meta, generatorInput) {
   const source = createSeedRandom(`${generatorInput.seed}:ability-kit-upgrade:${abilityArchetype}:${quality}`);
   const effectPool = generatorInput.availableEffectPool;
-  if (meta.domain === 'civil') {
+  if (meta.category === 'civil') {
     const rawPrimary = findCivilAbility(abilities, 'civilPrimary');
     const rawSecondary = findCivilAbility(
       abilities.filter((ability) => ability !== rawPrimary),
@@ -144,7 +144,7 @@ function completeAbilitySlots(abilities = [], abilityArchetype, quality, meta, g
       || createCivilAbility(abilityArchetype, 'civilSecondary', quality, source, effectPool);
     return [primary, secondary];
   }
-  if (meta.domain === 'hybrid') {
+  if (meta.category === 'hybrid') {
     const active = normalizeActiveAbility(findActiveAbility(abilities))
       || createActiveSkill('scout', quality, source, effectPool);
     const scoutTrait = normalizeScoutTrait(findAbilityBySlot(abilities, 'scoutTrait'))
@@ -171,10 +171,10 @@ function createAbilityKit(options = {}, randomSource = null) {
     });
   const randomAuthority = SkillGeneratorRandomAuthority.createSourceMetadata(source);
   const abilities = [];
-  if (meta.domain === 'civil') {
+  if (meta.category === 'civil') {
     abilities.push(createCivilAbility(abilityArchetype, 'civilPrimary', quality, source, generatorInput.availableEffectPool));
     abilities.push(createCivilAbility(abilityArchetype, 'civilSecondary', quality, source, generatorInput.availableEffectPool));
-  } else if (meta.domain === 'hybrid') {
+  } else if (meta.category === 'hybrid') {
     abilities.push(createActiveSkill('scout', quality, source, generatorInput.availableEffectPool));
     abilities.push(createScoutTrait(quality, source, generatorInput.availableEffectPool));
   } else {
@@ -186,7 +186,7 @@ function createAbilityKit(options = {}, randomSource = null) {
     archetype: abilityArchetype,
     quality,
     qualityLabel: getQualityLabel(quality),
-    domain: meta.domain,
+    category: meta.category,
     battlePolicy: meta.battlePolicy,
     source: generatorInput.source,
     seed: generatorInput.seed,
@@ -201,20 +201,8 @@ function createAbilityKit(options = {}, randomSource = null) {
   };
 }
 
-function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [], fallback = {}) {
-  const activeSkill = Array.isArray(skills) ? skills.find((skill) => skill?.type === 'battle' || skill?.kind === 'active') : null;
+function createStoredAbilityKit(archetype, abilityArchetype, quality, fallback = {}) {
   const meta = getAbilityMeta(abilityArchetype);
-  const abilities = [];
-  if (activeSkill && meta.battlePolicy === 'useBattleSkill') {
-    abilities.push({
-      ...clone(activeSkill),
-      slot: 'activeSkill',
-      kind: 'active',
-      castPolicy: activeSkill.castPolicy || 'conditional',
-      castConditions: addBaseConditions(activeSkill.castConditions),
-      generatorVersion: activeSkill.generatorVersion || 'legacy-skill',
-    });
-  }
   const generatorInput = normalizeGeneratorInput(archetype?.generatorInput, {
     abilityArchetype,
     quality,
@@ -222,7 +210,7 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
     seed: archetype?.seed || fallback.seed,
     availableEffectPool: archetype?.availableEffectPool || fallback.availableEffectPool,
   });
-  const upgradedAbilities = completeAbilitySlots(abilities, abilityArchetype, quality, meta, generatorInput);
+  const upgradedAbilities = completeAbilitySlots([], abilityArchetype, quality, meta, generatorInput);
   const budgetChecks = createBudgetChecks(upgradedAbilities);
   const randomAuthority = archetype?.randomAuthority && typeof archetype.randomAuthority === 'object'
     ? clone(archetype.randomAuthority)
@@ -231,7 +219,7 @@ function createLegacyAbilityKit(archetype, abilityArchetype, quality, skills = [
     archetype: normalizeAbilityArchetype(abilityArchetype),
     quality: normalizeQuality(quality),
     qualityLabel: getQualityLabel(quality),
-    domain: meta.domain,
+    category: meta.category,
     battlePolicy: meta.battlePolicy,
     source: generatorInput.source,
     seed: generatorInput.seed,
@@ -254,7 +242,7 @@ function normalizeAbilityKit(raw = {}, options = {}) {
   const quality = normalizeQuality(raw?.quality || options.quality);
   const meta = getAbilityMeta(abilityArchetype);
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.abilities)) {
-    return createLegacyAbilityKit(raw, abilityArchetype, quality, options.skills, options);
+    return createStoredAbilityKit(raw, abilityArchetype, quality, options);
   }
   const generatorInput = normalizeGeneratorInput(raw.generatorInput, {
     abilityArchetype,
@@ -278,7 +266,7 @@ function normalizeAbilityKit(raw = {}, options = {}) {
     archetype: abilityArchetype,
     quality,
     qualityLabel: getQualityLabel(quality),
-    domain: meta.domain,
+    category: meta.category,
     battlePolicy: meta.battlePolicy,
     source: generatorInput.source,
     seed: generatorInput.seed,
@@ -306,7 +294,7 @@ function getActiveBattleSkill(abilityKit = {}) {
 module.exports = {
   completeAbilitySlots,
   createAbilityKit,
-  createLegacyAbilityKit,
+  createStoredAbilityKit,
   findAbilityBySlot,
   getActiveBattleSkill,
   normalizeAbilityKit,

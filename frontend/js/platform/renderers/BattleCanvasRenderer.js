@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const BattleCanvasModel = (() => {
     if (global.BattleCanvasModel) return global.BattleCanvasModel;
     if (typeof module !== 'undefined' && module.exports) {
@@ -35,11 +47,39 @@
     return null;
   })();
 
-  function model(method, args = [], fallback = undefined) {
-    const fn = BattleCanvasModel?.[method];
-    if (typeof fn === 'function') return fn(...args);
-    return typeof fallback === 'function' ? fallback() : fallback;
-  }
+  const BattleCameraPolicy = (() => {
+    if (global.BattleCameraPolicy) return global.BattleCameraPolicy;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/system/BattleCameraPolicy');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // ---- entity battle (live sim) constants ----
+  // The entity battle is the 三国群英传-style mass-melee scene driven by
+  // battleSimCore. It is rendered through this canvas renderer (no DOM) for both
+  // the interactive 军令 path and the passive replay path. State lives on
+  // options.entityBattle; the app owns the sim stepping, this owns the drawing.
+  const ENTITY_STATE_POSE = { engage: 'attack', hold: 'idle', covering: 'move', advance: 'move', retreat: 'move', dead: 'die' };
+  const ENTITY_FRAMES = 4;
+  const ENTITY_FRAME_MS = 130;
+  const ENTITY_SPRITE_SCALE = 2;
+  const ENTITY_ORDER_KEYS = [
+    ['advance', 'battle.entity.order.advance'],
+    ['soldierAttack', 'battle.entity.order.soldierAttack'],
+    ['generalCharge', 'battle.entity.order.generalCharge'],
+    ['generalRetreat', 'battle.entity.order.generalRetreat'],
+    ['defend', 'battle.entity.order.defend'],
+    ['cover', 'battle.entity.order.cover'],
+  ];
+  const ENTITY_MASTER_KEYS = [
+    ['allOut', 'battle.entity.master.allOut'],
+    ['allRetreat', 'battle.entity.master.allRetreat'],
+  ];
 
   class BattleCanvasRenderer {
     constructor(options = {}) {
@@ -48,11 +88,11 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get ctx() {
@@ -63,207 +103,304 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
+    t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawCircle(...args) {
-      return this.callDrawingSurface('drawCircle', args);
-    }
-
-    drawCoverAsset(...args) {
-      return this.callDrawingSurface('drawCoverAsset', args);
-    }
-
-    drawFamousPortrait(...args) {
-      return this.callDrawingSurface('drawFamousPortrait', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getAsset(...args) {
-      return this.callDrawingSurface('getAsset', args);
-    }
-
-    getNow(...args) {
-      return this.callDrawingSurface('getNow', args);
-    }
-
-    measureTextWidth(...args) {
-      return this.callDrawingSurface('measureTextWidth', args);
-    }
-
-    setHitTargets(...args) {
-      return this.callDrawingSurface('setHitTargets', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawCircle(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawCircle === 'function' ? surface.drawCircle(...args) : this.host?.drawCircle?.(...args); }
+    drawCoverAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawCoverAsset === 'function' ? surface.drawCoverAsset(...args) : this.host?.drawCoverAsset?.(...args); }
+    drawFamousPortrait(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawFamousPortrait === 'function' ? surface.drawFamousPortrait(...args) : this.host?.drawFamousPortrait?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.getAsset === 'function' ? surface.getAsset(...args) : this.host?.getAsset?.(...args); }
+    getNow(...args) { const surface = this.drawingSurface; return surface && typeof surface.getNow === 'function' ? surface.getNow(...args) : this.host?.getNow?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    setHitTargets(...args) { const surface = this.drawingSurface; return surface && typeof surface.setHitTargets === 'function' ? surface.setHitTargets(...args) : this.host?.setHitTargets?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
 
     static getBattleUnitAssetVersion() {
-      return model('getBattleUnitAssetVersion', [], 'battle-units-split-v1-20260529');
+      const result = typeof BattleCanvasModel?.getBattleUnitAssetVersion === 'function'
+        ? BattleCanvasModel.getBattleUnitAssetVersion()
+        : undefined;
+      return result === undefined ? 'battle-units-split-v1-20260529' : result;
     }
 
     static getBattleUnitFrameCount() {
-      return model('getBattleUnitFrameCount', [], 4);
+      const result = typeof BattleCanvasModel?.getBattleUnitFrameCount === 'function'
+        ? BattleCanvasModel.getBattleUnitFrameCount()
+        : undefined;
+      return result === undefined ? 4 : result;
     }
 
     static getBattleUnitKey(side = 'attacker') {
-      return model('getBattleUnitKey', [side], side === 'attacker' ? 'player' : 'enemy');
+      const result = typeof BattleCanvasModel?.getBattleUnitKey === 'function'
+        ? BattleCanvasModel.getBattleUnitKey(side)
+        : undefined;
+      return result === undefined ? (side === 'attacker' ? 'player' : 'enemy') : result;
     }
 
     static getBattleUnitFramePath(unit = 'player', pose = 'idle', frameIndex = 0, rootPath = '') {
-      return model(
-        'getBattleUnitFramePath',
-        [unit, pose, frameIndex, rootPath],
-        'assets/art/battle/units/player/idle/01.png',
-      );
+      const result = typeof BattleCanvasModel?.getBattleUnitFramePath === 'function'
+        ? BattleCanvasModel.getBattleUnitFramePath(unit, pose, frameIndex, rootPath)
+        : undefined;
+      return result === undefined ? 'assets/art/battle/units/player/idle/01.png' : result;
     }
 
     static getBattleUnitFramePaths() {
-      return model('getBattleUnitFramePaths', [], []);
-    }
-
-    render(state = {}, options = {}) {
-      return this.renderBattleSceneOverlay(state, options);
+      const result = typeof BattleCanvasModel?.getBattleUnitFramePaths === 'function'
+        ? BattleCanvasModel.getBattleUnitFramePaths()
+        : undefined;
+      return result === undefined ? [] : result;
     }
 
     getBattleUnitPose(side, activeTurn = null, phase = 'impact') {
-      return model('getBattleUnitPose', [side, activeTurn, phase], 'idle');
+      const result =
+        typeof BattleCanvasModel?.getBattleUnitPose === 'function'
+          ? BattleCanvasModel.getBattleUnitPose(side, activeTurn, phase)
+          : undefined;
+      return result === undefined ? 'idle' : result;
     }
 
     getBattleTurnSoldierCount(turn = {}, side = 'attacker', timing = 'after', fallback = 0) {
-      return model('getBattleTurnSoldierCount', [turn, side, timing, fallback], Number(fallback) || 0);
+      const result =
+        typeof BattleCanvasModel?.getBattleTurnSoldierCount === 'function'
+          ? BattleCanvasModel.getBattleTurnSoldierCount(turn, side, timing, fallback)
+          : undefined;
+      return result === undefined ? Number(fallback) || 0 : result;
     }
 
     isBattleSideDefeatedByTurn(side = 'attacker', turn = {}) {
-      return model('isBattleSideDefeatedByTurn', [side, turn], false);
+      const result =
+        typeof BattleCanvasModel?.isBattleSideDefeatedByTurn === 'function'
+          ? BattleCanvasModel.isBattleSideDefeatedByTurn(side, turn)
+          : undefined;
+      return result === undefined ? false : result;
     }
 
     getBattlePlaybackPhase(progress = 0, activeTurn = null) {
-      return model('getBattlePlaybackPhase', [progress, activeTurn], { phase: 'ended', phaseProgress: 1 });
+      const result =
+        typeof BattleCanvasModel?.getBattlePlaybackPhase === 'function'
+          ? BattleCanvasModel.getBattlePlaybackPhase(progress, activeTurn)
+          : undefined;
+      return result === undefined ? { phase: 'ended', phaseProgress: 1 } : result;
     }
 
-    getBattleEngagementProgress(turnIndex = 0, phase = 'prepare', phaseProgress = 0, activeTurn = null) {
-      return model('getBattleEngagementProgress', [turnIndex, phase, phaseProgress, activeTurn], 1);
+    getBattleEngagementProgress(
+      turnIndex = 0,
+      phase = 'prepare',
+      phaseProgress = 0,
+      activeTurn = null,
+    ) {
+      const result =
+        typeof BattleCanvasModel?.getBattleEngagementProgress === 'function'
+          ? BattleCanvasModel.getBattleEngagementProgress(
+            turnIndex,
+            phase,
+            phaseProgress,
+            activeTurn,
+          )
+          : undefined;
+      return result === undefined ? 1 : result;
     }
 
     getBattleUnitFormationPosition(side = 'attacker', area = {}, index = 0, columns = 1) {
-      return model('getBattleUnitFormationPosition', [side, area, index, columns], { x: 0, y: 0, col: 0, row: 0 });
+      const result =
+        typeof BattleCanvasModel?.getBattleUnitFormationPosition === 'function'
+          ? BattleCanvasModel.getBattleUnitFormationPosition(side, area, index, columns)
+          : undefined;
+      return result === undefined ? { x: 0, y: 0, col: 0, row: 0 } : result;
     }
 
-    getBattleUnitEngagementPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21) {
-      return model('getBattleUnitEngagementPosition', [side, area, index, columns, scale, this.width], { x: 0, y: 0, scale });
+    getBattleUnitEngagementPosition(
+      side = 'attacker',
+      area = {},
+      index = 0,
+      columns = 1,
+      scale = 0.21,
+    ) {
+      const result =
+        typeof BattleCanvasModel?.getBattleUnitEngagementPosition === 'function'
+          ? BattleCanvasModel.getBattleUnitEngagementPosition(
+            side,
+            area,
+            index,
+            columns,
+            scale,
+            this.width,
+          )
+          : undefined;
+      return result === undefined ? { x: 0, y: 0, scale } : result;
     }
 
     easeBattleUnitProgress(progress = 0) {
-      return model('easeBattleUnitProgress', [progress], 0);
+      const result =
+        typeof BattleCanvasModel?.easeBattleUnitProgress === 'function'
+          ? BattleCanvasModel.easeBattleUnitProgress(progress)
+          : undefined;
+      return result === undefined ? 0 : result;
     }
 
     getBattleUnitEngagementDelay(index = 0) {
-      return model('getBattleUnitEngagementDelay', [index], 0);
+      const result =
+        typeof BattleCanvasModel?.getBattleUnitEngagementDelay === 'function'
+          ? BattleCanvasModel.getBattleUnitEngagementDelay(index)
+          : undefined;
+      return result === undefined ? 0 : result;
     }
 
     getBattleUnitEngagementRatio(index = 0, engagementProgress = 1) {
-      return model('getBattleUnitEngagementRatio', [index, engagementProgress], 1);
+      const result =
+        typeof BattleCanvasModel?.getBattleUnitEngagementRatio === 'function'
+          ? BattleCanvasModel.getBattleUnitEngagementRatio(index, engagementProgress)
+          : undefined;
+      return result === undefined ? 1 : result;
     }
 
-    getBattleUnitBattlefieldPosition(side = 'attacker', area = {}, index = 0, columns = 1, scale = 0.21, engagementProgress = 1) {
-      return model(
-        'getBattleUnitBattlefieldPosition',
-        [side, area, index, columns, scale, engagementProgress, this.width],
-        { x: 0, y: 0, formation: {}, engaged: {}, ratio: 1 },
-      );
+    getBattleUnitBattlefieldPosition(
+      side = 'attacker',
+      area = {},
+      index = 0,
+      columns = 1,
+      scale = 0.21,
+      engagementProgress = 1,
+    ) {
+      const result =
+        typeof BattleCanvasModel?.getBattleUnitBattlefieldPosition === 'function'
+          ? BattleCanvasModel.getBattleUnitBattlefieldPosition(
+            side,
+            area,
+            index,
+            columns,
+            scale,
+            engagementProgress,
+            this.width,
+          )
+          : undefined;
+      return result === undefined ? { x: 0, y: 0, formation: {}, engaged: {}, ratio: 1 } : result;
     }
 
     getBattleUnitSpec(side = 'attacker', spritePath = '') {
-      return model('getBattleUnitSpec', [side, spritePath], {
-        unit: 'player',
-        root: 'assets/art/battle/units/player',
-        frameCount: this.constructor.getBattleUnitFrameCount(),
-        width: 500,
-        height: 400,
-      });
+      const result =
+        typeof BattleCanvasModel?.getBattleUnitSpec === 'function'
+          ? BattleCanvasModel.getBattleUnitSpec(side, spritePath)
+          : undefined;
+      return result === undefined
+        ? {
+          unit: 'player',
+          root: 'assets/art/battle/units/player',
+          frameCount: this.constructor.getBattleUnitFrameCount(),
+          width: 500,
+          height: 400,
+        }
+        : result;
     }
 
     getBattleFramePose(pose = 'idle') {
-      return model('getBattleFramePose', [pose], 'idle');
+      const result =
+        typeof BattleCanvasModel?.getBattleFramePose === 'function'
+          ? BattleCanvasModel.getBattleFramePose(pose)
+          : undefined;
+      return result === undefined ? 'idle' : result;
     }
 
     getBattleFrameIndex(pose = 'idle', frame = 0, progress = 0) {
-      return model('getBattleFrameIndex', [pose, frame, progress], 0);
+      const result =
+        typeof BattleCanvasModel?.getBattleFrameIndex === 'function'
+          ? BattleCanvasModel.getBattleFrameIndex(pose, frame, progress)
+          : undefined;
+      return result === undefined ? 0 : result;
     }
 
-    getBattleFrameSpritePath(side = 'attacker', pose = 'idle', frame = 0, spritePath = '', progress = 0) {
-      return model(
-        'getBattleFrameSpritePath',
-        [side, pose, frame, spritePath, progress],
-        'assets/art/battle/units/player/idle/01.png',
-      );
+    getBattleFrameSpritePath(
+      side = 'attacker',
+      pose = 'idle',
+      frame = 0,
+      spritePath = '',
+      progress = 0,
+    ) {
+      const result =
+        typeof BattleCanvasModel?.getBattleFrameSpritePath === 'function'
+          ? BattleCanvasModel.getBattleFrameSpritePath(side, pose, frame, spritePath, progress)
+          : undefined;
+      return result === undefined ? 'assets/art/battle/units/player/idle/01.png' : result;
     }
 
     getBattleSideSpritePath(sideView = {}, side = 'attacker') {
-      return model('getBattleSideSpritePath', [sideView, side], 'assets/art/battle/units/player');
+      const result =
+        typeof BattleCanvasModel?.getBattleSideSpritePath === 'function'
+          ? BattleCanvasModel.getBattleSideSpritePath(sideView, side)
+          : undefined;
+      return result === undefined ? 'assets/art/battle/units/player' : result;
     }
 
     getBattleStatusBadgeColors(tone = 'status') {
-      return model('getBattleStatusBadgeColors', [tone], {
-        fill: 'rgba(52, 43, 76, 0.84)',
-        stroke: 'rgba(217, 198, 255, 0.50)',
-        color: '#dfd2ff',
-      });
+      const result =
+        typeof BattleCanvasModel?.getBattleStatusBadgeColors === 'function'
+          ? BattleCanvasModel.getBattleStatusBadgeColors(tone)
+          : undefined;
+      return result === undefined
+        ? {
+          fill: 'rgba(52, 43, 76, 0.84)',
+          stroke: 'rgba(217, 198, 255, 0.50)',
+          color: '#dfd2ff',
+        }
+        : result;
     }
 
     getBattleTurnDamage(turn = null) {
-      return model('getBattleTurnDamage', [turn], 0);
+      const result =
+        typeof BattleCanvasModel?.getBattleTurnDamage === 'function'
+          ? BattleCanvasModel.getBattleTurnDamage(turn)
+          : undefined;
+      return result === undefined ? 0 : result;
     }
 
     getBattleDamageFloatText(turn = null) {
-      return model('getBattleDamageFloatText', [turn], '');
+      const result =
+        typeof BattleCanvasModel?.getBattleDamageFloatText === 'function'
+          ? BattleCanvasModel.getBattleDamageFloatText(turn)
+          : undefined;
+      return result === undefined ? '' : result;
     }
 
     getBattleScenePlayback(battleScene = {}, now = 0) {
-      return model('getBattleScenePlayback', [battleScene, now], {
-        frame: Math.floor((now || 0) / 140),
-        requestedTurnIndex: 0,
-        rawActiveTurn: null,
-        playback: { phase: 'ended', phaseProgress: 1 },
-      });
+      const result =
+        typeof BattleCanvasModel?.getBattleScenePlayback === 'function'
+          ? BattleCanvasModel.getBattleScenePlayback(battleScene, now)
+          : undefined;
+      return result === undefined
+        ? {
+          frame: Math.floor((now || 0) / 140),
+          requestedTurnIndex: 0,
+          rawActiveTurn: null,
+          playback: { phase: 'ended', phaseProgress: 1 },
+        }
+        : result;
     }
 
     getBattleSceneLayout(width = this.width, height = this.height) {
-      return model('getBattleSceneLayout', [width, height], {
-        topY: 20,
-        fieldTop: 116,
-        logH: 122,
-        logY: height - 192,
-        attackerArea: { x: 18, y: 254, width: Math.min(170, width * 0.42), height: 320 },
-        defenderArea: { x: width - Math.min(170, width * 0.42) - 18, y: 254, width: Math.min(170, width * 0.42), height: 320 },
-        buttonY: height - 54,
-      });
+      const result =
+        typeof BattleCanvasModel?.getBattleSceneLayout === 'function'
+          ? BattleCanvasModel.getBattleSceneLayout(width, height)
+          : undefined;
+      return result === undefined
+        ? {
+          topY: 20,
+          fieldTop: 116,
+          logH: 122,
+          logY: height - 192,
+          attackerArea: { x: 18, y: 254, width: Math.min(170, width * 0.42), height: 320 },
+          defenderArea: {
+            x: width - Math.min(170, width * 0.42) - 18,
+            y: 254,
+            width: Math.min(170, width * 0.42),
+            height: 320,
+          },
+          buttonY: height - 54,
+        }
+        : result;
     }
 
     drawBattleMapBackground(map = {}) {
@@ -274,9 +411,21 @@
       this.ctx.fillRect(0, 0, this.width, this.height);
     }
 
-    drawBattleSoldierFrame(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '', progress = 0) {
+    drawBattleSoldierFrame(
+      x,
+      y,
+      side = 'attacker',
+      pose = 'idle',
+      frame = 0,
+      ratio = 1,
+      scale = 0.22,
+      spritePath = '',
+      progress = 0,
+    ) {
       const spec = this.getBattleUnitSpec(side, spritePath);
-      const image = this.getAsset(this.getBattleFrameSpritePath(side, pose, frame, spritePath, progress));
+      const image = this.getAsset(
+        this.getBattleFrameSpritePath(side, pose, frame, spritePath, progress),
+      );
       if (!image || typeof this.ctx?.drawImage !== 'function') return false;
       const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
       this.ctx.globalAlpha = previousAlpha * Math.max(0.25, Math.min(1, Number(ratio) || 1));
@@ -294,9 +443,11 @@
 
     drawBattleHitFlash(image, options = {}) {
       if (options.pose !== 'hit' || typeof this.ctx?.filter !== 'string') return;
-      const flashAlpha = Math.sin(Math.max(0, Math.min(1, Number(options.progress) || 0)) * Math.PI) * 0.36;
+      const flashAlpha =
+        Math.sin(Math.max(0, Math.min(1, Number(options.progress) || 0)) * Math.PI) * 0.36;
       if (flashAlpha <= 0.01) return;
-      const alpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : options.previousAlpha;
+      const alpha =
+        typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : options.previousAlpha;
       const previousFilter = this.ctx.filter;
       this.ctx.globalAlpha = alpha * flashAlpha;
       this.ctx.filter = 'brightness(2.4) saturate(0)';
@@ -314,30 +465,66 @@
       this.ctx.globalAlpha = previousAlpha;
     }
 
-    drawBattleSoldierSprite(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22, spritePath = '', progress = 0) {
-      if (this.drawBattleSoldierFrame(x, y, side, pose, frame, ratio, scale, spritePath, progress)) return;
+    drawBattleSoldierSprite(
+      x,
+      y,
+      side = 'attacker',
+      pose = 'idle',
+      frame = 0,
+      ratio = 1,
+      scale = 0.22,
+      spritePath = '',
+      progress = 0,
+    ) {
+      if (
+        this.drawBattleSoldierFrame(x, y, side, pose, frame, ratio, scale, spritePath, progress)
+      )
+        return;
       this.drawBattleSoldierFallback(x, y, side, ratio);
     }
 
-    drawBattleSoldier(x, y, side = 'attacker', pose = 'idle', frame = 0, ratio = 1, scale = 0.22) {
+    drawBattleSoldier(
+      x,
+      y,
+      side = 'attacker',
+      pose = 'idle',
+      frame = 0,
+      ratio = 1,
+      scale = 0.22,
+    ) {
       return this.drawBattleSoldierSprite(x, y, side, pose, frame, ratio, scale);
     }
 
     drawBattleArmy(sideView = {}, area = {}, options = {}) {
       const groups = sideView.groups || [];
       const pose = options.pose || 'idle';
-      const visualGroups = groups.length || !(pose === 'die' || pose === 'defeated') ? groups : [{ ratio: 1, soldiers: 0, capacity: 1 }];
+      const visualGroups =
+        groups.length || !(pose === 'die' || pose === 'defeated')
+          ? groups
+          : [{ ratio: 1, soldiers: 0, capacity: 1 }];
       const side = sideView.side || 'attacker';
       const frame = Number(options.frame) || 0;
       const progress = Math.max(0, Math.min(1, Number(options.progress) || 0));
-      const engagementProgress = Math.max(0, Math.min(1, Number(options.engagementProgress ?? 1) || 0));
+      const engagementProgress = Math.max(
+        0,
+        Math.min(1, Number(options.engagementProgress ?? 1) || 0),
+      );
       const actionType = options.actionType || '';
       const columns = Math.max(1, Math.floor(area.width / 34));
-      const activeCount = pose === 'idle' ? 0 : Math.min(visualGroups.length, actionType === 'skill' ? 5 : 3);
-      const hitOffset = pose === 'hit' ? Math.sin(frame * 2.2) * 5 * (side === 'attacker' ? 1 : -1) : 0;
+      const activeCount =
+        pose === 'idle' ? 0 : Math.min(visualGroups.length, actionType === 'skill' ? 5 : 3);
+      const hitOffset =
+        pose === 'hit' ? Math.sin(frame * 2.2) * 5 * (side === 'attacker' ? 1 : -1) : 0;
       visualGroups.slice(0, 18).forEach((group, index) => {
         const active = index < activeCount;
-        const position = this.getBattleUnitBattlefieldPosition(side, area, index, columns, active ? 0.245 : 0.21, engagementProgress);
+        const position = this.getBattleUnitBattlefieldPosition(
+          side,
+          area,
+          index,
+          columns,
+          active ? 0.245 : 0.21,
+          engagementProgress,
+        );
         this.drawBattleSoldierSprite(
           position.x + (active ? hitOffset * Math.max(0, 1 - index * 0.12) : 0),
           position.y,
@@ -355,18 +542,28 @@
 
     drawBattleArmyCount(sideView = {}, area = {}, side = 'attacker', groupCount = 0) {
       if (groupCount > 18) {
-        this.drawText(`+${groupCount - 18}`, side === 'attacker' ? area.x + area.width - 28 : area.x + 10, area.y + area.height - 22, {
+        this.drawText(
+          `+${groupCount - 18}`,
+          side === 'attacker' ? area.x + area.width - 28 : area.x + 10,
+          area.y + area.height - 22,
+          {
+            size: 12,
+            bold: true,
+            color: '#f6e8c8',
+          },
+        );
+      }
+      this.drawText(
+        `${sideView.soldiers || 0}/${sideView.soldiersStart || 0}`,
+        area.x + area.width / 2,
+        area.y + area.height + 6,
+        {
           size: 12,
           bold: true,
-          color: '#f6e8c8',
-        });
-      }
-      this.drawText(`${sideView.soldiers || 0}/${sideView.soldiersStart || 0}`, area.x + area.width / 2, area.y + area.height + 6, {
-        size: 12,
-        bold: true,
-        color: side === 'attacker' ? '#74d3a0' : '#e07b62',
-        align: 'center',
-      });
+          color: side === 'attacker' ? '#74d3a0' : '#e07b62',
+          align: 'center',
+        },
+      );
     }
 
     drawBattleSideState(sideView = {}, area = {}, side = 'attacker') {
@@ -380,29 +577,55 @@
         inset: 'rgba(255, 231, 184, 0.06)',
       });
       const skillState = sideView.skillState || null;
-      const skillName = skillState?.skillName ? this.truncateText(skillState.skillName, panelWidth - 82, { size: 11, bold: true }) : '\u65e0\u6218\u6cd5';
-      const stateText = skillState?.stateText || '\u53ea\u666e\u653b';
-      this.drawText(skillName, x + 10, y + 11, { size: 11, bold: true, color: skillState?.active ? '#ffe6b5' : '#cbbd96' });
-      this.drawText(this.truncateText(stateText, 68, { size: 10, bold: true }), x + panelWidth - 10, y + 11, {
-        size: 10,
+      const skillName = skillState?.skillName
+        ? this.truncateText(skillState.skillName, panelWidth - 82, { size: 11, bold: true })
+        : this.t('battle.skill.none', {});
+      const stateText = skillState?.stateText || this.t('battle.skill.basicOnly', {});
+      this.drawText(skillName, x + 10, y + 11, {
+        size: 11,
         bold: true,
-        color: skillState?.state === 'ready' ? '#74d3a0' : (skillState?.state === 'casting' ? '#ffd66e' : '#aeb0b8'),
-        align: 'right',
+        color: skillState?.active ? '#ffe6b5' : '#cbbd96',
       });
+      this.drawText(
+        this.truncateText(stateText, 68, { size: 10, bold: true }),
+        x + panelWidth - 10,
+        y + 11,
+        {
+          size: 10,
+          bold: true,
+          color:
+            skillState?.state === 'ready'
+              ? '#74d3a0'
+              : skillState?.state === 'casting'
+                ? '#ffd66e'
+                : '#aeb0b8',
+          align: 'right',
+        },
+      );
       this.drawBattleStatusBadges(sideView.statuses, x, y, panelWidth);
     }
 
     drawBattleStatusBadges(statuses = [], x = 0, y = 0, panelWidth = 140) {
       const list = Array.isArray(statuses) ? statuses : [];
       if (!list.length) {
-        this.drawText('\u72b6\u6001\uff1a\u65e0', x + 10, y + 42, { size: 11, color: '#8d8f99' });
+        this.drawText(this.t('battle.status.noneLine', {}), x + 10, y + 42, {
+          size: 11,
+          color: '#8d8f99',
+        });
         return;
       }
       let cursorX = x + 10;
       let cursorY = y + 40;
       list.slice(0, 4).forEach((status) => {
-        const label = this.truncateText(status.text || status.label || '\u72b6\u6001', 68, { size: 10, bold: true });
-        const width = Math.min(74, Math.max(38, this.measureTextWidth(label, { size: 10, bold: true }) + 14));
+        const label = this.truncateText(
+          status.text || status.label || this.t('battle.status.default', {}),
+          68,
+          { size: 10, bold: true },
+        );
+        const width = Math.min(
+          74,
+          Math.max(38, this.measureTextWidth(label, { size: 10, bold: true }) + 14),
+        );
         if (cursorX + width > x + panelWidth - 8) {
           cursorX = x + 10;
           cursorY += 20;
@@ -424,6 +647,10 @@
         });
         cursorX += width + 5;
       });
+    }
+
+    render(state = {}, options = {}) {
+      return this.renderBattleSceneOverlay(state, options);
     }
 
     drawBattleActionEffect(activeTurn = null, progress = 0) {
@@ -473,7 +700,14 @@
         stroke: 'rgba(255, 226, 177, 0.5)',
         width: 2,
       });
-      this.drawText(String(sideView.leaderName || sideView.name || '\u5c06').slice(0, 1), x, y, {
+      this.drawText(
+        String(sideView.leaderName || sideView.name || this.t('battle.fallback.general')).slice(
+          0,
+          1,
+        ),
+        x,
+        y,
+        {
         size: 22,
         bold: true,
         color: '#f6e8c8',
@@ -520,7 +754,7 @@
       });
       const total = Math.max(1, view.turnCount || 1);
       const current = view.ended ? total : Math.min((view.turnIndex ?? requestedTurnIndex) + 1, total);
-      const turnText = '\u7b2c' + current + '/' + total + ' \u624b';
+      const turnText = this.t('battle.turnCounter', { current, total });
       this.drawText(`${turnText} - ${view.resultText || ''}`, this.width / 2, layout.topY + 40, {
         size: 12,
         color: '#d6b16e',
@@ -558,7 +792,7 @@
         stroke: 'rgba(255, 226, 177, 0.18)',
         radius: 10,
       });
-      const lines = view.logLines?.length ? view.logLines : ['\u53cc\u65b9\u5217\u9635\uff0c\u6218\u6597\u5373\u5c06\u5f00\u59cb\u3002'];
+      const lines = view.logLines?.length ? view.logLines : [this.t('battle.log.start', {})];
       lines.slice(-4).forEach((line, index, list) => {
         this.drawText(this.truncateText(line, this.width - 56, { size: 12 }), 28, layout.logY + 14 + index * 24, {
           size: 12,
@@ -569,11 +803,397 @@
 
     drawBattleSceneButtons(view = {}) {
       const layout = this.getBattleSceneLayout(this.width, this.height);
-      this.drawButton(18, layout.buttonY, 88, 36, '\u8fd4\u56de', { size: 12, radius: 8 });
+      this.drawButton(18, layout.buttonY, 88, 36, this.t('common.back', {}), { size: 12, radius: 8 });
       this.addHitTarget({ x: 18, y: layout.buttonY, width: 88, height: 36 }, { type: 'closeBattleScene' });
-      const primaryLabel = view.ended ? '\u5b8c\u6210' : '\u8df3\u8fc7';
+      const primaryLabel = view.ended ? this.t('common.done', {}) : this.t('common.skip', {});
       this.drawButton(this.width - 106, layout.buttonY, 88, 36, primaryLabel, { size: 12, radius: 8, active: true });
       this.addHitTarget({ x: this.width - 106, y: layout.buttonY, width: 88, height: 36 }, { type: view.ended ? 'closeBattleScene' : 'skipBattleScene' });
+    }
+
+    // ============================================================
+    // Entity battle (battleSimCore live sim) — pure canvas overlay.
+    // ============================================================
+    getEntityBattleCore() {
+      const view = (typeof window !== 'undefined' ? window : globalThis);
+      return view.BattleSimCore || null;
+    }
+
+    getEntityBattleLayout(entityBattle = {}) {
+      const W = this.width;
+      const H = this.height;
+      const hudH = 30;
+      const panelH = entityBattle.mode === 'interactive'
+        ? Math.min(260, Math.max(184, Math.round(H * 0.42)))
+        : 60;
+      const stageTop = hudH;
+      const stageBottom = H - panelH;
+      return { W, H, hudH, panelH, stageTop, stageBottom, stageH: Math.max(40, stageBottom - stageTop) };
+    }
+
+    renderEntityBattleOverlay(_state = {}, options = {}) {
+      const entityBattle = options.entityBattle;
+      if (!entityBattle || !entityBattle.visible || !entityBattle.battle) return;
+      const layout = this.getEntityBattleLayout(entityBattle);
+      const renderContext = this.getEntityBattleRenderContext(entityBattle, layout);
+      this.setHitTargets([]);
+      this.drawEntityBattleBackground(entityBattle, layout, renderContext);
+      this.drawEntityBattleField(entityBattle, layout, renderContext);
+      this.drawEntityBattleTopHud(entityBattle, layout);
+      if (entityBattle.mode === 'interactive') this.drawEntityBattleControls(entityBattle, layout);
+      else this.drawEntityReplayControls(entityBattle, layout);
+      if (entityBattle.ended) this.drawEntityBattleResult(entityBattle, layout);
+    }
+
+    getEntityBattleRenderContext(entityBattle = {}, layout = {}) {
+      const arena = entityBattle.arena || { w: layout.W, h: layout.stageH };
+      const stage = { x: 0, y: layout.stageTop, w: layout.W, h: layout.stageH };
+      const arenaW = Math.max(1, Number(arena.w) || layout.W || 1);
+      const arenaH = Math.max(1, Number(arena.h) || layout.stageH || 1);
+      const fit = BattleCameraPolicy
+        ? BattleCameraPolicy.computeFit({ w: arenaW, h: arenaH }, stage)
+        : {
+          scale: Math.min(layout.W / arenaW, layout.stageH / arenaH) || 1,
+          contentW: arenaW * (Math.min(layout.W / arenaW, layout.stageH / arenaH) || 1),
+          contentH: arenaH * (Math.min(layout.W / arenaW, layout.stageH / arenaH) || 1),
+          stageX: 0,
+          stageY: layout.stageTop,
+          stageW: layout.W,
+          stageH: layout.stageH,
+        };
+      entityBattle._viewFit = fit;
+      const camera = entityBattle.camera || { zoom: 1, offsetX: 0, offsetY: 0 };
+      const transform = BattleCameraPolicy
+        ? BattleCameraPolicy.getViewTransform(camera, fit)
+        : {
+          scale: fit.scale,
+          offsetX: (layout.W - arenaW * fit.scale) / 2,
+          offsetY: layout.stageTop + (layout.stageH - arenaH * fit.scale) / 2,
+        };
+      return {
+        layout,
+        arena: { ...arena, w: arenaW, h: arenaH },
+        stage,
+        fit,
+        camera,
+        transform,
+      };
+    }
+
+    withEntityBattleStageClip(renderContext = {}, draw = null) {
+      if (typeof draw !== 'function') return undefined;
+      const ctx = this.ctx;
+      const stage = renderContext.stage || {};
+      const canClip = ctx
+        && typeof ctx.save === 'function'
+        && typeof ctx.restore === 'function'
+        && typeof ctx.beginPath === 'function'
+        && typeof ctx.rect === 'function'
+        && typeof ctx.clip === 'function';
+      if (!canClip) return draw();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(stage.x, stage.y, stage.w, stage.h);
+      ctx.clip();
+      try {
+        return draw();
+      } finally {
+        ctx.restore();
+      }
+    }
+
+    drawEntityBattleBackground(entityBattle = {}, layout = {}, renderContext = null) {
+      const path = entityBattle.bgPath || 'assets/art/battle/battlefield-forest-camp.png';
+      const ctx = this.ctx;
+      if (!ctx) {
+        this.drawCoverAsset(path, 0, 0, this.width, this.height);
+        return;
+      }
+      ctx.fillStyle = '#0c1116';
+      ctx.fillRect(0, 0, this.width, this.height);
+      const context = renderContext || this.getEntityBattleRenderContext(entityBattle, layout);
+      const stage = context.stage || { x: 0, y: layout.stageTop || 0, w: layout.W || this.width, h: layout.stageH || this.height };
+      this.withEntityBattleStageClip(context, () => {
+        const scale = Number(context.transform?.scale) || 1;
+        const x = Number(context.transform?.offsetX) || 0;
+        const y = Number(context.transform?.offsetY) || 0;
+        const w = Math.max(1, (Number(context.arena?.w) || stage.w || this.width || 1) * scale);
+        const h = Math.max(1, (Number(context.arena?.h) || stage.h || this.height || 1) * scale);
+        if (this.drawCoverAsset(path, x, y, w, h)) return;
+        ctx.fillStyle = '#1d2119';
+        ctx.fillRect(stage.x, stage.y, stage.w, stage.h);
+      });
+    }
+
+    drawEntityBattleField(entityBattle = {}, layout = {}, renderContext = null) {
+      const ctx = this.ctx;
+      if (!ctx) return;
+      const battle = entityBattle.battle;
+      // Camera: the pure policy owns fit + zoom/pan math; the renderer only reads
+      // the resulting transform. _viewFit is stashed for the input layer so it can
+      // map screen<->world for zoom-at-cursor / pan without recomputing layout.
+      const context = renderContext || this.getEntityBattleRenderContext(entityBattle, layout);
+      const transform = context.transform;
+      const scale = transform.scale;
+      const offX = transform.offsetX;
+      const offY = transform.offsetY;
+      const now = this.getNow();
+      const base = (now / ENTITY_FRAME_MS) | 0;
+      const rstate = entityBattle._rstate || (entityBattle._rstate = {});
+      const units = battle.units || [];
+      this.withEntityBattleStageClip(context, () => {
+        const draw = [];
+        for (let i = 0; i < units.length; i += 1) {
+          const u = units[i];
+          if (!u || !u.alive || u.left) continue;
+          const rs = rstate[u.id] || (rstate[u.id] = { fx: u.side === 0 ? 1 : -1, px: u.x });
+          if (u.x > rs.px + 0.05) rs.fx = 1;
+          else if (u.x < rs.px - 0.05) rs.fx = -1;
+          rs.px = u.x;
+          draw.push(u);
+        }
+        draw.sort((a, b) => a.y - b.y);
+        for (let j = 0; j < draw.length; j += 1) {
+          const d = draw[j];
+          const h = (d.kind === 'general' ? 46 : 16) * scale * ENTITY_SPRITE_SCALE;
+          const w = Math.round((h * 500) / 400);
+          const x = offX + d.x * scale;
+          const y = offY + d.y * scale;
+          const side = d.side === 0 ? 'player' : 'enemy';
+          const pose = ENTITY_STATE_POSE[d.state] || 'move';
+          const frameIdx = (base + (d.id % ENTITY_FRAMES)) % ENTITY_FRAMES;
+          const path = `assets/art/battle/units/${side}/${pose}/${String(frameIdx + 1).padStart(2, '0')}.png`;
+          const img = this.getAsset(path);
+          let drew = false;
+          if (img && (img.naturalWidth || img.width)) {
+            if (rstate[d.id].fx < 0) {
+              ctx.save();
+              ctx.translate(x, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(img, -w / 2, y - h, w, h);
+              ctx.restore();
+            } else {
+              ctx.drawImage(img, x - w / 2, y - h, w, h);
+            }
+            drew = true;
+          }
+          if (!drew) {
+            ctx.fillStyle = d.side === 0 ? '#f0564b' : '#4a9bf0';
+            ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+          }
+          if (d.kind === 'general') {
+            ctx.fillStyle = d.side === 0 ? '#3fb950' : '#f0c000';
+            ctx.fillRect(x - 2, y - h - 6, 4, 4);
+          }
+        }
+      });
+    }
+
+    drawEntityBattleTopHud(entityBattle = {}, layout = {}) {
+      const Core = this.getEntityBattleCore();
+      const battle = entityBattle.battle;
+      const counts = Core && typeof Core.countOnField === 'function' ? Core.countOnField(battle) : [0, 0];
+      this.drawPanel(8, 4, layout.W - 16, layout.hudH - 6, {
+        fill: 'rgba(0, 0, 0, 0.5)',
+        stroke: 'rgba(255, 226, 177, 0.18)',
+        radius: 6,
+      });
+      const midY = 4 + (layout.hudH - 6) / 2;
+      this.drawText(this.t('battle.entity.top.tick', { tick: battle.tick || 0 }), 16, midY, { size: 11, color: '#58a6ff', baseline: 'middle' });
+      this.drawText(this.t('battle.entity.top.allyCount', { count: counts[0] || 0 }), 92, midY, { size: 11, color: '#3fb950', baseline: 'middle' });
+      this.drawText(this.t('battle.entity.top.enemyCount', { count: counts[1] || 0 }), 168, midY, { size: 11, color: '#f0c000', baseline: 'middle' });
+      this.drawText(entityBattle.status || this.t('battle.entity.status.fighting', {}), layout.W - 16, midY, {
+        size: 11,
+        color: entityBattle.statusColor || '#d29922',
+        align: 'right',
+        baseline: 'middle',
+      });
+    }
+
+    drawEntityButtonRow(label, items = [], x = 0, y = 0, maxW = 0) {
+      const labelW = 52;
+      const btnH = 26;
+      const gap = 5;
+      this.drawText(label, x, y + btnH / 2, { size: 11, color: '#8b98a5', baseline: 'middle' });
+      let cx = x + labelW;
+      let cy = y;
+      items.forEach((item) => {
+        const tw = this.measureTextWidth(item.label, { size: 12 }) + 16;
+        const bw = Math.max(40, Math.min(maxW - labelW, tw));
+        if (cx + bw > x + maxW) {
+          cx = x + labelW;
+          cy += btnH + gap;
+        }
+        this.drawButton(cx, cy, bw, btnH, item.label, {
+          size: 12,
+          radius: 6,
+          active: Boolean(item.active),
+          disabled: Boolean(item.disabled),
+        });
+        if (!item.disabled && item.action) {
+          this.addHitTarget({ x: cx, y: cy, width: bw, height: btnH }, item.action);
+        }
+        cx += bw + gap;
+      });
+      return cy + btnH + gap;
+    }
+
+    drawEntityBattleControls(entityBattle = {}, layout = {}) {
+      const Core = this.getEntityBattleCore();
+      const battle = entityBattle.battle;
+      const top = layout.H - layout.panelH;
+      this.drawPanel(0, top, layout.W, layout.panelH, {
+        fill: 'rgba(22, 27, 34, 0.96)',
+        stroke: 'rgba(255, 226, 177, 0.12)',
+        radius: 0,
+      });
+      const pad = 10;
+      const x = pad;
+      const maxW = layout.W - pad * 2;
+      let y = top + 8;
+      const tickHz = entityBattle.tickHz || 20;
+      const disabled = Boolean(battle.result) || Boolean(entityBattle.ended);
+      const squads = battle.squads || {};
+
+      const genItems = [];
+      Object.keys(squads).forEach((gid) => {
+        if (squads[gid].side !== 0) return;
+        genItems.push({
+          label: gid,
+          active: gid === entityBattle.selectedGid,
+          action: { type: 'entityBattleSelectGeneral', gid },
+        });
+      });
+      y = this.drawEntityButtonRow(this.t('battle.entity.row.selectGeneral', {}), genItems, x, y, maxW);
+
+      const sq = squads[entityBattle.selectedGid];
+
+      const orderItems = ENTITY_ORDER_KEYS.map((pair) => {
+        const cd = sq ? (sq.orderCdLeft || 0) : 0;
+        const labelCd = cd > 0 ? ` (${Math.ceil(cd / tickHz)}s)` : '';
+        return {
+          label: this.t(pair[1]) + labelCd,
+          disabled: disabled || cd > 0 || !sq,
+          action: { type: 'entityBattleOrder', gid: entityBattle.selectedGid, order: pair[0] },
+        };
+      });
+      y = this.drawEntityButtonRow(this.t('battle.entity.row.singleOrder', {}), orderItems, x, y, maxW);
+
+      const masterItems = ENTITY_MASTER_KEYS.map((pair) => {
+        const used = battle.masterUsed && battle.masterUsed[0] && battle.masterUsed[0][pair[0]];
+        return {
+          label: this.t(pair[1]),
+          active: true,
+          disabled: disabled || Boolean(used),
+          action: { type: 'entityBattleMaster', order: pair[0] },
+        };
+      });
+      y = this.drawEntityButtonRow(this.t('battle.entity.row.masterOrder', {}), masterItems, x, y, maxW);
+
+      const gen = sq ? battle.units[sq.generalId] : null;
+      const rageMax = battle.config && battle.config.rageMax;
+      const skillItems = [];
+      ((gen && gen.skills) || []).forEach((sk, idx) => {
+        const ready = Core && typeof Core.skillReady === 'function' ? Core.skillReady(battle, gen, sk, idx) : false;
+        const info = sk.kind === 'ultimate'
+          ? this.t(
+            'battle.entity.skill.rage',
+            { rage: Math.floor(gen.rage || 0), cost: sk.rageCost || rageMax })
+          : ((gen.skillCds && gen.skillCds[idx] > 0)
+            ? `${Math.ceil(gen.skillCds[idx] / tickHz)}s`
+            : this.t('common.ready', {}));
+        skillItems.push({
+          label: `${sk.name}[${info}]${sk.auto ? this.t('battle.entity.skill.autoSuffix', {}) : ''}`,
+          disabled: disabled || !ready,
+          action: { type: 'entityBattleSkill', gid: entityBattle.selectedGid, skillId: sk.id },
+        });
+      });
+      if (!skillItems.length) skillItems.push({ label: this.t('battle.entity.skill.none', {}), disabled: true });
+      this.drawEntityButtonRow(this.t('battle.entity.row.skill', {}), skillItems, x, y, maxW);
+
+      // Bottom row (anchored): 自动 托管 toggle + 完成 (only after the battle ends).
+      const bh = 28;
+      const by = layout.H - bh - 8;
+      const autoLabel = this.t(
+        'battle.entity.auto',
+        { state: entityBattle.auto ? this.t('common.enabled', {}) : this.t('common.disabled', {}) });
+      const autoW = Math.max(72, this.measureTextWidth(autoLabel, { size: 12 }) + 18);
+      this.drawButton(x, by, autoW, bh, autoLabel, { size: 12, radius: 6, active: Boolean(entityBattle.auto) });
+      this.addHitTarget({ x, y: by, width: autoW, height: bh }, { type: 'entityBattleAuto' });
+      if (entityBattle.ended) {
+        const dw = 88;
+        const dx = layout.W - dw - pad;
+        this.drawButton(dx, by, dw, bh, this.t('common.done', {}), { size: 13, radius: 6, active: true });
+        this.addHitTarget({ x: dx, y: by, width: dw, height: bh }, { type: 'entityBattleDone' });
+      }
+    }
+
+    drawEntityReplayControls(entityBattle = {}, layout = {}) {
+      const top = layout.H - layout.panelH;
+      this.drawPanel(0, top, layout.W, layout.panelH, {
+        fill: 'rgba(0, 0, 0, 0.5)',
+        stroke: 'rgba(255, 226, 177, 0.1)',
+        radius: 0,
+      });
+      const bh = 32;
+      const bw = 76;
+      const by = top + (layout.panelH - bh) / 2;
+      const summary = (entityBattle.report && entityBattle.report.summary) || '';
+      this.drawText(this.truncateText(summary, layout.W - bw * 2 - 40, { size: 12 }), 14, top + layout.panelH / 2, {
+        size: 12,
+        color: '#cbd5e1',
+        baseline: 'middle',
+      });
+      const doneX = layout.W - bw - 12;
+      this.drawButton(doneX, by, bw, bh, this.t('common.done', {}), { size: 13, radius: 8, active: true });
+      this.addHitTarget({ x: doneX, y: by, width: bw, height: bh }, { type: 'entityBattleClose' });
+      const backX = doneX - bw - 8;
+      this.drawButton(backX, by, bw, bh, this.t('common.back', {}), { size: 13, radius: 8 });
+      this.addHitTarget({ x: backX, y: by, width: bw, height: bh }, { type: 'entityBattleClose' });
+    }
+
+    entityBattleSideSurvivors(entityBattle = {}, side = 0, result = {}) {
+      const battle = entityBattle.battle;
+      const survivors = (result && result.survivorsByGid) || {};
+      const squads = battle.squads || {};
+      const parts = [];
+      let total = 0;
+      Object.keys(squads).forEach((gid) => {
+        if (squads[gid].side !== side) return;
+        const n = Math.floor(survivors[gid] || 0);
+        total += n;
+        parts.push(`${gid} ${n}`);
+      });
+      return this.t('battle.entity.survivors', { parts: parts.join(' , '), total });
+    }
+
+    drawEntityBattleResult(entityBattle = {}, layout = {}) {
+      const winner = entityBattle.resultWinner;
+      const win = winner === 'attacker';
+      const draw = winner === 'draw';
+      const title = win
+        ? this.t('battle.result.victory', {})
+        : (draw ? this.t('battle.result.draw', {}) : this.t('battle.result.defeat', {}));
+      const color = win ? '#3fb950' : (draw ? '#d29922' : '#f85149');
+      const boxW = Math.min(layout.W - 40, 320);
+      const boxH = 124;
+      const bx = (layout.W - boxW) / 2;
+      const by = layout.stageTop + (layout.stageH - boxH) / 2;
+      this.drawPanel(bx, by, boxW, boxH, {
+        fill: 'rgba(13, 17, 23, 0.95)',
+        stroke: 'rgba(42, 51, 64, 1)',
+        radius: 10,
+      });
+      this.drawText(title, bx + boxW / 2, by + 22, { size: 20, bold: true, color, align: 'center', baseline: 'middle' });
+      const result = entityBattle.serverResult || (entityBattle.battle && entityBattle.battle.result) || {};
+      this.drawText(this.t(
+        'battle.entity.survivorLine.ally',
+        { survivors: this.entityBattleSideSurvivors(entityBattle, 0, result) }), bx + 14, by + 52, { size: 12, color: '#cbd5e1' });
+      this.drawText(this.t(
+        'battle.entity.survivorLine.enemy',
+        { survivors: this.entityBattleSideSurvivors(entityBattle, 1, result) }), bx + 14, by + 74, { size: 12, color: '#cbd5e1' });
+      this.drawText(this.t(
+        'battle.entity.result.audit',
+        { ticks: result.ticks || 0, commands: entityBattle.inputStreamLen || 0 }), bx + 14, by + 98, { size: 10, color: '#8b98a5' });
     }
   }
 

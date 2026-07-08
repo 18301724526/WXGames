@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 
 const ConfigPipeline = require('../services/config/ConfigPipeline');
 
-test('ConfigPipeline builds a current snapshot for registered config domains', () => {
+test('ConfigPipeline builds a current snapshot for registered config families', () => {
   const snapshot = ConfigPipeline.buildCurrentSnapshot({ generatedAt: '2026-06-11T00:00:00.000Z' });
   const ids = snapshot.registries.map((registry) => registry.id).sort();
 
@@ -110,7 +110,7 @@ test('ConfigPipeline task registry snapshot does not depend on runtime release g
     const taskRegistry = snapshot.registries.find((registry) => registry.id === 'task-definitions');
 
     assert.equal(snapshot.validation.success, true);
-    assert.equal(taskRegistry.entryCount, 3);
+    assert.equal(taskRegistry.entryCount, 7);
   } finally {
     if (previousGate === undefined) delete process.env.CONFIG_RELEASE_GATE;
     else process.env.CONFIG_RELEASE_GATE = previousGate;

@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const WorldClock = require('../ecs/foundation/WorldClock');
 const Policy = require('./WorldMapRuntimeRenderPolicy');
 
 function createState(status = 'active') {
@@ -46,17 +47,24 @@ test('WorldMapRuntimeRenderPolicy resolves snapshot render context', () => {
 });
 
 test('WorldMapRuntimeRenderPolicy resolves epoch from world clock when option is absent', () => {
-  const context = Policy.createRenderContext({
-    worldClock: {
-      getEpochNowMs() {
-        return 24680;
+  const epochNowMs = new Date('2026-06-15T00:00:24.680Z').getTime();
+  const clockWorld = WorldClock.createClockWorld({
+    runtime: {
+      performance: {
+        now() {
+          return 0;
+        },
       },
     },
+    serverTime: epochNowMs,
+  });
+  const context = Policy.createRenderContext({
+    worldClock: clockWorld,
   }, {
     dragging: false,
   });
 
-  assert.equal(context.renderOptions.epochNowMs, 24680);
+  assert.equal(context.renderOptions.epochNowMs, epochNowMs);
 });
 
 test('WorldMapRuntimeRenderPolicy preserves runtime throttling rules', () => {
@@ -147,10 +155,6 @@ test('WorldMapRuntimeRenderPolicy builds trace payloads without renderer state',
   assert.equal(beginTrace.data.activeMission.status, 'ready');
 
   assert.deepEqual(Policy.createCannotRenderState(), {
-    hitTargets: [],
-    baseHitTargets: [],
-    lastHitTargetSync: null,
-    hitTargetSyncSequence: 0,
     hasBakedMapLayer: false,
     mapBakeDirty: true,
     lastMapDataSignature: '',
@@ -164,18 +168,37 @@ test('WorldMapRuntimeRenderPolicy builds trace payloads without renderer state',
 
 test('WorldMapRuntimeRenderPolicy separates preserved hit targets from visual layer validity', () => {
   const preservedRuntime = {
-    baseHitTargets: [{ action: { type: 'enterCity' } }],
     hasBakedMapLayer: true,
-    hitTargets: [{ action: { type: 'enterCity' } }],
-    lastHitTargetSync: {
+    mapBakeDirty: true,
+    worldMapInputState: {
+      baseHitTargets: [{ action: { type: 'enterCity' } }],
+      hitTargets: [{ action: { type: 'enterCity' } }],
+      lastHitTargetSync: {
+        baseHitTargetCount: 1,
+        hitTargetCount: 1,
+        mapTargetCount: 0,
+        preserved: true,
+        sourceHitTargetCount: 0,
+      },
+    },
+    getBaseHitTargets() {
+      return this.worldMapInputState.baseHitTargets;
+    },
+    getHitTargets() {
+      return this.worldMapInputState.hitTargets;
+    },
+    getLastHitTargetSync() {
+      return this.worldMapInputState.lastHitTargetSync;
+    },
+  };
+
+  assert.deepEqual(preservedRuntime.getLastHitTargetSync(), {
       baseHitTargetCount: 1,
       hitTargetCount: 1,
       mapTargetCount: 0,
       preserved: true,
       sourceHitTargetCount: 0,
-    },
-    mapBakeDirty: true,
-  };
+  });
 
   const invalidFrame = Policy.createWorldMapFrameState(preservedRuntime);
   assert.equal(invalidFrame.hitTargetsPreserved, true);
@@ -220,6 +243,14 @@ test('WorldMapRuntimeRenderPolicy trace key follows continuous fog reveal progre
     hasBakedMapLayer: true,
     mapBakeDirty: false,
   });
+  const firstAgain = Policy.createRenderBeginTrace(state, {
+    snapshotOnly: false,
+    renderOptions: { epochNowMs: startedAt + 1000 },
+  }, {
+    canUseSnapshotLayer: true,
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+  });
   const second = Policy.createRenderBeginTrace(state, {
     snapshotOnly: false,
     renderOptions: { epochNowMs: startedAt + 5000 },
@@ -229,6 +260,7 @@ test('WorldMapRuntimeRenderPolicy trace key follows continuous fog reveal progre
     mapBakeDirty: false,
   });
 
+  assert.equal(first.keyParts.join('|'), firstAgain.keyParts.join('|'));
   assert.notEqual(first.keyParts.join('|'), second.keyParts.join('|'));
   assert.equal(first.keyParts[8], Math.floor((startedAt + 1000) / 1000));
   assert.equal(second.keyParts[8], Math.floor((startedAt + 5000) / 1000));

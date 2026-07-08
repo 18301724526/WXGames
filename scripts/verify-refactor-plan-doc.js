@@ -7,21 +7,43 @@ const repoRoot = path.resolve(__dirname, '..');
 const docsRoot = path.join(repoRoot, 'docs');
 
 const officialDocPaths = [
+  'docs/6月29日Codex to Claude交接文档.md',
   'docs/current_product_design_2026-06-09.md',
   'docs/current_gameplay_design_2026-06-09.md',
   'docs/current_technical_architecture_2026-06-09.md',
+  'docs/bit-ecs-review-pass-plan.md',
   'docs/long_term_architecture_refactor_plan_2026-06-08.md',
   'docs/architecture_module_responsibility_index_2026-06-08.md',
+  'docs/project_decomposition_2026-06-27.md',
   'docs/production_engineering_roadmap_2026-06-09.md',
   'docs/world_map_hud_transparency_contract_2026-06-19.md',
   'docs/server_environment_main_2026-06-22.md',
+  'docs/world-combat-interactive-architecture.md',
+  'docs/server_environment_test_2026-06-22.md',
+  'docs/server_environment_refactor_tutorial_2026-06-25.md',
   'docs/6月22日开发日志.md',
+  'docs/6月23日开发日志.md',
+  'docs/6月24日claude开发日志.md',
   'docs/stable_block_promotion_matrix_2026-06-09.md',
   'docs/stable_block_manifest_2026-06-09.json',
   'docs/config_registry_snapshot_2026-06-11.json',
 ];
 
 const requiredText = {
+  'docs/6月29日Codex to Claude交接文档.md': [
+    '状态 / Status: P0 first-read handoff',
+    'Claude 必须先读本交接文档，再读其他架构文档或开始改代码。',
+    '本次提交不是“全项目 ECS 已完成”',
+    '`bitecs@0.4.0` 是唯一允许的 ECS 核心',
+    '`getShared(options)` 返回真实 BitECS world handle',
+    '不能假装已经解决',
+  ],
+  'docs/project_decomposition_2026-06-27.md': [
+    '项目完整分解报告',
+    '玩家能做什么',
+    '系统 / 子系统树',
+    '边界不清的',
+  ],
   'docs/current_gameplay_design_2026-06-09.md': [
     '后端权威 / Server Authority',
     '菱形等距 tile 世界地图',
@@ -38,6 +60,15 @@ const requiredText = {
     'Hit priority queue',
     'mainHud',
     'Production Engineering',
+  ],
+  'docs/bit-ecs-review-pass-plan.md': [
+    'The project uses `bitecs@0.4.0` as the only approved ECS core.',
+    'A wrapper is never accepted as the ECS implementation.',
+    'store the real BitECS world handle instead of a wrapper object.',
+    'Entity identity comes from BitECS `addEntity(world)`.',
+    'Authoritative state is stored in `defineComponent(...)` component arrays.',
+    '`frontend/js/ecs/foundation/WorldClock.js` is the small demonstration slice',
+    'No batch is accepted if it ends with two writable sources of truth.',
   ],
   'docs/current_product_design_2026-06-09.md': [
     '实时操作的 Civilization-like 策略经营游戏',
@@ -79,11 +110,34 @@ const requiredText = {
     'wxgame-test-server',
     'one-way',
   ],
+  'docs/server_environment_test_2026-06-22.md': [
+    'WXGame Test Server Environment Report',
+    'codex/battle-core-test-server',
+    '/wxgame-test/',
+    '/wxgame-test-api/',
+    'wxgame-test-server',
+    'scripts/test-server-ci-gate.sh',
+  ],
+  'docs/server_environment_refactor_tutorial_2026-06-25.md': [
+    'WXGame Refactor Tutorial Test Server Environment Report',
+    'codex/refactor-tutorial-guide-architecture',
+    '/wxgame-refactor/',
+    '/wxgame-refactor-api/',
+    'wxgame-refactor-server',
+    'scripts/deploy-refactor-tutorial-server.sh',
+  ],
   'docs/6月22日开发日志.md': [
     'hostile_force_capital_ridge',
     'selectedWorldMissionId',
     'combatEncounterId',
     'wxgame-test-api',
+  ],
+  'docs/6月23日开发日志.md': [
+    'BattleCanvasRenderer.getEntityBattleRenderContext',
+    'BattleCameraPolicy',
+    'drawEntityBattleBackground',
+    'drawEntityBattleField',
+    'battle camera',
   ],
   'docs/stable_block_promotion_matrix_2026-06-09.md': [
     'diamond isometric square-tile map',

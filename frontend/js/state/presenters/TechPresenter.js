@@ -1,5 +1,21 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class TechPresenter {
+    static t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
     static toNumber(value, fallback = 0) {
       const number = Number(value);
       return Number.isFinite(number) ? number : fallback;
@@ -18,39 +34,39 @@
         sum + (Array.isArray(era.techs) ? era.techs.filter((tech) => tech.available).length : 0)
       ), 0);
       const statusLabels = {
-        available: '可研究',
-        researched: '已研究',
-        locked: '时代未解锁',
-        missingPrerequisite: '需先研究前置科技',
-        eraChoiceFull: '本时代已确定',
-        noPoints: '科技点不足',
+        available: this.t('tech.status.available', {}),
+        researched: this.t('tech.status.researched', {}),
+        locked: this.t('tech.status.locked', {}),
+        missingPrerequisite: this.t('tech.status.missingPrerequisite', {}),
+        eraChoiceFull: this.t('tech.status.eraChoiceFull', {}),
+        noPoints: this.t('tech.status.noPoints', {}),
       };
       const resourceDirectionLabels = {
-        food: '粮食生产',
-        wood: '木材采集',
-        stone: '石料工程',
-        iron: '铁矿利用',
-        metal: '铁矿利用',
-        knowledge: '知识积累',
+        food: this.t('tech.resourceDirection.food', {}),
+        wood: this.t('tech.resourceDirection.wood', {}),
+        stone: this.t('tech.resourceDirection.stone', {}),
+        iron: this.t('tech.resourceDirection.iron', {}),
+        metal: this.t('tech.resourceDirection.iron', {}),
+        knowledge: this.t('tech.resourceDirection.knowledge', {}),
       };
       const resourceDirectionByText = {
-        粮食: '粮食生产',
-        木材: '木材采集',
-        石料: '石料工程',
-        铁矿: '铁矿利用',
-        知识: '知识积累',
+        粮食: this.t('tech.resourceDirection.food', {}),
+        木材: this.t('tech.resourceDirection.wood', {}),
+        石料: this.t('tech.resourceDirection.stone', {}),
+        铁矿: this.t('tech.resourceDirection.iron', {}),
+        知识: this.t('tech.resourceDirection.knowledge', {}),
       };
       const buildingEffectById = {
-        farm: '农田提供稳定粮食生产。',
-        house: '民居提升文明人口承载能力。',
-        lumbermill: '伐木场提供稳定木材生产。',
-        barracks: '兵营训练士兵，开启基础军事力量。',
-        watchtower: '瞭望台提升边境防御能力。',
-        quarry: '采石场提供稳定石料生产。',
-        mine: '矿场提供稳定铁矿生产。',
-        workshop: '工坊强化工业生产与后续制造。',
-        academy: '学院强化知识积累。',
-        temple: '神庙服务后续文化与精神建设。',
+        farm: this.t('tech.buildingEffect.farm', {}),
+        house: this.t('tech.buildingEffect.house', {}),
+        lumbermill: this.t('tech.buildingEffect.lumbermill', {}),
+        barracks: this.t('tech.buildingEffect.barracks', {}),
+        watchtower: this.t('tech.buildingEffect.watchtower', {}),
+        quarry: this.t('tech.buildingEffect.quarry', {}),
+        mine: this.t('tech.buildingEffect.mine', {}),
+        workshop: this.t('tech.buildingEffect.workshop', {}),
+        academy: this.t('tech.buildingEffect.academy', {}),
+        temple: this.t('tech.buildingEffect.temple', {}),
       };
       const buildingEffectByName = {
         农田: buildingEffectById.farm,
@@ -74,6 +90,8 @@
       const uniqueList = (items = []) => Array.from(new Set(items.filter(Boolean)));
       const makeTechEffectRows = (tech = {}) => {
         const buildingNames = uniqueList(splitDisplayList(tech.unlockText));
+        const listSeparator = this.t('common.listSeparator', {});
+        const clauseSeparator = this.t('common.clauseSeparator', {});
         const buildingEffects = uniqueList([
           ...(Array.isArray(tech.unlockedBuildings) ? tech.unlockedBuildings.map((id) => buildingEffectById[id]) : []),
           ...buildingNames.map((name) => buildingEffectByName[name]),
@@ -84,32 +102,32 @@
             : splitDisplayList(tech.resourceText).map((label) => resourceDirectionByText[label] || label),
         );
         const rows = [];
-        if (buildingNames.length) rows.push({ label: '解锁建筑', text: buildingNames.join('、') });
-        if (buildingEffects.length) rows.push({ label: '研究后', text: buildingEffects.join('；') });
-        if (resourceDirections.length) rows.push({ label: '发展方向', text: resourceDirections.join('、') });
-        if (!rows.length) rows.push({ label: '发展方向', text: tech.routeLabel || '文明路线' });
+        if (buildingNames.length) rows.push({ label: this.t('tech.row.unlockBuilding', {}), text: buildingNames.join(listSeparator) });
+        if (buildingEffects.length) rows.push({ label: this.t('tech.row.afterResearch', {}), text: buildingEffects.join(clauseSeparator) });
+        if (resourceDirections.length) rows.push({ label: this.t('tech.row.direction', {}), text: resourceDirections.join(listSeparator) });
+        if (!rows.length) rows.push({ label: this.t('tech.row.direction', {}), text: tech.routeLabel || this.t('tech.route.civilization', {}) });
         return rows;
       };
       const visibleEras = eras.map((era) => ({
         era: era.era,
-        name: era.name || `时代 ${era.era}`,
+        name: era.name || this.t('tech.era', { era: era.era }),
         summary: era.summary || '',
         choiceText: `${this.toInteger(era.choicesUsed)}/${this.toInteger(era.choiceLimit, 1)}`,
         closed: Boolean(era.closed),
         techs: (era.techs || []).map((tech) => {
-          let buttonLabel = '研究';
-          if (tech.status === 'researched') buttonLabel = '已研究';
-          else if (tech.status === 'locked') buttonLabel = '未解锁';
-          else if (tech.status === 'missingPrerequisite') buttonLabel = '需前置';
-          else if (tech.status === 'eraChoiceFull') buttonLabel = '本时代已确定';
-          else if (tech.status === 'noPoints') buttonLabel = '点数不足';
+          let buttonLabel = this.t('tech.action.research', {});
+          if (tech.status === 'researched') buttonLabel = this.t('tech.status.researched', {});
+          else if (tech.status === 'locked') buttonLabel = this.t('tech.action.locked', {});
+          else if (tech.status === 'missingPrerequisite') buttonLabel = this.t('tech.action.needPrerequisite', {});
+          else if (tech.status === 'eraChoiceFull') buttonLabel = this.t('tech.action.eraChoiceFull', {});
+          else if (tech.status === 'noPoints') buttonLabel = this.t('tech.action.noPoints', {});
           const effectRows = makeTechEffectRows(tech);
           const parentNames = Array.isArray(tech.parentNames) ? tech.parentNames.filter(Boolean) : [];
           const missingParentNames = Array.isArray(tech.missingParentNames) ? tech.missingParentNames.filter(Boolean) : [];
           return {
             ...tech,
             title: tech.name || '',
-            routeLabel: tech.routeLabel || '路线',
+            routeLabel: tech.routeLabel || this.t('tech.route.default', {}),
             summary: tech.summary || '',
             core: tech.core || '',
             tree: tech.tree || { column: era.era, lane: 0, parents: tech.parents || [] },
@@ -117,8 +135,8 @@
             parentNames,
             missingParentNames,
             effectRows,
-            unlockSummary: effectRows.map((row) => `${row.label}：${row.text}`).join(' / '),
-            prerequisiteText: parentNames.length ? parentNames.join(' / ') : '无',
+            unlockSummary: effectRows.map((row) => `${row.label}${this.t('common.labelSeparator', {})}${row.text}`).join(' / '),
+            prerequisiteText: parentNames.length ? parentNames.join(' / ') : this.t('tech.noPrerequisite', {}),
             missingPrerequisiteText: missingParentNames.length ? missingParentNames.join(' / ') : '',
             statusLabel: statusLabels[tech.status] || buttonLabel,
             buttonLabel,
@@ -189,30 +207,32 @@
         ? {
           empty: false,
           id: selectedTech.id,
-          title: selectedTech.title || selectedTech.name || '科技',
+          title: selectedTech.title || selectedTech.name || this.t('tech.generic', {}),
           eraName: selectedTech.eraName || visibleEras.find((era) => era.era === selectedTech.era)?.name || '',
           routeId: selectedTech.route || selectedRoutes[0] || '',
           routes: selectedRoutes,
           routeLabel: selectedRoutes.length > 1
             ? selectedRoutes.map((route) => routeLabelsById[route] || route).join(' / ')
-            : (selectedTech.routeLabel || '路线'),
-          statusLabel: selectedTech.statusLabel || '未解锁',
-          summary: selectedTech.summary || selectedTech.core || '选择科技查看效果。',
-          unlockSummary: selectedTech.unlockSummary || '路线倾向',
+            : (selectedTech.routeLabel || this.t('tech.route.default', {})),
+          statusLabel: selectedTech.statusLabel || this.t('tech.status.unlockedShort', {}),
+          summary: selectedTech.summary || selectedTech.core || this.t('tech.detail.defaultSummary', {}),
+          unlockSummary: selectedTech.unlockSummary || this.t('tech.row.routeDirection', {}),
           effectRows: Array.isArray(selectedTech.effectRows) ? selectedTech.effectRows : [],
-          prerequisiteText: selectedTech.prerequisiteText || '无',
+          prerequisiteText: selectedTech.prerequisiteText || this.t('tech.noPrerequisite', {}),
           missingPrerequisiteText: selectedTech.missingPrerequisiteText || '',
-          pointsText: `科技点 ${points}`,
-          buttonLabel: selectedTech.researched ? '已研究' : '研究',
+          pointsText: this.t('tech.points', { points }),
+          buttonLabel: selectedTech.researched
+            ? this.t('tech.status.researched', {})
+            : this.t('tech.action.research', {}),
           canResearch: Boolean(selectedTech.available),
-          disabledReason: selectedTech.available ? '' : (selectedTech.statusLabel || selectedTech.buttonLabel || '暂不可研究'),
+          disabledReason: selectedTech.available ? '' : (selectedTech.statusLabel || selectedTech.buttonLabel || this.t('tech.status.unlockedShort', {})),
         }
         : {
           empty: true,
-          title: '选择一个科技',
-          summary: '点击科技节点查看效果。',
-          statusLabel: '未选择',
-          buttonLabel: '研究',
+          title: this.t('tech.detail.emptyTitle', {}),
+          summary: this.t('tech.detail.emptySummary', {}),
+          statusLabel: this.t('tech.status.unselected', {}),
+          buttonLabel: this.t('tech.action.research', {}),
           canResearch: false,
         };
 
@@ -232,12 +252,14 @@
         },
         text: {
           knowledgeRate: `${this.toNumber(state.resources?.knowledgePerSecond)}/s`,
-          title: '科技树',
-          points: `科技点 ${points}`,
-          researched: `已研究 ${researchedCount}`,
-          available: availableCount > 0 ? `可研究 ${availableCount}` : '暂无可研究',
-          placeholder: '进入新时代后获得科技点',
-          subtitle: '前期科技用于选择文明路线，古典时代开始解锁关键建筑。',
+          title: this.t('tech.title', {}),
+          points: this.t('tech.points', { points }),
+          researched: this.t('tech.researchedCount', { count: researchedCount }),
+          available: availableCount > 0
+            ? this.t('tech.availableCount', { count: availableCount })
+            : this.t('tech.availableEmpty', {}),
+          placeholder: this.t('tech.placeholder', {}),
+          subtitle: this.t('tech.subtitle', {}),
         },
       };
     }

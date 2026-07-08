@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 
 const TutorialService = require('./TutorialService');
 const CityService = require('./CityService');
+const SharedTutorialFlowConfig = require('../../shared/tutorialFlowConfig');
 
 const DEFAULT_TIERS = Object.freeze({
   agriculture: 2,
@@ -355,7 +356,6 @@ function applyPolicy(gameState, tutorial, payload = {}) {
   const beforeCraftsmen = Number(city.population?.craftsmen) || 0;
   applyPopulationAllocation(city, preview.allocation);
   CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
 
   const state = ensureTalentPolicyState(gameState);
   if (policy.id === 'draft') {
@@ -374,7 +374,7 @@ function applyPolicy(gameState, tutorial, payload = {}) {
   }
   state.lastAppliedAt = new Date().toISOString();
   const normalizedTutorial = TutorialService.normalizeTutorialState(tutorial);
-  const nextTutorial = normalizedTutorial.currentStep === TutorialService.TUTORIAL_STEPS.talentPolicyOpened
+  const nextTutorial = SharedTutorialFlowConfig.stepEquals(normalizedTutorial.currentStep, TutorialService.TUTORIAL_STEPS.talentPolicyOpened)
     ? TutorialService.advanceTutorial(normalizedTutorial, 'talentPolicyApplied')
     : (preview.allocation.craftsman || 0) > beforeCraftsmen
       ? TutorialService.advanceTutorial(normalizedTutorial, 'craftsmanAssigned')

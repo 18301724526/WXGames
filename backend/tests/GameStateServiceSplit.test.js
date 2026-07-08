@@ -6,7 +6,6 @@ const GameStateNormalizer = require('../services/GameStateNormalizer');
 const ClientGameStateAssembler = require('../services/ClientGameStateAssembler');
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 const TutorialService = require('../services/TutorialService');
-const TerritoryService = require('../services/TerritoryService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 
 function clone(value) {
@@ -35,9 +34,9 @@ test('GameStateService keeps normalizeState compatible with GameStateNormalizer'
   assert.equal(Boolean(viaFacade.territoryState), Boolean(viaModule.territoryState));
 });
 
-test('GameStateService normalizes legacy saves through the migration pipeline', () => {
+test('GameStateService normalizes schema-0 saves through the migration pipeline', () => {
   const rawState = {
-    playerId: 'legacy-save-normalize-test',
+    playerId: 'schema-0-save-normalize-test',
     resources: { food: 10, metal: 4 },
     population: { total: 3, maxPop: 3, farmers: 3 },
     buildings: {},
@@ -52,7 +51,12 @@ test('GameStateService normalizes legacy saves through the migration pipeline', 
 
   assert.equal(normalized.saveMetadata.schema, GameStateMigrationPipeline.SAVE_SCHEMA_NAME);
   assert.equal(normalized.saveMetadata.schemaVersion, GameStateMigrationPipeline.CURRENT_SCHEMA_VERSION);
-  assert.deepEqual(normalized.saveMetadata.migrations.map((entry) => entry.id), ['initialize-save-schema-v1']);
+  assert.deepEqual(normalized.saveMetadata.migrations.map((entry) => entry.id), [
+    'initialize-save-schema-v1',
+    'initialize-city-source-v2',
+    'upgrade-stored-skill-effects-v3',
+    'upgrade-territory-source-v4',
+  ]);
   assert.equal(normalized.resources.iron, 4);
   assert.equal(normalized.resources.metal, 4);
   assert.deepEqual(normalized.taskProgress.claimed, {});
@@ -98,7 +102,10 @@ test('new tutorial client state exposes the first house before era one unlocks b
 
   assert.equal(clientState.currentEra, 0);
   assert.equal(clientState.unlockedBuildings.includes('house'), true);
-  assert.equal(clientState.resources.food >= 110, true);
+  // The old normalize-time house-guide top-up is retired: the house build cost
+  // (food 30) now arrives via the claimable main_homestead_supplies task, and
+  // the starting resources already cover it.
+  assert.equal(clientState.resources.food >= 30, true);
 });
 
 test('initial game state can be created around an assigned real-world spawn', () => {
@@ -153,6 +160,35 @@ test('state normalization preserves an assigned real-world capital coordinate', 
   assert.equal(clientState.territoryState.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), false);
 });
 
+test('state normalization removes neutral-city pollution from fog vision history', () => {
+  const raw = GameStateNormalizer.createInitialGameState('vision-history-neutral-city-cleanup-test', {
+    now: new Date('2026-07-07T00:00:00.000Z'),
+  });
+  raw.territories.push(
+    { id: 'neutral-town', x: 3, y: 1, owner: 'neutral', status: 'discovered', type: 'town' },
+    { id: 'frontier', x: 4, y: 1, owner: 'player', status: 'occupied', type: 'town' },
+    { id: 'other-player-city', x: 5, y: 1, owner: 'player', ownerPlayerId: 'other-player', status: 'occupied', type: 'town' },
+  );
+  raw.worldMap.visionHistory = {
+    sources: [
+      { kind: 'city', q: 0, r: 0 },
+      { kind: 'city', q: 3, r: 1 },
+      { kind: 'city', q: 4, r: 1 },
+      { kind: 'city', q: 5, r: 1 },
+      { kind: 'unit', q: 2, r: 1 },
+    ],
+  };
+
+  const normalized = GameStateService.normalizeState(clone(raw));
+  const sources = normalized.worldMap.visionHistory.sources;
+
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 0 && source.r === 0), true);
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 4 && source.r === 1), true);
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 3 && source.r === 1), false);
+  assert.equal(sources.some((source) => source.kind === 'city' && source.q === 5 && source.r === 1), false);
+  assert.equal(sources.some((source) => source.kind === 'unit' && source.q === 2 && source.r === 1), true);
+});
+
 test('initial game state keeps the legacy origin when no spawn assignment is provided', () => {
   const initial = GameStateNormalizer.createInitialGameState('legacy-origin-initial-state-test', {
     now: new Date('2026-06-16T00:00:00.000Z'),
@@ -165,7 +201,7 @@ test('initial game state keeps the legacy origin when no spawn assignment is pro
   assert.equal(initial.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), true);
 });
 
-test('guided first city settlement soldiers survive state normalization', () => {
+test('guided first city flow grants no soldiers during state normalization', () => {
   const siteId = 'site_3_1';
   const rawState = {
     playerId: 'tutorial-settlement-soldier-normalize-test',
@@ -203,8 +239,11 @@ test('guided first city settlement soldiers survive state normalization', () => 
 
   const normalized = GameStateService.normalizeState(rawState);
 
-  assert.equal(normalized.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
-  assert.equal(normalized.military.soldierCap, TerritoryService.MIN_EXPEDITION_SOLDIERS);
-  assert.equal(normalized.military.availableSoldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
-  assert.equal(normalized.cities.capital.military.soldiers, TerritoryService.MIN_EXPEDITION_SOLDIERS);
+  // Settlement of the guided first empty city needs no soldiers, so normalization
+  // must not grant any: military stays exactly what training produced (here zero).
+  assert.equal(normalized.military.soldiers, 0);
+  assert.equal(normalized.military.soldierCap, 0);
+  assert.equal(normalized.military.availableSoldiers, 0);
+  assert.equal(normalized.cities.capital.military.soldiers, 0);
+  assert.equal(normalized.tutorial.grants.firstExploreEmptyCity.settlementSoldiersGranted, undefined);
 });

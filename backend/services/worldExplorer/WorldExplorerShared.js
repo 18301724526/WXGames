@@ -1,20 +1,18 @@
 const WorldMapService = require('../WorldMapService');
 const { hashString } = require('../../../shared/signatureHash');
+const { toInteger } = require('../../../shared/numberUtils');
+const { clone } = require('../../../shared/objectUtils');
+// Single source: the manual-route cap lives in shared/worldMarchCore so the backend
+// planner, the DTO, and the client-side march policy can never disagree.
+const { MAX_MANUAL_ROUTE_LENGTH } = require('../../../shared/worldMarchCore');
 
-const EXPLORE_STEP_DURATION_MS = 10 * 1000;
-const MAX_MANUAL_ROUTE_LENGTH = 16;
+// Single source of the manual-march step cadence: every mission's stepDurationMs, the DTO's
+// explorer-level stepDurationSeconds, and (via that DTO field) the client's optimistic pace all
+// derive from here — change this one value and server + client agree.
+const EXPLORE_STEP_DURATION_MS = 5 * 1000;
 const MAX_ACTIVE_EXPLORE_MISSIONS = 1;
 const EXPLORE_REVEAL_RADIUS = 1;
 const TUTORIAL_FIRST_SITE_GRANT_KEY = 'firstExploreEmptyCity';
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
 
 function toTimestamp(value, fallback = 0) {
   if (value === null || value === undefined || value === '') return fallback;

@@ -4,7 +4,6 @@ const Progression = require('./worldExplorer/WorldExplorerProgression');
 const RoutePlanner = require('./worldExplorer/WorldExplorerRoutePlanner');
 const ClientState = require('./worldExplorer/WorldExplorerClientState');
 const Actions = require('./worldExplorer/WorldExplorerActions');
-const Tutorial = require('./worldExplorer/WorldExplorerTutorial');
 
 module.exports = {
   EXPLORE_STEP_DURATION_MS: Shared.EXPLORE_STEP_DURATION_MS,
@@ -20,5 +19,4 @@ module.exports = {
   getClientState: ClientState.getClientState,
   buildManualRoute: RoutePlanner.buildManualRoute,
   normalizeMission: MissionNormalizer.normalizeMission,
-  ensureTutorialFirstCityClaimSoldiers: Tutorial.ensureTutorialFirstCityClaimSoldiers,
 };

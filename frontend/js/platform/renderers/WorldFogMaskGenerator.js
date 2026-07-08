@@ -15,7 +15,7 @@
     if (global.WorldFogVisionModel) return global.WorldFogVisionModel;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldFogVisionModel');
+        return require('../../ecs/system/WorldFogVisionModel');
       } catch (error) {
         return null;
       }
@@ -155,8 +155,6 @@
             actor?.id || actor?.missionId || '',
             Math.round(toNumber(current.q ?? current.x, 0) * 1000),
             Math.round(toNumber(current.r ?? current.y, 0) * 1000),
-            actor?.renderRevealSignature || '',
-            WorldFogMaskGenerator.getRevealSourceSignature?.(actor?.renderRevealSources || []) || '',
             actor?.status || '',
           ].join(':');
         })
@@ -179,6 +177,7 @@
         Math.round(toNumber(geometry.stepX, 96) * 10),
         Math.round(toNumber(geometry.stepY, 48) * 10),
         historySignature,
+        context.revealSnapshot?.signature || '',
         actorSignature,
       ].join('|');
     }
@@ -333,6 +332,7 @@
       if (cache.key === key && cache.maskFrame) {
         cache.contextKey = contextKey;
         cache.sourceSet = sourceSet;
+        global.WorldMarchTrace?.logDedup?.('fog:mask', { hit: 'maskKey' });
         return {
           mask: cache,
           changed: false,
@@ -343,6 +343,12 @@
       cache.visible.fill(0);
       cache.maskFrame = { ...maskFrame };
       this.fillMasks(cache, maskFrame, sourceSet);
+      global.WorldMarchTrace?.logDedup?.('fog:mask', {
+        hit: 'rebuild',
+        memorySources: (sourceSet.memorySources || []).length,
+        visionSources: (sourceSet.visionSources || []).length,
+        revealSignature: context.revealSnapshot?.signature || '',
+      });
       cache.key = key;
       cache.contextKey = contextKey;
       cache.sourceSet = sourceSet;
@@ -355,16 +361,6 @@
   }
 
   WorldFogMaskGenerator.smoothstep = smoothstep;
-  WorldFogMaskGenerator.getRevealSourceSignature = function getRevealSourceSignature(sources = []) {
-    return hashText((Array.isArray(sources) ? sources : [])
-      .map((source) => [
-        source?.tileId || '',
-        Math.round(toNumber(source?.q) * 1000),
-        Math.round(toNumber(source?.r) * 1000),
-        Math.round(clamp01(source?.strength ?? 1) * 1000),
-      ].join(':'))
-      .join('|'));
-  };
   global.WorldFogMaskGenerator = WorldFogMaskGenerator;
   if (typeof module !== 'undefined' && module.exports) module.exports = WorldFogMaskGenerator;
 })(typeof window !== 'undefined' ? window : globalThis);

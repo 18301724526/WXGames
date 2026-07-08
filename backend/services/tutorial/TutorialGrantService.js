@@ -1,96 +1,107 @@
-const {
-  BuildingConfig,
-  EraConfig,
-  TutorialFlowConfig,
-} = require('../config/GameplayConfigRuntime');
 const FamousPersonService = require('../FamousPersonService');
+const WorldMapService = require('../WorldMapService');
 const { normalizeTutorialState, nowIso } = require('./TutorialState');
-const { manualAdvance } = require('./TutorialProgression');
 const {
   SCOUT_FAMOUS_GRANT_KEY,
-  hasBuiltHouse,
+  FIRST_ARMY_GRANT_KEY,
 } = require('./TutorialSelectors');
 
-const HOUSE_GUIDE_GRANT_KEY = 'houseGuideSupplies';
+// Grant cores for claimable tutorial task rewards (TaskRewardClaimer). The old
+// idempotent ensure-* hooks (normalize-time grants) are retired: every grant is
+// paid out exactly once through the task-center claim pipeline.
 
-function getTutorialSteps() {
-  return TutorialFlowConfig.TUTORIAL_STEPS;
+// The tutorial grant references the already-materialized companion city. City creation belongs to the
+// spawn/world-city pipeline; this grant only pins the guided task to that single source of truth.
+function getNearestDiscoveredNeutralCity(gameState = {}) {
+  const origin = gameState.worldMap?.origin || { q: 0, r: 0 };
+  const cities = (Array.isArray(gameState.territories) ? gameState.territories : [])
+    .filter((territory) => (
+      territory
+      && territory.id
+      && territory.owner === 'neutral'
+      && territory.status === 'discovered'
+      && !territory.ownerPlayerId
+    ));
+  return cities.sort((a, b) => (
+    WorldMapService.getWrappedDistance(origin, { q: a.x ?? a.q, r: a.y ?? a.r })
+    - WorldMapService.getWrappedDistance(origin, { q: b.x ?? b.q, r: b.y ?? b.r })
+    || String(a.id).localeCompare(String(b.id))
+  ))[0] || null;
 }
 
-function ensureScoutFamousPersonGrant(gameState) {
-  const TUTORIAL_STEPS = getTutorialSteps();
-  if (!gameState || typeof gameState !== 'object') return false;
-  let tutorial = normalizeTutorialState(gameState.tutorial);
-  if (tutorial.completed || tutorial.disabled || tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]) return false;
-  if ((Number(gameState.currentEra) || 0) < 3 || tutorial.currentStep < TUTORIAL_STEPS.era3Advanced) return false;
-
-  const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState);
-  if (!grant?.person) return false;
-  tutorial = manualAdvance({
+function grantTutorialFirstCity(gameState) {
+  const { TUTORIAL_FIRST_SITE_GRANT_KEY } = require('../worldExplorer/WorldExplorerShared');
+  const tutorial = normalizeTutorialState(gameState.tutorial);
+  if (tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY]) return tutorial;
+  const city = getNearestDiscoveredNeutralCity(gameState);
+  if (!city) return tutorial;
+  const nextTutorial = {
     ...tutorial,
     grants: {
       ...(tutorial.grants || {}),
-      [SCOUT_FAMOUS_GRANT_KEY]: {
-        personId: grant.person.id,
-        grantedAt: grant.grantedAt,
+      [TUTORIAL_FIRST_SITE_GRANT_KEY]: {
+        siteId: city.id,
+        x: city.x ?? city.q,
+        y: city.y ?? city.r,
+        plannedAt: nowIso(),
       },
     },
-  }, TUTORIAL_STEPS.scoutFamousGranted);
-  gameState.tutorial = tutorial;
-  return true;
+    updatedAt: nowIso(),
+  };
+  gameState.tutorial = nextTutorial;
+  return nextTutorial;
 }
 
-function getHouseGuideMinimumResources() {
-  const resources = {};
-  const houseCost = BuildingConfig.getBuildCost('house');
-  const firstAdvanceCost = EraConfig.getAdvanceConfig(0)?.cost || {};
-  for (const cost of [houseCost, firstAdvanceCost]) {
-    Object.entries(cost || {}).forEach(([key, value]) => {
-      resources[key] = (resources[key] || 0) + (Number(value) || 0);
-    });
-  }
-  return resources;
-}
-
-function ensureHouseGuideResources(gameState) {
-  if (!gameState || typeof gameState !== 'object') return false;
+// Grants the tutorial scout famous person and records the tutorial grant
+// bookkeeping. Idempotent: an existing tutorial scout person is returned
+// without creating a duplicate, and the grant record is only written once.
+function grantScoutFamousPerson(gameState) {
+  if (!gameState || typeof gameState !== 'object') return null;
+  const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState);
+  if (!grant?.person) return null;
   const tutorial = normalizeTutorialState(gameState.tutorial);
-  if (tutorial.completed || tutorial.disabled || tutorial.grants?.[HOUSE_GUIDE_GRANT_KEY]) return false;
-  if (hasBuiltHouse(gameState)) return false;
+  if (!tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]) {
+    gameState.tutorial = {
+      ...tutorial,
+      grants: {
+        ...(tutorial.grants || {}),
+        [SCOUT_FAMOUS_GRANT_KEY]: {
+          personId: grant.person.id,
+          grantedAt: grant.grantedAt,
+        },
+      },
+      updatedAt: nowIso(),
+    };
+  }
+  // Pin the guide to the companion city that was created with the player's spawn.
+  grantTutorialFirstCity(gameState);
+  return grant;
+}
 
-  const minimum = getHouseGuideMinimumResources();
-  const cityId = gameState.activeCityId || 'capital';
-  const city = gameState.cities?.[cityId] || gameState.cities?.capital || null;
-  const resources = city?.resources || gameState.resources || {};
-  let changed = false;
-  Object.entries(minimum).forEach(([key, value]) => {
-    const required = Number(value) || 0;
-    if ((Number(resources[key]) || 0) < required) {
-      resources[key] = required;
-      changed = true;
-    }
-  });
-  if (city) city.resources = resources;
-  gameState.resources = resources;
+// Records the first-army grant BEFORE the soldier write so the reserve floor in
+// MilitaryService.normalizeMilitaryState is already active when the granted
+// soldiers are normalized (barracks L1 cap would otherwise clamp them away).
+function recordFirstArmyGrant(gameState, soldiers) {
+  if (!gameState || typeof gameState !== 'object') return null;
+  const amount = Math.max(0, Math.floor(Number(soldiers) || 0));
+  if (!amount) return null;
+  const tutorial = normalizeTutorialState(gameState.tutorial);
+  const existing = tutorial.grants?.[FIRST_ARMY_GRANT_KEY];
+  if (existing) return existing;
+  const grant = { soldiers: amount, grantedAt: nowIso() };
   gameState.tutorial = {
     ...tutorial,
     grants: {
       ...(tutorial.grants || {}),
-      [HOUSE_GUIDE_GRANT_KEY]: true,
+      [FIRST_ARMY_GRANT_KEY]: grant,
     },
-    updatedAt: changed ? nowIso() : tutorial.updatedAt,
+    updatedAt: nowIso(),
   };
-  return changed;
-}
-
-function ensureLumbermillGuideResources() {
-  return false;
+  return grant;
 }
 
 module.exports = {
-  HOUSE_GUIDE_GRANT_KEY,
-  ensureHouseGuideResources,
-  ensureLumbermillGuideResources,
-  ensureScoutFamousPersonGrant,
-  getHouseGuideMinimumResources,
+  grantScoutFamousPerson,
+  grantTutorialFirstCity,
+  recordFirstArmyGrant,
 };

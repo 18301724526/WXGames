@@ -1,0 +1,65 @@
+{
+  "schema": "config-table-v1",
+  "table": "relationship_tuning",
+  "description": "人物关系网(03)调参(key-value，主键 paramKey)。关系=存在人身上的有向稀疏边(person.relationships)，网络=所有边的并集，无全局矩阵。affinity 随相性(compat)漂移、随事件跳变；kind 由 affinity 阈值(普通轴)或事件 flags(特殊态)决定。纯核 shared/person/relationshipCore.js 读取。",
+  "generatedFrom": "config/tables/relationship_tuning.xlsx",
+  "idField": "paramKey",
+  "rows": [
+    {
+      "paramKey": "friendAt",
+      "value": 40
+    },
+    {
+      "paramKey": "friendMeets",
+      "value": 3
+    },
+    {
+      "paramKey": "enemyAt",
+      "value": -40
+    },
+    {
+      "paramKey": "swornAt",
+      "value": 80
+    },
+    {
+      "paramKey": "nemesisAt",
+      "value": -80
+    },
+    {
+      "paramKey": "hysteresis",
+      "value": 8
+    },
+    {
+      "paramKey": "driftRate",
+      "value": 0.1
+    },
+    {
+      "paramKey": "initialFactor",
+      "value": 0.3
+    },
+    {
+      "paramKey": "decayPerDay",
+      "value": 3
+    },
+    {
+      "paramKey": "maxEdgesPerPerson",
+      "value": 64
+    },
+    {
+      "paramKey": "meetPairsPerTick",
+      "value": 3
+    },
+    {
+      "paramKey": "recruitFriendBonus",
+      "value": 0.25
+    },
+    {
+      "paramKey": "recruitSwornBonus",
+      "value": 0.4
+    },
+    {
+      "paramKey": "recruitNemesisPenalty",
+      "value": -0.3
+    }
+  ]
+}

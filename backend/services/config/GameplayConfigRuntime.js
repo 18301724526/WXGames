@@ -6,6 +6,8 @@ const FallbackBuildingConfig = require('../../config/BuildingConfig');
 const FallbackEraConfig = require('../../config/EraConfig');
 const FallbackTutorialFlowConfig = require('../../config/TutorialFlowConfig');
 const FallbackTechTreeConfig = require('../../config/TechTreeConfig');
+const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
+const { clone } = require('../../../shared/objectUtils');
 
 const GAMEPLAY_CONFIG_RUNTIME_SCHEMA = 'gameplay-config-runtime-v1';
 
@@ -13,10 +15,6 @@ let runtimeOptions = {};
 let initialized = false;
 let runtimeBundle = null;
 let runtimeStatus = null;
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 function toLevel(value) {
   const number = Number(value);
@@ -360,11 +358,10 @@ const TutorialFlowConfig = {
   },
   createPhaseCompleted(currentStep) {
     const steps = this.TUTORIAL_STEPS;
-    const step = Number.isFinite(currentStep) ? currentStep : steps.initial;
     return {
-      newbie: step >= steps.eraAdvancedTo1,
-      era2: step >= steps.lumbermillBuilt,
-      scoutFormation: step >= steps.scoutFormationSaved,
+      newbie: SharedTutorialFlowConfig.stepAtLeast(currentStep, steps.eraAdvancedTo1),
+      era2: SharedTutorialFlowConfig.stepAtLeast(currentStep, steps.lumbermillBuilt),
+      scoutFormation: SharedTutorialFlowConfig.stepAtLeast(currentStep, steps.scoutFormationSaved),
     };
   },
 };

@@ -54,7 +54,7 @@ test('skill generator random authority owns ability kit random source metadata',
   assert.deepEqual(SkillGeneratorRandomAuthority.createSourceMetadata(source), {
     schema: ServerRandomAuthorityContract.SCHEMA,
     authority: ServerRandomAuthorityContract.AUTHORITY,
-    domain: SkillGeneratorRandomAuthority.DOMAIN,
+    scope: SkillGeneratorRandomAuthority.SCOPE,
     action: SkillGeneratorRandomAuthority.DEFAULT_ACTION,
     subjectId: 'abilityKit:unit:vanguard:great',
     seed: 'unit:vanguard:great',
@@ -66,10 +66,10 @@ test('skill generator random authority owns ability kit random source metadata',
   }), 'seek:scout:good');
 });
 
-test('skill generator constants and normalizer preserve public pools and migrations', () => {
+test('skill generator constants and normalizer preserve current public pools', () => {
   assert.equal(Constants.GENERATOR_VERSION, SkillGeneratorService.GENERATOR_VERSION);
-  assert.equal(Constants.ARCHETYPE_DOMAINS.scout.domain, 'hybrid');
-  assert.equal(Constants.ARCHETYPE_DOMAINS.governor.battlePolicy, 'basicAttackOnly');
+  assert.equal(Constants.ARCHETYPE_CATEGORIES.scout.category, 'hybrid');
+  assert.equal(Constants.ARCHETYPE_CATEGORIES.governor.battlePolicy, 'basicAttackOnly');
   assert.equal(Constants.ACTIVE_TEMPLATES.scout.length, 2);
   assert.deepEqual(SkillGeneratorService.getDefaultEffectPool('hybrid'), Constants.SCOUT_EFFECTS);
 
@@ -81,11 +81,11 @@ test('skill generator constants and normalizer preserve public pools and migrati
   assert.equal(Normalizer.rollQuality(() => 0.99), 'legendary');
   assert.equal(Normalizer.normalizeAbilityArchetype('missing'), 'vanguard');
 
-  assert.deepEqual(Normalizer.normalizeEffect({ key: 'combo', chance: 0.5 }), {
+  assert.deepEqual(Normalizer.normalizeEffect({ key: 'secondHit', multiplier: 0.5 }), {
     key: 'secondHit',
     multiplier: 0.36,
-    migratedFrom: 'combo',
   });
+  assert.equal(Normalizer.normalizeEffect({ key: 'combo', chance: 0.5 }), null);
   assert.equal(Normalizer.normalizeEffect({ key: 'counter' }), null);
 });
 
@@ -106,12 +106,11 @@ test('skill ability factory owns template creation and budget checks', () => {
   assert.equal(Factory.summarizeBudgetStatus(checks), 'withinLimit');
 });
 
-test('SkillGeneratorService facade preserves ability kit API for battle, civil, and scout domains', () => {
+test('SkillGeneratorService facade preserves ability kit API for battle, civil, and scout categories', () => {
   const expectedApi = [
     'CIVIL_EFFECTS',
     'FIRST_BATCH_BATTLE_EFFECTS',
     'GENERATOR_VERSION',
-    'LEGACY_EFFECT_MIGRATIONS',
     'QUALITY_BUDGETS',
     'QUALITY_LABELS',
     'SCOUT_EFFECTS',
@@ -133,7 +132,7 @@ test('SkillGeneratorService facade preserves ability kit API for battle, civil, 
     source: 'test',
     seed: 'battle-kit',
   }, () => 0.2);
-  assert.equal(battleKit.domain, 'battle');
+  assert.equal(battleKit.category, 'battle');
   assert.equal(battleKit.randomAuthority, undefined);
   assert.equal(battleKit.battlePolicy, 'useBattleSkill');
   assert.deepEqual(battleKit.abilities.map((ability) => ability.slot), ['activeSkill', 'passiveTrait']);
@@ -146,7 +145,7 @@ test('SkillGeneratorService facade preserves ability kit API for battle, civil, 
     source: 'test',
     seed: 'civil-kit',
   }, () => 0.2);
-  assert.equal(civilKit.domain, 'civil');
+  assert.equal(civilKit.category, 'civil');
   assert.equal(civilKit.battlePolicy, 'basicAttackOnly');
   assert.deepEqual(civilKit.abilities.map((ability) => ability.slot), ['civilPrimary', 'civilSecondary']);
   assert.equal(SkillGeneratorService.getActiveBattleSkill(civilKit), null);
@@ -157,7 +156,7 @@ test('SkillGeneratorService facade preserves ability kit API for battle, civil, 
     source: 'tutorial',
     seed: 'scout-kit',
   }, () => 0.2);
-  assert.equal(scoutKit.domain, 'hybrid');
+  assert.equal(scoutKit.category, 'hybrid');
   assert.deepEqual(scoutKit.abilities.map((ability) => ability.slot), ['activeSkill', 'scoutTrait']);
 });
 
@@ -172,7 +171,7 @@ test('skill ability kit generation consumes server random authority by default',
   assert.deepEqual(kit.randomAuthority, {
     schema: ServerRandomAuthorityContract.SCHEMA,
     authority: ServerRandomAuthorityContract.AUTHORITY,
-    domain: SkillGeneratorRandomAuthority.DOMAIN,
+    scope: SkillGeneratorRandomAuthority.SCOPE,
     action: SkillGeneratorRandomAuthority.DEFAULT_ACTION,
     subjectId: 'abilityKit:authority-test:strategist:great',
     seed: 'authority-test:strategist:great',
@@ -182,23 +181,16 @@ test('skill ability kit generation consumes server random authority by default',
   assert.equal(kit.budgetStatus, 'withinLimit');
 });
 
-test('skill ability kit service completes legacy and partial stored kits', () => {
-  const legacy = KitService.normalizeAbilityKit({}, {
+test('skill ability kit service completes empty and partial stored kits', () => {
+  const emptyStored = KitService.normalizeAbilityKit({}, {
     abilityArchetype: 'vanguard',
     quality: 'good',
-    source: 'legacy',
-    seed: 'legacy-kit',
-    skills: [{
-      id: 'legacy_active',
-      name: 'Legacy Active',
-      type: 'battle',
-      effects: [{ key: 'combo', chance: 0.22 }],
-    }],
+    source: 'stored',
+    seed: 'stored-kit',
   });
-  assert.equal(legacy.abilities.length, 2);
-  assert.equal(legacy.abilities[0].slot, 'activeSkill');
-  assert.equal(legacy.abilities[0].effects[0].key, 'secondHit');
-  assert.equal(legacy.abilities[1].slot, 'passiveTrait');
+  assert.equal(emptyStored.abilities.length, 2);
+  assert.equal(emptyStored.abilities[0].slot, 'activeSkill');
+  assert.equal(emptyStored.abilities[1].slot, 'passiveTrait');
 
   const partialCivil = KitService.normalizeAbilityKit({
     archetype: 'governor',

@@ -1,8 +1,6 @@
 const {
-  LEGACY_SITE_MIGRATIONS,
   MAX_NAME_LENGTH,
   MIN_EXPEDITION_SOLDIERS,
-  SCOUT_ACTION_POINTS,
   SITE_ART,
   SOLDIER_SCALE,
 } = require('./TerritoryConstants');
@@ -28,38 +26,11 @@ const {
 function createTerritoryStateNormalizer(dependencies = {}) {
   const {
     WorldMapService,
-    enforceScoutMissionLimit,
     getMissionSoldierAllocations,
-    migrateTerritorySitesToCurrentWorldRules,
     normalizeBattleTarget,
-    normalizeDirection,
     normalizeGarrison,
-    normalizeScoutCoordinates,
-    normalizeScoutReport,
-    normalizeScoutReports,
-    normalizeScoutState,
     updateMissionReadiness,
-    upsertScoutCoordinateRecord,
   } = dependencies;
-
-  function isLegacyPresetTerritory(rawTerritory) {
-    return Boolean(LEGACY_SITE_MIGRATIONS[rawTerritory?.id]);
-  }
-
-  function migrateLegacyPresetTerritory(rawTerritory) {
-    if (!isLegacyPresetTerritory(rawTerritory)) return rawTerritory;
-    if (!['scouted', 'contested', 'occupied'].includes(rawTerritory.status)) return null;
-    const migration = LEGACY_SITE_MIGRATIONS[rawTerritory.id];
-    return {
-      ...rawTerritory,
-      x: hasFiniteValue(rawTerritory.x) ? rawTerritory.x : migration.x,
-      y: hasFiniteValue(rawTerritory.y) ? rawTerritory.y : migration.y,
-      type: migration.type,
-      owner: rawTerritory.status === 'occupied' ? 'player' : migration.owner,
-      status: rawTerritory.status === 'scouted' ? 'discovered' : rawTerritory.status,
-      art: SITE_ART[migration.type],
-    };
-  }
 
   function getCapitalOrigin(rawTerritory = {}, options = {}) {
     const configuredOrigin = options.capitalOrigin || options.origin || {};
@@ -97,16 +68,13 @@ function createTerritoryStateNormalizer(dependencies = {}) {
 
   function normalizeTerritory(rawTerritory, now = new Date().toISOString(), options = {}) {
     if (!rawTerritory || typeof rawTerritory !== 'object') return null;
-    const migratedTerritory = migrateLegacyPresetTerritory(rawTerritory);
-    if (!migratedTerritory) return null;
-    rawTerritory = migratedTerritory;
     if (rawTerritory.id === 'capital') {
       const origin = getCapitalOrigin(rawTerritory, options);
       return {
         ...createCapital(now, { origin }),
         cityName: typeof rawTerritory.cityName === 'string' && rawTerritory.cityName.trim()
           ? rawTerritory.cityName.trim().slice(0, MAX_NAME_LENGTH)
-          : '棣栭兘',
+          : '首都',
         discoveredAt: rawTerritory.discoveredAt || rawTerritory.scoutedAt || now,
         occupiedAt: rawTerritory.occupiedAt || now,
         lastBattle: rawTerritory.lastBattle || null,
@@ -141,7 +109,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
       y,
       naturalName: typeof rawTerritory.naturalName === 'string' && rawTerritory.naturalName.trim()
         ? rawTerritory.naturalName.trim()
-        : '鏈煡鍦扮偣',
+        : '未知地点',
       cityName: typeof rawTerritory.cityName === 'string' && rawTerritory.cityName.trim()
         ? rawTerritory.cityName.trim().slice(0, MAX_NAME_LENGTH)
         : null,
@@ -165,6 +133,10 @@ function createTerritoryStateNormalizer(dependencies = {}) {
     };
     if (planningTerrain) normalized.terrain = planningTerrain;
     if (mapTerrain) normalized.mapTerrain = mapTerrain;
+    // 距首城 ring distance from the ACTUAL capital origin (capitals spawn off world-origin), stamped
+    // on the territory so the garrison band decision reads one capital-relative fact everywhere.
+    const bandOrigin = getCapitalOrigin(rawTerritory, options);
+    normalized.capitalDistance = Math.max(0, getRelativeDistance(bandOrigin.q, bandOrigin.r, x, y));
     normalized.garrison = normalizeGarrison(normalized.garrison, normalized, normalized.discoveredAt || now);
     normalized.defenderLeader = normalized.garrison?.leader || null;
     normalized.battleTarget = normalized.battleTarget
@@ -176,94 +148,11 @@ function createTerritoryStateNormalizer(dependencies = {}) {
   function normalizeWarMissions(rawMissions) {
     return (Array.isArray(rawMissions) ? rawMissions : [])
       .filter((mission) => mission && typeof mission === 'object')
+      // Directional-scout missions were removed; drop any legacy scout entries so
+      // old saves load clean instead of resurrecting a defunct mission kind.
+      .filter((mission) => !(mission.kind === 'scout' || mission.action === 'scout'))
       .map((mission) => {
-        const kind = mission.kind === 'scout' || mission.action === 'scout' ? 'scout' : 'conquest';
         const status = mission.status === 'ready' ? 'ready' : 'active';
-        if (kind === 'scout') {
-          const direction = normalizeDirection(mission.direction);
-          if (!direction) return null;
-          const targetX = toInteger(mission.targetX, 0);
-          const targetY = toInteger(mission.targetY, 0);
-          const originX = toInteger(mission.originX, 0);
-          const originY = toInteger(mission.originY, 0);
-          const actionPoints = Math.max(1, toInteger(mission.actionPoints, SCOUT_ACTION_POINTS));
-          const hasStoredRoute = Array.isArray(mission.route) && mission.route.length > 0;
-          const hasStoredRevealArea = Array.isArray(mission.revealArea) && mission.revealArea.length > 0;
-          const route = Array.isArray(mission.route)
-            ? mission.route.map((step, index) => {
-              const q = toInteger(step.q, originX);
-              const r = toInteger(step.r, originY);
-              return {
-                q,
-                r,
-                step: Math.max(1, toInteger(step.step, index + 1)),
-                tileId: WorldMapService.getTileId(q, r),
-                revealed: Boolean(step.revealed),
-              };
-            })
-            : WorldMapService.buildScoutRoute(
-              { q: originX, r: originY },
-              direction,
-              actionPoints,
-              { startDistance: Math.max(1, getRelativeDistance(originX, originY, targetX, targetY) - actionPoints + 1) },
-            ).map((step) => ({
-              ...step,
-              tileId: WorldMapService.getTileId(step.q, step.r),
-              revealed: false,
-            }));
-          const revealArea = Array.isArray(mission.revealArea) && mission.revealArea.length
-            ? mission.revealArea.map((coord, index) => {
-              const q = toInteger(coord.q, targetX);
-              const r = toInteger(coord.r, targetY);
-              return {
-                q,
-                r,
-                step: Math.max(1, toInteger(coord.step, index + 1)),
-                kind: coord.kind === 'branch' ? 'branch' : 'main',
-                tileId: WorldMapService.getTileId(q, r),
-                revealed: Boolean(coord.revealed),
-              };
-            })
-            : [];
-          const revealAreaSource = typeof mission.revealAreaSource === 'string' && mission.revealAreaSource
-            ? mission.revealAreaSource
-            : hasStoredRevealArea
-              ? 'directional-route-v1'
-              : hasStoredRoute
-                ? 'legacy-route'
-                : 'legacy-target';
-          return {
-            id: mission.id || `scout_${direction}_${Date.now()}`,
-            kind: 'scout',
-            direction,
-            sourceCityId: typeof mission.sourceCityId === 'string' && mission.sourceCityId ? mission.sourceCityId : 'capital',
-            originTerritoryId: typeof mission.originTerritoryId === 'string' && mission.originTerritoryId ? mission.originTerritoryId : 'capital',
-            originName: typeof mission.originName === 'string' && mission.originName ? mission.originName : '',
-            originX,
-            originY,
-            targetX,
-            targetY,
-            siteX: hasFiniteValue(mission.siteX) ? toInteger(mission.siteX, targetX) : null,
-            siteY: hasFiniteValue(mission.siteY) ? toInteger(mission.siteY, targetY) : null,
-            siteTerrain: normalizeMapTerrainId(mission.siteTerrain),
-            scoutDistance: Math.max(1, toInteger(mission.scoutDistance, getRelativeDistance(originX, originY, targetX, targetY))),
-            actionPoints,
-            actionPointsRemaining: Math.max(0, toInteger(mission.actionPointsRemaining, mission.status === 'ready' ? 0 : actionPoints)),
-            route,
-            revealArea,
-            revealAreaSource,
-            revealedTileIds: Array.isArray(mission.revealedTileIds) ? mission.revealedTileIds.filter(Boolean).map(String) : [],
-            resolvedTarget: Boolean(mission.resolvedTarget),
-            result: mission.result === 'site' ? 'site' : mission.result === 'empty' ? 'empty' : null,
-            siteId: typeof mission.siteId === 'string' && mission.siteId ? mission.siteId : null,
-            report: normalizeScoutReport(mission.report),
-            nextStepAt: mission.nextStepAt || mission.startedAt || new Date().toISOString(),
-            returnedAt: mission.returnedAt || null,
-            startedAt: mission.startedAt || new Date().toISOString(),
-            completesAt: mission.completesAt || new Date().toISOString(),
-            status,
-          };
-        }
         if (!mission.territoryId) return null;
         return {
           id: mission.id || `conquest_${mission.territoryId}_${Date.now()}`,
@@ -281,7 +170,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
             leader: typeof mission.expedition?.leader === 'string' && mission.expedition.leader.trim()
               ? mission.expedition.leader.trim()
               : 'unavailable',
-            soldiers: Math.max(MIN_EXPEDITION_SOLDIERS, normalizeSoldierScale(mission.expedition?.soldiers || mission.soldiersCommitted, MIN_EXPEDITION_SOLDIERS)),
+            soldiers: normalizeSoldierScale(mission.expedition?.soldiers || mission.soldiersCommitted, 0),
           },
           startedAt: mission.startedAt || new Date().toISOString(),
           completesAt: mission.completesAt || new Date().toISOString(),
@@ -291,7 +180,10 @@ function createTerritoryStateNormalizer(dependencies = {}) {
       .filter(Boolean);
   }
 
-  function syncScoutCoordinatesWithTerritories(gameState, now = new Date().toISOString()) {
+  // Bind every territory to its world tile (with owner-derived visibility) and drop stale
+  // site bindings for territories that no longer exist. This is generic tile/site upkeep — it
+  // used to also write directional-scout coordinate records, which were removed.
+  function syncTerritoryTileBindings(gameState, now = new Date().toISOString()) {
     WorldMapService.ensureWorldMap(gameState, new Date(now));
     const territoryIds = new Set((gameState.territories || []).map((territory) => territory.id).filter(Boolean));
     gameState.worldMap.tiles = (gameState.worldMap.tiles || []).map((tile) => (
@@ -304,16 +196,8 @@ function createTerritoryStateNormalizer(dependencies = {}) {
       WorldMapService.bindSiteToTile(gameState, territory.x, territory.y, territory.id, now, {
         visibility: controlled ? 'controlled' : 'scouted',
       });
-      if (territory.x === 0 && territory.y === 0) continue;
-      upsertScoutCoordinateRecord(gameState, {
-        x: territory.x,
-        y: territory.y,
-        result: 'site',
-        siteId: territory.id,
-        scoutedAt: territory.discoveredAt || now,
-      });
     }
-    return gameState.scoutedCoordinates;
+    return gameState.worldMap.tiles;
   }
 
   function revealSolidKnownWorldTiles(gameState, now = new Date().toISOString()) {
@@ -374,9 +258,8 @@ function createTerritoryStateNormalizer(dependencies = {}) {
     return added;
   }
 
-  function normalizeTerritoryState(gameState, now = new Date(), options = {}) {
+  function normalizeTerritoryState(gameState, now = new Date()) {
     const isoNow = now.toISOString();
-    const previousWorldMapVersion = options.previousWorldMapVersion ?? WorldMapService.getWorldMapVersion(gameState.worldMap);
     const capitalOrigin = getWorldMapOrigin(gameState.worldMap);
     const known = new Map();
     for (const item of Array.isArray(gameState.territories) ? gameState.territories : []) {
@@ -388,14 +271,14 @@ function createTerritoryStateNormalizer(dependencies = {}) {
       .sort((a, b) => (a.id === 'capital' ? -1 : b.id === 'capital' ? 1 : getDistance(a.x, a.y) - getDistance(b.x, b.y)));
     gameState.polity = normalizePolity(gameState.polity);
     gameState.warMissions = normalizeWarMissions(gameState.warMissions);
-    gameState.scoutReports = normalizeScoutReports(gameState.scoutReports);
-    gameState.scoutedCoordinates = normalizeScoutCoordinates(gameState.scoutedCoordinates);
-    gameState.scoutState = normalizeScoutState(gameState.scoutState);
+    // Directional-scout state was removed. Drop legacy persisted scout keys so old saves
+    // load clean rather than carrying defunct data forward.
+    delete gameState.scoutReports;
+    delete gameState.scoutedCoordinates;
+    delete gameState.scoutState;
     WorldMapService.ensureWorldMap(gameState, now);
-    migrateTerritorySitesToCurrentWorldRules(gameState, previousWorldMapVersion, now);
     revealSolidKnownWorldTiles(gameState, isoNow);
-    syncScoutCoordinatesWithTerritories(gameState, isoNow);
-    enforceScoutMissionLimit(gameState);
+    syncTerritoryTileBindings(gameState, isoNow);
     updateMissionReadiness(gameState, now);
     return gameState;
   }
@@ -405,7 +288,7 @@ function createTerritoryStateNormalizer(dependencies = {}) {
     normalizeTerritoryState,
     normalizeWarMissions,
     revealSolidKnownWorldTiles,
-    syncScoutCoordinatesWithTerritories,
+    syncTerritoryTileBindings,
   };
 }
 

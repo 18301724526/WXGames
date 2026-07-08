@@ -36,14 +36,17 @@ function createHost(overrides = {}) {
     drawX: 50,
     drawY: 40,
   };
+  const worldMapCacheState = {
+    worldTileFastDragActive: Boolean(overrides.worldTileFastDragActive),
+    worldTileStaticCacheKey: overrides.worldTileStaticCacheKey || '',
+    worldTileStaticCacheLayoutKind: overrides.worldTileStaticCacheLayoutKind || '',
+    worldTileStaticCacheLayout: overrides.worldTileStaticCacheLayout || null,
+    worldTileStaticCache: overrides.worldTileStaticCache || work,
+  };
   return {
     calls,
     ctx: createCtx(calls),
-    worldTileFastDragActive: false,
-    worldTileStaticCacheKey: '',
-    worldTileStaticCacheLayoutKind: '',
-    worldTileStaticCacheLayout: null,
-    worldTileStaticCache: work,
+    worldMapCacheState,
     resolveWorldTileStaticCacheLayout() {
       calls.push(['resolveWorldTileStaticCacheLayout']);
       return layout;
@@ -84,8 +87,8 @@ test('WorldMapStaticLayerRenderer renders and caches static layer work', () => {
   const renderer = new WorldMapStaticLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileStaticLayer({ tiles: [] }, {}, {}, [], { selectedSiteId: 'capital' }), true);
-  assert.equal(host.worldTileStaticCacheKey, 'static-cache-v1');
-  assert.equal(host.worldTileStaticCacheLayoutKind, 'world');
+  assert.equal(host.worldMapCacheState.worldTileStaticCacheKey, 'static-cache-v1');
+  assert.equal(host.worldMapCacheState.worldTileStaticCacheLayoutKind, 'world');
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileStaticEntries'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileLayerCache'), true);
 });
@@ -121,6 +124,96 @@ test('WorldMapStaticLayerRenderer delegates chunk static layouts to host chunk r
 
   assert.equal(renderer.renderWorldTileStaticLayer({ tiles: [] }, {}, {}, [], {}), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileStaticChunks'), true);
+});
+
+function createScopedHost(overrides = {}) {
+  const host = createHost(overrides);
+  host.withRenderCtx = function withRenderCtx(ctx, callback) {
+    if (typeof callback !== 'function') return false;
+    if (!ctx) return callback();
+    const previousCtx = this.ctx;
+    this.ctx = ctx;
+    try {
+      return callback();
+    } finally {
+      this.ctx = previousCtx;
+    }
+  };
+  return host;
+}
+
+function createBakeWork(calls = []) {
+  return {
+    canvas: { width: 200, height: 120 },
+    ctx: createCtx(calls),
+    width: 100,
+    height: 60,
+    pixelWidth: 200,
+    pixelHeight: 120,
+    scale: 2,
+  };
+}
+
+test('WorldMapStaticLayerRenderer cache bake scopes the work ctx on the host owner', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapStaticLayerRenderer({ host });
+  const liveCtx = host.ctx;
+  const work = createBakeWork([]);
+  const seenCtxs = [];
+
+  const result = renderer.withCacheContext(work, () => {
+    seenCtxs.push(host.ctx);
+    return true;
+  });
+
+  assert.equal(result, true);
+  assert.equal(seenCtxs.length, 1);
+  assert.equal(seenCtxs[0], work.ctx);
+  assert.equal(host.ctx, liveCtx);
+});
+
+test('WorldMapStaticLayerRenderer cache bake never pins a stale ctx across host ctx recreation', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapStaticLayerRenderer({ host });
+
+  assert.equal(renderer.withCacheContext(createBakeWork([]), () => true), true);
+
+  const recreatedCtx = createCtx([]);
+  host.ctx = recreatedCtx;
+  assert.equal(renderer.ctx, recreatedCtx);
+});
+
+test('WorldMapStaticLayerRenderer cache bake restores the host ctx when the bake throws', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapStaticLayerRenderer({ host });
+  const liveCtx = host.ctx;
+  const workCalls = [];
+  const work = createBakeWork(workCalls);
+
+  assert.throws(
+    () =>
+      renderer.withCacheContext(work, () => {
+        throw new Error('bake failed');
+      }),
+    /bake failed/,
+  );
+  assert.equal(host.ctx, liveCtx);
+  assert.equal(workCalls.some((call) => call[0] === 'restore'), true);
+
+  const recreatedCtx = createCtx([]);
+  host.ctx = recreatedCtx;
+  assert.equal(renderer.ctx, recreatedCtx);
+});
+
+test('WorldMapStaticLayerRenderer cache bake still runs when the host lacks withRenderCtx', () => {
+  const host = createHost();
+  const renderer = new WorldMapStaticLayerRenderer({ host });
+  const workCalls = [];
+  const work = createBakeWork(workCalls);
+
+  assert.equal(renderer.withCacheContext(work, () => 'baked'), 'baked');
+  assert.equal(workCalls.some((call) => call[0] === 'save'), true);
+  assert.equal(workCalls.some((call) => call[0] === 'restore'), true);
 });
 
 test('WorldMapStaticLayerRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {

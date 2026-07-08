@@ -1,9 +1,4 @@
 {
-  "backend/frontend-api-example.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/routes/gameRoutes.js": {
     "no-empty": {
       "count": 1
@@ -14,24 +9,9 @@
       "count": 1
     }
   },
-  "backend/services/BattleService.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "backend/services/DefenderLeaderService.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/services/TaskDefinitionService.js": {
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "backend/services/TerritoryService.js": {
-    "no-unused-vars": {
-      "count": 2
     }
   },
   "backend/services/VersionService.js": {
@@ -54,17 +34,7 @@
       "count": 1
     }
   },
-  "backend/services/worldExplorer/WorldExplorerActions.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "backend/services/worldMap/WorldMapVisionHistory.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "backend/tests/WorldExplorerService.test.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -81,7 +51,7 @@
   },
   "frontend/js/debug/ClientOperationLog.js": {
     "no-empty": {
-      "count": 5
+      "count": 3
     }
   },
   "frontend/js/debug/ClientOperationLog.test.js": {
@@ -101,91 +71,8 @@
   },
   "frontend/js/debug/WorldMarchTrace.js": {
     "no-empty": {
-      "count": 5
+      "count": 2
     },
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/domain/TileMapGeometry.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/domain/WorldActorProjection.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/domain/WorldChunkAddress.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/domain/WorldFogVisualSnapshot.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/domain/WorldInterestWindow.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/domain/WorldMapEntitySnapshot.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/domain/WorldMapInputIntent.js": {
-    "no-undef": {
-      "count": 1
-    },
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/domain/WorldMapPerformanceBudget.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/domain/WorldMapPickingModel.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/domain/WorldMapRenderSnapshot.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/domain/WorldMapSelectionResolver.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/domain/WorldMapVisibilityModel.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/domain/WorldMarchGeometry.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/domain/WorldRevealStore.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/domain/WorldTime.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/domain/WorldTopology.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -195,98 +82,7 @@
       "count": 1
     }
   },
-  "frontend/js/platform/CanvasCityActionHandlers.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/CanvasGameApp.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameAppCommands.js": {
-    "no-empty": {
-      "count": 1
-    },
-    "no-unused-vars": {
-      "count": 9
-    }
-  },
-  "frontend/js/platform/CanvasGameAppGuideUi.js": {
-    "no-unused-vars": {
-      "count": 5
-    }
-  },
-  "frontend/js/platform/CanvasGameAppInputRouter.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameRenderer.js": {
-    "no-unused-vars": {
-      "count": 9
-    }
-  },
   "frontend/js/platform/CanvasGameRendererCompositionFactory.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/platform/CanvasGameRendererPageFacades.js": {
-    "no-unused-vars": {
-      "count": 5
-    }
-  },
-  "frontend/js/platform/CanvasGameShell.js": {
-    "no-unused-vars": {
-      "count": 4
-    }
-  },
-  "frontend/js/platform/CanvasGameShellCommands.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/CanvasGameShellGuideUi.js": {
-    "no-unused-vars": {
-      "count": 6
-    }
-  },
-  "frontend/js/platform/CanvasGameShellInputRouter.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameShellMounting.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameShellRenderingRuntime.js": {
-    "no-unused-vars": {
-      "count": 4
-    }
-  },
-  "frontend/js/platform/CanvasGameShellWorldMapFrameRuntime.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/CanvasGameWorldActorAnimationRuntime.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/CanvasShellActionHandlers.js": {
-    "no-unused-vars": {
-      "count": 6
-    }
-  },
-  "frontend/js/platform/CanvasTerritoryActionHandlers.js": {
-    "no-empty": {
-      "count": 1
-    },
     "no-unused-vars": {
       "count": 3
     }
@@ -314,19 +110,9 @@
       "count": 1
     }
   },
-  "frontend/js/platform/WorldMapRuntime.js": {
-    "no-unused-vars": {
-      "count": 10
-    }
-  },
   "frontend/js/platform/WorldMapRuntimeCoordinator.js": {
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "frontend/js/platform/WorldMapVisualPluginRegistry.js": {
-    "no-unused-vars": {
-      "count": 2
     }
   },
   "frontend/js/platform/renderers/BattleCanvasRenderer.js": {
@@ -341,12 +127,12 @@
   },
   "frontend/js/platform/renderers/CanvasAssetRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/CanvasFrameRenderer.js": {
     "no-unused-vars": {
-      "count": 3
+      "count": 2
     }
   },
   "frontend/js/platform/renderers/CanvasPreloadAssetManifest.js": {
@@ -355,11 +141,6 @@
     }
   },
   "frontend/js/platform/renderers/CanvasSurfaceHitTargets.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/renderers/CanvasSurfaceRenderer.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -381,20 +162,10 @@
   },
   "frontend/js/platform/renderers/HudOverlayCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/platform/renderers/MapCommandCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
-  "frontend/js/platform/renderers/TechCanvasRenderer.js": {
-    "no-unused-vars": {
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js": {
+  "frontend/js/platform/renderers/TechCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -406,7 +177,7 @@
   },
   "frontend/js/platform/renderers/TutorialCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "frontend/js/platform/renderers/WorldActorCanvasRenderer.js": {
@@ -459,11 +230,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 7
-    }
-  },
   "frontend/js/platform/renderers/WorldMapLayoutModel.js": {
     "no-unused-vars": {
       "count": 3
@@ -499,14 +265,9 @@
       "count": 2
     }
   },
-  "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
   "frontend/js/platform/renderers/WorldTileWaterCanvasRenderer.js": {
     "no-unused-vars": {
-      "count": 4
+      "count": 3
     }
   },
   "frontend/js/state/UIStatePresenter.js": {
@@ -515,11 +276,6 @@
     }
   },
   "frontend/js/state/UIStatePresenterDelegates.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/state/presenters/MilitaryPresenter.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -540,16 +296,6 @@
     }
   },
   "frontend/js/state/presenters/WorldTileMapTileNormalizer.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "frontend/js/tutorial/TutorialGuideController.test.js": {
-    "no-dupe-keys": {
-      "count": 1
-    }
-  },
-  "frontend/js/ui/H5UpdateRuntimeAdapter.js": {
     "no-unused-vars": {
       "count": 2
     }

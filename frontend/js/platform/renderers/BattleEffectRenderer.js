@@ -1,4 +1,22 @@
 (function (global) {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function t(key = '', params = {}) {
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params) : key;
+  }
+
   function clamp01(value) {
     return Math.max(0, Math.min(1, Number(value) || 0));
   }
@@ -17,7 +35,7 @@
       width: isSkill ? 3 : 2,
     });
     if (isSkill) {
-      renderer.drawText(activeTurn.skillName || '\u6280\u80fd', x, y - 54 * pulse, {
+      renderer.drawText(activeTurn.skillName || t('battle.fallback.skill'), x, y - 54 * pulse, {
         size: 14,
         bold: true,
         color: '#ffe6b5',
@@ -92,7 +110,7 @@
       },
     );
     if (!portraitDrawn) {
-      renderer.drawText(String(activeTurn.actorName || '\u5c06').slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
+      renderer.drawText(String(activeTurn.actorName || t('battle.fallback.general')).slice(0, 1), portraitX + portraitSize / 2, portraitY + portraitSize / 2, {
         size: 26,
         bold: true,
         color: '#f6e8c8',
@@ -120,7 +138,7 @@
       bold: true,
       color: '#cbbd96',
     });
-    renderer.drawText(renderer.truncateText(activeTurn.skillName || '\u6218\u6cd5', textWidth, { size: 24, bold: true }), textX, titleY + 36, {
+    renderer.drawText(renderer.truncateText(activeTurn.skillName || t('battle.fallback.tactic'), textWidth, { size: 24, bold: true }), textX, titleY + 36, {
       size: 24,
       bold: true,
       color: '#ffe6b5',

@@ -1,82 +1,68 @@
 (function (global) {
-  const TUTORIAL_STEPS = Object.freeze({
-    initial: 0,
-    tutorialStarted: 1,
-    cityEntered: 2,
-    houseGuideReady: 3,
-    houseBuilt: 4,
-    civilizationTabOpened: 5,
-    eraAdvancedTo1: 6,
-    buildingsTabOpened: 7,
-    farmPrepReserved: 8,
-    farmBuilt: 9,
-    era2AdvanceReady: 10,
-    eraAdvancedTo2: 11,
-    specialEventTabOpened: 12,
-    specialEventClaimed: 13,
-    buildingsTabOpenedForLumbermill: 14,
-    lumbermillBuilt: 15,
-    era3AdvanceReady: 16,
-    era3Advanced: 17,
-    scoutFamousGranted: 18,
-    famousPanelOpened: 19,
-    famousCardViewed: 20,
-    formationPanelOpened: 21,
-    scoutFormationSaved: 22,
-    scoutWorldPanelOpened: 23,
-    scoutExploreStarted: 24,
-    firstCityDiscovered: 25,
-    firstCityConquestStarted: 26,
-    firstCityOccupied: 27,
-    firstCityNamed: 28,
-    polityNamed: 29,
-    talentPolicyOpened: 30,
-    talentPolicyApplied: 31,
-    manualTalentAssigned: 32,
-    famousSeekOpened: 33,
-    famousSeekCompleted: 34,
-    finalTechOpened: 35,
-    completed: 36,
-  });
+  // Thin reader over the shared tutorial flow table. The step table and ALL
+  // ordering helpers live in shared/tutorialFlowConfig.js; this module only
+  // keeps the client-side guide-window policy functions.
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../../../shared/tutorialFlowConfig');
+    }
+    return null;
+  })();
 
+  const TUTORIAL_STEPS = TutorialFlowShared.TUTORIAL_STEPS;
+
+  // Canonical step name for a name-or-legacy-number value; unknown -> 'initial'
+  // (mirrors the legacy Number(step)->0 fallback).
   function normalizeStep(step) {
-    const value = Number(step);
-    return Number.isFinite(value) ? value : 0;
+    return TutorialFlowShared.stepName(step) || TUTORIAL_STEPS.initial;
   }
 
   function isGuideRangeActive(step, completed, startStep, endStep, options = {}) {
     if (completed) return false;
     const current = normalizeStep(step);
-    const start = normalizeStep(startStep);
-    const end = normalizeStep(endStep);
     const includeEnd = options.includeEnd === true;
-    return current >= start && (includeEnd ? current <= end : current < end);
+    return (
+      TutorialFlowShared.stepAtLeast(current, startStep) &&
+      (includeEnd
+        ? TutorialFlowShared.stepAtMost(current, endStep)
+        : TutorialFlowShared.stepBefore(current, endStep))
+    );
   }
 
   function canOpenTab(tabId, context = {}) {
     if (context.completed) return true;
     const step = normalizeStep(context.step);
-    if (step < TUTORIAL_STEPS.houseBuilt) return ['resources', 'military', 'buildings'].includes(tabId);
-    if (step < TUTORIAL_STEPS.eraAdvancedTo1) return ['resources', 'military', 'buildings', 'civilization'].includes(tabId);
-    if (step <= TUTORIAL_STEPS.farmBuilt) return ['buildings', 'civilization', 'tasks'].includes(tabId);
-    if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabId === 'civilization';
-    if (step < TUTORIAL_STEPS.specialEventClaimed) return ['civilization', 'events'].includes(tabId);
-    if (step < TUTORIAL_STEPS.lumbermillBuilt) return ['events', 'buildings'].includes(tabId);
-    if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'tasks'].includes(tabId);
-    if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabId);
-    if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.firstCityDiscovered) {
+    const { stepEquals, stepAtLeast, stepAtMost, stepBefore } = TutorialFlowShared;
+    // 'tasks' opens from the very start: the homestead-supplies task is
+    // claimed at cityEntered, before the first house exists.
+    if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'military', 'buildings', 'tasks'].includes(tabId);
+    if (stepBefore(step, TUTORIAL_STEPS.eraAdvancedTo1)) return ['resources', 'military', 'buildings', 'civilization'].includes(tabId);
+    if (stepAtMost(step, TUTORIAL_STEPS.farmBuilt)) return ['buildings', 'civilization', 'tasks'].includes(tabId);
+    if (stepEquals(step, TUTORIAL_STEPS.era2AdvanceReady)) return tabId === 'civilization';
+    if (stepBefore(step, TUTORIAL_STEPS.specialEventClaimed)) return ['civilization', 'events'].includes(tabId);
+    if (stepBefore(step, TUTORIAL_STEPS.lumbermillBuilt)) return ['events', 'buildings'].includes(tabId);
+    if (stepEquals(step, TUTORIAL_STEPS.lumbermillBuilt)) return ['buildings', 'tasks'].includes(tabId);
+    if (stepEquals(step, TUTORIAL_STEPS.era3AdvanceReady)) return ['civilization', 'buildings', 'tasks'].includes(tabId);
+    // Barracks segment (era3Advanced..scoutFamousGranted): the player claims
+    // the barracks-supplies / first-army / scout-officer tasks and builds the
+    // barracks, so 'tasks' + 'buildings' must open here.
+    if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.scoutFamousGranted)) {
+      return ['resources', 'buildings', 'tasks'].includes(tabId);
+    }
+    if (stepAtLeast(step, TUTORIAL_STEPS.scoutFamousGranted) && stepBefore(step, TUTORIAL_STEPS.firstCityDiscovered)) {
       return ['civilization', 'resources', 'military'].includes(tabId);
     }
-    if (step >= TUTORIAL_STEPS.firstCityDiscovered && step < TUTORIAL_STEPS.polityNamed) {
+    if (stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered) && stepBefore(step, TUTORIAL_STEPS.polityNamed)) {
       return ['resources', 'military'].includes(tabId);
     }
-    if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
+    if (stepAtLeast(step, TUTORIAL_STEPS.polityNamed) && stepAtMost(step, TUTORIAL_STEPS.talentPolicyApplied)) {
       return tabId === 'military';
     }
-    if (step >= TUTORIAL_STEPS.manualTalentAssigned && step < TUTORIAL_STEPS.famousSeekCompleted) {
+    if (stepAtLeast(step, TUTORIAL_STEPS.manualTalentAssigned) && stepBefore(step, TUTORIAL_STEPS.famousSeekCompleted)) {
       return ['resources', 'famousPersons'].includes(tabId);
     }
-    if (step >= TUTORIAL_STEPS.famousSeekCompleted && step < TUTORIAL_STEPS.completed) {
+    if (stepAtLeast(step, TUTORIAL_STEPS.famousSeekCompleted) && stepBefore(step, TUTORIAL_STEPS.completed)) {
       return tabId === 'tech';
     }
     return true;

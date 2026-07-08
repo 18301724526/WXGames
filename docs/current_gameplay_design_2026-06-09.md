@@ -99,7 +99,7 @@
 
 - `backend/services/WorldMapService.js` 提供共享服务器 seed、tile reveal、scout reveal、terrain generation、canonical tile identity 和 client world map 输出。
 - `backend/services/WorldAiExplorerService.js` 已提供候选 AI 探索闭环：AI 自己揭开服务器地形，未接壤前不暴露给玩家；接壤后由服务端同步 AI 已解锁地形给玩家。
-- `frontend/js/domain/TileMapGeometry.js`、`WorldMarchGeometry.js` 和 renderer layout 使用 `(q-r, q+r)` 等距投影。
+- `frontend/js/ecs/foundation/TileMapGeometry.js`、`WorldMarchGeometry.js` 和 renderer layout 使用 `(q-r, q+r)` 等距投影。
 - `WorldMapRenderSnapshot`、`WorldMapEntitySnapshot`、`WorldMapPerformanceBudget` 已经把大地图结构推向 compact snapshot。
 
 待硬化：
@@ -125,8 +125,8 @@ Implemented: March Formation Strength
 - Each selected hero has troop controls under the portrait: a slider hit area and a numeric input hit area. Manual input and auto replenish only change the draft; confirm replenishment promotes the draft into the formation save payload.
 - First-version cap is config-driven by `formationMemberSoldierCap: 1000` per member. Hero level, command, tech, building, and troop-type growth must extend that config contract instead of hardcoding UI limits.
 - Formation troops are standing troops assigned to the formation and do not count against city reserve capacity. After assigning reserve soldiers into a formation, the city can recruit new reserve soldiers up to `soldierCap` again.
-- Saving a formation with higher assigned troops deducts the delta from the current city reserve and charges configured recruitment resources. If reserve soldiers or resources are insufficient, the backend rejects the save.
-- Saving a formation with lower assigned troops does not return soldiers to city reserve. It refunds configured resources through `soldierRefundRatio`; battle losses do not refund resources.
+- Saving a formation with higher assigned troops deducts the delta from the current city reserve and charges no resources; recruitment resources (`recruitmentCostPerSoldier`) are charged only when barracks training adds soldiers to the reserve. If reserve soldiers are insufficient, the backend rejects the save.
+- Saving a formation with lower assigned troops does not return soldiers to city reserve. It refunds configured resources through `soldierRefundRatio` as the interim stand-in for the future veterans-camp (老兵营地) drain-refund feature; battle losses do not refund resources.
 - Reallocating the same total troop count inside one formation does not deduct soldiers and does not refund resources.
 - Starting a world march freezes the saved standing formation into `mission.formationSnapshot` with `soldiersCommitted` and `soldiersRemaining`; AI, battle, and raid systems must consume that snapshot, not live city reserve soldiers.
 - A formation away from home is backend-locked from editing while an active or unsettled idle march snapshot exists. Returning home settles surviving snapshot troops back into the saved formation.

@@ -29,6 +29,50 @@ test('GameStateRepository persists task progress with the game state', () => {
   db.close();
 });
 
+test('GameStateRepository persists captureDecisions (②b) with the game state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  const state = GameStateNormalizer.createInitialGameState('capture-decisions-repo-test');
+  state.captureDecisions = [{
+    id: 'cap_1_t_5_5', territoryId: 't_5_5', territoryName: '林城',
+    captive: { id: 'df_1', name: '林烈' }, recruitChance: 0.42, seed: 's', status: 'pending', createdAt: '2026-07-06T00:00:00.000Z',
+  }];
+
+  repository.save(state);
+  const saved = repository.findByPlayerId('capture-decisions-repo-test');
+  assert.equal(saved.captureDecisions.length, 1);
+  assert.equal(saved.captureDecisions[0].id, 'cap_1_t_5_5');
+  assert.equal(saved.captureDecisions[0].captive.name, '林烈');
+  assert.equal(saved.captureDecisions[0].status, 'pending');
+  db.close();
+});
+
+test('GameStateRepository records schema migration ledger during init', () => {
+  const db = new Database(':memory:');
+  try {
+    const repository = new GameStateRepository(db);
+    repository.init();
+
+    const rows = db.prepare('SELECT id, status FROM schema_migrations ORDER BY id').all();
+    assert.deepEqual(rows, [{
+      id: '001-game-states-compat-columns',
+      status: 'applied',
+    }, {
+      id: '002-capture-decisions-column',
+      status: 'applied',
+    }]);
+
+    const secondRepository = new GameStateRepository(db);
+    secondRepository.init();
+    const count = db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count;
+    assert.equal(count, 2);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository increments revision and rejects stale expected revisions', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
@@ -55,6 +99,41 @@ test('GameStateRepository increments revision and rejects stale expected revisio
     const saved = repository.findByPlayerId('revision-repo-test');
     assert.equal(saved.revision, 2);
     assert.notEqual(saved.resources.food, 999);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository serializes player state locks across repository instances', () => {
+  const db = new Database(':memory:');
+  const firstRepository = new GameStateRepository(db);
+  firstRepository.init();
+  const secondRepository = new GameStateRepository(db);
+  secondRepository.init();
+
+  try {
+    const heldLock = firstRepository.playerStateLocks.acquire('locked-player', {
+      scope: 'test-held-lock',
+      waitMs: 0,
+      ttlMs: 60000,
+    });
+    let entered = false;
+    assert.throws(
+      () => secondRepository.withPlayerStateLock('locked-player', () => {
+        entered = true;
+      }, { scope: 'test-contender', waitMs: 0 }),
+      (error) => error.code === 'PLAYER_STATE_LOCK_TIMEOUT'
+        && error.playerId === 'locked-player',
+    );
+    assert.equal(entered, false);
+
+    firstRepository.playerStateLocks.release(heldLock);
+    const result = secondRepository.withPlayerStateLock(
+      'locked-player',
+      () => 'acquired-after-release',
+      { scope: 'test-after-release', waitMs: 0 },
+    );
+    assert.equal(result, 'acquired-after-release');
   } finally {
     db.close();
   }
@@ -1054,12 +1133,21 @@ test('GameStateRepository exposes occupied spawn coordinates from saves, shared 
     repository.save(ownerState);
     repository.reserveSpawnForPlayer('spawn-reserved-owner', { q: -14, r: 21 });
 
+    const neutralCity = repository.worldCityRepo.getAllCities()[0];
     const occupied = repository.getOccupiedSpawnCoordinates();
     const keys = new Set(occupied.map((coord) => `${coord.source}:${coord.q},${coord.r}`));
+    const worldCityOccupied = occupied.find((coord) => (
+      coord.source === 'world-city'
+      && coord.q === neutralCity.x
+      && coord.r === neutralCity.y
+    ));
 
     assert.ok(keys.has('game-state-capital:12,4'));
     assert.ok(keys.has('shared-world-territory:19,6'));
     assert.ok(keys.has('spawn-allocation:-14,21'));
+    assert.ok(keys.has(`world-city:${neutralCity.x},${neutralCity.y}`));
+    assert.equal(worldCityOccupied.blocksTile, true);
+    assert.equal(worldCityOccupied.blocksDistance, false);
   } finally {
     db.close();
   }

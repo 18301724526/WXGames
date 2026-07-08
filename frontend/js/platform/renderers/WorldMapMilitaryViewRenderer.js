@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapMilitaryViewRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -9,36 +21,15 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const surface = this.drawingSurface;
-      if (surface && typeof surface[method] === 'function') {
-        return surface[method](...args);
-      }
-      return this.host?.[method]?.(...args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     isWorldTileMapWaterAnimated(...args) {
@@ -67,12 +58,22 @@
         stroke: 'rgba(255, 226, 177, 0.12)',
         radius: 10,
       });
-      this.drawText(summary.text?.polityName || 'Unnamed polity', x + 14, y + 13, { size: 14, bold: true, color: '#f0b45b' });
-      this.drawText(summary.text?.territoryCount || '0/0 controlled', x + width - 14, y + 15, {
-        size: 11,
-        color: '#74d3a0',
-        align: 'right',
+      this.drawText(summary.text?.polityName || this.t('world.map.polity.unnamed'), x + 14, y + 13, {
+        size: 14,
+        bold: true,
+        color: '#f0b45b',
       });
+      this.drawText(
+        summary.text?.territoryCount
+          || this.t('world.map.territory.controlledFallback', { controlled: 0, total: 0 }),
+        x + width - 14,
+        y + 15,
+        {
+          size: 11,
+          color: '#74d3a0',
+          align: 'right',
+        },
+      );
       if (tileMapView?.tiles?.length) {
         if (this.isWorldTileMapWaterAnimated(tileMapView)) {
           uiState.tileMapWaterAnimated = true;
@@ -85,20 +86,35 @@
           hitTargetsOnly: skipWorldMapLayer,
         });
         const resetW = 76;
-        this.drawButton(mapX + mapW - resetW - 8, mapY + 8, resetW, 28, 'Home', { size: 11, radius: 8 });
-        this.addHitTarget({ x: mapX + mapW - resetW - 8, y: mapY + 8, width: resetW, height: 28 }, { type: 'resetWorldPan' });
-        this.drawText(`${tileMapView.tiles.length} tiles`, mapX + 12, mapY + mapH - 14, {
+        this.drawButton(
+          mapX + mapW - resetW - 8,
+          mapY + 8,
+          resetW,
+          28,
+          this.t('world.map.homeButton'),
+          { size: 11, radius: 8 },
+        );
+        this.addHitTarget(
+          { x: mapX + mapW - resetW - 8, y: mapY + 8, width: resetW, height: 28 },
+          { type: 'resetWorldPan' },
+        );
+        this.drawText(this.t('world.map.tileCount', { count: tileMapView.tiles.length }), mapX + 12, mapY + mapH - 14, {
           size: 10,
           color: 'rgba(246, 232, 200, 0.68)',
         });
         return;
       }
 
-      this.drawTextLines(this.wrapTextLimit('Send scouts to reveal the outer world here.', width - 40, 3, { size: 13 }), x + 20, y + 70, {
-        size: 13,
-        color: '#cbbd96',
-        lineHeight: 18,
-      });
+      this.drawTextLines(
+        this.wrapTextLimit(this.t('world.map.emptyExploration'), width - 40, 3, { size: 13 }),
+        x + 20,
+        y + 70,
+        {
+          size: 13,
+          color: '#cbbd96',
+          lineHeight: 18,
+        },
+      );
     }
   }
 

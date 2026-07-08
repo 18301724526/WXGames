@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class ArmyFormationEditorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -10,7 +22,7 @@
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get presenter() {
@@ -18,56 +30,22 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
+    t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
     renderArmyFormationPortrait(...args) {
       return this.host?.renderArmyFormationPortrait?.(...args);
@@ -80,7 +58,14 @@
       const view = this.presenter.buildMilitaryViewState(state);
       const slot = Math.max(1, Math.min(3, Number(editor.slot) || 1));
       const formation = (view.formations || []).find((item) => Number(item.slot) === slot)
-        || { slot, cityId: view.formationMeta?.cityId || state.activeCityId || 'capital', name: `部队${slot}`, members: [], memberIds: [], maxMembers: 5 };
+        || {
+          slot,
+          cityId: view.formationMeta?.cityId || state.activeCityId || 'capital',
+          name: this.t('military.formation.default', { slot }),
+          members: [],
+          memberIds: [],
+          maxMembers: 5,
+        };
       const allPeople = Array.isArray(view.formationPeople) ? view.formationPeople : [];
       const memberIds = Array.isArray(editor.memberIds) ? editor.memberIds : formation.memberIds || [];
       const selectedIds = new Set(memberIds);
@@ -129,8 +114,11 @@
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
       const closeSize = 28;
-      this.drawText(`${formation.name || `部队${slot}`}编队`, x + 18, y + 16, { size: 18, bold: true, color: '#ffe6b5' });
-      this.drawText(`已选 ${selectedIds.size}/${maxMembers} · 第一位为主将`, x + 18, y + 43, { size: 12, color: '#cbbd96' });
+      const formationName = formation.name || this.t('military.formation.default', { slot });
+      this.drawText(this.t('military.formation.editor.title', { name: formationName }), x + 18, y + 16, { size: 18, bold: true, color: '#ffe6b5' });
+      this.drawText(this.t(
+        'military.formation.editor.selected',
+        { selected: selectedIds.size, maxMembers }), x + 18, y + 43, { size: 12, color: '#cbbd96' });
       this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, 'x', { size: 14, radius: 7 });
       this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeArmyFormationEditor' });
 
@@ -149,7 +137,9 @@
         const member = selectedMembers[index] || null;
         const slotX = selectedStartX + index * (slotSize + slotGap);
         this.renderArmyFormationPortrait(member, slotX, summaryY + 12, slotSize, slotSize, { radius: 5, scale: 1.34 });
-        this.drawText(index === 0 ? '主' : '副', slotX + slotSize / 2, summaryY + 67, {
+        this.drawText(index === 0
+          ? this.t('military.formation.editor.leaderSlot', {})
+          : this.t('military.formation.editor.memberSlot', {}), slotX + slotSize / 2, summaryY + 67, {
           size: 9,
           color: member ? '#ffe6b5' : 'rgba(255, 230, 181, 0.46)',
           align: 'center',
@@ -206,35 +196,26 @@
       }
 
       const autoY = summaryY + 154;
-      this.drawText(`\u9884\u5907 ${reserveSoldiers} / \u53ef\u5206 ${editableSoldierPool} / \u5df2\u786e\u8ba4 ${currentAssigned} / \u8349\u7a3f ${draftAssigned}`, innerX + 10, autoY + 12, {
+      this.drawText(this.t(
+        'military.formation.editor.reserveLine',
+        { reserve: reserveSoldiers, pool: editableSoldierPool, confirmed: currentAssigned, draft: draftAssigned }), innerX + 10, autoY + 12, {
         size: 10,
         color: '#cbbd96',
       });
-      const autoX = innerX + innerWidth - 128;
-      this.drawButton(autoX, autoY, 54, 24, '\u8865\u5175', {
+      const autoX = innerX + innerWidth - 70;
+      this.drawButton(autoX, autoY, 60, 24, this.t('military.formation.editor.replenish', {}), {
         size: 10,
         radius: 7,
         active: true,
         disabled: selectedMembers.length <= 0 || editor.saving,
       });
       this.addHitTarget(
-        { x: autoX, y: autoY, width: 54, height: 24 },
+        { x: autoX, y: autoY, width: 60, height: 24 },
         selectedMembers.length <= 0 || editor.saving ? { type: 'blockCanvasModal' } : { type: 'autoReplenishArmyFormation' },
-      );
-      const confirmX = autoX + 62;
-      this.drawButton(confirmX, autoY, 62, 24, '\u786e\u8ba4', {
-        size: 10,
-        radius: 7,
-        active: true,
-        disabled: selectedMembers.length <= 0 || editor.saving,
-      });
-      this.addHitTarget(
-        { x: confirmX, y: autoY, width: 62, height: 24 },
-        selectedMembers.length <= 0 || editor.saving ? { type: 'blockCanvasModal' } : { type: 'confirmArmyFormationSoldiers' },
       );
 
       const listTop = summaryY + 204;
-      this.drawText('\u540d\u4eba\u5217\u8868', innerX, listTop, { size: 13, bold: true, color: '#ffe6b5' });
+      this.drawText(this.t('military.formation.editor.rosterTitle', {}), innerX, listTop, { size: 13, bold: true, color: '#ffe6b5' });
       const pageSize = Math.max(2, Math.min(4, Math.floor((panelHeight - 354) / 58)));
       const pages = Math.max(1, Math.ceil(allPeople.length / pageSize));
       const page = Math.max(0, Math.min(pages - 1, Number(editor.page) || 0));
@@ -246,7 +227,7 @@
           stroke: 'rgba(255, 226, 177, 0.1)',
           radius: 8,
         });
-        this.drawTextLines(this.wrapTextLimit('暂无可编入的名人。先在名人入口接纳名人后，再回来编队。', innerWidth - 28, 3, { size: 12 }), innerX + 14, listY + 18, {
+        this.drawTextLines(this.wrapTextLimit(this.t('military.formation.editor.emptyPeople', {}), innerWidth - 28, 3, { size: 12 }), innerX + 14, listY + 18, {
           size: 12,
           color: '#aeb0b8',
           lineHeight: 18,
@@ -264,7 +245,7 @@
           });
           this.renderArmyFormationPortrait(person, innerX + 9, rowY + 7, 40, 40, { radius: 5, scale: 1.34 });
           const nameWidth = innerWidth - 132;
-          this.drawText(this.truncateText(person.name || '无名', nameWidth, { size: 13, bold: true }), innerX + 58, rowY + 9, {
+          this.drawText(this.truncateText(person.name || this.t('military.formation.editor.unknownPerson', {}), nameWidth, { size: 13, bold: true }), innerX + 58, rowY + 9, {
             size: 13,
             bold: true,
             color: disabled ? '#8d8f99' : '#fff1cf',
@@ -273,7 +254,9 @@
             size: 10,
             color: disabled ? 'rgba(174, 176, 184, 0.48)' : '#cbbd96',
           });
-          this.drawButton(innerX + innerWidth - 64, rowY + 12, 50, 30, selected ? '移除' : '加入', {
+          this.drawButton(innerX + innerWidth - 64, rowY + 12, 50, 30, selected
+            ? this.t('military.formation.editor.remove', {})
+            : this.t('military.formation.editor.add', {}), {
             size: 11,
             radius: 7,
             active: selected,
@@ -288,7 +271,7 @@
 
       const bottomY = y + panelHeight - 50;
       const pageButtonWidth = 72;
-      this.drawButton(innerX, bottomY, pageButtonWidth, 34, '上一页', { size: 11, radius: 8, disabled: page <= 0 });
+      this.drawButton(innerX, bottomY, pageButtonWidth, 34, this.t('common.previousPage', {}), { size: 11, radius: 8, disabled: page <= 0 });
       this.addHitTarget({ x: innerX, y: bottomY, width: pageButtonWidth, height: 34 }, page <= 0 ? { type: 'blockCanvasModal' } : { type: 'changeArmyFormationPage', delta: -1 });
       this.drawText(`${page + 1}/${pages}`, innerX + pageButtonWidth + 34, bottomY + 17, {
         size: 11,
@@ -296,10 +279,10 @@
         align: 'center',
         baseline: 'middle',
       });
-      this.drawButton(innerX + pageButtonWidth + 58, bottomY, pageButtonWidth, 34, '下一页', { size: 11, radius: 8, disabled: page >= pages - 1 });
+      this.drawButton(innerX + pageButtonWidth + 58, bottomY, pageButtonWidth, 34, this.t('common.nextPage', {}), { size: 11, radius: 8, disabled: page >= pages - 1 });
       this.addHitTarget({ x: innerX + pageButtonWidth + 58, y: bottomY, width: pageButtonWidth, height: 34 }, page >= pages - 1 ? { type: 'blockCanvasModal' } : { type: 'changeArmyFormationPage', delta: 1 });
       const saveX = x + panelWidth - 104;
-      this.drawButton(saveX, bottomY, 88, 34, '保存', {
+      this.drawButton(saveX, bottomY, 88, 34, this.t('common.save', {}), {
         size: 12,
         bold: true,
         radius: 8,

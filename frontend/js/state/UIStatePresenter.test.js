@@ -13,6 +13,8 @@ const MilitaryPresenter = require('./presenters/MilitaryPresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
 const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
+require('../config/LocaleTextRegistry');
+const LocaleText = require('../ecs/resource/LocaleText');
 const BattleScenePresenter = require('./presenters/BattleScenePresenter');
 const WorldTileMapPresenter = require('./presenters/WorldTileMapPresenter');
 const ShellPresenter = require('./presenters/ShellPresenter');
@@ -119,26 +121,6 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
       status: 'occupied',
       cityName: 'Capital',
     }],
-    scoutMissions: [{
-      id: 'legacy-scout',
-      kind: 'scout',
-      direction: 'east',
-      status: 'active',
-      actionPoints: 3,
-      actionPointsRemaining: 1,
-      route: [{ q: 0, r: 0, step: 1, revealed: true }],
-      revealArea: [{ q: 1, r: 0, step: 2, kind: 'branch', revealed: false }],
-      revealedTileIds: ['tile_0_0'],
-    }],
-    scoutAreas: [{
-      id: 'area-1',
-      missionId: 'legacy-scout',
-      direction: 'east',
-      result: 'empty',
-      targetX: 1,
-      targetY: 0,
-      coords: [{ q: 1, r: 0 }],
-    }],
   };
   const options = {
     panX: 12.5,
@@ -206,10 +188,9 @@ test('UIStatePresenter delegates world tile map view state while preserving faca
   assert.equal(view.tiles.some((tile) => tile.id === 'tile_1_0' && tile.site?.id === 'site_1_0'), true);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_0_1').templateAssets.length, 2);
   assert.equal(view.tiles.find((tile) => tile.id === 'tile_-1_0').mountainNeighbors, 1);
-  assert.equal(view.activeScouts.length, 2);
+  assert.equal(view.activeScouts.length, 1);
   assert.equal(view.activeScouts.some((mission) => mission.kind === 'worldExplore'), true);
   assert.equal(view.activeScouts.find((mission) => mission.kind === 'worldExplore').route.length, 2);
-  assert.equal(view.scoutAreas[0].coords[0].tileId, 'tile_1_0');
   assert.equal(typeof UIStatePresenter.getTileMapManifest().getTerrainAsset, 'function');
   assert.equal(typeof UIStatePresenter.getTileMapGeometry().sortTilesForIsoDraw, 'function');
   assert.deepEqual(UIStatePresenter.normalizeWorldTile({ q: 3, r: -1, terrain: 'forest' }).feature.key, 'treeCluster');
@@ -678,17 +659,6 @@ test('UIStatePresenter canonicalizes stable x/y world tile ids before map view m
       status: 'discovered',
       naturalName: 'Stable Ford',
     }],
-    scoutMissions: [{
-      id: 'legacy-scout-stable',
-      kind: 'scout',
-      status: 'active',
-      route: [{ x: 2, y: -1, step: 1, tileId: 'legacy-route-id', revealed: true }],
-      revealArea: [{ x: 3, y: -1, step: 2, revealed: false }],
-    }],
-    scoutAreas: [{
-      id: 'area-stable',
-      coords: [{ x: 3, y: -1, tileId: 'legacy-area-id' }],
-    }],
   };
 
   const view = UIStatePresenter.buildWorldTileMapViewState(territoryState);
@@ -699,9 +669,6 @@ test('UIStatePresenter canonicalizes stable x/y world tile ids before map view m
   assert.equal(tile?.siteId, 'site_2_-1');
   assert.equal(view.sites.some((site) => site.id === 'site_2_-1' && site.tileId === 'tile_2_-1'), true);
   assert.equal(view.tiles.some((item) => item.id === 'legacy-renderer-id'), false);
-  assert.equal(view.activeScouts[0].route[0].tileId, 'tile_2_-1');
-  assert.equal(view.activeScouts[0].revealArea[0].tileId, 'tile_3_-1');
-  assert.equal(view.scoutAreas[0].coords[0].tileId, 'tile_3_-1');
 });
 
 test('UIStatePresenter derives world-site view tile ids from normalized tile coordinates', () => {
@@ -861,7 +828,7 @@ test('UIStatePresenter delegates famous person view state while preserving facad
   assert.deepEqual(view, direct);
   assert.equal(view.people[0].id, 'hero-great');
   assert.equal(view.selectedPerson.id, 'hero-great');
-  assert.equal(view.selectedPerson.skillDetails[0].kindText, '斥候特质');
+  assert.equal(view.selectedPerson.skillDetails[0].kindText, '探路特质');
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'candidate-1' });
   assert.equal(UIStatePresenter.formatFamousPersonSkill({ name: 'Aptitude', effects: [{ key: 'knowledgeOutputPct', value: 0.15 }] }).includes('知识产出提高 15%'), true);
 });
@@ -1219,11 +1186,9 @@ test('UIStatePresenter delegates talent policy view state while preserving facad
   assert.deepEqual(UIStatePresenter.getTalentPolicyAvailableRoles(state), ['farmer', 'scholar', 'craftsman']);
 });
 
-test('UIStatePresenter delegates military and scout view state while preserving facade contracts', () => {
-  const nowMs = Date.UTC(2026, 5, 6, 10, 0, 0);
+test('UIStatePresenter delegates military view state while preserving facade contracts', () => {
   const state = {
     activeCityId: 'capital',
-    militaryView: 'scout',
     buildingEffects: { threatDefense: 2 },
     military: {
       soldiers: 12,
@@ -1260,39 +1225,127 @@ test('UIStatePresenter delegates military and scout view state while preserving 
     territoryState: {
       availableSoldiers: 9,
       soldiersOnMission: 3,
-      maxActiveScouts: 1,
-      directions: [
-        { id: 'n', label: '北' },
-        { id: 'e', label: '东' },
-        { id: 's', label: '南' },
-      ],
-      scoutMissions: [
-        { id: 'mission-ready', direction: 'n', status: 'ready' },
-        { id: 'mission-active', direction: 'e', status: 'active', completesAt: new Date(nowMs + 65_000).toISOString() },
-      ],
-      scoutReports: [{ id: 'report-1', direction: 'n' }],
     },
   };
 
   const militaryView = UIStatePresenter.buildMilitaryViewState(state);
   const directMilitaryView = MilitaryPresenter.buildMilitaryViewState(state);
-  const scoutView = UIStatePresenter.buildScoutControlViewState(state, { nowMs });
-  const directScoutView = MilitaryPresenter.buildScoutControlViewState(state, { nowMs });
 
   assert.deepEqual(UIStatePresenter.buildMilitaryNavigationViewState(state), MilitaryPresenter.buildMilitaryNavigationViewState(state));
   assert.deepEqual(militaryView, directMilitaryView);
-  assert.deepEqual(scoutView, directScoutView);
+  // The 老兵营 sub-tab view must be reachable through the facade (a missing delegate crashed the
+  // whole military panel when the tab was tapped), and the map-home resolver must not coerce the
+  // veteranCamp view back to 'army' (which made the tab silently revert).
+  assert.equal(typeof UIStatePresenter.buildVeteranCampViewState, 'function');
+  assert.deepEqual(UIStatePresenter.buildVeteranCampViewState(state), MilitaryPresenter.buildVeteranCampViewState(state));
+  assert.ok(UIStatePresenter.buildMilitaryNavigationViewState(state).views.some((view) => view.id === 'veteranCamp'));
+  assert.equal(
+    UIStatePresenter.resolveMapHomeViewState({ militaryView: 'veteranCamp', currentTab: 'military' }, { requestedTab: 'military', militaryView: 'veteranCamp' }).militaryView,
+    'veteranCamp',
+  );
   assert.equal(militaryView.text.soldierCount, '12/20');
   assert.equal(militaryView.text.militaryDefense, 5);
   assert.equal(militaryView.formations[0].name, '先锋队');
   assert.equal(militaryView.formations[0].leader.id, 'hero-scout');
   assert.equal(militaryView.formationMeta.summary, '3 支部队 · 每队最多 5 名名人');
-  assert.equal(UIStatePresenter.getScoutMissionRemainingSeconds(state.territoryState.scoutMissions[1], nowMs), 65);
-  assert.equal(UIStatePresenter.formatScoutCountdown(65), '1:05');
-  assert.equal(scoutView.statusText, '1 份报告待查看，另有 1 支侦察队仍在外。');
-  assert.equal(scoutView.cells.find((cell) => cell.id === 'n').action, 'claim');
-  assert.equal(scoutView.cells.find((cell) => cell.id === 'e').actionText, '1:05');
-  assert.equal(scoutView.cells.find((cell) => cell.id === 's').status, 'locked');
+});
+
+test('UIStatePresenter projects the squad quick panel from formations and march state', () => {
+  const nowMs = new Date('2026-06-06T00:00:05.000Z').getTime();
+  const state = {
+    activeCityId: 'capital',
+    military: {
+      formations: [
+        { slot: 1, name: '第一队', memberIds: ['hero-scout'] },
+        { slot: 2, memberIds: [] },
+        { slot: 3, name: '侦察队', memberIds: ['hero-builder'] },
+      ],
+    },
+    famousPersons: {
+      people: [
+        { id: 'hero-scout', name: 'Scout Hero', attributes: {} },
+        { id: 'hero-builder', name: 'Builder Hero', attributes: {} },
+      ],
+    },
+    worldExplorerState: {
+      busyFormations: [
+        { cityId: 'capital', slot: 3, missionId: 'mission-1', status: 'active' },
+      ],
+      activeMission: {
+        id: 'mission-1',
+        status: 'active',
+        mode: 'manual',
+        startedAt: '2026-06-06T00:00:00.000Z',
+        completesAt: '2026-06-06T00:00:20.000Z',
+        stepDurationSeconds: 10,
+        route: [{ q: 1, r: 0, step: 1, tileId: 'tile_1_0', revealed: false }],
+      },
+    },
+  };
+
+  assert.equal(typeof UIStatePresenter.buildSquadQuickPanelViewState, 'function');
+  const view = UIStatePresenter.buildSquadQuickPanelViewState(state, { nowMs });
+  assert.deepEqual(view, MilitaryPresenter.buildSquadQuickPanelViewState(state, { nowMs }));
+
+  // Empty slot 2 is projected away; slot 3 marches, slot 1 does not.
+  assert.equal(view.hidden, false);
+  assert.deepEqual(view.rows.map((row) => row.slot), [1, 3]);
+  assert.deepEqual(view.rows.map((row) => row.marching), [false, true]);
+  assert.equal(view.rows[0].name, '第一队');
+  assert.deepEqual(view.rows[0].action, { type: 'openArmyFormation', cityId: 'capital', slot: 1, source: 'squadQuickPanel' });
+
+  // A mission whose effective status decayed to idle no longer pins the slot.
+  const settledView = UIStatePresenter.buildSquadQuickPanelViewState(
+    state,
+    { nowMs: new Date('2026-06-06T00:01:00.000Z').getTime() },
+  );
+  assert.deepEqual(settledView.rows.map((row) => row.marching), [false, false]);
+
+  // Zero non-empty formations hides the panel entirely.
+  const emptyView = UIStatePresenter.buildSquadQuickPanelViewState({
+    military: { formations: [{ slot: 1, memberIds: [] }] },
+  }, { nowMs });
+  assert.equal(emptyView.hidden, true);
+  assert.deepEqual(emptyView.rows, []);
+});
+
+test('UIStatePresenter squad quick panel names rows by leader on the REAL server formation shape', () => {
+  // Verbatim /game/state DTO shape (captured from a live server): the server
+  // persists NO formation name (name: '') for untouched slots. UI-REDO ⑦b row
+  // label priority: player rename > leader "{name}队" (slot-1 member resolved
+  // through famousPersons) > localized 部队N default.
+  const state = {
+    activeCityId: 'capital',
+    famousPersons: {
+      people: [
+        { id: 'fp_tutorial_scout_180t6mi', name: '斥候', attributes: {} },
+        { id: 'fp_hero_zhangfei_9k2m1x', name: '张飞', attributes: {} },
+      ],
+    },
+    military: {
+      formations: [
+        { slot: 1, name: '', memberIds: ['fp_tutorial_scout_180t6mi'], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: { fp_tutorial_scout_180t6mi: 1000 }, soldiersAssigned: 1000 },
+        { slot: 2, name: '虎豹骑', memberIds: ['fp_hero_zhangfei_9k2m1x'], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: { fp_hero_zhangfei_9k2m1x: 500 }, soldiersAssigned: 500 },
+        { slot: 3, name: '', memberIds: [], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: {}, soldiersAssigned: 0 },
+      ],
+    },
+  };
+
+  const view = UIStatePresenter.buildSquadQuickPanelViewState(state, { nowMs: Date.now() });
+  assert.equal(view.hidden, false);
+  assert.equal(view.rows.length, 2);
+  assert.equal(view.rows[0].slot, 1);
+  // No player rename -> leader chain: "斥候" + 队 through the paired i18n key.
+  assert.equal(view.rows[0].name, LocaleText.t('military.formation.leaderSquad', { name: '斥候' }));
+  // Player rename wins over the leader name.
+  assert.equal(view.rows[1].slot, 2);
+  assert.equal(view.rows[1].name, '虎豹骑');
+  // Never a blank label and never a raw i18n key leak.
+  view.rows.forEach((row) => {
+    assert.equal(row.name.length > 0, true);
+    assert.equal(row.name.includes('military.formation'), false);
+    assert.equal(row.name.includes('{name}'), false);
+  });
 });
 
 test('UIStatePresenter delegates world site dialog view state while preserving facade contracts', () => {
@@ -1384,8 +1437,10 @@ test('UIStatePresenter delegates world site dialog view state while preserving f
   assert.equal(tribeDetail.text.battleReport[1], '速度：己方 12 / 敌方 8');
   assert.equal(tribeDetail.action.expeditionConfig.disabled, false);
   assert.equal(tribeDetail.action.expeditionConfig.fields.leader.value, 'hero-mil');
+  // Combat expedition amounts floor at 1 soldier (no 100-soldier minimum).
+  assert.equal(tribeDetail.action.expeditionConfig.fields.soldiers.min, 1);
   assert.equal(emptyAction.buttons[2].action, 'conquer');
-  assert.equal(emptyAction.hint, '该地区无主，派出 100 士兵即可建立据点。');
+  assert.equal(emptyAction.hint, '该地区无主，无需派兵即可建立据点。');
   assert.equal(occupiedAction.kind, 'city-command');
   assert.equal(occupiedAction.buttons.find((button) => button.action === 'rename-city').label, '改名');
   assert.equal(readyAction.buttons[0].action, 'claim');
@@ -1394,8 +1449,95 @@ test('UIStatePresenter delegates world site dialog view state while preserving f
   assert.equal(UIStatePresenter.getWorldSiteDialogContentSignature(territories, territoryState, uiState), direct.signature);
 });
 
-test('UIStatePresenter keeps guided first empty city conquer action enabled with tutorial soldier grant', () => {
-  const guidedSite = {
+test('UIStatePresenter resolves world site chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const site = {
+    id: 'tribe-camp',
+    status: 'discovered',
+    owner: 'tribe',
+    occupationMode: 'conquest',
+    naturalName: 'Camp',
+    scale: 1,
+    defense: 80,
+    recommendedSoldiers: 120,
+    threat: 0,
+    effects: { foodOutputMultiplier: 0.15 },
+    lastBattle: {
+      success: false,
+      leaderName: 'Ash',
+      casualties: 9,
+      report: { system: 'speed-basic-attack-v1', attacker: { speed: 12 }, defender: { speed: 8 } },
+    },
+    garrison: {
+      leader: {
+        name: '',
+        abilityKit: { abilities: [{ slot: 'activeSkill' }] },
+      },
+    },
+  };
+  const territoryState = { availableSoldiers: 200, famousPersons: { people: [] } };
+  const uiState = { selectedSiteId: 'tribe-camp', expeditionConfigSiteId: 'tribe-camp' };
+
+  const detail = UIStatePresenter.buildWorldSiteDetailViewState(site, territoryState, uiState);
+
+  assert.equal(detail.text.owner, 'Owned · Tribe');
+  assert.equal(detail.text.distance, 'Distance 0');
+  assert.equal(detail.text.scale, 'Scale 1');
+  assert.equal(detail.text.threat, 'Threat 0');
+  assert.equal(detail.text.defense, 'Defense 80');
+  assert.equal(detail.text.soldiers, 'Recommended 120 soldiers');
+  assert.equal(detail.text.summary, 'Food +15%');
+  assert.equal(detail.text.note, 'Previous conquest failed · led by Ash · lost 9 soldiers');
+  assert.equal(detail.text.battleReport[1], 'Speed: allies 12 / enemies 8');
+  assert.equal(detail.text.defenderLeader, 'Defender Unknown');
+  assert.equal(detail.text.defenderSkill, 'Enemy tactic Unknown tactic');
+  assert.equal(detail.action.buttons.find((button) => button.action === 'open-expedition').label, 'Conquer');
+  assert.equal(detail.action.hint, 'This area already has a force. Configure an expedition first.');
+  assert.equal(detail.action.expeditionConfig.fields.leader.label, 'Leader');
+  assert.equal(detail.action.expeditionConfig.buttons.launch.label, 'Depart');
+  LocaleText.setLocale('zh-CN');
+});
+
+test('UIStatePresenter shows 未知/兵力不明 when defender strength fields are withheld (打了才知道)', () => {
+  // The backend withholds defense/recommendedSoldiers/threat for an unfought defended site. The
+  // detail view must show "未知/兵力不明", NOT a misleading 0 — and the expedition must still be usable.
+  const site = {
+    id: 'site-unfought',
+    status: 'discovered',
+    owner: 'neutral',
+    occupationMode: 'conquest',
+    type: 'city',
+    naturalName: '远疆城邦',
+    effects: {},
+    // No defense / recommendedSoldiers / threat keys at all (stripped by the backend gate).
+  };
+  const territoryState = { availableSoldiers: 500, famousPersons: { people: [{ id: 'hero-mil', name: '霍去病', title: '骠骑', roles: ['military'] }] } };
+  const uiState = { selectedSiteId: 'site-unfought', expeditionConfigSiteId: 'site-unfought' };
+
+  const detail = UIStatePresenter.buildWorldSiteDetailViewState(site, territoryState, uiState);
+
+  assert.equal(detail.text.defense, '防御 未知');
+  assert.equal(detail.text.threat, '威胁 未知');
+  assert.equal(detail.text.soldiers, '兵力不明（交战后可知）');
+  // `scale` (garrison band tier) is withheld too — show 规模 未知, not the tier number that leaks the band.
+  assert.equal(detail.text.scale, '规模 未知');
+  // The expedition still works: a neutral default of 1 (not 0), so the player can march out.
+  assert.equal(detail.action.expeditionConfig.draft.soldiers, 1);
+  assert.equal(detail.action.expeditionConfig.fields.soldiers.min, 1);
+  // A present value still renders the number (regression guard for the fought/own-site path).
+  const foughtDetail = UIStatePresenter.buildWorldSiteDetailViewState(
+    { ...site, scale: 3, defense: 320, recommendedSoldiers: 300, threat: 12 },
+    territoryState,
+    uiState,
+  );
+  assert.equal(foughtDetail.text.defense, '防御 320');
+  assert.equal(foughtDetail.text.soldiers, '建议 300 士兵');
+  assert.equal(foughtDetail.text.threat, '威胁 12');
+  assert.equal(foughtDetail.text.scale, '规模 3');
+});
+
+test('UIStatePresenter enables direct occupation of an empty site with zero soldiers', () => {
+  const emptySite = {
     id: 'site_2_2',
     status: 'discovered',
     owner: 'neutral',
@@ -1405,20 +1547,11 @@ test('UIStatePresenter keeps guided first empty city conquer action enabled with
     defense: 100,
     recommendedSoldiers: 100,
   };
-  const territoryState = {
-    availableSoldiers: 0,
-    tutorial: {
-      currentStep: 25,
-      completed: false,
-      grants: {
-        firstExploreEmptyCity: { siteId: 'site_2_2' },
-      },
-    },
-  };
-  const action = UIStatePresenter.buildWorldSiteActionViewState(guidedSite, territoryState, {});
+  // No tutorial grant, no reserve soldiers: settlement needs neither.
+  const territoryState = { availableSoldiers: 0 };
+  const action = UIStatePresenter.buildWorldSiteActionViewState(emptySite, territoryState, {});
   const conquer = action.buttons.find((button) => button.action === 'conquer');
 
-  assert.equal(UIStatePresenter.isGuidedFirstCitySettlement(guidedSite, territoryState, {}), true);
   assert.equal(conquer.disabled, false);
 });
 
@@ -1498,6 +1631,104 @@ test('UIStatePresenter delegates battle scene view state while preserving facade
   assert.deepEqual(UIStatePresenter.getBattleTurnLines(battle.report.turns[0], { active: true, phase: 'cutin' }), ['霍去病列阵。', '霍去病发动战法 长驱直入。']);
 });
 
+test('UIStatePresenter resolves business module UI chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+
+  const homeState = {
+    gameDay: 3,
+    currentEra: 1,
+    resources: { food: 10, wood: 8, stone: 0, iron: 0, knowledge: 2 },
+    population: {
+      total: 5,
+      maxPop: 8,
+      capacity: { active: true, limitingSource: 'era', eraCap: 5, housingCap: 8 },
+    },
+    cityState: { cities: [{ id: 'capital', population: { total: 5 }, totalBuildings: 0 }] },
+  };
+  assert.equal(UIStatePresenter.buildResourceViewState(homeState).text.gameTime, 'Day 3');
+  assert.equal(
+    UIStatePresenter.buildResourceViewState(homeState).text.populationStatus,
+    'Population cannot grow further. Advance the era.',
+  );
+  assert.equal(UIStatePresenter.buildCitySwitcherViewState(homeState).options[0].tag, 'Subcity');
+
+  const buildingState = {
+    unlockedBuildings: ['house'],
+    buildings: { house: 0 },
+    buildingCosts: {},
+    buildingDefinitions: {
+      house: {
+        id: 'house',
+        name: 'House',
+        maxLevel: 2,
+        category: 'livelihood',
+        effects: { perLevel: { populationCap: 1 } },
+        ui: { effectText: [{ field: 'populationCapBonus', label: 'Population Cap' }] },
+      },
+    },
+    resources: {},
+  };
+  const buildingView = UIStatePresenter.buildBuildingViewState(buildingState, {}, buildingState.buildingDefinitions);
+  assert.equal(buildingView.categoryTabs.find((tab) => tab.id === 'all').label, 'All');
+  assert.equal(buildingView.cards[0].button.label, 'Build');
+  assert.equal(buildingView.cards[0].cost.text, 'Free build');
+
+  const techView = UIStatePresenter.buildTechViewState({
+    techs: {
+      points: 1,
+      eras: [{
+        era: 1,
+        techs: [{
+          id: 'farm-tech',
+          name: 'Agriculture',
+          available: true,
+          status: 'available',
+          unlockText: ['Farm'],
+          resourceEntrances: ['food'],
+        }],
+      }],
+    },
+  });
+  assert.equal(techView.text.title, 'Tech Tree');
+  assert.equal(techView.detail.statusLabel, 'Available');
+  assert.equal(techView.detail.effectRows[1].text, 'Food production');
+  assert.equal(techView.detail.unlockSummary.includes('Unlocks: Farm'), true);
+
+  const eventView = UIStatePresenter.buildEventViewState({
+    eventQueue: [{ id: 'event-1', type: 'regular', expiresAt: new Date(Date.now() + 61_000).toISOString() }],
+    eventHistory: [],
+  });
+  assert.match(eventView.pending.cards[0].hint, /left, expires automatically/);
+  assert.equal(eventView.history.emptyText, 'No event records');
+
+  const taskView = UIStatePresenter.buildTaskCenterViewState({ guideTasks: { visible: true, tasks: [] } });
+  assert.equal(taskView.tabs.find((tab) => tab.id === 'main').label, 'Main');
+  assert.equal(taskView.categories.main.emptyText, 'No main tasks');
+  assert.equal(UIStatePresenter.buildGuidebookViewState(homeState).title, 'Guide');
+
+  const militaryView = UIStatePresenter.buildMilitaryViewState({
+    military: { soldiers: 0, soldierCap: 0, trainingIntervalSeconds: 0 },
+    famousPersons: { people: [] },
+    territoryState: {},
+  });
+  assert.equal(militaryView.formations[0].name, 'Unit One');
+  assert.equal(militaryView.text.soldierTrainingText, 'Waiting for barracks');
+
+  const battleView = UIStatePresenter.buildBattleSceneViewState({
+    report: {
+      result: 'victory',
+      attacker: { leaderName: 'Hero', soldiersStart: 10, soldiersEnd: 8 },
+      defender: { soldiersStart: 6, soldiersEnd: 0 },
+      turns: [],
+    },
+  });
+  assert.equal(battleView.resultText, 'Victory');
+  assert.equal(battleView.title, 'Hero Squad vs Defenders Squad');
+  assert.equal(UIStatePresenter.formatBattleStatusBadge({ key: 'poison', stacks: 2, turnsRemaining: 3 }).text, 'Poison x2 3 turns');
+
+  LocaleText.setLocale('zh-CN');
+});
+
 test('index.html loads focused state presenters before UIStatePresenter facade', () => {
   const htmlPath = path.resolve(__dirname, '../../index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -1535,5 +1766,4 @@ test('UIStatePresenter facade is installed by delegate registry', () => {
   assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'undefined');
   assert.equal(typeof UIStatePresenter.buildTechViewState, 'function');
   assert.equal(UIStatePresenter.POPULATION_PER_OFFICIAL, 100);
-  assert.equal(UIStatePresenter.MIN_EXPEDITION_SOLDIERS, 100);
 });

@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFAULT_CACHE_MS = 5000;
+const DEFAULT_DEPLOY_RUNNING_STALE_MS = 180000;
 const IGNORED_DIRS = new Set(['.git', '.local-logs', '.trae', 'node_modules', 'logs', 'data']);
 const IGNORED_EXTENSIONS = new Set([
   '.db',
@@ -42,6 +43,48 @@ function sanitizeDeployManifest(manifest) {
   };
 }
 
+function sanitizeDeployStatus(status, options = {}) {
+  if (!status || typeof status !== 'object') return null;
+  let normalizedStatus = String(status.status || '').trim();
+  if (!['running', 'succeeded', 'failed'].includes(normalizedStatus)) return null;
+  const nowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
+  const staleMs = Math.max(0, Number(options.runningStaleMs ?? DEFAULT_DEPLOY_RUNNING_STALE_MS) || 0);
+  const updatedAtMs = Date.parse(status.updatedAt || '');
+  const ageMs = Number.isFinite(updatedAtMs) ? Math.max(0, nowMs - updatedAtMs) : 0;
+  const staleRunning = normalizedStatus === 'running' && staleMs > 0 && ageMs >= staleMs;
+  if (staleRunning) normalizedStatus = 'failed';
+  const error = status.error && typeof status.error === 'object'
+    ? {
+      stage: status.error.stage ? String(status.error.stage) : null,
+      message: status.error.message ? String(status.error.message) : null,
+    }
+    : (staleRunning
+      ? {
+        stage: status.stage ? String(status.stage) : null,
+        message: `deployment status stale after ${Math.round(ageMs / 1000)}s`,
+      }
+      : null);
+  return {
+    schema: status.schema ? String(status.schema) : 'wxgame-deploy-status-v1',
+    status: normalizedStatus,
+    environment: status.environment ? String(status.environment) : null,
+    branch: status.branch ? String(status.branch) : null,
+    targetCommit: status.targetCommit ? String(status.targetCommit) : null,
+    previousDeployedCommit: status.previousDeployedCommit ? String(status.previousDeployedCommit) : null,
+    stage: status.stage ? String(status.stage) : null,
+    startedAt: status.startedAt ? String(status.startedAt) : null,
+    updatedAt: status.updatedAt ? String(status.updatedAt) : null,
+    finishedAt: status.finishedAt ? String(status.finishedAt) : null,
+    exitCode: Number.isFinite(Number(status.exitCode)) ? Number(status.exitCode) : null,
+    logPath: status.logPath ? String(status.logPath) : null,
+    recentLogLines: Array.isArray(status.recentLogLines)
+      ? status.recentLogLines.slice(-20).map((line) => String(line).slice(0, 500))
+      : [],
+    error,
+    stale: staleRunning || undefined,
+  };
+}
+
 function firstExistingPath(paths) {
   return paths.find((candidate) => candidate && fs.existsSync(candidate)) || paths[0];
 }
@@ -52,10 +95,13 @@ function buildEtag(info) {
     .update([
       info.version || '',
       info.deploymentId || '',
-      info.gitCommit || '',
-      info.sourceHash || '',
       info.deployedCommit || '',
       info.deployedAt || '',
+      info.deployStatus?.status || '',
+      info.deployStatus?.targetCommit || '',
+      info.deployStatus?.stage || '',
+      info.deployStatus?.updatedAt || '',
+      info.deployStatus?.error?.message || '',
     ].join('|'))
     .digest('hex')
     .slice(0, 24)}"`;
@@ -140,7 +186,14 @@ class VersionService {
       path.join(this.repoRoot, '.wxgame', 'current-deploy.json'),
       path.join(this.repoRoot, '.wxgame-deploy-version.json'),
     ]);
+    this.deployStatusPath = options.deployStatusPath || process.env.WXGAME_DEPLOY_STATUS_PATH || firstExistingPath([
+      path.join(this.repoRoot, '.wxgame', 'deploy-status.json'),
+      path.join(path.dirname(this.deployManifestPath || this.repoRoot), 'deploy-status.json'),
+      path.join(this.repoRoot, '.wxgame-deploy-status.json'),
+    ]);
     this.cacheMs = options.cacheMs ?? DEFAULT_CACHE_MS;
+    this.deployRunningStaleMs = options.deployRunningStaleMs ?? DEFAULT_DEPLOY_RUNNING_STALE_MS;
+    this.now = typeof options.now === 'function' ? options.now : () => Date.now();
     this.cachedAt = 0;
     this.cachedInfo = null;
   }
@@ -149,19 +202,28 @@ class VersionService {
     return sanitizeDeployManifest(readJson(this.deployManifestPath));
   }
 
+  readDeployStatus() {
+    return sanitizeDeployStatus(readJson(this.deployStatusPath), {
+      runningStaleMs: this.deployRunningStaleMs,
+      nowMs: this.now(),
+    });
+  }
+
   getVersionInfo() {
-    const now = Date.now();
+    const now = this.now();
     if (this.cachedInfo && now - this.cachedAt < this.cacheMs) return this.cachedInfo;
 
     const packageJson = readJson(path.join(this.repoRoot, 'backend', 'package.json')) || {};
     const gitCommit = getGitCommit(this.repoRoot);
     const sourceHash = createSourceHash(this.repoRoot);
     const deployManifest = this.readDeployManifest();
+    const deployStatus = this.readDeployStatus();
     const explicitVersion = process.env.APP_VERSION || process.env.GAME_VERSION || null;
+    const releaseIdentity = deployManifest?.deployedCommit || deployManifest?.commit || gitCommit || 'nogit';
     const versionParts = [
       explicitVersion || packageJson.version || '0.0.0',
-      deployManifest?.deployedCommit || deployManifest?.commit || gitCommit || 'nogit',
-      sourceHash,
+      releaseIdentity,
+      deployManifest?.deployedAt || '',
     ];
     const deploymentId = crypto.createHash('sha256').update(versionParts.join('|')).digest('hex').slice(0, 16);
 
@@ -174,6 +236,7 @@ class VersionService {
       branch: deployManifest?.branch || null,
       sourceHash: sourceHash.slice(0, 16),
       checkedAt: new Date(now).toISOString(),
+      deployStatus,
     };
     this.cachedInfo.etag = buildEtag(this.cachedInfo);
     this.cachedAt = now;

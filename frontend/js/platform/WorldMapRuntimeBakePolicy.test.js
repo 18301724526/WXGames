@@ -81,11 +81,39 @@ test('WorldMapRuntimeBakePolicy fallback signature follows continuous fog reveal
   };
 
   const early = WorldMapRuntimeBakePolicy.getMapDataSignature(state, { epochNowMs: startedAt + 1000 });
+  const earlyAgain = WorldMapRuntimeBakePolicy.getMapDataSignature(state, { epochNowMs: startedAt + 1000 });
   const later = WorldMapRuntimeBakePolicy.getMapDataSignature(state, { epochNowMs: startedAt + 5000 });
 
+  assert.equal(early, earlyAgain);
   assert.notEqual(early, later);
   assert.equal(early.includes('"revealedTileIds":[]'), true);
   assert.equal(later.includes('"revealedTileIds":[]'), true);
+});
+
+test('WorldMapRuntimeBakePolicy summarizeRenderReveal recomputes the signature from mission and nowMs', () => {
+  const startedAt = Date.parse('2026-06-06T00:00:00.000Z');
+  const mission = {
+    id: 'explore-live',
+    status: 'active',
+    origin: { q: 0, r: 0, tileId: 'tile_0_0' },
+    route: [
+      { q: 1, r: 0, tileId: 'tile_1_0', step: 1, revealed: false },
+      { q: 2, r: 0, tileId: 'tile_2_0', step: 2, revealed: false },
+    ],
+    target: { q: 2, r: 0, tileId: 'tile_2_0' },
+    startedAt: new Date(startedAt).toISOString(),
+    stepDurationMs: 10000,
+    revealedTileIds: [],
+  };
+
+  const early = WorldMapRuntimeBakePolicy.summarizeRenderReveal(mission, { nowMs: startedAt + 1000 });
+  const earlyAgain = WorldMapRuntimeBakePolicy.summarizeRenderReveal(mission, { nowMs: startedAt + 1000 });
+  const later = WorldMapRuntimeBakePolicy.summarizeRenderReveal(mission, { nowMs: startedAt + 5000 });
+
+  assert.equal(typeof early, 'string');
+  assert.notEqual(early, '');
+  assert.equal(early, earlyAgain);
+  assert.notEqual(early, later);
 });
 
 test('WorldMapRuntimeBakePolicy fallback signature canonicalizes stable x/y and legacy q/r map shapes', () => {

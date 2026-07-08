@@ -1,9 +1,25 @@
 (function (global) {
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const sharedWorldMarchSystem = (() => {
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('../../ecs/system/WorldMarchSystem');
       } catch (error) {
         return null;
       }
@@ -15,7 +31,7 @@
     if (global.WorldTime) return global.WorldTime;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldTime');
+        return require('../../ecs/foundation/WorldTime');
       } catch (error) {
         return null;
       }
@@ -27,7 +43,7 @@
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileCoord');
+        return require('../../ecs/foundation/TileCoord');
       } catch (error) {
         return null;
       }
@@ -45,8 +61,7 @@
   }
 
   function getWorldTileId(q, r) {
-    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(q, r);
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
+    return sharedTileCoord.tileId(q, r);
   }
 
   function getEpochNowMs(options = {}) {
@@ -55,22 +70,11 @@
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    const normalized = sharedTileCoord?.normalizeCoord
-      ? sharedTileCoord.normalizeCoord(coord, fallback)
-      : null;
-    if (normalized) {
-      return {
-        q: normalized.q,
-        r: normalized.r,
-        tileId: normalized.tileId,
-      };
-    }
-    const q = toInteger(coord.x !== undefined ? coord.x : coord.q, toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0));
-    const r = toInteger(coord.y !== undefined ? coord.y : coord.r, toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0));
+    const normalized = sharedTileCoord.normalizeCoord(coord, fallback);
     return {
-      q,
-      r,
-      tileId: getWorldTileId(q, r),
+      q: normalized.q,
+      r: normalized.r,
+      tileId: normalized.tileId,
     };
   }
 
@@ -293,7 +297,7 @@
           id,
           x: toInteger(rawSite?.x ?? q),
           y: toInteger(rawSite?.y ?? r),
-          naturalName: rawSite?.naturalName || rawSite?.cityName || '绌哄煄',
+          naturalName: rawSite?.naturalName || rawSite?.cityName || t('worldSite.emptyCity'),
           cityName: rawSite?.cityName || null,
           type: rawSite?.type || 'town',
           owner: rawSite?.owner || 'neutral',

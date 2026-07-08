@@ -2,7 +2,7 @@
   var SharedWorldClock = global.WorldClock;
   if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
     try {
-      SharedWorldClock = require('../domain/WorldClock');
+      SharedWorldClock = require('../ecs/foundation/WorldClock');
     } catch (_error) {
       SharedWorldClock = null;
     }
@@ -10,7 +10,7 @@
   var SharedWorldMarchSystem = global.WorldMarchSystem;
   if (typeof module !== 'undefined' && module.exports && !SharedWorldMarchSystem) {
     try {
-      SharedWorldMarchSystem = require('../domain/WorldMarchSystem');
+      SharedWorldMarchSystem = require('../ecs/system/WorldMarchSystem');
     } catch (_error) {
       SharedWorldMarchSystem = null;
     }
@@ -58,10 +58,6 @@
 
   function createCannotRenderState() {
     return {
-      hitTargets: [],
-      baseHitTargets: [],
-      lastHitTargetSync: null,
-      hitTargetSyncSequence: 0,
       hasBakedMapLayer: false,
       mapBakeDirty: true,
       lastMapDataSignature: '',
@@ -75,13 +71,14 @@
   function createHitTargetFrameState(runtime = {}, syncState = null) {
     const source = syncState && typeof syncState === 'object' && !Array.isArray(syncState)
       ? syncState
-      : (runtime?.lastHitTargetSync || {});
-    const hitTargets = toArray(runtime?.hitTargets);
+      : (runtime?.getLastHitTargetSync?.() || runtime?.worldMapInputState?.lastHitTargetSync || {});
+    const hitTargets = toArray(runtime?.getHitTargets?.() || runtime?.worldMapInputState?.hitTargets);
     const sourceHitTargetCount = Number(source.sourceHitTargetCount);
     const mapTargetCount = Number(source.mapTargetCount);
     return {
       actorTargetCount: Number(source.actorTargetCount) || 0,
-      baseHitTargetCount: Number(source.baseHitTargetCount) || toArray(runtime?.baseHitTargets).length,
+      baseHitTargetCount: Number(source.baseHitTargetCount)
+        || toArray(runtime?.getBaseHitTargets?.() || runtime?.worldMapInputState?.baseHitTargets).length,
       hitTargetCount: Number(source.hitTargetCount) || hitTargets.length,
       hitTargets,
       hitTargetsFresh: Boolean(!source.preserved && (
@@ -174,15 +171,15 @@
 
   function getMissionTraceParts(state = {}, epochNowMs = Date.now()) {
     const activeMission = state?.worldExplorerState?.activeMission || null;
-    const renderRevealSignature = activeMission && SharedWorldMarchSystem?.getRouteRenderRevealSignature
+    const revealSignature = activeMission && SharedWorldMarchSystem?.getRouteRenderRevealSignature
       ? SharedWorldMarchSystem.getRouteRenderRevealSignature(activeMission, epochNowMs)
-      : (activeMission?.renderRevealSignature || '');
+      : '';
     return {
       activeMission,
       missionId: activeMission?.id || '',
       missionStatus: activeMission?.status || '',
-      revealedCount: (activeMission?.renderRevealSources || activeMission?.revealedTileIds || []).length,
-      renderRevealSignature,
+      revealedCount: (activeMission?.revealedTileIds || []).length,
+      revealSignature,
       epochBucket: Math.floor(Number(epochNowMs) / 1000),
     };
   }
@@ -209,7 +206,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
-        parts.renderRevealSignature,
+        parts.revealSignature,
         parts.epochBucket,
       ],
       data: {
@@ -246,7 +243,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
-        parts.renderRevealSignature,
+        parts.revealSignature,
         parts.epochBucket,
       ],
       data: {
@@ -297,7 +294,7 @@
         parts.missionId,
         parts.missionStatus,
         parts.revealedCount,
-        parts.renderRevealSignature,
+        parts.revealSignature,
         parts.epochBucket,
       ],
       data: {

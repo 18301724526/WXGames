@@ -1,6 +1,34 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CivilizationPresenter {
     static POPULATION_PER_OFFICIAL = 100;
+
+    static t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
+    }
 
     static toNumber(value, fallback = 0) {
       const number = Number(value);
@@ -17,9 +45,10 @@
 
     static canAdvanceEraByTutorial(state = {}, tutorial = {}) {
       if (tutorial.completed) return true;
-      const step = Number(tutorial.currentStep) || 0;
-      if (this.toNumber(state.currentEra) === 0) return step >= 2;
-      if (this.toNumber(state.currentEra) === 1) return step >= 9;
+      const steps = TutorialFlowShared.TUTORIAL_STEPS;
+      const step = TutorialFlowShared.stepName(tutorial.currentStep) || steps.initial;
+      if (this.toNumber(state.currentEra) === 0) return TutorialFlowShared.stepAtLeast(step, steps.cityEntered);
+      if (this.toNumber(state.currentEra) === 1) return TutorialFlowShared.stepAtLeast(step, steps.farmBuilt);
       return true;
     }
 
@@ -33,7 +62,7 @@
     }
 
     static buildCivilizationViewState(state = {}, tutorial = {}, options = {}) {
-      const eraName = state.currentEraName || '原始时代';
+      const eraName = state.currentEraName || this.t('civilization.era.fallback', {});
       const progress = state.eraProgress || { percentage: 0, canAdvance: false, conditions: [] };
       const percentage = Math.max(0, Math.min(100, this.toNumber(progress.percentage)));
       const canAdvanceByTutorial = this.canAdvanceEraByTutorial(state, tutorial);
@@ -43,24 +72,29 @@
         && canAdvanceByTutorial
         && canOpenCivilizationTab;
 
-      let advanceLabel = '条件不足，无法进阶';
-      if (state.isCapitalCity === false) advanceLabel = '分城跟随主城时代';
-      else if (progress.canAdvance && !canAdvanceByTutorial) advanceLabel = '引导未解锁';
-      else if (progress.canAdvance) advanceLabel = '满足条件，可进阶';
+      let advanceLabel = this.t('civilization.advance.insufficient', {});
+      if (state.isCapitalCity === false) {
+        advanceLabel = this.t('civilization.advance.subcity', {});
+      } else if (progress.canAdvance && !canAdvanceByTutorial) {
+        advanceLabel = this.t('civilization.advance.guideLocked', {});
+      } else if (progress.canAdvance) {
+        advanceLabel = this.t('civilization.advance.ready', {});
+      }
 
       return {
         text: {
           eraName,
           civOverviewEraName: eraName,
-          civOverviewDay: `第 ${state.gameDay || 1} 天`,
+          civOverviewDay: this.t('civilization.day', { day: state.gameDay || 1 }),
           civOverviewPop: this.toDisplayPopulation(state.population?.total),
           civOverviewBuildings: this.toInteger(state.totalBuildings),
           civOverviewTechs: `${Object.keys(state.techs || {}).length}/0`,
           civOverviewHappiness: `${state.happiness || 100}%`,
-          eraProgressText: `总进度: ${percentage}%`,
-          eraTargetName: progress.targetEraName || '时代未开放',
+          eraProgressText: this.t('civilization.progress', { percentage }),
+          eraTargetName: progress.targetEraName || this.t('civilization.target.locked', {}),
           advanceLabel,
-          featureDescription: state.currentEraDescription || `${eraName}：继续建设你的文明。`,
+          featureDescription: state.currentEraDescription
+            || this.t('civilization.feature.default', { era: eraName }),
         },
         progress: {
           percentage,

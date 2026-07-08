@@ -1,4 +1,13 @@
 (function (global) {
+
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../../../shared/tutorialFlowConfig');
+    }
+    return null;
+  })();
+
   const TutorialGuideStepPolicy = (() => {
     if (global.TutorialGuideStepPolicy) return global.TutorialGuideStepPolicy;
     if (typeof module !== 'undefined' && module.exports) {
@@ -15,21 +24,63 @@
     return null;
   })();
 
-  const SharedTutorialGuidePhaseHighlights = (() => {
-    if (global.TutorialGuidePhaseHighlights) return global.TutorialGuidePhaseHighlights;
+
+  const SharedTutorialGuideFlowRegistry = (() => {
+    if (global.TutorialGuideFlowRegistry) return global.TutorialGuideFlowRegistry;
     if (typeof module !== 'undefined' && module.exports) {
-      return require('./TutorialGuidePhaseHighlights');
+      return require('./TutorialGuideFlowRegistry');
     }
     return null;
   })();
 
-  const SharedTutorialGuideUiStateCoordinator = (() => {
-    if (global.TutorialGuideUiStateCoordinator) return global.TutorialGuideUiStateCoordinator;
+  const SharedTutorialGuideEventRegistry = (() => {
+    if (global.TutorialGuideEventRegistry) return global.TutorialGuideEventRegistry;
     if (typeof module !== 'undefined' && module.exports) {
-      return require('./TutorialGuideUiStateCoordinator');
+      return require('./TutorialGuideEventRegistry');
     }
     return null;
   })();
+
+  const TerritoryUiStateStore = (() => {
+    if (global.TerritoryUiStateStore) return global.TerritoryUiStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../state/TerritoryUiStateStore');
+    }
+    return null;
+  })();
+
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const CanvasModeOwnershipRuntime = (() => {
+    if (global.CanvasModeOwnershipRuntime) return global.CanvasModeOwnershipRuntime;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/CanvasModeOwnershipRuntime');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key = '', params = {}) {
+    return global.LocaleText ? global.LocaleText.t(key, params) : key;
+  }
+
+  function getCommandPanelValue(host) {
+    if (typeof host?.getCommandPanelValue === 'function') return host.getCommandPanelValue();
+    return CanvasModalSnapshotAdapter?.getCommandPanelValue?.(host) || '';
+  }
 
   const TUTORIAL_STEPS = TutorialGuideStepPolicy.TUTORIAL_STEPS;
 
@@ -42,6 +93,10 @@
       this.pendingAdvanceByStep = new Map();
       this.targetResolver = options.targetResolver
         || (SharedTutorialGuideTargetResolver ? new SharedTutorialGuideTargetResolver({ host: this }) : null);
+      this.flowRegistry = options.flowRegistry
+        || (SharedTutorialGuideFlowRegistry?.create ? SharedTutorialGuideFlowRegistry.create({ steps: TUTORIAL_STEPS }) : null);
+      this.eventRegistry = options.eventRegistry
+        || (SharedTutorialGuideEventRegistry?.create ? SharedTutorialGuideEventRegistry.create({ steps: TUTORIAL_STEPS }) : null);
     }
 
     getApi() {
@@ -55,7 +110,9 @@
     }
 
     getCurrentStep() {
-      return Number(this.state?.currentStep ?? this.game?.tutorial?.currentStep ?? this.game?.state?.tutorial?.currentStep) || 0;
+      // Canonical step NAME (legacy numeric states normalize onto it).
+      const rawStep = this.state?.currentStep ?? this.game?.tutorial?.currentStep ?? this.game?.state?.tutorial?.currentStep;
+      return TutorialFlowShared.stepName(rawStep) || TUTORIAL_STEPS.initial;
     }
 
     isCompleted() {
@@ -73,37 +130,23 @@
       return TutorialGuideStepPolicy.canOpenTab(tabId, this.getStepPolicyContext());
     }
 
+    handleEvent(eventName, payload = {}) {
+      const result = this.eventRegistry?.handle?.(this, eventName, payload);
+      return result === undefined ? this.state : result;
+    }
+
     async onTabClicked(tabId) {
-      if (!this.canOpenTab(tabId)) return false;
-      if (tabId === 'buildings' && this.getCurrentStep() === TUTORIAL_STEPS.cityEntered) {
-        await this.advanceTo(TUTORIAL_STEPS.houseGuideReady);
-      }
-      if (tabId === 'civilization' && this.getCurrentStep() === TUTORIAL_STEPS.houseBuilt) {
-        await this.advanceTo(TUTORIAL_STEPS.civilizationTabOpened);
-      }
-      return true;
+      return this.handleEvent('tabClicked', { tabId });
     }
 
     async onCommandPanelOpened(panelId) {
-      const tabId = this.normalizePanelTab(panelId);
-      const allowed = await this.onTabClicked(tabId);
-      if (allowed === false) return false;
-      if (tabId === 'events' && this.getCurrentStep() === TUTORIAL_STEPS.eraAdvancedTo2) {
-        await this.advanceTo(TUTORIAL_STEPS.specialEventTabOpened);
-      }
-      if (tabId === 'buildings' && this.getCurrentStep() === TUTORIAL_STEPS.specialEventClaimed) {
-        await this.advanceTo(TUTORIAL_STEPS.buildingsTabOpenedForLumbermill);
-      }
-      if (tabId === 'tech' && this.getCurrentStep() === TUTORIAL_STEPS.famousSeekCompleted) {
-        await this.advanceTo(TUTORIAL_STEPS.finalTechOpened);
-      }
-      if (allowed !== false) this.refreshCurrentHighlight();
-      return allowed;
+      return this.handleEvent('commandPanelOpened', { panelId });
     }
 
     async advanceTo(step) {
-      const nextStep = Number(step);
-      if (!Number.isFinite(nextStep) || nextStep <= this.getCurrentStep()) return this.state;
+      // Accepts step names and legacy numbers; the API is called with the NAME.
+      const nextStep = TutorialFlowShared.stepName(step);
+      if (!nextStep || TutorialFlowShared.compareSteps(nextStep, this.getCurrentStep()) <= 0) return this.state;
       if (this.pendingAdvanceByStep.has(nextStep)) return this.pendingAdvanceByStep.get(nextStep);
       const api = this.getApi();
       if (!api?.advanceTutorial) return this.sync({ ...(this.state || {}), currentStep: nextStep });
@@ -120,14 +163,7 @@
     }
 
     async markCityEntered() {
-      if (this.isCompleted()) return this.state;
-      if (this.getCurrentStep() < TUTORIAL_STEPS.cityEntered) {
-        await this.advanceTo(TUTORIAL_STEPS.cityEntered);
-      }
-      if (this.getCurrentStep() < TUTORIAL_STEPS.houseGuideReady) {
-        return this.advanceTo(TUTORIAL_STEPS.houseGuideReady);
-      }
-      return this.state;
+      return this.handleEvent('cityEntered');
     }
 
     isHouseGuideActive() {
@@ -136,10 +172,7 @@
     }
 
     onBuildingAction(buildingId, action = 'build') {
-      if (this.isFarmGuideActive()) return action === 'build' && buildingId === 'farm';
-      if (this.isLumbermillGuideActive()) return action === 'build' && buildingId === 'lumbermill';
-      if (!this.isHouseGuideActive()) return true;
-      return action === 'build' && buildingId === 'house';
+      return this.handleEvent('buildingAction', { buildingId, action });
     }
 
     isFirstEraGuideActive() {
@@ -193,7 +226,7 @@
     }
 
     getActiveCommandPanel() {
-      return this.game?.canvasShell?.activeCommandPanel || this.game?.activeCommandPanel || '';
+      return getCommandPanelValue(this.game);
     }
 
     isCommandPanelOpen(panelId) {
@@ -203,66 +236,40 @@
     }
 
     isOnTab(tabId) {
-      return this.game?.state?.currentTab === tabId || this.game?.activeTab === tabId;
+      return CanvasModeOwnershipRuntime?.isCurrentTab?.(this.game, tabId) === true;
     }
 
     isTaskCenterOpen() {
-      return Boolean(this.game?.showTaskCenter || this.game?.canvasShell?.showTaskCenter);
+      return CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this.game, 'showTaskCenter');
     }
 
     isCityManagementOpen() {
-      return Boolean(this.game?.showCityManagement || this.game?.canvasShell?.showCityManagement);
+      return CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this.game, 'showCityManagement');
     }
 
     isCityManagementTabOpen(tab = '') {
-      const activeTab = this.game?.canvasShell?.activeCityManagementTab
-        || this.game?.activeCityManagementTab
-        || '';
+      const activeTab = this.game?.activeCityManagementTab || '';
       return activeTab === tab;
     }
 
     isAdvisorOpen() {
       return Boolean(
-        this.game?.canvasShell?.showAdvisor
-        || this.game?.showAdvisor
+        CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this.game, 'showAdvisor')
         || this.game?.canvasShell?.tutorialAdvisorDialogue
         || this.game?.tutorialAdvisorDialogue,
       );
     }
 
     isRewardRevealOpen() {
-      return Boolean(this.game?.canvasShell?.rewardReveal || this.game?.rewardReveal);
+      return Boolean(this.game?.isRewardRevealSnapshotOpen?.());
     }
 
-
-
-
-
     onEraAdvanced(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      const step = this.getCurrentStep();
-      if (step >= TUTORIAL_STEPS.scoutFamousGranted && step < TUTORIAL_STEPS.scoutFormationSaved) {
-        return this.showSoftGuide(
-          'famous-persons-button',
-          '\u57ce\u90a6\u7684\u9053\u8def\u5df2\u7ecf\u6253\u5f00\uff0c\u4e00\u4f4d\u5584\u4e8e\u4fa6\u5bdf\u7684\u540d\u4eba\u52a0\u5165\u4e86\u6211\u4eec\u3002\u5148\u53bb\u540d\u4eba\u91cc\u770b\u770b\u4ed6\u7684\u5361\u7247\u3002',
-        );
-      }
-      if (step === TUTORIAL_STEPS.eraAdvancedTo2) {
-        return this.showSoftGuide(
-          'events-button',
-          '\u68ee\u6797\u8fb9\u7f18\u4f20\u6765\u4e86\u52a8\u9759\u3002\u5148\u53bb\u4e8b\u4ef6\u91cc\u770b\u4e00\u770b\uff0c\u628a\u6728\u6750\u5e26\u56de\u6765\u3002',
-        );
-      }
-      if (this.getCurrentStep() !== TUTORIAL_STEPS.eraAdvancedTo1) return false;
-      return this.showSoftGuide(
-        'task-center-button',
-        '火种已经越过最初的夜色。去任务里领取这份物资，我们就能准备第一块农田。',
-      );
+      return this.handleEvent('eraAdvanced', { result });
     }
 
     onTaskRewardClaimed(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      return this.getCurrentStep() >= TUTORIAL_STEPS.farmPrepReserved;
+      return this.handleEvent('taskRewardClaimed', { result });
     }
 
     getScoutFamousPersonId() {
@@ -279,7 +286,7 @@
     }
 
     getArmyFormationEditor() {
-      return this.game?.canvasShell?.armyFormationEditor || this.game?.armyFormationEditor || {};
+      return CanvasModeOwnershipRuntime?.getFormationEditor?.(this.game) || {};
     }
 
 
@@ -287,10 +294,7 @@
 
 
     getWorldMarchTarget() {
-      return this.game?.territoryController?.uiState?.worldMarchTarget
-        || this.game?.canvasShell?.territoryUiState?.worldMarchTarget
-        || this.game?.territoryUiState?.worldMarchTarget
-        || null;
+      return TerritoryUiStateStore?.ensure?.(this.game)?.worldMarchTarget || null;
     }
 
     isWorldMarchTargetSelected() {
@@ -299,20 +303,43 @@
     }
 
     isWorldMarchFormationPickerOpen() {
-      return Boolean(this.getWorldMarchTarget()?.pickerOpen);
+      return Boolean(
+        this.game?.isTargetPickerSnapshotOpen?.()
+          && this.game?.getTargetPickerSnapshot?.()?.pickerKind === 'worldMarchFormation',
+      );
+    }
+
+    // When the scout actor still overlaps the discovered site tile, clicking it
+    // resolves to the multi-candidate world target picker instead of a direct
+    // openWorldSite. Return the site candidate so the first-city guide can
+    // highlight choosing it (chooseWorldTarget) rather than stalling.
+    getWorldTargetPickerSiteCandidate(siteId = '') {
+      const snapshot = this.game?.getTargetPickerSnapshot?.();
+      if (!snapshot || snapshot.pickerKind !== 'worldTargetPicker') return null;
+      const candidates = Array.isArray(snapshot.picker?.candidates) ? snapshot.picker.candidates : [];
+      const wanted = String(siteId || '');
+      return (
+        candidates.find((candidate) => {
+          const action = candidate?.action || {};
+          const candidateSiteId = String(action.siteId || action.cityId || action.territoryId || '');
+          return (
+            (action.type === 'openWorldSite' || candidate?.kind === 'site')
+            && (!wanted || candidateSiteId === wanted)
+          );
+        }) || null
+      );
     }
 
     isFamousPersonsOpen() {
-      return Boolean(this.game?.showFamousPersons || this.game?.canvasShell?.showFamousPersons);
+      return CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this.game, 'showFamousPersons');
     }
 
     isFamousPersonDetailOpen() {
-      return Boolean(this.game?.selectedFamousPersonId || this.game?.canvasShell?.selectedFamousPersonId);
+      return Boolean(this.game?.selectedFamousPersonId);
     }
 
     getActiveEventId() {
-      return this.game?.canvasShell?.activeEventId
-        || this.game?.activeEventId
+      return this.game?.getEventSnapshot?.()?.eventId
         || this.game?.eventController?.activeEventId
         || '';
     }
@@ -322,6 +349,26 @@
         || this.game?.tutorial?.grants?.firstExploreEmptyCity?.siteId
         || this.game?.state?.tutorial?.grants?.firstExploreEmptyCity?.siteId
         || '';
+    }
+
+    // The grant points at the spawn companion city; the guide reads its coordinate to steer the
+    // world-march target selection at that tile instead of picking an arbitrary map point.
+    getFirstExploreCityGrant() {
+      return this.state?.grants?.firstExploreEmptyCity
+        || this.game?.tutorial?.grants?.firstExploreEmptyCity
+        || this.game?.state?.tutorial?.grants?.firstExploreEmptyCity
+        || null;
+    }
+
+    getFirstExploreCityTarget() {
+      const grant = this.getFirstExploreCityGrant();
+      if (!grant) return null;
+      const q = Number(grant.x ?? grant.q);
+      const r = Number(grant.y ?? grant.r);
+      if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+      // Only the q/r are needed to steer the world-march target selection; the guide matcher compares
+      // the action's targetQ/targetR, so no tileId literal is constructed here (canonical-coord gate).
+      return { q, r };
     }
 
     getCapitalCityId() {
@@ -341,17 +388,14 @@
     }
 
     isWorldSiteSelected(siteId = '') {
-      const selected = this.game?.territoryController?.uiState?.selectedSiteId
-        || this.game?.canvasShell?.territoryUiState?.selectedSiteId
-        || this.game?.territoryUiState?.selectedSiteId
-        || '';
+      const selected = TerritoryUiStateStore?.ensure?.(this.game)?.selectedSiteId || '';
       return Boolean(siteId && selected === siteId);
     }
 
     isNamingOpen(type = '', territoryId = '') {
+      const namingPrompt = this.game?.getNamingSnapshot?.()?.prompt || null;
       const prompt = this.game?.activeNamingPrompt
-        || this.game?.naming?.prompt
-        || this.game?.canvasShell?.naming?.prompt
+        || namingPrompt
         || this.game?.state?.territoryState?.namingPrompt
         || null;
       if (!prompt) return false;
@@ -361,151 +405,63 @@
     }
 
     getNamingInputValue() {
-      return String(
-        this.game?.naming?.inputValue
-          || this.game?.canvasShell?.naming?.inputValue
-          || '',
-      ).trim();
+      return this.game?.getNamingInputValue?.() || '';
     }
 
     async onFamousPersonsOpened() {
-      if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFamousGranted) {
-        return this.advanceTo(TUTORIAL_STEPS.famousPanelOpened);
-      }
-      if (this.getCurrentStep() === TUTORIAL_STEPS.manualTalentAssigned) {
-        return this.advanceTo(TUTORIAL_STEPS.famousSeekOpened);
-      }
-      return this.state;
+      return this.handleEvent('famousPersonsOpened');
     }
 
     async onTalentPolicyOpened() {
-      const step = this.getCurrentStep();
-      if (step === TUTORIAL_STEPS.polityNamed) {
-        await this.advanceTo(TUTORIAL_STEPS.talentPolicyOpened);
-      }
-      if (this.getCurrentStep() === TUTORIAL_STEPS.talentPolicyOpened) {
-        return this.advanceTo(TUTORIAL_STEPS.talentPolicyApplied);
-      }
-      return this.state;
+      return this.handleEvent('talentPolicyOpened');
     }
 
     onTalentPolicyApplied(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('tutorialStateChanged', { result });
     }
 
     onManualTalentAssigned(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('tutorialStateChanged', { result });
     }
 
     onFamousPersonSought(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('tutorialStateChanged', { result });
     }
 
     async onFamousPersonDetailOpened(personId = '') {
-      const scoutPersonId = this.getScoutFamousPersonId();
-      if (
-        this.getCurrentStep() === TUTORIAL_STEPS.famousPanelOpened
-        && (!scoutPersonId || String(personId || '') === scoutPersonId)
-      ) {
-        return this.advanceTo(TUTORIAL_STEPS.famousCardViewed);
-      }
-      return this.state;
+      return this.handleEvent('famousPersonDetailOpened', { personId });
     }
 
     async onArmyFormationOpened() {
-      if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed) {
-        return this.advanceTo(TUTORIAL_STEPS.formationPanelOpened);
-      }
-      return this.state;
+      return this.handleEvent('armyFormationOpened');
     }
 
     onArmyFormationSaved(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      const step = this.getCurrentStep();
-      if (step === TUTORIAL_STEPS.scoutFormationSaved || step === TUTORIAL_STEPS.scoutWorldPanelOpened) {
-        this.closeArmyFormationEditorEverywhere();
-        this.ensureMapHomeGuideVisible({ clearWorldMarchTarget: true });
-        this.refreshCurrentHighlight();
-        return true;
-      }
-      this.closeArmyFormationEditorEverywhere();
-      this.refreshCurrentHighlight();
-      return false;
+      return this.handleEvent('armyFormationSaved', { result });
     }
 
     async onMilitaryViewSwitched(view = '') {
-      if (view === 'world' && this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
-        return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
-      }
-      return this.state;
+      return this.handleEvent('militaryViewSwitched', { view });
     }
 
     onFamousPersonsClosed() {
-      const game = this.game || {};
-      const shell = game.canvasShell || null;
-      game.showFamousPersons = false;
-      game.famousPersonsPage = 0;
-      game.selectedFamousPersonId = '';
-      if (shell) {
-        shell.showFamousPersons = false;
-        shell.famousPersonsPage = 0;
-        shell.selectedFamousPersonId = '';
-      }
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('famousPersonsClosed');
     }
 
     onCityManagementOpened(tab = '') {
-      if (tab === 'people') {
-        return this.onTalentPolicyOpened();
-      }
-      if (this.getCurrentStep() === TUTORIAL_STEPS.famousCardViewed && tab === 'military') {
-        this.refreshCurrentHighlight();
-        return this.state;
-      }
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('cityManagementOpened', { tab });
     }
 
     async onWorldMarchTargetSelected() {
-      if (this.getCurrentStep() === TUTORIAL_STEPS.scoutFormationSaved) {
-        return this.advanceTo(TUTORIAL_STEPS.scoutWorldPanelOpened);
-      }
-      return this.state;
+      return this.handleEvent('worldMarchTargetSelected');
     }
 
     onExploreStarted(result = {}) {
-      this.sync(result.tutorial || this.game?.tutorial || this.state);
-      this.refreshCurrentHighlight();
-      return this.state;
+      return this.handleEvent('exploreStarted', { result });
     }
 
     async onAdvisorClosed() {
-      const game = this.game || {};
-      game.showAdvisor = false;
-      game.tutorialAdvisorDialogue = null;
-      if (game.canvasShell) {
-        game.canvasShell.showAdvisor = false;
-        game.canvasShell.tutorialAdvisorDialogue = null;
-      }
-      if (this.getCurrentStep() !== TUTORIAL_STEPS.finalTechOpened) {
-        this.refreshCurrentHighlight();
-        return this.state;
-      }
-      game.canvasShell?.hideTutorialHighlight?.();
-      game.state = {
-        ...(game.state || {}),
-        softGuide: null,
-      };
-      const result = await this.advanceTo(TUTORIAL_STEPS.completed);
-      this.refreshCurrentHighlight();
-      return result;
+      return this.handleEvent('advisorClosed');
     }
 
     getCanvasTarget(type, predicate = null) {
@@ -527,14 +483,14 @@
     showFirstCitySiteOpenHighlight(siteId = '') {
       return this.targetResolver?.showOpenWorldSiteHighlight({
         siteId,
-        message: '\u70b9\u5f00\u4fa6\u5bdf\u961f\u53d1\u73b0\u7684\u7a7a\u57ce\uff0c\u51c6\u5907\u5efa\u7acb\u7b2c\u4e8c\u5904\u636e\u70b9\u3002',
+        message: t('tutorial.guide.openDiscoveredEmptyCity'),
       }) || false;
     }
 
     showCapitalSiteOpenHighlight(siteId = this.getCapitalCityId()) {
       return this.targetResolver?.showOpenWorldSiteHighlight({
         siteId,
-        message: '\u70b9\u5f00\u4e3b\u57ce\uff0c\u53bb\u57ce\u5185\u519b\u4e8b\u9875\u914d\u7f6e\u7b2c\u4e00\u652f\u4fa6\u5bdf\u7f16\u961f\u3002',
+        message: t('tutorial.guide.openCapitalForScout'),
       }) || false;
     }
 
@@ -566,15 +522,6 @@
         host[key] = value;
         changed = true;
       };
-      const mergeUiState = (host, key, patch = {}) => {
-        if (!host || typeof host !== 'object') return;
-        const current = host[key] || {};
-        const next = { ...current, ...patch };
-        const changedEntry = Object.entries(patch).some(([field, value]) => current[field] !== value);
-        if (!changedEntry) return;
-        host[key] = next;
-        changed = true;
-      };
       if (game.state) {
         setIfChanged(game.state, 'currentTab', 'military');
         setIfChanged(game.state, 'militaryView', 'world');
@@ -582,57 +529,28 @@
       setIfChanged(game, 'activeTab', 'military');
       setIfChanged(game, 'militaryView', 'world');
       setIfChanged(game, 'mapHomeActive', true);
-      setIfChanged(game, 'activeCommandPanel', '');
-      setIfChanged(game, 'showCityManagement', false);
-      setIfChanged(game, 'showSubcityList', false);
-      setIfChanged(game, 'showTaskCenter', false);
-      setIfChanged(game, 'showFamousPersons', false);
-      setIfChanged(game, 'activeEventId', null);
+      // Close the exact subset of blocking panels this reset cleared. Read the
+      // canonical owner snapshot BEFORE closing so the 'changed' re-render gate stays
+      // accurate.
+      const closePanelIfChanged = (key) => {
+        if (!CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(game, key)) return;
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, key);
+        changed = true;
+      };
+      closePanelIfChanged('activeCommandPanel');
+      closePanelIfChanged('showCityManagement');
+      closePanelIfChanged('showSubcityList');
+      closePanelIfChanged('showTaskCenter');
+      closePanelIfChanged('showFamousPersons');
+      game.closeEventSnapshot?.();
       this.closeArmyFormationEditorEverywhere();
-      mergeUiState(game, 'territoryUiState', {
-        selectedSiteId: '',
-        ...(clearWorldMarchTarget ? {
-          worldMarchTarget: null,
-          selectedWorldActorId: '',
-        } : {}),
-        expeditionConfigSiteId: '',
-        expeditionSoldiers: '',
-        expeditionTroopType: '',
-        expeditionLeader: '',
-      });
-      if (game.territoryController?.uiState) {
-        mergeUiState(game.territoryController, 'uiState', {
-          selectedSiteId: '',
-          ...(clearWorldMarchTarget ? {
-            worldMarchTarget: null,
-            selectedWorldActorId: '',
-          } : {}),
-          expeditionConfigSiteId: '',
-          expeditionSoldiers: '',
-          expeditionTroopType: '',
-          expeditionLeader: '',
-        });
-      }
+      TerritoryUiStateStore?.clearWorldSelection?.(game, { clearWorldMarchTarget });
       if (clearWorldMarchTarget) game.territoryController?.closeSiteDialog?.({ render: false });
       if (shell) {
         setIfChanged(shell, 'mapHomeActive', true);
-        setIfChanged(shell, 'activeCommandPanel', '');
-        setIfChanged(shell, 'showCityManagement', false);
-        setIfChanged(shell, 'showSubcityList', false);
-        setIfChanged(shell, 'showTaskCenter', false);
-        setIfChanged(shell, 'showFamousPersons', false);
-        setIfChanged(shell, 'activeEventId', null);
-        mergeUiState(shell, 'territoryUiState', {
-          selectedSiteId: '',
-          ...(clearWorldMarchTarget ? {
-            worldMarchTarget: null,
-            selectedWorldActorId: '',
-          } : {}),
-          expeditionConfigSiteId: '',
-          expeditionSoldiers: '',
-          expeditionTroopType: '',
-          expeditionLeader: '',
-        });
+        // The 5 blocking-panel closes above fanned out to the shell via the adapter.
+        shell.closeEventSnapshot?.();
+        TerritoryUiStateStore?.ensure?.(shell);
       }
       shell?.hideTutorialHighlight?.();
       if (typeof shell?.renderReadOnly === 'function') {
@@ -659,15 +577,260 @@
 
 
 
-  }
+
+
+    clearBlockingCommandPanels() {
+        const game = this.game || {};
+        let changed = false;
+        if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(game, 'activeCommandPanel')) {
+          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'activeCommandPanel');
+          changed = true;
+        }
+        return changed;
+      }
+
+    showSoftGuide(target, message) {
+        const game = this.game || {};
+        game.canvasShell?.hideTutorialHighlight?.();
+        const dialogue = { message, advisorName: t('tutorial.advisorName'), source: `softGuide:${target || 'tutorial'}` };
+        StateWriter.commit(game, (prev) => ({
+          ...(prev || {}),
+          softGuide: {
+            mode: 'strong',
+            target,
+            message,
+          },
+        }), { source: 'tutorialUiState:softGuide' });
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showAdvisor');
+        game.tutorialAdvisorDialogue = dialogue;
+        if (game.canvasShell) {
+          game.canvasShell.tutorialAdvisorDialogue = dialogue;
+        }
+        if (target !== 'tech-tree') this.clearBlockingCommandPanels();
+        game.renderCanvasSurface?.(game.state?.currentTab || game.activeTab);
+        return true;
+      }
+
+    getClosedArmyFormationEditor() {
+        return { open: false, cityId: '', slot: 1, memberIds: [], page: 0, saving: false };
+      }
+
+    closeArmyFormationEditorEverywhere() {
+        const game = this.game || {};
+        return CanvasModeOwnershipRuntime?.closeFormationEditor?.(game)
+          || this.getClosedArmyFormationEditor();
+      }
+
+    showCapitalEnterHighlight(siteId = this.getCapitalCityId()) {
+        return this.showHighlight(
+          'enterCity',
+          (action) => !action.disabled && (!siteId || action.cityId === siteId || action.territoryId === siteId || action.siteId === siteId),
+          t('tutorial.guide.enterCapitalForScout'),
+          { type: 'enterCity', cityId: siteId },
+        );
+      }
+
+    focusCapitalSite(siteId = this.getCapitalCityId()) {
+        if (!siteId) return false;
+        const shell = this.game?.canvasShell || null;
+        const actionController = shell?.actionController || this.game?.actionController || null;
+        if (typeof actionController?.centerWorldMapOnSite === 'function') {
+          actionController.centerWorldMapOnSite(siteId);
+        }
+        this.ensureMapHomeGuideVisible();
+        const highlighted = this.showCapitalSiteOpenHighlight(siteId);
+        if (!highlighted) {
+          setTimeout(() => this.showCapitalSiteOpenHighlight(siteId), 80);
+        }
+        return highlighted;
+      }
+
+    focusFirstCitySite(siteId = '') {
+        if (!siteId || this.focusedFirstCitySiteId === siteId) return false;
+        const shell = this.game?.canvasShell || null;
+        const actionController = shell?.actionController || this.game?.actionController || null;
+        let changed = false;
+        if (typeof actionController?.centerWorldMapOnSite === 'function') {
+          changed = actionController.centerWorldMapOnSite(siteId) !== false;
+        }
+        if (!changed) return false;
+        this.game?.renderCanvasSurface?.(this.game?.state?.currentTab || this.game?.activeTab);
+        shell?.renderActive?.();
+        if (this.showFirstCitySiteOpenHighlight(siteId)) {
+          this.focusedFirstCitySiteId = siteId;
+        }
+        setTimeout(() => {
+          if (this.showFirstCitySiteOpenHighlight(siteId)) {
+            this.focusedFirstCitySiteId = siteId;
+          }
+        }, 80);
+        return true;
+      }
+
+    prepareCommandPanelGuide(panelId) {
+        const game = this.game || {};
+        const shell = game.canvasShell || null;
+        let changed = false;
+        // The adapter reads/writes the canonical modal owner; read the snapshot BEFORE
+        // closing so the 'changed' re-render gate stays accurate.
+        const closeIfOpen = (key) => {
+          if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(game, key)) {
+            CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, key);
+            changed = true;
+          }
+        };
+        const activeCommandPanel = getCommandPanelValue(game);
+        if (activeCommandPanel && activeCommandPanel !== panelId) {
+          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'activeCommandPanel');
+          changed = true;
+        }
+        closeIfOpen('showCityManagement');
+        closeIfOpen('showSubcityList');
+        closeIfOpen('showTaskCenter');
+        closeIfOpen('showFamousPersons');
+        if (game.selectedFamousPersonId) {
+          game.selectedFamousPersonId = '';
+          changed = true;
+        }
+        if (game.isEventSnapshotOpen?.()) {
+          game.closeEventSnapshot?.();
+          changed = true;
+        } else if (shell?.isEventSnapshotOpen?.()) {
+          shell.closeEventSnapshot?.();
+          changed = true;
+        }
+        if (changed) {
+          shell?.hideTutorialHighlight?.();
+          game.renderCanvasSurface?.(game.state?.currentTab || game.activeTab);
+        }
+        return changed;
+      }
+
+    ensureHouseGuideVisible() {
+        if (!this.isHouseGuideActive()) return false;
+        const game = this.game || {};
+        CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(game, 'showCityManagement', true);
+        game.activeCityManagementTab = 'buildings';
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showSubcityList');
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'activeCommandPanel');
+        game.closeEventSnapshot?.();
+        return true;
+      }
+
+    ensureBuildingGuideVisible() {
+        const game = this.game || {};
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showCityManagement');
+        CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(game, 'activeCommandPanel', 'buildings');
+        game.closeEventSnapshot?.();
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showTaskCenter');
+        return true;
+      }
+
+    getBuildingCategory(buildingId) {
+        const config = this.game?.state?.buildingDefinitions?.[buildingId]
+          || this.game?.state?.buildingConfig?.buildings?.[buildingId]
+          || this.game?.buildingConfig?.buildings?.[buildingId]
+          || null;
+        return config?.category || 'all';
+      }
+
+    focusBuildingCard(buildingId) {
+        const category = this.getBuildingCategory(buildingId);
+        const game = this.game || {};
+        game.activeBuildingCategory = category;
+        game.buildingOffset = 0;
+        game.buildingTransition = null;
+        return true;
+      }
+
+    ensureCityPeopleGuideVisible(options = {}) {
+        const game = this.game || {};
+        const shell = game.canvasShell || null;
+        let changed = false;
+        const setIfChanged = (host, key, value) => {
+          if (!host || host[key] === value) return;
+          host[key] = value;
+          changed = true;
+        };
+        // Read the snapshot BEFORE mutating so the 'changed' re-render gate stays accurate.
+        const openPanelIfChanged = (key, value) => {
+          const open = CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(game, key);
+          if (open === Boolean(value)) return;
+          CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(game, key, value);
+          changed = true;
+        };
+        const closePanelIfChanged = (key) => {
+          if (!CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(game, key)) return;
+          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, key);
+          changed = true;
+        };
+        if (game.state) {
+          setIfChanged(game.state, 'currentTab', 'military');
+          setIfChanged(game.state, 'militaryView', 'world');
+        }
+        setIfChanged(game, 'activeTab', 'military');
+        setIfChanged(game, 'militaryView', 'world');
+        setIfChanged(game, 'mapHomeActive', true);
+        setIfChanged(game, 'activeCityManagementTab', 'people');
+        openPanelIfChanged('showCityManagement', true);
+        closePanelIfChanged('showTaskCenter');
+        closePanelIfChanged('showFamousPersons');
+        closePanelIfChanged('showSubcityList');
+        closePanelIfChanged('activeCommandPanel');
+        if (game.isEventSnapshotOpen?.()) {
+          game.closeEventSnapshot?.();
+          changed = true;
+        }
+        TerritoryUiStateStore?.clearWorldSelection?.(game, { clearWorldMarchTarget: true });
+        if (shell) TerritoryUiStateStore?.ensure?.(shell);
+        game.territoryController?.closeSiteDialog?.({ render: false });
+        shell?.closeWorldSiteHud?.({ render: false });
+        shell?.hideTutorialHighlight?.();
+        if (typeof shell?.renderReadOnly === 'function') {
+          shell.renderReadOnly(game.state, 'military', {
+            forceMapHome: true,
+            isMapHome: true,
+          });
+        } else if (changed || options.forceRender !== false) {
+          game.renderCanvasSurface?.('military');
+        }
+        return true;
+      }
+
+    getCityPeopleGuideHighlightOptions() {
+        return {
+          renderActiveTab: 'military',
+          renderOptions: {
+            forceMapHome: true,
+            isMapHome: true,
+          },
+        };
+      }
+
+    showBuildingGuide(buildingId, message) {
+        this.ensureBuildingGuideVisible();
+        this.focusBuildingCard(buildingId);
+        return this.showHighlight(
+          'buildBuilding',
+          (action) => !action.disabled && action.buildingId === buildingId,
+          message,
+          { type: 'buildBuilding', buildingId },
+        );
+      }
+
+    refreshCurrentHighlight() {
+      if (!this.flowRegistry && SharedTutorialGuideFlowRegistry?.create) {
+        this.flowRegistry = SharedTutorialGuideFlowRegistry.create({
+          steps: TutorialGuideController.TUTORIAL_STEPS || {},
+        });
+      }
+      return this.flowRegistry?.refresh?.(this) || false;
+    }
+}
 
   TutorialGuideController.TUTORIAL_STEPS = TUTORIAL_STEPS;
   TutorialGuideController.TutorialGuideStepPolicy = TutorialGuideStepPolicy;
   TutorialGuideController.TutorialGuideTargetResolver = SharedTutorialGuideTargetResolver;
-  TutorialGuideController.TutorialGuidePhaseHighlights = SharedTutorialGuidePhaseHighlights;
-  TutorialGuideController.TutorialGuideUiStateCoordinator = SharedTutorialGuideUiStateCoordinator;
-  SharedTutorialGuideUiStateCoordinator?.install?.(TutorialGuideController);
-  SharedTutorialGuidePhaseHighlights?.install?.(TutorialGuideController);
   global.TutorialGuideController = TutorialGuideController;
   if (typeof module !== 'undefined' && module.exports) module.exports = TutorialGuideController;
 })(typeof window !== 'undefined' ? window : globalThis);

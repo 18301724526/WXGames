@@ -1,0 +1,315 @@
+'use strict';
+
+// Interactive world-combat session service. Owns the lifecycle of a single
+// active, player-driven battle:
+//   openSession  -> builds the authoritative battleSimCore setup (seed + setup
+//                   issued server-side) and stores it on gameState.worldCombat.session.
+//                   Does NOT simulate; the client plays the setup live and records
+//                   the inputStream.
+//   resolveSession -> re-simulates the stored setup with the client's recorded
+//                   inputStream (authoritative), applies casualties, mutates the
+//                   encounter, builds the report, and clears the session.
+//
+// The backend stays authoritative: seed + setup are server-stored, so the client
+// cannot alter the outcome — at worst it replays a different inputStream, which is
+// re-applied verbatim and re-judged by the deterministic core.
+
+const WorldCombatEncounterService = require('./WorldCombatEncounterService');
+const WorldExplorerActions = require('../worldExplorer/WorldExplorerActions');
+const BattleSimService = require('../battle/BattleSimService');
+const FormationStrengthService = require('../military/FormationStrengthService');
+const WorldMapService = require('../WorldMapService');
+const { toInteger } = require('../../../shared/numberUtils');
+const { cloneIfObject } = require('../../../shared/objectUtils');
+const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
+
+const SCHEMA = 'world-combat-session-v1';
+
+// The attacking formation must be standing ON the encounter tile to open a battle — the
+// same arrival condition the passive path (resolveMissionArrival) enforces. This is the
+// authoritative gate: a garrison still in its city, or a mission that has not yet reached
+// the target, cannot open a battle from afar. You march there first.
+function getMissionTileId(mission = null) {
+  const pos = mission && mission.position;
+  if (!pos || typeof pos !== 'object') return null;
+  return WorldMapService.getTileId(toInteger(pos.q ?? pos.x, 0), toInteger(pos.r ?? pos.y, 0));
+}
+
+function normalizeFormationSlot(value) {
+  const slot = toInteger(value, 1);
+  return slot > 0 ? slot : 1;
+}
+
+function failure(error, message) {
+  return { success: false, error, message };
+}
+
+// Find the source mission whose formationSnapshot is the attacker. Prefer an
+// explicit missionId; otherwise match an idle mission by formation cityId + slot
+// (same matching pattern as WorldExplorerActions.getIdleFormationMission).
+function findSourceMission(gameState = {}, { missionId, cityId, formationSlot } = {}) {
+  const missions = Array.isArray(gameState.exploreMissions) ? gameState.exploreMissions : [];
+  if (missionId) {
+    const byId = missions.find((mission) => mission && mission.id === missionId);
+    if (byId) return byId;
+  }
+  const wantCity = cityId || 'capital';
+  const wantSlot = normalizeFormationSlot(formationSlot);
+  return (
+    missions.find((mission) => {
+      if (!mission || mission.status !== 'idle') return false;
+      const formation = mission.formation || {};
+      return (
+        (formation.cityId || 'capital') === wantCity &&
+        normalizeFormationSlot(formation.slot) === wantSlot
+      );
+    }) || null
+  );
+}
+
+function getSessionFormation(mission = {}, fallback = {}) {
+  const formation = mission.formation || {};
+  return {
+    cityId: formation.cityId || fallback.cityId || 'capital',
+    slot: normalizeFormationSlot(formation.slot != null ? formation.slot : fallback.slot),
+  };
+}
+
+// Open an interactive battle session. Authoritative: builds seed + setup here.
+function openSession(
+  gameState = {},
+  { missionId = '', formationSlot, cityId = 'capital', targetQ, targetR } = {},
+  now = new Date(),
+  options = {},
+) {
+  WorldCombatEncounterService.normalizeCombatState(gameState, now);
+
+  const existing = gameState.worldCombat.session;
+  if (existing && existing.status === 'open') {
+    return failure('WORLD_COMBAT_SESSION_BUSY', '已有战斗正在进行中。');
+  }
+
+  const encounter = WorldCombatEncounterService.getActiveEncounterAt(gameState, {
+    q: targetQ,
+    r: targetR,
+  }, now, options);
+  if (!encounter) {
+    return failure('WORLD_COMBAT_ENCOUNTER_NOT_FOUND', '该敌军已不在此处。');
+  }
+
+  const mission = findSourceMission(gameState, { missionId, cityId, formationSlot });
+
+  // Position gate: the attacking formation must already be standing on the encounter
+  // tile. A garrison in its city (no arrived mission) must march there first — attacking
+  // from afar is refused so combat always requires reaching the target.
+  const encounterTileId = encounter.tileId || WorldMapService.getTileId(encounter.q, encounter.r);
+  if (getMissionTileId(mission) !== encounterTileId) {
+    return failure('WORLD_COMBAT_NOT_IN_RANGE', '部队尚未抵达，请先行军到敌军所在位置再发起进攻。');
+  }
+
+  const rawSnapshot = mission ? mission.formationSnapshot : null;
+  const snapshot = FormationStrengthService.normalizeFormationSnapshot(rawSnapshot);
+  const deploymentFailure =
+    FormationDeploymentEligibility.getCombatDeploymentFailureForSnapshot(snapshot);
+  if (deploymentFailure) return failure(deploymentFailure.error, deploymentFailure.message);
+
+  const attributesByPersonId = WorldCombatEncounterService.getFamousPersonAttributes(
+    gameState,
+    snapshot,
+  );
+  const defenderGenerals = WorldCombatEncounterService.getDefenderGenerals(encounter);
+
+  // Same deterministic seed formula as legacy resolveEncounterBattle so balance
+  // is unchanged between the passive and interactive paths.
+  const seed = now.getTime() + String(encounter.id || '').length;
+
+  const setup = BattleSimService.buildBattleSetup({
+    seed,
+    attacker: { snapshot, attributesByPersonId },
+    defender: { generals: defenderGenerals },
+  });
+
+  const formationRef = getSessionFormation(mission || {}, { cityId, slot: formationSlot });
+  const battleId = `wcs_${encounter.id}_${now.getTime()}`;
+  const startedAt = now.toISOString();
+
+  const session = {
+    schema: SCHEMA,
+    battleId,
+    seed,
+    status: 'open',
+    encounterId: encounter.id,
+    missionId: (mission && mission.id) || '',
+    formation: formationRef,
+    setup,
+    attackerSnapshot: cloneIfObject(snapshot),
+    startedAt,
+  };
+
+  gameState.worldCombat.session = session;
+  gameState.worldCombat.updatedAt = startedAt;
+
+  // Mark the mission/squad 战斗中. Do NOT alter mission.route/position.
+  if (mission) {
+    mission.combat = {
+      ...(mission.combat || {}),
+      encounterId: encounter.id,
+      status: 'inBattle',
+      battleId,
+      startedAt,
+    };
+  }
+
+  return {
+    success: true,
+    battleId,
+    seed,
+    setup: cloneIfObject(setup),
+    encounter: WorldCombatEncounterService.getClientEncounter(encounter, gameState.worldCombat.encounterIntel),
+    battleTarget: WorldCombatEncounterService.getClientEncounterBattleTarget(
+      encounter,
+      gameState.worldCombat.encounterIntel,
+    ),
+    session: cloneIfObject(session),
+  };
+}
+
+// Resolve an open session: re-sim the stored setup with the client inputStream,
+// apply casualties, mutate the encounter, build the report, clear the session.
+function resolveSession(
+  gameState = {},
+  { battleId = '', inputStream = [] } = {},
+  now = new Date(),
+  options = {},
+) {
+  WorldCombatEncounterService.normalizeCombatState(gameState, now);
+
+  const session = gameState.worldCombat.session;
+  if (!session || session.status !== 'open') {
+    return failure('WORLD_COMBAT_SESSION_NOT_FOUND', '当前没有进行中的战斗。');
+  }
+  if (session.battleId !== battleId) {
+    return failure('WORLD_COMBAT_SESSION_MISMATCH', '战斗信息不匹配，请重新发起战斗。');
+  }
+
+  const stream = Array.isArray(inputStream) ? inputStream : [];
+
+  // Authoritative re-simulation: seed + setup are server-stored.
+  const result = BattleSimService.simulateSetup(session.setup, stream);
+  const winner = result.winner;
+
+  const attackerSnapshot = BattleSimService.applyCasualtiesToFormationSnapshot(
+    session.attackerSnapshot,
+    result,
+  );
+
+  const resolvedAt = now.toISOString();
+  const encounter = WorldCombatEncounterService.getActiveEncounter(
+    gameState,
+    session.encounterId,
+    now,
+    options,
+  );
+
+  // Encounter may have been resolved/respawned concurrently; if it is gone we
+  // still settle the session and return a report for the client.
+  let battleTargetEncounter = encounter;
+  let loot = {};
+  if (encounter) {
+    const defenderGid = WorldCombatEncounterService.getDefenderGenerals(encounter)[0]?.gid || '';
+    if (winner === 'attacker') {
+      encounter.status = 'resolved';
+      encounter.defender.soldiers = 0;
+      // Same single-source victory spoils (loot + cooldown respawn) the passive
+      // march-arrival path uses, so a camp pays identically however it was beaten.
+      loot = WorldCombatEncounterService.applyCampVictorySpoils(gameState, encounter, now);
+    } else {
+      const survivors = (result && result.survivorsByGid) || {};
+      encounter.defender.soldiers = Math.max(1, toInteger(survivors[defenderGid], 0));
+    }
+    encounter.resolvedAt = resolvedAt;
+    encounter.resolvedByMissionId = null;
+    encounter.updatedAt = resolvedAt;
+  }
+
+  const report = WorldCombatEncounterService.buildEncounterBattleReport(gameState, {
+    snapshotBefore: session.attackerSnapshot,
+    encounter: battleTargetEncounter || { id: session.encounterId, defender: {} },
+    battle: {
+      result,
+      winner,
+      attackerSnapshot,
+      setup: session.setup,
+      inputStream: stream,
+    },
+    now,
+  });
+  report.loot = loot;
+
+  if (encounter && options.worldEncounterRepo?.upsertEncounter) {
+    options.worldEncounterRepo.upsertEncounter(encounter, now);
+  }
+  WorldCombatEncounterService.markEncounterFought(gameState, session.encounterId, report, now);
+
+  // Transition the squad/mission back: write casualties onto the live mission's
+  // snapshot and mark its combat record resolved.
+  const mission = findSourceMission(gameState, {
+    missionId: session.missionId,
+    cityId: session.formation?.cityId,
+    formationSlot: session.formation?.slot,
+  });
+  if (mission) {
+    WorldCombatEncounterService.settleMissionSnapshot(mission, attackerSnapshot);
+    mission.combat = {
+      ...(mission.combat || {}),
+      status: 'resolved',
+      encounterId: session.encounterId,
+      battleId,
+      resolvedAt,
+      battleReportId: report.id,
+    };
+    // AUTHORITATIVE retreat-return (connection point 2): after a non-victory (the player
+    // pulled back / was beaten) the formation is still standing next to a live enemy. Send
+    // it marching home so it 远离野怪, reusing WorldExplorerActions.returnWorldMarch (same
+    // route/status/homeOrigin bookkeeping any manual return uses). A victory does NOT
+    // return: the camp is cleared and the squad idles on the spot (spoils already applied).
+    // The frontend onResolve only refreshes; this backend hook is the single source of the
+    // return march. ROLLBACK: delete this block and the squad idles in place after retreat.
+    const survivors = Math.max(0, toInteger(attackerSnapshot?.soldiersRemaining, 0));
+    if (winner !== 'attacker' && survivors > 0 && mission.id) {
+      WorldExplorerActions.returnWorldMarch(gameState, mission.id, now);
+    }
+  }
+
+  gameState.worldCombat.recentReports = [
+    {
+      id: report.id,
+      encounterId: session.encounterId,
+      missionId: session.missionId || '',
+      battleId,
+      resolvedAt,
+      report,
+    },
+    ...(gameState.worldCombat.recentReports || []),
+  ].slice(0, 5);
+
+  gameState.worldCombat.session = null;
+  gameState.worldCombat.updatedAt = resolvedAt;
+
+  return {
+    success: true,
+    result,
+    report,
+    winner,
+    encounter: encounter
+      ? WorldCombatEncounterService.getClientEncounter(encounter, gameState.worldCombat.encounterIntel)
+      : null,
+    attackerSnapshot,
+  };
+}
+
+module.exports = {
+  SCHEMA,
+  openSession,
+  resolveSession,
+};

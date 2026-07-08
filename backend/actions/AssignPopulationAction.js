@@ -1,6 +1,7 @@
-const Population = require('../domain/Population');
+const Population = require('../services/population/PopulationAssignment');
 const TutorialService = require('../services/TutorialService');
 const CityService = require('../services/CityService');
+const { stepEquals } = require('../../shared/tutorialFlowConfig');
 
 function execute(gameState, tutorial, payload) {
   const city = CityService.getActiveCity(gameState);
@@ -11,10 +12,9 @@ function execute(gameState, tutorial, payload) {
 
   city.population = result.population;
   CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
   const normalizedTutorial = TutorialService.normalizeTutorialState(tutorial);
   const amount = Number.parseInt(payload.count, 10) || 0;
-  const nextTutorial = normalizedTutorial.currentStep === TutorialService.TUTORIAL_STEPS.talentPolicyApplied && amount !== 0
+  const nextTutorial = stepEquals(normalizedTutorial.currentStep, TutorialService.TUTORIAL_STEPS.talentPolicyApplied) && amount !== 0
     ? TutorialService.advanceTutorial(normalizedTutorial, 'manualTalentAssigned')
     : payload.target === 'craftsman' && amount > 0
       ? TutorialService.advanceTutorial(normalizedTutorial, 'craftsmanAssigned')

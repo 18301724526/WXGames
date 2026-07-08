@@ -2,6 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialGuideController = require('./TutorialGuideController');
+const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
+
+const makeModalHost = makeModalOwnerHost;
+
+// Link a game host and its canvasShell so shell reads resolve to the game owner.
+function linkGameShell(game, shell) {
+  if (game) game.canvasShell = shell;
+  if (shell) shell.lastGame = game;
+  return game;
+}
 
 async function flushTutorialPromises(ticks = 12) {
   for (let index = 0; index < ticks; index += 1) {
@@ -9,7 +20,7 @@ async function flushTutorialPromises(ticks = 12) {
   }
 }
 
-test('TutorialGuideController advances city entry directly into the house guide', async () => {
+test('TutorialGuideController advances city entry and leaves houseGuideReady to the homestead claim', async () => {
   const calls = [];
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.initial },
@@ -29,12 +40,57 @@ test('TutorialGuideController advances city entry directly into the house guide'
 
   await controller.markCityEntered();
 
+  // houseGuideReady is claim-driven (main_homestead_supplies via
+  // TASK_CLAIM_STEPS), so city entry stops at cityEntered.
   assert.deepEqual(calls.map(([name, step]) => [name, step]), [
     ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.cityEntered],
     ['applyApiState', TutorialGuideController.TUTORIAL_STEPS.cityEntered],
-    ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.houseGuideReady],
-    ['applyApiState', TutorialGuideController.TUTORIAL_STEPS.houseGuideReady],
   ]);
+});
+
+test('TutorialGuideFlowRegistry guides the homestead claim pair at cityEntered', () => {
+  const calls = [];
+  const shell = makeModalHost({
+    getCanvasTarget(type, predicate) {
+      const targets = {
+        openTaskCenter: { type: 'openTaskCenter', source: 'taskIcon' },
+        claimTaskReward: { type: 'claimTaskReward', taskId: 'main_homestead_supplies', category: 'main' },
+      };
+      const action = targets[type];
+      if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
+      return null;
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push({ target, message, options });
+      return true;
+    },
+    hideTutorialHighlight() {
+      calls.push({ hideHighlight: true });
+      return true;
+    },
+  });
+  const game = makeModalHost({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.cityEntered },
+    state: { currentTab: 'resources' },
+    renderCanvasSurface() {
+      calls.push({ render: true });
+    },
+  });
+  linkGameShell(game, shell);
+  const controller = new TutorialGuideController({ game });
+  controller.sync(game.tutorial);
+
+  assert.equal(controller.canOpenTab('tasks'), true);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTaskCenter' });
+
+  game.openBlockingPanelSnapshot('showTaskCenter', true);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, {
+    type: 'claimTaskReward',
+    taskId: 'main_homestead_supplies',
+    category: 'main',
+  });
 });
 
 test('TutorialGuideController only allows first house build during house guide', () => {
@@ -87,8 +143,7 @@ test('TutorialGuideController deduplicates concurrent advance requests for the s
 
 test('TutorialGuideController highlights the house build button when available', () => {
   const calls = [];
-  const shell = {
-    showCityManagement: false,
+  const shell = makeModalHost({
     activeCityManagementTab: '',
     getCanvasTarget(type, predicate) {
       const action = { type: 'buildBuilding', buildingId: 'house' };
@@ -103,27 +158,24 @@ test('TutorialGuideController highlights the house build button when available',
       calls.push({ hideHighlight: true });
       return true;
     },
-    hideTutorialHighlight() {
-      calls.push({ hideHighlight: true });
-      return true;
-    },
-  };
-  const game = {
+  });
+  const game = makeModalHost({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseGuideReady },
-    canvasShell: shell,
-  };
+  });
+  linkGameShell(game, shell);
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 
   assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.equal(shell.showCityManagement, true);
-  assert.equal(shell.activeCityManagementTab, 'buildings');
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
+  assert.equal(game.activeCityManagementTab, 'buildings');
+  assert.equal(shell.activeCityManagementTab, '');
   assert.equal(calls.some((call) => call.options?.allowedAction?.buildingId === 'house'), true);
 });
 
 test('TutorialGuideController guides first era advancement and task reward claim', () => {
   const calls = [];
-  const shell = {
+  const shell = makeModalHost({
     getCanvasTarget(type, predicate) {
       const targets = {
         openCommandPanel: { type: 'openCommandPanel', panel: 'civilization' },
@@ -147,15 +199,38 @@ test('TutorialGuideController guides first era advancement and task reward claim
       calls.push({ hideHighlight: true });
       return true;
     },
-  };
-  const game = {
+  });
+  const game = makeModalHost({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt },
     state: { currentTab: 'resources' },
-    canvasShell: shell,
+    __rewardRevealSnapshot: null,
+    isRewardRevealSnapshotOpen() {
+      return Boolean(this.__rewardRevealSnapshot);
+    },
+    openRewardRevealSnapshot(payload) {
+      this.__rewardRevealSnapshot = { ...(payload || {}), visible: true };
+      return this.__rewardRevealSnapshot;
+    },
+    __namingSnapshot: null,
+    getNamingSnapshot() {
+      return this.__namingSnapshot;
+    },
+    getNamingInputValue() {
+      return String(this.__namingSnapshot?.inputValue || '').trim();
+    },
+    openNamingSnapshot(payload) {
+      this.__namingSnapshot = { ...(payload || {}), visible: true };
+      return this.__namingSnapshot;
+    },
+    updateNamingSnapshot(patch) {
+      this.__namingSnapshot = { ...(this.__namingSnapshot || {}), ...(patch || {}) };
+      return this.__namingSnapshot;
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
-  };
+  });
+  linkGameShell(game, shell);
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 
@@ -167,15 +242,14 @@ test('TutorialGuideController guides first era advancement and task reward claim
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
 
-  game.activeCommandPanel = 'civilization';
-  game.canvasShell.activeCommandPanel = 'civilization';
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
   controller.onEraAdvanced({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo1 },
   });
-  assert.equal(game.showAdvisor, false);
-  assert.equal(game.canvasShell.showAdvisor, false);
-  assert.equal(game.activeCommandPanel, '');
-  assert.equal(game.canvasShell.activeCommandPanel, '');
+  assert.equal(game.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(game.getCommandPanelValue(), '');
+  assert.equal(shell.getCommandPanelValue(), '');
   assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:task-center-button');
   assert.equal(game.canvasShell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
   assert.match(game.tutorialAdvisorDialogue.message, /任务|物资|农田|火种/);
@@ -190,7 +264,7 @@ test('TutorialGuideController guides first era advancement and task reward claim
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTaskCenter' });
 
-  game.showTaskCenter = true;
+  game.openBlockingPanelSnapshot('showTaskCenter', true);
   game.activeTaskCenterTab = 'main';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, {
@@ -200,9 +274,35 @@ test('TutorialGuideController guides first era advancement and task reward claim
   });
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.farmPrepReserved });
-  game.rewardReveal = { rewardText: '+10' };
+  game.openRewardRevealSnapshot({ rewardText: '+10' });
   assert.equal(controller.refreshCurrentHighlight(), false);
   assert.equal(calls.at(-1).hideHighlight, true);
+});
+
+test('TutorialGuideController advances the barracks buildings-tab gate when the panel opens', async () => {
+  const calls = [];
+  const game = makeModalHost({
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.barracksSuppliesClaimed },
+    state: { currentTab: 'resources' },
+    applyApiState(result) {
+      this.tutorial = result.tutorial;
+    },
+  });
+  const api = {
+    async advanceTutorial(step) {
+      calls.push(['advanceTutorial', step]);
+      return { tutorial: { completed: false, currentStep: step } };
+    },
+  };
+  const controller = new TutorialGuideController({ game, api });
+  controller.sync(game.tutorial);
+
+  await controller.onCommandPanelOpened('buildings');
+
+  assert.deepEqual(calls, [
+    ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.buildingsTabOpenedForBarracks],
+  ]);
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.buildingsTabOpenedForBarracks);
 });
 
 test('TutorialGuideController treats tutorial spine advisor dialogue as an open advisor', () => {
@@ -219,8 +319,7 @@ test('TutorialGuideController treats tutorial spine advisor dialogue as an open 
 
 test('TutorialGuideController guides farm, forest event, lumbermill, and second main task', () => {
   const calls = [];
-  const shell = {
-    activeCommandPanel: '',
+  const shell = makeModalHost({
     getCanvasTarget(type, predicate) {
       const targets = {
         buildBuilding: [
@@ -250,8 +349,8 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
       calls.push({ hideHighlight: true });
       return true;
     },
-  };
-  const game = {
+  });
+  const game = makeModalHost({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.farmPrepReserved },
     state: {
       currentTab: 'buildings',
@@ -262,18 +361,32 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
       },
     },
     activeTab: 'buildings',
-    canvasShell: shell,
+    __eventSnapshot: null,
+    openEventSnapshot(eventId) {
+      this.__eventSnapshot = eventId ? { eventId, visible: true } : null;
+      return eventId;
+    },
+    closeEventSnapshot() {
+      this.__eventSnapshot = null;
+    },
+    getEventSnapshot() {
+      return this.__eventSnapshot;
+    },
+    isEventSnapshotOpen() {
+      return Boolean(this.__eventSnapshot);
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
-  };
+  });
+  linkGameShell(game, shell);
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'farm' });
   assert.equal(game.activeBuildingCategory, 'agriculture');
-  assert.equal(game.canvasShell.activeBuildingCategory, 'agriculture');
+  assert.equal(game.canvasShell.activeBuildingCategory, undefined);
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.era2AdvanceReady });
   game.state.currentTab = 'buildings';
@@ -281,15 +394,15 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'civilization' });
 
   game.state.currentTab = 'civilization';
-  shell.activeCommandPanel = 'civilization';
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
 
   controller.onEraAdvanced({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo2 },
   });
-  assert.equal(game.showAdvisor, false);
-  assert.equal(game.canvasShell.showAdvisor, false);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showAdvisor'), false);
   assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:events-button');
   assert.equal(game.canvasShell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
   assert.match(game.tutorialAdvisorDialogue.message, /事件|森林|木材/);
@@ -298,18 +411,17 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   game.tutorialAdvisorDialogue = null;
   game.canvasShell.tutorialAdvisorDialogue = null;
   controller.sync(game.tutorial);
-  shell.activeCommandPanel = 'civilization';
-  game.activeCommandPanel = 'civilization';
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'events' });
-  assert.equal(shell.activeCommandPanel, '');
-  assert.equal(game.activeCommandPanel, '');
+  assert.equal(shell.getCommandPanelValue(), '');
+  assert.equal(game.getCommandPanelValue(), '');
 
-  shell.activeCommandPanel = 'events';
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'events');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openEvent', eventId: 'evt_settlement_forest_001' });
 
-  game.activeEventId = 'evt_settlement_forest_001';
+  game.openEventSnapshot('evt_settlement_forest_001');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, {
     type: 'claimEvent',
@@ -318,18 +430,17 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   });
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.specialEventClaimed });
-  game.activeEventId = null;
-  game.canvasShell.activeEventId = null;
+  game.closeEventSnapshot();
   game.state.currentTab = 'events';
-  shell.activeCommandPanel = 'events';
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'events');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'lumbermill' });
-  assert.equal(game.canvasShell.activeCommandPanel, 'buildings');
+  assert.equal(game.canvasShell.getCommandPanelValue(), 'buildings');
   assert.equal(game.activeBuildingCategory, 'production');
-  assert.equal(game.canvasShell.activeBuildingCategory, 'production');
+  assert.equal(game.canvasShell.activeBuildingCategory, undefined);
 
   controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.lumbermillBuilt });
-  game.showTaskCenter = true;
+  game.openBlockingPanelSnapshot('showTaskCenter', true);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, {
     type: 'claimTaskReward',
@@ -340,16 +451,24 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
 
 test('TutorialGuideController guides era three, scout famous card, and army formation', async () => {
   const calls = [];
-  const shell = {
-    activeCommandPanel: '',
-    showCityManagement: false,
+  const shell = makeModalHost({
     activeCityManagementTab: '',
     territoryUiState: { selectedSiteId: '' },
     armyFormationEditor: { open: false, cityId: '', slot: 1, memberIds: [] },
     getCanvasTarget(type, predicate) {
       const targets = {
-        openCommandPanel: { type: 'openCommandPanel', panel: 'civilization' },
+        openCommandPanel: [
+          { type: 'openCommandPanel', panel: 'civilization' },
+          { type: 'openCommandPanel', panel: 'buildings' },
+        ],
         advanceEra: { type: 'advanceEra' },
+        openTaskCenter: { type: 'openTaskCenter', source: 'taskIcon' },
+        claimTaskReward: [
+          { type: 'claimTaskReward', taskId: 'main_barracks_supplies', category: 'main' },
+          { type: 'claimTaskReward', taskId: 'main_first_army', category: 'main' },
+          { type: 'claimTaskReward', taskId: 'main_scout_officer', category: 'main' },
+        ],
+        buildBuilding: { type: 'buildBuilding', buildingId: 'barracks' },
         openFamousPersons: { type: 'openFamousPersons' },
         openFamousPersonDetail: { type: 'openFamousPersonDetail', personId: 'fp-scout' },
         closeFamousPersonDetail: { type: 'closeFamousPersonDetail' },
@@ -359,10 +478,12 @@ test('TutorialGuideController guides era three, scout famous card, and army form
         switchCityManagementTab: { type: 'switchCityManagementTab', tab: 'military' },
         openArmyFormation: { type: 'openArmyFormation', cityId: 'capital', slot: 1 },
         toggleArmyFormationMember: { type: 'toggleArmyFormationMember', personId: 'fp-scout' },
+        autoReplenishArmyFormation: { type: 'autoReplenishArmyFormation' },
         saveArmyFormation: { type: 'saveArmyFormation' },
         selectWorldMarchTarget: { type: 'selectWorldMarchTarget', targetQ: 2, targetR: -1 },
       };
-      const action = targets[type];
+      const candidates = Array.isArray(targets[type]) ? targets[type] : [targets[type]];
+      const action = candidates.find((item) => item && (!predicate || predicate(item)));
       if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
       return null;
     },
@@ -380,8 +501,8 @@ test('TutorialGuideController guides era three, scout famous card, and army form
         return true;
       },
     },
-  };
-  const game = {
+  });
+  const game = makeModalHost({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.era3AdvanceReady },
     state: {
       currentTab: 'buildings',
@@ -404,7 +525,6 @@ test('TutorialGuideController guides era three, scout famous card, and army form
       },
     },
     territoryUiState: shell.territoryUiState,
-    canvasShell: shell,
     selectedFamousPersonId: '',
     renderCanvasSurface() {
       calls.push({ render: true });
@@ -412,7 +532,8 @@ test('TutorialGuideController guides era three, scout famous card, and army form
     applyApiState(result) {
       this.tutorial = result.tutorial;
     },
-  };
+  });
+  linkGameShell(game, shell);
   const api = {
     async advanceTutorial(step) {
       return { tutorial: { completed: false, currentStep: step, grants: { scoutFamousPerson: { personId: 'fp-scout' } } } };
@@ -424,32 +545,82 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'civilization' });
 
-  shell.activeCommandPanel = 'civilization';
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
 
   controller.onEraAdvanced({
     tutorial: {
       completed: false,
-      currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFamousGranted,
-      grants: { scoutFamousPerson: { personId: 'fp-scout' } },
+      currentStep: TutorialGuideController.TUTORIAL_STEPS.era3Advanced,
     },
   });
-  assert.equal(game.showAdvisor, false);
-  assert.equal(shell.showAdvisor, false);
-  assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:famous-persons-button');
+  assert.equal(game.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:task-center-button');
   assert.equal(shell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
-  assert.match(game.tutorialAdvisorDialogue.message, /名人|侦察|卡片/);
-  assert.equal(game.state.softGuide.target, 'famous-persons-button');
+  assert.match(game.tutorialAdvisorDialogue.message, /兵营|任务|军队/);
+  assert.equal(game.state.softGuide.target, 'task-center-button');
 
   game.tutorialAdvisorDialogue = null;
   shell.tutorialAdvisorDialogue = null;
   controller.sync(game.tutorial);
+
+  // Barracks claim pair at era3Advanced.
+  assert.equal(controller.canOpenTab('tasks'), true);
+  assert.equal(controller.canOpenTab('buildings'), true);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTaskCenter' });
+  game.openBlockingPanelSnapshot('showTaskCenter', true);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, {
+    type: 'claimTaskReward',
+    taskId: 'main_barracks_supplies',
+    category: 'main',
+  });
+
+  // House-style barracks guide: the claim leaves the player on the world-map
+  // home, so the build rule fires DIRECTLY at barracksSuppliesClaimed
+  // (showBuildingGuide force-opens city management on the buildings tab).
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.barracksSuppliesClaimed });
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'barracks' });
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.buildingsTabOpenedForBarracks });
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'barracks' });
+
+  // First-army claim pair at barracksBuilt.
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.barracksBuilt });
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTaskCenter' });
+  game.openBlockingPanelSnapshot('showTaskCenter', true);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, {
+    type: 'claimTaskReward',
+    taskId: 'main_first_army',
+    category: 'main',
+  });
+
+  // Scout-officer claim pair at firstArmyClaimed.
+  controller.sync({ completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstArmyClaimed });
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, {
+    type: 'claimTaskReward',
+    taskId: 'main_scout_officer',
+    category: 'main',
+  });
+
+  game.closeBlockingPanelSnapshot('showTaskCenter');
+  controller.sync({
+    completed: false,
+    currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFamousGranted,
+    grants: { scoutFamousPerson: { personId: 'fp-scout' } },
+  });
+  game.tutorial = controller.state;
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openFamousPersons' });
 
-  game.showFamousPersons = true;
-  shell.showFamousPersons = true;
+  game.openBlockingPanelSnapshot('showFamousPersons', true);
   await controller.onFamousPersonsOpened();
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.famousPanelOpened);
   assert.equal(controller.refreshCurrentHighlight(), true);
@@ -458,38 +629,31 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   await controller.onFamousPersonDetailOpened('fp-scout');
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.famousCardViewed);
   game.selectedFamousPersonId = 'fp-scout';
-  shell.selectedFamousPersonId = 'fp-scout';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'closeFamousPersonDetail' });
 
   game.selectedFamousPersonId = '';
-  shell.selectedFamousPersonId = '';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'closeFamousPersons' });
 
-  game.showFamousPersons = false;
-  shell.showFamousPersons = false;
-  shell.activeCommandPanel = 'civilization';
-  game.activeCommandPanel = 'civilization';
+  game.openBlockingPanelSnapshot('showFamousPersons', true);
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
   controller.onFamousPersonsClosed();
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldSite', siteId: 'capital' });
-  assert.equal(shell.activeCommandPanel, '');
-  assert.equal(game.activeCommandPanel, '');
-  assert.equal(game.showFamousPersons, false);
-  assert.equal(shell.showFamousPersons, false);
+  assert.equal(shell.getCommandPanelValue(), '');
+  assert.equal(game.getCommandPanelValue(), '');
+  assert.equal(game.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
 
   shell.territoryUiState.selectedSiteId = 'capital';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'enterCity', cityId: 'capital' });
 
-  shell.showCityManagement = true;
-  game.showCityManagement = true;
-  shell.activeCityManagementTab = 'buildings';
+  game.openBlockingPanelSnapshot('showCityManagement', true);
   game.activeCityManagementTab = 'buildings';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'switchCityManagementTab', tab: 'military' });
 
-  shell.activeCityManagementTab = 'military';
   game.activeCityManagementTab = 'military';
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openArmyFormation', cityId: 'capital', slot: 1 });
@@ -500,13 +664,18 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'toggleArmyFormationMember', personId: 'fp-scout' });
 
+  // Middle branch: the scout is a member but has no soldiers drafted yet, so
+  // the auto-replenish button is guided before saving.
   shell.armyFormationEditor.memberIds = ['fp-scout'];
   game.armyFormationEditor = shell.armyFormationEditor;
   assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'autoReplenishArmyFormation' });
+
+  shell.armyFormationEditor.soldierDraftAssignments = { 'fp-scout': 1000 };
+  assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'saveArmyFormation' });
 
-  shell.showCityManagement = true;
-  game.showCityManagement = true;
+  game.openBlockingPanelSnapshot('showCityManagement', true);
   shell.territoryUiState = {
     selectedSiteId: 'capital',
     worldMarchTarget: { q: 8, r: -3, pickerOpen: true },
@@ -525,8 +694,8 @@ test('TutorialGuideController guides era three, scout famous card, and army form
     },
   });
   assert.equal(handled, true);
-  assert.equal(game.showCityManagement, false);
-  assert.equal(shell.showCityManagement, false);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), false);
   assert.equal(game.armyFormationEditor.open, false);
   assert.equal(shell.armyFormationEditor.open, false);
   assert.equal(game.mapHomeActive, true);
@@ -604,6 +773,7 @@ test('TutorialGuideController guides scout formation into map march and claim', 
       return true;
     },
   };
+  let targetPickerSnapshot = null;
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.scoutFormationSaved },
     state: {
@@ -617,6 +787,13 @@ test('TutorialGuideController guides scout formation into map march and claim', 
     militaryView: 'world',
     mapHomeActive: false,
     canvasShell: shell,
+    // Batch 8E: the formation-picker modal state lives in the owner snapshot.
+    isTargetPickerSnapshotOpen() {
+      return Boolean(targetPickerSnapshot);
+    },
+    getTargetPickerSnapshot() {
+      return targetPickerSnapshot;
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
@@ -637,15 +814,17 @@ test('TutorialGuideController guides scout formation into map march and claim', 
   assert.equal(game.mapHomeActive, true);
   assert.equal(game.state.currentTab, 'military');
 
-  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: false };
+  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1' };
   shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
+  targetPickerSnapshot = null;
   await controller.onWorldMarchTargetSelected();
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.scoutWorldPanelOpened);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldMarchFormationPicker' });
 
-  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1', pickerOpen: true };
+  game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1' };
   shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
+  targetPickerSnapshot = { pickerKind: 'worldMarchFormation', target: game.territoryUiState.worldMarchTarget, visible: true };
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'startWorldMarch', formationSlot: 1 });
 
@@ -713,6 +892,21 @@ test('TutorialGuideController guides first empty city occupation and naming', ()
       },
     },
     canvasShell: shell,
+    __namingSnapshot: null,
+    getNamingSnapshot() {
+      return this.__namingSnapshot;
+    },
+    getNamingInputValue() {
+      return String(this.__namingSnapshot?.inputValue || '').trim();
+    },
+    openNamingSnapshot(payload) {
+      this.__namingSnapshot = { ...(payload || {}), visible: true };
+      return this.__namingSnapshot;
+    },
+    updateNamingSnapshot(patch) {
+      this.__namingSnapshot = { ...(this.__namingSnapshot || {}), ...(patch || {}) };
+      return this.__namingSnapshot;
+    },
     renderCanvasSurface() {
       calls.push({ render: true });
     },
@@ -723,7 +917,7 @@ test('TutorialGuideController guides first empty city occupation and naming', ()
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openWorldSite', siteId });
 
-  game.territoryController = { uiState: { selectedSiteId: siteId } };
+  TerritoryUiStateStore.ensure(game).selectedSiteId = siteId;
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'conquer', territoryId: siteId });
 
@@ -736,21 +930,21 @@ test('TutorialGuideController guides first empty city occupation and naming', ()
   controller.sync({ ...game.tutorial, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityOccupied });
   game.state.territoryState.territories[1].status = 'occupied';
   game.state.territoryState.namingPrompt = { type: 'city', territoryId: siteId };
-  game.naming = { prompt: { type: 'city', territoryId: siteId }, inputValue: '' };
+  game.openNamingSnapshot({ prompt: { type: 'city', territoryId: siteId }, inputValue: '' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'requestNamingInput' });
 
-  game.naming.inputValue = 'River City';
+  game.updateNamingSnapshot({ inputValue: 'River City' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'submitNaming' });
 
   controller.sync({ ...game.tutorial, currentStep: TutorialGuideController.TUTORIAL_STEPS.firstCityNamed });
   game.state.territoryState.namingPrompt = { type: 'polity' };
-  game.naming = { prompt: { type: 'polity' }, inputValue: '' };
+  game.openNamingSnapshot({ prompt: { type: 'polity' }, inputValue: '' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'requestNamingInput' });
 
-  game.naming.inputValue = 'River League';
+  game.updateNamingSnapshot({ inputValue: 'River League' });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'submitNaming' });
 });
@@ -864,14 +1058,11 @@ test('TutorialGuideController highlights guided first city immediately after foc
 
 test('TutorialGuideController guides post-naming policy, manual talent, and famous seek systems', async () => {
   const calls = [];
-  const shell = {
-    activeCommandPanel: 'military',
-    showCityManagement: false,
+  const shell = makeModalHost({
     activeCityManagementTab: '',
-    showFamousPersons: false,
     resetLocalViewToResources() {
       calls.push({ resetResources: true });
-      this.activeCommandPanel = '';
+      this.closeBlockingPanelSnapshot('activeCommandPanel');
     },
     getCanvasTarget(type, predicate) {
       const targets = {
@@ -897,14 +1088,11 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
       calls.push({ hideHighlight: true });
       return true;
     },
-  };
-  const game = {
+  });
+  const game = makeModalHost({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.polityNamed },
     state: { currentTab: 'military' },
-    activeCommandPanel: 'military',
-    showCityManagement: false,
     activeCityManagementTab: '',
-    canvasShell: shell,
     applyApiState(result) {
       this.tutorial = result.tutorial;
       this.state.tutorial = result.tutorial;
@@ -912,7 +1100,9 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
     renderCanvasSurface(tab) {
       calls.push({ render: tab });
     },
-  };
+  });
+  linkGameShell(game, shell);
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'military');
   const api = {
     async advanceTutorial(step) {
       calls.push({ advanceTutorial: step });
@@ -934,10 +1124,10 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.refreshCurrentHighlight(), false);
   await flushTutorialPromises();
 
-  assert.equal(game.showCityManagement, true);
-  assert.equal(shell.showCityManagement, true);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), true);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(game.activeCityManagementTab, 'people');
-  assert.equal(shell.activeCityManagementTab, 'people');
+  assert.notEqual(shell.activeCityManagementTab, 'people');
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied);
   assert.equal(calls.some((call) => call.options?.allowedAction?.type === 'openCityManagement'), false);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'assignJob', job: 'scholar', delta: 1 });
@@ -949,8 +1139,7 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openFamousPersons' });
 
-  game.showFamousPersons = true;
-  shell.showFamousPersons = true;
+  game.openBlockingPanelSnapshot('showFamousPersons', true);
   await controller.onFamousPersonsOpened();
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.famousSeekOpened);
   assert.equal(controller.refreshCurrentHighlight(), true);
@@ -965,9 +1154,8 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
 
 test('TutorialGuideController keeps map home while opening city people guide directly', async () => {
   const calls = [];
-  const shell = {
+  const shell = makeModalHost({
     mapHomeActive: true,
-    activeCommandPanel: 'military',
     renderReadOnly(state, tab, options) {
       calls.push(['renderReadOnly', tab, options]);
       this.mapHomeActive = Boolean(options?.forceMapHome);
@@ -987,20 +1175,20 @@ test('TutorialGuideController keeps map home while opening city people guide dir
       calls.push(['highlight', target.action, options]);
       return true;
     },
-  };
-  const game = {
+  });
+  const game = makeModalHost({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.polityNamed },
     state: { currentTab: 'military', militaryView: 'world' },
     activeTab: 'military',
     militaryView: 'world',
     mapHomeActive: true,
-    activeCommandPanel: 'military',
-    canvasShell: shell,
     resolveMapHomeViewState(state, options) {
       calls.push(['resolveMapHomeViewState', options]);
       return { activeTab: 'military', requestedTab: 'military', militaryView: 'world', isMapHome: true };
     },
-  };
+  });
+  linkGameShell(game, shell);
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'military');
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 
@@ -1011,10 +1199,10 @@ test('TutorialGuideController keeps map home while opening city people guide dir
 
   assert.equal(game.mapHomeActive, true);
   assert.equal(shell.mapHomeActive, true);
-  assert.equal(game.showCityManagement, true);
-  assert.equal(shell.showCityManagement, true);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showCityManagement'), true);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(game.activeCityManagementTab, 'people');
-  assert.equal(shell.activeCityManagementTab, 'people');
+  assert.notEqual(shell.activeCityManagementTab, 'people');
   assert.equal(game.state.currentTab, 'military');
   assert.equal(game.state.militaryView, 'world');
   assert.deepEqual(
@@ -1026,8 +1214,7 @@ test('TutorialGuideController keeps map home while opening city people guide dir
 
 test('TutorialGuideController guides final tech explanation and completes tutorial on advisor close', async () => {
   const calls = [];
-  const shell = {
-    activeCommandPanel: '',
+  const shell = makeModalHost({
     getCanvasTarget(type, predicate) {
       const action = { type: 'openCommandPanel', panel: 'tech' };
       if (type === 'openCommandPanel' && (!predicate || predicate(action))) {
@@ -1043,13 +1230,10 @@ test('TutorialGuideController guides final tech explanation and completes tutori
       calls.push({ hideHighlight: true });
       return true;
     },
-  };
-  const game = {
+  });
+  const game = makeModalHost({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.famousSeekCompleted },
     state: { currentTab: 'military' },
-    activeCommandPanel: '',
-    showFamousPersons: true,
-    canvasShell: shell,
     renderCanvasSurface(tab) {
       calls.push({ render: tab });
     },
@@ -1057,7 +1241,9 @@ test('TutorialGuideController guides final tech explanation and completes tutori
       this.tutorial = result.tutorial;
       this.state.tutorial = result.tutorial;
     },
-  };
+  });
+  linkGameShell(game, shell);
+  game.openBlockingPanelSnapshot('showFamousPersons', true);
   const api = {
     async advanceTutorial(step) {
       calls.push({ advanceTutorial: step });
@@ -1077,14 +1263,13 @@ test('TutorialGuideController guides final tech explanation and completes tutori
   assert.equal(controller.canOpenTab('military'), false);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'tech' });
-  assert.equal(game.showFamousPersons, false);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
 
-  shell.activeCommandPanel = 'tech';
-  game.activeCommandPanel = 'tech';
+  game.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
   await controller.onCommandPanelOpened('tech');
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.finalTechOpened);
-  assert.equal(game.showAdvisor, false);
-  assert.equal(shell.showAdvisor, false);
+  assert.equal(game.isBlockingPanelSnapshotOpen('showAdvisor'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showAdvisor'), false);
   assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:tech-tree');
   assert.equal(shell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
   assert.equal(game.state.softGuide.target, 'tech-tree');

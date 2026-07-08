@@ -1,4 +1,6 @@
 (function (global) {
+  const CanvasRuntimeContract = global.CanvasRuntimeContract || (typeof require === 'function' ? require('./CanvasRuntimeContract') : null);
+
   class PlatformRuntime {
     constructor(options = {}) {
       this.kind = options.kind || PlatformRuntime.detectKind(global);
@@ -10,6 +12,9 @@
       this.scheduler = options.scheduler || PlatformRuntime.detectScheduler(global);
       this.logger = options.logger || global.console || null;
       this.textInput = typeof options.textInput === 'function' ? options.textInput : null;
+      this.canvasRuntimeContract = CanvasRuntimeContract?.assertRuntime?.(this, {
+        runtimeName: 'PlatformRuntime',
+      }) || null;
     }
 
     static detectStorage(scope) {

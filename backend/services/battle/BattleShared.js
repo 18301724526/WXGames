@@ -1,15 +1,5 @@
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
+const { toInteger, clamp } = require('../../../shared/numberUtils');
+const { clone } = require('../../../shared/objectUtils');
 
 function normalizeAttributes(raw = {}) {
   const strategy = raw.intelligence ?? raw.strategy;

@@ -3,14 +3,14 @@
 # 位置：仓库根目录 deploy.sh
 # 用法：在服务器上执行 ./deploy.sh [branch]
 
-set -euo pipefail
+set -Eeuo pipefail
 
 WORK_TREE="${WORK_TREE:-/www/wwwroot/h5}"
 FRONTEND_PUBLIC_DIR="${FRONTEND_PUBLIC_DIR:-${WEB_ROOT:-$WORK_TREE}}"
-BACKEND_DIR="/opt/wxgame-workspace/backend"
-SHARED_LINK="/opt/wxgame-workspace/shared"
+BACKEND_DIR="${BACKEND_DIR:-/opt/wxgame-workspace/backend}"
+SHARED_LINK="${SHARED_LINK:-/opt/wxgame-workspace/shared}"
 BRANCH="${1:-main}"
-PM2_APP_NAME="server"
+PM2_APP_NAME="${PM2_APP_NAME:-server}"
 WORLD_WORKER_PM2_NAME="${WORLD_WORKER_PM2_NAME:-wxgame-world-worker}"
 OPS_AGENT_PM2_NAME="${OPS_AGENT_PM2_NAME:-wxgame-ops-agent}"
 API_PORT="${PORT:-3000}"
@@ -19,6 +19,18 @@ ALLOWED_FRONTEND_PUBLIC_DIR="/www/wwwroot/h5"
 DEFAULT_REPO_GIT_DIR="/home/git/wxgame.git"
 COCOS_PROJECT_ROOT="/www/wwwroot/civilization-fire-next"
 DEPLOY_STATE_DIR="${DEPLOY_STATE_DIR:-/opt/wxgame-workspace/.wxgame}"
+DEPLOY_ENVIRONMENT="${DEPLOY_ENVIRONMENT:-production}"
+DEPLOY_GATE_SCRIPT="${DEPLOY_GATE_SCRIPT:-scripts/pre-deploy-gate.sh}"
+FRONTEND_API_BASE="${FRONTEND_API_BASE:-}"
+FRONTEND_DEPLOY_STATUS_PATH="${FRONTEND_DEPLOY_STATUS_PATH:-}"
+FRONTEND_ENVIRONMENT_LABEL="${FRONTEND_ENVIRONMENT_LABEL:-}"
+POST_BACKEND_SYNC_SCRIPT="${POST_BACKEND_SYNC_SCRIPT:-}"
+DEPLOY_STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+DEPLOY_STAGE="initializing"
+DEPLOY_TARGET_COMMIT=""
+DEPLOY_PREVIOUS_COMMIT=""
+DEPLOY_FINISHED=0
+DEPLOY_ERROR_RECORDED=0
 
 normalize_configured_path() {
     local input_path="$1"
@@ -33,6 +45,10 @@ FRONTEND_PUBLIC_DIR="$(normalize_configured_path "$FRONTEND_PUBLIC_DIR")"
 BACKEND_DIR="$(normalize_configured_path "$BACKEND_DIR")"
 SHARED_LINK="$(normalize_configured_path "$SHARED_LINK")"
 DEPLOY_STATE_DIR="$(normalize_configured_path "$DEPLOY_STATE_DIR")"
+DEPLOY_STATUS_PATH="$DEPLOY_STATE_DIR/deploy-status.json"
+DEPLOY_STATUS_PUBLIC_PATH="$FRONTEND_PUBLIC_DIR/.wxgame-deploy-status.json"
+DEPLOY_LOG_PATH="$DEPLOY_STATE_DIR/deploy.log"
+DEPLOY_ASYNC_LOG_PATH="${DEPLOY_ASYNC_LOG_PATH:-$DEPLOY_STATE_DIR/push-deploy.log}"
 
 assert_not_under_path() {
     local label="$1"
@@ -132,6 +148,190 @@ resolve_deploy_commit() {
     git_repo rev-parse --verify "$BRANCH^{commit}"
 }
 
+read_previous_deploy_commit() {
+    node -e "const fs=require('fs'); const p=process.argv[1]; try { const data=JSON.parse(fs.readFileSync(p, 'utf8')); process.stdout.write(String(data.commit || data.deployedCommit || '')); } catch (_) {}" "$DEPLOY_STATE_DIR/current-deploy.json"
+}
+
+write_deploy_status() {
+    local status="$1"
+    local message="${2:-}"
+    local exit_code="${3:-0}"
+    local finished_at="${4:-}"
+    local updated_at
+
+    updated_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    mkdir -p "$DEPLOY_STATE_DIR" 2>/dev/null || true
+    mkdir -p "$FRONTEND_PUBLIC_DIR" 2>/dev/null || true
+
+    if ! node - "$DEPLOY_STATUS_PATH" "$DEPLOY_STATUS_PUBLIC_PATH" \
+        "$status" "$DEPLOY_ENVIRONMENT" "$BRANCH" "$DEPLOY_TARGET_COMMIT" "$DEPLOY_PREVIOUS_COMMIT" \
+        "$DEPLOY_STAGE" "$DEPLOY_STARTED_AT" "$updated_at" "$finished_at" "$exit_code" "$message" \
+        "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$DEPLOY_LOG_PATH" "$DEPLOY_ASYNC_LOG_PATH" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const [statusPath, publicPath] = process.argv.slice(2, 4);
+const [
+  status,
+  environment,
+  branch,
+  targetCommit,
+  previousDeployedCommit,
+  stage,
+  startedAt,
+  updatedAt,
+  finishedAt,
+  exitCode,
+  message,
+  workTree,
+  frontendPublicDir,
+  deployLogPath,
+  asyncLogPath,
+] = process.argv.slice(4);
+
+function text(value, limit = 240) {
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 3)}...` : normalized;
+}
+
+function readRecentLogLines(filePath, maxLines = 20) {
+  if (!filePath || !fs.existsSync(filePath)) return [];
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content
+      .replace(/\u001b\[[0-9;]*m/g, '')
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .slice(-maxLines)
+      .map((line) => text(line, 500));
+  } catch (_error) {
+    return [];
+  }
+}
+
+function writeJsonAtomic(filePath, payload) {
+  if (!filePath) return;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const tempPath = `${filePath}.tmp-${process.pid}`;
+  fs.writeFileSync(tempPath, JSON.stringify(payload, null, 2) + '\n');
+  fs.renameSync(tempPath, filePath);
+}
+
+const normalizedStatus = ['running', 'succeeded', 'failed'].includes(status) ? status : 'running';
+const payload = {
+  schema: 'wxgame-deploy-status-v1',
+  status: normalizedStatus,
+  environment: text(environment, 80),
+  branch: text(branch, 160),
+  targetCommit: text(targetCommit, 80) || null,
+  previousDeployedCommit: text(previousDeployedCommit, 80) || null,
+  stage: text(stage, 120),
+  startedAt: text(startedAt, 80),
+  updatedAt: text(updatedAt, 80),
+  finishedAt: text(finishedAt, 80) || null,
+  exitCode: Number.isFinite(Number(exitCode)) ? Number(exitCode) : null,
+  workTree: text(workTree, 240),
+  frontendPublicDir: text(frontendPublicDir, 240),
+  logPath: text(asyncLogPath || deployLogPath, 240),
+};
+
+if (message) {
+  payload.error = {
+    stage: payload.stage,
+    message: text(message, 600),
+  };
+}
+
+if (normalizedStatus === 'failed') {
+  payload.recentLogLines = readRecentLogLines(asyncLogPath || deployLogPath);
+}
+
+writeJsonAtomic(statusPath, payload);
+if (publicPath && publicPath !== statusPath) writeJsonAtomic(publicPath, payload);
+NODE
+    then
+        echo "[Deploy] Failed to write deploy status: $DEPLOY_STATUS_PATH" >&2
+    fi
+}
+
+set_deploy_stage() {
+    DEPLOY_STAGE="$1"
+    if [ -n "${DEPLOY_TARGET_COMMIT:-}" ]; then
+        write_deploy_status "running" "" "0" ""
+    fi
+}
+
+record_deploy_failure() {
+    local exit_code="$1"
+    local message="$2"
+
+    if [ "$DEPLOY_ERROR_RECORDED" = "1" ]; then
+        return
+    fi
+
+    DEPLOY_ERROR_RECORDED=1
+    write_deploy_status "failed" "$message" "$exit_code" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+
+describe_deploy_command() {
+    local args=()
+    local arg
+
+    for arg in "$@"; do
+        args+=("$(printf '%q' "$arg")")
+    done
+
+    local IFS=" "
+    printf '%s' "${args[*]}"
+}
+
+run_with_deploy_status_heartbeat() {
+    local heartbeat_interval="${DEPLOY_STATUS_HEARTBEAT_SECONDS:-20}"
+    local heartbeat_pid=""
+    local command_status
+
+    if [ -n "${DEPLOY_TARGET_COMMIT:-}" ] && [ "${heartbeat_interval:-0}" -gt 0 ] 2>/dev/null; then
+        (
+            while true; do
+                sleep "$heartbeat_interval"
+                write_deploy_status "running" "" "0" ""
+            done
+        ) &
+        heartbeat_pid="$!"
+    fi
+
+    if "$@"; then
+        command_status=0
+    else
+        command_status="$?"
+    fi
+
+    if [ -n "$heartbeat_pid" ]; then
+        kill "$heartbeat_pid" >/dev/null 2>&1 || true
+        wait "$heartbeat_pid" >/dev/null 2>&1 || true
+    fi
+
+    if [ "$command_status" -ne 0 ]; then
+        record_deploy_failure "$command_status" "command failed: $(describe_deploy_command "$@")"
+    fi
+
+    return "$command_status"
+}
+
+deploy_exit_trap() {
+    local exit_code="$?"
+    if [ "$DEPLOY_FINISHED" = "1" ] || [ "$DEPLOY_ERROR_RECORDED" = "1" ] || [ "$exit_code" = "0" ]; then
+        return
+    fi
+    record_deploy_failure "$exit_code" "deploy exited before completion"
+}
+
+deploy_error_trap() {
+    local exit_code="$1"
+    local failed_command="$2"
+    record_deploy_failure "$exit_code" "command failed: $failed_command"
+}
+
 get_frontend_asset_version() {
     local deployed_commit
     deployed_commit="$(git_repo rev-parse HEAD)"
@@ -149,15 +349,15 @@ write_deploy_version() {
     deployed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     mkdir -p "$DEPLOY_STATE_DIR"
     deploy_manifest="$(mktemp)"
-    node -e "const fs=require('fs'); const data={branch:process.argv[1],commit:process.argv[2],deployedAt:process.argv[3],workTree:process.argv[4],frontendPublicDir:process.argv[5]}; fs.writeFileSync(process.argv[6], JSON.stringify(data, null, 2) + '\n');" \
-        "$BRANCH" "$deployed_commit" "$deployed_at" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$deploy_manifest"
+    node -e "const fs=require('fs'); const data={environment:process.argv[1],branch:process.argv[2],commit:process.argv[3],deployedAt:process.argv[4],workTree:process.argv[5],frontendPublicDir:process.argv[6]}; fs.writeFileSync(process.argv[7], JSON.stringify(data, null, 2) + '\n');" \
+        "$DEPLOY_ENVIRONMENT" "$BRANCH" "$deployed_commit" "$deployed_at" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" "$deploy_manifest"
     cp "$deploy_manifest" "$FRONTEND_PUBLIC_DIR/.wxgame-deploy-version.json"
     current_deploy_path="$DEPLOY_STATE_DIR/current-deploy.json"
     deploy_log_path="$DEPLOY_STATE_DIR/deploy.log"
     cp "$deploy_manifest" "$current_deploy_path"
     rm -f "$deploy_manifest"
-    printf '%s branch=%s commit=%s workTree=%s frontendPublicDir=%s\n' \
-        "$deployed_at" "$BRANCH" "$deployed_commit" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" >> "$deploy_log_path"
+    printf '%s environment=%s branch=%s commit=%s workTree=%s frontendPublicDir=%s\n' \
+        "$deployed_at" "$DEPLOY_ENVIRONMENT" "$BRANCH" "$deployed_commit" "$WORK_TREE" "$FRONTEND_PUBLIC_DIR" >> "$deploy_log_path"
     export WXGAME_DEPLOY_MANIFEST_PATH="$current_deploy_path"
     echo "[Deploy] 部署状态文件: $current_deploy_path"
     echo "[Deploy] 部署日志: $deploy_log_path"
@@ -451,19 +651,202 @@ publish_frontend_assets() {
         --require-version "$asset_version"
 }
 
+apply_frontend_environment_overrides() {
+    local label="$FRONTEND_ENVIRONMENT_LABEL"
+    local api_base="$FRONTEND_API_BASE"
+    local deploy_status_path="$FRONTEND_DEPLOY_STATUS_PATH"
+    local config_file="$FRONTEND_PUBLIC_DIR/js/config/GameConfig.js"
+    local index_file="$FRONTEND_PUBLIC_DIR/index.html"
+
+    if [ -z "$label" ] && [ -z "$api_base" ] && [ -z "$deploy_status_path" ]; then
+        return
+    fi
+
+    node - "$config_file" "$index_file" "$api_base" "$deploy_status_path" "$label" "$DEPLOY_ENVIRONMENT" <<'NODE'
+const fs = require('fs');
+
+const [configFile, indexFile, apiBase, deployStatusPath, label, environment] = process.argv.slice(2);
+
+if (apiBase || deployStatusPath) {
+  let config = fs.readFileSync(configFile, 'utf8');
+  if (apiBase) {
+    let replacements = 0;
+    config = config.replace(
+      /API_BASE:\s*['"][^'"]+['"],/,
+      () => {
+        replacements += 1;
+        return `API_BASE: ${JSON.stringify(apiBase)},\n    ENVIRONMENT: { name: ${JSON.stringify(environment)}, label: ${JSON.stringify(label || environment)}, apiBase: ${JSON.stringify(apiBase)} },`;
+      },
+    );
+    if (replacements !== 1) {
+      throw new Error(`Expected to replace exactly one API_BASE in ${configFile}, replaced ${replacements}`);
+    }
+  }
+  if (deployStatusPath) {
+    let replacements = 0;
+    config = config.replace(
+      /DEPLOY_STATUS_PATH:\s*['"][^'"]+['"],/,
+      () => {
+        replacements += 1;
+        return `DEPLOY_STATUS_PATH: ${JSON.stringify(deployStatusPath)},`;
+      },
+    );
+    if (replacements !== 1) {
+      throw new Error(`Expected to replace exactly one DEPLOY_STATUS_PATH in ${configFile}, replaced ${replacements}`);
+    }
+  }
+  fs.writeFileSync(configFile, config);
+}
+
+if (label) {
+  let html = fs.readFileSync(indexFile, 'utf8');
+  const badge = `<div id="wxgame-environment-badge" aria-label="${label}">${label}</div>`;
+  const style = [
+    '<style id="wxgame-environment-badge-style">',
+    '#wxgame-environment-badge{position:fixed;z-index:2147483647;left:10px;top:10px;padding:4px 8px;border:1px solid rgba(255,255,255,.65);background:rgba(20,20,20,.82);color:#fff;font:600 12px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;border-radius:4px;pointer-events:none;}',
+    '</style>',
+  ].join('');
+  html = html.replace(/<title>(.*?)<\/title>/i, `<title>${label} - $1</title>`);
+  if (!html.includes('wxgame-environment-badge-style')) {
+    html = html.replace('</head>', `    ${style}\n</head>`);
+  }
+  if (!html.includes('wxgame-environment-badge')) {
+    html = html.replace('<body>', `<body>\n    ${badge}`);
+  }
+  fs.writeFileSync(indexFile, html);
+}
+NODE
+
+    echo "[Deploy] Frontend environment override applied: environment=$DEPLOY_ENVIRONMENT label=${label:-none} apiBase=${api_base:-default}"
+}
+
+# Skip the multi-minute npm install when backend/package-lock.json is unchanged since the
+# last successful install. The hash is only written AFTER a successful install, so an
+# aborted install re-runs next deploy.
+install_backend_dependencies_if_needed() {
+    local lockfile="$BACKEND_DIR/package-lock.json"
+    local hash_file="$DEPLOY_STATE_DIR/backend-deps.lock.sha256"
+    local current_hash=""
+
+    if [ -f "$lockfile" ] && command -v sha256sum >/dev/null 2>&1; then
+        current_hash="$(sha256sum "$lockfile" | awk '{print $1}')"
+    fi
+    if [ -n "$current_hash" ] \
+        && [ -d "$BACKEND_DIR/node_modules" ] \
+        && [ -f "$hash_file" ] \
+        && [ "$(cat "$hash_file" 2>/dev/null)" = "$current_hash" ]; then
+        echo "[Deploy] 后端依赖未变化（lockfile hash 一致），跳过安装。"
+        return 0
+    fi
+    run_with_deploy_status_heartbeat npm install --omit=dev --no-audit --no-fund
+    if [ -n "$current_hash" ]; then
+        mkdir -p "$DEPLOY_STATE_DIR"
+        printf '%s' "$current_hash" > "$hash_file"
+    fi
+}
+
+# Hardlink snapshot of the running backend before we touch it. npm/rsync replace files
+# with new inodes, so the snapshot stays intact; runtime data (db/env/logs) is excluded
+# from restore so a rollback never rolls back player data.
+BACKEND_ROLLBACK_SNAPSHOT=""
+snapshot_backend_for_rollback() {
+    local snapshot_dir="${BACKEND_DIR}.rollback-prev"
+    if [ ! -d "$BACKEND_DIR" ]; then
+        return 0
+    fi
+    rm -rf "$snapshot_dir" 2>/dev/null || true
+    if cp -al "$BACKEND_DIR" "$snapshot_dir" 2>/dev/null; then
+        BACKEND_ROLLBACK_SNAPSHOT="$snapshot_dir"
+        echo "[Deploy] 已创建回滚快照: $snapshot_dir"
+    else
+        echo "[Deploy] 回滚快照创建失败（继续部署，但失败时无法自动回滚）" >&2
+    fi
+}
+
+rollback_backend_and_restart() {
+    if [ -z "$BACKEND_ROLLBACK_SNAPSHOT" ] || [ ! -d "$BACKEND_ROLLBACK_SNAPSHOT" ]; then
+        echo "[Deploy] 无可用回滚快照，服务可能停留在坏版本！" >&2
+        return 1
+    fi
+    echo "[Deploy] 健康检查失败，自动回滚到上一版本..." >&2
+    rsync -a --delete \
+        --exclude '.env' \
+        --exclude '.env.*' \
+        --exclude 'logs' \
+        --exclude '*.db' \
+        --exclude '*.db-shm' \
+        --exclude '*.db-wal' \
+        "$BACKEND_ROLLBACK_SNAPSHOT/" "$BACKEND_DIR/" || return 1
+    pm2 restart "$PM2_APP_NAME" --update-env >/dev/null 2>&1 || true
+    pm2 restart "$WORLD_WORKER_PM2_NAME" --update-env >/dev/null 2>&1 || true
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        if curl -fsS "http://localhost:${API_PORT}/api/health" >/dev/null 2>&1; then
+            echo "[Deploy] 回滚成功：上一版本已恢复运行。" >&2
+            return 0
+        fi
+        sleep 2
+    done
+    echo "[Deploy] 回滚后健康检查仍失败，需要人工介入！" >&2
+    return 1
+}
+
+run_deploy_gate() {
+    local gate_script="$DEPLOY_GATE_SCRIPT"
+
+    if [ "${SKIP_DEPLOY_GATE:-0}" = "1" ]; then
+        echo "[Deploy] SKIP_DEPLOY_GATE=1 set; skipping deploy gate."
+        return
+    fi
+
+    if [[ "$gate_script" != /* ]]; then
+        gate_script="$WORK_TREE/$gate_script"
+    fi
+
+    echo "[Deploy] Running deploy gate: $gate_script"
+    run_with_deploy_status_heartbeat env REPO_GIT_DIR="$GIT_DIR_PATH" bash "$gate_script" "$WORK_TREE"
+}
+
+run_post_backend_sync_script() {
+    local hook_script="$POST_BACKEND_SYNC_SCRIPT"
+
+    if [ -z "$hook_script" ]; then
+        return
+    fi
+
+    if [[ "$hook_script" != /* ]]; then
+        hook_script="$WORK_TREE/$hook_script"
+    fi
+
+    echo "[Deploy] Running post-backend sync script: $hook_script"
+    run_with_deploy_status_heartbeat env \
+        BACKEND_DIR="$BACKEND_DIR" \
+        DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" \
+        DEPLOY_STATE_DIR="$DEPLOY_STATE_DIR" \
+        bash "$hook_script"
+}
+
 echo "[Deploy] 开始部署..."
 
 sanitize_git_env
 assert_safe_deploy_paths
 
-require_command git
 require_command node
+
+export WXGAME_DEPLOY_STATUS_PATH="$DEPLOY_STATUS_PATH"
+DEPLOY_PREVIOUS_COMMIT="$(read_previous_deploy_commit || true)"
+write_deploy_status "running" "" "0" ""
+trap 'deploy_error_trap "$?" "$BASH_COMMAND"' ERR
+trap deploy_exit_trap EXIT
+
+require_command git
 require_command npm
 require_command pm2
 require_command rsync
 require_command curl
 require_command ss
 
+set_deploy_stage "resolve-git"
 mkdir -p "$WORK_TREE"
 GIT_DIR_PATH="$(resolve_git_dir)" || {
     echo "[Deploy] 未找到 Git 仓库，请设置 REPO_GIT_DIR 或确保 $WORK_TREE/.git 存在" >&2
@@ -477,20 +860,28 @@ echo "[Deploy] 使用 Git 目录: $GIT_DIR_PATH"
 echo "[Deploy] 使用部署状态目录: $DEPLOY_STATE_DIR"
 
 if [ "$IS_BARE_REPO" = "true" ]; then
+    set_deploy_stage "checkout"
     echo "[Deploy] 检测到 bare repo，直接检出 ref $BRANCH ..."
     if ! DEPLOY_COMMIT="$(resolve_deploy_commit 2>/dev/null)"; then
         echo "[Deploy] bare repo 中不存在可部署 ref/commit: $BRANCH" >&2
         exit 1
     fi
+    DEPLOY_TARGET_COMMIT="$DEPLOY_COMMIT"
+    write_deploy_status "running" "" "0" ""
     git_repo checkout -f "$DEPLOY_COMMIT"
     git_repo clean -fd
 else
+    set_deploy_stage "checkout"
     echo "[Deploy] 检测到普通仓库，强制对齐到 ref $BRANCH ..."
     if git_repo fetch origin "$BRANCH" >/dev/null 2>&1 \
         && DEPLOY_COMMIT="$(git_repo rev-parse --verify "origin/$BRANCH^{commit}" 2>/dev/null)"; then
+        DEPLOY_TARGET_COMMIT="$DEPLOY_COMMIT"
+        write_deploy_status "running" "" "0" ""
         git_repo reset --hard "$DEPLOY_COMMIT"
     elif DEPLOY_COMMIT="$(resolve_deploy_commit 2>/dev/null)"; then
         echo "[Deploy] 使用本地可解析 ref/commit: $BRANCH"
+        DEPLOY_TARGET_COMMIT="$DEPLOY_COMMIT"
+        write_deploy_status "running" "" "0" ""
         git_repo checkout -f "$DEPLOY_COMMIT"
     else
         echo "[Deploy] 无法解析可部署 ref/commit: $BRANCH" >&2
@@ -499,20 +890,17 @@ else
     git_repo clean -fd
 fi
 
-if [ "${SKIP_DEPLOY_GATE:-0}" != "1" ]; then
-    echo "[Deploy] Running pre-deploy architecture gate..."
-    REPO_GIT_DIR="$GIT_DIR_PATH" bash "$WORK_TREE/scripts/pre-deploy-gate.sh" "$WORK_TREE"
-else
-    echo "[Deploy] SKIP_DEPLOY_GATE=1 set; skipping pre-deploy architecture gate."
-fi
+set_deploy_stage "deploy-gate"
+run_deploy_gate
+export WXGAME_DEPLOY_MANIFEST_PATH="$DEPLOY_STATE_DIR/current-deploy.json"
 
-echo "[Deploy] 发布前端静态文件..."
-publish_frontend_assets
-write_deploy_version
+set_deploy_stage "shared-sync"
 
 echo "[Deploy] 同步 shared/ 目录..."
 ensure_shared_link
 verify_shared_sync
+
+set_deploy_stage "backend-sync"
 
 echo "[Deploy] 同步 backend/ 到运行目录..."
 mkdir -p "$BACKEND_DIR"
@@ -530,13 +918,21 @@ rsync -a --delete \
     --exclude '*.backup.*' \
     --exclude '*.pre-tick' \
     "$WORK_TREE/backend/" "$BACKEND_DIR/"
+run_post_backend_sync_script
+
+set_deploy_stage "backend-dependencies"
 
 echo "[Deploy] 安装后端依赖..."
 cd "$BACKEND_DIR"
-npm install --omit=dev --no-audit --no-fund
+install_backend_dependencies_if_needed
 echo "[Deploy] Cleaning retired world-explorer ready state..."
-DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
+run_with_deploy_status_heartbeat env DB_PATH="${DB_PATH:-$BACKEND_DIR/civilization.db}" node "$BACKEND_DIR/scripts/cleanup-world-explorer-ready-state.js"
+set_deploy_stage "config-release"
 publish_runtime_config_release
+
+set_deploy_stage "pm2-restart"
+
+snapshot_backend_for_rollback
 
 echo "[Deploy] 重启 PM2 服务..."
 if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
@@ -549,14 +945,28 @@ if pm2 describe "$WORLD_WORKER_PM2_NAME" >/dev/null 2>&1; then
 else
     pm2 start world-worker.js --name "$WORLD_WORKER_PM2_NAME" --update-env
 fi
-verify_pm2_listener "$PM2_APP_NAME" 1
-verify_pm2_listener "$WORLD_WORKER_PM2_NAME" 0
+if ! verify_pm2_listener "$PM2_APP_NAME" 1 || ! verify_pm2_listener "$WORLD_WORKER_PM2_NAME" 0; then
+    record_deploy_failure 1 "pm2 verification failed after restart; automatic rollback attempted"
+    rollback_backend_and_restart || true
+    exit 1
+fi
 restart_ops_agent_if_configured
+
+set_deploy_stage "health-check"
 
 echo "[Deploy] 校验健康接口..."
 for attempt in 1 2 3 4 5; do
     if health_payload="$(curl -fsS "http://localhost:${API_PORT}/api/health")"; then
         verify_runtime_config "$health_payload"
+        set_deploy_stage "frontend-publish"
+        echo "[Deploy] 发布前端静态文件..."
+        publish_frontend_assets
+        apply_frontend_environment_overrides
+        set_deploy_stage "deploy-marker"
+        write_deploy_version
+        DEPLOY_STAGE="complete"
+        write_deploy_status "succeeded" "" "0" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        DEPLOY_FINISHED=1
         printf '%s\n' "$health_payload"
         echo
         echo "[Deploy] 部署完成"
@@ -569,4 +979,6 @@ done
 
 echo "[Deploy] 健康检查失败，最近的 PM2 状态如下:" >&2
 pm2 show "$PM2_APP_NAME" >&2 || true
+record_deploy_failure 1 "health check failed after pm2 restart; automatic rollback attempted"
+rollback_backend_and_restart || true
 exit 1

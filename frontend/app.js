@@ -58,9 +58,15 @@ class H5GameHost extends CanvasGameAppBase {
 
     this.apiBase = this.config?.API_BASE || this.apiBase;
     this.token = this.authStorage?.getToken?.() || null;
+    this.loadTrace = window.H5LoadTrace || null;
     const constructors = this.runtimeConstructors || {};
-    this.gameAPI = new constructors.GameAPI(this.apiBase, this.token);
-    window.H5LoadTrace?.setReporter?.((event) => this.gameAPI.reportClientEvent(event));
+    this.gameAPI = new constructors.GameAPI(this.apiBase, this.token, {
+      transport: this.gameApiTransport,
+      abortControllerFactory: () => this.gameApiTransport?.createAbortController?.(),
+      deployStatusPath: this.config?.DEPLOY_STATUS_PATH,
+      trace: this.loadTrace,
+    });
+    this.loadTrace?.setReporter?.((event) => this.gameAPI.reportClientEvent(event));
     window.ClientOperationLog?.setUploader?.((snapshot) => this.gameAPI.uploadClientOperationLog(snapshot));
     this.api = this.gameAPI;
     this.buildingAPI = { setToken: (token) => this.gameAPI.setToken(token) };
@@ -68,12 +74,19 @@ class H5GameHost extends CanvasGameAppBase {
     this.syncService.onState = (data) => this.applyApiState(data);
     this.syncService.setStateProvider?.(() => this.state);
     this.updateChecker = new constructors.UpdateChecker({
-      api: { getVersion: () => this.apiGet('/version') },
+      api: this.gameAPI,
       intervalMs: this.config?.UPDATE_CHECK_INTERVAL_MS,
       scheduler: this.scheduler,
       onUpdate: (version, previousDeploymentId) => {
         this.log(`检测到新版本：${previousDeploymentId} -> ${version.deploymentId}`);
         return this.showUpdatePrompt(version);
+      },
+      onDeployFailure: (version, deployStatus) => {
+        const target = deployStatus?.targetCommit ? String(deployStatus.targetCommit).slice(0, 12) : '';
+        const stage = deployStatus?.stage || '';
+        const message = deployStatus?.error?.message || 'deploy failed';
+        this.log(`Deploy failed${target ? ` ${target}` : ''}${stage ? ` at ${stage}` : ''}: ${message}`);
+        return this.updateRuntime?.notifyDeployFailure?.(version);
       },
       onError: (error) => {
         const message = error?.payload?.message || error?.message || '未知错误';
@@ -82,6 +95,7 @@ class H5GameHost extends CanvasGameAppBase {
       onLog: (entry) => {
         if (entry?.type === 'initialized') this.log(`版本检测已启动：${entry.deploymentId}`);
       },
+      trace: this.loadTrace,
     });
     this.stateManager = new constructors.GameStateManager(this.state, { buildingState: this.buildingState });
     this.eventController = new constructors.EventController({
@@ -93,6 +107,16 @@ class H5GameHost extends CanvasGameAppBase {
       onLog: (message) => this.log(message),
       formatReward: (reward) => this.presenter.formatEventReward(reward),
     });
+    if (constructors.CaptureController) {
+      // ②b: captured-general decision controller (斩杀/招降/放生). Panel auto-surfaces from state.
+      this.captureController = new constructors.CaptureController({
+        api: this.gameAPI,
+        getState: () => this.state,
+        onStateApplied: (result) => this.applyApiState(result),
+        onFloatingText: (message) => this.showFloatingText(message),
+        onLog: (message) => this.log(message),
+      });
+    }
     this.buildingController = new constructors.BuildingController({
       api: this.gameAPI,
       onSuccess: (result, action, buildingId) => this.handleBuildingSuccess(result, action, buildingId),
@@ -101,6 +125,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.territoryController = new constructors.TerritoryController({
       api: this.gameAPI,
       getState: () => this.state,
+      uiState: this.territoryUiState,
       onRenderRequested: () => this.renderTerritory(),
       onStateApplied: (result) => this.applyApiState(result),
       onFloatingText: (message) => this.showFloatingText(message),
@@ -108,6 +133,7 @@ class H5GameHost extends CanvasGameAppBase {
       onCityRenameRequested: (prompt) => this.requestCityRename(prompt),
       onBattleSceneRequested: (report) => this.startBattleScene(report),
     });
+    window.TerritoryUiStateStore?.ensure?.(this);
     if (!this.tutorialController && window.TutorialGuideController) {
       this.tutorialController = new window.TutorialGuideController({
         game: this,
@@ -137,6 +163,7 @@ class H5GameHost extends CanvasGameAppBase {
       runtime: window,
       config: this.config,
       presenter: this.presenter,
+      loadTrace: this.loadTrace,
       previewEnabled: true,
       inputEnabled: true,
     });
@@ -151,6 +178,7 @@ class H5GameHost extends CanvasGameAppBase {
     if (!window.TutorialIntroOverlay) return null;
     this.tutorialIntroOverlay = new window.TutorialIntroOverlay({
       runtime: window,
+      storage: window.localStorage || null,
       game: this,
     });
     return this.tutorialIntroOverlay;

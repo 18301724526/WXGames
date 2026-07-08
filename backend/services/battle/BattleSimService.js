@@ -5,14 +5,15 @@
 // (the SAME module the frontend battle scene will run for the spectacle), and
 // maps the authoritative casualties back onto a formation snapshot.
 //
-// This does NOT replace the legacy turn-based simulateConquestBattle yet: that
-// one still feeds the old battle-replay UI. The live swap happens when the new
-// battle scene (frontend) is ready to take over rendering.
+// Territory conquest and world-combat encounters both resolve through this
+// entity-based simulation; callers adapt their domain state into this request
+// shape and keep persistence outside this service.
 //
 // The attribute -> combat-stat conversion below is an intentional, isolated
 // PLACEHOLDER. Real balance values should later move into the config registry.
 
 const BattleSimCore = require('../../../shared/battleSimCore');
+const { toNumber: num, clamp } = require('../../../shared/numberUtils');
 
 const SCHEMA = 'battle-sim-service-v1';
 
@@ -33,15 +34,6 @@ const DEFAULT_BALANCE = Object.freeze({
   },
   soldier: { hp: 20, atk: 6, def: 2, range: 12, moveSpeed: 70, atkSpeed: 12 },
 });
-
-function num(value, fallback = 0) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function clamp(v, lo, hi) {
-  return Math.max(lo, Math.min(hi, v));
-}
 
 function mergeBalance(config = {}) {
   return {
@@ -154,9 +146,46 @@ function resolveBattle(request = {}) {
   return {
     schema: SCHEMA,
     result: out.result,
+    // setup + inputStream are the deterministic replay inputs: the client can
+    // feed them to battleSimCore.createBattle/step to reproduce the exact battle.
+    setup: out.setup,
+    inputStream: Array.isArray(request.inputStream) ? request.inputStream : [],
     winner: out.result.winner,
     attackerSnapshot,
   };
+}
+
+// Build a battleSimCore setup (seed/arena/config/sides) from a request without
+// simulating. Used to OPEN an interactive battle session: the client plays this
+// exact setup, records the inputStream, and the backend later re-simulates the
+// same setup with the recorded inputStream for the authoritative result.
+function buildBattleSetup(request = {}) {
+  const attacker = request.attacker || {};
+  const snapshot = attacker.snapshot || { members: [] };
+  const attrs = attacker.attributesByPersonId || {};
+  const members = Array.isArray(snapshot.members) ? snapshot.members : [];
+  const attackerGenerals = members.map((m) => ({
+    gid: String(m.personId),
+    attributes: attrs[m.personId] || {},
+    soldiers: num(m.soldiersRemaining != null ? m.soldiersRemaining : m.soldiersCommitted, 0),
+  }));
+  const defender = request.defender || { generals: [] };
+  return buildSetup({
+    seed: request.seed,
+    arena: request.arena,
+    config: request.config,
+    attacker: { side: 'attacker', generals: attackerGenerals },
+    defender: { side: 'defender', generals: defender.generals || [] },
+  });
+}
+
+// Authoritatively simulate a previously-built setup with a recorded input stream.
+function simulateSetup(setup = {}, inputStream = [], options = {}) {
+  return BattleSimCore.simulate(
+    setup,
+    Array.isArray(inputStream) ? inputStream : [],
+    options || {},
+  );
 }
 
 module.exports = {
@@ -164,6 +193,8 @@ module.exports = {
   DEFAULT_BALANCE,
   generalStats,
   buildSetup,
+  buildBattleSetup,
+  simulateSetup,
   resolve,
   applyCasualtiesToFormationSnapshot,
   resolveBattle,

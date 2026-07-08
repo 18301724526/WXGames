@@ -3,7 +3,7 @@
     if (global.WorldMapSelectionResolver) return global.WorldMapSelectionResolver;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMapSelectionResolver');
+        return require('../../ecs/input/WorldMapSelectionResolver');
       } catch (error) {
         return null;
       }

@@ -32,29 +32,59 @@ function registerPlayerRoutes(app, deps) {
     return {
       success: false,
       error: 'GAME_STATE_REVISION_CONFLICT',
-      message: 'Game state changed while processing this request. Please retry.',
+      message: '游戏状态已更新，请重试',
       retryable: true,
       expectedRevision: error.expectedRevision ?? null,
       actualRevision: error.actualRevision ?? null,
     };
   }
 
+  function isPlayerStateLockTimeout(error = {}) {
+    return error?.code === 'PLAYER_STATE_LOCK_TIMEOUT';
+  }
+
+  function buildPlayerStateBusyPayload(error = {}) {
+    return {
+      success: false,
+      error: 'PLAYER_STATE_BUSY',
+      message: '上一条操作仍在处理，请稍后重试',
+      retryable: true,
+      playerId: error.playerId || null,
+    };
+  }
+
+  function withPlayerStateLock(playerId, callback, scope) {
+    if (typeof repository?.withPlayerStateLock !== 'function') return callback();
+    return repository.withPlayerStateLock(playerId, callback, {
+      scope,
+      waitMs: 20000,
+      ttlMs: 60000,
+      pollMs: 50,
+    });
+  }
+
   function loginPlayerWithRevisionRetry(username, password) {
-    const loginOnce = () => authService.loginPlayer(
+    const loginOnce = () => withPlayerStateLock(
       username,
-      password,
-      (playerId) => repository.findByPlayerId(playerId),
-      (gameState, offlineSeconds) => gameStateService.calculateOfflineIncome(gameState, offlineSeconds),
-      (gameState) => repository.save(gameState),
-      createInitialStateForPlayer,
+      () => authService.loginPlayer(
+        username,
+        password,
+        (playerId) => repository.findByPlayerId(playerId),
+        (gameState, offlineSeconds) => gameStateService.calculateOfflineIncome(gameState, offlineSeconds),
+        (gameState) => repository.save(gameState),
+        createInitialStateForPlayer,
+      ),
+      'player-login',
     );
     try {
       return { result: loginOnce(), retried: false };
     } catch (error) {
+      if (isPlayerStateLockTimeout(error)) return { busyPayload: buildPlayerStateBusyPayload(error) };
       if (!isGameStateRevisionConflict(error)) throw error;
       try {
         return { result: loginOnce(), retried: true };
       } catch (retryError) {
+        if (isPlayerStateLockTimeout(retryError)) return { busyPayload: buildPlayerStateBusyPayload(retryError) };
         if (!isGameStateRevisionConflict(retryError)) throw retryError;
         return { conflictPayload: buildRevisionConflictPayload(retryError) };
       }
@@ -74,6 +104,9 @@ function registerPlayerRoutes(app, deps) {
       return res.status(400).json({ error: 'CREDENTIALS_REQUIRED', message: '用户名和密码必填' });
     }
     const loginAttempt = loginPlayerWithRevisionRetry(username, password);
+    if (loginAttempt.busyPayload) {
+      return res.status(409).json(loginAttempt.busyPayload);
+    }
     if (loginAttempt.conflictPayload) {
       return res.status(409).json(loginAttempt.conflictPayload);
     }
@@ -103,12 +136,22 @@ function registerPlayerRoutes(app, deps) {
   });
 
   app.post('/api/player/reset', authMiddleware, (req, res) => {
-    const result = authService.resetPlayer(
-      req.playerId,
-      createResetStateForPlayer,
-      (gameState) => repository.save(gameState),
-      (playerId, gameState) => repository.resetPlayerState(playerId, gameState),
-    );
+    let result;
+    try {
+      result = withPlayerStateLock(
+        req.playerId,
+        () => authService.resetPlayer(
+          req.playerId,
+          createResetStateForPlayer,
+          (gameState) => repository.save(gameState),
+          (playerId, gameState) => repository.resetPlayerState(playerId, gameState),
+        ),
+        'player-reset',
+      );
+    } catch (error) {
+      if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
+      throw error;
+    }
     const gameState = result.gameState;
     const projection = loadProjection(req.playerId);
     const clientState = gameStateService.getClientGameStateFromNormalized

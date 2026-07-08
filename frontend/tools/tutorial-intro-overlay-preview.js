@@ -1,6 +1,5 @@
 (function () {
   localStorage.removeItem(window.TutorialIntroOverlay?.storageKey || 'tutorialIntroAdvisorSeen.v2');
-  localStorage.removeItem(window.TutorialIntroOverlay?.legacyStorageKey || 'tutorialIntroAdvisorSeen.v1');
 
   window.Game = {
     hasServerState: true,

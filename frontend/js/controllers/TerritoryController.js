@@ -1,7 +1,32 @@
 (function (global) {
-  class TerritoryController {
-    static MIN_EXPEDITION_SOLDIERS = 100;
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
+  const TerritoryUiStateStore = (() => {
+    if (global.TerritoryUiStateStore) return global.TerritoryUiStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../state/TerritoryUiStateStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  class TerritoryController {
     constructor(options = {}) {
       this.actionAdapter = options.actionAdapter || null;
       this.api = options.api;
@@ -13,11 +38,11 @@
       this.onCityRenameRequested = options.onCityRenameRequested || (() => null);
       this.onBattleSceneRequested = options.onBattleSceneRequested || (() => false);
       this.dragState = null;
-      this.uiState = {
+      this.uiState = TerritoryUiStateStore?.createInitialState?.(options.uiState || {}) || {
         selectedSiteId: '',
         worldMarchTarget: null,
         selectedWorldActorId: '',
-        worldTargetPicker: null,
+        selectedWorldMissionId: '',
         worldPanX: 0,
         worldPanY: 0,
         expeditionConfigSiteId: '',
@@ -40,9 +65,6 @@
         onWorldDragStart: (pointer) => this.startWorldDrag(pointer),
         onWorldDragMove: (pointer) => this.moveWorldDrag(pointer),
         onWorldDragEnd: (pointer) => this.endWorldDrag(pointer),
-        onScoutAction: (action) => this.handleScoutAction(action).catch((error) => {
-          this.onLog(`✖ ${error.payload?.message || error.message}`);
-        }),
       });
     }
 
@@ -84,7 +106,7 @@
       this.closeSiteDialog({ render: false });
       this.uiState.worldMarchTarget = null;
       this.uiState.selectedWorldActorId = '';
-      this.uiState.worldTargetPicker = null;
+      this.uiState.selectedWorldMissionId = '';
       const current = this.getWorldPan();
       const position = this.getPointerPosition(pointer);
       this.dragState = {
@@ -115,7 +137,7 @@
       this.uiState.selectedSiteId = siteId;
       this.uiState.worldMarchTarget = null;
       this.uiState.selectedWorldActorId = '';
-      this.uiState.worldTargetPicker = null;
+      this.uiState.selectedWorldMissionId = '';
       this.onRenderRequested();
     }
 
@@ -123,7 +145,7 @@
       this.uiState.selectedSiteId = '';
       this.uiState.worldMarchTarget = null;
       this.uiState.selectedWorldActorId = '';
-      this.uiState.worldTargetPicker = null;
+      this.uiState.selectedWorldMissionId = '';
       this.clearExpeditionDraft({ render: false });
       if (options.render !== false) this.onRenderRequested();
     }
@@ -134,12 +156,12 @@
     }
 
     getExpeditionDraft(site = this.getSelectedSite()) {
-      const recommended = Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Number(site?.recommendedSoldiers) || Number(site?.defense) || TerritoryController.MIN_EXPEDITION_SOLDIERS);
+      const recommended = Math.max(1, Number(site?.recommendedSoldiers) || Number(site?.defense) || 1);
       return {
         territoryId: this.uiState.expeditionConfigSiteId || '',
         troopType: this.uiState.expeditionTroopType || 'unavailable',
         leader: this.uiState.expeditionLeader || 'unavailable',
-        soldiers: Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Number(this.uiState.expeditionSoldiers) || recommended),
+        soldiers: Math.max(1, Number(this.uiState.expeditionSoldiers) || recommended),
       };
     }
 
@@ -147,7 +169,7 @@
       if (draft.territoryId) this.uiState.expeditionConfigSiteId = draft.territoryId;
       if (draft.troopType) this.uiState.expeditionTroopType = draft.troopType;
       if (draft.leader) this.uiState.expeditionLeader = draft.leader;
-      if (draft.soldiers) this.uiState.expeditionSoldiers = String(Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Math.floor(Number(draft.soldiers) || TerritoryController.MIN_EXPEDITION_SOLDIERS)));
+      if (draft.soldiers) this.uiState.expeditionSoldiers = String(Math.max(1, Math.floor(Number(draft.soldiers) || 1)));
       this.onRenderRequested();
     }
 
@@ -168,7 +190,7 @@
         territoryId,
         troopType: 'unavailable',
         leader: leader?.id || 'unavailable',
-        soldiers: territory.recommendedSoldiers || territory.defense || TerritoryController.MIN_EXPEDITION_SOLDIERS,
+        soldiers: territory.recommendedSoldiers || territory.defense || 1,
       });
     }
 
@@ -177,7 +199,7 @@
       const draft = this.getExpeditionDraft(selectedSite);
       if (!draft.territoryId) return;
       if (change.field === 'soldiers') {
-        draft.soldiers = Math.max(TerritoryController.MIN_EXPEDITION_SOLDIERS, Math.floor(Number(change.value) || TerritoryController.MIN_EXPEDITION_SOLDIERS));
+        draft.soldiers = Math.max(1, Math.floor(Number(change.value) || 1));
       }
       if (change.field === 'troopType') {
         draft.troopType = change.value || 'unavailable';
@@ -194,21 +216,11 @@
         const result = await callback();
         if (result) {
           this.onStateApplied(result);
-          this.onFloatingText(result.message || '疆域已更新');
-          this.onLog(`✔ ${result.message || '疆域已更新'}`);
+          this.onFloatingText(result.message || t('territory.updated'));
+          this.onLog(`✔ ${result.message || t('territory.updated')}`);
         }
       } finally {
         this.actionAdapter?.setLoading?.(button, false);
-      }
-    }
-
-    async handleScoutAction(action = {}) {
-      if (action.direction) {
-        await this.runButton(action.button, () => this.api.scoutTerritory(action.direction));
-        return;
-      }
-      if (action.missionId) {
-        await this.runButton(action.button, () => this.api.claimScout(action.missionId));
       }
     }
 
@@ -218,7 +230,7 @@
       await this.runButton(actionRequest.button, async () => {
         if (action === 'conquer') {
           this.clearExpeditionDraft();
-          return this.api.startConquest(territoryId, { soldiers: TerritoryController.MIN_EXPEDITION_SOLDIERS });
+          return this.api.startConquest(territoryId, { soldiers: 0 });
         }
         if (action === 'open-expedition') {
           this.openExpeditionDraft(territoryId);

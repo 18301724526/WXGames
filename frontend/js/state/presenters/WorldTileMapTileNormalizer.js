@@ -15,8 +15,20 @@
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileCoord');
+        return require('../../ecs/foundation/TileCoord');
       } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
         return null;
       }
     }
@@ -36,24 +48,16 @@
     return options.manifest || sharedTileMapManifest || {};
   }
 
+  function t(key = '', params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
   function getWorldTileId(q, r) {
-    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(q, r);
-    return `tile_${toInteger(q)}_${toInteger(r)}`;
+    return sharedTileCoord.tileId(q, r);
   }
 
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (sharedTileCoord?.normalizeCoord) return sharedTileCoord.normalizeCoord(coord, fallback);
-    const fallbackX = toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0);
-    const fallbackY = toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0);
-    const x = toInteger(coord.x !== undefined ? coord.x : coord.q, fallbackX);
-    const y = toInteger(coord.y !== undefined ? coord.y : coord.r, fallbackY);
-    return Object.freeze({
-      x,
-      y,
-      q: x,
-      r: y,
-      tileId: getWorldTileId(x, y),
-    });
+    return sharedTileCoord.normalizeCoord(coord, fallback);
   }
 
   function getMountainNeighborCount(tile = {}, siteById = new Map()) {
@@ -83,7 +87,7 @@
 
   function normalizeTemplateAssets(templateAssets = []) {
     return templateAssets.map((asset) => ({
-      label: asset.label || '',
+      label: asset.labelKey ? t(asset.labelKey, asset.labelParams || {}, asset.label || '') : (asset.label || ''),
       key: asset.key || '',
       type: asset.templateType || '',
       asset: asset.path || '',
@@ -127,6 +131,9 @@
       owner: site.owner || '',
       name: site.cityName || site.naturalName || '',
       title: site.naturalName || site.cityName || '',
+      // Nameplate level corner = intel level (same defaulting rule as
+      // WorldMapEntitySnapshot.intelLevel: own sites read fully scouted).
+      level: toInteger(site.intel?.level, site.owner === 'player' ? 4 : 1),
       art: site.art || siteAsset?.path || '',
       overlayKey,
       offset: manifest.getOverlayOffset?.(overlayKey) || { x: 0, y: 0 },
@@ -149,7 +156,7 @@
       q: coord.q,
       r: coord.r,
       terrain,
-      terrainLabel: terrainAsset.label || terrain,
+      terrainLabel: terrainAsset.labelKey ? t(terrainAsset.labelKey, {}, terrainAsset.label || terrain) : (terrainAsset.label || terrain),
       terrainAsset: terrainAsset.path || '',
       waterAsset: terrainAsset.water ? manifest.getWaterAsset?.(terrainAsset.water)?.path || '' : '',
       templateAssets: normalizeTemplateAssets(templateAssets),
@@ -175,6 +182,7 @@
   const WorldTileMapTileNormalizer = Object.freeze({
     toNumber,
     toInteger,
+    t,
     getTileMapManifest,
     getWorldTileId,
     normalizeCoord,

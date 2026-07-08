@@ -1,0 +1,29 @@
+{
+  "version": "ui-redo-v2",
+  "target": "asset",
+  "mode": "ui_hud_resource_icons_v2_4x2",
+  "style_anchor": "docs/design/ui-hud-reference/user-references/layout-reference-v2.webp",
+  "prompt": "UI redo v2: champagne-gold engraved resource icons, strict grid on pure magenta #FF00FF, style anchored to the layout-reference-v2 bottom command bar gold icons.",
+  "generator": {
+    "model": "nano-banana-pro",
+    "endpoint": "images/edits (multipart, reference image attached)",
+    "api_calls_used": 1,
+    "returned_grid": "2 cols x 4 rows (model followed portrait reference aspect; requested 3x2)"
+  },
+  "raw_sheet": "docs/design/ui-hud-reference/source-sheets/raw/hud-resource-icons-v2-raw.png",
+  "processing": [
+    "generate2dsprite.py process --target asset --rows 4 --cols 2 --cell-size 128 --threshold 100 --edge-threshold 150 --fit-scale 0.92 --trim-border 4 --edge-clean-depth 3 --align center --shared-scale --component-mode all --component-padding 6",
+    "magenta defringe post pass: strong-magenta pixels (r>140,b>140,g<95) -> alpha 0; contaminated pixels (b>g) -> b clamped to g, r clamped to g*4/3; verified 0 magenta pixels left per frame"
+  ],
+  "frame_mapping": {
+    "hud-resource-food.png": "frame 1 (wheat sheaf)",
+    "hud-resource-wood.png": "frame 3 (log stack)",
+    "hud-resource-stone.png": "frame 4 (stone pile)",
+    "hud-resource-iron.png": "frame 5 (iron ore chunk)",
+    "hud-resource-knowledge.png": "frame 7 (parchment scroll)",
+    "hud-resource-population.png": "frame 8 (person bust)"
+  },
+  "unused_frames": "frame 2 (duplicate logs), frame 6 (duplicate scroll)",
+  "cell_size": 128,
+  "processed_archive": "docs/design/ui-hud-reference/source-sheets/processed/resources-v2/"
+}

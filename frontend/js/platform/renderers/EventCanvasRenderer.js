@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class EventCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -6,11 +18,11 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get ctx() {
@@ -21,76 +33,24 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    renderSectionHeader(...args) { const surface = this.drawingSurface; return surface && typeof surface.renderSectionHeader === 'function' ? surface.renderSectionHeader(...args) : this.host?.renderSectionHeader?.(...args); }
+    resourceIconPath(...args) { const surface = this.drawingSurface; return surface && typeof surface.resourceIconPath === 'function' ? surface.resourceIconPath(...args) : this.host?.resourceIconPath?.(...args); }
+    resourceShortName(...args) { const surface = this.drawingSurface; return surface && typeof surface.resourceShortName === 'function' ? surface.resourceShortName(...args) : this.host?.resourceShortName?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawLine(...args) {
-      return this.callDrawingSurface('drawLine', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    measureTextWidth(...args) {
-      return this.callDrawingSurface('measureTextWidth', args);
-    }
-
-    renderSectionHeader(...args) {
-      return this.callDrawingSurface('renderSectionHeader', args);
-    }
-
-    resourceIconPath(...args) {
-      return this.callDrawingSurface('resourceIconPath', args);
-    }
-
-    resourceShortName(...args) {
-      return this.callDrawingSurface('resourceShortName', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     eventRowColor(tone) {
@@ -110,7 +70,8 @@
       const lineHeight = options.lineHeight || 15;
       const maxLines = options.maxLines || 1;
       const labelWidth = options.labelWidth || 38;
-      const label = row.label ? `${row.label}:` : '';
+      const separator = this.t('common.labelSeparator', {});
+      const label = row.label ? `${row.label}${separator}` : '';
       this.drawText(label, x, y, {
         size,
         bold: true,
@@ -179,7 +140,9 @@
         radius: 10,
         inset: 'rgba(255, 231, 184, 0.08)',
       });
-      this.renderSectionHeader(`待处理事件${view.badge.hidden ? '' : ` ${view.badge.text}`}`, x + 14, startY + 14, '');
+      this.renderSectionHeader(this.t(
+        'event.pending.title',
+        { badge: view.badge.hidden ? '' : ` ${view.badge.text}` }), x + 14, startY + 14, '');
       this.drawAsset('assets/art/icon-event-cutout.webp', x + width - 42, startY + 9, 24, 24, 0.9);
       const contentX = x + 12;
       const contentWidth = width - 24;
@@ -236,7 +199,9 @@
           this.addHitTarget({ x: contentX, y, width: contentWidth, height: cardHeight }, { type: 'openEvent', eventId: card.id });
         });
         if (view.pending.cards.length > maxPendingCards) {
-          this.drawText(`还有 ${view.pending.cards.length - maxPendingCards} 个事件`, x + width - 14, historyTitleY - 20, {
+          this.drawText(this.t(
+            'event.pending.more',
+            { count: view.pending.cards.length - maxPendingCards }), x + width - 14, historyTitleY - 20, {
             color: 'rgba(234, 234, 234, 0.56)',
             size: 11,
             align: 'right',
@@ -247,7 +212,7 @@
       this.drawLine(x + 14, historyTitleY - 8, x + width - 14, historyTitleY - 8, {
         color: 'rgba(240, 180, 91, 0.18)',
       });
-      this.renderSectionHeader('最近事件', x + 14, historyTitleY, '');
+      this.renderSectionHeader(this.t('event.history.title', {}), x + 14, historyTitleY, '');
       if (view.history.isEmpty) {
         this.drawText(view.history.emptyText, x + 14, historyTitleY + 30, { color: '#cbbd96', size: 12 });
       } else {
@@ -291,7 +256,7 @@
         id: view.claimButton.optionId,
         label: view.claimButton.label,
         preview: view.text.reward,
-        rows: [{ label: '奖励', text: view.text.reward, tone: 'reward' }],
+        rows: [{ label: this.t('event.row.reward', {}), text: view.text.reward, tone: 'reward' }],
       }];
       const optionCount = Math.max(1, options.length);
       const panelHeight = Math.min(this.height - 96, Math.max(382, 270 + optionCount * 126));
@@ -348,7 +313,11 @@
 
       const metaRows = Array.isArray(view.metaRows) && view.metaRows.length
         ? view.metaRows
-        : [{ label: optionCount > 1 ? '选项' : '奖励', text: view.text.reward, tone: optionCount > 1 ? 'neutral' : 'reward' }];
+        : [{
+          label: optionCount > 1 ? this.t('event.row.option', {}) : this.t('event.row.reward', {}),
+          text: view.text.reward,
+          tone: optionCount > 1 ? 'neutral' : 'reward',
+        }];
       const metaY = descY + descHeight + 8;
       const metaHeight = Math.min(54, 12 + metaRows.slice(0, 2).length * 18);
       this.drawPanel(descX, metaY, descWidth, metaHeight, {
@@ -387,7 +356,7 @@
           radius: 9,
           inset: 'rgba(255, 231, 184, 0.12)',
         });
-        const label = this.truncateText(option.label || '处理事件', descWidth - 24, { size: 13, bold: true });
+        const label = this.truncateText(option.label || this.t('event.action.handle', {}), descWidth - 24, { size: 13, bold: true });
         this.drawText(label, descX + 12, optionY + 9, {
           size: 13,
           bold: true,
@@ -395,7 +364,7 @@
         });
         const rows = Array.isArray(option.rows) && option.rows.length
           ? option.rows
-          : [{ label: '结果', text: option.preview || '', tone: 'neutral' }];
+          : [{ label: this.t('event.row.result', {}), text: option.preview || '', tone: 'neutral' }];
         const maxRows = Math.max(1, Math.floor((optionHeight - 30) / 16));
         rows.slice(0, maxRows).forEach((row, rowIndex) => {
           this.drawEventDetailRow(row, descX + 12, optionY + 30 + rowIndex * 16, descWidth - 24, {
@@ -413,13 +382,15 @@
       });
 
       if (visibleCount < optionCount) {
-        this.drawText(`还有 ${optionCount - visibleCount} 个选项未显示`, descX + descWidth - 2, laterY - 10, {
+        this.drawText(this.t(
+          'event.options.more',
+          { count: optionCount - visibleCount }), descX + descWidth - 2, laterY - 10, {
           size: 10,
           color: 'rgba(234, 234, 234, 0.56)',
           align: 'right',
         });
       }
-      this.drawButton(descX, laterY, descWidth, 30, '稍后查看', { size: 12, radius: 8 });
+      this.drawButton(descX, laterY, descWidth, 30, this.t('event.action.later', {}), { size: 12, radius: 8 });
       this.addHitTarget({ x: descX, y: laterY, width: descWidth, height: 30 }, { type: 'closeEvent' });
     }
 

@@ -634,7 +634,13 @@
       const u = units[i];
       if (u.kind !== 'soldier') continue;
       if (!survivorsByGid[u.gid]) survivorsByGid[u.gid] = 0;
-      if (u.alive && !u.left) survivorsByGid[u.gid] += 1;
+      // A survivor is any soldier still ALIVE at battle end — whether it held the field
+      // or fled past its own edge (u.left). Retreat/rout saves the living: only soldiers
+      // that actually died (hp<=0) are casualties. This is what makes 全军撤退 pull the
+      // army out alive instead of counting every fleeing soldier as lost. The winner is
+      // decided separately by countOnField (units still on the field), so retaining fled
+      // survivors here does not change who wins — only how many troops you keep.
+      if (u.alive) survivorsByGid[u.gid] += 1;
     }
     return {
       schema: SCHEMA,

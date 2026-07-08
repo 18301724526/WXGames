@@ -1,4 +1,5 @@
-﻿const { EraConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
+const { EraConfig } = require('./config/GameplayConfigRuntime');
+const { TUTORIAL_STEPS, stepBefore } = require('../../shared/tutorialFlowConfig');
 const TechTreeService = require('./TechTreeService');
 
 function getUnlockedBuildings(currentEra, gameState = null) {
@@ -7,7 +8,7 @@ function getUnlockedBuildings(currentEra, gameState = null) {
     (EraConfig.ERA_BUILDING_UNLOCKS[era] || []).forEach((id) => result.add(id));
   }
   const tutorial = gameState?.tutorial || {};
-  if (!tutorial.completed && !tutorial.disabled && Number(tutorial.currentStep) < TutorialFlowConfig.TUTORIAL_STEPS.houseBuilt) {
+  if (!tutorial.completed && !tutorial.disabled && stepBefore(tutorial.currentStep, TUTORIAL_STEPS.houseBuilt)) {
     result.add('house');
   }
   TechTreeService.getUnlockedBuildings(gameState || {}).forEach((id) => result.add(id));

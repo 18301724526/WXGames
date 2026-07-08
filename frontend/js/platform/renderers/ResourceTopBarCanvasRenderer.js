@@ -1,4 +1,45 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // UI-REDO token single source (docs/design/ui-hud-reference/user-references/
+  // layout-reference-v2.webp). All redesigned top-bar colors/metrics come from here.
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  // Shared FPS meter (single source: surfaceState fed by CanvasSurfaceFrameClock).
+  // The map-home stats block reads the SAME painted-value seam the retired
+  // renderFpsOverlay chip used, so both readouts can never diverge.
+  const FrameClock = (() => {
+    if (global.CanvasSurfaceFrameClock) return global.CanvasSurfaceFrameClock;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasSurfaceFrameClock');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class ResourceTopBarCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -14,51 +55,22 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawAssetClipped(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAssetClipped === 'function' ? surface.drawAssetClipped(...args) : this.host?.drawAssetClipped?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     buildResourceViewState(state = {}) {
@@ -103,7 +115,7 @@
     }
 
     renderTopBar(state = {}, options = {}) {
-      if (options.isMapHome) return this.renderMapHomeTopBar(state);
+      if (options.isMapHome) return this.renderMapHomeTopBar(state, options);
       const layout = this.getLayout();
       const resourceView = this.buildResourceViewState(state);
       const cityView = this.presenter?.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
@@ -140,9 +152,9 @@
       });
 
       this.drawAsset('assets/art/icon-fire-cutout.webp', x + barPaddingX, statusTop + 4, 30, 30);
-      this.drawText(state.currentEraName || '原始时代', x + barPaddingX + 36, statusTop + 13, { size: 14, bold: true, color: '#d78332', baseline: 'middle' });
+      this.drawText(state.currentEraName || this.t('shell.topBar.eraFallback'), x + barPaddingX + 36, statusTop + 13, { size: 14, bold: true, color: '#d78332', baseline: 'middle' });
       this.drawText(
-        populationStatus || `人口：${populationScale}`,
+        populationStatus || this.t('shell.topBar.population', { population: populationScale }),
         x + barPaddingX + 36,
         statusTop + 31,
         {
@@ -154,33 +166,33 @@
       );
 
       const actionDefs = [];
-      if (!advisorView.hidden) actionDefs.push({ label: '顾问', width: 62 });
-      actionDefs.push({ label: '日志', width: 44 });
-      actionDefs.push({ label: '设置', width: 44 });
+      if (!advisorView.hidden) actionDefs.push({ id: 'advisor', label: this.t('shell.topBar.advisor'), width: 62 });
+      actionDefs.push({ id: 'logs', label: this.t('shell.topBar.logs'), width: 44 });
+      actionDefs.push({ id: 'settings', label: this.t('shell.topBar.settings'), width: 44 });
       let cursor = x + width - barPaddingX;
       actionDefs.slice().reverse().forEach((action, index) => {
         cursor -= action.width;
         const actionY = statusTop + 1;
-        const actionHeight = action.label === '顾问' ? statusHeight : 36;
+        const actionHeight = action.id === 'advisor' ? statusHeight : 36;
         this.drawButton(cursor, actionY, action.width, actionHeight, action.label, { size: 12, bold: true, active: false, radius: 18 });
-        if (action.label === '顾问') {
-          this.drawText('谋', cursor + 14, statusTop + 20, { size: 12, bold: true, color: '#f0b45b', baseline: 'middle', align: 'center' });
+        if (action.id === 'advisor') {
+          this.drawText(this.t('shell.advisor.icon'), cursor + 14, statusTop + 20, { size: 12, bold: true, color: '#f0b45b', baseline: 'middle', align: 'center' });
           this.drawText('●', cursor + action.width - 10, statusTop + 20, { size: 7, color: '#74d3a0', baseline: 'middle', align: 'center' });
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openAdvisor' });
-        } else if (action.label === '日志') {
+        } else if (action.id === 'logs') {
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openLogs' });
-        } else if (action.label === '设置') {
+        } else if (action.id === 'settings') {
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openSettings' });
         }
         if (index < actionDefs.length - 1) cursor -= 6;
       });
 
       const resources = [
-        { label: '木材', value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' },
-        { label: '铁矿', value: resourceView.text.ironValue, rate: resourceView.text.ironRate, icon: 'assets/art/icon-iron-cutout.webp' },
-        { label: '石料', value: resourceView.text.stoneValue, rate: resourceView.text.stoneRate, icon: 'assets/art/icon-stone-cutout.webp' },
-        { label: '粮食', value: resourceView.text.foodValue, rate: resourceView.text.foodRate, icon: 'assets/art/icon-food-cutout.webp' },
-        { label: '知识', value: resourceView.text.knowledgeValue, rate: resourceView.text.knowledgeRate, icon: 'assets/art/icon-knowledge-cutout.webp' },
+        { label: this.t('resource.wood'), value: resourceView.text.woodValue, rate: resourceView.text.woodRate, icon: 'assets/art/icon-wood-cutout.webp' },
+        { label: this.t('resource.iron'), value: resourceView.text.ironValue, rate: resourceView.text.ironRate, icon: 'assets/art/icon-iron-cutout.webp' },
+        { label: this.t('resource.stone'), value: resourceView.text.stoneValue, rate: resourceView.text.stoneRate, icon: 'assets/art/icon-stone-cutout.webp' },
+        { label: this.t('resource.food'), value: resourceView.text.foodValue, rate: resourceView.text.foodRate, icon: 'assets/art/icon-food-cutout.webp' },
+        { label: this.t('resource.knowledge'), value: resourceView.text.knowledgeValue, rate: resourceView.text.knowledgeRate, icon: 'assets/art/icon-knowledge-cutout.webp' },
       ];
       const compactResources = resources.length >= 5;
       const gap = compactResources ? 4 : 8;
@@ -232,7 +244,7 @@
           stroke: 'rgba(255, 225, 177, 0.14)',
           radius: 5,
         });
-        this.drawButton(triggerX, triggerY, triggerWidth, cityHeight, cityView.activeCityName || '首都', { size: 13, bold: true, active: true, radius: 8 });
+        this.drawButton(triggerX, triggerY, triggerWidth, cityHeight, cityView.activeCityName || this.t('shell.city.capital'), { size: 13, bold: true, active: true, radius: 8 });
         this.drawText('▾', triggerX + triggerWidth - 18, triggerY + 17, {
           size: 14,
           bold: true,
@@ -246,62 +258,274 @@
       return y + barHeight + 12;
     }
 
-    renderMapHomeTopBar(state = {}) {
+    // Real FPS source = the shared surfaceState frame meter (fed by
+    // CanvasSurfaceFrameClock.updateFps from beginFrame AND the map-home
+    // world-actor rAF loop). Bug fixed here: `fpsLastPaintedValue ?? currentFps`
+    // masked a live currentFps behind a 0 painted value (0 is not nullish), so
+    // the map home showed 'FPS --' while currentFps was 97 (proven on the live
+    // deploy). The painted value is refreshed through the SAME
+    // updatePaintedFps seam the old FPS chip used (180ms hold for readability).
+    resolveMapHomeFps(options = {}) {
+      const optionFps = Number(options.fps);
+      if (Number.isFinite(optionFps) && optionFps > 0) return Math.round(optionFps);
+      const surfaceState = this.host?.surfaceState || null;
+      if (surfaceState && typeof FrameClock?.updatePaintedFps === 'function') {
+        const painted = FrameClock.updatePaintedFps(
+          surfaceState,
+          options,
+          Number(surfaceState.frameNow) || Date.now(),
+        );
+        if (painted > 0) return painted;
+      }
+      const painted = Number(surfaceState?.fpsLastPaintedValue);
+      if (Number.isFinite(painted) && painted > 0) return Math.round(painted);
+      const current = Number(surfaceState?.currentFps);
+      return Number.isFinite(current) && current > 0 ? Math.round(current) : 0;
+    }
+
+    resolveMapHomeLatencyMs(state = {}, options = {}) {
+      const network = options.network || state.networkState || this.host?.networkState || {};
+      const value = network.latencyMs
+        ?? network.pingMs
+        ?? network.roundTripMs
+        ?? network.rttMs
+        ?? network.lastLatencyMs;
+      const latency = Number(value);
+      return Number.isFinite(latency) && latency >= 0 ? Math.round(latency) : null;
+    }
+
+    resolveMapHomeServerTimeMs(state = {}, options = {}) {
+      const candidates = [
+        options.serverNowMs,
+        this.host?.serverNowMs,
+        this.host?.surfaceState?.serverNowMs,
+        options.epochNowMs,
+        this.host?.epochNowMs,
+        this.host?.surfaceState?.epochNowMs,
+        state.serverNowMs,
+        state.epochNowMs,
+        options.network?.serverTime,
+        state.networkState?.serverTime,
+        state.serverTime,
+      ];
+      for (let index = 0; index < candidates.length; index += 1) {
+        const value = candidates[index];
+        const parsed = value instanceof Date ? value.getTime() : (typeof value === 'string' ? Date.parse(value) : Number(value));
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      return Date.now();
+    }
+
+    formatMapHomeClock(ms = Date.now()) {
+      const date = new Date(ms);
+      if (Number.isNaN(date.getTime())) return '--:--:--';
+      return [
+        String(date.getHours()).padStart(2, '0'),
+        String(date.getMinutes()).padStart(2, '0'),
+        String(date.getSeconds()).padStart(2, '0'),
+      ].join(':');
+    }
+
+    // UI-REDO: 9-slice iron plate sliced from layout-reference-v2 (see
+    // hud-plate-top.pipeline-meta.json). Falls back to a token gradient panel
+    // until the asset is loaded (or when the runtime lacks drawAssetClipped).
+    drawMapHomeTopBarPlate(x, y, width, height) {
+      const topBar = UiThemeTokens?.topBar || {};
+      const slice = topBar.plateSlice || {};
+      const assetPath = topBar.plateAssetPath || '';
+      const sourceWidth = Number(slice.sourceWidth) || 0;
+      const sourceHeight = Number(slice.sourceHeight) || 0;
+      const sourceInset = Number(slice.sourceInset) || 0;
+      const destInset = Number(slice.destInset) || 0;
+      let drewAsset = Boolean(assetPath)
+        && sourceInset > 0
+        && destInset > 0
+        && sourceWidth > sourceInset * 2
+        && sourceHeight > sourceInset * 2
+        && width > destInset * 2
+        && height > destInset * 2;
+      if (drewAsset) {
+        const sourceX = [0, sourceInset, sourceWidth - sourceInset, sourceWidth];
+        const sourceY = [0, sourceInset, sourceHeight - sourceInset, sourceHeight];
+        const destX = [x, x + destInset, x + width - destInset, x + width];
+        const destY = [y, y + destInset, y + height - destInset, y + height];
+        for (let row = 0; row < 3 && drewAsset; row += 1) {
+          for (let col = 0; col < 3 && drewAsset; col += 1) {
+            drewAsset = this.drawAssetClipped(
+              assetPath,
+              {
+                x: sourceX[col],
+                y: sourceY[row],
+                width: sourceX[col + 1] - sourceX[col],
+                height: sourceY[row + 1] - sourceY[row],
+              },
+              destX[col],
+              destY[row],
+              destX[col + 1] - destX[col],
+              destY[row + 1] - destY[row],
+            ) === true;
+          }
+        }
+      }
+      if (!drewAsset) {
+        const palette = UiThemeTokens?.palette || {};
+        this.drawPanel(x, y, width, height, {
+          fill: this.createGradient(
+            x, y, x, y + height,
+            [
+              [0, palette.plateIronTop],
+              [1, palette.plateIronBottom],
+            ],
+            palette.plateIronBottom,
+          ),
+          stroke: palette.plateFrameLine,
+          radius: UiThemeTokens?.radius?.panel || 6,
+          inset: UiThemeTokens?.hairline?.insetHighlight,
+        });
+      }
+      return drewAsset;
+    }
+
+    drawMapHomeTopBarHairline(x, y0, y1) {
+      if (!this.ctx || typeof this.ctx.fillRect !== 'function') return;
+      const hairline = UiThemeTokens?.hairline || {};
+      this.ctx.fillStyle = hairline.dividerOnIron;
+      this.ctx.fillRect(x, y0, hairline.widthPx || 1, Math.max(0, y1 - y0));
+    }
+
+    // Standard HUD stats block (FPS/latency/clock) per the approved reference — the
+    // caller decides visibility: CanvasModeOwnershipRuntime.buildRendererPanelFacts
+    // supplies panel.showTopBarDebugStats (always on since 2026-07-08); this renderer
+    // only consumes the pre-decided boolean and never reads mode facts itself.
+    renderMapHomeTopBarDebugStats(state = {}, options = {}, layout = {}) {
+      const palette = UiThemeTokens?.palette || {};
+      const numericFont = UiThemeTokens?.fontFamily?.numeric;
+      const size = UiThemeTokens?.typeScale?.caption || 9;
+      const fps = this.resolveMapHomeFps(options);
+      const latencyMs = this.resolveMapHomeLatencyMs(state, options);
+      const clockText = this.formatMapHomeClock(this.resolveMapHomeServerTimeMs(state, options));
+      const x = Number(layout.x) || 0;
+      const rowY = Array.isArray(layout.rowY) ? layout.rowY : [12, 28, 44];
+      this.drawText(fps ? `FPS ${fps}` : 'FPS --', x, rowY[0], {
+        size,
+        bold: true,
+        color: palette.debugFpsGreen,
+        baseline: 'middle',
+        fontFamily: numericFont,
+      });
+      this.drawAsset('assets/art/ui-hud/hud-icon-signal.png', x, rowY[1] - 6, 12, 12);
+      this.drawText(latencyMs === null ? '--ms' : `${latencyMs}ms`, x + 16, rowY[1], {
+        size,
+        color: palette.debugLatencyText,
+        baseline: 'middle',
+        fontFamily: numericFont,
+      });
+      this.drawText(clockText, x, rowY[2], {
+        size,
+        color: palette.textSecondary,
+        baseline: 'middle',
+        fontFamily: numericFont,
+      });
+    }
+
+    // UI-REDO map-home top bar: iron plate + 6 resource slots in the approved
+    // order 粮食/木材/石料/铁矿/知识/人口, hairline slot dividers, mono digits.
+    // All colors/metrics come from UiThemeTokens (single source).
+    renderMapHomeTopBar(state = {}, options = {}) {
       const layout = this.getLayout();
+      const topBar = UiThemeTokens?.topBar || {};
+      const palette = UiThemeTokens?.palette || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
+      const spacing = UiThemeTokens?.spacing || {};
+      const numericFont = UiThemeTokens?.fontFamily?.numeric;
       const resourceView = this.buildResourceViewState(state);
       const text = resourceView.text || {};
-      const x = 0;
-      const y = 0;
       const width = this.width;
-      const height = 72;
-      if (this.ctx) {
-        this.ctx.fillStyle = this.createGradient(
-          x, y, x, y + height,
-          [
-            [0, 'rgba(46, 37, 25, 0.86)'],
-            [1, 'rgba(19, 18, 14, 0.88)'],
-          ],
-          'rgba(32, 26, 19, 0.86)',
-        );
-        this.ctx.fillRect(x, y, width, height);
-        this.ctx.fillStyle = 'rgba(255, 231, 184, 0.06)';
-        this.ctx.fillRect(0, 0, width, 1);
-        this.ctx.fillStyle = 'rgba(255, 226, 177, 0.16)';
-        this.ctx.fillRect(0, height - 1, width, 1);
+      const height = Number(topBar.height) || 64;
+      const plateX = Number(topBar.plateMarginX) || 4;
+      const plateY = Number(topBar.plateMarginTop) || 4;
+      const plateWidth = Math.max(0, width - plateX * 2);
+      const plateHeight = Number(topBar.plateHeight) || 56;
+      this.drawMapHomeTopBarPlate(plateX, plateY, plateWidth, plateHeight);
+      // Knife 6 (气质收敛): the same warm edge line the dock tray wears —
+      // shared plate language along the top plate's bottom edge.
+      if (this.ctx && typeof this.ctx.fillRect === 'function') {
+        this.ctx.fillStyle = palette.plateEdgeWarmLine;
+        this.ctx.fillRect(plateX, plateY + plateHeight - 1, plateWidth, UiThemeTokens?.hairline?.widthPx || 1);
       }
+
+      const contentPaddingX = Number(topBar.contentPaddingX) || 12;
+      const contentLeft = Math.max(plateX + contentPaddingX, Number(layout.contentX) || 0);
+      const contentRight = Math.min(plateX + plateWidth - contentPaddingX, Number(layout.contentRight) || width);
+      const dividerTop = plateY + 10;
+      const dividerBottom = plateY + plateHeight - 10;
+
+      let resourcesLeft = contentLeft;
+      if (options.showTopBarDebugStats === true) {
+        const debugWidth = Number(topBar.debugBlockWidth) || 66;
+        this.renderMapHomeTopBarDebugStats(state, options, {
+          x: contentLeft,
+          rowY: [plateY + 12, plateY + 28, plateY + 44],
+        });
+        const dividerX = contentLeft + debugWidth + (spacing.sm || 6);
+        this.drawMapHomeTopBarHairline(dividerX, dividerTop, dividerBottom);
+        resourcesLeft = dividerX + (spacing.lg || 12);
+      }
+
       const resources = [
-        { label: '粮食', value: text.foodValue ?? '0', icon: 'assets/art/icon-food-cutout.webp' },
-        { label: '木材', value: text.woodValue ?? '0', icon: 'assets/art/icon-wood-cutout.webp' },
-        { label: '石料', value: text.stoneValue ?? '0', icon: 'assets/art/icon-stone-cutout.webp' },
-        { label: '铁矿', value: text.ironValue ?? '0', icon: 'assets/art/icon-iron-cutout.webp' },
-        { label: '知识', value: text.knowledgeValue ?? '0', icon: 'assets/art/icon-knowledge-cutout.webp' },
-        { label: '人口', value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/icon-population-cutout.webp' },
+        { label: this.t('resource.food'), value: text.foodValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-food.png' },
+        { label: this.t('resource.wood'), value: text.woodValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-wood.png' },
+        { label: this.t('resource.stone'), value: text.stoneValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-stone.png' },
+        { label: this.t('resource.iron'), value: text.ironValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-iron.png' },
+        { label: this.t('resource.knowledge'), value: text.knowledgeValue ?? '0', icon: 'assets/art/ui-hud/hud-resource-knowledge.png' },
+        { label: this.t('resource.population'), value: text.populationValue ?? this.presenter?.toDisplayPopulation?.(state.population?.total ?? state.totalPop) ?? '0', icon: 'assets/art/ui-hud/hud-resource-population.png' },
       ];
-      const contentX = layout.contentX;
-      const contentWidth = layout.contentWidth;
-      const gap = 3;
-      const itemWidth = Math.max(42, Math.floor((contentWidth - 16 - gap * (resources.length - 1)) / resources.length));
-      const itemY = y + 8;
+      const slotCount = resources.length;
+      const resourcesWidth = Math.max(0, contentRight - resourcesLeft);
+      const slotWidth = slotCount ? resourcesWidth / slotCount : 0;
+      const iconSize = Number(topBar.iconSize) || 18;
+      const labelIconGap = Number(topBar.labelIconGap) || 4;
+      const labelSize = typeScale.label || 10;
+      const valueSize = typeScale.value || 14;
+      const labelRowCenterY = plateY + 17;
+      const valueTop = plateY + 30;
       resources.forEach((resource, index) => {
-        const itemX = contentX + 8 + index * (itemWidth + gap);
-        const iconSize = 14;
-        const centerX = itemX + itemWidth / 2;
-        this.drawAsset(resource.icon, centerX - iconSize / 2, itemY + 5, iconSize, iconSize);
-        this.drawText(resource.label, centerX, itemY + 23, {
-          size: 8,
+        const slotX = resourcesLeft + index * slotWidth;
+        const centerX = slotX + slotWidth / 2;
+        if (index > 0) this.drawMapHomeTopBarHairline(Math.round(slotX), dividerTop, dividerBottom);
+        const label = this.truncateText(
+          resource.label,
+          Math.max(16, slotWidth - iconSize - labelIconGap - 8),
+          { size: labelSize, bold: true },
+        );
+        const measured = Number(this.measureTextWidth(label, { size: labelSize, bold: true }));
+        const labelWidth = Number.isFinite(measured) && measured > 0
+          ? measured
+          : String(label).length * labelSize;
+        const groupWidth = iconSize + labelIconGap + labelWidth;
+        const iconX = centerX - groupWidth / 2;
+        this.drawAsset(resource.icon, iconX, labelRowCenterY - iconSize / 2, iconSize, iconSize);
+        this.drawText(label, iconX + iconSize + labelIconGap, labelRowCenterY, {
+          size: labelSize,
           bold: true,
-          color: '#cbbd96',
-          align: 'center',
+          color: palette.textLabel,
+          baseline: 'middle',
         });
-        this.drawText(this.truncateText(String(resource.value), itemWidth - 4, { size: 9, bold: true }), centerX, itemY + 40, {
-          size: 9,
+        const value = this.truncateText(
+          String(resource.value ?? '0'),
+          Math.max(20, slotWidth - 8),
+          { size: valueSize, bold: true, fontFamily: numericFont },
+        );
+        this.drawText(value, centerX, valueTop, {
+          size: valueSize,
           bold: true,
-          color: '#d5ffe8',
+          color: palette.textPrimary,
           align: 'center',
+          fontFamily: numericFont,
         });
-        this.addHitTarget({ x: itemX, y: itemY, width: itemWidth, height: 42 }, { type: 'openResourceDetails' });
+        this.addHitTarget({ x: slotX, y: plateY, width: slotWidth, height: plateHeight }, { type: 'openResourceDetails' });
       });
-      return 72;
+      return height;
     }
 
   }

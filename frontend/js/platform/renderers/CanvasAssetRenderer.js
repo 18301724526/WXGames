@@ -1,4 +1,22 @@
 (function (global) {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function t(key = '', params = {}) {
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params) : key;
+  }
+
   const sharedTileMapManifest = (() => {
     if (global.TileMapAssetManifest) return global.TileMapAssetManifest;
     if (typeof module !== 'undefined' && module.exports) {
@@ -14,41 +32,104 @@
   class CanvasAssetRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host) {
-            if (typeof prop === 'string' && prop.startsWith('worldTile')) return host[prop];
-            if (prop in host) {
-              const hostValue = host[prop];
-              return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-            }
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
-          const host = target.host;
-          if (host) {
-            if (typeof prop === 'string' && prop.startsWith('worldTile')) {
-              host[prop] = value;
-              return true;
-            }
-            if (prop in host) {
-              host[prop] = value;
-              return true;
-            }
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
+      this.localState = Object.create(null);
     }
 
     static getTileMapAssetManifest() {
       return sharedTileMapManifest || {};
+    }
+
+    getOwner() {
+      return this.worldMapCacheState || this.localState;
+    }
+
+    getAssetOwner() {
+      return this.host || this.localState;
+    }
+
+    getMapResource(name) {
+      const owner = this.getOwner();
+      const current = owner[name];
+      if (current && typeof current.get === 'function' && typeof current.set === 'function') return current;
+      const next = new Map();
+      owner[name] = next;
+      return next;
+    }
+
+    get ctx() { return this.host?.ctx || null; }
+    get canvas() { return this.host?.canvas || null; }
+    get h5Runtime() { return this.host?.h5Runtime || null; }
+    get runtime() { return this.host?.runtime || null; }
+    get loadTrace() { return this.host?.loadTrace || null; }
+    get assetCache() {
+      const owner = this.getAssetOwner();
+      if (!owner.assetCache) owner.assetCache = new Map();
+      return owner.assetCache;
+    }
+    get assetMetricsCache() {
+      const owner = this.getAssetOwner();
+      if (!owner.assetMetricsCache) owner.assetMetricsCache = new Map();
+      return owner.assetMetricsCache;
+    }
+    get worldTileMaskCache() { return this.getMapResource('worldTileMaskCache'); }
+    get worldTileMaskMetricsCache() { return this.getMapResource('worldTileMaskMetricsCache'); }
+    get worldTileDryCompositeCache() { return this.getMapResource('worldTileDryCompositeCache'); }
+    get worldTileStaticChunkCaches() { return this.getMapResource('worldTileStaticChunkCaches'); }
+    get worldTileWaterFrameCaches() { return this.getMapResource('worldTileWaterFrameCaches'); }
+    get worldTileWaterChunkCaches() { return this.getMapResource('worldTileWaterChunkCaches'); }
+    get worldTileStaticCache() { return this.getOwner().worldTileStaticCache || null; }
+    set worldTileStaticCache(value) { this.getOwner().worldTileStaticCache = value || null; }
+    get worldTileStaticCacheKey() { return this.getOwner().worldTileStaticCacheKey || ''; }
+    set worldTileStaticCacheKey(value) { this.getOwner().worldTileStaticCacheKey = String(value || ''); }
+    get worldTileStaticCacheLayoutKind() { return this.getOwner().worldTileStaticCacheLayoutKind || ''; }
+    set worldTileStaticCacheLayoutKind(value) { this.getOwner().worldTileStaticCacheLayoutKind = String(value || ''); }
+    get worldTileStaticCacheLayout() { return this.getOwner().worldTileStaticCacheLayout || null; }
+    set worldTileStaticCacheLayout(value) { this.getOwner().worldTileStaticCacheLayout = value || null; }
+    get worldTileStaticChunkCacheTick() { return Number(this.getOwner().worldTileStaticChunkCacheTick) || 0; }
+    set worldTileStaticChunkCacheTick(value) { this.getOwner().worldTileStaticChunkCacheTick = Number(value) || 0; }
+    get worldTileWaterLayerCache() { return this.getOwner().worldTileWaterLayerCache || null; }
+    set worldTileWaterLayerCache(value) { this.getOwner().worldTileWaterLayerCache = value || null; }
+    get worldTileWaterLayerCacheKey() { return this.getOwner().worldTileWaterLayerCacheKey || ''; }
+    set worldTileWaterLayerCacheKey(value) { this.getOwner().worldTileWaterLayerCacheKey = String(value || ''); }
+    get worldTileWaterChunkCacheTick() { return Number(this.getOwner().worldTileWaterChunkCacheTick) || 0; }
+    set worldTileWaterChunkCacheTick(value) { this.getOwner().worldTileWaterChunkCacheTick = Number(value) || 0; }
+    get worldTileFastDragComposite() { return this.getOwner().worldTileFastDragComposite || null; }
+    set worldTileFastDragComposite(value) { this.getOwner().worldTileFastDragComposite = value || null; }
+    get worldTileFastDragCompositeCache() { return this.getOwner().worldTileFastDragCompositeCache || null; }
+    set worldTileFastDragCompositeCache(value) { this.getOwner().worldTileFastDragCompositeCache = value || null; }
+    get worldTileViewCache() { return this.getOwner().worldTileViewCache || null; }
+    set worldTileViewCache(value) { this.getOwner().worldTileViewCache = value || null; }
+    get worldTileVisibleEntriesCache() { return this.getOwner().worldTileVisibleEntriesCache || null; }
+    set worldTileVisibleEntriesCache(value) { this.getOwner().worldTileVisibleEntriesCache = value || null; }
+    get worldTileLocalEntriesCache() { return this.getOwner().worldTileLocalEntriesCache || null; }
+    set worldTileLocalEntriesCache(value) { this.getOwner().worldTileLocalEntriesCache = value || null; }
+    get assetsChangedHandler() { return this.getOwner().assetsChangedHandler || null; }
+    set assetsChangedHandler(value) { this.getOwner().assetsChangedHandler = typeof value === 'function' ? value : null; }
+    get worldTileCachePrewarmTask() { return this.getOwner().worldTileCachePrewarmTask || null; }
+    set worldTileCachePrewarmTask(value) { this.getOwner().worldTileCachePrewarmTask = value || null; }
+
+    getTileMapAssetManifest() {
+      return this.host?.constructor?.getTileMapAssetManifest?.()
+        || this.constructor.getTileMapAssetManifest();
+    }
+
+    getPreloadAssetPaths() {
+      return this.host?.getPreloadAssetPaths?.() || [];
+    }
+
+    createImage(assetPath = '') {
+      if (typeof this.host?.createImage === 'function') return this.host.createImage(assetPath);
+      if (typeof global.Image === 'function') return new global.Image();
+      return null;
+    }
+
+    getWorldTileTemplateMask(assetPath = '') {
+      return this.host?.getWorldTileTemplateMask?.(assetPath) || null;
+    }
+
+    getWorldTileDryTemplateCanvas(assetPath = '') {
+      return this.host?.getWorldTileDryTemplateCanvas?.(assetPath) || null;
     }
 
     preloadAssets(assetPaths = this.getPreloadAssetPaths(), onProgress = null, options = {}) {
@@ -179,11 +260,13 @@
 
     getWorldTileCachePrewarmLoadingMessage(assetPath = '') {
       const path = String(assetPath || '');
-      if (path.includes('/river-template/') || path.includes('/ocean-template/')) return '\u6b63\u5728\u51c6\u5907\u6c34\u9762\u6a21\u677f';
-      if (path.includes('/transition-template/')) return '\u6b63\u5728\u751f\u6210\u5730\u5757\u8fc7\u6e21\u7f13\u5b58';
-      if (path.startsWith('assets/art/world-site-')) return '\u6b63\u5728\u51c6\u5907\u636e\u70b9\u8d44\u6e90';
-      if (path.startsWith('assets/art/tile-map/')) return '\u6b63\u5728\u51c6\u5907\u5927\u5730\u56fe\u8d44\u6e90';
-      return '\u6b63\u5728\u751f\u6210\u5730\u5757\u7f13\u5b58';
+      if (path.includes('/river-template/') || path.includes('/ocean-template/')) {
+        return t('shell.loading.prewarm.waterTemplate');
+      }
+      if (path.includes('/transition-template/')) return t('shell.loading.prewarm.transitionCache');
+      if (path.startsWith('assets/art/world-site-')) return t('shell.loading.prewarm.siteAssets');
+      if (path.startsWith('assets/art/tile-map/')) return t('shell.loading.prewarm.tileMapAssets');
+      return t('shell.loading.prewarm.tileCache');
     }
 
     getWorldTileCachePrewarmLoadingChunkDelayMs() {
@@ -212,7 +295,7 @@
         dryTemplates: 0,
       };
       const report = typeof onProgress === 'function' ? onProgress : null;
-      const trace = global.H5LoadTrace;
+      const trace = this.loadTrace || this.host?.loadTrace || null;
       const chunkSize = Math.max(1, Math.floor(Number(options.chunkSize ?? this.getWorldTileCachePrewarmChunkSize()) || 1));
       const betweenChunksMs = Math.max(0, Number(options.betweenChunksMs ?? this.getWorldTileCachePrewarmLoadingChunkDelayMs()) || 0);
       const notify = (assetPath = '', status = 'prewarm') => {
@@ -365,7 +448,7 @@
       this.worldTileCachePrewarmTask = task;
       result.scheduled = true;
 
-      const trace = global.H5LoadTrace;
+      const trace = this.loadTrace || this.host?.loadTrace || null;
       trace?.phaseStart?.('assets:prewarm:deferred', {
         total: result.total,
         candidateTotal: result.candidateTotal,
@@ -592,10 +675,13 @@
     }
 
     getTemplateCanvasFactory() {
-      const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
-      if (doc?.createElement) return () => doc.createElement('canvas');
+      // OffscreenCanvas first: work canvases are pure pixel buffers and must not touch the
+      // DOM (zero-DOM stage rendering; wx mini-program has no document). The document path
+      // only remains as a legacy-browser fallback.
       if (typeof global.OffscreenCanvas === 'function') return (width = 1, height = 1) => new global.OffscreenCanvas(width, height);
       if (typeof OffscreenCanvas === 'function') return (width = 1, height = 1) => new OffscreenCanvas(width, height);
+      const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+      if (doc?.createElement) return () => doc.createElement('canvas');
       return null;
     }
 
@@ -605,36 +691,6 @@
       const canvas = factory(width, height);
       canvas.width = width;
       canvas.height = height;
-      return canvas;
-    }
-
-    createTutorialSpineCanvas(width, height) {
-      const safeWidth = Math.max(1, Math.floor(Number(width) || 1));
-      const safeHeight = Math.max(1, Math.floor(Number(height) || 1));
-      let canvas = null;
-      if (typeof global.OffscreenCanvas === 'function') {
-        try {
-          canvas = new global.OffscreenCanvas(safeWidth, safeHeight);
-        } catch (_) {
-          canvas = null;
-        }
-      }
-      if (!canvas && typeof OffscreenCanvas === 'function') {
-        try {
-          canvas = new OffscreenCanvas(safeWidth, safeHeight);
-        } catch (_) {
-          canvas = null;
-        }
-      }
-      if (!canvas) {
-        const doc = this.canvas?.ownerDocument || (typeof document !== 'undefined' ? document : null);
-        if (doc?.createElement) canvas = doc.createElement('canvas');
-      }
-      if (!canvas) return null;
-      canvas.width = safeWidth;
-      canvas.height = safeHeight;
-      if (typeof canvas.addEventListener !== 'function') canvas.addEventListener = () => {};
-      if (typeof canvas.removeEventListener !== 'function') canvas.removeEventListener = () => {};
       return canvas;
     }
 

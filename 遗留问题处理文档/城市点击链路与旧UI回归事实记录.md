@@ -322,7 +322,7 @@ if (options.isMapHome) return this.renderMapHomeTopBar(state);
 
 本次修复边界：
 
-- 在 `frontend/js/domain/WorldMapInputActionMap.js` 中增加城市入口识别：当 `selectWorldActor` 与 `openWorldSite` / `enterCity` 重叠时，优先返回城市入口。
+- 在 `frontend/js/ecs/input/WorldMapInputActionMap.js` 中增加城市入口识别：当 `selectWorldActor` 与 `openWorldSite` / `enterCity` 重叠时，优先返回城市入口。
 - 在 `frontend/js/platform/renderers/CanvasSurfaceHitTargets.js` 中同步相同规则：`selectWorldActor` 不能抢掉城市入口。
 - `returnWorldMarch`、`stopWorldMarch`、`startWorldMarch` 等明确按钮仍保留原优先级，不被本次规则改变。
 - `CanvasGameShell` 层新增测试确认：当 actor 与 city hit target 重叠时，点击会派发 `openWorldSite`，并同步 `selectedSiteId`。
@@ -330,7 +330,7 @@ if (options.isMapHome) return this.renderMapHomeTopBar(state);
 
 已加门禁：
 
-- `frontend/js/domain/WorldMapInputActionMap.test.js`
+- `frontend/js/ecs/input/WorldMapInputActionMap.test.js`
   - `WorldMapInputActionMap keeps a city click as openWorldSite when an actor stands on the city`
 - `frontend/js/platform/renderers/CanvasSurfaceRenderer.test.js`
   - 更新 hit target priority 断言，城市入口压过重叠 actor 选择。

@@ -20,8 +20,6 @@ test('TerritoryService facade still returns the expected client territory contra
   assert.ok(Array.isArray(clientState.territories));
   assert.ok(clientState.worldMap);
   assert.ok(clientState.mapBounds);
-  assert.deepEqual(clientState.directions.map((item) => item.id), Object.keys(TerritoryService.DIRECTIONS));
-  assert.equal(clientState.scoutDurationSeconds, Math.floor(TerritoryService.SCOUT_DURATION_MS / 1000));
   assert.equal(clientState.missionDurationSeconds, Math.floor(TerritoryService.CONQUEST_DURATION_MS / 1000));
 });
 
@@ -124,6 +122,149 @@ test('client territory projection lets shared occupied sites win coordinate conf
   assert.equal(clientState.territories.some((site) => site.id === staleTutorialSite.id), false);
   assert.equal(clientState.territories.some((site) => site.id === sharedOccupiedSite.id), true);
   assert.equal(conflictTile.siteId, sharedOccupiedSite.id);
+});
+
+test('client territory projection hides an undiscovered shared neutral city (no reveal-at-spawn)', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-hidden-neutral');
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  const neutralCity = {
+    id: 'site_9_0',
+    x: 9,
+    y: 0,
+    naturalName: '河湾城邦',
+    type: 'city',
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+  };
+  TerritoryService.normalizeTerritoryState(state, now);
+
+  // The player has NOT revealed the tile at (9,0), so the pre-placed neutral city must be absent from
+  // the client DTO and never bound to the map (docs/design/10 §6-R2).
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
+    sharedWorldTerritories: [neutralCity],
+  });
+
+  assert.equal(clientState.territories.some((site) => site.id === neutralCity.id), false);
+  assert.equal(clientState.worldMap.tiles.some((tile) => tile.siteId === neutralCity.id), false);
+});
+
+test('an AI-explorer hidden tile does NOT surface a shared neutral city (coord-set pollution guard)', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-ai-hidden-neutral');
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  const neutralCity = {
+    id: 'site_9_0',
+    x: 9,
+    y: 0,
+    naturalName: '河湾城邦',
+    type: 'city',
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+  };
+  TerritoryService.normalizeTerritoryState(state, now);
+  // An AI explorer walked over (9,0): the tile exists in the RAW worldMap.tiles array but is
+  // hidden from the player (the exact shape WorldAiExplorerService.revealAiArea writes). The
+  // discovery gate reads the SSOT revealed set, so this tile must never surface the city.
+  WorldMapService.revealTile(state, 9, 0, now, {
+    visibility: 'hidden',
+    discovered: true,
+    visible: false,
+    intel: { level: 0 },
+  });
+
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
+    sharedWorldTerritories: [neutralCity],
+  });
+
+  assert.equal(clientState.territories.some((site) => site.id === neutralCity.id), false);
+  assert.equal(clientState.worldMap.tiles.some((tile) => tile.siteId === neutralCity.id), false);
+});
+
+test('client territory projection reveals a shared neutral city once its tile is discovered', () => {
+  const state = GameStateNormalizer.createInitialGameState('territory-client-revealed-neutral');
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  const neutralCity = {
+    id: 'site_9_0',
+    x: 9,
+    y: 0,
+    naturalName: '河湾城邦',
+    type: 'city',
+    owner: 'neutral',
+    status: 'discovered',
+    scale: 2,
+  };
+  TerritoryService.normalizeTerritoryState(state, now);
+  // Simulate the player gaining tile visibility at the city coordinate (what S4 discovery will do).
+  WorldMapService.revealTile(state, 9, 0, now, { visibility: 'scouted' });
+
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
+    sharedWorldTerritories: [neutralCity],
+  });
+
+  assert.equal(clientState.territories.some((site) => site.id === neutralCity.id), true);
+  const cityTile = clientState.worldMap.tiles.find((tile) => tile.q === 9 && tile.r === 0);
+  assert.equal(cityTile.siteId, neutralCity.id);
+});
+
+// A discovered DEFENDED neutral city, in the post-S4 shape: present in gameState.territories (so
+// normalizeTerritory derives its garrison from the distance band) with its tile revealed. At (40,0)
+// the deep band is defended (conquest occupation) — the meaningful case for the strength gate.
+function createDefendedNeutralCityState(seed, extraTerritory = {}) {
+  const state = GameStateNormalizer.createInitialGameState(seed);
+  const now = new Date('2026-07-06T00:00:00.000Z');
+  // Tutorial forces settlement mode on every neutral city (getOccupationMode short-circuit); complete
+  // it so the distance band actually decides conquest-vs-settlement, exercising the defended path.
+  state.tutorial = { ...(state.tutorial || {}), completed: true };
+  state.territories.push({
+    id: 'site_40_0', x: 40, y: 0, naturalName: '远疆城邦', type: 'city',
+    owner: 'neutral', status: 'discovered', scale: 3, ...extraTerritory,
+  });
+  TerritoryService.normalizeTerritoryState(state, now);
+  WorldMapService.revealTile(state, 40, 0, now, { visibility: 'scouted' });
+  return { state, now };
+}
+
+test('a revealed-but-unfought neutral city withholds its defender strength scalars', () => {
+  // "打了才知道": strength (defense / recommendedSoldiers / threat) is learned in battle, not by
+  // scouting. A deep-band neutral city IS defended (has a garrison), but until the player has a
+  // lastBattle record, the raw strength scalars must be ABSENT from the DTO (not projected as 0).
+  const { state, now } = createDefendedNeutralCityState('territory-client-unfought-strength');
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now);
+  const projected = clientState.territories.find((site) => site.id === 'site_40_0');
+  assert.ok(projected, 'the revealed city is projected');
+  assert.equal(projected.occupationMode, 'conquest', 'deep-band city is a conquest target');
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(projected, 'defense'),
+    false,
+    'defense scalar withheld until fought',
+  );
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'recommendedSoldiers'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'threat'), false);
+  // `scale` encodes the garrison band (deep=3/city=2/frontier=1) and GarrisonPolicy scales soldiers by
+  // it, so it is a strength scalar too — withheld until fought, matching the encounter side.
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(projected, 'scale'),
+    false,
+    'scale (garrison-band tier) withheld until fought',
+  );
+  // The garrison object was already intel-gated (unknown at level 1) — confirm it too is hidden.
+  assert.equal(projected.garrison, null);
+});
+
+test('a fought neutral city (lastBattle present) keeps its defender strength scalars', () => {
+  const { state, now } = createDefendedNeutralCityState('territory-client-fought-strength', {
+    lastBattle: { success: false, casualties: 30, leaderName: '先锋' },
+  });
+  const clientState = TerritoryService.getClientTerritoryState(clone(state), now);
+  const projected = clientState.territories.find((site) => site.id === 'site_40_0');
+  assert.ok(projected, 'the revealed city is projected');
+  assert.equal(projected.occupationMode, 'conquest');
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'defense'), true);
+  assert.ok(projected.defense > 0, 'a fought city reveals its defense strength');
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'recommendedSoldiers'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(projected, 'scale'), true, 'a fought city reveals its scale tier');
+  assert.ok(projected.scale > 0, 'the revealed scale is the authored deep-band tier');
 });
 
 test('client world map projection omits stale legacy capital tiles outside current origin', () => {

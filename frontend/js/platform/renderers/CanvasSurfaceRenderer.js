@@ -19,32 +19,80 @@
     }
     return null;
   })();
+  const SurfaceState = global.CanvasSurfaceState || (() => {
+    if (typeof require === 'function') {
+      try {
+        return require('./CanvasSurfaceState');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const FrameClock = global.CanvasSurfaceFrameClock || (() => {
+    if (typeof require === 'function') {
+      try {
+        return require('./CanvasSurfaceFrameClock');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function createSurfaceState() {
+    if (typeof SurfaceState?.createCanvasSurfaceState !== 'function') {
+      throw new Error('CanvasSurfaceState is required before CanvasSurfaceRenderer');
+    }
+    return SurfaceState.createCanvasSurfaceState();
+  }
 
   class CanvasSurfaceRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
-          if (target.host && prop in target.host) {
-            target.host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.surfaceState = options.surfaceState
+        || this.host?.surfaceState
+        || createSurfaceState();
     }
+    get ctx() { return this.host?.ctx || null; }
+    get width() { return Number(this.host?.width) || 0; }
+    get height() { return Number(this.host?.height) || 0; }
+    get maxContentWidth() { return Number(this.host?.maxContentWidth) || 480; }
+    get edgePadding() { return Number(this.host?.edgePadding) || 12; }
+    get presenter() { return this.host?.presenter || null; }
+    get hitTargets() {
+      return SurfaceState.getHitTargets(this.surfaceState);
+    }
+    set hitTargets(value) { SurfaceState.setHitTargets(this.surfaceState, value); }
+    get suppressHitTargets() { return Boolean(this.surfaceState.suppressHitTargets); }
+    set suppressHitTargets(value) { this.surfaceState.suppressHitTargets = Boolean(value); }
+    get lastRenderOptions() { return this.surfaceState.lastRenderOptions || null; }
+    set lastRenderOptions(value) { this.surfaceState.lastRenderOptions = value || {}; }
+    get hoverPoint() { return SurfaceState.getHoverPoint(this.surfaceState); }
+    set hoverPoint(value) { SurfaceState.setHoverPoint(this.surfaceState, value); }
+    get famousSkillHitTargets() {
+      if (!Array.isArray(this.surfaceState.famousSkillHitTargets)) this.surfaceState.famousSkillHitTargets = [];
+      return this.surfaceState.famousSkillHitTargets;
+    }
+    set famousSkillHitTargets(value) { this.surfaceState.famousSkillHitTargets = Array.isArray(value) ? value : []; }
+    get activeFamousSkillTooltip() { return this.surfaceState.activeFamousSkillTooltip || null; }
+    set activeFamousSkillTooltip(value) { SurfaceState.setFamousSkillTooltips(this.surfaceState, { active: value }); }
+    get frameNow() { return Number(this.surfaceState.frameNow) || 0; }
+    set frameNow(value) { this.surfaceState.frameNow = Number(value) || 0; }
+    get fpsLastFrameAt() { return Number(this.surfaceState.fpsLastFrameAt) || 0; }
+    set fpsLastFrameAt(value) { this.surfaceState.fpsLastFrameAt = Number(value) || 0; }
+    get fpsLastPaintAt() { return Number(this.surfaceState.fpsLastPaintAt) || 0; }
+    set fpsLastPaintAt(value) { this.surfaceState.fpsLastPaintAt = Number(value) || 0; }
+    get fpsLastPaintedValue() { return Number(this.surfaceState.fpsLastPaintedValue) || 0; }
+    set fpsLastPaintedValue(value) { this.surfaceState.fpsLastPaintedValue = Number(value) || 0; }
+    get fpsSamples() {
+      if (!Array.isArray(this.surfaceState.fpsSamples)) this.surfaceState.fpsSamples = [];
+      return this.surfaceState.fpsSamples;
+    }
+    set fpsSamples(value) { this.surfaceState.fpsSamples = Array.isArray(value) ? value : []; }
+    get currentFps() { return Number(this.surfaceState.currentFps) || 0; }
+    set currentFps(value) { this.surfaceState.currentFps = Number(value) || 0; }
+    get showFpsOverlay() { return this.host?.showFpsOverlay !== false; }
 
     getLayout() {
       const contentWidth = Math.min(this.maxContentWidth, Math.max(300, this.width - this.edgePadding * 2));
@@ -57,14 +105,14 @@
     }
 
     createGradient(x0, y0, x1, y1, stops = [], fallback = '#000') {
-      if (!this.ctx || typeof this.ctx.createLinearGradient !== 'function') return fallback;
+      if (!this.ctx || typeof this.ctx.createLinearGradient !== 'function' || ![x0, y0, x1, y1].every(Number.isFinite)) return fallback;
       const gradient = this.ctx.createLinearGradient(x0, y0, x1, y1);
       stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
       return gradient;
     }
 
     createRadialGradient(x0, y0, r0, x1, y1, r1, stops = [], fallback = '#000') {
-      if (!this.ctx || typeof this.ctx.createRadialGradient !== 'function') return fallback;
+      if (!this.ctx || typeof this.ctx.createRadialGradient !== 'function' || ![x0, y0, r0, x1, y1, r1].every(Number.isFinite)) return fallback;
       const gradient = this.ctx.createRadialGradient(x0, y0, r0, x1, y1, r1);
       stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
       return gradient;
@@ -80,14 +128,23 @@
       }
     }
 
+    canClip(callback) {
+      return this.ctx && typeof callback === 'function'
+        && typeof this.ctx.save === 'function'
+        && typeof this.ctx.restore === 'function'
+        && typeof this.ctx.beginPath === 'function'
+        && typeof this.ctx.rect === 'function'
+        && typeof this.ctx.clip === 'function';
+    }
+
     setHitTargets(targets = []) {
-      this.hitTargets = targets;
+      SurfaceState.setHitTargets(this.surfaceState, targets);
     }
 
     addHitTarget(rect, action) {
       if (this.suppressHitTargets) return;
       const target = HitTargets.normalizeHitTarget(rect, action);
-      if (target) this.hitTargets.push(target);
+      SurfaceState.appendHitTarget(this.surfaceState, target);
     }
 
     getHitTarget(point = {}) {
@@ -100,10 +157,10 @@
 
     setHoverPoint(point = null) {
       if (!point || !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))) {
-        this.hoverPoint = null;
+        SurfaceState.setHoverPoint(this.surfaceState, null);
         return false;
       }
-      this.hoverPoint = { x: Number(point.x), y: Number(point.y) };
+      SurfaceState.setHoverPoint(this.surfaceState, { x: Number(point.x), y: Number(point.y) });
       return true;
     }
 
@@ -121,11 +178,11 @@
 
     withSuppressedHitTargets(callback) {
       const previous = this.suppressHitTargets;
-      this.suppressHitTargets = true;
+      SurfaceState.setSuppressHitTargets(this.surfaceState, true);
       try {
         return callback?.();
       } finally {
-        this.suppressHitTargets = previous;
+        SurfaceState.setSuppressHitTargets(this.surfaceState, previous);
       }
     }
 
@@ -134,13 +191,7 @@
     }
 
     withTranslatedClip(x, y, width, height, offsetX = 0, offsetY = 0, callback) {
-      if (!this.ctx || typeof callback !== 'function') return callback?.();
-      const canClip = typeof this.ctx.save === 'function'
-        && typeof this.ctx.restore === 'function'
-        && typeof this.ctx.beginPath === 'function'
-        && typeof this.ctx.rect === 'function'
-        && typeof this.ctx.clip === 'function';
-      if (!canClip) return callback();
+      if (!this.canClip(callback)) return callback?.();
       this.ctx.save();
       this.ctx.beginPath();
       this.ctx.rect(x, y, width, height);
@@ -154,13 +205,7 @@
     }
 
     withTransformedClip(x, y, width, height, offsetX = 0, offsetY = 0, scale = 1, callback) {
-      if (!this.ctx || typeof callback !== 'function') return callback?.();
-      const canClip = typeof this.ctx.save === 'function'
-        && typeof this.ctx.restore === 'function'
-        && typeof this.ctx.beginPath === 'function'
-        && typeof this.ctx.rect === 'function'
-        && typeof this.ctx.clip === 'function';
-      if (!canClip) return callback();
+      if (!this.canClip(callback)) return callback?.();
       const safeScale = Math.max(0.01, Number(scale) || 1);
       this.ctx.save();
       this.ctx.beginPath();
@@ -280,58 +325,27 @@
     }
 
     beginFrame(options = {}) {
-      const optionNow = Number(options.now);
-      const now = Number.isFinite(optionNow) ? optionNow : Date.now();
-      this.frameNow = now;
-      this.lastRenderOptions = options || {};
-      if (this.host && typeof this.host === 'object') {
-        this.host.frameNow = now;
-        this.host.lastRenderOptions = this.lastRenderOptions;
-        if (options.epochNowMs !== undefined) this.host.epochNowMs = options.epochNowMs;
-        if (options.serverNowMs !== undefined) this.host.serverNowMs = options.serverNowMs;
-      }
-      this.famousSkillHitTargets = [];
-      this.activeFamousSkillTooltip = null;
+      const now = FrameClock.setFrameStart(this.surfaceState, options);
       this.updateFps(now);
       return now;
     }
 
     endFrame(options = {}) {
       this.renderFpsOverlay(options);
-      this.frameNow = 0;
+      FrameClock.setFrameEnd(this.surfaceState);
     }
 
     getNow() {
-      return this.frameNow || Date.now();
+      return FrameClock.getNow(this.surfaceState);
     }
 
     updateFps(now = Date.now()) {
-      const timestamp = Number(now);
-      if (!Number.isFinite(timestamp)) return this.currentFps;
-      if (!this.fpsLastFrameAt) {
-        this.fpsLastFrameAt = timestamp;
-        this.fpsLastPaintAt = timestamp;
-        return this.currentFps;
-      }
-      const delta = Math.max(4, timestamp - this.fpsLastFrameAt);
-      this.fpsLastFrameAt = timestamp;
-      if (delta > 250) return this.currentFps;
-      const fps = Math.min(120, 1000 / delta);
-      this.fpsSamples.push(fps);
-      if (this.fpsSamples.length > 30) this.fpsSamples.shift();
-      const average = this.fpsSamples.reduce((sum, value) => sum + value, 0) / this.fpsSamples.length;
-      this.currentFps = Math.round(average >= 58 && average <= 64 ? 60 : average);
-      return this.currentFps;
+      return FrameClock.updateFps(this.surfaceState, now);
     }
 
     renderFpsOverlay(options = {}) {
-      if (!this.showFpsOverlay || options.showFpsOverlay === false || !this.ctx) return;
-      const now = this.getNow();
-      if (!this.fpsLastPaintAt || now - this.fpsLastPaintAt >= 180 || (!this.fpsLastPaintedValue && this.currentFps)) {
-        this.fpsLastPaintAt = now;
-        this.fpsLastPaintedValue = Math.max(0, Math.round(Number(options.fps ?? this.currentFps) || 0));
-      }
-      const fps = this.fpsLastPaintedValue;
+      if (options.isMapHome || !this.showFpsOverlay || options.showFpsOverlay === false || !this.ctx) return;
+      const fps = FrameClock.updatePaintedFps(this.surfaceState, options, this.getNow());
       const label = fps ? `FPS ${fps}` : 'FPS --';
       const width = Math.max(66, Math.min(84, Math.ceil(this.measureTextWidth(label, { size: 11, bold: true }) + 18)));
       const color = fps >= 55 ? '#74d3a0' : (fps >= 30 ? '#ffd98a' : '#ff6b6b');
@@ -460,10 +474,13 @@
     }
 
     getTopBarBottom(state = {}, options = {}) {
-      if (options.isMapHome) return 72;
+      if (options.isMapHome) return 64;
       if (!this.presenter) return 84;
       const cityView = this.presenter.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
       return 12 + (cityView.hidden ? 128 : 166) + 12;
+    }
+    drawAsset(...args) {
+      return this.host?.drawAsset?.(...args) || false;
     }
   }
 

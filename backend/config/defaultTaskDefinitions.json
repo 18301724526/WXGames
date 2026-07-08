@@ -1,6 +1,18 @@
 {
-  "version": "0.1.0",
+  "version": "0.3.0",
   "tasks": [
+    {
+      "id": "main_homestead_supplies",
+      "category": "main",
+      "title": "安家物资",
+      "description": "族人初到此地，领取安家物资，建起第一处民居。",
+      "target": "tasks",
+      "condition": { "type": "tutorialStepAtLeast", "step": "cityEntered" },
+      "reward": { "formulas": ["buildCost:house"] },
+      "action": { "type": "claimTaskReward", "taskId": "main_homestead_supplies", "category": "main" },
+      "sortOrder": 5,
+      "enabled": true
+    },
     {
       "id": "main_build_house",
       "category": "main",
@@ -41,6 +53,50 @@
       "reward": { "formulas": ["advanceCost:2"] },
       "action": { "type": "claimTaskReward", "taskId": "main_lumbermill_supplies", "category": "main" },
       "sortOrder": 30,
+      "enabled": true
+    },
+    {
+      "id": "main_barracks_supplies",
+      "category": "main",
+      "title": "兵营物资",
+      "description": "城邦时代已经到来，领取兵营物资，为常备军备好营地。",
+      "target": "tasks",
+      "condition": { "type": "tutorialStepAtLeast", "step": "era3Advanced" },
+      "reward": { "formulas": ["buildCost:barracks"] },
+      "action": { "type": "claimTaskReward", "taskId": "main_barracks_supplies", "category": "main" },
+      "sortOrder": 35,
+      "enabled": true
+    },
+    {
+      "id": "main_first_army",
+      "category": "main",
+      "title": "组建首支军队",
+      "description": "兵营建成后领取军费，一支千人军队将进入城防储备。",
+      "target": "tasks",
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "buildingLevel", "buildingId": "barracks", "count": 1 },
+          { "type": "tutorialStepAtLeast", "step": "barracksBuilt" }
+        ]
+      },
+      "reward": { "resources": { "soldiers": 1000 } },
+      "rewardText": "士兵+1000",
+      "action": { "type": "claimTaskReward", "taskId": "main_first_army", "category": "main" },
+      "sortOrder": 40,
+      "enabled": true
+    },
+    {
+      "id": "main_scout_officer",
+      "category": "main",
+      "title": "先驱",
+      "description": "军队已经成形，招募一位善于行军探路的名人担任先驱。",
+      "target": "tasks",
+      "condition": { "type": "tutorialStepAtLeast", "step": "firstArmyClaimed" },
+      "reward": { "famousPerson": "scout" },
+      "rewardText": "开拓名人+1",
+      "action": { "type": "claimTaskReward", "taskId": "main_scout_officer", "category": "main" },
+      "sortOrder": 45,
       "enabled": true
     }
   ]

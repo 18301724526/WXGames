@@ -1,4 +1,5 @@
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
+const { toNumber, clamp } = require('../../shared/numberUtils');
 
 const TERRAIN_DEFINITIONS = {
   plains: {
@@ -45,15 +46,6 @@ const TERRAIN_DEFINITIONS = {
 
 const DEFAULT_TERRAIN_ID = 'plains';
 const VALID_TERRAIN_IDS = new Set(Object.keys(TERRAIN_DEFINITIONS));
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 function normalizeTerrainId(value) {
   const id = String(value || '').trim();
@@ -240,7 +232,7 @@ function getGuidebookCategories() {
       label: '军事',
       title: '军事扩张',
       lines: [
-        '兵营会训练士兵，侦察与占领会逐步打开更大的世界。',
+        '兵营会训练士兵，行军探索与占领会逐步打开更大的世界。',
         '边境和古典阶段会更需要稳定资源、士兵和城市规划共同支撑。',
       ],
     },

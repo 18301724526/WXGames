@@ -26,6 +26,7 @@
         worldTileMaskCache: options.worldTileMaskCache,
         worldTileMaskMetricsCache: options.worldTileMaskMetricsCache,
         worldTileDryCompositeCache: options.worldTileDryCompositeCache,
+        worldMapRenderState: options.worldMapRenderState,
         maxContentWidth: options.maxContentWidth,
         edgePadding: options.edgePadding,
         bottomSafeArea: options.bottomSafeArea,

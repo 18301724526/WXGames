@@ -6,10 +6,10 @@
     return String(value || '').trim();
   }
 
-  function asset(key, domain, path, preloadGroups = [DEFAULT_PRELOAD_GROUP]) {
+  function asset(key, group, path, preloadGroups = [DEFAULT_PRELOAD_GROUP]) {
     return Object.freeze({
       key: normalizeKey(key),
-      domain: normalizeKey(domain || 'misc'),
+      group: normalizeKey(group || 'misc'),
       path: normalizeKey(path),
       preloadGroups: Object.freeze(Array.from(new Set((preloadGroups || []).map(normalizeKey).filter(Boolean)))),
     });
@@ -33,6 +33,39 @@
     asset('ui:icon:science', 'ui', 'assets/art/icon-science-cutout.webp'),
     asset('ui:icon:soldier', 'ui', 'assets/art/icon-soldier-cutout.webp'),
     asset('ui:icon:event', 'ui', 'assets/art/icon-event-cutout.webp'),
+    asset('ui-hud:icon:capital', 'ui', 'assets/art/ui-hud/hud-icon-capital.png'),
+    asset('ui-hud:icon:tasks', 'ui', 'assets/art/ui-hud/hud-icon-tasks.png'),
+    asset('ui-hud:icon:tech', 'ui', 'assets/art/ui-hud/hud-icon-tech.png'),
+    asset('ui-hud:icon:civilization', 'ui', 'assets/art/ui-hud/hud-icon-civilization.png'),
+    asset('ui-hud:icon:famous', 'ui', 'assets/art/ui-hud/hud-icon-famous.png'),
+    asset('ui-hud:icon:more', 'ui', 'assets/art/ui-hud/hud-icon-more.png'),
+    asset('ui-hud:icon:settings', 'ui', 'assets/art/ui-hud/hud-icon-settings.png'),
+    asset('ui-hud:icon:subcity', 'ui', 'assets/art/ui-hud/hud-icon-subcity.png'),
+    asset('ui-hud:icon:event', 'ui', 'assets/art/ui-hud/hud-icon-event.png'),
+    asset('ui-hud:icon:account', 'ui', 'assets/art/ui-hud/hud-icon-account.png'),
+    asset('ui-hud:icon:signal', 'ui', 'assets/art/ui-hud/hud-icon-signal.png'),
+    asset('ui-hud:icon:squad', 'ui', 'assets/art/ui-hud/hud-icon-squad.png'),
+    asset('ui-hud:plate:top', 'ui', 'assets/art/ui-hud/hud-plate-top.png'),
+    asset('ui-hud:resource:food', 'ui', 'assets/art/ui-hud/hud-resource-food.png'),
+    asset('ui-hud:resource:wood', 'ui', 'assets/art/ui-hud/hud-resource-wood.png'),
+    asset('ui-hud:resource:stone', 'ui', 'assets/art/ui-hud/hud-resource-stone.png'),
+    asset('ui-hud:resource:iron', 'ui', 'assets/art/ui-hud/hud-resource-iron.png'),
+    asset('ui-hud:resource:knowledge', 'ui', 'assets/art/ui-hud/hud-resource-knowledge.png'),
+    asset('ui-hud:resource:population', 'ui', 'assets/art/ui-hud/hud-resource-population.png'),
+    asset('ui-hud:dock:badge-round', 'ui', 'assets/art/ui-hud/hud-dock-badge-round.png'),
+    asset('ui-hud:dock:button-cell', 'ui', 'assets/art/ui-hud/hud-dock-button-cell.png'),
+    asset('ui-hud:dock-icon:capital', 'ui', 'assets/art/ui-hud/hud-dock-icon-capital.png'),
+    asset('ui-hud:dock-icon:tasks', 'ui', 'assets/art/ui-hud/hud-dock-icon-tasks.png'),
+    asset('ui-hud:dock-icon:tech', 'ui', 'assets/art/ui-hud/hud-dock-icon-tech.png'),
+    asset('ui-hud:dock-icon:civilization', 'ui', 'assets/art/ui-hud/hud-dock-icon-civilization.png'),
+    asset('ui-hud:dock-icon:famous', 'ui', 'assets/art/ui-hud/hud-dock-icon-famous.png'),
+    asset('ui-hud:dock-icon:settings', 'ui', 'assets/art/ui-hud/hud-dock-icon-settings.png'),
+    asset('ui-hud:float-icon:subcity', 'ui', 'assets/art/ui-hud/hud-float-icon-subcity.png'),
+    asset('ui-hud:float-icon:event', 'ui', 'assets/art/ui-hud/hud-float-icon-event.png'),
+    asset('ui-hud:float-icon:account', 'ui', 'assets/art/ui-hud/hud-float-icon-account.png'),
+    asset('ui-hud:squad-crest:1', 'ui', 'assets/art/ui-hud/hud-squad-crest-1.png'),
+    asset('ui-hud:squad-crest:2', 'ui', 'assets/art/ui-hud/hud-squad-crest-2.png'),
+    asset('ui-hud:squad-crest:3', 'ui', 'assets/art/ui-hud/hud-squad-crest-3.png'),
 
     asset('tech:route:agriculture', 'tech', 'assets/art/tech-agriculture-cutout.png'),
     asset('tech:route:livelihood', 'tech', 'assets/art/tech-livelihood-cutout.png'),
@@ -67,7 +100,7 @@
   function normalizeDefinition(definition = {}) {
     const normalized = asset(
       definition.key,
-      definition.domain || 'misc',
+      definition.group || 'misc',
       definition.path,
       Array.isArray(definition.preloadGroups) ? definition.preloadGroups : [],
     );
@@ -99,13 +132,13 @@
 
     const normalizedDefinitions = Object.freeze(orderedKeys.map((key) => definitionByKey.get(key)));
     const keys = Object.freeze(normalizedDefinitions.map((definition) => definition.key));
-    const domainKeys = new Map();
+    const groupKeys = new Map();
     const preloadKeys = new Map();
 
     normalizedDefinitions.forEach((definition) => {
-      const domainList = domainKeys.get(definition.domain) || [];
-      domainList.push(definition.key);
-      domainKeys.set(definition.domain, domainList);
+      const groupList = groupKeys.get(definition.group) || [];
+      groupList.push(definition.key);
+      groupKeys.set(definition.group, groupList);
 
       definition.preloadGroups.forEach((group) => {
         const groupList = preloadKeys.get(group) || [];
@@ -140,8 +173,8 @@
       return getAssetPaths(getPreloadAssetKeys(group));
     }
 
-    function getDomainAssetKeys(domain = '') {
-      return [...(domainKeys.get(normalizeKey(domain)) || [])];
+    function getGroupAssetKeys(group = '') {
+      return [...(groupKeys.get(normalizeKey(group)) || [])];
     }
 
     return Object.freeze({
@@ -153,7 +186,7 @@
       getAssetPaths,
       getPreloadAssetKeys,
       getPreloadAssetPaths,
-      getDomainAssetKeys,
+      getGroupAssetKeys,
     });
   }
 
@@ -172,7 +205,7 @@
     getAssetPaths: defaultRegistry.getAssetPaths,
     getPreloadAssetKeys: defaultRegistry.getPreloadAssetKeys,
     getPreloadAssetPaths: defaultRegistry.getPreloadAssetPaths,
-    getDomainAssetKeys: defaultRegistry.getDomainAssetKeys,
+    getGroupAssetKeys: defaultRegistry.getGroupAssetKeys,
   });
 
   global.AssetKeyRegistry = AssetKeyRegistry;

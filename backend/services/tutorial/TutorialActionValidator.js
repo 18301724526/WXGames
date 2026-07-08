@@ -1,4 +1,11 @@
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const {
+  TUTORIAL_STEPS,
+  payloadStepName,
+  stepEquals,
+  stepAtLeast,
+  stepBefore,
+} = require('../../../shared/tutorialFlowConfig');
 const { normalizeTutorialState } = require('./TutorialState');
 const {
   SCOUT_FAMOUS_GRANT_KEY,
@@ -13,21 +20,16 @@ function blocked(message, code = 'TUTORIAL_BLOCKED') {
   return { allowed: false, code, message };
 }
 
-function getTutorialSteps() {
-  return TutorialFlowConfig.TUTORIAL_STEPS;
-}
-
 function getPassThroughActions() {
   return TutorialFlowConfig.PASS_THROUGH_ACTIONS;
 }
 
 function validateHouseGuideAction(step, action, payload, gameState) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'advanceEra') {
     return blocked('请先建造第一处民居，再按照引导查看文明进阶。');
   }
   if (action === 'build') {
-    if (step < TUTORIAL_STEPS.cityEntered && !hasBuiltHouse(gameState)) {
+    if (stepBefore(step, TUTORIAL_STEPS.cityEntered) && !hasBuiltHouse(gameState)) {
       return blocked('请先按照引导进入主城，准备第一处民居。');
     }
     if (payload?.target !== 'house') return blocked('当前只能按照引导建造第一处民居。');
@@ -40,51 +42,49 @@ function validateHouseGuideAction(step, action, payload, gameState) {
 }
 
 function validateFirstEraAction(step, action, payload, gameState) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'advanceEra') {
-    if (step < TUTORIAL_STEPS.civilizationTabOpened || gameState.currentEra !== 0) {
+    if (stepBefore(step, TUTORIAL_STEPS.civilizationTabOpened) || gameState.currentEra !== 0) {
       return blocked('请先按照引导进入文明并执行时代进阶。');
     }
     return { allowed: true };
   }
   if (action === 'build') {
-    if (step < TUTORIAL_STEPS.buildingsTabOpened || gameState.currentEra < 1) {
+    if (stepBefore(step, TUTORIAL_STEPS.buildingsTabOpened) || gameState.currentEra < 1) {
       return blocked('当前只能按照引导建造第一座农田。');
     }
-    if (step < TUTORIAL_STEPS.farmBuilt && payload?.target !== 'farm') {
+    if (stepBefore(step, TUTORIAL_STEPS.farmBuilt) && payload?.target !== 'farm') {
       return blocked('当前只能按照引导建造第一座农田。');
     }
     return { allowed: true };
   }
-  if (['upgrade', 'claimEvent'].includes(action) && step < TUTORIAL_STEPS.farmBuilt) {
+  if (['upgrade', 'claimEvent'].includes(action) && stepBefore(step, TUTORIAL_STEPS.farmBuilt)) {
     return blocked('请先完成当前新手引导。');
   }
   return { allowed: true };
 }
 
 function validateEra2Action(step, action, payload, gameState) {
-  const TUTORIAL_STEPS = getTutorialSteps();
-  if (step === TUTORIAL_STEPS.buildingsTabOpenedForLumbermill && !canAffordLumbermill(gameState)) {
+  if (stepEquals(step, TUTORIAL_STEPS.buildingsTabOpenedForLumbermill) && !canAffordLumbermill(gameState)) {
     if (action === 'advanceEra') return blocked('请先完成聚落时代引导。');
     return { allowed: true };
   }
 
   if (action === 'advanceEra') {
-    if (step !== TUTORIAL_STEPS.era2AdvanceReady || gameState.currentEra !== 1) {
+    if (!stepEquals(step, TUTORIAL_STEPS.era2AdvanceReady) || gameState.currentEra !== 1) {
       return blocked('请先按照引导进入聚落时代。');
     }
     return { allowed: true };
   }
 
   if (action === 'claimEvent') {
-    if (step < TUTORIAL_STEPS.eraAdvancedTo2 || payload?.eventId !== 'evt_settlement_forest_001') {
+    if (stepBefore(step, TUTORIAL_STEPS.eraAdvancedTo2) || payload?.eventId !== 'evt_settlement_forest_001') {
       return blocked('请先查看森林事件并领取木材。');
     }
     return { allowed: true };
   }
 
   if (action === 'build') {
-    if (payload?.target !== 'lumbermill' || step < TUTORIAL_STEPS.specialEventClaimed) {
+    if (payload?.target !== 'lumbermill' || stepBefore(step, TUTORIAL_STEPS.specialEventClaimed)) {
       return blocked('当前只能按照引导建造伐木场。');
     }
     return { allowed: true };
@@ -92,7 +92,7 @@ function validateEra2Action(step, action, payload, gameState) {
 
   if (action === 'assign') {
     const amount = Number(payload?.count) || 0;
-    if (payload?.target !== 'craftsman' || amount <= 0 || step < TUTORIAL_STEPS.lumbermillBuilt) {
+    if (payload?.target !== 'craftsman' || amount <= 0 || stepBefore(step, TUTORIAL_STEPS.lumbermillBuilt)) {
       return blocked('请先按照引导分配工匠。');
     }
     return { allowed: true };
@@ -103,23 +103,32 @@ function validateEra2Action(step, action, payload, gameState) {
 }
 
 function validateScoutFormationAction(step, action, payload, gameState) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'advanceEra') {
-    if (step !== TUTORIAL_STEPS.era3AdvanceReady || gameState.currentEra !== 2) {
+    if (!stepEquals(step, TUTORIAL_STEPS.era3AdvanceReady) || gameState.currentEra !== 2) {
       return blocked('请先按照引导完成名人编队准备。');
     }
     return { allowed: true };
   }
 
+  if (action === 'build') {
+    // Barracks segment (era3Advanced..barracksBuilt): only the guided barracks
+    // build passes; from barracksBuilt onward building is unrestricted again.
+    if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.barracksBuilt)) {
+      if (payload?.target !== 'barracks') return blocked('当前只能按照引导建造兵营。');
+      return { allowed: true };
+    }
+    return { allowed: true };
+  }
+
   if (action === 'setArmyFormation') {
-    if (step < TUTORIAL_STEPS.formationPanelOpened) {
-      return blocked('请先按照引导打开编队并配置侦察名人。');
+    if (stepBefore(step, TUTORIAL_STEPS.formationPanelOpened)) {
+      return blocked('请先按照引导打开编队并配置先驱名人。');
     }
     const tutorial = normalizeTutorialState(gameState.tutorial);
     const scoutPersonId = tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]?.personId;
     const memberIds = Array.isArray(payload?.memberIds) ? payload.memberIds.map(String) : [];
     if (!scoutPersonId || !memberIds.includes(String(scoutPersonId))) {
-      return blocked('请把教程赠送的侦察名人加入编队。');
+      return blocked('请把教程赠送的先驱名人加入编队。');
     }
     return { allowed: true };
   }
@@ -128,20 +137,19 @@ function validateScoutFormationAction(step, action, payload, gameState) {
 }
 
 function validateScoutExploreAction(step, action, payload, gameState) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'returnWorldMarch' || action === 'stopWorldMarch') {
-    if (step < TUTORIAL_STEPS.firstCityDiscovered) {
-      return blocked('Please finish the guided exploration first.');
+    if (stepBefore(step, TUTORIAL_STEPS.firstCityDiscovered)) {
+      return blocked('请先完成引导探索行军。');
     }
     return { allowed: true };
   }
   if (action === 'startWorldMarch') {
-    if (step >= TUTORIAL_STEPS.firstCityDiscovered) return { allowed: true };
-    if (step < TUTORIAL_STEPS.scoutFormationSaved) {
-      return blocked('Please finish the scout formation guide before exploring.');
+    if (stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered)) return { allowed: true };
+    if (stepBefore(step, TUTORIAL_STEPS.scoutFormationSaved)) {
+      return blocked('请先完成探索编队引导，再进行探索。');
     }
     if (!hasTutorialScoutFormation(gameState, payload)) {
-      return blocked('Please keep the tutorial scout famous person in formation 1 before exploring.');
+      return blocked('请让教程赠送的先驱名人留在一号编队后再探索。');
     }
     return { allowed: true };
   }
@@ -150,43 +158,42 @@ function validateScoutExploreAction(step, action, payload, gameState) {
 }
 
 function validateFirstCityGuideAction(step, action, payload, gameState) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   const firstCityId = getTutorialFirstEmptyCityId(gameState.tutorial);
   const targetId = String(payload?.territoryId || payload?.cityId || '').trim();
   const target = getTerritoryById(gameState, targetId);
   const isFirstCity = firstCityId && targetId === firstCityId;
 
   if (action === 'startConquest') {
-    if (step !== TUTORIAL_STEPS.firstCityDiscovered) {
-      return blocked('Please finish the current guided city step first.');
+    if (!stepEquals(step, TUTORIAL_STEPS.firstCityDiscovered)) {
+      return blocked('请先完成当前的占城引导步骤。');
     }
     if (!isFirstCity || !target || target.status !== 'discovered' || target.owner !== 'neutral') {
-      return blocked('Please claim the empty city discovered by the guided exploration first.');
+      return blocked('请先占领引导探索发现的空城。');
     }
     return { allowed: true };
   }
 
   if (action === 'claimConquest') {
-    if (step !== TUTORIAL_STEPS.firstCityConquestStarted) {
-      return blocked('Please start the guided city claim first.');
+    if (!stepEquals(step, TUTORIAL_STEPS.firstCityConquestStarted)) {
+      return blocked('请先按照引导发起空城占领。');
     }
-    if (!isFirstCity) return blocked('Please finish claiming the guided empty city.');
+    if (!isFirstCity) return blocked('请先完成引导空城的占领。');
     return { allowed: true };
   }
 
   if (action === 'renameCity') {
-    if (step !== TUTORIAL_STEPS.firstCityOccupied) {
-      return blocked('Please finish claiming the guided empty city before naming it.');
+    if (!stepEquals(step, TUTORIAL_STEPS.firstCityOccupied)) {
+      return blocked('请先完成空城占领，再进行命名。');
     }
     if (!isFirstCity || !target || target.status !== 'occupied') {
-      return blocked('Please name the newly claimed guided city.');
+      return blocked('请为新占领的引导城市命名。');
     }
     return { allowed: true };
   }
 
   if (action === 'renamePolity') {
-    if (step !== TUTORIAL_STEPS.firstCityNamed) {
-      return blocked('Please name the new city before naming the civilization.');
+    if (!stepEquals(step, TUTORIAL_STEPS.firstCityNamed)) {
+      return blocked('请先为新城命名，再为势力命名。');
     }
     return { allowed: true };
   }
@@ -206,58 +213,57 @@ function validateFirstCityGuideAction(step, action, payload, gameState) {
     'returnWorldMarch',
     'stopWorldMarch',
   ].includes(action)) {
-    return blocked('Please finish claiming and naming the new city first.');
+    return blocked('请先完成新城的占领与命名。');
   }
 
   return { allowed: true };
 }
 
 function validatePostNamingSystemGuideAction(step, action, payload = {}) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   if (action === 'tutorialAdvance') {
-    const requestedStep = Number(payload?.step);
+    // Mixed-version tolerance: clients send the step name or the legacy number.
+    const requestedStep = payloadStepName(payload?.step);
     if (
-      (step === TUTORIAL_STEPS.polityNamed && requestedStep === TUTORIAL_STEPS.talentPolicyOpened)
-      || (step === TUTORIAL_STEPS.talentPolicyOpened && requestedStep === TUTORIAL_STEPS.talentPolicyApplied)
-      || (step === TUTORIAL_STEPS.manualTalentAssigned && requestedStep === TUTORIAL_STEPS.famousSeekOpened)
-      || (step === TUTORIAL_STEPS.famousSeekCompleted && requestedStep === TUTORIAL_STEPS.finalTechOpened)
-      || (step === TUTORIAL_STEPS.finalTechOpened && requestedStep === TUTORIAL_STEPS.completed)
+      (stepEquals(step, TUTORIAL_STEPS.polityNamed) && requestedStep === TUTORIAL_STEPS.talentPolicyOpened)
+      || (stepEquals(step, TUTORIAL_STEPS.talentPolicyOpened) && requestedStep === TUTORIAL_STEPS.talentPolicyApplied)
+      || (stepEquals(step, TUTORIAL_STEPS.manualTalentAssigned) && requestedStep === TUTORIAL_STEPS.famousSeekOpened)
+      || (stepEquals(step, TUTORIAL_STEPS.famousSeekCompleted) && requestedStep === TUTORIAL_STEPS.finalTechOpened)
+      || (stepEquals(step, TUTORIAL_STEPS.finalTechOpened) && requestedStep === TUTORIAL_STEPS.completed)
     ) {
       return { allowed: true };
     }
-    return blocked('Please follow the current guided system step.');
+    return blocked('请按照当前引导步骤操作。');
   }
 
-  if (step === TUTORIAL_STEPS.talentPolicyOpened && action === 'applyTalentPolicy') {
+  if (stepEquals(step, TUTORIAL_STEPS.talentPolicyOpened) && action === 'applyTalentPolicy') {
     return { allowed: true };
   }
-  if (step === TUTORIAL_STEPS.talentPolicyApplied && action === 'assign') {
+  if (stepEquals(step, TUTORIAL_STEPS.talentPolicyApplied) && action === 'assign') {
     const amount = Number(payload?.count) || 0;
-    if (!payload?.target || amount === 0) return blocked('Please manually adjust one talent assignment.');
+    if (!payload?.target || amount === 0) return blocked('请手动调整一次人才分配。');
     return { allowed: true };
   }
-  if (step === TUTORIAL_STEPS.famousSeekOpened && action === 'seekFamousPerson') {
+  if (stepEquals(step, TUTORIAL_STEPS.famousSeekOpened) && action === 'seekFamousPerson') {
     return { allowed: true };
   }
 
-  return blocked('Please finish the current post-naming guide before using other systems.');
+  return blocked('请先完成当前引导，再使用其他系统。');
 }
 
 function validateAction(tutorialState, action, payload = {}, gameState = {}) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   const PASS_THROUGH_ACTIONS = getPassThroughActions();
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return { allowed: true };
   const step = tutorial.currentStep;
 
   if (
-    step >= TUTORIAL_STEPS.firstCityDiscovered
-    && step < TUTORIAL_STEPS.polityNamed
+    stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered)
+    && stepBefore(step, TUTORIAL_STEPS.polityNamed)
   ) {
     return validateFirstCityGuideAction(step, action, payload, gameState);
   }
 
-  if (step >= TUTORIAL_STEPS.polityNamed && step < TUTORIAL_STEPS.completed) {
+  if (stepAtLeast(step, TUTORIAL_STEPS.polityNamed) && stepBefore(step, TUTORIAL_STEPS.completed)) {
     return validatePostNamingSystemGuideAction(step, action, payload);
   }
 
@@ -267,19 +273,19 @@ function validateAction(tutorialState, action, payload = {}, gameState = {}) {
     return validateScoutExploreAction(step, action, payload, gameState);
   }
 
-  if (step < TUTORIAL_STEPS.houseBuilt) {
+  if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) {
     return validateHouseGuideAction(step, action, payload, gameState);
   }
-  if (step < TUTORIAL_STEPS.eraAdvancedTo1) {
+  if (stepBefore(step, TUTORIAL_STEPS.eraAdvancedTo1)) {
     return validateFirstEraAction(step, action, payload, gameState);
   }
-  if (step < TUTORIAL_STEPS.era2AdvanceReady) {
+  if (stepBefore(step, TUTORIAL_STEPS.era2AdvanceReady)) {
     return validateFirstEraAction(step, action, payload, gameState);
   }
-  if (!tutorial.phaseCompleted.era2 && step >= TUTORIAL_STEPS.era2AdvanceReady) {
+  if (!tutorial.phaseCompleted.era2 && stepAtLeast(step, TUTORIAL_STEPS.era2AdvanceReady)) {
     return validateEra2Action(step, action, payload, gameState);
   }
-  if (step >= TUTORIAL_STEPS.era3AdvanceReady && step < TUTORIAL_STEPS.scoutFormationSaved) {
+  if (stepAtLeast(step, TUTORIAL_STEPS.era3AdvanceReady) && stepBefore(step, TUTORIAL_STEPS.scoutFormationSaved)) {
     return validateScoutFormationAction(step, action, payload, gameState);
   }
   return { allowed: true };

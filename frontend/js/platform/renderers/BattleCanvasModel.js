@@ -45,8 +45,8 @@
   function getBattleTurnSoldierCount(turn = {}, side = 'attacker', timing = 'after', fallback = 0) {
     const nested = turn?.[`soldiers${timing === 'after' ? 'After' : 'Before'}`]?.[side];
     if (nested !== undefined && nested !== null) return Number(nested) || 0;
-    const legacyKey = `${side}Soldiers${timing === 'after' ? 'After' : 'Before'}`;
-    if (turn?.[legacyKey] !== undefined && turn?.[legacyKey] !== null) return Number(turn[legacyKey]) || 0;
+    const flatReportKey = `${side}Soldiers${timing === 'after' ? 'After' : 'Before'}`;
+    if (turn?.[flatReportKey] !== undefined && turn?.[flatReportKey] !== null) return Number(turn[flatReportKey]) || 0;
     return Number(fallback) || 0;
   }
 

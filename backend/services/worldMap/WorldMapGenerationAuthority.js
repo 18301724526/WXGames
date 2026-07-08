@@ -5,7 +5,7 @@ const { hashString } = require('../../../shared/signatureHash');
 
 const SCHEMA = 'world-map-generation-authority-v1';
 const AUTHORITY = 'server';
-const DOMAIN = 'worldMap';
+const SCOPE = 'worldMap';
 const DEFAULT_ACTION = 'materialize';
 const DETERMINISTIC_MODE = 'seeded-hash';
 const HASH_SCALE = 4294967295;
@@ -44,7 +44,7 @@ function createGenerationScope(input = {}) {
   return Object.freeze({
     schema: SCHEMA,
     authority: AUTHORITY,
-    domain: DOMAIN,
+    scope: SCOPE,
     mode: DETERMINISTIC_MODE,
     action: normalized.action,
     subjectId: normalized.subjectId,
@@ -59,7 +59,7 @@ function createRollId(roll) {
   return hashString([
     roll.schema,
     roll.authority,
-    roll.domain,
+    roll.scope,
     roll.mode,
     roll.action,
     roll.subjectId,
@@ -105,7 +105,7 @@ function createWorldMapGenerationMetadata(seed = DEFAULT_WORLD_SEED, options = {
   return {
     schema: scope.schema,
     authority: scope.authority,
-    domain: scope.domain,
+    scope: scope.scope,
     mode: scope.mode,
     action: scope.action,
     subjectId: scope.subjectId,
@@ -117,7 +117,7 @@ module.exports = {
   AUTHORITY,
   DEFAULT_ACTION,
   DETERMINISTIC_MODE,
-  DOMAIN,
+  SCOPE,
   HASH_SCALE,
   SCHEMA,
   createDeterministicRoll,

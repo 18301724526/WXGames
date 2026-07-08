@@ -45,7 +45,13 @@ test('tutorial module responsibilities remain split by public contract', () => {
   assert.equal(TutorialTabAccess.canAccessTab(houseReady, 'buildings'), true);
   assert.equal(TutorialActionValidator.validateAction(houseReady, 'build', { target: 'house' }, gameState).allowed, true);
   assert.equal(TutorialActionValidator.validateAction(houseReady, 'build', { target: 'farm' }, gameState).allowed, false);
-  assert.deepEqual(TutorialGrantService.getHouseGuideMinimumResources(), TutorialService.getHouseGuideMinimumResources());
+  // Grant cores are claim-driven (task rewards), not normalize-time ensures. S5 adds
+  // grantTutorialFirstCity: the scout-officer claim also PRE-PLACES the tutorial first city + sets its
+  // grant (docs/design/10 §3.3), so the guided-explore segment has its single-source target from the start.
+  assert.deepEqual(
+    Object.keys(TutorialGrantService).sort(),
+    ['grantScoutFamousPerson', 'grantTutorialFirstCity', 'recordFirstArmyGrant'],
+  );
 });
 
 test('TutorialService facade preserves the legacy tutorial API', () => {
@@ -55,10 +61,6 @@ test('TutorialService facade preserves the legacy tutorial API', () => {
     'advanceTutorial',
     'canAccessTab',
     'createInitialTutorialState',
-    'ensureHouseGuideResources',
-    'ensureLumbermillGuideResources',
-    'ensureScoutFamousPersonGrant',
-    'getHouseGuideMinimumResources',
     'manualAdvance',
     'maybeActivateEra2Tutorial',
     'normalizeTutorialState',

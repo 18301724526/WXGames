@@ -24,8 +24,15 @@
         || (this.targetFps > 0 ? 1000 / this.targetFps : 16);
       this.logicalWidth = Number(options.logicalWidth) || 0;
       this.logicalHeight = Number(options.logicalHeight) || 0;
+      // Explicit surface size in CSS pixels for canvases without getBoundingClientRect
+      // (OffscreenCanvas draw surfaces): resize() falls back to these before logicalWidth.
+      this.cssWidth = Number(options.cssWidth) || 0;
+      this.cssHeight = Number(options.cssHeight) || 0;
       this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || Infinity;
       this.viewportRect = options.viewportRect || null;
+      this.viewScale = Math.max(0.01, Number(options.viewScale) || 1);
+      this.viewOffsetX = Number(options.viewOffsetX) || 0;
+      this.viewOffsetY = Number(options.viewOffsetY) || 0;
       this.assetBase = '';
       this.jsonFile = '';
       this.atlasFile = '';
@@ -34,10 +41,15 @@
       this.premultipliedAlpha = Boolean(options.premultipliedAlpha);
       this.background = options.background || null;
       this.fitPadding = Number(options.fitPadding ?? 1.08);
-      this.viewFocus = options.viewFocus || null;
       this.preserveDrawingBuffer = Boolean(options.preserveDrawingBuffer);
       this.onStatus = typeof options.onStatus === 'function' ? options.onStatus : null;
       this.onError = typeof options.onError === 'function' ? options.onError : null;
+      this.onBounds = typeof options.onBounds === 'function' ? options.onBounds : null;
+      // Fires synchronously after each rendered frame, before the next frame is scheduled —
+      // the hook offscreen-surface hosts use to present the frame (preserveDrawingBuffer:false
+      // keeps the drawing buffer readable only within the same task).
+      this.onFrame = typeof options.onFrame === 'function' ? options.onFrame : null;
+      this.lastBoundsSignature = '';
     }
 
     static isAvailable(spine = global.spine) {
@@ -99,7 +111,6 @@
         this.loop = options.loop !== false;
         this.premultipliedAlpha = Boolean(options.premultipliedAlpha ?? this.premultipliedAlpha);
         this.fitPadding = Number(options.fitPadding ?? this.fitPadding) || 1.08;
-        this.viewFocus = options.viewFocus || this.viewFocus;
         this.preserveDrawingBuffer = Boolean(options.preserveDrawingBuffer ?? this.preserveDrawingBuffer);
         this.targetFps = Number(options.targetFps ?? this.targetFps) || 0;
         this.frameIntervalMs = Number(options.frameIntervalMs)
@@ -107,14 +118,20 @@
           || 16;
         this.logicalWidth = Number(options.logicalWidth) || this.logicalWidth;
         this.logicalHeight = Number(options.logicalHeight) || this.logicalHeight;
+        this.cssWidth = Number(options.cssWidth) || this.cssWidth || 0;
+        this.cssHeight = Number(options.cssHeight) || this.cssHeight || 0;
+        if (typeof options.onFrame === 'function') this.onFrame = options.onFrame;
         this.maxDevicePixelRatio = Number(options.maxDevicePixelRatio) || this.maxDevicePixelRatio || Infinity;
         this.viewportRect = options.viewportRect || this.viewportRect || null;
+        this.viewScale = Math.max(0.01, Number(options.viewScale ?? this.viewScale) || 1);
+        this.viewOffsetX = Number(options.viewOffsetX ?? this.viewOffsetX) || 0;
+        this.viewOffsetY = Number(options.viewOffsetY ?? this.viewOffsetY) || 0;
         this.background = options.background ?? this.background;
         this.assetManager = new this.spine.webgl.AssetManager(this.context, this.assetBase);
         this.assetManager.loadText(this.jsonFile);
         this.assetManager.loadTextureAtlas(this.atlasFile);
         this.emitStatus('loading', `${this.assetBase}${this.jsonFile}`);
-        this.animationFrame = this.requestAnimationFrame(() => this.loadFrame());
+        this.animationFrame = this.requestRuntimeAnimationFrame(() => this.loadFrame());
         return true;
       } catch (error) {
         this.handleError(error);
@@ -126,7 +143,7 @@
       if (!this.assetManager) return;
       try {
         if (!this.assetManager.isLoadingComplete()) {
-          this.animationFrame = this.requestAnimationFrame(() => this.loadFrame());
+          this.animationFrame = this.requestRuntimeAnimationFrame(() => this.loadFrame());
           return;
         }
         const atlas = this.assetManager.get(this.atlasFile);
@@ -136,6 +153,7 @@
         const skeletonData = skeletonJson.readSkeletonData(this.assetManager.get(this.jsonFile));
         this.skeleton = new this.spine.Skeleton(skeletonData);
         this.bounds = this.calculateSetupPoseBounds(this.skeleton);
+        this.emitBounds('setup');
         const animationStateData = new this.spine.AnimationStateData(skeletonData);
         animationStateData.defaultMix = 0;
         this.animationState = new this.spine.AnimationState(animationStateData);
@@ -157,13 +175,46 @@
       return { offset, size };
     }
 
+    getBoundsSummary() {
+      const offset = this.bounds?.offset || {};
+      const size = this.bounds?.size || {};
+      const x = Number(offset.x) || 0;
+      const y = Number(offset.y) || 0;
+      const width = Math.max(1, Number(size.x) || 1);
+      const height = Math.max(1, Number(size.y) || 1);
+      return {
+        x,
+        y,
+        width,
+        height,
+        centerX: x + width / 2,
+        centerY: y + height / 2,
+        aspectRatio: width / height,
+      };
+    }
+
+    emitBounds(reason = '') {
+      if (!this.onBounds || !this.bounds) return false;
+      const bounds = this.getBoundsSummary();
+      const signature = [
+        Math.round(bounds.x * 100),
+        Math.round(bounds.y * 100),
+        Math.round(bounds.width * 100),
+        Math.round(bounds.height * 100),
+      ].join(':');
+      if (signature === this.lastBoundsSignature) return false;
+      this.lastBoundsSignature = signature;
+      this.onBounds({ bounds, reason, player: this });
+      return true;
+    }
+
     resize() {
       if (!this.canvas || !this.gl || !this.mvp || !this.bounds) return false;
       const rect = this.canvas.getBoundingClientRect?.() || {};
       const baseWidth = this.logicalWidth || this.canvas.clientWidth || this.canvas.width || 1;
       const baseHeight = this.logicalHeight || this.canvas.clientHeight || this.canvas.height || 1;
-      const cssWidth = Math.max(1, Math.floor(rect.width || baseWidth));
-      const cssHeight = Math.max(1, Math.floor(rect.height || baseHeight));
+      const cssWidth = Math.max(1, Math.floor(rect.width || this.cssWidth || baseWidth));
+      const cssHeight = Math.max(1, Math.floor(rect.height || this.cssHeight || baseHeight));
       const maxRatio = Math.max(1, Number(this.maxDevicePixelRatio) || 1);
       const ratio = Math.max(1, Math.min(maxRatio, Number(this.runtime.devicePixelRatio) || 1));
       const width = Math.floor(cssWidth * ratio);
@@ -175,22 +226,18 @@
       const bounds = this.bounds;
       const centerX = bounds.offset.x + bounds.size.x / 2;
       const centerY = bounds.offset.y + bounds.size.y / 2;
-      if (this.viewFocus) {
-        const focusCenterX = Number(this.viewFocus.centerX ?? centerX);
-        const focusCenterY = Number(this.viewFocus.centerY ?? centerY);
-        const requestedHeight = Number(this.viewFocus.height ?? this.viewFocus.worldHeight);
-        const viewHeight = Math.max(1, Number.isFinite(requestedHeight) ? requestedHeight : bounds.size.y * this.fitPadding);
-        const viewWidth = viewHeight * (viewport.width / Math.max(1, viewport.height));
-        this.mvp.ortho2d(focusCenterX - viewWidth / 2, focusCenterY - viewHeight / 2, viewWidth, viewHeight);
-        this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-        return true;
-      }
       const safeBoundsWidth = Math.max(1, bounds.size.x);
       const safeBoundsHeight = Math.max(1, bounds.size.y);
-      const scale = Math.max(safeBoundsWidth / viewport.width, safeBoundsHeight / viewport.height) * this.fitPadding;
+      const visualScale = Math.max(0.01, Number(this.viewScale) || 1);
+      const scale = (
+        Math.max(safeBoundsWidth / viewport.width, safeBoundsHeight / viewport.height)
+        * this.fitPadding
+      ) / visualScale;
       const viewWidth = viewport.width * Math.max(scale, 0.0001);
       const viewHeight = viewport.height * Math.max(scale, 0.0001);
-      this.mvp.ortho2d(centerX - viewWidth / 2, centerY - viewHeight / 2, viewWidth, viewHeight);
+      const viewCenterX = centerX - (Number(this.viewOffsetX) || 0) * scale;
+      const viewCenterY = centerY + (Number(this.viewOffsetY) || 0) * scale;
+      this.mvp.ortho2d(viewCenterX - viewWidth / 2, viewCenterY - viewHeight / 2, viewWidth, viewHeight);
       this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
       return true;
     }
@@ -213,6 +260,19 @@
 
     setViewportRect(rect = null) {
       this.viewportRect = rect || null;
+      return true;
+    }
+
+    setViewTransform(options = {}) {
+      if (options.viewportRect !== undefined) this.viewportRect = options.viewportRect || null;
+      if (options.fitPadding !== undefined) {
+        this.fitPadding = Number(options.fitPadding) || this.fitPadding || 1.08;
+      }
+      if (options.viewScale !== undefined) {
+        this.viewScale = Math.max(0.01, Number(options.viewScale) || 1);
+      }
+      if (options.viewOffsetX !== undefined) this.viewOffsetX = Number(options.viewOffsetX) || 0;
+      if (options.viewOffsetY !== undefined) this.viewOffsetY = Number(options.viewOffsetY) || 0;
       return true;
     }
 
@@ -241,6 +301,7 @@
         this.skeletonRenderer.draw(this.batcher, this.skeleton);
         this.batcher.end();
         this.shader.unbind();
+        if (this.onFrame) this.onFrame(this);
         this.animationFrame = this.scheduleRenderFrame();
       } catch (error) {
         this.handleError(error);
@@ -268,8 +329,8 @@
       };
     }
 
-    requestAnimationFrame(callback) {
-      const raf = this.runtime.requestAnimationFrame || global.requestAnimationFrame;
+    requestRuntimeAnimationFrame(callback) {
+      const raf = this.runtime.requestAnimationFrame;
       if (typeof raf === 'function') {
         this.animationFrameType = 'raf';
         return raf.call(this.runtime, callback);
@@ -280,28 +341,28 @@
 
     scheduleRenderFrame() {
       const interval = Math.max(16, Number(this.frameIntervalMs) || 16);
-      const setDelay = this.runtime.setTimeout || global.setTimeout;
+      const setDelay = this.runtime.setTimeout;
       if (interval > 20 && typeof setDelay === 'function') {
         this.animationFrameType = 'timeout';
         return setDelay.call(this.runtime, () => this.renderFrame(), interval);
       }
-      return this.requestAnimationFrame(() => this.renderFrame());
+      return this.requestRuntimeAnimationFrame(() => this.renderFrame());
     }
 
     cancelAnimationFrame(id) {
       if (!id) return;
       if (this.animationFrameType === 'timeout') {
-        const clearDelay = this.runtime.clearTimeout || global.clearTimeout;
+        const clearDelay = this.runtime.clearTimeout;
         if (typeof clearDelay === 'function') clearDelay.call(this.runtime, id);
         return;
       }
-      const cancel = this.runtime.cancelAnimationFrame || global.cancelAnimationFrame;
+      const cancel = this.runtime.cancelAnimationFrame;
       if (typeof cancel === 'function') cancel.call(this.runtime, id);
       else this.runtime.clearTimeout?.(id);
     }
 
     nowSeconds() {
-      const perf = this.runtime.performance || global.performance;
+      const perf = this.runtime.performance;
       if (perf && typeof perf.now === 'function') return perf.now() / 1000;
       return Date.now() / 1000;
     }

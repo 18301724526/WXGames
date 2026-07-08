@@ -5,7 +5,11 @@ const { spawnSync } = require('node:child_process');
 const repoRoot = path.join(__dirname, '..');
 const SHELL_SCRIPTS = Object.freeze([
   'deploy.sh',
+  'scripts/deploy-test-server.sh',
+  'scripts/deploy-refactor-tutorial-server.sh',
   'scripts/pre-deploy-gate.sh',
+  'scripts/prepare-test-server-runtime.sh',
+  'scripts/test-server-ci-gate.sh',
   'scripts/verify-deploy-hook.sh',
   'scripts/rollback-deploy.sh',
   'scripts/backup-runtime-state.sh',
@@ -27,8 +31,15 @@ function findBash() {
   const command = process.platform === 'win32' ? 'where' : 'command';
   const args = process.platform === 'win32' ? ['bash'] : ['-v', 'bash'];
   const result = spawnSync(command, args, { encoding: 'utf8', shell: process.platform !== 'win32' });
-  const candidate = String(result.stdout || '').split(/\r?\n/).find(Boolean);
-  if (candidate) return candidate.trim();
+  // `where bash` can return multiple candidates; on Windows the first is often the
+  // WindowsApps WSL execution alias, which fs.existsSync rejects and which cannot run
+  // Windows-path scripts. Pick the first candidate that actually resolves on disk.
+  const candidates = String(result.stdout || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const usable = candidates.find((candidate) => fs.existsSync(candidate));
+  if (usable) return usable;
   return FALLBACK_BASH_PATHS.find((fallbackPath) => fs.existsSync(fallbackPath)) || '';
 }
 

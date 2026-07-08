@@ -5,11 +5,13 @@ const TutorialGuideStepPolicy = require('./TutorialGuideStepPolicy');
 
 const { TUTORIAL_STEPS } = TutorialGuideStepPolicy;
 
-test('TutorialGuideStepPolicy exposes stable tutorial step values', () => {
-  assert.equal(TUTORIAL_STEPS.initial, 0);
-  assert.equal(TUTORIAL_STEPS.cityEntered, 2);
-  assert.equal(TUTORIAL_STEPS.completed, 36);
-  assert.equal(TutorialGuideStepPolicy.normalizeStep('not-a-step'), 0);
+test('TutorialGuideStepPolicy exposes the shared step-name table', () => {
+  assert.equal(TUTORIAL_STEPS.initial, 'initial');
+  assert.equal(TUTORIAL_STEPS.cityEntered, 'cityEntered');
+  assert.equal(TUTORIAL_STEPS.completed, 'completed');
+  assert.equal(TutorialGuideStepPolicy.normalizeStep('not-a-step'), 'initial');
+  // Legacy numeric steps stay accepted and canonicalize onto the step name.
+  assert.equal(TutorialGuideStepPolicy.normalizeStep(2), 'cityEntered');
 });
 
 test('TutorialGuideStepPolicy gates tab access by current tutorial step', () => {

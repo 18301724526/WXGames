@@ -6,6 +6,7 @@ const path = require('node:path');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldAiExplorerService = require('../services/WorldAiExplorerService');
 const WorldMapService = require('../services/WorldMapService');
+const WorldCitySpawner = require('../services/worldCombat/WorldCitySpawner');
 const RoutePlanner = require('../services/worldExplorer/WorldExplorerRoutePlanner');
 const MissionNormalizer = require('../services/worldExplorer/WorldExplorerMissionNormalizer');
 const Progression = require('../services/worldExplorer/WorldExplorerProgression');
@@ -13,7 +14,6 @@ const ClientState = require('../services/worldExplorer/WorldExplorerClientState'
   const Shared = require('../services/worldExplorer/WorldExplorerShared');
 const Actions = require('../services/worldExplorer/WorldExplorerActions');
 const Realtime = require('../services/realtime');
-const { TutorialFlowConfig } = require('../services/config/GameplayConfigRuntime');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const explorerRoot = path.join(serviceRoot, 'worldExplorer');
@@ -39,6 +39,7 @@ test('WorldExplorerService stays a facade over focused explorer modules', () => 
     'WorldExplorerShared.js',
     'WorldExplorerTrace.js',
     'WorldExplorerTutorial.js',
+    'WorldExplorerVision.js',
     'WorldMarchVerification.js',
   ]);
   for (const fileName of moduleFiles) {
@@ -70,8 +71,10 @@ test('world explorer modules preserve the public exploration contract', () => {
   };
 
   assert.equal(manual.success, true);
-  assert.equal(mission.route.length, 2);
-  Progression.normalizeExploreState(state, new Date(now.getTime() + 30000));
+  // Axis-aligned route: (0,0)->(2,1) is a 3-step staircase (Manhattan |2|+|1|), not the
+  // old 2-step diagonal. Advance long enough for all 3 steps (10s each) to complete.
+  assert.equal(mission.route.length, 3);
+  Progression.normalizeExploreState(state, new Date(now.getTime() + 60000));
   assert.equal(state.exploreMissions[0].status, 'idle');
   assert.equal(ClientState.getClientState(state, now).idleMissions.length, 1);
 });
@@ -126,186 +129,8 @@ test('WorldExplorerMissionNormalizer derives revealed route identity from coordi
   assert.equal(JSON.stringify(mission).includes('legacy-route'), false);
 });
 
-test('world explorer progression materializes planned sites by step coordinates', (t) => {
-  const originalBindSiteToTile = WorldMapService.bindSiteToTile;
-  const calls = [];
-  t.after(() => {
-    WorldMapService.bindSiteToTile = originalBindSiteToTile;
-  });
-  WorldMapService.bindSiteToTile = (_gameState, x, y, siteId, _now, options) => {
-    calls.push({ x, y, siteId, options });
-    return {
-      id: WorldMapService.getTileId(x, y),
-      q: x,
-      r: y,
-      siteId,
-      visibility: options?.visibility || 'scouted',
-    };
-  };
-
-  const gameState = { territories: [], tutorial: { completed: true } };
-  const mission = {
-    id: 'stale-step-tile',
-    plannedSites: [{
-      tileId: 'tile_2_-1',
-      q: 2,
-      r: -1,
-      siteId: 'site_2_-1',
-      materialized: false,
-      site: {
-        id: 'site_2_-1',
-        x: 2,
-        y: -1,
-        owner: 'neutral',
-        status: 'discovered',
-      },
-    }],
-  };
-
-  const materialized = Progression.materializePlannedSitesForStep(
-    gameState,
-    mission,
-    { q: 2, r: -1, tileId: 'stale-step-tile' },
-    new Date('2026-06-06T00:00:00.000Z'),
-  );
-
-  assert.equal(materialized.length, 1);
-  assert.equal(materialized[0].site.id, 'site_2_-1');
-  assert.equal(materialized[0].tile.id, 'tile_2_-1');
-  assert.deepEqual(calls, [{
-    x: 2,
-    y: -1,
-    siteId: 'site_2_-1',
-    options: { visibility: 'scouted' },
-  }]);
-  assert.equal(mission.plannedSites[0].materialized, true);
-});
-
-test('world explorer progression does not materialize planned tutorial sites over existing coordinates', (t) => {
-  const originalBindSiteToTile = WorldMapService.bindSiteToTile;
-  const calls = [];
-  t.after(() => {
-    WorldMapService.bindSiteToTile = originalBindSiteToTile;
-  });
-  WorldMapService.bindSiteToTile = (_gameState, x, y, siteId, _now, options) => {
-    calls.push({ x, y, siteId, options });
-    return {
-      id: WorldMapService.getTileId(x, y),
-      q: x,
-      r: y,
-      siteId,
-      visibility: options?.visibility || 'scouted',
-    };
-  };
-
-  const gameState = {
-    territories: [{
-      id: 'other-existing-city',
-      x: 2,
-      y: -1,
-      owner: 'player',
-      ownerPlayerId: 'other-player',
-      status: 'occupied',
-    }],
-    tutorial: { grants: {} },
-  };
-  const mission = {
-    id: 'occupied-planned-site',
-    plannedSites: [{
-      tileId: 'tile_2_-1',
-      q: 2,
-      r: -1,
-      siteId: 'site_2_-1',
-      materialized: false,
-      site: {
-        id: 'site_2_-1',
-        x: 2,
-        y: -1,
-        owner: 'neutral',
-        status: 'discovered',
-      },
-    }],
-  };
-
-  const materialized = Progression.materializePlannedSitesForStep(
-    gameState,
-    mission,
-    { q: 2, r: -1 },
-    new Date('2026-06-06T00:00:00.000Z'),
-  );
-
-  assert.equal(materialized.length, 0);
-  assert.equal(gameState.territories.length, 1);
-  assert.equal(gameState.territories[0].id, 'other-existing-city');
-  assert.equal(mission.plannedSites[0].materialized, false);
-  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity, undefined);
-  assert.deepEqual(calls, []);
-});
-
-test('world explorer progression does not materialize planned tutorial sites over shared projected coordinates', (t) => {
-  const originalBindSiteToTile = WorldMapService.bindSiteToTile;
-  const calls = [];
-  t.after(() => {
-    WorldMapService.bindSiteToTile = originalBindSiteToTile;
-  });
-  WorldMapService.bindSiteToTile = (_gameState, x, y, siteId, _now, options) => {
-    calls.push({ x, y, siteId, options });
-    return {
-      id: WorldMapService.getTileId(x, y),
-      q: x,
-      r: y,
-      siteId,
-      visibility: options?.visibility || 'scouted',
-    };
-  };
-
-  const gameState = {
-    territories: [],
-    tutorial: { grants: {} },
-  };
-  const mission = {
-    id: 'shared-occupied-planned-site',
-    plannedSites: [{
-      tileId: 'tile_2_-1',
-      q: 2,
-      r: -1,
-      siteId: 'site_2_-1',
-      materialized: false,
-      site: {
-        id: 'site_2_-1',
-        x: 2,
-        y: -1,
-        owner: 'neutral',
-        status: 'discovered',
-      },
-    }],
-  };
-
-  const materialized = Progression.materializePlannedSitesForStep(
-    gameState,
-    mission,
-    { q: 2, r: -1 },
-    new Date('2026-06-06T00:00:00.000Z'),
-    {
-      planningContext: {
-        sharedWorldTerritories: [{
-          id: 'other-shared-city',
-          x: 2,
-          y: -1,
-          owner: 'player',
-          ownerPlayerId: 'other-player',
-          status: 'occupied',
-        }],
-      },
-    },
-  );
-
-  assert.equal(materialized.length, 0);
-  assert.equal(gameState.territories.length, 0);
-  assert.equal(mission.plannedSites[0].materialized, false);
-  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity, undefined);
-  assert.deepEqual(calls, []);
-});
+// The plannedSites materialization path is deleted. World cities are authored once, then projected or
+// materialized through the shared discovery helper without route-local invented sites.
 
 test('WorldExplorerService facade exposes only the actor march API', () => {
   const expectedApi = [
@@ -316,7 +141,6 @@ test('WorldExplorerService facade exposes only the actor march API', () => {
     'TUTORIAL_FIRST_SITE_GRANT_KEY',
     'advanceExploreMissions',
     'buildManualRoute',
-    'ensureTutorialFirstCityClaimSoldiers',
     'getClientState',
     'normalizeExploreState',
     'normalizeMission',
@@ -395,80 +219,33 @@ test('world explorer generation context hashes nearby state instead of the full 
   assert.notEqual(nearbyContext.nearbyStateHash, baseContext.nearbyStateHash);
 });
 
-test('world explorer route planner creates tutorial planned sites by route coordinates', (t) => {
+test('companion city planner authors a neutral city from the spawn allocation target', () => {
+  const planned = WorldCitySpawner.planCompanionCity('tutorial-explorer-seed', {
+    allocation: { tutorialTarget: { q: 1, r: 0, terrain: 'plains' } },
+  });
+
+  assert.equal(planned.id, 'site_1_0');
+  assert.equal(planned.owner, 'neutral');
+  assert.equal(planned.type, 'town');
+  assert.equal(planned.status, 'discovered');
+  // §4-4: no derived fields authored.
+  assert.equal(Object.prototype.hasOwnProperty.call(planned, 'garrison'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(planned, 'battleTarget'), false);
+});
+
+test('companion city planner skips march-blocked target tiles', (t) => {
   const originalChooseTerrain = WorldMapService.chooseTerrain;
   t.after(() => {
     WorldMapService.chooseTerrain = originalChooseTerrain;
   });
-  WorldMapService.chooseTerrain = () => 'ocean';
+  // A blocked allocation target must not produce a companion city.
+  WorldMapService.chooseTerrain = (_seed, q, r) => (q === 1 && r === 0 ? 'ocean' : 'plains');
 
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = {
-    playerId: 'tutorial-planned-site-coordinate-test',
-    worldMap: { seed: 'tutorial-planned-site-seed', tiles: [] },
-    territories: [],
-    tutorial: {
-      completed: false,
-      currentStep: TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved,
-      grants: {},
-    },
-  };
-  const route = [
-    { q: 2, r: -1, step: 1, tileId: 'stale-route-tile' },
-  ];
-  const plannedTiles = [{
-    id: 'tile_2_-1',
-    q: 2,
-    r: -1,
-    terrain: 'forest',
-    visibility: 'scouted',
-  }];
-
-  const plannedSites = RoutePlanner.createTutorialPlannedSites(gameState, route, plannedTiles, now);
-
-  assert.equal(plannedSites.length, 1);
-  assert.equal(plannedSites[0].tileId, 'tile_2_-1');
-  assert.equal(plannedSites[0].site.mapTerrain, 'forest');
-  assert.equal(plannedSites[0].site.terrain, 'forest');
-});
-
-test('world explorer route planner excludes shared occupied coordinates for tutorial planned sites', () => {
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = {
-    playerId: 'tutorial-planned-site-shared-occupied-test',
-    worldMap: { seed: 'tutorial-planned-site-shared-seed', tiles: [] },
-    territories: [],
-    tutorial: {
-      completed: false,
-      currentStep: TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved,
-      grants: {},
-    },
-  };
-  const route = [
-    { q: 1, r: 0, step: 1 },
-    { q: 2, r: 0, step: 2 },
-  ];
-  const plannedTiles = RoutePlanner.createPlannedTiles(gameState, route, now, {
-    origin: { q: 0, r: 0 },
-    target: { q: 2, r: 0 },
+  const planned = WorldCitySpawner.planCompanionCity('any-seed', {
+    allocation: { tutorialTarget: { q: 1, r: 0 } },
   });
 
-  const plannedSites = RoutePlanner.createTutorialPlannedSites(gameState, route, plannedTiles, now, {
-    planningContext: {
-      sharedWorldTerritories: [{
-        id: 'shared-occupied-2-0',
-        x: 2,
-        y: 0,
-        owner: 'player',
-        ownerPlayerId: 'other-player',
-        status: 'occupied',
-      }],
-    },
-  });
-
-  assert.equal(plannedSites.length, 1);
-  assert.equal(plannedSites[0].tileId, 'tile_1_0');
-  assert.equal(plannedSites[0].site.id, 'site_1_0');
+  assert.equal(planned, null);
 });
 
 test('world explorer progression reveals a step through the world-map batch API', (t) => {
@@ -547,53 +324,54 @@ test('world explorer progression reveals a step through the world-map batch API'
   assert.equal(revealed[0].generationContext.direction, 'e');
 });
 
-test('world explorer progression merges materialized reveal tiles by coordinates', (t) => {
+test('world explorer progression merges vision-discovered city tiles into the revealed set', (t) => {
+  // S5: revealStep no longer materializes plannedSites. Instead, a PRE-PLACED neutral city whose tile
+  // enters vision is discovered (discoverPrePlacedCitiesInVision) and its tile is merged into the returned
+  // reveal set so the caller flows it into newlyRevealedTiles / the client. Here the city is fed via the
+  // shared projection, exactly as the S3 store delivers it.
   const originalRevealTiles = WorldMapService.revealTiles;
   const originalBindSiteToTile = WorldMapService.bindSiteToTile;
+  const originalRecordVisionSource = WorldMapService.recordVisionSource;
   t.after(() => {
     WorldMapService.revealTiles = originalRevealTiles;
     WorldMapService.bindSiteToTile = originalBindSiteToTile;
+    WorldMapService.recordVisionSource = originalRecordVisionSource;
   });
   WorldMapService.revealTiles = (_gameState, coords) => coords.map((coord) => ({
-    id: 'legacy-revealed-id',
+    id: WorldMapService.getTileId(coord.q, coord.r),
     q: coord.q,
     r: coord.r,
     terrain: 'plains',
     visibility: 'scouted',
   }));
-  WorldMapService.bindSiteToTile = (_gameState, x, y, siteId, _now, options) => ({
-    id: WorldMapService.getTileId(x, y),
-    q: x,
-    r: y,
-    siteId,
-    visibility: options?.visibility || 'scouted',
-  });
-
-  const gameState = { territories: [], tutorial: { completed: true } };
-  const mission = {
-    id: 'merge-materialized-step',
-    plannedTiles: [],
-    plannedSites: [{
-      tileId: 'tile_2_-1',
-      q: 2,
-      r: -1,
-      siteId: 'site_2_-1',
-      materialized: false,
-      site: {
-        id: 'site_2_-1',
-        x: 2,
-        y: -1,
-        owner: 'neutral',
-        status: 'discovered',
-      },
-    }],
+  WorldMapService.bindSiteToTile = (gameStateArg, x, y, siteId, _now, options) => {
+    const tile = {
+      id: WorldMapService.getTileId(x, y),
+      q: x,
+      r: y,
+      siteId,
+      visibility: options?.visibility || 'scouted',
+    };
+    gameStateArg.worldMap = gameStateArg.worldMap || { tiles: [] };
+    gameStateArg.worldMap.tiles = [...(gameStateArg.worldMap.tiles || []), tile];
+    return tile;
   };
+  WorldMapService.recordVisionSource = () => {};
 
-  const revealed = Progression.revealStep(gameState, mission, { q: 2, r: -1 }, new Date('2026-06-06T00:00:00.000Z'));
+  const gameState = { territories: [], worldMap: { tiles: [] }, tutorial: { completed: true } };
+  const mission = { id: 'merge-discovered-step', plannedTiles: [], plannedSites: [] };
+
+  const revealed = Progression.revealStep(gameState, mission, { q: 2, r: -1 }, new Date('2026-06-06T00:00:00.000Z'), {
+    planningContext: {
+      sharedWorldTerritories: [{
+        id: 'site_2_-1', x: 2, y: -1, owner: 'neutral', type: 'town', status: 'discovered', scale: 1, naturalName: '河湾村镇',
+      }],
+    },
+  });
 
   assert.equal(revealed.length, 9);
   assert.equal(revealed.some((tile) => tile.siteId === 'site_2_-1'), true);
-  assert.equal(mission.plannedSites[0].materialized, true);
+  assert.equal(gameState.territories.some((territory) => territory.id === 'site_2_-1'), true);
 });
 
 test('world explorer progression stores revealed mission ids from coordinates', (t) => {

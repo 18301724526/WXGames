@@ -1,4 +1,4 @@
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
 const ResourceTickCalculator = require('../calculators/ResourceTickCalculator');
 const MilitaryService = require('./MilitaryService');
@@ -49,7 +49,7 @@ function createCityState(options = {}) {
     isCapital: Boolean(options.isCapital || id === CAPITAL_CITY_ID),
     foundedAt: options.foundedAt || new Date().toISOString(),
     resources: createInitialResources(options.resources || { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 }),
-    buildings: BuildingState.normalizeLegacyBuildingState(options.buildings),
+    buildings: BuildingState.normalizeBuildingState(options.buildings),
     population: createInitialPopulation(options.population),
     military: options.military || { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     happiness: Number.isFinite(options.happiness) ? options.happiness : 100,
@@ -93,7 +93,7 @@ function getCapitalName(gameState) {
   return territory?.cityName || gameState.polity?.capitalCityName || '首都';
 }
 
-function migrateLegacyCapital(gameState) {
+function createCapitalCityFromState(gameState) {
   return createCityState({
     id: CAPITAL_CITY_ID,
     territoryId: CAPITAL_CITY_ID,
@@ -134,7 +134,7 @@ function normalizeCities(gameState, now = new Date()) {
       name: getCapitalName(gameState),
     }, gameState, now);
   } else {
-    cities[CAPITAL_CITY_ID] = migrateLegacyCapital(gameState);
+    cities[CAPITAL_CITY_ID] = createCapitalCityFromState(gameState);
     applyDerivedStatsToCity(cities[CAPITAL_CITY_ID], gameState);
   }
 
@@ -155,13 +155,38 @@ function normalizeCities(gameState, now = new Date()) {
 
   gameState.cities = cities;
   if (!cities[gameState.activeCityId]) gameState.activeCityId = CAPITAL_CITY_ID;
-  syncActiveCityToLegacyFields(gameState);
+  // Whoever rebuilds the city objects must rebuild the top-level aliases: the top-level
+  // resources/buildings/population/military ARE the active city's objects (same
+  // reference), so no later caller can ever observe diverged sibling copies.
+  const activeCity = cities[gameState.activeCityId] || cities[CAPITAL_CITY_ID];
+  if (activeCity) {
+    gameState.resources = activeCity.resources;
+    gameState.buildings = activeCity.buildings;
+    gameState.population = activeCity.population;
+    gameState.military = activeCity.military;
+  }
   return cities;
 }
 
 function getActiveCity(gameState) {
   if (!gameState.cities?.[gameState.activeCityId]) normalizeCities(gameState);
   return gameState.cities[gameState.activeCityId] || gameState.cities[CAPITAL_CITY_ID];
+}
+
+// Single source of truth: after normalization the top-level resources/buildings/
+// population/military fields ARE the active city's objects (same reference), never
+// sibling copies. Post-CUT7 saves persist these facts only city-scoped, so the legacy
+// top-level rebuild reads as zeros — every legacy reader that still goes through
+// gameState.<field> must transparently hit the city truth, and every legacy field-level
+// writer must mutate it. Divergence becomes structurally impossible.
+function aliasTopLevelToActiveCity(gameState) {
+  const city = getActiveCity(gameState);
+  if (!city) return gameState;
+  gameState.resources = city.resources;
+  gameState.buildings = city.buildings;
+  gameState.population = city.population;
+  gameState.military = city.military;
+  return gameState;
 }
 
 function getCapitalCity(gameState) {
@@ -195,40 +220,25 @@ function applyDerivedStatsToCity(city, gameState) {
     buildings: city.buildings,
     military: city.military,
   });
+  // This replaces the city's military object; keep the top-level alias pointing at the
+  // active city's CURRENT object (top-level fields are references, never copies).
+  if (
+    gameState &&
+    gameState.cities?.[city.id] === city &&
+    (gameState.activeCityId || CAPITAL_CITY_ID) === city.id
+  ) {
+    gameState.military = city.military;
+  }
   CityPlanningService.applyPlanningToCity(city, gameState);
   return effects;
-}
-
-function syncActiveCityToLegacyFields(gameState) {
-  const city = gameState.cities?.[gameState.activeCityId] || gameState.cities?.[CAPITAL_CITY_ID];
-  if (!city) return gameState;
-  gameState.resources = city.resources;
-  gameState.buildings = city.buildings;
-  gameState.population = city.population;
-  gameState.military = city.military;
-  gameState.happiness = city.happiness;
-  gameState.buildingEffects = city.buildingEffects;
-  return gameState;
-}
-
-function persistLegacyFieldsToActiveCity(gameState) {
-  const city = gameState.cities?.[gameState.activeCityId];
-  if (!city) return gameState;
-  city.resources = createInitialResources(gameState.resources);
-  city.buildings = BuildingState.normalizeLegacyBuildingState(gameState.buildings);
-  city.population = createInitialPopulation(gameState.population);
-  city.military = gameState.military || city.military;
-  city.happiness = Number.isFinite(gameState.happiness) ? gameState.happiness : city.happiness;
-  applyDerivedStatsToCity(city, gameState);
-  syncActiveCityToLegacyFields(gameState);
-  return gameState;
 }
 
 function setActiveCity(gameState, cityId) {
   normalizeCities(gameState);
   if (!gameState.cities[cityId]) return { success: false, error: 'CITY_NOT_FOUND', message: '城市不存在' };
   gameState.activeCityId = cityId;
-  syncActiveCityToLegacyFields(gameState);
+  // Re-point the top-level aliases at the newly active city.
+  aliasTopLevelToActiveCity(gameState);
   return { success: true, message: `已切换到${gameState.cities[cityId].name}`, city: gameState.cities[cityId] };
 }
 
@@ -239,10 +249,9 @@ function updateCityName(gameState, territoryId, name) {
     city.name = name;
     if (territoryId === CAPITAL_CITY_ID && gameState.polity) gameState.polity.capitalCityName = name;
   }
-  syncActiveCityToLegacyFields(gameState);
 }
 
-function advanceAllCities(gameState, deltaSeconds = 1) {
+function advanceAllCities(gameState, deltaSeconds = 1, nowMs = Date.now()) {
   normalizeCities(gameState);
   const seconds = Math.max(0, Number(deltaSeconds) || 0);
   for (const city of Object.values(gameState.cities)) {
@@ -277,11 +286,16 @@ function advanceAllCities(gameState, deltaSeconds = 1) {
     };
     MilitaryService.advanceTraining(trainingState, seconds);
     city.military = trainingState.military;
+    // 老兵营地: park pool drains over wall-clock time, trickling grain refunds back. Route the
+    // write through the canonical setters so the active city's top-level military/resources
+    // aliases stay in sync (a direct city.military = would leave gameState.military stale).
+    const campSettled = MilitaryService.settleVeteranCampDrain(city.military, city.resources, nowMs);
+    MilitaryService.setCityMilitary(gameState, city.id, campSettled.military);
+    MilitaryService.setCityResources(gameState, city.id, campSettled.resources);
   }
-  syncActiveCityToLegacyFields(gameState);
 }
 
-function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEfficiency) {
+function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEfficiency, nowMs = Date.now()) {
   normalizeCities(gameState);
   const actualOffline = Math.max(0, offlineSeconds);
   const incomeByCity = {};
@@ -320,10 +334,15 @@ function calculateOfflineIncomeForAllCities(gameState, offlineSeconds, baseEffic
     };
     MilitaryService.advanceTraining(trainingState, actualOffline);
     city.military = trainingState.military;
+    // 老兵营地 drains in wall-clock time, so settling to `nowMs` catches up the whole
+    // offline window at once (batch atMs are absolute) and credits the accrued refund. Route
+    // through the canonical setters to keep the active-city top-level aliases in sync.
+    const campSettled = MilitaryService.settleVeteranCampDrain(city.military, city.resources, nowMs);
+    MilitaryService.setCityMilitary(gameState, city.id, campSettled.military);
+    MilitaryService.setCityResources(gameState, city.id, campSettled.resources);
     incomeByCity[city.id] = income;
     if (city.id === gameState.activeCityId) activeIncome = income;
   }
-  syncActiveCityToLegacyFields(gameState);
   const active = activeIncome || incomeByCity[CAPITAL_CITY_ID] || { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, offlineHours: 0, efficiency: baseEfficiency };
   return {
     activeIncome: active,
@@ -345,6 +364,16 @@ function getClientCityState(gameState) {
   return getClientCityStateFromNormalized(gameState);
 }
 
+// The projected getVeteranCampView is the single client-facing camp source; the raw
+// military.veteranCamp is server-only settlement state (batches/atMs/drained), so strip it from
+// the client DTO to avoid shipping two divergent copies of the same fact.
+function toClientMilitary(military) {
+  if (!military || typeof military !== 'object') return military;
+  const rest = { ...military };
+  delete rest.veteranCamp;
+  return rest;
+}
+
 function getClientCityStateFromNormalized(gameState) {
   return {
     activeCityId: gameState.activeCityId || CAPITAL_CITY_ID,
@@ -357,7 +386,8 @@ function getClientCityStateFromNormalized(gameState) {
       foundedAt: city.foundedAt,
       population: city.population,
       resources: city.resources,
-      military: city.military,
+      military: toClientMilitary(city.military),
+      veteranCamp: MilitaryService.getVeteranCampView(city.military),
       happiness: city.happiness,
       planning: CityPlanningService.getClientPlanning(city),
       terrain: city.terrain,
@@ -376,10 +406,9 @@ module.exports = {
   createCityForTerritory,
   normalizeCities,
   getActiveCity,
+  aliasTopLevelToActiveCity,
   getCapitalCity,
   applyDerivedStatsToCity,
-  syncActiveCityToLegacyFields,
-  persistLegacyFieldsToActiveCity,
   setActiveCity,
   updateCityName,
   advanceAllCities,

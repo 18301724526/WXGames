@@ -9,6 +9,9 @@ test('CanvasPreloadAssetManifest exposes stable base preload asset keys', () => 
 
   assert.equal(keys.includes('background:civilization'), true);
   assert.equal(keys.includes('ui:icon:home'), true);
+  assert.equal(keys.includes('ui-hud:icon:capital'), true);
+  assert.equal(keys.includes('ui-hud:icon:account'), true);
+  assert.equal(keys.includes('ui-hud:resource:food'), true);
   assert.equal(keys.includes('world-site:city'), true);
   assert.equal(keys.includes('battle:background:forest-camp'), true);
 
@@ -21,6 +24,9 @@ test('CanvasPreloadAssetManifest preserves base preload assets', () => {
 
   assert.equal(base.includes('assets/art/civilization-bg.webp'), true);
   assert.equal(base.includes('assets/art/icon-home-cutout.png'), true);
+  assert.equal(base.includes('assets/art/ui-hud/hud-icon-capital.png'), true);
+  assert.equal(base.includes('assets/art/ui-hud/hud-icon-account.png'), true);
+  assert.equal(base.includes('assets/art/ui-hud/hud-resource-food.png'), true);
   assert.equal(base.includes('assets/art/world-site-city-cutout.png'), true);
   assert.equal(base.includes('assets/art/spine/tutorial/advisor/tutorial_advisor.png'), true);
   assert.equal(base.includes('assets/art/battle/battlefield-forest-camp.png'), true);
@@ -76,6 +82,7 @@ test('CanvasPreloadAssetManifest composes tile map, battle frame, and famous por
   });
 
   assert.equal(paths.includes('assets/art/icon-food-cutout.webp'), true);
+  assert.equal(paths.includes('assets/art/ui-hud/hud-icon-tasks.png'), true);
   assert.equal(paths.includes('tile-a.png'), true);
   assert.equal(paths.includes('battle-b.png'), true);
   assert.equal(paths.includes('assets/art/famous-person/layers/face.png'), true);
@@ -86,6 +93,7 @@ test('CanvasGameRenderer keeps preload asset path facade compatible', () => {
   const paths = CanvasGameRenderer.getPreloadAssetPaths();
 
   assert.equal(paths.includes('assets/art/icon-fire-cutout.webp'), true);
+  assert.equal(paths.includes('assets/art/ui-hud/hud-icon-signal.png'), true);
   assert.equal(paths.includes('assets/art/battle/battlefield-forest-camp.png'), true);
   assert.equal(paths.includes(CanvasGameRenderer.getBattleUnitFramePath('player', 'idle', 0)), true);
 });

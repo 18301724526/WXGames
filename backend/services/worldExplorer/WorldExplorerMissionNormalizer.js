@@ -211,6 +211,23 @@ function normalizeMission(rawMission) {
         memberIds: [],
       },
     formationSnapshot: FormationStrengthService.normalizeFormationSnapshot(rawMission.formationSnapshot),
+    combat: rawMission.combat && typeof rawMission.combat === 'object'
+      ? {
+        encounterId: String(rawMission.combat.encounterId || rawMission.combat.combatEncounterId || '').trim(),
+        // 'engaged' = arrived, interactive "retreat window" open (auto-engage); 'inBattle'
+        // = an interactive session is live. Both must survive normalization or the worker's
+        // re-normalize (advanceExploreMissions) would collapse them back to 'marching' and
+        // drop engagedAt/battleId, re-arming the arrival hook every tick.
+        status: ['marching', 'engaged', 'inBattle', 'resolved'].includes(rawMission.combat.status)
+          ? rawMission.combat.status
+          : 'marching',
+        startedAt: rawMission.combat.startedAt || rawMission.startedAt || new Date().toISOString(),
+        engagedAt: rawMission.combat.engagedAt || null,
+        battleId: rawMission.combat.battleId || null,
+        resolvedAt: rawMission.combat.resolvedAt || null,
+        battleReportId: rawMission.combat.battleReportId || null,
+      }
+      : null,
     startedAt: rawMission.startedAt || new Date().toISOString(),
     nextStepAt: status === 'idle' ? null : rawMission.nextStepAt || rawMission.startedAt || new Date().toISOString(),
     completesAt: rawMission.completesAt || rawMission.startedAt || new Date().toISOString(),

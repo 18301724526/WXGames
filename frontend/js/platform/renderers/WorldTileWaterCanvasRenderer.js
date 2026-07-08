@@ -15,7 +15,7 @@
     if (global.TileMapGeometry) return global.TileMapGeometry;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileMapGeometry');
+        return require('../../ecs/foundation/TileMapGeometry');
       } catch (error) {
         return null;
       }
@@ -26,37 +26,8 @@
   class WorldTileWaterCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host) {
-            if (typeof prop === 'string' && prop.startsWith('worldTile')) return host[prop];
-            if (prop in host) {
-              const hostValue = host[prop];
-              return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-            }
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value);
-          const host = target.host;
-          if (host) {
-            if (typeof prop === 'string' && prop.startsWith('worldTile')) {
-              host[prop] = value;
-              return true;
-            }
-            if (prop in host) {
-              host[prop] = value;
-              return true;
-            }
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
+      this.renderCtx = null;
     }
 
     static getTileMapAssetManifest() {
@@ -79,11 +50,108 @@
         || this.constructor.getTileMapGeometry();
     }
 
+    get ctx() {
+      return this.renderCtx || this.host?.ctx || null;
+    }
+
+    withRenderCtx(ctx = null, callback = null) {
+      if (typeof callback !== 'function') return false;
+      const previousCtx = this.renderCtx;
+      this.renderCtx = ctx || null;
+      try {
+        return callback();
+      } finally {
+        this.renderCtx = previousCtx;
+      }
+    }
+
+    getAsset(assetPath = '') {
+      return this.host?.getAsset?.(assetPath) || null;
+    }
+
+    createTileWorkCanvas(width, height) {
+      return this.host?.createTileWorkCanvas?.(width, height) || null;
+    }
+
+    getNow() {
+      return this.host?.getNow?.() ?? Date.now();
+    }
+
+    getFallbackAssetMetrics(image) {
+      if (this.host?.getFallbackAssetMetrics) return this.host.getFallbackAssetMetrics(image);
+      const width = Number(image?.naturalWidth || image?.width || 1) || 1;
+      const height = Number(image?.naturalHeight || image?.height || 1) || 1;
+      return { x: 0, y: 0, width, height, sourceWidth: width, sourceHeight: height };
+    }
+
+    analyzeAssetAlphaBounds(assetPath = '') {
+      return this.host?.analyzeAssetAlphaBounds?.(assetPath) || this.getFallbackAssetMetrics(this.getAsset(assetPath));
+    }
+
+    getWorldTileTemplateMetrics(template = {}) {
+      if (this.host?.getWorldTileTemplateMetrics) return this.host.getWorldTileTemplateMetrics(template);
+      const assetPath = typeof template === 'string' ? template : template.asset;
+      if (!assetPath) return null;
+      return this.analyzeAssetAlphaBounds(assetPath);
+    }
+
+    // Host-provided pixel helpers (CanvasAssetRenderer). Explicit delegators keep the other
+    // host helpers but missed these three, so template water-mask generation threw and the mask +
+    // metrics caches were nulled. Restore them as explicit delegators (matching the pattern above).
+    isWorldTileTemplateWaterPixel(data, index) {
+      return this.host?.isWorldTileTemplateWaterPixel?.(data, index);
+    }
+
+    isOpaquePixel(data, index) {
+      return this.host?.isOpaquePixel?.(data, index);
+    }
+
+    measurePixelBounds(data, width, height, predicate) {
+      return this.host?.measurePixelBounds?.(data, width, height, predicate);
+    }
+
+    getIsoTileSourceRect(assetPath = '') {
+      return this.getWorldTileTemplateMetrics({ asset: assetPath });
+    }
+
+    drawAsset(assetPath, x, y, width, height, alpha = 1) {
+      const image = this.getAsset(assetPath);
+      if (!image || typeof this.ctx?.drawImage !== 'function') return false;
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
+      this.ctx.drawImage(image, x, y, width, height);
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return true;
+    }
+
+    drawAssetClipped(assetPath, sourceRect, x, y, width, height, alpha = 1) {
+      const image = this.getAsset(assetPath);
+      if (!image || typeof this.ctx?.drawImage !== 'function') return false;
+      const sourceWidth = Number(image.naturalWidth || image.width || 0);
+      const sourceHeight = Number(image.naturalHeight || image.height || 0);
+      const sx = Math.max(0, Number(sourceRect?.x) || 0);
+      const sy = Math.max(0, Number(sourceRect?.y) || 0);
+      const sw = Math.max(1, Number(sourceRect?.width) || sourceWidth || 1);
+      const sh = Math.max(1, Number(sourceRect?.height) || sourceHeight || 1);
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = alpha;
+      this.ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      return true;
+    }
+
+    drawTileAsset(assetPath, x, y, width, height, alpha = 1) {
+      const sourceRect = this.getIsoTileSourceRect(assetPath);
+      if (sourceRect) return this.drawAssetClipped(assetPath, sourceRect, x, y, width, height, alpha);
+      return this.drawAsset(assetPath, x, y, width, height, alpha);
+    }
+
     getMapCache(name) {
-      const existing = this[name];
+      const owner = this.worldMapCacheState || this;
+      const existing = owner[name];
       if (existing && typeof existing.get === 'function' && typeof existing.set === 'function') return existing;
       const cache = new Map();
-      this[name] = cache;
+      owner[name] = cache;
       return cache;
     }
 
@@ -109,7 +177,7 @@
       ctx.putImageData(output, 0, 0);
       this.getMapCache('worldTileMaskMetricsCache').set(
         assetPath,
-        this.measurePixelBounds(output.data, width, height, this.isOpaquePixel),
+        this.measurePixelBounds(output.data, width, height, (data, index) => this.isOpaquePixel(data, index)),
       );
       return canvas;
     }
@@ -126,7 +194,7 @@
         probeCtx.drawImage(terrainImage, 0, 0);
         terrainData = probeCtx.getImageData(0, 0, width, height).data;
       }
-      const terrainBounds = this.measurePixelBounds(source.data, width, height, this.isOpaquePixel)
+      const terrainBounds = this.measurePixelBounds(source.data, width, height, (data, index) => this.isOpaquePixel(data, index))
         || this.getFallbackAssetMetrics(image);
       const output = ctx.createImageData(width, height);
       for (let py = 0; py < height; py += 1) {
@@ -143,7 +211,7 @@
       ctx.putImageData(output, 0, 0);
       this.getMapCache('worldTileMaskMetricsCache').set(
         assetPath,
-        this.measurePixelBounds(output.data, width, height, this.isOpaquePixel),
+        this.measurePixelBounds(output.data, width, height, (data, index) => this.isOpaquePixel(data, index)),
       );
       return canvas;
     }
@@ -212,16 +280,17 @@
     getWorldTileCompositeContext(width, height) {
       const localW = Math.max(1, Math.ceil(width));
       const localH = Math.max(1, Math.ceil(height));
-      if (!this.worldTileCompositeCanvas) {
-        this.worldTileCompositeCanvas = this.createTileWorkCanvas(localW, localH);
-        this.worldTileCompositeCtx = this.worldTileCompositeCanvas?.getContext?.('2d') || null;
+      const owner = this.worldMapCacheState || this;
+      if (!owner.worldTileCompositeCanvas) {
+        owner.worldTileCompositeCanvas = this.createTileWorkCanvas(localW, localH);
+        owner.worldTileCompositeCtx = owner.worldTileCompositeCanvas?.getContext?.('2d') || null;
       }
-      if (!this.worldTileCompositeCanvas || !this.worldTileCompositeCtx) return null;
-      if (this.worldTileCompositeCanvas.width !== localW) this.worldTileCompositeCanvas.width = localW;
-      if (this.worldTileCompositeCanvas.height !== localH) this.worldTileCompositeCanvas.height = localH;
+      if (!owner.worldTileCompositeCanvas || !owner.worldTileCompositeCtx) return null;
+      if (owner.worldTileCompositeCanvas.width !== localW) owner.worldTileCompositeCanvas.width = localW;
+      if (owner.worldTileCompositeCanvas.height !== localH) owner.worldTileCompositeCanvas.height = localH;
       return {
-        canvas: this.worldTileCompositeCanvas,
-        ctx: this.worldTileCompositeCtx,
+        canvas: owner.worldTileCompositeCanvas,
+        ctx: owner.worldTileCompositeCtx,
         width: localW,
         height: localH,
       };
@@ -309,16 +378,17 @@
     getWorldTileWaterWorkContext(width, height) {
       const localW = Math.max(1, Math.ceil(width));
       const localH = Math.max(1, Math.ceil(height));
-      if (!this.worldTileWaterCanvas) {
-        this.worldTileWaterCanvas = this.createTileWorkCanvas(localW, localH);
-        this.worldTileWaterCtx = this.worldTileWaterCanvas?.getContext?.('2d') || null;
+      const owner = this.worldMapCacheState || this;
+      if (!owner.worldTileWaterCanvas) {
+        owner.worldTileWaterCanvas = this.createTileWorkCanvas(localW, localH);
+        owner.worldTileWaterCtx = owner.worldTileWaterCanvas?.getContext?.('2d') || null;
       }
-      if (!this.worldTileWaterCanvas || !this.worldTileWaterCtx) return null;
-      if (this.worldTileWaterCanvas.width !== localW) this.worldTileWaterCanvas.width = localW;
-      if (this.worldTileWaterCanvas.height !== localH) this.worldTileWaterCanvas.height = localH;
+      if (!owner.worldTileWaterCanvas || !owner.worldTileWaterCtx) return null;
+      if (owner.worldTileWaterCanvas.width !== localW) owner.worldTileWaterCanvas.width = localW;
+      if (owner.worldTileWaterCanvas.height !== localH) owner.worldTileWaterCanvas.height = localH;
       return {
-        canvas: this.worldTileWaterCanvas,
-        ctx: this.worldTileWaterCtx,
+        canvas: owner.worldTileWaterCanvas,
+        ctx: owner.worldTileWaterCtx,
         width: localW,
         height: localH,
       };

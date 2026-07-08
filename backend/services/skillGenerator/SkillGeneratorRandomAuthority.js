@@ -1,6 +1,6 @@
 const ServerRandomAuthorityContract = require('../random/ServerRandomAuthorityContract');
 
-const DOMAIN = 'skillGenerator';
+const SCOPE = 'skillGenerator';
 const DEFAULT_ACTION = 'abilityKitGeneration';
 
 function sanitizeText(value, fallback = '') {
@@ -33,7 +33,7 @@ function createAbilityKitRandomSource(input = {}, options = {}) {
   const seed = sanitizeText(options.seed, createAbilityKitSeed(input));
   const subjectId = sanitizeText(options.subjectId, createAbilityKitSubjectId(input));
   return ServerRandomAuthorityContract.createRandomSource({
-    domain: DOMAIN,
+    scope: SCOPE,
     action: sanitizeText(options.action, DEFAULT_ACTION),
     subjectId,
     seed,
@@ -66,7 +66,7 @@ function createSourceMetadata(randomSource) {
   return {
     schema: scope.schema,
     authority: scope.authority,
-    domain: scope.domain,
+    scope: scope.scope,
     action: scope.action,
     subjectId: scope.subjectId,
     seed: scope.seed,
@@ -75,7 +75,7 @@ function createSourceMetadata(randomSource) {
 
 module.exports = {
   DEFAULT_ACTION,
-  DOMAIN,
+  SCOPE,
   createAbilityKitRandomSource,
   createAbilityKitSeed,
   createAbilityKitSubjectId,

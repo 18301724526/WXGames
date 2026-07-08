@@ -33,7 +33,7 @@ function createStableBlock(overrides = {}) {
 
 test('stable guard collects responsibility entries using ASCII Status anchors', () => {
   const text = [
-    '### `frontend/js/domain/Foo.js`',
+    '### `frontend/js/ecs/system/Foo.js`',
     '',
     '状态 / Status: candidate',
     '',
@@ -51,7 +51,7 @@ test('stable guard collects responsibility entries using ASCII Status anchors', 
 
   const entries = collectResponsibilityEntries(text);
   assert.deepEqual(entries.map((entry) => [entry.path, entry.status]), [
-    ['frontend/js/domain/Foo.js', 'candidate'],
+    ['frontend/js/ecs/system/Foo.js', 'candidate'],
     ['docs/stable.md', 'stable governance'],
   ]);
   assert.deepEqual(collectStableIndexEntries(text).map((entry) => entry.path), ['docs/stable.md']);

@@ -13,10 +13,9 @@
 
   class UIStatePresenter {
     static POPULATION_PER_OFFICIAL = 100;
-    static MIN_EXPEDITION_SOLDIERS = 100;
   }
 
-  UIStatePresenterDelegates.install(UIStatePresenter);
+  Object.assign(UIStatePresenter, UIStatePresenterDelegates.createStaticMethods());
 
   global.UIStatePresenter = UIStatePresenter;
   if (typeof module !== 'undefined' && module.exports) module.exports = UIStatePresenter;

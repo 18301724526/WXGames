@@ -222,7 +222,7 @@ test('BattleCanvasModel owns battle layout and damage contracts', () => {
   assert.equal(BattleCanvasModel.getBattleDamageFloatText({ action: 'skill', damage: 9, damageLabel: 'Burn' }), 'Burn -9');
 });
 
-test('BattleCanvasRenderer keeps extracted helper facade compatible', () => {
+test('BattleCanvasRenderer owns battle helper methods directly', () => {
   const renderer = new BattleCanvasRenderer({ host: { width: 390, height: 844 } });
   const area = { x: 18, y: 254, width: 160, height: 320 };
 
@@ -232,6 +232,8 @@ test('BattleCanvasRenderer keeps extracted helper facade compatible', () => {
   });
   assert.equal(renderer.getBattleUnitEngagementPosition('attacker', area, 0, 4).x < 195, true);
   assert.equal(renderer.getBattleUnitBattlefieldPosition('defender', area, 1, 4, 0.21, 0).ratio, 0);
+  assert.equal(BattleCanvasRenderer.prototype.hasOwnProperty('getBattleScenePlayback'), true);
+  assert.equal(BattleCanvasRenderer.prototype.hasOwnProperty('drawBattleArmy'), true);
 });
 
 test('CanvasGameRenderer exposes battle helpers through the battle renderer facade', () => {
@@ -303,7 +305,161 @@ test('BattleCanvasRenderer render overlay keeps battle hit target contract', () 
   assert.equal(hitTargets.some((target) => target.action.type === 'skipBattleScene'), true);
 });
 
-test('frontend html loads battle helpers before the renderer', () => {
+function makeEntityRendererHost() {
+  const hitTargets = [];
+  const calls = [];
+  const host = {
+    width: 390,
+    height: 844,
+    ctx: {
+      fillRect() {}, drawImage() {}, save() {}, restore() {}, translate() {}, scale() {},
+      beginPath() {}, rect() {}, clip() {},
+      clearRect() {}, globalAlpha: 1,
+    },
+    getNow() { return 1000; },
+    setHitTargets(targets) { hitTargets.length = 0; hitTargets.push(...targets); },
+    addHitTarget(rect, action) { hitTargets.push({ rect, action }); },
+    drawCoverAsset() { calls.push('drawCoverAsset'); return false; },
+    drawPanel() {},
+    drawText() {},
+    drawButton() {},
+    getAsset() { return null; },
+    truncateText(text) { return String(text || ''); },
+    measureTextWidth(text) { return String(text || '').length * 8; },
+  };
+  return { host, hitTargets, calls };
+}
+
+test('renderEntityBattleOverlay keeps entity background and units in the same battle camera context', () => {
+  const prevCore = globalThis.BattleSimCore;
+  globalThis.BattleSimCore = { countOnField() { return [1, 0]; }, skillReady() { return false; } };
+  try {
+    const coverCalls = [];
+    const fillRects = [];
+    const clips = [];
+    const host = {
+      width: 390,
+      height: 844,
+      ctx: {
+        fillStyle: '',
+        globalAlpha: 1,
+        fillRect(x, y, width, height) { fillRects.push({ x, y, width, height }); },
+        drawImage() {},
+        save() {},
+        restore() {},
+        translate() {},
+        scale() {},
+        beginPath() {},
+        rect(x, y, width, height) { clips.push({ x, y, width, height }); },
+        clip() {},
+      },
+      getNow() { return 1000; },
+      setHitTargets() {},
+      addHitTarget() {},
+      drawCoverAsset(assetPath, x, y, width, height) {
+        coverCalls.push({ assetPath, x, y, width, height });
+        return true;
+      },
+      drawPanel() {},
+      drawText() {},
+      drawButton() {},
+      getAsset() { return null; },
+      truncateText(text) { return String(text || ''); },
+      measureTextWidth(text) { return String(text || '').length * 8; },
+    };
+    const renderer = new BattleCanvasRenderer({ host });
+    const unit = { id: 1, side: 0, kind: 'soldier', alive: true, x: 30, y: 40, state: 'advance' };
+    const battle = {
+      tick: 5,
+      result: null,
+      config: { tickHz: 20 },
+      squads: { A: { side: 0, generalId: 1, orderCdLeft: 0 } },
+      units: [unit],
+    };
+    renderer.renderEntityBattleOverlay({}, {
+      entityBattle: {
+        visible: true,
+        mode: 'interactive',
+        battle,
+        arena: { w: 100, h: 100 },
+        camera: { zoom: 2, offsetX: 10, offsetY: -20 },
+        selectedGid: 'A',
+        _rstate: {},
+      },
+    });
+
+    const background = coverCalls.find((call) => call.assetPath.includes('battlefield-forest-camp'));
+    assert.ok(background);
+    const unitMarker = fillRects.find((rect) => rect.width === 3 && rect.height === 3);
+    assert.ok(unitMarker);
+    const unitScreenX = unitMarker.x + 1.5;
+    const unitScreenY = unitMarker.y + 1.5;
+    const bgScaleX = background.width / 100;
+    const bgScaleY = background.height / 100;
+
+    assert.equal(Math.round((unitScreenX - background.x) / bgScaleX), unit.x);
+    assert.equal(Math.round((unitScreenY - background.y) / bgScaleY), unit.y);
+    assert.deepEqual(clips[0], { x: 0, y: 30, width: 390, height: 554 });
+  } finally {
+    globalThis.BattleSimCore = prevCore;
+  }
+});
+
+test('renderEntityBattleOverlay draws interactive 军令 controls as canvas hit targets', () => {
+  const prevCore = globalThis.BattleSimCore;
+  globalThis.BattleSimCore = { countOnField() { return [3, 2]; }, skillReady() { return true; } };
+  try {
+    const { host, hitTargets, calls } = makeEntityRendererHost();
+    const renderer = new BattleCanvasRenderer({ host });
+    const general = {
+      id: 1, side: 0, kind: 'general', alive: true, x: 10, y: 10, state: 'advance',
+      rage: 0, skillCds: [0], skills: [{ id: 's1', name: '冲锋', kind: 'active' }],
+    };
+    const battle = {
+      tick: 5, result: null, config: { tickHz: 20, rageMax: 100 }, masterUsed: { 0: {} },
+      squads: { A: { side: 0, generalId: 1, orderCdLeft: 0 } },
+      units: [{ id: 0, side: 1, alive: false }, general],
+    };
+    renderer.renderEntityBattleOverlay({}, {
+      entityBattle: {
+        visible: true, mode: 'interactive', battle, tickHz: 20, selectedGid: 'A',
+        arena: { w: 100, h: 100 }, _rstate: {},
+      },
+    });
+    assert.equal(calls.includes('drawCoverAsset'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleSelectGeneral'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleOrder'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleMaster'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleSkill'), true);
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleAuto'), true);
+  } finally {
+    globalThis.BattleSimCore = prevCore;
+  }
+});
+
+test('renderEntityBattleOverlay replay mode exposes a close hit target', () => {
+  const prevCore = globalThis.BattleSimCore;
+  globalThis.BattleSimCore = { countOnField() { return [0, 0]; }, skillReady() { return false; } };
+  try {
+    const { host, hitTargets } = makeEntityRendererHost();
+    const renderer = new BattleCanvasRenderer({ host });
+    const battle = {
+      tick: 9, result: { winner: 'attacker' }, config: { tickHz: 20 },
+      squads: { A: { side: 0, generalId: 1 } }, units: [],
+    };
+    renderer.renderEntityBattleOverlay({}, {
+      entityBattle: {
+        visible: true, mode: 'replay', battle, tickHz: 20,
+        report: { summary: '胜利' }, arena: { w: 100, h: 100 }, _rstate: {},
+      },
+    });
+    assert.equal(hitTargets.some((t) => t.action.type === 'entityBattleClose'), true);
+  } finally {
+    globalThis.BattleSimCore = prevCore;
+  }
+});
+
+test('frontend html loads battle model render helpers before the renderer', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../../index.html'), 'utf8');
   const modelIndex = html.indexOf('BattleCanvasModel.js');
   const floatingIndex = html.indexOf('BattleFloatingTextRenderer.js');
@@ -314,5 +470,16 @@ test('frontend html loads battle helpers before the renderer', () => {
   assert.equal(floatingIndex > modelIndex, true);
   assert.equal(effectsIndex > floatingIndex, true);
   assert.equal(rendererIndex > effectsIndex, true);
-  assert.match(html, /BattleCanvasRenderer\.js\?v=architecture-refactor-battle-renderer-v2/);
+  assert.equal(html.includes('BattleLayoutModel.js'), false);
+  assert.equal(html.includes('BattleSpriteRenderer.js'), false);
+  assert.match(html, /BattleCanvasRenderer\.js\?v=entity-battle-render-context-v1/);
+});
+
+test('retired battle prototype modules stay deleted', () => {
+  [
+    'BattleLayoutModel.js',
+    'BattleSpriteRenderer.js',
+  ].forEach((fileName) => {
+    assert.equal(fs.existsSync(path.resolve(__dirname, fileName)), false);
+  });
 });

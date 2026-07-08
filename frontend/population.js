@@ -1,1 +1,0 @@
-window.mountPopulationMethods = function mountPopulationMethods() {};

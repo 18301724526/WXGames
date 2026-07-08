@@ -1,6 +1,7 @@
 (function (global) {
   const GameConfig = {
     API_BASE: '/api',
+    DEPLOY_STATUS_PATH: '.wxgame-deploy-status.json',
     SYNC_INTERVAL_MS: 2000,
     HEARTBEAT_INTERVAL_MS: 1000,
     UPDATE_CHECK_INTERVAL_MS: 5000,

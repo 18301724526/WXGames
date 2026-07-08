@@ -33,10 +33,12 @@ const {
 const {
   createFamousPersonCandidate: buildFamousPersonCandidate,
   createTutorialScoutFamousPerson: buildTutorialScoutFamousPerson,
-  makeSkillName,
+  isTutorialStarterFamousPerson, makeSkillName,
   normalizeAppearance,
 } = require('./famousPerson/FamousPersonGenerator');
+const { normalizeSkill } = require('./famousPerson/FamousPersonSkillNormalizer');
 const FamousPersonRandomAuthority = require('./famousPerson/FamousPersonRandomAuthority');
+const PersonSocialFields = require('./person/PersonSocialFields');
 
 function normalizeStatus(raw = {}) {
   return {
@@ -55,29 +57,6 @@ function normalizeRoles(rawRoles = [], fallbackRoles = []) {
     .map((role) => (String(role) === 'craft' ? 'governance' : String(role)))
     .filter(Boolean);
   return [...new Set(roles.length ? roles : fallbackRoles.map(String))];
-}
-
-function normalizeSkill(raw = {}) {
-  const effects = Array.isArray(raw.effects)
-    ? raw.effects.map((effect) => SkillGeneratorService.normalizeEffect(effect)).filter(Boolean)
-    : [];
-  if (!effects.length) return null;
-  return {
-    id: sanitizeText(raw.id, `skill_${effects.map((effect) => effect.key).join('_')}`),
-    name: sanitizeText(raw.name, makeSkillName(effects)),
-    type: sanitizeText(raw.type, 'battle'),
-    slot: sanitizeText(raw.slot, raw.kind === 'active' ? 'activeSkill' : ''),
-    kind: sanitizeText(raw.kind, raw.type === 'battle' ? 'active' : ''),
-    category: sanitizeText(raw.category, raw.damageType || 'blade'),
-    damageType: sanitizeText(raw.damageType, raw.category || 'blade'),
-    multiplier: Number.isFinite(Number(raw.multiplier)) ? Number(raw.multiplier) : undefined,
-    cooldown: Number.isFinite(Number(raw.cooldown)) ? Math.max(1, toInteger(raw.cooldown, 3)) : undefined,
-    castPolicy: sanitizeText(raw.castPolicy, ''),
-    castConditions: Array.isArray(raw.castConditions) ? raw.castConditions.map((condition) => ({ ...condition })) : undefined,
-    effects,
-    budget: raw.budget && typeof raw.budget === 'object' ? { ...raw.budget } : undefined,
-    generatorVersion: sanitizeText(raw.generatorVersion, ''),
-  };
 }
 
 function normalizePerson(raw = {}, options = {}) {
@@ -119,6 +98,7 @@ function normalizePerson(raw = {}, options = {}) {
     skills,
     appearance: normalizeAppearance(raw.appearance, archetype, fallbackAppearanceSeed),
     status: normalizeStatus(raw.status),
+    ...PersonSocialFields.normalizeSocial(raw, id),
     createdAt: raw.createdAt || new Date().toISOString(),
     joinedAt: options.candidate ? null : (raw.joinedAt || raw.createdAt || new Date().toISOString()),
     generatorVersion: sanitizeText(raw.generatorVersion, GENERATOR_VERSION),
@@ -331,7 +311,7 @@ function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
 function grantTutorialScoutFamousPerson(gameState, now = new Date()) {
   if (!gameState || typeof gameState !== 'object') return null;
   gameState.famousPeople = normalizeFamousPeople(gameState.famousPeople);
-  const existing = gameState.famousPeople.find((person) => person.source?.type === 'tutorial' && person.archetype === 'scout');
+  const existing = gameState.famousPeople.find(isTutorialStarterFamousPerson);
   if (existing) {
     return { person: clone(existing), grantedAt: existing.joinedAt || existing.createdAt || now.toISOString(), created: false };
   }

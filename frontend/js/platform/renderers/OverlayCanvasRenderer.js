@@ -1,4 +1,28 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const SharedRewardText = (() => {
+    if (global.RewardText) return global.RewardText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/RewardText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class OverlayCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -6,11 +30,11 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get ctx() {
@@ -21,64 +45,21 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    getNow(...args) { const surface = this.drawingSurface; return surface && typeof surface.getNow === 'function' ? surface.getNow(...args) : this.host?.getNow?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    getNow(...args) {
-      return this.callDrawingSurface('getNow', args);
-    }
-
-    measureTextWidth(...args) {
-      return this.callDrawingSurface('measureTextWidth', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     buildResourceViewState(state = {}) {
@@ -162,7 +143,7 @@
       const closeSize = 28;
       const closeX = x + panelWidth - closeSize - 10;
       const closeY = y + 10;
-      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
+      this.drawButton(closeX, closeY, closeSize, closeSize, this.t('common.close.short'), { size: 14, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeNaming' });
 
       const iconSize = 58;
@@ -174,7 +155,7 @@
         radius: iconSize / 2,
         inset: 'rgba(255, 231, 184, 0.14)',
       });
-      this.drawText('城', x + panelWidth / 2, iconY + iconSize / 2, {
+      this.drawText(this.t('shell.naming.icon'), x + panelWidth / 2, iconY + iconSize / 2, {
         size: 22,
         bold: true,
         color: '#ffe6b5',
@@ -182,7 +163,7 @@
         align: 'center',
       });
 
-      this.drawText(this.truncateText(view.title || '命名', panelWidth - 84, { size: 17, bold: true }), x + panelWidth / 2, y + 98, {
+      this.drawText(this.truncateText(view.title || this.t('shell.naming.title'), panelWidth - 84, { size: 17, bold: true }), x + panelWidth / 2, y + 98, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
@@ -206,7 +187,7 @@
         radius: 9,
         inset: 'rgba(116, 211, 160, 0.08)',
       });
-      const displayValue = inputValue || view.placeholder || '请输入名称';
+      const displayValue = inputValue || view.placeholder || this.t('shell.naming.placeholder.default');
       this.drawText(this.truncateText(displayValue, inputWidth - 24, { size: 14 }), inputX + 12, inputY + 21, {
         size: 14,
         color: inputValue ? '#f6e8c8' : 'rgba(234, 234, 234, 0.48)',
@@ -219,8 +200,8 @@
       const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
       const cancelX = x + 18;
       const submitX = cancelX + buttonWidth + buttonGap;
-      this.drawButton(cancelX, buttonY, buttonWidth, 36, '取消', { size: 13, radius: 9 });
-      this.drawButton(submitX, buttonY, buttonWidth, 36, isSubmitting ? '提交中' : '确定', {
+      this.drawButton(cancelX, buttonY, buttonWidth, 36, this.t('common.cancel'), { size: 13, radius: 9 });
+      this.drawButton(submitX, buttonY, buttonWidth, 36, isSubmitting ? this.t('common.submit') : this.t('common.confirm'), {
         size: 13,
         bold: true,
         radius: 9,
@@ -343,7 +324,7 @@
         this.drawRewardParticle(cx, glowY, 94, (Math.PI * 2 * index) / 18 + now / 900, progress, index);
       }
 
-      this.drawText(reveal.title || '获得奖励', cx, y + 30, {
+      this.drawText(reveal.title || this.t('shell.reward.title'), cx, y + 30, {
         size: 20,
         bold: true,
         color: '#fff1cf',
@@ -355,7 +336,9 @@
         align: 'center',
       });
 
-      const rewardText = reveal.rewardText || '';
+      const rewardText = SharedRewardText && SharedRewardText.hasResources(reveal.resources)
+        ? SharedRewardText.formatResources(reveal.resources)
+        : (reveal.rewardText || '');
       const rewardLines = this.wrapTextLimit(rewardText, panelWidth - 58, 3, { size: 15, bold: true });
       this.drawPanel(x + 22, y + 96, panelWidth - 44, 72, {
         fill: 'rgba(11, 18, 14, 0.42)',
@@ -372,7 +355,7 @@
 
       const buttonWidth = panelWidth - 44;
       const buttonY = y + panelHeight - 58;
-      this.drawButton(x + 22, buttonY, buttonWidth, 40, '收下', {
+      this.drawButton(x + 22, buttonY, buttonWidth, 40, this.t('shell.reward.accept'), {
         size: 14,
         bold: true,
         active: true,
@@ -400,7 +383,7 @@
       });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
-      this.drawText('资源详情', x + panelWidth / 2, y + 22, {
+      this.drawText(this.t('resource.details.title'), x + panelWidth / 2, y + 22, {
         size: 16,
         bold: true,
         color: '#ffd98a',
@@ -410,7 +393,7 @@
       const closeBtnSize = 28;
       const closeBtnX = x + panelWidth - closeBtnSize - 10;
       const closeBtnY = y + 10;
-      this.drawButton(closeBtnX, closeBtnY, closeBtnSize, closeBtnSize, 'x', {
+      this.drawButton(closeBtnX, closeBtnY, closeBtnSize, closeBtnSize, this.t('common.close.short'), {
         size: 14,
         radius: 6,
       });
@@ -418,38 +401,38 @@
 
       const cards = [
         {
-          label: '木材',
+          label: this.t('resource.wood'),
           icon: 'assets/art/icon-wood-cutout.webp',
           value: view.text.woodDetailValue,
-          lines: [`产出 ${view.text.woodDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.woodDetailRate })],
         },
         {
-          label: '铁矿',
+          label: this.t('resource.iron'),
           icon: 'assets/art/icon-iron-cutout.webp',
           value: view.text.ironDetailValue,
-          lines: [`产出 ${view.text.ironDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.ironDetailRate })],
         },
         {
-          label: '石料',
+          label: this.t('resource.stone'),
           icon: 'assets/art/icon-stone-cutout.webp',
           value: view.text.stoneDetailValue,
-          lines: [`产出 ${view.text.stoneDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.stoneDetailRate })],
         },
         {
-          label: '粮食',
+          label: this.t('resource.food'),
           icon: 'assets/art/icon-food-cutout.webp',
           value: view.text.foodDetailValue,
           lines: [
-            `产出 ${view.text.foodOutputRate}`,
-            `消耗 ${view.text.foodConsumptionRate}`,
-            `净增长 ${view.text.foodNetRate}`,
+            this.t('resource.production', { rate: view.text.foodOutputRate }),
+            this.t('resource.consumption', { rate: view.text.foodConsumptionRate }),
+            this.t('resource.netGrowth', { rate: view.text.foodNetRate }),
           ],
         },
         {
-          label: '知识',
+          label: this.t('resource.knowledge'),
           icon: 'assets/art/icon-knowledge-cutout.webp',
           value: view.text.knowledgeDetailValue,
-          lines: [`产出 ${view.text.knowledgeDetailRate}`],
+          lines: [this.t('resource.production', { rate: view.text.knowledgeDetailRate })],
         },
       ];
 

@@ -5,7 +5,19 @@ const STATUS_CANCELLED = 'cancelled';
 const ARRIVAL_NONE = 'none';
 const ARRIVAL_IDLE = 'idle';
 const FINISHED_STATUSES = Object.freeze([STATUS_READY, STATUS_IDLE, STATUS_CANCELLED]);
+// Single source for the manual-route length cap: the backend route planner, the DTO the
+// server sends to clients, and the client-side march target policy must all agree.
+const MAX_MANUAL_ROUTE_LENGTH = 16;
+// Single source for march-blocking terrain: land units may stand on every tile whose
+// CENTER is on land (including 'shore' coast tiles) but never enter tiles whose center
+// is water — open ocean and river-channel tiles. Frontend button disabling, the backend
+// route planner (known and fogged branches), and tests must all consult this set.
+const MARCH_BLOCKED_TERRAINS = Object.freeze(['ocean', 'river']);
 const EPOCH_MILLISECONDS_THRESHOLD = 1000000000000;
+
+function isMarchBlockedTerrain(terrain) {
+  return MARCH_BLOCKED_TERRAINS.includes(terrain);
+}
 
 function toNumber(value, fallback = 0) {
   const number = Number(value);
@@ -65,6 +77,156 @@ function normalizeRoute(route = []) {
     })
     .filter(Boolean)
     .sort((a, b) => a.step - b.step);
+}
+
+function getWrappedDelta(from = {}, to = {}, options = {}) {
+  const start = normalizeCoord(from);
+  const end = normalizeCoord(to, start);
+  const width = toInteger(options.width ?? options.worldWidth, 0);
+  const height = toInteger(options.height ?? options.worldHeight, 0);
+  const wrapping = options.wrapping !== false;
+  const wrapAxis = (delta, size) => {
+    if (!wrapping || size <= 0 || Math.abs(delta) <= size / 2) return delta;
+    const wrapped = delta > 0 ? delta - size : delta + size;
+    return Math.abs(wrapped) < Math.abs(delta) ? wrapped : delta;
+  };
+  return {
+    q: wrapAxis(end.q - start.q, width),
+    r: wrapAxis(end.r - start.r, height),
+  };
+}
+
+function buildLinearMarchRoute(origin = {}, target = {}, options = {}) {
+  const start = normalizeCoord(origin);
+  const end = normalizeCoord(target, start);
+  const delta = getWrappedDelta(start, end, options);
+  const distance = Math.max(Math.abs(delta.q), Math.abs(delta.r));
+  const maxLength = toInteger(options.maxLength ?? options.maxManualRouteLength, 0);
+  if (distance <= 0) {
+    return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', route: [], target: end };
+  }
+  if (maxLength > 0 && distance > maxLength) {
+    return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', route: [], target: end };
+  }
+  const route = [];
+  let q = start.q;
+  let r = start.r;
+  let remainingQ = delta.q;
+  let remainingR = delta.r;
+  for (let step = 1; step <= distance; step += 1) {
+    const stepQ = Math.sign(remainingQ);
+    const stepR = Math.sign(remainingR);
+    q += stepQ;
+    r += stepR;
+    remainingQ -= stepQ;
+    remainingR -= stepR;
+    const coord = normalizeCoord({ q, r });
+    route.push({
+      q: coord.q,
+      r: coord.r,
+      step,
+      tileId: coord.tileId,
+    });
+  }
+  const routeTarget = route.at(-1) || end;
+  return {
+    success: true,
+    route,
+    target: normalizeCoord(routeTarget, end),
+    distance,
+  };
+}
+
+// Grid-axis unit step -> march facing, keyed to the isometric projection
+// (screenX=(q-r)*stepX, screenY=(q+r)*stepY, screen-Y down):
+//   -r => 右上 (up-right)   -> '1'
+//   -q => 左上 (up-left)    -> '2'
+//   +q => 右下 (down-right) -> '3'
+//   +r => 左下 (down-left)  -> '4'
+// These are the four march-spine animation names. Empty string when no move.
+function axisStepDir(dq, dr) {
+  if (dr < 0) return '1';
+  if (dq < 0) return '2';
+  if (dq > 0) return '3';
+  if (dr > 0) return '4';
+  return '';
+}
+
+// Axis-aligned (Manhattan) march route: every step moves along ONE grid axis only
+// (never diagonally), so the army walks the four iso directions instead of cutting the
+// corner. A staircase that hugs the straight line — each step advances whichever axis has
+// the larger remaining distance. Each step carries `dir` (see axisStepDir) for the walk
+// animation. Distance is Manhattan |dq|+|dr| (a diagonal target costs twice the steps of
+// the old Chebyshev route, so MAX_MANUAL_ROUTE_LENGTH now bounds tiles WALKED). Kept as a
+// SEPARATE builder from buildLinearMarchRoute (which stays Chebyshev/diagonal for scouts +
+// AI + its locked tests); evaluateLinearMarchRoute picks between them via options.axisAligned.
+function buildAxisAlignedRoute(origin = {}, target = {}, options = {}) {
+  const start = normalizeCoord(origin);
+  const end = normalizeCoord(target, start);
+  const delta = getWrappedDelta(start, end, options);
+  const distance = Math.abs(delta.q) + Math.abs(delta.r);
+  const maxLength = toInteger(options.maxLength ?? options.maxManualRouteLength, 0);
+  if (distance <= 0) {
+    return { success: false, error: 'EXPLORE_TARGET_IS_ORIGIN', route: [], target: end };
+  }
+  if (maxLength > 0 && distance > maxLength) {
+    return { success: false, error: 'EXPLORE_TARGET_TOO_FAR', route: [], target: end };
+  }
+  const route = [];
+  let q = start.q;
+  let r = start.r;
+  let remainingQ = delta.q;
+  let remainingR = delta.r;
+  for (let step = 1; step <= distance; step += 1) {
+    let stepQ = 0;
+    let stepR = 0;
+    if (Math.abs(remainingQ) >= Math.abs(remainingR) && remainingQ !== 0) {
+      stepQ = Math.sign(remainingQ);
+    } else if (remainingR !== 0) {
+      stepR = Math.sign(remainingR);
+    } else {
+      stepQ = Math.sign(remainingQ);
+    }
+    q += stepQ;
+    r += stepR;
+    remainingQ -= stepQ;
+    remainingR -= stepR;
+    const coord = normalizeCoord({ q, r });
+    route.push({
+      q: coord.q,
+      r: coord.r,
+      step,
+      tileId: coord.tileId,
+      dir: axisStepDir(stepQ, stepR),
+    });
+  }
+  const routeTarget = route.at(-1) || end;
+  return {
+    success: true,
+    route,
+    target: normalizeCoord(routeTarget, end),
+    distance,
+  };
+}
+
+function evaluateLinearMarchRoute(origin = {}, target = {}, options = {}) {
+  const plan = options.axisAligned
+    ? buildAxisAlignedRoute(origin, target, options)
+    : buildLinearMarchRoute(origin, target, options);
+  if (!plan.success) return plan;
+  const canTraverse = typeof options.canTraverse === 'function' ? options.canTraverse : () => true;
+  for (const step of plan.route) {
+    if (!canTraverse(step)) {
+      return {
+        success: false,
+        error: 'EXPLORE_ROUTE_BLOCKED',
+        blockedStep: step,
+        route: plan.route.slice(0, Math.max(0, step.step - 1)),
+        target: plan.target,
+      };
+    }
+  }
+  return plan;
 }
 
 function hasCoordPair(source = {}) {
@@ -433,12 +595,20 @@ module.exports = {
   ARRIVAL_NONE,
   ARRIVAL_IDLE,
   FINISHED_STATUSES,
+  MAX_MANUAL_ROUTE_LENGTH,
+  MARCH_BLOCKED_TERRAINS,
+  isMarchBlockedTerrain,
   toNumber,
   toInteger,
   toTimestamp,
   tileId,
   normalizeCoord,
   normalizeRoute,
+  getWrappedDelta,
+  buildLinearMarchRoute,
+  buildAxisAlignedRoute,
+  axisStepDir,
+  evaluateLinearMarchRoute,
   getMissionPath,
   getMissionDurationMs,
   getMissionStepDurationMs,

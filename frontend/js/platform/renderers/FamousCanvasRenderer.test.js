@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const FamousCanvasRenderer = require('./FamousCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
+const { createCanvasSurfaceState } = require('./CanvasSurfaceState');
 
 function createHost(overrides = {}) {
   const hitTargets = [];
@@ -25,10 +26,6 @@ function createHost(overrides = {}) {
       clip() {},
       globalAlpha: 1,
     },
-    hoverPoint: null,
-    famousSkillHitTargets: [],
-    activeFamousSkillTooltip: null,
-    pinnedFamousSkillTooltip: null,
     addHitTarget(rect, action) { hitTargets.push({ rect, action }); },
     containsPoint(rect = {}, point = {}) {
       return point.x >= rect.x
@@ -129,13 +126,16 @@ test('FamousCanvasRenderer reads host view state dynamically after proxy removal
   const secondCtx = { id: 'second-ctx' };
   const firstPresenter = { id: 'first-presenter' };
   const secondPresenter = { id: 'second-presenter' };
+  const surfaceState = createCanvasSurfaceState({
+    hoverPoint: { x: 1, y: 2 },
+    famousSkillHitTargets: [{ id: 'first-target' }],
+  });
   const host = createHost({
     ctx: firstCtx,
     presenter: firstPresenter,
     width: 390,
     height: 844,
-    hoverPoint: { x: 1, y: 2 },
-    famousSkillHitTargets: [{ id: 'first-target' }],
+    surfaceState,
   });
   const renderer = new FamousCanvasRenderer({ host });
 
@@ -144,25 +144,26 @@ test('FamousCanvasRenderer reads host view state dynamically after proxy removal
   assert.equal(renderer.width, 390);
   assert.equal(renderer.height, 844);
   assert.deepEqual(renderer.hoverPoint, { x: 1, y: 2 });
-  assert.equal(renderer.famousSkillHitTargets, host.famousSkillHitTargets);
+  assert.equal(renderer.famousSkillHitTargets, surfaceState.famousSkillHitTargets);
 
   host.ctx = secondCtx;
   host.presenter = secondPresenter;
   host.width = 512;
   host.height = 900;
-  host.hoverPoint = { x: 3, y: 4 };
-  host.famousSkillHitTargets = [{ id: 'second-target' }];
+  surfaceState.hoverPoint = { x: 3, y: 4 };
+  surfaceState.famousSkillHitTargets = [{ id: 'second-target' }];
 
   assert.equal(renderer.ctx, secondCtx);
   assert.equal(renderer.presenter, secondPresenter);
   assert.equal(renderer.width, 512);
   assert.equal(renderer.height, 900);
   assert.deepEqual(renderer.hoverPoint, { x: 3, y: 4 });
-  assert.equal(renderer.famousSkillHitTargets, host.famousSkillHitTargets);
+  assert.equal(renderer.famousSkillHitTargets, surfaceState.famousSkillHitTargets);
 });
 
-test('FamousCanvasRenderer forwards tooltip state writes to host after proxy removal', () => {
-  const host = createHost();
+test('FamousCanvasRenderer writes tooltip state to the shared surface state', () => {
+  const surfaceState = createCanvasSurfaceState();
+  const host = createHost({ surfaceState });
   const renderer = new FamousCanvasRenderer({ host });
   const hoverPoint = { x: 11, y: 22 };
   const active = { type: 'showFamousSkillTooltip', cardId: 'active', skillIndex: 0 };
@@ -172,13 +173,16 @@ test('FamousCanvasRenderer forwards tooltip state writes to host after proxy rem
   renderer.activeFamousSkillTooltip = active;
   renderer.pinnedFamousSkillTooltip = pinned;
 
-  assert.equal(host.hoverPoint, hoverPoint);
-  assert.equal(host.activeFamousSkillTooltip, active);
-  assert.equal(host.pinnedFamousSkillTooltip, pinned);
+  assert.equal(surfaceState.hoverPoint, hoverPoint);
+  assert.equal(surfaceState.activeFamousSkillTooltip, active);
+  assert.equal(surfaceState.pinnedFamousSkillTooltip, pinned);
+  assert.equal(host.hoverPoint, undefined);
+  assert.equal(host.activeFamousSkillTooltip, undefined);
+  assert.equal(host.pinnedFamousSkillTooltip, undefined);
 
-  host.hoverPoint = null;
-  host.activeFamousSkillTooltip = null;
-  host.pinnedFamousSkillTooltip = null;
+  surfaceState.hoverPoint = null;
+  surfaceState.activeFamousSkillTooltip = null;
+  surfaceState.pinnedFamousSkillTooltip = null;
 
   assert.equal(renderer.hoverPoint, null);
   assert.equal(renderer.activeFamousSkillTooltip, null);
@@ -220,19 +224,20 @@ test('FamousCanvasRenderer drawing wrappers prefer explicit drawing surface over
 });
 
 test('FamousCanvasRenderer owns pagination and tooltip state helpers', () => {
-  const host = createHost();
+  const surfaceState = createCanvasSurfaceState();
+  const host = createHost({ surfaceState });
   const renderer = new FamousCanvasRenderer({ host });
 
   assert.deepEqual(renderer.normalizeFamousPersonsPage(12, 99, 5), { index: 2, pages: 3 });
 
   const action = { type: 'showFamousSkillTooltip', cardId: 'hero-1', skillIndex: 0 };
-  host.famousSkillHitTargets.push({ x: 10, y: 20, width: 80, height: 30, action });
+  surfaceState.famousSkillHitTargets.push({ x: 10, y: 20, width: 80, height: 30, action });
   assert.deepEqual(renderer.getFamousSkillTooltipAction({ x: 20, y: 30 }), action);
 
   assert.equal(renderer.setPinnedFamousSkillTooltip(action), true);
-  assert.deepEqual(host.pinnedFamousSkillTooltip, action);
+  assert.deepEqual(surfaceState.pinnedFamousSkillTooltip, action);
   assert.equal(renderer.setPinnedFamousSkillTooltip(action), true);
-  assert.equal(host.pinnedFamousSkillTooltip, null);
+  assert.equal(surfaceState.pinnedFamousSkillTooltip, null);
 });
 
 test('CanvasGameRenderer exposes famous helpers through the famous renderer facade', () => {
@@ -295,8 +300,11 @@ test('FamousCanvasRenderer panel rendering keeps modal and pager hit target cont
 test('FamousCanvasRenderer delegates skill badges and tooltips to the skill renderer', () => {
   const panels = [];
   const lines = [];
-  const host = createHost({
+  const surfaceState = createCanvasSurfaceState({
     hoverPoint: { x: 18, y: 24 },
+  });
+  const host = createHost({
+    surfaceState,
     drawPanel(x, y, width, height) { panels.push({ x, y, width, height }); },
     drawTextLines(wrapped) { lines.push(wrapped); },
   });
@@ -313,12 +321,12 @@ test('FamousCanvasRenderer delegates skill badges and tooltips to the skill rend
 
   renderer.renderSkillBadges(card, 10, 20, 150, { cardId: card.id });
 
-  assert.equal(host.famousSkillHitTargets.length, 1);
-  assert.equal(host.famousSkillHitTargets[0].action.type, 'showFamousSkillTooltip');
-  assert.deepEqual(host.activeFamousSkillTooltip, host.famousSkillHitTargets[0].action);
+  assert.equal(surfaceState.famousSkillHitTargets.length, 1);
+  assert.equal(surfaceState.famousSkillHitTargets[0].action.type, 'showFamousSkillTooltip');
+  assert.deepEqual(surfaceState.activeFamousSkillTooltip, surfaceState.famousSkillHitTargets[0].action);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'showFamousSkillTooltip'), true);
 
-  renderer.renderFamousSkillTooltip(host.activeFamousSkillTooltip);
+  renderer.renderFamousSkillTooltip(surfaceState.activeFamousSkillTooltip);
 
   assert.equal(panels.length >= 2, true);
   assert.equal(lines.length, 1);

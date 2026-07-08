@@ -1,5 +1,6 @@
 const { allocateSpawn } = require('./SpawnAllocator');
 const { normalizeSpawnAssignment } = require('./SpawnAssignment');
+const { materializeDiscoveredNeutralCity } = require('../worldCity/WorldCityPlayerDiscovery');
 
 const DEFAULT_MAX_RESERVATION_ATTEMPTS = 5;
 
@@ -78,10 +79,12 @@ class SpawnLifecycleService {
   createInitialStateForPlayer(playerId, options = {}) {
     const normalizedPlayerId = toPlayerId(playerId);
     const spawn = this.ensureSpawnForPlayer(normalizedPlayerId, options);
-    return this.gameStateService.createInitialGameState(normalizedPlayerId, {
+    const state = this.gameStateService.createInitialGameState(normalizedPlayerId, {
       ...options,
       spawn,
     });
+    this.attachCompanionCity(normalizedPlayerId, spawn, state, options);
+    return state;
   }
 
   resetInitialStateForPlayer(playerId, options = {}) {
@@ -101,10 +104,20 @@ class SpawnLifecycleService {
         releasedPreviousSpawn = true;
       },
     });
-    return this.gameStateService.createInitialGameState(normalizedPlayerId, {
+    const state = this.gameStateService.createInitialGameState(normalizedPlayerId, {
       ...options,
       spawn,
     });
+    this.attachCompanionCity(normalizedPlayerId, spawn, state, options);
+    return state;
+  }
+
+  attachCompanionCity(playerId, spawn, gameState, options = {}) {
+    if (typeof this.repository.ensureCompanionCityForPlayerSpawn !== 'function') return null;
+    const now = toDate(options.now) || toDate(this.now()) || new Date();
+    const city = this.repository.ensureCompanionCityForPlayerSpawn(playerId, spawn, { now });
+    if (!city) return null;
+    return materializeDiscoveredNeutralCity(gameState, city, now);
   }
 
   ensureSpawnForPlayer(playerId, options = {}) {

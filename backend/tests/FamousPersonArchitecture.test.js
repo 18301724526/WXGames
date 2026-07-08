@@ -8,6 +8,7 @@ const Constants = require('../services/famousPerson/FamousPersonConstants');
 const Shared = require('../services/famousPerson/FamousPersonShared');
 const Progression = require('../services/famousPerson/FamousPersonProgression');
 const Generator = require('../services/famousPerson/FamousPersonGenerator');
+const SkillNormalizer = require('../services/famousPerson/FamousPersonSkillNormalizer');
 const FamousPersonRandomAuthority = require('../services/famousPerson/FamousPersonRandomAuthority');
 const ServerRandomAuthorityContract = require('../services/random/ServerRandomAuthorityContract');
 
@@ -31,6 +32,7 @@ test('FamousPersonService delegates static and progression responsibilities to f
     'FamousPersonProgression.js',
     'FamousPersonRandomAuthority.js',
     'FamousPersonShared.js',
+    'FamousPersonSkillNormalizer.js',
   ]);
   for (const fileName of moduleFiles) {
     assert.ok(lineCount(path.join(famousRoot, fileName)) < 500, `${fileName} should stay below 500 lines`);
@@ -41,7 +43,7 @@ test('famous person constants and shared helpers preserve deterministic generati
   assert.equal(Constants.MIN_SEEK_ERA, 3);
   assert.equal(Constants.MAX_CANDIDATES, 3);
   assert.equal(Constants.ARCHETYPES.some((item) => item.id === 'scout' && item.abilityArchetype === 'scout'), true);
-  assert.equal(Constants.EFFECTS.combo.label, '连击');
+  assert.equal(Constants.EFFECTS.secondHit.label, '二段伤害');
 
   const left = Shared.createSeedRandom('same-seed');
   const right = Shared.createSeedRandom('same-seed');
@@ -92,13 +94,34 @@ test('famous person generator preserves candidate and tutorial scout contracts',
   assert.equal(candidate.appearance.version, Constants.APPEARANCE_VERSION);
 
   const tutorialScout = FamousPersonService.createTutorialScoutFamousPerson(gameState, now);
-  assert.equal(tutorialScout.quality, 'great');
-  assert.equal(tutorialScout.archetype, 'scout');
-  assert.equal(tutorialScout.abilityArchetype, 'scout');
+  assert.equal(tutorialScout.quality, 'great'); // always purple (英杰)
+  // Starter gift is a RANDOM combat (military) archetype so the player can always deploy it and
+  // open the game — never a civil-only officer. Assert the guarantee (military role), not a
+  // specific archetype (the archetype is randomized per game).
+  assert.ok(tutorialScout.roles.includes('military'), 'tutorial starter must be a combat general');
   assert.equal(tutorialScout.source.type, 'tutorial');
 
-  assert.equal(Generator.makeSkillName([{ key: 'lifesteal' }, { key: 'combo' }]), '血刃连袭');
+  assert.equal(Generator.makeSkillName([{ key: 'lifesteal' }, { key: 'secondHit' }]), '血刃连袭');
   assert.equal(Generator.getArchetypePool('seek').some((item) => item.id === 'scout'), true);
+  assert.equal(typeof SkillNormalizer.normalizeSkill, 'function');
+});
+
+test('famous person normalization backfills social fields through PersonSocialFields', () => {
+  const [person] = FamousPersonService.normalizeFamousPeople([{
+    id: 'fp-social',
+    name: 'Social',
+    personality: { nature: 'stale', axes: { boldness: 0.85, sociability: 0.1, integrity: 0.2 } },
+    gender: 'female',
+    orientation: 'same',
+    relationships: [{ toPersonId: 'fp-friend', affinity: 50, meetCount: 5 }],
+    factionId: 'ai_wei',
+  }]);
+
+  assert.equal(person.personality.nature, 'valiant');
+  assert.equal(person.gender, 'female');
+  assert.equal(person.orientation, 'same');
+  assert.equal(person.relationships[0].kind, 'friend');
+  assert.equal(person.factionId, 'ai_wei');
 });
 
 test('famous person candidate generation consumes server random authority by default', () => {
@@ -115,7 +138,7 @@ test('famous person candidate generation consumes server random authority by def
   assert.deepEqual(candidate.source.randomAuthority, {
     schema: ServerRandomAuthorityContract.SCHEMA,
     authority: ServerRandomAuthorityContract.AUTHORITY,
-    domain: FamousPersonRandomAuthority.DOMAIN,
+    scope: FamousPersonRandomAuthority.SCOPE,
     action: FamousPersonRandomAuthority.DEFAULT_ACTION,
     subjectId: 'candidate:famous-authority:seek:capital',
     seed: 'famous-authority:seek:1780704000000:capital',
@@ -179,6 +202,37 @@ test('FamousPersonService facade preserves seek, accept, and tutorial grant API'
   assert.equal(gameState.famousPersonState.candidates.length, 0);
 
   const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState, new Date('2026-06-06T00:03:00.000Z'));
-  assert.equal(grant.person.archetype, 'scout');
+  assert.ok(grant.person.roles.includes('military'), 'granted starter must be a combat general');
   assert.equal(grant.person.source.type, 'tutorial');
+});
+
+test('tutorial starter general: combat-only pool + stable-marker idempotency (decoupled from archetype)', () => {
+  const Generator = require('../services/famousPerson/FamousPersonGenerator');
+
+  // The gift pool is combat-only (military role) — never a civil officer the player cannot deploy,
+  // so a new player can always open the game. Derived from archetype roles (single source).
+  const pool = Generator.getStarterArchetypePool();
+  assert.ok(pool.length >= 2);
+  assert.ok(pool.every((archetype) => archetype.roles.includes('military')));
+  assert.ok(!pool.some((archetype) => ['warden', 'scholar', 'artisan', 'envoy'].includes(archetype.id)));
+
+  // Idempotency keys off the stable tutorial marker, NOT the (randomized) archetype: a second
+  // grant at a DIFFERENT time returns the SAME person — proving future changes to WHAT the starter
+  // is never touch how it is found.
+  const gameState = {
+    playerId: 'starter-decouple',
+    activeCityId: 'capital',
+    famousPeople: [],
+    famousPersonState: FamousPersonService.createInitialFamousPersonState(),
+  };
+  const first = FamousPersonService.grantTutorialScoutFamousPerson(gameState, new Date('2026-06-06T00:00:00.000Z'));
+  assert.equal(first.created, true);
+  assert.equal(first.person.quality, 'great');
+  assert.ok(first.person.roles.includes('military'));
+  assert.ok(Generator.isTutorialStarterFamousPerson(first.person));
+
+  const second = FamousPersonService.grantTutorialScoutFamousPerson(gameState, new Date('2026-06-06T09:00:00.000Z'));
+  assert.equal(second.created, false);
+  assert.equal(gameState.famousPeople.length, 1);
+  assert.equal(second.person.id, first.person.id);
 });

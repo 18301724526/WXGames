@@ -112,7 +112,7 @@
           stroke: 'rgba(255, 226, 177, 0.16)',
           radius: 7,
         });
-        renderer.drawText(renderer.truncateText(era.name || `时代 ${era.era}`, eraRailWidth - 10, { size: 11, bold: true }), eraRailX + eraRailWidth / 2, eraYScreen - 18, {
+        renderer.drawText(renderer.truncateText(era.name || renderer.t?.('tech.era', { era: era.era }), eraRailWidth - 10, { size: 11, bold: true }), eraRailX + eraRailWidth / 2, eraYScreen - 18, {
           size: 11,
           bold: true,
           color: era.closed ? '#74d3a0' : '#f0b45b',
@@ -209,7 +209,7 @@
     const { x = 0, width = 0, panelY = 0, panelH = 0 } = context;
     const centerY = panelY + Math.max(66, panelH / 2 + 6);
     renderer.drawAsset('assets/art/icon-science-cutout.webp', x + width / 2 - 34, centerY - 52, 68, 68, 0.62);
-    renderer.drawText(view.text?.placeholder || '暂无科技', x + width / 2, centerY + 24, {
+    renderer.drawText(view.text?.placeholder || renderer.t?.('tech.availableEmpty', {}), x + width / 2, centerY + 24, {
       size: 15,
       bold: true,
       color: '#cbbd96',

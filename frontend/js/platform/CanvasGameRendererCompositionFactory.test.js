@@ -74,6 +74,7 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
     cityCanvasRenderer: createClass('city', calls),
     systemCanvasRenderer: createClass('system', calls),
     battleCanvasRenderer: createClass('battle', calls),
+    tutorialCanvasRenderer: createClass('tutorial', calls),
     eventCanvasRenderer: createClass('event', calls),
     buildingCanvasRenderer: createClass('building', calls),
     overlayCanvasRenderer: createClass('overlay', calls),
@@ -94,6 +95,7 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
     'cityRenderer',
     'systemRenderer',
     'battleRenderer',
+    'tutorialRenderer',
     'eventRenderer',
     'buildingRenderer',
     'overlayRenderer',
@@ -104,6 +106,24 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
     assert.equal(composition.rendererMap[property].options.host, host);
     assert.equal(composition.rendererMap[property].options.drawingSurface, host);
   });
+});
+
+test('CanvasGameRendererCompositionFactory injects shared surface state only into surface-owned renderers', () => {
+  const calls = [];
+  const surfaceState = { id: 'surface-state' };
+  const host = { id: 'game-renderer', surfaceState };
+  const dependencies = {
+    canvasSurfaceRenderer: createClass('surface', calls),
+    famousCanvasRenderer: createClass('famous', calls),
+    advisorCanvasRenderer: createClass('advisor', calls),
+  };
+
+  const composition = CanvasGameRendererCompositionFactory.create({ host, dependencies });
+
+  assert.equal(composition.rendererMap.surfaceRenderer.options.surfaceState, surfaceState);
+  assert.equal(composition.rendererMap.famousRenderer.options.surfaceState, surfaceState);
+  assert.equal(composition.rendererMap.advisorRenderer.options.surfaceState, undefined);
+  assert.equal(composition.rendererMap.advisorRenderer.options.drawingSurface, host);
 });
 
 test('CanvasGameRendererCompositionFactory syncs presenter through descriptor fallback boundary', () => {

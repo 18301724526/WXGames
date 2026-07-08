@@ -5,11 +5,7 @@ const {
   DEFAULT_WORLD_WIDTH,
   DEFAULT_WORLD_WRAPPING,
   DIRECTION_VECTORS,
-  SCOUT_REVEAL_BRANCH_LIMIT,
-  SCOUT_REVEAL_BRANCH_SIDES,
-  SCOUT_REVEAL_MAIN_LIMIT,
   SCOUT_REVEAL_RADIUS,
-  SCOUT_REVEAL_TILE_LIMIT,
   SIDE_DIRECTIONS,
   SIDE_ORDER,
   START_REVEAL_RADIUS,
@@ -33,7 +29,6 @@ const {
 } = require('./worldMap/WorldMapBatch');
 const {
   createWorldMapGenerationMetadata,
-  roll01,
 } = require('./worldMap/WorldMapGenerationAuthority');
 const {
   chooseOceanTemplates,
@@ -46,21 +41,10 @@ const {
   chooseTerrain,
   createTile,
   isStartSafeLandCoord,
+  isWaterFamilyTerrain,
   normalizeTile,
 } = require('./worldMap/WorldMapTiles');
 const VisionHistory = require('./worldMap/WorldMapVisionHistory');
-
-function normalizeScoutTrail(rawTrail) {
-  if (!rawTrail || typeof rawTrail !== 'object') return null;
-  const missionId = typeof rawTrail.missionId === 'string' && rawTrail.missionId ? rawTrail.missionId : '';
-  if (!missionId) return null;
-  return {
-    missionId,
-    direction: typeof rawTrail.direction === 'string' ? rawTrail.direction : '',
-    tileIds: Array.isArray(rawTrail.tileIds) ? rawTrail.tileIds.filter(Boolean).map(String) : [],
-    returned: Boolean(rawTrail.returned),
-  };
-}
 
 function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date(), options = {}) {
   const origin = getSpawnOrigin(options.spawn || options.origin || {});
@@ -83,7 +67,6 @@ function createInitialWorldMap(seed = DEFAULT_WORLD_SEED, now = new Date(), opti
     visionHistory: VisionHistory.normalizeHistory({
       sources: [{ kind: 'city', q: origin.q, r: origin.r, revealedAt: typeof now === 'string' ? now : now.toISOString() }],
     }),
-    scoutTrails: [],
   };
 }
 
@@ -140,9 +123,6 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
     }
   }
   ensureStartingArea(tileMap, seed, now, { origin });
-  const scoutTrails = (Array.isArray(rawWorldMap?.scoutTrails) ? rawWorldMap.scoutTrails : [])
-    .map(normalizeScoutTrail)
-    .filter(Boolean);
   const visionHistory = VisionHistory.normalizeHistory(rawWorldMap?.visionHistory || rawWorldMap?.visionHistorySources);
   if (!visionHistory.sources.some((source) => source.kind === 'city' && source.q === origin.q && source.r === origin.r)) {
     visionHistory.sources.push({ kind: 'city', q: origin.q, r: origin.r, tileId: getTileId(origin.q, origin.r), revealedAt: null });
@@ -158,7 +138,6 @@ function normalizeWorldMap(rawWorldMap, options = {}) {
     },
     tiles: [...tileMap.values()].sort(compareTiles),
     visionHistory: VisionHistory.normalizeHistory(visionHistory),
-    scoutTrails,
   };
 }
 
@@ -247,6 +226,10 @@ function recordVisionPath(gameState, from, to, now = new Date(), options = {}) {
   }, now, options);
 }
 
+function normalizeVisionHistory(history = {}) {
+  return VisionHistory.normalizeHistory(history);
+}
+
 function getRevealArea(q, r, radius = SCOUT_REVEAL_RADIUS) {
   const centerQ = toInteger(q, 0);
   const centerR = toInteger(r, 0);
@@ -270,84 +253,10 @@ function revealTileArea(gameState, q, r, now = new Date(), options = {}) {
   return revealTiles(gameState, getRevealArea(q, r, radius), now);
 }
 
-function getScoutRevealArea(seed, route = [], direction = '', options = {}) {
-  const mainLimit = Math.max(1, toInteger(options.mainLimit, SCOUT_REVEAL_MAIN_LIMIT));
-  const branchLimit = Math.min(mainLimit, Math.max(0, toInteger(options.branchLimit, SCOUT_REVEAL_BRANCH_LIMIT)));
-  const tileLimit = Math.max(mainLimit, toInteger(options.tileLimit, SCOUT_REVEAL_TILE_LIMIT));
-  const minTileLimit = Math.max(mainLimit, Math.min(tileLimit, toInteger(options.minTileLimit, Math.min(4, tileLimit))));
-  const branchSides = SCOUT_REVEAL_BRANCH_SIDES[direction] || [];
-  const byKey = new Map();
-  const addCoord = (q, r, step, kind) => {
-    const safeQ = toInteger(q, 0);
-    const safeR = toInteger(r, 0);
-    const key = getTileId(safeQ, safeR);
-    const existing = byKey.get(key);
-    if (existing) {
-      if (kind === 'main' && existing.kind !== 'main') existing.kind = 'main';
-      existing.step = Math.min(existing.step, step);
-      return existing;
-    }
-    const coord = { q: safeQ, r: safeR, step, kind };
-    byKey.set(key, coord);
-    return coord;
-  };
-
-  const normalizedRoute = (Array.isArray(route) ? route : [])
-    .map((step, index) => ({
-      q: toInteger(step?.q, 0),
-      r: toInteger(step?.r, 0),
-      step: Math.max(1, toInteger(step?.step, index + 1)),
-    }))
-    .sort((a, b) => a.step - b.step);
-
-  const revealRoute = normalizedRoute.slice(0, mainLimit);
-  const branchCandidates = [];
-  for (const step of revealRoute) {
-    addCoord(step.q, step.r, step.step, 'main');
-    if (step.step > branchLimit || !branchSides.length) continue;
-    branchSides.forEach((side, sideIndex) => {
-      const roll = roll01(seed || DEFAULT_WORLD_SEED, step.q + side.q, step.r + side.r, `scout-branch-${direction}-${step.step}-${sideIndex}`, {
-        action: 'scoutRevealArea',
-      });
-      branchCandidates.push({
-        q: step.q + side.q,
-        r: step.r + side.r,
-        step: step.step,
-        sideIndex,
-        roll,
-      });
-    });
-  }
-
-  const addBranch = (candidate) => {
-    if (byKey.size >= tileLimit) return;
-    addCoord(candidate.q, candidate.r, candidate.step, 'branch');
-  };
-  for (const candidate of branchCandidates) {
-    if (candidate.roll < 0.72) addBranch(candidate);
-  }
-  if (byKey.size < minTileLimit) {
-    branchCandidates
-      .filter((candidate) => !byKey.has(getTileId(candidate.q, candidate.r)))
-      .sort((a, b) => a.roll - b.roll || a.step - b.step || a.sideIndex - b.sideIndex)
-      .forEach((candidate) => {
-        if (byKey.size < minTileLimit) addBranch(candidate);
-      });
-  }
-  return [...byKey.values()].sort((a, b) => (
-    a.step - b.step
-    || (a.kind === 'main' ? -1 : b.kind === 'main' ? 1 : 0)
-    || a.q - b.q
-    || a.r - b.r
-  ));
-}
-
-function revealScoutArea(gameState, revealArea = [], now = new Date()) {
-  return revealTiles(gameState, revealArea, now);
-}
-
 function canPlaceSiteOnTerrain(seed, q, r) {
-  return !['ocean', 'river'].includes(chooseTerrain(seed, q, r));
+  // 'shore' tiles are marchable land, but sites conservatively stay off the
+  // coastline for now (keeps pre-shore placement semantics unchanged).
+  return !['ocean', 'river', 'shore'].includes(chooseTerrain(seed, q, r));
 }
 
 function bindSiteToTile(gameState, q, r, siteId, now = new Date(), options = {}) {
@@ -359,45 +268,6 @@ function bindSiteToTile(gameState, q, r, siteId, now = new Date(), options = {})
   });
   if (controlled) recordVisionSource(gameState, { kind: 'city', q, r }, now);
   return tile;
-}
-
-function getDirectionVector(direction) {
-  return DIRECTION_VECTORS[direction] || null;
-}
-
-function buildScoutRoute(origin, direction, actionPoints, options = {}) {
-  const vector = getDirectionVector(direction);
-  if (!vector) return [];
-  const startQ = toInteger(origin?.q ?? origin?.x, 0);
-  const startR = toInteger(origin?.r ?? origin?.y, 0);
-  const steps = Math.max(0, toInteger(actionPoints, 0));
-  const startDistance = Math.max(1, toInteger(options.startDistance, 1));
-  const route = [];
-  for (let step = 0; step < steps; step += 1) {
-    const distance = startDistance + step;
-    route.push({
-      q: startQ + vector.q * distance,
-      r: startR + vector.r * distance,
-      step: step + 1,
-    });
-  }
-  return route;
-}
-
-function recordScoutTrail(gameState, mission, tileIds, returned = false) {
-  const worldMap = ensureWorldMap(gameState);
-  const missionId = mission?.id || '';
-  if (!missionId) return null;
-  const nextTrail = {
-    missionId,
-    direction: mission.direction || '',
-    tileIds: Array.from(new Set(tileIds.filter(Boolean))),
-    returned: Boolean(returned),
-  };
-  const index = worldMap.scoutTrails.findIndex((trail) => trail.missionId === missionId);
-  if (index >= 0) worldMap.scoutTrails[index] = nextTrail;
-  else worldMap.scoutTrails.push(nextTrail);
-  return nextTrail;
 }
 
 function getClientWorldMap(gameState, now = new Date()) {
@@ -416,14 +286,47 @@ function isLegacyCapitalTileOutsideOrigin(tile = {}, origin = {}) {
   return markedCapital && !isCapitalOriginTile(tile, origin);
 }
 
+// SSOT: "has the player revealed this tile" — the ONE written form of the reveal predicate.
+// gameState.worldMap.tiles is NOT reveal-only: solid-fill bridge tiles (TerritoryStateNormalizer.
+// revealSolidKnownWorldTiles) and AI-explorer tiles (WorldAiExplorerService.revealAiArea, written
+// with visibility:'hidden'/visible:false) live in the same array. Every consumer that needs "what
+// the player can actually see" must come through here (or getRevealedTileCoordSet below) — never
+// hand-roll the visibility check or treat raw tile presence as "revealed".
+function isTileRevealed(tile) {
+  return Boolean(tile) && tile.visibility !== 'hidden' && tile.visible !== false;
+}
+
+// Full client-projection rule for one tile: revealed AND not a legacy capital marker left behind
+// at a stale origin. Shared verbatim by getClientWorldMapFromNormalized (what the client can draw)
+// and getRevealedTileCoordSet (what gates coordinate-keyed projections) so the two can never fork.
+function isClientProjectedTile(tile, origin) {
+  return isTileRevealed(tile) && !isLegacyCapitalTileOutsideOrigin(tile, origin);
+}
+
+// SSOT: coordinate key for coordinate-keyed projection sets (territories, encounters, tiles).
+// Moved here from TerritoryClientAssembler (which now delegates) so lower layers can build the
+// same keys without requiring the client assembler. Accepts x/y or q/r shaped objects.
+function getTileCoordinateKey(site = {}) {
+  const x = Number(site.x ?? site.q ?? 0);
+  const y = Number(site.y ?? site.r ?? 0);
+  return `${Math.floor(x)},${Math.floor(y)}`;
+}
+
+// SSOT: the coordinate-key set of every tile the CLIENT map projects. By construction (same
+// isClientProjectedTile) this set always equals the coordinates of
+// getClientWorldMapFromNormalized(worldMap).tiles — consumers gate against what the client can
+// actually draw, never against the raw persisted tile array.
+function getRevealedTileCoordSet(worldMap = {}) {
+  const origin = getSpawnOrigin(worldMap.origin || {});
+  return new Set((Array.isArray(worldMap.tiles) ? worldMap.tiles : [])
+    .filter((tile) => isClientProjectedTile(tile, origin))
+    .map((tile) => getTileCoordinateKey(tile)));
+}
+
 function getClientWorldMapFromNormalized(worldMap) {
   const clientWorldMap = clone(worldMap || {});
   const origin = getSpawnOrigin(clientWorldMap.origin || {});
-  clientWorldMap.tiles = (clientWorldMap.tiles || []).filter((tile) => (
-    tile.visibility !== 'hidden'
-    && tile.visible !== false
-    && !isLegacyCapitalTileOutsideOrigin(tile, origin)
-  ));
+  clientWorldMap.tiles = (clientWorldMap.tiles || []).filter((tile) => isClientProjectedTile(tile, origin));
   return clientWorldMap;
 }
 
@@ -438,9 +341,6 @@ module.exports = {
   START_REVEAL_RADIUS,
   START_SAFE_LAND_RADIUS,
   SCOUT_REVEAL_RADIUS,
-  SCOUT_REVEAL_MAIN_LIMIT,
-  SCOUT_REVEAL_BRANCH_LIMIT,
-  SCOUT_REVEAL_TILE_LIMIT,
   SIDE_ORDER,
   SIDE_DIRECTIONS,
   DIRECTION_VECTORS,
@@ -457,26 +357,27 @@ module.exports = {
   getTileId,
   chooseBaseTerrain,
   chooseTerrain,
+  isWaterFamilyTerrain,
   chooseOceanTemplates,
   getRiverPorts,
   getRiverMouthTemplateForNeighborOfOcean,
   getRevealArea,
+  getRevealedTileCoordSet,
+  getTileCoordinateKey,
+  isTileRevealed,
   revealTileArea,
-  getScoutRevealArea,
-  revealScoutArea,
   canPlaceSiteOnTerrain,
   createTile,
   createWorldMapBatch,
   createInitialWorldMap,
   normalizeWorldMap,
   ensureWorldMap,
+  normalizeVisionHistory,
   recordVisionPath,
   recordVisionSource,
   revealTile,
   revealTiles,
   bindSiteToTile,
-  buildScoutRoute,
-  recordScoutTrail,
   getClientWorldMap,
   getClientWorldMapFromNormalized,
 };

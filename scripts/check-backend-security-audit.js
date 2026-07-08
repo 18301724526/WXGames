@@ -69,14 +69,48 @@ function validateAuditReport(report) {
   };
 }
 
+function resolveAuditProxy(env = process.env, platform = process.platform) {
+  const explicit = env.NPM_AUDIT_PROXY
+    || env.HTTPS_PROXY
+    || env.https_proxy
+    || env.HTTP_PROXY
+    || env.http_proxy
+    || '';
+  if (explicit) return String(explicit);
+  if (platform !== 'win32') return '';
+
+  const result = spawnSync('powershell.exe', [
+    '-NoProfile',
+    '-Command',
+    "(Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings').ProxyServer",
+  ], {
+    encoding: 'utf8',
+    shell: false,
+  });
+  const proxy = String(result.stdout || '').trim().split(/\r?\n/).find(Boolean) || '';
+  if (!proxy || String(result.status) !== '0') return '';
+  if (/^[a-z]+:\/\//i.test(proxy)) return proxy;
+  return `http://${proxy}`;
+}
+
 function runBackendAudit() {
   const command = process.platform === 'win32' ? 'cmd.exe' : 'npm';
+  const proxy = resolveAuditProxy();
+  const npmArgs = ['audit', '--json'];
+  if (proxy) {
+    npmArgs.push(`--proxy=${proxy}`, `--https-proxy=${proxy}`);
+  }
   const args = process.platform === 'win32'
-    ? ['/d', '/s', '/c', 'npm.cmd audit --json']
-    : ['audit', '--json'];
+    ? ['/d', '/s', '/c', ['npm.cmd', ...npmArgs].join(' ')]
+    : npmArgs;
+  const env = {
+    ...process.env,
+    ...(proxy ? { HTTP_PROXY: proxy, HTTPS_PROXY: proxy } : {}),
+  };
   const result = spawnSync(command, args, {
     cwd: backendRoot,
     encoding: 'utf8',
+    env,
     shell: false,
   });
   if (result.error) {
@@ -99,5 +133,6 @@ if (require.main === module) {
 module.exports = {
   ALLOWED_RESIDUALS,
   parseAuditJson,
+  resolveAuditProxy,
   validateAuditReport,
 };

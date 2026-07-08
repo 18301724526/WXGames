@@ -1,4 +1,5 @@
-const { TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
+const { TASK_CLAIM_STEPS, isValidStep, stepAtLeast } = require('../../shared/tutorialFlowConfig');
+const { manualAdvance } = require('./tutorial/TutorialProgression');
 const TaskDefinitionService = require('./TaskDefinitionService');
 const TaskCenterAssembler = require('./taskCenter/TaskCenterAssembler');
 const ProgressEvaluator = require('./taskCenter/TaskProgressEvaluator');
@@ -15,22 +16,10 @@ function buildCategories(gameState, definitions = TaskDefinitionService.loadDefi
 
 function maybeAdvanceTutorialAfterClaim(gameState, taskId) {
   const tutorial = gameState.tutorial || {};
-  const tutorialSteps = TutorialFlowConfig.TUTORIAL_STEPS;
   if (tutorial.completed || tutorial.disabled) return tutorial;
-  let nextStep = null;
-  if (taskId === 'main_first_supplies') nextStep = tutorialSteps.farmPrepReserved;
-  if (taskId === 'main_lumbermill_supplies') nextStep = tutorialSteps.era3AdvanceReady;
-  if (!Number.isFinite(nextStep) || (Number(tutorial.currentStep) || 0) >= nextStep) return tutorial;
-  gameState.tutorial = {
-    ...tutorial,
-    currentStep: nextStep,
-    phaseCompleted: {
-      ...(tutorial.phaseCompleted || {}),
-      newbie: true,
-      era2: nextStep >= tutorialSteps.era3AdvanceReady || Boolean(tutorial.phaseCompleted?.era2),
-    },
-    updatedAt: new Date().toISOString(),
-  };
+  const nextStep = TASK_CLAIM_STEPS[taskId];
+  if (!isValidStep(nextStep) || stepAtLeast(tutorial.currentStep, nextStep)) return tutorial;
+  gameState.tutorial = manualAdvance(gameState.tutorial, nextStep);
   return gameState.tutorial;
 }
 

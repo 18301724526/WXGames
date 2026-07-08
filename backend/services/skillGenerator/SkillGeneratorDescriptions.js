@@ -62,7 +62,7 @@ function describeEffectSentence(effect = {}, ability = {}) {
   if (effect.key === 'settlementPacifyPct') return `安抚效率提高 ${formatPercent(effect.value)}。`;
   if (effect.key === 'famousRetentionPct') return `名人说服成功率提高 ${formatPercent(effect.value)}。`;
   if (effect.key === 'diplomacyBonusPct') return `外交收益提高 ${formatPercent(effect.value)}。`;
-  if (effect.key === 'scoutReportBonusPct') return `侦查情报质量提高 ${formatPercent(effect.value)}。`;
+  if (effect.key === 'scoutReportBonusPct') return `军情视野质量提高 ${formatPercent(effect.value)}。`;
   if (effect.key === 'cityStabilityPct') return `城市稳定提高 ${formatPercent(effect.value)}。`;
   return '';
 }

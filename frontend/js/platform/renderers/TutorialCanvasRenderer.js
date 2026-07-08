@@ -19,66 +19,62 @@
   const SharedTutorialAdvisorCanvasRenderer = resolveRendererDependency('TutorialAdvisorCanvasRenderer', './TutorialAdvisorCanvasRenderer');
   const SharedTutorialDialogueLayer = resolveRendererDependency('TutorialDialogueLayer', './TutorialDialogueLayer');
   const SharedTutorialAdvisorDialogueRenderer = resolveRendererDependency('TutorialAdvisorDialogueRenderer', './TutorialAdvisorDialogueRenderer');
+  const CanvasLayerRegistry = resolveRendererDependency('CanvasLayerRegistry', '../CanvasLayerRegistry');
   class TutorialCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
+      this.drawingSurface = options.drawingSurface || null;
       const AdvisorRendererClass = options.advisorRendererClass || SharedTutorialAdvisorCanvasRenderer;
-      this.advisorRenderer = options.advisorRenderer || (AdvisorRendererClass ? new AdvisorRendererClass({ host: this.host }) : null);
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop === 'advisorRenderer' || prop in target) return Reflect.set(target, prop, value);
-          if (target.host && prop in target.host) {
-            target.host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.advisorRenderer = options.advisorRenderer || (AdvisorRendererClass ? new AdvisorRendererClass({ host: this.host, drawingSurface: this.drawingSurface || this.host }) : null);
     }
+
+    get bottomSafeArea() { return Number(this.host?.bottomSafeArea) || 0; }
+    get ctx() { return this.dialogueCtx || this.host?.ctx || null; }
+    get height() { return Number(this.host?.height) || 0; }
+    get h5Runtime() { return this.host?.h5Runtime || null; }
+    get hitTargets() { return this.host?.hitTargets || null; }
+    get presenter() { return this.host?.presenter || null; }
+    get width() { return Number(this.host?.width) || 0; }
+    get worldMapRenderer() { return this.host?.worldMapRenderer || null; }
+
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    ensureCanvasLayer(name = '', overrides = {}) { return this.host?.ensureCanvasLayer?.(name, overrides) || this.h5Runtime?.ensureLayerCanvas?.(name, CanvasLayerRegistry?.getLayerOptions?.(name, overrides) || overrides) || null; }
+    getAsset(...args) { return this.host?.getAsset?.(...args) || null; }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args) ?? { contentX: 0, contentWidth: this.width, contentRight: this.width }; }
+    getNow(...args) { const surface = this.drawingSurface; return surface && typeof surface.getNow === 'function' ? surface.getNow(...args) : this.host?.getNow?.(...args) ?? Date.now(); }
+    getWorldSiteCanvasAnchor(...args) { return this.host?.getWorldSiteCanvasAnchor?.(...args) || null; }
+    interpolateRect(...args) { return this.host?.interpolateRect?.(...args) ?? (args[1] || args[0] || {}); }
+    parsePixelValue(value) { return this.host?.parsePixelValue?.(value) ?? (Number.isFinite(Number(String(value ?? '').replace('px', ''))) ? Number(String(value ?? '').replace('px', '')) : 0); }
+    roundRectPath(...args) { const surface = this.drawingSurface; return surface && typeof surface.roundRectPath === 'function' ? surface.roundRectPath(...args) : this.host?.roundRectPath?.(...args); }
+    setCanvasLayerVisible(...args) { return this.host?.setCanvasLayerVisible?.(...args) || this.h5Runtime?.setLayerVisible?.(...args) || false; }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args) ?? String(args[0] ?? ''); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args) ?? [String(args[0] ?? '')].filter(Boolean); }
+
     render(state = {}, options = {}) {
       return this.renderTutorialIntro(state, options);
     }
 
-    delegateTutorialAdvisorRenderer(method, args = []) {
-      const renderer = this.advisorRenderer;
-      if (!renderer || typeof renderer[method] !== 'function') return undefined;
-      return renderer[method](...args);
-    }
-
     disposeTutorialAdvisorSpine(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('disposeTutorialAdvisorSpine', args);
+      const result = this.advisorRenderer?.disposeTutorialAdvisorSpine?.(...args);
       return result === undefined ? false : result;
     }
 
     renderTutorialIntroAdvisorPortrait(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('renderTutorialIntroAdvisorPortrait', args);
+      const result = this.advisorRenderer?.renderTutorialIntroAdvisorPortrait?.(...args);
       return result === undefined ? false : result;
     }
 
     renderTutorialAdvisorSpineLayer(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('renderTutorialAdvisorSpineLayer', args);
+      const result = this.advisorRenderer?.renderTutorialAdvisorSpineLayer?.(...args);
       return result === undefined ? false : result;
     }
 
     drawTutorialAdvisorImageCover(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('drawTutorialAdvisorImageCover', args);
+      const result = this.advisorRenderer?.drawTutorialAdvisorImageCover?.(...args);
       return result === undefined ? false : result;
-    }
-
-    getTutorialAdvisorSpineFrame(...args) {
-      const result = this.delegateTutorialAdvisorRenderer('getTutorialAdvisorSpineFrame', args);
-      return result === undefined ? null : result;
     }
 
     renderTutorialIntro(state = {}, options = {}) {
@@ -106,7 +102,7 @@
       const message = intro.messages?.[intro.step] || '';
       this.renderTutorialIntroSpotlight(target, message, {
         showAdvisor: true,
-        advisorName: intro.advisorName || '谋士',
+        advisorName: intro.advisorName,
       });
       if (intro.step === 'city' || intro.step === 'enter') this.renderTutorialIntroMarch(intro, unitTarget);
       return true;
@@ -318,7 +314,7 @@
         inset: 'rgba(255, 247, 214, 0.14)',
       });
       this.renderTutorialIntroFinger(rect.x + rect.width * 0.78, rect.y + rect.height * 0.88);
-      if (options.showAdvisor) this.renderTutorialIntroDialogue(message, options.advisorName || '谋士');
+      if (options.showAdvisor) this.renderTutorialIntroDialogue(message, options.advisorName);
       return true;
     }
 
@@ -375,11 +371,11 @@
       this.ctx.restore?.();
     }
 
-    renderTutorialIntroDialogue(message = '', advisorName = '谋士') {
+    renderTutorialIntroDialogue(message = '', advisorName) {
       return this.renderTutorialAdvisorDialogue(message, advisorName);
     }
 
-    renderTutorialAdvisorDialogue(message = '', advisorName = '谋士', options = {}) {
+    renderTutorialAdvisorDialogue(message = '', advisorName, options = {}) {
       return SharedTutorialAdvisorDialogueRenderer?.render?.(this, message, advisorName, options) || false;
     }
 

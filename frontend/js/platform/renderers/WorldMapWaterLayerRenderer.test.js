@@ -76,16 +76,22 @@ function createHost(overrides = {}) {
   const calls = [];
   const work = createWork(calls);
   const layout = createLayout(calls);
+  const worldMapCacheState = {
+    worldTileFastDragActive: Boolean(overrides.worldTileFastDragActive),
+    worldTileWaterLayerCache: overrides.worldTileWaterLayerCache || null,
+    worldTileWaterLayerCacheKey: overrides.worldTileWaterLayerCacheKey || '',
+    worldTileWaterFrameCaches: overrides.worldTileWaterFrameCaches || new Map(),
+    worldTileWaterChunkCaches: overrides.worldTileWaterChunkCaches || new Map(),
+    worldTileWaterChunkCacheTick: Number(overrides.worldTileWaterChunkCacheTick) || 0,
+  };
+  const worldMapRenderState = {
+    worldTileWaterTimeOverride: overrides.worldTileWaterTimeOverride ?? null,
+  };
   return {
     calls,
     ctx: createCtx(calls),
-    worldTileFastDragActive: false,
-    worldTileWaterLayerCache: null,
-    worldTileWaterLayerCacheKey: '',
-    worldTileWaterFrameCaches: new Map(),
-    worldTileWaterChunkCaches: new Map(),
-    worldTileWaterChunkCacheTick: 0,
-    worldTileWaterTimeOverride: null,
+    worldMapCacheState,
+    worldMapRenderState,
     constructor: {
       getWorldMapCachePolicy() {
         return null;
@@ -150,8 +156,8 @@ test('WorldMapWaterLayerRenderer renders and caches all water frame variants', (
   const renderer = new WorldMapWaterLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileWaterLayer({ seed: 'seed' }, {}, {}, [createEntry()]), true);
-  assert.equal(host.worldTileWaterFrameCaches.size, 8);
-  assert.equal(host.worldTileWaterLayerCache, host.worldTileWaterFrameCaches.get(1));
+  assert.equal(host.worldMapCacheState.worldTileWaterFrameCaches.size, 8);
+  assert.equal(host.worldMapCacheState.worldTileWaterLayerCache, host.worldMapCacheState.worldTileWaterFrameCaches.get(1));
   assert.equal(host.calls.filter((call) => call[0] === 'renderWorldTileWaterEntries').length, 8);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileLayerCache'), true);
 });
@@ -160,13 +166,13 @@ test('WorldMapWaterLayerRenderer reuses fast-drag water frame cache without repa
   const host = createHost({ worldTileFastDragActive: true, worldTileWaterTimeOverride: 0 });
   const cached = createWork(host.calls);
   cached.key = 'water-cache-v1';
-  host.worldTileWaterFrameCaches.set(0, cached);
+  host.worldMapCacheState.worldTileWaterFrameCaches.set(0, cached);
   const renderer = new WorldMapWaterLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileWaterLayer({ seed: 'seed' }, {}, {}, [createEntry()]), true);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileWaterEntries'), false);
-  assert.equal(host.worldTileWaterLayerCache, cached);
-  assert.equal(host.worldTileWaterLayerCacheKey, 'water-cache-v1');
+  assert.equal(host.worldMapCacheState.worldTileWaterLayerCache, cached);
+  assert.equal(host.worldMapCacheState.worldTileWaterLayerCacheKey, 'water-cache-v1');
 });
 
 test('WorldMapWaterLayerRenderer renders chunk water frames and prunes stale chunks', () => {
@@ -183,12 +189,12 @@ test('WorldMapWaterLayerRenderer renders chunk water frames and prunes stale chu
       };
     },
   });
-  host.worldTileWaterChunkCaches.set('stale:0', { canvas: {}, lastUsedAt: 0 });
+  host.worldMapCacheState.worldTileWaterChunkCaches.set('stale:0', { canvas: {}, lastUsedAt: 0 });
   const renderer = new WorldMapWaterLayerRenderer({ host });
 
   assert.equal(renderer.renderWorldTileWaterLayer({ seed: 'seed' }, {}, {}, [createEntry()]), true);
-  assert.equal(host.worldTileWaterChunkCaches.has('0,0:0'), true);
-  assert.equal(host.worldTileWaterChunkCaches.has('stale:0'), false);
+  assert.equal(host.worldMapCacheState.worldTileWaterChunkCaches.has('0,0:0'), true);
+  assert.equal(host.worldMapCacheState.worldTileWaterChunkCaches.has('stale:0'), false);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileLayerCache'), true);
 });
 
@@ -270,6 +276,85 @@ test('WorldMapWaterLayerRenderer fallback cache key uses stable coordinates inst
 
   assert.equal(qrKey, xyKey);
   assert.notEqual(movedKey, xyKey);
+});
+
+function createScopedHost(overrides = {}) {
+  const host = createHost(overrides);
+  host.withRenderCtx = function withRenderCtx(ctx, callback) {
+    if (typeof callback !== 'function') return false;
+    if (!ctx) return callback();
+    const previousCtx = this.ctx;
+    this.ctx = ctx;
+    try {
+      return callback();
+    } finally {
+      this.ctx = previousCtx;
+    }
+  };
+  return host;
+}
+
+test('WorldMapWaterLayerRenderer water frame bake scopes the work ctx on the host owner', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapWaterLayerRenderer({ host });
+  const liveCtx = host.ctx;
+  const work = createWork([]);
+  const seenCtxs = [];
+
+  const result = renderer.withWaterFrameCacheContext(work, createLayout(), () => {
+    seenCtxs.push(host.ctx);
+    return true;
+  });
+
+  assert.equal(result, true);
+  assert.equal(seenCtxs.length, 1);
+  assert.equal(seenCtxs[0], work.ctx);
+  assert.equal(host.ctx, liveCtx);
+});
+
+test('WorldMapWaterLayerRenderer water frame bake never pins a stale ctx across host ctx recreation', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapWaterLayerRenderer({ host });
+
+  assert.equal(renderer.withWaterFrameCacheContext(createWork([]), createLayout(), () => true), true);
+
+  const recreatedCtx = createCtx([]);
+  host.ctx = recreatedCtx;
+  assert.equal(renderer.ctx, recreatedCtx);
+});
+
+test('WorldMapWaterLayerRenderer water frame bake restores the host ctx when the bake throws', () => {
+  const host = createScopedHost();
+  const renderer = new WorldMapWaterLayerRenderer({ host });
+  const liveCtx = host.ctx;
+  const workCalls = [];
+  const work = createWork(workCalls);
+
+  assert.throws(
+    () =>
+      renderer.withWaterFrameCacheContext(work, createLayout(), () => {
+        throw new Error('bake failed');
+      }),
+    /bake failed/,
+  );
+  assert.equal(host.ctx, liveCtx);
+  assert.equal(workCalls.some((call) => call[0] === 'restore'), true);
+
+  const recreatedCtx = createCtx([]);
+  host.ctx = recreatedCtx;
+  assert.equal(renderer.ctx, recreatedCtx);
+});
+
+test('WorldMapWaterLayerRenderer water frame bake still runs when the host lacks withRenderCtx', () => {
+  const host = createHost();
+  const renderer = new WorldMapWaterLayerRenderer({ host });
+  const workCalls = [];
+  const work = createWork(workCalls);
+
+  assert.equal(renderer.withWaterFrameCacheContext(work, createLayout(), () => 'baked'), 'baked');
+  assert.equal(workCalls.some((call) => call[0] === 'save'), true);
+  assert.equal(workCalls.some((call) => call[0] === 'translate' && call[1] === 10 && call[2] === 20), true);
+  assert.equal(workCalls.some((call) => call[0] === 'restore'), true);
 });
 
 test('WorldMapWaterLayerRenderer loads before WorldMapCanvasRenderer in browser entrypoints', () => {

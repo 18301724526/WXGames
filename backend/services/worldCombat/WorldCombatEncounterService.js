@@ -1,0 +1,870 @@
+const BattleService = require('../BattleService');
+const BattleSimService = require('../battle/BattleSimService');
+const WorldMapService = require('../WorldMapService');
+const FormationStrengthService = require('../military/FormationStrengthService');
+const DefenderLeaderService = require('../DefenderLeaderService');
+const CityService = require('../CityService');
+// Hostile encounters are gated by the player's CURRENT vision (WorldExplorerVision — occupied
+// cities + fielded march parties, computed live), NOT by the reveal history. Cities keep the
+// "discovered once → shown forever" gate (WorldMapService.getRevealedTileCoordSet, used by
+// TerritoryClientAssembler); encounters deliberately do not — walk away and they hide again.
+const WorldExplorerVision = require('../worldExplorer/WorldExplorerVision');
+const { toInteger } = require('../../../shared/numberUtils');
+const { cloneIfObject } = require('../../../shared/objectUtils');
+const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
+
+// City resource keys a camp loot table may pay out. Kept in sync with the canonical
+// resource set the rest of the backend accepts; anything outside this is dropped so a
+// bad loot table can never invent a resource.
+const LOOT_RESOURCE_KEYS = Object.freeze(['food', 'wood', 'knowledge', 'iron', 'stone', 'metal']);
+
+const SCHEMA = 'world-combat-encounters-v1';
+const ENCOUNTER_ID = 'hostile_force_capital_ridge';
+const RECENT_REPORT_LIMIT = 5;
+// How long an 'engaged' mission (arrived on an enemy tile, waiting for the player to
+// play the interactive battle) may sit before the server force-settles it with an
+// allOut fallback. This is the offline safety net: a player who never opens the battle
+// scene (closed the tab, left it engaged) must not strand the formation forever. The
+// interactive path clears 'engaged' the moment resolveSession runs, so the timeout only
+// ever fires when nobody is playing the fight. Exported so tests + tuning share one value.
+const AUTO_ENGAGE_FALLBACK_MS = 45000;
+// How long an interactive battle session may stay 'open' (a player playing the fight)
+// before it is forfeited as orphaned. Generous — a real fight is seconds — so this only
+// reaps sessions abandoned by a closed tab. Longer than AUTO_ENGAGE_FALLBACK_MS so a live
+// fight is never reaped out from under the player.
+const SESSION_STALE_MS = 5 * 60 * 1000;
+const DEFAULT_OFFSET = Object.freeze({ q: 2, r: -1 });
+const DEFAULT_FORCE = Object.freeze({
+  soldiers: 40,
+  quality: 'common',
+  threat: 1,
+  scale: 1,
+});
+
+function getCapitalCoord(gameState = {}) {
+  const capital =
+    (Array.isArray(gameState.territories) ? gameState.territories : []).find(
+      (territory) => territory?.id === 'capital',
+    ) || {};
+  const origin = gameState.worldMap?.origin || {};
+  return {
+    q: toInteger(capital.q ?? capital.x ?? origin.q ?? origin.x, 0),
+    r: toInteger(capital.r ?? capital.y ?? origin.r ?? origin.y, 0),
+  };
+}
+
+function getEncounterCoord(gameState = {}) {
+  const capital = getCapitalCoord(gameState);
+  return {
+    q: capital.q + DEFAULT_OFFSET.q,
+    r: capital.r + DEFAULT_OFFSET.r,
+  };
+}
+
+function getTerrain(gameState = {}, q = 0, r = 0, now = new Date()) {
+  const worldMap = WorldMapService.ensureWorldMap(gameState, now);
+  const tile = (Array.isArray(worldMap.tiles) ? worldMap.tiles : []).find(
+    (item) => toInteger(item.q) === q && toInteger(item.r) === r,
+  );
+  return tile?.terrain || WorldMapService.chooseTerrain(worldMap.seed, q, r) || 'plains';
+}
+
+function createDefenderLeader(encounter = {}, now = new Date()) {
+  const rawLeader = encounter.defender?.leader || encounter.leader || null;
+  if (rawLeader && typeof rawLeader === 'object') return cloneIfObject(rawLeader);
+  return DefenderLeaderService.createDefenderLeader(
+    {
+      id: encounter.id || ENCOUNTER_ID,
+      type: 'camp',
+      owner: 'tribe',
+      naturalName: encounter.name || 'Hostile Patrol',
+      defense: encounter.defender?.soldiers ?? DEFAULT_FORCE.soldiers,
+      quality: encounter.defender?.quality || DEFAULT_FORCE.quality,
+      threat: encounter.defender?.threat || DEFAULT_FORCE.threat,
+      scale: encounter.defender?.scale || DEFAULT_FORCE.scale,
+    },
+    { createdAt: encounter.createdAt || now.toISOString() },
+  );
+}
+
+function createEncounter(gameState = {}, now = new Date()) {
+  const coord = getEncounterCoord(gameState);
+  const tileId = WorldMapService.getTileId(coord.q, coord.r);
+  const terrain = getTerrain(gameState, coord.q, coord.r, now);
+  const createdAt = now.toISOString();
+  return {
+    id: ENCOUNTER_ID,
+    kind: 'hostileForce',
+    status: 'active',
+    name: 'Frontier Patrol',
+    nameKey: 'world.combat.encounter.frontierPatrol',
+    q: coord.q,
+    r: coord.r,
+    tileId,
+    terrain,
+    unitKey: 'hostile_squad_default',
+    createdAt,
+    updatedAt: createdAt,
+    defender: {
+      id: `${ENCOUNTER_ID}_defender`,
+      owner: 'hostile',
+      soldiers: DEFAULT_FORCE.soldiers,
+      quality: DEFAULT_FORCE.quality,
+      threat: DEFAULT_FORCE.threat,
+      scale: DEFAULT_FORCE.scale,
+      leader: null,
+    },
+    battleReport: null,
+    resolvedAt: null,
+    resolvedByMissionId: null,
+  };
+}
+
+function normalizeEncounter(rawEncounter = {}, gameState = {}, now = new Date()) {
+  const fallback = createEncounter(gameState, now);
+  const raw = rawEncounter && typeof rawEncounter === 'object' ? rawEncounter : {};
+  const q = toInteger(raw.q ?? raw.x, fallback.q);
+  const r = toInteger(raw.r ?? raw.y, fallback.r);
+  const status = raw.status === 'resolved' ? 'resolved' : 'active';
+  const minimumDefenderSoldiers = status === 'resolved' ? 0 : 1;
+  const defenderRaw = raw.defender && typeof raw.defender === 'object' ? raw.defender : {};
+  const encounter = {
+    ...fallback,
+    ...raw,
+    id: raw.id || fallback.id,
+    kind: raw.kind || fallback.kind,
+    status,
+    name: raw.name || fallback.name,
+    nameKey: raw.nameKey || fallback.nameKey,
+    q,
+    r,
+    tileId: WorldMapService.getTileId(q, r),
+    terrain: raw.terrain || getTerrain(gameState, q, r, now),
+    unitKey: raw.unitKey || fallback.unitKey,
+    createdAt: raw.createdAt || fallback.createdAt,
+    updatedAt: raw.updatedAt || raw.createdAt || fallback.updatedAt,
+    defender: {
+      ...fallback.defender,
+      ...defenderRaw,
+      id: defenderRaw.id || `${raw.id || fallback.id}_defender`,
+      owner: defenderRaw.owner || 'hostile',
+      soldiers: Math.max(
+        minimumDefenderSoldiers,
+        toInteger(defenderRaw.soldiers, fallback.defender.soldiers),
+      ),
+      quality: defenderRaw.quality || fallback.defender.quality,
+      threat: Math.max(0, toInteger(defenderRaw.threat, fallback.defender.threat)),
+      scale: Math.max(1, toInteger(defenderRaw.scale, fallback.defender.scale)),
+      // Camp garrison at full strength (used to restore a resolved camp on respawn).
+      // Absent on the stub/legacy saves ⇒ 0, which the respawn helper treats as "no
+      // camp reset applies".
+      baseSoldiers: Math.max(0, toInteger(defenderRaw.baseSoldiers, 0)),
+      leader: defenderRaw.leader || null,
+    },
+    battleReport: raw.battleReport || null,
+    resolvedAt: raw.resolvedAt || null,
+    resolvedByMissionId: raw.resolvedByMissionId || null,
+    // Camp passthrough fields (slice 1a). Absent on the legacy stub / legacy saves, so
+    // they normalize to inert defaults (null / []) and legacy readers ignore them.
+    campArchetypeKey:
+      typeof raw.campArchetypeKey === 'string' && raw.campArchetypeKey
+        ? raw.campArchetypeKey
+        : null,
+    lootTable: raw.lootTable && typeof raw.lootTable === 'object' ? { ...raw.lootTable } : null,
+    respawnCooldownMs: Math.max(0, toInteger(raw.respawnCooldownMs, 0)),
+    respawnAt: raw.respawnAt || null,
+  };
+  encounter.defender.leader = createDefenderLeader(encounter, now);
+  return encounter;
+}
+
+function isCampEncounter(encounter = {}) {
+  return Boolean(encounter && encounter.campArchetypeKey);
+}
+
+// Reset a resolved camp back to active once its respawn cooldown has elapsed. No-op for
+// the legacy stub (not a camp) and for camps still inside their cooldown window. Restores
+// the original garrison, clears the finished-battle bookkeeping, and drops respawnAt.
+function respawnCampIfReady(encounter = {}, now = new Date()) {
+  if (!isCampEncounter(encounter) || encounter.status !== 'resolved') return false;
+  const respawnAtMs = encounter.respawnAt ? Date.parse(encounter.respawnAt) : Number.NaN;
+  // A resolved camp with no respawnAt (e.g. hand-authored) never revives on its own.
+  if (!Number.isFinite(respawnAtMs) || now.getTime() < respawnAtMs) return false;
+  const baseSoldiers = Math.max(1, toInteger(encounter.defender?.baseSoldiers, 1));
+  encounter.status = 'active';
+  encounter.defender.soldiers = baseSoldiers;
+  encounter.battleReport = null;
+  encounter.resolvedAt = null;
+  encounter.resolvedByMissionId = null;
+  encounter.respawnAt = null;
+  encounter.updatedAt = now.toISOString();
+  return true;
+}
+
+// Canonical resource credit: mutate the active city's resource object (the top-level
+// gameState.resources is an alias of it), clamped at zero, exactly like EventService's
+// resource effects. Returns the {key:amount} map actually granted (filtered to valid
+// resource keys and positive amounts) for the battle report's loot field.
+function awardCampLoot(gameState = {}, lootTable = null) {
+  if (!lootTable || typeof lootTable !== 'object') return {};
+  const city = CityService.getActiveCity(gameState);
+  if (!city) return {};
+  city.resources = city.resources || {};
+  const granted = {};
+  LOOT_RESOURCE_KEYS.forEach((key) => {
+    const amount = toInteger(lootTable[key], 0);
+    if (amount <= 0) return;
+    city.resources[key] = Math.max(0, (city.resources[key] || 0) + amount);
+    granted[key] = amount;
+  });
+  return granted;
+}
+
+// SINGLE SOURCE for camp victory rewards, called by BOTH resolution paths (the passive
+// march-arrival battle in resolveEncounterBattle AND the interactive session in
+// WorldCombatSessionService.resolveSession) so loot + respawn cooldown are identical
+// however the camp was defeated. Assumes the caller has already set status='resolved'.
+// The legacy stub has no lootTable/respawnCooldownMs, so it grants nothing and never
+// sets respawnAt — normalizeCombatState keeps respawning it unconditionally (unchanged).
+function applyCampVictorySpoils(gameState = {}, encounter = {}, now = new Date()) {
+  if (!isCampEncounter(encounter)) return {};
+  const loot = awardCampLoot(gameState, encounter.lootTable);
+  const cooldownMs = Math.max(0, toInteger(encounter.respawnCooldownMs, 0));
+  encounter.respawnAt = cooldownMs > 0 ? new Date(now.getTime() + cooldownMs).toISOString() : null;
+  return loot;
+}
+
+function normalizeEncounterIntel(rawIntel = null) {
+  const byEncounterId = {};
+  const source =
+    rawIntel && typeof rawIntel === 'object'
+      ? (rawIntel.byEncounterId && typeof rawIntel.byEncounterId === 'object'
+        ? rawIntel.byEncounterId
+        : rawIntel)
+      : {};
+  Object.entries(source).forEach(([id, value]) => {
+    if (!id || !value || typeof value !== 'object') return;
+    byEncounterId[id] = {
+      encounterId: value.encounterId || id,
+      foughtAt: value.foughtAt || value.resolvedAt || null,
+      battleReportId: value.battleReportId || null,
+    };
+  });
+  return { byEncounterId };
+}
+
+function mergeLegacyEncounterIntel(intelState, rawEncounters = []) {
+  const next = normalizeEncounterIntel(intelState);
+  rawEncounters.forEach((encounter) => {
+    if (!encounter || typeof encounter !== 'object' || !encounter.id || !encounter.battleReport) return;
+    if (next.byEncounterId[encounter.id]) return;
+    next.byEncounterId[encounter.id] = {
+      encounterId: encounter.id,
+      foughtAt: encounter.resolvedAt || encounter.battleReport?.createdAt || null,
+      battleReportId: encounter.battleReport?.id || null,
+    };
+  });
+  return next;
+}
+
+function markEncounterFought(gameState = {}, encounterId = '', report = {}, now = new Date()) {
+  const state = normalizeCombatState(gameState, now);
+  const id = String(encounterId || '');
+  if (!id) return state.encounterIntel;
+  state.encounterIntel.byEncounterId[id] = {
+    encounterId: id,
+    foughtAt: now.toISOString(),
+    battleReportId: report?.id || null,
+  };
+  return state.encounterIntel;
+}
+
+function normalizeCombatState(gameState = {}, now = new Date()) {
+  const rawState =
+    gameState.worldCombat && typeof gameState.worldCombat === 'object' ? gameState.worldCombat : {};
+  const rawEncounters = Array.isArray(rawState.encounters) ? rawState.encounters : [];
+  const recentReports = Array.isArray(rawState.recentReports)
+    ? rawState.recentReports.filter(Boolean).slice(0, RECENT_REPORT_LIMIT)
+    : [];
+  gameState.worldCombat = {
+    schema: SCHEMA,
+    recentReports,
+    encounterIntel: mergeLegacyEncounterIntel(rawState.encounterIntel, rawEncounters),
+    session: reapStaleSession(rawState.session, gameState, now),
+    updatedAt: rawState.updatedAt || now.toISOString(),
+  };
+  return gameState.worldCombat;
+}
+
+// Orphaned-session self-heal. A player who closes the tab mid-battle (or any client that
+// opens a session and never resolves it) would otherwise leave worldCombat.session 'open'
+// forever, permanently blocking new combat with WORLD_COMBAT_SESSION_BUSY. If an open
+// session has been sitting past SESSION_STALE_MS, forfeit it: drop the session and reset
+// its mission from 'inBattle' back to 'engaged' (fresh engagedAt) so the normal engaged
+// flow (frontend re-open or the allOut timeout fallback) takes over. No result is applied
+// — the abandoned fight simply did not happen.
+function reapStaleSession(session, gameState = {}, now = new Date()) {
+  if (!session || typeof session !== 'object') return null;
+  if (session.status !== 'open') return session;
+  const startedMs = session.startedAt ? Date.parse(session.startedAt) : Number.NaN;
+  // Only reap a session we can PROVE is stale: a valid startedAt older than the threshold.
+  // A session with no parseable startedAt is kept (we cannot show it is abandoned).
+  if (!Number.isFinite(startedMs) || now.getTime() - startedMs <= SESSION_STALE_MS) return session;
+  const missions = Array.isArray(gameState.exploreMissions) ? gameState.exploreMissions : [];
+  const mission = missions.find((m) => m && m.id && m.id === session.missionId);
+  if (mission && mission.combat && mission.combat.status === 'inBattle') {
+    mission.combat = {
+      ...mission.combat,
+      status: 'engaged',
+      engagedAt: now.toISOString(),
+      battleId: null,
+    };
+  }
+  return null;
+}
+
+function normalizeSharedEncounterList(gameState = {}, encounters = [], now = new Date()) {
+  return (Array.isArray(encounters) ? encounters : [])
+    .map((encounter) => normalizeEncounter(encounter, gameState, now))
+    .filter((encounter) => encounter && encounter.id);
+}
+
+function getSharedEncounters(gameState = {}, now = new Date(), options = {}) {
+  const repo = options.worldEncounterRepo || null;
+  if (repo && typeof repo.getAllEncounters === 'function') {
+    return normalizeSharedEncounterList(gameState, repo.getAllEncounters({ now }), now);
+  }
+  return normalizeSharedEncounterList(
+    gameState,
+    options.sharedWorldEncounters || gameState.sharedWorldEncounters || [],
+    now,
+  );
+}
+
+function persistSharedEncounter(encounter = {}, options = {}, now = new Date()) {
+  const repo = options.worldEncounterRepo || null;
+  if (repo && typeof repo.upsertEncounter === 'function' && encounter?.id) {
+    repo.upsertEncounter(encounter, now);
+  }
+  return encounter;
+}
+
+function getActiveEncounter(gameState = {}, encounterId = '', now = new Date(), options = {}) {
+  normalizeCombatState(gameState, now);
+  const id = String(encounterId || '');
+  if (!id) return null;
+  const repo = options.worldEncounterRepo || null;
+  const encounter = repo && typeof repo.getActiveEncounter === 'function'
+    ? repo.getActiveEncounter(id, { now })
+    : getSharedEncounters(gameState, now, options).find((item) => item.id === id && item.status === 'active');
+  return encounter ? normalizeEncounter(encounter, gameState, now) : null;
+}
+
+function getActiveEncounterAt(gameState = {}, coord = {}, now = new Date(), options = {}) {
+  normalizeCombatState(gameState, now);
+  const tileId = WorldMapService.getTileId(
+    toInteger(coord.q ?? coord.x, 0),
+    toInteger(coord.r ?? coord.y, 0),
+  );
+  const repo = options.worldEncounterRepo || null;
+  const encounter = repo && typeof repo.getActiveEncounterAt === 'function'
+    ? repo.getActiveEncounterAt(coord, { now })
+    : getSharedEncounters(gameState, now, options).find(
+      (item) => item.status === 'active' && item.tileId === tileId,
+    );
+  return encounter ? normalizeEncounter(encounter, gameState, now) : null;
+}
+
+function getEncounterIdFromMarchOptions(options = {}) {
+  return String(options.combatEncounterId || options.encounterId || '').trim();
+}
+
+function resolveMarchTarget(gameState = {}, options = {}, now = new Date(), context = {}) {
+  const encounterId = getEncounterIdFromMarchOptions(options);
+  let encounter = null;
+  if (encounterId) {
+    encounter = getActiveEncounter(gameState, encounterId, now, context);
+    if (!encounter) {
+      return {
+        success: false,
+        error: 'WORLD_COMBAT_ENCOUNTER_NOT_FOUND',
+        message: '该敌军已不在此处。',
+      };
+    }
+  } else {
+    // No explicit encounter id: marching onto a tile occupied by an active
+    // hostile force is an attack on that force. The client does not always tag
+    // it (e.g. when the formation is already parked on the encounter tile, or
+    // when the target is picked via the tile selector), so resolve by tile.
+    const rawQ = options.targetQ ?? options.q ?? options.x;
+    const rawR = options.targetR ?? options.r ?? options.y;
+    if (!Number.isFinite(Number(rawQ)) || !Number.isFinite(Number(rawR))) {
+      return { success: true, encounter: null, target: null };
+    }
+    encounter = getActiveEncounterAt(gameState, {
+      q: Math.floor(Number(rawQ)),
+      r: Math.floor(Number(rawR)),
+    }, now, context);
+    if (!encounter) return { success: true, encounter: null, target: null };
+  }
+  return {
+    success: true,
+    encounter,
+    target: {
+      q: encounter.q,
+      r: encounter.r,
+      tileId: encounter.tileId || WorldMapService.getTileId(encounter.q, encounter.r),
+    },
+  };
+}
+
+function getFamousPersonAttributes(gameState = {}, snapshot = {}) {
+  const people = Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [];
+  const byId = new Map(people.map((person) => [String(person.id), person]));
+  return Object.fromEntries(
+    (Array.isArray(snapshot.members) ? snapshot.members : []).map((member) => {
+      const person = byId.get(String(member.personId)) || {};
+      return [member.personId, cloneIfObject(person.attributes || {})];
+    }),
+  );
+}
+
+function getDefenderGenerals(encounter = {}) {
+  const leader = encounter.defender?.leader || {};
+  return [
+    {
+      gid: leader.id || `${encounter.id}_leader`,
+      attributes: cloneIfObject(leader.attributes || {}),
+      soldiers: Math.max(1, toInteger(encounter.defender?.soldiers, DEFAULT_FORCE.soldiers)),
+    },
+  ];
+}
+
+function getPrimaryLeaderName(gameState = {}, snapshot = {}) {
+  const people = Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [];
+  const firstMemberId = snapshot.members?.find((member) => member.soldiersCommitted > 0)?.personId;
+  const person = people.find((item) => String(item.id) === String(firstMemberId));
+  return person?.name || 'Field Commander';
+}
+
+function buildBattleReport(
+  gameState = {},
+  mission = {},
+  encounter = {},
+  battle = {},
+  now = new Date(),
+) {
+  return buildEncounterBattleReport(gameState, {
+    snapshotBefore: mission.formationSnapshot,
+    encounter,
+    battle,
+    now,
+  });
+}
+
+// Public, mission-agnostic report builder. Takes the attacker snapshot directly
+// (the interactive session stores it on the session, not on a live mission) and
+// produces the SAME report shape buildBattleReport emits, so recentReports and
+// the passive BattleReplayOverlay consume it unchanged.
+function buildEncounterBattleReport(
+  gameState = {},
+  { snapshotBefore = null, encounter = {}, battle = {}, now = new Date() } = {},
+) {
+  const snapshotBeforeNormalized =
+    FormationStrengthService.normalizeFormationSnapshot(snapshotBefore) || {};
+  const attackerStart = Math.max(
+    0,
+    toInteger(
+      snapshotBeforeNormalized.soldiersRemaining,
+      snapshotBeforeNormalized.soldiersCommitted,
+    ),
+  );
+  const attackerEnd = Math.max(0, toInteger(battle.attackerSnapshot?.soldiersRemaining, 0));
+  const defenderStart = Math.max(
+    1,
+    toInteger(encounter.defender?.soldiers, DEFAULT_FORCE.soldiers),
+  );
+  const defenderSurvivors = battle.result?.survivorsByGid || {};
+  const defenderGid = getDefenderGenerals(encounter)[0]?.gid || '';
+  const defenderEnd = Math.max(0, toInteger(defenderSurvivors[defenderGid], 0));
+  const victory = battle.winner === 'attacker';
+  const leaderName = getPrimaryLeaderName(gameState, snapshotBeforeNormalized);
+  const defenderLeader = encounter.defender?.leader || {};
+  const report = BattleService.createConquestSummaryReport(
+    {
+      id: `world_combat_${encounter.id}_${now.getTime()}`,
+      soldiersCommitted: attackerStart,
+      expedition: { leader: '', leaderSnapshot: { name: leaderName } },
+    },
+    {
+      id: encounter.id,
+      naturalName: encounter.name,
+      defense: defenderStart,
+      terrain: encounter.terrain,
+      mapTerrain: encounter.terrain,
+      battleTarget: getClientEncounterBattleTarget(encounter),
+    },
+    {
+      success: victory,
+      casualties: Math.max(0, attackerStart - attackerEnd),
+    },
+    now,
+  );
+  return {
+    ...report,
+    id: `world_combat_${encounter.id}_${now.getTime()}`,
+    mode: 'entity-battle',
+    result: victory ? 'victory' : 'defeat',
+    summary: victory
+      ? `${leaderName} defeated ${encounter.name}.`
+      : `${leaderName} was forced back by ${encounter.name}.`,
+    battleTarget: getClientEncounterBattleTarget(encounter),
+    attacker: {
+      ...(report.attacker || {}),
+      leaderName,
+      soldiersStart: attackerStart,
+      soldiersEnd: attackerEnd,
+      groupsStart: BattleService.getBattleVisualGroups(attackerStart),
+      groupsEnd: BattleService.getBattleVisualGroups(attackerEnd),
+    },
+    defender: {
+      ...(report.defender || {}),
+      leaderId: defenderLeader.id || '',
+      leaderName: defenderLeader.name || encounter.name,
+      name: defenderLeader.name || encounter.name,
+      leaderTitle: defenderLeader.title || 'Hostile Force',
+      soldiersStart: defenderStart,
+      soldiersEnd: victory ? 0 : defenderEnd,
+      groupsStart: BattleService.getBattleVisualGroups(defenderStart),
+      groupsEnd: BattleService.getBattleVisualGroups(victory ? 0 : defenderEnd),
+      appearance: cloneIfObject(defenderLeader.appearance || {}),
+    },
+    visual: {
+      ...(report.visual || {}),
+      map: BattleService.getBattleStageForTerritory({
+        terrain: encounter.terrain,
+        mapTerrain: encounter.terrain,
+      }),
+    },
+    simulation: cloneIfObject(battle.result || {}),
+    // Deterministic replay inputs so the client can render the entity battle in
+    // the battle scene (battleSimCore.createBattle(setup) + step(inputStream)).
+    replay: {
+      setup: cloneIfObject(battle.setup || null),
+      inputStream: cloneIfObject(battle.inputStream || []),
+    },
+  };
+}
+
+function settleMissionSnapshot(mission = {}, nextSnapshot = null) {
+  if (!nextSnapshot) return false;
+  mission.formationSnapshot = nextSnapshot;
+  if (mission.status !== 'idle') return true;
+  return false;
+}
+
+function canSnapshotDeployForCombat(snapshot = null) {
+  return !FormationDeploymentEligibility.getCombatDeploymentFailureForSnapshot(snapshot);
+}
+
+function resolveEncounterBattle(gameState = {}, mission = {}, encounter = {}, now = new Date(), options = {}) {
+  if (!mission?.formationSnapshot || encounter?.status !== 'active') return null;
+  normalizeCombatState(gameState, now);
+  const snapshot = FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot);
+  if (!canSnapshotDeployForCombat(snapshot)) return null;
+  const battle = BattleSimService.resolveBattle({
+    seed: now.getTime() + String(encounter.id || '').length,
+    attacker: {
+      snapshot,
+      attributesByPersonId: getFamousPersonAttributes(gameState, snapshot),
+    },
+    defender: {
+      generals: getDefenderGenerals(encounter),
+    },
+    inputStream: [
+      { tick: 0, type: 'order', side: 0, order: 'allOut' },
+      { tick: 0, type: 'order', side: 1, order: 'allOut' },
+    ],
+  });
+  const battleReport = buildBattleReport(gameState, mission, encounter, battle, now);
+  settleMissionSnapshot(mission, battle.attackerSnapshot);
+  encounter.resolvedAt = now.toISOString();
+  encounter.resolvedByMissionId = null;
+  encounter.updatedAt = now.toISOString();
+  battleReport.loot = {};
+  if (battle.winner === 'attacker') {
+    encounter.status = 'resolved';
+    encounter.defender.soldiers = 0;
+    battleReport.loot = applyCampVictorySpoils(gameState, encounter, now);
+  } else {
+    const defenderSurvivors = battle.result?.survivorsByGid || {};
+    const defenderGid = getDefenderGenerals(encounter)[0]?.gid || '';
+    encounter.defender.soldiers = Math.max(1, toInteger(defenderSurvivors[defenderGid], 0));
+  }
+  persistSharedEncounter(encounter, options, now);
+  markEncounterFought(gameState, encounter.id, battleReport, now);
+  gameState.worldCombat.recentReports = [
+    {
+      id: battleReport.id,
+      encounterId: encounter.id,
+      missionId: mission.id || '',
+      resolvedAt: now.toISOString(),
+      report: battleReport,
+    },
+    ...(gameState.worldCombat.recentReports || []),
+  ].slice(0, RECENT_REPORT_LIMIT);
+  gameState.worldCombat.updatedAt = now.toISOString();
+  mission.combat = {
+    ...(mission.combat || {}),
+    status: 'resolved',
+    encounterId: encounter.id,
+    resolvedAt: now.toISOString(),
+    battleReportId: battleReport.id,
+  };
+  return {
+    encounter,
+    battleReport,
+    winner: battle.winner,
+    attackerSnapshot: battle.attackerSnapshot,
+  };
+}
+
+// Locate the active encounter a mission has ARRIVED on (position tile == encounter tile),
+// or null if the mission has no pending combat, is not standing on its target, or the
+// encounter is gone. Shared by the arrival hook and the engaged-timeout fallback so both
+// agree on "is this mission on top of a live enemy right now".
+function getArrivedEncounterForMission(gameState = {}, mission = {}, now = new Date(), options = {}) {
+  const combat = mission.combat && typeof mission.combat === 'object' ? mission.combat : null;
+  if (!combat || combat.status === 'resolved') return null;
+  const encounter = combat.encounterId
+    ? getActiveEncounter(gameState, combat.encounterId, now, options)
+    : getActiveEncounterAt(gameState, mission.position || mission.target || {}, now, options);
+  if (!encounter) return null;
+  const targetTileId = WorldMapService.getTileId(encounter.q, encounter.r);
+  const positionTileId = WorldMapService.getTileId(
+    toInteger(mission.position?.q ?? mission.position?.x, mission.target?.q ?? 0),
+    toInteger(mission.position?.r ?? mission.position?.y, mission.target?.r ?? 0),
+  );
+  if (positionTileId !== targetTileId) return null;
+  return encounter;
+}
+
+// Arrival hook: the formation has reached the enemy tile. Instead of immediately
+// resolving the battle (legacy allOut auto-settle), mark the mission 'engaged' and leave
+// it UNSETTLED. The frontend then opens the interactive battle (the "retreat window"); a
+// player who never plays it is caught by resolveEngagedTimeouts below. Returns an
+// { engaged, encounter } marker so callers can tell an engagement was set up, or null when
+// there is nothing to fight. ROLLBACK: replace the engaged block with
+// `return resolveEncounterBattle(gameState, mission, encounter, now)` to restore the old
+// allOut auto-settle on arrival.
+function resolveMissionArrival(gameState = {}, mission = {}, now = new Date(), options = {}) {
+  normalizeCombatState(gameState, now);
+  const encounter = getArrivedEncounterForMission(gameState, mission, now, options);
+  if (!encounter) return null;
+  // Already engaged (or resolving via a session) on THIS encounter: leave it alone so a
+  // re-run of the arrival pass does not reset engagedAt and re-arm the timeout.
+  if (mission.combat?.status === 'engaged' && mission.combat.encounterId === encounter.id) {
+    return { engaged: true, encounter };
+  }
+  mission.combat = {
+    ...(mission.combat || {}),
+    status: 'engaged',
+    encounterId: encounter.id,
+    engagedAt: now.toISOString(),
+    battleReportId: null,
+  };
+  return { engaged: true, encounter };
+}
+
+// Offline safety net. Walk the missions and force-settle any that have been sitting
+// 'engaged' longer than AUTO_ENGAGE_FALLBACK_MS with an allOut resolveEncounterBattle —
+// UNLESS the player is actively playing that encounter's interactive battle (an open
+// session for the same encounter), in which case we defer to resolveSession so we never
+// double-settle a fight in progress. Runs on the worker tick + heartbeat settlement, so
+// engaged formations can never strand. Returns the number of missions force-settled.
+function resolveEngagedTimeouts(gameState = {}, now = new Date(), options = {}) {
+  normalizeCombatState(gameState, now);
+  const missions = Array.isArray(gameState.exploreMissions) ? gameState.exploreMissions : [];
+  const nowMs = now.getTime();
+  const session = gameState.worldCombat?.session;
+  const openSessionEncounterId = session && session.status === 'open' ? session.encounterId : null;
+  let settled = 0;
+  for (const mission of missions) {
+    const combat = mission.combat && typeof mission.combat === 'object' ? mission.combat : null;
+    if (!combat || combat.status !== 'engaged') continue;
+    const engagedAtMs = combat.engagedAt ? Date.parse(combat.engagedAt) : Number.NaN;
+    if (!Number.isFinite(engagedAtMs) || nowMs - engagedAtMs <= AUTO_ENGAGE_FALLBACK_MS) continue;
+    // Player is mid-fight on this exact encounter: let the interactive session resolve it.
+    if (openSessionEncounterId && openSessionEncounterId === combat.encounterId) continue;
+    const encounter = getArrivedEncounterForMission(gameState, mission, now, options);
+    if (!encounter) continue;
+    if (resolveEncounterBattle(gameState, mission, encounter, now, options)) settled += 1;
+  }
+  return settled;
+}
+
+// Attacking a hostile force the formation is already standing on resolves with no
+// travel: mark the (single-step) route arrived and resolve the battle right away,
+// so the formation returns to idle immediately instead of being busy for a full
+// explore march step.
+function resolveImmediateArrival(gameState = {}, mission = {}, coord = {}, now = new Date(), options = {}) {
+  const q = toInteger(coord.q ?? coord.x, 0);
+  const r = toInteger(coord.r ?? coord.y, 0);
+  const stamp = now && typeof now.toISOString === 'function' ? now.toISOString() : null;
+  (Array.isArray(mission.route) ? mission.route : []).forEach((step) => {
+    step.revealed = true;
+    step.revealedAt = stamp;
+  });
+  mission.status = 'idle';
+  mission.position = { q, r, tileId: WorldMapService.getTileId(q, r) };
+  mission.nextStepAt = null;
+  mission.completedAt = mission.completedAt || stamp;
+  return resolveMissionArrival(gameState, mission, now, options);
+}
+
+// "Fought before" = a battleReport was written by a resolved battle (buildBattleReport /
+// resolveSession). It is the SINGLE fact that unlocks defender strength for this player: strength is
+// learned from the battle, not from scouting. A respawn clears battleReport (normalizeEncounter /
+// respawn), so a reborn camp is unknown again — "打了才知道" holds across the lifecycle.
+function hasFoughtEncounter(encounter = {}, encounterIntel = {}) {
+  const id = String(encounter?.id || '');
+  if (!id) return false;
+  const normalized = normalizeEncounterIntel(encounterIntel);
+  return Boolean(normalized.byEncounterId[id]?.foughtAt || normalized.byEncounterId[id]?.battleReportId);
+}
+
+function getClientEncounterBattleTarget(encounter = {}, encounterIntel = {}) {
+  // Strength intel (garrison count / leader / threat / scale) is projected ONLY after the player has
+  // fought this encounter. Until then defender is null and the intel flags read false, so the DTO
+  // never carries a number the player has not earned in battle. The tile/site/terrain (needed to
+  // render + target the actor) stay known.
+  const fought = hasFoughtEncounter(encounter, encounterIntel);
+  return {
+    source: 'world-combat',
+    tile: {
+      id: encounter.tileId || WorldMapService.getTileId(encounter.q, encounter.r),
+      q: encounter.q,
+      r: encounter.r,
+      terrain: encounter.terrain || 'plains',
+    },
+    site: {
+      id: encounter.id || '',
+      type: 'hostileForce',
+      owner: 'hostile',
+      status: encounter.status || 'active',
+      name: encounter.name || 'Hostile Force',
+      // scale/threat describe defender strength — withheld until fought (0 = unknown, not "no threat").
+      scale: fought ? Math.max(1, toInteger(encounter.defender?.scale, 1)) : 0,
+      threat: fought ? Math.max(0, toInteger(encounter.defender?.threat, 0)) : 0,
+      mapTerrain: encounter.terrain || 'plains',
+      terrain: encounter.terrain || 'plains',
+    },
+    defender: fought && encounter.defender
+      ? {
+          id: encounter.defender.id || '',
+          owner: encounter.defender.owner || 'hostile',
+          soldiers: Math.max(0, toInteger(encounter.defender.soldiers, 0)),
+          quality: encounter.defender.quality || '',
+          threat: Math.max(0, toInteger(encounter.defender.threat, 0)),
+          scale: Math.max(1, toInteger(encounter.defender.scale, 1)),
+          leader: cloneIfObject(encounter.defender.leader || null),
+          generatedAt: encounter.createdAt || null,
+        }
+      : null,
+    intelSnapshot: {
+      knownTerrain: true,
+      knownSite: true,
+      knownOwner: true,
+      knownGarrison: fought,
+      knownLeader: fought && Boolean(encounter.defender?.leader),
+      knownSkill: fought && Boolean(encounter.defender?.leader?.abilityKit),
+    },
+  };
+}
+
+function getClientEncounter(encounter = {}, encounterIntel = {}) {
+  const q = toInteger(encounter.q, 0);
+  const r = toInteger(encounter.r, 0);
+  const tileId = encounter.tileId || WorldMapService.getTileId(q, r);
+  const battleTarget = getClientEncounterBattleTarget(encounter, encounterIntel);
+  return {
+    id: encounter.id || '',
+    kind: encounter.kind || 'hostileForce',
+    status: encounter.status || 'active',
+    name: encounter.name || 'Hostile Force',
+    nameKey: encounter.nameKey || '',
+    q,
+    r,
+    tileId,
+    terrain: encounter.terrain || 'plains',
+    unitKey: encounter.unitKey || 'hostile_squad_default',
+    // defender is already fog-gated inside getClientEncounterBattleTarget (null until fought).
+    defender: battleTarget.defender,
+    battleTarget,
+    resolvedAt: encounter.resolvedAt || null,
+    resolvedByMissionId: encounter.resolvedByMissionId || null,
+  };
+}
+
+// Vision gate for hostile encounters: an encounter is a LIVE unit — it projects into a player's
+// client DTO only while its tile sits inside the player's CURRENT vision (an occupied city or a
+// fielded march party covering it, WorldExplorerVision.computeCurrentVisionCoordSet). Walk away
+// and it hides; come near again and it reappears. This is deliberately NOT the city rule: cities
+// are "discovered once → shown forever" (getRevealedTileCoordSet in WorldMapService, consumed by
+// filterDiscoveredNeutralCities). It is also deliberately NOT the raw worldMap.tiles array — that
+// array is a reveal HISTORY polluted with solid-fill bridge tiles and AI-hidden tiles, and gating
+// on it is exactly the through-fog leak this replaced. The gate only filters the projection: the
+// shared world encounter state (worker/heartbeat settlement) is untouched. Coordinate
+// keys come from the same WorldMapService.getTileCoordinateKey SSOT as every other projection gate.
+function isEncounterVisibleToPlayer(encounter, visionCoordSet) {
+  return visionCoordSet.has(WorldMapService.getTileCoordinateKey(encounter));
+}
+
+function getClientState(gameState = {}, now = new Date(), options = {}) {
+  const state = normalizeCombatState(gameState, now);
+  const visionCoordSet = WorldExplorerVision.computeCurrentVisionCoordSet(gameState);
+  const visibleEncounters = getSharedEncounters(gameState, now, options).filter((encounter) =>
+    isEncounterVisibleToPlayer(encounter, visionCoordSet),
+  );
+  return {
+    schema: state.schema || SCHEMA,
+    encounters: visibleEncounters.map((encounter) => getClientEncounter(encounter, state.encounterIntel)),
+    activeEncounters: visibleEncounters
+      .filter((encounter) => encounter.status === 'active')
+      .map((encounter) => getClientEncounter(encounter, state.encounterIntel)),
+    recentReports: (state.recentReports || []).map((entry) => cloneIfObject(entry)),
+    updatedAt: state.updatedAt || null,
+  };
+}
+
+module.exports = {
+  ENCOUNTER_ID,
+  SCHEMA,
+  AUTO_ENGAGE_FALLBACK_MS,
+  createEncounter,
+  getActiveEncounter,
+  getActiveEncounterAt,
+  getClientEncounter,
+  getClientEncounterBattleTarget,
+  getClientState,
+  getSharedEncounters,
+  getEncounterIdFromMarchOptions,
+  getDefenderGenerals,
+  getFamousPersonAttributes,
+  buildBattleReport,
+  buildEncounterBattleReport,
+  settleMissionSnapshot,
+  normalizeCombatState,
+  normalizeEncounterIntel,
+  normalizeEncounter,
+  markEncounterFought,
+  resolveEncounterBattle,
+  resolveEngagedTimeouts,
+  resolveImmediateArrival,
+  resolveMarchTarget,
+  resolveMissionArrival,
+  respawnCampIfReady,
+  awardCampLoot,
+  applyCampVictorySpoils,
+  isCampEncounter,
+};

@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CityPeopleCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -9,56 +21,19 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawIconCard(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawIconCard === 'function' ? surface.drawIconCard(...args) : this.host?.drawIconCard?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawIconCard(...args) {
-      return this.callDrawingSurface('drawIconCard', args);
-    }
-
-    drawLine(...args) {
-      return this.callDrawingSurface('drawLine', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     renderPopulation(state = {}, startY = 84) {
@@ -88,13 +63,13 @@
       this.drawLine(x + 10, y + 6, x + width - 10, y + 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
       this.drawLine(x + 10, y + panelHeight - 6, x + width - 10, y + panelHeight - 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
       this.drawIconCard(x + 14, y + 14, 38, 38, 'assets/art/icon-population-cutout.webp');
-      this.drawText(view.text.title || '\u4eba\u624d\u5206\u914d', x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
-      this.drawText(view.text.subtitle || '\u6838\u5fc3\u5c97\u4f4d', x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
+      this.drawText(view.text.title || this.t('home.population.title', {}), x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
+      this.drawText(view.text.subtitle || this.t('home.population.subtitle', {}), x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
       const policyButtonWidth = 58;
       const policyButtonHeight = 28;
       const policyButtonX = x + width - policyButtonWidth - 14;
       const policyButtonY = y + 18;
-      this.drawButton(policyButtonX, policyButtonY, policyButtonWidth, policyButtonHeight, '\u65b9\u9488', {
+      this.drawButton(policyButtonX, policyButtonY, policyButtonWidth, policyButtonHeight, this.t('home.population.policy', {}), {
         size: 12,
         bold: true,
         active: true,
@@ -107,9 +82,9 @@
       this.drawLine(x + 16, y + 56, x + width - 16, y + 56, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
 
       const stats = [
-        { icon: 'assets/art/icon-population-cutout.webp', label: '\u4eba\u624d', value: String(view.text.total), color: '#74d3a0' },
-        { icon: 'assets/art/icon-population-cutout.webp', label: '\u5f85\u5206\u914d\u4eba\u624d', value: String(view.text.unassigned), color: '#74d3a0' },
-        { icon: 'assets/art/icon-happiness-cutout.webp', label: '\u5e78\u798f\u5ea6', value: `${state.happiness || 100}%`, color: '#f9ca24' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: this.t('home.population.people', {}), value: String(view.text.total), color: '#74d3a0' },
+        { icon: 'assets/art/icon-population-cutout.webp', label: this.t('home.population.unassigned', {}), value: String(view.text.unassigned), color: '#74d3a0' },
+        { icon: 'assets/art/icon-happiness-cutout.webp', label: this.t('home.population.happiness', {}), value: `${state.happiness || 100}%`, color: '#f9ca24' },
       ];
       const statWidth = Math.floor((width - 28) / 3);
       stats.forEach((stat, index) => {
@@ -129,18 +104,19 @@
         radius: 8,
         inset: 'rgba(116, 211, 160, 0.05)',
       });
-      this.drawText(`\u5730\u7406 ${planning.terrainLabel || '\u5e73\u539f'}`, x + 20, planningY + 12, {
+      const terrainLabel = planning.terrainLabel || this.t('home.planning.terrain.plains', {});
+      this.drawText(this.t('home.planning.geography', { terrain: terrainLabel }), x + 20, planningY + 12, {
         size: 11,
         bold: true,
         color: '#d5ffe8',
       });
-      this.drawText(`${planning.text?.habitabilityStatus || '\u5b9c\u5c45\u5ea6\u5e73\u7a33'} \u00b7 ${planning.text?.populationGrowthStatus || '\u4eba\u53e3\u6210\u957f\u5e73\u7a33'}`, x + width - 20, planningY + 12, {
+      this.drawText(`${planning.text?.habitabilityStatus || this.t('home.planning.habitabilityStatus', { label: this.t('home.planning.habitability.stable', {}) })} \u00b7 ${planning.text?.populationGrowthStatus || this.t('home.population.growth.steady', {})}`, x + width - 20, planningY + 12, {
         size: 11,
         bold: true,
         color: '#74d3a0',
         align: 'right',
       });
-      this.drawText(this.truncateText(planning.text?.note || '\u4fdd\u6301\u5efa\u7b51\u642d\u914d\uff0c\u4f1a\u8ba9\u57ce\u5e02\u66f4\u7a33\u5b9a\u3002', width - 40, { size: 10 }), x + 20, planningY + 27, {
+      this.drawText(this.truncateText(planning.text?.note || this.t('home.planning.terrainHint', {}), width - 40, { size: 10 }), x + 20, planningY + 27, {
         size: 10,
         color: 'rgba(234, 234, 234, 0.62)',
       });
@@ -148,8 +124,16 @@
       const jobs = view.jobs.filter((job) => job.visible);
       jobs.forEach((job, index) => {
         const rowY = y + 156 + index * (jobRowHeight + jobRowGap);
-        const jobLabel = { farmer: '\u519c\u6c11', scholar: '\u5b66\u8005', craftsman: '\u5de5\u5320' }[job.id] || job.id;
-        const desc = { farmer: '\u751f\u4ea7\u98df\u7269', scholar: '\u7814\u7a76\u77e5\u8bc6', craftsman: '\u94bb\u7814\u5de5\u827a' }[job.id] || '';
+        const jobLabel = {
+          farmer: this.t('home.job.farmer', {}),
+          scholar: this.t('home.job.scholar', {}),
+          craftsman: this.t('home.job.craftsman', {}),
+        }[job.id] || job.id;
+        const desc = {
+          farmer: this.t('home.job.farmerDesc', {}),
+          scholar: this.t('home.job.scholarDesc', {}),
+          craftsman: this.t('home.job.craftsmanDesc', {}),
+        }[job.id] || '';
         const icon = { farmer: 'assets/art/icon-farmer-cutout.webp', scholar: 'assets/art/icon-scholar-cutout.webp', craftsman: 'assets/art/icon-craftsman-cutout.webp' }[job.id];
         const jobPanelX = x + 7;
         const jobPanelRight = x + width - 7;

@@ -157,7 +157,6 @@ test('GuideTaskCanvasRenderer prefers explicit drawing surface over proxy fallba
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), [
     'addHitTarget',
     'createGradient',
-    'drawButton',
     'drawPanel',
     'drawText',
     'drawTextLines',
@@ -183,7 +182,6 @@ test('GuideTaskCanvasRenderer falls back to host drawing surface when none is in
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), [
     'addHitTarget',
     'createGradient',
-    'drawButton',
     'drawPanel',
     'drawText',
     'drawTextLines',
@@ -271,6 +269,18 @@ test('GuideTaskCanvasRenderer preserves disabled quick entry contracts', () => {
   assert.equal(renderer.renderGuidebookButton(state), undefined);
   assert.equal(host.hitTargets.length, 0);
   assert.equal(host.calls.length, 0);
+});
+
+test('GuideTaskCanvasRenderer localizes structured rewards instead of raw rewardText', () => {
+  const host = createHost();
+  const renderer = new GuideTaskCanvasRenderer({ host });
+
+  assert.equal(
+    renderer.formatTaskRewardText({ reward: { resources: { food: 120, knowledge: 5 } }, rewardText: 'food+120 / knowledge+5' }),
+    '粮食+120 / 知识+5',
+  );
+  assert.equal(renderer.formatTaskRewardText({ reward: { resources: {} }, rewardText: 'none' }), '无奖励');
+  assert.equal(renderer.formatTaskRewardText({}), '无奖励');
 });
 
 test('CanvasGameRenderer exposes guide task rendering through facade', () => {

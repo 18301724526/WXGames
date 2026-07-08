@@ -1,10 +1,33 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedUIStatePresenter = (() => {
     if (global.UIStatePresenter) return global.UIStatePresenter;
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../../state/UIStatePresenter');
       } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
         return null;
       }
     }
@@ -25,73 +48,24 @@
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
+    t(key, params = {}, options = {}) {
+      return LocaleText ? LocaleText.t(key, params, options) : (options.fallback ?? key);
     }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawIconCard(...args) {
-      return this.callDrawingSurface('drawIconCard', args);
-    }
-
-    drawLine(...args) {
-      return this.callDrawingSurface('drawLine', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    getTransitionFrame(...args) {
-      return this.callDrawingSurface('getTransitionFrame', args);
-    }
-
-    measureTextWidth(...args) {
-      return this.callDrawingSurface('measureTextWidth', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    withSlideClip(...args) {
-      return this.callDrawingSurface('withSlideClip', args);
-    }
-
-    withSuppressedHitTargets(...args) {
-      return this.callDrawingSurface('withSuppressedHitTargets', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawIconCard(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawIconCard === 'function' ? surface.drawIconCard(...args) : this.host?.drawIconCard?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    getTransitionFrame(...args) { const surface = this.drawingSurface; return surface && typeof surface.getTransitionFrame === 'function' ? surface.getTransitionFrame(...args) : this.host?.getTransitionFrame?.(...args); }
+    measureTextWidth(...args) { const surface = this.drawingSurface; return surface && typeof surface.measureTextWidth === 'function' ? surface.measureTextWidth(...args) : this.host?.measureTextWidth?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    withSlideClip(...args) { const surface = this.drawingSurface; return surface && typeof surface.withSlideClip === 'function' ? surface.withSlideClip(...args) : this.host?.withSlideClip?.(...args); }
+    withSuppressedHitTargets(...args) { const surface = this.drawingSurface; return surface && typeof surface.withSuppressedHitTargets === 'function' ? surface.withSuppressedHitTargets(...args) : this.host?.withSuppressedHitTargets?.(...args); }
 
     getBuildingPresenter() {
       return [this.presenter, this.host?.presenter, sharedUIStatePresenter]
@@ -108,9 +82,9 @@
         ids: [],
         filteredIds: [],
         isEmpty: true,
-        emptyText: '\u5f53\u524d\u65f6\u4ee3\u6682\u65e0\u53ef\u5efa\u9020\u5efa\u7b51',
+        emptyText: this.t('building.empty.all', {}),
         activeCategory: options.activeCategory || 'all',
-        categoryTabs: [{ id: 'all', label: '\u5168\u90e8', count: 0, active: true }],
+        categoryTabs: [{ id: 'all', label: this.t('building.category.all', {}), count: 0, active: true }],
         cards: [],
         structureSignature: '[]',
       };
@@ -124,22 +98,10 @@
       const x = layout.contentX;
       const width = layout.contentWidth;
       const panelBottom = startY + panelHeight;
-      this.drawPanel(x, startY, width, panelHeight, {
-        fill: this.createGradient(
-          x, startY, x + width, panelBottom,
-          [
-            [0, 'rgba(54, 40, 28, 0.94)'],
-            [1, 'rgba(24, 19, 14, 0.94)'],
-          ],
-          'rgba(37, 29, 21, 0.92)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.18)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
+      ModalPlate.drawModalCard(this, x, startY, width, panelHeight);
       this.drawIconCard(x + 14, startY + 14, 38, 38, 'assets/art/building-house-cutout.png');
-      this.drawText('建筑', x + 62, startY + 17, { size: 15, bold: true, color: '#ffe6b5' });
-      this.drawText('建造与升级', x + 62, startY + 38, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
+      this.drawText(this.t('building.panel.title', {}), x + 62, startY + 17, { size: 15, bold: true, color: '#ffe6b5' });
+      this.drawText(this.t('building.panel.subtitle', {}), x + 62, startY + 38, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
       this.drawLine(x + 16, startY + 60, x + width - 16, startY + 60, { color: 'rgba(255, 226, 177, 0.18)', width: 1 });
       const categoryTabs = Array.isArray(view.categoryTabs) ? view.categoryTabs : [];
       const categoryRowHeight = categoryTabs.length > 1 ? 32 : 0;
@@ -175,23 +137,13 @@
           const pendingActive = Boolean(pendingAction && pendingAction.buildingId);
           const isActionDisabled = Boolean(card.button.disabled || pendingActive);
           const buttonLabel = pendingMatches
-            ? (actionType === 'upgrade' ? '升级中' : '建造中')
+            ? (actionType === 'upgrade'
+              ? this.t('building.action.upgrading', {})
+              : this.t('building.action.building', {}))
             : card.button.label;
           const isMuted = Boolean(card.isMuted || card.button.disabled);
-          this.drawPanel(x + 10, y, width - 20, rowHeight, {
-            fill: isMuted
-              ? 'rgba(35, 31, 27, 0.78)'
-              : this.createGradient(
-                x + 10, y, x + width - 10, y + rowHeight,
-                [
-                  [0, 'rgba(79, 57, 38, 0.88)'],
-                  [1, 'rgba(28, 22, 16, 0.86)'],
-                ],
-                'rgba(48, 36, 26, 0.86)',
-              ),
-            stroke: isMuted ? 'rgba(255, 226, 177, 0.1)' : 'rgba(255, 226, 177, 0.16)',
-            radius: 8,
-            inset: 'rgba(255, 231, 184, 0.07)',
+          ModalPlate.drawModalCard(this, x + 10, y, width - 20, rowHeight, {
+            tone: isMuted ? 'muted' : 'accent',
           });
           if (card.art) this.drawAsset(card.art, x + 20, y + 14, 46, 46, isMuted ? 0.62 : 1);
           else this.drawText(card.icon || '', x + 43, y + 37, { size: 24, align: 'center', baseline: 'middle' });
@@ -203,16 +155,17 @@
           this.drawText(card.name, textX, y + 10, { size: 13, bold: true, color: '#fff1cf' });
           this.drawText(card.metaText || card.levelText, textX, y + 29, { size: 11, color: 'rgba(234, 234, 234, 0.62)' });
 
-          this.drawBuildingInfoLine(card.currentEffectText || '当前效果：无', textX, y + 58, textWidth, { tone: 'current' });
-          this.drawBuildingInfoLine(card.nextEffectText || '下一级效果：无', textX, y + 77, x + width - 98, { tone: 'next' });
-          this.drawBuildingInfoLine(card.maintenanceText || '维护所需：无', textX, y + 96, x + width - 98, { tone: 'maintenance' });
-          this.drawBuildingInfoLine(card.cityImpactText || '城市影响：宜居压力平稳', textX, y + 115, x + width - 98, { tone: 'impact' });
+          const noneText = this.t('building.effect.none', {});
+          this.drawBuildingInfoLine(card.currentEffectText || this.t('building.effect.current', { effect: noneText }), textX, y + 58, textWidth, { tone: 'current' });
+          this.drawBuildingInfoLine(card.nextEffectText || this.t('building.effect.next', { label: this.t('building.effect.nextLevel', {}), effect: noneText }), textX, y + 77, x + width - 98, { tone: 'next' });
+          this.drawBuildingInfoLine(card.maintenanceText || this.t('building.maintenance.none', {}), textX, y + 96, x + width - 98, { tone: 'maintenance' });
+          this.drawBuildingInfoLine(card.cityImpactText || this.t('building.cityImpact', { pressure: this.t('building.habitability.stable', {}) }), textX, y + 115, x + width - 98, { tone: 'impact' });
 
           this.drawBuildingCostChips(card.cost, buttonX, y + 9, actionWidth, 44, {
             muted: isMuted,
             resources: state.resources || {},
           });
-          this.drawText(card.costTitle || '升级所需', buttonX, y + 58, {
+          this.drawText(card.costTitle || this.t('building.cost.upgrade', {}), buttonX, y + 58, {
             size: 10,
             bold: true,
             color: 'rgba(255, 226, 177, 0.68)',
@@ -249,14 +202,14 @@
         const canPrev = pageIndex > 0;
         const canNext = pageIndex < pageCount - 1;
         const currentPage = pageIndex + 1;
-        this.drawButton(prevX, pagerY, buttonWidth, 24, '上一页', { disabled: !canPrev, size: 11, radius: 7 });
+        ModalPlate.drawModalButton(this, prevX, pagerY, buttonWidth, 24, this.t('common.previousPage', {}), { disabled: !canPrev, size: 11, radius: 7 });
         this.drawText(`${currentPage}/${pageCount}`, x + width / 2, pagerY + 12, {
           size: 10,
           color: 'rgba(234, 234, 234, 0.62)',
           baseline: 'middle',
           align: 'center',
         });
-        this.drawButton(nextX, pagerY, buttonWidth, 24, '下一页', { disabled: !canNext, size: 11, radius: 7 });
+        ModalPlate.drawModalButton(this, nextX, pagerY, buttonWidth, 24, this.t('common.nextPage', {}), { disabled: !canNext, size: 11, radius: 7 });
         this.addHitTarget({ x: prevX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: -1, disabled: !canPrev });
         this.addHitTarget({ x: nextX, y: pagerY, width: buttonWidth, height: 24 }, { type: 'scrollBuildings', delta: 1, disabled: !canNext });
       }
@@ -282,11 +235,12 @@
         const tabWidth = Math.max(36, Math.floor(rawWidths[index] * scale));
         const actualWidth = Math.max(36, Math.min(tabWidth, x + width - cursorX - remainingGap));
         const active = Boolean(tab.active);
-        this.drawButton(cursorX, y, actualWidth, height, this.truncateText(tab.label || tab.id, Math.max(18, actualWidth - 12), {
+        const label = this.truncateText(tab.label || tab.id, Math.max(18, actualWidth - 12), {
           size: 11,
           bold: active,
-        }), {
-          active,
+        });
+        ModalPlate.drawModalButton(this, cursorX, y, actualWidth, height, label, {
+          variant: active ? 'primary' : 'secondary',
           size: 11,
           bold: active,
           radius: 13,
@@ -374,14 +328,17 @@
     }
 
     resourceShortName(resource) {
-      return {
-        food: '食物',
-        wood: '木材',
-        iron: '铁矿',
-        knowledge: '知识',
-        stone: '石料',
-        metal: '铁矿',
-      }[resource] || resource;
+      const labelKeys = {
+        food: 'resource.food',
+        wood: 'resource.wood',
+        iron: 'resource.iron',
+        knowledge: 'resource.knowledge',
+        stone: 'resource.stone',
+        metal: 'resource.metal',
+      };
+      return labelKeys[resource]
+        ? this.t(labelKeys[resource])
+        : this.t(`resource.${resource}`, {}, { fallback: resource });
     }
 
     resourceIconPath(resource) {
@@ -452,14 +409,28 @@
     drawBuildingActionButton(x, y, width, height, label, cost = {}, options = {}) {
       const knowledge = this.getBuildingCostSlot(cost, 'knowledge');
       if (cost?.isMax || !knowledge.present || knowledge.value <= 0) {
-        this.drawButton(x, y, width, height, label, { disabled: options.disabled, size: 12, radius: 8 });
+        ModalPlate.drawModalButton(this, x, y, width, height, label, {
+          variant: 'primary',
+          disabled: options.disabled,
+          size: 12,
+          radius: 8,
+        });
         return;
       }
       this.drawPanel(x, y, width, height, {
-        fill: options.disabled ? 'rgba(60, 52, 46, 0.72)' : 'rgba(50, 35, 22, 0.94)',
-        stroke: 'rgba(240, 180, 91, 0.32)',
+        fill: options.disabled
+          ? '#1D1B18'
+          : this.createGradient(
+            x, y, x, y + height,
+            [
+              [0, '#4A3823'],
+              [1, '#241A10'],
+            ],
+            '#37291A',
+          ),
+        stroke: options.disabled ? 'rgba(229, 208, 165, 0.1)' : 'rgba(210, 181, 126, 0.85)',
         radius: 8,
-        inset: 'rgba(255, 231, 184, 0.08)',
+        inset: options.disabled ? undefined : 'rgba(229, 208, 165, 0.12)',
       });
       const amountText = this.truncateText(String(knowledge.text), Math.max(20, width * 0.32), { size: 10, bold: true });
       const amountWidth = this.measureTextWidth(amountText, { size: 10, bold: true });
@@ -499,7 +470,7 @@
 
     drawBuildingCostChips(cost = {}, x, y, width, height, options = {}) {
       if (cost?.isMax) {
-        const text = cost?.text || '\u5df2\u6ee1\u7ea7';
+        const text = cost?.text || this.t('building.action.maxLevel', {});
         const fill = cost?.isMax ? 'rgba(60, 52, 46, 0.48)' : 'rgba(116, 211, 160, 0.12)';
         const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.1)' : 'rgba(116, 211, 160, 0.26)';
         this.drawPanel(x, y + 7, width, 24, { fill, stroke, radius: 7 });

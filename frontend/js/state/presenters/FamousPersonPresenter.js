@@ -1,5 +1,21 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class FamousPersonPresenter {
+    static t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
     static toNumber(value, fallback = 0) {
       const number = Number(value);
       return Number.isFinite(number) ? number : fallback;
@@ -10,53 +26,35 @@
     }
 
     static formatFamousPersonSource(source = {}) {
-      return source.label || { seek: '寻访', event: '事件投奔', postWar: '战后归附' }[source.type] || '未知来源';
+      return source.label || {
+        seek: this.t('famous.source.seek', {}),
+        event: this.t('famous.source.event', {}),
+        postWar: this.t('famous.source.postWar', {}),
+      }[source.type] || this.t('famous.source.unknown', {});
     }
 
     static getFamousPersonEffectLabels() {
-      return {
-        directDamage: '直接伤害',
-        secondHit: '二段伤害',
-        firstStrike: '先手',
-        lifesteal: '吸血',
-        combo: '连击',
-        counter: '反击',
-        shield: '护盾',
-        armorBreak: '破甲',
-        burn: '灼烧',
-        poison: '中毒',
-        morale: '士气',
-        heal: '治疗',
-        ambush: '伏击',
-        attributeBonus: '属性修正',
-        resourceOutputPct: '资源产出',
-        allBasicOutputPct: '基础产出',
-        constructionSpeedPct: '建造速度',
-        constructionCostPct: '建造消耗',
-        knowledgeOutputPct: '知识产出',
-        populationCapPct: '人口上限',
-        happinessFlat: '幸福度',
-        trainingSpeedPct: '训练速度',
-        eventRewardPct: '事件收益',
-        eventRiskReductionPct: '事件风险',
-        settlementPacifyPct: '安抚效率',
-        famousRetentionPct: '名人说服',
-        diplomacyBonusPct: '外交加成',
-        scoutReportBonusPct: '侦查情报',
-        cityStabilityPct: '城市稳定',
-      };
+      const keys = [
+        'directDamage', 'secondHit', 'firstStrike', 'lifesteal', 'combo', 'counter',
+        'shield', 'armorBreak', 'burn', 'poison', 'morale', 'heal', 'ambush',
+        'attributeBonus', 'resourceOutputPct', 'allBasicOutputPct', 'constructionSpeedPct',
+        'constructionCostPct', 'knowledgeOutputPct', 'populationCapPct', 'happinessFlat',
+        'trainingSpeedPct', 'eventRewardPct', 'eventRiskReductionPct', 'settlementPacifyPct',
+        'famousRetentionPct', 'diplomacyBonusPct', 'scoutReportBonusPct', 'cityStabilityPct',
+      ];
+      return Object.fromEntries(keys.map((key) => [key, this.t(`famous.effectLabel.${key}`)]));
     }
 
     static getFamousPersonAttributeLabel(key = '') {
       return {
-        command: '统帅',
-        force: '武力',
-        intelligence: '智力',
-        strategy: '智力',
-        politics: '政治',
-        charisma: '魅力',
-        speed: '速度',
-      }[key] || key || '属性';
+        command: this.t('famous.attribute.command', {}),
+        force: this.t('famous.attribute.force', {}),
+        intelligence: this.t('famous.attribute.intelligence', {}),
+        strategy: this.t('famous.attribute.intelligence', {}),
+        politics: this.t('famous.attribute.politics', {}),
+        charisma: this.t('famous.attribute.charisma', {}),
+        speed: this.t('famous.attribute.speed', {}),
+      }[key] || key || this.t('famous.attribute.title', {});
     }
 
     static formatFamousPersonPercent(value, fallback = 0) {
@@ -65,95 +63,106 @@
     }
 
     static formatFamousPersonSkillKind(skill = {}) {
-      if (skill.slot === 'activeSkill' || skill.kind === 'active') return '主动战法';
-      if (skill.slot === 'passiveTrait') return '战斗被动';
-      if (skill.slot === 'civilPrimary') return '内政主技';
-      if (skill.slot === 'civilSecondary') return '内政副技';
-      if (skill.slot === 'scoutTrait') return '斥候特质';
-      if (skill.kind === 'civil') return '内政技能';
-      if (skill.kind === 'passive') return '被动特质';
-      return '技能';
+      if (skill.slot === 'activeSkill' || skill.kind === 'active') return this.t('famous.skillKind.active');
+      if (skill.slot === 'passiveTrait') return this.t('famous.skillKind.passiveTrait');
+      if (skill.slot === 'civilPrimary') return this.t('famous.skillKind.civilPrimary');
+      if (skill.slot === 'civilSecondary') return this.t('famous.skillKind.civilSecondary');
+      if (skill.slot === 'scoutTrait') return this.t('famous.skillKind.scoutTrait');
+      if (skill.kind === 'civil') return this.t('famous.skillKind.civil');
+      if (skill.kind === 'passive') return this.t('famous.skillKind.passive');
+      return this.t('famous.skill.generic');
     }
 
     static formatFamousPersonCastCondition(condition = {}) {
       const percent = Math.round(Number(condition.value ?? condition.pct ?? 0) * 100);
+      const status = condition.status || this.t('famous.castCondition.anyStatus');
       const labels = {
         cooldownReady: '',
         targetAlive: '',
-        firstOwnAction: '时机：首次出手',
-        selfSoldierBelowPct: `发动条件：我方兵力低于 ${percent}%`,
-        selfSoldierAbovePct: `发动条件：我方兵力高于 ${percent}%`,
-        targetSoldierBelowPct: `发动条件：目标兵力低于 ${percent}%`,
-        targetHasStatus: `发动条件：目标带有${condition.status || '指定状态'}`,
-        selfHasStatus: `发动条件：我方带有${condition.status || '指定状态'}`,
+        firstOwnAction: this.t('famous.castCondition.firstOwnAction'),
+        selfSoldierBelowPct: this.t('famous.castCondition.selfSoldierBelowPct', { percent }),
+        selfSoldierAbovePct: this.t('famous.castCondition.selfSoldierAbovePct', { percent }),
+        targetSoldierBelowPct: this.t('famous.castCondition.targetSoldierBelowPct', { percent }),
+        targetHasStatus: this.t('famous.castCondition.targetHasStatus', { status }),
+        selfHasStatus: this.t('famous.castCondition.selfHasStatus', { status }),
       };
       return Object.prototype.hasOwnProperty.call(labels, condition.type) ? labels[condition.type] : '';
     }
 
     static formatFamousPersonCooldownText(cooldown, skill = {}) {
       if (cooldown === null || skill.kind !== 'active') return '';
-      if (cooldown <= 0) return '冷却：无';
-      return `冷却：${cooldown} 回合`;
+      if (cooldown <= 0) return this.t('famous.cooldown.none');
+      return this.t('famous.cooldown.turns', { cooldown });
     }
 
     static formatFamousPersonCastRate(skill = {}) {
       if (skill.kind !== 'active') return '';
       const raw = skill.castRate ?? skill.triggerRate ?? skill.probability ?? skill.chance ?? skill.rate;
       const numeric = Number(raw);
-      if (!Number.isFinite(numeric)) return '发动率：100%';
+      if (!Number.isFinite(numeric)) return this.t('famous.castRate', { rate: 100 });
       const normalized = numeric > 1 ? numeric / 100 : numeric;
-      return `发动率：${Math.max(0, Math.min(100, Math.round(normalized * 100)))}%`;
+      return this.t('famous.castRate', { rate: Math.max(0, Math.min(100, Math.round(normalized * 100))) });
     }
 
     static formatFamousPersonEffectSentence(effect = {}, skill = {}) {
       const key = effect?.key || '';
+      const pct = () => this.formatFamousPersonPercent(effect.value);
       if (key === 'directDamage') {
-        return skill.damageType === 'strategy'
-          ? '发动战法攻击目标，造成一次谋略伤害。'
-          : '发动战法攻击目标，造成一次兵刃伤害。';
+        const damageType = this.t(
+          skill.damageType === 'strategy' ? 'famous.damageType.strategy' : 'famous.damageType.physical',
+        );
+        return this.t('famous.effectDesc.directDamage', { damageType });
       }
-      if (key === 'secondHit') return '造成伤害后追加一次追击（追击：根据本次攻击的一部分伤害再次打击目标）。';
-      if (key === 'firstStrike') return '首次出手时抢先压制目标，并追加一次先机打击。';
-      if (key === 'lifesteal') return '施加倒戈（倒戈：将敌方本次损失兵力的一部分转换为自己的兵力）。';
-      if (key === 'heal') return `恢复我方一部分兵力。`;
-      if (key === 'shield') return '获得守御，可抵消一部分伤害。';
-      if (key === 'armorBreak') return '对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。';
-      if (key === 'burn') return '对目标施加灼烧（灼烧：目标行动前会损失兵力）。';
-      if (key === 'poison') return '对目标施加中毒（中毒：目标行动前会持续损失兵力）。';
+      if (key === 'secondHit') return this.t('famous.effectDesc.secondHit');
+      if (key === 'firstStrike') return this.t('famous.effectDesc.firstStrike');
+      if (key === 'lifesteal') return this.t('famous.effectDesc.lifesteal');
+      if (key === 'heal') return this.t('famous.effectDesc.heal');
+      if (key === 'shield') return this.t('famous.effectDesc.shield');
+      if (key === 'armorBreak') return this.t('famous.effectDesc.armorBreak');
+      if (key === 'burn') return this.t('famous.effectDesc.burn');
+      if (key === 'poison') return this.t('famous.effectDesc.poison');
       if (key === 'attributeBonus') {
         const attribute = this.getFamousPersonAttributeLabel(effect.attribute || effect.keyAttribute);
         const value = Math.round(Number(effect.value) || 0);
-        if (skill.kind === 'passive' || skill.slot === 'passiveTrait') {
-          return `战斗开始前，自己的${attribute}提高 ${value} 点。`;
-        }
-        return `发动后，本场战斗中自己的${attribute}提高 ${value} 点。`;
+        const descKey =
+          skill.kind === 'passive' || skill.slot === 'passiveTrait'
+            ? 'famous.effectDesc.attributeBonusPassive'
+            : 'famous.effectDesc.attributeBonusActive';
+        return this.t(descKey, { attribute, value });
       }
-      if (key === 'resourceOutputPct') return `${effect.resource === 'food' ? '粮食' : '资源'}产出提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'allBasicOutputPct') return `基础资源产出提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'constructionSpeedPct') return `建造速度提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'constructionCostPct') return `建造消耗降低 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'knowledgeOutputPct') return `知识产出提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'populationCapPct') return `人口上限提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'happinessFlat') return `幸福度提高 ${Math.round(Number(effect.value) || 0)} 点。`;
-      if (key === 'trainingSpeedPct') return `训练速度提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'eventRewardPct') return `事件奖励提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'eventRiskReductionPct') return `事件风险降低 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'settlementPacifyPct') return `安抚效率提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'famousRetentionPct') return `名人说服成功率提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'diplomacyBonusPct') return `外交收益提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'scoutReportBonusPct') return `侦查情报质量提高 ${this.formatFamousPersonPercent(effect.value)}。`;
-      if (key === 'cityStabilityPct') return `城市稳定提高 ${this.formatFamousPersonPercent(effect.value)}。`;
+      if (key === 'resourceOutputPct') {
+        const resource = this.t(effect.resource === 'food' ? 'famous.word.food' : 'famous.word.resource');
+        return this.t('famous.effectDesc.resourceOutputPct', { resource, pct: pct() });
+      }
+      if (key === 'allBasicOutputPct') return this.t('famous.effectDesc.allBasicOutputPct', { pct: pct() });
+      if (key === 'constructionSpeedPct') return this.t('famous.effectDesc.constructionSpeedPct', { pct: pct() });
+      if (key === 'constructionCostPct') return this.t('famous.effectDesc.constructionCostPct', { pct: pct() });
+      if (key === 'knowledgeOutputPct') return this.t('famous.effectDesc.knowledgeOutputPct', { pct: pct() });
+      if (key === 'populationCapPct') return this.t('famous.effectDesc.populationCapPct', { pct: pct() });
+      if (key === 'happinessFlat') {
+        return this.t('famous.effectDesc.happinessFlat', { value: Math.round(Number(effect.value) || 0) });
+      }
+      if (key === 'trainingSpeedPct') return this.t('famous.effectDesc.trainingSpeedPct', { pct: pct() });
+      if (key === 'eventRewardPct') return this.t('famous.effectDesc.eventRewardPct', { pct: pct() });
+      if (key === 'eventRiskReductionPct') return this.t('famous.effectDesc.eventRiskReductionPct', { pct: pct() });
+      if (key === 'settlementPacifyPct') return this.t('famous.effectDesc.settlementPacifyPct', { pct: pct() });
+      if (key === 'famousRetentionPct') return this.t('famous.effectDesc.famousRetentionPct', { pct: pct() });
+      if (key === 'diplomacyBonusPct') return this.t('famous.effectDesc.diplomacyBonusPct', { pct: pct() });
+      if (key === 'scoutReportBonusPct') return this.t('famous.effectDesc.scoutReportBonusPct', { pct: pct() });
+      if (key === 'cityStabilityPct') return this.t('famous.effectDesc.cityStabilityPct', { pct: pct() });
       return '';
     }
 
     static buildFamousPersonSkillDescription(skill = {}) {
       const effects = Array.isArray(skill.effects) ? skill.effects : [];
-      if (!effects.length) return '暂无具体效果。';
+      if (!effects.length) return this.t('famous.skill.noEffectDetail');
       const hasDirectDamage = effects.some((effect) => effect?.key === 'directDamage');
       const hasLifesteal = effects.some((effect) => effect?.key === 'lifesteal');
       if (hasDirectDamage && hasLifesteal) {
-        const damageText = skill.damageType === 'strategy' ? '谋略伤害' : '兵刃伤害';
-        return `发动战法攻击目标，造成一次${damageText}，并施加倒戈（倒戈：将敌方本次损失兵力的一部分转换为自己的兵力）。`;
+        const damageType = this.t(
+          skill.damageType === 'strategy' ? 'famous.damageType.strategy' : 'famous.damageType.physical',
+        );
+        return this.t('famous.effectDesc.directDamageLifesteal', { damageType });
       }
       return effects
         .map((effect) => this.formatFamousPersonEffectSentence(effect, skill))
@@ -178,23 +187,23 @@
         : [];
       const cooldown = Number.isFinite(Number(skill.cooldown)) ? Math.max(0, Math.floor(Number(skill.cooldown))) : null;
       const kindText = this.formatFamousPersonSkillKind(skill);
-      const effectText = effects.length ? effects.join(' / ') : '暂无效果';
+      const effectText = effects.length ? effects.join(' / ') : this.t('famous.skill.noEffect');
       const cooldownText = this.formatFamousPersonCooldownText(cooldown, skill);
       const castRateText = this.formatFamousPersonCastRate(skill);
       const triggerText = skill.trigger === 'preBattle'
-        ? '时机：战斗开始'
-        : (skill.trigger === 'passiveStored' ? '状态：已加入名人档案' : conditions.join(' · '));
-      const statusText = skill.implementationStatus === 'storedOnly' ? '暂未接入实际收益' : '';
+        ? this.t('famous.trigger.preBattle')
+        : (skill.trigger === 'passiveStored' ? this.t('famous.trigger.passiveStored') : conditions.join(' · '));
+      const statusText = skill.implementationStatus === 'storedOnly' ? this.t('famous.status.storedOnly') : '';
       const meta = [cooldownText, castRateText, triggerText, statusText].filter(Boolean).join(' · ');
       const description = this.sanitizeFamousPersonSkillDescription(skill) || this.buildFamousPersonSkillDescription(skill);
       return {
         id: skill.id || skill.name || '',
-        name: skill.name || '技能',
+        name: skill.name || this.t('famous.skill.generic'),
         kindText,
         effectText,
         meta,
         description,
-        summary: `${skill.name || '技能'} · ${description}`,
+        summary: `${skill.name || this.t('famous.skill.generic')} · ${description}`,
       };
     }
 
@@ -211,10 +220,10 @@
     static getFamousPersonQualityInfo(quality = '') {
       const key = String(quality || 'common').trim() || 'common';
       const map = {
-        legendary: { key: 'legendary', label: '传奇', rank: 4, frame: 'gold' },
-        great: { key: 'great', label: '英杰', rank: 3, frame: 'purple' },
-        good: { key: 'good', label: '良才', rank: 2, frame: 'blue' },
-        common: { key: 'common', label: '一般', rank: 1, frame: 'white' },
+        legendary: { key: 'legendary', label: this.t('famous.quality.legendary', {}), rank: 4, frame: 'gold' },
+        great: { key: 'great', label: this.t('famous.quality.great', {}), rank: 3, frame: 'purple' },
+        good: { key: 'good', label: this.t('famous.quality.good', {}), rank: 2, frame: 'blue' },
+        common: { key: 'common', label: this.t('famous.quality.common', {}), rank: 1, frame: 'white' },
       };
       return map[key] || map.common;
     }
@@ -252,41 +261,56 @@
         .slice(0, 4)
         .map((item) => `${item.label}+${item.value}`)
         .join(' ');
-      return detail ? `自动成长 ${total} 点 · ${detail}` : `自动成长 ${total} 点`;
+      return detail
+        ? this.t('famous.growth.autoDetail', { total, detail })
+        : this.t('famous.growth.auto', { total });
     }
 
     static buildFamousPersonCard(person = {}, options = {}) {
       const attrs = person.attributes || {};
       const roleLabels = {
-        military: '军事',
-        governance: '治理',
-        knowledge: '知识',
-        charisma: '魅力',
+        military: this.t('famous.role.military', {}),
+        governance: this.t('famous.role.governance', {}),
+        knowledge: this.t('famous.role.knowledge', {}),
+        charisma: this.t('famous.role.charisma', {}),
       };
       const roles = Array.isArray(person.roles) && person.roles.length
         ? person.roles.map((role) => roleLabels[role] || role).join(' / ')
-        : (person.archetypeLabel || '人才');
+        : (person.archetypeLabel || this.t('famous.genericRole', {}));
       const attributes = [
-        { key: 'command', label: '统帅', shortLabel: '统', value: this.toInteger(attrs.command) },
-        { key: 'force', label: '武力', shortLabel: '武', value: this.toInteger(attrs.force) },
-        { key: 'intelligence', label: '智力', shortLabel: '智', value: this.toInteger(attrs.intelligence ?? attrs.strategy) },
-        { key: 'politics', label: '政治', shortLabel: '政', value: this.toInteger(attrs.politics ?? attrs.governance) },
-        { key: 'charisma', label: '魅力', shortLabel: '魅', value: this.toInteger(attrs.charisma) },
-        { key: 'speed', label: '速度', shortLabel: '速', value: this.toInteger(attrs.speed) },
+        { key: 'command', label: this.t('famous.attribute.command', {}), shortLabel: this.t('famous.attribute.short.command', {}), value: this.toInteger(attrs.command) },
+        { key: 'force', label: this.t('famous.attribute.force', {}), shortLabel: this.t('famous.attribute.short.force', {}), value: this.toInteger(attrs.force) },
+        { key: 'intelligence', label: this.t('famous.attribute.intelligence', {}), shortLabel: this.t('famous.attribute.short.intelligence', {}), value: this.toInteger(attrs.intelligence ?? attrs.strategy) },
+        { key: 'politics', label: this.t('famous.attribute.politics', {}), shortLabel: this.t('famous.attribute.short.politics', {}), value: this.toInteger(attrs.politics ?? attrs.governance) },
+        { key: 'charisma', label: this.t('famous.attribute.charisma', {}), shortLabel: this.t('famous.attribute.short.charisma', {}), value: this.toInteger(attrs.charisma) },
+        { key: 'speed', label: this.t('famous.attribute.speed', {}), shortLabel: this.t('famous.attribute.short.speed', {}), value: this.toInteger(attrs.speed) },
       ];
       const stats = attributes.map((item) => `${item.shortLabel}${item.value}`).join('  ');
       const abilities = this.getFamousPersonAbilities(person);
       const skills = abilities.length
         ? abilities.map((skill) => this.formatFamousPersonSkill(skill))
-        : ['暂无技能'];
+        : [this.t('famous.skill.none', {})];
       const skillDetails = abilities.length
         ? abilities.map((skill) => this.formatFamousPersonSkillDetail(skill))
-        : [{ id: 'none', name: '暂无技能', kindText: '技能', effectText: '暂无效果', meta: '', description: '', summary: '暂无技能' }];
+        : [{
+          id: 'none',
+          name: this.t('famous.skill.none', {}),
+          kindText: this.t('famous.skill.generic', {}),
+          effectText: this.t('famous.skill.noEffect', {}),
+          meta: '',
+          description: '',
+          summary: this.t('famous.skill.none', {}),
+        }];
       const skillBadges = skillDetails.slice(0, 2).map((skill) => ({
         id: skill.id,
-        label: skill.kindText || '技能',
-        name: skill.name || '技能',
-        text: `${skill.kindText || '技能'}：${skill.name || '技能'}`,
+        label: skill.kindText || this.t('famous.skill.generic', {}),
+        name: skill.name || this.t('famous.skill.generic', {}),
+        text: this.t(
+          'famous.skill.badge',
+          {
+            kind: skill.kindText || this.t('famous.skill.generic', {}),
+            name: skill.name || this.t('famous.skill.generic', {}),
+          }),
       }));
       const isCandidate = Boolean(options.candidate);
       const level = Math.max(1, this.toInteger(person.level, 1));
@@ -295,12 +319,20 @@
       const freeAttributePoints = Math.max(0, this.toInteger(person.freeAttributePoints, 0));
       const qualityInfo = this.getFamousPersonQualityInfo(person.quality);
       const growthText = !isCandidate
-        ? (nextLevelExperience > 0 ? `等级 ${level} · 经验 ${experience}/${nextLevelExperience}` : `等级 ${level}`)
+        ? (nextLevelExperience > 0
+          ? this.t(
+            'famous.growth.experience',
+            { level, experience, nextLevelExperience })
+          : this.t('famous.growth.level', { level }))
         : '';
       const nextAttributePointLevel = isCandidate ? null : this.getNextFamousAttributePointLevel(level);
-      const pointText = !isCandidate ? `可分配属性点 ${freeAttributePoints}` : '';
+      const pointText = !isCandidate
+        ? this.t('famous.pointText', { points: freeAttributePoints })
+        : '';
       const attributePointHint = !isCandidate
-        ? (freeAttributePoints > 0 ? `可分配 ${freeAttributePoints} 点` : `下次属性点：Lv.${nextAttributePointLevel}`)
+        ? (freeAttributePoints > 0
+          ? this.t('famous.attributePoint.available', { points: freeAttributePoints })
+          : this.t('famous.attributePoint.next', { level: nextAttributePointLevel }))
         : '';
       const autoGrowthText = !isCandidate ? this.formatFamousAutoGrowthText(person.autoAttributeGrowth, attributes) : '';
       const autoGrowthTotal = !isCandidate
@@ -316,8 +348,8 @@
         : [];
       return {
         id: person.id || '',
-        name: person.name || '无名之士',
-        title: person.title || person.archetypeLabel || '名人',
+        name: person.name || this.t('famous.unknown', {}),
+        title: person.title || person.archetypeLabel || this.t('famous.genericTitle', {}),
         quality: qualityInfo.key,
         qualityLabel: person.qualityLabel || qualityInfo.label,
         qualityRank: qualityInfo.rank,
@@ -341,7 +373,11 @@
         skillDetails,
         skillBadges,
         appearance: person.appearance && typeof person.appearance === 'object' ? person.appearance : null,
-        statusText: options.candidate ? '候选' : (person.status?.assigned === 'idle' ? '待命' : '已派遣'),
+        statusText: options.candidate
+          ? this.t('famous.status.candidate', {})
+          : (person.status?.assigned === 'idle'
+            ? this.t('famous.status.idle', {})
+            : this.t('famous.status.assigned', {})),
         openDetailAction: isCandidate ? null : { type: 'openFamousPersonDetail', personId: person.id || '' },
       };
     }
@@ -354,22 +390,26 @@
       const candidateCount = this.toInteger(famous.candidateCount ?? candidates.length);
       const maxCandidates = this.toInteger(famous.maxCandidates, 3);
       const seekAvailable = Boolean(seek.available);
-      const seekText = seekAvailable ? '寻访' : '暂不可寻访';
+      const seekText = seekAvailable
+        ? this.t('famous.seek.available', {})
+        : this.t('famous.seek.unavailable', {});
       const sortedPeople = this.sortFamousPeopleForRoster(people).map((person) => this.buildFamousPersonCard(person));
       const selectedPersonId = String(options.selectedPersonId || '');
       const selectedPerson = selectedPersonId
         ? sortedPeople.find((person) => person.id === selectedPersonId) || null
         : null;
       return {
-        title: '名人',
-        subtitle: '按品质查看名人，点击头像查看详情与加点',
+        title: this.t('famous.title', {}),
+        subtitle: this.t('famous.subtitle', {}),
         peopleCount: this.toInteger(famous.count ?? people.length),
         candidateCount,
         maxCandidates,
         seek: {
           available: seekAvailable,
           text: seekText,
-          message: seek.message || (seekAvailable ? '可以尝试寻访新的名人。' : `城邦时代后开放寻访。`),
+          message: seek.message || (seekAvailable
+            ? this.t('famous.seek.message.available', {})
+            : this.t('famous.seek.message.locked', {})),
           count: this.toInteger(seek.count),
           action: { type: 'seekFamousPerson', disabled: !seekAvailable },
         },
@@ -380,7 +420,7 @@
           acceptAction: { type: 'acceptFamousPerson', candidateId: person.id },
           dismissAction: { type: 'dismissFamousPersonCandidate', candidateId: person.id },
         })),
-        emptyText: '暂无名人加入。线索出现后，可以在这里接纳新的领队与人才。',
+        emptyText: this.t('famous.empty', {}),
       };
     }
   }

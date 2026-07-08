@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialService = require('../services/TutorialService');
+const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
 const EventService = require('../services/EventService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
@@ -43,20 +44,65 @@ test('tutorial house guide only allows the first house build before era advancem
   assert.equal(TutorialService.validateAction(tutorial, 'advanceEra', {}, gameState).allowed, false);
 });
 
-test('tutorial grants first house supplies once without overwriting richer players', () => {
+test('tutorial task claims advance the homestead and barracks-segment steps', () => {
+  const cityEntered = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.cityEntered,
+  );
+  // Claim-driven advances via TASK_CLAIM_STEPS (kept step names, new triggers).
+  const houseReady = TutorialService.manualAdvance(cityEntered, TutorialService.TUTORIAL_STEPS.houseGuideReady);
+  assert.equal(houseReady.currentStep, TutorialService.TUTORIAL_STEPS.houseGuideReady);
+
+  const era3 = TutorialService.manualAdvance(cityEntered, TutorialService.TUTORIAL_STEPS.era3Advanced);
+  const suppliesClaimed = TutorialService.manualAdvance(era3, TutorialService.TUTORIAL_STEPS.barracksSuppliesClaimed);
+  const barracksBuilt = TutorialService.advanceTutorial(suppliesClaimed, 'barracksBuilt');
+  assert.equal(barracksBuilt.currentStep, TutorialService.TUTORIAL_STEPS.barracksBuilt);
+  const armyClaimed = TutorialService.manualAdvance(barracksBuilt, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
+  assert.equal(armyClaimed.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
+});
+
+test('tab access opens the task center and buildings for the claim-driven segments', () => {
+  const cityEntered = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.cityEntered,
+  );
+  // Homestead claim window: the task center must open before the first house.
+  assert.equal(TutorialService.canAccessTab(cityEntered, 'tasks'), true);
+  assert.equal(TutorialService.canAccessTab(cityEntered, 'buildings'), true);
+  assert.equal(TutorialService.canAccessTab(cityEntered, 'events'), false);
+
+  // Barracks segment: tasks + buildings open, formation/military waits for the
+  // famous-person segment.
+  const suppliesClaimed = TutorialService.manualAdvance(cityEntered, TutorialService.TUTORIAL_STEPS.barracksSuppliesClaimed);
+  assert.equal(TutorialService.canAccessTab(suppliesClaimed, 'tasks'), true);
+  assert.equal(TutorialService.canAccessTab(suppliesClaimed, 'buildings'), true);
+  assert.equal(TutorialService.canAccessTab(suppliesClaimed, 'military'), false);
+  const armyClaimed = TutorialService.manualAdvance(suppliesClaimed, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
+  assert.equal(TutorialService.canAccessTab(armyClaimed, 'tasks'), true);
+
+  // Famous/formation segment keys off scoutFamousGranted (kept behavior).
+  const famousGranted = TutorialService.manualAdvance(armyClaimed, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
+  assert.equal(TutorialService.canAccessTab(famousGranted, 'military'), true);
+  assert.equal(TutorialService.canAccessTab(famousGranted, 'tasks'), false);
+});
+
+test('barracks-segment validator only allows the guided barracks build', () => {
+  const suppliesClaimed = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.barracksSuppliesClaimed,
+  );
   const gameState = {
-    currentEra: 0,
-    resources: { food: 1, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
-    buildings: {},
-    tutorial: TutorialService.createInitialTutorialState(),
+    currentEra: 3,
+    resources: { food: 400, knowledge: 120, wood: 50 },
+    buildings: { house: { level: 1 }, farm: { level: 1 }, lumbermill: { level: 1 } },
   };
 
-  assert.equal(TutorialService.ensureHouseGuideResources(gameState), true);
-  assert.equal(gameState.resources.food, TutorialService.getHouseGuideMinimumResources().food);
-  assert.equal(gameState.tutorial.grants.houseGuideSupplies, true);
-  gameState.resources.food = 999;
-  assert.equal(TutorialService.ensureHouseGuideResources(gameState), false);
-  assert.equal(gameState.resources.food, 999);
+  assert.equal(TutorialService.validateAction(suppliesClaimed, 'build', { target: 'barracks' }, gameState).allowed, true);
+  assert.equal(TutorialService.validateAction(suppliesClaimed, 'build', { target: 'house' }, gameState).allowed, false);
+  assert.equal(TutorialService.validateAction(suppliesClaimed, 'advanceEra', {}, gameState).allowed, false);
+
+  const barracksBuilt = TutorialService.advanceTutorial(suppliesClaimed, 'barracksBuilt');
+  assert.equal(TutorialService.validateAction(barracksBuilt, 'build', { target: 'house' }, gameState).allowed, true);
 });
 
 test('tutorial advances monotonically by named events', () => {
@@ -255,15 +301,15 @@ test('settlement forest event grants enough starter resources for lumbermill gui
 
   assert.equal(result.success, true);
   assert.deepEqual(result.reward, { food: 50, wood: 20 });
-  assert.equal(gameState.resources.food, 50);
-  assert.equal(gameState.resources.wood, 20);
+  assert.equal(gameState.cities.capital.resources.food, 50);
+  assert.equal(gameState.cities.capital.resources.wood, 20);
   assert.equal(TutorialService.validateAction(eventClaimed, 'build', { target: 'lumbermill' }, gameState).allowed, true);
 });
 
-test('tutorial grants one purple scout famous person after entering city-state era', () => {
+test('scout famous person grant core creates one purple scout with grant bookkeeping', () => {
   const tutorial = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.era3Advanced,
+    TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
   );
   const gameState = {
     playerId: 'tutorial-scout-famous-test',
@@ -273,15 +319,19 @@ test('tutorial grants one purple scout famous person after entering city-state e
     tutorial,
   };
 
-  assert.equal(TutorialService.ensureScoutFamousPersonGrant(gameState), true);
+  const grant = TutorialGrantService.grantScoutFamousPerson(gameState);
+  assert.equal(Boolean(grant?.person), true);
   assert.equal(gameState.famousPeople.length, 1);
   assert.equal(gameState.famousPeople[0].quality, 'great');
-  assert.equal(gameState.famousPeople[0].archetype, 'scout');
-  assert.equal(gameState.famousPeople[0].abilityArchetype, 'scout');
+  assert.ok(gameState.famousPeople[0].roles.includes('military')); // random combat archetype (deployable)
   assert.equal(gameState.tutorial.grants.scoutFamousPerson.personId, gameState.famousPeople[0].id);
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
+  // The step advance is claim-driven (TASK_CLAIM_STEPS), not part of the grant core.
+  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
 
-  assert.equal(TutorialService.ensureScoutFamousPersonGrant(gameState), false);
+  // Idempotent: a second grant returns the existing person without duplicating.
+  const again = TutorialGrantService.grantScoutFamousPerson(gameState);
+  assert.equal(again.person.id, grant.person.id);
+  assert.equal(again.created, false);
   assert.equal(gameState.famousPeople.length, 1);
 });
 
@@ -299,10 +349,10 @@ test('tutorial advances after saving a formation with the granted scout', () => 
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
     tutorial: TutorialService.manualAdvance(
       TutorialService.createInitialTutorialState(),
-      TutorialService.TUTORIAL_STEPS.era3Advanced,
+      TutorialService.TUTORIAL_STEPS.formationPanelOpened,
     ),
   };
-  TutorialService.ensureScoutFamousPersonGrant(gameState);
+  TutorialGrantService.grantScoutFamousPerson(gameState);
   const personId = gameState.tutorial.grants.scoutFamousPerson.personId;
 
   const saved = MilitaryService.setArmyFormation(gameState, {
@@ -356,15 +406,13 @@ test('tutorial blocks guided world march until the granted scout formation is sa
     activeCityId: 'capital',
     tutorial,
     military: {
-      formations: {
-        capital: [{ slot: 1, memberIds: [] }],
-      },
+      formations: [{ slot: 1, memberIds: [] }],
     },
   };
 
   assert.equal(TutorialService.validateAction(tutorial, 'startWorldMarch', { formationSlot: 1 }, gameState).allowed, false);
 
-  gameState.military.formations.capital[0].memberIds = [scoutPersonId];
+  gameState.military.formations[0].memberIds = [scoutPersonId];
   assert.equal(TutorialService.validateAction(tutorial, 'startWorldMarch', { formationSlot: 1 }, gameState).allowed, true);
 
   const started = TutorialService.manualAdvance(tutorial, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
@@ -407,4 +455,64 @@ test('tutorial guides first discovered empty city claim and naming in order', ()
   gameState.tutorial = cityNamed;
   gameState.territories[1].cityName = '河湾城';
   assert.equal(TutorialService.validateAction(cityNamed, 'renamePolity', { name: '赤火联盟' }, gameState).allowed, true);
+});
+
+test('normalize migrates legacy numeric saves onto step names', () => {
+  const numericSave = TutorialService.normalizeTutorialState({
+    completed: false,
+    currentStep: 26,
+    grants: { scoutFamousPerson: { personId: 'fp_1' } },
+  });
+
+  assert.equal(numericSave.currentStep, 'scoutFormationSaved');
+  assert.equal(numericSave.completed, false);
+  assert.deepEqual(numericSave.phaseCompleted, { newbie: true, era2: true, scoutFormation: true });
+  assert.equal(numericSave.grants.scoutFamousPerson.personId, 'fp_1');
+
+  const clampedSave = TutorialService.normalizeTutorialState({ currentStep: 99 });
+  assert.equal(clampedSave.currentStep, 'completed');
+  assert.equal(clampedSave.completed, true);
+
+  const nameSave = TutorialService.normalizeTutorialState({ currentStep: 'farmBuilt' });
+  assert.equal(nameSave.currentStep, 'farmBuilt');
+  assert.equal(nameSave.phaseCompleted.newbie, true);
+  assert.equal(nameSave.phaseCompleted.era2, false);
+
+  const garbageSave = TutorialService.normalizeTutorialState({ currentStep: 'not-a-step' });
+  assert.equal(garbageSave.currentStep, 'initial');
+});
+
+test('tutorialAdvance client gate accepts step names and legacy numeric payloads', () => {
+  const atHouseBuilt = TutorialService.manualAdvance(
+    TutorialService.createInitialTutorialState(),
+    TutorialService.TUTORIAL_STEPS.houseBuilt,
+  );
+
+  const byName = TutorialService.advanceClientStep(atHouseBuilt, 'civilizationTabOpened');
+  assert.equal(byName.success, true);
+  assert.equal(byName.tutorial.currentStep, 'civilizationTabOpened');
+
+  const byLegacyNumber = TutorialService.advanceClientStep(atHouseBuilt, 5);
+  assert.equal(byLegacyNumber.success, true);
+  assert.equal(byLegacyNumber.tutorial.currentStep, 'civilizationTabOpened');
+
+  const byLegacyNumericString = TutorialService.advanceClientStep(atHouseBuilt, '5');
+  assert.equal(byLegacyNumericString.success, true);
+  assert.equal(byLegacyNumericString.tutorial.currentStep, 'civilizationTabOpened');
+
+  const lockedBusinessStep = TutorialService.advanceClientStep(atHouseBuilt, 'houseBuilt');
+  assert.equal(lockedBusinessStep.success, false);
+  assert.equal(lockedBusinessStep.error, 'TUTORIAL_STEP_LOCKED');
+
+  const lockedPrerequisite = TutorialService.advanceClientStep(atHouseBuilt, 'buildingsTabOpened');
+  assert.equal(lockedPrerequisite.success, false);
+  assert.equal(lockedPrerequisite.error, 'TUTORIAL_STEP_LOCKED');
+
+  const outOfRangeNumber = TutorialService.advanceClientStep(atHouseBuilt, 99);
+  assert.equal(outOfRangeNumber.success, false);
+  assert.equal(outOfRangeNumber.error, 'TUTORIAL_STEP_LOCKED');
+
+  const invalidPayload = TutorialService.advanceClientStep(atHouseBuilt, 'nonsense');
+  assert.equal(invalidPayload.success, false);
+  assert.equal(invalidPayload.error, 'TUTORIAL_STEP_INVALID');
 });

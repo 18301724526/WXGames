@@ -3,7 +3,29 @@
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileCoord');
+        return require('../../ecs/foundation/TileCoord');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
       } catch (_error) {
         return null;
       }
@@ -14,28 +36,22 @@
   class WorldMapStaticEntryRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.renderCtx = null;
+    }
+
+    get ctx() {
+      return this.renderCtx || this.host?.ctx || null;
+    }
+
+    withRenderCtx(ctx = null, callback = null) {
+      if (typeof callback !== 'function') return false;
+      const previousCtx = this.renderCtx;
+      this.renderCtx = ctx || null;
+      try {
+        return callback();
+      } finally {
+        this.renderCtx = previousCtx;
+      }
     }
 
     getTileMapAssetManifest() {
@@ -54,6 +70,76 @@
       const helper = this.getTileMapGeometry();
       if (helper?.normalizeCoord) return helper.normalizeCoord(tile);
       return TileCoord.normalizeCoord(tile);
+    }
+
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
+    addHitTarget(rect, action) {
+      return this.host?.addHitTarget?.(rect, action);
+    }
+
+    analyzeAssetAlphaBounds(assetPath = '') {
+      return this.host?.analyzeAssetAlphaBounds?.(assetPath) || null;
+    }
+
+    drawIsoDiamond(...args) {
+      return this.host?.drawIsoDiamond?.(...args);
+    }
+
+    drawText(...args) {
+      return this.host?.drawText?.(...args);
+    }
+
+    drawWorldTileBase(...args) {
+      // During the static bake this renderer's renderCtx is the cache ctx, but the base draw
+      // delegates to the SEPARATE worldTileWaterRenderer (host chain). Thread the bake ctx into
+      // it (mirrors WorldMapWaterEntryRenderer.drawWorldTileWater) or the base draws to the screen
+      // ctx and the cache stays blank -> blank terrain.
+      const waterRenderer = this.host?.host?.worldTileWaterRenderer || this.host?.worldTileWaterRenderer || null;
+      if (this.renderCtx && waterRenderer?.withRenderCtx) {
+        return waterRenderer.withRenderCtx(this.renderCtx, () => this.host?.drawWorldTileBase?.(...args)) || false;
+      }
+      return this.host?.drawWorldTileBase?.(...args) || false;
+    }
+
+    drawWorldTileDryTemplate(...args) {
+      const waterRenderer = this.host?.host?.worldTileWaterRenderer || this.host?.worldTileWaterRenderer || null;
+      if (this.renderCtx && waterRenderer?.withRenderCtx) {
+        return waterRenderer.withRenderCtx(this.renderCtx, () => this.host?.drawWorldTileDryTemplate?.(...args)) || false;
+      }
+      return this.host?.drawWorldTileDryTemplate?.(...args) || false;
+    }
+
+    getAsset(assetPath = '') {
+      return this.host?.getAsset?.(assetPath) || null;
+    }
+
+    getFallbackTerrainFill(terrain = 'plains') {
+      return this.host?.getFallbackTerrainFill?.(terrain) || 'rgba(90, 122, 70, 0.9)';
+    }
+
+    getWorldOverlayAnchor(...args) {
+      return this.host?.getWorldOverlayAnchor?.(...args) || { x: 0, y: 0 };
+    }
+
+    getWorldTileSiteLayout(...args) {
+      return this.host?.getWorldTileSiteLayout?.(...args) || null;
+    }
+
+    random01(...args) {
+      return this.host?.random01?.(...args) || 0;
+    }
+
+    truncateText(text, maxWidth, options = {}) {
+      return this.host?.truncateText?.(text, maxWidth, options) ?? String(text ?? '');
+    }
+
+    measureTextWidth(text, options = {}) {
+      const measured = this.host?.measureTextWidth?.(text, options);
+      if (Number.isFinite(Number(measured)) && Number(measured) > 0) return Number(measured);
+      return String(text ?? '').length * (Number(options.size) || 9);
     }
 
     getWorldTileImageAspect(assetPath = '') {
@@ -96,7 +182,7 @@
       const manifest = this.getTileMapAssetManifest();
       const terrainAsset = manifest.getTerrainAsset?.(tile.terrain) || manifest.terrain?.[tile.terrain] || null;
       const assetPath = terrainAsset?.sourceTerrainPath || terrainAsset?.path || '';
-      if (!assetPath || tile.feature?.asset || ['plains', 'capital', 'river', 'desert', 'ocean'].includes(tile.terrain)) return false;
+      if (!assetPath || tile.feature?.asset || ['plains', 'capital', 'river', 'desert', 'ocean', 'shore'].includes(tile.terrain)) return false;
       const profileByTerrain = {
         hills: { chance: 0.42, scale: 0.5, alpha: 0.66, lift: 0.08, squash: 0.68 },
         waste: { chance: 0.32, scale: 0.48, alpha: 0.58, lift: 0.06, squash: 0.7 },
@@ -232,29 +318,21 @@
       });
       const drawn = this.drawWorldOverlayAsset(site.art, metrics, drawX, drawY, drawW, drawH, 1);
       if (!drawn) {
-        this.drawText(site.owner === 'player' ? 'P' : 'N', baseX, baseY - drawH * 0.42, {
-          size: 15,
-          color: site.owner === 'player' ? '#74d3a0' : '#f0b45b',
-          align: 'center',
-          baseline: 'middle',
-        });
+        this.drawText(
+          site.owner === 'player'
+            ? this.t('world.site.owner.playerShort')
+            : this.t('world.site.owner.neutralShort'),
+          baseX,
+          baseY - drawH * 0.42,
+          {
+            size: 15,
+            color: site.owner === 'player' ? '#74d3a0' : '#f0b45b',
+            align: 'center',
+            baseline: 'middle',
+          },
+        );
       }
-      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = 0.82;
-      this.ctx.fillStyle = site.owner === 'player'
-        ? '#7fdca0'
-        : site.owner === 'neutral'
-          ? '#e8edf1'
-          : '#f0c45f';
-      this.ctx.beginPath?.();
-      this.ctx.arc?.(drawX + drawW * 0.78, drawY + drawH * 0.78, Math.max(3, drawW * 0.035), 0, Math.PI * 2);
-      this.ctx.fill?.();
-      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
-      this.drawText(this.truncateText(site.name || site.title || 'Site', 74, { size: 9 }), baseX, drawY + drawH + 11, {
-        size: 9,
-        color: '#f6e8c8',
-        align: 'center',
-      });
+      this.drawWorldTileSiteNameplate(site, baseX, drawY);
       if (options.addHitTarget !== false) {
         const coord = this.normalizeTileCoord(tile);
         this.addHitTarget(layout.hitRect, {
@@ -265,6 +343,58 @@
         });
       }
       return true;
+    }
+
+    // UI-REDO knife 3 city nameplate (layout-reference-v2): dark chip above
+    // the site art with a blue level corner + name. Pure re-skin of the old
+    // under-art label -- site data and the openWorldSite hit rect are
+    // untouched. Level comes pre-normalized off tile.site (intel level).
+    // Knife 6: plate/type sizes come off cityPlate tokens (one notch larger).
+    drawWorldTileSiteNameplate(site = {}, baseX = 0, artTopY = 0) {
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const plate = UiThemeTokens?.cityPlate || {};
+      const nameSize = Number(plate.nameFontPx) || 10;
+      const plateHeight = Number(plate.heightPx) || 18;
+      const levelBox = Number(plate.levelBoxPx) || 14;
+      const paddingX = Number(plate.paddingXPx) || 6;
+      const gap = Number(plate.gapPx) || 4;
+      const name = this.truncateText(
+        site.name || site.title || this.t('world.site.defaultName'),
+        Number(plate.maxNameWidthPx) || 96,
+        { size: nameSize },
+      );
+      const level = Math.max(0, Math.floor(Number(site.level) || 0));
+      const nameWidth = this.measureTextWidth(name, { size: nameSize });
+      const levelSpan = level > 0 ? levelBox + gap : 0;
+      const plateWidth = Math.ceil(paddingX * 2 + levelSpan + nameWidth);
+      const plateX = Math.round(baseX - plateWidth / 2);
+      const plateY = Math.round(artTopY - plateHeight - (Number(plate.liftPx) || 6));
+      const previousAlpha = typeof this.ctx.globalAlpha === 'number' ? this.ctx.globalAlpha : 1;
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = 0.88;
+      this.ctx.fillStyle = palette.plateIronBottom || '#0B0E0D';
+      this.ctx.fillRect?.(plateX, plateY, plateWidth, plateHeight);
+      this.ctx.fillStyle = hairline.insetHighlight || 'rgba(229, 208, 165, 0.06)';
+      this.ctx.fillRect?.(plateX, plateY, plateWidth, 1);
+      if (level > 0) {
+        this.ctx.fillStyle = palette.accentCityLevelBlue || '#263F4B';
+        this.ctx.fillRect?.(plateX + paddingX - 1, plateY + Math.floor((plateHeight - levelBox) / 2), levelBox, levelBox);
+      }
+      if (typeof this.ctx.globalAlpha === 'number') this.ctx.globalAlpha = previousAlpha;
+      if (level > 0) {
+        this.drawText(String(level), plateX + paddingX - 1 + levelBox / 2, plateY + plateHeight / 2, {
+          size: Number(plate.levelFontPx) || 9,
+          bold: true,
+          color: palette.textPrimary || '#E1D3B7',
+          align: 'center',
+          baseline: 'middle',
+        });
+      }
+      this.drawText(name, plateX + paddingX + levelSpan, plateY + plateHeight / 2, {
+        size: nameSize,
+        color: site.owner === 'player' ? (palette.accentJade || '#55AB73') : (palette.textPrimary || '#E1D3B7'),
+        baseline: 'middle',
+      });
     }
 
     renderWorldTileStaticEntries(tileMapView = {}, viewport = {}, frame = {}, entries = [], uiState = {}, options = {}) {

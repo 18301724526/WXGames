@@ -8,6 +8,7 @@ const {
   toInteger,
 } = require('./WorldExplorerShared');
 const FormationStrengthService = require('../military/FormationStrengthService');
+const WorldMarchCore = require('../../../shared/worldMarchCore');
 
 function normalizeCoord(source = {}, fallback = {}) {
   const q = toInteger(source?.q ?? source?.x, fallback.q ?? 0);
@@ -147,7 +148,13 @@ function getRemainingSeconds(mission = {}, now = new Date()) {
   return Math.max(0, Math.ceil((nextStepAtMs - now.getTime()) / 1000));
 }
 
-function getMissionDto(mission = {}, now = new Date()) {
+function getMissionDto(rawMission = {}, now = new Date()) {
+  // A mission is a deterministic time projection (startedAt + route + step cadence).
+  // Serve the DERIVED view so clients see marches move and finish in real time instead
+  // of at the world worker's 5s persistence cadence — the worker remains the only
+  // persistence writer, but reads must not be hostage to its write timing.
+  const mission =
+    WorldMarchCore.deriveMissionForTime(rawMission, { nowMs: now.getTime() }) || rawMission;
   const revealedTileSet = createRevealedTileSet(mission);
   const route = getRouteDto(mission.route || [])
     .map((step) => (
@@ -174,10 +181,11 @@ function getMissionDto(mission = {}, now = new Date()) {
     plannedSites: (Array.isArray(mission.plannedSites) ? mission.plannedSites : []).map(getPlannedSiteDto),
     formation: clone(mission.formation || {}),
     formationSnapshot: clone(FormationStrengthService.normalizeFormationSnapshot(mission.formationSnapshot)),
+    combat: mission.combat && typeof mission.combat === 'object' ? clone(mission.combat) : null,
     position,
     revealedTileIds,
     stepDurationSeconds: Math.floor(stepDurationMs / 1000),
-    remainingSeconds: getRemainingSeconds(mission, now),
+    remainingSeconds: WorldMarchCore.getRemainingSeconds(mission, now.getTime()),
     startedAt: mission.startedAt,
     nextStepAt: mission.nextStepAt || null,
     completesAt: mission.completesAt || null,
@@ -211,6 +219,12 @@ function getClientStateDto(missions = [], options = {}) {
     maxActiveMissions: MAX_ACTIVE_EXPLORE_MISSIONS,
     maxManualRouteLength: MAX_MANUAL_ROUTE_LENGTH,
     stepDurationSeconds: Math.floor(EXPLORE_STEP_DURATION_MS / 1000),
+    // Route world-bounds delivered to the client (single source = WorldMapConstants, the same the
+    // backend planner uses) so the client's optimistic march + preview compute byte-identical
+    // routes to the authoritative one — the last input that could otherwise diverge.
+    worldWidth: WorldMapService.DEFAULT_WORLD_WIDTH,
+    worldHeight: WorldMapService.DEFAULT_WORLD_HEIGHT,
+    worldWrapping: WorldMapService.DEFAULT_WORLD_WRAPPING,
   };
 }
 

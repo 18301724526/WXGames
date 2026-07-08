@@ -1,4 +1,27 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class AdvisorCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -6,63 +29,63 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get bottomSafeArea() {
-      return this.host?.bottomSafeArea;
+      return Number(this.host?.bottomSafeArea) || 12;
     }
 
     get presenter() {
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
     addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args);
     }
 
     createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args);
     }
 
     drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args);
     }
 
     drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args);
     }
 
     drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args);
     }
 
     drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args);
     }
 
     getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args);
     }
 
     wrapText(...args) {
-      return this.callDrawingSurface('wrapText', args);
+      const surface = this.drawingSurface;
+      return surface && typeof surface.wrapText === 'function' ? surface.wrapText(...args) : this.host?.wrapText?.(...args);
+    }
+
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     renderAdvisor(state = {}) {
@@ -78,14 +101,14 @@
         stroke: 'rgba(240, 180, 91, 0.24)',
         radius: 10,
       });
-      this.drawText('顾问', x + 12, y + 13, { color: '#ffd98a', size: 14, bold: true });
+      this.drawText(this.t('shell.advisor.title'), x + 12, y + 13, { color: '#ffd98a', size: 14, bold: true });
       this.drawText(view.activeAdvisor.message, x + 64, y + 13, { color: '#f6e8c8', size: 12 });
     }
 
     getMapHomeFloatingButtonLayout(slot = 0) {
       const layout = this.getLayout();
       const size = 48;
-      const dockTop = this.height - 64;
+      const dockTop = UiThemeTokens?.getDockMetrics?.(this.width, this.height)?.top ?? (this.height - 64);
       const x = layout.contentRight - size - 8;
       const gap = 10;
       const y = Math.max(82, dockTop - (slot + 1) * size - 14 - slot * gap);
@@ -109,7 +132,7 @@
           radius: 5,
         });
       }
-      this.drawText('顾问', x + size / 2, y + 26, {
+      this.drawText(this.t('shell.advisor.title'), x + size / 2, y + 26, {
         size: 12,
         bold: true,
         color: hasAdvice ? '#f0b45b' : '#aeb0b8',
@@ -149,7 +172,7 @@
       const closeSize = 28;
       const closeX = x + panelWidth - closeSize - 10;
       const closeY = y + 10;
-      this.drawButton(closeX, closeY, closeSize, closeSize, '×', { size: 16, radius: 7 });
+      this.drawButton(closeX, closeY, closeSize, closeSize, this.t('common.close.short'), { size: 16, radius: 7 });
       this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeAdvisor' });
 
       const portraitSize = 64;
@@ -161,14 +184,14 @@
         radius: portraitSize / 2,
         inset: 'rgba(255, 231, 184, 0.14)',
       });
-      this.drawText('谋', x + panelWidth / 2, portraitY + portraitSize / 2, {
+      this.drawText(this.t('shell.advisor.icon'), x + panelWidth / 2, portraitY + portraitSize / 2, {
         size: 24,
         bold: true,
         color: '#ffe6b5',
         baseline: 'middle',
         align: 'center',
       });
-      this.drawText('顾问建议', x + panelWidth / 2, y + 102, {
+      this.drawText(this.t('shell.advisor.panelTitle'), x + panelWidth / 2, y + 102, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
@@ -187,7 +210,7 @@
       });
       const message = hasAdvice
         ? (view.text?.message || view.activeAdvisor.message)
-        : '当前暂无特别建议。保持资源增长、城市建设和地图侦察的节奏即可。';
+        : this.t('shell.advisor.emptyMessage');
       const lines = this.wrapText(message, messageWidth - 24, { size: 13 })
         .slice(0, 3);
       this.drawTextLines(lines, messageX + 12, messageY + 13, {
@@ -201,14 +224,14 @@
       const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
       const goX = x + 18;
       const dismissX = goX + buttonWidth + buttonGap;
-      this.drawButton(goX, buttonY, buttonWidth, 36, hasAdvice ? '前往处理' : '暂无目标', {
+      this.drawButton(goX, buttonY, buttonWidth, 36, hasAdvice ? this.t('shell.advisor.goToTarget') : this.t('shell.advisor.noTarget'), {
         size: 13,
         bold: true,
         radius: 9,
         disabled: !hasAdvice || Boolean(view.goButton?.disabled),
         active: hasAdvice && !view.goButton?.disabled,
       });
-      this.drawButton(dismissX, buttonY, buttonWidth, 36, '稍后再说', { size: 13, radius: 9 });
+      this.drawButton(dismissX, buttonY, buttonWidth, 36, this.t('shell.advisor.dismiss'), { size: 13, radius: 9 });
       this.addHitTarget(
         { x: goX, y: buttonY, width: buttonWidth, height: 36 },
         { type: 'goToAdvisorTarget', disabled: !hasAdvice || Boolean(view.goButton?.disabled) },

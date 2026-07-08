@@ -1,23 +1,13 @@
+const { toNumber } = require('../../../shared/numberUtils');
+const { clone } = require('../../../shared/objectUtils');
+const { nowIso } = require('../../../shared/timeUtils');
+
 const CATEGORY_IDS = Object.freeze(['daily', 'main', 'season', 'challenge']);
 const RESOURCE_KEYS = Object.freeze(['food', 'wood', 'knowledge', 'iron', 'stone', 'metal', 'soldiers']);
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function nowIso(now = new Date()) {
-  return now instanceof Date ? now.toISOString() : new Date(now).toISOString();
-}
 
 function sanitizeText(value, fallback = '') {
   const text = String(value ?? '').trim();
   return text || fallback;
-}
-
-function toNumber(value, fallback = 0) {
-  if (value === null || value === undefined || value === '') return fallback;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
 }
 
 function toBoolean(value, fallback = true) {

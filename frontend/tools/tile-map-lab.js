@@ -460,7 +460,9 @@
   }
 
   function isOceanTile(tile) {
-    return tile?.terrain === 'ocean';
+    // 'shore' is the passable coastline reclassification (pure edge/corner shoreline
+    // templates); its art stack is identical to ocean, so it shares every ocean draw path.
+    return tile?.terrain === 'ocean' || tile?.terrain === 'shore';
   }
 
   function getOceanTemplateKey(tile) {
@@ -810,8 +812,17 @@
     return chooseOceanTemplates(q, r)[0] || '';
   }
 
+  function isShoreOnlyTemplateList(templates) {
+    // Mirrors the backend reclassification rule: tiles whose shoreline templates are all
+    // pure edges/corners become passable 'shore'; any 'full' or 'river-mouth-*' stays 'ocean'.
+    return templates.length > 0
+      && templates.every((key) => key !== 'full' && !key.startsWith('river-mouth-'));
+  }
+
   function chooseOceanTerrain(q, r) {
-    return chooseOceanTemplates(q, r).length ? 'ocean' : 'plains';
+    const templates = chooseOceanTemplates(q, r);
+    if (!templates.length) return 'plains';
+    return isShoreOnlyTemplateList(templates) ? 'shore' : 'ocean';
   }
 
   function buildOverlayCalibrationTiles() {
@@ -860,12 +871,12 @@
           : state.mapPreset === 'ocean9'
             ? chooseOceanTerrain(q, r)
           : state.mapPreset === 'micro'
-            ? (chooseOceanTemplate(q, r) ? 'ocean' : chooseMicroTerrain(q, r))
+            ? (chooseOceanTemplate(q, r) ? chooseOceanTerrain(q, r) : chooseMicroTerrain(q, r))
             : chooseTerrain(q, r);
-        const oceanTemplates = terrain === 'ocean' ? chooseOceanTemplates(q, r) : [];
+        const oceanTemplates = terrain === 'ocean' || terrain === 'shore' ? chooseOceanTemplates(q, r) : [];
         const oceanTemplate = oceanTemplates[0] || '';
         const isOceanLabPreset = state.mapPreset === 'ocean9' || state.mapPreset === 'ocean-combos' || state.mapPreset === 'ocean-missing-11';
-        const site = isOceanLabPreset || terrain === 'ocean' ? null : chooseSite(q, r, terrain, ring);
+        const site = isOceanLabPreset || terrain === 'ocean' || terrain === 'shore' ? null : chooseSite(q, r, terrain, ring);
         nextTiles.push({
           id: getTileId(q, r),
           q,
@@ -1181,7 +1192,7 @@
   }
 
   function getBaseTerrainFile(tile) {
-    if (tile.terrain === 'ocean') return TERRAIN_ASSETS.plains.file;
+    if (tile.terrain === 'ocean' || tile.terrain === 'shore') return TERRAIN_ASSETS.plains.file;
     if (tile.terrain === 'desert') {
       return TERRAIN_ASSETS[tile.terrain]?.file || TERRAIN_ASSETS.plains.file;
     }
@@ -1567,7 +1578,7 @@
   }
 
   function drawTerrainFeature(targetCtx, tile) {
-    if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river' || tile.terrain === 'desert' || tile.terrain === 'ocean') return;
+    if (tile.terrain === 'plains' || tile.terrain === 'capital' || tile.terrain === 'river' || tile.terrain === 'desert' || tile.terrain === 'ocean' || tile.terrain === 'shore') return;
     const isCalibration = isOverlayCalibrationPreset();
     if (!isCalibration && hasRiverNearby(tile.q, tile.r, 1)) return;
     if (tile.terrain === 'forest') {

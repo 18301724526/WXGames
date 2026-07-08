@@ -8,22 +8,19 @@ const {
   hashString,
   roll01,
 } = require('./WorldMapGenerationAuthority');
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
+const { toInteger } = require('../../../shared/numberUtils');
+const { clone } = require('../../../shared/objectUtils');
 
 function random01(seed, q, r, salt) {
   return roll01(seed, q, r, salt);
 }
 
 function getTileId(q, r) {
-  return `tile_${q}_${r}`;
+  // Single-sourced: the tile-id format lives in WorldMapTopology (the tile-identity owner,
+  // alongside getTileCanonicalKey/getCanonicalTileId). This was a raw inline tile-id copy;
+  // tile ids are integer-by-contract (parseTileId only matches integers), so delegating to the
+  // floored Topology form is behavior-safe and removes the same-folder raw/floored split.
+  return WorldMapTopology.getTileId(q, r);
 }
 
 function clampIntelLevel(value, fallback = 1) {

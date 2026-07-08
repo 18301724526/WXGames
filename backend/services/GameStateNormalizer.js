@@ -1,4 +1,4 @@
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const TutorialService = require('./TutorialService');
 const BuildingActionService = require('./BuildingActionService');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
@@ -7,12 +7,28 @@ const EventService = require('./EventService');
 const TerritoryService = require('./TerritoryService');
 const WorldMapService = require('./WorldMapService');
 const WorldExplorerService = require('./WorldExplorerService');
+const WorldExplorerVision = require('./worldExplorer/WorldExplorerVision');
 const WorldAiExplorerService = require('./WorldAiExplorerService');
 const CityService = require('./CityService');
 const TalentPolicyService = require('./TalentPolicyService');
 const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateMigrationPipeline = require('./GameStateMigrationPipeline');
+const WorldCombatEncounterService = require('./worldCombat/WorldCombatEncounterService');
+
+function sanitizeWorldMapVisionHistory(gameState = {}) {
+  const worldMap = gameState.worldMap;
+  if (!worldMap || typeof worldMap !== 'object') return null;
+  const cityVisionKeys = new Set(WorldExplorerVision.getCityVisionCoords(gameState)
+    .map((coord) => WorldMapService.getTileCoordinateKey(coord)));
+  const history = WorldMapService.normalizeVisionHistory(worldMap.visionHistory || worldMap.visionHistorySources);
+  worldMap.visionHistory = WorldMapService.normalizeVisionHistory({
+    sources: history.sources.filter((source) => (
+      source.kind !== 'city' || cityVisionKeys.has(WorldMapService.getTileCoordinateKey(source))
+    )),
+  });
+  return worldMap.visionHistory;
+}
 
 function createInitialGameState(playerId, options = {}) {
   const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
@@ -20,7 +36,7 @@ function createInitialGameState(playerId, options = {}) {
   const buildings = BuildingState.createInitialBuildingState();
   const buildingEffects = BuildingEffectCalculator.calculate(buildings);
   const spawn = options.spawn || options.spawnAssignment || null;
-  return {
+  const state = {
     playerId,
     saveMetadata: GameStateMigrationPipeline.createSaveMetadata(),
     resources: { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
@@ -35,6 +51,7 @@ function createInitialGameState(playerId, options = {}) {
     gameDay: 1,
     eventQueue: [],
     eventHistory: [],
+    captureDecisions: [], // ②b: pending captured-general decisions (斩杀/招降/放生)
     regularEventState: EventService.normalizeRegularEventState(null),
     threatEventState: EventService.normalizeThreatEventState(null),
     activeBuffs: [],
@@ -64,6 +81,25 @@ function createInitialGameState(playerId, options = {}) {
     scoutReports: [],
     updatedAt: nowIso,
   };
+  // Seed the capital city slot so cities[] is the single source of truth from creation.
+  // Even an un-normalized initial state that is persisted directly round-trips its
+  // resources/buildings/population/military through cities[]. The top-level fields
+  // above remain on the in-memory object only.
+  state.cities = {
+    [CityService.CAPITAL_CITY_ID]: CityService.createCityState({
+      id: CityService.CAPITAL_CITY_ID,
+      territoryId: CityService.CAPITAL_CITY_ID,
+      isCapital: true,
+      foundedAt: nowIso,
+      resources: state.resources,
+      buildings: state.buildings,
+      population: state.population,
+      military: state.military,
+      happiness: state.happiness,
+    }),
+  };
+  WorldCombatEncounterService.normalizeCombatState(state, now);
+  return state;
 }
 
 function normalizeStateStructure(rawState) {
@@ -77,7 +113,7 @@ function normalizeStateStructure(rawState) {
     stone: state.resources?.stone || 0,
     metal: state.resources?.metal ?? state.resources?.iron ?? 0,
   };
-  state.buildings = BuildingState.normalizeLegacyBuildingState(state.buildings);
+  state.buildings = BuildingState.normalizeBuildingState(state.buildings);
   state.population = {
     total: state.population?.total || 3,
     max: state.population?.max || state.population?.maxPop || 3,
@@ -93,6 +129,7 @@ function normalizeStateStructure(rawState) {
   state.techEffects = state.techEffects || {};
   state.eventQueue = state.eventQueue || [];
   state.eventHistory = state.eventHistory || [];
+  state.captureDecisions = Array.isArray(state.captureDecisions) ? state.captureDecisions : [];
   EventService.cleanupRuntimeState(state);
   state.offlineSnapshot = state.offlineSnapshot || {};
   state.offlineEventLog = state.offlineEventLog || [];
@@ -108,9 +145,9 @@ function normalizeStateStructure(rawState) {
   state.taskProgress.claimed = state.taskProgress.claimed && typeof state.taskProgress.claimed === 'object'
     ? state.taskProgress.claimed
     : {};
-  TutorialService.ensureHouseGuideResources(state);
-  TutorialService.ensureScoutFamousPersonGrant(state);
   WorldMapService.ensureWorldMap(state);
+  sanitizeWorldMapVisionHistory(state);
+  WorldCombatEncounterService.normalizeCombatState(state);
   state.exploreMissions = Array.isArray(state.exploreMissions)
     ? state.exploreMissions.map((mission) => WorldExplorerService.normalizeMission(mission)).filter(Boolean)
     : [];
@@ -121,13 +158,15 @@ function normalizeStateStructure(rawState) {
     ? state.worldMarchVerification
     : null;
   CityService.normalizeCities(state);
-  WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
+  // The top-level rebuilds above only seed pre-cities legacy saves through the migration
+  // pipeline; from here on the city objects are the single source of truth and the
+  // top-level fields become references to the active city (never sibling copies).
+  CityService.aliasTopLevelToActiveCity(state);
   state.eraHistory = Array.isArray(state.eraHistory) ? state.eraHistory : [{ era: state.currentEra, advancedAt: new Date().toISOString() }];
   state.gameDay = state.gameDay || 1;
   state.happiness = state.happiness || 100;
   state.updatedAt = state.updatedAt || new Date().toISOString();
   BuildingActionService.applyDerivedStats(state);
-  CityService.persistLegacyFieldsToActiveCity(state);
   return state;
 }
 
@@ -136,15 +175,17 @@ function advanceRuntimeState(gameState, now = new Date(), options = {}) {
   const previousWorldMapVersion = WorldMapService.getWorldMapVersion(state.worldMap);
   WorldExplorerService.normalizeExploreState(state, now, {
     planningContext: options.planningContext,
+    worldEncounterRepo: options.worldEncounterRepo,
+    sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
+    marchVerification: options.marchVerification,
   });
+  WorldCombatEncounterService.normalizeCombatState(state, now);
   if (options.advanceWorldAi === true) {
     WorldAiExplorerService.advanceAiExploration(state, now);
   }
   TerritoryService.normalizeTerritoryState(state, now, { previousWorldMapVersion });
   CityService.normalizeCities(state, now);
-  WorldExplorerService.ensureTutorialFirstCityClaimSoldiers(state);
   BuildingActionService.applyDerivedStats(state);
-  CityService.persistLegacyFieldsToActiveCity(state);
   return state;
 }
 

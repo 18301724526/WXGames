@@ -63,15 +63,8 @@ const EFFECT_LABELS = Object.freeze({
   settlementPacifyPct: '安抚效率',
   famousRetentionPct: '名人说服',
   diplomacyBonusPct: '外交加成',
-  scoutReportBonusPct: '侦查情报',
+  scoutReportBonusPct: '军情视野',
   cityStabilityPct: '城市稳定',
-});
-
-const LEGACY_EFFECT_MIGRATIONS = Object.freeze({
-  combo: 'secondHit',
-  ambush: 'firstStrike',
-  morale: 'attributeBonus',
-  counter: null,
 });
 
 const QUALITY_BUDGETS = Object.freeze({
@@ -88,13 +81,13 @@ const QUALITY_LABELS = Object.freeze({
   legendary: '传奇',
 });
 
-const ARCHETYPE_DOMAINS = Object.freeze({
-  commander: { domain: 'battle', battlePolicy: 'useBattleSkill' },
-  vanguard: { domain: 'battle', battlePolicy: 'useBattleSkill' },
-  strategist: { domain: 'battle', battlePolicy: 'useBattleSkill' },
-  governor: { domain: 'civil', battlePolicy: 'basicAttackOnly' },
-  charmer: { domain: 'civil', battlePolicy: 'basicAttackOnly' },
-  scout: { domain: 'hybrid', battlePolicy: 'useBattleSkill' },
+const ARCHETYPE_CATEGORIES = Object.freeze({
+  commander: { category: 'battle', battlePolicy: 'useBattleSkill' },
+  vanguard: { category: 'battle', battlePolicy: 'useBattleSkill' },
+  strategist: { category: 'battle', battlePolicy: 'useBattleSkill' },
+  governor: { category: 'civil', battlePolicy: 'basicAttackOnly' },
+  charmer: { category: 'civil', battlePolicy: 'basicAttackOnly' },
+  scout: { category: 'hybrid', battlePolicy: 'useBattleSkill' },
 });
 
 const ACTIVE_TEMPLATES = Object.freeze({
@@ -274,13 +267,12 @@ const SCOUT_TRAITS = Object.freeze([
 
 module.exports = {
   ACTIVE_TEMPLATES,
-  ARCHETYPE_DOMAINS,
+  ARCHETYPE_CATEGORIES,
   CIVIL_EFFECTS,
   CIVIL_TEMPLATES,
   EFFECT_LABELS,
   FIRST_BATCH_BATTLE_EFFECTS,
   GENERATOR_VERSION,
-  LEGACY_EFFECT_MIGRATIONS,
   PASSIVE_TEMPLATES,
   QUALITY_BUDGETS,
   QUALITY_LABELS,

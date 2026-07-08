@@ -1,26 +1,58 @@
 (function (global) {
+  // Resolved at call time (not module load) to stay immune to script load order.
+  function resolveLocaleText() {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function t(key = '', params = {}, options = {}) {
+    const localeText = resolveLocaleText();
+    return localeText ? localeText.t(key, params, options) : (options.fallback ?? key);
+  }
+
+  // The catalog is evaluated at module load, so it stores locale keys only; labels
+  // are translated lazily (per lookup, i.e. at render time) via resolveRouteLabel.
   const DEFAULT_ROUTE_CATALOG = Object.freeze({
-    agriculture: Object.freeze({ lane: -4, label: '\u519c\u4e1a', color: '#5fcb6b', icon: 'assets/art/tech-agriculture-cutout.png' }),
-    livelihood: Object.freeze({ lane: -3, label: '\u6c11\u751f', color: '#d9b35d', icon: 'assets/art/tech-livelihood-cutout.png' }),
-    administration: Object.freeze({ lane: -2, label: '\u79e9\u5e8f', color: '#c9a47a', icon: 'assets/art/tech-administration-cutout.png' }),
-    knowledge: Object.freeze({ lane: -1, label: '\u77e5\u8bc6', color: '#57a6ff', icon: 'assets/art/tech-knowledge-cutout.png' }),
-    culture: Object.freeze({ lane: 0, label: '\u6587\u5316', color: '#b48cff', icon: 'assets/art/tech-culture-cutout.png' }),
-    engineering: Object.freeze({ lane: 1, label: '\u5de5\u7a0b', color: '#83c8d9', icon: 'assets/art/tech-engineering-cutout.png' }),
-    industry: Object.freeze({ lane: 2, label: '\u5de5\u4e1a', color: '#d9904f', icon: 'assets/art/tech-industry-cutout.png' }),
-    exploration: Object.freeze({ lane: 3, label: '\u63a2\u7d22', color: '#62c9a7', icon: 'assets/art/tech-exploration-cutout.png' }),
-    trade: Object.freeze({ lane: 4, label: '\u8d38\u6613', color: '#d5c46a', icon: 'assets/art/tech-trade-cutout.png' }),
-    military: Object.freeze({ lane: 5, label: '\u519b\u4e8b', color: '#e35d5d', icon: 'assets/art/tech-military-cutout.png' }),
+    agriculture: Object.freeze({ lane: -4, labelKey: 'tech.lane.agriculture', color: '#5fcb6b', icon: 'assets/art/tech-agriculture-cutout.png' }),
+    livelihood: Object.freeze({ lane: -3, labelKey: 'tech.lane.livelihood', color: '#d9b35d', icon: 'assets/art/tech-livelihood-cutout.png' }),
+    administration: Object.freeze({ lane: -2, labelKey: 'tech.lane.administration', color: '#c9a47a', icon: 'assets/art/tech-administration-cutout.png' }),
+    knowledge: Object.freeze({ lane: -1, labelKey: 'tech.lane.knowledge', color: '#57a6ff', icon: 'assets/art/tech-knowledge-cutout.png' }),
+    culture: Object.freeze({ lane: 0, labelKey: 'tech.lane.culture', color: '#b48cff', icon: 'assets/art/tech-culture-cutout.png' }),
+    engineering: Object.freeze({ lane: 1, labelKey: 'tech.lane.engineering', color: '#83c8d9', icon: 'assets/art/tech-engineering-cutout.png' }),
+    industry: Object.freeze({ lane: 2, labelKey: 'tech.lane.industry', color: '#d9904f', icon: 'assets/art/tech-industry-cutout.png' }),
+    exploration: Object.freeze({ lane: 3, labelKey: 'tech.lane.exploration', color: '#62c9a7', icon: 'assets/art/tech-exploration-cutout.png' }),
+    trade: Object.freeze({ lane: 4, labelKey: 'tech.lane.trade', color: '#d5c46a', icon: 'assets/art/tech-trade-cutout.png' }),
+    military: Object.freeze({ lane: 5, labelKey: 'tech.lane.military', color: '#e35d5d', icon: 'assets/art/tech-military-cutout.png' }),
   });
+
+  function resolveRouteLabel(meta = {}, route = '') {
+    if (meta.label) return meta.label;
+    if (meta.labelKey) return t(meta.labelKey, {}, { fallback: route || meta.labelKey });
+    return route || t('tech.route.default');
+  }
 
   function getTechRouteCatalog() {
     return Object.fromEntries(
-      Object.entries(DEFAULT_ROUTE_CATALOG).map(([route, meta]) => [route, { ...meta }]),
+      Object.entries(DEFAULT_ROUTE_CATALOG).map(([route, meta]) => [
+        route,
+        { ...meta, label: resolveRouteLabel(meta, route) },
+      ]),
     );
   }
 
   function getTechRouteMeta(route, catalog = DEFAULT_ROUTE_CATALOG) {
-    if (route && catalog[route]) return catalog[route];
-    return { lane: 0, label: route || '\u8def\u7ebf', color: '#f0b45b', icon: 'assets/art/icon-science-cutout.webp' };
+    if (route && catalog[route]) {
+      const meta = catalog[route];
+      return meta.label ? meta : { ...meta, label: resolveRouteLabel(meta, route) };
+    }
+    return { lane: 0, label: route || t('tech.route.default'), color: '#f0b45b', icon: 'assets/art/icon-science-cutout.webp' };
   }
 
   function getTechNodeRoutes(node = {}) {
@@ -31,7 +63,7 @@
 
   function getTechNodeRouteLabel(node = {}, catalog = DEFAULT_ROUTE_CATALOG) {
     const routes = getTechNodeRoutes(node);
-    if (!routes.length) return node.routeLabel || '\u8def\u7ebf';
+    if (!routes.length) return node.routeLabel || t('tech.route.default');
     if (routes.length === 1) return node.routeLabel || getTechRouteMeta(routes[0], catalog).label;
     return routes.map((route) => getTechRouteMeta(route, catalog).label).join('/');
   }

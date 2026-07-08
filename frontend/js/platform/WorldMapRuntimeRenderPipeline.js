@@ -9,8 +9,12 @@
   }
 
   function publishStateToRenderer(host, state) {
-    host.lastGameState = state;
-    host.lastWorldMarchState = state;
+    return state;
+  }
+
+  function commitFrameState(host, patch = {}) {
+    if (typeof host?.commitFrameState === 'function') return host.commitFrameState(patch);
+    return null;
   }
 
   function handleCannotRender(host, state) {
@@ -24,7 +28,13 @@
       activeMission: summarizeMission(state?.worldExplorerState?.activeMission),
     });
     host.renderer?.clearAll?.();
-    Object.assign(host, RenderPolicy.createCannotRenderState());
+    const nextState = RenderPolicy.createCannotRenderState();
+    host.resetHitTargetState?.();
+    commitFrameState(host, {
+      hasBakedMapLayer: nextState.hasBakedMapLayer,
+      lastMapDataSignature: nextState.lastMapDataSignature,
+      mapBakeDirty: nextState.mapBakeDirty,
+    });
     return false;
   }
 
@@ -60,12 +70,13 @@
       waterTimeMs: host.waterTimeMs,
     }));
     if (rendered && typeof host.renderer.renderWorldMapActorLayer === 'function') {
-      const frameContext = host.renderer.lastWorldTileMapContext
+      const frameContext = host.renderer.worldMapRenderState?.lastWorldTileMapContext
+        || host.renderer.lastWorldTileMapContext
         || host.renderer.worldMapLayerRenderer?.lastWorldTileMapContext
         || host.getLastTileMapContext?.()
         || host.lastTileMapContext
         || null;
-      if (frameContext) host.lastTileMapContext = frameContext;
+      if (frameContext) commitFrameState(host, { lastTileMapContext: frameContext });
       host.renderer.renderWorldMapActorLayer(state, RenderPolicy.createActorRenderOptions(options, {
         epochNowMs: context.epochNowMs,
         uiState: context.uiState,
@@ -74,10 +85,12 @@
       host.syncHitTargetsFromRenderer?.({ preserveOnEmpty: true });
     }
     host.syncWaterAnimationFlag(context.uiState);
-    host.lastLayout = host.getLayerLayout(state, { topBarBottom: context.topBarBottom });
+    commitFrameState(host, {
+      lastLayout: host.getLayerLayout(state, { topBarBottom: context.topBarBottom }),
+    });
     logSnapshotRender(state, rendered, {
       epochNowMs: context.epochNowMs,
-      hitTargetCount: host.hitTargets.length,
+      hitTargetCount: host.getHitTargets?.().length || 0,
     });
     return rendered;
   }
@@ -92,8 +105,10 @@
       snapshotOnly: context.snapshotOnly,
       waterTimeMs: host.waterTimeMs,
     }));
-    host.lastLayout = host.getLayerLayout(state, { topBarBottom: context.topBarBottom });
-    const renderResult = host.renderer.lastWorldMapLayerRenderResult
+    const lastLayout = host.getLayerLayout(state, { topBarBottom: context.topBarBottom });
+    commitFrameState(host, { lastLayout });
+    const renderResult = host.renderer.worldMapRenderState?.lastWorldMapLayerRenderResult
+      || host.renderer.lastWorldMapLayerRenderResult
       || host.renderer.worldMapLayerRenderer?.lastWorldMapLayerRenderResult
       || null;
     const drewFrame = rendered && renderResult?.drewFrame !== false;
@@ -102,18 +117,18 @@
     }
     if (drewFrame) {
       host.syncWaterAnimationFlag(context.uiState);
-      host.lastTileMapContext = host.renderer.lastWorldTileMapContext
+      const lastTileMapContext = host.renderer.worldMapRenderState?.lastWorldTileMapContext
+        || host.renderer.lastWorldTileMapContext
         || host.renderer.worldMapLayerRenderer?.lastWorldTileMapContext
         || host.getLastTileMapContext()
         || null;
-      host.hasBakedMapLayer = true;
-      host.mapBakeDirty = false;
+      host.commitBakedFrame?.(lastTileMapContext, { lastLayout });
       host.markBakedLayerCommitted?.();
       if (typeof host.renderer.renderWorldMapActorLayer === 'function') {
         host.renderer.renderWorldMapActorLayer(state, RenderPolicy.createActorRenderOptions(options, {
           epochNowMs: context.epochNowMs,
           uiState: context.uiState,
-          worldMapRuntimeContext: host.lastTileMapContext,
+          worldMapRuntimeContext: lastTileMapContext,
         }));
       }
       host.markBakedCamera(host.camera);
@@ -124,7 +139,7 @@
       runtimeState: {
         hasBakedMapLayer: host.hasBakedMapLayer,
         mapBakeDirty: host.mapBakeDirty,
-        hitTargetCount: host.hitTargets.length,
+        hitTargetCount: host.getHitTargets?.().length || 0,
       },
     });
     return rendered;
@@ -157,7 +172,7 @@
       lastRenderAt: host.lastRenderAt,
       frameMs: host.frameMs,
     })) return false;
-    host.lastRenderAt = now;
+    commitFrameState(host, { lastRenderAt: now });
 
     const uiState = host.getCameraUiState();
     const topBarBottom = options.topBarBottom ?? host.getTopBarBottom(state);

@@ -1,8 +1,5 @@
 const WorldMapService = require('./WorldMapService');
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+const { clone } = require('../../shared/objectUtils');
 
 function getMapBounds(territories) {
   const xs = territories.map((territory) => territory.x);
@@ -15,10 +12,10 @@ function getMapBounds(territories) {
   };
 }
 
+// Delegates to the WorldMapService SSOT so every coordinate-keyed projection (tiles, territories,
+// encounters) builds keys from the same source. Kept as an export for existing callers.
 function getCoordinateKey(site = {}) {
-  const x = Number(site.x ?? site.q ?? 0);
-  const y = Number(site.y ?? site.r ?? 0);
-  return `${Math.floor(x)},${Math.floor(y)}`;
+  return WorldMapService.getTileCoordinateKey(site);
 }
 
 function getWorldMapOrigin(worldMap = {}) {
@@ -45,6 +42,32 @@ function projectCapitalTerritoryToOrigin(territory = {}, origin = null) {
 
 function isSharedOccupiedTerritory(site = {}) {
   return Boolean(site.ownerPlayerId && site.owner === 'player' && site.status === 'occupied');
+}
+
+// A shared PRE-PLACED NEUTRAL city (owner:'neutral', no ownerPlayerId) — the world_cities layer
+// (docs/design/10 §3.2). Player-OWNED shared sites carry an ownerPlayerId and are NOT gated (they keep
+// their pre-existing always-projected behavior).
+function isSharedNeutralCity(site = {}) {
+  return Boolean(site && site.owner === 'neutral' && !site.ownerPlayerId);
+}
+
+// Visibility gate (docs/design/10 §6-R2). A neutral city exists in the shared store, but only appears
+// in a player's client map once that player's world map has revealed its tile ("discovered once → shown
+// forever" — the CITY semantic, deliberately different from hostile encounters, which are gated by
+// CURRENT vision in WorldCombatEncounterService).
+// The gate consults WorldMapService.getRevealedTileCoordSet — the SSOT coordinate set of what the
+// client map actually projects — NOT raw worldMap.tiles presence: the raw array also carries
+// AI-explorer tiles written as visibility:'hidden'/visible:false, which must never surface a city.
+// KNOWN RESIDUE (out of scope here): solid-fill bridge tiles (revealSolidKnownWorldTiles) are
+// visible:true, so they are legitimately in the revealed set and a shared neutral city standing on
+// a filled-but-never-marched tile still projects. Own/occupied shared sites are untouched.
+function filterDiscoveredNeutralCities(sharedTerritories, worldMap = {}) {
+  if (!Array.isArray(sharedTerritories) || !sharedTerritories.length) return sharedTerritories || [];
+  const visibleTileCoords = WorldMapService.getRevealedTileCoordSet(worldMap);
+  return sharedTerritories.filter((site) => {
+    if (!isSharedNeutralCity(site)) return true;
+    return visibleTileCoords.has(getCoordinateKey(site));
+  });
 }
 
 function getTerritoryProjectionPriority(site = {}) {
@@ -85,26 +108,6 @@ function bindProjectedSitesToWorldMap(worldMap = {}, territories = []) {
       };
     }),
   };
-}
-
-function getClientScoutAreas(gameState, deps = {}) {
-  const scoutState = typeof deps.normalizeScoutState === 'function'
-    ? deps.normalizeScoutState(gameState.scoutState)
-    : (gameState.scoutState || {});
-  return (scoutState.areas || []).map((area) => ({
-    id: area.id,
-    missionId: area.missionId,
-    direction: area.direction,
-    originX: area.originX,
-    originY: area.originY,
-    targetX: area.targetX,
-    targetY: area.targetY,
-    result: area.result,
-    siteId: area.siteId,
-    tileIds: [...area.tileIds],
-    coords: area.coords.map((coord) => ({ ...coord })),
-    scoutedAt: area.scoutedAt,
-  }));
 }
 
 function getTerritoryIntelSnapshot(territory = {}, deps = {}) {
@@ -168,21 +171,52 @@ function getClientBattleTargetForIntel(battleTarget, intel) {
   };
 }
 
-function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}) {
+// "Fought before" for a defended site = a lastBattle record was written after a resolved fight. It is
+// the SINGLE fact that unlocks defender STRENGTH numbers (defense / recommendedSoldiers / threat) —
+// learned in battle, not by scouting ("打了才知道"). The garrison/leader/battleTarget objects were
+// already intel-gated above; this withholds the raw strength scalars the spread would otherwise leak.
+function hasFoughtTerritory(territory = {}) {
+  return Boolean(territory && territory.lastBattle);
+}
+
+function getClientTerritoryView(territory, scoutOrigin, mission, deps = {}, gameState = {}) {
   const intel = getTerritoryIntelSnapshot(territory, deps);
-  return {
+  const occupationMode = deps.getOccupationMode(territory, gameState);
+  // A settlement faces no defender — never advertise a band garrison/leader the player won't fight,
+  // keeping the DTO's occupationMode and its defender fields consistent.
+  const settling = occupationMode === 'settlement';
+  // A conquest target the player has NOT fought yet hides its strength scalars. Own/occupied sites
+  // (owner 'player') and already-fought sites keep them. Undefined (not 0) so the frontend shows
+  // "未知" rather than a misleading "0 兵 / 0 防御". `scale` (the garrison-band tier deep=3/city=2/
+  // frontier=1) is a strength scalar too — GarrisonPolicy.garrisonSoldiers scales soldiers by it — so
+  // it is withheld alongside defense/recommendedSoldiers/threat, matching the encounter side
+  // (getClientEncounterBattleTarget). This is only the DTO's "规模数字"; the map sprite's draw size
+  // comes from a SEPARATE art-scale (TileMapAssetManifest.getSiteAsset().scale, keyed by site.type,
+  // via WorldTileMapTileNormalizer.normalizeSite), so hiding it here never changes how the city renders.
+  const hideStrength =
+    !settling && territory.owner !== 'player' && !hasFoughtTerritory(territory);
+  const view = {
     ...territory,
     intel,
-    garrison: redactGarrisonForIntel(territory.garrison, intel),
-    defenderLeader: intel.knownLeader ? territory.defenderLeader : null,
-    battleTarget: getClientBattleTargetForIntel(territory.battleTarget, intel),
+    garrison: settling ? null : redactGarrisonForIntel(territory.garrison, intel),
+    defenderLeader: settling ? null : (intel.knownLeader ? territory.defenderLeader : null),
+    battleTarget: settling ? null : getClientBattleTargetForIntel(territory.battleTarget, intel),
     distance: deps.getDistance(territory.x, territory.y),
     originDistance: deps.getRelativeDistance(scoutOrigin.x, scoutOrigin.y, territory.x, territory.y),
     relativeX: territory.x - scoutOrigin.x,
     relativeY: territory.y - scoutOrigin.y,
-    occupationMode: deps.getOccupationMode(territory),
+    occupationMode,
     mission,
   };
+  // Strip the strength scalars entirely (delete, not 0) so the key is absent from the DTO and the
+  // frontend renders "未知" instead of a misleading zero.
+  if (hideStrength) {
+    delete view.defense;
+    delete view.recommendedSoldiers;
+    delete view.threat;
+    delete view.scale;
+  }
+  return view;
 }
 
 function getClientTerritoryState(gameState, now = new Date(), deps = {}, projection = {}) {
@@ -196,12 +230,18 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
       durationSeconds: Math.floor(deps.CONQUEST_DURATION_MS / 1000),
     }]));
   const ownTerritories = Array.isArray(gameState.territories) ? gameState.territories : [];
-  const sharedTerritories = Array.isArray(projection.sharedWorldTerritories) ? projection.sharedWorldTerritories : [];
+  // Visibility-gate the shared projection: undiscovered PRE-PLACED NEUTRAL cities are dropped so they
+  // are absent from the client map (no reveal-at-spawn — docs/design/10 §6-R2). The player's own
+  // worldMap is already reveal-streamed, so its tiles are the discovered set. Player-owned shared sites
+  // pass through unchanged.
+  const sharedTerritories = filterDiscoveredNeutralCities(
+    Array.isArray(projection.sharedWorldTerritories) ? projection.sharedWorldTerritories : [],
+    gameState.worldMap,
+  );
   const capitalOrigin = getWorldMapOrigin(gameState.worldMap);
   const territories = mergeProjectedTerritories(ownTerritories, sharedTerritories)
     .map((territory) => projectCapitalTerritoryToOrigin(territory, capitalOrigin))
-    .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps));
-  const scoutMissions = (gameState.warMissions || []).filter((mission) => deps.getMissionKind(mission) === 'scout');
+    .map((territory) => getClientTerritoryView(territory, scoutOrigin, missionsByTerritory[territory.id] || null, deps, gameState));
   const worldMap = typeof WorldMapService.getClientWorldMapFromNormalized === 'function'
     ? WorldMapService.getClientWorldMapFromNormalized(gameState.worldMap)
     : WorldMapService.getClientWorldMap(gameState, now);
@@ -210,16 +250,7 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
     territories,
     worldMap: bindProjectedSitesToWorldMap(worldMap, territories),
     warMissions: gameState.warMissions || [],
-    scoutMissions: scoutMissions.map((mission) => ({
-      ...mission,
-      remainingSeconds: Math.max(0, Math.ceil((new Date(mission.completesAt).getTime() - nowMs) / 1000)),
-    })),
-    activeScoutMission: deps.getActiveScoutMission(gameState),
-    scoutReports: gameState.scoutReports || [],
-    scoutAreas: getClientScoutAreas(gameState, deps),
     scoutOrigin,
-    directions: Object.entries(deps.DIRECTIONS).map(([id, direction]) => ({ id, ...direction })),
-    maxActiveScouts: deps.MAX_ACTIVE_SCOUTS,
     availableSoldiers: deps.getAvailableSoldiers(gameState),
     soldiersOnMission: deps.countTotalSoldiersOnMission(gameState),
     occupiedCount: deps.getOccupiedCount(gameState),
@@ -227,7 +258,6 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
     mapBounds: getMapBounds(territories),
     territoryEffects: deps.getTerritoryEffects(gameState),
     namingPrompt: deps.getNamingPrompt(gameState),
-    scoutDurationSeconds: Math.floor(deps.SCOUT_DURATION_MS / 1000),
     missionDurationSeconds: Math.floor(deps.CONQUEST_DURATION_MS / 1000),
     famousPersons: {
       people: clone(gameState.famousPeople || []),
@@ -237,7 +267,6 @@ function getClientTerritoryState(gameState, now = new Date(), deps = {}, project
 
 module.exports = {
   getMapBounds,
-  getClientScoutAreas,
   getTerritoryIntelSnapshot,
   redactGarrisonForIntel,
   getClientBattleTargetForIntel,
@@ -245,4 +274,6 @@ module.exports = {
   getClientTerritoryState,
   getCoordinateKey,
   mergeProjectedTerritories,
+  filterDiscoveredNeutralCities,
+  isSharedNeutralCity,
 };

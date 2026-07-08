@@ -24,11 +24,23 @@ function buildTaskView(gameState, task) {
   };
 }
 
+// Claimable tasks must surface at the top of the panel: the tutorial highlights
+// claim buttons by canvas hit target, and a claimable row pushed below the fold
+// is unreachable for the guide (and easy to miss for players). Completed rows
+// sink to the bottom; within a status band the definition order (sortOrder) holds.
+const STATUS_RANK = { claimable: 0, active: 1, completed: 2 };
+
 function buildCategories(gameState, definitions = {}) {
   return TAB_DEFINITIONS.reduce((result, tab) => {
     const tasks = (definitions.tasks || [])
       .filter((task) => task.category === tab.id)
-      .map((task) => buildTaskView(gameState, task));
+      .map((task) => buildTaskView(gameState, task))
+      .map((task, index) => ({ task, index }))
+      .sort((a, b) => {
+        const rank = (STATUS_RANK[a.task.status] ?? 1) - (STATUS_RANK[b.task.status] ?? 1);
+        return rank !== 0 ? rank : a.index - b.index;
+      })
+      .map((entry) => entry.task);
     result[tab.id] = {
       id: tab.id,
       label: tab.label,

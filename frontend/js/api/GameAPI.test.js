@@ -33,16 +33,6 @@ function createResponseWithHeaders(status, payload, headers = {}) {
   };
 }
 
-function withLoadTrace(trace, callback) {
-  const previous = globalThis.H5LoadTrace;
-  globalThis.H5LoadTrace = trace;
-  return Promise.resolve()
-    .then(callback)
-    .finally(() => {
-      globalThis.H5LoadTrace = previous;
-    });
-}
-
 function withOperationLog(logger, callback) {
   const previous = globalThis.ClientOperationLog;
   globalThis.ClientOperationLog = logger;
@@ -55,20 +45,6 @@ function withOperationLog(logger, callback) {
 
 test('GameAPI sends H5 load trace spans for successful requests', async () => {
   const calls = [];
-  const api = new GameAPI('/api', 'token-a', {
-    transport: {
-      async request(request) {
-        calls.push(['transport', request.url, request.headers.Authorization]);
-        return createResponse(200, {
-          gameState: {
-            playerId: 'player-1',
-            territoryState: { worldMap: { tiles: [{ q: 0, r: 0 }] } },
-          },
-        });
-      },
-    },
-  });
-
   const trace = {
     apiStart(method, path, url, detail) {
       calls.push(['start', method, path, url, detail.hasToken]);
@@ -84,8 +60,22 @@ test('GameAPI sends H5 load trace spans for successful requests', async () => {
       return { worldMapTiles: payload.gameState?.territoryState?.worldMap?.tiles?.length || 0 };
     },
   };
+  const api = new GameAPI('/api', 'token-a', {
+    trace,
+    transport: {
+      async request(request) {
+        calls.push(['transport', request.url, request.headers.Authorization]);
+        return createResponse(200, {
+          gameState: {
+            playerId: 'player-1',
+            territoryState: { worldMap: { tiles: [{ q: 0, r: 0 }] } },
+          },
+        });
+      },
+    },
+  });
 
-  const result = await withLoadTrace(trace, () => api.getState());
+  const result = await api.getState();
 
   assert.equal(result.gameState.playerId, 'player-1');
   assert.deepEqual(calls, [
@@ -163,6 +153,35 @@ test('GameAPI sends compact client input intent evidence for world march command
   assert.equal(calls[1].clientInputIntent.target.tileId, 'tile_3_-2');
 });
 
+test('GameAPI sends build commands with a client command envelope', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request(request) {
+        calls.push({
+          requestId: request.headers['X-Client-Request-ID'],
+          body: JSON.parse(request.body),
+        });
+        return createResponse(200, { success: true, gameState: { playerId: 'player-1' } });
+      },
+    },
+  });
+
+  await api.build('barracks');
+
+  assert.equal(calls[0].requestId, 'api-1');
+  assert.equal(calls[0].body.action, 'build');
+  assert.equal(calls[0].body.target, 'barracks');
+  assert.deepEqual(calls[0].body.clientCommand, {
+    schema: 'game-command-v1',
+    type: 'BuildBuilding',
+    commandId: 'cmd-api-1',
+    idempotencyKey: 'cmd-api-1',
+    requestId: 'api-1',
+    buildingId: 'barracks',
+  });
+});
+
 test('GameAPI sends world march heartbeat reports with POST only when present', async () => {
   const requests = [];
   const api = new GameAPI('/api', 'token-a', {
@@ -186,6 +205,32 @@ test('GameAPI sends world march heartbeat reports with POST only when present', 
   assert.equal(requests[0].body, undefined);
   assert.equal(requests[1].method, 'POST');
   assert.equal(JSON.parse(requests[1].body).worldMarchClientReport.missions[0].position.q, 1.25);
+});
+
+test('GameAPI measures the heartbeat round-trip and clears it on failure', async () => {
+  let nowMs = 1000;
+  let failNext = false;
+  const api = new GameAPI('/api', 'token-a', {
+    maxRetries: 0,
+    scheduler: { now: () => nowMs },
+    transport: {
+      async request() {
+        if (failNext) throw new Error('offline');
+        nowMs += 87; // the transport "takes" 87ms
+        return createResponse(200, { type: 'heartbeat', serverTime: '2026-06-21T00:00:00.000Z' });
+      },
+    },
+  });
+
+  assert.equal(api.lastHeartbeatLatencyMs, null);
+  await api.heartbeat();
+  // Real measured RTT (never fabricated): elapsed scheduler time around the request.
+  assert.equal(api.lastHeartbeatLatencyMs, 87);
+
+  failNext = true;
+  await assert.rejects(() => api.heartbeat());
+  // A failed heartbeat must not leave a stale "measured" latency behind.
+  assert.equal(api.lastHeartbeatLatencyMs, null);
 });
 
 test('GameAPI sends formation soldier assignments with saved formations', async () => {
@@ -265,16 +310,6 @@ test('GameAPI records replay correlation evidence in local operation logs', asyn
 
 test('GameAPI reports H5 load trace failures for 504 version checks', async () => {
   const calls = [];
-  const api = new GameAPI('/api', null, {
-    maxRetries: 0,
-    transport: {
-      async request(request) {
-        calls.push(['transport', request.url]);
-        return createResponse(504, { message: 'Gateway Timeout' });
-      },
-    },
-  });
-
   const trace = {
     apiStart(method, path, url) {
       calls.push(['start', method, path, url]);
@@ -290,9 +325,19 @@ test('GameAPI reports H5 load trace failures for 504 version checks', async () =
       return { keys: ['message'] };
     },
   };
+  const api = new GameAPI('/api', null, {
+    trace,
+    maxRetries: 0,
+    transport: {
+      async request(request) {
+        calls.push(['transport', request.url]);
+        return createResponse(504, { message: 'Gateway Timeout' });
+      },
+    },
+  });
 
   await assert.rejects(
-    withLoadTrace(trace, () => api.getVersion()),
+    () => api.getVersion(),
     /Gateway Timeout/,
   );
 
@@ -336,6 +381,31 @@ test('GameAPI reuses cached version info on 304 ETag responses', async () => {
   ]);
 });
 
+test('GameAPI reads deploy status from the configured frontend marker', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', null, {
+    timeoutMs: 0,
+    maxRetries: 0,
+    deployStatusPath: '.wxgame-deploy-status.json',
+    transport: {
+      async request(request) {
+        calls.push(['transport', request.url, request.headers['Cache-Control']]);
+        return createResponseWithHeaders(200, {
+          status: 'failed',
+          stage: 'deploy-gate',
+        });
+      },
+    },
+  });
+
+  const status = await api.getDeployStatus();
+
+  assert.equal(status.status, 'failed');
+  assert.deepEqual(calls, [
+    ['transport', '.wxgame-deploy-status.json', 'no-cache'],
+  ]);
+});
+
 test('GameAPI aborts timed out requests with structured request metadata', async () => {
   const calls = [];
   const api = new GameAPI('/api', 'token-a', {
@@ -353,6 +423,19 @@ test('GameAPI aborts timed out requests with structured request metadata', async
       now() {
         return calls.length * 10;
       },
+    },
+    abortControllerFactory: () => {
+      const listeners = [];
+      return {
+        signal: {
+          addEventListener(type, listener) {
+            if (type === 'abort') listeners.push(listener);
+          },
+        },
+        abort() {
+          listeners.forEach((listener) => listener());
+        },
+      };
     },
     transport: {
       request(request) {

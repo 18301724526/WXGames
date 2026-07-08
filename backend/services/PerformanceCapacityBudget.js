@@ -1,3 +1,5 @@
+const { toNonNegativeInteger } = require('../../shared/numberUtils');
+
 const DEFAULT_BUDGETS = Object.freeze({
   apiLatencyMs: 1500,
   actionLatencyMs: 1000,
@@ -14,19 +16,10 @@ const DEFAULT_BUDGETS = Object.freeze({
   commandReplaySummaryBytes: 4096,
 });
 
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
-
-function toInteger(value, fallback = 0) {
-  return Math.max(0, Math.floor(toNumber(value, fallback)));
-}
-
 function readCount(source = {}, keys = []) {
   for (const key of keys) {
     const value = source?.counts?.[key] ?? source?.[key]?.length ?? source?.[key];
-    if (Number.isFinite(Number(value))) return toInteger(value);
+    if (Number.isFinite(Number(value))) return toNonNegativeInteger(value);
   }
   return 0;
 }
@@ -92,12 +85,12 @@ function isActionRequest(input = {}) {
 
 function checkApiRequest(input = {}, budgets = DEFAULT_BUDGETS) {
   const resolvedBudgets = normalizeBudgets(budgets);
-  const durationMs = toInteger(input.durationMs ?? input.duration);
+  const durationMs = toNonNegativeInteger(input.durationMs ?? input.duration);
   const requestBytes = Number.isFinite(Number(input.requestBytes))
-    ? toInteger(input.requestBytes)
+    ? toNonNegativeInteger(input.requestBytes)
     : getSerializableSizeBytes(input.body || {});
   const responseBytes = Number.isFinite(Number(input.responseBytes))
-    ? toInteger(input.responseBytes)
+    ? toNonNegativeInteger(input.responseBytes)
     : getSerializableSizeBytes(input.response || {});
   const actionRequest = isActionRequest(input);
   const latencyBudget = actionRequest ? resolvedBudgets.actionLatencyMs : resolvedBudgets.apiLatencyMs;
@@ -129,13 +122,13 @@ function checkSaveState(state = {}, budgets = DEFAULT_BUDGETS) {
   ], {
     scope: 'save',
     playerId: String(state?.playerId || ''),
-    revision: toInteger(state?.revision),
+    revision: toNonNegativeInteger(state?.revision),
   });
 }
 
 function getChunkTileCount(chunk = {}) {
   return readCount(chunk, ['tiles', 'entries', 'visibleEntries'])
-    || toInteger(chunk.tileCount ?? chunk.entryCount ?? 0);
+    || toNonNegativeInteger(chunk.tileCount ?? chunk.entryCount ?? 0);
 }
 
 function checkWorldMapWindow(input = {}, budgets = DEFAULT_BUDGETS) {

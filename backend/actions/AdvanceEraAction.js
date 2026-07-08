@@ -1,7 +1,7 @@
-﻿const TutorialService = require('../services/TutorialService');
+const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
 const { EraConfig } = require('../services/config/GameplayConfigRuntime');
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const CityService = require('../services/CityService');
 const TechTreeService = require('../services/TechTreeService');
 
@@ -36,7 +36,6 @@ function applyEraKnowledgeBonus(gameState, nextEra) {
   const bonus = eraKnowledgeBonus[nextEra] || 0;
   if (bonus > 0) {
     capital.resources.knowledge = (capital.resources.knowledge || 0) + bonus;
-    CityService.syncActiveCityToLegacyFields(gameState);
   }
 }
 
@@ -52,25 +51,23 @@ function welcomeSettlementResident(gameState, nextEra) {
   population.max = maxPopulation;
   population.maxPop = maxPopulation;
   capital.population = population;
-  CityService.syncActiveCityToLegacyFields(gameState);
 }
 
 function execute(gameState, tutorial) {
   CityService.normalizeCities(gameState);
   if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) {
-    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '鍙湁涓诲煄鍙互鎺ㄥ姩鏂囨槑杩涢樁', tutorial };
+    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '只有主城可以推动文明进阶', tutorial };
   }
   const capital = CityService.getCapitalCity(gameState);
   const config = EraConfig.getAdvanceConfig(gameState.currentEra);
   if (!config) {
-    return { success: false, error: 'ERA_MAX_REACHED', message: 'Max era reached', tutorial };
+    return { success: false, error: 'ERA_MAX_REACHED', message: '已达到最高时代', tutorial };
   }
   if (!hasEnoughResources(capital.resources, config.cost) || !meetsConditions(gameState, config.conditions)) {
-    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: 'Insufficient resources', tutorial };
+    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法进入下一时代', tutorial };
   }
 
   capital.resources = deductResources(capital.resources, config.cost);
-  CityService.syncActiveCityToLegacyFields(gameState);
   gameState.currentEra = config.nextEra;
   applyEraKnowledgeBonus(gameState, config.nextEra);
   const techGrant = TechTreeService.grantEraPoints(gameState, config.nextEra);
@@ -82,17 +79,16 @@ function execute(gameState, tutorial) {
     EventService.generateSpecialEvent(gameState, config.nextEra);
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvancedTo2');
   } else if (config.nextEra === 3) {
+    // The scout famous person is no longer auto-granted here: it is a claimable
+    // task reward (main_scout_officer) later in the barracks segment.
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'era3Advanced');
-    gameState.tutorial = nextTutorial;
-    TutorialService.ensureScoutFamousPersonGrant(gameState);
-    nextTutorial = gameState.tutorial;
   } else {
     nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvanced');
   }
 
   return {
     success: true,
-    message: `Advanced to ${EraConfig.getEraName(config.nextEra)}${techGrant.granted ? `, tech points +${techGrant.granted}` : ''}`,
+    message: `已进入${EraConfig.getEraName(config.nextEra)}${techGrant.granted ? `，科技点 +${techGrant.granted}` : ''}`,
     currentEra: config.nextEra,
     techGrant,
     tutorial: nextTutorial,

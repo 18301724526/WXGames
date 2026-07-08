@@ -3,7 +3,7 @@
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileCoord');
+        return require('../../ecs/foundation/TileCoord');
       } catch (_error) {
         return null;
       }
@@ -27,7 +27,7 @@
     if (global.TileMapGeometry) return global.TileMapGeometry;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileMapGeometry');
+        return require('../../ecs/foundation/TileMapGeometry');
       } catch (error) {
         return null;
       }
@@ -156,6 +156,7 @@
         tile.site?.owner || '',
         tile.site?.status || '',
         tile.site?.name || tile.site?.title || '',
+        tile.site?.level || 0,
         tile.site?.scale || '',
         tile.site?.offset?.x || 0,
         tile.site?.offset?.y || 0,

@@ -126,6 +126,9 @@ module.exports = [
     ignores: [
       '**/node_modules/**',
       '**/vendor/**',
+      // Session worktrees checked out by agent tooling; their files are copies of
+      // repo sources and must not be linted from the main tree.
+      '.claude/**',
       'frontend/js/vendor/**',
       'frontend/assets/**',
       'frontend/minigame/**',
@@ -161,35 +164,35 @@ module.exports = [
     },
   },
   {
-    files: ['frontend/js/domain/**/*.js'],
-    ignores: ['frontend/js/domain/**/*.test.js'],
+    files: ['frontend/js/ecs/{foundation,system,projection,input,resource,debug}/**/*.js'],
+    ignores: ['frontend/js/ecs/{foundation,system,projection,input,resource,debug}/**/*.test.js'],
     rules: {
       'no-restricted-properties': [
         'error',
         {
           object: 'window',
           message:
-            'Domain layer is pure logic; pass platform data as explicit parameters instead of reading window properties.',
+            'ECS runtime modules are pure logic; pass platform data as explicit parameters instead of reading window properties.',
         },
         {
           object: 'document',
           message:
-            'Domain layer is pure logic; pass platform data as explicit parameters instead of reading document properties.',
+            'ECS runtime modules are pure logic; pass platform data as explicit parameters instead of reading document properties.',
         },
         {
           object: 'localStorage',
           message:
-            'Domain layer is pure logic; pass platform data as explicit parameters instead of reading localStorage properties.',
+            'ECS runtime modules are pure logic; pass platform data as explicit parameters instead of reading localStorage properties.',
         },
         {
           object: 'wx',
           message:
-            'Domain layer is pure logic; pass platform data as explicit parameters instead of reading wx properties.',
+            'ECS runtime modules are pure logic; pass platform data as explicit parameters instead of reading wx properties.',
         },
         {
           object: 'tt',
           message:
-            'Domain layer is pure logic; pass platform data as explicit parameters instead of reading tt properties.',
+            'ECS runtime modules are pure logic; pass platform data as explicit parameters instead of reading tt properties.',
         },
       ],
     },
@@ -202,7 +205,6 @@ module.exports = [
   },
   {
     files: [
-      'backend/frontend-api-example.js',
       'scripts/p2-task-uploader-browser-verify.js',
       'scripts/playtest-*.js',
       'scripts/profile-h5-performance.js',

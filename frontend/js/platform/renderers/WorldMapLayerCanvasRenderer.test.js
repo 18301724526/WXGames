@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const WorldMapLayerCanvasRenderer = require('./WorldMapLayerCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 const WorldActorCanvasRenderer = require('./WorldActorCanvasRenderer');
+const WorldClock = require('../../ecs/foundation/WorldClock');
+const { createWorldMapRenderState } = require('./WorldMapRenderState');
 
 function createCtx(calls = []) {
   return {
@@ -49,6 +51,13 @@ function createTileMapView() {
 function createHost(overrides = {}) {
   const calls = [];
   const hitTargets = [];
+  const worldMapRenderState = createWorldMapRenderState(overrides.worldMapRenderState || {
+    lastWorldTileMapContext: overrides.lastWorldTileMapContext || null,
+    lastMapHomeWorldHudContext: overrides.lastMapHomeWorldHudContext || null,
+    lastWorldActorOverlayDiag: overrides.lastWorldActorOverlayDiag || null,
+    lastWorldMapLayerRenderResult: overrides.lastWorldMapLayerRenderResult || null,
+    worldTileWaterTimeOverride: overrides.worldTileWaterTimeOverride ?? null,
+  });
   const host = {
     width: 390,
     height: 844,
@@ -58,7 +67,7 @@ function createHost(overrides = {}) {
     viewportHeight: 844,
     bottomSafeArea: 12,
     pixelRatio: 1,
-    worldTileWaterTimeOverride: null,
+    worldMapRenderState,
     ctx: createCtx(calls),
     hitTargets,
     calls,
@@ -185,7 +194,9 @@ test('WorldMapLayerCanvasRenderer preserves map layer layout contracts', () => {
   const mapHome = renderer.getWorldMapLayerLayout({}, 96, { isMapHome: true });
   const panel = renderer.getWorldMapLayerLayout({}, 96, {});
 
-  assert.deepEqual(mapHome.map, { x: 0, y: 96, width: 390, height: 684 });
+  // Map bottom = dock top from UiThemeTokens.getDockMetrics (knife-6 tray is
+  // 23.7%W tall -> 92px on a 390-wide canvas, so 844 - 92 - 96 = 656).
+  assert.deepEqual(mapHome.map, { x: 0, y: 96, width: 390, height: 656 });
   assert.equal(panel.panel.x, 10);
   assert.equal(panel.map.width, 312);
 });
@@ -326,8 +337,8 @@ test('WorldMapLayerCanvasRenderer can refresh map-home HUD context without regis
   assert.equal(host.calls.some((call) => call[0] === 'addWorldMarchTileHitTargets'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldTileSiteHitTargets'), false);
   assert.equal(host.hitTargets.length, 0);
-  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, [{ id: 'scout-1' }]);
-  assert.equal(host.lastMapHomeWorldHudContext.tileMapView.seed, 'test-seed');
+  assert.deepEqual(host.worldMapRenderState.lastMapHomeWorldHudContext.actors, [{ id: 'scout-1' }]);
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.tileMapView.seed, 'test-seed');
 });
 
 test('WorldMapLayerCanvasRenderer collects map-home world targets without painting march HUD', () => {
@@ -349,9 +360,9 @@ test('WorldMapLayerCanvasRenderer collects map-home world targets without painti
   assert.equal(collected, true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
-  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, [{ id: 'scout-1' }]);
-  assert.equal(host.lastMapHomeWorldHudContext.tileMapView.seed, 'test-seed');
-  assert.equal(host.lastMapHomeWorldHudContext.uiState, uiState);
+  assert.deepEqual(host.worldMapRenderState.lastMapHomeWorldHudContext.actors, [{ id: 'scout-1' }]);
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.tileMapView.seed, 'test-seed');
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.uiState, uiState);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'worldMapDrag'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldMarchTarget'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openWorldMarchFormationPicker'), false);
@@ -379,7 +390,7 @@ test('WorldMapLayerCanvasRenderer collects actor targets from runtime context', 
 
   assert.equal(collected, true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
-  assert.deepEqual(host.lastMapHomeWorldHudContext.actors, runtimeContext.actors);
+  assert.deepEqual(host.worldMapRenderState.lastMapHomeWorldHudContext.actors, runtimeContext.actors);
 });
 
 test('WorldMapLayerCanvasRenderer derives actor targets from world explorer state when runtime context is empty', () => {
@@ -412,12 +423,12 @@ test('WorldMapLayerCanvasRenderer derives actor targets from world explorer stat
 
   assert.equal(collected, true);
   assert.equal(host.calls.some((call) => call[0] === 'addWorldActorHitTargets'), false);
-  assert.equal(host.lastMapHomeWorldHudContext.actors.length, 1);
-  assert.equal(host.lastMapHomeWorldHudContext.actors[0].missionId, 'explore-active-1');
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.actors.length, 1);
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.actors[0].missionId, 'explore-active-1');
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
 });
 
-test('CanvasGameRenderer exposes map-home world march targets through world-map facades', () => {
+test('CanvasGameRenderer exposes map-home world march targets through world-map renderers', () => {
   const renderer = new CanvasGameRenderer({
     ctx: createCtx(),
     presenter: {
@@ -572,7 +583,7 @@ test('WorldMapLayerCanvasRenderer preserves snapshot backbuffer flow', () => {
 
   assert.equal(rendered, true);
   assert.equal(host.ctx, host.calls.find((call) => call[0] === 'getWorldTileLayerCacheContext') && host.ctx);
-  assert.equal(host.worldTileWaterTimeOverride, null);
+  assert.equal(host.worldMapRenderState.worldTileWaterTimeOverride, null);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileSnapshotCache'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawImage'), true);
 });
@@ -599,10 +610,10 @@ test('WorldMapLayerCanvasRenderer publishes current snapshot context for split a
   });
 
   assert.equal(rendered, true);
-  assert.equal(host.lastWorldTileMapContext.tileMapView.pan.x, 40);
-  assert.equal(host.lastWorldTileMapContext.tileMapView.pan.y, -24);
-  assert.equal(host.lastWorldTileMapContext.viewport.panX, 40);
-  assert.equal(host.lastWorldTileMapContext.viewport.panY, -24);
+  assert.equal(host.worldMapRenderState.lastWorldTileMapContext.tileMapView.pan.x, 40);
+  assert.equal(host.worldMapRenderState.lastWorldTileMapContext.tileMapView.pan.y, -24);
+  assert.equal(host.worldMapRenderState.lastWorldTileMapContext.viewport.panX, 40);
+  assert.equal(host.worldMapRenderState.lastWorldTileMapContext.viewport.panY, -24);
 });
 
 test('WorldMapLayerCanvasRenderer publishes snapshot context without reading host host', () => {
@@ -622,7 +633,7 @@ test('WorldMapLayerCanvasRenderer publishes snapshot context without reading hos
 
   assert.equal(published, context);
   assert.equal(renderer.lastWorldTileMapContext, context);
-  assert.equal(host.lastWorldTileMapContext, context);
+  assert.equal(host.worldMapRenderState.lastWorldTileMapContext, context);
 });
 
 test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targets on the actor layer', () => {
@@ -673,8 +684,40 @@ test('WorldMapLayerCanvasRenderer paints dynamic actors and registers actor targ
   );
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldMarchHud'), false);
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileSnapshotCache'), false);
-  assert.equal(host.lastMapHomeWorldHudContext.actors[0].id, 'scout-1');
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.actors[0].id, 'scout-1');
   assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+});
+
+test('WorldMapLayerCanvasRenderer passes epoch time to explicit world actor renderer', () => {
+  const actorContext = {
+    actors: [{ id: 'scout-1', missionId: 'explore-active-1' }],
+    frame: { x: 1, y: 96, width: 388, height: 684 },
+    geometry: { tileWidth: 192, tileHeight: 96 },
+    tileMapView: createTileMapView(),
+    uiState: {},
+    viewport: { originX: 195, originY: 360, scale: 0.78 },
+  };
+  const calls = [];
+  const host = createHost({ lastWorldTileMapContext: actorContext });
+  const actorRenderer = {
+    renderActors(actors, viewport, geometry, options) {
+      calls.push(['renderActors', actors, viewport, geometry, options]);
+      return true;
+    },
+  };
+  const renderer = new WorldMapLayerCanvasRenderer({ host, worldActorRenderer: actorRenderer });
+
+  const rendered = renderer.renderWorldMapActorLayer({ id: 'state-actor' }, {
+    activeTab: 'military',
+    epochNowMs: 160,
+    isMapHome: true,
+    territoryUiState: actorContext.uiState,
+  });
+  const renderCall = calls.find((call) => call[0] === 'renderActors');
+
+  assert.equal(rendered, true);
+  assert.equal(renderCall[4].epochNowMs, 160);
+  assert.equal(renderCall[4].ctx, host.ctx);
 });
 
 test('WorldMapLayerCanvasRenderer publishes actor overlay context without stale state copies', () => {
@@ -684,17 +727,13 @@ test('WorldMapLayerCanvasRenderer publishes actor overlay context without stale 
   const layerHost = {};
   const layerRenderer = { host: layerHost };
 
-  renderer.lastGameState = { id: 'stale-game' };
-  renderer.lastWorldMarchState = { id: 'stale-march' };
-
   assert.equal(renderer.publishWorldActorOverlayLayerContext(layerRenderer, context), true);
 
-  assert.equal(layerRenderer.lastWorldTileMapContext, context);
-  assert.equal(layerHost.lastWorldTileMapContext, context);
-  assert.equal(layerRenderer.lastGameState, undefined);
-  assert.equal(layerRenderer.lastWorldMarchState, undefined);
-  assert.equal(layerHost.lastGameState, undefined);
-  assert.equal(layerHost.lastWorldMarchState, undefined);
+  assert.equal(layerRenderer.worldMapRenderState.lastWorldTileMapContext, context);
+  assert.equal(layerRenderer.worldMapRenderState, renderer.worldMapRenderState);
+  assert.equal(layerHost.lastWorldTileMapContext, undefined);
+  assert.deepEqual(Object.keys(layerRenderer).sort(), ['host', 'worldMapRenderState']);
+  assert.deepEqual(Object.keys(layerHost).sort(), []);
 });
 
 test('WorldMapLayerCanvasRenderer records actor overlay diagnostics from actual clear and draw canvases', () => {
@@ -711,9 +750,9 @@ test('WorldMapLayerCanvasRenderer records actor overlay diagnostics from actual 
     width: 50,
     height: 40,
     lastWorldTileMapContext: actorContext,
-    renderWorldActors(actors) {
+    renderWorldActors(actors, viewport, geometry, options = {}) {
       host.calls.push(['renderWorldActors', actors]);
-      const diag = host.__worldActorOverlayActiveDiag;
+      const diag = options.worldActorOverlayDiag;
       if (diag) {
         diag.drawnCanvasId = drawCanvas._layerName;
         diag.arrowCanvasId = drawCanvas._layerName;
@@ -729,10 +768,11 @@ test('WorldMapLayerCanvasRenderer records actor overlay diagnostics from actual 
     epochNowMs: 1000,
     territoryUiState: actorContext.uiState,
   });
-  const diag = host.lastWorldActorOverlayDiag;
+  const diag = host.worldMapRenderState.lastWorldActorOverlayDiag;
   const clearCall = host.calls.find((call) => call[0] === 'clearRect');
 
   assert.equal(rendered, true);
+  assert.equal(host.__worldActorOverlayActiveDiag, undefined);
   assert.equal(diag.delegated, true);
   assert.equal(diag.clearedCanvasId, 'clear-layer');
   assert.equal(diag.drawnCanvasId, 'draw-layer');
@@ -1010,7 +1050,7 @@ test('WorldMapLayerCanvasRenderer draws delegated actors on explicit worldActor 
     epochNowMs: 1000,
     territoryUiState: actorContext.uiState,
   });
-  const diag = overlayHost.lastWorldActorOverlayDiag;
+  const diag = overlayHost.worldMapRenderState.lastWorldActorOverlayDiag;
 
   assert.equal(rendered, true);
   assert.equal(diag.clearedCanvasId, 'worldActor');
@@ -1072,7 +1112,7 @@ test('WorldMapLayerCanvasRenderer refreshes active world actors from epoch time 
   assert.equal(rendered, true);
   assert.equal(actorsCall[1][0].current.q, 0.5);
   assert.equal(actorsCall[1][0].current.segmentProgress, 0.5);
-  assert.equal(host.lastMapHomeWorldHudContext.actors[0].current.q, 0.5);
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.actors[0].current.q, 0.5);
 });
 
 test('WorldMapLayerCanvasRenderer ignores stale context mission actors when canonical state is available', () => {
@@ -1133,7 +1173,7 @@ test('WorldMapLayerCanvasRenderer ignores stale context mission actors when cano
   assert.equal(rendered, true);
   assert.deepEqual(actorsCall[1].map((actor) => actor.id), ['canonical-mission-1', 'non-mission-overlay']);
   assert.equal(actorsCall[1][0].current.q, 0.5);
-  assert.equal(host.lastMapHomeWorldHudContext.actors.length, 2);
+  assert.equal(host.worldMapRenderState.lastMapHomeWorldHudContext.actors.length, 2);
 });
 
 test('WorldMapLayerCanvasRenderer does not revive snapshot actors when canonical state has no missions', () => {
@@ -1236,15 +1276,21 @@ test('WorldMapLayerCanvasRenderer uses world clock instead of stale host epoch f
     uiState: {},
     viewport: { originX: 195, originY: 360, scale: 0.78 },
   };
+  const clockWorld = WorldClock.createClockWorld({
+    runtime: {
+      performance: {
+        now() {
+          return 0;
+        },
+      },
+    },
+    serverTime: startedAt + 5000,
+  });
   const host = createHost({
     epochNowMs: startedAt,
     lastRenderOptions: { epochNowMs: startedAt },
     lastWorldTileMapContext: actorContext,
-    worldClock: {
-      getEpochNowMs() {
-        return startedAt + 5000;
-      },
-    },
+    worldClock: clockWorld,
     renderWorldActors(actors) {
       host.calls.push(['renderWorldActors', actors]);
       return true;
@@ -1387,6 +1433,28 @@ test('WorldMapLayerCanvasRenderer keeps current layer untouched when preserved s
   assert.equal(host.calls.filter((call) => call[0] === 'renderWorldTileSnapshotCache').length, 1);
 });
 
+test('WorldMapLayerCanvasRenderer does not commit a preserved snapshot when cache blit misses', () => {
+  const host = createHost({
+    renderWorldTileSnapshotCache(...args) {
+      host.calls.push(['renderWorldTileSnapshotCache', args]);
+      return false;
+    },
+  });
+  const renderer = new WorldMapLayerCanvasRenderer({ host });
+
+  const rendered = renderer.renderWorldMapSnapshotLayer({ territoryState: { worldMap: createTileMapView() } }, {
+    preserveOnMiss: true,
+    topBarBottom: 96,
+    frameless: true,
+    waterTimeMs: 123,
+  });
+
+  assert.equal(rendered, false);
+  assert.equal(host.worldMapRenderState.lastWorldMapLayerRenderResult.reason, 'snapshotMiss');
+  assert.equal(host.calls.filter((call) => call[0] === 'drawImage').length, 0);
+  assert.equal(host.calls.filter((call) => call[0] === 'fillRect').length, 1);
+});
+
 test('WorldMapLayerCanvasRenderer preserves the previous full map layer on transient empty tile input', () => {
   const host = createHost({
     lastWorldTileMapContext: {
@@ -1436,7 +1504,7 @@ test('WorldMapLayerCanvasRenderer fails empty tile input when no previous map la
   assert.equal(host.calls.some((call) => call[0] === 'renderWorldTileMap'), false);
 });
 
-test('CanvasGameRenderer exposes world map layer rendering through facade', () => {
+test('CanvasGameRenderer exposes world map layer rendering through renderer owner', () => {
   class StubWorldMapLayerRenderer {
     constructor(options) {
       this.host = options.host;

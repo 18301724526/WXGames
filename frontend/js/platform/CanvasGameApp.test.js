@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasGameApp = require('./CanvasGameApp');
-const CanvasGameAppCommands = require('./CanvasGameAppCommands');
-const CanvasGameAppStateSync = require('./CanvasGameAppStateSync');
+const BattleStore = require('../state/BattleStore');
+const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
 const CanvasGameShell = require('./CanvasGameShell');
 
-const APP_MODULES = [
+const RETIRED_APP_MODULES = [
   'CanvasGameAppStateSync',
   'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameAppRenderingRuntime',
@@ -18,7 +18,11 @@ const APP_MODULES = [
   'CanvasGameAppInputRouter',
 ];
 
-test('CanvasGameApp installs responsibility modules into the compatibility facade', () => {
+function makeAppHost(fields = {}) {
+  return Object.assign(Object.create(CanvasGameApp.prototype), fields);
+}
+
+test('CanvasGameApp owns retired responsibility methods directly', () => {
   const proto = CanvasGameApp.prototype;
   const expectedMethods = {
     stateSync: ['applyState', 'syncFromServer', 'start', 'stop'],
@@ -32,12 +36,12 @@ test('CanvasGameApp installs responsibility modules into the compatibility facad
 
   Object.entries(expectedMethods).forEach(([group, methods]) => {
     methods.forEach((method) => {
-      assert.equal(typeof proto[method], 'function', `${group}.${method} should be installed`);
+      assert.equal(typeof proto[method], 'function', `${group}.${method} should live on CanvasGameApp`);
     });
   });
 });
 
-test('html and minigame entries load CanvasGameApp modules before the facade', () => {
+test('html and minigame entries load CanvasGameApp without retired split modules', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');
 
@@ -46,41 +50,34 @@ test('html and minigame entries load CanvasGameApp modules before the facade', (
   assert.notEqual(facadeHtmlPosition, -1);
   assert.notEqual(facadeMinigamePosition, -1);
 
-  APP_MODULES.forEach((moduleName) => {
-    const htmlPosition = html.indexOf(`${moduleName}.js`);
-    const minigamePosition = minigame.indexOf(`require('../js/platform/${moduleName}')`);
-    assert.notEqual(htmlPosition, -1, `${moduleName}.js should be loaded by index.html`);
-    assert.notEqual(minigamePosition, -1, `${moduleName} should be required by minigame/game.js`);
-    assert.equal(htmlPosition < facadeHtmlPosition, true, `${moduleName}.js should load before CanvasGameApp.js`);
-    assert.equal(minigamePosition < facadeMinigamePosition, true, `${moduleName} should require before CanvasGameApp`);
+  RETIRED_APP_MODULES.forEach((moduleName) => {
+    assert.equal(html.includes(`${moduleName}.js`), false, `${moduleName}.js should not be loaded by index.html`);
+    assert.equal(
+      minigame.includes(`require('../js/platform/${moduleName}')`),
+      false,
+      `${moduleName} should not be required by minigame/game.js`,
+    );
   });
 
-  const optimisticHtmlPosition = html.indexOf('WorldMarchOptimisticState.js');
-  const optimisticMinigamePosition = minigame.indexOf("require('../js/domain/WorldMarchOptimisticState')");
-  const syncHtmlPosition = html.indexOf('CanvasGameAppStateSync.js');
-  const syncMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppStateSync')");
-  const commandsHtmlPosition = html.indexOf('CanvasGameAppCommands.js');
-  const commandsMinigamePosition = minigame.indexOf("require('../js/platform/CanvasGameAppCommands')");
-  assert.notEqual(optimisticHtmlPosition, -1, 'WorldMarchOptimisticState.js should be loaded by index.html');
-  assert.notEqual(optimisticMinigamePosition, -1, 'WorldMarchOptimisticState should be required by minigame/game.js');
+  const optimisticHtmlPosition = html.indexOf('js/state/optimistic/index.js');
+  const optimisticMinigamePosition = minigame.indexOf("require('../js/state/optimistic/index')");
+  assert.notEqual(optimisticHtmlPosition, -1, 'state/optimistic/index.js should be loaded by index.html');
+  assert.notEqual(optimisticMinigamePosition, -1, 'state/optimistic/index should be required by minigame/game.js');
   assert.equal(
-    optimisticHtmlPosition < syncHtmlPosition && optimisticHtmlPosition < commandsHtmlPosition,
+    optimisticHtmlPosition < facadeHtmlPosition,
     true,
-    'WorldMarchOptimisticState.js should load before CanvasGameApp state/command modules',
+    'state/optimistic/index.js should load before CanvasGameApp',
   );
   assert.equal(
-    optimisticMinigamePosition < syncMinigamePosition && optimisticMinigamePosition < commandsMinigamePosition,
+    optimisticMinigamePosition < facadeMinigamePosition,
     true,
-    'WorldMarchOptimisticState should require before CanvasGameApp state/command modules',
+    'state/optimistic/index should require before CanvasGameApp',
   );
 });
 
 test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
-  class Host {}
-  CanvasGameAppCommands.install(Host);
   const calls = [];
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: { currentTab: 'buildings' },
     tutorial: { completed: false, currentStep: 22 },
     armyFormationEditor: {
@@ -135,7 +132,7 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
   assert.equal(await host.saveArmyFormation(), true);
   assert.deepEqual(calls, [
     ['renderCanvasSurface', 'buildings'],
-    ['setArmyFormation', 'capital', 1, ['fp-scout'], { 'fp-scout': 120 }],
+    ['setArmyFormation', 'capital', 1, ['fp-scout'], { 'fp-scout': 999 }],
     ['applyApiState', 22],
     ['onArmyFormationSaved', 22],
     ['showFloatingText', 'saved'],
@@ -143,12 +140,9 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
   ]);
 });
 
-test('autoReplenishArmyFormation drafts soldiers and confirm applies them to the saved formation payload', async () => {
-  class Host {}
-  CanvasGameAppCommands.install(Host);
+test('autoReplenishArmyFormation saves the visible draft soldier assignments without a separate confirm step', async () => {
   const calls = [];
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: {
       activeCityId: 'capital',
       military: {
@@ -189,8 +183,6 @@ test('autoReplenishArmyFormation drafts soldiers and confirm applies them to the
   assert.equal(host.autoReplenishArmyFormation(), true);
   assert.deepEqual(host.armyFormationEditor.soldierAssignments, { 'hero-1': 100, 'hero-2': 0 });
   assert.deepEqual(host.armyFormationEditor.soldierDraftAssignments, { 'hero-1': 350, 'hero-2': 350 });
-  assert.equal(host.confirmArmyFormationSoldiers(), true);
-  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { 'hero-1': 350, 'hero-2': 350 });
   assert.equal(await host.saveArmyFormation(), true);
   assert.deepEqual(calls.find((call) => call[0] === 'setArmyFormation'), [
     'setArmyFormation',
@@ -199,6 +191,264 @@ test('autoReplenishArmyFormation drafts soldiers and confirm applies them to the
     ['hero-1', 'hero-2'],
     { 'hero-1': 350, 'hero-2': 350 },
   ]);
+});
+
+// Characterization tests for the army-formation editor cluster (god-file
+// re-decomposition slice 6). Written against the pre-extraction CanvasGameApp
+// bodies and kept UNCHANGED through the ArmyFormationEditorController
+// extraction -- staying green is the read-proof of behavioural equivalence.
+test('openArmyFormation seeds the editor from the city formation and normalizes assignments', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 500,
+        formations: {
+          capital: [{
+            slot: 2,
+            memberIds: ['a', 'b', 'c', 'd', 'e', 'f'],
+            maxSoldiersPerMember: 200,
+            soldierAssignments: { a: 999, b: -5, c: 20 },
+          }],
+        },
+      },
+    },
+    renderCanvasSurface(tab) { calls.push(['renderCanvasSurface', tab]); },
+  });
+
+  assert.equal(host.openArmyFormation({ slot: 2 }), true);
+  assert.deepEqual(host.armyFormationEditor, {
+    open: true,
+    cityId: 'capital',
+    slot: 2,
+    memberIds: ['a', 'b', 'c', 'd', 'e'],
+    soldierAssignments: { a: 200, b: 0, c: 20, d: 0, e: 0 },
+    soldierDraftAssignments: { a: 200, b: 0, c: 20, d: 0, e: 0 },
+    page: 0,
+    saving: false,
+  });
+  assert.equal(calls.length, 1);
+});
+
+test('toggleArmyFormationMember adds with zeroed assignments, removes, and enforces the 5-member cap', () => {
+  const toasts = [];
+  const host = makeAppHost({
+    state: { activeCityId: 'capital', military: { formations: {} } },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a'],
+      soldierAssignments: { a: 10 },
+      soldierDraftAssignments: { a: 10 },
+      page: 0,
+      saving: false,
+    },
+    renderCanvasSurface() {},
+    showFloatingText(message) { toasts.push(message); },
+  });
+
+  assert.equal(host.toggleArmyFormationMember({ personId: 'b' }), true);
+  assert.deepEqual(host.armyFormationEditor.memberIds, ['a', 'b']);
+  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { a: 10, b: 0 });
+  assert.deepEqual(host.armyFormationEditor.soldierDraftAssignments, { a: 10, b: 0 });
+
+  assert.equal(host.toggleArmyFormationMember({ personId: 'a' }), true);
+  assert.deepEqual(host.armyFormationEditor.memberIds, ['b']);
+  assert.deepEqual(host.armyFormationEditor.soldierAssignments, { b: 0 });
+
+  host.toggleArmyFormationMember({ personId: 'c' });
+  host.toggleArmyFormationMember({ personId: 'd' });
+  host.toggleArmyFormationMember({ personId: 'e' });
+  host.toggleArmyFormationMember({ personId: 'f' });
+  assert.equal(toasts.length, 0);
+  assert.equal(host.toggleArmyFormationMember({ personId: 'g' }), false);
+  assert.equal(toasts.length, 1);
+  assert.deepEqual(host.armyFormationEditor.memberIds, ['b', 'c', 'd', 'e', 'f']);
+});
+
+test('changeArmyFormationPage clamps at zero and requires an open editor', () => {
+  const host = makeAppHost({
+    state: {},
+    armyFormationEditor: { open: true, cityId: 'capital', slot: 1, memberIds: [], page: 1 },
+    renderCanvasSurface() {},
+  });
+
+  assert.equal(host.changeArmyFormationPage({ delta: -5 }), true);
+  assert.equal(host.armyFormationEditor.page, 0);
+  assert.equal(host.changeArmyFormationPage({ delta: 2 }), true);
+  assert.equal(host.armyFormationEditor.page, 2);
+
+  host.armyFormationEditor = { open: false };
+  assert.equal(host.changeArmyFormationPage({ delta: 1 }), false);
+});
+
+test('changeArmyFormationSoldiers maps the ratio onto the per-member cap', () => {
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 1000,
+        formations: { capital: [{ slot: 1, maxSoldiersPerMember: 400 }] },
+      },
+    },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a', 'b'],
+      soldierAssignments: { a: 0, b: 0 },
+      soldierDraftAssignments: { a: 0, b: 0 },
+      page: 0,
+      saving: false,
+    },
+    renderCanvasSurface() {},
+  });
+
+  assert.equal(host.changeArmyFormationSoldiers({ personId: 'a', ratio: 0.5 }), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 200);
+  assert.equal(host.changeArmyFormationSoldiers({ personId: 'a', ratio: 2 }), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 400);
+});
+
+test('setArmyFormationSoldierDraft clamps to the remaining editable pool', () => {
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 100,
+        formations: {
+          capital: [{
+            slot: 1,
+            maxSoldiersPerMember: 1000,
+            soldierAssignments: { a: 30, b: 20 },
+          }],
+        },
+      },
+    },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a', 'b'],
+      soldierAssignments: { a: 30, b: 20 },
+      soldierDraftAssignments: { a: 30, b: 20 },
+      page: 0,
+      saving: false,
+    },
+    renderCanvasSurface() {},
+  });
+
+  // pool = assigned (50) + reserve (100) = 150; b keeps 20 -> a caps at 130.
+  assert.equal(host.setArmyFormationSoldierDraft('a', 500), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 130);
+  assert.equal(host.setArmyFormationSoldierDraft('missing', 10), false);
+});
+
+test('requestArmyFormationSoldierInput prompts through the runtime and applies the draft', async () => {
+  const host = makeAppHost({
+    state: {
+      activeCityId: 'capital',
+      military: {
+        soldiers: 500,
+        formations: { capital: [{ slot: 1, maxSoldiersPerMember: 1000 }] },
+      },
+    },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a'],
+      soldierAssignments: { a: 5 },
+      soldierDraftAssignments: { a: 5 },
+      page: 0,
+      saving: false,
+    },
+    runtime: {
+      async requestTextInput(prompt) {
+        return prompt.value === '5' ? '42' : '';
+      },
+    },
+    renderCanvasSurface() {},
+  });
+
+  assert.equal(await host.requestArmyFormationSoldierInput({ personId: 'a' }), true);
+  assert.equal(host.armyFormationEditor.soldierDraftAssignments.a, 42);
+
+  host.runtime = { async requestTextInput() { return ''; } };
+  assert.equal(await host.requestArmyFormationSoldierInput({ personId: 'a' }), false);
+});
+
+test('saveArmyFormation failure resets saving, surfaces the message, and re-renders', async () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 1,
+      memberIds: ['a'],
+      soldierAssignments: { a: 10 },
+      soldierDraftAssignments: { a: 10 },
+      page: 0,
+      saving: false,
+    },
+    getGameApi() {
+      return {
+        async setArmyFormation() {
+          const error = new Error('boom');
+          error.payload = { message: 'save rejected' };
+          throw error;
+        },
+      };
+    },
+    applyApiState() { calls.push(['applyApiState']); },
+    renderCanvasSurface(tab) { calls.push(['renderCanvasSurface', tab]); },
+    showFloatingText(message) { calls.push(['showFloatingText', message]); },
+    log(message) { calls.push(['log', message]); },
+  });
+
+  assert.equal(await host.saveArmyFormation(), false);
+  assert.equal(host.armyFormationEditor.saving, false);
+  assert.equal(host.armyFormationEditor.open, true);
+  assert.deepEqual(calls, [
+    ['renderCanvasSurface', 'military'],
+    ['showFloatingText', 'save rejected'],
+    ['log', 'save rejected'],
+    ['renderCanvasSurface', 'military'],
+  ]);
+});
+
+test('closeArmyFormationEditor resets to the closed default and honours render:false', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    armyFormationEditor: {
+      open: true,
+      cityId: 'capital',
+      slot: 2,
+      memberIds: ['a'],
+      soldierAssignments: { a: 1 },
+      soldierDraftAssignments: { a: 1 },
+      page: 3,
+      saving: false,
+    },
+    renderCanvasSurface(tab) { calls.push(['renderCanvasSurface', tab]); },
+  });
+
+  assert.equal(host.closeArmyFormationEditor({ render: false }), true);
+  assert.deepEqual(host.armyFormationEditor, {
+    open: false,
+    cityId: '',
+    slot: 1,
+    memberIds: [],
+    soldierAssignments: {},
+    soldierDraftAssignments: {},
+    page: 0,
+    saving: false,
+  });
+  assert.equal(calls.length, 0);
 });
 
 test('CanvasGameApp wires authority state refreshes from the sync service', () => {
@@ -244,6 +494,48 @@ test('CanvasGameApp wires authority state refreshes from the sync service', () =
   ]);
 });
 
+test('CanvasGameApp seeds reports on load and plays only newly arriving ones once', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    tutorial: {},
+    loading: { visible: false },
+    resolveMapHomeViewState(state = {}, options = {}) {
+      return {
+        activeTab: state.currentTab || options.requestedTab || 'military',
+        militaryView: state.militaryView || options.militaryView || 'world',
+        isMapHome: false,
+      };
+    },
+    getActiveTab() { return this.state?.currentTab || 'military'; },
+    getGameApi() { return null; },
+    setPendingBuildingAction() {},
+    syncWorldClock() {},
+    updateSyncInterval() {},
+    render() { calls.push(['render']); },
+    startBattleScene(report) { calls.push(['battle', report.id]); return true; },
+  });
+  const makePayload = (recentReports) => ({
+    gameState: {
+      currentTab: 'military',
+      worldExplorerState: { combat: { recentReports } },
+    },
+  });
+  const report1 = { id: 'report-1', report: { id: 'report-1', turns: [], summary: 'Resolved' } };
+  const report2 = { id: 'report-2', report: { id: 'report-2', turns: [], summary: 'Fresh' } };
+
+  // First sync: report-1 already exists (history from before load) -> seeded, not played.
+  host.applyState(makePayload([report1]));
+  assert.deepEqual(calls.filter((call) => call[0] === 'battle'), []);
+
+  // A new battle (report-2, newest-first) arrives in a later sync -> played once, and not
+  // re-played on subsequent syncs; the seeded report-1 never plays.
+  host.applyState(makePayload([report2, report1]));
+  host.applyState(makePayload([report2, report1]));
+
+  assert.deepEqual(calls.filter((call) => call[0] === 'battle'), [['battle', 'report-2']]);
+});
+
 test('CanvasGameApp renders territory site selection through map-home city HUD', () => {
   const calls = [];
   const renderer = {
@@ -281,13 +573,8 @@ test('CanvasGameApp renders territory site selection through map-home city HUD',
       },
     },
   });
-  app.territoryController = {
-    uiState: { selectedSiteId: 'capital' },
-    getUiState() {
-      return { selectedSiteId: 'capital' };
-    },
-  };
   shell.lastGame = app;
+  TerritoryUiStateStore.patch(app, { selectedSiteId: 'capital' });
 
   app.renderTerritory();
 
@@ -299,17 +586,28 @@ test('CanvasGameApp renders territory site selection through map-home city HUD',
 test('CanvasGameApp does not preserve canvas when runtime hit targets are preserved but map layer is invalid', () => {
   const calls = [];
   const runtime = {
-    baseHitTargets: [{ action: { type: 'enterCity' } }],
     hasBakedMapLayer: true,
-    hitTargets: [{ action: { type: 'enterCity' } }],
-    lastHitTargetSync: {
-      baseHitTargetCount: 1,
-      hitTargetCount: 1,
-      mapTargetCount: 0,
-      preserved: true,
-      sourceHitTargetCount: 0,
+    worldMapInputState: {
+      baseHitTargets: [{ action: { type: 'enterCity' } }],
+      hitTargets: [{ action: { type: 'enterCity' } }],
+      lastHitTargetSync: {
+        baseHitTargetCount: 1,
+        hitTargetCount: 1,
+        mapTargetCount: 0,
+        preserved: true,
+        sourceHitTargetCount: 0,
+      },
     },
     mapBakeDirty: true,
+    getBaseHitTargets() {
+      return this.worldMapInputState.baseHitTargets;
+    },
+    getHitTargets() {
+      return this.worldMapInputState.hitTargets;
+    },
+    getLastHitTargetSync() {
+      return this.worldMapInputState.lastHitTargetSync;
+    },
     isMapBakeDirty() {
       return true;
     },
@@ -358,10 +656,8 @@ test('CanvasGameApp does not preserve canvas when runtime hit targets are preser
 });
 
 test('CanvasGameApp rolls back optimistic world march after start rejection', async () => {
-  class Host {}
-  CanvasGameAppCommands.install(Host);
   const calls = [];
-  const host = new Host();
+  const host = makeAppHost();
   const initialExplorer = {
     missions: [],
     activeMission: null,
@@ -412,9 +708,6 @@ test('CanvasGameApp rolls back optimistic world march after start rejection', as
 });
 
 test('CanvasGameApp starts a selected idle world actor by id without a capital optimistic replacement', async () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
-  CanvasGameAppCommands.install(Host);
   const calls = [];
   const parkedMission = {
     id: 'march-parked',
@@ -433,8 +726,7 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
     nextStepAt: null,
     completedAt: '2026-06-21T00:00:00.000Z',
   };
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: {
       activeCityId: 'capital',
       currentTab: 'military',
@@ -544,11 +836,8 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
 });
 
 test('CanvasGameApp applies world march verification pullback overlay from heartbeat', () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
   const calls = [];
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: { currentTab: 'military' },
     networkState: { status: 'online', failureCount: 0 },
     renderCanvasSurface(tab) {
@@ -576,10 +865,7 @@ test('CanvasGameApp applies world march verification pullback overlay from heart
 });
 
 test('CanvasGameApp clears quiet world march verification heartbeat without overlay', () => {
-  class Host {}
-  CanvasGameAppStateSync.install(Host);
-  const host = new Host();
-  Object.assign(host, {
+  const host = makeAppHost({
     state: { currentTab: 'military' },
     networkState: {
       status: 'reconnecting',
@@ -605,6 +891,35 @@ test('CanvasGameApp clears quiet world march verification heartbeat without over
   assert.equal(host.networkState.status, 'online');
   assert.equal(host.networkState.message, null);
   assert.equal(host.networkState.failureCount, 0);
+});
+
+test('CanvasGameApp writes the measured heartbeat RTT into networkState.latencyMs', () => {
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    networkState: { status: 'online', failureCount: 0 },
+    api: { lastHeartbeatLatencyMs: 87 },
+    renderCanvasSurface() {},
+    ensureWorldClock() {
+      return null;
+    },
+  });
+
+  host.applyHeartbeat({
+    type: 'heartbeat',
+    serverTime: '2026-06-21T00:00:04.000Z',
+    heartbeatSeq: 4,
+  });
+  // Real measured value lands on the networkState the HUD latency readout consumes.
+  assert.equal(host.networkState.latencyMs, 87);
+
+  // A missing measurement keeps the previous reading instead of fabricating one.
+  host.api.lastHeartbeatLatencyMs = null;
+  host.applyHeartbeat({
+    type: 'heartbeat',
+    serverTime: '2026-06-21T00:00:05.000Z',
+    heartbeatSeq: 5,
+  });
+  assert.equal(host.networkState.latencyMs, 87);
 });
 
 test('CanvasGameApp routes active march animation to actor loop instead of map water timer redraw', () => {
@@ -661,6 +976,114 @@ test('CanvasGameApp routes active march animation to actor loop instead of map w
   assert.deepEqual(calls, [
     ['setInterval', 125],
     ['updateWorldActorAnimationLoop', 1000],
+  ]);
+});
+
+// Characterization tests for the scout-countdown / tile-map-water timer lifecycles
+// (god-file re-decomposition slice 7). Written against the pre-extraction
+// CanvasGameApp bodies and kept UNCHANGED through the ScoutCountdownTimer /
+// TileMapWaterAnimationTimer extraction.
+test('startScoutCountdownTimer arms a 1s interval that re-renders military and active conquests', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    scheduler: {
+      setInterval(callback, ms) {
+        intervalCallback = callback;
+        calls.push(['setInterval', ms]);
+        return 7;
+      },
+      clearInterval(handle) {
+        calls.push(['clearInterval', handle]);
+      },
+    },
+  });
+  app.renderCanvasSurface = (tab) => {
+    calls.push(['renderCanvasSurface', tab]);
+    return true;
+  };
+  app.renderTerritory = () => {
+    calls.push(['renderTerritory']);
+    return true;
+  };
+
+  app.startScoutCountdownTimer();
+  app.startScoutCountdownTimer();
+  assert.deepEqual(calls, [['setInterval', 1000]]);
+
+  app.state = { currentTab: 'military', currentEra: 5 };
+  intervalCallback();
+  assert.deepEqual(calls.at(-1), ['renderCanvasSurface', 'military']);
+
+  app.state = { currentTab: 'military', currentEra: 0 };
+  intervalCallback();
+  assert.deepEqual(calls.at(-1), ['renderCanvasSurface', 'military']);
+  assert.equal(calls.length, 2);
+
+  app.state = { currentTab: 'military', currentEra: 5 };
+  app.canvasShell = { isWorldMapDragging: () => true };
+  intervalCallback();
+  assert.equal(calls.length, 2);
+
+  app.canvasShell = null;
+  app.state = {
+    currentTab: 'territory',
+    currentEra: 5,
+    territoryState: { territories: [{ mission: { status: 'active' } }, {}] },
+  };
+  intervalCallback();
+  assert.deepEqual(calls.at(-1), ['renderTerritory']);
+
+  app.syncService = null;
+  app.updateChecker = null;
+  app.stopHeartbeat();
+  assert.deepEqual(calls.at(-1), ['clearInterval', 7]);
+
+  app.startScoutCountdownTimer();
+  assert.deepEqual(calls.at(-1), ['setInterval', 1000]);
+});
+
+test('tileMapWaterTimer lifecycle: no double-arm, tick self-stops off military, stop re-arms', () => {
+  const calls = [];
+  let intervalCallback = null;
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    scheduler: {
+      setInterval(callback, ms) {
+        intervalCallback = callback;
+        calls.push(['setInterval', ms]);
+        return 3;
+      },
+      clearInterval(handle) {
+        calls.push(['clearInterval', handle]);
+      },
+    },
+  });
+  app.getWorldTileWaterAnimationFrameMs = () => 125;
+
+  assert.equal(app.startTileMapWaterTimer(), true);
+  assert.equal(app.startTileMapWaterTimer(), false);
+  assert.deepEqual(calls, [['setInterval', 125]]);
+
+  app.state = { currentTab: 'resources' };
+  app.activeTab = 'resources';
+  intervalCallback();
+  assert.deepEqual(calls, [
+    ['setInterval', 125],
+    ['clearInterval', 3],
+  ]);
+
+  assert.equal(app.startTileMapWaterTimer(), true);
+  app.stopTileMapWaterTimer();
+  app.stopTileMapWaterTimer();
+  assert.deepEqual(calls.slice(2), [
+    ['setInterval', 125],
+    ['clearInterval', 3],
   ]);
 });
 
@@ -1275,4 +1698,631 @@ test('CanvasGameApp records compat async action dispatch before rejection', asyn
   const actionEvent = events.find((event) => event[0] === 'input:tapAction')?.[1];
   assert.equal(actionEvent.action.type, 'externalWorldCommand');
   assert.equal(actionEvent.handled, 'promise');
+});
+
+test('CanvasGameApp routes battleScene replay overlay through BattleStore', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: {
+      render(_state, options) {
+        calls.push(['render', options.battleScene?.report?.id || '', options.battleScene?.turnIndex]);
+      },
+    },
+    scheduler: {
+      setTimeout() {
+        return 1;
+      },
+      clearTimeout() {},
+      setInterval() {
+        return 2;
+      },
+      clearInterval() {},
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+  });
+  app.now = () => 100;
+
+  assert.equal(app.startBattleScene({ id: 'report-owner', turns: [{ action: 'attack' }] }), true);
+
+  assert.equal(BattleStore.getActiveOverlay(), 'battleScene');
+  assert.equal(BattleStore.getBattleScene().report.id, 'report-owner');
+  assert.equal(app.getRendererSnapshot().battle.battleScene.report.id, 'report-owner');
+  assert.equal(Object.prototype.hasOwnProperty.call(app, 'battleScene'), false);
+  assert.deepEqual(calls.at(-1), ['render', 'report-owner', 0]);
+
+  app.now = () => 250;
+  assert.equal(app.skipBattleScene(), true);
+  assert.equal(BattleStore.getBattleScene().turnIndex, 1);
+  BattleStore.closeBattleScene();
+});
+
+// Characterization tests for the tutorial-highlight lifecycle (god-file
+// re-decomposition slice 10). Written against the pre-extraction bodies and kept
+// UNCHANGED through the TutorialGuideUiController extraction. The shell-side
+// show/hide machinery is already pinned by the CanvasGameShell.test.js suite.
+test('hideGuideHighlight forwards to the shell hide and reports its result', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    canvasShell: {
+      hideTutorialHighlight() {
+        calls.push(['hideTutorialHighlight']);
+        return true;
+      },
+    },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+  });
+
+  assert.equal(host.hideGuideHighlight(), true);
+  assert.deepEqual(calls, [['hideTutorialHighlight']]);
+});
+
+test('hideGuideHighlight without a shell clears the highlight and re-renders once', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'military' },
+    canvasShell: null,
+    tutorialHighlight: { rect: { left: 1, top: 2, width: 3, height: 4 } },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+  });
+
+  assert.equal(host.hideGuideHighlight(), true);
+  assert.equal(host.tutorialHighlight, null);
+  assert.deepEqual(calls, [['renderCanvasSurface', 'military']]);
+  assert.equal(host.hideGuideHighlight(), false);
+  assert.equal(calls.length, 1);
+});
+
+test('showHouseBuiltAdvisorDialogue clears the tutorial highlight and opens the advisor dialogue', () => {
+  const calls = [];
+  const host = makeAppHost({
+    state: { currentTab: 'buildings' },
+    tutorialHighlight: { rect: { left: 1, top: 2, width: 3, height: 4 } },
+    closeEventSnapshot() {},
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+  });
+
+  assert.equal(host.showHouseBuiltAdvisorDialogue(), true);
+  assert.equal(host.tutorialHighlight, null);
+  assert.equal(host.tutorialAdvisorDialogue.source, 'houseBuilt');
+  assert.equal(host.state.softGuide.target, 'tab-civilization');
+  assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
+});
+
+// Characterization tests for the turn-card battle-scene timer cluster (god-file
+// re-decomposition slice 9). Written against the pre-extraction CanvasGameApp
+// bodies and kept UNCHANGED through the BattleSceneController extraction.
+
+function makeBattleSceneApp() {
+  const timers = { timeoutCb: null, timeoutMs: [], intervalCb: null, cleared: [] };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: { render() {} },
+    scheduler: {
+      setTimeout(callback, ms) {
+        timers.timeoutCb = callback;
+        timers.timeoutMs.push(ms);
+        return 31;
+      },
+      clearTimeout(handle) {
+        timers.cleared.push(['timeout', handle]);
+      },
+      setInterval(callback) {
+        timers.intervalCb = callback;
+        return 32;
+      },
+      clearInterval(handle) {
+        timers.cleared.push(['interval', handle]);
+      },
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+  });
+  app.now = () => 500;
+  return { app, timers };
+}
+
+test('startBattleScene turn-card path arms the turn + animation timers with per-turn durations', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const { app, timers } = makeBattleSceneApp();
+
+  try {
+    assert.equal(
+      app.startBattleScene({
+        id: 'r1',
+        turns: [{ action: 'attack' }, { action: 'skill' }],
+      }),
+      true,
+    );
+    assert.equal(BattleStore.getBattleScene().turnDurationMs, 900);
+    assert.deepEqual(timers.timeoutMs, [900]);
+
+    // advance turn 0 -> 1: next turn is a skill -> 900 + 2200 cut-in.
+    assert.equal(app.advanceBattleSceneTurn(), true);
+    assert.equal(BattleStore.getBattleScene().turnIndex, 1);
+    assert.equal(BattleStore.getBattleScene().turnDurationMs, 3100);
+    assert.deepEqual(timers.timeoutMs, [900, 3100]);
+
+    // advance past the last turn stops both timers.
+    assert.equal(app.advanceBattleSceneTurn(), true);
+    assert.equal(app.advanceBattleSceneTurn(), false);
+    assert.deepEqual(timers.cleared.at(-2), ['timeout', 31]);
+    assert.deepEqual(timers.cleared.at(-1), ['interval', 32]);
+  } finally {
+    BattleStore.closeBattleScene();
+  }
+});
+
+test('battle animation timer renders while the scene is visible and self-stops after close', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const { app, timers } = makeBattleSceneApp();
+  const renders = [];
+  app.renderAnimationFrame = (tab) => {
+    renders.push(tab);
+    return true;
+  };
+
+  try {
+    app.startBattleScene({ id: 'r2', turns: [{ action: 'attack' }] });
+    timers.intervalCb();
+    assert.deepEqual(renders, ['military']);
+
+    BattleStore.closeBattleScene();
+    timers.intervalCb();
+    assert.deepEqual(renders, ['military']);
+    assert.deepEqual(timers.cleared.at(-1), ['interval', 32]);
+  } finally {
+    BattleStore.closeBattleScene();
+  }
+});
+
+test('closeBattleScene stops both timers, clears the store scene, and re-renders', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const { app, timers } = makeBattleSceneApp();
+  const renders = [];
+  app.renderCanvasSurface = (tab) => {
+    renders.push(tab);
+    return true;
+  };
+
+  try {
+    app.startBattleScene({ id: 'r3', turns: [] });
+    renders.length = 0;
+    assert.equal(app.closeBattleScene(), true);
+    assert.equal(BattleStore.getBattleScene(), null);
+    assert.deepEqual(renders, ['military']);
+    assert.deepEqual(timers.cleared, [
+      ['timeout', 31],
+      ['interval', 32],
+    ]);
+  } finally {
+    BattleStore.closeBattleScene();
+  }
+});
+
+test('startBattleScene prefers the entity replay overlay when the report carries a replay', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = { createBattle() {} };
+  const { app } = makeBattleSceneApp();
+  const opened = [];
+  app.openEntityBattle = (opts) => {
+    opened.push([opts.mode, opts.report.id]);
+    return true;
+  };
+
+  try {
+    assert.equal(
+      app.startBattleScene({ id: 'r4', replay: { setup: { sides: [{}, {}] }, inputStream: [] } }),
+      true,
+    );
+    assert.deepEqual(opened, [['replay', 'r4']]);
+    assert.equal(BattleStore.getBattleScene(), null);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeBattleScene();
+  }
+});
+
+test('CanvasGameApp publishes the live entityBattle session into BattleStore', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = {
+    createBattle() {
+      return { config: { tickHz: 20 }, squads: { g1: { side: 0, generalId: 'u1' } }, units: { u1: { skills: [] } } };
+    },
+  };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: { render() {} },
+    scheduler: {
+      setInterval() {
+        return 1;
+      },
+      clearInterval() {},
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+  });
+  app.renderCanvasSurface = () => true;
+
+  try {
+    assert.equal(app.openEntityBattle({ setup: { sides: [{}, {}] }, battleId: 'battle-owner' }), true);
+    assert.equal(app.entityBattle.battleId, 'battle-owner');
+    // BattleStore holds the SAME live session object the app steps -- not a copy.
+    assert.equal(BattleStore.getActiveOverlay(), 'entityBattle');
+    assert.equal(BattleStore.getEntityBattle(), app.entityBattle);
+    assert.equal(BattleStore.getEntityBattle().battleId, 'battle-owner');
+
+    app.entityBattleSelectGeneral('g1');
+    assert.equal(BattleStore.getEntityBattle().selectedGid, 'g1');
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+// --- auto-engage: maybeAutoEnterEngagedBattle (connection point 1, 2026-07-05) ---
+
+function makeEngagedMissionState({ status = 'idle', combatStatus = 'engaged', engagedAt = 't1' } = {}) {
+  return {
+    activeCityId: 'capital',
+    worldExplorerState: {
+      idleMissions: [
+        {
+          id: 'm1',
+          status,
+          position: { q: 2, r: -1 },
+          formation: { cityId: 'capital', slot: 1 },
+          combat: combatStatus
+            ? { status: combatStatus, encounterId: 'enc1', engagedAt }
+            : null,
+        },
+      ],
+    },
+  };
+}
+
+test('maybeAutoEnterEngagedBattle opens the interactive battle once per engagement', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: null }, // no scene open
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  const state = makeEngagedMissionState();
+
+  assert.equal(host.maybeAutoEnterEngagedBattle(state), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].missionId, 'm1');
+  assert.equal(calls[0].targetQ, 2);
+  assert.equal(calls[0].targetR, -1);
+  assert.equal(calls[0].engagement.encounterId, 'enc1');
+  assert.equal(calls[0].engagement.engagedAt, 't1');
+
+  // Same engagement on a re-sync: deduped, no second open.
+  assert.equal(host.maybeAutoEnterEngagedBattle(state), false);
+  assert.equal(calls.length, 1);
+});
+
+test('maybeAutoEnterEngagedBattle does not open while a battle scene is already open', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: { visible: true } }, // a scene IS open
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  assert.equal(host.maybeAutoEnterEngagedBattle(makeEngagedMissionState()), false);
+  assert.equal(calls.length, 0);
+});
+
+test('maybeAutoEnterEngagedBattle ignores non-engaged and non-idle missions', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: null },
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  // marching (not engaged) -> ignored
+  assert.equal(
+    host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ combatStatus: 'marching' })),
+    false,
+  );
+  // active (not idle) -> ignored
+  assert.equal(
+    host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ status: 'active' })),
+    false,
+  );
+  assert.equal(calls.length, 0);
+});
+
+test('a dismissed engagement is not re-opened until a NEW engagement arrives', () => {
+  const calls = [];
+  const host = makeAppHost({
+    entityBattleController: { session: null },
+    enterInteractiveBattle(options) {
+      calls.push(options);
+      return Promise.resolve(true);
+    },
+  });
+  // Player closed the retreat window for engagement (m1/enc1/t1) without resolving.
+  host.markEngagementDismissed('m1', 'enc1', 't1');
+  assert.equal(host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ engagedAt: 't1' })), false);
+  assert.equal(calls.length, 0);
+
+  // A fresh engagement (new engagedAt) re-opens.
+  assert.equal(host.maybeAutoEnterEngagedBattle(makeEngagedMissionState({ engagedAt: 't2' })), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].engagement.engagedAt, 't2');
+});
+
+// Characterization tests for the entity-battle session cluster (god-file
+// re-decomposition slice 8). Written against the pre-extraction CanvasGameApp
+// bodies and kept UNCHANGED through the EntityBattleController extraction.
+
+function makeEntityBattleApp(overrides = {}) {
+  const timers = { callback: null, cleared: [] };
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: { render() {} },
+    scheduler: {
+      setInterval(callback) {
+        timers.callback = callback;
+        return 11;
+      },
+      clearInterval(handle) {
+        timers.cleared.push(handle);
+      },
+    },
+    initialState: { currentTab: 'military', militaryView: 'army' },
+    ...overrides,
+  });
+  app.renderCanvasSurface = () => true;
+  app.renderAnimationFrame = () => true;
+  return { app, timers };
+}
+
+function makeSimCoreStub(steps, { endAtTick = Infinity } = {}) {
+  return {
+    createBattle() {
+      return {
+        config: { tickHz: 20 },
+        tick: 0,
+        squads: { g1: { side: 0, generalId: 'u1' }, g2: { side: 1, generalId: 'u2' } },
+        units: { u1: { skills: [{ id: 'sk1' }] }, u2: { skills: [] } },
+        result: null,
+      };
+    },
+    step(battle, ins) {
+      steps.push(ins.map((entry) => entry.type || entry.order || 'unknown'));
+      battle.tick += 1;
+      if (battle.tick >= endAtTick) battle.result = { winner: 'attacker' };
+    },
+  };
+}
+
+test('entityBattle interactive tick steps queued player + AI inputs and resolves on end', async () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  const previousAI = global.BattleAI;
+  const steps = [];
+  global.BattleSimCore = makeSimCoreStub(steps, { endAtTick: 2 });
+  global.BattleAI = {
+    decideSideOrders() {
+      return [{ type: 'ai-order' }];
+    },
+  };
+  const { app, timers } = makeEntityBattleApp();
+  let nowMs = 1000;
+  app.now = () => nowMs;
+  const resolveCalls = [];
+
+  try {
+    assert.equal(
+      app.openEntityBattle({
+        setup: { sides: [{}, {}] },
+        battleId: 'battle-live',
+        onResolve: async (payload) => {
+          resolveCalls.push(payload);
+          return { winner: 'defender', result: { loot: 1 } };
+        },
+      }),
+      true,
+    );
+    assert.equal(app.entityBattle.mode, 'interactive');
+
+    assert.equal(app.entityBattleOrder('g1', 'charge'), true);
+
+    timers.callback();
+    nowMs = 1050;
+    timers.callback();
+    assert.deepEqual(steps, [['order', 'ai-order']]);
+    assert.equal(app.entityBattle.ended, false);
+
+    nowMs = 1100;
+    timers.callback();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.equal(app.entityBattle.ended, true);
+    assert.equal(resolveCalls.length, 1);
+    assert.equal(resolveCalls[0].battleId, 'battle-live');
+    assert.equal(resolveCalls[0].inputStream.length >= 2, true);
+    assert.equal(app.entityBattle.resultWinner, 'defender');
+    assert.deepEqual(app.entityBattle.serverResult, { loot: 1 });
+    assert.equal(app.entityBattle.statusColor, '#f85149');
+    assert.deepEqual(timers.cleared, [11]);
+  } finally {
+    global.BattleSimCore = previousCore;
+    global.BattleAI = previousAI;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('entityBattle replay tick feeds recorded inputs by tick and ends from the report result', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  const steps = [];
+  global.BattleSimCore = makeSimCoreStub(steps, { endAtTick: 1 });
+  const { app, timers } = makeEntityBattleApp();
+  let nowMs = 1000;
+  app.now = () => nowMs;
+
+  try {
+    assert.equal(
+      app.openEntityBattle({
+        setup: { sides: [{}, {}] },
+        mode: 'replay',
+        inputStream: [{ tick: 0, type: 'order' }],
+        report: { result: 'victory' },
+      }),
+      true,
+    );
+    assert.equal(app.entityBattle.mode, 'replay');
+
+    timers.callback();
+    nowMs = 1050;
+    timers.callback();
+    assert.deepEqual(steps, [['order']]);
+    assert.equal(app.entityBattle.ended, true);
+    assert.equal(app.entityBattle.statusColor, '#3fb950');
+    assert.deepEqual(timers.cleared, [11]);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('closeEntityBattle stops the timer, clears the store, and prefers onClose over render', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = makeSimCoreStub([]);
+  const { app, timers } = makeEntityBattleApp();
+  const calls = [];
+  app.renderCanvasSurface = () => {
+    calls.push(['render']);
+    return true;
+  };
+
+  try {
+    app.openEntityBattle({
+      setup: { sides: [{}, {}] },
+      onClose: () => calls.push(['onClose']),
+    });
+    calls.length = 0;
+    assert.equal(app.closeEntityBattle(), true);
+    assert.equal(app.entityBattle, null);
+    assert.equal(BattleStore.getEntityBattle(), null);
+    assert.deepEqual(calls, [['onClose']]);
+    assert.deepEqual(timers.cleared, [11]);
+
+    app.openEntityBattle({ setup: { sides: [{}, {}] } });
+    calls.length = 0;
+    assert.equal(app.closeEntityBattle(), true);
+    assert.deepEqual(calls, [['render']]);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('entityBattle camera zoom and drag route through BattleCameraPolicy', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  const previousPolicy = global.BattleCameraPolicy;
+  global.BattleSimCore = makeSimCoreStub([]);
+  global.BattleCameraPolicy = {
+    createCamera() {
+      return { zoom: 1, offsetX: 0, offsetY: 0 };
+    },
+    zoomAt(camera, _fit, _point, scaleDelta) {
+      return { ...camera, zoom: camera.zoom * scaleDelta };
+    },
+    panBy(camera, _fit, dx, dy) {
+      return { ...camera, offsetX: camera.offsetX + dx, offsetY: camera.offsetY + dy };
+    },
+  };
+  const { app } = makeEntityBattleApp();
+
+  try {
+    app.openEntityBattle({ setup: { sides: [{}, {}] } });
+    assert.equal(app.entityBattleZoom({ scaleDelta: 2 }), false);
+    app.entityBattle._viewFit = { scale: 1 };
+    assert.equal(app.entityBattleZoom({ centerX: 10, centerY: 20, scaleDelta: 2, deltaX: 5 }), true);
+    assert.equal(app.entityBattle.camera.zoom, 2);
+    assert.equal(app.entityBattle.camera.offsetX, 5);
+
+    assert.equal(app.entityBattleDrag('start', { x: 100, y: 50 }), true);
+    assert.equal(app.entityBattleDrag('move', { x: 110, y: 45 }), true);
+    assert.equal(app.entityBattle.camera.offsetX, 15);
+    assert.equal(app.entityBattle.camera.offsetY, -5);
+    app.entityBattleDrag('end', { x: 110, y: 45 });
+    assert.equal(app.entityBattle._dragLast, null);
+  } finally {
+    global.BattleSimCore = previousCore;
+    global.BattleCameraPolicy = previousPolicy;
+    BattleStore.closeEntityBattle();
+  }
+});
+
+test('toggleEntityBattleAuto flips side-0 skills and issueEntityInput guards replay/ended', () => {
+  BattleStore.closeBattleScene();
+  BattleStore.closeEntityBattle();
+  const previousCore = global.BattleSimCore;
+  global.BattleSimCore = makeSimCoreStub([]);
+  const { app } = makeEntityBattleApp();
+
+  try {
+    app.openEntityBattle({ setup: { sides: [{}, {}] } });
+    assert.equal(app.toggleEntityBattleAuto(), true);
+    assert.equal(app.entityBattle.auto, true);
+    assert.equal(app.entityBattle.battle.auto, true);
+    assert.equal(app.entityBattle.battle.units.u1.skills[0].auto, true);
+
+    assert.equal(app.entityBattleSkill('g1', 'sk1'), true);
+    assert.equal(app.entityBattle.inputStream.at(-1).skillId, 'sk1');
+    assert.equal(app.entityBattleMaster('retreat'), true);
+    assert.equal(app.entityBattle.inputStream.at(-1).side, 0);
+
+    app.entityBattle.ended = true;
+    assert.equal(app.entityBattleOrder('g1', 'charge'), false);
+
+    app.closeEntityBattle();
+    app.openEntityBattle({ setup: { sides: [{}, {}] }, mode: 'replay', inputStream: [] });
+    assert.equal(app.issueEntityInput({ type: 'order' }), false);
+  } finally {
+    global.BattleSimCore = previousCore;
+    BattleStore.closeEntityBattle();
+  }
 });

@@ -1,12 +1,9 @@
 const SkillGeneratorRandomAuthority = require('./SkillGeneratorRandomAuthority');
 const { hashText } = require('../../../shared/signatureHash');
+const { clone } = require('../../../shared/objectUtils');
 
 function round2(value) {
   return Math.round(value * 100) / 100;
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 function resolveRandomSource(randomSource = null, options = {}) {

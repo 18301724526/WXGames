@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class ShellPresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
@@ -9,6 +21,10 @@
 
     static toInteger(value, fallback = 0) {
       return Math.floor(this.toNumber(value, fallback));
+    }
+
+    static t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     static trimDecimal(value) {
@@ -161,9 +177,9 @@
     static resolveMapHomeViewState(state = {}, options = {}) {
       const requestedTab = options.requestedTab || options.activeTab || state.currentTab || 'resources';
       const activeTab = requestedTab === 'territory' ? 'military' : requestedTab;
-      const requestedMilitaryView = ['army', 'scout', 'world'].includes(options.militaryView)
+      const requestedMilitaryView = ['army', 'scout', 'world', 'veteranCamp'].includes(options.militaryView)
         ? options.militaryView
-        : (['army', 'scout', 'world'].includes(state.militaryView) ? state.militaryView : 'army');
+        : (['army', 'scout', 'world', 'veteranCamp'].includes(state.militaryView) ? state.militaryView : 'army');
       const canUseMapHome = this.canUseMapHome(state);
       const homeRequested = !requestedTab || requestedTab === 'resources' || requestedTab === 'territory';
       const forceMapHome = Boolean(options.forceMapHome || options.isMapHome);
@@ -201,7 +217,7 @@
         hidden: !message,
         activeAdvisor: message ? { message, target: guide?.target || null } : null,
         text: {
-          message: message || '暂无建议。',
+          message: message || this.t('shell.advisor.noAdvice'),
         },
         goButton: {
           disabled: !message || !guide?.target,
@@ -220,9 +236,11 @@
     static buildNamingPromptViewState(prompt = {}) {
       const type = prompt?.type || '';
       return {
-        title: prompt?.title || '命名',
+        title: prompt?.title || this.t('shell.naming.title'),
         message: prompt?.message || '',
-        placeholder: type === 'polity' ? '例如：赤火联盟' : '例如：河湾城',
+        placeholder: type === 'polity'
+          ? this.t('shell.naming.placeholder.polity')
+          : this.t('shell.naming.placeholder.city'),
         maxLength: 12,
         key: `${type}:${prompt?.territoryId || 'polity'}`,
         prompt: prompt || null,
@@ -235,7 +253,7 @@
       }));
       return {
         isEmpty: items.length === 0,
-        emptyText: '暂无日志',
+        emptyText: this.t('common.log.empty'),
         items,
       };
     }
@@ -253,17 +271,20 @@
       });
       return {
         isEmpty: items.length === 0,
-        emptyText: '暂无请求记录',
+        emptyText: this.t('common.requestLog.empty'),
         items,
       };
     }
 
     static buildTerritorySummaryViewState(territoryState = {}) {
-      const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || '未命名势力';
+      const polityName = territoryState.polity?.name || territoryState.polity?.capitalCityName || this.t('world.map.polity.unnamed');
       return {
         text: {
           polityName,
-          territoryCount: `${territoryState.occupiedCount || 0}/${territoryState.discoveredCount || 0} 已控制`,
+          territoryCount: this.t('world.map.territory.controlledFallback', {
+            controlled: territoryState.occupiedCount || 0,
+            total: territoryState.discoveredCount || 0,
+          }),
         },
       };
     }

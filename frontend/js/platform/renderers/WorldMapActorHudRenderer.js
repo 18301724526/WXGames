@@ -3,7 +3,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldMarchSystem');
+        return require('../../ecs/system/WorldMarchSystem');
       } catch (error) {
         return null;
       }
@@ -15,7 +15,7 @@
     if (global.WorldTime) return global.WorldTime;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/WorldTime');
+        return require('../../ecs/foundation/WorldTime');
       } catch (error) {
         return null;
       }
@@ -34,40 +34,30 @@
       return this.host?.epochNowMs;
     }
 
-    get lastGameState() {
-      return this.host?.lastGameState;
-    }
-
-    set lastGameState(value) {
-      if (this.host) this.host.lastGameState = value;
-    }
-
-    get lastWorldMarchState() {
-      return this.host?.lastWorldMarchState;
-    }
-
-    set lastWorldMarchState(value) {
-      if (this.host) this.host.lastWorldMarchState = value;
-    }
-
     getEpochNowMs() {
       return sharedWorldTime?.getEpochNowMs?.(this) ?? Date.now();
     }
 
-    buildWorldMapActors(tileMapView = {}, renderSnapshot = null) {
+    getWorldActorNowMs(options = {}) {
+      const optionNow = options.epochNowMs ?? options.nowMs ?? options.serverNowMs;
+      const resolvedOptionNow = Number(optionNow);
+      return Number.isFinite(resolvedOptionNow) ? resolvedOptionNow : this.getEpochNowMs();
+    }
+
+    buildWorldMapActors(tileMapView = {}, renderSnapshot = null, options = {}) {
       return renderSnapshot?.actors || sharedWorldMarchSystem?.buildActors?.({ missions: tileMapView.activeScouts || [] }, {
-        nowMs: this.getEpochNowMs(),
+        nowMs: this.getWorldActorNowMs(options),
       }) || [];
     }
 
-    renderWorldScoutUnits(tileMapView = {}, viewport = {}) {
-      const actors = this.buildWorldMapActors(tileMapView);
-      return this.renderWorldActors(actors, viewport, tileMapView.geometry || {});
+    renderWorldScoutUnits(tileMapView = {}, viewport = {}, options = {}) {
+      const actors = this.buildWorldMapActors(tileMapView, null, options);
+      return this.renderWorldActors(actors, viewport, tileMapView.geometry || {}, options);
     }
 
-    renderWorldActors(actors = [], viewport = {}, geometry = {}) {
+    renderWorldActors(actors = [], viewport = {}, geometry = {}, options = {}) {
       if (!this.worldActorRenderer?.renderActors) return false;
-      return this.worldActorRenderer.renderActors(actors, viewport, geometry);
+      return this.worldActorRenderer.renderActors(actors, viewport, geometry, options);
     }
 
     addWorldActorHitTargets(actors = [], viewport = {}, geometry = {}) {
@@ -75,16 +65,9 @@
       return this.worldActorRenderer.addActorHitTargets(actors, viewport, geometry);
     }
 
-    publishWorldMarchHudState(state = {}) {
-      this.lastGameState = state;
-      this.lastWorldMarchState = state;
-      return state;
-    }
-
-    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}) {
+    renderWorldMarchHud(state = {}, uiState = {}, actors = [], viewport = {}, geometry = {}, frame = {}, targetPicker = null) {
       if (!this.worldMarchHudRenderer?.renderWorldMarchHud) return false;
-      this.publishWorldMarchHudState(state);
-      return this.worldMarchHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame);
+      return this.worldMarchHudRenderer.renderWorldMarchHud(state, uiState, actors, viewport, geometry, frame, targetPicker);
     }
 
     getNearestWorldTileAtPoint(point = {}, tileMapView = {}, viewport = {}) {

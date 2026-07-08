@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../ecs/resource/LocaleText');
 const ResourceTopBarCanvasRenderer = require('./ResourceTopBarCanvasRenderer');
 const CanvasGameRenderer = require('../CanvasGameRenderer');
 
@@ -203,6 +205,30 @@ test('ResourceTopBarCanvasRenderer preserves top bar resource and utility hit ta
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCitySwitcher'), true);
 });
 
+test('ResourceTopBarCanvasRenderer resolves top bar chrome through active locale', () => {
+  LocaleText.setLocale('en-US');
+  const host = createHost({
+    presenter: {
+      ...createHost().presenter,
+      buildCitySwitcherViewState() {
+        return { hidden: false, activeCityName: '' };
+      },
+    },
+  });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderTopBar({ population: { total: 12 } }, {});
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Primitive Era'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Population: 1200'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Advisor'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Logs'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Settings'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Capital'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Food'), true);
+  LocaleText.setLocale('zh-CN');
+});
+
 test('ResourceTopBarCanvasRenderer falls back when presenter resource view is unavailable', () => {
   const host = createHost({ presenter: null });
   const renderer = new ResourceTopBarCanvasRenderer({ host });
@@ -210,11 +236,131 @@ test('ResourceTopBarCanvasRenderer falls back when presenter resource view is un
   const bottom = renderer.renderMapHomeTopBar({
     resources: { food: 20, wood: 10, stone: 8, iron: 5, knowledge: 3 },
     population: { total: 12 },
+  }, {
+    fps: 58,
+    network: { latencyMs: 42 },
+    serverNowMs: new Date('2026-07-07T11:22:33+08:00').getTime(),
+    showTopBarDebugStats: true,
   });
 
-  assert.equal(bottom, 72);
+  assert.equal(bottom, 64);
   assert.equal(host.hitTargets.filter((target) => target.action.type === 'openResourceDetails').length, 6);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '1200'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'FPS 58'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '42ms'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '11:22:33'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-icon-signal.png'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-resource-food.png'), true);
+});
+
+test('ResourceTopBarCanvasRenderer map-home FPS reads live currentFps through a 0 painted value', () => {
+  // Real-device regression (proven on the live deploy): surfaceState.currentFps
+  // was 97 while fpsLastPaintedValue stayed 0 (nothing calls updatePaintedFps on
+  // the map home), and `painted ?? current` resolved 0 -> 'FPS --'. The stats
+  // block must surface the live meter and refresh the painted value through the
+  // same FrameClock seam the old FPS chip used.
+  const surfaceState = { currentFps: 97, fpsLastPaintedValue: 0, fpsLastPaintAt: 0, frameNow: 0 };
+  const host = createHost({ presenter: null, surfaceState });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({
+    resources: { food: 20, wood: 10, stone: 8, iron: 5, knowledge: 3 },
+    population: { total: 12 },
+  }, {
+    network: { latencyMs: 42 },
+    showTopBarDebugStats: true,
+  });
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'FPS 97'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'FPS --'), false);
+  // The painted value was refreshed through FrameClock so the readout holds steady.
+  assert.equal(surfaceState.fpsLastPaintedValue, 97);
+});
+
+test('ResourceTopBarCanvasRenderer map-home latency reads the measured heartbeat RTT from networkState', () => {
+  // networkState.latencyMs is the measured heartbeat round-trip written by
+  // CanvasGameApp.applyHeartbeat (GameAPI.lastHeartbeatLatencyMs) — no fake data.
+  const host = createHost({ presenter: null });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({}, {
+    network: { status: 'online', latencyMs: 87 },
+    showTopBarDebugStats: true,
+  });
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '87ms'), true);
+
+  // Without any measured RTT the readout must show '--ms', never a fabricated number.
+  const host2 = createHost({ presenter: null });
+  new ResourceTopBarCanvasRenderer({ host: host2 }).renderMapHomeTopBar({}, {
+    network: { status: 'online' },
+    showTopBarDebugStats: true,
+  });
+  assert.equal(host2.calls.some((call) => call[0] === 'drawText' && call[1] === '--ms'), true);
+});
+
+test('ResourceTopBarCanvasRenderer hides the map-home debug stats block by default', () => {
+  const host = createHost({ presenter: null });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  const bottom = renderer.renderMapHomeTopBar({
+    resources: { food: 20, wood: 10, stone: 8, iron: 5, knowledge: 3 },
+    population: { total: 12 },
+  }, {
+    fps: 58,
+    network: { latencyMs: 42 },
+  });
+
+  assert.equal(bottom, 64);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && String(call[1]).startsWith('FPS')), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && String(call[1]).endsWith('ms')), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-icon-signal.png'), false);
+  assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1] === 'assets/art/ui-hud/hud-resource-food.png'), true);
+  assert.equal(host.hitTargets.filter((target) => target.action.type === 'openResourceDetails').length, 6);
+});
+
+test('ResourceTopBarCanvasRenderer renders map-home resources in the approved order', () => {
+  const host = createHost();
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({ population: { total: 12 } }, {});
+
+  const resourceIcons = host.calls
+    .filter((call) => call[0] === 'drawAsset' && String(call[1]).includes('hud-resource-'))
+    .map((call) => call[1]);
+  assert.deepEqual(resourceIcons, [
+    'assets/art/ui-hud/hud-resource-food.png',
+    'assets/art/ui-hud/hud-resource-wood.png',
+    'assets/art/ui-hud/hud-resource-stone.png',
+    'assets/art/ui-hud/hud-resource-iron.png',
+    'assets/art/ui-hud/hud-resource-knowledge.png',
+    'assets/art/ui-hud/hud-resource-population.png',
+  ]);
+});
+
+test('ResourceTopBarCanvasRenderer draws the map-home plate as a 9-slice of hud-plate-top', () => {
+  const clippedCalls = [];
+  const host = createHost({
+    drawAssetClipped(assetPath, sourceRect, x, y, width, height) {
+      clippedCalls.push({ assetPath, sourceRect, x, y, width, height });
+      return true;
+    },
+  });
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({ population: { total: 12 } }, {});
+
+  assert.equal(clippedCalls.length, 9);
+  assert.equal(clippedCalls.every((call) => call.assetPath === 'assets/art/ui-hud/hud-plate-top.png'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel'), false);
+});
+
+test('ResourceTopBarCanvasRenderer falls back to a token gradient plate without the asset', () => {
+  const host = createHost();
+  const renderer = new ResourceTopBarCanvasRenderer({ host });
+
+  renderer.renderMapHomeTopBar({ population: { total: 12 } }, {});
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawPanel'), true);
 });
 
 test('ResourceTopBarCanvasRenderer does not own city people, policy, or home feature rendering', () => {

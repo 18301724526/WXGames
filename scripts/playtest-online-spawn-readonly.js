@@ -229,7 +229,11 @@ async function getFrontendState(page) {
       currentTab: state.currentTab || game?.currentTab || shell?.currentTab || '',
       militaryView: state.militaryView || shell?.militaryView || '',
       mapHomeActive: Boolean(shell?.mapHomeActive || game?.mapHomeActive),
-      tutorialStep: Number(game?.tutorial?.currentStep ?? state.tutorial?.currentStep ?? 0) || 0,
+      tutorialStep: (() => {
+        const raw = game?.tutorial?.currentStep ?? state.tutorial?.currentStep ?? 0;
+        const index = globalThis.TutorialFlowShared?.stepIndex?.(raw);
+        return Number.isFinite(index) && index >= 0 ? index : Number(raw) || 0;
+      })(),
       tutorialCompleted: Boolean(game?.tutorial?.completed || state.tutorial?.completed),
       loading: shell?.loading || null,
       origin: worldMap.origin || worldMap.worldOrigin || null,

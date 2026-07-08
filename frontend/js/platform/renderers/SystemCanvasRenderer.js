@@ -1,4 +1,39 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class SystemCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -6,83 +41,34 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get ctx() {
       return this.host?.ctx;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawCoverAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawCoverAsset === 'function' ? surface.drawCoverAsset(...args) : this.host?.drawCoverAsset?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawProgressBar(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawProgressBar === 'function' ? surface.drawProgressBar(...args) : this.host?.drawProgressBar?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    getNow(...args) { const surface = this.drawingSurface; return surface && typeof surface.getNow === 'function' ? surface.getNow(...args) : this.host?.getNow?.(...args); }
+    setHitTargets(...args) { const surface = this.drawingSurface; return surface && typeof surface.setHitTargets === 'function' ? surface.setHitTargets(...args) : this.host?.setHitTargets?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawCoverAsset(...args) {
-      return this.callDrawingSurface('drawCoverAsset', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawProgressBar(...args) {
-      return this.callDrawingSurface('drawProgressBar', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    getNow(...args) {
-      return this.callDrawingSurface('getNow', args);
-    }
-
-    setHitTargets(...args) {
-      return this.callDrawingSurface('setHitTargets', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     renderLoginPanel(auth = {}) {
@@ -90,51 +76,68 @@
       if (!view.loginPanelVisible) return;
       const credentials = auth.credentials || {};
       this.setHitTargets([]);
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
       if (this.ctx) {
-        this.ctx.fillStyle = '#14120f';
+        const hasBackground = this.drawCoverAsset('assets/art/civilization-bg.webp', 0, 0, this.width, this.height, 1);
+        if (!hasBackground) {
+          this.ctx.fillStyle = this.createGradient(
+            0, 0, this.width, this.height,
+            [
+              [0, '#1c241b'],
+              [0.48, '#44321f'],
+              [1, '#11140f'],
+            ],
+            '#14120f',
+          );
+          this.ctx.fillRect(0, 0, this.width, this.height);
+        }
+        this.ctx.fillStyle = 'rgba(5, 5, 4, 0.74)';
         this.ctx.fillRect(0, 0, this.width, this.height);
       }
 
       const layout = this.getLayout();
-      const panelWidth = Math.min(360, layout.contentWidth - 12);
-      const panelHeight = 344;
-      const x = (this.width - panelWidth) / 2;
-      const y = Math.max(72, (this.height - panelHeight) / 2 - 8);
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(54, 39, 26, 0.98)'],
-            [1, 'rgba(22, 18, 13, 0.98)'],
-          ],
-          'rgba(36, 28, 20, 0.98)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.24)',
-        radius: 14,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
+      const panelWidth = Math.min(360, layout.contentWidth - 14);
+      const panelHeight = 342;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.max(86, Math.floor((this.height - panelHeight) / 2) - 8);
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight, { radius: 11 });
 
-      const iconSize = 58;
-      const iconX = x + panelWidth / 2 - iconSize / 2;
+      const iconSocket = 58;
+      const iconX = Math.floor(x + panelWidth / 2 - iconSocket / 2);
       const iconY = y + 24;
-      this.drawPanel(iconX, iconY, iconSize, iconSize, {
-        fill: 'rgba(92, 63, 34, 0.92)',
-        stroke: 'rgba(240, 180, 91, 0.42)',
-        radius: iconSize / 2,
-        inset: 'rgba(255, 231, 184, 0.14)',
+      this.drawPanel(iconX, iconY, iconSocket, iconSocket, {
+        fill: this.createGradient(
+          iconX, iconY, iconX, iconY + iconSocket,
+          [
+            [0, 'rgba(73, 56, 35, 0.95)'],
+            [1, 'rgba(26, 23, 18, 0.95)'],
+          ],
+          'rgba(50, 40, 28, 0.95)',
+        ),
+        stroke: palette.champagneGold || 'rgba(210, 181, 126, 0.72)',
+        radius: iconSocket / 2,
+        inset: hairline.insetHighlight,
       });
-      this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 12, iconY + 12, 34, 34);
-      this.drawText('\u6587\u660e\u706b\u79cd', x + panelWidth / 2, y + 104, {
+      this.drawPanel(iconX + 12, iconY + 12, iconSocket - 24, iconSocket - 24, {
+        fill: 'rgba(6, 6, 5, 0.62)',
+        stroke: 'rgba(229, 208, 165, 0.18)',
+        radius: (iconSocket - 24) / 2,
+      });
+      this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 14, iconY + 14, 30, 30);
+      this.drawText(this.t('common.appName'), x + panelWidth / 2, y + 104, {
         size: 22,
         bold: true,
-        color: '#ffe6b5',
+        color: palette.champagneGoldBright || '#e5d0a5',
         align: 'center',
+        fontFamily: UiThemeTokens?.fontFamily?.display,
       });
 
       const message = view.message || '';
       this.drawText(this.truncateText(message, panelWidth - 48, { size: 13 }), x + panelWidth / 2, y + 134, {
         size: 13,
-        color: message ? '#e94560' : 'rgba(234, 234, 234, 0.42)',
+        color: message ? (palette.accentAlertRed || '#e94560') : 'rgba(234, 234, 234, 0.32)',
         align: 'center',
       });
 
@@ -145,29 +148,29 @@
       const passwordY = usernameY + 52;
       const drawInput = (fieldY, label, value, actionType, masked = false) => {
         this.drawPanel(inputX, fieldY, inputWidth, inputHeight, {
-          fill: 'rgba(23, 18, 13, 0.56)',
-          stroke: 'rgba(116, 211, 160, 0.24)',
+          fill: 'rgba(12, 13, 12, 0.74)',
+          stroke: value ? 'rgba(210, 181, 126, 0.28)' : 'rgba(229, 208, 165, 0.12)',
           radius: 8,
-          inset: 'rgba(116, 211, 160, 0.08)',
+          inset: 'rgba(229, 208, 165, 0.05)',
         });
         const displayValue = value
           ? (masked ? '\u2022'.repeat(Math.min(12, String(value).length)) : value)
           : label;
         this.drawText(this.truncateText(displayValue, inputWidth - 24, { size: 14 }), inputX + 12, fieldY + 21, {
           size: 14,
-          color: value ? '#f6e8c8' : 'rgba(234, 234, 234, 0.48)',
+          color: value ? (palette.textPrimary || '#e1d3b7') : 'rgba(189, 178, 155, 0.58)',
           baseline: 'middle',
         });
         this.addHitTarget({ x: inputX, y: fieldY, width: inputWidth, height: inputHeight }, { type: actionType });
       };
-      drawInput(usernameY, '\u7528\u6237\u540d', credentials.usernameValue || '', 'requestLoginUsername');
-      drawInput(passwordY, '\u5bc6\u7801', credentials.passwordValue || '', 'requestLoginPassword', true);
+      drawInput(usernameY, this.t('shell.login.username'), credentials.usernameValue || '', 'requestLoginUsername');
+      drawInput(passwordY, this.t('shell.login.password'), credentials.passwordValue || '', 'requestLoginPassword', true);
 
       const rememberY = passwordY + 54;
       const checkboxSize = 18;
       this.drawPanel(inputX, rememberY, checkboxSize, checkboxSize, {
-        fill: credentials.rememberPasswordChecked ? 'rgba(116, 211, 160, 0.68)' : 'rgba(23, 18, 13, 0.56)',
-        stroke: 'rgba(116, 211, 160, 0.34)',
+        fill: credentials.rememberPasswordChecked ? 'rgba(85, 171, 115, 0.68)' : 'rgba(16, 18, 16, 0.74)',
+        stroke: credentials.rememberPasswordChecked ? 'rgba(85, 171, 115, 0.64)' : 'rgba(229, 208, 165, 0.14)',
         radius: 5,
       });
       if (credentials.rememberPasswordChecked) {
@@ -179,19 +182,18 @@
           align: 'center',
         });
       }
-      this.drawText('\u8bb0\u4f4f\u8d26\u53f7', inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
-        size: 13,
-        color: '#cbbd96',
+      this.drawText(this.t('shell.login.rememberAccount'), inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
+        size: typeScale.body || 12,
+        color: palette.textLabel || '#bdb29b',
         baseline: 'middle',
       });
       this.addHitTarget({ x: inputX, y: rememberY - 6, width: 112, height: 32 }, { type: 'toggleRememberPassword' });
 
       const loginY = y + panelHeight - 58;
-      this.drawButton(inputX, loginY, inputWidth, 40, '\u767b\u5f55', {
+      ModalPlate.drawModalButton(this, inputX, loginY, inputWidth, 40, this.t('shell.login.submit'), {
+        variant: 'primary',
         size: 14,
-        bold: true,
-        radius: 9,
-        active: true,
+        radius: 8,
       });
       this.addHitTarget({ x: inputX, y: loginY, width: inputWidth, height: 40 }, { type: 'submitLogin' });
     }
@@ -248,12 +250,12 @@
         inset: 'rgba(255, 231, 184, 0.14)',
       });
       this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 10, iconY + 10, 32, 32);
-      this.drawText('\u6587\u660e\u706b\u79cd', iconX + iconSize + 14, y + 31, {
+      this.drawText(this.t('common.appName'), iconX + iconSize + 14, y + 31, {
         size: 19,
         bold: true,
         color: '#ffe6b5',
       });
-      this.drawText(loading.message || '\u6b63\u5728\u6574\u7406\u8425\u5730\u8d44\u6e90', iconX + iconSize + 14, y + 58, {
+      this.drawText(loading.message || this.t('shell.loading.defaultMessage'), iconX + iconSize + 14, y + 58, {
         size: 12,
         color: '#cbbd96',
       });
@@ -311,16 +313,18 @@
         ctx.restore?.();
       }
 
-      this.drawText('网络连接不稳定', x + 76, y + 28, {
+      this.drawText(this.t('shell.network.title'), x + 76, y + 28, {
         size: 15,
         bold: true,
         color: '#ffe6b5',
       });
-      this.drawText(network.message || '正在重连中', x + 76, y + 54, {
+      this.drawText(network.message || this.t('shell.network.reconnecting'), x + 76, y + 54, {
         size: 12,
         color: '#cbbd96',
       });
-      const failText = Number(network.failureCount) > 0 ? `连续丢失 ${Number(network.failureCount)} 次心跳` : '';
+      const failText = Number(network.failureCount) > 0
+        ? this.t('shell.network.failureCount', { count: Number(network.failureCount) })
+        : '';
       if (failText) {
         this.drawText(failText, x + panelWidth / 2, y + 88, {
           size: 11,
@@ -333,60 +337,43 @@
     }
 
     renderSettingsPanel() {
-      const layout = this.getLayout();
-      const panelWidth = 200;
-      const panelHeight = 164;
-      const x = layout.contentRight - panelWidth - 8;
-      const y = 62;
-
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: 'rgba(42, 35, 24, 0.96)',
-        stroke: 'rgba(255, 226, 177, 0.2)',
-        radius: 10,
-      });
-
-      this.drawText('设置', x + panelWidth / 2, y + 18, {
-        size: 14,
-        bold: true,
-        color: '#ffd98a',
-        align: 'center',
-      });
-
-      if (this.ctx) {
-        this.ctx.strokeStyle = 'rgba(255, 226, 177, 0.1)';
-        this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x + 10, y + 28);
-        this.ctx.lineTo(x + panelWidth - 10, y + 28);
-        this.ctx.stroke();
-      }
-
-      const btnHeight = 36;
-      const btnY1 = y + 38;
-      this.drawButton(x + 10, btnY1, panelWidth - 20, btnHeight, '重置游戏', {
-        size: 12,
-        radius: 8,
-        active: false,
-      });
-      this.addHitTarget({ x: x + 10, y: btnY1, width: panelWidth - 20, height: btnHeight }, { type: 'requestResetGame' });
-
-      const btnY2 = btnY1 + btnHeight + 8;
-      this.drawButton(x + 10, btnY2, panelWidth - 20, btnHeight, '\u5bfc\u51fa\u64cd\u4f5c\u65e5\u5fd7', {
-        size: 12,
-        radius: 8,
-        active: false,
-      });
-      this.addHitTarget({ x: x + 10, y: btnY2, width: panelWidth - 20, height: btnHeight }, { type: 'downloadClientOperationLog' });
-
-      const btnY3 = btnY2 + btnHeight + 8;
-      this.drawButton(x + 10, btnY3, panelWidth - 20, btnHeight, '退出登录', {
-        size: 12,
-        radius: 8,
-        active: false,
-      });
-      this.addHitTarget({ x: x + 10, y: btnY3, width: panelWidth - 20, height: btnHeight }, { type: 'logout' });
-
+      // UI-REDO knife 8: forged-iron modal via the shared ModalPlate painter
+      // (⑦c fixed placement/mask/close; this knife swaps the skin only).
+      // Reset game uses the unified danger button; export/logout secondary.
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSettings', background: true });
+      ModalPlate.drawModalMask(this);
+
+      const layout = this.getLayout();
+      const panelWidth = Math.min(300, layout.contentWidth - 24);
+      const panelHeight = 208;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.max(86, Math.floor((this.height - panelHeight) / 2) - 12);
+
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight);
+      this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
+
+      const titleBar = ModalPlate.drawModalTitleBar(this, x, y, panelWidth, {
+        title: this.t('shell.settings.title'),
+        align: 'center',
+        withClose: true,
+      });
+      if (titleBar.closeRect) this.addHitTarget(titleBar.closeRect, { type: 'closeSettings' });
+
+      const btnHeight = 38;
+      const btnX = x + 16;
+      const btnWidth = panelWidth - 32;
+      [
+        { label: this.t('shell.settings.resetGame'), action: { type: 'requestResetGame' }, variant: 'danger' },
+        { label: this.t('shell.settings.exportOperationLog'), action: { type: 'downloadClientOperationLog' }, variant: 'secondary' },
+        { label: this.t('shell.settings.logout'), action: { type: 'logout' }, variant: 'secondary' },
+      ].forEach((item, index) => {
+        const btnY = y + 58 + index * (btnHeight + 10);
+        ModalPlate.drawModalButton(this, btnX, btnY, btnWidth, btnHeight, item.label, {
+          variant: item.variant,
+          size: 13,
+        });
+        this.addHitTarget({ x: btnX, y: btnY, width: btnWidth, height: btnHeight }, item.action);
+      });
     }
 
     renderConfirmDialog(dialog = {}) {
@@ -418,7 +405,7 @@
       });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
-      this.drawText(this.truncateText(dialog.title || '请确认', panelWidth - 48, { size: 18, bold: true }), x + panelWidth / 2, y + 34, {
+      this.drawText(this.truncateText(dialog.title || this.t('shell.confirm.title'), panelWidth - 48, { size: 18, bold: true }), x + panelWidth / 2, y + 34, {
         size: 18,
         bold: true,
         color: '#ffe6b5',
@@ -438,14 +425,14 @@
       const buttonWidth = Math.floor((panelWidth - 36 - buttonGap) / 2);
       const cancelX = x + 18;
       const confirmX = cancelX + buttonWidth + buttonGap;
-      this.drawButton(cancelX, buttonY, buttonWidth, 36, dialog.cancelLabel || '取消', {
+      this.drawButton(cancelX, buttonY, buttonWidth, 36, dialog.cancelLabel || this.t('common.cancel'), {
         size: 13,
         radius: 9,
         active: false,
       });
       this.addHitTarget({ x: cancelX, y: buttonY, width: buttonWidth, height: 36 }, submitting ? { type: 'blockCanvasModal' } : { type: 'closeConfirmDialog' });
 
-      this.drawButton(confirmX, buttonY, buttonWidth, 36, submitting ? '处理中' : (dialog.confirmLabel || '确定'), {
+      this.drawButton(confirmX, buttonY, buttonWidth, 36, submitting ? this.t('common.processing') : (dialog.confirmLabel || this.t('common.confirm')), {
         size: 13,
         bold: true,
         radius: 9,
@@ -453,7 +440,9 @@
       });
       this.addHitTarget(
         { x: confirmX, y: buttonY, width: buttonWidth, height: 36 },
-        submitting ? { type: 'blockCanvasModal' } : { type: 'confirmResetGame', source: dialog.source || '' },
+        submitting
+          ? { type: 'blockCanvasModal' }
+          : (dialog.confirmAction || { type: 'confirmResetGame', source: dialog.source || '' }),
       );
       return true;
     }
@@ -471,7 +460,7 @@
         radius: 12,
       });
 
-      this.drawText('📜 最近请求日志', x + panelWidth / 2, y + 22, {
+      this.drawText(this.t('shell.logs.title'), x + panelWidth / 2, y + 22, {
         size: 16,
         bold: true,
         color: '#ffd98a',
@@ -513,7 +502,7 @@
       const displayLogs = logs.slice(0, maxItems);
 
       if (displayLogs.length === 0) {
-        this.drawText('暂无日志', listX + listWidth / 2, listY + listHeight / 2, {
+        this.drawText(this.t('common.log.empty'), listX + listWidth / 2, listY + listHeight / 2, {
           size: 12,
           color: '#888',
           align: 'center',
@@ -534,7 +523,7 @@
       }
 
       const clearBtnY = y + panelHeight - 48;
-      this.drawButton(x + 12, clearBtnY, panelWidth - 24, 36, '清空日志', {
+      this.drawButton(x + 12, clearBtnY, panelWidth - 24, 36, this.t('shell.logs.clear'), {
         size: 12,
         radius: 8,
         active: false,

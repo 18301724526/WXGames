@@ -1,6 +1,33 @@
 (function (global) {
+
+  const TutorialFlowShared = (() => {
+    if (global.TutorialFlowShared) return global.TutorialFlowShared;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/tutorialFlowConfig');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function t(key, params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
   const STORAGE_KEY = 'tutorialIntroAdvisorSeen.v2';
-  const LEGACY_STORAGE_KEY = 'tutorialIntroAdvisorSeen.v1';
   const MARCH_DURATION_MS = 4800;
   const ENTER_DURATION_MS = 1560;
   const MARCH_FRAME_INTERVAL_MS = 33;
@@ -12,12 +39,12 @@
     entering: 'entering',
     done: 'done',
   };
-  const MAX_INTRO_TUTORIAL_STEP = 1;
+  const MAX_INTRO_TUTORIAL_STEP = TutorialFlowShared?.TUTORIAL_STEPS?.tutorialStarted || 'tutorialStarted';
 
   class TutorialIntroOverlay {
     constructor(options = {}) {
       this.runtime = options.runtime || global;
-      this.storage = options.storage || this.runtime?.localStorage || null;
+      this.storage = options.storage || null;
       this.game = options.game || null;
       this.running = false;
       this.step = STEPS.done;
@@ -35,15 +62,10 @@
       return STORAGE_KEY;
     }
 
-    static get legacyStorageKey() {
-      return LEGACY_STORAGE_KEY;
-    }
-
     getQueryMode() {
       const search = String(this.runtime?.location?.search || '');
       if (/[?&]tutorialIntro=reset(?:&|$)/.test(search)) {
         this.storage?.removeItem?.(STORAGE_KEY);
-        this.storage?.removeItem?.(LEGACY_STORAGE_KEY);
         return 'reset';
       }
       if (/[?&]tutorialIntro=1(?:&|$)/.test(search)) return 'force';
@@ -58,12 +80,10 @@
     markSeen() {
       if (this.getQueryMode() === 'force') return;
       this.storage?.setItem?.(STORAGE_KEY, 'true');
-      this.storage?.setItem?.(LEGACY_STORAGE_KEY, 'true');
     }
 
     resetSeen() {
       this.storage?.removeItem?.(STORAGE_KEY);
-      this.storage?.removeItem?.(LEGACY_STORAGE_KEY);
       this.completedThisSession = false;
       return true;
     }
@@ -87,8 +107,8 @@
       const tutorial = state?.tutorial || this.game?.tutorial || null;
       if (!tutorial || typeof tutorial !== 'object') return true;
       if (tutorial.completed || tutorial.disabled) return false;
-      const step = Number(tutorial.currentStep);
-      return Number.isFinite(step) ? step <= MAX_INTRO_TUTORIAL_STEP : true;
+      const step = TutorialFlowShared?.stepName(tutorial.currentStep) || '';
+      return step ? TutorialFlowShared.stepAtMost(step, MAX_INTRO_TUTORIAL_STEP) : true;
     }
 
     now() {
@@ -251,10 +271,10 @@
         enterStartedAt: this.enterStartedAt,
         enterDurationMs: ENTER_DURATION_MS,
         enterEndedAt: this.enterEndedAt,
-        advisorName: '谋士',
+        advisorName: t('tutorial.advisorName'),
         messages: {
-          city: '前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。点一下首都看看。',
-          enter: '让队伍入城整备。只要根基扎稳，这座首都会慢慢长成我们的核心。',
+          city: t('tutorial.intro.city'),
+          enter: t('tutorial.intro.enter'),
         },
       };
     }

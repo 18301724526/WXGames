@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class TabBarCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -10,44 +22,23 @@
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get presenter() {
       return this.host?.presenter;
     }
 
-    callDrawingSurface(method, args = []) {
-      const surface = this.drawingSurface;
-      if (surface && typeof surface[method] === 'function') {
-        return surface[method](...args);
-      }
-      return this.host?.[method]?.(...args);
+    t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
 
     renderMapCommandDock(...args) {
       return this.host?.renderMapCommandDock?.(...args);
@@ -60,11 +51,11 @@
       }
       const visualActiveTab = options.isMapHome ? 'resources' : activeTab;
       const tabs = [
-        ['resources', '主页', 'assets/art/icon-home-cutout.png'],
-        ['tech', '科技', 'assets/art/icon-knowledge-cutout.webp'],
-        ['events', '事件', 'assets/art/icon-event-cutout.webp'],
-        ['famousPersons', '名人', 'assets/art/icon-scholar-cutout.webp'],
-        ['civilization', '文明', 'assets/art/icon-fire-cutout.webp'],
+        ['resources', this.t('tab.home', {}), 'assets/art/icon-home-cutout.png'],
+        ['tech', this.t('tab.tech', {}), 'assets/art/icon-knowledge-cutout.webp'],
+        ['events', this.t('tab.events', {}), 'assets/art/icon-event-cutout.webp'],
+        ['famousPersons', this.t('tab.famousPersons', {}), 'assets/art/icon-scholar-cutout.webp'],
+        ['civilization', this.t('tab.civilization', {}), 'assets/art/icon-fire-cutout.webp'],
       ];
       const layout = this.getLayout();
       const x = layout.contentX;

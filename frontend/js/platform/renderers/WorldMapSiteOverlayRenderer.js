@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedUIStatePresenter = (() => {
     if (global.UIStatePresenter) return global.UIStatePresenter;
     if (typeof module !== 'undefined' && module.exports) {
@@ -11,31 +23,141 @@
     return null;
   })();
 
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapSiteOverlayRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+    }
+
+    get width() {
+      return Number(this.host?.width) || 0;
+    }
+
+    get height() {
+      return Number(this.host?.height) || 0;
+    }
+
+    get bottomSafeArea() {
+      return Number(this.host?.bottomSafeArea) || 12;
+    }
+
+    get viewportOffsetX() {
+      return Number(this.host?.viewportOffsetX) || 0;
+    }
+
+    get viewportOffsetY() {
+      return Number(this.host?.viewportOffsetY) || 0;
+    }
+
+    get viewportWidth() {
+      return Number(this.host?.viewportWidth) || 0;
+    }
+
+    get viewportHeight() {
+      return Number(this.host?.viewportHeight) || 0;
+    }
+
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
+    addHitTarget(...args) {
+      return this.host?.addHitTarget?.(...args);
+    }
+
+    createGradient(...args) {
+      return this.host?.createGradient?.(...args) ?? args[5] ?? '#000';
+    }
+
+    drawAsset(...args) {
+      return this.host?.drawAsset?.(...args);
+    }
+
+    drawButton(...args) {
+      return this.host?.drawButton?.(...args);
+    }
+
+    drawCircle(...args) {
+      return this.host?.drawCircle?.(...args);
+    }
+
+    drawPanel(...args) {
+      return this.host?.drawPanel?.(...args);
+    }
+
+    drawText(...args) {
+      return this.host?.drawText?.(...args);
+    }
+
+    drawTextLines(...args) {
+      return this.host?.drawTextLines?.(...args);
+    }
+
+    getLayout(...args) {
+      return this.host?.getLayout?.(...args) || { contentWidth: this.width || 0, contentX: 0, contentRight: this.width || 0 };
+    }
+
+    getTopBarBottom(...args) {
+      return this.host?.getTopBarBottom?.(...args) || 84;
+    }
+
+    measureTextWidth(...args) {
+      return this.host?.measureTextWidth?.(...args) || 0;
+    }
+
+    truncateText(text, maxWidth, options = {}) {
+      return this.host?.truncateText?.(text, maxWidth, options) ?? String(text ?? '');
+    }
+
+    wrapTextLimit(text, maxWidth, maxLines, options = {}) {
+      return this.host?.wrapTextLimit?.(text, maxWidth, maxLines, options) || [String(text || '')].filter(Boolean);
+    }
+
+    getWorldMapLayerLayout(...args) {
+      return this.host?.getWorldMapLayerLayout?.(...args) || null;
+    }
+
+    resolveWorldTileMapView(...args) {
+      return this.host?.resolveWorldTileMapView?.(...args) || null;
+    }
+
+    getWorldTileScreenCenter(...args) {
+      return this.host?.getWorldTileScreenCenter?.(...args) || { x: 0, y: 0 };
+    }
+
+    getWorldTileRenderedDiamondCenter(...args) {
+      return this.host?.getWorldTileRenderedDiamondCenter?.(...args) || null;
+    }
+
+    getWorldTileRenderEntries(...args) {
+      return this.host?.getWorldTileRenderEntries?.(...args) || [];
+    }
+
+    getWorldTileSiteLayout(...args) {
+      return this.host?.getWorldTileSiteLayout?.(...args) || null;
     }
 
     getWorldSiteDialogPresenter() {
@@ -78,12 +200,12 @@
           return {
             kind: 'city-command',
             buttons: [
-              makeButton('\u5165\u57ce', 'enter-city', site.id),
-              makeButton('\u884c\u519b', 'march-city', site.id, { disabled: true, secondary: true }),
-              makeButton('\u8c03\u52a8', 'transfer-city', site.id, { disabled: true, secondary: true }),
-              makeButton('\u9a7b\u5b88', 'garrison-city', site.id, { disabled: true, secondary: true }),
-              makeButton('\u4f63\u5de5', 'labor-city', site.id, { secondary: true }),
-              makeButton('\u6539\u540d', 'rename-city', site.id, { secondary: true }),
+              makeButton(this.t('world.site.action.enterCity'), 'enter-city', site.id),
+              makeButton(this.t('world.site.action.marchCity'), 'march-city', site.id, { disabled: true, secondary: true }),
+              makeButton(this.t('world.site.action.transferCity'), 'transfer-city', site.id, { disabled: true, secondary: true }),
+              makeButton(this.t('world.site.action.garrisonCity'), 'garrison-city', site.id, { disabled: true, secondary: true }),
+              makeButton(this.t('world.site.action.laborCity'), 'labor-city', site.id, { secondary: true }),
+              makeButton(this.t('world.site.action.rename'), 'rename-city', site.id, { secondary: true }),
             ],
             hint: '',
             expeditionConfig: null,
@@ -91,7 +213,7 @@
         }
         return {
           kind: 'single',
-          buttons: [makeButton('\u7b49\u5f85\u4fa6\u5bdf', '', site.id, { disabled: true })],
+          buttons: [makeButton(this.t('world.site.action.waitScout'), '', site.id, { disabled: true })],
           hint: '',
           expeditionConfig: null,
         };
@@ -101,14 +223,14 @@
         visible: site.id === selectedSiteId,
         text: {
           name: site.cityName || site.naturalName || site.name || '',
-          status: site.status === 'occupied' ? '\u5df2\u63a7\u5236' : (site.status || ''),
-          owner: site.owner === 'player' ? '\u6211\u65b9' : (site.owner || ''),
-          distance: `\u8ddd ${site.originDistance ?? site.distance ?? 0}`,
-          scale: `\u89c4\u6a21 ${site.scale || 1}`,
-          threat: `\u5a01\u80c1 ${site.threat || 0}`,
+          status: site.status === 'occupied' ? this.t('world.site.status.occupied') : (site.status || ''),
+          owner: site.owner === 'player' ? this.t('world.site.owner.player') : (site.owner || ''),
+          distance: this.t('world.site.metric.distance', { value: site.originDistance ?? site.distance ?? 0 }),
+          scale: this.t('world.site.metric.scale', { value: site.scale || 1 }),
+          threat: this.t('world.site.metric.threat', { value: site.threat || 0 }),
           summary: site.summary || '',
-          defense: `\u9632\u5fa1 ${site.defense || 0}`,
-          soldiers: `\u5efa\u8bae ${site.recommendedSoldiers || 0} \u58eb\u5175`,
+          defense: this.t('world.site.metric.defense', { value: site.defense || 0 }),
+          soldiers: this.t('world.site.metric.recommendedSoldiers', { soldiers: site.recommendedSoldiers || 0 }),
         },
         action: makeAction(site),
       }));
@@ -127,31 +249,14 @@
       const buttons = actionView.buttons || [];
       if (!buttons.length) return y;
       if (actionView.kind === 'city-command') {
+        // UI-REDO knife 8: the fallback city-command cluster reuses the same
+        // painter-backed primary/side button helpers as the anchored overlay.
         const primary = buttons.find((button) => button.action === 'enter-city') || buttons[0];
         const sideButtons = buttons.filter((button) => button !== primary).slice(0, 5);
         const primarySize = 74;
         const primaryX = x + Math.max(8, Math.floor(width * 0.26));
         const primaryY = y + 12;
-        this.drawPanel(primaryX, primaryY, primarySize, primarySize, {
-          fill: this.createGradient(
-            primaryX, primaryY, primaryX, primaryY + primarySize,
-            [
-              [0, 'rgba(191, 90, 55, 0.98)'],
-              [1, 'rgba(99, 35, 24, 0.98)'],
-            ],
-            'rgba(146, 56, 38, 0.98)',
-          ),
-          stroke: 'rgba(255, 218, 142, 0.86)',
-          radius: primarySize / 2,
-          inset: 'rgba(255, 248, 210, 0.22)',
-        });
-        this.drawText(primary.label || '入城', primaryX + primarySize / 2, primaryY + primarySize / 2, {
-          size: 20,
-          bold: true,
-          color: '#ffe6b5',
-          baseline: 'middle',
-          align: 'center',
-        });
+        this.drawWorldCityCommandPrimaryButton(primary, primaryX, primaryY, primarySize);
         this.addHitTarget({ x: primaryX, y: primaryY, width: primarySize, height: primarySize }, {
           type: 'enterCity',
           territoryId: primary.territoryId,
@@ -166,12 +271,7 @@
           const type = button.action === 'rename-city'
             ? 'renameCity'
             : (button.action === 'labor-city' ? 'enterCity' : 'territoryAction');
-          this.drawButton(commandX, buttonY, 108, 32, button.label, {
-            size: 13,
-            radius: 8,
-            disabled: button.disabled || !button.action,
-            active: !button.secondary && !button.disabled,
-          });
+          this.drawWorldCityCommandSideButton(button, commandX, buttonY, 108, 32);
           this.addHitTarget({ x: commandX, y: buttonY, width: 108, height: 32 }, {
             type,
             territoryId: button.territoryId,
@@ -221,7 +321,9 @@
       });
       const leaderOptions = config.fields?.leader?.options || [];
       const activeLeader = leaderOptions.find((option) => option.value === config.fields?.leader?.value) || leaderOptions[0] || null;
-      this.drawText(`领队 ${activeLeader?.label || '暂无可出征名人'}`, x + 12, y + 12, { size: 12, bold: true, color: '#f6e8c8' });
+      this.drawText(this.t('world.site.expedition.leaderPrefix', {
+        leader: activeLeader?.label || this.t('world.site.expedition.noLeader'),
+      }), x + 12, y + 12, { size: 12, bold: true, color: '#f6e8c8' });
       const leaderY = y + 34;
       const leaderButtonWidth = Math.max(82, Math.min(118, (width - 24 - 8 * Math.max(0, leaderOptions.length - 1)) / Math.max(1, Math.min(3, leaderOptions.length || 1))));
       leaderOptions.slice(0, 3).forEach((option, index) => {
@@ -240,13 +342,15 @@
           disabled: false,
         });
       });
-      this.drawText(`出征数量 ${config.fields?.soldiers?.value || 1}`, x + 12, y + 70, { size: 12, bold: true, color: '#f6e8c8' });
+      this.drawText(this.t('world.site.expedition.soldierCount', {
+        count: config.fields?.soldiers?.value || 1,
+      }), x + 12, y + 70, { size: 12, bold: true, color: '#f6e8c8' });
       this.drawText(config.note || '', x + 12, y + 92, { size: 10, color: '#aeb0b8' });
       const value = Number(config.fields?.soldiers?.value) || 1;
       const controlsY = y + 112;
       this.drawButton(x + 12, controlsY, 34, 28, '-', { size: 14, radius: 7, disabled: value <= 1 });
       this.drawButton(x + width - 46, controlsY, 34, 28, '+', { size: 14, radius: 7 });
-      this.drawButton(x + width - 132, controlsY, 78, 28, config.buttons?.launch?.label || '出发', {
+      this.drawButton(x + width - 132, controlsY, 78, 28, config.buttons?.launch?.label || this.t('world.site.action.launch'), {
         size: 12,
         radius: 7,
         disabled: config.disabled,
@@ -308,12 +412,12 @@
       });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
       const closeSize = 28;
-      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, '×', { size: 16, radius: 7 });
+      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, this.t('common.close.short'), { size: 16, radius: 7 });
       this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeWorldSite' });
 
       const selectedSite = territories.find((site) => site.id === detail.id) || {};
       this.drawAsset(selectedSite.art, x + 16, y + 20, 58, 58);
-      this.drawText(this.truncateText(detail.text.name || '地点', panelWidth - 112, { size: 17, bold: true }), x + 84, y + 22, {
+      this.drawText(this.truncateText(detail.text.name || this.t('world.site.defaultName'), panelWidth - 112, { size: 17, bold: true }), x + 84, y + 22, {
         size: 17,
         bold: true,
         color: '#ffe6b5',
@@ -321,7 +425,7 @@
       this.drawText(`${detail.text.status} · ${detail.text.owner}`, x + 84, y + 50, { size: 11, color: '#aeb0b8' });
       this.drawText(`${detail.text.distance} · ${detail.text.scale} · ${detail.text.threat}`, x + 84, y + 68, { size: 11, color: '#aeb0b8' });
       let cursorY = y + 94;
-      const summaryLines = this.wrapTextLimit(detail.text.summary || '无', panelWidth - 32, 3, { size: 12 });
+      const summaryLines = this.wrapTextLimit(detail.text.summary || this.t('world.site.summary.none'), panelWidth - 32, 3, { size: 12 });
       this.drawTextLines(summaryLines, x + 16, cursorY, { size: 12, color: '#f6e8c8', lineHeight: 17 });
       cursorY += summaryLines.length * 17 + 12;
       this.drawText(`${detail.text.defense} · ${detail.text.soldiers}`, x + 16, cursorY, { size: 12, color: '#74d3a0' });
@@ -362,6 +466,36 @@
     }
 
     getWorldCityCommandAnchor(detail = {}, territories = [], state = {}, options = {}) {
+      const contextAnchor = this.getWorldSiteCanvasAnchor(detail.id, state, options);
+      if (contextAnchor) {
+        const topBarBottom = options.topBarBottom ?? this.getTopBarBottom(state, { isMapHome: true });
+        const layout = typeof this.getWorldMapLayerLayout === 'function'
+          ? this.getWorldMapLayerLayout(state, topBarBottom, { isMapHome: true })
+          : {
+            map: {
+              x: 0,
+              y: topBarBottom,
+              width: this.width,
+              height: Math.max(160, this.height - topBarBottom - 64),
+            },
+          };
+        const scale = Number(contextAnchor.viewport?.scale || options.worldMapRuntimeContext?.viewport?.scale) || 1;
+        const geometry = contextAnchor.geometry || options.worldMapRuntimeContext?.geometry || options.worldMapRuntimeContext?.tileMapView?.geometry || {};
+        const tileWidth = (Number(geometry.tileWidth) || 192) * scale;
+        const tileHeight = (Number(geometry.tileHeight) || 96) * scale;
+        return {
+          map: layout?.map || null,
+          site: contextAnchor.site || territories.find((site) => site?.id === detail.id) || {},
+          siteLayout: contextAnchor,
+          tileCenter: contextAnchor.center,
+          tileWidth,
+          tileHeight,
+          anchorX: contextAnchor.center.x,
+          anchorY: contextAnchor.center.y,
+          titleY: contextAnchor.center.y - Math.max(34, tileHeight * 0.48),
+        };
+      }
+      if (options.worldMapRuntimeContext) return null;
       const territoryState = state.territoryState || {};
       const uiState = options.territoryUiState || {};
       const tileMapView = this.resolveWorldTileMapView(territoryState, uiState, {
@@ -593,55 +727,26 @@
       };
     }
 
+    // UI-REDO knife 8: unified painter buttons. Primary (入城) = warm forged
+    // face + champagne edge, round; side commands = secondary iron; disabled
+    // (行军/调动/驻守 before their systems land) = flat grey, clearly apart.
     drawWorldCityCommandPrimaryButton(button = {}, x, y, size) {
-      this.drawPanel(x, y, size, size, {
-        fill: button.disabled || !button.action
-          ? 'rgba(60, 52, 46, 0.78)'
-          : this.createGradient(
-            x, y, x, y + size,
-            [
-              [0, 'rgba(214, 113, 66, 0.98)'],
-              [0.58, 'rgba(163, 58, 39, 0.98)'],
-              [1, 'rgba(92, 30, 23, 0.98)'],
-            ],
-            'rgba(155, 54, 38, 0.98)',
-          ),
-        stroke: button.disabled || !button.action ? 'rgba(240, 180, 91, 0.28)' : 'rgba(255, 225, 150, 0.9)',
+      ModalPlate.drawModalButton(this, x, y, size, size, button.label || this.t('world.site.action.enterCity'), {
+        variant: 'primary',
+        disabled: button.disabled || !button.action,
         radius: size / 2,
-        inset: button.disabled || !button.action ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 248, 210, 0.24)',
-      });
-      this.drawText(button.label || '入城', x + size / 2, y + size / 2, {
         size: Math.max(13, Math.floor(size * 0.27)),
-        bold: true,
-        color: button.disabled || !button.action ? '#8d8f99' : '#ffe6b5',
-        baseline: 'middle',
-        align: 'center',
       });
     }
 
     drawWorldCityCommandSideButton(button = {}, x, y, width, height) {
       const active = !button.secondary && !button.disabled && Boolean(button.action);
-      this.drawPanel(x, y, width, height, {
-        fill: button.disabled || !button.action
-          ? 'rgba(44, 39, 34, 0.72)'
-          : this.createGradient(
-            x, y, x, y + height,
-            [
-              [0, active ? 'rgba(79, 55, 35, 0.96)' : 'rgba(49, 39, 28, 0.94)'],
-              [1, active ? 'rgba(37, 25, 18, 0.98)' : 'rgba(29, 24, 20, 0.96)'],
-            ],
-            'rgba(42, 31, 23, 0.96)',
-          ),
-        stroke: active ? 'rgba(255, 214, 138, 0.62)' : 'rgba(240, 180, 91, 0.26)',
+      ModalPlate.drawModalButton(this, x, y, width, height, button.label || '', {
+        variant: active ? 'primary' : 'secondary',
+        disabled: button.disabled || !button.action,
         radius: 5,
-        inset: active ? 'rgba(255, 231, 184, 0.12)' : 'rgba(255, 231, 184, 0.06)',
-      });
-      this.drawText(this.truncateText(button.label || '', width - 12, { size: 12, bold: active }), x + width / 2, y + height / 2, {
         size: 12,
         bold: active,
-        color: button.disabled || !button.action ? '#8d8f99' : '#f6e8c8',
-        baseline: 'middle',
-        align: 'center',
       });
     }
 
@@ -661,7 +766,8 @@
         const width = Math.min(this.getLayout().contentWidth - 24, 320);
         const x = Math.max(12, (this.width - width) / 2);
         const y = Math.max(this.getTopBarBottom(state, { isMapHome: true }) + 16, this.height - 260);
-        this.renderWorldSiteAction({ ...detail.action, buttons: [primary, ...sideButtons] }, x, y, width);
+        const fallbackButtons = [primary, ...sideButtons, renameButton].filter(Boolean);
+        this.renderWorldSiteAction({ ...detail.action, buttons: fallbackButtons }, x, y, width);
         return;
       }
 
@@ -687,7 +793,7 @@
       const sideX = sideOnRight ? primaryX + primarySize + gap : primaryX - sideWidth - gap;
       const sideYRaw = primaryY + (primarySize - sideTotalHeight) / 2;
       const sideY = Math.max(topLimit + 8, Math.min(sideYRaw, bottomLimit - sideTotalHeight - 8));
-      const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || '城市';
+      const title = detail.text?.name || selectedSite.cityName || selectedSite.naturalName || this.t('world.site.cityFallback');
       const renameWidth = renameButton ? 38 : 0;
       const titleWidth = this.measureTextWidth(title, { size: 12, bold: true });
       const badgeWidth = Math.min(190, Math.max(98, titleWidth + renameWidth + 30));
@@ -696,26 +802,26 @@
       const badgeYRaw = Math.min(anchor.titleY - 25 - hudLift, Math.min(primaryY, sideY) - 24 - titleGap);
       const badgeY = Math.max(topLimit + 6, Math.min(badgeYRaw, bottomLimit - 30));
 
-      this.drawPanel(badgeX, badgeY, badgeWidth, 24, {
-        fill: 'rgba(18, 16, 13, 0.78)',
-        stroke: 'rgba(116, 211, 160, 0.42)',
-        radius: 6,
-        inset: 'rgba(255, 231, 184, 0.06)',
+      // Knife 8: the floating name badge is a small forged plate (iron card
+      // face + hairline edge) with champagne title, matching the modal family.
+      const palette = UiThemeTokens?.palette || {};
+      ModalPlate.drawModalCard(this, badgeX, badgeY, badgeWidth, 24, {
+        radius: UiThemeTokens?.radius?.panel || 6,
       });
       const titleMaxWidth = badgeWidth - renameWidth - 22;
       this.drawText(this.truncateText(title, titleMaxWidth, { size: 12, bold: true }), badgeX + 12 + titleMaxWidth / 2, badgeY + 12, {
         size: 12,
         bold: true,
-        color: '#ffe6b5',
+        color: palette.champagneGoldBright,
         baseline: 'middle',
         align: 'center',
       });
       if (renameButton) {
         const renameX = badgeX + badgeWidth - renameWidth - 7;
         const renameY = badgeY + 4;
-        this.drawText('改名', renameX + renameWidth / 2, badgeY + 12, {
+        this.drawText(this.t('world.site.action.rename'), renameX + renameWidth / 2, badgeY + 12, {
           size: 10,
-          color: renameButton.disabled || !renameButton.action ? '#8d8f99' : '#74d3a0',
+          color: renameButton.disabled || !renameButton.action ? palette.textDisabled : palette.champagneGold,
           baseline: 'middle',
           align: 'center',
         });

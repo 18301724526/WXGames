@@ -1,4 +1,5 @@
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
+const { clone } = require('../../shared/objectUtils');
 
 const CONFIG_VERSION = '1.0.0';
 const CONFIG_SCHEMA_VERSION = 1;
@@ -23,10 +24,6 @@ const population = {
   splitCapacityActive: true,
   eraCaps: [3, 6, 9, 12, 16, 20],
 };
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 function raw() {
   return clone({ resources, population });

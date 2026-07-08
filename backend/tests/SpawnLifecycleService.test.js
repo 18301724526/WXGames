@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const Database = require('better-sqlite3');
 
 const GameStateService = require('../services/GameStateService');
+const GameStateRepository = require('../repositories/GameStateRepository');
 const { SpawnLifecycleService } = require('../services/spawn/SpawnLifecycleService');
 
 function createRepositoryStub() {
@@ -85,6 +87,50 @@ test('SpawnLifecycleService creates spawn-aware initial states and reserves uniq
   assert.equal(second.worldMap.origin.q, 24);
   assert.equal(repository.getSpawnForPlayer('spawn-life-a').spawnKey, '10,0');
   assert.equal(repository.getSpawnForPlayer('spawn-life-b').spawnKey, '24,0');
+});
+
+test('SpawnLifecycleService creates the spawn companion city in the shared world and initial map', () => {
+  const db = new Database(':memory:');
+  try {
+    const repository = new GameStateRepository(db);
+    repository.init();
+    const lifecycle = new SpawnLifecycleService({
+      repository,
+      gameStateService: GameStateService,
+      now: () => new Date('2026-07-07T00:00:00.000Z'),
+      allocator() {
+        return {
+          success: true,
+          selected: {
+            q: 10,
+            r: 0,
+            valid: true,
+            terrain: 'plains',
+            score: 100,
+            nearestCapitalDistance: 30,
+            tutorialTarget: { q: 11, r: 0, terrain: 'plains' },
+          },
+          scoredCandidates: [],
+        };
+      },
+    });
+
+    const state = lifecycle.createInitialStateForPlayer('spawn-companion-city-test');
+    const companion = repository.worldCityRepo.getCity('site_11_0');
+
+    assert.ok(companion, 'companion city must be persisted in world_cities');
+    assert.equal(companion.owner, 'neutral');
+    assert.equal(state.territories.some((territory) => territory.id === companion.id), true);
+    assert.equal(state.worldMap.tiles.some((tile) => tile.siteId === companion.id), true);
+    assert.equal(
+      state.worldMap.visionHistory.sources.some((source) => (
+        source.kind === 'city' && source.q === companion.x && source.r === companion.y
+      )),
+      false,
+    );
+  } finally {
+    db.close();
+  }
 });
 
 test('SpawnLifecycleService reset releases old spawn and avoids the previous coordinate', () => {

@@ -18,8 +18,8 @@ function extractFunction(source, functionName, nextFunctionName) {
 }
 
 test('world-map tap routing policy is owned only by WorldMapInputActionMap', () => {
-  const shellInputRouter = read('frontend/js/platform/CanvasGameShellInputRouter.js');
-  const appInputRouter = read('frontend/js/platform/CanvasGameAppInputRouter.js');
+  const shellInputRouter = read('frontend/js/platform/CanvasGameShell.js');
+  const appInputRouter = read('frontend/js/platform/CanvasGameApp.js');
 
   [shellInputRouter, appInputRouter].forEach((source) => {
     const helperSource = extractFunction(

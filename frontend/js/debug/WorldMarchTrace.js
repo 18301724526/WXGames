@@ -3,61 +3,64 @@
   const STORAGE_KEY = 'worldMarchTrace';
   const MAX_DEDUP_ENTRIES = 300;
   const deduped = new Map();
+  let environmentProvider = null;
+
+  function getEnvironment() {
+    return environmentProvider || global.CanvasDebugEnvironment || null;
+  }
+
+  function setEnvironmentProvider(provider = null) {
+    environmentProvider = provider && typeof provider === 'object' ? provider : null;
+    return environmentProvider;
+  }
+
+  function parseFlagValue(value, fallback = false) {
+    if (value === null || value === undefined) return fallback;
+    return !['0', 'false', 'off', 'no', ''].includes(String(value).toLowerCase());
+  }
 
   function readUrlFlag() {
-    try {
-      const search = global?.location?.search || '';
-      if (!search) return null;
-      const params = new URLSearchParams(search);
-      for (const key of URL_KEYS) {
-        if (!params.has(key)) continue;
-        const value = String(params.get(key) || '1').toLowerCase();
-        return !['0', 'false', 'off', 'no'].includes(value);
-      }
-    } catch (_) {}
-    return null;
+    const value = getEnvironment()?.readQueryFlag?.(URL_KEYS);
+    return typeof value === 'boolean' ? value : null;
   }
 
   function readStorageFlag() {
+    const environment = getEnvironment();
+    const value = environment?.readStoredFlag?.(STORAGE_KEY, { fallback: false });
+    if (typeof value === 'boolean') return value;
+    return parseFlagValue(environment?.readStoredValue?.(STORAGE_KEY), false);
+  }
+
+  function writeStorageFlag(value) {
     try {
-      const value = global?.localStorage?.getItem?.(STORAGE_KEY);
-      if (value === null || value === undefined) return false;
-      return !['0', 'false', 'off', 'no', ''].includes(String(value).toLowerCase());
-    } catch (_) {
-      return false;
-    }
+      if (value) getEnvironment()?.writeStoredValue?.(STORAGE_KEY, '1');
+      else getEnvironment()?.removeStoredValue?.(STORAGE_KEY);
+    } catch (_) {}
   }
 
   function enabled() {
     const urlFlag = readUrlFlag();
     if (urlFlag !== null) {
-      try {
-        if (urlFlag) global?.localStorage?.setItem?.(STORAGE_KEY, '1');
-        else global?.localStorage?.removeItem?.(STORAGE_KEY);
-      } catch (_) {}
+      writeStorageFlag(urlFlag);
       return urlFlag;
     }
     return readStorageFlag();
   }
 
   function getBootState() {
-    let storageValue = null;
-    try {
-      storageValue = global?.localStorage?.getItem?.(STORAGE_KEY) ?? null;
-    } catch (_) {}
+    const environment = getEnvironment();
+    const page = environment?.getPageInfo?.() || {};
+    const storageValue = environment?.readStoredValue?.(STORAGE_KEY) ?? null;
     return {
       enabled: enabled(),
-      search: global?.location?.search || '',
+      search: page.search || '',
       storageKey: STORAGE_KEY,
       storageValue,
     };
   }
 
   function setEnabled(value) {
-    try {
-      if (value) global?.localStorage?.setItem?.(STORAGE_KEY, '1');
-      else global?.localStorage?.removeItem?.(STORAGE_KEY);
-    } catch (_) {}
+    writeStorageFlag(value);
     return enabled();
   }
 
@@ -243,7 +246,7 @@
       },
       territoryCount: Array.isArray(state.territoryState?.territories) ? state.territoryState.territories.length : 0,
       worldExplorerState: summarizeWorldExplorerState(state.worldExplorerState),
-      tutorialStep: Number(state.tutorial?.currentStep || 0),
+      tutorialStep: state.tutorial?.currentStep ?? 0,
     };
   }
 
@@ -271,7 +274,7 @@
       mission: summarizeMission(data.mission),
       gameState: summarizeGameState(data.gameState),
       authority: summarizeAuthority(data.authority),
-      tutorialStep: Number(data.tutorial?.currentStep || data.gameState?.tutorial?.currentStep || 0),
+      tutorialStep: data.tutorial?.currentStep ?? data.gameState?.tutorial?.currentStep ?? 0,
       syncTime: data.syncTime || '',
     };
   }
@@ -353,6 +356,7 @@
   const api = {
     enabled,
     setEnabled,
+    setEnvironmentProvider,
     getBootState,
     log,
     logDedup,

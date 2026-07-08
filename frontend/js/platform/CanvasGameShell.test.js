@@ -3,27 +3,47 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-require('../domain/WorldTime');
-require('../domain/WorldMarchProgressSnapshot');
-const WorldMapRenderSnapshot = require('../domain/WorldMapRenderSnapshot');
+require('../ecs/foundation/WorldTime');
+require('../ecs/system/WorldMarchProgressSnapshot');
+require('../ecs/projection/WorldMapVisibilityModel');
+require('../ecs/projection/WorldFogVisualSnapshot');
+require('../ecs/system/WorldMarchSystem');
+require('../ecs/system/FogRevealModel');
+require('../ecs/mode/EcsModeRuntimeEntry');
+const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
+const BattleStore = require('../state/BattleStore');
+const ModalStore = require('../state/ModalStore');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
 
-const SHELL_MODULES = [
+// Modal presence is a single global ModalStore (no per-host owner). Reset it before
+// each test so a blocking panel opened by one test cannot leak into another host's
+// routing decisions.
+test.beforeEach(() => {
+  ModalStore.closeAll();
+});
+
+const RETIRED_SHELL_MODULES = [
   'CanvasGameShellMounting',
   'CanvasGameShellInputRouter',
   'CanvasGameShellCommands',
   'CanvasGameShellGuideUi',
-  'CanvasGameShellWorldMapLayerBridge',
+  'CanvasGameShellWorldMapLayerRuntime',
   'CanvasGameShellWorldMapDragRuntime',
   'CanvasGameShellWorldMapFrameRuntime',
   'CanvasGameShellWorldMapRuntime',
   'CanvasGameWorldActorAnimationRuntime',
   'CanvasGameShellRenderingRuntime',
+  'CanvasGameShellTechTreeView',
+  'CanvasGameShellTransitionTimers',
   'CanvasGameShellSystemUi',
 ];
 
-test('CanvasGameShell installs responsibility modules into the compatibility facade', () => {
+function makeModalHost(fields = {}) {
+  return Object.assign(new CanvasGameShell({}), fields);
+}
+
+test('CanvasGameShell owns retired responsibility methods directly', () => {
   const proto = CanvasGameShell.prototype;
   const expectedMethods = {
     mounting: ['createRenderer', 'mount'],
@@ -32,7 +52,8 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
     guideUi: ['getCanvasTarget', 'showTutorialHighlight', 'hideTutorialHighlight'],
     worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
     actorAnimation: ['startWorldActorAnimationLoop', 'stopWorldActorAnimationLoop', 'renderWorldActorAnimationFrame'],
-    renderingRuntime: ['renderActive', 'renderReadOnly', 'buildRenderOptions', 'setTechTreeZoom'],
+    renderingRuntime: ['renderActive', 'renderReadOnly', 'buildRenderOptions'],
+    techTreeView: ['getTechTreePan', 'setTechTreePan', 'getTechTreeZoom', 'setTechTreeZoom'],
     systemUi: ['applyAuthShell', 'showLoading', 'setNetworkState', 'startBattleScene'],
     layerRegistry: ['ensureCanvasLayer', 'setCanvasLayerTranslate', 'setCanvasLayerVisible', 'getCanvasLayerMetrics'],
     debugOverlay: ['isDebugOverlayEnabled', 'createDebugOverlaySnapshot'],
@@ -40,7 +61,7 @@ test('CanvasGameShell installs responsibility modules into the compatibility fac
 
   Object.entries(expectedMethods).forEach(([group, methods]) => {
     methods.forEach((method) => {
-      assert.equal(typeof proto[method], 'function', `${group}.${method} should be installed`);
+      assert.equal(typeof proto[method], 'function', `${group}.${method} should live on CanvasGameShell`);
     });
   });
 });
@@ -92,7 +113,7 @@ test('CanvasGameShell awaits world tile cache prewarm during asset preload', asy
   ]);
 });
 
-test('index.html loads CanvasGameShell modules before the facade', () => {
+test('index.html loads CanvasGameShell without retired split modules', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const facadePosition = html.indexOf('CanvasGameShell.js');
   assert.notEqual(facadePosition, -1);
@@ -100,32 +121,14 @@ test('index.html loads CanvasGameShell modules before the facade', () => {
   assert.notEqual(layerRegistryPosition, -1, 'CanvasLayerRegistry.js should be loaded');
   assert.equal(layerRegistryPosition < facadePosition, true, 'CanvasLayerRegistry.js should load before CanvasGameShell.js');
 
-  SHELL_MODULES.forEach((moduleName) => {
-    const modulePosition = html.indexOf(`${moduleName}.js`);
-    assert.notEqual(modulePosition, -1, `${moduleName}.js should be loaded`);
-    assert.equal(modulePosition < facadePosition, true, `${moduleName}.js should load before CanvasGameShell.js`);
+  RETIRED_SHELL_MODULES.forEach((moduleName) => {
+    assert.equal(html.includes(`${moduleName}.js`), false, `${moduleName}.js should not be loaded`);
   });
   assert.equal(
-    html.indexOf('CanvasGameShellWorldMapRuntimePolicy.js') < html.indexOf('CanvasGameShellWorldMapRuntime.js'),
+    html.indexOf('WorldMapRuntimePolicy.js') < html.indexOf('CanvasGameAppRenderScheduler.js'),
     true,
-    'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameShellWorldMapRuntime.js',
+    'WorldMapRuntimePolicy.js should load before CanvasGameAppRenderScheduler.js',
   );
-  assert.equal(
-    html.indexOf('CanvasGameShellWorldMapRuntimePolicy.js') < html.indexOf('CanvasGameAppRenderScheduler.js'),
-    true,
-    'CanvasGameShellWorldMapRuntimePolicy.js should load before CanvasGameAppRenderScheduler.js',
-  );
-  [
-    'CanvasGameShellWorldMapLayerBridge.js',
-    'CanvasGameShellWorldMapDragRuntime.js',
-    'CanvasGameShellWorldMapFrameRuntime.js',
-  ].forEach((scriptName) => {
-    assert.equal(
-      html.indexOf(scriptName) < html.indexOf('CanvasGameShellWorldMapRuntime.js'),
-      true,
-      `${scriptName} should load before CanvasGameShellWorldMapRuntime.js`,
-    );
-  });
 });
 
 test('CanvasGameShell owns canvas layer lifecycle through the registry', () => {
@@ -171,7 +174,94 @@ test('CanvasGameShell owns canvas layer lifecycle through the registry', () => {
   ]);
 });
 
-test('CanvasGameShell maps the main HUD layer to the primary input canvas', () => {
+test('CanvasGameShell presents the fog layer after every fog render or clear', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: false } },
+    runtime: {
+      presentLayer(name) {
+        calls.push(['presentLayer', name]);
+        return true;
+      },
+    },
+  });
+  shell.worldFogRenderer = {
+    clear() {
+      calls.push(['clear']);
+      return true;
+    },
+  };
+
+  // Fog disabled → the content pass clears the webgl surface; the wrapper must still present
+  // so the 2d presentation canvas reflects the cleared surface in the same task.
+  assert.equal(shell.renderWorldFogLayer({ tileMapView: {}, viewport: {}, frame: {} }), false);
+  assert.deepEqual(calls, [['clear'], ['presentLayer', 'worldFog']]);
+});
+
+test('CanvasGameShell presents the fog layer when hiding the world map stack', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
+    runtime: {
+      setLayerVisible(name, visible) {
+        calls.push(['setLayerVisible', name, visible]);
+        return true;
+      },
+      presentLayer(name) {
+        calls.push(['presentLayer', name]);
+        return true;
+      },
+    },
+  });
+  shell.worldFogRenderer = {
+    clear() {
+      calls.push(['clear']);
+      return true;
+    },
+  };
+  shell.worldActorLayerRenderer = {
+    clearAll() {
+      calls.push(['actorClearAll']);
+      return true;
+    },
+  };
+
+  shell.setWorldMapLayerVisible(false);
+
+  assert.deepEqual(calls, [
+    ['setLayerVisible', 'worldMap', false],
+    ['setLayerVisible', 'worldFog', false],
+    ['setLayerVisible', 'worldActor', false],
+    ['clear'],
+    ['presentLayer', 'worldFog'],
+    ['actorClearAll'],
+    ['presentLayer', 'worldActor'],
+  ]);
+});
+
+test('CanvasGameShell routes the main HUD layer through the runtime layer surface', () => {
+  const calls = [];
+  const hudSurface = { id: 'hudSurface' };
+  const shell = new CanvasGameShell({
+    runtime: {
+      ensureCanvas() {
+        calls.push(['ensureCanvas']);
+        return { id: 'visible' };
+      },
+      ensureLayerCanvas(name, options) {
+        calls.push(['ensureLayerCanvas', name, options]);
+        return hudSurface;
+      },
+    },
+  });
+
+  assert.equal(shell.ensureCanvasLayer('mainHud'), hudSurface);
+  assert.deepEqual(calls, [
+    ['ensureLayerCanvas', 'mainHud', { zIndex: 1000, pointerEvents: 'auto', role: 'screen-hud-input' }],
+  ]);
+});
+
+test('CanvasGameShell falls back to the visible canvas for mainHud without layer support', () => {
   const calls = [];
   const primaryCanvas = { id: 'main' };
   const shell = new CanvasGameShell({
@@ -179,10 +269,6 @@ test('CanvasGameShell maps the main HUD layer to the primary input canvas', () =
       ensureCanvas() {
         calls.push(['ensureCanvas']);
         return primaryCanvas;
-      },
-      ensureLayerCanvas(name, options) {
-        calls.push(['ensureLayerCanvas', name, options]);
-        return { name, options };
       },
     },
   });
@@ -218,14 +304,14 @@ test('CanvasGameShell layer helpers ignore disabled feature layers', () => {
 
 test('CanvasGameShell refreshes tutorial highlight after naming input is filled', async () => {
   const calls = [];
-  const game = {
+  const game = makeModalHost({
     tutorialController: {
       refreshCurrentHighlight() {
         calls.push(['refreshCurrentHighlight']);
         return true;
       },
     },
-  };
+  });
   const shell = new CanvasGameShell({
     runtime: {
       requestTextInput() {
@@ -239,21 +325,21 @@ test('CanvasGameShell refreshes tutorial highlight after naming input is filled'
     },
   });
   shell.lastGame = game;
-  shell.naming = {
+  shell.openNamingSnapshot({
     visible: true,
     view: { title: 'Name city', maxLength: 12 },
     inputValue: '',
     submitting: false,
-  };
+  });
   shell.renderActive = () => {
-    calls.push(['renderActive', shell.naming.inputValue]);
+    calls.push(['renderActive', shell.getNamingInputValue()]);
     return true;
   };
 
   assert.equal(shell.requestNamingInput(), true);
   await Promise.resolve();
 
-  assert.equal(shell.naming.inputValue, 'River City');
+  assert.equal(shell.getRendererSnapshot().modal['modal:naming'].payload.inputValue, 'River City');
   assert.deepEqual(calls, [
     ['requestTextInput'],
     ['renderActive', 'River City'],
@@ -294,6 +380,7 @@ test('CanvasGameShell falls back to layer transform when drag snapshot refresh m
   assert.deepEqual(offset, { x: 32, y: -18 });
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldMap', 32, -18])), true);
   assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldActor', 32, -18])), true);
+  assert.equal(calls.some((call) => JSON.stringify(call) === JSON.stringify(['setLayerTranslate', 'worldActorSpine', 32, -18])), true);
 });
 
 test('CanvasGameShell does not mount world fog by default', () => {
@@ -365,6 +452,8 @@ test('CanvasGameShell mounts actor overlay with a context separate from the terr
       this.viewportHeight = options.viewportHeight || this.height;
       this.viewportOffsetX = options.viewportOffsetX || 0;
       this.viewportOffsetY = options.viewportOffsetY || 0;
+      this.worldMapRenderer = { rendererKind: 'worldMapChild' };
+      this.worldMapLayerRenderer = { rendererKind: 'worldMapLayerChild' };
     }
     setAssetsChangedHandler() {}
   }
@@ -413,6 +502,12 @@ test('CanvasGameShell mounts actor overlay with a context separate from the terr
   assert.equal(shell.worldMapRenderer.worldActorOverlayCtx, shell.worldActorLayerRenderer.ctx);
   assert.equal(shell.worldMapRenderer.worldActorOverlaySeparate, true);
   assert.equal(shell.worldActorLayerRenderer.worldActorOverlaySeparate, true);
+  assert.equal(shell.worldMapRenderer.worldActorLayerRenderer, shell.worldActorLayerRenderer);
+  assert.equal(
+    shell.worldMapRenderer.worldMapRenderer.worldActorLayerRenderer,
+    shell.worldActorLayerRenderer,
+  );
+  assert.equal(shell.worldActorLayerRenderer.worldMapRenderer, shell.worldMapRenderer);
   assert.deepEqual(shell.worldActorOverlayAssembly, {
     enabled: true,
     canvasCreated: true,
@@ -557,7 +652,7 @@ test('CanvasGameShell mounts world fog as a WebGL layer when the feature flag is
   assert.equal(contexts.some((call) => call[0] === 'worldFog' && call[1] === '2d'), false);
 });
 
-test('CanvasGameShell routes enabled fog rendering through the visual plugin registry', () => {
+test('CanvasGameShell routes enabled fog rendering through the ECS fog owner', () => {
   const shell = new CanvasGameShell({
     config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
   });
@@ -594,12 +689,6 @@ test('CanvasGameShell routes enabled fog rendering through the visual plugin reg
       viewport: renderSnapshot.viewport,
       geometry: tileMapView.geometry,
       frame: renderSnapshot.frame,
-    },
-    lastWorldFogContext: {
-      tileMapView,
-      viewport: renderSnapshot.viewport,
-      geometry: tileMapView.geometry,
-      frame: renderSnapshot.frame,
       entries: [],
     },
   };
@@ -608,24 +697,18 @@ test('CanvasGameShell routes enabled fog rendering through the visual plugin reg
     return true;
   };
 
-  assert.equal(shell.renderWorldFogLayer(), true);
+  assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), true);
 
   const renderCall = calls.find((call) => call[0] === 'renderWorldFog');
+  assert.equal(shell.getLastFogProjection().schema, 'fog-projection-v1');
   assert.equal(renderCall?.[1]?.fogVisualSnapshot?.schema, 'world-fog-visual-snapshot-v1');
   assert.equal(renderCall?.[1]?.entries.length, 2);
   assert.equal(renderCall?.[1]?.entries[0].tile.visible, true);
 });
 
-test('CanvasGameShell does not invoke visual fog plugins when fog is disabled', () => {
+test('CanvasGameShell does not invoke the ECS fog owner when fog is disabled', () => {
   const shell = new CanvasGameShell({});
   const calls = [];
-  const previousRegistry = global.WorldMapVisualPluginRegistry;
-  global.WorldMapVisualPluginRegistry = {
-    createRendererContext() {
-      calls.push(['createRendererContext']);
-      return null;
-    },
-  };
   shell.worldFogRenderer = {
     renderWorldFog() {
       calls.push(['renderWorldFog']);
@@ -636,20 +719,17 @@ test('CanvasGameShell does not invoke visual fog plugins when fog is disabled', 
     },
   };
   shell.worldMapRenderer = {
-    lastWorldFogContext: {
+    lastWorldTileMapContext: {
       tileMapView: { tiles: [] },
       viewport: { scale: 1 },
       frame: { x: 0, y: 0, width: 100, height: 100 },
     },
   };
 
-  try {
-    assert.equal(shell.renderWorldFogLayer(), false);
-  } finally {
-    global.WorldMapVisualPluginRegistry = previousRegistry;
-  }
+  assert.equal(shell.renderWorldFogLayer(shell.worldMapRenderer.lastWorldTileMapContext), false);
 
   assert.deepEqual(calls, [['clear']]);
+  assert.equal(shell.getLastFogProjection?.(), null);
 });
 
 test('CanvasGameShell keeps debug overlays disabled by default', () => {
@@ -706,6 +786,32 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   const options = shell.buildRenderOptions('military', {});
 
   assert.equal(options.now, 4321.25);
+});
+
+test('CanvasGameShell reads battleScene render options from BattleStore only', () => {
+  const shell = new CanvasGameShell({
+    runtime: {
+      now() {
+        return 1234;
+      },
+    },
+  });
+  BattleStore.closeEntityBattle();
+  BattleStore.openBattleScene({
+    visible: true,
+    report: { id: 'snapshot-report' },
+    turnIndex: 0,
+  });
+  shell.lastGame = {
+    state: { currentTab: 'military', militaryView: 'army' },
+    tutorial: {},
+  };
+  shell.battleScene = { visible: true, report: { id: 'removed-shell-mirror' }, turnIndex: 0 };
+
+  const options = shell.buildRenderOptions('military', {});
+
+  assert.equal(options.battleScene.report.id, 'snapshot-report');
+  BattleStore.closeBattleScene();
 });
 
 test('CanvasGameShell treats tutorial advisor dialogue as a blocking overlay', () => {
@@ -990,8 +1096,12 @@ test('CanvasGameShell can render resources without default map-home coercion', (
   assert.equal(shell.renderReadOnly(state, 'resources', { forceMapHome: false, allowDefaultMapHome: false }), true);
 
   assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
-  assert.equal(state.currentTab, 'resources');
-  assert.equal(state.militaryView, 'army');
+  // renderReadOnly honors its name: the input `state` object is not mutated; the
+  // resolved tab/view land on the canonical owner via StateWriter (single write point).
+  assert.equal(state.currentTab, 'military');
+  assert.equal(state.militaryView, 'world');
+  assert.equal(shell.lastGame.state.currentTab, 'resources');
+  assert.equal(shell.lastGame.state.militaryView, 'army');
   assert.equal(shell.mapHomeActive, false);
 });
 
@@ -1061,19 +1171,11 @@ test('CanvasGameShell renders HUD with the latest shared world actor selection',
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    territoryController: {
-      getUiState() {
-        return {
-          selectedWorldActorId: '',
-          worldMarchTarget: null,
-          worldPanX: 12,
-          worldPanY: -4,
-        };
-      },
-    },
     territoryUiState: {
       selectedWorldActorId: 'explore-active-1',
       worldMarchTarget: null,
+      worldPanX: 12,
+      worldPanY: -4,
     },
     tutorial: {},
   };
@@ -1162,9 +1264,114 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
   assert.equal(shell.renderReadOnly(state, 'military'), true);
 
   assert.deepEqual(calls, [
-    ['renderRuntimeWorldMap', 'military', false],
+    ['renderRuntimeWorldMap', 'military', true],
     ['visible', true],
     ['render', true, false],
+  ]);
+});
+
+test('CanvasGameShell refreshes actor overlay when a valid baked map layer is reused', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+    worldExplorerState: {
+      idleMissions: [{
+        id: 'explore-idle',
+        status: 'idle',
+        current: { q: 1, r: 0, tileId: 'tile_1_0' },
+        homeOrigin: { q: 0, r: 0, tileId: 'tile_0_0' },
+      }],
+    },
+  };
+  const mapContext = {
+    frame: { x: 0, y: 0, width: 300, height: 200 },
+    tileMapView: { tiles: [{ id: 'tile_0_0' }] },
+    viewport: { scale: 1 },
+  };
+  const runtime = {
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+    bakedLayerState: {
+      epoch: 2,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    },
+    lastTileMapContext: mapContext,
+    getBakedLayerState() {
+      return this.bakedLayerState;
+    },
+    getLastTileMapContext() {
+      return this.lastTileMapContext;
+    },
+    isMapBakeDirty() {
+      calls.push(['isMapBakeDirty']);
+      return false;
+    },
+    syncHitTargetsFromRenderer(options) {
+      calls.push(['syncHitTargetsFromRenderer', options]);
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', options.skipWorldMapLayer, options.worldMapRuntimeContext]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.getCanvasLayerBackingStoreState = () => ({
+    epoch: 2,
+    width: 300,
+    height: 200,
+    pixelRatio: 1,
+    reason: 'valid',
+  });
+  shell.getCanvasLayerMetrics = () => ({ width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 });
+  shell.setWorldMapLayerVisible = (visible) => {
+    calls.push(['visible', visible]);
+    return true;
+  };
+  shell.renderRuntimeWorldMap = () => {
+    calls.push(['renderRuntimeWorldMap']);
+    return true;
+  };
+  shell.renderWorldActorLayer = (options) => {
+    calls.push([
+      'renderWorldActorLayer',
+      options.state.worldExplorerState.idleMissions[0].id,
+      options.worldMapRuntimeContext,
+      options.preserveRuntimeHitTargetsOnEmpty,
+    ]);
+    return true;
+  };
+  shell.worldActorLayerRenderer = {};
+  shell.worldMapRenderer = {};
+  shell.worldMapRuntime = runtime;
+  shell.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+  };
+
+  assert.equal(shell.renderReadOnly(state, 'military'), true);
+
+  assert.equal(calls.some((call) => call[0] === 'renderRuntimeWorldMap'), false);
+  assert.deepEqual(calls, [
+    ['isMapBakeDirty'],
+    ['visible', true],
+    ['render', true, mapContext],
+    ['renderWorldActorLayer', 'explore-idle', mapContext, true],
   ]);
 });
 
@@ -1176,15 +1383,17 @@ test('CanvasGameShell does not skip map layer when hit targets are preserved but
     territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
   };
   const runtime = {
-    baseHitTargets: [{ action: { type: 'enterCity' } }],
     hasBakedMapLayer: true,
-    hitTargets: [{ action: { type: 'enterCity' } }],
-    lastHitTargetSync: {
-      baseHitTargetCount: 1,
-      hitTargetCount: 1,
-      mapTargetCount: 0,
-      preserved: true,
-      sourceHitTargetCount: 0,
+    worldMapInputState: {
+      baseHitTargets: [{ action: { type: 'enterCity' } }],
+      hitTargets: [{ action: { type: 'enterCity' } }],
+      lastHitTargetSync: {
+        baseHitTargetCount: 1,
+        hitTargetCount: 1,
+        mapTargetCount: 0,
+        preserved: true,
+        sourceHitTargetCount: 0,
+      },
     },
     mapBakeDirty: false,
     bakedLayerState: {
@@ -1195,6 +1404,15 @@ test('CanvasGameShell does not skip map layer when hit targets are preserved but
     },
     getBakedLayerState() {
       return this.bakedLayerState;
+    },
+    getBaseHitTargets() {
+      return this.worldMapInputState.baseHitTargets;
+    },
+    getHitTargets() {
+      return this.worldMapInputState.hitTargets;
+    },
+    getLastHitTargetSync() {
+      return this.worldMapInputState.lastHitTargetSync;
     },
     isMapBakeDirty() {
       return false;
@@ -1249,6 +1467,84 @@ test('CanvasGameShell does not skip map layer when hit targets are preserved but
   ]);
 });
 
+test('CanvasGameShell forces world map redraw instead of hiding an invalid baked layer', () => {
+  const calls = [];
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+  };
+  const runtime = {
+    hasBakedMapLayer: true,
+    mapBakeDirty: false,
+    bakedLayerState: {
+      epoch: 1,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    },
+    getBakedLayerState() {
+      return this.bakedLayerState;
+    },
+    isMapBakeDirty() {
+      return false;
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(renderState, options) {
+        calls.push(['render', options.skipWorldMapLayer, options.preserveCanvas]);
+      },
+    },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.getCanvasLayerBackingStoreState = () => ({
+    epoch: 2,
+    width: 300,
+    height: 200,
+    pixelRatio: 1,
+    reason: 'resize',
+  });
+  shell.getCanvasLayerMetrics = () => ({ width: 300, height: 200, viewportWidth: 280, viewportHeight: 180, padding: 10 });
+  shell.setWorldMapLayerVisible = (visible) => {
+    calls.push(['visible', visible]);
+    return true;
+  };
+  shell.renderRuntimeWorldMap = (renderState, options) => {
+    calls.push(['renderRuntimeWorldMap', Boolean(options.force)]);
+    runtime.bakedLayerState = {
+      epoch: 2,
+      width: 300,
+      height: 200,
+      pixelRatio: 1,
+    };
+    return true;
+  };
+  shell.worldMapRenderer = {};
+  shell.worldMapRuntime = runtime;
+  shell.worldMapRuntimeCoordinator = {
+    canRender() {
+      return true;
+    },
+    getMapRuntime() {
+      return runtime;
+    },
+  };
+
+  assert.equal(shell.renderReadOnly(state, 'military'), true);
+
+  assert.deepEqual(calls, [
+    ['renderRuntimeWorldMap', true],
+    ['visible', true],
+    ['render', true, false],
+  ]);
+});
+
 test('CanvasGameShell keeps guided resource render target during active refreshes', () => {
   const calls = [];
   const state = {
@@ -1281,8 +1577,12 @@ test('CanvasGameShell keeps guided resource render target during active refreshe
   assert.equal(shell.renderActive(), true);
 
   assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
-  assert.equal(state.currentTab, 'resources');
-  assert.equal(state.militaryView, 'army');
+  // renderReadOnly honors its name: the input `state` object is not mutated; the
+  // resolved tab/view land on the canonical owner via StateWriter (single write point).
+  assert.equal(state.currentTab, 'military');
+  assert.equal(state.militaryView, 'world');
+  assert.equal(shell.lastGame.state.currentTab, 'resources');
+  assert.equal(shell.lastGame.state.militaryView, 'army');
   assert.equal(shell.mapHomeActive, false);
 });
 
@@ -1307,14 +1607,14 @@ test('CanvasGameShell routes map command tech tree drag through command panel hi
       },
     },
   });
-  shell.lastGame = {
+  shell.lastGame = makeModalHost({
     state: { currentTab: 'military', militaryView: 'world' },
     mapHomeActive: true,
     getActiveTab() {
       return 'military';
     },
-  };
-  shell.activeCommandPanel = 'tech';
+  });
+  shell.lastGame.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
 
   assert.equal(shell.handleDrag('start', { x: 120, y: 420 }, {}), true);
   assert.equal(shell.handleDrag('move', { x: 150, y: 460 }, {}), true);
@@ -1360,14 +1660,14 @@ test('CanvasGameShell routes map command tech tree wheel zoom at tree hit target
       },
     },
   });
-  shell.lastGame = {
+  shell.lastGame = makeModalHost({
     state: { currentTab: 'military', militaryView: 'world' },
     mapHomeActive: true,
     getActiveTab() {
       return 'military';
     },
-  };
-  shell.activeCommandPanel = 'tech';
+  });
+  shell.lastGame.openBlockingPanelSnapshot('activeCommandPanel', 'tech');
 
   assert.equal(shell.handleGesture({ type: 'wheelZoom', scaleDelta: 1.1, centerX: 180, centerY: 520 }, event), true);
 
@@ -1400,7 +1700,6 @@ test('CanvasGameShell resolves guide targets in rendered hit order', () => {
 test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial', () => {
   const calls = [];
   const game = {
-    showFamousPersons: true,
     famousPersonsPage: 2,
     selectedFamousPersonId: 'fp-scout',
     tutorialController: {
@@ -1417,16 +1716,13 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
     },
   });
   shell.lastGame = game;
-  shell.showFamousPersons = true;
-  shell.famousPersonsPage = 1;
-  shell.selectedFamousPersonId = 'fp-scout';
+  shell.openBlockingPanelSnapshot('showFamousPersons', true);
 
   assert.equal(shell.closeFamousPersons(), true);
 
-  assert.equal(shell.showFamousPersons, false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.equal(shell.famousPersonsPage, 0);
   assert.equal(shell.selectedFamousPersonId, '');
-  assert.equal(game.showFamousPersons, false);
   assert.equal(game.famousPersonsPage, 0);
   assert.equal(game.selectedFamousPersonId, '');
   assert.deepEqual(calls, [['clearFamousSkillTooltip'], ['onFamousPersonsClosed']]);
@@ -1435,7 +1731,6 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
 test('CanvasGameShell action controller advances tutorial after closeFamousPersons tap', () => {
   const calls = [];
   const game = {
-    showFamousPersons: true,
     famousPersonsPage: 2,
     selectedFamousPersonId: 'fp-scout',
     tutorialController: {
@@ -1461,9 +1756,7 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
     },
   });
   shell.lastGame = game;
-  shell.showFamousPersons = true;
-  shell.famousPersonsPage = 1;
-  shell.selectedFamousPersonId = 'fp-scout';
+  shell.openBlockingPanelSnapshot('showFamousPersons', true);
   shell.renderActive = () => {
     calls.push(['renderActive']);
     return true;
@@ -1471,8 +1764,7 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
 
   assert.equal(shell.actionController.handle({ type: 'closeFamousPersons' }), true);
 
-  assert.equal(shell.showFamousPersons, false);
-  assert.equal(game.showFamousPersons, false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.deepEqual(calls, [
     ['clearFamousSkillTooltip'],
     ['renderActive'],
@@ -1822,7 +2114,7 @@ test('CanvasGameShell lets reward reveal close above tutorial highlight', () => 
       },
     },
   });
-  shell.rewardReveal = { rewardText: '+10' };
+  shell.openRewardRevealSnapshot({ rewardText: '+10' });
   shell.tutorialHighlight = {
     allowedAction: { type: 'buildBuilding', buildingId: 'farm' },
   };
@@ -2716,4 +3008,48 @@ test('CanvasGameShell routes active missions kept in mission list to actor anima
   assert.equal(calls.some((call) => call[0] === 'updateWorldActorAnimationLoop'), true);
   assert.equal(calls.some((call) => call[0] === 'renderWorldMapLayerFrame'), false);
   assert.equal(calls.some((call) => call[0] === 'renderAnimationFrame'), false);
+});
+
+test('CanvasGameShell animates fog by re-rendering the fog layer only', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    config: { FEATURES: { FOG_OF_WAR_ENABLED: true } },
+    runtime: {},
+  });
+  let nowMs = 100000;
+  shell.now = () => nowMs;
+  shell.getWorldEpochNowMs = () => nowMs;
+  shell.isWorldMapDragging = () => false;
+  const frameContext = { tileMapView: {}, viewport: {}, frame: {} };
+  shell.getCanonicalWorldTileMapContext = () => frameContext;
+  // Fog facts are projected fresh from (state, worldClock) inside the projection, so
+  // animating fog must NOT re-render the terrain stack — only the fog layer.
+  shell.refreshWorldMapLayerFromSnapshot = () => {
+    throw new Error('fog animation must not re-render the terrain stack');
+  };
+  shell.renderWorldFogLayer = (context, options) => {
+    calls.push(['fog', context, options.epochNowMs]);
+    return true;
+  };
+
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), true);
+  nowMs += 50;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false, 'throttled inside 125ms');
+  nowMs += 100;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), true);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0][1], frameContext, 'geometry comes from the canonical frame context');
+  assert.equal(calls[1][2], nowMs, 'facts are projected for the current world clock instant');
+
+  // Drag frames already refresh the full stack every frame — the animator must yield.
+  shell.isWorldMapDragging = () => true;
+  nowMs += 200;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
+  assert.equal(calls.length, 2);
+
+  // Without a committed frame context there is no geometry to draw against.
+  shell.isWorldMapDragging = () => false;
+  shell.getCanonicalWorldTileMapContext = () => null;
+  nowMs += 200;
+  assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
 });

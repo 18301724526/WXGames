@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const { toNumber } = require('../../../shared/numberUtils');
 
 const SCHEMA = 'command-authority-contract-v1';
 
@@ -32,11 +33,6 @@ function normalizeIntent(intent = {}) {
       serverTime,
     }),
   };
-}
-
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
 }
 
 function round(value, digits = 3) {

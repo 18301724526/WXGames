@@ -3,7 +3,7 @@
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../domain/TileCoord');
+        return require('../../ecs/foundation/TileCoord');
       } catch (_error) {
         return null;
       }
@@ -14,28 +14,89 @@
   class WorldMapWaterLayerRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.worldMapRenderState = options.worldMapRenderState || this.host?.worldMapRenderState || null;
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
+    }
+
+    get ctx() {
+      return this.host?.ctx || null;
+    }
+
+    withRenderCtx(ctx, callback) {
+      if (typeof this.host?.withRenderCtx === 'function') return this.host.withRenderCtx(ctx, callback);
+      return callback?.();
+    }
+
+    get worldTileFastDragActive() {
+      return Boolean(this.worldMapCacheState?.worldTileFastDragActive);
+    }
+
+    get worldTileWaterLayerCache() {
+      return this.worldMapCacheState?.worldTileWaterLayerCache || null;
+    }
+
+    set worldTileWaterLayerCache(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileWaterLayerCache = value || null;
+    }
+
+    get worldTileWaterLayerCacheKey() {
+      return this.worldMapCacheState?.worldTileWaterLayerCacheKey || '';
+    }
+
+    set worldTileWaterLayerCacheKey(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileWaterLayerCacheKey = value || '';
+    }
+
+    get worldTileWaterFrameCaches() {
+      return this.worldMapCacheState?.worldTileWaterFrameCaches || null;
+    }
+
+    get worldTileWaterChunkCaches() {
+      return this.worldMapCacheState?.worldTileWaterChunkCaches || null;
+    }
+
+    get worldTileWaterChunkCacheTick() {
+      return Number(this.worldMapCacheState?.worldTileWaterChunkCacheTick) || 0;
+    }
+
+    set worldTileWaterChunkCacheTick(value) {
+      if (this.worldMapCacheState) this.worldMapCacheState.worldTileWaterChunkCacheTick = Number(value) || 0;
+    }
+
+    get worldTileWaterTimeOverride() {
+      return this.worldMapRenderState?.worldTileWaterTimeOverride ?? null;
+    }
+
+    getNow() {
+      return this.host?.getNow?.() ?? Date.now();
+    }
+
+    getWorldTileStaticChunkCacheLimit(...args) {
+      return this.host?.getWorldTileStaticChunkCacheLimit?.(...args) || 32;
+    }
+
+    getWorldTileStaticCacheScale(...args) {
+      return this.host?.getWorldTileStaticCacheScale?.(...args) || 1;
+    }
+
+    getWorldTileStaticChunkCacheScale(...args) {
+      return this.host?.getWorldTileStaticChunkCacheScale?.(...args) || 1;
+    }
+
+    resolveWorldTileStaticCacheLayout(...args) {
+      return this.host?.resolveWorldTileStaticCacheLayout?.(...args) || null;
+    }
+
+    createWorldTileLayerWork(...args) {
+      return this.host?.createWorldTileLayerWork?.(...args) || null;
+    }
+
+    renderWorldTileWaterEntries(...args) {
+      return this.host?.renderWorldTileWaterEntries?.(...args) || false;
+    }
+
+    drawWorldTileLayerCache(...args) {
+      return this.host?.drawWorldTileLayerCache?.(...args) || false;
     }
 
     getWorldMapCachePolicy() {
@@ -231,31 +292,44 @@
 
     withWaterFrameCacheContext(work = {}, layout = {}, callback = null) {
       if (!work?.ctx || !layout?.frame || typeof callback !== 'function') return false;
-      const previousCtx = this.ctx;
-      this.ctx = work.ctx;
-      try {
+      // The water frame bake draws through host-resolved renderers, so the work ctx must
+      // be scoped on the ctx owner for the duration of the bake.
+      return this.withRenderCtx(work.ctx, () => {
         work.ctx.setTransform?.(1, 0, 0, 1, 0, 0);
         work.ctx.clearRect?.(0, 0, work.pixelWidth || work.width, work.pixelHeight || work.height);
         work.ctx.setTransform?.(work.scale || 1, 0, 0, work.scale || 1, 0, 0);
         work.ctx.globalAlpha = 1;
         work.ctx.globalCompositeOperation = 'source-over';
         work.ctx.save?.();
-        work.ctx.translate?.(-(Number(layout.frame.x) || 0), -(Number(layout.frame.y) || 0));
-        return callback(work);
-      } finally {
-        work.ctx.restore?.();
-        this.ctx = previousCtx;
-      }
+        try {
+          work.ctx.translate?.(-(Number(layout.frame.x) || 0), -(Number(layout.frame.y) || 0));
+          return callback(work);
+        } finally {
+          work.ctx.restore?.();
+        }
+      });
     }
 
     renderWaterEntriesIntoFrameCache(tileMapView = {}, layout = {}, waterEntries = [], frameIndex = 0) {
       return this.withWaterFrameCacheContext(layout.work, layout, () => {
-        this.renderWorldTileWaterEntries(
-          tileMapView,
-          layout.renderViewport,
-          waterEntries,
-          this.getWorldTileWaterFrameTimeMs(frameIndex),
-        );
+        const waterEntryRenderer = this.host?.worldMapWaterEntryRenderer || null;
+        if (waterEntryRenderer?.withRenderCtx) {
+          waterEntryRenderer.withRenderCtx(layout.work.ctx, () => {
+            this.renderWorldTileWaterEntries(
+              tileMapView,
+              layout.renderViewport,
+              waterEntries,
+              this.getWorldTileWaterFrameTimeMs(frameIndex),
+            );
+          });
+        } else {
+          this.renderWorldTileWaterEntries(
+            tileMapView,
+            layout.renderViewport,
+            waterEntries,
+            this.getWorldTileWaterFrameTimeMs(frameIndex),
+          );
+        }
         return true;
       });
     }

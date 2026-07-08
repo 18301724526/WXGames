@@ -1,5 +1,7 @@
 const WorldMapService = require('./WorldMapService');
+const WorldMarchCore = require('../../shared/worldMarchCore');
 const { hashString } = require('../../shared/signatureHash');
+const { toInteger } = require('../../shared/numberUtils');
 
 const WORLD_AI_SCHEMA = 'world-ai-explorer-v1';
 const DEFAULT_AI_FACTION_ID = 'ai-frontier';
@@ -10,11 +12,6 @@ const DEFAULT_REVEAL_RADIUS = 0;
 const MAX_ADVANCE_STEPS = 6;
 const MAX_SYNC_TILES_PER_PASS = 64;
 const DIRECTION_SEQUENCE = Object.freeze(['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne']);
-
-function toInteger(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.floor(number) : fallback;
-}
 
 function toTimestamp(value, fallback = 0) {
   if (value === null || value === undefined || value === '') return fallback;
@@ -95,9 +92,10 @@ function normalizeWorldAi(rawWorldAi = {}, now = new Date()) {
 
 function getTerrainPenalty(seed, coord) {
   const terrain = WorldMapService.chooseTerrain(seed, coord.q, coord.r);
-  if (terrain === 'ocean') return 1000;
+  // Same water rule as player marches: ocean and river tiles are no-go; 'shore'
+  // is plain marchable land (no penalty entry).
+  if (WorldMarchCore.isMarchBlockedTerrain(terrain)) return 1000;
   if (terrain === 'mountain') return 8;
-  if (terrain === 'river') return 3;
   return 0;
 }
 
@@ -158,7 +156,8 @@ function revealAiArea(gameState, explorer, q, r, now = new Date()) {
 
 function getPlayerRevealedTiles(gameState) {
   const worldMap = WorldMapService.ensureWorldMap(gameState);
-  return (worldMap.tiles || []).filter((tile) => tile && tile.visible !== false && tile.visibility !== 'hidden');
+  // Reveal predicate SSOT lives in WorldMapService — no hand-rolled visibility check here.
+  return (worldMap.tiles || []).filter((tile) => WorldMapService.isTileRevealed(tile));
 }
 
 function getAiTilesByCanonicalId(gameState) {

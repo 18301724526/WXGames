@@ -1,32 +1,45 @@
-const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
+const {
+  TUTORIAL_STEPS,
+  stepEquals,
+  stepAtLeast,
+  stepAtMost,
+  stepBefore,
+} = require('../../../shared/tutorialFlowConfig');
 const { normalizeTutorialState } = require('./TutorialState');
 
 function canAccessTab(tutorialState, tabKey) {
-  const TUTORIAL_STEPS = TutorialFlowConfig.TUTORIAL_STEPS;
   const tutorial = normalizeTutorialState(tutorialState);
   if (tutorial.completed || tutorial.disabled) return true;
   const step = tutorial.currentStep;
 
-  if (step < TUTORIAL_STEPS.houseBuilt) return ['resources', 'buildings', 'military'].includes(tabKey);
-  if (step < TUTORIAL_STEPS.eraAdvancedTo1) return ['resources', 'civilization', 'buildings', 'military'].includes(tabKey);
-  if (step <= TUTORIAL_STEPS.farmBuilt) return ['civilization', 'buildings'].includes(tabKey);
-  if (step === TUTORIAL_STEPS.era2AdvanceReady) return tabKey === 'civilization';
-  if (step === TUTORIAL_STEPS.eraAdvancedTo2) return ['civilization', 'events'].includes(tabKey);
-  if (step === TUTORIAL_STEPS.specialEventTabOpened) return tabKey === 'events';
-  if (step === TUTORIAL_STEPS.specialEventClaimed) return ['events', 'buildings'].includes(tabKey);
-  if (step === TUTORIAL_STEPS.buildingsTabOpenedForLumbermill) return ['buildings', 'resources'].includes(tabKey);
-  if (step === TUTORIAL_STEPS.lumbermillBuilt) return ['buildings', 'resources'].includes(tabKey);
-  if (step === TUTORIAL_STEPS.era3AdvanceReady) return ['civilization', 'buildings', 'tasks'].includes(tabKey);
-  if (step >= TUTORIAL_STEPS.era3Advanced && step < TUTORIAL_STEPS.scoutFormationSaved) {
+  // 'tasks' opens from the very start: the homestead-supplies task is claimed
+  // at cityEntered, before the first house exists.
+  if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'buildings', 'military', 'tasks'].includes(tabKey);
+  if (stepBefore(step, TUTORIAL_STEPS.eraAdvancedTo1)) return ['resources', 'civilization', 'buildings', 'military'].includes(tabKey);
+  if (stepAtMost(step, TUTORIAL_STEPS.farmBuilt)) return ['civilization', 'buildings'].includes(tabKey);
+  if (stepEquals(step, TUTORIAL_STEPS.era2AdvanceReady)) return tabKey === 'civilization';
+  if (stepEquals(step, TUTORIAL_STEPS.eraAdvancedTo2)) return ['civilization', 'events'].includes(tabKey);
+  if (stepEquals(step, TUTORIAL_STEPS.specialEventTabOpened)) return tabKey === 'events';
+  if (stepEquals(step, TUTORIAL_STEPS.specialEventClaimed)) return ['events', 'buildings'].includes(tabKey);
+  if (stepEquals(step, TUTORIAL_STEPS.buildingsTabOpenedForLumbermill)) return ['buildings', 'resources'].includes(tabKey);
+  if (stepEquals(step, TUTORIAL_STEPS.lumbermillBuilt)) return ['buildings', 'resources'].includes(tabKey);
+  if (stepEquals(step, TUTORIAL_STEPS.era3AdvanceReady)) return ['civilization', 'buildings', 'tasks'].includes(tabKey);
+  // Barracks segment (era3Advanced..scoutFamousGranted): the player claims the
+  // barracks-supplies / first-army / scout-officer tasks and builds the
+  // barracks, so 'tasks' + 'buildings' must open here.
+  if (stepAtLeast(step, TUTORIAL_STEPS.era3Advanced) && stepBefore(step, TUTORIAL_STEPS.scoutFamousGranted)) {
+    return ['resources', 'buildings', 'tasks'].includes(tabKey);
+  }
+  if (stepAtLeast(step, TUTORIAL_STEPS.scoutFamousGranted) && stepBefore(step, TUTORIAL_STEPS.scoutFormationSaved)) {
     return ['resources', 'military', 'civilization'].includes(tabKey);
   }
-  if (step >= TUTORIAL_STEPS.polityNamed && step <= TUTORIAL_STEPS.talentPolicyApplied) {
+  if (stepAtLeast(step, TUTORIAL_STEPS.polityNamed) && stepAtMost(step, TUTORIAL_STEPS.talentPolicyApplied)) {
     return tabKey === 'military';
   }
-  if (step >= TUTORIAL_STEPS.manualTalentAssigned && step < TUTORIAL_STEPS.famousSeekCompleted) {
+  if (stepAtLeast(step, TUTORIAL_STEPS.manualTalentAssigned) && stepBefore(step, TUTORIAL_STEPS.famousSeekCompleted)) {
     return ['resources', 'famousPersons'].includes(tabKey);
   }
-  if (step >= TUTORIAL_STEPS.famousSeekCompleted && step < TUTORIAL_STEPS.completed) {
+  if (stepAtLeast(step, TUTORIAL_STEPS.famousSeekCompleted) && stepBefore(step, TUTORIAL_STEPS.completed)) {
     return tabKey === 'tech';
   }
   return true;

@@ -1,17 +1,95 @@
 const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget');
+const { SchemaMigrationService } = require('../services/SchemaMigrationService');
 const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
+const { PlayerStateLockRepository } = require('./PlayerStateLockRepository');
+const { FactionRepository } = require('./FactionRepository');
+const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
+const { WorldPeopleRepository } = require('./WorldPeopleRepository');
+const { WorldCityRepository } = require('./WorldCityRepository');
+const { WorldEncounterRepository } = require('./WorldEncounterRepository');
+const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
+
+const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
+  ['revision', 'revision INTEGER DEFAULT 0'],
+  ['tutorial', 'tutorial TEXT'],
+  ['saveMetadata', 'saveMetadata TEXT'],
+  ['softGuideState', 'softGuideState TEXT'],
+  ['talentPolicies', 'talentPolicies TEXT'],
+  ['famousPeople', 'famousPeople TEXT'],
+  ['famousPersonState', 'famousPersonState TEXT'],
+  ['taskProgress', 'taskProgress TEXT'],
+  ['military', 'military TEXT'],
+  ['regularEventState', 'regularEventState TEXT'],
+  ['activeBuffs', 'activeBuffs TEXT'],
+  ['threatEventState', 'threatEventState TEXT'],
+  ['polity', 'polity TEXT'],
+  ['territories', 'territories TEXT'],
+  ['worldMap', 'worldMap TEXT'],
+  ['worldCombat', 'worldCombat TEXT'],
+  ['activeCityId', 'activeCityId TEXT'],
+  ['cities', 'cities TEXT'],
+  ['scoutedCoordinates', 'scoutedCoordinates TEXT'],
+  ['scoutState', 'scoutState TEXT'],
+  ['exploreMissions', 'exploreMissions TEXT'],
+  ['worldMarchClientReports', 'worldMarchClientReports TEXT'],
+  ['worldMarchVerification', 'worldMarchVerification TEXT'],
+  ['worldAi', 'worldAi TEXT'],
+  ['warMissions', 'warMissions TEXT'],
+  ['scoutReports', 'scoutReports TEXT'],
+]);
+
+function createGameStateSchemaMigrations() {
+  return [{
+    id: '001-game-states-compat-columns',
+    description: 'Backfill compatibility columns that predate the schema_migrations ledger.',
+    statements: GAME_STATE_COMPAT_COLUMNS.map(([, definition]) => `ALTER TABLE game_states ADD COLUMN ${definition}`),
+    apply(db) {
+      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
+      for (const [name, definition] of GAME_STATE_COMPAT_COLUMNS) {
+        if (!columns.has(name)) {
+          db.prepare(`ALTER TABLE game_states ADD COLUMN ${definition}`).run();
+        }
+      }
+    },
+  }, {
+    // ②b: pending captured-general decisions (斩杀/招降/放生). A new column (not a compat backfill),
+    // so it needs its own migration to land on existing DBs; fresh DBs get it from CREATE TABLE.
+    id: '002-capture-decisions-column',
+    description: 'Add captureDecisions column for the garrison-capture (②b) decision queue.',
+    statements: ['ALTER TABLE game_states ADD COLUMN captureDecisions TEXT'],
+    apply(db) {
+      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
+      if (!columns.has('captureDecisions')) {
+        db.prepare('ALTER TABLE game_states ADD COLUMN captureDecisions TEXT').run();
+      }
+    },
+  }];
+}
 
 class GameStateRepository {
   constructor(db) {
     this.db = db;
+    this.playerStateLocks = new PlayerStateLockRepository(db);
     this.spawnAuthority = new SpawnAuthorityRepository(db);
     this.worldMapAuthority = new WorldMapAuthorityRepository(db);
+    // Shared-world AI + neutral 势力 registry (docs/design/01). Player factions derive from
+    // game_states; this holds the world-authored ones. Additive — see FactionRepository.
+    this.factionRepo = new FactionRepository(db);
+    this.factionDiplomacyRepo = new FactionDiplomacyRepository(db);
+    // Shared-world people registry (docs/design/02): 在野武将 + AI-faction officers. Player rosters
+    // stay in game_states.famousPeople; the logical registry = this table ∪ every player's roster.
+    this.worldPeopleRepo = new WorldPeopleRepository(db);
+    // Shared-world PRE-PLACED NEUTRAL cities (docs/design/10 §3.2, march-discovery refactor S3). One
+    // canonical copy every player shares; per-player world-map visibility controls what each player sees.
+    this.worldCityRepo = new WorldCityRepository(db, { worldSeed: DEFAULT_WORLD_SEED });
+    this.worldEncounterRepo = new WorldEncounterRepository(db, { worldSeed: DEFAULT_WORLD_SEED });
   }
 
   stripProjectionFields(gameState) {
     if (!gameState || typeof gameState !== 'object') return gameState;
     delete gameState.sharedWorldTerritories;
+    delete gameState.sharedWorldEncounters;
     return gameState;
   }
 
@@ -39,6 +117,7 @@ class GameStateRepository {
         gameDay INTEGER,
         eventQueue TEXT,
         eventHistory TEXT,
+        captureDecisions TEXT,
         regularEventState TEXT,
         threatEventState TEXT,
         activeBuffs TEXT,
@@ -63,6 +142,7 @@ class GameStateRepository {
         exploreMissions TEXT,
         worldMarchClientReports TEXT,
         worldMarchVerification TEXT,
+        worldCombat TEXT,
         worldAi TEXT,
         warMissions TEXT,
         scoutReports TEXT,
@@ -77,90 +157,74 @@ class GameStateRepository {
       CREATE INDEX IF NOT EXISTS idx_players_last_active_at ON players(lastActiveAt DESC);
       CREATE INDEX IF NOT EXISTS idx_shared_world_territories_owner ON shared_world_territories(ownerPlayerId);
     `);
+    this.playerStateLocks.init();
     this.spawnAuthority.init();
     this.worldMapAuthority.init();
-
-    const columns = this.db.prepare("PRAGMA table_info(game_states)").all();
-    if (!columns.some((column) => column.name === 'revision')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN revision INTEGER DEFAULT 0').run();
-    }
-    if (!columns.some((column) => column.name === 'tutorial')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN tutorial TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'saveMetadata')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN saveMetadata TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'softGuideState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN softGuideState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'talentPolicies')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN talentPolicies TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'famousPeople')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN famousPeople TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'famousPersonState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN famousPersonState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'taskProgress')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN taskProgress TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'military')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN military TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'regularEventState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN regularEventState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'activeBuffs')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN activeBuffs TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'threatEventState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN threatEventState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'polity')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN polity TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'territories')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN territories TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldMap')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMap TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'activeCityId')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN activeCityId TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'cities')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN cities TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'scoutedCoordinates')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutedCoordinates TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'scoutState')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutState TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'exploreMissions')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN exploreMissions TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldMarchClientReports')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMarchClientReports TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldMarchVerification')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldMarchVerification TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'worldAi')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN worldAi TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'warMissions')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN warMissions TEXT').run();
-    }
-    if (!columns.some((column) => column.name === 'scoutReports')) {
-      this.db.prepare('ALTER TABLE game_states ADD COLUMN scoutReports TEXT').run();
-    }
+    this.factionRepo.init();
+    this.factionDiplomacyRepo.init();
+    this.worldPeopleRepo.init();
+    this.worldCityRepo.init();
+    this.worldEncounterRepo.init();
+    new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
+    this.ensureWorldCitiesSeeded();
+    this.ensureWorldEncountersSeeded();
+  }
+
+  // Idempotent one-time lay-down of the shared PRE-PLACED NEUTRAL city layer (docs/design/10 §3.2,
+  // §6-R8). World-level (not per-player) — the cities are a shared single copy off the fixed world
+  // anchor, so this seeds once at world init, mirroring where the faction/people world registries are
+  // initialized. WorldCityRepository.ensureSeeded short-circuits on hasAny, so re-running init (a fresh
+  // GameStateRepository over the same DB) never grows or duplicates the set. Placement reserves against
+  // every already-occupied spawn coordinate (player capitals + shared occupied territories + reserved
+  // spawns — §6-R3) so a neutral city never lands on a spawn/capital tile.
+  ensureWorldCitiesSeeded() {
+    const occupiedTileIds = new Set();
+    for (const coordinate of this.spawnAuthority.getOccupiedSpawnCoordinates()) {
+      const q = Number(coordinate?.q);
+      const r = Number(coordinate?.r);
+      if (Number.isFinite(q) && Number.isFinite(r)) {
+        occupiedTileIds.add(`tile_${Math.floor(q)}_${Math.floor(r)}`);
+      }
+    }
+    return this.worldCityRepo.ensureSeeded({ occupiedTileIds });
+  }
+
+  ensureWorldEncountersSeeded() {
+    const occupiedTileIds = new Set();
+    for (const coordinate of this.getOccupiedSpawnCoordinates()) {
+      const q = Number(coordinate?.q);
+      const r = Number(coordinate?.r);
+      if (Number.isFinite(q) && Number.isFinite(r)) {
+        occupiedTileIds.add(`tile_${Math.floor(q)}_${Math.floor(r)}`);
+      }
+    }
+    return this.worldEncounterRepo.ensureSeeded({ occupiedTileIds });
+  }
+
+  getOccupiedWorldCityCoordinates() {
+    return this.worldCityRepo.getAllCities()
+      .map((city) => {
+        const q = Number(city?.x ?? city?.q);
+        const r = Number(city?.y ?? city?.r);
+        if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+        return {
+          q: Math.floor(q),
+          r: Math.floor(r),
+          territoryId: city.id,
+          source: 'world-city',
+          blocksTile: true,
+          blocksDistance: false,
+        };
+      })
+      .filter(Boolean);
   }
 
   getOccupiedSpawnCoordinates(options = {}) {
-    return this.spawnAuthority.getOccupiedSpawnCoordinates(options);
+    return [
+      ...this.spawnAuthority.getOccupiedSpawnCoordinates(options),
+      ...(options.includeWorldCities === false ? [] : this.getOccupiedWorldCityCoordinates()),
+    ];
   }
 
   getSpawnForPlayer(playerId) {
@@ -169,6 +233,10 @@ class GameStateRepository {
 
   reserveSpawnForPlayer(playerId, assignment, options = {}) {
     return this.spawnAuthority.reserveSpawn(playerId, assignment, options);
+  }
+
+  ensureCompanionCityForPlayerSpawn(playerId, spawn, options = {}) {
+    return this.worldCityRepo.ensureCompanionCityForSpawn(playerId, spawn, options);
   }
 
   releaseSpawnForPlayer(playerId) {
@@ -193,6 +261,7 @@ class GameStateRepository {
       gameDay: row.gameDay || 1,
       eventQueue: JSON.parse(row.eventQueue || '[]'),
       eventHistory: JSON.parse(row.eventHistory || '[]'),
+      captureDecisions: JSON.parse(row.captureDecisions || '[]'),
       regularEventState: row.regularEventState ? JSON.parse(row.regularEventState) : null,
       threatEventState: row.threatEventState ? JSON.parse(row.threatEventState) : null,
       activeBuffs: JSON.parse(row.activeBuffs || '[]'),
@@ -217,6 +286,7 @@ class GameStateRepository {
       exploreMissions: row.exploreMissions ? JSON.parse(row.exploreMissions) : null,
       worldMarchClientReports: row.worldMarchClientReports ? JSON.parse(row.worldMarchClientReports) : null,
       worldMarchVerification: row.worldMarchVerification ? JSON.parse(row.worldMarchVerification) : null,
+      worldCombat: row.worldCombat ? JSON.parse(row.worldCombat) : null,
       worldAi: row.worldAi ? JSON.parse(row.worldAi) : undefined,
       warMissions: row.warMissions ? JSON.parse(row.warMissions) : null,
       scoutReports: row.scoutReports ? JSON.parse(row.scoutReports) : null,
@@ -231,10 +301,22 @@ class GameStateRepository {
   }
 
   getClientProjectionForPlayer(playerId) {
+    // The player-OWNED shared territories (occupied cities of every OTHER player) — the pre-existing
+    // projection, unchanged.
+    const ownedShared = this.getSharedWorldTerritories({ excludePlayerId: playerId });
+    // The shared PRE-PLACED NEUTRAL cities (one canonical copy, docs/design/10 §3.2). Every player
+    // gets the SAME set, so this reads the whole world_cities table with no per-player exclusion. Both
+    // consumers of `sharedWorldTerritories` receive the FULL set: the route/discovery planning context
+    // (WorldExplorerProgression / WorldExplorerRoutePlanner) needs to reserve against and discover
+    // undiscovered cities, so it must see them all. The CLIENT map DTO is visibility-gated separately,
+    // inside TerritoryClientAssembler.getClientTerritoryState (§6-R2): a neutral city whose tile the
+    // player has not revealed is dropped there; a spawn companion city is visible because spawn
+    // materialization binds its tile in that player's world map.
+    const neutralCities = this.worldCityRepo.getAllCities();
+    const sharedWorldEncounters = this.worldEncounterRepo.getAllEncounters();
     return {
-      sharedWorldTerritories: this.getSharedWorldTerritories({
-        excludePlayerId: playerId,
-      }),
+      sharedWorldTerritories: [...ownedShared, ...neutralCities],
+      sharedWorldEncounters,
     };
   }
 
@@ -326,8 +408,8 @@ class GameStateRepository {
         famousPeople, famousPersonState, taskProgress, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, worldMarchClientReports, worldMarchVerification,
-        worldAi, warMissions, scoutReports, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        worldCombat, worldAi, warMissions, scoutReports, updatedAt, captureDecisions
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(playerId) DO UPDATE SET
         revision = excluded.revision,
         saveMetadata = excluded.saveMetadata,
@@ -366,17 +448,22 @@ class GameStateRepository {
         exploreMissions = excluded.exploreMissions,
         worldMarchClientReports = excluded.worldMarchClientReports,
         worldMarchVerification = excluded.worldMarchVerification,
+        worldCombat = excluded.worldCombat,
         worldAi = excluded.worldAi,
         warMissions = excluded.warMissions,
         scoutReports = excluded.scoutReports,
-        updatedAt = excluded.updatedAt
+        updatedAt = excluded.updatedAt,
+        captureDecisions = excluded.captureDecisions
     `).run(
       gameState.playerId,
       revision,
       JSON.stringify(saveMetadata),
-      JSON.stringify(gameState.resources || {}),
-      JSON.stringify(gameState.buildings || {}),
-      JSON.stringify(gameState.population || {}),
+      // Legacy top-level resources/buildings/population/military columns are vestigial: the
+      // sole truth now lives in the cities[] column. Persist null so nothing perpetuates the
+      // old dual-write mirror. (CUT 7 — columns kept for backward-compatible reads of pre-cities rows.)
+      null,
+      null,
+      null,
       JSON.stringify(gameState.techs || {}),
       JSON.stringify(gameState.techEffects || {}),
       gameState.currentEra || 0,
@@ -395,7 +482,7 @@ class GameStateRepository {
       JSON.stringify(gameState.famousPeople || []),
       JSON.stringify(gameState.famousPersonState || {}),
       JSON.stringify(gameState.taskProgress || {}),
-      JSON.stringify(gameState.military || {}),
+      null,
       JSON.stringify(gameState.regularEventState || {}),
       JSON.stringify(gameState.threatEventState || {}),
       JSON.stringify(gameState.activeBuffs || []),
@@ -409,10 +496,12 @@ class GameStateRepository {
       JSON.stringify(gameState.exploreMissions || []),
       JSON.stringify(gameState.worldMarchClientReports || {}),
       JSON.stringify(gameState.worldMarchVerification || null),
+      JSON.stringify(gameState.worldCombat || null),
       JSON.stringify(gameState.worldAi || {}),
       JSON.stringify(gameState.warMissions || []),
       JSON.stringify(gameState.scoutReports || []),
       updatedAt,
+      JSON.stringify(gameState.captureDecisions || []),
     );
   }
 
@@ -529,6 +618,10 @@ class GameStateRepository {
 
   touchPlayerActiveAt(playerId) {
     this.db.prepare('UPDATE players SET lastActiveAt = ? WHERE playerId = ?').run(new Date().toISOString(), playerId);
+  }
+
+  withPlayerStateLock(playerId, callback, options = {}) {
+    return this.playerStateLocks.withLock(playerId, callback, options);
   }
 }
 

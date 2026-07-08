@@ -1,19 +1,54 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const TechTreeLayoutModel = global.TechTreeLayoutModel || (typeof require !== 'undefined' ? require('./TechTreeLayoutModel') : null);
   const TechTreeCanvasRenderer = global.TechTreeCanvasRenderer || (typeof require !== 'undefined' ? require('./TechTreeCanvasRenderer') : null);
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class TechCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
       this.drawingSurface = options.drawingSurface || null;
+      this.techRenderState = options.techRenderState || this.host?.techRenderState || { lastTechTreeScroll: null };
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get ctx() {
@@ -24,93 +59,35 @@
       return this.host?.presenter;
     }
 
+    t(key, params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
+    }
+
     get lastTechTreeScroll() {
-      return this.host?.lastTechTreeScroll;
+      return this.techRenderState?.lastTechTreeScroll || null;
     }
 
     set lastTechTreeScroll(value) {
-      if (this.host) this.host.lastTechTreeScroll = value;
+      if (this.techRenderState) this.techRenderState.lastTechTreeScroll = value || null;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
-
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawAsset(...args) {
-      return this.callDrawingSurface('drawAsset', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawCircle(...args) {
-      return this.callDrawingSurface('drawCircle', args);
-    }
-
-    drawCurvePath(...args) {
-      return this.callDrawingSurface('drawCurvePath', args);
-    }
-
-    drawLine(...args) {
-      return this.callDrawingSurface('drawLine', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawPrimaryActionButton(...args) {
-      return this.callDrawingSurface('drawPrimaryActionButton', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    renderSectionHeader(...args) {
-      return this.callDrawingSurface('renderSectionHeader', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
-    }
-
-    withTransformedClip(...args) {
-      return this.callDrawingSurface('withTransformedClip', args);
-    }
-
-    withTranslatedClip(...args) {
-      return this.callDrawingSurface('withTranslatedClip', args);
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawCircle(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawCircle === 'function' ? surface.drawCircle(...args) : this.host?.drawCircle?.(...args); }
+    drawCurvePath(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawCurvePath === 'function' ? surface.drawCurvePath(...args) : this.host?.drawCurvePath?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawPrimaryActionButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPrimaryActionButton === 'function' ? surface.drawPrimaryActionButton(...args) : this.host?.drawPrimaryActionButton?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    renderSectionHeader(...args) { const surface = this.drawingSurface; return surface && typeof surface.renderSectionHeader === 'function' ? surface.renderSectionHeader(...args) : this.host?.renderSectionHeader?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
+    withTransformedClip(...args) { const surface = this.drawingSurface; return surface && typeof surface.withTransformedClip === 'function' ? surface.withTransformedClip(...args) : this.host?.withTransformedClip?.(...args); }
+    withTranslatedClip(...args) { const surface = this.drawingSurface; return surface && typeof surface.withTranslatedClip === 'function' ? surface.withTranslatedClip(...args) : this.host?.withTranslatedClip?.(...args); }
 
     render(state = {}, startY = 210, panelHeight = 250, options = {}) {
       return this.renderTechInternal(state, startY, panelHeight, options);
@@ -198,7 +175,7 @@
         width: 1.5,
       });
       const titleWidth = Math.max(54, rect.width + 16);
-      this.drawText(this.truncateText(node.title || node.name || '科技', titleWidth, { size: 10, bold: true }), cx, rect.y + rect.height - 13, {
+      this.drawText(this.truncateText(node.title || node.name || this.t('tech.generic', {}), titleWidth, { size: 10, bold: true }), cx, rect.y + rect.height - 13, {
         size: 11,
         bold: true,
         align: 'center',
@@ -215,32 +192,28 @@
       const buttonX = x + width - actionWidth - 12;
       const buttonY = y + 14;
       const buttonH = 30;
-      this.drawPanel(x, y, width, height, {
-        fill: 'rgba(45, 34, 24, 0.82)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
+      ModalPlate.drawModalCard(this, x, y, width, height, { tone: selected ? 'accent' : 'default' });
       const topY = y + 12;
       this.drawAsset('assets/art/icon-science-cutout.webp', x + 12, topY + 2, iconSize, iconSize, selected ? 0.95 : 0.58);
       const textX = x + 12 + iconSize + 10;
       const contentRight = buttonX - 10;
       const contentWidth = Math.max(116, contentRight - textX);
       const titleWidth = Math.max(80, contentWidth);
-      this.drawText(this.truncateText(detail.title || '选择一个科技', titleWidth, { size: 15, bold: true }), textX, y + 14, {
+      this.drawText(this.truncateText(detail.title || this.t('tech.detail.emptyTitle', {}), titleWidth, { size: 15, bold: true }), textX, y + 14, {
         size: 15,
         bold: true,
         color: '#ffe6b5',
       });
       const meta = selected
         ? [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · ')
-        : (detail.statusLabel || '未选择');
+        : (detail.statusLabel || this.t('tech.status.unselected', {}));
       this.drawText(this.truncateText(meta, contentWidth, { size: 10, bold: true }), textX, y + 36, {
         size: 10,
         bold: true,
         color: detail.canResearch ? '#74d3a0' : '#f0b45b',
       });
       const summaryWidth = Math.max(120, width - 24);
-      const summaryLines = this.wrapTextLimit(detail.summary || '点击科技节点查看效果。', summaryWidth, 1, { size: 10 });
+      const summaryLines = this.wrapTextLimit(detail.summary || this.t('tech.detail.emptySummary', {}), summaryWidth, 1, { size: 10 });
       this.drawTextLines(summaryLines, textX, y + 54, {
         size: 10,
         color: '#cbbd96',
@@ -252,21 +225,23 @@
         const infoWidth = width - 24;
         const rows = Array.isArray(detail.effectRows) && detail.effectRows.length
           ? detail.effectRows
-          : [{ label: '研究后', text: detail.unlockSummary || '选择一条文明发展方向。' }];
+          : [{ label: this.t('tech.row.afterResearch', {}), text: detail.unlockSummary || this.t('tech.detail.directionFallback', {}) }];
         rows.slice(0, 2).forEach((row, index) => {
           const rowY = infoTop + index * 16;
-          this.drawText(`${row.label}：`, infoX, rowY, {
+          this.drawText(`${row.label}${this.t('common.labelSeparator', {})}`, infoX, rowY, {
             size: 10,
             bold: true,
             color: index === 0 ? '#d5ffe8' : '#f0b45b',
           });
-          this.drawText(this.truncateText(row.text || '无', infoWidth - 58, { size: 10 }), infoX + 58, rowY, {
+          this.drawText(this.truncateText(row.text || this.t('common.none', {}), infoWidth - 58, { size: 10 }), infoX + 58, rowY, {
             size: 10,
             color: '#cbbd96',
           });
         });
         const prerequisiteY = y + height - 18;
-        const prerequisiteText = `前置科技：${detail.prerequisiteText || '无'}`;
+        const prerequisiteText = this.t(
+          'tech.detail.prerequisite',
+          { text: detail.prerequisiteText || this.t('tech.noPrerequisite', {}) });
         this.drawText(this.truncateText(prerequisiteText, width - actionWidth - 42, { size: 10 }), infoX, prerequisiteY, { size: 10, color: '#aeb0b8' });
         this.drawText(this.truncateText(detail.pointsText || '', actionWidth + 8, { size: 10, bold: true }), buttonX + actionWidth / 2, prerequisiteY, {
           size: 10,
@@ -275,7 +250,8 @@
           align: 'center',
         });
       }
-      this.drawPrimaryActionButton(buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || '研究', {
+      ModalPlate.drawModalButton(this, buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || this.t('tech.action.research', {}), {
+        variant: 'primary',
         disabled: !detail.canResearch,
         size: 11,
         radius: 9,
@@ -304,51 +280,38 @@
     renderTechDetailModal(detail = {}) {
       if (!detail || detail.empty) return;
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeTechDetail' });
+      ModalPlate.drawModalMask(this);
       const layout = this.getLayout();
       const panelWidth = Math.min(layout.contentWidth - 24, 360);
       const panelHeight = Math.min(430, this.height - 160);
       const x = (this.width - panelWidth) / 2;
       const y = Math.max(86, (this.height - panelHeight) / 2 - 8);
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(54, 39, 26, 0.98)'],
-            [1, 'rgba(22, 18, 13, 0.98)'],
-          ],
-          'rgba(36, 28, 20, 0.98)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.24)',
-        radius: 14,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight);
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
-      const closeSize = 28;
-      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, '×', { size: 16, radius: 7 });
-      this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeTechDetail' });
+      const titleBar = ModalPlate.drawModalTitleBar(this, x, y, panelWidth, {
+        title: detail.title || this.t('tech.generic', {}),
+        subtitle: [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · '),
+        withClose: true,
+      });
+      if (titleBar.closeRect) this.addHitTarget(titleBar.closeRect, { type: 'closeTechDetail' });
 
       const iconSize = 58;
       const iconPath = this.getTechDetailIcon(detail);
-      this.drawCircle(x + 45, y + 48, 34, {
+      const contentTop = titleBar.contentTop + 12;
+      this.drawCircle(x + 45, contentTop + 28, 34, {
         fill: 'rgba(18, 16, 13, 0.64)',
         stroke: 'rgba(255, 226, 177, 0.22)',
         width: 1.5,
       });
-      this.drawAsset(iconPath, x + 16, y + 19, iconSize, iconSize, 0.98);
-      this.drawText(this.truncateText(detail.title || '科技', panelWidth - 118, { size: 17, bold: true }), x + 84, y + 22, {
-        size: 17,
-        bold: true,
-        color: '#ffe6b5',
-      });
-      const meta = [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · ');
-      this.drawText(this.truncateText(meta, panelWidth - 118, { size: 11, bold: true }), x + 84, y + 52, {
+      this.drawAsset(iconPath, x + 16, contentTop - 1, iconSize, iconSize, 0.98);
+      this.drawText(this.truncateText(detail.pointsText || '', panelWidth - 112, { size: 11, bold: true }), x + 84, contentTop + 24, {
         size: 11,
         bold: true,
         color: detail.canResearch ? '#74d3a0' : '#f0b45b',
       });
 
-      let cursorY = y + 92;
-      const summaryLines = this.wrapTextLimit(detail.summary || '选择科技查看效果。', panelWidth - 32, 3, { size: 12 });
+      let cursorY = contentTop + 72;
+      const summaryLines = this.wrapTextLimit(detail.summary || this.t('tech.detail.defaultSummary', {}), panelWidth - 32, 3, { size: 12 });
       this.drawTextLines(summaryLines, x + 16, cursorY, {
         size: 12,
         color: '#f6e8c8',
@@ -358,13 +321,13 @@
 
       const rows = Array.isArray(detail.effectRows) && detail.effectRows.length
         ? detail.effectRows
-        : [{ label: '研究后', text: detail.unlockSummary || '选择一条文明发展方向。' }];
+        : [{ label: this.t('tech.row.afterResearch', {}), text: detail.unlockSummary || this.t('tech.detail.directionFallback', {}) }];
       rows.slice(0, 4).forEach((row) => {
-        const label = `${row.label}：`;
+        const label = `${row.label}${this.t('common.labelSeparator', {})}`;
         this.drawText(label, x + 16, cursorY, { size: 11, bold: true, color: '#f0b45b' });
         this.ctx.font = '700 11px sans-serif';
         const labelWidth = Math.max(58, this.ctx.measureText(label).width + 2);
-        const rowLines = this.wrapTextLimit(row.text || '无', panelWidth - 32 - labelWidth, 2, { size: 11 });
+        const rowLines = this.wrapTextLimit(row.text || this.t('common.none', {}), panelWidth - 32 - labelWidth, 2, { size: 11 });
         this.drawTextLines(rowLines, x + 16 + labelWidth, cursorY, {
           size: 11,
           color: '#cbbd96',
@@ -373,7 +336,9 @@
         cursorY += Math.max(18, rowLines.length * 15 + 4);
       });
 
-      const prereqText = `前置科技：${detail.prerequisiteText || '无'}`;
+      const prereqText = this.t(
+        'tech.detail.prerequisite',
+        { text: detail.prerequisiteText || this.t('tech.noPrerequisite', {}) });
       this.drawText(this.truncateText(prereqText, panelWidth - 32, { size: 11 }), x + 16, cursorY + 4, {
         size: 11,
         color: '#aeb0b8',
@@ -395,7 +360,8 @@
         bold: true,
         color: '#f0b45b',
       });
-      this.drawPrimaryActionButton(buttonX, buttonY, buttonW, buttonH, detail.buttonLabel || '研究', {
+      ModalPlate.drawModalButton(this, buttonX, buttonY, buttonW, buttonH, detail.buttonLabel || this.t('tech.action.research', {}), {
+        variant: 'primary',
         disabled: !detail.canResearch,
         size: 13,
         radius: 8,
@@ -424,17 +390,20 @@
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
-      this.drawPanel(x, startY, width, panelHeight, {
-        fill: 'rgba(37, 29, 21, 0.88)',
-        stroke: 'rgba(255, 226, 177, 0.14)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      ModalPlate.drawModalCard(this, x, startY, width, panelHeight);
+      const palette = UiThemeTokens?.palette || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
       const headerHeight = 58;
-      this.renderSectionHeader(view.text.title, x + 16, startY + 14, '🔩');
-      this.drawText(this.truncateText(view.text.subtitle, width - 32, { size: 10 }), x + 16, startY + 36, {
+      this.drawAsset('assets/art/icon-science-cutout.webp', x + 16, startY + 14, 30, 30, 0.95);
+      this.drawText(this.truncateText(view.text.title, width - 150, { size: 16, bold: true }), x + 52, startY + 15, {
+        size: typeScale.title || 16,
+        bold: true,
+        color: palette.champagneGoldBright || '#ffe6b5',
+        fontFamily: UiThemeTokens?.fontFamily?.display,
+      });
+      this.drawText(this.truncateText(view.text.subtitle, width - 32, { size: 10 }), x + 52, startY + 38, {
         size: 10,
-        color: 'rgba(234, 234, 234, 0.62)',
+        color: palette.textLabel || 'rgba(234, 234, 234, 0.62)',
       });
       const pillY = startY + 14;
       const pillWidth = 68;
@@ -444,11 +413,7 @@
         view.text.available,
       ].forEach((label, index) => {
         const pillX = x + width - 12 - pillWidth * (3 - index) - 6 * (2 - index);
-        this.drawPanel(pillX, pillY, pillWidth, 24, {
-          fill: 'rgba(63, 47, 32, 0.78)',
-          stroke: 'rgba(255, 226, 177, 0.12)',
-          radius: 8,
-        });
+        ModalPlate.drawModalCard(this, pillX, pillY, pillWidth, 24, { tone: index === 0 ? 'accent' : 'default', radius: 8 });
         this.drawText(this.truncateText(label, pillWidth - 14, { size: 10, bold: index === 0 }), pillX + pillWidth / 2, pillY + 7, {
           size: 10,
           bold: index === 0,
@@ -460,11 +425,7 @@
       const panelY = startY + headerHeight;
       const panelBottom = startY + panelHeight - 14;
       const panelH = Math.max(116, panelBottom - panelY);
-      this.drawPanel(x + 12, panelY, width - 24, panelH, {
-        fill: 'rgba(28, 22, 16, 0.74)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
+      ModalPlate.drawModalCard(this, x + 12, panelY, width - 24, panelH, { tone: 'muted' });
 
       const tree = view.tree || {};
       const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];

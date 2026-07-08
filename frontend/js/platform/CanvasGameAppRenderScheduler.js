@@ -1,7 +1,7 @@
 (function (global) {
-  var WorldMapRuntimePolicy = global.CanvasGameShellWorldMapRuntimePolicy;
+  var WorldMapRuntimePolicy = global.WorldMapRuntimePolicy;
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimePolicy) {
-    WorldMapRuntimePolicy = require('./CanvasGameShellWorldMapRuntimePolicy');
+    WorldMapRuntimePolicy = require('./WorldMapRuntimePolicy');
   }
 
   function now(host = {}) {
@@ -21,8 +21,9 @@
   }
 
   function getRequestAnimationFrame(host = {}) {
-    const raf = host.runtime?.requestAnimationFrame || global.requestAnimationFrame;
-    return typeof raf === 'function' ? raf.bind(host.runtime || global) : null;
+    const raf = host.runtime?.requestAnimationFrame || host.scheduler?.requestAnimationFrame;
+    const owner = host.runtime?.requestAnimationFrame ? host.runtime : host.scheduler;
+    return typeof raf === 'function' ? raf.bind(owner) : null;
   }
 
   function getAnimationFrameMs(host = {}) {

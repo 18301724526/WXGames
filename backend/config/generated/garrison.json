@@ -1,0 +1,53 @@
+{
+  "schema": "config-table-v1",
+  "table": "garrison",
+  "description": "占城守军规则表 — 按“距首城的距离档”决定空城是否有守军、守军阵营/兵力/守将品质/重生。占领有守军的城需先打赢到达战斗。",
+  "generatedFrom": "config/tables/garrison.xlsx",
+  "idField": "bandId",
+  "rows": [
+    {
+      "bandId": "safe",
+      "maxDistance": 3,
+      "defended": false,
+      "ownerType": "neutral",
+      "baseSoldiers": 0,
+      "soldiersPerScale": 0,
+      "leaderQuality": "",
+      "captureChance": 0,
+      "recruitBaseRate": 0
+    },
+    {
+      "bandId": "near",
+      "maxDistance": 8,
+      "defended": true,
+      "ownerType": "city_state",
+      "baseSoldiers": 260,
+      "soldiersPerScale": 90,
+      "leaderQuality": "",
+      "captureChance": 0.25,
+      "recruitBaseRate": 0.5
+    },
+    {
+      "bandId": "frontier",
+      "maxDistance": 16,
+      "defended": true,
+      "ownerType": "tribe",
+      "baseSoldiers": 360,
+      "soldiersPerScale": 130,
+      "leaderQuality": "good",
+      "captureChance": 0.18,
+      "recruitBaseRate": 0.4
+    },
+    {
+      "bandId": "deep",
+      "maxDistance": 9999,
+      "defended": true,
+      "ownerType": "ruin_guardians",
+      "baseSoldiers": 520,
+      "soldiersPerScale": 170,
+      "leaderQuality": "great",
+      "captureChance": 0.12,
+      "recruitBaseRate": 0.3
+    }
+  ]
+}

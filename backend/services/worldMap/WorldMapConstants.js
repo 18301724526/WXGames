@@ -8,14 +8,11 @@ const CAPITAL_TILE_ID = 'tile_0_0';
 const START_REVEAL_RADIUS = 2;
 const START_SAFE_LAND_RADIUS = 1;
 const SCOUT_REVEAL_RADIUS = 1;
-const SCOUT_REVEAL_MAIN_LIMIT = 3;
-const SCOUT_REVEAL_BRANCH_LIMIT = 3;
-const SCOUT_REVEAL_TILE_LIMIT = 6;
 const WATER_FEATURE_CACHE_LIMIT = 64;
 const HOME_RIVER_LENGTH = 7;
 const RIVER_MOUTH_SCAN_RADIUS = 32;
 
-const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean'];
+const TERRAIN_TYPES = ['plains', 'forest', 'hills', 'mountain', 'waste', 'desert', 'river', 'ocean', 'shore'];
 const TILE_VISIBILITY_LEVELS = ['unknown', 'hidden', 'hinted', 'scouted', 'controlled'];
 const SIDE_ORDER = ['nw', 'ne', 'se', 'sw'];
 const SIDE_DIRECTIONS = {
@@ -52,17 +49,6 @@ const DIRECTION_VECTORS = {
   w: { q: -1, r: 0 },
   nw: { q: -1, r: -1 },
 };
-const SCOUT_REVEAL_BRANCH_SIDES = {
-  n: [{ q: -1, r: 0 }, { q: 1, r: 0 }],
-  ne: [{ q: 0, r: -1 }, { q: 1, r: 0 }],
-  e: [{ q: 0, r: -1 }, { q: 0, r: 1 }],
-  se: [{ q: 1, r: 0 }, { q: 0, r: 1 }],
-  s: [{ q: -1, r: 0 }, { q: 1, r: 0 }],
-  sw: [{ q: 0, r: 1 }, { q: -1, r: 0 }],
-  w: [{ q: 0, r: -1 }, { q: 0, r: 1 }],
-  nw: [{ q: -1, r: 0 }, { q: 0, r: -1 }],
-};
-
 module.exports = {
   CAPITAL_TILE_ID,
   DEFAULT_WORLD_SEED,
@@ -74,11 +60,7 @@ module.exports = {
   OCEAN_CORNER_BY_CORE_OFFSET,
   OCEAN_SHORE_EDGE_BY_CORE_OFFSET,
   RIVER_MOUTH_SCAN_RADIUS,
-  SCOUT_REVEAL_BRANCH_LIMIT,
-  SCOUT_REVEAL_BRANCH_SIDES,
-  SCOUT_REVEAL_MAIN_LIMIT,
   SCOUT_REVEAL_RADIUS,
-  SCOUT_REVEAL_TILE_LIMIT,
   SIDE_DIRECTIONS,
   SIDE_OPPOSITES,
   SIDE_ORDER,

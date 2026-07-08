@@ -1,4 +1,4 @@
-const BuildingState = require('../domain/BuildingState');
+const BuildingState = require('../modules/BuildingState');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
 const TutorialService = require('./TutorialService');
 const CityService = require('./CityService');
@@ -14,9 +14,7 @@ function deductResources(resources, cost) {
 function applyDerivedStats(gameState) {
   CityService.normalizeCities(gameState);
   const city = CityService.getActiveCity(gameState);
-  const effects = CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
-  return effects;
+  return CityService.applyDerivedStatsToCity(city, gameState);
 }
 
 function build(gameState, tutorialState, buildingId) {
@@ -28,7 +26,6 @@ function build(gameState, tutorialState, buildingId) {
   city.resources = deductResources(city.resources, validation.cost);
   city.buildings = BuildingState.build(city.buildings, buildingId, now);
   CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
   const effects = applyDerivedStats(gameState);
   const tutorialEvent = buildingId === 'farm'
     ? 'farmBuilt'
@@ -36,7 +33,9 @@ function build(gameState, tutorialState, buildingId) {
       ? 'lumbermillBuilt'
       : buildingId === 'house'
         ? 'houseBuilt'
-        : null;
+        : buildingId === 'barracks'
+          ? 'barracksBuilt'
+          : null;
   const nextTutorial = TutorialService.advanceTutorial(tutorialState, tutorialEvent);
   return {
     success: true,
@@ -58,7 +57,6 @@ function upgrade(gameState, tutorialState, buildingId) {
   city.resources = deductResources(city.resources, validation.cost);
   city.buildings = BuildingState.upgrade(city.buildings, buildingId, now);
   CityService.applyDerivedStatsToCity(city, gameState);
-  CityService.syncActiveCityToLegacyFields(gameState);
   const effects = applyDerivedStats(gameState);
   return {
     success: true,

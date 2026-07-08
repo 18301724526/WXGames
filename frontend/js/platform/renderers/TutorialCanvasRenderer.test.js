@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const TutorialAdvisorSpineLayoutConfig = require('./TutorialAdvisorSpineLayoutConfig');
 const TutorialAdvisorCanvasRenderer = require('./TutorialAdvisorCanvasRenderer');
 const TutorialAdvisorDialogueRenderer = require('./TutorialAdvisorDialogueRenderer');
 const TutorialDialogueLayer = require('./TutorialDialogueLayer');
@@ -571,7 +572,32 @@ test('TutorialAdvisorCanvasRenderer crops advisor images to cover target bounds'
   assert.deepEqual(drawImage.slice(2), [100, 0, 200, 200, 10, 20, 100, 100]);
 });
 
-test('TutorialAdvisorCanvasRenderer renders advisor spine on the full game frame', () => {
+test('TutorialAdvisorSpineLayoutConfig owns tuned advisor baseline and projection', () => {
+  const baselineHeight = 430 * (16 / 9);
+  const baseline = TutorialAdvisorSpineLayoutConfig.getAdvisorLayout({
+    width: 430,
+    height: baselineHeight,
+  });
+  const phone = TutorialAdvisorSpineLayoutConfig.getAdvisorLayout({
+    width: 390,
+    height: 390 * (16 / 9),
+  });
+
+  assert.deepEqual(baseline.portrait, { x: 0, y: 433, width: 158, height: 330 });
+  assert.equal(baseline.dialogueLeft, 126);
+  assert.deepEqual(baseline.clip, { mode: 'autoFromSkeletonBounds', clipPadding: 4 });
+  assert.equal(baseline.view.viewScale, 1.41);
+  assert.equal(baseline.view.fitPadding, 1);
+  assert.equal(baseline.view.viewOffsetX, 2);
+  assert.equal(baseline.view.viewOffsetY, 85);
+  assert.deepEqual(phone.portrait, { x: 0, y: 393, width: 143, height: 299 });
+  assert.equal(phone.dialogueLeft, 114);
+  assert.equal(phone.clip.clipPadding, 4);
+  assert.equal(Object.hasOwn(TutorialAdvisorSpineLayoutConfig.TUNED_ADVISOR_SPINE_LAYOUT.clip, 'previewClipRect'), false);
+  assert.ok(lineCount(path.join(__dirname, 'TutorialAdvisorSpineLayoutConfig.js')) < 500);
+});
+
+test('TutorialAdvisorCanvasRenderer renders advisor spine through registered clipped layer', () => {
   const calls = [];
   const previousSpinePlayer = global.SpineWebglPlayer;
   const previousDevicePixelRatio = global.devicePixelRatio;
@@ -579,6 +605,8 @@ test('TutorialAdvisorCanvasRenderer renders advisor spine on the full game frame
     constructor(options) {
       this.status = 'loading';
       this.options = options;
+      this.logicalWidth = options.logicalWidth;
+      this.logicalHeight = options.logicalHeight;
       calls.push(['construct', options]);
     }
 
@@ -587,9 +615,21 @@ test('TutorialAdvisorCanvasRenderer renders advisor spine on the full game frame
       return true;
     }
 
-    resize() {}
+    getBoundsSummary() {
+      return { x: -361, y: -71, width: 772, height: 1718, centerX: 25, centerY: 788, aspectRatio: 772 / 1718 };
+    }
 
-    dispose() {}
+    resize() {
+      calls.push(['resize', this.logicalWidth, this.logicalHeight]);
+    }
+
+    setViewTransform(options) {
+      calls.push(['setViewTransform', options]);
+    }
+
+    dispose() {
+      calls.push(['dispose']);
+    }
   }
   FakeSpinePlayer.isAvailable = () => true;
   try {
@@ -604,7 +644,201 @@ test('TutorialAdvisorCanvasRenderer renders advisor spine on the full game frame
         return canvas;
       },
       getLayerMetrics() {
-        return { width: 390, height: 693 };
+        const ensureCall = calls.filter((call) => call[0] === 'ensureCanvasLayer').at(-1)
+          || calls.filter((call) => call[0] === 'ensureLayerCanvas').at(-1);
+        return ensureCall?.[2]?.rect || { width: 390, height: 693 };
+      },
+      setLayerVisible(name, visible) {
+        calls.push(['setLayerVisible', name, visible]);
+      },
+    };
+    const renderer = new TutorialAdvisorCanvasRenderer({
+      host: {
+        h5Runtime: runtime,
+        width: 390,
+        height: 693,
+        ensureCanvasLayer(name, options) {
+          calls.push(['ensureCanvasLayer', name, options]);
+          return runtime.ensureLayerCanvas(name, options);
+        },
+        setCanvasLayerVisible(name, visible) {
+          calls.push(['setCanvasLayerVisible', name, visible]);
+        },
+        requestOverlayRenderFrame() {
+          calls.push(['requestOverlayRenderFrame']);
+        },
+        handleAssetsChanged() {},
+      },
+    });
+
+    assert.equal(renderer.renderTutorialAdvisorSpineLayer(12, 44, 120, 240), true);
+
+    const ensureCall = calls.find((call) => call[0] === 'ensureCanvasLayer');
+    assert.equal(ensureCall[1], 'tutorialSpine');
+    assert.deepEqual(ensureCall[2].rect, { x: 8, y: 40, width: 128, height: 248 });
+    assert.equal(ensureCall[2].pixelRatio, 2);
+    assert.equal(canvas.style.opacity, '1');
+    const constructCall = calls.find((call) => call[0] === 'construct');
+    const loadCall = calls.find((call) => call[0] === 'load');
+    assert.equal('viewFocus' in constructCall[1], false);
+    assert.equal('viewFocus' in loadCall[1], false);
+    assert.equal(constructCall[1].viewScale, 1.41);
+    assert.equal(constructCall[1].fitPadding, 1);
+    assert.ok(Math.abs(constructCall[1].viewOffsetX - (2 * 390 / 430)) < 0.0001);
+    assert.ok(Math.abs(constructCall[1].viewOffsetY - (85 * 693 / (430 * (16 / 9)))) < 0.0001);
+    assert.deepEqual(constructCall[1].viewportRect, { x: 4, y: 4, width: 120, height: 240 });
+    assert.deepEqual(loadCall[1].viewportRect, { x: 4, y: 4, width: 120, height: 240 });
+    assert.equal(constructCall[1].logicalWidth, 120);
+    assert.equal(constructCall[1].logicalHeight, 240);
+    constructCall[1].onBounds({
+      bounds: { width: 772, height: 1718, aspectRatio: 772 / 1718 },
+    });
+    assert.equal(calls.some((call) => call[0] === 'requestOverlayRenderFrame'), true);
+    assert.equal(renderer.renderTutorialAdvisorSpineLayer(12, 44, 120, 240), true);
+    const clippedCall = calls.filter((call) => call[0] === 'ensureCanvasLayer').at(-1);
+    assert.deepEqual(clippedCall[2].rect, { x: 14, y: 40, width: 116, height: 248 });
+    const nextConstructCall = calls.filter((call) => call[0] === 'construct').at(-1);
+    const nextLoadCall = calls.filter((call) => call[0] === 'load').at(-1);
+    assert.deepEqual(nextConstructCall[1].viewportRect, { x: -2, y: 4, width: 120, height: 240 });
+    assert.deepEqual(nextLoadCall[1].viewportRect, { x: -2, y: 4, width: 120, height: 240 });
+    assert.equal(nextConstructCall[1].logicalWidth, 120);
+    assert.equal(nextConstructCall[1].logicalHeight, 240);
+    assert.equal(calls.some((call) => call[0] === 'dispose'), true);
+  } finally {
+    global.SpineWebglPlayer = previousSpinePlayer;
+    global.devicePixelRatio = previousDevicePixelRatio;
+  }
+});
+
+test('TutorialAdvisorCanvasRenderer refreshes ready spine without invalidating world map caches', () => {
+  const calls = [];
+  const previousSpinePlayer = global.SpineWebglPlayer;
+  class FakeSpinePlayer {
+    constructor(options) {
+      this.status = 'loading';
+      calls.push(['construct', options]);
+    }
+
+    load() {
+      return true;
+    }
+
+    dispose() {}
+  }
+  FakeSpinePlayer.isAvailable = () => true;
+  try {
+    global.SpineWebglPlayer = FakeSpinePlayer;
+    const canvas = { style: {} };
+    const renderer = new TutorialAdvisorCanvasRenderer({
+      host: {
+        h5Runtime: {
+          width: 390,
+          height: 693,
+          ensureLayerCanvas() {
+            return canvas;
+          },
+          getLayerMetrics() {
+            return { width: 120, height: 240 };
+          },
+          setLayerVisible() {},
+        },
+        width: 390,
+        height: 693,
+        handleAssetsChanged() {
+          calls.push(['handleAssetsChanged']);
+        },
+        requestOverlayRenderFrame() {
+          calls.push(['requestOverlayRenderFrame']);
+        },
+      },
+    });
+
+    assert.equal(renderer.renderTutorialAdvisorSpineLayer(12, 44, 120, 240), true);
+    calls.find((call) => call[0] === 'construct')[1].onStatus({ status: 'ready' });
+
+    assert.equal(calls.some((call) => call[0] === 'requestOverlayRenderFrame'), true);
+    assert.equal(calls.some((call) => call[0] === 'handleAssetsChanged'), false);
+  } finally {
+    global.SpineWebglPlayer = previousSpinePlayer;
+  }
+});
+
+test('TutorialAdvisorCanvasRenderer never falls back to asset invalidation for ready spine', () => {
+  const calls = [];
+  const previousSpinePlayer = global.SpineWebglPlayer;
+  class FakeSpinePlayer {
+    constructor(options) {
+      calls.push(['construct', options]);
+    }
+
+    load() {
+      return true;
+    }
+
+    dispose() {}
+  }
+  FakeSpinePlayer.isAvailable = () => true;
+  try {
+    global.SpineWebglPlayer = FakeSpinePlayer;
+    const renderer = new TutorialAdvisorCanvasRenderer({
+      host: {
+        h5Runtime: {
+          width: 390,
+          height: 693,
+          ensureLayerCanvas() {
+            return { style: {} };
+          },
+          getLayerMetrics() {
+            return { width: 120, height: 240 };
+          },
+          setLayerVisible() {},
+        },
+        width: 390,
+        height: 693,
+        handleAssetsChanged() {
+          calls.push(['handleAssetsChanged']);
+        },
+      },
+    });
+
+    assert.equal(renderer.renderTutorialAdvisorSpineLayer(12, 44, 120, 240), true);
+    calls.find((call) => call[0] === 'construct')[1].onStatus({ status: 'ready' });
+
+    assert.equal(calls.some((call) => call[0] === 'handleAssetsChanged'), false);
+  } finally {
+    global.SpineWebglPlayer = previousSpinePlayer;
+  }
+});
+
+test('TutorialAdvisorCanvasRenderer keeps runtime fallback inside registered spine layer contract', () => {
+  const calls = [];
+  const previousSpinePlayer = global.SpineWebglPlayer;
+  class FakeSpinePlayer {
+    constructor(options) {
+      this.status = 'loading';
+      calls.push(['construct', options]);
+    }
+
+    load(options) {
+      calls.push(['load', options]);
+      return true;
+    }
+
+    dispose() {}
+  }
+  FakeSpinePlayer.isAvailable = () => true;
+  try {
+    global.SpineWebglPlayer = FakeSpinePlayer;
+    const canvas = { style: {} };
+    const runtime = {
+      width: 390,
+      height: 693,
+      ensureLayerCanvas(name, options) {
+        calls.push(['ensureLayerCanvas', name, options, this === runtime]);
+        return canvas;
+      },
+      getLayerMetrics() {
+        return { width: 120, height: 240 };
       },
       setLayerVisible(name, visible) {
         calls.push(['setLayerVisible', name, visible]);
@@ -622,29 +856,27 @@ test('TutorialAdvisorCanvasRenderer renders advisor spine on the full game frame
     assert.equal(renderer.renderTutorialAdvisorSpineLayer(12, 44, 120, 240), true);
 
     const ensureCall = calls.find((call) => call[0] === 'ensureLayerCanvas');
-    assert.deepEqual(ensureCall[2].rect, { x: 0, y: 0, width: 390, height: 693 });
-    assert.equal(ensureCall[2].pixelRatio, 2);
-    assert.equal(canvas.style.opacity, '1');
-    const constructCall = calls.find((call) => call[0] === 'construct');
-    assert.deepEqual(constructCall[1].viewFocus, { centerX: 420, centerY: 1800, height: 2000 });
-    const loadCall = calls.find((call) => call[0] === 'load');
-    assert.deepEqual(loadCall[1].viewFocus, { centerX: 420, centerY: 1800, height: 2000 });
+    assert.equal(ensureCall[1], 'tutorialSpine');
+    assert.equal(ensureCall[2].zIndex, 1001);
+    assert.equal(ensureCall[2].contextType, 'webgl');
+    assert.equal(ensureCall[2].pointerEvents, 'none');
+    assert.deepEqual(ensureCall[2].rect, { x: 8, y: 40, width: 128, height: 248 });
+    assert.equal(ensureCall[3], true);
   } finally {
     global.SpineWebglPlayer = previousSpinePlayer;
-    global.devicePixelRatio = previousDevicePixelRatio;
   }
 });
 
 test('TutorialCanvasRenderer places intro dialogue at tuned left offset', () => {
-  const host = createHost();
+  const host = createHost({ width: 390, height: 390 * (16 / 9) });
   const calls = [];
   host.drawPanel = (...args) => calls.push(['drawPanel', ...args]);
   host.drawText = (...args) => calls.push(['drawText', ...args]);
   const renderer = new TutorialCanvasRenderer({
     host,
     advisorRenderer: {
-      renderTutorialIntroAdvisorPortrait() {
-        calls.push(['portrait']);
+      renderTutorialIntroAdvisorPortrait(...args) {
+        calls.push(['portrait', ...args]);
         return true;
       },
     },
@@ -653,9 +885,11 @@ test('TutorialCanvasRenderer places intro dialogue at tuned left offset', () => 
   renderer.renderTutorialIntroDialogue('Message.', 'Advisor');
 
   const panel = calls.find((call) => call[0] === 'drawPanel');
-  assert.equal(panel[1], 96);
+  assert.equal(panel[1], 114);
   const name = calls.find((call) => call[0] === 'drawText');
-  assert.equal(name[2], 120);
+  assert.equal(name[2], 138);
+  const portrait = calls.find((call) => call[0] === 'portrait');
+  assert.deepEqual(portrait.slice(1), [0, 393, 143, 299]);
   assert.equal(calls.some((call) => call[0] === 'drawText' && call[1] === '点击继续'), true);
   assert.ok(calls.findIndex((call) => call[0] === 'portrait') < calls.findIndex((call) => call[0] === 'drawPanel'));
 });
@@ -725,20 +959,20 @@ test('TutorialCanvasRenderer keeps advisor dialogue layer when no intro is activ
 
 test('TutorialIntroDialogueLayout owns tuned dialogue and portrait placement', () => {
   const layout = TutorialIntroDialogueLayout.buildDialogueLayout({
-    width: 390,
-    height: 844,
+    width: 430,
+    height: 430 * (16 / 9),
     bottomSafeArea: 12,
-    layout: { contentX: 10, contentWidth: 370, contentRight: 380 },
-    dialogueLeft: 96,
+    layout: { contentX: 10, contentWidth: 410, contentRight: 420 },
   });
 
-  assert.equal(layout.panel.x, 96);
-  assert.equal(layout.panel.width, 276);
+  assert.equal(layout.panel.x, 126);
+  assert.equal(layout.panel.width, 286);
+  assert.deepEqual(layout.portrait, { x: 0, y: 433, width: 158, height: 330 });
   assert.ok(layout.portrait.x < layout.panel.x);
   assert.ok(lineCount(path.join(__dirname, 'TutorialIntroDialogueLayout.js')) < 500);
 });
 
-test('TutorialDialogueLayer renders above the spine layer and restores host context', () => {
+test('TutorialDialogueLayer renders above the spine layer without replacing host context', () => {
   const calls = [];
   const dialogueCtx = {
     clearRect(...args) { calls.push(['clearRect', ...args]); },
@@ -775,12 +1009,15 @@ test('TutorialDialogueLayer renders above the spine layer and restores host cont
   assert.equal(TutorialDialogueLayer.begin(renderer), dialogueCtx);
   const ensureCall = calls.find((call) => call[0] === 'ensureLayerCanvas');
   assert.equal(ensureCall[1], 'tutorialDialogue');
-  assert.equal(ensureCall[2].zIndex, 1001);
+  assert.equal(ensureCall[2].zIndex, 1002);
+  assert.equal(ensureCall[2].pointerEvents, 'none');
   assert.deepEqual(ensureCall[2].rect, { x: 0, y: 0, width: 390, height: 693 });
   assert.equal(calls.some((call) => call[0] === 'clearRect'), true);
-  TutorialDialogueLayer.withHostContext(renderer, dialogueCtx, () => {
-    assert.equal(host.ctx, dialogueCtx);
+  TutorialDialogueLayer.withDialogueContext(renderer, dialogueCtx, () => {
+    assert.equal(renderer.dialogueCtx, dialogueCtx);
+    assert.equal(host.ctx, mainCtx);
   });
+  assert.equal(renderer.dialogueCtx, undefined);
   assert.equal(host.ctx, mainCtx);
   assert.equal(TutorialDialogueLayer.clear(renderer, true), true);
   assert.equal(calls.some((call) => call[0] === 'setLayerVisible' && call[2] === false), true);

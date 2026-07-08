@@ -2,28 +2,47 @@
   class WorldMapSnapshotCacheRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
-      return new Proxy(this, {
-        get(target, prop, receiver) {
-          const ownValue = Reflect.get(target, prop, receiver);
-          if (ownValue !== undefined || prop in target) return ownValue;
-          const host = target.host;
-          if (host && prop in host) {
-            const hostValue = host[prop];
-            return typeof hostValue === 'function' ? hostValue.bind(host) : hostValue;
-          }
-          return undefined;
-        },
-        set(target, prop, value, receiver) {
-          if (prop === 'host' || prop in target) return Reflect.set(target, prop, value, receiver);
-          const host = target.host;
-          if (host) {
-            host[prop] = value;
-            return true;
-          }
-          target[prop] = value;
-          return true;
-        },
-      });
+      this.worldMapCacheState = options.worldMapCacheState || this.host?.worldMapCacheState || null;
+    }
+
+    get ctx() {
+      return this.host?.ctx || null;
+    }
+
+    get worldTileStaticCache() {
+      return this.worldMapCacheState?.worldTileStaticCache || null;
+    }
+
+    get worldTileStaticCacheLayout() {
+      return this.worldMapCacheState?.worldTileStaticCacheLayout || null;
+    }
+
+    get worldTileStaticCacheLayoutKind() {
+      return this.worldMapCacheState?.worldTileStaticCacheLayoutKind || '';
+    }
+
+    get worldTileStaticChunkCaches() {
+      return this.worldMapCacheState?.worldTileStaticChunkCaches || null;
+    }
+
+    get worldTileWaterChunkCaches() {
+      return this.worldMapCacheState?.worldTileWaterChunkCaches || null;
+    }
+
+    drawWorldTileLayerCache(...args) {
+      return this.host?.drawWorldTileLayerCache?.(...args) || false;
+    }
+
+    getWorldTileWaterFrameCache(...args) {
+      return this.host?.getWorldTileWaterFrameCache?.(...args) || null;
+    }
+
+    getWorldTileWaterAnimationFrameIndex(...args) {
+      return this.host?.getWorldTileWaterAnimationFrameIndex?.(...args) || 0;
+    }
+
+    getWorldTileRenderEntries(...args) {
+      return this.host?.getWorldTileRenderEntries?.(...args) || [];
     }
 
     getWorldMapCachePolicy() {
@@ -84,13 +103,7 @@
       return drawLayout ? this.drawWorldTileLayerCache(work, drawLayout, frame) : false;
     }
 
-    renderWorldTileSnapshotFogMask(tileMapView = {}, viewport = {}, frame = {}) {
-      const entries = this.getWorldTileRenderEntries(tileMapView, viewport, frame, tileMapView.geometry || viewport.geometry || {});
-      this.renderWorldTileFogMask(tileMapView, viewport, frame, entries);
-      return true;
-    }
-
-    renderWorldTileSnapshotCache(tileMapView = {}, viewport = {}, frame = {}) {
+    renderWorldTileSnapshotCache(_tileMapView = {}, viewport = {}, frame = {}) {
       if (!this.ctx || typeof this.ctx.drawImage !== 'function') return false;
       let rendered = false;
       if (this.worldTileStaticCache?.canvas && this.worldTileStaticCacheLayout?.frame) {
@@ -109,7 +122,6 @@
           viewport,
           frame,
         ) || rendered;
-        if (rendered) this.renderWorldTileSnapshotFogMask(tileMapView, viewport, frame);
         return rendered;
       }
       if (this.worldTileStaticCacheLayoutKind !== 'chunks' || !this.worldTileStaticChunkCaches?.size) return false;
@@ -122,7 +134,6 @@
       );
       const renderedStatic = this.renderWorldTileSnapshotChunkCacheMap(this.worldTileStaticChunkCaches, viewport, frame);
       rendered = renderedWater || renderedStatic;
-      if (rendered) this.renderWorldTileSnapshotFogMask(tileMapView, viewport, frame);
       return rendered;
     }
   }

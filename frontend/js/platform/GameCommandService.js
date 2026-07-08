@@ -1,4 +1,37 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const CanvasModalSnapshotAdapter = (() => {
+    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasModalSnapshotAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  var StateWriter = global.StateWriter;
+  if (typeof module !== 'undefined' && module.exports && !StateWriter) {
+    StateWriter = require('../state/StateWriter');
+  }
+
+  function t(key = '', params = {}) {
+    return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
   class GameCommandService {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -16,23 +49,48 @@
       return this.host?.state || {};
     }
 
-    getErrorMessage(error, fallback = 'Action failed') {
+    getErrorMessage(error, fallback = t('command.action.failed', {})) {
       return error?.payload?.message || error?.message || fallback;
+    }
+
+    async resyncAfterCommittedCommand(result) {
+      const host = this.host || {};
+      const api = this.getApi();
+      if (!result?.committed || !result?.resyncRequired || typeof api?.getState !== 'function') return false;
+      try {
+        const data = await api.getState();
+        if (data?.gameState) {
+          host.applyApiState?.(data);
+          return true;
+        }
+      } catch (error) {
+        host.log?.(t('command.building.failed', { message: this.getErrorMessage(error) }));
+      }
+      return false;
     }
 
     async handleBuildingSuccess(result, action, buildingId) {
       const host = this.host || {};
+      if (result?.committed && result?.resyncRequired) {
+        await this.resyncAfterCommittedCommand(result);
+        host.log?.(result?.message || t('command.building.buildSuccess', {}));
+        return true;
+      }
       host.applyApiState?.(result);
       if (buildingId === 'farm' && action === 'build') {
-        host.showFloatingText?.('农田建造成功');
+        host.showFloatingText?.(t('command.building.farmBuilt', {}));
       } else if (buildingId === 'house' && action === 'build') {
-        host.showFloatingText?.('民居建造成功');
+        host.showFloatingText?.(t('command.building.houseBuilt', {}));
       } else if (buildingId === 'lumbermill' && action === 'build') {
-        host.showFloatingText?.('伐木场建造成功');
+        host.showFloatingText?.(t('command.building.lumbermillBuilt', {}));
       } else {
-        host.showFloatingText?.(action === 'upgrade' ? '升级成功' : '建造成功');
+        host.showFloatingText?.(
+          action === 'upgrade'
+            ? t('command.building.upgradeSuccess', {})
+            : t('command.building.buildSuccess', {}),
+        );
       }
-      host.log?.(`Success: ${result?.message || ''}`);
+      host.log?.(t('command.success.detail', { message: result?.message || '' }));
       return true;
     }
 
@@ -48,7 +106,7 @@
       const host = this.host || {};
       if (!buildingId) return false;
       if (host.tutorialController?.onBuildingAction?.(buildingId, action) === false) {
-        host.showFloatingText?.('请先按照引导建造第一处民居');
+        host.showFloatingText?.(t('guide.buildFirstHouseFirst'));
         host.tutorialController?.refreshCurrentHighlight?.();
         return false;
       }
@@ -57,8 +115,8 @@
       host.setPendingBuildingAction?.({ buildingId, action: normalizedAction });
       if (host.buildingController?.handleAction) {
         try {
-          await host.buildingController.handleAction({ buildingId, action: normalizedAction });
-          return true;
+          const result = await host.buildingController.handleAction({ buildingId, action: normalizedAction });
+          return result !== false;
         } finally {
           host.setPendingBuildingAction?.(null);
         }
@@ -71,7 +129,7 @@
         await this.handleBuildingSuccess(result, normalizedAction, buildingId);
         return true;
       } catch (error) {
-        host.log?.(`Building action failed: ${this.getErrorMessage(error)}`);
+        host.log?.(t('command.building.failed', { message: this.getErrorMessage(error) }));
         return false;
       } finally {
         host.setPendingBuildingAction?.(null);
@@ -86,22 +144,21 @@
         host.applyApiState?.(result);
         const state = this.getState();
         if (state && typeof state === 'object') {
-          host.state = {
-            ...state,
+          StateWriter.commit(host, (prev) => ({
+            ...prev,
             techUiState: {
-              ...(state.techUiState || {}),
+              ...(prev.techUiState || {}),
               selectedTechId: techId,
               detailOpen: false,
             },
-          };
+          }), { source: 'GameCommandService:research' });
         }
-        if (host.canvasShell) host.canvasShell.selectedTechId = techId;
-        if (host.canvasShell) host.canvasShell.techDetailOpen = false;
-        host.showFloatingText?.(result?.message || 'Research completed');
-        host.log?.(result?.message || 'Research completed');
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(host.canvasShell || host, 'techDetailOpen');
+        host.showFloatingText?.(result?.message || t('command.research.completed', {}));
+        host.log?.(result?.message || t('command.research.completed', {}));
         return true;
       } catch (error) {
-        host.log?.(`研究失败：${this.getErrorMessage(error)}`);
+        host.log?.(t('command.research.failed', { message: this.getErrorMessage(error) }));
         host.renderCanvasSurface?.(this.getState()?.currentTab);
         return false;
       }
@@ -115,11 +172,12 @@
         host.closeCitySwitcher?.({ skipRender: true });
         const result = await this.getApi().switchCity(cityId);
         host.applyApiState?.(result);
-        host.showFloatingText?.(result?.message || 'City switched');
-        host.log?.(`City: ${result?.message || 'City switched'}`);
+        const message = result?.message || t('command.city.switched', {});
+        host.showFloatingText?.(message);
+        host.log?.(message);
         return true;
       } catch (error) {
-        host.log?.(`失败：${this.getErrorMessage(error)}`);
+        host.log?.(t('command.city.switchFailed', { message: this.getErrorMessage(error) }));
         host.renderCanvasSurface?.(this.getState()?.currentTab);
         return false;
       }

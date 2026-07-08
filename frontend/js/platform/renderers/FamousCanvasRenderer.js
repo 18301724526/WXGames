@@ -1,4 +1,16 @@
 (function (global) {
+  const LocaleText = (() => {
+    if (global.LocaleText) return global.LocaleText;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../ecs/resource/LocaleText');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const sharedFamousPortraitLayout = (() => {
     if (global.FamousPortraitLayout) return global.FamousPortraitLayout;
     if (typeof module !== 'undefined' && module.exports) {
@@ -15,19 +27,30 @@
   const FamousPortraitCanvasRenderer = global.FamousPortraitCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousPortraitCanvasRenderer') : null);
   const FamousSkillCanvasRenderer = global.FamousSkillCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousSkillCanvasRenderer') : null);
   const FamousPanelCanvasRenderer = global.FamousPanelCanvasRenderer || (typeof require !== 'undefined' ? require('./FamousPanelCanvasRenderer') : null);
+  const SurfaceState = global.CanvasSurfaceState || (typeof require !== 'undefined' ? require('./CanvasSurfaceState') : null);
+
+  function createSurfaceState() {
+    if (typeof SurfaceState?.createCanvasSurfaceState !== 'function') {
+      throw new Error('CanvasSurfaceState is required before FamousCanvasRenderer');
+    }
+    return SurfaceState.createCanvasSurfaceState();
+  }
 
   class FamousCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
       this.drawingSurface = options.drawingSurface || null;
+      this.surfaceState = options.surfaceState
+        || this.host?.surfaceState
+        || createSurfaceState();
     }
 
     get activeFamousSkillTooltip() {
-      return this.host?.activeFamousSkillTooltip;
+      return this.surfaceState.activeFamousSkillTooltip || null;
     }
 
     set activeFamousSkillTooltip(value) {
-      if (this.host) this.host.activeFamousSkillTooltip = value;
+      this.surfaceState.activeFamousSkillTooltip = value || null;
     }
 
     get ctx() {
@@ -35,27 +58,28 @@
     }
 
     get famousSkillHitTargets() {
-      return this.host?.famousSkillHitTargets;
+      if (!Array.isArray(this.surfaceState.famousSkillHitTargets)) this.surfaceState.famousSkillHitTargets = [];
+      return this.surfaceState.famousSkillHitTargets;
     }
 
     get height() {
-      return this.host?.height;
+      return Number(this.host?.height) || 0;
     }
 
     get hoverPoint() {
-      return this.host?.hoverPoint;
+      return this.surfaceState.hoverPoint || null;
     }
 
     set hoverPoint(value) {
-      if (this.host) this.host.hoverPoint = value;
+      this.surfaceState.hoverPoint = value || null;
     }
 
     get pinnedFamousSkillTooltip() {
-      return this.host?.pinnedFamousSkillTooltip;
+      return this.surfaceState.pinnedFamousSkillTooltip || null;
     }
 
     set pinnedFamousSkillTooltip(value) {
-      if (this.host) this.host.pinnedFamousSkillTooltip = value;
+      this.surfaceState.pinnedFamousSkillTooltip = value || null;
     }
 
     get presenter() {
@@ -63,71 +87,25 @@
     }
 
     get width() {
-      return this.host?.width;
+      return Number(this.host?.width) || 0;
     }
 
-    callDrawingSurface(method, args = []) {
-      const explicitSurface = this.drawingSurface;
-      if (explicitSurface && typeof explicitSurface[method] === 'function') {
-        return explicitSurface[method](...Array.from(args));
-      }
-      const fallbackSurface = this.host;
-      if (fallbackSurface && typeof fallbackSurface[method] === 'function') {
-        return fallbackSurface[method](...Array.from(args));
-      }
-      return undefined;
-    }
+    addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    containsPoint(...args) { const surface = this.drawingSurface; return surface && typeof surface.containsPoint === 'function' ? surface.containsPoint(...args) : this.host?.containsPoint?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
+    drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
+    drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
+    drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
+    drawTextLines(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawTextLines === 'function' ? surface.drawTextLines(...args) : this.host?.drawTextLines?.(...args); }
+    getAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.getAsset === 'function' ? surface.getAsset(...args) : this.host?.getAsset?.(...args); }
+    getLayout(...args) { const surface = this.drawingSurface; return surface && typeof surface.getLayout === 'function' ? surface.getLayout(...args) : this.host?.getLayout?.(...args); }
+    roundRectPath(...args) { const surface = this.drawingSurface; return surface && typeof surface.roundRectPath === 'function' ? surface.roundRectPath(...args) : this.host?.roundRectPath?.(...args); }
+    truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args); }
+    wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args); }
 
-    addHitTarget(...args) {
-      return this.callDrawingSurface('addHitTarget', args);
-    }
-
-    containsPoint(...args) {
-      return this.callDrawingSurface('containsPoint', args);
-    }
-
-    createGradient(...args) {
-      return this.callDrawingSurface('createGradient', args);
-    }
-
-    drawButton(...args) {
-      return this.callDrawingSurface('drawButton', args);
-    }
-
-    drawLine(...args) {
-      return this.callDrawingSurface('drawLine', args);
-    }
-
-    drawPanel(...args) {
-      return this.callDrawingSurface('drawPanel', args);
-    }
-
-    drawText(...args) {
-      return this.callDrawingSurface('drawText', args);
-    }
-
-    drawTextLines(...args) {
-      return this.callDrawingSurface('drawTextLines', args);
-    }
-
-    getAsset(...args) {
-      return this.callDrawingSurface('getAsset', args);
-    }
-
-    getLayout(...args) {
-      return this.callDrawingSurface('getLayout', args);
-    }
-
-    roundRectPath(...args) {
-      return this.callDrawingSurface('roundRectPath', args);
-    }
-
-    truncateText(...args) {
-      return this.callDrawingSurface('truncateText', args);
-    }
-
-    wrapTextLimit(...args) {
-      return this.callDrawingSurface('wrapTextLimit', args);
+    t(key = '', params = {}) {
+      return LocaleText ? LocaleText.t(key, params) : key;
     }
 
     static getFamousPortraitLayerLayout() {

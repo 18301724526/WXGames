@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const RenderPipeline = require('./WorldMapRuntimeRenderPipeline');
-const WorldMarchGeometry = require('../domain/WorldMarchGeometry');
+const WorldMarchGeometry = require('../ecs/foundation/WorldMarchGeometry');
 
 function createState() {
   return {
@@ -23,16 +23,73 @@ function createState() {
 
 function createHost(overrides = {}) {
   const state = createState();
+  const frameState = {
+    hasBakedMapLayer: Boolean(overrides.hasBakedMapLayer),
+    lastLayout: overrides.lastLayout || null,
+    lastMapDataSignature: overrides.lastMapDataSignature || '',
+    lastRenderAt: Number(overrides.lastRenderAt) || 0,
+    lastTileMapContext: overrides.lastTileMapContext || null,
+    mapBakeDirty: overrides.mapBakeDirty !== false,
+  };
   const host = {
-    baseHitTargets: [],
     camera: { x: 1, y: 2 },
     enabled: true,
+    frameState,
     frameMs: 16,
+    worldMapInputState: {
+      hitTargets: Array.isArray(overrides.hitTargets) ? overrides.hitTargets : [],
+      baseHitTargets: Array.isArray(overrides.baseHitTargets) ? overrides.baseHitTargets : [],
+      lastHitTargetSync: overrides.lastHitTargetSync || null,
+      hitTargetSyncSequence: Number(overrides.hitTargetSyncSequence) || 0,
+    },
+    commitFrameState(patch = {}) {
+      Object.assign(this.frameState, patch || {});
+      return this.frameState;
+    },
+    commitBakedFrame(context = null, options = {}) {
+      this.commitFrameState({
+        hasBakedMapLayer: true,
+        lastLayout: Object.prototype.hasOwnProperty.call(options, 'lastLayout')
+          ? options.lastLayout
+          : this.frameState.lastLayout,
+        lastTileMapContext: context || null,
+        mapBakeDirty: false,
+      });
+      return this.frameState;
+    },
+    resetHitTargetState() {
+      this.worldMapInputState.hitTargets = [];
+      this.worldMapInputState.baseHitTargets = [];
+      this.worldMapInputState.lastHitTargetSync = null;
+      this.worldMapInputState.hitTargetSyncSequence = 0;
+      return true;
+    },
+    getHitTargets() {
+      return this.worldMapInputState.hitTargets;
+    },
+    setHitTargets(targets = []) {
+      this.worldMapInputState.hitTargets = Array.isArray(targets) ? targets : [];
+      return this.worldMapInputState.hitTargets;
+    },
+    getBaseHitTargets() {
+      return this.worldMapInputState.baseHitTargets;
+    },
+    setBaseHitTargets(targets = []) {
+      this.worldMapInputState.baseHitTargets = Array.isArray(targets) ? targets : [];
+      return this.worldMapInputState.baseHitTargets;
+    },
+    getLastHitTargetSync() {
+      return this.worldMapInputState.lastHitTargetSync || null;
+    },
+    commitHitTargetSync(sync = {}) {
+      this.worldMapInputState.lastHitTargetSync = sync || null;
+      return this.worldMapInputState.lastHitTargetSync;
+    },
     getCameraUiState() {
       return { worldPanX: 1, worldPanY: 2 };
     },
     getLastTileMapContext() {
-      return { tileMapView: {} };
+      return this.frameState.lastTileMapContext || { tileMapView: {} };
     },
     getLayerLayout() {
       return { map: { x: 0, y: 0, width: 100, height: 100 } };
@@ -43,17 +100,24 @@ function createHost(overrides = {}) {
     getTopBarBottom() {
       return 84;
     },
-    hasBakedMapLayer: false,
-    hitTargets: [],
     isDragging() {
       return false;
     },
     isMapBakeDirty() {
       return true;
     },
-    lastMapDataSignature: '',
-    lastRenderAt: 0,
-    mapBakeDirty: true,
+    get hasBakedMapLayer() { return this.frameState.hasBakedMapLayer; },
+    set hasBakedMapLayer(value) { this.frameState.hasBakedMapLayer = Boolean(value); },
+    get lastLayout() { return this.frameState.lastLayout; },
+    set lastLayout(value) { this.frameState.lastLayout = value || null; },
+    get lastMapDataSignature() { return this.frameState.lastMapDataSignature; },
+    set lastMapDataSignature(value) { this.frameState.lastMapDataSignature = value || ''; },
+    get lastRenderAt() { return this.frameState.lastRenderAt; },
+    set lastRenderAt(value) { this.frameState.lastRenderAt = Number(value) || 0; },
+    get lastTileMapContext() { return this.frameState.lastTileMapContext; },
+    set lastTileMapContext(value) { this.frameState.lastTileMapContext = value || null; },
+    get mapBakeDirty() { return this.frameState.mapBakeDirty; },
+    set mapBakeDirty(value) { this.frameState.mapBakeDirty = Boolean(value); },
     markBakedLayerCommitted() {
       this.bakedLayerCommitted = true;
       return { epoch: 1, width: 100, height: 100, pixelRatio: 1 };
@@ -73,11 +137,13 @@ function createHost(overrides = {}) {
       },
     },
     syncHitTargetsFromRenderer() {
-      this.hitTargets = [
+      const targets = [
         ...(Array.isArray(this.renderer.hitTargets) ? this.renderer.hitTargets : []),
         ...(Array.isArray(this.renderer.worldActorLayerRenderer?.hitTargets) ? this.renderer.worldActorLayerRenderer.hitTargets : []),
       ];
-      return this.hitTargets;
+      this.setBaseHitTargets(targets);
+      this.setHitTargets(targets);
+      return this.getHitTargets();
     },
     syncMapDataSignature(stateArg, optionsArg) {
       this.syncedSignature = { stateArg, optionsArg };
@@ -92,7 +158,14 @@ function createHost(overrides = {}) {
       return true;
     },
   };
-  return Object.assign(host, overrides);
+  const {
+    baseHitTargets,
+    hitTargets,
+    hitTargetSyncSequence,
+    lastHitTargetSync,
+    ...hostOverrides
+  } = overrides;
+  return Object.assign(host, hostOverrides);
 }
 
 test('WorldMapRuntimeRenderPipeline resets runtime render state when render is unavailable', () => {
@@ -115,15 +188,16 @@ test('WorldMapRuntimeRenderPipeline resets runtime render state when render is u
 
   assert.equal(RenderPipeline.render(host), false);
   assert.deepEqual(clearCalls, ['clear']);
-  assert.deepEqual(host.hitTargets, []);
-  assert.deepEqual(host.baseHitTargets, []);
+  assert.deepEqual(host.getHitTargets(), []);
+  assert.deepEqual(host.getBaseHitTargets(), []);
   assert.equal(host.hasBakedMapLayer, false);
   assert.equal(host.mapBakeDirty, true);
   assert.equal(host.lastMapDataSignature, '');
 });
 
-test('WorldMapRuntimeRenderPipeline publishes state only to the runtime host', () => {
+test('WorldMapRuntimeRenderPipeline does not publish renderer state mirrors', () => {
   const state = { id: 'authoritative-state' };
+  const retiredStateMirrorKeys = ['last' + 'GameState', 'last' + 'WorldMarchState'];
   const renderer = {
     worldMapRenderer: {},
     worldMapLayerRenderer: {},
@@ -140,14 +214,11 @@ test('WorldMapRuntimeRenderPipeline publishes state only to the runtime host', (
 
   assert.equal(RenderPipeline.render(host, { epochNowMs: 4321 }), true);
 
-  assert.equal(host.lastGameState, state);
-  assert.equal(host.lastWorldMarchState, state);
-  assert.equal(renderer.lastGameState, undefined);
-  assert.equal(renderer.lastWorldMarchState, undefined);
-  assert.equal(renderer.worldMapRenderer.lastGameState, undefined);
-  assert.equal(renderer.worldMapRenderer.lastWorldMarchState, undefined);
-  assert.equal(renderer.worldMapLayerRenderer.lastGameState, undefined);
-  assert.equal(renderer.worldMapLayerRenderer.lastWorldMarchState, undefined);
+  [host, renderer, renderer.worldMapRenderer, renderer.worldMapLayerRenderer].forEach((target) => {
+    retiredStateMirrorKeys.forEach((key) => {
+      assert.equal(Object.prototype.hasOwnProperty.call(target, key), false);
+    });
+  });
 });
 
 test('WorldMapRuntimeRenderPipeline renders a snapshot frame when baked layer is reusable', () => {
@@ -192,7 +263,7 @@ test('WorldMapRuntimeRenderPipeline preserves runtime hit targets during drag sn
     hitTargets: [{ ...stableTarget, x: 32, y: 22 }],
     mapBakeDirty: false,
     getOffsetHitTargets() {
-      return this.baseHitTargets.map((target) => ({
+      return this.getBaseHitTargets().map((target) => ({
         ...target,
         x: target.x + this.dragLayerOffset.x,
         y: target.y + this.dragLayerOffset.y,
@@ -227,18 +298,18 @@ test('WorldMapRuntimeRenderPipeline preserves runtime hit targets during drag sn
         ...(Array.isArray(this.renderer.worldActorLayerRenderer?.hitTargets) ? this.renderer.worldActorLayerRenderer.hitTargets : []),
       ];
       if (!nextTargets.length && options.preserveOnEmpty === true) {
-        this.hitTargets = this.getOffsetHitTargets();
-        return this.hitTargets;
+        this.setHitTargets(this.getOffsetHitTargets());
+        return this.getHitTargets();
       }
-      this.baseHitTargets = nextTargets;
-      this.hitTargets = this.getOffsetHitTargets();
-      return this.hitTargets;
+      this.setBaseHitTargets(nextTargets);
+      this.setHitTargets(this.getOffsetHitTargets());
+      return this.getHitTargets();
     },
   });
 
   assert.equal(RenderPipeline.render(host, { snapshotOnly: true, reuseCachedWorldTileView: true }), true);
-  assert.deepEqual(host.baseHitTargets, [stableTarget]);
-  assert.deepEqual(host.hitTargets, [{ ...stableTarget, x: 32, y: 22 }]);
+  assert.deepEqual(host.getBaseHitTargets(), [stableTarget]);
+  assert.deepEqual(host.getHitTargets(), [{ ...stableTarget, x: 32, y: 22 }]);
 });
 
 test('WorldMapRuntimeRenderPipeline keeps actor anchor on the snapshot frame context', () => {
@@ -321,9 +392,9 @@ test('WorldMapRuntimeRenderPipeline renders a full frame and commits bake state'
   assert.equal(host.mapBakeDirty, false);
   assert.equal(host.bakedLayerCommitted, true);
   assert.deepEqual(host.bakedCamera, { x: 1, y: 2 });
-  assert.equal(host.hitTargets[0].action.type, 'resetWorldPan');
+  assert.equal(host.getHitTargets()[0].action.type, 'resetWorldPan');
   assert.equal(actorOptions[0].worldMapRuntimeContext.tileMapView instanceof Object, true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'selectWorldActor'), true);
+  assert.equal(host.getHitTargets().some((target) => target.action.type === 'selectWorldActor'), true);
 });
 
 test('WorldMapRuntimeRenderPipeline does not commit bake state when full render only preserves the previous map layer', () => {
@@ -353,7 +424,7 @@ test('WorldMapRuntimeRenderPipeline does not commit bake state when full render 
   assert.equal(host.mapBakeDirty, true);
   assert.equal(host.bakedLayerCommitted, undefined);
   assert.equal(host.bakedCamera, undefined);
-  assert.deepEqual(host.hitTargets, []);
+  assert.deepEqual(host.getHitTargets(), []);
   assert.equal(host.syncedWaterUiState.worldPanX, 1);
 });
 

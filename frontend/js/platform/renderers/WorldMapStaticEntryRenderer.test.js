@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+require('../../config/LocaleTextRegistry');
+const LocaleText = require('../../ecs/resource/LocaleText');
 const WorldMapStaticEntryRenderer = require('./WorldMapStaticEntryRenderer');
 
 function withRendererDependencyRegistry(dependencies = {}, callback = null) {
@@ -238,6 +240,64 @@ test('WorldMapStaticEntryRenderer uses dry template for water tiles and can supp
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileDryTemplate'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawWorldTileBase'), false);
   assert.equal(host.calls.some((call) => call[0] === 'addHitTarget'), false);
+});
+
+test('WorldMapStaticEntryRenderer resolves fallback site text through active locale', () => {
+  LocaleText.setLocale('zh-CN');
+  const host = createHost({
+    getAsset() {
+      return null;
+    },
+  });
+  const renderer = new WorldMapStaticEntryRenderer({ host });
+  const entry = createEntry({
+    tile: {
+      site: {
+        id: 'unnamed-site',
+        art: 'site.png',
+        owner: 'neutral',
+      },
+    },
+  });
+
+  assert.equal(renderer.drawWorldTileSite(entry.tile, { scale: 1 }, {}, 192, 96, {}, { center: entry.center }), true);
+
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '中'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'truncateText' && call[1] === '地点'), true);
+});
+
+test('WorldMapStaticEntryRenderer nameplate draws the level corner above the site art', () => {
+  const rects = [];
+  const host = createHost();
+  host.ctx.fillRect = (...args) => {
+    rects.push({ fillStyle: host.ctx.fillStyle, args });
+  };
+  const renderer = new WorldMapStaticEntryRenderer({ host });
+  const entry = createEntry({
+    tile: {
+      site: {
+        id: 'leveled-city',
+        name: '无名空城',
+        art: 'site.png',
+        owner: 'neutral',
+        level: 3,
+      },
+    },
+  });
+
+  assert.equal(renderer.drawWorldTileSite(entry.tile, { scale: 1 }, {}, 192, 96, {}, { center: entry.center }), true);
+
+  const UiThemeTokens = require('../../config/UiThemeTokens');
+  // Level corner square uses the token blue; the plate sits above the art top (drawY 70).
+  const levelBox = rects.find((rect) => rect.fillStyle === UiThemeTokens.palette.accentCityLevelBlue);
+  assert.ok(levelBox);
+  assert.equal(levelBox.args[1] + levelBox.args[3] <= 70, true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '3'), true);
+  assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === '无名空城'), true);
+  // Hit-target identity is untouched by the re-skin.
+  const hit = host.calls.find((call) => call[0] === 'addHitTarget');
+  assert.equal(hit[2].type, 'openWorldSite');
+  assert.equal(hit[2].siteId, 'leveled-city');
 });
 
 test('WorldMapStaticEntryRenderer draws terrain features from manifest without tile feature assets', () => {

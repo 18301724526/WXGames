@@ -1,0 +1,33 @@
+{
+  "schema": "config-table-v1",
+  "table": "capture_tuning",
+  "description": "占城捕获招降(②b)调参(key-value，主键 paramKey)。打赢守军后按 garrison 表 captureChance 几率捕获守将→面板斩杀/招降/放生。招降成功率=garrison 表 recruitBaseRate + 君主魅力 + 君主↔俘将相性(personalityCore) + 关系加成(relationshipCore.recruitModifier) − 宿敌，封顶 recruitCap；军中有宿敌则宁死不降(=0)。纯核 shared/faction/captureCore.js 读取。",
+  "generatedFrom": "config/tables/capture_tuning.xlsx",
+  "idField": "paramKey",
+  "rows": [
+    {
+      "paramKey": "charismaWeight",
+      "value": 0.3
+    },
+    {
+      "paramKey": "compatWeight",
+      "value": 0.2
+    },
+    {
+      "paramKey": "recruitCap",
+      "value": 0.9
+    },
+    {
+      "paramKey": "recruitFloor",
+      "value": 0
+    },
+    {
+      "paramKey": "nemesisHardRefuse",
+      "value": 1
+    },
+    {
+      "paramKey": "releaseReputation",
+      "value": 3
+    }
+  ]
+}

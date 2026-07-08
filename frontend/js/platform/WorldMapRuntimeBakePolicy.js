@@ -1,21 +1,9 @@
 (function (global) {
-  const SignatureHash = (() => {
-    if (global.SignatureHash) return global.SignatureHash;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../shared/SignatureHash');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
   const sharedTileCoord = (() => {
     if (global.TileCoord) return global.TileCoord;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/TileCoord');
+        return require('../ecs/foundation/TileCoord');
       } catch (_error) {
         return null;
       }
@@ -27,7 +15,7 @@
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldMarchSystem');
+        return require('../ecs/system/WorldMarchSystem');
       } catch (_error) {
         return null;
       }
@@ -39,7 +27,7 @@
     if (global.WorldClock) return global.WorldClock;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../domain/WorldClock');
+        return require('../ecs/foundation/WorldClock');
       } catch (_error) {
         return null;
       }
@@ -56,18 +44,8 @@
     return Math.floor(toNumber(value, fallback));
   }
 
-  function tileId(x, y) {
-    if (sharedTileCoord?.tileId) return sharedTileCoord.tileId(x, y);
-    return `tile_${toInteger(x)}_${toInteger(y)}`;
-  }
-
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (sharedTileCoord?.normalizeCoord) return sharedTileCoord.normalizeCoord(coord, fallback);
-    const fallbackX = toInteger(fallback.x !== undefined ? fallback.x : fallback.q, 0);
-    const fallbackY = toInteger(fallback.y !== undefined ? fallback.y : fallback.r, 0);
-    const x = toInteger(coord.x !== undefined ? coord.x : coord.q, fallbackX);
-    const y = toInteger(coord.y !== undefined ? coord.y : coord.r, fallbackY);
-    return { q: x, r: y, tileId: tileId(x, y) };
+    return sharedTileCoord.normalizeCoord(coord, fallback);
   }
 
   function summarizeCoord(coord = {}, fallback = {}) {
@@ -156,21 +134,10 @@
       ?? options.epochNowMs
       ?? options.serverNowMs
       ?? sharedWorldClock?.getEpochNowMs?.(options, Number.NaN);
-    if (mission.renderRevealSignature) return mission.renderRevealSignature;
     if (sharedWorldMarchSystem?.getRouteRenderRevealSignature) {
       return sharedWorldMarchSystem.getRouteRenderRevealSignature(mission, nowMs);
     }
-    const sources = Array.isArray(mission.renderRevealSources) ? mission.renderRevealSources : [];
-    if (!sources.length) return '';
-    let hash = SignatureHash.FNV_OFFSET_BASIS;
-    sources.forEach((source) => {
-      const text = [
-        source.tileId || '',
-        Math.round(toNumber(source.strength, 1) * 1000),
-      ].join(':');
-      hash = SignatureHash.hashStep(hash, text);
-    });
-    return `${sources.length}:${(hash >>> 0).toString(36)}`;
+    return '';
   }
 
   function summarizeTile(tile = {}) {
