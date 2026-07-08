@@ -23,6 +23,18 @@
     return null;
   }
 
+  const BAND_RANK = Object.freeze({
+    panel: 10,
+    dialog: 20,
+  });
+
+  function incrementCompatibilityCounter(name = '') {
+    const counters = global.__panelRefactorCounters || global.__PANEL_REFACTOR_COUNTERS__ || null;
+    if (!counters || !name) return false;
+    counters[name] = (Number(counters[name]) || 0) + 1;
+    return true;
+  }
+
   class CanvasPanelSurfaceManager {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -57,6 +69,10 @@
       return host.state || null;
     }
 
+    getRegistryKeys() {
+      return typeof this.registry?.keys === 'function' ? this.registry.keys() : [];
+    }
+
     ensurePanelOptions(options = {}) {
       if (options.context) return options;
       const buildPanelActionContext = getPanelActionContextAdapter();
@@ -71,6 +87,7 @@
       if (!key || this.baseHitTargetsByPanel.has(key)) return;
       const targets = this.getRenderer()?.hitTargets;
       this.baseHitTargetsByPanel.set(key, Array.isArray(targets) ? targets.slice() : []);
+      incrementCompatibilityCounter('panelSurface.baseHitTargetsSnapshot.count');
     }
 
     restoreBaseHitTargets(panelKey = '') {
@@ -90,8 +107,20 @@
       return false;
     }
 
+    restoreAllBaseHitTargets() {
+      let restored = false;
+      Array.from(this.baseHitTargetsByPanel.keys()).forEach((panelKey) => {
+        restored = this.restoreBaseHitTargets(panelKey) || restored;
+      });
+      return restored;
+    }
+
     isPanelOpen(panelKey = '', options = {}) {
       const entry = this.getPanelEntry(panelKey);
+      return this.isEntryOpen(entry, options);
+    }
+
+    isEntryOpen(entry = null, options = {}) {
       const panel = entry?.module || entry || null;
       const handler = entry?.isOpen || panel?.isOpen;
       const panelOptions = this.ensurePanelOptions(options);
@@ -110,8 +139,9 @@
     // open-time snapshot.
     syncOpenPanelSurfacesAfterBaseRender(options = {}) {
       if (this.syncingOpenPanelSurfaces) return false;
+      incrementCompatibilityCounter('panelSurface.syncAfterBaseRender.count');
       const panelOptions = this.ensurePanelOptions(options);
-      const registryKeys = typeof this.registry?.keys === 'function' ? this.registry.keys() : [];
+      const registryKeys = this.getRegistryKeys();
       const panelKeys = new Set([...registryKeys, ...this.baseHitTargetsByPanel.keys()]);
       let refreshed = false;
       this.syncingOpenPanelSurfaces = true;
@@ -142,7 +172,7 @@
       if (typeof handler !== 'function') return false;
       const panelOptions = this.ensurePanelOptions(options);
       const handled = handler.call(entry?.open ? entry : panel, this.host, panelOptions) !== false;
-      if (handled && panelOptions.render !== false) this.refreshPanelSurface(panelKey, panelOptions);
+      if (handled && panelOptions.render !== false) this.projectModalLayer({ ...panelOptions, requestedPanelKey: panelKey });
       return handled;
     }
 
@@ -153,7 +183,7 @@
       if (typeof handler !== 'function') return false;
       const panelOptions = this.ensurePanelOptions(options);
       const handled = handler.call(entry?.close ? entry : panel, this.host, panelOptions) !== false;
-      if (handled) this.clearPanelSurface(panelKey, panelOptions);
+      if (handled && panelOptions.render !== false) this.projectModalLayer({ ...panelOptions, requestedPanelKey: panelKey });
       return handled;
     }
 
@@ -165,8 +195,53 @@
       if (typeof handler !== 'function') return false;
       const panelOptions = this.ensurePanelOptions(options);
       const handled = handler.call(entryHandler ? entry : panel, this.host, action, panelOptions) !== false;
-      if (handled && panelOptions.render !== false) this.refreshPanelSurface(panelKey, panelOptions);
+      if (handled && panelOptions.render !== false) this.projectModalLayer({ ...panelOptions, requestedPanelKey: panelKey });
       return handled;
+    }
+
+    getBandRank(entry = {}) {
+      return BAND_RANK[entry?.band] ?? 100;
+    }
+
+    comparePanelEntries(left = {}, right = {}) {
+      const bandDelta = this.getBandRank(left) - this.getBandRank(right);
+      if (bandDelta) return bandDelta;
+      const priorityDelta = (Number(left.renderPriority) || 0) - (Number(right.renderPriority) || 0);
+      if (priorityDelta) return priorityDelta;
+      return String(left.key || '').localeCompare(String(right.key || ''));
+    }
+
+    getOpenPanelEntries(options = {}) {
+      const panelKeys = new Set(this.getRegistryKeys());
+      const requestedPanelKey = options.requestedPanelKey
+        || options.descriptor?.panelKey
+        || options.action?.panelKey
+        || '';
+      if (requestedPanelKey) panelKeys.add(String(requestedPanelKey));
+      return Array.from(panelKeys)
+        .map((panelKey) => {
+          const entry = this.getPanelEntry(panelKey);
+          return entry && !entry.key ? { key: panelKey, module: entry } : entry;
+        })
+        .filter((entry) => entry?.key && this.isEntryOpen(entry, options))
+        .sort((left, right) => this.comparePanelEntries(left, right));
+    }
+
+    addModalBackgroundHitTarget(entry = {}, renderer = null) {
+      if (!renderer || typeof renderer.addHitTarget !== 'function') return false;
+      if (entry.closesOnOutsideClick === false && entry.blocksBaseHitTargets !== true) return false;
+      const width = Math.max(0, Number(renderer.width) || 0);
+      const height = Math.max(0, Number(renderer.height) || 0);
+      if (!width || !height) return false;
+      renderer.addHitTarget(
+        { x: 0, y: 0, width, height },
+        {
+          type: 'panelOutsideClick',
+          panelKey: entry.key,
+          background: true,
+        },
+      );
+      return true;
     }
 
     renderPanel(panelKey = '', renderer = null, state = {}, options = {}) {
@@ -174,23 +249,53 @@
       const panel = entry?.module || entry || null;
       const handler = entry?.render || panel?.render;
       if (typeof handler !== 'function') return false;
-      handler.call(entry?.render ? entry : panel, renderer, state, this.ensurePanelOptions(options));
+      const panelOptions = this.ensurePanelOptions(options);
+      handler.call(entry?.render ? entry : panel, renderer, state, panelOptions);
+      if (panelOptions.projectingModal) {
+        this.addModalBackgroundHitTarget(entry?.key ? entry : { ...entry, key: panelKey }, renderer);
+      }
       return true;
+    }
+
+    projectModalLayer(options = {}) {
+      const panelOptions = this.ensurePanelOptions(options);
+      const surfaceHost = this.getSurfaceHost();
+      const entries = this.getOpenPanelEntries(panelOptions);
+      if (!entries.length) {
+        const requestedPanelKey = panelOptions.requestedPanelKey
+          || panelOptions.descriptor?.panelKey
+          || panelOptions.action?.panelKey
+          || '';
+        this.clearPanelSurface(requestedPanelKey, panelOptions);
+        this.restoreAllBaseHitTargets();
+        return true;
+      }
+      this.captureBaseHitTargets(entries[0].key);
+      if (typeof surfaceHost?.renderPanelOverlaySurface !== 'function') return false;
+      let handled = true;
+      entries.forEach((entry, index) => {
+        try {
+          const rendered = surfaceHost.renderPanelOverlaySurface(entry.key, this, {
+            ...panelOptions,
+            state: this.getState(panelOptions),
+            clear: index === 0,
+            projectingModal: true,
+            panelEntry: entry,
+          }) !== false;
+          handled = rendered && handled;
+        } catch (error) {
+          panelOptions.context?.log?.(error);
+          handled = false;
+        }
+      });
+      return handled;
     }
 
     refreshPanelSurface(_panelKey = '', options = {}) {
       const panelKey = String(_panelKey || '');
       const panelOptions = this.ensurePanelOptions(options);
-      const surfaceHost = this.getSurfaceHost();
-      if (!this.isPanelOpen(panelKey, panelOptions)) return this.clearPanelSurface(panelKey, panelOptions);
-      this.captureBaseHitTargets(panelKey);
-      if (typeof surfaceHost?.renderPanelOverlaySurface === 'function') {
-        return surfaceHost.renderPanelOverlaySurface(panelKey, this, {
-          ...panelOptions,
-          state: this.getState(panelOptions),
-        }) !== false;
-      }
-      return false;
+      incrementCompatibilityCounter('panelSurface.refreshAlias.count');
+      return this.projectModalLayer({ ...panelOptions, requestedPanelKey: panelKey });
     }
 
     clearPanelSurface(_panelKey = '', options = {}) {

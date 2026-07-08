@@ -56,9 +56,12 @@
     buildModalFlushOptions(entries = []) {
       const lastEntry = entries[entries.length - 1] || {};
       const payload = lastEntry.payload || {};
+      const action = payload.action || null;
+      const descriptor = payload.descriptor || null;
       return {
-        action: payload.action || null,
-        descriptor: payload.descriptor || null,
+        action,
+        descriptor,
+        requestedPanelKey: descriptor?.panelKey || action?.panelKey || '',
         dirty: entries.slice(),
         reason: lastEntry.reason || '',
       };
@@ -67,25 +70,20 @@
     flushModal(entries = []) {
       const manager = this.getPanelSurfaceManager();
       const reason = entries[entries.length - 1]?.reason || '';
-      if (!manager?.refreshPanelSurface) {
+      if (!manager?.projectModalLayer) {
         return this.recordFailure('modal', reason, { message: 'missing panel surface manager' });
       }
 
       const options = this.buildModalFlushOptions(entries);
-      let handled = false;
-      this.getModalPanelKeys(entries).forEach((panelKey) => {
-        try {
-          const refreshed = manager.refreshPanelSurface(panelKey, options);
-          if (refreshed === false) {
-            this.recordFailure('modal', reason, { panelKey, message: 'modal projection returned false' });
-            return;
-          }
-          handled = true;
-        } catch (error) {
-          this.recordFailure('modal', reason, { panelKey, error });
+      try {
+        const projected = manager.projectModalLayer(options);
+        if (projected === false) {
+          return this.recordFailure('modal', reason, { message: 'modal projection returned false' });
         }
-      });
-      return handled;
+        return true;
+      } catch (error) {
+        return this.recordFailure('modal', reason, { error });
+      }
     }
 
     flushBase() {

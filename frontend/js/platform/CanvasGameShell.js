@@ -185,6 +185,13 @@
     return handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled);
   }
 
+  function incrementPanelRefactorCounter(name = '') {
+    const counters = global.__panelRefactorCounters || global.__PANEL_REFACTOR_COUNTERS__ || null;
+    if (!counters || !name) return false;
+    counters[name] = (Number(counters[name]) || 0) + 1;
+    return true;
+  }
+
   function summarizeActorPickingAction(action = {}) {
     return action ? {
       type: action.type || '',
@@ -955,6 +962,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           if (this.actionDispatcher?.canHandle?.(action, this)) {
             return this.actionDispatcher.handle(action, this);
           }
+          incrementPanelRefactorCounter('panelAction.dispatcherFallback.count');
           return this.actionController?.handle?.(action, meta) || false;
         }
 

@@ -133,6 +133,13 @@
     return ActorPickingDiagnostics?.log?.(stage, detail, options) || null;
   }
 
+  function incrementPanelRefactorCounter(name = '') {
+    const counters = global.__panelRefactorCounters || global.__PANEL_REFACTOR_COUNTERS__ || null;
+    if (!counters || !name) return false;
+    counters[name] = (Number(counters[name]) || 0) + 1;
+    return true;
+  }
+
   function closeTargetPickerSnapshot(host) {
     if (typeof host?.closeTargetPickerSnapshot === 'function') return host.closeTargetPickerSnapshot();
     return CanvasModalSnapshotAdapter?.closeTargetPickerSnapshot?.(host) || null;
@@ -1515,18 +1522,22 @@
 
     // Famous person actions.
     handle_openFamousPersons(action) {
+            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
             return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     handle_closeFamousPersons(action) {
+            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
             return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     handle_openFamousPersonDetail(action) {
+            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
             return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     handle_closeFamousPersonDetail(action) {
+            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
             return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
@@ -1577,6 +1588,7 @@
           }
 
     handle_changeFamousPersonsPage(action) {
+            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
             return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 

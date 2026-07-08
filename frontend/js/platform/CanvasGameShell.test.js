@@ -3204,6 +3204,9 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
     setHitTargets(targets) {
       this.hitTargets = Array.isArray(targets) ? targets.slice() : [];
     },
+    addHitTarget(rect, action) {
+      this.hitTargets.push({ ...rect, action });
+    },
     beginFrame() {},
     endFrame() {},
     withRenderCtx(ctx, callback) {
@@ -3255,7 +3258,7 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
       return true;
     },
     render(renderHost) {
-      renderHost.setHitTargets([{ action: { type: 'closeFamousPersons' } }]);
+      renderHost.addHitTarget({ x: 12, y: 12, width: 40, height: 30 }, { type: 'closeFamousPersons' });
     },
   };
   shell.panelSurfaceManager = new CanvasPanelSurfaceManager({
@@ -3273,13 +3276,13 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
 
   assert.equal(shell.renderReadOnly(state, 'resources', readOnlyOptions), true);
   assert.equal(shell.panelSurfaceManager.openPanel('famousPersons'), true);
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons', 'panelOutsideClick']);
 
   // An authority refresh / resize repaints the full frame while the panel is open.
   assert.equal(shell.renderReadOnly(state, 'resources', readOnlyOptions), true);
 
   // Without any pointer movement, taps must still hit the panel, not the HUD underneath.
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons', 'panelOutsideClick']);
 
   // Closing restores the latest full-frame targets, not the open-time snapshot.
   assert.equal(shell.panelSurfaceManager.closePanel('famousPersons'), true);

@@ -92,7 +92,6 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
     ['refresh'],
     ['clearTooltip'],
     ['clearPanelOverlaySurface', 'famousPersons', 'closeFamousPersons'],
-    ['clearPanelOverlaySurface', 'famousPersons', 'closeFamousPersons'],
     ['closed'],
     ['timeout'],
     ['refresh'],

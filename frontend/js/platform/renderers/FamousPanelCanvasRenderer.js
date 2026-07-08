@@ -349,7 +349,6 @@
     const y = Math.max(48, (renderer.height - panelHeight) / 2 - 8);
     const selectedPerson = view.selectedPerson || null;
 
-    renderer.addHitTarget({ x: 0, y: 0, width: renderer.width, height: renderer.height }, { type: 'closeFamousPersons' });
     ModalPlate.drawModalMask(renderer);
     ModalPlate.drawModalPlate(renderer, x, y, panelWidth, panelHeight);
     renderer.addHitTarget(

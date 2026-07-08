@@ -5,12 +5,12 @@ const path = require('node:path');
 
 const CanvasStageScheduler = require('./CanvasStageScheduler');
 
-test('CanvasStageScheduler flushes modal through refreshPanelSurface', () => {
+test('CanvasStageScheduler flushes modal through projectModalLayer', () => {
   const calls = [];
   const scheduler = new CanvasStageScheduler({
     panelSurfaceManager: {
-      refreshPanelSurface(panelKey, options) {
-        calls.push(['refreshPanelSurface', panelKey, options.dirty.length, options.reason]);
+      projectModalLayer(options) {
+        calls.push(['projectModalLayer', options.dirty.length, options.reason, options.requestedPanelKey]);
         return true;
       },
     },
@@ -24,16 +24,16 @@ test('CanvasStageScheduler flushes modal through refreshPanelSurface', () => {
     true,
   );
   assert.equal(scheduler.flush(['modal']), true);
-  assert.deepEqual(calls, [['refreshPanelSurface', 'famousPersons', 1, 'openFamousPersons']]);
+  assert.deepEqual(calls, [['projectModalLayer', 1, 'openFamousPersons', 'famousPersons']]);
   assert.equal(scheduler.flush(['modal']), false);
 });
 
-test('CanvasStageScheduler keeps Slice 3 modal flush scoped to famousPersons', () => {
+test('CanvasStageScheduler flushes modal once through open-set projection', () => {
   const calls = [];
   const scheduler = new CanvasStageScheduler({
     panelSurfaceManager: {
-      refreshPanelSurface(panelKey) {
-        calls.push(panelKey);
+      projectModalLayer(options) {
+        calls.push(options.reason);
         return true;
       },
     },
@@ -45,13 +45,13 @@ test('CanvasStageScheduler keeps Slice 3 modal flush scoped to famousPersons', (
   });
 
   assert.equal(scheduler.flush(['modal']), true);
-  assert.deepEqual(calls, ['famousPersons']);
+  assert.deepEqual(calls, ['syntheticPanelAction']);
 });
 
 test('CanvasStageScheduler records modal projection failure and clears dirty slot', () => {
   const scheduler = new CanvasStageScheduler({
     panelSurfaceManager: {
-      refreshPanelSurface() {
+      projectModalLayer() {
         return false;
       },
     },
@@ -74,7 +74,7 @@ test('CanvasStageScheduler runAtomic batches dirty slots', () => {
   const calls = [];
   const scheduler = new CanvasStageScheduler({
     panelSurfaceManager: {
-      refreshPanelSurface(_panelKey, options) {
+      projectModalLayer(options) {
         calls.push(options.dirty.map((entry) => entry.reason));
         return true;
       },

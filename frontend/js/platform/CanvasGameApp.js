@@ -297,6 +297,13 @@
     return handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled);
   }
 
+  function incrementPanelRefactorCounter(name = '') {
+    const counters = global.__panelRefactorCounters || global.__PANEL_REFACTOR_COUNTERS__ || null;
+    if (!counters || !name) return false;
+    counters[name] = (Number(counters[name]) || 0) + 1;
+    return true;
+  }
+
   class CanvasGameApp {
     constructor(options = {}) {
           this.runtime = options.runtime || null;
@@ -1644,12 +1651,13 @@
                   state,
                   panelSurfaceManager: manager,
                 });
-                this.clearPanelOverlayCanvas(canvas, ctx);
+                const shouldClear = options.clear !== false;
+                if (shouldClear) this.clearPanelOverlayCanvas(canvas, ctx);
                 const previousCanvas = renderer.canvas;
                 renderer.canvas = canvas;
                 const drawPanel = () => {
                   renderer.beginFrame?.(renderOptions);
-                  renderer.setHitTargets?.([]);
+                  if (shouldClear) renderer.setHitTargets?.([]);
                   const rendered = manager.renderPanel(panelKey, renderer, state, renderOptions);
                   renderer.endFrame?.(renderOptions);
                   return rendered;
@@ -3614,6 +3622,7 @@
                 if (this.actionDispatcher?.canHandle?.(action, this)) {
                   return this.actionDispatcher.handle(action, this);
                 }
+                incrementPanelRefactorCounter('panelAction.dispatcherFallback.count');
                 return this.actionController?.handle?.(action, meta) || false;
               }
 
