@@ -6754,7 +6754,7 @@ Regression:
 
 负责 / Owns:
 
-- authenticated/admin task-definition management HTTP routes
+- authenticated/admin task-definition read, preview, and template HTTP routes
 - authenticated/admin config release HTTP routes
 - operator propagation from auth/admin middleware to admin services
 - keeping admin response/status mapping outside `server.js`
@@ -6763,10 +6763,7 @@ Regression:
 
 - `registerAdminRoutes(app, { authMiddleware, adminMiddleware, configReleaseService, configRuntimeLoader })`
 - `GET /api/admin/task-definitions`
-- `GET /api/admin/task-definitions/history`
 - `POST /api/admin/task-definitions/preview`
-- `POST /api/admin/task-definitions/import`
-- `POST /api/admin/task-definitions/rollback`
 - `GET /api/admin/task-definitions/template.xlsx`
 - `GET /api/admin/config-releases`
 - `GET /api/admin/config-releases/active`

@@ -1,4 +1,4 @@
-const test = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const registerGameRoutes = require('../routes/gameRoutes');
@@ -8,6 +8,18 @@ const TerritoryService = require('../services/TerritoryService');
 const WorldMapService = require('../services/WorldMapService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
+const {
+  publishCurrentConfigRuntime,
+  resetConfigRuntime,
+} = require('./helpers/configRuntimeTestHarness');
+
+before(() => {
+  publishCurrentConfigRuntime();
+});
+
+after(() => {
+  resetConfigRuntime();
+});
 
 function createAppHarness() {
   const routes = [];

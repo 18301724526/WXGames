@@ -189,6 +189,19 @@ function buildPlayerStateBusyPayload(error = {}) {
   };
 }
 
+function isTaskDefinitionRuntimeError(error = {}) {
+  return error?.code === 'TASK_DEFINITIONS_RUNTIME_NOT_READY'
+    || error?.code === 'TASK_DEFINITIONS_SOURCE_OVERRIDE_DISABLED';
+}
+
+function buildTaskDefinitionRuntimePayload(error = {}) {
+  return {
+    success: false,
+    error: error.code || 'TASK_DEFINITIONS_RUNTIME_ERROR',
+    message: error.message || '任务定义运行时不可用',
+  };
+}
+
 function withPlayerStateLock(repository, playerId, callback, options = {}) {
   if (typeof repository?.withPlayerStateLock !== 'function') return callback();
   return repository.withPlayerStateLock(playerId, callback, options);
@@ -484,10 +497,17 @@ function registerGameRoutes(app, deps) {
     if (!gameState) {
       return res.status(404).json({ error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' });
     }
-    return res.json({
-      taskCenter: TaskCenterService.getTaskCenter(gameState, { activeTab: req.query?.tab }),
-      syncTime: new Date().toISOString(),
-    });
+    try {
+      return res.json({
+        taskCenter: TaskCenterService.getTaskCenter(gameState, { activeTab: req.query?.tab }),
+        syncTime: new Date().toISOString(),
+      });
+    } catch (error) {
+      if (isTaskDefinitionRuntimeError(error)) {
+        return res.status(503).json(buildTaskDefinitionRuntimePayload(error));
+      }
+      throw error;
+    }
   });
 
   app.post('/api/game/tasks/claim', authMiddleware, (req, res) => {
@@ -532,6 +552,7 @@ function registerGameRoutes(app, deps) {
       return res.status(response.statusCode).json(response.payload);
     } catch (error) {
       if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
+      if (isTaskDefinitionRuntimeError(error)) return res.status(503).json(buildTaskDefinitionRuntimePayload(error));
       if (!isGameStateRevisionConflict(error)) throw error;
       try {
         const response = withPlayerStateLock(repository, req.playerId, runClaim, {
@@ -541,6 +562,7 @@ function registerGameRoutes(app, deps) {
         return res.status(response.statusCode).json(response.payload);
       } catch (retryError) {
         if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
+        if (isTaskDefinitionRuntimeError(retryError)) return res.status(503).json(buildTaskDefinitionRuntimePayload(retryError));
         if (!isGameStateRevisionConflict(retryError)) throw retryError;
         return res.status(409).json(buildRevisionConflictPayload(retryError));
       }

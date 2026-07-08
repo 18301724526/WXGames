@@ -1,8 +1,7 @@
-const fs = require('node:fs');
 const path = require('node:path');
 
+const GameplayConfigRuntime = require('./config/GameplayConfigRuntime');
 const TaskDefinitionImportReporter = require('./TaskDefinitionImportReporter');
-const TaskDefinitionImportHistory = require('./TaskDefinitionImportHistory');
 const Shared = require('./taskDefinitions/TaskDefinitionShared');
 const ImportParser = require('./taskDefinitions/TaskDefinitionImportParser');
 const Normalizer = require('./taskDefinitions/TaskDefinitionNormalizer');
@@ -10,26 +9,57 @@ const RewardResolver = require('./taskDefinitions/TaskDefinitionRewardResolver')
 const TemplateBuilder = require('./taskDefinitions/TaskDefinitionTemplateBuilder');
 
 const DEFAULT_DEFINITIONS_PATH = path.join(__dirname, '..', 'config', 'defaultTaskDefinitions.json');
-const RUNTIME_DEFINITIONS_PATH = process.env.TASK_DEFINITIONS_PATH
-  || path.join(__dirname, '..', '..', 'data', 'taskDefinitions.json');
+const TASK_DEFINITIONS_RUNTIME_SOURCE = 'active-release-bundle:task-definitions';
 
-function readJsonFile(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+function createSourceOverrideError(sourceKey) {
+  const error = new Error(`Task definitions must be loaded from the active config release bundle; ${sourceKey} is not supported.`);
+  error.code = 'TASK_DEFINITIONS_SOURCE_OVERRIDE_DISABLED';
+  error.sourceKey = sourceKey;
+  return error;
+}
+
+function assertNoSourceOverride(options = {}) {
+  ['runtimePath', 'sourcePath', 'defaultPath'].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(options, key)) {
+      throw createSourceOverrideError(key);
+    }
+  });
+}
+
+function createRuntimeNotReadyError(status = null) {
+  const errors = [
+    ...(status?.errors || []),
+    ...(status?.loaderStatus?.errors || []),
+    ...(status?.loaderStatus?.warnings || []),
+  ].filter(Boolean);
+  const message = errors[0]
+    || 'Task definitions runtime bundle is not ready; publish a matching config release before serving live tasks.';
+  const error = new Error(message);
+  error.code = 'TASK_DEFINITIONS_RUNTIME_NOT_READY';
+  error.runtimeStatus = status;
+  return error;
+}
+
+function resolveRuntimeSource() {
+  const status = GameplayConfigRuntime.getRuntimeConfigStatus();
+  const releaseId = status?.release?.id;
+  return releaseId ? `active-release-bundle:${releaseId}:task-definitions` : TASK_DEFINITIONS_RUNTIME_SOURCE;
 }
 
 function loadDefinitions(options = {}) {
-  const runtimePath = options.runtimePath || RUNTIME_DEFINITIONS_PATH;
-  const defaultPath = options.defaultPath || DEFAULT_DEFINITIONS_PATH;
-  const sourcePath = fs.existsSync(runtimePath) ? runtimePath : defaultPath;
-  return Normalizer.normalizeDefinitions(readJsonFile(sourcePath), { source: sourcePath });
-}
-
-function safeLoadDefinitions(options = {}) {
+  assertNoSourceOverride(options);
+  let payload = null;
   try {
-    return loadDefinitions(options);
+    payload = GameplayConfigRuntime.getTaskDefinitionsPayload();
   } catch (error) {
-    return Normalizer.normalizeDefinitions({ version: 'empty', tasks: [] }, { ...options, source: 'empty' });
+    throw createRuntimeNotReadyError({
+      errors: [error.message],
+      loaderStatus: error.loaderStatus || null,
+    });
   }
+  if (!payload) throw createRuntimeNotReadyError(GameplayConfigRuntime.getRuntimeConfigStatus());
+  const source = resolveRuntimeSource();
+  return Normalizer.normalizeDefinitions({ ...payload, source }, { source });
 }
 
 function buildReport(action, beforeDefinitions, definitions, errors, payload, options = {}) {
@@ -46,7 +76,7 @@ function buildReport(action, beforeDefinitions, definitions, errors, payload, op
 
 function previewImport(payload = {}, options = {}) {
   try {
-    const beforeDefinitions = safeLoadDefinitions(options);
+    const beforeDefinitions = loadDefinitions();
     const raw = ImportParser.parseImportPayload(payload);
     const definitions = Normalizer.normalizeDefinitions(raw, {
       ...options,
@@ -55,78 +85,58 @@ function previewImport(payload = {}, options = {}) {
     const report = buildReport('preview', beforeDefinitions, definitions, definitions.errors, payload, options);
     return { success: definitions.errors.length === 0, definitions, errors: definitions.errors, report };
   } catch (error) {
-    return { success: false, errors: [error.message], definitions: null, report: null };
+    return {
+      success: false,
+      error: error.code || 'TASK_DEFINITION_PREVIEW_FAILED',
+      errors: [error.message],
+      definitions: null,
+      report: null,
+    };
   }
-}
-
-function saveDefinitions(runtimePath, definitions) {
-  fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
-  fs.writeFileSync(runtimePath, `${JSON.stringify(definitions, null, 2)}\n`, 'utf8');
-}
-
-function importDefinitions(payload = {}, options = {}) {
-  const beforeDefinitions = safeLoadDefinitions(options);
-  const preview = previewImport(payload, options);
-  if (!preview.success) return preview;
-  const runtimePath = options.runtimePath || RUNTIME_DEFINITIONS_PATH;
-  const definitions = {
-    ...preview.definitions,
-    importedAt: Shared.nowIso(options.now),
-    importedBy: Shared.sanitizeText(options.importedBy, 'system'),
-    source: Shared.sanitizeText(payload.fileName || options.source, 'upload'),
-  };
-  saveDefinitions(runtimePath, definitions);
-  const report = buildReport('import', beforeDefinitions, definitions, [], payload, options);
-  const importRecord = TaskDefinitionImportHistory.appendImportRecord(report, definitions, {
-    ...options,
-    runtimePath,
-  });
-  return { success: true, definitions, errors: [], report, importRecord };
-}
-
-function getImportHistory(options = {}) {
-  return TaskDefinitionImportHistory.loadImportHistory(options);
-}
-
-function rollbackImport(importId, options = {}) {
-  const runtimePath = options.runtimePath || RUNTIME_DEFINITIONS_PATH;
-  const record = TaskDefinitionImportHistory.findImportRecord(importId, { ...options, runtimePath });
-  if (!record?.definitions) {
-    return { success: false, error: 'IMPORT_RECORD_NOT_FOUND', message: '导入记录不存在' };
-  }
-  const beforeDefinitions = safeLoadDefinitions({ ...options, runtimePath });
-  const definitions = {
-    ...record.definitions,
-    importedAt: Shared.nowIso(options.now),
-    importedBy: Shared.sanitizeText(options.importedBy, 'system'),
-    source: `rollback:${record.id}`,
-  };
-  saveDefinitions(runtimePath, definitions);
-  const report = buildReport('rollback', beforeDefinitions, definitions, [], { fileName: definitions.source }, options);
-  const importRecord = TaskDefinitionImportHistory.appendImportRecord(report, definitions, {
-    ...options,
-    runtimePath,
-  });
-  return { success: true, definitions, errors: [], report, importRecord };
 }
 
 function buildTemplateWorkbookBuffer() {
   return TemplateBuilder.buildTemplateWorkbookBuffer(loadDefinitions());
 }
 
+function getDefinitionsSummary() {
+  try {
+    const definitions = loadDefinitions();
+    return {
+      schema: 'task-definitions-runtime-summary-v1',
+      success: true,
+      source: definitions.source,
+      version: definitions.version,
+      hash: definitions.hash,
+      taskCount: definitions.tasks.length,
+      mainTaskCount: definitions.summary?.byCategory?.main || 0,
+      errors: definitions.errors || [],
+      registryErrors: definitions.registryErrors || [],
+      registryWarnings: definitions.registryWarnings || [],
+    };
+  } catch (error) {
+    return {
+      schema: 'task-definitions-runtime-summary-v1',
+      success: false,
+      source: TASK_DEFINITIONS_RUNTIME_SOURCE,
+      error: error.code || 'TASK_DEFINITIONS_RUNTIME_ERROR',
+      errors: [error.message],
+      runtimeStatus: error.runtimeStatus || null,
+    };
+  }
+}
+
 module.exports = {
   CATEGORY_IDS: Shared.CATEGORY_IDS,
   RESOURCE_KEYS: Shared.RESOURCE_KEYS,
   DEFAULT_DEFINITIONS_PATH,
-  RUNTIME_DEFINITIONS_PATH,
+  TASK_DEFINITIONS_RUNTIME_SOURCE,
   normalizeCategory: Shared.normalizeCategory,
   normalizeDefinitions: Normalizer.normalizeDefinitions,
   parseImportPayload: ImportParser.parseImportPayload,
   previewImport,
-  importDefinitions,
-  getImportHistory,
-  rollbackImport,
   loadDefinitions,
+  getDefinitionsSummary,
   resolveRewardResources: RewardResolver.resolveRewardResources,
   buildTemplateWorkbookBuffer,
 };

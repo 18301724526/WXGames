@@ -1,11 +1,12 @@
-const test = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const os = require('node:os');
 const XLSX = require('xlsx');
 
 const TaskDefinitionService = require('../services/TaskDefinitionService');
+const {
+  publishCurrentConfigRuntime,
+  resetConfigRuntime,
+} = require('./helpers/configRuntimeTestHarness');
 
 function createWorkbookBase64(rows) {
   const workbook = XLSX.utils.book_new();
@@ -14,26 +15,30 @@ function createWorkbookBase64(rows) {
   return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }).toString('base64');
 }
 
-test('TaskDefinitionService loads default main tasks with dynamic reward formulas', () => {
-  const definitions = TaskDefinitionService.loadDefinitions({
-    runtimePath: path.join(os.tmpdir(), `missing-task-defs-${Date.now()}.json`),
-  });
+before(() => {
+  publishCurrentConfigRuntime();
+});
+
+after(() => {
+  resetConfigRuntime();
+});
+
+test('TaskDefinitionService loads live definitions only from the active release bundle', () => {
+  const definitions = TaskDefinitionService.loadDefinitions();
   const task = definitions.tasks.find((item) => item.id === 'main_first_supplies');
 
   assert.equal(definitions.errors.length, 0);
+  assert.equal(definitions.source.startsWith('active-release-bundle:'), true);
+  assert.equal(definitions.version, '1.0.0');
   assert.equal(task.category, 'main');
   assert.deepEqual(task.reward.resources, { food: 120, knowledge: 5 });
   assert.match(task.rewardText, /food\+120/);
 });
 
 test('TaskDefinitionService loads the tutorial-chain tasks with step-name conditions and reward overrides', () => {
-  const definitions = TaskDefinitionService.loadDefinitions({
-    runtimePath: path.join(os.tmpdir(), `missing-task-defs-${Date.now()}-chain.json`),
-  });
+  const definitions = TaskDefinitionService.loadDefinitions();
 
   assert.equal(definitions.errors.length, 0);
-  // Pinned to backend/config/defaultTaskDefinitions.json's version; keep the two in sync when bumping again.
-  assert.equal(definitions.version, '1.0.0');
 
   const homestead = definitions.tasks.find((item) => item.id === 'main_homestead_supplies');
   assert.equal(homestead, undefined);
@@ -51,6 +56,44 @@ test('TaskDefinitionService loads the tutorial-chain tasks with step-name condit
   assert.equal(officer.reward.famousPerson, 'scout');
   assert.equal(officer.rewardText, '开拓名人+1');
   assert.deepEqual(officer.condition, { type: 'tutorialStepAtLeast', step: 'firstArmyClaimed' });
+});
+
+test('TaskDefinitionService rejects explicit source overrides', () => {
+  assert.throws(
+    () => TaskDefinitionService.loadDefinitions({ runtimePath: 'tmp/taskDefinitions.json' }),
+    /active config release bundle/,
+  );
+  assert.throws(
+    () => TaskDefinitionService.loadDefinitions({ sourcePath: TaskDefinitionService.DEFAULT_DEFINITIONS_PATH }),
+    /active config release bundle/,
+  );
+});
+
+test('TaskDefinitionService exposes no live import history or rollback API', () => {
+  assert.equal(TaskDefinitionService.importDefinitions, undefined);
+  assert.equal(TaskDefinitionService.getImportHistory, undefined);
+  assert.equal(TaskDefinitionService.rollbackImport, undefined);
+});
+
+test('TaskDefinitionService fails loudly when the active release bundle is unavailable', () => {
+  resetConfigRuntime();
+  try {
+    assert.throws(
+      () => TaskDefinitionService.loadDefinitions(),
+      (error) => error.code === 'TASK_DEFINITIONS_RUNTIME_NOT_READY',
+    );
+
+    const preview = TaskDefinitionService.previewImport({
+      definitions: {
+        version: 'no-runtime',
+        tasks: [{ id: 'no_runtime_task', title: 'No runtime', category: 'main' }],
+      },
+    });
+    assert.equal(preview.success, false);
+    assert.equal(preview.error, 'TASK_DEFINITIONS_RUNTIME_NOT_READY');
+  } finally {
+    publishCurrentConfigRuntime();
+  }
 });
 
 test('TaskDefinitionService rejects unknown famousPerson reward archetypes', () => {
@@ -103,8 +146,7 @@ test('TaskDefinitionService previews xlsx validation errors for missing fields a
   assert.equal(result.errors.some((error) => error.includes('invalid reward JSON')), true);
 });
 
-test('TaskDefinitionService imports xlsx task rows into a runtime definition file', () => {
-  const runtimePath = path.join(os.tmpdir(), `task-definitions-${Date.now()}.json`);
+test('TaskDefinitionService previews xlsx task rows without writing a runtime definition file', () => {
   const contentBase64 = createWorkbookBase64([
     {
       id: 'xlsx_task',
@@ -120,66 +162,37 @@ test('TaskDefinitionService imports xlsx task rows into a runtime definition fil
       enabled: 1,
     },
   ]);
-  const result = TaskDefinitionService.importDefinitions(
-    { fileName: 'tasks.xlsx', contentBase64 },
-    { runtimePath, importedBy: 'unit-test', now: new Date('2026-06-05T00:00:00Z') },
-  );
-  const saved = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
+  const result = TaskDefinitionService.previewImport({ fileName: 'tasks.xlsx', contentBase64 });
 
   assert.equal(result.success, true);
-  assert.equal(saved.importedBy, 'unit-test');
-  assert.equal(saved.tasks[0].id, 'xlsx_task');
-  assert.deepEqual(saved.tasks[0].reward.resources, { food: 120, knowledge: 5 });
-  assert.equal(saved.tasks[0].reward.formulaResourcesResolved, true);
-  assert.deepEqual(TaskDefinitionService.loadDefinitions({ runtimePath }).tasks[0].reward.resources, {
-    food: 120,
-    knowledge: 5,
-  });
+  assert.equal(result.definitions.tasks[0].id, 'xlsx_task');
+  assert.deepEqual(result.definitions.tasks[0].reward.resources, { food: 120, knowledge: 5 });
+  assert.equal(result.definitions.tasks[0].reward.formulaResourcesResolved, true);
   assert.equal(result.report.diff.addedCount, 1);
   assert.equal(result.report.diff.removedCount >= 1, true);
-  assert.equal(result.importRecord.importedBy, 'unit-test');
-  assert.equal(result.importRecord.validation.success, true);
 });
 
-test('TaskDefinitionService reports changed task fields during preview', () => {
-  const runtimePath = path.join(os.tmpdir(), `task-definitions-diff-${Date.now()}.json`);
-  const historyPath = path.join(os.tmpdir(), `task-definition-history-diff-${Date.now()}.json`);
-  const initial = TaskDefinitionService.importDefinitions(
-    {
-      definitions: {
-        version: 'diff-a',
-        tasks: [
-          {
-            id: 'task_diff',
-            category: 'main',
-            title: 'Old title',
-            description: 'old desc',
-            reward: { resources: { food: 1 } },
-          },
-        ],
-      },
+test('TaskDefinitionService reports changed task fields during preview against active release definitions', () => {
+  const original = TaskDefinitionService.loadDefinitions()
+    .tasks.find((item) => item.id === 'main_first_supplies');
+  const preview = TaskDefinitionService.previewImport({
+    definitions: {
+      version: 'diff-b',
+      tasks: [
+        {
+          id: 'main_first_supplies',
+          category: 'main',
+          title: 'New title',
+          description: 'new desc',
+          target: original.target,
+          condition: original.condition,
+          reward: { resources: { food: 2, wood: 3 } },
+          sortOrder: original.sortOrder,
+        },
+      ],
     },
-    { runtimePath, historyPath, importedBy: 'unit-test', now: new Date('2026-06-05T00:00:00Z') },
-  );
-  const preview = TaskDefinitionService.previewImport(
-    {
-      definitions: {
-        version: 'diff-b',
-        tasks: [
-          {
-            id: 'task_diff',
-            category: 'main',
-            title: 'New title',
-            description: 'new desc',
-            reward: { resources: { food: 2, wood: 3 } },
-          },
-        ],
-      },
-    },
-    { runtimePath, historyPath, importedBy: 'unit-test', now: new Date('2026-06-05T00:01:00Z') },
-  );
+  });
 
-  assert.equal(initial.success, true);
   assert.equal(preview.success, true);
   assert.equal(preview.report.diff.addedCount, 0);
   assert.equal(preview.report.diff.updatedCount, 1);
@@ -189,116 +202,19 @@ test('TaskDefinitionService reports changed task fields during preview', () => {
   );
 });
 
-test('TaskDefinitionService saves import history and can roll back to a previous task version', () => {
-  const runtimePath = path.join(os.tmpdir(), `task-definitions-history-${Date.now()}.json`);
-  const historyPath = path.join(os.tmpdir(), `task-definition-imports-${Date.now()}.json`);
-  const first = TaskDefinitionService.importDefinitions(
-    {
-      definitions: {
-        version: 'history-a',
-        tasks: [
-          {
-            id: 'history_task',
-            category: 'main',
-            title: 'History A',
-            description: 'first',
-            reward: { resources: { food: 1 } },
-          },
-        ],
-      },
-      fileName: 'history-a.json',
-    },
-    { runtimePath, historyPath, importedBy: 'unit-test', now: new Date('2026-06-05T00:00:00Z') },
-  );
-  const second = TaskDefinitionService.importDefinitions(
-    {
-      definitions: {
-        version: 'history-b',
-        tasks: [
-          {
-            id: 'history_task',
-            category: 'main',
-            title: 'History B',
-            description: 'second',
-            reward: { resources: { wood: 2 } },
-          },
-        ],
-      },
-      fileName: 'history-b.json',
-    },
-    { runtimePath, historyPath, importedBy: 'unit-test', now: new Date('2026-06-05T00:02:00Z') },
-  );
+test('TaskDefinitionService does not double-count active-release reward formulas after reload', () => {
+  const definitions = TaskDefinitionService.loadDefinitions();
+  const task = definitions.tasks.find((item) => item.id === 'main_first_supplies');
 
-  assert.equal(first.success, true);
-  assert.equal(second.success, true);
-  assert.equal(TaskDefinitionService.getImportHistory({ runtimePath, historyPath }).imports.length, 2);
-
-  const rollback = TaskDefinitionService.rollbackImport(first.importRecord.id, {
-    runtimePath,
-    historyPath,
-    importedBy: 'unit-test',
-    now: new Date('2026-06-05T00:03:00Z'),
-  });
-  const loaded = TaskDefinitionService.loadDefinitions({ runtimePath });
-
-  assert.equal(rollback.success, true);
-  assert.equal(rollback.importRecord.action, 'rollback');
-  assert.equal(loaded.version, 'history-a');
-  assert.equal(loaded.tasks[0].title, 'History A');
-  assert.equal(loaded.source.startsWith('rollback:'), true);
-  assert.equal(TaskDefinitionService.getImportHistory({ runtimePath, historyPath }).imports.length, 3);
-});
-
-test('TaskDefinitionService does not double-count imported default reward formulas after reload', () => {
-  const runtimePath = path.join(os.tmpdir(), `task-definitions-reload-${Date.now()}.json`);
-  const raw = JSON.parse(fs.readFileSync(TaskDefinitionService.DEFAULT_DEFINITIONS_PATH, 'utf8'));
-  const result = TaskDefinitionService.importDefinitions(
-    { definitions: raw, fileName: 'defaultTaskDefinitions.json' },
-    { runtimePath, importedBy: 'unit-test', now: new Date('2026-06-05T00:00:00Z') },
-  );
-  const loaded = TaskDefinitionService.loadDefinitions({ runtimePath });
-  const task = loaded.tasks.find((item) => item.id === 'main_first_supplies');
-
-  assert.equal(result.success, true);
   assert.deepEqual(task.reward.resources, { food: 120, knowledge: 5 });
   assert.match(task.rewardText, /food\+120/);
 });
 
-test('TaskDefinitionService keeps legacy normalized runtime rewards from being resolved twice', () => {
-  const normalized = TaskDefinitionService.loadDefinitions({
-    runtimePath: path.join(os.tmpdir(), `missing-task-defs-${Date.now()}-legacy.json`),
-  });
-  const runtimePath = path.join(os.tmpdir(), `task-definitions-legacy-${Date.now()}.json`);
-  const legacySnapshot = {
-    ...normalized,
-    tasks: normalized.tasks.map((task) => ({
-      ...task,
-      reward: {
-        resources: task.reward.resources,
-        formulas: task.reward.formulas,
-      },
-    })),
-  };
-  fs.writeFileSync(runtimePath, `${JSON.stringify(legacySnapshot, null, 2)}\n`, 'utf8');
-  const loaded = TaskDefinitionService.loadDefinitions({ runtimePath });
-  const task = loaded.tasks.find((item) => item.id === 'main_first_supplies');
-
-  assert.deepEqual(task.reward.resources, { food: 120, knowledge: 5 });
-  assert.equal(task.reward.formulaResourcesResolved, true);
-});
-
-test('TaskDefinitionService can re-import its template without doubling formula rewards', () => {
-  const runtimePath = path.join(os.tmpdir(), `task-definitions-template-${Date.now()}.json`);
+test('TaskDefinitionService can preview its template without doubling formula rewards', () => {
   const contentBase64 = TaskDefinitionService.buildTemplateWorkbookBuffer().toString('base64');
-  const result = TaskDefinitionService.importDefinitions(
-    { fileName: 'task-definitions-template.xlsx', contentBase64 },
-    { runtimePath, importedBy: 'unit-test', now: new Date('2026-06-05T00:00:00Z') },
-  );
+  const result = TaskDefinitionService.previewImport({ fileName: 'task-definitions-template.xlsx', contentBase64 });
   const task = result.definitions.tasks.find((item) => item.id === 'main_first_supplies');
-  const loadedTask = TaskDefinitionService.loadDefinitions({ runtimePath })
-    .tasks.find((item) => item.id === 'main_first_supplies');
 
   assert.equal(result.success, true);
   assert.deepEqual(task.reward.resources, { food: 120, knowledge: 5 });
-  assert.deepEqual(loadedTask.reward.resources, { food: 120, knowledge: 5 });
 });
