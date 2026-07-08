@@ -50,7 +50,7 @@ test('CanvasGameApp owns retired responsibility methods directly', () => {
     battleScene: ['startBattleScene', 'skipBattleScene', 'closeBattleScene'],
     commands: ['buildBuilding', 'advanceEra', 'research', 'enterCity', 'showHouseBuiltAdvisorDialogue'],
     guideUi: ['openNaming', 'closeCityManagement', 'renderSoftGuide', 'cacheRequestLog'],
-    inputRouter: ['handleTap', 'handleDrag', 'handleGesture', 'isPointBlockedByTutorialShield'],
+    inputRouter: ['handleTap', 'handleDrag', 'handleGesture', 'dispatchCanvasAction', 'isPointBlockedByTutorialShield'],
   };
 
   Object.entries(expectedMethods).forEach(([group, methods]) => {
@@ -92,6 +92,62 @@ test('html and minigame entries load CanvasGameApp without retired split modules
     true,
     'state/optimistic/index should require before CanvasGameApp',
   );
+});
+
+test('CanvasGameApp dispatches supported panel actions before controller fallback', () => {
+  const calls = [];
+  const app = makeAppHost({
+    actionDispatcher: {
+      canHandle(action, context) {
+        calls.push(['canHandle', action.type, context === app]);
+        return true;
+      },
+      handle(action, context) {
+        calls.push(['dispatcher', action.type, context === app]);
+        return true;
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['controller', action.type]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(app.dispatchCanvasAction({ type: 'openFamousPersons' }), true);
+  assert.deepEqual(calls, [
+    ['canHandle', 'openFamousPersons', true],
+    ['dispatcher', 'openFamousPersons', true],
+  ]);
+});
+
+test('CanvasGameApp falls back to controller for unsupported actions', () => {
+  const calls = [];
+  const app = makeAppHost({
+    actionDispatcher: {
+      canHandle(action, context) {
+        calls.push(['canHandle', action.type, context === app]);
+        return false;
+      },
+      handle(action) {
+        calls.push(['dispatcher', action.type]);
+        return true;
+      },
+    },
+    actionController: {
+      handle(action, meta) {
+        calls.push(['controller', action.type, meta.source]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(app.dispatchCanvasAction({ type: 'externalWorldCommand' }, { source: 'tap' }), true);
+  assert.deepEqual(calls, [
+    ['canHandle', 'externalWorldCommand', true],
+    ['controller', 'externalWorldCommand', 'tap'],
+  ]);
 });
 
 test('seekFamousPerson syncs the single API state source and redraws only the panel surface', async () => {

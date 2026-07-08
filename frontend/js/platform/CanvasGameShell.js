@@ -951,6 +951,13 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return result;
         }
 
+    dispatchCanvasAction(action = {}, meta = {}) {
+          if (this.actionDispatcher?.canHandle?.(action, this)) {
+            return this.actionDispatcher.handle(action, this);
+          }
+          return this.actionController?.handle?.(action, meta) || false;
+        }
+
     getTutorialControlAction(point = {}) {
           if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return null;
           const action = this.renderer.getHitTarget(point);
@@ -1314,32 +1321,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               return true;
             }
           }
-          if (action.type === 'showFamousSkillTooltip') {
-            const handled = typeof this.renderer.setPinnedFamousSkillTooltip === 'function'
-              ? this.renderer.setPinnedFamousSkillTooltip(action)
-              : false;
-            if (handled) {
-              if (this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
-                this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons', { action });
-              } else {
-                this.renderActive();
-              }
-            }
-            return handled;
-          }
-          if (action.type === 'clearFamousSkillTooltip') {
-            const handled = typeof this.renderer.clearFamousSkillTooltip === 'function'
-              ? this.renderer.clearFamousSkillTooltip()
-              : false;
-            if (handled) {
-              if (this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
-                this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons', { action });
-              } else {
-                this.renderActive();
-              }
-            }
-            return handled;
-          }
           const handled = this.handleAction(action, event, { tapTraceId });
           logActorPickingDiag('shellInput:handleTap:directActionResult', {
             tapTraceId,
@@ -1357,7 +1338,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     handleAction(action, event, meta = {}) {
-          const handled = this.actionController?.handle?.(action, { ...(meta || {}), event }) || false;
+          const handled = this.dispatchCanvasAction(action, { ...(meta || {}), event }) || false;
           if (action?.type === 'openWorldSite') {
             if (handled && typeof handled.then === 'function') {
               handled.then((value) => {

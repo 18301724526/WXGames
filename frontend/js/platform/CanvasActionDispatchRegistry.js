@@ -360,13 +360,27 @@
     ]));
   }
 
+  function canDispatchWithContext(action = {}, context = null) {
+    if (!context) return true;
+    if (action.type === 'switchTab') return typeof context.switchTab === 'function';
+    if (CanvasPanelActionRegistry?.has?.(action)) return true;
+    if (FINISH_ACTIONS[action.type] || RENDER_ACTIONS[action.type]) {
+      return typeof context[action.type] === 'function';
+    }
+    return true;
+  }
+
   class CanvasActionDispatchRegistry {
     static supportedActions() {
       return getSupportedActions();
     }
 
-    static canHandle(action) {
-      return Boolean(action && getSupportedActions().includes(action.type));
+    static canHandle(action, context = null) {
+      return Boolean(
+        action
+        && getSupportedActions().includes(action.type)
+        && canDispatchWithContext(action, context),
+      );
     }
 
     static renderIfHandled(handled, context = {}, action = {}) {
@@ -391,7 +405,7 @@
     }
 
     static dispatch(action = {}, context = {}, options = {}) {
-      if (!this.canHandle(action)) return false;
+      if (!this.canHandle(action, context)) return false;
       if (action.type === 'switchTab') return this.dispatchSwitchTab(action, context);
       if (CanvasPanelActionRegistry?.has?.(action)) return this.dispatchPanelAction(action, context, options);
 

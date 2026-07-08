@@ -48,7 +48,7 @@ test('CanvasGameShell owns retired responsibility methods directly', () => {
   const proto = CanvasGameShell.prototype;
   const expectedMethods = {
     mounting: ['createRenderer', 'mount'],
-    inputRouter: ['bindInput', 'handleTap', 'handleDrag', 'handleGesture'],
+    inputRouter: ['bindInput', 'handleTap', 'handleDrag', 'handleGesture', 'dispatchCanvasAction'],
     commands: ['openCityManagement', 'openArmyFormation', 'forwardCanvasAction', 'closeWorldSiteHud'],
     guideUi: ['getCanvasTarget', 'showTutorialHighlight', 'hideTutorialHighlight'],
     worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
@@ -65,6 +65,62 @@ test('CanvasGameShell owns retired responsibility methods directly', () => {
       assert.equal(typeof proto[method], 'function', `${group}.${method} should live on CanvasGameShell`);
     });
   });
+});
+
+test('CanvasGameShell dispatches supported panel actions before controller fallback', () => {
+  const calls = [];
+  const shell = makeModalHost({
+    actionDispatcher: {
+      canHandle(action, context) {
+        calls.push(['canHandle', action.type, context === shell]);
+        return true;
+      },
+      handle(action, context) {
+        calls.push(['dispatcher', action.type, context === shell]);
+        return true;
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['controller', action.type]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(shell.dispatchCanvasAction({ type: 'openFamousPersons' }), true);
+  assert.deepEqual(calls, [
+    ['canHandle', 'openFamousPersons', true],
+    ['dispatcher', 'openFamousPersons', true],
+  ]);
+});
+
+test('CanvasGameShell falls back to controller for unsupported actions', () => {
+  const calls = [];
+  const shell = makeModalHost({
+    actionDispatcher: {
+      canHandle(action, context) {
+        calls.push(['canHandle', action.type, context === shell]);
+        return false;
+      },
+      handle(action) {
+        calls.push(['dispatcher', action.type]);
+        return true;
+      },
+    },
+    actionController: {
+      handle(action, meta) {
+        calls.push(['controller', action.type, meta.source]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(shell.dispatchCanvasAction({ type: 'externalWorldCommand' }, { source: 'tap' }), true);
+  assert.deepEqual(calls, [
+    ['canHandle', 'externalWorldCommand', true],
+    ['controller', 'externalWorldCommand', 'tap'],
+  ]);
 });
 
 test('CanvasGameShell awaits world tile cache prewarm during asset preload', async () => {

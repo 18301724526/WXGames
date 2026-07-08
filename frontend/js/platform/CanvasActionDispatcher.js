@@ -31,12 +31,12 @@
       return renderAfterSuccess(result);
     }
 
-    canHandle(action) {
-      return Boolean(this.registry?.canHandle?.(action));
+    canHandle(action, context = null) {
+      return Boolean(this.registry?.canHandle?.(action, context));
     }
 
     handle(action, context = {}) {
-      if (!this.canHandle(action)) return false;
+      if (!this.canHandle(action, context)) return false;
       if (action.disabled) return true;
       return this.registry.dispatch(action, context, {
         finishHandled: (result) => this.finishHandled(result, context, action),

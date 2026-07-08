@@ -649,7 +649,7 @@
             getForceMapHome: () => this.mapHomeActive,
             canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
             onAction: (action, event, meta = {}) => {
-              const handled = this.actionController?.handle?.(action, { ...(meta || {}), event });
+              const handled = this.dispatchCanvasAction(action, { ...(meta || {}), event });
               this.advanceTutorialIntroAfterHandled(handled, action);
               return handled;
             },
@@ -3610,6 +3610,13 @@
                 return result;
               }
 
+    dispatchCanvasAction(action = {}, meta = {}) {
+                if (this.actionDispatcher?.canHandle?.(action, this)) {
+                  return this.actionDispatcher.handle(action, this);
+                }
+                return this.actionController?.handle?.(action, meta) || false;
+              }
+
     async handleTap(point) {
                 const action = this.renderer.getHitTarget(point);
                 global.ClientOperationLog?.record?.('input:tapHit', {
@@ -3621,7 +3628,7 @@
                   militaryView: this.state?.militaryView || this.militaryView || '',
                 });
                 if (action?.type === 'blockCanvasModal') {
-                  return this.actionController?.handle?.(action);
+                  return this.dispatchCanvasAction(action);
                 }
                 if (action?.disabled) {
                   global.ClientOperationLog?.record?.('input:tapDisabled', {
@@ -3643,25 +3650,7 @@
                   if (handled) return handled;
                   return handled;
                 }
-                if (action.type === 'showFamousSkillTooltip') {
-                  this.renderer.setPinnedFamousSkillTooltip?.(action);
-                  if (this.isBlockingPanelSnapshotOpen?.('showFamousPersons')) {
-                    this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action });
-                  } else {
-                    this.render();
-                  }
-                  return;
-                }
-                if (action.type === 'clearFamousSkillTooltip') {
-                  this.renderer.clearFamousSkillTooltip?.();
-                  if (this.isBlockingPanelSnapshotOpen?.('showFamousPersons')) {
-                    this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action });
-                  } else {
-                    this.render();
-                  }
-                  return;
-                }
-                const handledResult = this.actionController?.handle?.(action);
+                const handledResult = this.dispatchCanvasAction(action);
                 global.ClientOperationLog?.record?.('input:tapAction', {
                   action: global.ClientOperationLog?.summarizeAction?.(action),
                   handled: summarizeHandledForOperationLog(handledResult),

@@ -12,6 +12,15 @@ test('CanvasActionDispatcher delegates supported action metadata to the registry
   assert.equal(new CanvasActionDispatcher().canHandle({ type: 'unknownAction' }), false);
 });
 
+test('CanvasActionDispatcher canHandle is context-aware for dispatcher-first hosts', () => {
+  const dispatcher = new CanvasActionDispatcher();
+
+  assert.equal(dispatcher.canHandle({ type: 'openLogs' }, {}), false);
+  assert.equal(dispatcher.handle({ type: 'openLogs' }, {}), false);
+  assert.equal(dispatcher.canHandle({ type: 'openLogs' }, { openLogs() {} }), true);
+  assert.equal(dispatcher.canHandle({ type: 'openFamousPersons' }, {}), true);
+});
+
 test('CanvasActionDispatcher preserves switch tab side effects and render contract', () => {
   const calls = [];
   const dispatcher = new CanvasActionDispatcher();
@@ -142,4 +151,17 @@ test('index.html loads action registry before dispatcher', () => {
   assert.notEqual(registryPosition, -1);
   assert.notEqual(dispatcherPosition, -1);
   assert.equal(registryPosition < dispatcherPosition, true);
+});
+
+test('minigame loads action dispatch registry before dispatcher and app', () => {
+  const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');
+  const registryPosition = minigame.indexOf("require('../js/platform/CanvasActionDispatchRegistry')");
+  const dispatcherPosition = minigame.indexOf("require('../js/platform/CanvasActionDispatcher')");
+  const appPosition = minigame.indexOf("require('../js/platform/CanvasGameApp')");
+
+  assert.notEqual(registryPosition, -1);
+  assert.notEqual(dispatcherPosition, -1);
+  assert.notEqual(appPosition, -1);
+  assert.equal(registryPosition < dispatcherPosition, true);
+  assert.equal(dispatcherPosition < appPosition, true);
 });
