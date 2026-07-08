@@ -1464,16 +1464,32 @@
 
     // Famous person actions.
     handle_openFamousPersons(action) {
-            CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showFamousPersons', true);
             const game = this.getGameHost();
+            const tutorialController = game?.tutorialController;
+            // UI-REDO ⑦a sibling: consult the tutorial tab gate BEFORE mutating the modal
+            // owner. The old order opened modal:famousPersons eagerly and dropped
+            // onFamousPersonsOpened's answer, so a tutorial veto (canOpenTab('famousPersons')
+            // false) still got the panel -- the dock tab lock leaked. Unlike the command
+            // panel there is no late async veto to roll back: the event registry's
+            // famousPersonsOpened only ever returns tutorial state, never false. A veto is
+            // a pure no-op + player feedback; the allowed path keeps its exact prior order.
+            if (typeof tutorialController?.canOpenTab === 'function'
+              && !tutorialController.canOpenTab('famousPersons')) {
+              const message = t('guide.completeCurrentStep');
+              if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);
+              else if (typeof game?.showFloatingText === 'function') game.showFloatingText(message);
+              else this.log?.(message);
+              return false;
+            }
+            CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showFamousPersons', true);
             const owner = game || this.host;
             owner.famousPersonsPage = 0;
             owner.selectedFamousPersonId = '';
             this.host.renderer?.clearFamousSkillTooltip?.();
             this.closePanels(['showFamousPersons']);
             const handled = this.afterHandled(action);
-            const result = game?.tutorialController?.onFamousPersonsOpened?.();
-            game?.tutorialController?.refreshCurrentHighlight?.();
+            const result = tutorialController?.onFamousPersonsOpened?.();
+            tutorialController?.refreshCurrentHighlight?.();
             const scheduler = this.host?.runtime || game?.runtime || global;
             scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
             if (result?.catch) result.catch((error) => this.log?.(error));
