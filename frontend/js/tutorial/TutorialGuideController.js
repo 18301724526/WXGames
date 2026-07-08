@@ -711,6 +711,7 @@
         const game = this.game || {};
         CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(game, 'showCityManagement', true);
         game.activeCityManagementTab = 'buildings';
+        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showTaskCenter');
         CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showSubcityList');
         CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'activeCommandPanel');
         game.closeEventSnapshot?.();
