@@ -102,8 +102,8 @@
       const planningY = y + 106;
       ModalPlate.drawModalCard(this, x + 7, planningY, width - 14, 42, {
         tone: 'muted',
-        fill: 'rgba(24, 36, 29, 0.72)',
-        stroke: 'rgba(116, 211, 160, 0.16)',
+        fill: 'rgba(18, 22, 20, 0.82)',
+        stroke: 'rgba(85, 171, 115, 0.24)',
         radius: 8,
       });
       const terrainLabel = planning.terrainLabel || this.t('home.planning.terrain.plains', {});
@@ -142,6 +142,8 @@
         const jobPanelInset = 8;
         ModalPlate.drawModalCard(this, jobPanelX, rowY, width - 14, jobRowHeight, {
           tone: job.count > 0 ? 'accent' : 'default',
+          fill: job.count > 0 ? 'rgba(23, 22, 19, 0.92)' : undefined,
+          stroke: job.count > 0 ? 'rgba(229, 208, 165, 0.28)' : undefined,
           radius: 9,
         });
         this.drawAsset(icon, jobPanelX + jobPanelInset, rowY + 9, 24, 24);

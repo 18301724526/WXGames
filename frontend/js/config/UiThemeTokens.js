@@ -297,16 +297,16 @@
     ]),
     tabActiveUnderlinePx: 2,
     cardGradientStops: Object.freeze([
-      Object.freeze([0, '#232019']),
-      Object.freeze([1, '#181613']),
+      Object.freeze([0, '#1D1D1A']),
+      Object.freeze([1, '#131412']),
     ]),
     cardAccentGradientStops: Object.freeze([
-      Object.freeze([0, '#3A2E1D']), // warm claimable/highlight face
-      Object.freeze([1, '#211A12']),
+      Object.freeze([0, '#27251F']), // selected/claimable: dark iron face, gold edge
+      Object.freeze([1, '#151512']),
     ]),
-    cardMutedFill: '#1A1917', // completed/inactive card face
+    cardMutedFill: '#171715', // completed/inactive card face
     cardStroke: 'rgba(229, 208, 165, 0.12)', // hairline card edge
-    cardAccentStroke: 'rgba(210, 181, 126, 0.45)',
+    cardAccentStroke: 'rgba(229, 208, 165, 0.34)',
     cardMutedStroke: 'rgba(229, 208, 165, 0.07)',
     cardMetStroke: 'rgba(85, 171, 115, 0.35)', // requirement-met row edge (accentJade family)
     cardPadPx: 12,
@@ -319,10 +319,10 @@
       radius: 8,
       textSize: 13,
       primaryFaceStops: Object.freeze([
-        Object.freeze([0, '#4A3823']), // warm lit face
-        Object.freeze([1, '#241A10']),
+        Object.freeze([0, '#2A2823']), // dark iron face with champagne edge
+        Object.freeze([1, '#171715']),
       ]),
-      primaryStroke: 'rgba(210, 181, 126, 0.85)', // champagne edge
+      primaryStroke: 'rgba(229, 208, 165, 0.72)', // champagne edge
       primaryText: '#F2E2BE',
       primaryInset: 'rgba(229, 208, 165, 0.12)',
       secondaryFaceStops: Object.freeze([

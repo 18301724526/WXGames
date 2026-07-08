@@ -179,13 +179,13 @@
           radius,
           scale: options.scale || 1.35,
           offsetY: options.offsetY ?? 0.16,
-          fill: options.fill || 'rgba(70, 49, 33, 0.92)',
-          stroke: options.stroke || 'rgba(240, 180, 91, 0.34)',
+          fill: options.fill || 'rgba(23, 23, 20, 0.92)',
+          stroke: options.stroke || 'rgba(229, 208, 165, 0.28)',
         });
         if (!drawn) {
           ModalPlate.drawModalCard(this, x, y, width, height, {
-            fill: 'rgba(70, 49, 33, 0.92)',
-            stroke: 'rgba(240, 180, 91, 0.34)',
+            fill: 'rgba(23, 23, 20, 0.92)',
+            stroke: 'rgba(229, 208, 165, 0.28)',
             radius,
           });
           this.drawText(String(person.name || this.t('military.formation.leader', {})).slice(0, 1), x + width / 2, y + height / 2, {
@@ -218,8 +218,8 @@
       const active = members.length > 0;
       ModalPlate.drawModalCard(this, x, y, width, height, {
         tone: active ? 'accent' : 'muted',
-        fill: active ? undefined : 'rgba(24, 23, 20, 0.82)',
-        stroke: active ? undefined : 'rgba(255, 226, 177, 0.14)',
+        fill: active ? 'rgba(20, 20, 18, 0.92)' : 'rgba(18, 18, 16, 0.84)',
+        stroke: active ? 'rgba(229, 208, 165, 0.3)' : 'rgba(255, 226, 177, 0.12)',
         radius: 7,
       });
       const title = formation.name || this.t('military.formation.default', { slot: index + 1 });

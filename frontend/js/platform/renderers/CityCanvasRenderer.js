@@ -125,8 +125,8 @@
         const active = Boolean(city.isActive);
         ModalPlate.drawModalCard(this, itemX, itemY, itemWidth, 43, {
           tone: active ? 'accent' : 'muted',
-          fill: active ? undefined : 'rgba(20, 19, 17, 0.82)',
-          stroke: active ? undefined : 'rgba(255, 226, 177, 0.12)',
+          fill: active ? 'rgba(20, 20, 18, 0.92)' : 'rgba(18, 18, 16, 0.84)',
+          stroke: active ? 'rgba(229, 208, 165, 0.3)' : 'rgba(255, 226, 177, 0.12)',
           radius: 8,
         });
         if (active) {
@@ -276,6 +276,8 @@
           const count = Array.isArray(formation.members) ? formation.members.length : 0;
           ModalPlate.drawModalCard(this, cardX, compactCardY, cardWidth, compactCardHeight, {
             tone: count ? 'accent' : 'muted',
+            fill: count ? 'rgba(20, 20, 18, 0.92)' : 'rgba(18, 18, 16, 0.84)',
+            stroke: count ? 'rgba(229, 208, 165, 0.3)' : 'rgba(255, 226, 177, 0.12)',
             radius: 7,
           });
           this.drawText(this.truncateText(formation.name || this.t('home.city.formation.defaultName', { index: index + 1 }), cardWidth - 12, { size: 11, bold: true }), cardX + cardWidth / 2, compactCardY + 9, {
@@ -344,8 +346,8 @@
         const active = Boolean(city.isActive);
         ModalPlate.drawModalCard(this, itemX, itemY, itemWidth, itemHeight - 8, {
           tone: active ? 'accent' : 'muted',
-          fill: active ? undefined : 'rgba(20, 19, 17, 0.82)',
-          stroke: active ? undefined : 'rgba(255, 226, 177, 0.12)',
+          fill: active ? 'rgba(20, 20, 18, 0.92)' : 'rgba(18, 18, 16, 0.84)',
+          stroke: active ? 'rgba(229, 208, 165, 0.3)' : 'rgba(255, 226, 177, 0.12)',
           radius: 9,
         });
         this.drawAsset('assets/art/world-site-city-cutout.png', itemX + 10, itemY + 10, 30, 30);

@@ -144,11 +144,14 @@
           const isMuted = Boolean(card.isMuted || card.button.disabled);
           ModalPlate.drawModalCard(this, x + 10, y, width - 20, rowHeight, {
             tone: isMuted ? 'muted' : 'accent',
+            fill: isMuted ? undefined : 'rgba(20, 20, 18, 0.92)',
+            stroke: isMuted ? undefined : 'rgba(229, 208, 165, 0.28)',
           });
           ModalPlate.drawModalCard(this, x + 18, y + 12, 50, 50, {
             tone: isMuted ? 'muted' : 'accent',
             radius: 9,
-            fill: isMuted ? 'rgba(22, 21, 18, 0.78)' : undefined,
+            fill: isMuted ? 'rgba(22, 21, 18, 0.78)' : 'rgba(24, 24, 21, 0.9)',
+            stroke: isMuted ? undefined : 'rgba(229, 208, 165, 0.24)',
           });
           if (card.art) this.drawAsset(card.art, x + 22, y + 16, 42, 42, isMuted ? 0.62 : 1);
           else this.drawText(card.icon || '', x + 43, y + 37, { size: 24, align: 'center', baseline: 'middle' });
@@ -290,7 +293,7 @@
           color: '#b7d4c2',
         },
         pressure: {
-          fill: 'rgba(88, 58, 34, 0.52)',
+          fill: 'rgba(28, 25, 21, 0.68)',
           stroke: 'rgba(240, 180, 91, 0.26)',
           color: '#f1c27d',
         },
@@ -430,10 +433,10 @@
           : this.createGradient(
             x, y, x, y + height,
             [
-              [0, '#4A3823'],
-              [1, '#241A10'],
+              [0, '#2A2823'],
+              [1, '#171715'],
             ],
-            '#37291A',
+            '#211F1B',
           ),
         stroke: options.disabled ? 'rgba(229, 208, 165, 0.1)' : 'rgba(210, 181, 126, 0.85)',
         radius: 8,
