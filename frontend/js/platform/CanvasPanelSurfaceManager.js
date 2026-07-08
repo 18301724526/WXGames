@@ -11,6 +11,18 @@
     return null;
   })();
 
+  function getPanelActionContextAdapter() {
+    if (global.CanvasPanelActionContextAdapter) return global.CanvasPanelActionContextAdapter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasPanelActionContextAdapter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   class CanvasPanelSurfaceManager {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -18,8 +30,13 @@
       this.baseHitTargetsByPanel = new Map();
     }
 
-    getPanel(panelKey = '') {
+    getPanelEntry(panelKey = '') {
       return this.registry?.get?.(panelKey) || null;
+    }
+
+    getPanel(panelKey = '') {
+      const entry = this.getPanelEntry(panelKey);
+      return entry?.module || entry || null;
     }
 
     getSurfaceHost() {
@@ -38,6 +55,15 @@
       if (typeof host.getState === 'function') return host.getState();
       if (host.lastGame?.state) return host.lastGame.state;
       return host.state || null;
+    }
+
+    ensurePanelOptions(options = {}) {
+      if (options.context) return options;
+      const buildPanelActionContext = getPanelActionContextAdapter();
+      const context = typeof buildPanelActionContext === 'function'
+        ? buildPanelActionContext(this.host)
+        : null;
+      return context ? { ...options, context } : options;
     }
 
     captureBaseHitTargets(panelKey = '') {
@@ -65,8 +91,11 @@
     }
 
     isPanelOpen(panelKey = '', options = {}) {
-      const panel = this.getPanel(panelKey);
-      if (typeof panel?.isOpen === 'function') return panel.isOpen(this.host, options) !== false;
+      const entry = this.getPanelEntry(panelKey);
+      const panel = entry?.module || entry || null;
+      const handler = entry?.isOpen || panel?.isOpen;
+      const panelOptions = this.ensurePanelOptions(options);
+      if (typeof handler === 'function') return handler.call(entry?.isOpen ? entry : panel, this.host, panelOptions) !== false;
       return true;
     }
 
@@ -81,6 +110,7 @@
     // open-time snapshot.
     syncOpenPanelSurfacesAfterBaseRender(options = {}) {
       if (this.syncingOpenPanelSurfaces) return false;
+      const panelOptions = this.ensurePanelOptions(options);
       const registryKeys = typeof this.registry?.keys === 'function' ? this.registry.keys() : [];
       const panelKeys = new Set([...registryKeys, ...this.baseHitTargetsByPanel.keys()]);
       let refreshed = false;
@@ -93,11 +123,11 @@
           // manager tracks them (isPanelOpen's permissive default would repaint
           // every registered panel on every frame).
           const open = typeof panel.isOpen === 'function'
-            ? panel.isOpen(this.host, options) !== false
+            ? panel.isOpen(this.host, panelOptions) !== false
             : this.baseHitTargetsByPanel.has(panelKey);
           if (!open) return;
           this.baseHitTargetsByPanel.delete(panelKey);
-          refreshed = this.refreshPanelSurface(panelKey, options) || refreshed;
+          refreshed = this.refreshPanelSurface(panelKey, panelOptions) || refreshed;
         });
       } finally {
         this.syncingOpenPanelSurfaces = false;
@@ -106,46 +136,58 @@
     }
 
     openPanel(panelKey = '', options = {}) {
-      const panel = this.getPanel(panelKey);
-      if (!panel?.open) return false;
-      const handled = panel.open(this.host, options) !== false;
-      if (handled && options.render !== false) this.refreshPanelSurface(panelKey, options);
+      const entry = this.getPanelEntry(panelKey);
+      const panel = entry?.module || entry || null;
+      const handler = entry?.open || panel?.open;
+      if (typeof handler !== 'function') return false;
+      const panelOptions = this.ensurePanelOptions(options);
+      const handled = handler.call(entry?.open ? entry : panel, this.host, panelOptions) !== false;
+      if (handled && panelOptions.render !== false) this.refreshPanelSurface(panelKey, panelOptions);
       return handled;
     }
 
     closePanel(panelKey = '', options = {}) {
-      const panel = this.getPanel(panelKey);
-      if (!panel?.close) return false;
-      const handled = panel.close(this.host, options) !== false;
-      if (handled) this.clearPanelSurface(panelKey, options);
+      const entry = this.getPanelEntry(panelKey);
+      const panel = entry?.module || entry || null;
+      const handler = entry?.close || panel?.close;
+      if (typeof handler !== 'function') return false;
+      const panelOptions = this.ensurePanelOptions(options);
+      const handled = handler.call(entry?.close ? entry : panel, this.host, panelOptions) !== false;
+      if (handled) this.clearPanelSurface(panelKey, panelOptions);
       return handled;
     }
 
     runPanelAction(panelKey = '', actionName = '', action = {}, options = {}) {
-      const panel = this.getPanel(panelKey);
-      const handler = panel?.[actionName];
+      const entry = this.getPanelEntry(panelKey);
+      const panel = entry?.module || entry || null;
+      const entryHandler = entry?.actions?.[actionName];
+      const handler = entryHandler || panel?.actions?.[actionName] || panel?.[actionName];
       if (typeof handler !== 'function') return false;
-      const handled = handler.call(panel, this.host, action, options) !== false;
-      if (handled && options.render !== false) this.refreshPanelSurface(panelKey, options);
+      const panelOptions = this.ensurePanelOptions(options);
+      const handled = handler.call(entryHandler ? entry : panel, this.host, action, panelOptions) !== false;
+      if (handled && panelOptions.render !== false) this.refreshPanelSurface(panelKey, panelOptions);
       return handled;
     }
 
     renderPanel(panelKey = '', renderer = null, state = {}, options = {}) {
-      const panel = this.getPanel(panelKey);
-      if (!panel?.render) return false;
-      panel.render(renderer, state, options);
+      const entry = this.getPanelEntry(panelKey);
+      const panel = entry?.module || entry || null;
+      const handler = entry?.render || panel?.render;
+      if (typeof handler !== 'function') return false;
+      handler.call(entry?.render ? entry : panel, renderer, state, this.ensurePanelOptions(options));
       return true;
     }
 
     refreshPanelSurface(_panelKey = '', options = {}) {
       const panelKey = String(_panelKey || '');
+      const panelOptions = this.ensurePanelOptions(options);
       const surfaceHost = this.getSurfaceHost();
-      if (!this.isPanelOpen(panelKey, options)) return this.clearPanelSurface(panelKey, options);
+      if (!this.isPanelOpen(panelKey, panelOptions)) return this.clearPanelSurface(panelKey, panelOptions);
       this.captureBaseHitTargets(panelKey);
       if (typeof surfaceHost?.renderPanelOverlaySurface === 'function') {
         return surfaceHost.renderPanelOverlaySurface(panelKey, this, {
-          ...options,
-          state: this.getState(options),
+          ...panelOptions,
+          state: this.getState(panelOptions),
         }) !== false;
       }
       return false;
@@ -153,9 +195,10 @@
 
     clearPanelSurface(_panelKey = '', options = {}) {
       const panelKey = String(_panelKey || '');
+      const panelOptions = this.ensurePanelOptions(options);
       const surfaceHost = this.getSurfaceHost();
       const cleared = typeof surfaceHost?.clearPanelOverlaySurface === 'function'
-        ? surfaceHost.clearPanelOverlaySurface(panelKey, this, options) !== false
+        ? surfaceHost.clearPanelOverlaySurface(panelKey, this, panelOptions) !== false
         : false;
       this.restoreBaseHitTargets(panelKey);
       return cleared;

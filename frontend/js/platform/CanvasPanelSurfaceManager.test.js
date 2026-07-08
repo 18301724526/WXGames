@@ -188,3 +188,154 @@ test('CanvasPanelSurfaceManager base-render sync is a no-op while no panel is op
   assert.deepEqual(calls, []);
   assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity']);
 });
+
+test('CanvasPanelSurfaceManager normalizes rich registry entries', () => {
+  const calls = [];
+  const panelModule = {
+    opened: false,
+    isOpen() {
+      return this.opened;
+    },
+    open() {
+      calls.push(['module.open']);
+      this.opened = true;
+      return true;
+    },
+    close() {
+      calls.push(['module.close']);
+      this.opened = false;
+      return true;
+    },
+    actions: {
+      changePage(_host, action) {
+        calls.push(['module.action', action.delta]);
+        return true;
+      },
+    },
+    render(_renderer, _state, options) {
+      calls.push(['module.render', options.mode]);
+    },
+  };
+  const entry = {
+    key: 'famousPersons',
+    module: panelModule,
+    open(host, options) {
+      calls.push(['entry.open', host.id, options.source]);
+      return panelModule.open(host, options);
+    },
+    close(host, options) {
+      calls.push(['entry.close', host.id, options.source]);
+      return panelModule.close(host, options);
+    },
+    actions: {
+      changePage(host, action, options) {
+        calls.push(['entry.action', host.id, options.source]);
+        return panelModule.actions.changePage(host, action, options);
+      },
+    },
+    render(renderer, state, options) {
+      calls.push(['entry.render', state.id, options.mode]);
+      return panelModule.render(renderer, state, options);
+    },
+  };
+  const manager = new CanvasPanelSurfaceManager({
+    host: {
+      id: 'game',
+      state: { id: 'state' },
+      renderPanelOverlaySurface(panelKey, surfaceManager, options) {
+        calls.push(['overlay', panelKey]);
+        surfaceManager.renderPanel(panelKey, {}, options.state, { mode: 'panelOverlay' });
+        return true;
+      },
+      clearPanelOverlaySurface() {
+        calls.push(['clearOverlay']);
+        return true;
+      },
+    },
+    registry: {
+      get(panelKey) {
+        return panelKey === 'famousPersons' ? entry : null;
+      },
+    },
+  });
+
+  assert.equal(manager.openPanel('famousPersons', { source: 'button' }), true);
+  assert.equal(manager.runPanelAction('famousPersons', 'changePage', { delta: 1 }, { source: 'pager' }), true);
+  assert.equal(manager.closePanel('famousPersons', { source: 'back' }), true);
+  assert.deepEqual(calls, [
+    ['entry.open', 'game', 'button'],
+    ['module.open'],
+    ['overlay', 'famousPersons'],
+    ['entry.render', 'state', 'panelOverlay'],
+    ['module.render', 'panelOverlay'],
+    ['entry.action', 'game', 'pager'],
+    ['module.action', 1],
+    ['overlay', 'famousPersons'],
+    ['entry.render', 'state', 'panelOverlay'],
+    ['module.render', 'panelOverlay'],
+    ['entry.close', 'game', 'back'],
+    ['module.close'],
+    ['clearOverlay'],
+  ]);
+});
+
+test('CanvasPanelSurfaceManager supplies adapted context to panel handlers', () => {
+  const calls = [];
+  const game = {
+    id: 'game',
+    state: { id: 'state' },
+    famousPersonsPage: 3,
+    selectedFamousPersonId: 'fp-old',
+  };
+  const host = {
+    id: 'shell',
+    lastGame: game,
+    getCanvasGameHost() {
+      return game;
+    },
+  };
+  const panel = {
+    open(_host, options) {
+      const owner = options.context?.getUiStateOwner?.();
+      calls.push(['open', owner?.id, options.source]);
+      owner.famousPersonsPage = 0;
+      return true;
+    },
+    close(_host, options) {
+      calls.push(['close', options.context?.getGameHost?.()?.id]);
+      return true;
+    },
+    actions: {
+      openDetail(_host, action, options) {
+        const owner = options.context?.getUiStateOwner?.();
+        calls.push(['action', owner?.id, action.personId]);
+        owner.selectedFamousPersonId = action.personId;
+        return true;
+      },
+    },
+  };
+  const manager = new CanvasPanelSurfaceManager({
+    host,
+    registry: {
+      get(panelKey) {
+        return panelKey === 'famousPersons' ? panel : null;
+      },
+    },
+  });
+
+  assert.equal(manager.openPanel('famousPersons', { source: 'button', render: false }), true);
+  assert.equal(manager.runPanelAction(
+    'famousPersons',
+    'openDetail',
+    { personId: 'fp-new' },
+    { render: false },
+  ), true);
+  assert.equal(manager.closePanel('famousPersons'), true);
+  assert.equal(game.famousPersonsPage, 0);
+  assert.equal(game.selectedFamousPersonId, 'fp-new');
+  assert.deepEqual(calls, [
+    ['open', 'game', 'button'],
+    ['action', 'game', 'fp-new'],
+    ['close', 'game'],
+  ]);
+});

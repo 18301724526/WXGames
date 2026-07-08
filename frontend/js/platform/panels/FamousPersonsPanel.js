@@ -26,15 +26,8 @@
   const PANEL_KEY = 'famousPersons';
   const MODAL_KEY = 'showFamousPersons';
 
-  function getMountedGame(host) {
-    // Match CanvasActionController.getGameHost's owner contract: hosts may expose
-    // the mounted game via getCanvasGameHost() (Shell) or lastGame (App mirror).
-    const game = host?.getCanvasGameHost?.() || host?.lastGame || null;
-    return game && game !== host ? game : null;
-  }
-
-  function getUiStateOwner(host) {
-    return getMountedGame(host) || host;
+  function getUiStateOwner(host, options = {}) {
+    return options.context?.getUiStateOwner?.() || host;
   }
 
   function openModal(host) {
@@ -61,8 +54,10 @@
     host.selectedFamousPersonId = '';
   }
 
-  function clearTooltip(host) {
+  function clearTooltip(host, options = {}) {
+    const game = options.context?.getGameHost?.() || null;
     host?.renderer?.clearFamousSkillTooltip?.();
+    if (game && game !== host) game.renderer?.clearFamousSkillTooltip?.();
   }
 
   const FamousPersonsPanel = {
@@ -74,42 +69,42 @@
     },
 
     open(host, options = {}) {
-      const owner = getUiStateOwner(host);
+      const owner = getUiStateOwner(host, options);
       openModal(host);
       resetListState(owner);
       closeCompetingPanels(host);
-      if (options.clearTooltip !== false) clearTooltip(host);
+      if (options.clearTooltip !== false) clearTooltip(host, options);
       return true;
     },
 
     close(host, options = {}) {
-      const owner = getUiStateOwner(host);
+      const owner = getUiStateOwner(host, options);
       closeModal(host);
       resetListState(owner);
-      if (options.clearTooltip !== false) clearTooltip(host);
+      if (options.clearTooltip !== false) clearTooltip(host, options);
       return true;
     },
 
-    changePage(host, action = {}) {
-      const owner = getUiStateOwner(host);
+    changePage(host, action = {}, options = {}) {
+      const owner = getUiStateOwner(host, options);
       const delta = Number(action.delta) || 0;
       owner.famousPersonsPage = Math.max(0, (Number(owner.famousPersonsPage) || 0) + delta);
       clearSelection(owner);
-      clearTooltip(host);
+      clearTooltip(host, options);
       return true;
     },
 
-    openDetail(host, action = {}) {
-      const owner = getUiStateOwner(host);
+    openDetail(host, action = {}, options = {}) {
+      const owner = getUiStateOwner(host, options);
       owner.selectedFamousPersonId = action.personId || '';
-      clearTooltip(host);
+      clearTooltip(host, options);
       return true;
     },
 
-    closeDetail(host) {
-      const owner = getUiStateOwner(host);
+    closeDetail(host, _action = {}, options = {}) {
+      const owner = getUiStateOwner(host, options);
       clearSelection(owner);
-      clearTooltip(host);
+      clearTooltip(host, options);
       return true;
     },
 
@@ -120,6 +115,29 @@
       return renderer?.renderFamousPersonsPanel?.(state, options);
     },
   };
+
+  FamousPersonsPanel.actions = Object.freeze({
+    changePage(host, action = {}, options = {}) {
+      return FamousPersonsPanel.changePage(host, action, options);
+    },
+    openDetail(host, action = {}, options = {}) {
+      return FamousPersonsPanel.openDetail(host, action, options);
+    },
+    closeDetail(host, action = {}, options = {}) {
+      return FamousPersonsPanel.closeDetail(host, action, options);
+    },
+    showTooltip(host, action = {}, options = {}) {
+      const game = options.context?.getGameHost?.() || null;
+      const renderer = host?.renderer || game?.renderer || null;
+      if (typeof renderer?.setPinnedFamousSkillTooltip !== 'function') return false;
+      renderer.setPinnedFamousSkillTooltip(action);
+      return true;
+    },
+    clearTooltip(host, _action = {}, options = {}) {
+      clearTooltip(host, options);
+      return true;
+    },
+  });
 
   global.FamousPersonsPanel = FamousPersonsPanel;
   if (typeof module !== 'undefined' && module.exports) module.exports = FamousPersonsPanel;
