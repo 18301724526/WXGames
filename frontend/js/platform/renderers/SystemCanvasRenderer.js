@@ -22,6 +22,17 @@
     }
     return null;
   })();
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class SystemCanvasRenderer {
     constructor(options = {}) {
@@ -65,51 +76,68 @@
       if (!view.loginPanelVisible) return;
       const credentials = auth.credentials || {};
       this.setHitTargets([]);
+      const palette = UiThemeTokens?.palette || {};
+      const hairline = UiThemeTokens?.hairline || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
       if (this.ctx) {
-        this.ctx.fillStyle = '#14120f';
+        const hasBackground = this.drawCoverAsset('assets/art/civilization-bg.webp', 0, 0, this.width, this.height, 1);
+        if (!hasBackground) {
+          this.ctx.fillStyle = this.createGradient(
+            0, 0, this.width, this.height,
+            [
+              [0, '#1c241b'],
+              [0.48, '#44321f'],
+              [1, '#11140f'],
+            ],
+            '#14120f',
+          );
+          this.ctx.fillRect(0, 0, this.width, this.height);
+        }
+        this.ctx.fillStyle = 'rgba(5, 5, 4, 0.74)';
         this.ctx.fillRect(0, 0, this.width, this.height);
       }
 
       const layout = this.getLayout();
-      const panelWidth = Math.min(360, layout.contentWidth - 12);
-      const panelHeight = 344;
-      const x = (this.width - panelWidth) / 2;
-      const y = Math.max(72, (this.height - panelHeight) / 2 - 8);
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(54, 39, 26, 0.98)'],
-            [1, 'rgba(22, 18, 13, 0.98)'],
-          ],
-          'rgba(36, 28, 20, 0.98)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.24)',
-        radius: 14,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
+      const panelWidth = Math.min(360, layout.contentWidth - 14);
+      const panelHeight = 342;
+      const x = Math.floor((this.width - panelWidth) / 2);
+      const y = Math.max(86, Math.floor((this.height - panelHeight) / 2) - 8);
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight, { radius: 11 });
 
-      const iconSize = 58;
-      const iconX = x + panelWidth / 2 - iconSize / 2;
+      const iconSocket = 58;
+      const iconX = Math.floor(x + panelWidth / 2 - iconSocket / 2);
       const iconY = y + 24;
-      this.drawPanel(iconX, iconY, iconSize, iconSize, {
-        fill: 'rgba(92, 63, 34, 0.92)',
-        stroke: 'rgba(240, 180, 91, 0.42)',
-        radius: iconSize / 2,
-        inset: 'rgba(255, 231, 184, 0.14)',
+      this.drawPanel(iconX, iconY, iconSocket, iconSocket, {
+        fill: this.createGradient(
+          iconX, iconY, iconX, iconY + iconSocket,
+          [
+            [0, 'rgba(73, 56, 35, 0.95)'],
+            [1, 'rgba(26, 23, 18, 0.95)'],
+          ],
+          'rgba(50, 40, 28, 0.95)',
+        ),
+        stroke: palette.champagneGold || 'rgba(210, 181, 126, 0.72)',
+        radius: iconSocket / 2,
+        inset: hairline.insetHighlight,
       });
-      this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 12, iconY + 12, 34, 34);
+      this.drawPanel(iconX + 12, iconY + 12, iconSocket - 24, iconSocket - 24, {
+        fill: 'rgba(6, 6, 5, 0.62)',
+        stroke: 'rgba(229, 208, 165, 0.18)',
+        radius: (iconSocket - 24) / 2,
+      });
+      this.drawAsset('assets/art/icon-fire-cutout.webp', iconX + 14, iconY + 14, 30, 30);
       this.drawText(this.t('common.appName'), x + panelWidth / 2, y + 104, {
         size: 22,
         bold: true,
-        color: '#ffe6b5',
+        color: palette.champagneGoldBright || '#e5d0a5',
         align: 'center',
+        fontFamily: UiThemeTokens?.fontFamily?.display,
       });
 
       const message = view.message || '';
       this.drawText(this.truncateText(message, panelWidth - 48, { size: 13 }), x + panelWidth / 2, y + 134, {
         size: 13,
-        color: message ? '#e94560' : 'rgba(234, 234, 234, 0.42)',
+        color: message ? (palette.accentAlertRed || '#e94560') : 'rgba(234, 234, 234, 0.32)',
         align: 'center',
       });
 
@@ -120,17 +148,17 @@
       const passwordY = usernameY + 52;
       const drawInput = (fieldY, label, value, actionType, masked = false) => {
         this.drawPanel(inputX, fieldY, inputWidth, inputHeight, {
-          fill: 'rgba(23, 18, 13, 0.56)',
-          stroke: 'rgba(116, 211, 160, 0.24)',
+          fill: 'rgba(12, 13, 12, 0.74)',
+          stroke: value ? 'rgba(210, 181, 126, 0.28)' : 'rgba(229, 208, 165, 0.12)',
           radius: 8,
-          inset: 'rgba(116, 211, 160, 0.08)',
+          inset: 'rgba(229, 208, 165, 0.05)',
         });
         const displayValue = value
           ? (masked ? '\u2022'.repeat(Math.min(12, String(value).length)) : value)
           : label;
         this.drawText(this.truncateText(displayValue, inputWidth - 24, { size: 14 }), inputX + 12, fieldY + 21, {
           size: 14,
-          color: value ? '#f6e8c8' : 'rgba(234, 234, 234, 0.48)',
+          color: value ? (palette.textPrimary || '#e1d3b7') : 'rgba(189, 178, 155, 0.58)',
           baseline: 'middle',
         });
         this.addHitTarget({ x: inputX, y: fieldY, width: inputWidth, height: inputHeight }, { type: actionType });
@@ -141,8 +169,8 @@
       const rememberY = passwordY + 54;
       const checkboxSize = 18;
       this.drawPanel(inputX, rememberY, checkboxSize, checkboxSize, {
-        fill: credentials.rememberPasswordChecked ? 'rgba(116, 211, 160, 0.68)' : 'rgba(23, 18, 13, 0.56)',
-        stroke: 'rgba(116, 211, 160, 0.34)',
+        fill: credentials.rememberPasswordChecked ? 'rgba(85, 171, 115, 0.68)' : 'rgba(16, 18, 16, 0.74)',
+        stroke: credentials.rememberPasswordChecked ? 'rgba(85, 171, 115, 0.64)' : 'rgba(229, 208, 165, 0.14)',
         radius: 5,
       });
       if (credentials.rememberPasswordChecked) {
@@ -155,18 +183,17 @@
         });
       }
       this.drawText(this.t('shell.login.rememberAccount'), inputX + checkboxSize + 9, rememberY + checkboxSize / 2, {
-        size: 13,
-        color: '#cbbd96',
+        size: typeScale.body || 12,
+        color: palette.textLabel || '#bdb29b',
         baseline: 'middle',
       });
       this.addHitTarget({ x: inputX, y: rememberY - 6, width: 112, height: 32 }, { type: 'toggleRememberPassword' });
 
       const loginY = y + panelHeight - 58;
-      this.drawButton(inputX, loginY, inputWidth, 40, this.t('shell.login.submit'), {
+      ModalPlate.drawModalButton(this, inputX, loginY, inputWidth, 40, this.t('shell.login.submit'), {
+        variant: 'primary',
         size: 14,
-        bold: true,
-        radius: 9,
-        active: true,
+        radius: 8,
       });
       this.addHitTarget({ x: inputX, y: loginY, width: inputWidth, height: 40 }, { type: 'submitLogin' });
     }

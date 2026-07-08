@@ -25,6 +25,7 @@ function createHost(overrides = {}) {
     createGradient() { return '#123'; },
     drawAsset(assetPath) { calls.push(['drawAsset', assetPath]); return false; },
     drawButton(x, y, width, height, label, options = {}) { calls.push(['drawButton', label, options]); },
+    drawLine(...args) { calls.push(['drawLine', args]); },
     drawPanel() { calls.push(['drawPanel']); },
     drawText(text) { calls.push(['drawText', text]); },
     getLayout() { return { contentX: 10, contentWidth: 360, contentRight: 370 }; },
@@ -80,7 +81,7 @@ const CITY_DRAWING_METHODS = [
   'addHitTarget',
   'createGradient',
   'drawAsset',
-  'drawButton',
+  'drawLine',
   'drawPanel',
   'drawText',
   'getLayout',
@@ -110,6 +111,9 @@ function createDrawingSurfaceSentinel(label, calls = []) {
     },
     drawButton(_x, _y, _width, _height, buttonLabel) {
       calls.push([label, 'drawButton', buttonLabel]);
+    },
+    drawLine(...args) {
+      calls.push([label, 'drawLine', args]);
     },
     drawPanel() {
       calls.push([label, 'drawPanel']);

@@ -85,7 +85,6 @@ const BUILDING_DRAWING_METHODS = [
   'addHitTarget',
   'createGradient',
   'drawAsset',
-  'drawButton',
   'drawIconCard',
   'drawLine',
   'drawPanel',

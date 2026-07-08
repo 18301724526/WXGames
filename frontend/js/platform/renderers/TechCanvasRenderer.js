@@ -13,6 +13,28 @@
 
   const TechTreeLayoutModel = global.TechTreeLayoutModel || (typeof require !== 'undefined' ? require('./TechTreeLayoutModel') : null);
   const TechTreeCanvasRenderer = global.TechTreeCanvasRenderer || (typeof require !== 'undefined' ? require('./TechTreeCanvasRenderer') : null);
+  const UiThemeTokens = (() => {
+    if (global.UiThemeTokens) return global.UiThemeTokens;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../config/UiThemeTokens');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class TechCanvasRenderer {
     constructor(options = {}) {
@@ -170,11 +192,7 @@
       const buttonX = x + width - actionWidth - 12;
       const buttonY = y + 14;
       const buttonH = 30;
-      this.drawPanel(x, y, width, height, {
-        fill: 'rgba(45, 34, 24, 0.82)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
+      ModalPlate.drawModalCard(this, x, y, width, height, { tone: selected ? 'accent' : 'default' });
       const topY = y + 12;
       this.drawAsset('assets/art/icon-science-cutout.webp', x + 12, topY + 2, iconSize, iconSize, selected ? 0.95 : 0.58);
       const textX = x + 12 + iconSize + 10;
@@ -232,7 +250,8 @@
           align: 'center',
         });
       }
-      this.drawPrimaryActionButton(buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || this.t('tech.action.research', {}), {
+      ModalPlate.drawModalButton(this, buttonX, buttonY, actionWidth, buttonH, detail.buttonLabel || this.t('tech.action.research', {}), {
+        variant: 'primary',
         disabled: !detail.canResearch,
         size: 11,
         radius: 9,
@@ -261,50 +280,37 @@
     renderTechDetailModal(detail = {}) {
       if (!detail || detail.empty) return;
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeTechDetail' });
+      ModalPlate.drawModalMask(this);
       const layout = this.getLayout();
       const panelWidth = Math.min(layout.contentWidth - 24, 360);
       const panelHeight = Math.min(430, this.height - 160);
       const x = (this.width - panelWidth) / 2;
       const y = Math.max(86, (this.height - panelHeight) / 2 - 8);
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(54, 39, 26, 0.98)'],
-            [1, 'rgba(22, 18, 13, 0.98)'],
-          ],
-          'rgba(36, 28, 20, 0.98)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.24)',
-        radius: 14,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight);
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
-      const closeSize = 28;
-      this.drawButton(x + panelWidth - closeSize - 10, y + 10, closeSize, closeSize, '×', { size: 16, radius: 7 });
-      this.addHitTarget({ x: x + panelWidth - closeSize - 10, y: y + 10, width: closeSize, height: closeSize }, { type: 'closeTechDetail' });
+      const titleBar = ModalPlate.drawModalTitleBar(this, x, y, panelWidth, {
+        title: detail.title || this.t('tech.generic', {}),
+        subtitle: [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · '),
+        withClose: true,
+      });
+      if (titleBar.closeRect) this.addHitTarget(titleBar.closeRect, { type: 'closeTechDetail' });
 
       const iconSize = 58;
       const iconPath = this.getTechDetailIcon(detail);
-      this.drawCircle(x + 45, y + 48, 34, {
+      const contentTop = titleBar.contentTop + 12;
+      this.drawCircle(x + 45, contentTop + 28, 34, {
         fill: 'rgba(18, 16, 13, 0.64)',
         stroke: 'rgba(255, 226, 177, 0.22)',
         width: 1.5,
       });
-      this.drawAsset(iconPath, x + 16, y + 19, iconSize, iconSize, 0.98);
-      this.drawText(this.truncateText(detail.title || this.t('tech.generic', {}), panelWidth - 118, { size: 17, bold: true }), x + 84, y + 22, {
-        size: 17,
-        bold: true,
-        color: '#ffe6b5',
-      });
-      const meta = [detail.eraName, detail.routeLabel, detail.statusLabel].filter(Boolean).join(' · ');
-      this.drawText(this.truncateText(meta, panelWidth - 118, { size: 11, bold: true }), x + 84, y + 52, {
+      this.drawAsset(iconPath, x + 16, contentTop - 1, iconSize, iconSize, 0.98);
+      this.drawText(this.truncateText(detail.pointsText || '', panelWidth - 112, { size: 11, bold: true }), x + 84, contentTop + 24, {
         size: 11,
         bold: true,
         color: detail.canResearch ? '#74d3a0' : '#f0b45b',
       });
 
-      let cursorY = y + 92;
+      let cursorY = contentTop + 72;
       const summaryLines = this.wrapTextLimit(detail.summary || this.t('tech.detail.defaultSummary', {}), panelWidth - 32, 3, { size: 12 });
       this.drawTextLines(summaryLines, x + 16, cursorY, {
         size: 12,
@@ -354,7 +360,8 @@
         bold: true,
         color: '#f0b45b',
       });
-      this.drawPrimaryActionButton(buttonX, buttonY, buttonW, buttonH, detail.buttonLabel || this.t('tech.action.research', {}), {
+      ModalPlate.drawModalButton(this, buttonX, buttonY, buttonW, buttonH, detail.buttonLabel || this.t('tech.action.research', {}), {
+        variant: 'primary',
         disabled: !detail.canResearch,
         size: 13,
         radius: 8,
@@ -383,17 +390,20 @@
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
-      this.drawPanel(x, startY, width, panelHeight, {
-        fill: 'rgba(37, 29, 21, 0.88)',
-        stroke: 'rgba(255, 226, 177, 0.14)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      ModalPlate.drawModalCard(this, x, startY, width, panelHeight);
+      const palette = UiThemeTokens?.palette || {};
+      const typeScale = UiThemeTokens?.typeScale || {};
       const headerHeight = 58;
-      this.renderSectionHeader(view.text.title, x + 16, startY + 14, '🔩');
-      this.drawText(this.truncateText(view.text.subtitle, width - 32, { size: 10 }), x + 16, startY + 36, {
+      this.drawAsset('assets/art/icon-science-cutout.webp', x + 16, startY + 14, 30, 30, 0.95);
+      this.drawText(this.truncateText(view.text.title, width - 150, { size: 16, bold: true }), x + 52, startY + 15, {
+        size: typeScale.title || 16,
+        bold: true,
+        color: palette.champagneGoldBright || '#ffe6b5',
+        fontFamily: UiThemeTokens?.fontFamily?.display,
+      });
+      this.drawText(this.truncateText(view.text.subtitle, width - 32, { size: 10 }), x + 52, startY + 38, {
         size: 10,
-        color: 'rgba(234, 234, 234, 0.62)',
+        color: palette.textLabel || 'rgba(234, 234, 234, 0.62)',
       });
       const pillY = startY + 14;
       const pillWidth = 68;
@@ -403,11 +413,7 @@
         view.text.available,
       ].forEach((label, index) => {
         const pillX = x + width - 12 - pillWidth * (3 - index) - 6 * (2 - index);
-        this.drawPanel(pillX, pillY, pillWidth, 24, {
-          fill: 'rgba(63, 47, 32, 0.78)',
-          stroke: 'rgba(255, 226, 177, 0.12)',
-          radius: 8,
-        });
+        ModalPlate.drawModalCard(this, pillX, pillY, pillWidth, 24, { tone: index === 0 ? 'accent' : 'default', radius: 8 });
         this.drawText(this.truncateText(label, pillWidth - 14, { size: 10, bold: index === 0 }), pillX + pillWidth / 2, pillY + 7, {
           size: 10,
           bold: index === 0,
@@ -419,11 +425,7 @@
       const panelY = startY + headerHeight;
       const panelBottom = startY + panelHeight - 14;
       const panelH = Math.max(116, panelBottom - panelY);
-      this.drawPanel(x + 12, panelY, width - 24, panelH, {
-        fill: 'rgba(28, 22, 16, 0.74)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
+      ModalPlate.drawModalCard(this, x + 12, panelY, width - 24, panelH, { tone: 'muted' });
 
       const tree = view.tree || {};
       const nodes = Array.isArray(tree.nodes) ? tree.nodes : [];
