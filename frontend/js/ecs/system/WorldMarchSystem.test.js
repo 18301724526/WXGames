@@ -194,27 +194,33 @@ test('entrypoints load shared world march core before march ECS modules', () => 
   const html = fs.readFileSync(path.join(rootDir, 'frontend/index.html'), 'utf8');
   const minigame = fs.readFileSync(path.join(rootDir, 'frontend/minigame/game.js'), 'utf8');
 
+  assert.ok(html.indexOf('shared/worldMarchCore.js') >= 0, 'index.html should load shared worldMarchCore');
   assert.ok(
-    html.indexOf('WorldMarchCoreAdapter.js') >= 0,
-    'index.html should load WorldMarchCoreAdapter',
+    html.indexOf('shared/worldMarchCore.js') < html.indexOf('TileCoord.js'),
+    'index.html should load shared worldMarchCore before TileCoord',
   );
   assert.ok(
-    html.indexOf('WorldMarchCoreAdapter.js') < html.indexOf('TileCoord.js'),
-    'index.html should load WorldMarchCoreAdapter before TileCoord',
+    html.indexOf('shared/worldMarchCore.js') < html.indexOf('WorldMarchProgressSnapshot.js'),
+    'index.html should load shared worldMarchCore before WorldMarchProgressSnapshot',
   );
   assert.ok(
-    html.indexOf('WorldMarchCoreAdapter.js') < html.indexOf('WorldMarchProgressSnapshot.js'),
-    'index.html should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
+    html.indexOf('shared/worldMarchPassability.js') < html.indexOf('WorldMarchRoutePolicy.js'),
+    'index.html should load shared worldMarchPassability before WorldMarchRoutePolicy',
   );
   assert.ok(
-    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") <
+    minigame.indexOf("require('../../shared/worldMarchCore')") <
       minigame.indexOf("require('../js/ecs/foundation/TileCoord')"),
-    'minigame should load WorldMarchCoreAdapter before TileCoord',
+    'minigame should load shared worldMarchCore before TileCoord',
   );
   assert.ok(
-    minigame.indexOf("require('../js/shared/WorldMarchCoreAdapter')") <
+    minigame.indexOf("require('../../shared/worldMarchCore')") <
       minigame.indexOf("require('../js/ecs/system/WorldMarchProgressSnapshot')"),
-    'minigame should load WorldMarchCoreAdapter before WorldMarchProgressSnapshot',
+    'minigame should load shared worldMarchCore before WorldMarchProgressSnapshot',
+  );
+  assert.ok(
+    minigame.indexOf("require('../../shared/worldMarchPassability')") <
+      minigame.indexOf("require('../js/ecs/system/WorldMarchRoutePolicy')"),
+    'minigame should load shared worldMarchPassability before WorldMarchRoutePolicy',
   );
   assert.ok(
     html.indexOf('WorldMarchGeometry.js') >= 0,

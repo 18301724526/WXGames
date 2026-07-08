@@ -29,6 +29,16 @@
     return error;
   }
 
+  // Expected "can't march there" outcomes a player can trigger (e.g. clicking
+  // water): the server authoritatively declines, but these are normal results,
+  // not system failures, so they are surfaced as a hint rather than an error.
+  const EXPECTED_WORLD_MARCH_DECLINES = new Set([
+    'EXPLORE_ROUTE_BLOCKED',
+    'EXPLORE_TARGET_TOO_FAR',
+    'EXPLORE_TARGET_IS_ORIGIN',
+    'EXPLORE_ROUTE_EMPTY',
+  ]);
+
   function round(value, digits = 3) {
     const factor = 10 ** digits;
     return Math.round(toNumber(value, 0) * factor) / factor;
@@ -309,13 +319,19 @@
             notModified: true,
           };
         } else {
+        const worldMarchDecline =
+          isWorldMarchAction && data && EXPECTED_WORLD_MARCH_DECLINES.has(data.error)
+            ? data.error
+            : '';
         if (isWorldMarchAction) {
           trace?.error?.('api:error', {
             status: response.status,
             body: trace.summarizeActionBody?.(tracedBody),
             payload: trace.summarizeApiPayload?.(data) || data,
           });
-          if (!trace?.enabled?.() && global.console?.error) {
+          // Keep the diagnostic trace, but do not raise an alarming console error
+          // for an expected decline (clicking water etc.) — only for real failures.
+          if (!worldMarchDecline && !trace?.enabled?.() && global.console?.error) {
             global.console.error('[GameAPI] world march action failed', {
               status: response.status,
               body: trace?.summarizeActionBody?.(tracedBody) || tracedBody,
@@ -331,6 +347,7 @@
         }
         const error = createApiError(data.message || data.error || `HTTP ${response.status}`, {
           code: 'GAME_API_HTTP_ERROR',
+          worldMarchDecline,
           payload: data,
           status: response.status,
           method,

@@ -5,12 +5,22 @@
       return require('../../../../shared/worldMarchCore');
     }
     throw new Error(
-      'WorldMarchCore is required: load WorldMarchCoreAdapter.js before WorldMarchRoutePolicy.js',
+      'WorldMarchCore is required: load shared/worldMarchCore.js before WorldMarchRoutePolicy.js',
     );
   })();
 
-  // Single source: shared/worldMarchCore owns the cap; the server also delivers its value
-  // in the world-explorer DTO (maxManualRouteLength), which wins when present.
+  const WorldMarchPassability = (() => {
+    if (global.WorldMarchPassability) return global.WorldMarchPassability;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../../shared/worldMarchPassability');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const MAX_MANUAL_ROUTE_LENGTH = WorldMarchCore.MAX_MANUAL_ROUTE_LENGTH || 16;
 
   function normalizeCoord(coord = {}, fallback = {}) {
@@ -33,8 +43,16 @@
   }
 
   function isRouteTerrainBlocked(tile = null) {
-    // Single source: shared/worldMarchCore blocks ocean + river; shore stays passable.
-    return WorldMarchCore.isMarchBlockedTerrain(tile?.terrain);
+    if (!WorldMarchPassability?.isTileMarchable) return false;
+    return !WorldMarchPassability.isTileMarchable(tile?.terrain, null);
+  }
+
+  function frontendTerrainOracle(knownTiles) {
+    const unknown = WorldMarchPassability?.TERRAIN_UNKNOWN || 'unknown';
+    return (q, r) => {
+      const tile = knownTiles.get(getTileKey({ q, r }));
+      return tile && tile.terrain ? tile.terrain : unknown;
+    };
   }
 
   function getMarchOrigin(state = {}, options = {}) {
@@ -70,32 +88,43 @@
     const origin = getMarchOrigin(state, { ...options, target });
     const knownTiles = getKnownTileMap(options.tileMapView || state.territoryState?.worldMap || {});
     const serverRouteCap = Number(state.worldExplorerState?.maxManualRouteLength) || 0;
-    const routeResult = WorldMarchCore.evaluateLinearMarchRoute(origin, coord, {
-      // Four grid-axis directions only — must match the server's authoritative route
-      // (WorldExplorerRoutePlanner also passes axisAligned) so the previewed route and the
-      // march-button gate agree with what the server will actually walk.
-      axisAligned: true,
+
+    if (!WorldMarchPassability?.evaluateMarch) {
+      return {
+        canMarch: true,
+        reason: '',
+        origin,
+        target: coord,
+        route: [],
+        blockedStep: null,
+        hasUnknownOnRoute: false,
+      };
+    }
+
+    const verdict = WorldMarchPassability.evaluateMarch({
+      origin,
+      target: coord,
+      getTileTerrain: frontendTerrainOracle(knownTiles),
+      unit: options.unit || null,
       maxLength: options.maxLength || serverRouteCap || MAX_MANUAL_ROUTE_LENGTH,
-      // Single source: the server delivers the route world-bounds in the world-explorer DTO
-      // (worldWidth/worldHeight/worldWrapping = WorldMapConstants). Reading them — not a hardcoded
-      // 1024 — keeps this preview identical to the server's authoritative route on any map size.
-      width: options.worldWidth || state.worldExplorerState?.worldWidth || 1024,
-      height: options.worldHeight || state.worldExplorerState?.worldHeight || 1024,
+      worldWidth: options.worldWidth || state.worldExplorerState?.worldWidth || 1024,
+      worldHeight: options.worldHeight || state.worldExplorerState?.worldHeight || 1024,
       wrapping: options.wrapping !== undefined
         ? options.wrapping !== false
         : state.worldExplorerState?.worldWrapping !== false,
-      canTraverse: (step) => !isRouteTerrainBlocked(knownTiles.get(getTileKey(step))),
+      axisAligned: true,
+      trace: global.WorldMarchTrace,
+      corr: options.corr || '',
     });
-    if (routeResult.success) {
-      return { canMarch: true, reason: '', origin, target: coord, route: routeResult.route || [] };
-    }
     return {
-      canMarch: false,
-      reason: routeResult.error || 'EXPLORE_ROUTE_BLOCKED',
-      blockedStep: routeResult.blockedStep || null,
-      origin,
-      target: coord,
-      route: routeResult.route || [],
+      canMarch: verdict.canMarch,
+      reason: verdict.reason || '',
+      blocked: verdict.blocked,
+      blockedStep: verdict.blocked?.atTile || null,
+      hasUnknownOnRoute: verdict.hasUnknownOnRoute,
+      origin: verdict.origin,
+      target: verdict.target,
+      route: verdict.route || [],
     };
   }
 

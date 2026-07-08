@@ -18,7 +18,6 @@ const CANONICAL = 'shared/worldMarchCore.js';
 // Paths permitted to implement the march stepping loop directly:
 const ALLOWLIST = Object.freeze([
   'shared/worldMarchCore.js', // the single source of march route geometry
-  'frontend/js/shared/WorldMarchCoreAdapter.js', // documented browser fallback mirror (parity-tested)
 ]);
 
 // The signature of a copied march route stepper is the `remainingQ` / `remainingR` delta

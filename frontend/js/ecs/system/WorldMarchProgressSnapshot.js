@@ -58,7 +58,7 @@
       return require('../../../../shared/worldMarchCore');
     }
     throw new Error(
-      'WorldMarchCore is required: load WorldMarchCoreAdapter.js before WorldMarchProgressSnapshot.js',
+      'WorldMarchCore is required: load shared/worldMarchCore.js before WorldMarchProgressSnapshot.js',
     );
   })();
 

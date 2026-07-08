@@ -140,3 +140,105 @@ test('AuthService stores hashed login tokens and rejects replaced sessions', () 
   assert.equal(reached, true);
   assert.equal(newReq.playerId, 'test1');
 });
+
+test('AuthService authenticates a legacy plaintext token and upgrades it on next login', () => {
+  const rows = new Map();
+  const states = new Map();
+  const db = {
+    prepare(sql) {
+      return {
+        get(playerId) {
+          if (sql.startsWith('SELECT playerId, deviceId, token FROM players')) {
+            return rows.get(playerId) || null;
+          }
+          if (sql.startsWith('SELECT playerId, token FROM players')) {
+            const row = rows.get(playerId);
+            return row ? { playerId: row.playerId, token: row.token } : null;
+          }
+          if (sql.startsWith('SELECT playerId FROM game_states')) {
+            return states.has(playerId) ? { playerId } : null;
+          }
+          throw new Error(`Unexpected get SQL: ${sql}`);
+        },
+        run(...args) {
+          if (sql.startsWith('INSERT INTO players')) {
+            const [playerId, deviceId, token, createdAt, lastActiveAt] = args;
+            rows.set(playerId, { playerId, deviceId, token, createdAt, lastActiveAt });
+            return { changes: 1 };
+          }
+          if (sql.startsWith('UPDATE players SET deviceId = ?, token = ?, lastActiveAt = ?')) {
+            const [deviceId, token, lastActiveAt, playerId] = args;
+            rows.set(playerId, { ...rows.get(playerId), playerId, deviceId, token, lastActiveAt });
+            return { changes: 1 };
+          }
+          if (sql.startsWith('UPDATE players SET lastActiveAt = ?')) {
+            const [lastActiveAt, playerId] = args;
+            rows.set(playerId, { ...rows.get(playerId), lastActiveAt });
+            return { changes: 1 };
+          }
+          throw new Error(`Unexpected run SQL: ${sql}`);
+        },
+      };
+    },
+  };
+  const service = new AuthService(db, 'unit-secret', {
+    now: () => new Date('2026-06-24T00:00:00.000Z'),
+  });
+
+  // Seed a pre-hash row: a valid JWT stored in PLAINTEXT, the way old logins did.
+  const legacyToken = service.generateToken('test1', 'test1');
+  rows.set('test1', {
+    playerId: 'test1',
+    deviceId: 'whitelist:test1',
+    token: legacyToken,
+    createdAt: '2026-06-01T00:00:00.000Z',
+    lastActiveAt: '2026-06-01T00:00:00.000Z',
+  });
+  states.set('test1', { playerId: 'test1', updatedAt: '2026-06-24T00:00:00.000Z' });
+
+  // Backward-compat: a legacy plaintext token must still authenticate. A bug
+  // here would silently lock out every pre-hash user.
+  assert.equal(service.isStoredTokenMatch(legacyToken, legacyToken), true);
+  assert.equal(service.isStoredTokenMatch(legacyToken, `${legacyToken}x`), false);
+  const res = {
+    statusCode: 200,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  };
+  let reached = false;
+  service.authMiddleware(
+    { headers: { authorization: `Bearer ${legacyToken}` } },
+    res,
+    () => { reached = true; },
+  );
+  assert.equal(reached, true);
+
+  // Next login upgrades the stored token to a sha256: hash and rotates it.
+  const relogin = service.loginPlayer(
+    'test1',
+    '123456',
+    (playerId) => states.get(playerId),
+    () => null,
+    (state) => states.set(state.playerId, state),
+    (playerId) => ({ playerId, updatedAt: '2026-06-24T00:00:00.000Z' }),
+  );
+  assert.equal(rows.get('test1').token.startsWith('sha256:'), true);
+  assert.notEqual(relogin.token, legacyToken);
+
+  // The old plaintext token is now invalid; the upgraded token authenticates.
+  service.authMiddleware(
+    { headers: { authorization: `Bearer ${legacyToken}` } },
+    res,
+    () => { throw new Error('legacy token should be replaced after upgrade'); },
+  );
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.body.error, 'SESSION_REPLACED');
+
+  let upgradedReached = false;
+  service.authMiddleware(
+    { headers: { authorization: `Bearer ${relogin.token}` } },
+    res,
+    () => { upgradedReached = true; },
+  );
+  assert.equal(upgradedReached, true);
+});

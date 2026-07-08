@@ -5,7 +5,7 @@ require('../foundation/WorldTime');
 require('./WorldMarchProgressSnapshot');
 require('./WorldMarchSystem');
 const WorldFogVisionModel = require('./WorldFogVisionModel');
-const WorldMarchCore = require('../../shared/WorldMarchCoreAdapter');
+const WorldMarchCore = require('../../../../shared/worldMarchCore');
 
 const GEOMETRY = { tileWidth: 192, tileHeight: 96, stepX: 96, stepY: 48, anchorY: 0.5 };
 const VIEWPORT = { originX: 0, originY: 0, scale: 1 };

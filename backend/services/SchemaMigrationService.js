@@ -2,10 +2,34 @@ const crypto = require('node:crypto');
 
 const MIGRATION_STATUS_APPLIED = 'applied';
 const MIGRATION_LOCK_ID = 'schema-migration';
+// A migration here is a handful of near-instant ALTER TABLEs. If a lock row is
+// older than this, the holder almost certainly crashed mid-migration, so the
+// next startup is allowed to steal it instead of crash-looping forever.
+const DEFAULT_LOCK_TTL_MS = 30_000;
+// How long a loser of a genuine concurrent race waits for the live holder to
+// finish before giving up. Kept below the TTL so a live holder is waited on,
+// not stolen from.
+const DEFAULT_LOCK_MAX_WAIT_MS = 15_000;
+const DEFAULT_LOCK_RETRY_DELAY_MS = 200;
 
-function nowIsoSafe(now = new Date()) {
+function nowIso(now = new Date()) {
   const date = now instanceof Date ? now : new Date(now);
   return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
+}
+
+function toEpochMs(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : Date.now();
+}
+
+// Synchronous sleep so the migration startup path (better-sqlite3 is fully
+// synchronous) can wait for a concurrent holder without busy-spinning the CPU.
+function sleepSync(ms) {
+  const duration = Math.max(0, Math.floor(ms));
+  if (duration === 0) return;
+  const view = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.wait(view, 0, 0, duration);
 }
 
 function checksumMigration(migration) {
@@ -52,9 +76,15 @@ class SchemaMigrationService {
     this.db = db;
     this.migrations = migrations.map(normalizeMigration);
     this.now = options.now || (() => new Date());
-    this.lockWaitMs = Number(options.lockWaitMs ?? 60000);
-    this.lockPollMs = Number(options.lockPollMs ?? 250);
-    this.staleLockMs = Number(options.staleLockMs ?? 10 * 60 * 1000);
+    this.sleep = options.sleep || sleepSync;
+    const legacyTtlMs = Number.isFinite(options.staleLockMs) ? options.staleLockMs : DEFAULT_LOCK_TTL_MS;
+    const legacyWaitMs = Number.isFinite(options.lockWaitMs) ? options.lockWaitMs : DEFAULT_LOCK_MAX_WAIT_MS;
+    const legacyRetryMs = Number.isFinite(options.lockPollMs) ? options.lockPollMs : DEFAULT_LOCK_RETRY_DELAY_MS;
+    this.lockTtlMs = Number.isFinite(options.lockTtlMs) ? options.lockTtlMs : legacyTtlMs;
+    this.lockMaxWaitMs = Number.isFinite(options.lockMaxWaitMs) ? options.lockMaxWaitMs : legacyWaitMs;
+    this.lockRetryDelayMs = Number.isFinite(options.lockRetryDelayMs)
+      ? options.lockRetryDelayMs
+      : legacyRetryMs;
   }
 
   initTables() {
@@ -119,64 +149,56 @@ class SchemaMigrationService {
     });
   }
 
-  tryAcquireLock() {
-    const timestamp = nowIsoSafe(this.now());
+  tryInsertLock() {
     try {
       this.db
         .prepare('INSERT INTO schema_migration_locks (id, lockedAt) VALUES (?, ?)')
-        .run(MIGRATION_LOCK_ID, timestamp);
-      return { acquired: true, lockedAt: timestamp };
+        .run(MIGRATION_LOCK_ID, nowIso(this.now()));
+      return true;
     } catch (error) {
       if (String(error.message || '').includes('UNIQUE constraint failed')) {
-        const lock = this.db
-          .prepare('SELECT lockedAt FROM schema_migration_locks WHERE id = ?')
-          .get(MIGRATION_LOCK_ID);
-        return { acquired: false, lockedAt: lock?.lockedAt || '' };
+        return false;
       }
       throw error;
     }
   }
 
-  // server.js and world-worker.js start together after every deploy and both run
-  // migrations. The loser must WAIT for the winner (who usually finishes in
-  // milliseconds and leaves nothing pending), not crash the process — the old
-  // throw-on-locked semantics caused a crash+pm2-restart on nearly every deploy.
-  // A lock older than staleLockMs is a crash leftover and gets reclaimed.
-  acquireLock(options = {}) {
-    const waitMs = Number(options.waitMs ?? this.lockWaitMs ?? 60000);
-    const pollMs = Math.max(25, Number(options.pollMs ?? this.lockPollMs ?? 250));
-    const staleLockMs = Number(options.staleLockMs ?? this.staleLockMs ?? 10 * 60 * 1000);
-    const startedAt = Date.now();
+  // Compare-and-delete on the observed lockedAt so only one racer reclaims a
+  // given stale row; the loser's delete affects 0 rows and it falls back to the
+  // wait path against whoever won the steal.
+  stealStaleLock(staleLockedAt) {
+    this.db
+      .prepare('DELETE FROM schema_migration_locks WHERE id = ? AND lockedAt = ?')
+      .run(MIGRATION_LOCK_ID, staleLockedAt);
+  }
+
+  acquireLock() {
+    const startedMs = toEpochMs(this.now());
     for (;;) {
-      const attempt = this.tryAcquireLock();
-      if (attempt.acquired) return;
-      const lockedAtMs = Date.parse(attempt.lockedAt || '');
-      const nowMs = this.now() instanceof Date ? this.now().getTime() : Date.now();
-      if (Number.isFinite(lockedAtMs) && nowMs - lockedAtMs > staleLockMs) {
-        this.db
-          .prepare('DELETE FROM schema_migration_locks WHERE id = ? AND lockedAt = ?')
-          .run(MIGRATION_LOCK_ID, attempt.lockedAt);
+      if (this.tryInsertLock()) return;
+
+      const lock = this.db
+        .prepare('SELECT lockedAt FROM schema_migration_locks WHERE id = ?')
+        .get(MIGRATION_LOCK_ID);
+      // Lock vanished between the failed insert and this read — retry immediately.
+      if (!lock) continue;
+
+      const ageMs = toEpochMs(this.now()) - toEpochMs(lock.lockedAt);
+      if (ageMs >= this.lockTtlMs) {
+        // Holder is presumed crashed; reclaim and retry the insert.
+        this.stealStaleLock(lock.lockedAt);
         continue;
       }
-      if (Date.now() - startedAt >= waitMs) {
+
+      if (toEpochMs(this.now()) - startedMs >= this.lockMaxWaitMs) {
         const conflict = new Error(
-          `Schema migration lock is already held since ${attempt.lockedAt || 'unknown'}`,
+          `Schema migration lock is already held since ${lock.lockedAt || 'unknown'}`,
         );
         conflict.code = 'SCHEMA_MIGRATION_LOCKED';
         throw conflict;
       }
-      this.sleepSync(pollMs);
-    }
-  }
 
-  sleepSync(ms) {
-    if (typeof Atomics !== 'undefined' && typeof SharedArrayBuffer !== 'undefined') {
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-      return;
-    }
-    const until = Date.now() + ms;
-    while (Date.now() < until) {
-      // busy-wait fallback; only reachable on runtimes without Atomics.wait
+      this.sleep(this.lockRetryDelayMs);
     }
   }
 
@@ -219,7 +241,7 @@ class SchemaMigrationService {
           migration.checksum,
           migration.description,
           MIGRATION_STATUS_APPLIED,
-          nowIsoSafe(this.now()),
+          nowIso(this.now()),
           Date.now() - startedAt,
         );
     });

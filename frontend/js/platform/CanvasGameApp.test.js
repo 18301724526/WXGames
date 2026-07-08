@@ -841,6 +841,65 @@ test('CanvasGameApp rolls back optimistic world march after start rejection', as
   assert.deepEqual(host.state.worldExplorerState, initialExplorer);
 });
 
+test('CanvasGameApp shows a clean hint and no failure log on an expected world-march decline', async () => {
+  const calls = [];
+  const host = makeAppHost();
+  const initialExplorer = {
+    missions: [],
+    activeMission: null,
+    idleMissions: [],
+    maxManualRouteLength: 8,
+    stepDurationSeconds: 10,
+  };
+  Object.assign(host, {
+    state: {
+      activeCityId: 'capital',
+      currentTab: 'military',
+      worldExplorerState: initialExplorer,
+      territoryState: {
+        worldMap: { origin: { q: 0, r: 0 }, tiles: [{ q: 0, r: 0, siteId: 'capital' }] },
+        territories: [{ id: 'capital', q: 0, r: 0 }],
+      },
+    },
+    config: {},
+    getWorldEpochNowMs() {
+      return Date.parse('2026-06-21T00:00:00.000Z');
+    },
+    getGameApi() {
+      return {
+        async startWorldMarch() {
+          const error = new Error('Explorer route is blocked by ocean.');
+          error.worldMarchDecline = 'EXPLORE_ROUTE_BLOCKED';
+          error.payload = {
+            success: false,
+            error: 'EXPLORE_ROUTE_BLOCKED',
+            message: 'Explorer route is blocked by ocean.',
+          };
+          throw error;
+        },
+      };
+    },
+    renderCanvasSurface(tab) {
+      calls.push(['renderCanvasSurface', tab]);
+    },
+    updateWorldActorAnimationLoop() {},
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  assert.equal(await host.startWorldMarch({ targetQ: 2, targetR: 0, formationSlot: 1 }), false);
+
+  // The decline becomes a floating hint, not a "march failed" log, and the
+  // optimistic march is rolled back.
+  assert.equal(calls.some((call) => call[0] === 'showFloatingText'), true);
+  assert.equal(calls.some((call) => call[0] === 'log'), false);
+  assert.deepEqual(host.state.worldExplorerState, initialExplorer);
+});
+
 test('CanvasGameApp starts a selected idle world actor by id without a capital optimistic replacement', async () => {
   const calls = [];
   const parkedMission = {

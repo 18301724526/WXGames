@@ -93,7 +93,7 @@
     if (global.WorldMarchCore?.getRouteRenderRevealSources) return global.WorldMarchCore;
     if (typeof module !== 'undefined' && module.exports) {
       try {
-        return require('../../shared/WorldMarchCoreAdapter');
+        return require('../../../../shared/worldMarchCore');
       } catch (_error) {
         return null;
       }
@@ -148,7 +148,7 @@
     const core = resolveWorldMarchCore();
     if (!core) {
       throw new Error(
-        'FogRevealModel requires WorldMarchCore (load WorldMarchCoreAdapter.js first)',
+        'FogRevealModel requires WorldMarchCore (load shared/worldMarchCore.js first)',
       );
     }
     resetRevealWorld(revealWorld);

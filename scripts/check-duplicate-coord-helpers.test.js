@@ -50,7 +50,6 @@ test('coord-helper guard allows referencing TileCoord without re-building the fo
 
 test('coord-helper guard exempts the canonical + honest variant sources, tests and vendor', () => {
   assert.ok(ALLOWLIST.includes('frontend/js/ecs/foundation/TileCoord.js'));
-  assert.ok(ALLOWLIST.includes('frontend/js/shared/WorldMarchCoreAdapter.js'));
   assert.ok(ALLOWLIST.includes('frontend/js/debug/WorldMarchTrace.js'));
   assert.equal(isScannableSource('frontend/js/ecs/foundation/TileCoord.js'), false);
   assert.equal(isScannableSource('frontend/js/ecs/input/WorldMapPickingModel.js'), true);

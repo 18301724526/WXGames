@@ -48,7 +48,6 @@ test('check-duplicate-march-builders does NOT flag a delegating wrapper', () => 
 test('check-duplicate-march-builders scopes to source files and honors the allowlist', () => {
   assert.equal(isScannableSource('frontend/js/state/optimistic/MarchCommandBuilder.js'), true);
   assert.equal(isScannableSource('shared/worldMarchCore.js'), false); // canonical, allowlisted
-  assert.equal(isScannableSource('frontend/js/shared/WorldMarchCoreAdapter.js'), false); // fallback mirror
   assert.equal(isScannableSource('frontend/js/ecs/runtime/EcsModeRuntimeBundle.js'), false); // generated
   assert.equal(isScannableSource('shared/worldMarchCore.test.js'), false); // test
   assert.equal(isScannableSource('frontend/js/vendor/spine-3.8/spine-webgl.js'), false); // vendor

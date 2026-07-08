@@ -18,7 +18,6 @@ const CANONICAL = 'frontend/js/ecs/foundation/TileCoord.js';
 // Paths permitted to construct the `tile_<x>_<y>` format -- the honest variant sources:
 const ALLOWLIST = Object.freeze([
   'frontend/js/ecs/foundation/TileCoord.js', // frontend canonical world-map tileId (TileCoord.tileId)
-  'frontend/js/shared/WorldMarchCoreAdapter.js', // frontend march family source; loads before TileCoord
   'frontend/js/debug/WorldMarchTrace.js', // frontend debug trace keys, deliberately NON-floored
   'backend/services/worldMap/WorldMapTopology.js', // backend worldMap/territory canonical (getTileId)
   'shared/worldMarchCore.js', // shared march family canonical (worldMarchCore.tileId)

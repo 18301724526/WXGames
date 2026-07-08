@@ -115,7 +115,11 @@ class AuthService {
         Buffer.from(expected),
       );
     }
-    return stored === presentedToken;
+    // Legacy plaintext token (rows written before sha256 hashing). Compared in
+    // constant time too; it self-heals to a sha256: hash on the next login.
+    const presented = String(presentedToken);
+    if (stored.length !== presented.length) return false;
+    return crypto.timingSafeEqual(Buffer.from(stored), Buffer.from(presented));
   }
 
   getPlayerSession(playerId) {
@@ -160,6 +164,11 @@ class AuthService {
   }
 
   generateToken(playerId, username, options = {}) {
+    // `sessionId` is a per-login uniqueness nonce, NOT a server-validated session
+    // identifier — nothing reads decoded.sessionId back. Its only job is to make
+    // each login's JWT (and therefore its stored sha256 hash) unique, so a fresh
+    // login reliably invalidates the previous token via the stored-hash check in
+    // isCurrentSessionToken(). The stored token hash is the session authority.
     const sessionId = options.sessionId || this.generateSessionId();
     return jwt.sign({ playerId, username, sessionId }, this.JWT_SECRET, { expiresIn: '30d' });
   }

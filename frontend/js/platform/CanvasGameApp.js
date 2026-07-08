@@ -2896,7 +2896,11 @@
                     payload: global.WorldMarchTrace?.summarizeApiPayload?.(error.payload) || error.payload || null,
                   });
                   WorldMarchOptimisticState?.rollback?.(this, optimistic || '', { render: false });
-                  this.log(t('command.worldMarch.failed', { message: error.payload?.message || error.message || '' }));
+                  if (error.worldMarchDecline) {
+                    this.showFloatingText(t('command.worldMarch.blocked'));
+                  } else {
+                    this.log(t('command.worldMarch.failed', { message: error.payload?.message || error.message || '' }));
+                  }
                   this.renderCanvasSurface(this.state?.currentTab);
                   return false;
                 }

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const FogRevealModel = require('./FogRevealModel');
-const WorldMarchCore = require('../../shared/WorldMarchCoreAdapter');
+const WorldMarchCore = require('../../../../shared/worldMarchCore');
 
 function createMission(overrides = {}) {
   const startedAt = Date.parse('2026-07-04T00:00:00.000Z');

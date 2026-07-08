@@ -707,6 +707,28 @@ test('returned world march respects materialized home terrain when natural terra
   assert.equal(clientState.idleMissions[0].position.tileId, 'tile_-214_-14');
 });
 
+test('startWorldMarch declines a manual march whose route crosses known water', () => {
+  const now = new Date('2026-06-24T00:00:00.000Z');
+  const gameState = createTutorialExploreState();
+  // Skip the tutorial empty-city guarantee so the route is not re-targeted.
+  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  // Use a seed whose axis-aligned route crosses a natural river. Water-family
+  // terrain is recomputed from the seed, so the fixture must use real generated water.
+  gameState.worldMap = WorldMapService.createInitialWorldMap('test-water-3', now);
+  WorldMapService.revealTile(gameState, 14, 1, now, { visibility: 'scouted' });
+
+  const started = WorldExplorerService.startWorldMarch(
+    gameState,
+    { targetQ: 14, targetR: 2, formationSlot: 1 },
+    now,
+  );
+
+  // The single passability rule (shared/worldMarchPassability) blocks the route
+  // at the known water tile, so the authoritative march is declined, not started.
+  assert.equal(started.success, false);
+  assert.equal(started.error, 'EXPLORE_ROUTE_BLOCKED');
+});
+
 test('world march client state does not expose retired ready reports', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = createTutorialExploreState();
