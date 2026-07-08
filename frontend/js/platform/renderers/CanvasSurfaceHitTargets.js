@@ -181,6 +181,15 @@
     return backgroundAction;
   }
 
+  function resolveHitTargetPools(hitTargetPools = {}, point = {}, intro = null) {
+    const pools = hitTargetPools && typeof hitTargetPools === 'object' ? hitTargetPools : {};
+    for (const pool of ['guide', 'modal', 'base']) {
+      const action = resolveHitTarget(Array.isArray(pools[pool]) ? pools[pool] : [], point, intro);
+      if (action) return action;
+    }
+    return null;
+  }
+
   const api = {
     containsPoint,
     DEFAULT_PRIORITY_ACTIONS,
@@ -196,6 +205,7 @@
     resolveTutorialShieldedHitTarget,
     resolveWorldEntityCandidates,
     resolveHitTarget,
+    resolveHitTargetPools,
   };
 
   global.CanvasSurfaceHitTargets = api;

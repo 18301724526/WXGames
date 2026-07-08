@@ -3201,11 +3201,37 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
     height: 747,
     canvas: { id: 'mainHud' },
     hitTargets: [],
-    setHitTargets(targets) {
-      this.hitTargets = Array.isArray(targets) ? targets.slice() : [];
+    hitTargetPools: { base: [], modal: [], guide: [] },
+    activeHitTargetPool: 'base',
+    syncHitTargets() {
+      this.hitTargets = [
+        ...this.hitTargetPools.base,
+        ...this.hitTargetPools.modal,
+        ...this.hitTargetPools.guide,
+      ];
+      return this.hitTargets;
+    },
+    setHitTargets(targets, pool = this.activeHitTargetPool) {
+      this.hitTargetPools[pool || 'base'] = Array.isArray(targets) ? targets.slice() : [];
+      return this.syncHitTargets();
+    },
+    clearHitTargetPool(pool = 'base') {
+      this.hitTargetPools[pool || 'base'] = [];
+      return this.syncHitTargets();
     },
     addHitTarget(rect, action) {
-      this.hitTargets.push({ ...rect, action });
+      this.hitTargetPools[this.activeHitTargetPool || 'base'].push({ ...rect, action });
+      return this.syncHitTargets();
+    },
+    withHitTargetPool(pool = 'base', callback = null) {
+      const previous = this.activeHitTargetPool;
+      this.activeHitTargetPool = pool || 'base';
+      try {
+        return typeof callback === 'function' ? callback() : undefined;
+      } finally {
+        this.activeHitTargetPool = previous;
+        this.syncHitTargets();
+      }
     },
     beginFrame() {},
     endFrame() {},
@@ -3213,9 +3239,9 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
       return callback();
     },
     render() {
-      // Full frame: reset the shared pool, then register this frame's HUD targets.
+      // Full frame: rebuild only the base pool, then keep modal targets intact.
       frame += 1;
-      this.setHitTargets([{ action: { type: 'openCity', frame } }]);
+      this.setHitTargets([{ action: { type: 'openCity', frame } }], 'base');
     },
   };
   const panelCanvas = {
@@ -3276,15 +3302,15 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
 
   assert.equal(shell.renderReadOnly(state, 'resources', readOnlyOptions), true);
   assert.equal(shell.panelSurfaceManager.openPanel('famousPersons'), true);
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons', 'panelOutsideClick']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity', 'closeFamousPersons', 'panelOutsideClick']);
 
   // An authority refresh / resize repaints the full frame while the panel is open.
   assert.equal(shell.renderReadOnly(state, 'resources', readOnlyOptions), true);
 
   // Without any pointer movement, taps must still hit the panel, not the HUD underneath.
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons', 'panelOutsideClick']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity', 'closeFamousPersons', 'panelOutsideClick']);
 
-  // Closing restores the latest full-frame targets, not the open-time snapshot.
+  // Closing clears only modal targets and leaves the latest full-frame base pool.
   assert.equal(shell.panelSurfaceManager.closePanel('famousPersons'), true);
   assert.deepEqual(
     renderer.hitTargets.map((target) => [target.action.type, target.action.frame]),

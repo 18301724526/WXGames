@@ -1469,10 +1469,6 @@
                   network: this.networkState,
                   confirmDialog: snapshotConfirmDialog,
                 });
-                // The full frame just reset the shared hit-target pool to base
-                // targets; repaint any open panel surface in the same task so
-                // panel targets survive authority-refresh renders.
-                this.getPanelSurfaceManager()?.syncOpenPanelSurfacesAfterBaseRender?.();
                 const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
                   || this.territoryController?.uiState?.tileMapWaterAnimated);
                 const explorerAnimated = explorerAnimatedForRuntime;
@@ -1557,9 +1553,6 @@
                 }
                 if (!this.renderer?.render) return false;
                 this.renderer.render(this.state, this.buildPanelRenderOptions(activeTab, options));
-                // hud-mode renders also reset the shared hit-target pool; keep
-                // open panel surfaces authoritative.
-                this.getPanelSurfaceManager()?.syncOpenPanelSurfacesAfterBaseRender?.();
                 return true;
               }
 
@@ -1656,11 +1649,19 @@
                 const previousCanvas = renderer.canvas;
                 renderer.canvas = canvas;
                 const drawPanel = () => {
-                  renderer.beginFrame?.(renderOptions);
-                  if (shouldClear) renderer.setHitTargets?.([]);
-                  const rendered = manager.renderPanel(panelKey, renderer, state, renderOptions);
-                  renderer.endFrame?.(renderOptions);
-                  return rendered;
+                  const renderModalTargets = () => {
+                    renderer.beginFrame?.(renderOptions);
+                    if (shouldClear) {
+                      if (typeof renderer.clearHitTargetPool === 'function') renderer.clearHitTargetPool('modal');
+                      else renderer.setHitTargets?.([]);
+                    }
+                    const rendered = manager.renderPanel(panelKey, renderer, state, renderOptions);
+                    renderer.endFrame?.(renderOptions);
+                    return rendered;
+                  };
+                  return typeof renderer.withHitTargetPool === 'function'
+                    ? renderer.withHitTargetPool('modal', renderModalTargets)
+                    : renderModalTargets();
                 };
                 try {
                   if (typeof renderer.withRenderCtx === 'function') renderer.withRenderCtx(ctx, drawPanel);
@@ -1679,6 +1680,7 @@
                 }
                 const canvas = this.getPanelOverlayCanvas();
                 if (canvas) this.clearPanelOverlayCanvas(canvas);
+                if (typeof this.renderer?.clearHitTargetPool === 'function') this.renderer.clearHitTargetPool('modal');
                 this.setPanelOverlayVisible(false);
                 return true;
               }

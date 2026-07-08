@@ -2576,7 +2576,7 @@ test('toggleEntityBattleAuto flips side-0 skills and issueEntityInput guards rep
   }
 });
 
-test('CanvasGameApp renderCanvasSurface re-syncs open panel surfaces after the full frame', () => {
+test('CanvasGameApp renderCanvasSurface leaves modal projection to named hit target pools', () => {
   const calls = [];
   const app = new CanvasGameApp({
     runtimeRequired: false,
@@ -2593,11 +2593,10 @@ test('CanvasGameApp renderCanvasSurface re-syncs open panel surfaces after the f
   app.canvasShell = null;
   app.panelSurfaceManager = {
     syncOpenPanelSurfacesAfterBaseRender() {
-      calls.push(['syncOpenPanelSurfacesAfterBaseRender']);
-      return true;
+      throw new Error('retired repair should not be called');
     },
   };
 
   assert.equal(app.renderCanvasSurface('resources'), true);
-  assert.deepEqual(calls, [['render'], ['syncOpenPanelSurfacesAfterBaseRender']]);
+  assert.deepEqual(calls, [['render']]);
 });

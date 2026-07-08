@@ -2893,9 +2893,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             mode: 'hud',
           };
           this.renderer.render(state, renderOptions);
-          // hud-mode renders also reset the shared hit-target pool; re-assert
-          // any open panel surface before this frame's targets go live.
-          this.getPanelSurfaceManager?.()?.syncOpenPanelSurfacesAfterBaseRender?.();
           this.runtime?.compositeStage?.();
           return true;
         }
@@ -3121,11 +3118,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
                 worldMapRuntimeContext: liveWorldMapRuntimeContext,
               });
             }
-            // The full frame just reset the shared hit-target pool to base HUD
-            // targets; repaint any open panel surface in the same task so panel
-            // targets (and the close-time base snapshot) survive authority
-            // refreshes, resizes and reconnect renders.
-            this.getPanelSurfaceManager?.()?.syncOpenPanelSurfacesAfterBaseRender?.();
             const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
               || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
               || this.territoryUiState?.tileMapWaterAnimated);

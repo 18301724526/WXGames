@@ -613,6 +613,22 @@
       return this.hitTargetManager.addHitTarget(...args);
     }
 
+    clearHitTargetPool(...args) {
+      return this.hitTargetManager.clearHitTargetPool(...args);
+    }
+
+    setHitTargetPool(...args) {
+      return this.hitTargetManager.setHitTargetPool(...args);
+    }
+
+    getHitTargetPool(...args) {
+      return this.hitTargetManager.getHitTargetPool(...args);
+    }
+
+    withHitTargetPool(...args) {
+      return this.hitTargetManager.withHitTargetPool(...args);
+    }
+
     appendWorldMapRuntimeHitTargets(targets = []) {
       return this.hitTargetManager.appendWorldMapRuntimeHitTargets(targets);
     }

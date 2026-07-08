@@ -3,22 +3,59 @@ const assert = require('node:assert/strict');
 
 const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 
+function createPooledRenderer(baseTargets = [], options = {}) {
+  const renderer = {
+    id: options.id || 'renderer',
+    width: options.width || 420,
+    height: options.height || 747,
+    hitTargetPools: {
+      base: Array.isArray(baseTargets) ? baseTargets : [],
+      modal: [],
+      guide: [],
+    },
+    activeHitTargetPool: 'base',
+    hitTargets: [],
+    sync() {
+      this.hitTargets = [
+        ...this.hitTargetPools.base,
+        ...this.hitTargetPools.modal,
+        ...this.hitTargetPools.guide,
+      ];
+      return this.hitTargets;
+    },
+    setHitTargets(targets = [], pool = this.activeHitTargetPool) {
+      options.calls?.push?.(['renderer.setHitTargets', pool, targets.map((target) => target.action?.type).join(',')]);
+      this.hitTargetPools[pool || 'base'] = Array.isArray(targets) ? targets : [];
+      return this.sync();
+    },
+    clearHitTargetPool(pool = 'base') {
+      options.calls?.push?.(['renderer.clearHitTargetPool', pool]);
+      this.hitTargetPools[pool || 'base'] = [];
+      return this.sync();
+    },
+    addHitTarget(rect, action) {
+      this.hitTargetPools[this.activeHitTargetPool || 'base'].push({ ...rect, action });
+      return this.sync();
+    },
+    withHitTargetPool(pool = 'base', callback = null) {
+      const previous = this.activeHitTargetPool;
+      this.activeHitTargetPool = pool || 'base';
+      try {
+        return typeof callback === 'function' ? callback() : undefined;
+      } finally {
+        this.activeHitTargetPool = previous;
+        this.sync();
+      }
+    },
+  };
+  renderer.sync();
+  return renderer;
+}
+
 test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the panel surface', () => {
   const calls = [];
   const baseTargets = [{ action: { type: 'openCity' } }];
-  const renderer = {
-    id: 'renderer',
-    width: 420,
-    height: 747,
-    hitTargets: baseTargets,
-    setHitTargets(targets) {
-      calls.push(['renderer.setHitTargets', targets.map((target) => target.action.type).join(',')]);
-      this.hitTargets = targets;
-    },
-    addHitTarget(rect, action) {
-      this.hitTargets.push({ ...rect, action });
-    },
-  };
+  const renderer = createPooledRenderer(baseTargets, { calls });
   const famousPanel = {
     opened: false,
     isOpen() {
@@ -46,12 +83,15 @@ test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the 
     renderer,
     renderPanelOverlaySurface(panelKey, manager, options) {
       calls.push(['renderPanelOverlaySurface', panelKey, options.source]);
-      if (options.clear !== false) renderer.setHitTargets([]);
-      manager.renderPanel(panelKey, renderer, options.state, { ...options, mode: 'panelOverlay' });
+      renderer.withHitTargetPool('modal', () => {
+        if (options.clear !== false) renderer.clearHitTargetPool('modal');
+        manager.renderPanel(panelKey, renderer, options.state, { ...options, mode: 'panelOverlay' });
+      });
       return true;
     },
     clearPanelOverlaySurface(panelKey, manager, options) {
       calls.push(['clearPanelOverlaySurface', panelKey, options.source]);
+      renderer.clearHitTargetPool('modal');
       return true;
     },
     renderPanelSurface(activeTab, options) {
@@ -77,11 +117,13 @@ test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the 
 
   assert.equal(manager.openPanel('famousPersons', { source: 'button' }), true);
   assert.equal(host.opened, true);
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons', 'panelOutsideClick']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity', 'closeFamousPersons', 'panelOutsideClick']);
   assert.deepEqual(renderer.hitTargets.at(-1).action, {
     type: 'panelOutsideClick',
     panelKey: 'famousPersons',
     background: true,
+    blocksBaseHitTargets: false,
+    closesOnOutsideClick: true,
   });
   assert.equal(manager.closePanel('famousPersons', { source: 'back' }), true);
   assert.deepEqual(renderer.hitTargets, baseTargets);
@@ -90,29 +132,19 @@ test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the 
     ['panel.open', 'game', 'button'],
     ['registry.get', 'famousPersons'],
     ['renderPanelOverlaySurface', 'famousPersons', 'button'],
-    ['renderer.setHitTargets', ''],
+    ['renderer.clearHitTargetPool', 'modal'],
     ['registry.get', 'famousPersons'],
     ['panel.render', 'renderer', 'state-1', 'panelOverlay'],
     ['registry.get', 'famousPersons'],
     ['panel.close', 'game', 'back'],
     ['registry.get', 'famousPersons'],
     ['clearPanelOverlaySurface', 'famousPersons', 'back'],
-    ['renderer.setHitTargets', 'openCity'],
+    ['renderer.clearHitTargetPool', 'modal'],
   ]);
 });
 
-test('CanvasPanelSurfaceManager base-render sync re-asserts panel targets and refreshes the base snapshot', () => {
-  const renderer = {
-    width: 420,
-    height: 747,
-    hitTargets: [{ action: { type: 'openCity' } }],
-    setHitTargets(targets) {
-      this.hitTargets = targets;
-    },
-    addHitTarget(rect, action) {
-      this.hitTargets.push({ ...rect, action });
-    },
-  };
+test('CanvasPanelSurfaceManager modal projection survives base hit target rebuilds', () => {
+  const renderer = createPooledRenderer([{ action: { type: 'openCity' } }]);
   const famousPanel = {
     opened: false,
     isOpen() {
@@ -134,11 +166,14 @@ test('CanvasPanelSurfaceManager base-render sync re-asserts panel targets and re
     renderer,
     state: { id: 'state-1' },
     renderPanelOverlaySurface(panelKey, manager, options) {
-      if (options.clear !== false) renderer.setHitTargets([]);
-      manager.renderPanel(panelKey, renderer, options.state, { ...options, mode: 'panelOverlay' });
+      renderer.withHitTargetPool('modal', () => {
+        if (options.clear !== false) renderer.clearHitTargetPool('modal');
+        manager.renderPanel(panelKey, renderer, options.state, { ...options, mode: 'panelOverlay' });
+      });
       return true;
     },
     clearPanelOverlaySurface() {
+      renderer.clearHitTargetPool('modal');
       return true;
     },
   };
@@ -154,74 +189,34 @@ test('CanvasPanelSurfaceManager base-render sync re-asserts panel targets and re
     },
   });
 
+  renderer.withHitTargetPool('guide', () => {
+    renderer.addHitTarget({ x: 1, y: 1, width: 20, height: 20 }, { type: 'guideFocus' });
+  });
   assert.equal(manager.openPanel('famousPersons'), true);
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons', 'panelOutsideClick']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity', 'closeFamousPersons', 'panelOutsideClick', 'guideFocus']);
 
-  // A full-frame render stomps the shared pool with fresh base targets.
-  renderer.setHitTargets([{ action: { type: 'openCity' } }, { action: { type: 'openTaskCenter' } }]);
-  assert.equal(manager.syncOpenPanelSurfacesAfterBaseRender(), true);
-  // Panel targets are authoritative again without any pointer movement...
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons', 'panelOutsideClick']);
-  // ...and closing restores the latest base targets, not the open-time snapshot.
+  renderer.setHitTargets([{ action: { type: 'openCity' } }, { action: { type: 'openTaskCenter' } }], 'base');
+  assert.deepEqual(
+    renderer.hitTargets.map((target) => target.action.type),
+    ['openCity', 'openTaskCenter', 'closeFamousPersons', 'panelOutsideClick', 'guideFocus'],
+  );
+
   assert.equal(manager.closePanel('famousPersons'), true);
   assert.deepEqual(
     renderer.hitTargets.map((target) => target.action.type),
-    ['openCity', 'openTaskCenter'],
+    ['openCity', 'openTaskCenter', 'guideFocus'],
   );
 });
 
-test('CanvasPanelSurfaceManager base-render sync is a no-op while no panel is open', () => {
-  const calls = [];
-  const renderer = {
-    hitTargets: [{ action: { type: 'openCity' } }],
-    setHitTargets(targets) {
-      this.hitTargets = targets;
-    },
-  };
-  const famousPanel = {
-    isOpen() {
-      return false;
-    },
-    render() {
-      calls.push('panel.render');
-    },
-  };
-  const manager = new CanvasPanelSurfaceManager({
-    host: {
-      renderer,
-      renderPanelOverlaySurface() {
-        calls.push('renderPanelOverlaySurface');
-        return true;
-      },
-    },
-    registry: {
-      get(panelKey) {
-        return panelKey === 'famousPersons' ? famousPanel : null;
-      },
-      keys() {
-        return ['famousPersons'];
-      },
-    },
-  });
+test('CanvasPanelSurfaceManager does not expose the retired base-render repair method', () => {
+  const manager = new CanvasPanelSurfaceManager({ host: {} });
 
-  assert.equal(manager.syncOpenPanelSurfacesAfterBaseRender(), false);
-  assert.deepEqual(calls, []);
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity']);
+  assert.equal('syncOpenPanelSurfacesAfterBaseRender' in manager, false);
 });
 
 test('CanvasPanelSurfaceManager projects open panels once in band and priority order', () => {
   const calls = [];
-  const renderer = {
-    width: 420,
-    height: 747,
-    hitTargets: [{ action: { type: 'openCity' } }],
-    setHitTargets(targets = []) {
-      this.hitTargets = targets;
-    },
-    addHitTarget(rect, action) {
-      this.hitTargets.push({ ...rect, action });
-    },
-  };
+  const renderer = createPooledRenderer([{ action: { type: 'openCity' } }]);
   const makeEntry = (key, band, renderPriority) => ({
     key,
     band,
@@ -247,8 +242,10 @@ test('CanvasPanelSurfaceManager projects open panels once in band and priority o
       state: { id: 'state' },
       renderPanelOverlaySurface(panelKey, surfaceManager, options) {
         calls.push(['overlay', panelKey, options.clear]);
-        if (options.clear !== false) renderer.setHitTargets([]);
-        surfaceManager.renderPanel(panelKey, renderer, options.state, { ...options, mode: 'panelOverlay' });
+        renderer.withHitTargetPool('modal', () => {
+          if (options.clear !== false) renderer.clearHitTargetPool('modal');
+          surfaceManager.renderPanel(panelKey, renderer, options.state, { ...options, mode: 'panelOverlay' });
+        });
         return true;
       },
     },
@@ -272,6 +269,7 @@ test('CanvasPanelSurfaceManager projects open panels once in band and priority o
     ['render', 'settings', 'panelOverlay'],
   ]);
   assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), [
+    'openCity',
     'guide:hit',
     'famousPersons:hit',
     'settings:hit',
@@ -298,16 +296,10 @@ test('CanvasPanelSurfaceManager refreshPanelSurface is a counted projection alia
   }
 });
 
-test('CanvasPanelSurfaceManager clears projection and restores base targets when no panels are open', () => {
+test('CanvasPanelSurfaceManager clears modal projection without changing base targets when no panels are open', () => {
   const calls = [];
   const baseTargets = [{ action: { type: 'openCity' } }];
-  const renderer = {
-    hitTargets: baseTargets,
-    setHitTargets(targets = []) {
-      calls.push(['setHitTargets', targets.map((target) => target.action.type).join(',')]);
-      this.hitTargets = targets;
-    },
-  };
+  const renderer = createPooledRenderer(baseTargets, { calls });
   const panel = {
     isOpen() {
       return false;
@@ -318,6 +310,7 @@ test('CanvasPanelSurfaceManager clears projection and restores base targets when
       renderer,
       clearPanelOverlaySurface(panelKey, _surfaceManager, options) {
         calls.push(['clear', panelKey, options.source]);
+        renderer.clearHitTargetPool('modal');
         return true;
       },
     },
@@ -330,15 +323,14 @@ test('CanvasPanelSurfaceManager clears projection and restores base targets when
       },
     },
   });
-  manager.captureBaseHitTargets('famousPersons');
-  renderer.setHitTargets([{ action: { type: 'panelOutsideClick' } }]);
+  renderer.setHitTargets([{ action: { type: 'panelOutsideClick' } }], 'modal');
 
   assert.equal(manager.projectModalLayer({ requestedPanelKey: 'famousPersons', source: 'close' }), true);
   assert.deepEqual(renderer.hitTargets, baseTargets);
   assert.deepEqual(calls, [
-    ['setHitTargets', 'panelOutsideClick'],
+    ['renderer.setHitTargets', 'modal', 'panelOutsideClick'],
     ['clear', 'famousPersons', 'close'],
-    ['setHitTargets', 'openCity'],
+    ['renderer.clearHitTargetPool', 'modal'],
   ]);
 });
 

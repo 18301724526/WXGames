@@ -94,6 +94,8 @@
     getLayout(...args) { return this.host?.getLayout?.(...args) || { contentX: 0, contentWidth: this.width, contentRight: this.width }; }
     withSlideClip(...args) { return this.host?.withSlideClip?.(...args) ?? args[5]?.(); }
     withSuppressedHitTargets(...args) { return this.host?.withSuppressedHitTargets?.(...args) ?? args[0]?.(); }
+    withHitTargetPool(...args) { return this.host?.withHitTargetPool?.(...args) ?? args[1]?.(); }
+    clearHitTargetPool(...args) { return this.host?.clearHitTargetPool?.(...args); }
     createGradient(...args) { return this.host?.createGradient?.(...args) ?? args[5] ?? '#000'; }
     drawAsset(...args) { return this.host?.drawAsset?.(...args) || false; }
     drawPanel(...args) { return this.host?.drawPanel?.(...args); }
@@ -312,13 +314,16 @@
     }
 
     renderFrameFeedback(state = {}, options = {}, flags = {}) {
-      if (flags.includeTutorialIntro) this.renderTutorialIntro(state, options);
-      if (options.tutorialAdvisorDialogue && !flags.skipTutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
-        options.tutorialAdvisorDialogue.message,
-        options.tutorialAdvisorDialogue.advisorName || this.t('tutorial.advisorName'),
-        { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
-      );
-      this.renderTutorialHighlight(options.tutorialHighlight || null);
+      this.withHitTargetPool('guide', () => {
+        this.clearHitTargetPool('guide');
+        if (flags.includeTutorialIntro) this.renderTutorialIntro(state, options);
+        if (options.tutorialAdvisorDialogue && !flags.skipTutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
+          options.tutorialAdvisorDialogue.message,
+          options.tutorialAdvisorDialogue.advisorName || this.t('tutorial.advisorName'),
+          { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
+        );
+        this.renderTutorialHighlight(options.tutorialHighlight || null);
+      });
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);

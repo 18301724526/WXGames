@@ -60,20 +60,17 @@
     get maxContentWidth() { return Number(this.host?.maxContentWidth) || 480; }
     get edgePadding() { return Number(this.host?.edgePadding) || 12; }
     get presenter() { return this.host?.presenter || null; }
-    get hitTargets() {
-      return SurfaceState.getHitTargets(this.surfaceState);
-    }
+    get hitTargets() { return SurfaceState.getHitTargets(this.surfaceState); }
     set hitTargets(value) { SurfaceState.setHitTargets(this.surfaceState, value); }
+    get activeHitTargetPool() { return SurfaceState.getActiveHitTargetPool(this.surfaceState); }
+    set activeHitTargetPool(value) { SurfaceState.setActiveHitTargetPool(this.surfaceState, value); }
     get suppressHitTargets() { return Boolean(this.surfaceState.suppressHitTargets); }
     set suppressHitTargets(value) { this.surfaceState.suppressHitTargets = Boolean(value); }
     get lastRenderOptions() { return this.surfaceState.lastRenderOptions || null; }
     set lastRenderOptions(value) { this.surfaceState.lastRenderOptions = value || {}; }
     get hoverPoint() { return SurfaceState.getHoverPoint(this.surfaceState); }
     set hoverPoint(value) { SurfaceState.setHoverPoint(this.surfaceState, value); }
-    get famousSkillHitTargets() {
-      if (!Array.isArray(this.surfaceState.famousSkillHitTargets)) this.surfaceState.famousSkillHitTargets = [];
-      return this.surfaceState.famousSkillHitTargets;
-    }
+    get famousSkillHitTargets() { if (!Array.isArray(this.surfaceState.famousSkillHitTargets)) this.surfaceState.famousSkillHitTargets = []; return this.surfaceState.famousSkillHitTargets; }
     set famousSkillHitTargets(value) { this.surfaceState.famousSkillHitTargets = Array.isArray(value) ? value : []; }
     get activeFamousSkillTooltip() { return this.surfaceState.activeFamousSkillTooltip || null; }
     set activeFamousSkillTooltip(value) { SurfaceState.setFamousSkillTooltips(this.surfaceState, { active: value }); }
@@ -85,10 +82,7 @@
     set fpsLastPaintAt(value) { this.surfaceState.fpsLastPaintAt = Number(value) || 0; }
     get fpsLastPaintedValue() { return Number(this.surfaceState.fpsLastPaintedValue) || 0; }
     set fpsLastPaintedValue(value) { this.surfaceState.fpsLastPaintedValue = Number(value) || 0; }
-    get fpsSamples() {
-      if (!Array.isArray(this.surfaceState.fpsSamples)) this.surfaceState.fpsSamples = [];
-      return this.surfaceState.fpsSamples;
-    }
+    get fpsSamples() { if (!Array.isArray(this.surfaceState.fpsSamples)) this.surfaceState.fpsSamples = []; return this.surfaceState.fpsSamples; }
     set fpsSamples(value) { this.surfaceState.fpsSamples = Array.isArray(value) ? value : []; }
     get currentFps() { return Number(this.surfaceState.currentFps) || 0; }
     set currentFps(value) { this.surfaceState.currentFps = Number(value) || 0; }
@@ -137,23 +131,34 @@
         && typeof this.ctx.clip === 'function';
     }
 
-    setHitTargets(targets = []) {
-      SurfaceState.setHitTargets(this.surfaceState, targets);
-    }
+    setHitTargets(targets = [], pool = null) { return SurfaceState.setHitTargets(this.surfaceState, targets, pool); }
 
-    addHitTarget(rect, action) {
+    addHitTarget(rect, action, pool = null) {
       if (this.suppressHitTargets) return;
       const target = HitTargets.normalizeHitTarget(rect, action);
-      SurfaceState.appendHitTarget(this.surfaceState, target);
+      SurfaceState.appendHitTarget(this.surfaceState, target, pool);
     }
 
     getHitTarget(point = {}) {
-      return HitTargets.resolveHitTarget(this.hitTargets, point, this.lastRenderOptions?.tutorialIntro || null);
+      const pools = SurfaceState.ensureHitTargetPools(this.surfaceState);
+      return typeof HitTargets.resolveHitTargetPools === 'function'
+        ? HitTargets.resolveHitTargetPools(pools, point, this.lastRenderOptions?.tutorialIntro || null)
+        : HitTargets.resolveHitTarget(this.hitTargets, point, this.lastRenderOptions?.tutorialIntro || null);
     }
 
-    containsPoint(rect = {}, point = {}) {
-      return HitTargets.containsPoint(rect, point);
+    clearHitTargetPool(pool = 'base') { return SurfaceState.clearHitTargetPool(this.surfaceState, pool); }
+
+    setHitTargetPool(pool = 'base') { return SurfaceState.setActiveHitTargetPool(this.surfaceState, pool); }
+
+    getHitTargetPool(pool = null) { return SurfaceState.getHitTargets(this.surfaceState, pool === null || pool === undefined ? this.activeHitTargetPool : pool); }
+
+    withHitTargetPool(pool = 'base', callback = null) {
+      const previous = this.activeHitTargetPool;
+      this.setHitTargetPool(pool);
+      try { return typeof callback === 'function' ? callback() : undefined; } finally { this.setHitTargetPool(previous); SurfaceState.syncMergedHitTargets(this.surfaceState); }
     }
+
+    containsPoint(rect = {}, point = {}) { return HitTargets.containsPoint(rect, point); }
 
     setHoverPoint(point = null) {
       if (!point || !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))) {

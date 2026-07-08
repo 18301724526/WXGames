@@ -62,7 +62,7 @@
       const renderer = this.host?.surfaceRenderer;
       return typeof renderer?.setHitTargets === 'function'
         ? renderer.setHitTargets(...args)
-        : SharedCanvasSurfaceState.setHitTargets(this.surfaceState, args[0] || []);
+        : SharedCanvasSurfaceState.setHitTargets(this.surfaceState, args[0] || [], args[1] ?? null);
     }
 
     addHitTarget(...args) {
@@ -79,7 +79,7 @@
         width: Number(rect.width) || 0,
         height: Number(rect.height) || 0,
         action,
-      });
+      }, args[2] ?? null);
       return undefined;
     }
 
@@ -113,6 +113,42 @@
       return typeof renderer?.withSuppressedHitTargets === 'function'
         ? renderer.withSuppressedHitTargets(...args)
         : args[0]?.();
+    }
+
+    clearHitTargetPool(...args) {
+      const renderer = this.host?.surfaceRenderer;
+      return typeof renderer?.clearHitTargetPool === 'function'
+        ? renderer.clearHitTargetPool(...args)
+        : SharedCanvasSurfaceState.clearHitTargetPool(this.surfaceState, args[0] || 'base');
+    }
+
+    setHitTargetPool(...args) {
+      const renderer = this.host?.surfaceRenderer;
+      return typeof renderer?.setHitTargetPool === 'function'
+        ? renderer.setHitTargetPool(...args)
+        : SharedCanvasSurfaceState.setActiveHitTargetPool(this.surfaceState, args[0] || 'base');
+    }
+
+    getHitTargetPool(...args) {
+      const renderer = this.host?.surfaceRenderer;
+      return typeof renderer?.getHitTargetPool === 'function'
+        ? renderer.getHitTargetPool(...args)
+        : SharedCanvasSurfaceState.getHitTargets(this.surfaceState, args[0] ?? null);
+    }
+
+    withHitTargetPool(pool = 'base', callback = null) {
+      const renderer = this.host?.surfaceRenderer;
+      if (typeof renderer?.withHitTargetPool === 'function') {
+        return renderer.withHitTargetPool(pool, callback);
+      }
+      const previous = SharedCanvasSurfaceState.getActiveHitTargetPool(this.surfaceState);
+      SharedCanvasSurfaceState.setActiveHitTargetPool(this.surfaceState, pool);
+      try {
+        return typeof callback === 'function' ? callback() : undefined;
+      } finally {
+        SharedCanvasSurfaceState.setActiveHitTargetPool(this.surfaceState, previous);
+        SharedCanvasSurfaceState.syncMergedHitTargets(this.surfaceState);
+      }
     }
 
     findHitTarget(...args) {

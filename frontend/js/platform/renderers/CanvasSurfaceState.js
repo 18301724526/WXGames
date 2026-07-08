@@ -1,7 +1,44 @@
 (function (global) {
-  function createCanvasSurfaceState(initial = {}) {
+  const HIT_TARGET_POOLS = Object.freeze(['base', 'modal', 'guide']);
+  const HIT_TARGET_POOL_SET = new Set(HIT_TARGET_POOLS);
+
+  function normalizeHitTargetPool(pool = 'base') {
+    const key = String(pool || 'base');
+    return HIT_TARGET_POOL_SET.has(key) ? key : 'base';
+  }
+
+  function createInitialHitTargetPools(initial = {}) {
+    const sourcePools = initial.hitTargetPools && typeof initial.hitTargetPools === 'object'
+      ? initial.hitTargetPools
+      : null;
+    const baseTargets = sourcePools
+      ? sourcePools.base
+      : initial.hitTargets;
     return {
-      hitTargets: Array.isArray(initial.hitTargets) ? initial.hitTargets : [],
+      base: Array.isArray(baseTargets) ? baseTargets : [],
+      modal: Array.isArray(sourcePools?.modal) ? sourcePools.modal : [],
+      guide: Array.isArray(sourcePools?.guide) ? sourcePools.guide : [],
+    };
+  }
+
+  function syncMergedHitTargets(surfaceState = null) {
+    if (!surfaceState) return [];
+    const pools = ensureHitTargetPools(surfaceState);
+    const base = pools.base || [];
+    const modal = pools.modal || [];
+    const guide = pools.guide || [];
+    surfaceState.hitTargets = modal.length || guide.length
+      ? [...base, ...modal, ...guide]
+      : base;
+    return surfaceState.hitTargets;
+  }
+
+  function createCanvasSurfaceState(initial = {}) {
+    const hitTargetPools = createInitialHitTargetPools(initial);
+    const state = {
+      hitTargets: hitTargetPools.base,
+      hitTargetPools,
+      activeHitTargetPool: normalizeHitTargetPool(initial.activeHitTargetPool),
       hoverPoint: initial.hoverPoint || null,
       famousSkillHitTargets: Array.isArray(initial.famousSkillHitTargets)
         ? initial.famousSkillHitTargets
@@ -19,24 +56,67 @@
       fpsSamples: Array.isArray(initial.fpsSamples) ? initial.fpsSamples : [],
       currentFps: Number(initial.currentFps) || 0,
     };
+    syncMergedHitTargets(state);
+    return state;
   }
 
-  function getHitTargets(surfaceState = null) {
+  function ensureHitTargetPools(surfaceState = null) {
+    if (!surfaceState) return { base: [], modal: [], guide: [] };
+    if (!surfaceState.hitTargetPools || typeof surfaceState.hitTargetPools !== 'object') {
+      surfaceState.hitTargetPools = {
+        base: Array.isArray(surfaceState.hitTargets) ? surfaceState.hitTargets : [],
+        modal: [],
+        guide: [],
+      };
+    }
+    HIT_TARGET_POOLS.forEach((pool) => {
+      if (!Array.isArray(surfaceState.hitTargetPools[pool])) surfaceState.hitTargetPools[pool] = [];
+    });
+    surfaceState.activeHitTargetPool = normalizeHitTargetPool(surfaceState.activeHitTargetPool);
+    return surfaceState.hitTargetPools;
+  }
+
+  function getActiveHitTargetPool(surfaceState = null) {
+    if (!surfaceState) return 'base';
+    return normalizeHitTargetPool(surfaceState.activeHitTargetPool);
+  }
+
+  function setActiveHitTargetPool(surfaceState = null, pool = 'base') {
+    if (!surfaceState) return 'base';
+    surfaceState.activeHitTargetPool = normalizeHitTargetPool(pool);
+    ensureHitTargetPools(surfaceState);
+    return surfaceState.activeHitTargetPool;
+  }
+
+  function getHitTargets(surfaceState = null, pool = null) {
     if (!surfaceState) return [];
-    if (!Array.isArray(surfaceState.hitTargets)) surfaceState.hitTargets = [];
-    return surfaceState.hitTargets;
+    const pools = ensureHitTargetPools(surfaceState);
+    if (pool !== null && pool !== undefined) return pools[normalizeHitTargetPool(pool)];
+    return syncMergedHitTargets(surfaceState);
   }
 
-  function setHitTargets(surfaceState = null, targets = []) {
+  function setHitTargets(surfaceState = null, targets = [], pool = null) {
     if (!surfaceState) return [];
-    surfaceState.hitTargets = Array.isArray(targets) ? targets : [];
-    return surfaceState.hitTargets;
+    const pools = ensureHitTargetPools(surfaceState);
+    const key = pool === null || pool === undefined ? getActiveHitTargetPool(surfaceState) : normalizeHitTargetPool(pool);
+    pools[key] = Array.isArray(targets) ? targets : [];
+    return syncMergedHitTargets(surfaceState);
   }
 
-  function appendHitTarget(surfaceState = null, target = null) {
+  function appendHitTarget(surfaceState = null, target = null, pool = null) {
     if (!surfaceState || !target) return false;
-    getHitTargets(surfaceState).push(target);
+    const pools = ensureHitTargetPools(surfaceState);
+    const key = pool === null || pool === undefined ? getActiveHitTargetPool(surfaceState) : normalizeHitTargetPool(pool);
+    pools[key].push(target);
+    syncMergedHitTargets(surfaceState);
     return true;
+  }
+
+  function clearHitTargetPool(surfaceState = null, pool = 'base') {
+    if (!surfaceState) return [];
+    const pools = ensureHitTargetPools(surfaceState);
+    pools[normalizeHitTargetPool(pool)] = [];
+    return syncMergedHitTargets(surfaceState);
   }
 
   function getHoverPoint(surfaceState = null) {
@@ -82,13 +162,20 @@
   const api = {
     appendHitTarget,
     clearFamousSkillTooltips,
+    clearHitTargetPool,
     createCanvasSurfaceState,
+    ensureHitTargetPools,
+    getActiveHitTargetPool,
     getHitTargets,
+    normalizeHitTargetPool,
     getHoverPoint,
     setFamousSkillTooltips,
+    setActiveHitTargetPool,
     setHitTargets,
     setHoverPoint,
     setSuppressHitTargets,
+    syncMergedHitTargets,
+    HIT_TARGET_POOLS,
   };
 
   global.CanvasSurfaceState = api;
