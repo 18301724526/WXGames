@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class CityPeopleCanvasRenderer {
     constructor(options = {}) {
@@ -46,22 +57,7 @@
       const panelHeight = 304;
       const jobRowHeight = 42;
       const jobRowGap = 8;
-      this.drawPanel(x, y, width, panelHeight, {
-        fill: this.createGradient(
-          x, y, x + width, y + panelHeight,
-          [
-            [0, 'rgba(61, 43, 28, 0.94)'],
-            [1, 'rgba(24, 19, 14, 0.94)'],
-          ],
-          'rgba(43, 31, 22, 0.94)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.18)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.1)',
-      });
-
-      this.drawLine(x + 10, y + 6, x + width - 10, y + 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
-      this.drawLine(x + 10, y + panelHeight - 6, x + width - 10, y + panelHeight - 6, { color: 'rgba(240, 180, 91, 0.34)', width: 2 });
+      ModalPlate.drawModalCard(this, x, y, width, panelHeight, { tone: 'accent' });
       this.drawIconCard(x + 14, y + 14, 38, 38, 'assets/art/icon-population-cutout.webp');
       this.drawText(view.text.title || this.t('home.population.title', {}), x + 62, y + 20, { size: 15, bold: true, color: '#ffe6b5' });
       this.drawText(view.text.subtitle || this.t('home.population.subtitle', {}), x + 62, y + 40, { size: 11, color: 'rgba(234, 234, 234, 0.58)' });
@@ -69,10 +65,10 @@
       const policyButtonHeight = 28;
       const policyButtonX = x + width - policyButtonWidth - 14;
       const policyButtonY = y + 18;
-      this.drawButton(policyButtonX, policyButtonY, policyButtonWidth, policyButtonHeight, this.t('home.population.policy', {}), {
+      ModalPlate.drawModalButton(this, policyButtonX, policyButtonY, policyButtonWidth, policyButtonHeight, this.t('home.population.policy', {}), {
+        variant: 'primary',
         size: 12,
         bold: true,
-        active: true,
         radius: 8,
       });
       this.addHitTarget(
@@ -86,23 +82,29 @@
         { icon: 'assets/art/icon-population-cutout.webp', label: this.t('home.population.unassigned', {}), value: String(view.text.unassigned), color: '#74d3a0' },
         { icon: 'assets/art/icon-happiness-cutout.webp', label: this.t('home.population.happiness', {}), value: `${state.happiness || 100}%`, color: '#f9ca24' },
       ];
-      const statWidth = Math.floor((width - 28) / 3);
+      const statGap = 6;
+      const statWidth = Math.floor((width - 28 - statGap * 2) / 3);
       stats.forEach((stat, index) => {
-        const statX = x + 6 + index * statWidth;
+        const statX = x + 14 + index * (statWidth + statGap);
         const statY = y + 64;
-        this.drawAsset(stat.icon, statX + 8, statY + 7, 18, 18);
-        if (index > 0) this.drawLine(statX, statY + 4, statX, statY + 36, { color: 'rgba(255, 226, 177, 0.1)' });
-        this.drawText(stat.label, statX + 30, statY + 4, { size: 10, color: 'rgba(234, 234, 234, 0.64)' });
-        this.drawText(stat.value, statX + 30, statY + 18, { size: 13, bold: true, color: stat.color });
+        ModalPlate.drawModalCard(this, statX, statY, statWidth, 34, {
+          tone: 'muted',
+          radius: 7,
+          fill: 'rgba(21, 19, 16, 0.66)',
+          stroke: 'rgba(255, 226, 177, 0.12)',
+        });
+        this.drawAsset(stat.icon, statX + 8, statY + 8, 16, 16);
+        this.drawText(stat.label, statX + 28, statY + 5, { size: 9, color: 'rgba(234, 234, 234, 0.62)' });
+        this.drawText(stat.value, statX + 28, statY + 19, { size: 12, bold: true, color: stat.color });
       });
 
       const planning = view.planning || {};
       const planningY = y + 106;
-      this.drawPanel(x + 7, planningY, width - 14, 42, {
+      ModalPlate.drawModalCard(this, x + 7, planningY, width - 14, 42, {
+        tone: 'muted',
         fill: 'rgba(24, 36, 29, 0.72)',
         stroke: 'rgba(116, 211, 160, 0.16)',
         radius: 8,
-        inset: 'rgba(116, 211, 160, 0.05)',
       });
       const terrainLabel = planning.terrainLabel || this.t('home.planning.terrain.plains', {});
       this.drawText(this.t('home.planning.geography', { terrain: terrainLabel }), x + 20, planningY + 12, {
@@ -138,18 +140,9 @@
         const jobPanelX = x + 7;
         const jobPanelRight = x + width - 7;
         const jobPanelInset = 8;
-        this.drawPanel(jobPanelX, rowY, width - 14, jobRowHeight, {
-          fill: this.createGradient(
-            jobPanelX, rowY, jobPanelRight, rowY + jobRowHeight,
-            [
-              [0, 'rgba(74, 52, 34, 0.86)'],
-              [1, 'rgba(28, 22, 16, 0.84)'],
-            ],
-            'rgba(52, 38, 27, 0.84)',
-          ),
-          stroke: 'rgba(255, 226, 177, 0.14)',
+        ModalPlate.drawModalCard(this, jobPanelX, rowY, width - 14, jobRowHeight, {
+          tone: job.count > 0 ? 'accent' : 'default',
           radius: 9,
-          inset: 'rgba(255, 231, 184, 0.08)',
         });
         this.drawAsset(icon, jobPanelX + jobPanelInset, rowY + 9, 24, 24);
         this.drawText(jobLabel, x + 48, rowY + 8, { size: 13, bold: true, color: '#fff1cf' });
@@ -162,10 +155,14 @@
         const countX = minusX + controlButtonWidth + controlGap;
         const plusX = countX + countWidth + controlGap;
         const controlY = rowY + 10;
-        this.drawButton(minusX, controlY, controlButtonWidth, 22, '-', { disabled: !job.canDecrease, size: 13, radius: 6 });
-        this.drawPanel(countX, rowY + 9, 40, 24, { fill: 'rgba(11, 18, 14, 0.38)', stroke: 'rgba(116, 211, 160, 0.24)', radius: 8, inset: 'rgba(116, 211, 160, 0.08)' });
+        ModalPlate.drawModalButton(this, minusX, controlY, controlButtonWidth, 22, '-', { disabled: !job.canDecrease, size: 13, radius: 6 });
+        ModalPlate.drawModalCard(this, countX, rowY + 9, 40, 24, {
+          fill: 'rgba(11, 18, 14, 0.5)',
+          stroke: 'rgba(116, 211, 160, 0.24)',
+          radius: 8,
+        });
         this.drawText(job.count, countX + 20, rowY + 21, { size: 14, bold: true, color: '#74d3a0', baseline: 'middle', align: 'center' });
-        this.drawButton(plusX, controlY, controlButtonWidth, 22, '+', { disabled: !job.canIncrease, size: 13, radius: 6 });
+        ModalPlate.drawModalButton(this, plusX, controlY, controlButtonWidth, 22, '+', { disabled: !job.canIncrease, size: 13, radius: 6 });
         this.addHitTarget({ x: minusX, y: controlY, width: controlButtonWidth, height: 22 }, { type: 'assignJob', job: job.id, delta: -1, disabled: !job.canDecrease });
         this.addHitTarget({ x: plusX, y: controlY, width: controlButtonWidth, height: 22 }, { type: 'assignJob', job: job.id, delta: 1, disabled: !job.canIncrease });
       });

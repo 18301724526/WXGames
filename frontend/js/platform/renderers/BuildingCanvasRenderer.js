@@ -145,7 +145,12 @@
           ModalPlate.drawModalCard(this, x + 10, y, width - 20, rowHeight, {
             tone: isMuted ? 'muted' : 'accent',
           });
-          if (card.art) this.drawAsset(card.art, x + 20, y + 14, 46, 46, isMuted ? 0.62 : 1);
+          ModalPlate.drawModalCard(this, x + 18, y + 12, 50, 50, {
+            tone: isMuted ? 'muted' : 'accent',
+            radius: 9,
+            fill: isMuted ? 'rgba(22, 21, 18, 0.78)' : undefined,
+          });
+          if (card.art) this.drawAsset(card.art, x + 22, y + 16, 42, 42, isMuted ? 0.62 : 1);
           else this.drawText(card.icon || '', x + 43, y + 37, { size: 24, align: 'center', baseline: 'middle' });
 
           const textX = x + 76;
@@ -311,7 +316,8 @@
           badgeWidth = Math.min(88, Math.max(38, this.measureTextWidth(label, { size: 9, bold: true }) + 12));
         }
         if (available < 34) return;
-        this.drawPanel(cursorX, cursorY, badgeWidth, height, {
+        ModalPlate.drawModalCard(this, cursorX, cursorY, badgeWidth, height, {
+          tone: 'muted',
           fill: options.muted ? 'rgba(45, 42, 38, 0.46)' : style.fill,
           stroke: options.muted ? 'rgba(255, 226, 177, 0.08)' : style.stroke,
           radius: 6,
@@ -417,7 +423,8 @@
         });
         return;
       }
-      this.drawPanel(x, y, width, height, {
+      ModalPlate.drawModalCard(this, x, y, width, height, {
+        tone: options.disabled ? 'muted' : 'accent',
         fill: options.disabled
           ? '#1D1B18'
           : this.createGradient(
@@ -471,9 +478,14 @@
     drawBuildingCostChips(cost = {}, x, y, width, height, options = {}) {
       if (cost?.isMax) {
         const text = cost?.text || this.t('building.action.maxLevel', {});
-        const fill = cost?.isMax ? 'rgba(60, 52, 46, 0.48)' : 'rgba(116, 211, 160, 0.12)';
-        const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.1)' : 'rgba(116, 211, 160, 0.26)';
-        this.drawPanel(x, y + 7, width, 24, { fill, stroke, radius: 7 });
+        const fill = cost?.isMax ? 'rgba(21, 20, 18, 0.66)' : 'rgba(24, 36, 29, 0.58)';
+        const stroke = cost?.isMax ? 'rgba(255, 226, 177, 0.12)' : 'rgba(116, 211, 160, 0.24)';
+        ModalPlate.drawModalCard(this, x, y + 7, width, 24, {
+          tone: 'muted',
+          fill,
+          stroke,
+          radius: 7,
+        });
         this.drawText(this.truncateText(text, width - 14, { size: 10, bold: true }), x + width / 2, y + 19, {
           size: 10,
           bold: true,
@@ -498,13 +510,18 @@
         const owned = this.getOwnedBuildingResource(options.resources || {}, resource);
         const insufficient = part.present && required > 0 && owned < required;
         const fill = insufficient
-          ? 'rgba(116, 47, 39, 0.58)'
-          : (part.present ? 'rgba(40, 48, 34, 0.62)' : 'rgba(50, 44, 36, 0.42)');
+          ? 'rgba(93, 36, 31, 0.66)'
+          : (part.present ? 'rgba(27, 29, 24, 0.72)' : 'rgba(24, 23, 20, 0.52)');
         const stroke = insufficient
-          ? 'rgba(235, 116, 100, 0.46)'
-          : (part.present ? 'rgba(116, 211, 160, 0.24)' : 'rgba(255, 226, 177, 0.12)');
+          ? 'rgba(235, 116, 100, 0.5)'
+          : (part.present ? 'rgba(210, 181, 126, 0.28)' : 'rgba(255, 226, 177, 0.12)');
         const textColor = insufficient ? '#ffb0a5' : (part.present ? '#f6e8c8' : '#9a927e');
-        this.drawPanel(chipX, chipY, chipWidth, chipHeight, { fill, stroke, radius: 6, inset: 'rgba(255, 255, 255, 0.04)' });
+        ModalPlate.drawModalCard(this, chipX, chipY, chipWidth, chipHeight, {
+          tone: 'muted',
+          fill,
+          stroke,
+          radius: 6,
+        });
         const iconPath = this.resourceIconPath(resource);
         if (!this.drawAsset(iconPath, chipX + 4, chipY + 3, 12, 12, options.muted || !part.present ? 0.5 : 1)) {
           this.drawText(this.resourceShortName(resource), chipX + 8, chipY + 9, {

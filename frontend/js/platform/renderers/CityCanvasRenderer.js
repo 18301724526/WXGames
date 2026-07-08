@@ -106,19 +106,7 @@
       const panelHeight = Math.max(56, 18 + visibleCount * itemHeight);
 
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeCitySwitcher' });
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(45, 32, 21, 0.98)'],
-            [1, 'rgba(23, 18, 13, 0.98)'],
-          ],
-          'rgba(35, 26, 19, 0.98)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.24)',
-        radius: 10,
-        inset: 'rgba(255, 238, 203, 0.12)',
-      });
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight, { radius: 10 });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
 
       if (!options.length) {
@@ -135,13 +123,10 @@
         const itemY = y + 9 + index * itemHeight;
         const itemWidth = panelWidth - 18;
         const active = Boolean(city.isActive);
-        this.drawPanel(itemX, itemY, itemWidth, 43, {
-          fill: active
-            ? 'rgba(126, 81, 39, 0.92)'
-            : 'rgba(45, 34, 24, 0.82)',
-          stroke: active
-            ? 'rgba(240, 180, 91, 0.6)'
-            : 'rgba(255, 226, 177, 0.12)',
+        ModalPlate.drawModalCard(this, itemX, itemY, itemWidth, 43, {
+          tone: active ? 'accent' : 'muted',
+          fill: active ? undefined : 'rgba(20, 19, 17, 0.82)',
+          stroke: active ? undefined : 'rgba(255, 226, 177, 0.12)',
           radius: 8,
         });
         if (active) {
@@ -252,9 +237,21 @@
       const rowHeight = Math.max(26, Math.min(38, Math.floor((rowAreaHeight - rowGap * (rows.length - 1)) / rows.length)));
       rows.forEach((row, index) => {
         const rowY = rowTop + index * (rowHeight + rowGap);
-        ModalPlate.drawModalCard(this, x + 12, rowY, width - 24, rowHeight, { tone: 'muted', radius: 7 });
-        this.drawText(row.label, x + 26, rowY + 7, { size: 13, bold: true, color: '#fff1cf' });
-        this.drawText(row.note, x + 26, rowY + rowHeight - 13, { size: 9, color: 'rgba(234, 234, 234, 0.58)' });
+        const rowX = x + 12;
+        const rowWidth = width - 24;
+        ModalPlate.drawModalCard(this, rowX, rowY, rowWidth, rowHeight, {
+          tone: 'muted',
+          radius: 7,
+          fill: 'rgba(20, 19, 17, 0.82)',
+          stroke: 'rgba(255, 226, 177, 0.12)',
+        });
+        this.drawPanel(rowX + 1, rowY + 4, 3, rowHeight - 8, {
+          fill: row.disabled ? 'rgba(148, 125, 84, 0.35)' : 'rgba(240, 180, 91, 0.7)',
+          stroke: 'rgba(0, 0, 0, 0)',
+          radius: 2,
+        });
+        this.drawText(row.label, rowX + 16, rowY + 7, { size: 13, bold: true, color: '#fff1cf' });
+        this.drawText(row.note, rowX + 16, rowY + rowHeight - 13, { size: 9, color: 'rgba(234, 234, 234, 0.58)' });
         ModalPlate.drawModalButton(this, x + width - 82, rowY + Math.max(4, (rowHeight - 24) / 2), 58, 24, this.t('home.city.military.pending'), { size: 10, disabled: true, radius: 7 });
       });
 
@@ -323,27 +320,14 @@
       const dockTop = UiThemeTokens?.getDockMetrics?.(this.width, this.height)?.top ?? (this.height - 64);
       const y = Math.max(82, dockTop - panelHeight - 10);
       this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'closeSubcityList', background: true });
-      this.drawPanel(x, y, panelWidth, panelHeight, {
-        fill: this.createGradient(
-          x, y, x, y + panelHeight,
-          [
-            [0, 'rgba(46, 37, 26, 0.98)'],
-            [1, 'rgba(20, 17, 13, 0.98)'],
-          ],
-          'rgba(34, 26, 19, 0.98)',
-        ),
-        stroke: 'rgba(255, 226, 177, 0.24)',
-        radius: 12,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      ModalPlate.drawModalPlate(this, x, y, panelWidth, panelHeight, { radius: 12 });
       this.addHitTarget({ x, y, width: panelWidth, height: panelHeight }, { type: 'blockCanvasModal' });
-      const closeSize = 28;
-      const closeX = x + panelWidth - closeSize - 10;
-      const closeY = y + 10;
-      this.drawText(this.t('home.city.subcityManagement'), x + 16, y + 17, { size: 17, bold: true, color: '#ffe6b5' });
-      this.drawText(this.t('home.city.subcityCount', { count: cities.length }), x + 16, y + 41, { size: 11, color: '#cbbd96' });
-      this.drawButton(closeX, closeY, closeSize, closeSize, 'x', { size: 14, radius: 7 });
-      this.addHitTarget({ x: closeX, y: closeY, width: closeSize, height: closeSize }, { type: 'closeSubcityList' });
+      const titleBar = ModalPlate.drawModalTitleBar(this, x, y, panelWidth, {
+        title: this.t('home.city.subcityManagement'),
+        subtitle: this.t('home.city.subcityCount', { count: cities.length }),
+        withClose: true,
+      });
+      if (titleBar.closeRect) this.addHitTarget(titleBar.closeRect, { type: 'closeSubcityList' });
 
       if (!cities.length) {
         this.drawText(this.t('home.city.noSubcities'), x + panelWidth / 2, y + 96, {
@@ -355,14 +339,14 @@
       }
       cities.slice(0, visibleCount).forEach((city, index) => {
         const itemX = x + 12;
-        const itemY = y + 64 + index * itemHeight;
+        const itemY = titleBar.contentTop + index * itemHeight;
         const itemWidth = panelWidth - 24;
         const active = Boolean(city.isActive);
-        this.drawPanel(itemX, itemY, itemWidth, itemHeight - 8, {
-          fill: active ? 'rgba(78, 61, 35, 0.92)' : 'rgba(32, 27, 20, 0.82)',
-          stroke: active ? 'rgba(247, 215, 116, 0.5)' : 'rgba(255, 226, 177, 0.12)',
+        ModalPlate.drawModalCard(this, itemX, itemY, itemWidth, itemHeight - 8, {
+          tone: active ? 'accent' : 'muted',
+          fill: active ? undefined : 'rgba(20, 19, 17, 0.82)',
+          stroke: active ? undefined : 'rgba(255, 226, 177, 0.12)',
           radius: 9,
-          inset: 'rgba(255, 231, 184, 0.05)',
         });
         this.drawAsset('assets/art/world-site-city-cutout.png', itemX + 10, itemY + 10, 30, 30);
         this.drawText(this.truncateText(city.name || this.t('home.city.unnamedSubcity'), itemWidth - 108, { size: 14, bold: true }), itemX + 50, itemY + 9, {
@@ -374,10 +358,10 @@
           size: 10,
           color: 'rgba(234, 234, 234, 0.62)',
         });
-        this.drawButton(itemX + itemWidth - 72, itemY + 11, 60, 28, active ? this.t('home.city.current') : this.t('home.city.jump'), {
+        ModalPlate.drawModalButton(this, itemX + itemWidth - 72, itemY + 11, 60, 28, active ? this.t('home.city.current') : this.t('home.city.jump'), {
           size: 12,
           bold: !active,
-          active: !active,
+          variant: active ? 'secondary' : 'primary',
           radius: 8,
           disabled: active,
         });

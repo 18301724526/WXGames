@@ -60,7 +60,6 @@ const CITY_PEOPLE_DRAWING_METHODS = [
   'addHitTarget',
   'createGradient',
   'drawAsset',
-  'drawButton',
   'drawIconCard',
   'drawLine',
   'drawPanel',

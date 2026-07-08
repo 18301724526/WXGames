@@ -25,6 +25,7 @@ function createHost(overrides = {}) {
     createGradient() { return '#123'; },
     drawAsset(assetPath) { calls.push(['drawAsset', assetPath]); return false; },
     drawButton(x, y, width, height, label, options = {}) { calls.push(['drawButton', label, options]); },
+    drawLine() { calls.push(['drawLine']); },
     drawPanel() { calls.push(['drawPanel']); },
     drawProgressBar(x, y, width, height, percentage) { calls.push(['drawProgressBar', percentage]); },
     drawText(text) { calls.push(['drawText', text]); },
@@ -73,9 +74,10 @@ function createMilitaryView() {
 
 const MILITARY_DRAWING_METHODS = [
   'addHitTarget',
+  'createGradient',
   'drawAsset',
-  'drawButton',
   'drawFamousPortrait',
+  'drawLine',
   'drawPanel',
   'drawProgressBar',
   'drawText',
@@ -94,6 +96,10 @@ function createDrawingSurfaceSentinel(label, calls = [], overrides = {}) {
     addHitTarget(_rect, action) {
       calls.push([label, 'addHitTarget', action?.type]);
     },
+    createGradient() {
+      calls.push([label, 'createGradient']);
+      return label;
+    },
     drawAsset(assetPath) {
       calls.push([label, 'drawAsset', assetPath]);
       return false;
@@ -104,6 +110,9 @@ function createDrawingSurfaceSentinel(label, calls = [], overrides = {}) {
     drawFamousPortrait() {
       calls.push([label, 'drawFamousPortrait']);
       return false;
+    },
+    drawLine() {
+      calls.push([label, 'drawLine']);
     },
     drawPanel() {
       calls.push([label, 'drawPanel']);

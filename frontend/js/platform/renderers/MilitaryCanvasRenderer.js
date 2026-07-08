@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const ModalPlate = (() => {
+    if (global.ModalPlateRenderer) return global.ModalPlateRenderer;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ModalPlateRenderer');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class MilitaryCanvasRenderer {
     constructor(options = {}) {
@@ -22,9 +33,11 @@
     }
 
     addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
+    createGradient(...args) { const surface = this.drawingSurface; return surface && typeof surface.createGradient === 'function' ? surface.createGradient(...args) : this.host?.createGradient?.(...args); }
     drawAsset(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawAsset === 'function' ? surface.drawAsset(...args) : this.host?.drawAsset?.(...args); }
     drawButton(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawButton === 'function' ? surface.drawButton(...args) : this.host?.drawButton?.(...args); }
     drawFamousPortrait(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawFamousPortrait === 'function' ? surface.drawFamousPortrait(...args) : this.host?.drawFamousPortrait?.(...args); }
+    drawLine(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawLine === 'function' ? surface.drawLine(...args) : this.host?.drawLine?.(...args); }
     drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
     drawProgressBar(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawProgressBar === 'function' ? surface.drawProgressBar(...args) : this.host?.drawProgressBar?.(...args); }
     drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
@@ -45,19 +58,15 @@
         world: this.t('military.tab.world', {}),
         veteranCamp: this.t('military.tab.veteranCamp', {}),
       };
-      const tabs = nav.views || [];
-      const gap = 6;
-      const tabWidth = (width - gap * Math.max(0, tabs.length - 1)) / Math.max(1, tabs.length);
-      tabs.forEach((tab, index) => {
-        const tabX = x + index * (tabWidth + gap);
-        this.drawButton(tabX, y, tabWidth, 34, labels[tab.id] || tab.id, {
-          size: 12,
-          bold: true,
-          radius: 9,
-          disabled: tab.disabled,
-          active: tab.isActive,
-        });
-        this.addHitTarget({ x: tabX, y, width: tabWidth, height: 34 }, {
+      const tabs = Array.isArray(nav.views) ? nav.views : [];
+      if (!tabs.length) return y + 46;
+      const tabRects = ModalPlate.drawModalTabStrip(this, x, y, width, tabs.map((tab) => ({
+        ...tab,
+        label: labels[tab.id] || tab.id,
+      })), { height: 34 });
+      tabRects.forEach((rect, index) => {
+        const tab = tabs[index] || {};
+        this.addHitTarget(rect, {
           type: 'switchMilitaryView',
           view: tab.id,
           disabled: tab.disabled,
@@ -71,11 +80,7 @@
       const hasFormationSpace = height >= 250;
       const formationHeight = hasFormationSpace ? Math.min(158, Math.max(132, Math.floor(height * 0.43))) : 0;
       const cardHeight = Math.min(150, Math.max(104, height - formationHeight - (hasFormationSpace ? 30 : 18)));
-      this.drawPanel(x, y, width, cardHeight, {
-        fill: 'rgba(28, 22, 17, 0.78)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
+      ModalPlate.drawModalCard(this, x, y, width, cardHeight, { tone: 'default', radius: 10 });
       this.drawAsset('assets/art/icon-soldier-cutout.webp', x + 16, y + 24, 58, 72);
       const textX = x + 88;
       this.drawText(this.t('military.army.status', {}), textX, y + 16, { size: 14, bold: true, color: '#f6e8c8' });
@@ -102,11 +107,7 @@
     }
 
     renderVeteranCampView(view = {}, x, y, width, height) {
-      this.drawPanel(x, y, width, height, {
-        fill: 'rgba(28, 22, 17, 0.78)',
-        stroke: 'rgba(255, 226, 177, 0.12)',
-        radius: 10,
-      });
+      ModalPlate.drawModalCard(this, x, y, width, height, { tone: 'default', radius: 10 });
       const pad = 16;
       const textX = x + pad;
       this.drawTextLines(
@@ -142,10 +143,10 @@
       const btnWidth = Math.max(96, Math.floor((width - pad * 2 - gap) / 2));
       const cityId = view.cityId || 'capital';
 
-      this.drawButton(textX, btnY, btnWidth, btnHeight, this.t('military.veteranCamp.withdrawAll', {}), {
+      ModalPlate.drawModalButton(this, textX, btnY, btnWidth, btnHeight, this.t('military.veteranCamp.withdrawAll', {}), {
         size: 12,
         radius: 8,
-        active: Boolean(view.canWithdraw),
+        variant: view.canWithdraw ? 'primary' : 'secondary',
         disabled: !view.canWithdraw,
       });
       this.addHitTarget(
@@ -157,10 +158,10 @@
       const upgradeLabel = view.nextLevel
         ? this.t('military.veteranCamp.upgradeCost', { cost: view.nextLevel.cost })
         : this.t('military.veteranCamp.maxLevel', {});
-      this.drawButton(upgradeX, btnY, btnWidth, btnHeight, upgradeLabel, {
+      ModalPlate.drawModalButton(this, upgradeX, btnY, btnWidth, btnHeight, upgradeLabel, {
         size: 12,
         radius: 8,
-        active: Boolean(view.nextLevel),
+        variant: view.nextLevel ? 'primary' : 'secondary',
         disabled: !view.nextLevel,
       });
       this.addHitTarget(
@@ -182,7 +183,7 @@
           stroke: options.stroke || 'rgba(240, 180, 91, 0.34)',
         });
         if (!drawn) {
-          this.drawPanel(x, y, width, height, {
+          ModalPlate.drawModalCard(this, x, y, width, height, {
             fill: 'rgba(70, 49, 33, 0.92)',
             stroke: 'rgba(240, 180, 91, 0.34)',
             radius,
@@ -197,7 +198,8 @@
         }
         return;
       }
-      this.drawPanel(x, y, width, height, {
+      ModalPlate.drawModalCard(this, x, y, width, height, {
+        tone: 'muted',
         fill: options.fill || 'rgba(22, 20, 17, 0.58)',
         stroke: options.stroke || 'rgba(255, 226, 177, 0.13)',
         radius,
@@ -214,11 +216,11 @@
       const members = Array.isArray(formation.members) ? formation.members : [];
       const leader = members[0] || null;
       const active = members.length > 0;
-      this.drawPanel(x, y, width, height, {
-        fill: active ? 'rgba(55, 40, 29, 0.92)' : 'rgba(38, 33, 28, 0.86)',
-        stroke: active ? 'rgba(240, 180, 91, 0.34)' : 'rgba(255, 226, 177, 0.14)',
+      ModalPlate.drawModalCard(this, x, y, width, height, {
+        tone: active ? 'accent' : 'muted',
+        fill: active ? undefined : 'rgba(24, 23, 20, 0.82)',
+        stroke: active ? undefined : 'rgba(255, 226, 177, 0.14)',
         radius: 7,
-        inset: active ? 'rgba(255, 231, 184, 0.08)' : 'rgba(255, 231, 184, 0.04)',
       });
       const title = formation.name || this.t('military.formation.default', { slot: index + 1 });
       this.drawText(this.truncateText(title, width - 16, { size: 12, bold: true }), x + width / 2, y + 9, {
@@ -314,12 +316,7 @@
       const layout = this.getLayout();
       const x = layout.contentX;
       const width = layout.contentWidth;
-      this.drawPanel(x, startY, width, panelHeight, {
-        fill: 'rgba(37, 29, 21, 0.88)',
-        stroke: 'rgba(255, 226, 177, 0.14)',
-        radius: 10,
-        inset: 'rgba(255, 231, 184, 0.08)',
-      });
+      ModalPlate.drawModalCard(this, x, startY, width, panelHeight, { tone: 'default', radius: 10 });
       this.renderSectionHeader(this.t('military.title', {}), x + 14, startY + 14, '🛡️');
       const contentTop = this.renderMilitarySubTabs(nav, x + 12, startY + 42, width - 24);
       const viewY = contentTop;
