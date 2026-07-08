@@ -29,6 +29,13 @@ function stripPlayerIntel(encounter = {}) {
   return raw;
 }
 
+function isCampPlanningEncounter(encounter = {}) {
+  return Boolean(
+    encounter?.campArchetypeKey ||
+    String(encounter?.id || '').startsWith('camp_')
+  );
+}
+
 class WorldEncounterRepository {
   constructor(db, options = {}) {
     this.db = db;
@@ -152,17 +159,30 @@ class WorldEncounterRepository {
   }
 
   ensureSeeded(options = {}) {
-    if (this.hasAnyEncounter()) return this.getAllEncounters(options);
     const worldSeed = options.worldSeed || this.worldSeed;
     if (!worldSeed) return [];
-    const anchor = options.anchor || this.anchor;
-    const occupiedTileIds = options.occupiedTileIds instanceof Set ? options.occupiedTileIds : new Set();
+    const activitySources = Array.isArray(options.activitySources)
+      ? options.activitySources
+      : (options.anchor ? [options.anchor] : []);
+    if (!activitySources.length) return this.getAllEncounters(options);
     const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
-    const specs = WorldCampSpawner.planCamps(worldSeed, anchor, { occupiedTileIds });
+    const existing = this.getAllEncounters({ ...options, now });
+    const occupiedTileIds = new Set(options.occupiedTileIds instanceof Set ? options.occupiedTileIds : []);
+    for (const encounter of existing) {
+      if (encounter?.tileId) occupiedTileIds.add(encounter.tileId);
+    }
+    const existingCamps = existing.filter(isCampPlanningEncounter);
+    const specs = WorldCampSpawner.planCampsForActivitySources(worldSeed, activitySources, {
+      ...options,
+      occupiedTileIds,
+      existingCamps,
+    });
+    const existingIds = new Set(existing.map((encounter) => encounter.id));
+    const missingSpecs = specs.filter((spec) => !existingIds.has(spec.id));
     const seed = this.db.transaction((rawSpecs) => {
       rawSpecs.forEach((spec) => this.upsertEncounter(WorldCampSpawner.campSpecToEncounter(spec, now), now));
     });
-    seed(specs);
+    seed(missingSpecs);
     return this.getAllEncounters({ ...options, now });
   }
 }

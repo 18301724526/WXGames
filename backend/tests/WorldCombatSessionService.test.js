@@ -11,7 +11,6 @@ const SEED = 'combat-session-seed';
 
 function createSharedCamp(overrides = {}, now = new Date('2026-07-05T00:00:00.000Z')) {
   const spec = WorldCampSpawner.planCamps(SEED, { q: 0, r: 0 }, {
-    densityRoll: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   })[0];

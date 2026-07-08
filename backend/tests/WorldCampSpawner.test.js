@@ -29,31 +29,54 @@ test('planCamps never places a camp on march-blocked (water) terrain', () => {
 });
 
 test('planCamps keeps camps outside the capital safe ring', () => {
-  const { safeRadiusFromCapital } = WorldCampConfig.PLACEMENT;
+  const { safeRadiusFromActivity } = WorldCampConfig.PLACEMENT;
   const camps = WorldCampSpawner.planCamps(SEED, CAPITAL);
   for (const camp of camps) {
     const ring = Math.max(Math.abs(camp.q - CAPITAL.q), Math.abs(camp.r - CAPITAL.r));
     assert.ok(
-      ring > safeRadiusFromCapital,
-      `camp ring ${ring} is inside safe radius ${safeRadiusFromCapital}`,
+      ring > safeRadiusFromActivity,
+      `camp ring ${ring} is inside safe radius ${safeRadiusFromActivity}`,
     );
   }
 });
 
-test('planCamps honors the maxCamps cap', () => {
-  // Force every candidate to pass the density gate so the cap is the only limiter.
+test('planCamps honors per-region ring-band budgets', () => {
+  const targetCount = WorldCampConfig.PLACEMENT.ringBands
+    .reduce((sum, band) => sum + band.targetCamps, 0);
   const camps = WorldCampSpawner.planCamps(SEED, CAPITAL, {
-    densityRoll: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   });
-  assert.equal(camps.length, WorldCampConfig.PLACEMENT.maxCamps);
+  assert.equal(camps.length, targetCount);
+  for (const band of WorldCampConfig.PLACEMENT.ringBands) {
+    const inBand = camps.filter((camp) => camp.ring >= band.minRing && camp.ring <= band.maxRing);
+    assert.equal(inBand.length, band.targetCamps);
+  }
+});
+
+test('planCampsForActivitySources shares a region and grows across distant activity', () => {
+  const options = {
+    minSpacing: 1,
+    chooseTerrain: () => 'plains',
+  };
+  const oneRegion = WorldCampSpawner.planCampsForActivitySources(SEED, [{ q: 0, r: 0 }], options);
+  const sameRegion = WorldCampSpawner.planCampsForActivitySources(SEED, [
+    { q: 0, r: 0 },
+    { q: 3, r: 3 },
+  ], options);
+  const distantRegions = WorldCampSpawner.planCampsForActivitySources(SEED, [
+    { q: 0, r: 0 },
+    { q: 32, r: 0 },
+  ], options);
+
+  assert.deepEqual(sameRegion.map((camp) => camp.id), oneRegion.map((camp) => camp.id));
+  assert.ok(distantRegions.length > oneRegion.length);
+  assert.equal(new Set(distantRegions.map((camp) => camp.id)).size, distantRegions.length);
 });
 
 test('planCamps enforces minimum Chebyshev spacing between camps', () => {
   const minSpacing = 3;
   const camps = WorldCampSpawner.planCamps(SEED, CAPITAL, {
-    densityRoll: 1,
     minSpacing,
     chooseTerrain: () => 'plains',
   });
@@ -67,7 +90,6 @@ test('planCamps enforces minimum Chebyshev spacing between camps', () => {
 
 test('planCamps applies the near-weak / far-strong garrison gradient', () => {
   const camps = WorldCampSpawner.planCamps(SEED, CAPITAL, {
-    densityRoll: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   });
@@ -80,14 +102,12 @@ test('planCamps applies the near-weak / far-strong garrison gradient', () => {
 
 test('planCamps avoids pre-occupied tiles', () => {
   const dense = WorldCampSpawner.planCamps(SEED, CAPITAL, {
-    densityRoll: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   });
   assert.ok(dense.length > 0, 'expected camps to place before occupancy filter');
   const occupiedTileIds = new Set([dense[0].tileId]);
   const filtered = WorldCampSpawner.planCamps(SEED, CAPITAL, {
-    densityRoll: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
     occupiedTileIds,
@@ -102,7 +122,6 @@ test('planCamps avoids pre-occupied tiles', () => {
 test('campSpecToEncounter emits shared encounter rows carrying the camp passthrough fields', () => {
   const now = new Date('2026-07-05T00:00:00.000Z');
   const spec = WorldCampSpawner.planCamps(SEED, CAPITAL, {
-    densityRoll: 1,
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   })[0];

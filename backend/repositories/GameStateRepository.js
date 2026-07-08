@@ -9,6 +9,7 @@ const { WorldPeopleRepository } = require('./WorldPeopleRepository');
 const { WorldCityRepository } = require('./WorldCityRepository');
 const { WorldEncounterRepository } = require('./WorldEncounterRepository');
 const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
+const WorldExplorerVision = require('../services/worldExplorer/WorldExplorerVision');
 
 const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
   ['revision', 'revision INTEGER DEFAULT 0'],
@@ -65,6 +66,14 @@ function createGameStateSchemaMigrations() {
       }
     },
   }];
+}
+
+function parseJsonField(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (_) {
+    return fallback;
+  }
 }
 
 class GameStateRepository {
@@ -199,7 +208,29 @@ class GameStateRepository {
         occupiedTileIds.add(`tile_${Math.floor(q)}_${Math.floor(r)}`);
       }
     }
-    return this.worldEncounterRepo.ensureSeeded({ occupiedTileIds });
+    return this.worldEncounterRepo.ensureSeeded({
+      occupiedTileIds,
+      activitySources: this.getWorldEncounterActivitySources(),
+    });
+  }
+
+  readWorldEncounterActivityStates() {
+    return this.db.prepare(`
+      SELECT playerId, territories, worldMap, exploreMissions
+      FROM game_states
+      ORDER BY playerId ASC
+    `).all()
+      .map((row) => ({
+        playerId: row.playerId,
+        territories: parseJsonField(row.territories, []),
+        worldMap: parseJsonField(row.worldMap, {}),
+        exploreMissions: parseJsonField(row.exploreMissions, []),
+      }));
+  }
+
+  getWorldEncounterActivitySources() {
+    return this.readWorldEncounterActivityStates()
+      .flatMap((state) => WorldExplorerVision.getActivitySources(state));
   }
 
   getOccupiedWorldCityCoordinates() {
@@ -313,7 +344,7 @@ class GameStateRepository {
     // player has not revealed is dropped there; a spawn companion city is visible because spawn
     // materialization binds its tile in that player's world map.
     const neutralCities = this.worldCityRepo.getAllCities();
-    const sharedWorldEncounters = this.worldEncounterRepo.getAllEncounters();
+    const sharedWorldEncounters = this.ensureWorldEncountersSeeded();
     return {
       sharedWorldTerritories: [...ownedShared, ...neutralCities],
       sharedWorldEncounters,

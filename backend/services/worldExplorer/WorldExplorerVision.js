@@ -87,6 +87,29 @@ function getFieldedPartyCoords(gameState = {}) {
     .map((mission) => WorldMarchCore.getConfirmedPosition(mission));
 }
 
+function normalizeActivitySource(kind, coord = {}, options = {}) {
+  const q = Number(coord?.q ?? coord?.x);
+  const r = Number(coord?.r ?? coord?.y);
+  if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+  return {
+    kind,
+    q: Math.floor(q),
+    r: Math.floor(r),
+    radius: Math.max(0, toInteger(options.radius, 0)),
+    playerId: String(options.playerId || ''),
+  };
+}
+
+function getActivitySources(gameState = {}) {
+  const playerId = gameState.playerId || '';
+  return [
+    ...getCityVisionCoords(gameState).map((coord) =>
+      normalizeActivitySource('city', coord, { radius: CITY_VISION_RADIUS, playerId })),
+    ...getFieldedPartyCoords(gameState).map((coord) =>
+      normalizeActivitySource('party', coord, { radius: UNIT_VISION_RADIUS, playerId })),
+  ].filter(Boolean);
+}
+
 // The player's current-vision coordinate-key set: the union of a CITY_VISION_RADIUS area around
 // every occupied city and a UNIT_VISION_RADIUS area around every fielded party. Pure — reads the
 // state, writes nothing, no dependence on tile history — so stale saves polluted by solid-fill or
@@ -94,13 +117,12 @@ function getFieldedPartyCoords(gameState = {}) {
 // other projection gates use; areas come from the same getRevealArea the fog reveal uses.
 function computeCurrentVisionCoordSet(gameState = {}) {
   const coordSet = new Set();
-  const addVisionArea = (coord, radius) => {
-    for (const areaCoord of WorldMapService.getRevealArea(coord.q, coord.r, radius)) {
+  const addVisionArea = (source) => {
+    for (const areaCoord of WorldMapService.getRevealArea(source.q, source.r, source.radius)) {
       coordSet.add(WorldMapService.getTileCoordinateKey(areaCoord));
     }
   };
-  getCityVisionCoords(gameState).forEach((coord) => addVisionArea(coord, CITY_VISION_RADIUS));
-  getFieldedPartyCoords(gameState).forEach((coord) => addVisionArea(coord, UNIT_VISION_RADIUS));
+  getActivitySources(gameState).forEach(addVisionArea);
   return coordSet;
 }
 
@@ -108,5 +130,7 @@ module.exports = {
   CITY_VISION_RADIUS,
   UNIT_VISION_RADIUS,
   computeCurrentVisionCoordSet,
+  getActivitySources,
   getCityVisionCoords,
+  getFieldedPartyCoords,
 };
