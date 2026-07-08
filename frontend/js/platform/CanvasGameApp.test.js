@@ -75,6 +75,67 @@ test('html and minigame entries load CanvasGameApp without retired split modules
   );
 });
 
+test('seekFamousPerson syncs the single API state source and redraws only the panel surface', async () => {
+  const calls = [];
+  const result = {
+    message: 'seek complete',
+    gameState: { currentTab: 'military', famousPersons: { candidates: [{ id: 'candidate-1' }] } },
+    tutorial: { currentStep: 'famousSeekCompleted' },
+  };
+  const host = makeAppHost({
+    state: { currentTab: 'military', militaryView: 'world' },
+    activeTab: 'military',
+    militaryView: 'world',
+    mapHomeActive: true,
+    famousPersonsPage: 4,
+    selectedFamousPersonId: 'fp-old',
+    getGameApi() {
+      return {
+        async seekFamousPerson(source) {
+          calls.push(['api.seekFamousPerson', source]);
+          return result;
+        },
+      };
+    },
+    applyApiState(data, options) {
+      calls.push(['applyApiState', data, options]);
+      this.state = {
+        ...(this.state || {}),
+        ...(data.gameState || {}),
+      };
+      this.tutorial = data.tutorial;
+    },
+    renderPanelSurface(activeTab) {
+      calls.push(['renderPanelSurface', activeTab]);
+      return true;
+    },
+    render() {
+      calls.push(['render']);
+    },
+    renderCanvasSurface(activeTab) {
+      calls.push(['renderCanvasSurface', activeTab]);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  const returned = await host.seekFamousPerson('guide');
+
+  assert.equal(returned, result);
+  assert.equal(host.famousPersonsPage, 0);
+  assert.equal(host.selectedFamousPersonId, '');
+  assert.deepEqual(calls, [
+    ['api.seekFamousPerson', 'guide'],
+    ['applyApiState', result, { render: false }],
+    ['log', 'seek complete'],
+    ['renderPanelSurface', 'military'],
+  ]);
+});
+
 test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
   const calls = [];
   const host = makeAppHost({

@@ -52,7 +52,7 @@ test('CanvasGameShell owns retired responsibility methods directly', () => {
     guideUi: ['getCanvasTarget', 'showTutorialHighlight', 'hideTutorialHighlight'],
     worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
     actorAnimation: ['startWorldActorAnimationLoop', 'stopWorldActorAnimationLoop', 'renderWorldActorAnimationFrame'],
-    renderingRuntime: ['renderActive', 'renderReadOnly', 'buildRenderOptions'],
+    renderingRuntime: ['renderActive', 'renderReadOnly', 'renderPanelSurface', 'buildRenderOptions'],
     techTreeView: ['getTechTreePan', 'setTechTreePan', 'getTechTreeZoom', 'setTechTreeZoom'],
     systemUi: ['applyAuthShell', 'showLoading', 'setNetworkState', 'startBattleScene'],
     layerRegistry: ['ensureCanvasLayer', 'setCanvasLayerTranslate', 'setCanvasLayerVisible', 'getCanvasLayerMetrics'],
@@ -786,6 +786,47 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   const options = shell.buildRenderOptions('military', {});
 
   assert.equal(options.now, 4321.25);
+});
+
+test('CanvasGameShell renderPanelSurface repaints the HUD surface without world-map rendering', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: {
+      render(state, options) {
+        calls.push(['renderer.render', state, options]);
+      },
+    },
+    runtime: {
+      now() {
+        return 123;
+      },
+      compositeStage() {
+        calls.push(['compositeStage']);
+      },
+    },
+  });
+  const state = { currentTab: 'military', militaryView: 'world' };
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    tutorial: {},
+  };
+  shell.renderReadOnly = () => {
+    calls.push(['renderReadOnly']);
+  };
+  shell.renderWorldMapLayer = () => {
+    calls.push(['renderWorldMapLayer']);
+  };
+
+  assert.equal(shell.renderPanelSurface(state, 'military'), true);
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0][0], 'renderer.render');
+  assert.equal(calls[0][1], state);
+  assert.equal(calls[0][2].mode, 'hud');
+  assert.equal(calls[0][2].activeTab, 'military');
+  assert.equal(calls[1][0], 'compositeStage');
 });
 
 test('CanvasGameShell reads battleScene render options from BattleStore only', () => {

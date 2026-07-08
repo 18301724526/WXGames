@@ -2908,6 +2908,18 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
         }
 
+    renderPanelSurface(state = this.lastGame?.state, activeTab = this.getActiveTab(), options = {}) {
+          if (!this.previewEnabled || !this.renderer || !state) return false;
+          const renderOptions = {
+            ...this.buildRenderOptions(activeTab, options.territoryUiState, options),
+            ...options,
+            mode: 'hud',
+          };
+          this.renderer.render(state, renderOptions);
+          this.runtime?.compositeStage?.();
+          return true;
+        }
+
     renderReadOnly(state, activeTab = 'resources', options = {}) {
           if (!this.previewEnabled || !this.renderer || !state) return false;
           this.syncWorldMapRendererLayerMetrics();
