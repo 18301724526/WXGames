@@ -53,6 +53,16 @@
     StateWriter = require('../state/StateWriter');
   }
 
+  function getCanvasPanelSurfaceManagerCtor() {
+    if (global.CanvasPanelSurfaceManager) return global.CanvasPanelSurfaceManager;
+    try {
+      if (typeof require === 'function') return require('./CanvasPanelSurfaceManager');
+    } catch (_error) {
+      // Optional in standalone action tests.
+    }
+    return null;
+  }
+
   // armyFormationEditor is the formation-editor object, NOT a blocking panel; the
   // panel-close sweep historically also nulled it, so it stays here as an
   // out-of-scope residual that closeBlockingPanelsSnapshot does not own.
@@ -171,6 +181,20 @@
 
     getPresenter() {
       return this.host?.presenter || this.getGameHost()?.presenter || null;
+    }
+
+    getPanelSurfaceManager() {
+      const game = this.getGameHost();
+      const manager = this.host?.getPanelSurfaceManager?.()
+        || this.host?.panelSurfaceManager
+        || game?.getPanelSurfaceManager?.()
+        || game?.panelSurfaceManager
+        || null;
+      if (manager) return manager;
+      const ManagerCtor = getCanvasPanelSurfaceManagerCtor();
+      if (!ManagerCtor || !this.host || typeof this.host !== 'object') return null;
+      this.host.panelSurfaceManager = new ManagerCtor({ host: this.host });
+      return this.host.panelSurfaceManager;
     }
 
     getTerritoryController() {
@@ -1464,13 +1488,10 @@
 
     // Famous person actions.
     handle_openFamousPersons(action) {
-            CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showFamousPersons', true);
             const game = this.getGameHost();
-            const owner = game || this.host;
-            owner.famousPersonsPage = 0;
-            owner.selectedFamousPersonId = '';
-            this.host.renderer?.clearFamousSkillTooltip?.();
-            this.closePanels(['showFamousPersons']);
+            const manager = this.getPanelSurfaceManager();
+            if (!manager?.openPanel) return false;
+            manager.openPanel('famousPersons', { render: false });
             const handled = this.afterHandled(action);
             const result = game?.tutorialController?.onFamousPersonsOpened?.();
             game?.tutorialController?.refreshCurrentHighlight?.();
@@ -1481,12 +1502,10 @@
           }
 
     handle_closeFamousPersons(action) {
-            CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'showFamousPersons');
             const game = this.getGameHost();
-            const owner = game || this.host;
-            owner.famousPersonsPage = 0;
-            owner.selectedFamousPersonId = '';
-            this.host.renderer?.clearFamousSkillTooltip?.();
+            const manager = this.getPanelSurfaceManager();
+            if (!manager?.closePanel) return false;
+            manager.closePanel('famousPersons', { render: false });
             const handled = this.afterHandled(action);
             const tutorial = game?.tutorialController || null;
             const result = tutorial?.onFamousPersonsClosed
@@ -1500,9 +1519,9 @@
 
     handle_openFamousPersonDetail(action) {
             const game = this.getGameHost();
-            const owner = game || this.host;
-            owner.selectedFamousPersonId = action.personId || '';
-            this.host.renderer?.clearFamousSkillTooltip?.();
+            const manager = this.getPanelSurfaceManager();
+            if (!manager?.runPanelAction) return false;
+            manager.runPanelAction('famousPersons', 'openDetail', action, { render: false });
             const handled = this.afterHandled(action);
             const result = game?.tutorialController?.onFamousPersonDetailOpened?.(action.personId || '');
             game?.tutorialController?.refreshCurrentHighlight?.();
@@ -1514,9 +1533,9 @@
 
     handle_closeFamousPersonDetail(action) {
             const game = this.getGameHost();
-            const owner = game || this.host;
-            owner.selectedFamousPersonId = '';
-            this.host.renderer?.clearFamousSkillTooltip?.();
+            const manager = this.getPanelSurfaceManager();
+            if (!manager?.runPanelAction) return false;
+            manager.runPanelAction('famousPersons', 'closeDetail', action, { render: false });
             const handled = this.afterHandled(action);
             game?.tutorialController?.refreshCurrentHighlight?.();
             const scheduler = this.host?.runtime || game?.runtime || global;
@@ -1571,12 +1590,9 @@
           }
 
     handle_changeFamousPersonsPage(action) {
-            if (typeof this.host?.changeFamousPersonsPage === 'function') {
-              return this.host.changeFamousPersonsPage(action) !== false;
-            }
-            this.host.famousPersonsPage = Math.max(0, (Number(this.host.famousPersonsPage) || 0) + (Number(action.delta) || 0));
-            this.host.selectedFamousPersonId = '';
-            this.host.renderer?.clearFamousSkillTooltip?.();
+            const manager = this.getPanelSurfaceManager();
+            if (!manager?.runPanelAction) return false;
+            manager.runPanelAction('famousPersons', 'changePage', action, { render: false });
             this.afterHandled(action);
             return true;
           }

@@ -147,6 +147,9 @@ require('../js/platform/TileMapWaterAnimationTimer');
 require('../js/platform/EntityBattleController');
 require('../js/platform/BattleSceneController');
 require('../js/platform/TutorialGuideUiController');
+require('../js/platform/panels/FamousPersonsPanel');
+require('../js/platform/panels/CanvasPanelRegistry');
+require('../js/platform/CanvasPanelSurfaceManager');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();

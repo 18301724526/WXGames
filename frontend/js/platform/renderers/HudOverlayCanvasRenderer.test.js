@@ -315,6 +315,26 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
   assert.equal(names.at(-1), 'endFrame');
 });
 
+test('HudOverlayCanvasRenderer routes famous panel drawing through the panel surface manager', () => {
+  const host = createHost();
+  const renderer = createRenderer(host);
+  const panelCalls = [];
+
+  renderer.renderHudOverlay({ id: 'state-1' }, {
+    activeTab: 'resources',
+    showFamousPersons: true,
+    panelSurfaceManager: {
+      renderPanel(panelKey, renderHost, state, options) {
+        panelCalls.push([panelKey, renderHost === host, state.id, options.showFamousPersons]);
+        return true;
+      },
+    },
+  });
+
+  assert.deepEqual(panelCalls, [['famousPersons', true, 'state-1', true]]);
+  assert.equal(callNames(host).includes('renderFamousPersonsPanel'), false);
+});
+
 test('HudOverlayCanvasRenderer renders canvas debug reset on map home overlay frames', () => {
   const host = createHost();
   const renderer = createRenderer(host);

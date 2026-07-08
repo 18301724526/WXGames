@@ -143,6 +143,10 @@
   if (typeof module !== 'undefined' && module.exports && !TutorialGuideUiController) {
     TutorialGuideUiController = require('./TutorialGuideUiController');
   }
+  var CanvasPanelSurfaceManager = global.CanvasPanelSurfaceManager;
+  if (typeof module !== 'undefined' && module.exports && !CanvasPanelSurfaceManager) {
+    CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -386,6 +390,9 @@
           this.buildingController = options.buildingController || null;
           this.territoryController = options.territoryController || null;
           this.canvasShell = options.canvasShell || null;
+          this.panelSurfaceManager = options.panelSurfaceManager || (CanvasPanelSurfaceManager
+            ? new CanvasPanelSurfaceManager({ host: this, registry: options.panelRegistry })
+            : null);
           this.worldMapRuntime = options.worldMapRuntime || null;
           this.worldMapRuntimeCoordinator = options.worldMapRuntimeCoordinator || null;
           this.scheduler = options.scheduler || this.runtime || null;
@@ -1418,6 +1425,7 @@
                   showFamousPersons: panel.showFamousPersons,
                   famousPersonsPage: this.famousPersonsPage,
                   selectedFamousPersonId: this.selectedFamousPersonId,
+                  panelSurfaceManager: this.getPanelSurfaceManager(),
                   armyFormationEditor: this.armyFormationEditor,
                   activeCommandPanel: panel.activeCommandPanel || '',
                   activeDockItemIds: panel.activeDockItemIds,
@@ -1496,6 +1504,7 @@
                   showFamousPersons: panel.showFamousPersons,
                   famousPersonsPage: this.famousPersonsPage,
                   selectedFamousPersonId: this.selectedFamousPersonId,
+                  panelSurfaceManager: this.getPanelSurfaceManager(),
                   armyFormationEditor: this.armyFormationEditor,
                   activeCommandPanel: panel.activeCommandPanel || '',
                   activeDockItemIds: panel.activeDockItemIds,
@@ -1530,6 +1539,13 @@
                 if (!this.renderer?.render) return false;
                 this.renderer.render(this.state, this.buildPanelRenderOptions(activeTab, options));
                 return true;
+              }
+
+    getPanelSurfaceManager() {
+                if (!this.panelSurfaceManager && CanvasPanelSurfaceManager) {
+                  this.panelSurfaceManager = new CanvasPanelSurfaceManager({ host: this });
+                }
+                return this.panelSurfaceManager || null;
               }
 
     buildRenderOptions(activeTab = this.getActiveTab(), territoryUiState = this.territoryUiState, options = {}) {
@@ -1747,7 +1763,23 @@
                 return this.state;
               }
 
-    renderCanvasAction() {
+    isPanelSurfaceAction(action = {}) {
+                return [
+                  'openFamousPersons',
+                  'closeFamousPersons',
+                  'openFamousPersonDetail',
+                  'closeFamousPersonDetail',
+                  'changeFamousPersonsPage',
+                ].includes(action?.type);
+              }
+
+    renderPanelCanvasAction(action = {}) {
+                if (!this.isPanelSurfaceAction(action)) return false;
+                return this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action }) !== false;
+              }
+
+    renderCanvasAction(action = {}) {
+                if (this.renderPanelCanvasAction(action)) return true;
                 return this.renderCanvasSurface();
               }
 
@@ -1759,13 +1791,10 @@
                 this.closeEventSnapshot?.();
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+                this.getPanelSurfaceManager()?.closePanel?.('famousPersons', { render: false });
                 this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
                 this.closeRewardRevealSnapshot?.();
-                this.famousPersonsPage = 0;
-                this.selectedFamousPersonId = '';
-                this.renderer?.clearFamousSkillTooltip?.();
                 this.activeBuildingCategory = 'all';
                 this.buildingOffset = 0;
                 this.techTreePanX = 0;
@@ -1805,12 +1834,9 @@
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+                this.getPanelSurfaceManager()?.closePanel?.('famousPersons', { render: false });
                 this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
-                this.famousPersonsPage = 0;
-                this.selectedFamousPersonId = '';
-                this.renderer?.clearFamousSkillTooltip?.();
                 this.activeTaskCenterTab = 'main';
                 this.activeGuidebookTab = 'planning';
                 this.pageTransition = null;
@@ -2091,23 +2117,15 @@
           }
 
     changeFamousPersonsPage(action = {}) {
-            const delta = Number(action.delta) || 0;
-            this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
-            this.selectedFamousPersonId = '';
-            this.renderer?.clearFamousSkillTooltip?.();
-            return this.renderCanvasSurface();
+            return this.getPanelSurfaceManager()?.runPanelAction?.('famousPersons', 'changePage', action) !== false;
           }
 
     openFamousPersonDetail(action = {}) {
-            this.selectedFamousPersonId = action.personId || '';
-            this.renderer?.clearFamousSkillTooltip?.();
-            return this.renderCanvasSurface();
+            return this.getPanelSurfaceManager()?.runPanelAction?.('famousPersons', 'openDetail', action) !== false;
           }
 
     closeFamousPersonDetail() {
-            this.selectedFamousPersonId = '';
-            this.renderer?.clearFamousSkillTooltip?.();
-            return this.renderCanvasSurface();
+            return this.getPanelSurfaceManager()?.runPanelAction?.('famousPersons', 'closeDetail') !== false;
           }
 
     getWorldActorAnimationFrameMs() {
@@ -2454,15 +2472,12 @@
                 try {
                   const result = await this.getGameApi().seekFamousPerson(source);
                   this.applyApiState(result, { render: false });
-                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
-                  this.famousPersonsPage = 0;
-                  this.selectedFamousPersonId = '';
                   this.log(result.message || t('command.famous.seekComplete'));
-                  this.renderPanelSurface(this.state?.currentTab || this.getActiveTab());
+                  this.getPanelSurfaceManager()?.openPanel?.('famousPersons');
                   return result;
                 } catch (error) {
                   this.log(t('command.famous.seekFailed', { message: error.payload?.message || error.message }));
-                  this.renderPanelSurface(this.state?.currentTab || this.getActiveTab());
+                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
                   return false;
                 }
               }
@@ -2470,16 +2485,13 @@
     async acceptFamousPerson(candidateId) {
                 try {
                   const result = await this.getGameApi().acceptFamousPerson(candidateId);
-                  this.applyApiState(result);
-                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
-                  this.famousPersonsPage = 0;
-                  this.selectedFamousPersonId = '';
-                  this.showFloatingText(result.message || t('command.famous.accepted', {}));
+                  this.applyApiState(result, { render: false });
                   this.log(result.message || t('command.famous.accepted', {}));
+                  this.getPanelSurfaceManager()?.openPanel?.('famousPersons');
                   return true;
                 } catch (error) {
                   this.log(t('command.famous.acceptFailed', { message: error.payload?.message || error.message }));
-                  this.renderCanvasSurface(this.state?.currentTab);
+                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
                   return false;
                 }
               }
@@ -2487,15 +2499,13 @@
     async dismissFamousPersonCandidate(candidateId) {
                 try {
                   const result = await this.getGameApi().dismissFamousPersonCandidate(candidateId);
-                  this.applyApiState(result);
-                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
-                  this.selectedFamousPersonId = '';
-                  this.showFloatingText(result.message || t('command.famous.dismissed', {}));
+                  this.applyApiState(result, { render: false });
                   this.log(result.message || t('command.famous.dismissed', {}));
+                  this.getPanelSurfaceManager()?.openPanel?.('famousPersons');
                   return true;
                 } catch (error) {
                   this.log(t('command.famous.dismissFailed', { message: error.payload?.message || error.message }));
-                  this.renderCanvasSurface(this.state?.currentTab);
+                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
                   return false;
                 }
               }
@@ -2503,15 +2513,16 @@
     async assignFamousAttributePoint(personId, attribute) {
                 try {
                   const result = await this.getGameApi().assignFamousAttributePoint(personId, attribute);
-                  this.applyApiState(result);
-                  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showFamousPersons', true);
-                  this.selectedFamousPersonId = personId;
-                  this.showFloatingText(result.message || t('command.famous.attributeUpgraded'));
+                  this.applyApiState(result, { render: false });
+                  const manager = this.getPanelSurfaceManager();
+                  manager?.openPanel?.('famousPersons', { render: false });
+                  manager?.runPanelAction?.('famousPersons', 'openDetail', { personId }, { render: false });
                   this.log(result.message || t('command.famous.attributeUpgraded'));
+                  manager?.refreshPanelSurface?.('famousPersons');
                   return true;
                 } catch (error) {
                   this.log(t('command.famous.attributePointFailed', { message: error.payload?.message || error.message }));
-                  this.renderCanvasSurface(this.state?.currentTab);
+                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
                   return false;
                 }
               }
@@ -2974,7 +2985,7 @@
                   CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
                   CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
                   this.closeEventSnapshot?.();
-                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showFamousPersons');
+                  this.getPanelSurfaceManager()?.closePanel?.('famousPersons', { render: false });
                   CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
                   this.render();
                   this.scheduleTutorialHighlightRefresh(80);

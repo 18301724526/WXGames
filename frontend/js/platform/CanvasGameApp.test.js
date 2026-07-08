@@ -136,6 +136,60 @@ test('seekFamousPerson syncs the single API state source and redraws only the pa
   ]);
 });
 
+test('acceptFamousPerson keeps famous panel updates on the panel surface manager', async () => {
+  const calls = [];
+  const result = {
+    message: 'accepted',
+    gameState: { currentTab: 'military', famousPersons: { people: [{ id: 'fp-1' }] } },
+  };
+  const host = makeAppHost({
+    state: { currentTab: 'military', militaryView: 'world' },
+    getGameApi() {
+      return {
+        async acceptFamousPerson(candidateId) {
+          calls.push(['api.acceptFamousPerson', candidateId]);
+          return result;
+        },
+      };
+    },
+    applyApiState(data, options) {
+      calls.push(['applyApiState', data, options]);
+      this.state = {
+        ...(this.state || {}),
+        ...(data.gameState || {}),
+      };
+    },
+    getPanelSurfaceManager() {
+      return {
+        openPanel(panelKey) {
+          calls.push(['manager.openPanel', panelKey]);
+          return true;
+        },
+      };
+    },
+    render() {
+      calls.push(['render']);
+    },
+    renderCanvasSurface(activeTab) {
+      calls.push(['renderCanvasSurface', activeTab]);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  assert.equal(await host.acceptFamousPerson('candidate-1'), true);
+  assert.deepEqual(calls, [
+    ['api.acceptFamousPerson', 'candidate-1'],
+    ['applyApiState', result, { render: false }],
+    ['log', 'accepted'],
+    ['manager.openPanel', 'famousPersons'],
+  ]);
+});
+
 test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
   const calls = [];
   const host = makeAppHost({
