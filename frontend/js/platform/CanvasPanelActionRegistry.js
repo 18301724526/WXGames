@@ -23,7 +23,7 @@
       operation: 'close',
       dirty: ['modal'],
       hooks: Object.freeze({
-        afterClose: ['tutorialOnClosed', 'tutorialRefreshNow', 'tutorialRefreshNextTick'],
+        afterClose: ['tutorialOnClosed', 'tutorialRefreshNextTick'],
       }),
     }),
     changeFamousPersonsPage: Object.freeze({

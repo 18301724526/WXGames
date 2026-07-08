@@ -297,7 +297,7 @@ Close actions declare their own post-action hook list. `closeFamousPersons` is n
   operation: 'close',
   dirty: ['modal'],
   hooks: {
-    afterClose: ['tutorialOnClosed', 'tutorialRefreshNow', 'tutorialRefreshNextTick'],
+    afterClose: ['tutorialOnClosed', 'tutorialRefreshNextTick'],
   },
 }
 ```
@@ -315,7 +315,7 @@ Hook execution semantics:
 - `beforeOpen` hooks run before panel lifecycle. If any `beforeOpen` hook returns `false`, the action returns `false`, no panel lifecycle runs, no close-on-open sweep runs, no tooltip is cleared, no dirty slot is marked, no render/flush/scheduled refresh runs, and no after hook runs.
 - `tutorialCanOpenTab` veto preserves current player feedback: call `context.showFloatingText(context.t('guide.completeCurrentStep'))`; if no floating text surface exists, fall back to `context.log(message)`.
 - after hooks run only after the panel lifecycle/action succeeds.
-- hook arrays run in declared order. Famous open order is `tutorialOnOpened`, `tutorialRefreshNow`, `tutorialRefreshNextTick`; close order is `tutorialOnClosed`, `tutorialRefreshNow`, `tutorialRefreshNextTick`; detail-open order is `tutorialOnDetailOpened`, `tutorialRefreshNow`, `tutorialRefreshNextTick`.
+- hook arrays run in declared order. Famous open order is `tutorialOnOpened`, `tutorialRefreshNow`, `tutorialRefreshNextTick`; close order is `tutorialOnClosed`, `tutorialRefreshNextTick`; detail-open order is `tutorialOnDetailOpened`, `tutorialRefreshNow`, `tutorialRefreshNextTick`.
 - hook implementations are named constants owned by the runner/hook registry; panel descriptors reference names, not arbitrary functions.
 - covered normal/veto/async-rejection behavior remains equivalent to current famous tests. Synchronous hook throws are not a stable current baseline; this spec defines them as fail-closed: log, stop subsequent hooks, do not roll back prior panel state, and do not run later after hooks unless a descriptor explicitly marks a hook as `continueOnError`.
 - async hook rejection is caught and logged.
@@ -330,7 +330,7 @@ Hook binding table:
 | `tutorialOnClosed` | `tutorialController.onFamousPersonsClosed()` if present, otherwise `tutorialController.refreshCurrentHighlight()` | none | sync call; catch returned Promise rejection | `CanvasActionController.handle_closeFamousPersons()` |
 | `tutorialOnDetailOpened` | `tutorialController.onFamousPersonDetailOpened(personId)` | `action.personId || ''` | sync call; catch returned Promise rejection | `CanvasActionController.handle_openFamousPersonDetail()` |
 | `tutorialOnFamousPersonSought` | `tutorialController.onFamousPersonSought(result || {})` | API result | after successful seek result | `CanvasActionController.handle_seekFamousPerson()` |
-| `tutorialRefreshNow` | `tutorialController.refreshCurrentHighlight()` | none | sync | famous open/close/detail handlers |
+| `tutorialRefreshNow` | `tutorialController.refreshCurrentHighlight()` | none | sync | famous open/detail handlers; close uses the `tutorialOnClosed` fallback above |
 | `tutorialRefreshNextTick` | `tutorialController.refreshCurrentHighlight()` | none | `runtimeScheduler.setTimeout(callback, 0)` | famous open/close/detail handlers |
 
 The close fallback in `tutorialOnClosed` is intentionally preserved for the first root-cause loop. Removing that fallback would be a later behavior change with its own equivalence tests.

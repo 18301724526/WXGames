@@ -63,6 +63,26 @@
     return null;
   }
 
+  function getCanvasPanelActionRunnerCtor() {
+    if (global.CanvasPanelActionRunner) return global.CanvasPanelActionRunner;
+    try {
+      if (typeof require === 'function') return require('./CanvasPanelActionRunner');
+    } catch (_error) {
+      // Optional until the panel-action runner slice is loaded.
+    }
+    return null;
+  }
+
+  function getPanelActionContextAdapter() {
+    if (global.CanvasPanelActionContextAdapter) return global.CanvasPanelActionContextAdapter;
+    try {
+      if (typeof require === 'function') return require('./CanvasPanelActionContextAdapter');
+    } catch (_error) {
+      // Optional until the panel-action context slice is loaded.
+    }
+    return null;
+  }
+
   // armyFormationEditor is the formation-editor object, NOT a blocking panel; the
   // panel-close sweep historically also nulled it, so it stays here as an
   // out-of-scope residual that closeBlockingPanelsSnapshot does not own.
@@ -144,6 +164,8 @@
       this.host = options.host || null;
       this.awaitAsync = Boolean(options.awaitAsync);
       this.log = typeof options.log === 'function' ? options.log : null;
+      const PanelActionRunnerCtor = options.panelActionRunnerClass || getCanvasPanelActionRunnerCtor();
+      this.panelActionRunner = options.panelActionRunner || (PanelActionRunnerCtor ? new PanelActionRunnerCtor() : null);
       const TechTreeInteractionModelCtor = options.techTreeInteractionModelClass || TechTreeInteractionModelBase || null;
       this.techTreeInteraction = options.techTreeInteraction || (TechTreeInteractionModelCtor ? new TechTreeInteractionModelCtor({
         host: this.host,
@@ -195,6 +217,11 @@
       if (!ManagerCtor || !this.host || typeof this.host !== 'object') return null;
       this.host.panelSurfaceManager = new ManagerCtor({ host: this.host });
       return this.host.panelSurfaceManager;
+    }
+
+    getPanelActionContext() {
+      const buildPanelActionContext = getPanelActionContextAdapter();
+      return buildPanelActionContext ? buildPanelActionContext(this.host) : null;
     }
 
     getTerritoryController() {
@@ -1488,75 +1515,19 @@
 
     // Famous person actions.
     handle_openFamousPersons(action) {
-            const game = this.getGameHost();
-            const tutorialController = game?.tutorialController;
-            // UI-REDO ⑦a sibling: consult the tutorial tab gate BEFORE mutating the modal
-            // owner. The old order opened modal:famousPersons eagerly and dropped
-            // onFamousPersonsOpened's answer, so a tutorial veto (canOpenTab('famousPersons')
-            // false) still got the panel -- the dock tab lock leaked. Unlike the command
-            // panel there is no late async veto to roll back: the event registry's
-            // famousPersonsOpened only ever returns tutorial state, never false. A veto is
-            // a pure no-op + player feedback; the allowed path keeps its exact prior order.
-            if (typeof tutorialController?.canOpenTab === 'function'
-              && !tutorialController.canOpenTab('famousPersons')) {
-              const message = t('guide.completeCurrentStep');
-              if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);
-              else if (typeof game?.showFloatingText === 'function') game.showFloatingText(message);
-              else this.log?.(message);
-              return false;
-            }
-            const manager = this.getPanelSurfaceManager();
-            if (!manager?.openPanel) return false;
-            manager.openPanel('famousPersons', { render: false });
-            const handled = this.afterHandled(action);
-            const result = tutorialController?.onFamousPersonsOpened?.();
-            tutorialController?.refreshCurrentHighlight?.();
-            const scheduler = this.host?.runtime || game?.runtime || global;
-            scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
-            if (result?.catch) result.catch((error) => this.log?.(error));
-            return handled;
+            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     handle_closeFamousPersons(action) {
-            const game = this.getGameHost();
-            const manager = this.getPanelSurfaceManager();
-            if (!manager?.closePanel) return false;
-            manager.closePanel('famousPersons', { render: false });
-            const handled = this.afterHandled(action);
-            const tutorial = game?.tutorialController || null;
-            const result = tutorial?.onFamousPersonsClosed
-              ? tutorial.onFamousPersonsClosed()
-              : tutorial?.refreshCurrentHighlight?.();
-            const scheduler = this.host?.runtime || game?.runtime || global;
-            scheduler?.setTimeout?.(() => tutorial?.refreshCurrentHighlight?.(), 0);
-            if (result?.catch) result.catch((error) => this.log?.(error));
-            return handled;
+            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     handle_openFamousPersonDetail(action) {
-            const game = this.getGameHost();
-            const manager = this.getPanelSurfaceManager();
-            if (!manager?.runPanelAction) return false;
-            manager.runPanelAction('famousPersons', 'openDetail', action, { render: false });
-            const handled = this.afterHandled(action);
-            const result = game?.tutorialController?.onFamousPersonDetailOpened?.(action.personId || '');
-            game?.tutorialController?.refreshCurrentHighlight?.();
-            const scheduler = this.host?.runtime || game?.runtime || global;
-            scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
-            if (result?.catch) result.catch((error) => this.log?.(error));
-            return handled;
+            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     handle_closeFamousPersonDetail(action) {
-            const game = this.getGameHost();
-            const manager = this.getPanelSurfaceManager();
-            if (!manager?.runPanelAction) return false;
-            manager.runPanelAction('famousPersons', 'closeDetail', action, { render: false });
-            const handled = this.afterHandled(action);
-            game?.tutorialController?.refreshCurrentHighlight?.();
-            const scheduler = this.host?.runtime || game?.runtime || global;
-            scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
-            return handled;
+            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     handle_seekFamousPerson(action) {
@@ -1606,11 +1577,7 @@
           }
 
     handle_changeFamousPersonsPage(action) {
-            const manager = this.getPanelSurfaceManager();
-            if (!manager?.runPanelAction) return false;
-            manager.runPanelAction('famousPersons', 'changePage', action, { render: false });
-            this.afterHandled(action);
-            return true;
+            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     // Shell, modal, guide, login, settings, and system actions.
