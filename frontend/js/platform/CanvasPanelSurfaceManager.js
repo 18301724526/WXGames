@@ -15,10 +15,59 @@
     constructor(options = {}) {
       this.host = options.host || null;
       this.registry = options.registry || CanvasPanelRegistry || null;
+      this.baseHitTargetsByPanel = new Map();
     }
 
     getPanel(panelKey = '') {
       return this.registry?.get?.(panelKey) || null;
+    }
+
+    getSurfaceHost() {
+      const host = this.host || null;
+      return host?.canvasShell || host?.lastGame?.canvasShell || host;
+    }
+
+    getRenderer() {
+      const surfaceHost = this.getSurfaceHost();
+      return surfaceHost?.renderer || this.host?.renderer || null;
+    }
+
+    getState(options = {}) {
+      if (options.state) return options.state;
+      const host = this.host || {};
+      if (typeof host.getState === 'function') return host.getState();
+      if (host.lastGame?.state) return host.lastGame.state;
+      return host.state || null;
+    }
+
+    captureBaseHitTargets(panelKey = '') {
+      const key = String(panelKey || '');
+      if (!key || this.baseHitTargetsByPanel.has(key)) return;
+      const targets = this.getRenderer()?.hitTargets;
+      this.baseHitTargetsByPanel.set(key, Array.isArray(targets) ? targets.slice() : []);
+    }
+
+    restoreBaseHitTargets(panelKey = '') {
+      const key = String(panelKey || '');
+      if (!key || !this.baseHitTargetsByPanel.has(key)) return false;
+      const renderer = this.getRenderer();
+      const targets = this.baseHitTargetsByPanel.get(key) || [];
+      this.baseHitTargetsByPanel.delete(key);
+      if (typeof renderer?.setHitTargets === 'function') {
+        renderer.setHitTargets(targets);
+        return true;
+      }
+      if (renderer && typeof renderer === 'object') {
+        renderer.hitTargets = targets;
+        return true;
+      }
+      return false;
+    }
+
+    isPanelOpen(panelKey = '', options = {}) {
+      const panel = this.getPanel(panelKey);
+      if (typeof panel?.isOpen === 'function') return panel.isOpen(this.host, options) !== false;
+      return true;
     }
 
     openPanel(panelKey = '', options = {}) {
@@ -33,7 +82,7 @@
       const panel = this.getPanel(panelKey);
       if (!panel?.close) return false;
       const handled = panel.close(this.host, options) !== false;
-      if (handled && options.render !== false) this.refreshPanelSurface(panelKey, options);
+      if (handled) this.clearPanelSurface(panelKey, options);
       return handled;
     }
 
@@ -54,19 +103,27 @@
     }
 
     refreshPanelSurface(_panelKey = '', options = {}) {
-      const host = this.host || {};
-      const state = options.state || host.state || host.lastGame?.state || null;
-      const activeTab = options.activeTab || state?.currentTab || host.getActiveTab?.() || 'resources';
-      if (typeof host.canvasShell?.renderPanelSurface === 'function') {
-        return host.canvasShell.renderPanelSurface(state, activeTab, options) !== false;
-      }
-      if (host.lastGame && typeof host.renderPanelSurface === 'function') {
-        return host.renderPanelSurface(state, activeTab, options) !== false;
-      }
-      if (typeof host.renderPanelSurface === 'function') {
-        return host.renderPanelSurface(activeTab, options) !== false;
+      const panelKey = String(_panelKey || '');
+      const surfaceHost = this.getSurfaceHost();
+      if (!this.isPanelOpen(panelKey, options)) return this.clearPanelSurface(panelKey, options);
+      this.captureBaseHitTargets(panelKey);
+      if (typeof surfaceHost?.renderPanelOverlaySurface === 'function') {
+        return surfaceHost.renderPanelOverlaySurface(panelKey, this, {
+          ...options,
+          state: this.getState(options),
+        }) !== false;
       }
       return false;
+    }
+
+    clearPanelSurface(_panelKey = '', options = {}) {
+      const panelKey = String(_panelKey || '');
+      const surfaceHost = this.getSurfaceHost();
+      const cleared = typeof surfaceHost?.clearPanelOverlaySurface === 'function'
+        ? surfaceHost.clearPanelOverlaySurface(panelKey, this, options) !== false
+        : false;
+      this.restoreBaseHitTargets(panelKey);
+      return cleared;
     }
   }
 

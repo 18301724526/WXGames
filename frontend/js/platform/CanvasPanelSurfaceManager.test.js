@@ -5,10 +5,29 @@ const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 
 test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the panel surface', () => {
   const calls = [];
+  const baseTargets = [{ action: { type: 'openCity' } }];
+  const renderer = {
+    id: 'renderer',
+    hitTargets: baseTargets,
+    setHitTargets(targets) {
+      calls.push(['renderer.setHitTargets', targets.map((target) => target.action.type).join(',')]);
+      this.hitTargets = targets;
+    },
+  };
   const famousPanel = {
+    opened: false,
+    isOpen() {
+      return this.opened;
+    },
     open(host, options) {
       calls.push(['panel.open', host.id, options.source]);
       host.opened = true;
+      this.opened = true;
+      return true;
+    },
+    close(host, options) {
+      calls.push(['panel.close', host.id, options.source]);
+      this.opened = false;
       return true;
     },
     render(renderer, state, options) {
@@ -18,6 +37,17 @@ test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the 
   const host = {
     id: 'game',
     state: { id: 'state-1', currentTab: 'military' },
+    renderer,
+    renderPanelOverlaySurface(panelKey, manager, options) {
+      calls.push(['renderPanelOverlaySurface', panelKey, options.source]);
+      manager.renderPanel(panelKey, renderer, options.state, { mode: 'panelOverlay' });
+      renderer.hitTargets = [{ action: { type: 'closeFamousPersons' } }];
+      return true;
+    },
+    clearPanelOverlaySurface(panelKey, manager, options) {
+      calls.push(['clearPanelOverlaySurface', panelKey, options.source]);
+      return true;
+    },
     renderPanelSurface(activeTab, options) {
       calls.push(['renderPanelSurface', activeTab, options.source]);
       return true;
@@ -41,12 +71,19 @@ test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the 
 
   assert.equal(manager.openPanel('famousPersons', { source: 'button' }), true);
   assert.equal(host.opened, true);
-  assert.equal(manager.renderPanel('famousPersons', { id: 'renderer' }, host.state, { mode: 'hud' }), true);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons']);
+  assert.equal(manager.closePanel('famousPersons', { source: 'back' }), true);
+  assert.deepEqual(renderer.hitTargets, baseTargets);
   assert.deepEqual(calls, [
     ['registry.get', 'famousPersons'],
     ['panel.open', 'game', 'button'],
-    ['renderPanelSurface', 'military', 'button'],
     ['registry.get', 'famousPersons'],
-    ['panel.render', 'renderer', 'state-1', 'hud'],
+    ['renderPanelOverlaySurface', 'famousPersons', 'button'],
+    ['registry.get', 'famousPersons'],
+    ['panel.render', 'renderer', 'state-1', 'panelOverlay'],
+    ['registry.get', 'famousPersons'],
+    ['panel.close', 'game', 'back'],
+    ['clearPanelOverlaySurface', 'famousPersons', 'back'],
+    ['renderer.setHitTargets', 'openCity'],
   ]);
 });

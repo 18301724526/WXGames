@@ -66,6 +66,10 @@
     key: PANEL_KEY,
     modalKey: MODAL_KEY,
 
+    isOpen(host) {
+      return CanvasModalSnapshotAdapter?.isBlockingPanelSnapshotOpen?.(host, MODAL_KEY) === true;
+    },
+
     open(host, options = {}) {
       const owner = getUiStateOwner(host);
       openModal(host);

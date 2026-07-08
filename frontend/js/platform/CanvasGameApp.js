@@ -147,6 +147,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasPanelSurfaceManager) {
     CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
   }
+  var CanvasLayerRegistryBase = global.CanvasLayerRegistry;
+  if (typeof module !== 'undefined' && module.exports && !CanvasLayerRegistryBase) {
+    CanvasLayerRegistryBase = require('./CanvasLayerRegistry');
+  }
 
   function t(key = '', params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
@@ -390,9 +394,13 @@
           this.buildingController = options.buildingController || null;
           this.territoryController = options.territoryController || null;
           this.canvasShell = options.canvasShell || null;
-          this.panelSurfaceManager = options.panelSurfaceManager || (CanvasPanelSurfaceManager
-            ? new CanvasPanelSurfaceManager({ host: this, registry: options.panelRegistry })
-            : null);
+          const shellPanelSurfaceManager = this.canvasShell && this.canvasShell !== this
+            ? this.canvasShell.panelSurfaceManager || null
+            : null;
+          this.panelSurfaceManager = options.panelSurfaceManager || null;
+          if (!this.panelSurfaceManager && !shellPanelSurfaceManager && CanvasPanelSurfaceManager) {
+            this.panelSurfaceManager = new CanvasPanelSurfaceManager({ host: this, registry: options.panelRegistry });
+          }
           this.worldMapRuntime = options.worldMapRuntime || null;
           this.worldMapRuntimeCoordinator = options.worldMapRuntimeCoordinator || null;
           this.scheduler = options.scheduler || this.runtime || null;
@@ -1541,7 +1549,132 @@
                 return true;
               }
 
+    getPanelOverlaySurfaceHost() {
+                return this.canvasShell && this.canvasShell !== this ? this.canvasShell : this;
+              }
+
+    getPanelOverlayLayerOptions(overrides = {}) {
+                const registry = this.getCanvasLayerRegistry?.() || CanvasLayerRegistryBase || global.CanvasLayerRegistry;
+                return registry?.getLayerOptions?.('panelOverlay', overrides) || {
+                  zIndex: 1001,
+                  pointerEvents: 'none',
+                  ...(overrides || {}),
+                };
+              }
+
+    getPanelOverlayCanvas() {
+                const surfaceHost = this.getPanelOverlaySurfaceHost();
+                if (surfaceHost && surfaceHost !== this && typeof surfaceHost.getPanelOverlayCanvas === 'function') {
+                  return surfaceHost.getPanelOverlayCanvas();
+                }
+                if (typeof this.getCanvasLayerCanvas === 'function') return this.getCanvasLayerCanvas('panelOverlay');
+                return this.runtime?.getLayerCanvas?.('panelOverlay') || null;
+              }
+
+    ensurePanelOverlayCanvas() {
+                const surfaceHost = this.getPanelOverlaySurfaceHost();
+                if (surfaceHost && surfaceHost !== this && typeof surfaceHost.ensurePanelOverlayCanvas === 'function') {
+                  return surfaceHost.ensurePanelOverlayCanvas();
+                }
+                if (typeof this.ensureCanvasLayer === 'function') return this.ensureCanvasLayer('panelOverlay');
+                if (typeof this.runtime?.ensureLayerCanvas === 'function') {
+                  return this.runtime.ensureLayerCanvas('panelOverlay', this.getPanelOverlayLayerOptions());
+                }
+                return null;
+              }
+
+    setPanelOverlayVisible(visible = true) {
+                const surfaceHost = this.getPanelOverlaySurfaceHost();
+                if (surfaceHost && surfaceHost !== this && typeof surfaceHost.setPanelOverlayVisible === 'function') {
+                  return surfaceHost.setPanelOverlayVisible(visible);
+                }
+                if (typeof this.setCanvasLayerVisible === 'function') return this.setCanvasLayerVisible('panelOverlay', visible);
+                return this.runtime?.setLayerVisible?.('panelOverlay', visible) || false;
+              }
+
+    clearPanelOverlayCanvas(canvas = this.getPanelOverlayCanvas(), ctx = null) {
+                const context = ctx || canvas?.getContext?.('2d') || null;
+                if (!canvas || !context || typeof context.clearRect !== 'function') return false;
+                const pixelRatio = Math.max(1, Number(canvas._backingStorePixelRatio) || this.runtime?.pixelRatio || 1);
+                if (typeof context.setTransform === 'function') context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+                const width = Number(this.renderer?.width) || Number(this.runtime?.width) || Number(canvas.width) || 0;
+                const height = Number(this.renderer?.height) || Number(this.runtime?.height) || Number(canvas.height) || 0;
+                context.clearRect(0, 0, Math.max(1, width), Math.max(1, height));
+                return true;
+              }
+
+    getPanelOverlayRenderOptions(options = {}) {
+                const state = options.state || this.getState?.() || this.state || {};
+                const owner = this.lastGame && this.lastGame !== this ? this.lastGame : this;
+                const activeTab = options.activeTab || state.currentTab || this.getActiveTab?.() || 'resources';
+                return {
+                  ...options,
+                  activeTab,
+                  mode: 'panelOverlay',
+                  panelSurfaceManager: options.panelSurfaceManager || this.getPanelSurfaceManager?.() || null,
+                  famousPersonsPage: owner?.famousPersonsPage ?? this.famousPersonsPage ?? 0,
+                  selectedFamousPersonId: owner?.selectedFamousPersonId ?? this.selectedFamousPersonId ?? '',
+                  showFpsOverlay: false,
+                };
+              }
+
+    renderPanelOverlaySurface(panelKey = '', manager = null, options = {}) {
+                const surfaceHost = this.getPanelOverlaySurfaceHost();
+                if (surfaceHost && surfaceHost !== this && typeof surfaceHost.renderPanelOverlaySurface === 'function') {
+                  return surfaceHost.renderPanelOverlaySurface(panelKey, manager, {
+                    ...options,
+                    state: options.state || this.getState?.() || this.state || null,
+                  });
+                }
+                const renderer = this.renderer || null;
+                if (!renderer || !manager?.renderPanel) return false;
+                const canvas = this.ensurePanelOverlayCanvas();
+                const ctx = canvas?.getContext?.('2d') || null;
+                if (!canvas || !ctx) return false;
+                const state = options.state || this.getState?.() || this.state || {};
+                const renderOptions = this.getPanelOverlayRenderOptions({
+                  ...options,
+                  state,
+                  panelSurfaceManager: manager,
+                });
+                this.clearPanelOverlayCanvas(canvas, ctx);
+                const previousCanvas = renderer.canvas;
+                renderer.canvas = canvas;
+                const drawPanel = () => {
+                  renderer.beginFrame?.(renderOptions);
+                  renderer.setHitTargets?.([]);
+                  const rendered = manager.renderPanel(panelKey, renderer, state, renderOptions);
+                  renderer.endFrame?.(renderOptions);
+                  return rendered;
+                };
+                try {
+                  if (typeof renderer.withRenderCtx === 'function') renderer.withRenderCtx(ctx, drawPanel);
+                  else drawPanel();
+                } finally {
+                  renderer.canvas = previousCanvas;
+                }
+                this.setPanelOverlayVisible(true);
+                return true;
+              }
+
+    clearPanelOverlaySurface(_panelKey = '', _manager = null, options = {}) {
+                const surfaceHost = this.getPanelOverlaySurfaceHost();
+                if (surfaceHost && surfaceHost !== this && typeof surfaceHost.clearPanelOverlaySurface === 'function') {
+                  return surfaceHost.clearPanelOverlaySurface(_panelKey, _manager, options);
+                }
+                const canvas = this.getPanelOverlayCanvas();
+                if (canvas) this.clearPanelOverlayCanvas(canvas);
+                this.setPanelOverlayVisible(false);
+                return true;
+              }
+
     getPanelSurfaceManager() {
+                const shell = this.canvasShell && this.canvasShell !== this ? this.canvasShell : null;
+                if (shell?.panelSurfaceManager) return shell.panelSurfaceManager;
+                if (shell && typeof shell.getPanelSurfaceManager === 'function') {
+                  const manager = shell.getPanelSurfaceManager();
+                  if (manager) return manager;
+                }
                 if (!this.panelSurfaceManager && CanvasPanelSurfaceManager) {
                   this.panelSurfaceManager = new CanvasPanelSurfaceManager({ host: this });
                 }
@@ -1775,7 +1908,8 @@
 
     renderPanelCanvasAction(action = {}) {
                 if (!this.isPanelSurfaceAction(action)) return false;
-                return this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action }) !== false;
+                this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action });
+                return true;
               }
 
     renderCanvasAction(action = {}) {
@@ -3500,12 +3634,20 @@
                 }
                 if (action.type === 'showFamousSkillTooltip') {
                   this.renderer.setPinnedFamousSkillTooltip?.(action);
-                  this.render();
+                  if (this.isBlockingPanelSnapshotOpen?.('showFamousPersons')) {
+                    this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action });
+                  } else {
+                    this.render();
+                  }
                   return;
                 }
                 if (action.type === 'clearFamousSkillTooltip') {
                   this.renderer.clearFamousSkillTooltip?.();
-                  this.render();
+                  if (this.isBlockingPanelSnapshotOpen?.('showFamousPersons')) {
+                    this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action });
+                  } else {
+                    this.render();
+                  }
                   return;
                 }
                 const handledResult = this.actionController?.handle?.(action);

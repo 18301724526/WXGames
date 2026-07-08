@@ -52,7 +52,7 @@ test('CanvasGameShell owns retired responsibility methods directly', () => {
     guideUi: ['getCanvasTarget', 'showTutorialHighlight', 'hideTutorialHighlight'],
     worldMapRuntime: ['ensureWorldMapRuntime', 'renderWorldMapLayer', 'requestWorldMapRenderAnimationFrame'],
     actorAnimation: ['startWorldActorAnimationLoop', 'stopWorldActorAnimationLoop', 'renderWorldActorAnimationFrame'],
-    renderingRuntime: ['renderActive', 'renderReadOnly', 'renderPanelSurface', 'buildRenderOptions'],
+    renderingRuntime: ['renderActive', 'renderReadOnly', 'renderPanelSurface', 'renderPanelOverlaySurface', 'buildRenderOptions'],
     techTreeView: ['getTechTreePan', 'setTechTreePan', 'getTechTreeZoom', 'setTechTreeZoom'],
     systemUi: ['applyAuthShell', 'showLoading', 'setNetworkState', 'startBattleScene'],
     layerRegistry: ['ensureCanvasLayer', 'setCanvasLayerTranslate', 'setCanvasLayerVisible', 'getCanvasLayerMetrics'],
@@ -788,21 +788,51 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   assert.equal(options.now, 4321.25);
 });
 
-test('CanvasGameShell renderPanelSurface repaints the HUD surface without world-map rendering', () => {
+test('CanvasGameShell renderPanelOverlaySurface repaints only the panel overlay layer', () => {
   const calls = [];
+  const panelCanvas = {
+    _backingStorePixelRatio: 1,
+    width: 420,
+    height: 747,
+    getContext(type) {
+      calls.push(['getContext', type]);
+      return {
+        setTransform(...args) { calls.push(['setTransform', ...args]); },
+        clearRect(...args) { calls.push(['clearRect', ...args]); },
+      };
+    },
+  };
   const shell = new CanvasGameShell({
     previewEnabled: true,
     renderer: {
-      render(state, options) {
-        calls.push(['renderer.render', state, options]);
+      width: 420,
+      height: 747,
+      canvas: { id: 'mainHud' },
+      beginFrame(options) {
+        calls.push(['beginFrame', options.mode]);
+      },
+      setHitTargets(targets) {
+        calls.push(['setHitTargets', targets.length]);
+      },
+      withRenderCtx(ctx, callback) {
+        calls.push(['withRenderCtx', Boolean(ctx)]);
+        return callback();
+      },
+      endFrame(options) {
+        calls.push(['endFrame', options.mode]);
       },
     },
     runtime: {
       now() {
         return 123;
       },
-      compositeStage() {
-        calls.push(['compositeStage']);
+      ensureLayerCanvas(name, options) {
+        calls.push(['ensureLayerCanvas', name, options.zIndex]);
+        return panelCanvas;
+      },
+      setLayerVisible(name, visible) {
+        calls.push(['setLayerVisible', name, visible]);
+        return true;
       },
     },
   });
@@ -818,15 +848,27 @@ test('CanvasGameShell renderPanelSurface repaints the HUD surface without world-
   shell.renderWorldMapLayer = () => {
     calls.push(['renderWorldMapLayer']);
   };
+  const manager = {
+    renderPanel(panelKey, renderer, renderState, options) {
+      calls.push(['manager.renderPanel', panelKey, renderState === state, options.mode]);
+      return true;
+    },
+  };
 
-  assert.equal(shell.renderPanelSurface(state, 'military'), true);
+  assert.equal(shell.renderPanelOverlaySurface('famousPersons', manager, { state }), true);
 
-  assert.equal(calls.length, 2);
-  assert.equal(calls[0][0], 'renderer.render');
-  assert.equal(calls[0][1], state);
-  assert.equal(calls[0][2].mode, 'hud');
-  assert.equal(calls[0][2].activeTab, 'military');
-  assert.equal(calls[1][0], 'compositeStage');
+  assert.deepEqual(calls, [
+    ['ensureLayerCanvas', 'panelOverlay', 1001],
+    ['getContext', '2d'],
+    ['setTransform', 1, 0, 0, 1, 0, 0],
+    ['clearRect', 0, 0, 420, 747],
+    ['withRenderCtx', true],
+    ['beginFrame', 'panelOverlay'],
+    ['setHitTargets', 0],
+    ['manager.renderPanel', 'famousPersons', true, 'panelOverlay'],
+    ['endFrame', 'panelOverlay'],
+    ['setLayerVisible', 'panelOverlay', true],
+  ]);
 });
 
 test('CanvasGameShell reads battleScene render options from BattleStore only', () => {
@@ -1808,7 +1850,6 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
   assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.deepEqual(calls, [
     ['clearFamousSkillTooltip'],
-    ['renderActive'],
     ['onFamousPersonsClosed'],
     ['setTimeout', 0],
     ['refreshCurrentHighlight'],

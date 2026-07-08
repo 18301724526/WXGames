@@ -315,7 +315,7 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
   assert.equal(names.at(-1), 'endFrame');
 });
 
-test('HudOverlayCanvasRenderer routes famous panel drawing through the panel surface manager', () => {
+test('HudOverlayCanvasRenderer does not draw famous panels on the HUD page surface', () => {
   const host = createHost();
   const renderer = createRenderer(host);
   const panelCalls = [];
@@ -331,7 +331,7 @@ test('HudOverlayCanvasRenderer routes famous panel drawing through the panel sur
     },
   });
 
-  assert.deepEqual(panelCalls, [['famousPersons', true, 'state-1', true]]);
+  assert.deepEqual(panelCalls, []);
   assert.equal(callNames(host).includes('renderFamousPersonsPanel'), false);
 });
 

@@ -22,6 +22,25 @@ function makeAppHost(fields = {}) {
   return Object.assign(Object.create(CanvasGameApp.prototype), fields);
 }
 
+test('CanvasGameApp uses the shell panel surface manager when mounted', () => {
+  const shell = new CanvasGameShell({
+    previewEnabled: false,
+    inputEnabled: false,
+  });
+  const shellManager = shell.getPanelSurfaceManager();
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    useWorldMapRuntime: false,
+    canvasShell: shell,
+  });
+  shell.lastGame = app;
+
+  assert.equal(app.panelSurfaceManager, null);
+  assert.equal(app.getPanelSurfaceManager(), shellManager);
+});
+
 test('CanvasGameApp owns retired responsibility methods directly', () => {
   const proto = CanvasGameApp.prototype;
   const expectedMethods = {
@@ -105,8 +124,8 @@ test('seekFamousPerson syncs the single API state source and redraws only the pa
       };
       this.tutorial = data.tutorial;
     },
-    renderPanelSurface(activeTab) {
-      calls.push(['renderPanelSurface', activeTab]);
+    renderPanelOverlaySurface(panelKey, manager, options) {
+      calls.push(['renderPanelOverlaySurface', panelKey, options.state.famousPersons.candidates.length]);
       return true;
     },
     render() {
@@ -132,7 +151,7 @@ test('seekFamousPerson syncs the single API state source and redraws only the pa
     ['api.seekFamousPerson', 'guide'],
     ['applyApiState', result, { render: false }],
     ['log', 'seek complete'],
-    ['renderPanelSurface', 'military'],
+    ['renderPanelOverlaySurface', 'famousPersons', 1],
   ]);
 });
 

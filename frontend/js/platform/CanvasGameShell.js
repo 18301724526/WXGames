@@ -1318,14 +1318,26 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const handled = typeof this.renderer.setPinnedFamousSkillTooltip === 'function'
               ? this.renderer.setPinnedFamousSkillTooltip(action)
               : false;
-            if (handled) this.renderActive();
+            if (handled) {
+              if (this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
+                this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons', { action });
+              } else {
+                this.renderActive();
+              }
+            }
             return handled;
           }
           if (action.type === 'clearFamousSkillTooltip') {
             const handled = typeof this.renderer.clearFamousSkillTooltip === 'function'
               ? this.renderer.clearFamousSkillTooltip()
               : false;
-            if (handled) this.renderActive();
+            if (handled) {
+              if (this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
+                this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons', { action });
+              } else {
+                this.renderActive();
+              }
+            }
             return handled;
           }
           const handled = this.handleAction(action, event, { tapTraceId });

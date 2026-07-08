@@ -226,10 +226,6 @@
       if (options.showGuidebook) {
         this.renderGuidebookPanel(state, options);
       }
-      if (options.showFamousPersons) {
-        const renderedByPanel = options.panelSurfaceManager?.renderPanel?.('famousPersons', this.host, state, options);
-        if (!renderedByPanel) this.renderFamousPersonsPanel(state, options);
-      }
       if (options.armyFormationEditor?.open) {
         this.renderArmyFormationEditor(state, options);
       }
