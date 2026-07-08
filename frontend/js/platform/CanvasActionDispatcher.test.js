@@ -106,12 +106,43 @@ test('CanvasActionDispatcher passes world march mission identifiers to finish ha
   ]);
 });
 
-test('index.html loads action registry before dispatcher', () => {
-  const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
-  const registryPosition = html.indexOf('CanvasActionDispatchRegistry.js');
-  const dispatcherPosition = html.indexOf('CanvasActionDispatcher.js');
+function positionOf(source, needle) {
+  const position = source.indexOf(needle);
+  assert.notEqual(position, -1, `${needle} should be loaded`);
+  return position;
+}
 
-  assert.notEqual(registryPosition, -1);
-  assert.notEqual(dispatcherPosition, -1);
-  assert.equal(registryPosition < dispatcherPosition, true);
+test('entrypoints load panel action stack before dispatcher and hosts', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+  const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');
+  const htmlOrder = [
+    'FamousPersonsPanel.js',
+    'CanvasPanelRegistry.js',
+    'CanvasPanelSurfaceManager.js',
+    'CanvasStageScheduler.js',
+    'CanvasPanelActionContextAdapter.js',
+    'CanvasPanelActionRegistry.js',
+    'CanvasPanelActionRunner.js',
+    'CanvasActionDispatchRegistry.js',
+    'CanvasActionDispatcher.js',
+  ].map((name) => positionOf(html, name));
+  const minigameOrder = [
+    "require('../js/platform/panels/FamousPersonsPanel')",
+    "require('../js/platform/panels/CanvasPanelRegistry')",
+    "require('../js/platform/CanvasPanelSurfaceManager')",
+    "require('../js/platform/CanvasStageScheduler')",
+    "require('../js/platform/CanvasPanelActionContextAdapter')",
+    "require('../js/platform/CanvasPanelActionRegistry')",
+    "require('../js/platform/CanvasPanelActionRunner')",
+    "require('../js/platform/CanvasActionDispatchRegistry')",
+    "require('../js/platform/CanvasActionDispatcher')",
+  ].map((name) => positionOf(minigame, name));
+
+  assert.deepEqual(htmlOrder, [...htmlOrder].sort((left, right) => left - right));
+  assert.deepEqual(minigameOrder, [...minigameOrder].sort((left, right) => left - right));
+  assert.equal(htmlOrder.at(-1) < positionOf(html, 'CanvasActionController.js'), true);
+  assert.equal(htmlOrder.at(-1) < positionOf(html, 'CanvasGameApp.js'), true);
+  assert.equal(htmlOrder.at(-1) < positionOf(html, 'CanvasGameShell.js'), true);
+  assert.equal(minigameOrder.at(-1) < positionOf(minigame, "require('../js/platform/CanvasActionController')"), true);
+  assert.equal(minigameOrder.at(-1) < positionOf(minigame, "require('../js/platform/CanvasGameApp')"), true);
 });

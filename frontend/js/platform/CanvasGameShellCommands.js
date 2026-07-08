@@ -74,45 +74,6 @@ closeTechDetail(action = {}) {
       return true;
     },
 
-openFamousPersons() {
-      this.showFamousPersons = true;
-      this.famousPersonsPage = 0;
-      this.selectedFamousPersonId = '';
-      this.showTaskCenter = false;
-      this.showGuidebook = false;
-      this.activeCommandPanel = '';
-      return true;
-    },
-
-closeFamousPersons() {
-      this.showFamousPersons = false;
-      this.famousPersonsPage = 0;
-      this.selectedFamousPersonId = '';
-      const game = this.lastGame || null;
-      if (game && typeof game === 'object') {
-        if ('showFamousPersons' in game) game.showFamousPersons = false;
-        if ('famousPersonsPage' in game) game.famousPersonsPage = 0;
-        if ('selectedFamousPersonId' in game) game.selectedFamousPersonId = '';
-      }
-      this.renderer?.clearFamousSkillTooltip?.();
-      game?.tutorialController?.onFamousPersonsClosed?.();
-      return true;
-    },
-
-openFamousPersonDetail(action = {}) {
-      this.selectedFamousPersonId = action.personId || '';
-      this.renderer?.clearFamousSkillTooltip?.();
-      this.renderActive();
-      return true;
-    },
-
-closeFamousPersonDetail() {
-      this.selectedFamousPersonId = '';
-      this.renderer?.clearFamousSkillTooltip?.();
-      this.renderActive();
-      return true;
-    },
-
 getArmyFormation(cityId, slot) {
       const state = this.lastGame?.state || {};
       const targetCityId = cityId || state.activeCityId || state.cityState?.activeCityId || 'capital';
@@ -311,15 +272,6 @@ switchCityManagementTab(tab = 'buildings') {
       if (this.lastGame && typeof this.lastGame === 'object') {
         this.lastGame.activeCityManagementTab = this.activeCityManagementTab;
       }
-      this.renderActive();
-      return true;
-    },
-
-changeFamousPersonsPage(action = {}) {
-      const delta = Number(action.delta) || 0;
-      this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
-      this.selectedFamousPersonId = '';
-      this.renderer?.clearFamousSkillTooltip?.();
       this.renderActive();
       return true;
     },

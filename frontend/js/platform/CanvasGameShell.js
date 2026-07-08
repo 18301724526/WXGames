@@ -71,6 +71,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameShellSystemUi) {
     CanvasGameShellSystemUi = require('./CanvasGameShellSystemUi');
   }
+  var CanvasPanelActionRunnerBase = global.CanvasPanelActionRunner;
+  if (typeof module !== 'undefined' && module.exports && !CanvasPanelActionRunnerBase) {
+    CanvasPanelActionRunnerBase = require('./CanvasPanelActionRunner');
+  }
   var SharedWorldClock = global.WorldClock;
   if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
     try {
@@ -104,14 +108,25 @@ constructor(options = {}) {
       this.previewEnabled = Boolean(options.previewEnabled);
       this.inputEnabled = Boolean(options.inputEnabled);
       this.onAction = typeof options.onAction === 'function' ? options.onAction : null;
+      const PanelActionRunnerCtor = options.panelActionRunnerClass || CanvasPanelActionRunnerBase || global.CanvasPanelActionRunner || null;
+      this.panelActionRunner = options.panelActionRunner || (PanelActionRunnerCtor ? new PanelActionRunnerCtor() : null);
       const DispatcherCtor = global.CanvasActionDispatcher;
-      this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
+      this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor({
+        panelActionRunner: this.panelActionRunner,
+        log: options.log,
+      }) : null);
+      if (this.actionDispatcher && this.panelActionRunner && !this.actionDispatcher.panelActionRunner) {
+        this.actionDispatcher.panelActionRunner = this.panelActionRunner;
+      }
       const ActionControllerCtor = global.CanvasActionController || (typeof require === 'function' ? require('./CanvasActionController') : null);
       this.actionController = options.actionController || (ActionControllerCtor ? new ActionControllerCtor({
         host: this,
         awaitAsync: true,
         log: options.log,
       }) : this.actionController);
+      if (this.actionController && this.panelActionRunner && !this.actionController.panelActionRunner) {
+        this.actionController.panelActionRunner = this.panelActionRunner;
+      }
       this.mounted = false;
       this.lastGame = null;
       this.resizeDisposer = null;

@@ -81,17 +81,40 @@
     }
 
     setHitTargets(targets = []) {
-      this.hitTargets = targets;
+      this.ensureHitTargetPools()[this.activeHitTargetPool || 'base'] = Array.isArray(targets) ? targets : [];
+      return this.syncMergedHitTargets();
     }
-
     addHitTarget(rect, action) {
       if (this.suppressHitTargets) return;
       const target = HitTargets.normalizeHitTarget(rect, action);
-      if (target) this.hitTargets.push(target);
+      if (!target) return;
+      this.ensureHitTargetPools()[this.activeHitTargetPool || 'base'].push(target);
+      this.syncMergedHitTargets();
+    }
+    getHitTarget(point = {}) {
+      return HitTargets.resolveHitTarget(this.syncMergedHitTargets(), point, this.lastRenderOptions?.tutorialIntro || null);
     }
 
-    getHitTarget(point = {}) {
-      return HitTargets.resolveHitTarget(this.hitTargets, point, this.lastRenderOptions?.tutorialIntro || null);
+    ensureHitTargetPools() {
+      if (!this.hitTargetPools || typeof this.hitTargetPools !== 'object') this.hitTargetPools = { base: Array.isArray(this.hitTargets) ? this.hitTargets : [], modal: [], guide: [] };
+      ['base', 'modal', 'guide'].forEach((pool) => { if (!Array.isArray(this.hitTargetPools[pool])) this.hitTargetPools[pool] = []; });
+      return this.hitTargetPools;
+    }
+    clearHitTargetPool(pool = 'base') {
+      this.ensureHitTargetPools()[String(pool || 'base')] = [];
+      return Boolean(this.syncMergedHitTargets());
+    }
+
+    syncMergedHitTargets() {
+      const pools = this.ensureHitTargetPools();
+      this.hitTargets = [...(pools.base || []), ...(pools.modal || []), ...(pools.guide || [])];
+      return this.hitTargets;
+    }
+    withHitTargetPool(pool = 'base', callback = null) {
+      const previous = this.activeHitTargetPool || 'base';
+      this.activeHitTargetPool = String(pool || 'base');
+      try { return typeof callback === 'function' ? callback() : undefined; }
+      finally { this.activeHitTargetPool = previous; this.syncMergedHitTargets(); }
     }
 
     containsPoint(rect = {}, point = {}) {

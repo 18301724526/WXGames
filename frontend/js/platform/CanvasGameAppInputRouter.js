@@ -111,6 +111,13 @@
             return result;
           },
 
+      dispatchCanvasActionFirst(action, meta = {}) {
+            if (this.actionDispatcher?.canHandle?.(action)) {
+              return this.actionDispatcher.handle(action, this);
+            }
+            return this.actionController?.handle?.(action, meta);
+          },
+
       async handleTap(point) {
             const action = this.renderer.getHitTarget(point);
             global.ClientOperationLog?.record?.('input:tapHit', {
@@ -121,15 +128,15 @@
               currentTab: this.state?.currentTab || this.activeTab || '',
               militaryView: this.state?.militaryView || this.militaryView || '',
             });
-            if (action?.type === 'blockCanvasModal') {
-              return this.actionController?.handle?.(action);
-            }
             if (action?.disabled) {
               global.ClientOperationLog?.record?.('input:tapDisabled', {
                 point: global.ClientOperationLog?.summarizePoint?.(point),
                 action: global.ClientOperationLog?.summarizeAction?.(action),
               }, { flush: true });
               return true;
+            }
+            if (action?.type === 'blockCanvasModal') {
+              return this.dispatchCanvasActionFirst(action);
             }
             if (shouldRouteTapThroughWorldMapRuntime(action)) {
               const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
@@ -144,17 +151,7 @@
               if (handled) return handled;
               return handled;
             }
-            if (action.type === 'showFamousSkillTooltip') {
-              this.renderer.setPinnedFamousSkillTooltip?.(action);
-              this.render();
-              return;
-            }
-            if (action.type === 'clearFamousSkillTooltip') {
-              this.renderer.clearFamousSkillTooltip?.();
-              this.render();
-              return;
-            }
-            const handledResult = this.actionController?.handle?.(action);
+            const handledResult = this.dispatchCanvasActionFirst(action);
             global.ClientOperationLog?.record?.('input:tapAction', {
               action: global.ClientOperationLog?.summarizeAction?.(action),
               handled: summarizeHandledForOperationLog(handledResult),

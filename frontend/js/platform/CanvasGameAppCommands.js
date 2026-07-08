@@ -8,6 +8,71 @@
     }
   }
 
+  function getPanelActionRunner(host) {
+    const existing = host?.panelActionRunner || null;
+    if (existing) return existing;
+    const RunnerCtor = global.CanvasPanelActionRunner || null;
+    if (!RunnerCtor || !host || typeof host !== 'object') return null;
+    host.panelActionRunner = new RunnerCtor();
+    return host.panelActionRunner;
+  }
+
+  function setField(target, key, value) {
+    if (target && typeof target === 'object' && key in target) target[key] = value;
+  }
+
+  function fallbackOpenFamousPanel(host, personId = '') {
+    [host, host?.canvasShell].filter(Boolean).forEach((target) => {
+      setField(target, 'showFamousPersons', true);
+      setField(target, 'famousPersonsPage', 0);
+      setField(target, 'selectedFamousPersonId', personId || '');
+    });
+    return true;
+  }
+
+  function markFamousModalDirty(host, reason = 'famousCommand', payload = {}) {
+    const context = host?.getPanelActionContext?.() || host || {};
+    const scheduler = context?.getScheduler?.() || host?.stageScheduler || host?.canvasShell?.stageScheduler || null;
+    scheduler?.markDirty?.('modal', reason, payload);
+    if (scheduler?.flush) return scheduler.flush(['modal']);
+    const manager = context?.getPanelSurfaceManager?.()
+      || host?.panelSurfaceManager
+      || host?.canvasShell?.panelSurfaceManager
+      || null;
+    return manager?.projectModalLayer?.({ context, reason, payload }) === true;
+  }
+
+  function reopenFamousPanelAfterCommand(host, options = {}) {
+    const runner = getPanelActionRunner(host);
+    const source = options.source || 'famousCommand';
+    const opened = runner?.run?.({
+      type: 'openFamousPersons',
+      source,
+      bypassPanelOpenVeto: true,
+    }, host) === true;
+    if (!opened) {
+      fallbackOpenFamousPanel(host, options.personId || '');
+      markFamousModalDirty(host, `${source}.fallback`, { options });
+    }
+    if (options.personId) {
+      const detailOpened = runner?.run?.({
+        type: 'openFamousPersonDetail',
+        personId: options.personId,
+        source,
+      }, host) === true;
+      if (!detailOpened) {
+        fallbackOpenFamousPanel(host, options.personId);
+        markFamousModalDirty(host, `${source}.detail`, { options });
+      }
+    }
+    return true;
+  }
+
+  function refreshFamousPanelAfterFailure(host, reason = 'famousCommand.failure') {
+    if (!host?.showFamousPersons && !host?.canvasShell?.showFamousPersons) return false;
+    return markFamousModalDirty(host, reason, {});
+  }
+
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
@@ -25,19 +90,14 @@
       async seekFamousPerson(source = 'seek') {
             try {
               const result = await this.getGameApi().seekFamousPerson(source);
-              this.applyApiState(result);
-              this.showFamousPersons = true;
-              this.famousPersonsPage = 0;
-              this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
-              if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
+              this.applyApiState(result, { render: false });
+              reopenFamousPanelAfterCommand(this, { source: 'seekFamousPerson' });
               this.showFloatingText(result.message || '瀵昏瀹屾垚');
               this.log(result.message || '瀵昏瀹屾垚');
               return true;
             } catch (error) {
               this.log(`瀵昏澶辫触锟?{error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
+              refreshFamousPanelAfterFailure(this, 'seekFamousPerson.failure');
               return false;
             }
           },
@@ -45,19 +105,14 @@
       async acceptFamousPerson(candidateId) {
             try {
               const result = await this.getGameApi().acceptFamousPerson(candidateId);
-              this.applyApiState(result);
-              this.showFamousPersons = true;
-              this.famousPersonsPage = 0;
-              this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
-              if (this.canvasShell && 'famousPersonsPage' in this.canvasShell) this.canvasShell.famousPersonsPage = 0;
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
+              this.applyApiState(result, { render: false });
+              reopenFamousPanelAfterCommand(this, { source: 'acceptFamousPerson' });
               this.showFloatingText(result.message || 'Famous person accepted');
               this.log(result.message || 'Famous person accepted');
               return true;
             } catch (error) {
               this.log(`鎺ョ撼澶辫触锟?{error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
+              refreshFamousPanelAfterFailure(this, 'acceptFamousPerson.failure');
               return false;
             }
           },
@@ -65,17 +120,14 @@
       async dismissFamousPersonCandidate(candidateId) {
             try {
               const result = await this.getGameApi().dismissFamousPersonCandidate(candidateId);
-              this.applyApiState(result);
-              this.showFamousPersons = true;
-              this.selectedFamousPersonId = '';
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
+              this.applyApiState(result, { render: false });
+              reopenFamousPanelAfterCommand(this, { source: 'dismissFamousPersonCandidate' });
               this.showFloatingText(result.message || 'Candidate dismissed');
               this.log(result.message || 'Candidate dismissed');
               return true;
             } catch (error) {
               this.log(`鏀惧純澶辫触锟?{error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
+              refreshFamousPanelAfterFailure(this, 'dismissFamousPersonCandidate.failure');
               return false;
             }
           },
@@ -83,17 +135,14 @@
       async assignFamousAttributePoint(personId, attribute) {
             try {
               const result = await this.getGameApi().assignFamousAttributePoint(personId, attribute);
-              this.applyApiState(result);
-              this.showFamousPersons = true;
-              if (this.canvasShell && 'showFamousPersons' in this.canvasShell) this.canvasShell.showFamousPersons = true;
-              if (this.canvasShell && 'selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = personId;
-              this.selectedFamousPersonId = personId;
+              this.applyApiState(result, { render: false });
+              reopenFamousPanelAfterCommand(this, { source: 'assignFamousAttributePoint', personId });
               this.showFloatingText(result.message || '灞炴€у凡鎻愬崌');
               this.log(result.message || '灞炴€у凡鎻愬崌');
               return true;
             } catch (error) {
               this.log(`鍔犵偣澶辫触锟?{error.payload?.message || error.message}`);
-              this.renderCanvasSurface(this.state?.currentTab);
+              refreshFamousPanelAfterFailure(this, 'assignFamousAttributePoint.failure');
               return false;
             }
           },

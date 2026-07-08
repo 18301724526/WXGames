@@ -15,6 +15,20 @@
       WorldMapRuntimeRenderPolicy = null;
     }
   }
+  var CanvasPanelActionContextAdapter = global.CanvasPanelActionContextAdapter;
+  if (typeof module !== 'undefined' && module.exports && !CanvasPanelActionContextAdapter) {
+    try {
+      CanvasPanelActionContextAdapter = require('./CanvasPanelActionContextAdapter');
+    } catch (error) {
+      CanvasPanelActionContextAdapter = null;
+    }
+  }
+
+  function buildPanelActionContext(host) {
+    return typeof CanvasPanelActionContextAdapter === 'function'
+      ? CanvasPanelActionContextAdapter(host)
+      : host;
+  }
 
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     const explorer = state?.worldExplorerState || {};
@@ -101,6 +115,10 @@
   function install(CanvasGameShell) {
     if (!CanvasGameShell?.prototype) return false;
     Object.assign(CanvasGameShell.prototype, {
+getPanelActionContext() {
+      return buildPanelActionContext(this);
+    },
+
 now() {
       return this.runtime?.now?.() || Date.now();
     },
@@ -407,7 +425,7 @@ buildRenderOptions(activeTab = 'resources', territoryUiState = null, options = {
         activeTaskCenterTab: this.activeTaskCenterTab,
         showGuidebook: this.showGuidebook,
         activeGuidebookTab: this.activeGuidebookTab,
-        showFamousPersons: this.showFamousPersons,
+        showFamousPersons: false,
         famousPersonsPage: this.famousPersonsPage,
         selectedFamousPersonId: this.selectedFamousPersonId,
         armyFormationEditor: this.armyFormationEditor,
@@ -653,7 +671,7 @@ renderReadOnly(state, activeTab = 'resources', options = {}) {
           skipWorldMapLayer: false,
           preserveCanvas: false,
         });
-       const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
+        const waterAnimated = Boolean(territoryUiState.tileMapWaterAnimated
           || this.lastGame?.territoryController?.uiState?.tileMapWaterAnimated
           || this.territoryUiState?.tileMapWaterAnimated);
         const explorerAnimated = hasActiveWorldExplorerMission(state, renderOptions);

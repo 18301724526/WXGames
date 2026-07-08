@@ -39,6 +39,10 @@
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppInputRouter) {
     CanvasGameAppInputRouter = require('./CanvasGameAppInputRouter');
   }
+  var CanvasPanelActionRunnerBase = global.CanvasPanelActionRunner;
+  if (typeof module !== 'undefined' && module.exports && !CanvasPanelActionRunnerBase) {
+    CanvasPanelActionRunnerBase = require('./CanvasPanelActionRunner');
+  }
 
   class CanvasGameApp {
     constructor(options = {}) {
@@ -218,14 +222,25 @@
           const CommandServiceCtor = options.commandServiceClass || GameCommandServiceBase || null;
           this.commandService = options.commandService || (CommandServiceCtor ? new CommandServiceCtor({ host: this }) : null);
           if (this.commandService && !this.commandService.host) this.commandService.host = this;
+          const PanelActionRunnerCtor = options.panelActionRunnerClass || CanvasPanelActionRunnerBase || global.CanvasPanelActionRunner || null;
+          this.panelActionRunner = options.panelActionRunner || (PanelActionRunnerCtor ? new PanelActionRunnerCtor() : null);
           const DispatcherCtor = global.CanvasActionDispatcher;
-          this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor() : null);
+          this.actionDispatcher = options.actionDispatcher || (DispatcherCtor ? new DispatcherCtor({
+            panelActionRunner: this.panelActionRunner,
+            log: (message) => this.log(message),
+          }) : null);
+          if (this.actionDispatcher && this.panelActionRunner && !this.actionDispatcher.panelActionRunner) {
+            this.actionDispatcher.panelActionRunner = this.panelActionRunner;
+          }
           const ActionControllerCtor = global.CanvasActionController || (typeof require === 'function' ? require('./CanvasActionController') : null);
           this.actionController = options.actionController || (ActionControllerCtor ? new ActionControllerCtor({
             host: this,
             awaitAsync: true,
             log: (message) => this.log(message),
           }) : null);
+          if (this.actionController && this.panelActionRunner && !this.actionController.panelActionRunner) {
+            this.actionController.panelActionRunner = this.panelActionRunner;
+          }
           this.guideController = options.guideController || null;
           this.timer = null;
           this.tapDisposer = null;

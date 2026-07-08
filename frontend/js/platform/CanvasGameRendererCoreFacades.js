@@ -98,7 +98,9 @@
     setHitTargets(...args) {
       if (this.hasSurfaceRendererMethod('setHitTargets')) {
         this.hitTargets = args[0] || [];
-        return this.delegateSurfaceRenderer('setHitTargets', args);
+        const result = this.delegateSurfaceRenderer('setHitTargets', args);
+        if (this.surfaceRenderer?.hitTargets) this.hitTargets = this.surfaceRenderer.hitTargets;
+        return result;
       }
       this.hitTargets = args[0] || [];
       return undefined;
@@ -141,6 +143,25 @@
     getHitTarget(...args) {
       const result = this.delegateSurfaceRenderer('getHitTarget', args);
       return result === undefined ? null : result;
+    },
+
+    clearHitTargetPool(...args) {
+      const result = this.delegateSurfaceRenderer('clearHitTargetPool', args);
+      if (result !== undefined || this.hasSurfaceRendererMethod('clearHitTargetPool')) {
+        if (this.surfaceRenderer?.hitTargets) this.hitTargets = this.surfaceRenderer.hitTargets;
+        return result;
+      }
+      if (args[0] === 'base') this.hitTargets = [];
+      return true;
+    },
+
+    withHitTargetPool(...args) {
+      const result = this.delegateSurfaceRenderer('withHitTargetPool', args);
+      if (result !== undefined || this.hasSurfaceRendererMethod('withHitTargetPool')) {
+        if (this.surfaceRenderer?.hitTargets) this.hitTargets = this.surfaceRenderer.hitTargets;
+        return result;
+      }
+      return args[1]?.();
     },
 
     containsPoint(...args) {

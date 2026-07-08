@@ -1397,7 +1397,7 @@ test('CanvasGameShell resolves guide targets in rendered hit order', () => {
   assert.deepEqual(target.action, { type: 'closeFamousPersons' });
 });
 
-test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial', () => {
+test('CanvasGameShell panel runner closeFamousPersons syncs game state and resumes tutorial', () => {
   const calls = [];
   const game = {
     showFamousPersons: true,
@@ -1421,7 +1421,7 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
   shell.famousPersonsPage = 1;
   shell.selectedFamousPersonId = 'fp-scout';
 
-  assert.equal(shell.closeFamousPersons(), true);
+  assert.equal(shell.panelActionRunner.run({ type: 'closeFamousPersons' }, shell), true);
 
   assert.equal(shell.showFamousPersons, false);
   assert.equal(shell.famousPersonsPage, 0);
@@ -1432,7 +1432,7 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
   assert.deepEqual(calls, [['clearFamousSkillTooltip'], ['onFamousPersonsClosed']]);
 });
 
-test('CanvasGameShell action controller advances tutorial after closeFamousPersons tap', () => {
+test('CanvasGameShell panel runner advances tutorial after closeFamousPersons action', () => {
   const calls = [];
   const game = {
     showFamousPersons: true,
@@ -1469,16 +1469,87 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
     return true;
   };
 
-  assert.equal(shell.actionController.handle({ type: 'closeFamousPersons' }), true);
+  assert.equal(shell.panelActionRunner.run({ type: 'closeFamousPersons' }, shell), true);
 
   assert.equal(shell.showFamousPersons, false);
   assert.equal(game.showFamousPersons, false);
   assert.deepEqual(calls, [
     ['clearFamousSkillTooltip'],
-    ['renderActive'],
     ['onFamousPersonsClosed'],
+    ['refreshCurrentHighlight'],
     ['setTimeout', 0],
     ['refreshCurrentHighlight'],
+  ]);
+});
+
+test('CanvasGameShell dispatches famous panel taps before controller fallback', () => {
+  const calls = [];
+  const game = {
+    state: { currentTab: 'resources' },
+    showFamousPersons: false,
+    tutorial: {},
+  };
+  const shell = new CanvasGameShell({
+    inputEnabled: true,
+    actionDispatcher: {
+      canHandle(action) {
+        return action?.type === 'openFamousPersons';
+      },
+      handle(action, context) {
+        calls.push(['dispatcher', action.type]);
+        return context.panelActionRunner.run(action, context);
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['controller', action.type]);
+        throw new Error('controller fallback should not handle famous panel actions');
+      },
+    },
+    renderer: {
+      getHitTarget() {
+        return { type: 'openFamousPersons' };
+      },
+    },
+  });
+  shell.lastGame = game;
+  shell.tutorialController = null;
+  shell.panelSurfaceManager = {
+    openPanel(panelKey) {
+      calls.push(['openPanel', panelKey]);
+      shell.showFamousPersons = true;
+      game.showFamousPersons = true;
+      return true;
+    },
+    projectModalLayer(options = {}) {
+      calls.push(['projectModalLayer', options.reason || '']);
+      return true;
+    },
+  };
+  shell.stageScheduler = {
+    isAtomic() {
+      return false;
+    },
+    markDirty(slot, reason) {
+      calls.push(['markDirty', slot, reason]);
+      return true;
+    },
+    flush(slots) {
+      calls.push(['flush', slots.join(',')]);
+      return shell.panelSurfaceManager.projectModalLayer({ reason: 'test.flush' });
+    },
+  };
+
+  assert.equal(shell.handleTap({ x: 60, y: 60 }, {}), true);
+
+  assert.equal(shell.showFamousPersons, true);
+  assert.equal(game.showFamousPersons, true);
+  assert.deepEqual(calls, [
+    ['dispatcher', 'openFamousPersons'],
+    ['openPanel', 'famousPersons'],
+    ['markDirty', 'modal', 'openFamousPersons'],
+    ['flush', 'modal'],
+    ['projectModalLayer', 'test.flush'],
   ]);
 });
 

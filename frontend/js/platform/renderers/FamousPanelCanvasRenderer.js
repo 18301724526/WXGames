@@ -336,7 +336,9 @@
     const y = Math.max(48, (renderer.height - panelHeight) / 2 - 8);
     const selectedPerson = view.selectedPerson || null;
 
-    renderer.addHitTarget({ x: 0, y: 0, width: renderer.width, height: renderer.height }, { type: 'closeFamousPersons' });
+    if (options.skipPanelBackgroundHitTarget !== true) {
+      renderer.addHitTarget({ x: 0, y: 0, width: renderer.width, height: renderer.height }, { type: 'closeFamousPersons' });
+    }
     if (renderer.ctx) {
       renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
       renderer.ctx.fillRect(0, 0, renderer.width, renderer.height);

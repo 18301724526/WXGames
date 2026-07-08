@@ -1225,6 +1225,191 @@ test('CanvasGameApp records compat non-runtime tap actions into local operation 
   assert.equal(actionEvent.handled, true);
 });
 
+test('CanvasGameApp dispatches famous panel taps before controller fallback', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    actionDispatcher: {
+      canHandle(action) {
+        return action?.type === 'openFamousPersons';
+      },
+      handle(action, context) {
+        calls.push(['dispatcher', action.type]);
+        return context.panelActionRunner.run(action, context);
+      },
+    },
+    actionController: {
+      handle(action) {
+        calls.push(['controller', action.type]);
+        throw new Error('controller fallback should not handle famous panel actions');
+      },
+    },
+  });
+  app.renderer = {
+    getHitTarget() {
+      return { type: 'openFamousPersons' };
+    },
+  };
+  app.tutorialController = null;
+  app.panelSurfaceManager = {
+    openPanel(panelKey) {
+      calls.push(['openPanel', panelKey]);
+      app.showFamousPersons = true;
+      return true;
+    },
+    projectModalLayer(options = {}) {
+      calls.push(['projectModalLayer', options.reason || '']);
+      return true;
+    },
+  };
+  app.stageScheduler = {
+    isAtomic() {
+      return false;
+    },
+    markDirty(slot, reason) {
+      calls.push(['markDirty', slot, reason]);
+      return true;
+    },
+    flush(slots) {
+      calls.push(['flush', slots.join(',')]);
+      return app.panelSurfaceManager.projectModalLayer({ reason: 'test.flush' });
+    },
+  };
+
+  assert.equal(await app.handleTap({ x: 60, y: 60 }), true);
+
+  assert.equal(app.showFamousPersons, true);
+  assert.deepEqual(calls, [
+    ['dispatcher', 'openFamousPersons'],
+    ['openPanel', 'famousPersons'],
+    ['markDirty', 'modal', 'openFamousPersons'],
+    ['flush', 'modal'],
+    ['projectModalLayer', 'test.flush'],
+  ]);
+});
+
+test('CanvasGameApp famous attribute command applies state without base render and restores detail', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+  });
+  app.tutorialController = null;
+  app.getGameApi = () => ({
+    assignFamousAttributePoint(personId, attribute) {
+      calls.push(['api', personId, attribute]);
+      return Promise.resolve({ message: 'ok', gameState: { famousPersons: [] } });
+    },
+  });
+  app.applyApiState = (result, options) => calls.push(['applyApiState', result.message, options?.render]);
+  app.showFloatingText = (message) => calls.push(['floating', message]);
+  app.log = (message) => calls.push(['log', message]);
+  app.renderCanvasSurface = () => {
+    calls.push(['baseRender']);
+    return true;
+  };
+  app.panelSurfaceManager = {
+    openPanel(panelKey) {
+      calls.push(['openPanel', panelKey]);
+      app.showFamousPersons = true;
+      return true;
+    },
+    runPanelAction(panelKey, actionName, action) {
+      calls.push(['runPanelAction', panelKey, actionName, action.personId || '']);
+      app.selectedFamousPersonId = action.personId || '';
+      return true;
+    },
+    projectModalLayer(options = {}) {
+      calls.push(['projectModalLayer', options.reason || '']);
+      return true;
+    },
+  };
+  app.stageScheduler = {
+    isAtomic() {
+      return false;
+    },
+    markDirty(slot, reason) {
+      calls.push(['markDirty', slot, reason]);
+      return true;
+    },
+    flush(slots) {
+      calls.push(['flush', slots.join(',')]);
+      return app.panelSurfaceManager.projectModalLayer({ reason: 'test.flush' });
+    },
+  };
+
+  assert.equal(await app.assignFamousAttributePoint('hero-1', 'wisdom'), true);
+
+  assert.equal(app.showFamousPersons, true);
+  assert.equal(app.selectedFamousPersonId, 'hero-1');
+  assert.equal(calls.some(([name]) => name === 'baseRender'), false);
+  assert.deepEqual(calls, [
+    ['api', 'hero-1', 'wisdom'],
+    ['applyApiState', 'ok', false],
+    ['openPanel', 'famousPersons'],
+    ['markDirty', 'modal', 'openFamousPersons'],
+    ['flush', 'modal'],
+    ['projectModalLayer', 'test.flush'],
+    ['runPanelAction', 'famousPersons', 'openDetail', 'hero-1'],
+    ['markDirty', 'modal', 'openFamousPersonDetail'],
+    ['flush', 'modal'],
+    ['projectModalLayer', 'test.flush'],
+    ['floating', 'ok'],
+    ['log', 'ok'],
+  ]);
+});
+
+test('CanvasGameApp famous command failure refreshes modal without base render', async () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+  });
+  app.showFamousPersons = true;
+  app.getGameApi = () => ({
+    seekFamousPerson() {
+      calls.push(['api']);
+      return Promise.reject(new Error('network down'));
+    },
+  });
+  app.log = (message) => calls.push(['log', String(message)]);
+  app.renderCanvasSurface = () => {
+    calls.push(['baseRender']);
+    return true;
+  };
+  app.panelSurfaceManager = {
+    projectModalLayer(options = {}) {
+      calls.push(['projectModalLayer', options.reason || '']);
+      return true;
+    },
+  };
+  app.stageScheduler = {
+    markDirty(slot, reason) {
+      calls.push(['markDirty', slot, reason]);
+      return true;
+    },
+    flush(slots) {
+      calls.push(['flush', slots.join(',')]);
+      return app.panelSurfaceManager.projectModalLayer({ reason: 'test.failure' });
+    },
+  };
+
+  assert.equal(await app.seekFamousPerson('seek'), false);
+
+  assert.equal(calls.some(([name]) => name === 'baseRender'), false);
+  assert.equal(calls[1][0], 'log');
+  assert.deepEqual([calls[0], ...calls.slice(2)], [
+    ['api'],
+    ['markDirty', 'modal', 'seekFamousPerson.failure'],
+    ['flush', 'modal'],
+    ['projectModalLayer', 'test.failure'],
+  ]);
+});
+
 test('CanvasGameApp records compat async action dispatch before rejection', async () => {
   const previous = global.ClientOperationLog;
   const events = [];

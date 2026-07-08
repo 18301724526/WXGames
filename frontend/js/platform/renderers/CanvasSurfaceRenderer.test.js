@@ -173,6 +173,43 @@ test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield ru
   assert.equal(host.hitTargets.some((target) => target.action.type === 'suppressed'), false);
 });
 
+test('CanvasSurfaceRenderer resolves modal pool before base and preserves pools across base rebuilds', () => {
+  const host = createHost();
+  const renderer = new CanvasSurfaceRenderer({ host });
+
+  renderer.setHitTargets([]);
+  renderer.addHitTarget({ x: 10, y: 10, width: 120, height: 40 }, { type: 'switchTab', tab: 'tech' });
+  renderer.withHitTargetPool('modal', () => {
+    renderer.addHitTarget({ x: 0, y: 0, width: 300, height: 300 }, {
+      type: 'panelOutsideClick',
+      panelKey: 'famousPersons',
+      background: false,
+      blocksBaseHitTargets: true,
+    });
+  });
+
+  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), {
+    type: 'panelOutsideClick',
+    panelKey: 'famousPersons',
+    background: false,
+    blocksBaseHitTargets: true,
+  });
+
+  renderer.setHitTargets([
+    CanvasSurfaceHitTargets.normalizeHitTarget(
+      { x: 10, y: 10, width: 120, height: 40 },
+      { type: 'switchTab', tab: 'military' },
+    ),
+  ]);
+
+  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), {
+    type: 'panelOutsideClick',
+    panelKey: 'famousPersons',
+    background: false,
+    blocksBaseHitTargets: true,
+  });
+});
+
 test('CanvasSurfaceRenderer preserves hover point and geometry helpers', () => {
   const host = createHost();
   const renderer = new CanvasSurfaceRenderer({ host });
@@ -371,6 +408,7 @@ test('CanvasGameRenderer exposes surface rendering through facade', () => {
 
     setHitTargets(targets) {
       this.host.stubTargets = targets;
+      this.hitTargets = [...targets, { id: 'modal-target' }];
     }
 
     addHitTarget(rect, action) {
@@ -395,7 +433,7 @@ test('CanvasGameRenderer exposes surface rendering through facade', () => {
   assert.equal(renderer.getLayout('x').host, renderer);
   renderer.setHitTargets([{ id: 'target' }]);
   renderer.addHitTarget({ x: 1, y: 2, width: 3, height: 4 }, { type: 'click' });
-  assert.deepEqual(renderer.hitTargets, [{ id: 'target' }]);
+  assert.deepEqual(renderer.hitTargets, [{ id: 'target' }, { id: 'modal-target' }]);
   assert.deepEqual(renderer.stubTargets, [{ id: 'target' }]);
   assert.deepEqual(renderer.stubTarget.action, { type: 'click' });
   assert.equal(renderer.beginFrame({ now: 123 }).method, 'beginFrame');

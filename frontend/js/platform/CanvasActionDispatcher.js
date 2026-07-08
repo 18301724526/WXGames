@@ -15,6 +15,7 @@
     constructor(options = {}) {
       this.log = typeof options.log === 'function' ? options.log : null;
       this.registry = options.registry || CanvasActionDispatchRegistry;
+      this.panelActionRunner = options.panelActionRunner || null;
     }
 
     finishHandled(result, context = {}, action = {}) {
@@ -39,6 +40,7 @@
       if (action.disabled) return true;
       return this.registry.dispatch(action, context, {
         finishHandled: (result) => this.finishHandled(result, context, action),
+        panelActionRunner: this.panelActionRunner,
       });
     }
 

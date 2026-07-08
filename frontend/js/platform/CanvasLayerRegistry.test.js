@@ -41,14 +41,16 @@ test('CanvasLayerRegistry defines the mature engine physical canvas stack', () =
   });
 
   const stack = CanvasLayerRegistry.getPhysicalLayerStack();
-  assert.deepEqual(stack.map((layer) => layer.key), ['worldMap', 'worldFog', 'worldActor', 'mainHud']);
-  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 1000]);
+  assert.deepEqual(stack.map((layer) => layer.key), ['worldMap', 'worldFog', 'worldActor', 'mainHud', 'panelOverlay']);
+  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 1000, 1001]);
   assert.equal(stack[0].cameraSpace, 'world');
   assert.equal(stack[1].cameraSpace, 'world-overlay');
   assert.equal(stack[2].cameraSpace, 'world-dynamic');
   assert.equal(stack[2].inputSurface, false);
   assert.equal(stack[3].cameraSpace, 'screen');
   assert.equal(stack[3].inputSurface, true);
+  assert.equal(stack[4].cameraSpace, 'screen-modal');
+  assert.equal(stack[4].inputSurface, false);
   assert.equal(stack.filter((layer) => layer.inputSurface).length, 1);
 });
 

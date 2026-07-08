@@ -43,80 +43,13 @@ class HostController {
 
 CanvasFamousActionHandlers.install(HostController);
 
-test('CanvasFamousActionHandlers installs famous compatibility methods', () => {
-  assert.equal(typeof HostController.prototype.handle_openFamousPersons, 'function');
+test('CanvasFamousActionHandlers retires pure panel wrappers and keeps API command handlers', () => {
+  assert.equal(typeof HostController.prototype.handle_openFamousPersons, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_closeFamousPersons, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_openFamousPersonDetail, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_closeFamousPersonDetail, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_changeFamousPersonsPage, 'undefined');
   assert.equal(typeof HostController.prototype.handle_seekFamousPerson, 'function');
-  assert.equal(typeof HostController.prototype.handle_changeFamousPersonsPage, 'function');
-});
-
-test('open and close famous persons sync shell, game, renderer, and tutorial state', () => {
-  const calls = [];
-  const game = {
-    showFamousPersons: false,
-    famousPersonsPage: 3,
-    selectedFamousPersonId: 'fp-old',
-    tutorialController: {
-      onFamousPersonsOpened() {
-        calls.push(['opened']);
-      },
-      onFamousPersonsClosed() {
-        calls.push(['closed']);
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
-      },
-    },
-    runtime: {
-      setTimeout(callback) {
-        calls.push(['timeout']);
-        callback();
-      },
-    },
-  };
-  const host = {
-    showFamousPersons: false,
-    showTaskCenter: true,
-    activeCommandPanel: 'famous',
-    famousPersonsPage: 2,
-    selectedFamousPersonId: 'fp-old',
-    lastGame: game,
-    renderer: {
-      clearFamousSkillTooltip() {
-        calls.push(['clearTooltip']);
-      },
-    },
-    renderCanvasAction(action) {
-      calls.push(['render', action.type]);
-    },
-  };
-  const controller = new HostController(host);
-
-  assert.equal(controller.handle_openFamousPersons({ type: 'openFamousPersons' }), true);
-  assert.equal(host.showFamousPersons, true);
-  assert.equal(game.showFamousPersons, true);
-  assert.equal(host.showTaskCenter, false);
-  assert.equal(host.activeCommandPanel, '');
-  assert.equal(host.famousPersonsPage, 0);
-  assert.equal(host.selectedFamousPersonId, '');
-
-  assert.equal(controller.handle_closeFamousPersons({ type: 'closeFamousPersons' }), true);
-  assert.equal(host.showFamousPersons, false);
-  assert.equal(game.showFamousPersons, false);
-  assert.equal(game.famousPersonsPage, 0);
-  assert.equal(game.selectedFamousPersonId, '');
-  assert.deepEqual(calls, [
-    ['clearTooltip'],
-    ['render', 'openFamousPersons'],
-    ['opened'],
-    ['refresh'],
-    ['timeout'],
-    ['refresh'],
-    ['clearTooltip'],
-    ['render', 'closeFamousPersons'],
-    ['closed'],
-    ['timeout'],
-    ['refresh'],
-  ]);
 });
 
 test('seek famous person notifies tutorial with async result', async () => {

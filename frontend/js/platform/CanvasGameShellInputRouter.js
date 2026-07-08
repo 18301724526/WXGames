@@ -491,6 +491,15 @@ handleTap(point, event) {
         currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
         militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView || '',
       });
+      if (action?.disabled) {
+        global.ClientOperationLog?.record?.('input:tapDisabled', {
+          point: global.ClientOperationLog?.summarizePoint?.(point),
+          action: global.ClientOperationLog?.summarizeAction?.(action),
+        }, { flush: true });
+        if (event?.preventDefault) event.preventDefault();
+        if (event?.stopPropagation) event.stopPropagation();
+        return true;
+      }
       if (this.isTutorialInputActive() && !this.isTutorialActionAllowed(action)) {
         return this.blockTutorialCanvasInput(event);
       }
@@ -524,15 +533,6 @@ handleTap(point, event) {
         }
         return false;
       }
-      if (action?.disabled) {
-        global.ClientOperationLog?.record?.('input:tapDisabled', {
-          point: global.ClientOperationLog?.summarizePoint?.(point),
-          action: global.ClientOperationLog?.summarizeAction?.(action),
-        }, { flush: true });
-        if (event?.preventDefault) event.preventDefault();
-        if (event?.stopPropagation) event.stopPropagation();
-        return true;
-      }
       if (!action) {
         const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event, { tapTraceId }) || false;
         this.observeAsyncActionResult(runtimeHandled);
@@ -562,20 +562,6 @@ handleTap(point, event) {
           return true;
         }
       }
-      if (action.type === 'showFamousSkillTooltip') {
-        const handled = typeof this.renderer.setPinnedFamousSkillTooltip === 'function'
-          ? this.renderer.setPinnedFamousSkillTooltip(action)
-          : false;
-        if (handled) this.renderActive();
-        return handled;
-      }
-      if (action.type === 'clearFamousSkillTooltip') {
-        const handled = typeof this.renderer.clearFamousSkillTooltip === 'function'
-          ? this.renderer.clearFamousSkillTooltip()
-          : false;
-        if (handled) this.renderActive();
-        return handled;
-      }
       const handled = this.handleAction(action, event, { tapTraceId });
       logActorPickingDiag('shellInput:handleTap:directActionResult', {
         tapTraceId,
@@ -593,7 +579,9 @@ handleTap(point, event) {
     },
 
 handleAction(action, event, meta = {}) {
-      const handled = this.actionController?.handle?.(action, { ...(meta || {}), event }) || false;
+      const handled = this.actionDispatcher?.canHandle?.(action)
+        ? this.actionDispatcher.handle(action, this)
+        : this.actionController?.handle?.(action, { ...(meta || {}), event }) || false;
       if (action?.type === 'openWorldSite') {
         if (handled && typeof handled.then === 'function') {
           handled.then((value) => {

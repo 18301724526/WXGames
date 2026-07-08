@@ -1,4 +1,28 @@
 (function (global) {
+  const CanvasPanelActionRegistry = (() => {
+    if (global.CanvasPanelActionRegistry) return global.CanvasPanelActionRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasPanelActionRegistry');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const CanvasPanelActionRunner = (() => {
+    if (global.CanvasPanelActionRunner) return global.CanvasPanelActionRunner;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasPanelActionRunner');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const FINISH_ACTIONS = {
     enterCity: { method: 'enterCity' },
     openCityManagement: { method: 'openCityManagement' },
@@ -51,11 +75,6 @@
     openTaskCenter: { method: 'openTaskCenter' },
     closeTaskCenter: { method: 'closeTaskCenter' },
     switchTaskCenterTab: { method: 'switchTaskCenterTab', args: (action) => [action.tab, action] },
-    openFamousPersons: { method: 'openFamousPersons' },
-    closeFamousPersons: { method: 'closeFamousPersons' },
-    changeFamousPersonsPage: { method: 'changeFamousPersonsPage' },
-    openFamousPersonDetail: { method: 'openFamousPersonDetail' },
-    closeFamousPersonDetail: { method: 'closeFamousPersonDetail' },
     selectBuildingCategory: { method: 'selectBuildingCategory' },
     selectTechNode: { method: 'selectTechNode' },
     closeTechDetail: { method: 'closeTechDetail' },
@@ -68,7 +87,7 @@
     closeWorldTargetPicker: { method: 'closeWorldTargetPicker' },
   };
 
-  const SUPPORTED_ACTIONS = [
+  const LEGACY_SUPPORTED_ACTIONS = [
     'switchTab',
     'openResourceDetails',
     'closeResourceDetails',
@@ -125,24 +144,24 @@
     'openTaskCenter',
     'closeTaskCenter',
     'switchTaskCenterTab',
-    'openFamousPersons',
-    'closeFamousPersons',
-    'changeFamousPersonsPage',
-    'openFamousPersonDetail',
-    'closeFamousPersonDetail',
     'selectBuildingCategory',
     'selectTechNode',
     'closeTechDetail',
   ];
-  const SUPPORTED_ACTION_SET = new Set(SUPPORTED_ACTIONS);
+  function getSupportedActions() {
+    return Array.from(new Set([
+      ...LEGACY_SUPPORTED_ACTIONS,
+      ...(CanvasPanelActionRegistry?.supportedActions?.() || []),
+    ]));
+  }
 
   class CanvasActionDispatchRegistry {
     static supportedActions() {
-      return [...SUPPORTED_ACTIONS];
+      return getSupportedActions();
     }
 
     static canHandle(action) {
-      return Boolean(action && SUPPORTED_ACTION_SET.has(action.type));
+      return Boolean(action && getSupportedActions().includes(action.type));
     }
 
     static getArgs(definition = {}, action = {}) {
@@ -168,9 +187,18 @@
       return this.renderIfHandled(switched, context, action);
     }
 
+    static dispatchPanelAction(action = {}, context = {}, options = {}) {
+      if (!CanvasPanelActionRegistry?.has?.(action)) return false;
+      const runner = options.panelActionRunner
+        || context?.panelActionRunner
+        || (CanvasPanelActionRunner ? new CanvasPanelActionRunner() : null);
+      return runner?.run?.(action, context) === true;
+    }
+
     static dispatch(action = {}, context = {}, options = {}) {
       if (!this.canHandle(action)) return false;
       if (action.type === 'switchTab') return this.dispatchSwitchTab(action, context);
+      if (CanvasPanelActionRegistry?.has?.(action)) return this.dispatchPanelAction(action, context, options);
 
       const finishDefinition = FINISH_ACTIONS[action.type];
       if (finishDefinition) {

@@ -19,6 +19,17 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMarchSystem) {
     WorldMarchSystem = require('../domain/WorldMarchSystem');
   }
+  var CanvasPanelActionContextAdapter = global.CanvasPanelActionContextAdapter;
+  if (typeof module !== 'undefined' && module.exports && !CanvasPanelActionContextAdapter) {
+    CanvasPanelActionContextAdapter = require('./CanvasPanelActionContextAdapter');
+  }
+
+  function buildPanelActionContext(host) {
+    return typeof CanvasPanelActionContextAdapter === 'function'
+      ? CanvasPanelActionContextAdapter(host)
+      : host;
+  }
+
   function hasActiveWorldExplorerMission(state = {}, options = {}) {
     if (WorldMarchSystem?.hasActiveMission) {
       return WorldMarchSystem.hasActiveMission(state?.worldExplorerState || {}, options);
@@ -34,6 +45,10 @@
   function install(CanvasGameApp) {
     if (!CanvasGameApp?.prototype) return false;
     Object.assign(CanvasGameApp.prototype, {
+      getPanelActionContext() {
+            return buildPanelActionContext(this);
+          },
+
       render() {
             this.renderMilitaryView();
             this.renderSoftGuide({ skipSurface: true });
@@ -143,7 +158,7 @@
               activeTaskCenterTab: this.activeTaskCenterTab,
               showGuidebook: this.showGuidebook,
               activeGuidebookTab: this.activeGuidebookTab,
-              showFamousPersons: this.showFamousPersons,
+              showFamousPersons: false,
               famousPersonsPage: this.canvasShell?.famousPersonsPage ?? this.famousPersonsPage,
               selectedFamousPersonId: this.canvasShell?.selectedFamousPersonId ?? this.selectedFamousPersonId,
               armyFormationEditor: this.canvasShell && 'armyFormationEditor' in this.canvasShell
@@ -556,36 +571,6 @@
           },
 
       renderCanvasAction() {
-            return this.renderCanvasSurface();
-          },
-
-      changeFamousPersonsPage(action = {}) {
-            const delta = Number(action.delta) || 0;
-            this.famousPersonsPage = Math.max(0, (Number(this.famousPersonsPage) || 0) + delta);
-            this.selectedFamousPersonId = '';
-            if (this.canvasShell && typeof this.canvasShell === 'object') {
-              this.canvasShell.famousPersonsPage = this.famousPersonsPage;
-              if ('selectedFamousPersonId' in this.canvasShell) this.canvasShell.selectedFamousPersonId = '';
-            }
-            this.renderer?.clearFamousSkillTooltip?.();
-            return this.renderCanvasSurface();
-          },
-
-      openFamousPersonDetail(action = {}) {
-            this.selectedFamousPersonId = action.personId || '';
-            if (this.canvasShell && typeof this.canvasShell === 'object' && 'selectedFamousPersonId' in this.canvasShell) {
-              this.canvasShell.selectedFamousPersonId = this.selectedFamousPersonId;
-            }
-            this.renderer?.clearFamousSkillTooltip?.();
-            return this.renderCanvasSurface();
-          },
-
-      closeFamousPersonDetail() {
-            this.selectedFamousPersonId = '';
-            if (this.canvasShell && typeof this.canvasShell === 'object' && 'selectedFamousPersonId' in this.canvasShell) {
-              this.canvasShell.selectedFamousPersonId = '';
-            }
-            this.renderer?.clearFamousSkillTooltip?.();
             return this.renderCanvasSurface();
           },
 

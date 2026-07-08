@@ -34,9 +34,18 @@
       inputSurface: true,
       role: 'screen-hud-input',
     }),
+    panelOverlay: Object.freeze({
+      key: 'panelOverlay',
+      zIndex: 1001,
+      contextType: '2d',
+      pointerEvents: 'none',
+      cameraSpace: 'screen-modal',
+      inputSurface: false,
+      role: 'screen-modal-panel',
+    }),
   });
 
-  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'mainHud']);
+  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'mainHud', 'panelOverlay']);
 
   const RENDER_QUEUE = Object.freeze([
     'worldPanel',
