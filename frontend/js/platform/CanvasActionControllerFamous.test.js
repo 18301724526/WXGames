@@ -49,6 +49,14 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
         calls.push(['clearTooltip']);
       },
     },
+    renderPanelOverlaySurface(panelKey, _manager, options) {
+      calls.push(['renderPanelOverlaySurface', panelKey, options.action.type]);
+      return true;
+    },
+    clearPanelOverlaySurface(panelKey, _manager, options) {
+      calls.push(['clearPanelOverlaySurface', panelKey, options.action?.type || '']);
+      return true;
+    },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
@@ -77,13 +85,14 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
   assert.equal(game.selectedFamousPersonId, '');
   assert.deepEqual(calls, [
     ['clearTooltip'],
-    ['render', 'openFamousPersons'],
+    ['renderPanelOverlaySurface', 'famousPersons', 'openFamousPersons'],
     ['opened'],
     ['refresh'],
     ['timeout'],
     ['refresh'],
     ['clearTooltip'],
-    ['render', 'closeFamousPersons'],
+    ['clearPanelOverlaySurface', 'famousPersons', 'closeFamousPersons'],
+    ['clearPanelOverlaySurface', 'famousPersons', 'closeFamousPersons'],
     ['closed'],
     ['timeout'],
     ['refresh'],
@@ -125,6 +134,10 @@ test('CanvasActionController vetoes tutorial-locked famous persons without mutat
       clearFamousSkillTooltip() {
         calls.push(['clearTooltip']);
       },
+    },
+    renderPanelOverlaySurface(panelKey, _manager, options) {
+      calls.push(['renderPanelOverlaySurface', panelKey, options.action.type]);
+      return true;
     },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
@@ -186,6 +199,10 @@ test('CanvasActionController opens famous persons when the tutorial gate allows 
         calls.push(['clearTooltip']);
       },
     },
+    renderPanelOverlaySurface(panelKey, _manager, options) {
+      calls.push(['renderPanelOverlaySurface', panelKey, options.action.type]);
+      return true;
+    },
     renderCanvasAction(action) {
       calls.push(['render', action.type]);
     },
@@ -203,7 +220,7 @@ test('CanvasActionController opens famous persons when the tutorial gate allows 
   assert.deepEqual(calls, [
     ['canOpenTab', 'famousPersons'],
     ['clearTooltip'],
-    ['render', 'openFamousPersons'],
+    ['renderPanelOverlaySurface', 'famousPersons', 'openFamousPersons'],
     ['onFamousPersonsOpened'],
     ['refreshCurrentHighlight'],
     ['timeout'],

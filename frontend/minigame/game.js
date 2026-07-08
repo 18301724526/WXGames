@@ -151,6 +151,10 @@ require('../js/platform/TutorialGuideUiController');
 require('../js/platform/panels/FamousPersonsPanel');
 require('../js/platform/panels/CanvasPanelRegistry');
 require('../js/platform/CanvasPanelSurfaceManager');
+require('../js/platform/CanvasStageScheduler');
+require('../js/platform/CanvasPanelActionRegistry');
+require('../js/platform/CanvasPanelActionContextAdapter');
+require('../js/platform/CanvasPanelActionRunner');
 require('../js/platform/CanvasGameApp');
 
 const runtime = new globalThis.PlatformRuntime();
