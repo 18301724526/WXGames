@@ -33,7 +33,7 @@ test('TaskDefinitionService loads the tutorial-chain tasks with step-name condit
 
   assert.equal(definitions.errors.length, 0);
   // Pinned to backend/config/defaultTaskDefinitions.json's version; keep the two in sync when bumping again.
-  assert.equal(definitions.version, '0.4.0');
+  assert.equal(definitions.version, '1.0.0');
 
   const homestead = definitions.tasks.find((item) => item.id === 'main_homestead_supplies');
   assert.equal(homestead, undefined);
