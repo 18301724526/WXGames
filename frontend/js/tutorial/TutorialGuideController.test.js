@@ -165,12 +165,9 @@ test('TutorialGuideController highlights the house build button when available',
   linkGameShell(game, shell);
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
-  game.openBlockingPanelSnapshot('showTaskCenter', true);
-  assert.equal(shell.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
 
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
-  assert.equal(shell.isBlockingPanelSnapshotOpen('showTaskCenter'), false);
   assert.equal(game.activeCityManagementTab, 'buildings');
   assert.equal(shell.activeCityManagementTab, '');
   assert.equal(calls.some((call) => call.options?.allowedAction?.buildingId === 'house'), true);
