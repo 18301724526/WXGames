@@ -1462,6 +1462,10 @@
                   network: this.networkState,
                   confirmDialog: snapshotConfirmDialog,
                 });
+                // The full frame just reset the shared hit-target pool to base
+                // targets; repaint any open panel surface in the same task so
+                // panel targets survive authority-refresh renders.
+                this.getPanelSurfaceManager()?.syncOpenPanelSurfacesAfterBaseRender?.();
                 const waterAnimated = Boolean(this.territoryUiState?.tileMapWaterAnimated
                   || this.territoryController?.uiState?.tileMapWaterAnimated);
                 const explorerAnimated = explorerAnimatedForRuntime;
@@ -1546,6 +1550,9 @@
                 }
                 if (!this.renderer?.render) return false;
                 this.renderer.render(this.state, this.buildPanelRenderOptions(activeTab, options));
+                // hud-mode renders also reset the shared hit-target pool; keep
+                // open panel surfaces authoritative.
+                this.getPanelSurfaceManager()?.syncOpenPanelSurfacesAfterBaseRender?.();
                 return true;
               }
 

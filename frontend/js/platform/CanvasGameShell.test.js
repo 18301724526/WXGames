@@ -12,6 +12,7 @@ require('../ecs/system/FogRevealModel');
 require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
+const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 const BattleStore = require('../state/BattleStore');
 const ModalStore = require('../state/ModalStore');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
@@ -3134,4 +3135,100 @@ test('CanvasGameShell animates fog by re-rendering the fog layer only', () => {
   shell.getCanonicalWorldTileMapContext = () => null;
   nowMs += 200;
   assert.equal(shell.renderWorldFogAnimationFrame(nowMs), false);
+});
+
+test('CanvasGameShell full-frame renders keep an open panel surface hit-target authoritative', () => {
+  const state = { currentTab: 'resources', territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } } };
+  let frame = 0;
+  const renderer = {
+    width: 420,
+    height: 747,
+    canvas: { id: 'mainHud' },
+    hitTargets: [],
+    setHitTargets(targets) {
+      this.hitTargets = Array.isArray(targets) ? targets.slice() : [];
+    },
+    beginFrame() {},
+    endFrame() {},
+    withRenderCtx(ctx, callback) {
+      return callback();
+    },
+    render() {
+      // Full frame: reset the shared pool, then register this frame's HUD targets.
+      frame += 1;
+      this.setHitTargets([{ action: { type: 'openCity', frame } }]);
+    },
+  };
+  const panelCanvas = {
+    _backingStorePixelRatio: 1,
+    width: 420,
+    height: 747,
+    getContext() {
+      return { setTransform() {}, clearRect() {} };
+    },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer,
+    runtime: {
+      now() {
+        return 1;
+      },
+      ensureLayerCanvas() {
+        return panelCanvas;
+      },
+      setLayerVisible() {
+        return true;
+      },
+    },
+  });
+  shell.lastGame = { state, tutorial: {} };
+  shell.setWorldMapLayerVisible = () => {};
+  shell.renderWorldMapLayer = () => false;
+  const famousPanel = {
+    opened: false,
+    isOpen() {
+      return this.opened;
+    },
+    open() {
+      this.opened = true;
+      return true;
+    },
+    close() {
+      this.opened = false;
+      return true;
+    },
+    render(renderHost) {
+      renderHost.setHitTargets([{ action: { type: 'closeFamousPersons' } }]);
+    },
+  };
+  shell.panelSurfaceManager = new CanvasPanelSurfaceManager({
+    host: shell,
+    registry: {
+      get(panelKey) {
+        return panelKey === 'famousPersons' ? famousPanel : null;
+      },
+      keys() {
+        return ['famousPersons'];
+      },
+    },
+  });
+  const readOnlyOptions = { forceMapHome: false, allowDefaultMapHome: false };
+
+  assert.equal(shell.renderReadOnly(state, 'resources', readOnlyOptions), true);
+  assert.equal(shell.panelSurfaceManager.openPanel('famousPersons'), true);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons']);
+
+  // An authority refresh / resize repaints the full frame while the panel is open.
+  assert.equal(shell.renderReadOnly(state, 'resources', readOnlyOptions), true);
+
+  // Without any pointer movement, taps must still hit the panel, not the HUD underneath.
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons']);
+
+  // Closing restores the latest full-frame targets, not the open-time snapshot.
+  assert.equal(shell.panelSurfaceManager.closePanel('famousPersons'), true);
+  assert.deepEqual(
+    renderer.hitTargets.map((target) => [target.action.type, target.action.frame]),
+    [['openCity', 2]],
+  );
 });

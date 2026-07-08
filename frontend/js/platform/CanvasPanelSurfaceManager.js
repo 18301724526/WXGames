@@ -70,6 +70,41 @@
       return true;
     }
 
+    // A base-surface render (full frame or hud overlay) resets the renderer's
+    // single shared hitTargets pool to base targets, which silently drops any
+    // open panel's targets: the panel visuals live on the untouched panelOverlay
+    // layer, so the panel still looks open while taps fall through to the HUD
+    // underneath. Hosts call this right after such a render. Each open panel
+    // re-snapshots the fresh base targets and repaints its overlay surface in
+    // the same task, so panel targets stay authoritative while the panel is
+    // open and closePanel restores the latest base targets instead of the
+    // open-time snapshot.
+    syncOpenPanelSurfacesAfterBaseRender(options = {}) {
+      if (this.syncingOpenPanelSurfaces) return false;
+      const registryKeys = typeof this.registry?.keys === 'function' ? this.registry.keys() : [];
+      const panelKeys = new Set([...registryKeys, ...this.baseHitTargetsByPanel.keys()]);
+      let refreshed = false;
+      this.syncingOpenPanelSurfaces = true;
+      try {
+        panelKeys.forEach((panelKey) => {
+          const panel = this.getPanel(panelKey);
+          if (!panel) return;
+          // Panels that cannot report open state only count as open while this
+          // manager tracks them (isPanelOpen's permissive default would repaint
+          // every registered panel on every frame).
+          const open = typeof panel.isOpen === 'function'
+            ? panel.isOpen(this.host, options) !== false
+            : this.baseHitTargetsByPanel.has(panelKey);
+          if (!open) return;
+          this.baseHitTargetsByPanel.delete(panelKey);
+          refreshed = this.refreshPanelSurface(panelKey, options) || refreshed;
+        });
+      } finally {
+        this.syncingOpenPanelSurfaces = false;
+      }
+      return refreshed;
+    }
+
     openPanel(panelKey = '', options = {}) {
       const panel = this.getPanel(panelKey);
       if (!panel?.open) return false;

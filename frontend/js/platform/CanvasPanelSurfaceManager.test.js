@@ -87,3 +87,104 @@ test('CanvasPanelSurfaceManager opens a registered panel and refreshes only the 
     ['renderer.setHitTargets', 'openCity'],
   ]);
 });
+
+test('CanvasPanelSurfaceManager base-render sync re-asserts panel targets and refreshes the base snapshot', () => {
+  const renderer = {
+    hitTargets: [{ action: { type: 'openCity' } }],
+    setHitTargets(targets) {
+      this.hitTargets = targets;
+    },
+  };
+  const famousPanel = {
+    opened: false,
+    isOpen() {
+      return this.opened;
+    },
+    open() {
+      this.opened = true;
+      return true;
+    },
+    close() {
+      this.opened = false;
+      return true;
+    },
+    render() {},
+  };
+  const host = {
+    renderer,
+    state: { id: 'state-1' },
+    renderPanelOverlaySurface(panelKey, manager, options) {
+      manager.renderPanel(panelKey, renderer, options.state, { mode: 'panelOverlay' });
+      renderer.setHitTargets([{ action: { type: 'closeFamousPersons' } }]);
+      return true;
+    },
+    clearPanelOverlaySurface() {
+      return true;
+    },
+  };
+  const manager = new CanvasPanelSurfaceManager({
+    host,
+    registry: {
+      get(panelKey) {
+        return panelKey === 'famousPersons' ? famousPanel : null;
+      },
+      keys() {
+        return ['famousPersons'];
+      },
+    },
+  });
+
+  assert.equal(manager.openPanel('famousPersons'), true);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons']);
+
+  // A full-frame render stomps the shared pool with fresh base targets.
+  renderer.setHitTargets([{ action: { type: 'openCity' } }, { action: { type: 'openTaskCenter' } }]);
+  assert.equal(manager.syncOpenPanelSurfacesAfterBaseRender(), true);
+  // Panel targets are authoritative again without any pointer movement...
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['closeFamousPersons']);
+  // ...and closing restores the latest base targets, not the open-time snapshot.
+  assert.equal(manager.closePanel('famousPersons'), true);
+  assert.deepEqual(
+    renderer.hitTargets.map((target) => target.action.type),
+    ['openCity', 'openTaskCenter'],
+  );
+});
+
+test('CanvasPanelSurfaceManager base-render sync is a no-op while no panel is open', () => {
+  const calls = [];
+  const renderer = {
+    hitTargets: [{ action: { type: 'openCity' } }],
+    setHitTargets(targets) {
+      this.hitTargets = targets;
+    },
+  };
+  const famousPanel = {
+    isOpen() {
+      return false;
+    },
+    render() {
+      calls.push('panel.render');
+    },
+  };
+  const manager = new CanvasPanelSurfaceManager({
+    host: {
+      renderer,
+      renderPanelOverlaySurface() {
+        calls.push('renderPanelOverlaySurface');
+        return true;
+      },
+    },
+    registry: {
+      get(panelKey) {
+        return panelKey === 'famousPersons' ? famousPanel : null;
+      },
+      keys() {
+        return ['famousPersons'];
+      },
+    },
+  });
+
+  assert.equal(manager.syncOpenPanelSurfacesAfterBaseRender(), false);
+  assert.deepEqual(calls, []);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity']);
+});

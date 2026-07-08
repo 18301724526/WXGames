@@ -2460,3 +2460,29 @@ test('toggleEntityBattleAuto flips side-0 skills and issueEntityInput guards rep
     BattleStore.closeEntityBattle();
   }
 });
+
+test('CanvasGameApp renderCanvasSurface re-syncs open panel surfaces after the full frame', () => {
+  const calls = [];
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    renderer: {
+      render() {
+        calls.push(['render']);
+      },
+    },
+    useWorldMapRuntime: false,
+    initialState: { currentTab: 'resources' },
+  });
+  app.canvasShell = null;
+  app.panelSurfaceManager = {
+    syncOpenPanelSurfacesAfterBaseRender() {
+      calls.push(['syncOpenPanelSurfacesAfterBaseRender']);
+      return true;
+    },
+  };
+
+  assert.equal(app.renderCanvasSurface('resources'), true);
+  assert.deepEqual(calls, [['render'], ['syncOpenPanelSurfacesAfterBaseRender']]);
+});
