@@ -1,4 +1,28 @@
 (function (global) {
+  const CanvasPanelActionRegistry = (() => {
+    if (global.CanvasPanelActionRegistry) return global.CanvasPanelActionRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasPanelActionRegistry');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const CanvasPanelActionRunner = (() => {
+    if (global.CanvasPanelActionRunner) return global.CanvasPanelActionRunner;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasPanelActionRunner');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const FINISH_ACTIONS = {
     enterCity(context = {}, action = {}) {
       return typeof context.enterCity === 'function' ? context.enterCity(action) : false;
@@ -216,32 +240,6 @@
         : false;
     },
 
-    openFamousPersons(context = {}, action = {}) {
-      return typeof context.openFamousPersons === 'function' ? context.openFamousPersons(action) : false;
-    },
-
-    closeFamousPersons(context = {}, action = {}) {
-      return typeof context.closeFamousPersons === 'function' ? context.closeFamousPersons(action) : false;
-    },
-
-    changeFamousPersonsPage(context = {}, action = {}) {
-      return typeof context.changeFamousPersonsPage === 'function'
-        ? context.changeFamousPersonsPage(action)
-        : false;
-    },
-
-    openFamousPersonDetail(context = {}, action = {}) {
-      return typeof context.openFamousPersonDetail === 'function'
-        ? context.openFamousPersonDetail(action)
-        : false;
-    },
-
-    closeFamousPersonDetail(context = {}, action = {}) {
-      return typeof context.closeFamousPersonDetail === 'function'
-        ? context.closeFamousPersonDetail(action)
-        : false;
-    },
-
     selectBuildingCategory(context = {}, action = {}) {
       return typeof context.selectBuildingCategory === 'function'
         ? context.selectBuildingCategory(action)
@@ -293,7 +291,7 @@
     },
   };
 
-  const SUPPORTED_ACTIONS = [
+  const LEGACY_SUPPORTED_ACTIONS = [
     'switchTab',
     'openResourceDetails',
     'closeResourceDetails',
@@ -350,24 +348,25 @@
     'openTaskCenter',
     'closeTaskCenter',
     'switchTaskCenterTab',
-    'openFamousPersons',
-    'closeFamousPersons',
-    'changeFamousPersonsPage',
-    'openFamousPersonDetail',
-    'closeFamousPersonDetail',
     'selectBuildingCategory',
     'selectTechNode',
     'closeTechDetail',
   ];
-  const SUPPORTED_ACTION_SET = new Set(SUPPORTED_ACTIONS);
+
+  function getSupportedActions() {
+    return Array.from(new Set([
+      ...LEGACY_SUPPORTED_ACTIONS,
+      ...(CanvasPanelActionRegistry?.supportedActions?.() || []),
+    ]));
+  }
 
   class CanvasActionDispatchRegistry {
     static supportedActions() {
-      return [...SUPPORTED_ACTIONS];
+      return getSupportedActions();
     }
 
     static canHandle(action) {
-      return Boolean(action && SUPPORTED_ACTION_SET.has(action.type));
+      return Boolean(action && getSupportedActions().includes(action.type));
     }
 
     static renderIfHandled(handled, context = {}, action = {}) {
@@ -383,9 +382,18 @@
       return this.renderIfHandled(switched, context, action);
     }
 
+    static dispatchPanelAction(action = {}, context = {}, options = {}) {
+      if (!CanvasPanelActionRegistry?.has?.(action)) return false;
+      const runner = options.panelActionRunner
+        || context?.panelActionRunner
+        || (CanvasPanelActionRunner ? new CanvasPanelActionRunner() : null);
+      return runner?.run?.(action, context) === true;
+    }
+
     static dispatch(action = {}, context = {}, options = {}) {
       if (!this.canHandle(action)) return false;
       if (action.type === 'switchTab') return this.dispatchSwitchTab(action, context);
+      if (CanvasPanelActionRegistry?.has?.(action)) return this.dispatchPanelAction(action, context, options);
 
       const finishAction = FINISH_ACTIONS[action.type];
       if (finishAction) {

@@ -50,6 +50,34 @@ test('CanvasActionDispatcher preserves render action and disabled contracts', ()
   ]);
 });
 
+test('CanvasActionDispatcher routes famous descriptors through panel runner only', () => {
+  const calls = [];
+  const action = { type: 'openFamousPersons' };
+  const dispatcher = new CanvasActionDispatcher({
+    panelActionRunner: {
+      run(value, context) {
+        calls.push(['panelRunner.run', value.type, context.id]);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(dispatcher.handle(action, {
+    id: 'ctx-1',
+    openFamousPersons() {
+      calls.push(['legacy.openFamousPersons']);
+      return true;
+    },
+    render() {
+      calls.push(['render']);
+    },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['panelRunner.run', 'openFamousPersons', 'ctx-1'],
+  ]);
+});
+
 test('CanvasActionDispatcher preserves async finish handling and error logging', async () => {
   const calls = [];
   const errors = [];
