@@ -402,7 +402,7 @@
       const step = TutorialFlowShared.stepName(tutorial?.currentStep) || tutorialSteps.initial;
       const { stepAtLeast, stepAtMost, stepBefore } = TutorialFlowShared;
       const disabledByTutorial = Boolean(tutorial && !tutorial.completed && guidedBuildingId !== id && (
-        (stepAtLeast(step, tutorialSteps.houseGuideReady) && stepBefore(step, tutorialSteps.houseBuilt) && id !== 'house')
+        (stepAtLeast(step, tutorialSteps.cityEntered) && stepBefore(step, tutorialSteps.houseBuilt) && id !== 'house')
         || (stepAtLeast(step, tutorialSteps.buildingsTabOpened) && stepBefore(step, tutorialSteps.farmBuilt) && id !== 'farm')
         || (stepAtLeast(step, tutorialSteps.buildingsTabOpenedForLumbermill) && stepAtMost(step, tutorialSteps.lumbermillBuilt) && id !== 'lumbermill')
       ));

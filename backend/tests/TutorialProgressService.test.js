@@ -35,23 +35,20 @@ test('tutorial validation blocks early era advancement until civilization is ope
 test('tutorial house guide only allows the first house build before era advancement', () => {
   const tutorial = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.houseGuideReady,
+    TutorialService.TUTORIAL_STEPS.cityEntered,
   );
-  const gameState = { currentEra: 0, buildings: {}, resources: { food: 130 } };
+  const gameState = { currentEra: 0, buildings: {}, resources: { food: 0 } };
 
   assert.equal(TutorialService.validateAction(tutorial, 'build', { target: 'house' }, gameState).allowed, true);
   assert.equal(TutorialService.validateAction(tutorial, 'build', { target: 'farm' }, gameState).allowed, false);
   assert.equal(TutorialService.validateAction(tutorial, 'advanceEra', {}, gameState).allowed, false);
 });
 
-test('tutorial task claims advance the homestead and barracks-segment steps', () => {
+test('tutorial task claims advance the barracks-segment steps', () => {
   const cityEntered = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
     TutorialService.TUTORIAL_STEPS.cityEntered,
   );
-  // Claim-driven advances via TASK_CLAIM_STEPS (kept step names, new triggers).
-  const houseReady = TutorialService.manualAdvance(cityEntered, TutorialService.TUTORIAL_STEPS.houseGuideReady);
-  assert.equal(houseReady.currentStep, TutorialService.TUTORIAL_STEPS.houseGuideReady);
 
   const era3 = TutorialService.manualAdvance(cityEntered, TutorialService.TUTORIAL_STEPS.era3Advanced);
   const suppliesClaimed = TutorialService.manualAdvance(era3, TutorialService.TUTORIAL_STEPS.barracksSuppliesClaimed);
@@ -61,13 +58,12 @@ test('tutorial task claims advance the homestead and barracks-segment steps', ()
   assert.equal(armyClaimed.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
 });
 
-test('tab access opens the task center and buildings for the claim-driven segments', () => {
+test('tab access keeps the first house guide on buildings before claim-driven segments', () => {
   const cityEntered = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
     TutorialService.TUTORIAL_STEPS.cityEntered,
   );
-  // Homestead claim window: the task center must open before the first house.
-  assert.equal(TutorialService.canAccessTab(cityEntered, 'tasks'), true);
+  assert.equal(TutorialService.canAccessTab(cityEntered, 'tasks'), false);
   assert.equal(TutorialService.canAccessTab(cityEntered, 'buildings'), true);
   assert.equal(TutorialService.canAccessTab(cityEntered, 'events'), false);
 

@@ -20,7 +20,7 @@ async function flushTutorialPromises(ticks = 12) {
   }
 }
 
-test('TutorialGuideController advances city entry and leaves houseGuideReady to the homestead claim', async () => {
+test('TutorialGuideController advances city entry and keeps the house build guide active', async () => {
   const calls = [];
   const game = {
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.initial },
@@ -40,24 +40,19 @@ test('TutorialGuideController advances city entry and leaves houseGuideReady to 
 
   await controller.markCityEntered();
 
-  // houseGuideReady is claim-driven (main_homestead_supplies via
-  // TASK_CLAIM_STEPS), so city entry stops at cityEntered.
   assert.deepEqual(calls.map(([name, step]) => [name, step]), [
     ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.cityEntered],
     ['applyApiState', TutorialGuideController.TUTORIAL_STEPS.cityEntered],
   ]);
 });
 
-test('TutorialGuideFlowRegistry guides the homestead claim pair at cityEntered', () => {
+test('TutorialGuideFlowRegistry guides the first house build at cityEntered', () => {
   const calls = [];
   const shell = makeModalHost({
+    activeCityManagementTab: '',
     getCanvasTarget(type, predicate) {
-      const targets = {
-        openTaskCenter: { type: 'openTaskCenter', source: 'taskIcon' },
-        claimTaskReward: { type: 'claimTaskReward', taskId: 'main_homestead_supplies', category: 'main' },
-      };
-      const action = targets[type];
-      if (action && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
+      const action = { type: 'buildBuilding', buildingId: 'house' };
+      if (type === 'buildBuilding' && (!predicate || predicate(action))) return { x: 10, y: 20, width: 100, height: 30 };
       return null;
     },
     showTutorialHighlight(target, message, options) {
@@ -80,22 +75,15 @@ test('TutorialGuideFlowRegistry guides the homestead claim pair at cityEntered',
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 
-  assert.equal(controller.canOpenTab('tasks'), true);
+  assert.equal(controller.canOpenTab('tasks'), false);
+  assert.equal(controller.canOpenTab('buildings'), true);
   assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openTaskCenter' });
-
-  game.openBlockingPanelSnapshot('showTaskCenter', true);
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, {
-    type: 'claimTaskReward',
-    taskId: 'main_homestead_supplies',
-    category: 'main',
-  });
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'buildBuilding', buildingId: 'house' });
 });
 
 test('TutorialGuideController only allows first house build during house guide', () => {
   const controller = new TutorialGuideController({
-    state: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseGuideReady },
+    state: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.cityEntered },
   });
 
   assert.equal(controller.onBuildingAction('house', 'build'), true);
@@ -160,7 +148,7 @@ test('TutorialGuideController highlights the house build button when available',
     },
   });
   const game = makeModalHost({
-    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.houseGuideReady },
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.cityEntered },
   });
   linkGameShell(game, shell);
   const controller = new TutorialGuideController({ game });

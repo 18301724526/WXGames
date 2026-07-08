@@ -124,7 +124,6 @@
 
   // Task-center reward claim -> tutorial step advanced after claiming.
   const TASK_CLAIM_STEPS = Object.freeze({
-    main_homestead_supplies: TUTORIAL_STEPS.houseGuideReady,
     main_first_supplies: TUTORIAL_STEPS.farmPrepReserved,
     main_lumbermill_supplies: TUTORIAL_STEPS.era3AdvanceReady,
     main_barracks_supplies: TUTORIAL_STEPS.barracksSuppliesClaimed,

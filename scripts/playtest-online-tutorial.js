@@ -1478,18 +1478,8 @@ async function chooseNextAction(page, iteration) {
 
   const step = state.tutorialStep;
   const stepIs = (name) => step === stepIndexOf(name);
-  if (stepIs(STEPS.cityEntered) && !state.taskCenterOpen) {
-    return clickByPredicate(page, `open-task-center-homestead-${iteration}`, (action) => (
-      action.type === 'openTaskCenter' && !action.disabled
-    ));
-  }
-  if (stepIs(STEPS.cityEntered) && state.taskCenterOpen) {
-    return clickByPredicate(page, `claim-homestead-task-${iteration}`, (action) => (
-      action.type === 'claimTaskReward' && action.taskId === 'main_homestead_supplies' && !action.disabled
-    ));
-  }
-  if (stepIs(STEPS.houseGuideReady) || stepIs(STEPS.farmPrepReserved) || stepIs(STEPS.buildingsTabOpenedForLumbermill)) {
-    const buildingId = stepIs(STEPS.houseGuideReady) ? 'house' : (stepIs(STEPS.farmPrepReserved) ? 'farm' : 'lumbermill');
+  if (stepIs(STEPS.cityEntered) || stepIs(STEPS.houseGuideReady) || stepIs(STEPS.farmPrepReserved) || stepIs(STEPS.buildingsTabOpenedForLumbermill)) {
+    const buildingId = (stepIs(STEPS.cityEntered) || stepIs(STEPS.houseGuideReady)) ? 'house' : (stepIs(STEPS.farmPrepReserved) ? 'farm' : 'lumbermill');
     return clickByPredicate(page, `build-${buildingId}-${iteration}`, (action) => (
       action.type === 'buildBuilding' && action.buildingId === buildingId && !action.disabled
     ));

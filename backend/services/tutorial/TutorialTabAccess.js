@@ -12,9 +12,7 @@ function canAccessTab(tutorialState, tabKey) {
   if (tutorial.completed || tutorial.disabled) return true;
   const step = tutorial.currentStep;
 
-  // 'tasks' opens from the very start: the homestead-supplies task is claimed
-  // at cityEntered, before the first house exists.
-  if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'buildings', 'military', 'tasks'].includes(tabKey);
+  if (stepBefore(step, TUTORIAL_STEPS.houseBuilt)) return ['resources', 'buildings', 'military'].includes(tabKey);
   if (stepBefore(step, TUTORIAL_STEPS.eraAdvancedTo1)) return ['resources', 'civilization', 'buildings', 'military'].includes(tabKey);
   if (stepAtMost(step, TUTORIAL_STEPS.farmBuilt)) return ['civilization', 'buildings'].includes(tabKey);
   if (stepEquals(step, TUTORIAL_STEPS.era2AdvanceReady)) return tabKey === 'civilization';

@@ -473,7 +473,7 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   });
   app.tutorial = {
     completed: false,
-    currentStep: TutorialGuideController.TUTORIAL_STEPS.houseGuideReady,
+    currentStep: TutorialGuideController.TUTORIAL_STEPS.cityEntered,
   };
   app.state = {
     currentTab: 'buildings',

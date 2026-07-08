@@ -491,8 +491,6 @@
       'tutorial.highlight.advanceEra': '条件已经满足，点击进阶，让文明迈入农耕时代。',
       'tutorial.highlight.openTaskCenter': '打开任务，领取第一份主线物资。',
       'tutorial.highlight.claimFirstSupplies': '领取“安居的火种”，准备建造第一块农田。',
-      'tutorial.highlight.openHomesteadTask': '打开任务，领取安家物资，先把住所安顿下来。',
-      'tutorial.highlight.claimHomesteadSupplies': '领取“安家物资”，用这批粮食建起第一处民居。',
       'tutorial.highlight.openBarracksTask': '打开任务，领取兵营物资。',
       'tutorial.highlight.claimBarracksSupplies': '领取“兵营物资”，为建设兵营备齐粮草。',
       'tutorial.highlight.openBuildingsForBarracks': '打开建筑，为城邦选址建设兵营。',
@@ -1460,10 +1458,6 @@
       'tutorial.highlight.openTaskCenter': 'Open Tasks and claim your first main-line supplies.',
       'tutorial.highlight.claimFirstSupplies':
         'Claim “Spark of Settlement” and get ready to build your first farm.',
-      'tutorial.highlight.openHomesteadTask':
-        'Open Tasks and claim the homestead supplies to settle your people in.',
-      'tutorial.highlight.claimHomesteadSupplies':
-        'Claim “Homestead Supplies” and use the food to build your first house.',
       'tutorial.highlight.openBarracksTask': 'Open Tasks and claim the barracks supplies.',
       'tutorial.highlight.claimBarracksSupplies':
         'Claim “Barracks Supplies” to stock up for the barracks build.',

@@ -134,7 +134,6 @@ test('CLIENT_STEP_GATES mirrors the client gate table 1:1', () => {
 
 test('TASK_CLAIM_STEPS carries the task-center claim advances', () => {
   assert.deepEqual(TASK_CLAIM_STEPS, {
-    main_homestead_supplies: 'houseGuideReady',
     main_first_supplies: 'farmPrepReserved',
     main_lumbermill_supplies: 'era3AdvanceReady',
     main_barracks_supplies: 'barracksSuppliesClaimed',

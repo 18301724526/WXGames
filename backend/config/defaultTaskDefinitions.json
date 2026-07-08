@@ -1,18 +1,6 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "tasks": [
-    {
-      "id": "main_homestead_supplies",
-      "category": "main",
-      "title": "安家物资",
-      "description": "族人初到此地，领取安家物资，建起第一处民居。",
-      "target": "tasks",
-      "condition": { "type": "tutorialStepAtLeast", "step": "cityEntered" },
-      "reward": { "formulas": ["buildCost:house"] },
-      "action": { "type": "claimTaskReward", "taskId": "main_homestead_supplies", "category": "main" },
-      "sortOrder": 5,
-      "enabled": true
-    },
     {
       "id": "main_build_house",
       "category": "main",

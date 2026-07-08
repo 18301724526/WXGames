@@ -144,7 +144,7 @@ test('BuildingConfig exposes registry metadata and validation without changing g
   assert.equal(metadata.entryIds.includes('house'), true);
   assert.equal(validation.success, true);
   assert.deepEqual(validation.errors, []);
-  assert.deepEqual(BuildingConfig.getBuildCost('house'), { food: 30 });
+  assert.deepEqual(BuildingConfig.getBuildCost('house'), {});
 });
 
 function assertConfigRegistry(moduleApi, expected) {

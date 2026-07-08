@@ -7,6 +7,7 @@ const ClientGameStateAssembler = require('../services/ClientGameStateAssembler')
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
 const TutorialService = require('../services/TutorialService');
 const WorldExplorerService = require('../services/WorldExplorerService');
+const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -102,10 +103,7 @@ test('new tutorial client state exposes the first house before era one unlocks b
 
   assert.equal(clientState.currentEra, 0);
   assert.equal(clientState.unlockedBuildings.includes('house'), true);
-  // The old normalize-time house-guide top-up is retired: the house build cost
-  // (food 30) now arrives via the claimable main_homestead_supplies task, and
-  // the starting resources already cover it.
-  assert.equal(clientState.resources.food >= 30, true);
+  assert.deepEqual(BuildingConfig.getBuildCost('house'), {});
 });
 
 test('initial game state can be created around an assigned real-world spawn', () => {

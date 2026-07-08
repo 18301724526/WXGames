@@ -69,7 +69,7 @@
         "habitabilityPressure": 0,
         "summary": "民居后续需要粮食与木材维持生活空间，承担人口扩张基础。"
       },
-      "buildCost": { "food": 30 },
+      "buildCost": {},
       "upgradeCosts": [
         { "food": 80 },
         { "food": 200 }

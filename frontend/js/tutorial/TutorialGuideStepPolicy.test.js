@@ -16,7 +16,7 @@ test('TutorialGuideStepPolicy exposes the shared step-name table', () => {
 
 test('TutorialGuideStepPolicy gates tab access by current tutorial step', () => {
   assert.equal(TutorialGuideStepPolicy.canOpenTab('events', {
-    step: TUTORIAL_STEPS.houseGuideReady,
+    step: TUTORIAL_STEPS.cityEntered,
     completed: false,
   }), false);
   assert.equal(TutorialGuideStepPolicy.canOpenTab('civilization', {

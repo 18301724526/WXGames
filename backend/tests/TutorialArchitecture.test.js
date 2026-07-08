@@ -39,8 +39,8 @@ test('TutorialProgressService stays a facade over focused tutorial modules', () 
 
 test('tutorial module responsibilities remain split by public contract', () => {
   const initial = TutorialState.createInitialTutorialState();
-  const houseReady = TutorialProgression.manualAdvance(initial, TutorialService.TUTORIAL_STEPS.houseGuideReady);
-  const gameState = { currentEra: 0, buildings: {}, resources: { food: 100 } };
+  const houseReady = TutorialProgression.manualAdvance(initial, TutorialService.TUTORIAL_STEPS.cityEntered);
+  const gameState = { currentEra: 0, buildings: {}, resources: { food: 0 } };
 
   assert.equal(TutorialTabAccess.canAccessTab(houseReady, 'buildings'), true);
   assert.equal(TutorialActionValidator.validateAction(houseReady, 'build', { target: 'house' }, gameState).allowed, true);
