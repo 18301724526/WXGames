@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const {
   discoverContractTests,
+  hasGitWorkTree,
   isContractTestFile,
   uniqueFiles,
 } = require('./run-architecture-smoke');
@@ -42,4 +43,13 @@ test('architecture smoke removes duplicate test entries while preserving order',
     'a.test.js',
     'b.test.js',
   ]);
+});
+
+test('architecture smoke recognizes directories without git metadata', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-smoke-no-git-'));
+  try {
+    assert.equal(hasGitWorkTree(repoRoot), false);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
 });

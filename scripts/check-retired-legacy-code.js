@@ -1,5 +1,6 @@
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
+const path = require('node:path');
 
 const ACTIVE_SOURCE_PREFIXES = Object.freeze([
   'backend/',
@@ -52,6 +53,8 @@ const RETIRED_LAYER_IMPORT_PATTERNS = Object.freeze([
   new RegExp(`import\\(\\s*['"][^'"]*/${RETIRED_LAYER_NAME}/`),
 ]);
 
+const EXCLUDED_SCAN_DIRS = new Set(['.git', '.codegraph', 'node_modules', 'vendor']);
+
 const RETIRED_LAYER_TOKEN_PATTERN = new RegExp(
   [
     `\\.${escapeRegExp(RETIRED_LAYER_NAME)}\\b`,
@@ -74,16 +77,60 @@ function findRetiredSymbolsInText(text = '') {
   return RETIRED_SYMBOLS.filter((symbol) => hasRetiredSymbol(text, symbol));
 }
 
-function runGitLsFiles() {
+function normalizePath(file) {
+  return String(file || '').replace(/\\/g, '/');
+}
+
+function hasGitWorkTree(cwd = process.cwd()) {
+  const result = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
+    cwd,
+    encoding: 'utf8',
+    shell: false,
+  });
+  return result.status === 0 && result.stdout.trim() === 'true';
+}
+
+function runGitLsFiles(cwd = process.cwd()) {
   const result = spawnSync('git', ['ls-files'], {
-    cwd: process.cwd(),
+    cwd,
     encoding: 'utf8',
     shell: false,
   });
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || 'git ls-files failed');
   }
-  return result.stdout.split(/\r?\n/).filter(Boolean).map((file) => file.replace(/\\/g, '/'));
+  return result.stdout.split(/\r?\n/).filter(Boolean).map(normalizePath);
+}
+
+function collectFilesystemFiles(root = process.cwd()) {
+  const files = [];
+
+  function visit(directory, relativePrefix = '') {
+    const entries = fs.readdirSync(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && EXCLUDED_SCAN_DIRS.has(entry.name)) continue;
+      const relativePath = relativePrefix ? path.join(relativePrefix, entry.name) : entry.name;
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolutePath, relativePath);
+        continue;
+      }
+      if (entry.isFile()) files.push(normalizePath(relativePath));
+    }
+  }
+
+  visit(root);
+  return files.sort();
+}
+
+function collectInspectableFiles(cwd = process.cwd(), options = {}) {
+  const isGitWorkTree = typeof options.hasGitWorkTree === 'function'
+    ? options.hasGitWorkTree(cwd)
+    : hasGitWorkTree(cwd);
+  if (isGitWorkTree) {
+    return { mode: 'git', files: runGitLsFiles(cwd) };
+  }
+  return { mode: 'filesystem', files: collectFilesystemFiles(cwd) };
 }
 
 function isActiveProductionSource(file) {
@@ -95,14 +142,14 @@ function isActiveProductionSource(file) {
 
 function findRetiredFileOffenders(files = [], options = {}) {
   const exists = typeof options.exists === 'function' ? options.exists : fs.existsSync;
-  const tracked = new Set(files.map((file) => String(file || '').replace(/\\/g, '/')));
+  const tracked = new Set(files.map(normalizePath));
   return RETIRED_FILES.filter((file) => tracked.has(file) && exists(file));
 }
 
 function findRetiredLayerPathOffenders(files = [], options = {}) {
   const exists = typeof options.exists === 'function' ? options.exists : fs.existsSync;
   return files
-    .map((file) => String(file || '').replace(/\\/g, '/'))
+    .map(normalizePath)
     .filter((file) => RETIRED_LAYER_PATHS.some((prefix) => file.startsWith(prefix)))
     .filter((file) => exists(file));
 }
@@ -164,13 +211,14 @@ function findRetiredSymbolOffenders(files = []) {
   return offenders;
 }
 
-function findOffenders(files = runGitLsFiles()) {
+function findOffenders(files = null) {
+  const inspectedFiles = Array.isArray(files) ? files : collectInspectableFiles().files;
   return {
-    files: findRetiredFileOffenders(files),
-    retiredLayerPaths: findRetiredLayerPathOffenders(files),
-    retiredLayerImports: findRetiredLayerImportOffenders(files),
-    retiredLayerTokens: findRetiredLayerTokenOffenders(files),
-    symbols: findRetiredSymbolOffenders(files),
+    files: findRetiredFileOffenders(inspectedFiles),
+    retiredLayerPaths: findRetiredLayerPathOffenders(inspectedFiles),
+    retiredLayerImports: findRetiredLayerImportOffenders(inspectedFiles),
+    retiredLayerTokens: findRetiredLayerTokenOffenders(inspectedFiles),
+    symbols: findRetiredSymbolOffenders(inspectedFiles),
   };
 }
 
@@ -185,7 +233,14 @@ function hasOffenders(offenders = {}) {
 }
 
 function main() {
-  const offenders = findOffenders();
+  let inventory;
+  try {
+    inventory = collectInspectableFiles();
+  } catch (error) {
+    process.stderr.write(`${error.message || error}\n`);
+    process.exit(1);
+  }
+  const offenders = findOffenders(inventory.files);
   if (hasOffenders(offenders)) {
     console.error('[retired-legacy-code] retired active code found:');
     offenders.files.forEach((file) => console.error(`- retired file still tracked: ${file}`));
@@ -201,7 +256,7 @@ function main() {
     offenders.symbols.forEach(({ file, symbol }) => console.error(`- ${file}: ${symbol}`));
     process.exit(1);
   }
-  console.log('[retired-legacy-code] passed');
+  console.log(`[retired-legacy-code] passed (${inventory.mode})`);
 }
 
 if (require.main === module) {
@@ -210,6 +265,7 @@ if (require.main === module) {
 
 module.exports = {
   ACTIVE_SOURCE_PREFIXES,
+  EXCLUDED_SCAN_DIRS,
   EXCLUDED_PATH_PATTERNS,
   RETIRED_FILES,
   RETIRED_LAYER_NAME,
@@ -217,6 +273,8 @@ module.exports = {
   RETIRED_LAYER_PATHS,
   RETIRED_LAYER_TOKEN_PATTERN,
   RETIRED_SYMBOLS,
+  collectFilesystemFiles,
+  collectInspectableFiles,
   findOffenders,
   findRetiredFileOffenders,
   findRetiredLayerImportOffenders,
@@ -228,5 +286,8 @@ module.exports = {
   findRetiredSymbolOffenders,
   hasRetiredSymbol,
   hasOffenders,
+  hasGitWorkTree,
   isActiveProductionSource,
+  normalizePath,
+  runGitLsFiles,
 };

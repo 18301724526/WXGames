@@ -674,6 +674,23 @@ function run(label, command, args) {
   }
 }
 
+function hasGitWorkTree(cwd = process.cwd()) {
+  const result = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
+    cwd,
+    encoding: 'utf8',
+    shell: false,
+  });
+  return result.status === 0 && result.stdout.trim() === 'true';
+}
+
+function runGitDiffCheck(cwd = process.cwd()) {
+  if (!hasGitWorkTree(cwd)) {
+    console.log('[architecture-smoke] git diff --check skipped (no git worktree)');
+    return;
+  }
+  run('git diff --check', 'git', ['diff', '--check']);
+}
+
 function main() {
   CHECK_FILES.forEach((file) => {
     run(`node --check ${file}`, process.execPath, ['--check', file]);
@@ -799,7 +816,7 @@ function main() {
     '--check',
   ]);
   run('official document guard', process.execPath, ['scripts/verify-refactor-plan-doc.js']);
-  run('git diff --check', 'git', ['diff', '--check']);
+  runGitDiffCheck();
 
   console.log('[architecture-smoke] passed');
 }
@@ -812,6 +829,8 @@ module.exports = {
   CHECK_FILES,
   TEST_FILES,
   discoverContractTests,
+  hasGitWorkTree,
   isContractTestFile,
+  runGitDiffCheck,
   uniqueFiles,
 };

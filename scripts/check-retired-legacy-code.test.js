@@ -1,7 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const {
+  collectInspectableFiles,
   findRetiredFileOffenders,
   findRetiredLayerImportOffendersInText,
   findRetiredLayerPathOffenders,
@@ -112,4 +116,28 @@ test('retired legacy guard matches exact symbols without blocking current plural
   assert.equal(hasRetiredSymbol('renderer.renderWorldScoutUnitsLegacy();', 'renderWorldScoutUnitsLegacy'), true);
   assert.equal(hasRetiredSymbol('CanvasPreloadAssetManifest.getWorldScoutUnitFramePaths();', 'getWorldScoutUnitFramePath'), false);
   assert.deepEqual(findRetiredSymbolsInText('getWorldScoutUnitFramePaths();'), []);
+});
+
+test('retired legacy guard falls back to filesystem inventory outside a git worktree', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'retired-legacy-'));
+  try {
+    fs.mkdirSync(path.join(root, 'frontend', 'js', 'platform', 'renderers'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'node_modules', 'fixture'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'frontend', 'js', 'platform', 'renderers', 'HomeCanvasRenderer.js'), '');
+    fs.writeFileSync(path.join(root, 'frontend', 'js', 'platform', 'renderers', 'WorldMapCanvasRenderer.js'), '');
+    fs.writeFileSync(path.join(root, 'node_modules', 'fixture', 'HomeCanvasRenderer.js'), '');
+
+    const inventory = collectInspectableFiles(root, { hasGitWorkTree: () => false });
+
+    assert.equal(inventory.mode, 'filesystem');
+    assert.deepEqual(inventory.files, [
+      'frontend/js/platform/renderers/HomeCanvasRenderer.js',
+      'frontend/js/platform/renderers/WorldMapCanvasRenderer.js',
+    ]);
+    assert.deepEqual(findRetiredFileOffenders(inventory.files, { exists: () => true }), [
+      'frontend/js/platform/renderers/HomeCanvasRenderer.js',
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
