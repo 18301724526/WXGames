@@ -8,6 +8,7 @@ const test = require('node:test');
 
 const {
   STEP1_CHECKS,
+  buildAllowlistDebtRecordFindings,
   buildReport,
   renderSummary,
 } = require('./report-command-owner-step1');
@@ -53,6 +54,18 @@ test('command owner Step1 drift detection reports a synthetic undeclared write r
   assert.ok(writeInventory.findings.some((finding) => (
     finding.classification === 'inventory-drift-undeclared-server-write-route'
     && finding.summary.includes('/api/synthetic/uninventoried-write')
+  )));
+});
+
+test('allowlist-debt-record live-array validation reports missing metadata', () => {
+  const findings = buildAllowlistDebtRecordFindings('allowlist-debt-record', [
+    { inventoryId: 'synthetic:allowlist-missing' },
+  ]);
+  assert.ok(findings.some((finding) => (
+    finding.inventoryId === 'synthetic:allowlist-missing'
+    && finding.classification === 'allowlist-metadata-missing'
+    && finding.summary.includes('owner')
+    && finding.summary.includes('growthPreventionTest')
   )));
 });
 

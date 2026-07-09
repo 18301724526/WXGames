@@ -4,7 +4,7 @@ const path = require('node:path');
 
 const { CONTRACT_IDS, MODE, REPORT_NAME, STEP1_CHECKS } = require('./contracts');
 const inventories = require('./inventories');
-const { assertAntiEvasionFixtures } = require('./anti-evasion');
+const { REQUIRED_ALLOWLIST_FIELDS, assertAntiEvasionFixtures } = require('./anti-evasion');
 const { buildDirectSubmitCallSiteKey, scanRepository } = require('./scanner');
 
 function normalizePath(filePath) {
@@ -192,6 +192,27 @@ function buildDisabledFlowFindings(checkId, scanResults = {}) {
     }));
 }
 
+function buildAllowlistDebtRecordFindings(checkId, records = [
+  ...inventories.ALLOWLIST_DEBT_RECORDS,
+  ...inventories.SERVER_WRITE_EXCLUSIONS,
+]) {
+  return records.flatMap((record, index) => {
+    const item = record || {};
+    const baseFinding = finding(checkId, item);
+    const missingFields = REQUIRED_ALLOWLIST_FIELDS.filter((field) => !item[field]);
+    if (missingFields.length === 0) return [baseFinding];
+    return [
+      baseFinding,
+      finding(checkId, item, {
+        inventoryId: item.inventoryId || `allowlist-entry:${index + 1}`,
+        classification: 'allowlist-metadata-missing',
+        contracts: ['COP-ALLOWLIST-001'],
+        summary: `missing required allowlist metadata: ${missingFields.join(', ')}`,
+      }),
+    ];
+  });
+}
+
 function classifyOwnerKeyCoverage(item) {
   const sharedLookup = inventories.SHARED_OWNER_LOOKUPS
     .find((lookup) => lookup.commandType === item.action);
@@ -288,10 +309,7 @@ function buildCheckFindings(checkId, scanResults = {}) {
     }));
   }
   if (checkId === 'allowlist-debt-record') {
-    return [
-      ...inventories.ALLOWLIST_DEBT_RECORDS,
-      ...inventories.SERVER_WRITE_EXCLUSIONS,
-    ].map((item) => finding(checkId, item));
+    return buildAllowlistDebtRecordFindings(checkId);
   }
   return [];
 }
@@ -415,6 +433,7 @@ module.exports = {
   REPORT_NAME,
   STEP1_CHECKS,
   buildContractCoverageIndex,
+  buildAllowlistDebtRecordFindings,
   buildReport,
   buildCheckFindings,
   normalizePath,

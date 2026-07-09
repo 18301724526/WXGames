@@ -153,7 +153,7 @@ snapshot). Architecture smoke now exits 0.
 ### Final gate state
 
 - `node scripts/run-architecture-smoke.js`: exit 0.
-- `node --test scripts/report-command-owner-step1.test.js`: 6/6 pass.
+- `node --test scripts/report-command-owner-step1.test.js`: 7/7 pass.
 - Step1 report: 17/17 contracts, 12 checks, inventory drift 0, anti-evasion 11.
 - Step1 is ready for Step2 admission review.
 
@@ -204,3 +204,58 @@ classification: inventory-drift-undeclared-frontend-direct-submit-call-site
 evidence: frontend/js/platform/CommandOwnerSyntheticDriftProbe.js:9
 summary: frontend/js/platform/CommandOwnerSyntheticDriftProbe.js:9:research calls GameAPI.research directly and has no per-call-site FRONTEND_COMMAND_PATHS row
 ```
+
+### BLOCKER 2 - live allowlist debt metadata validation
+
+Scope closed in report-only tooling:
+
+- `scripts/command-owner-step1/index.js` now validates the live
+  `ALLOWLIST_DEBT_RECORDS` and `SERVER_WRITE_EXCLUSIONS` arrays with
+  `REQUIRED_ALLOWLIST_FIELDS`.
+- Missing metadata now emits `allowlist-metadata-missing` from the
+  `allowlist-debt-record` check, not only from the anti-evasion fixture.
+- `scripts/command-owner-step1/inventories.js` records read-only POST exclusions for
+  `/api/admin/task-definitions/preview` and `/api/admin/config-releases/preview`,
+  each with inventory id, owner, reason, retirement condition, and growth-prevention
+  test.
+
+Directed verification:
+
+```text
+node --test scripts/report-command-owner-step1.test.js
+tests 7
+pass 7
+fail 0
+```
+
+Report extraction after reverting the synthetic violation:
+
+```text
+node scripts/report-command-owner-step1.js --json
+inventoryDriftFindings: 0
+serverWriteExclusions: 3
+allowlistDebtRecordFindings: 3
+allowlistMetadataMissingAtRest: 0
+exclusionIds:
+- server-exclusion:player-register-disabled
+- server-exclusion:admin-task-definitions-preview
+- server-exclusion:admin-config-releases-preview
+```
+
+Adversarial self-check, temporary `{ inventoryId: 'x' }` added to the live
+`ALLOWLIST_DEBT_RECORDS` array and then reverted:
+
+```text
+allowlistDebtRecordFindings: 5
+checkId: allowlist-debt-record
+inventoryId: x
+classification: allowlist-metadata-missing
+evidence: []
+summary: missing required allowlist metadata: owner, reason, retirementCondition, growthPreventionTest
+```
+
+Recorded future TODO, out of this delta scope:
+
+- Client local-block source tracing currently covers `disabled` only. Static
+  `CLIENT_LOCAL_BLOCKS` rows for `can*`, `ready`, `busy`, `cooldown`, `eligible`,
+  and `claimable` need a future Step1 pass or Step3 Phase 1 source-trace upgrade.
