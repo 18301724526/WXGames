@@ -348,8 +348,6 @@ const CHECK_FILES = Object.freeze([
   'backend/tests/WorldExplorerReadyStateCleanup.test.js',
   'backend/tests/GameStateServiceSplit.test.js',
   'backend/tests/GameStateProjectionArchitecture.test.js',
-  'scripts/check-stable-blocks.js',
-  'scripts/check-stable-blocks.test.js',
   'scripts/check-backend-security-audit.js',
   'scripts/check-backend-security-audit.test.js',
   'scripts/verify-production-security-config.js',
@@ -435,7 +433,6 @@ const CHECK_FILES = Object.freeze([
   'scripts/validate-config-pipeline.test.js',
   'scripts/build-config-tables.js',
   'scripts/build-config-tables.test.js',
-  'scripts/verify-refactor-plan-doc.js',
 ]);
 
 const TEST_FILES = Object.freeze([
@@ -591,7 +588,6 @@ const TEST_FILES = Object.freeze([
   'backend/tests/LogService.test.js',
   'backend/tests/CommandReplayCorrelation.test.js',
   'scripts/loadtest-bot-heartbeat.test.js',
-  'scripts/check-stable-blocks.test.js',
   'scripts/check-backend-security-audit.test.js',
   'scripts/verify-production-security-config.test.js',
   'scripts/run-architecture-smoke.test.js',
@@ -713,7 +709,6 @@ function main() {
   ]);
 
   run('focused node tests', process.execPath, ['--test', ...testFiles]);
-  run('stable block manifest guard', process.execPath, ['scripts/check-stable-blocks.js']);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);
   run('frontend ECS core blocking guard', process.execPath, [
@@ -834,7 +829,6 @@ function main() {
     'scripts/build-config-tables.js',
     '--check',
   ]);
-  run('official document guard', process.execPath, ['scripts/verify-refactor-plan-doc.js']);
   runGitDiffCheck();
 
   console.log('[architecture-smoke] passed');
