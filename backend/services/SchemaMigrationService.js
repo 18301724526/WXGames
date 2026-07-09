@@ -16,7 +16,7 @@ const DEFAULT_LOCK_RETRY_DELAY_MS = 200;
 function nowIsoSafe(now = new Date()) {
   try {
     return nowIso(now);
-  } catch (error) {
+  } catch (_error) {
     return nowIso(new Date());
   }
 }

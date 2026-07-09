@@ -120,7 +120,6 @@
     }
 
     showHighlight(type, predicate, message, allowedAction, options = {}) {
-      const game = this.getGame();
       const shell = this.getShell();
       let target = this.getCanvasTarget(type, predicate);
       if (!target && this.host && !this.host.retryingHighlightAfterRender) {
