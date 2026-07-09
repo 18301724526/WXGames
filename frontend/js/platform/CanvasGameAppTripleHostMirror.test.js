@@ -18,6 +18,7 @@ const assert = require('node:assert/strict');
 const WorldMarchOptimisticState = require('../state/optimistic/index');
 const CanvasGameApp = require('./CanvasGameApp');
 const CanvasGameShell = require('./CanvasGameShell');
+const CanvasActionDispatcher = require('./CanvasActionDispatcher');
 
 function makeSeedState() {
   return {
@@ -209,6 +210,13 @@ test('Axis A: mounted shell commands write explicit game UI owner', () => {
     },
     renderer: { clearFamousSkillTooltip() {} },
     renderActive() {},
+    stageScheduler: {
+      markDirty() {},
+      flush() {},
+      isAtomic() {
+        return false;
+      },
+    },
   });
 
   assert.equal(
@@ -227,7 +235,7 @@ test('Axis A: mounted shell commands write explicit game UI owner', () => {
   assert.equal(shell.lastGame.buildingOffset, 0);
   assert.equal(shell.activeBuildingCategory, undefined);
 
-  assert.equal(shell.changeFamousPersonsPage({ delta: 1 }), true);
+  assert.equal(new CanvasActionDispatcher().handle({ type: 'changeFamousPersonsPage', delta: 1 }, shell), true);
   assert.equal(shell.lastGame.famousPersonsPage, 3);
   assert.equal(shell.lastGame.selectedFamousPersonId, '');
   assert.equal(shell.famousPersonsPage, undefined);

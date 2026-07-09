@@ -276,24 +276,10 @@ test('CanvasPanelSurfaceManager projects open panels once in band and priority o
   ]);
 });
 
-test('CanvasPanelSurfaceManager refreshPanelSurface is a counted projection alias', () => {
-  const previousCounters = global.__panelRefactorCounters;
-  global.__panelRefactorCounters = {};
-  try {
-    const manager = new CanvasPanelSurfaceManager({ host: {} });
-    const calls = [];
-    manager.projectModalLayer = (options) => {
-      calls.push(options.requestedPanelKey);
-      return true;
-    };
+test('CanvasPanelSurfaceManager does not expose the retired refreshPanelSurface alias', () => {
+  const manager = new CanvasPanelSurfaceManager({ host: {} });
 
-    assert.equal(manager.refreshPanelSurface('famousPersons', { source: 'legacy' }), true);
-    assert.deepEqual(calls, ['famousPersons']);
-    assert.equal(global.__panelRefactorCounters['panelSurface.refreshAlias.count'], 1);
-  } finally {
-    if (previousCounters === undefined) delete global.__panelRefactorCounters;
-    else global.__panelRefactorCounters = previousCounters;
-  }
+  assert.equal('refreshPanelSurface' in manager, false);
 });
 
 test('CanvasPanelSurfaceManager clears modal projection without changing base targets when no panels are open', () => {

@@ -2592,8 +2592,8 @@ test('CanvasGameApp renderCanvasSurface leaves modal projection to named hit tar
   });
   app.canvasShell = null;
   app.panelSurfaceManager = {
-    syncOpenPanelSurfacesAfterBaseRender() {
-      throw new Error('retired repair should not be called');
+    projectModalLayer() {
+      throw new Error('modal projection should not be called');
     },
   };
 

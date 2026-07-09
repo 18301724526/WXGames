@@ -28,13 +28,6 @@
     dialog: 20,
   });
 
-  function incrementCompatibilityCounter(name = '') {
-    const counters = global.__panelRefactorCounters || global.__PANEL_REFACTOR_COUNTERS__ || null;
-    if (!counters || !name) return false;
-    counters[name] = (Number(counters[name]) || 0) + 1;
-    return true;
-  }
-
   class CanvasPanelSurfaceManager {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -218,13 +211,6 @@
         }
       });
       return handled;
-    }
-
-    refreshPanelSurface(_panelKey = '', options = {}) {
-      const panelKey = String(_panelKey || '');
-      const panelOptions = this.ensurePanelOptions(options);
-      incrementCompatibilityCounter('panelSurface.refreshAlias.count');
-      return this.projectModalLayer({ ...panelOptions, requestedPanelKey: panelKey });
     }
 
     clearPanelSurface(_panelKey = '', options = {}) {

@@ -1698,6 +1698,11 @@
                 return this.panelSurfaceManager || null;
               }
 
+    projectPanelSurface(panelKey = 'famousPersons', options = {}) {
+                const manager = this.getPanelSurfaceManager?.() || null;
+                return manager?.projectModalLayer?.({ ...options, requestedPanelKey: panelKey }) === true;
+              }
+
     buildRenderOptions(activeTab = this.getActiveTab(), territoryUiState = this.territoryUiState, options = {}) {
                 const state = this.state || {};
                 const homeView = this.resolveMapHomeViewState(state, {
@@ -1913,24 +1918,7 @@
                 return this.state;
               }
 
-    isPanelSurfaceAction(action = {}) {
-                return [
-                  'openFamousPersons',
-                  'closeFamousPersons',
-                  'openFamousPersonDetail',
-                  'closeFamousPersonDetail',
-                  'changeFamousPersonsPage',
-                ].includes(action?.type);
-              }
-
-    renderPanelCanvasAction(action = {}) {
-                if (!this.isPanelSurfaceAction(action)) return false;
-                this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons', { action });
-                return true;
-              }
-
-    renderCanvasAction(action = {}) {
-                if (this.renderPanelCanvasAction(action)) return true;
+    renderCanvasAction(_action = {}) {
                 return this.renderCanvasSurface();
               }
 
@@ -2265,18 +2253,6 @@
             const nextZoom = Math.max(0.65, Math.min(1.6, Number(zoom) || 1));
             this.techTreeZoom = nextZoom;
             return true;
-          }
-
-    changeFamousPersonsPage(action = {}) {
-            return this.getPanelSurfaceManager()?.runPanelAction?.('famousPersons', 'changePage', action) !== false;
-          }
-
-    openFamousPersonDetail(action = {}) {
-            return this.getPanelSurfaceManager()?.runPanelAction?.('famousPersons', 'openDetail', action) !== false;
-          }
-
-    closeFamousPersonDetail() {
-            return this.getPanelSurfaceManager()?.runPanelAction?.('famousPersons', 'closeDetail') !== false;
           }
 
     getWorldActorAnimationFrameMs() {
@@ -2628,7 +2604,7 @@
                   return result;
                 } catch (error) {
                   this.log(t('command.famous.seekFailed', { message: error.payload?.message || error.message }));
-                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
+                  this.projectPanelSurface('famousPersons', { source: 'seekFamousPerson:failure' });
                   return false;
                 }
               }
@@ -2642,7 +2618,7 @@
                   return true;
                 } catch (error) {
                   this.log(t('command.famous.acceptFailed', { message: error.payload?.message || error.message }));
-                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
+                  this.projectPanelSurface('famousPersons', { source: 'acceptFamousPerson:failure' });
                   return false;
                 }
               }
@@ -2656,7 +2632,7 @@
                   return true;
                 } catch (error) {
                   this.log(t('command.famous.dismissFailed', { message: error.payload?.message || error.message }));
-                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
+                  this.projectPanelSurface('famousPersons', { source: 'dismissFamousPersonCandidate:failure' });
                   return false;
                 }
               }
@@ -2669,11 +2645,11 @@
                   manager?.openPanel?.('famousPersons', { render: false });
                   manager?.runPanelAction?.('famousPersons', 'openDetail', { personId }, { render: false });
                   this.log(result.message || t('command.famous.attributeUpgraded'));
-                  manager?.refreshPanelSurface?.('famousPersons');
+                  manager?.projectModalLayer?.({ requestedPanelKey: 'famousPersons', source: 'assignFamousAttributePoint:success' });
                   return true;
                 } catch (error) {
                   this.log(t('command.famous.attributePointFailed', { message: error.payload?.message || error.message }));
-                  this.getPanelSurfaceManager()?.refreshPanelSurface?.('famousPersons');
+                  this.projectPanelSurface('famousPersons', { source: 'assignFamousAttributePoint:failure' });
                   return false;
                 }
               }

@@ -809,7 +809,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           if (!this.renderer || typeof this.renderer.setHoverPoint !== 'function') return false;
           const changed = this.renderer.setHoverPoint(point);
           if (changed && this.isBlockingPanelSnapshotOpen('showFamousPersons')) {
-            this.getPanelSurfaceManager?.()?.refreshPanelSurface?.('famousPersons');
+            this.projectPanelSurface?.('famousPersons', { source: 'pointerMove' });
           }
           return changed;
         }
@@ -1467,25 +1467,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return true;
         }
 
-    openFamousPersons() {
-          return this.getPanelSurfaceManager?.()?.openPanel?.('famousPersons') !== false;
-        }
-
-    closeFamousPersons() {
-          this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons');
-          const game = this.lastGame || null;
-          game?.tutorialController?.onFamousPersonsClosed?.();
-          return true;
-        }
-
-    openFamousPersonDetail(action = {}) {
-          return this.getPanelSurfaceManager?.()?.runPanelAction?.('famousPersons', 'openDetail', action) !== false;
-        }
-
-    closeFamousPersonDetail() {
-          return this.getPanelSurfaceManager?.()?.runPanelAction?.('famousPersons', 'closeDetail') !== false;
-        }
-
     // getArmyFormation was a divergent copy that read this.lastGame.state; it now lives in
     // ArmyFormationQueries (via host.getState) and the shell inherits CanvasGameApp's
     // delegator -- one implementation for both. See slice 5 of the re-decomposition.
@@ -1535,10 +1516,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           getUiStateOwner(this).activeCityManagementTab = allowed.includes(tab) ? tab : 'buildings';
           this.renderActive();
           return true;
-        }
-
-    changeFamousPersonsPage(action = {}) {
-          return this.getPanelSurfaceManager?.()?.runPanelAction?.('famousPersons', 'changePage', action) !== false;
         }
 
     resetForCanvasTabSwitch() {
@@ -1637,8 +1614,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return false;
         }
 
-    renderCanvasAction(action = {}) {
-          if (this.renderPanelCanvasAction?.(action)) return true;
+    renderCanvasAction(_action = {}) {
           this.renderActive();
           return true;
         }
@@ -2643,8 +2619,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return this.renderActive();
         }
 
-    render(action = {}) {
-          if (this.renderPanelCanvasAction?.(action)) return true;
+    render(_action = {}) {
           return this.renderActive();
         }
 

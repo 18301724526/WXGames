@@ -12,6 +12,7 @@ require('../ecs/system/FogRevealModel');
 require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
+require('./CanvasActionDispatcher');
 const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 const BattleStore = require('../state/BattleStore');
 const ModalStore = require('../state/ModalStore');
@@ -1837,7 +1838,7 @@ test('CanvasGameShell resolves guide targets in rendered hit order', () => {
   assert.deepEqual(target.action, { type: 'closeFamousPersons' });
 });
 
-test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial', () => {
+test('CanvasGameShell dispatcher closeFamousPersons syncs game state and resumes tutorial', () => {
   const calls = [];
   const game = {
     famousPersonsPage: 2,
@@ -1858,7 +1859,7 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
   shell.lastGame = game;
   shell.openBlockingPanelSnapshot('showFamousPersons', true);
 
-  assert.equal(shell.closeFamousPersons(), true);
+  assert.equal(shell.dispatchCanvasAction({ type: 'closeFamousPersons' }), true);
 
   assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.equal(shell.famousPersonsPage, 0);
@@ -1868,7 +1869,7 @@ test('CanvasGameShell closeFamousPersons syncs game state and resumes tutorial',
   assert.deepEqual(calls, [['clearFamousSkillTooltip'], ['onFamousPersonsClosed']]);
 });
 
-test('CanvasGameShell action controller advances tutorial after closeFamousPersons tap', () => {
+test('CanvasGameShell dispatcher advances tutorial after closeFamousPersons tap', () => {
   const calls = [];
   const game = {
     famousPersonsPage: 2,
@@ -1902,7 +1903,7 @@ test('CanvasGameShell action controller advances tutorial after closeFamousPerso
     return true;
   };
 
-  assert.equal(shell.actionController.handle({ type: 'closeFamousPersons' }), true);
+  assert.equal(shell.dispatchCanvasAction({ type: 'closeFamousPersons' }), true);
 
   assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.deepEqual(calls, [
@@ -2219,6 +2220,11 @@ test('CanvasGameShell still allows tutorial target taps to advance', () => {
         return true;
       },
     },
+    actionDispatcher: {
+      canHandle() {
+        return false;
+      },
+    },
   });
   shell.tutorialIntro = { active: true, step: 'city', capitalCityId: 'capital' };
   shell.tutorialIntroOverlay = {
@@ -2250,6 +2256,11 @@ test('CanvasGameShell lets reward reveal close above tutorial highlight', () => 
       handle(action) {
         calls.push(['handle', action.type]);
         return true;
+      },
+    },
+    actionDispatcher: {
+      canHandle() {
+        return false;
       },
     },
   });
@@ -2407,6 +2418,11 @@ test('CanvasGameShell blocks non-matching actions during guided highlights', () 
       handle(action) {
         calls.push(['handle', action.type, action.tab || '']);
         return true;
+      },
+    },
+    actionDispatcher: {
+      canHandle() {
+        return false;
       },
     },
   });

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasActionController = require('./CanvasActionController');
+const CanvasActionDispatcher = require('./CanvasActionDispatcher');
 const ModalStore = require('../state/ModalStore');
 const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
@@ -11,10 +12,13 @@ const makeModalHost = makeModalOwnerHost;
 
 const HostController = CanvasActionController;
 
-test('CanvasActionController installs famous compatibility methods', () => {
-  assert.equal(typeof HostController.prototype.handle_openFamousPersons, 'function');
+test('CanvasActionController retires famous panel wrappers but keeps API commands', () => {
+  assert.equal(typeof HostController.prototype.handle_openFamousPersons, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_closeFamousPersons, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_openFamousPersonDetail, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_closeFamousPersonDetail, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_changeFamousPersonsPage, 'undefined');
   assert.equal(typeof HostController.prototype.handle_seekFamousPerson, 'function');
-  assert.equal(typeof HostController.prototype.handle_changeFamousPersonsPage, 'function');
 });
 
 test('open and close famous persons sync shell, game, renderer, and tutorial state', () => {
@@ -66,9 +70,9 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
   // center + command panel so the close-on-open is observable through the owner.
   host.openBlockingPanelSnapshot('showTaskCenter', true);
   host.openBlockingPanelSnapshot('activeCommandPanel', 'famous');
-  const controller = new HostController({ host: host, awaitAsync: true });
+  const dispatcher = new CanvasActionDispatcher();
 
-  assert.equal(controller.handle_openFamousPersons({ type: 'openFamousPersons' }), true);
+  assert.equal(dispatcher.handle({ type: 'openFamousPersons' }, host), true);
   assert.equal(host.isBlockingPanelSnapshotOpen('showFamousPersons'), true);
   assert.equal(host.isModalOpen('modal:famousPersons'), true);
   assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), false);
@@ -78,7 +82,7 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
   assert.equal(game.famousPersonsPage, 0);
   assert.equal(game.selectedFamousPersonId, '');
 
-  assert.equal(controller.handle_closeFamousPersons({ type: 'closeFamousPersons' }), true);
+  assert.equal(dispatcher.handle({ type: 'closeFamousPersons' }, host), true);
   assert.equal(host.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.equal(host.isModalOpen('modal:famousPersons'), false);
   assert.equal(game.famousPersonsPage, 0);
@@ -99,7 +103,7 @@ test('open and close famous persons sync shell, game, renderer, and tutorial sta
 });
 
 // UI-REDO ⑦a sibling characterization: a tutorial-locked 「名人」 dock tap must be a
-// pure no-op on the modal owner. The regression this locks: handle_openFamousPersons
+// pure no-op on the modal owner. The regression this locks: the panel action route
 // opened modal:famousPersons eagerly and ignored the tutorial's answer, so a vetoed
 // step (canOpenTab('famousPersons') false) still got the panel -- the tab lock leaked.
 test('CanvasActionController vetoes tutorial-locked famous persons without mutating the modal owner', () => {
@@ -144,9 +148,9 @@ test('CanvasActionController vetoes tutorial-locked famous persons without mutat
   });
   // Seed another blocking panel: a veto must not run the close-on-open sweep either.
   host.openBlockingPanelSnapshot('showTaskCenter', true);
-  const controller = new HostController({ host, awaitAsync: true });
+  const dispatcher = new CanvasActionDispatcher();
 
-  assert.equal(controller.handle_openFamousPersons({ type: 'openFamousPersons' }), false);
+  assert.equal(dispatcher.handle({ type: 'openFamousPersons' }, host), false);
 
   // No panel on the modal owner (the policy-leak regression proxy)...
   assert.equal(host.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
@@ -206,9 +210,9 @@ test('CanvasActionController opens famous persons when the tutorial gate allows 
       calls.push(['render', action.type]);
     },
   });
-  const controller = new HostController({ host, awaitAsync: true });
+  const dispatcher = new CanvasActionDispatcher();
 
-  assert.equal(controller.handle_openFamousPersons({ type: 'openFamousPersons' }), true);
+  assert.equal(dispatcher.handle({ type: 'openFamousPersons' }, host), true);
 
   assert.equal(host.isBlockingPanelSnapshotOpen('showFamousPersons'), true);
   assert.equal(host.isModalOpen('modal:famousPersons'), true);

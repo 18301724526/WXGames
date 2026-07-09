@@ -133,13 +133,6 @@
     return ActorPickingDiagnostics?.log?.(stage, detail, options) || null;
   }
 
-  function incrementPanelRefactorCounter(name = '') {
-    const counters = global.__panelRefactorCounters || global.__PANEL_REFACTOR_COUNTERS__ || null;
-    if (!counters || !name) return false;
-    counters[name] = (Number(counters[name]) || 0) + 1;
-    return true;
-  }
-
   function closeTargetPickerSnapshot(host) {
     if (typeof host?.closeTargetPickerSnapshot === 'function') return host.closeTargetPickerSnapshot();
     return CanvasModalSnapshotAdapter?.closeTargetPickerSnapshot?.(host) || null;
@@ -480,15 +473,10 @@
         case 'claimTaskReward': return this.handle_claimTaskReward;
         case 'scrollBuildings': return this.handle_scrollBuildings;
         case 'selectBuildingCategory': return this.handle_selectBuildingCategory;
-        case 'openFamousPersons': return this.handle_openFamousPersons;
-        case 'closeFamousPersons': return this.handle_closeFamousPersons;
-        case 'openFamousPersonDetail': return this.handle_openFamousPersonDetail;
-        case 'closeFamousPersonDetail': return this.handle_closeFamousPersonDetail;
         case 'seekFamousPerson': return this.handle_seekFamousPerson;
         case 'acceptFamousPerson': return this.handle_acceptFamousPerson;
         case 'dismissFamousPersonCandidate': return this.handle_dismissFamousPersonCandidate;
         case 'assignFamousAttributePoint': return this.handle_assignFamousAttributePoint;
-        case 'changeFamousPersonsPage': return this.handle_changeFamousPersonsPage;
         case 'selectWorldMarchTarget': return this.handle_selectWorldMarchTarget;
         case 'openWorldMarchFormationPicker': return this.handle_openWorldMarchFormationPicker;
         case 'closeWorldMarchHud': return this.handle_closeWorldMarchHud;
@@ -1520,27 +1508,7 @@
             return this.afterHandled(action);
           }
 
-    // Famous person actions.
-    handle_openFamousPersons(action) {
-            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
-            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
-          }
-
-    handle_closeFamousPersons(action) {
-            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
-            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
-          }
-
-    handle_openFamousPersonDetail(action) {
-            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
-            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
-          }
-
-    handle_closeFamousPersonDetail(action) {
-            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
-            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
-          }
-
+    // Famous person API commands.
     handle_seekFamousPerson(action) {
             const forwarded = this.forward(action);
             if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
@@ -1585,11 +1553,6 @@
               return this.finalize(game.assignFamousAttributePoint(action.personId, action.attribute));
             }
             return this.finalize(this.runAction(() => this.host.api.assignFamousAttributePoint(action.personId, action.attribute)));
-          }
-
-    handle_changeFamousPersonsPage(action) {
-            incrementPanelRefactorCounter('panelAction.controllerWrapper.count');
-            return this.panelActionRunner?.run?.(action, this.getPanelActionContext()) === true;
           }
 
     // Shell, modal, guide, login, settings, and system actions.
