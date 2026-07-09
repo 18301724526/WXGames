@@ -30,9 +30,9 @@ test('client command block reason guard fires on synthetic domain swallows', () 
       class CanvasActionDispatcher {
         handle(action) {
           if (action.eraLocked) return true;
-          return action.ready
+          return action.territoryReady
             ? { type: 'startWorldMarch' }
-            : { type: 'blockCanvasModal' };
+            : { type: 'openWorldSite' };
         }
       }
     `);
@@ -41,7 +41,37 @@ test('client command block reason guard fires on synthetic domain swallows', () 
 
     assert.equal(result.status, 1, result.stdout || result.stderr);
     assert.match(result.stderr, /domain-conditioned early return in handle/);
-    assert.match(result.stderr, /command action startWorldMarch conditionally replaced by blockCanvasModal/);
+    assert.match(result.stderr, /command action startWorldMarch conditionally replaced by openWorldSite/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('client command block reason guard inspects world march shell forwarders', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'client-command-shell-guard-'));
+  const shellPath = path.join(root, 'frontend/js/platform/CanvasGameShell.js');
+  try {
+    fs.mkdirSync(path.dirname(shellPath), { recursive: true });
+    fs.writeFileSync(shellPath, `
+      class CanvasGameShell {
+        startWorldMarch(action) {
+          if (action.cooldownLocked) return false;
+          return this.lastGame.startWorldMarch(action);
+        }
+        returnWorldMarch(missionId) {
+          return this.lastGame.returnWorldMarch(missionId);
+        }
+        stopWorldMarch(missionId) {
+          return this.lastGame.stopWorldMarch(missionId);
+        }
+        handleTap() { return true; }
+      }
+    `);
+
+    const result = runGuard(root);
+
+    assert.equal(result.status, 1, result.stdout || result.stderr);
+    assert.match(result.stderr, /domain-conditioned early return in startWorldMarch/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

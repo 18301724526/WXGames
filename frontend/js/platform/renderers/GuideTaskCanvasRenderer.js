@@ -284,11 +284,11 @@
         const buttonHeight = 34;
         const buttonX = listX + listWidth - buttonWidth - 12;
         const buttonY = itemY + itemHeight - buttonHeight - 12;
-        const buttonAction = task.action || (
-          claimable
-            ? { type: 'claimTaskReward', taskId: task.id, category: task.category || view.activeTab }
-            : { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }
-        );
+        const buttonAction = task.action || {
+          type: 'goToGuideTaskTarget',
+          taskId: task.id,
+          target: task.target,
+        };
         const buttonDisabled = completed || (!claimable && !task.target && buttonAction.type !== 'goToGuideTaskTarget');
         ModalPlate.drawModalCard(this, listX, itemY, listWidth, itemHeight, {
           tone: completed ? 'muted' : (claimable ? 'accent' : 'default'),

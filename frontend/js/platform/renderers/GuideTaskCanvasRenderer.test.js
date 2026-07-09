@@ -81,6 +81,7 @@ function createTaskCenterView() {
           rewardText: '+10 wood',
           status: 'claimable',
           claimed: false,
+          action: { type: 'claimTaskReward', taskId: 'task-claim', category: 'main' },
         },
         {
           id: 'task-go',
@@ -89,6 +90,7 @@ function createTaskCenterView() {
           rewardText: '+5 food',
           status: 'active',
           target: 'scout-north',
+          action: { type: 'goToGuideTaskTarget', taskId: 'task-go', target: 'scout-north' },
         },
       ],
     },

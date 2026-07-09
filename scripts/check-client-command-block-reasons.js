@@ -12,7 +12,12 @@ const DOMAIN_SIGNALS = /resources?|tutorial|era|tech|cooldown|march|candidate|te
 const DISPATCH_METHODS = new Map([
   ['frontend/js/platform/CanvasActionDispatcher.js', new Set(['handle'])],
   ['frontend/js/platform/CanvasActionController.js', new Set(['handle', 'handleBuilding'])],
-  ['frontend/js/platform/CanvasGameShell.js', new Set(['handleTap'])],
+  ['frontend/js/platform/CanvasGameShell.js', new Set([
+    'handleTap',
+    'startWorldMarch',
+    'returnWorldMarch',
+    'stopWorldMarch',
+  ])],
   ['frontend/js/platform/GameCommandService.js', new Set(['handleBuildingAction'])],
   ['frontend/js/platform/WorldMarchActionHandler.js', new Set(['startMarch'])],
 ]);
@@ -142,9 +147,10 @@ function inspectStructure(relative, source) {
     if (node.type !== 'ConditionalExpression') return;
     const actionTypes = getConditionalActionTypes(node, parent);
     if (actionTypes.length !== 2) return;
+    if (!hasDomainSignal(node.test)) return;
     const commandType = actionTypes.find((type) => COMMAND_ACTION_TYPES.has(type));
-    const replacementType = actionTypes.find((type) => type === 'blockCanvasModal');
-    if (!commandType || !replacementType) return;
+    const replacementType = actionTypes.find((type) => type !== commandType);
+    if (!commandType || !replacementType || replacementType === commandType) return;
     failures.push(
       `${relative}:${node.loc.start.line} command action ${commandType} conditionally replaced by ${replacementType}`,
     );
