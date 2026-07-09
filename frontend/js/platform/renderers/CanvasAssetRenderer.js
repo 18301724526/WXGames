@@ -124,23 +124,10 @@
         || this.isWorldTileTemplateAssetPath(path);
     }
 
-    getAssetChangeScope(assetPath = '') {
+    getPanelKeyForAssetPath(assetPath = '') {
       const path = String(assetPath || '');
-      if (!path) return 'worldMap';
-      if (this.isWorldMapAssetPath(path)) return 'worldMap';
-      if (path.startsWith('assets/art/units/')) return 'worldActor';
-      if (path.startsWith('assets/art/famous-person/layers/')) return 'panelOverlay';
-      if (
-        path.startsWith('assets/art/ui-hud/')
-        || path.startsWith('assets/art/icon-')
-        || path.startsWith('assets/art/tech-')
-        || path.startsWith('assets/art/building-')
-        || path.startsWith('assets/art/civilization-')
-      ) {
-        return 'hud';
-      }
-      if (path.startsWith('assets/art/battle/')) return 'battle';
-      return 'surface';
+      if (path.startsWith('assets/art/famous-person/layers/')) return 'famousPersons';
+      return '';
     }
 
     createAssetChangeEvent(assetPathOrEvent = '', overrides = {}) {
@@ -148,17 +135,14 @@
         ? assetPathOrEvent
         : { assetPath: assetPathOrEvent };
       const assetPath = String(base.assetPath || '');
-      const assetScope = String(base.assetScope || this.getAssetChangeScope(assetPath) || 'surface');
-      const panelKey = base.panelKey || (assetPath.startsWith('assets/art/famous-person/layers/') ? 'famousPersons' : '');
+      const panelKey = base.panelKey || this.getPanelKeyForAssetPath(assetPath);
       const invalidateWorldTileCaches = typeof base.invalidateWorldTileCaches === 'boolean'
         ? base.invalidateWorldTileCaches
-        : (assetPath ? assetScope === 'worldMap' : true);
+        : (assetPath ? this.isWorldMapAssetPath(assetPath) : true);
       return {
         ...base,
         ...overrides,
         assetPath,
-        assetScope,
-        surface: base.surface || (assetScope === 'panelOverlay' ? 'panelOverlay' : ''),
         panelKey,
         invalidateWorldTileCaches,
       };

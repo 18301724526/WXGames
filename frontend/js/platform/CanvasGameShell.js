@@ -588,18 +588,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     isWorldMapAssetChange(change = {}) {
           if (!change || typeof change !== 'object') return true;
-          const assetScope = String(change.assetScope || '');
           const hasExplicitAssetPath = Object.prototype.hasOwnProperty.call(change, 'assetPath')
             && String(change.assetPath || '');
           const hasExplicitInvalidation = typeof change.invalidateWorldTileCaches === 'boolean';
-          if (!assetScope && !hasExplicitAssetPath && !hasExplicitInvalidation) return true;
-          return change.invalidateWorldTileCaches === true || assetScope === 'worldMap';
-        }
-
-    isWorldActorAssetChange(change = {}) {
-          if (!change || typeof change !== 'object') return false;
-          const assetScope = String(change.assetScope || '');
-          return assetScope === 'worldActor';
+          if (!hasExplicitAssetPath && !hasExplicitInvalidation) return true;
+          return change.invalidateWorldTileCaches !== false;
         }
 
     resolvePanelKeyForAssetChange(change = {}) {
@@ -620,7 +613,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             requestedPanelKey: panelKey,
             source: options.source || 'assetChanged',
             assetPath: change.assetPath || '',
-            assetScope: change.assetScope || '',
             assetChange: change,
           }) === true;
         }
@@ -638,7 +630,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return this.requestWorldMapRenderAnimationFrame({
             type: 'assetChanged',
             assetPath: change?.assetPath || '',
-            force: this.isWorldActorAssetChange(change),
             invalidateWorldTileView: false,
           });
         }
