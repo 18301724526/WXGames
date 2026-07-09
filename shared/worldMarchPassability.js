@@ -24,16 +24,15 @@
   // tech later means consulting `unit` here — and ONLY here.
   const LAND_IMPASSABLE_TERRAIN = Object.freeze(['ocean', 'river']);
 
-  function tileId(q, r) {
-    if (WorldMarchCore?.tileId) return WorldMarchCore.tileId(q, r);
-    return `tile_${Math.floor(Number(q) || 0)}_${Math.floor(Number(r) || 0)}`;
+  function requireWorldMarchCore() {
+    if (WorldMarchCore?.tileId && WorldMarchCore?.normalizeCoord) return WorldMarchCore;
+    throw new Error('WorldMarchPassability requires WorldMarchCore: load shared/worldMarchCore.js first');
   }
 
+  const MarchCore = requireWorldMarchCore();
+
   function normalizeCoord(coord = {}, fallback = {}) {
-    if (WorldMarchCore?.normalizeCoord) return WorldMarchCore.normalizeCoord(coord, fallback);
-    const q = Math.floor(Number(coord.q ?? coord.x ?? fallback.q ?? fallback.x ?? 0));
-    const r = Math.floor(Number(coord.r ?? coord.y ?? fallback.r ?? fallback.y ?? 0));
-    return { q, r, tileId: tileId(q, r) };
+    return MarchCore.normalizeCoord(coord, fallback);
   }
 
   // The terrain rule. `null` means "cannot decide from this data" (fog); the
@@ -120,7 +119,7 @@
               q: step.q,
               r: step.r,
               step: step.step,
-              tileId: step.tileId || tileId(step.q, step.r),
+              tileId: step.tileId || MarchCore.tileId(step.q, step.r),
               ...(step.dir ? { dir: step.dir } : {}),
             },
           },

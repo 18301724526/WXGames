@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const { nowIso } = require('../../shared/timeUtils');
 
 const MIGRATION_STATUS_APPLIED = 'applied';
 const MIGRATION_LOCK_ID = 'schema-migration';
@@ -12,9 +13,12 @@ const DEFAULT_LOCK_TTL_MS = 30_000;
 const DEFAULT_LOCK_MAX_WAIT_MS = 15_000;
 const DEFAULT_LOCK_RETRY_DELAY_MS = 200;
 
-function nowIso(now = new Date()) {
-  const date = now instanceof Date ? now : new Date(now);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
+function nowIsoSafe(now = new Date()) {
+  try {
+    return nowIso(now);
+  } catch (error) {
+    return nowIso(new Date());
+  }
 }
 
 function toEpochMs(value) {
@@ -153,7 +157,7 @@ class SchemaMigrationService {
     try {
       this.db
         .prepare('INSERT INTO schema_migration_locks (id, lockedAt) VALUES (?, ?)')
-        .run(MIGRATION_LOCK_ID, nowIso(this.now()));
+        .run(MIGRATION_LOCK_ID, nowIsoSafe(this.now()));
       return true;
     } catch (error) {
       if (String(error.message || '').includes('UNIQUE constraint failed')) {
@@ -241,7 +245,7 @@ class SchemaMigrationService {
           migration.checksum,
           migration.description,
           MIGRATION_STATUS_APPLIED,
-          nowIso(this.now()),
+          nowIsoSafe(this.now()),
           Date.now() - startedAt,
         );
     });
