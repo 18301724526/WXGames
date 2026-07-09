@@ -448,6 +448,18 @@ test('CanvasSurfaceRenderer preserves common drawing primitives', () => {
   assert.equal(host.calls.some((call) => call[0] === 'arc'), true);
 });
 
+test('CanvasSurfaceRenderer paints visualDisabled buttons with disabled styling', () => {
+  const renderer = new CanvasSurfaceRenderer({ host: createHost() });
+  const calls = [];
+  renderer.drawPanel = (...args) => calls.push(['drawPanel', ...args]);
+  renderer.drawText = (...args) => calls.push(['drawText', ...args]);
+
+  renderer.drawButton(3, 4, 50, 20, 'Locked', { visualDisabled: true, active: true });
+
+  assert.equal(calls[0][5].fill, 'rgba(60, 52, 46, 0.72)');
+  assert.equal(calls[1][4].color, '#8d8f99');
+});
+
 test('CanvasGameRenderer exposes surface rendering through facade', () => {
   class StubSurfaceRenderer {
     constructor(options) {

@@ -386,8 +386,9 @@
 
     drawButton(x, y, width, height, label, options = {}) {
       if (!this.ctx) return;
+      const visuallyDisabled = Boolean(options.visualDisabled ?? options.disabled);
       this.drawPanel(x, y, width, height, {
-        fill: options.disabled
+        fill: visuallyDisabled
           ? 'rgba(60, 52, 46, 0.72)'
           : (options.active ? 'rgba(113, 86, 58, 0.98)' : 'rgba(50, 35, 22, 0.94)'),
         stroke: options.active ? 'rgba(240, 180, 91, 0.78)' : 'rgba(240, 180, 91, 0.32)',
@@ -395,7 +396,7 @@
         inset: options.active ? 'rgba(255, 231, 184, 0.14)' : 'rgba(255, 231, 184, 0.08)',
       });
       this.drawText(label, x + width / 2, y + height / 2, {
-        color: options.disabled ? '#8d8f99' : '#f6e8c8',
+        color: visuallyDisabled ? '#8d8f99' : '#f6e8c8',
         size: options.size || 13,
         bold: Boolean(options.bold),
         baseline: 'middle',
