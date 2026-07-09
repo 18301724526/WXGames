@@ -219,6 +219,12 @@
           this.onFloatingText(result.message || t('territory.updated'));
           this.onLog(`✔ ${result.message || t('territory.updated')}`);
         }
+        return result !== false;
+      } catch (error) {
+        const message = error?.payload?.message || error?.message || t('territory.updated');
+        this.onFloatingText(message);
+        this.onLog(message);
+        return false;
       } finally {
         this.actionAdapter?.setLoading?.(button, false);
       }
@@ -227,7 +233,7 @@
     async handleAction(actionRequest = {}) {
       const territoryId = actionRequest.territoryId;
       const action = actionRequest.action;
-      await this.runButton(actionRequest.button, async () => {
+      return this.runButton(actionRequest.button, async () => {
         if (action === 'conquer') {
           this.clearExpeditionDraft();
           return this.api.startConquest(territoryId, { soldiers: 0 });
