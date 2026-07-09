@@ -47,8 +47,12 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/debug/ClientOperationLog.test.js',
   'frontend/js/debug/WorldMarchTrace.js',
   'frontend/js/debug/WorldMarchTrace.test.js',
+  'frontend/js/api/ClientCommandSender.js',
+  'frontend/js/api/ClientCommandSender.test.js',
   'frontend/js/api/GameAPI.js',
   'frontend/js/api/GameAPI.test.js',
+  'scripts/check-client-command-sender-coverage.js',
+  'scripts/check-client-command-sender-coverage.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.js',
@@ -469,7 +473,9 @@ const TEST_FILES = Object.freeze([
   'frontend/js/debug/ActorPickingDiagnostics.test.js',
   'frontend/js/debug/ClientOperationLog.test.js',
   'frontend/js/debug/WorldMarchTrace.test.js',
+  'frontend/js/api/ClientCommandSender.test.js',
   'frontend/js/api/GameAPI.test.js',
+  'scripts/check-client-command-sender-coverage.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.test.js',
   'frontend/js/services/GameStateSync.test.js',
@@ -714,6 +720,9 @@ function main() {
   run('focused node tests', process.execPath, ['--test', ...testFiles]);
   run('client command block reason guard', process.execPath, [
     'scripts/check-client-command-block-reasons.js',
+  ]);
+  run('client command sender coverage blocking guard', process.execPath, [
+    'scripts/check-client-command-sender-coverage.js',
   ]);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);

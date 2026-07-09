@@ -356,20 +356,19 @@ function scanGameApiWriteHelpers(repoRoot) {
       if (end === index && depth <= 0) break;
     }
     const body = lines.slice(index, end + 1).join('\n');
-    if (!/\b(?:this\.request\(\s*['"]POST['"]|method:\s*['"]POST['"])/.test(body)) continue;
-    const requestMatch = body.match(/this\.request\(\s*['"]POST['"]\s*,\s*['"]([^'"]+)['"]/);
-    const pathMatch = requestMatch || body.match(/\bpath:\s*['"]([^'"]+)['"]/);
-    const endpoint = requestMatch ? requestMatch[1] : normalizeGameApiEndpoint(pathMatch?.[1] || '');
-    const actionMatch = body.match(/\baction:\s*['"]([^'"]+)['"]/);
+    const senderMatch = body.match(/\bthis\.(?:submitCommand|submitDiagnosticCommand)\(\s*['"]([^'"]+)['"]/);
+    if (!senderMatch) continue;
+    const pathMatch = body.match(/\bpath:\s*['"]([^'"]+)['"]/);
+    const endpoint = normalizeGameApiEndpoint(pathMatch?.[1] || '');
     methods.push({
       helper: match[1],
       endpoint,
-      commandType: actionMatch ? actionMatch[1] : inferGameApiCommandType(match[1], endpoint),
+      commandType: senderMatch[1] || inferGameApiCommandType(match[1], endpoint),
       file: relativeFile,
       line: index + 1,
       evidence: [`${relativeFile}:${index + 1}`],
       classification: endpoint.startsWith('/client-') ? 'diagnostic-write-helper' : 'gameapi-write-helper',
-      summary: `GameAPI.${match[1]} -> ${endpoint || 'unknown endpoint'}`,
+      summary: `GameAPI.${match[1]} -> ClientCommandSender -> ${endpoint || 'unknown endpoint'}`,
     });
     index = end;
   }

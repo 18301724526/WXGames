@@ -1,9 +1,12 @@
 (function (global) {
+  const ClientCommandSender = global.ClientCommandSender
+    || (typeof require === 'function' ? require('./ClientCommandSender') : null);
   const DEFAULT_TIMEOUT_MS = 10000;
   const DEFAULT_MAX_RETRIES = 1;
   const DEFAULT_RETRY_BASE_DELAY_MS = 250;
   const DEFAULT_RETRY_MAX_DELAY_MS = 2000;
   const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
+  const COMMAND_SENDER_REQUEST = Symbol('command-sender-request');
 
   function toNumber(value, fallback = 0) {
     const number = Number(value);
@@ -146,19 +149,21 @@
     return error?.name === 'AbortError' || error?.code === 'ABORT_ERR';
   }
 
-  function attachClientCommand(body = {}, requestId = '') {
-    if (!body || typeof body !== 'object') return body;
-    if (body.action !== 'build') return body;
-    const commandId = `cmd-${requestId}`;
+  function attachRequestMetadata(body = {}, requestId = '') {
+    if (!body || typeof body !== 'object' || !body.clientCommand) return body;
+    const clientCommand = body.clientCommand;
     return {
       ...body,
+      requestId,
+      commandId: body.commandId || clientCommand.commandId || '',
+      idempotencyKey: body.idempotencyKey || clientCommand.idempotencyKey || '',
       clientCommand: {
-        schema: 'game-command-v1',
-        type: 'BuildBuilding',
-        commandId,
-        idempotencyKey: commandId,
+        ...clientCommand,
         requestId,
-        buildingId: body.target || body.buildingId || '',
+        client: {
+          ...(clientCommand.client || {}),
+          requestId,
+        },
       },
     };
   }
@@ -189,6 +194,16 @@
         clearTimeout: options.scheduler?.clearTimeout || global.clearTimeout?.bind?.(global) || clearTimeout,
         now: options.scheduler?.now || (() => Date.now()),
       };
+      if (!ClientCommandSender) {
+        throw createApiError('ClientCommandSender is not loaded', {
+          code: 'CLIENT_COMMAND_SENDER_MISSING',
+        });
+      }
+      this.commandSender = new ClientCommandSender({
+        createIdSeed: options.createCommandIdSeed,
+        operationLog: options.operationLog,
+        transport: (envelope, submitOptions) => this.sendCommandEnvelope(envelope, submitOptions),
+      });
       global.WorldMarchTrace?.log?.('api:boot', {
         baseUrl,
         hasToken: Boolean(this.token),
@@ -204,15 +219,23 @@
       return `${this.baseUrl}${path}`;
     }
 
-    async request(method, path, body) {
+    async request(method, path, body, options = {}) {
+      if (!this.isRetryableMethod(method) && options.senderToken !== COMMAND_SENDER_REQUEST) {
+        throw createApiError('Write requests must use ClientCommandSender', {
+          code: 'CLIENT_COMMAND_SENDER_REQUIRED',
+          status: 0,
+          method,
+          path,
+        });
+      }
       const headers = { 'Content-Type': 'application/json' };
       if (this.token) headers.Authorization = `Bearer ${this.token}`;
       const trace = global.WorldMarchTrace;
       if (trace?.enabled?.()) headers['X-World-March-Trace'] = '1';
       const actionBody = body && typeof body === 'object' ? body : {};
-      const requestId = `api-${++this.requestSeq}`;
+      const requestId = `${options.requestIdPrefix || 'api'}-${++this.requestSeq}`;
       headers['X-Client-Request-ID'] = requestId;
-      const commandBody = attachClientCommand(actionBody, requestId);
+      const commandBody = attachRequestMetadata(actionBody, requestId);
       if (path === '/version' && this.versionEtag) {
         headers['If-None-Match'] = this.versionEtag;
       }
@@ -546,89 +569,74 @@
       });
     }
 
-    async reportClientEvent(event = {}) {
-      const body = event && typeof event === 'object'
-        ? { ...event }
-        : { type: 'frontend_load_failure', message: String(event || '') };
-      const requestId = `client-event-${++this.requestSeq}`;
-      const headers = {
-        'Content-Type': 'application/json',
-        'X-Client-Request-ID': requestId,
-      };
-      if (this.token) headers.Authorization = `Bearer ${this.token}`;
-      try {
-        const response = await this.performRequest({
-          url: this.buildUrl('/client-events'),
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            type: body.type || 'frontend_load_failure',
-            ...body,
-            requestId,
-          }),
-          path: '/client-events',
-          requestId,
-          timeoutMs: this.timeoutMs,
-          attempt: 1,
-          maxRetries: 0,
+    submitCommand(type, payload = {}, options = {}) {
+      const requestBody = options.requestBody && typeof options.requestBody === 'object'
+        ? options.requestBody
+        : payload;
+      return this.commandSender.submit(type, payload, { ...options, requestBody });
+    }
+
+    sendCommandEnvelope(envelope = {}, options = {}) {
+      const path = String(options.path || '').trim();
+      if (!path.startsWith('/')) {
+        throw createApiError('Client command path is required', {
+          code: 'CLIENT_COMMAND_PATH_REQUIRED',
+          status: 0,
+          commandId: envelope.commandId || '',
         });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          return {
-            success: false,
-            status: response.status,
-            payload: data,
-          };
-        }
-        return data;
+      }
+      const requestBody = options.requestBody && typeof options.requestBody === 'object'
+        ? options.requestBody
+        : envelope.payload || {};
+      return this.request('POST', path, {
+        ...requestBody,
+        commandId: envelope.commandId,
+        idempotencyKey: envelope.idempotencyKey,
+        clientCommand: envelope,
+      }, {
+        senderToken: COMMAND_SENDER_REQUEST,
+        requestIdPrefix: options.requestIdPrefix || 'api',
+      });
+    }
+
+    async submitDiagnosticCommand(type, payload, options = {}) {
+      try {
+        return await this.submitCommand(type, payload, options);
       } catch (error) {
-        global.console?.warn?.('[GameAPI] client event report failed', error);
-        return {
+        if (!error?.status) {
+          global.console?.warn?.(options.warning || '[GameAPI] diagnostic write failed', error);
+        }
+        const result = {
           success: false,
           error: error?.message || String(error || ''),
         };
+        if (error?.status) result.status = error.status;
+        if (error?.payload) result.payload = error.payload;
+        return result;
       }
     }
 
-    async uploadClientOperationLog(snapshot = {}) {
+    reportClientEvent(event = {}) {
+      const body = event && typeof event === 'object'
+        ? { ...event }
+        : { type: 'frontend_load_failure', message: String(event || '') };
+      body.type = body.type || 'frontend_load_failure';
+      return this.submitDiagnosticCommand('clientEventIngest', body, {
+        path: '/client-events',
+        requestBody: body,
+        requestIdPrefix: 'client-event',
+        warning: '[GameAPI] client event report failed',
+      });
+    }
+
+    uploadClientOperationLog(snapshot = {}) {
       const body = snapshot && typeof snapshot === 'object' ? { ...snapshot } : {};
-      const requestId = `client-oplog-${++this.requestSeq}`;
-      const headers = {
-        'Content-Type': 'application/json',
-        'X-Client-Request-ID': requestId,
-      };
-      if (this.token) headers.Authorization = `Bearer ${this.token}`;
-      try {
-        const response = await this.performRequest({
-          url: this.buildUrl('/client-operation-logs'),
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            ...body,
-            requestId,
-          }),
-          path: '/client-operation-logs',
-          requestId,
-          timeoutMs: this.timeoutMs,
-          attempt: 1,
-          maxRetries: 0,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          return {
-            success: false,
-            status: response.status,
-            payload: data,
-          };
-        }
-        return data;
-      } catch (error) {
-        global.console?.warn?.('[GameAPI] client operation log upload failed', error);
-        return {
-          success: false,
-          error: error?.message || String(error || ''),
-        };
-      }
+      return this.submitDiagnosticCommand('clientOperationLogIngest', body, {
+        path: '/client-operation-logs',
+        requestBody: body,
+        requestIdPrefix: 'client-oplog',
+        warning: '[GameAPI] client operation log upload failed',
+      });
     }
 
     getState() { return this.request('GET', '/game/state'); }
@@ -637,7 +645,11 @@
       const startedAt = this.scheduler.now();
       try {
         const data = report
-          ? await this.request('POST', '/game/heartbeat', { worldMarchClientReport: report })
+          ? await this.submitCommand('heartbeat', { worldMarchClientReport: report }, {
+            ...(options.commandOptions || {}),
+            path: '/game/heartbeat',
+            requestBody: { worldMarchClientReport: report },
+          })
           : await this.request('GET', '/game/heartbeat');
         const elapsed = Math.round(this.scheduler.now() - startedAt);
         this.lastHeartbeatLatencyMs = Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : null;
@@ -668,77 +680,231 @@
       if (!response.ok) return null;
       return response.json().catch(() => null);
     }
-    build(buildingId) { return this.request('POST', '/game/action', { action: 'build', target: buildingId }); }
-    upgrade(buildingId) { return this.request('POST', '/game/action', { action: 'upgrade', target: buildingId }); }
-    assignJob(job, count) { return this.request('POST', '/game/action', { action: 'assign', target: job, count }); }
-    applyTalentPolicy(policyId, policy = null) { return this.request('POST', '/game/action', { action: 'applyTalentPolicy', policyId, policy }); }
-    saveTalentPolicy(policy) { return this.request('POST', '/game/action', { action: 'saveTalentPolicy', policy }); }
-    deleteTalentPolicy(policyId) { return this.request('POST', '/game/action', { action: 'deleteTalentPolicy', policyId }); }
-    research(techId) { return this.request('POST', '/game/action', { action: 'research', techId }); }
-    seekFamousPerson(source = 'seek') { return this.request('POST', '/game/action', { action: 'seekFamousPerson', source }); }
-    acceptFamousPerson(candidateId) { return this.request('POST', '/game/action', { action: 'acceptFamousPerson', candidateId }); }
-    dismissFamousPersonCandidate(candidateId) { return this.request('POST', '/game/action', { action: 'dismissFamousPersonCandidate', candidateId }); }
-    assignFamousAttributePoint(personId, attribute) { return this.request('POST', '/game/action', { action: 'assignFamousAttributePoint', personId, attribute }); }
-    setArmyFormation(cityId, slot, memberIds = [], soldierAssignments = {}) {
-      return this.request('POST', '/game/action', { action: 'setArmyFormation', cityId, slot, memberIds, soldierAssignments });
+    build(buildingId, commandOptions = {}) {
+      return this.submitCommand('build', { buildingId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'build', target: buildingId },
+      });
     }
-    veteranCampWithdraw(cityId, soldiers) {
-      return this.request('POST', '/game/action', { action: 'veteranCampWithdraw', cityId, soldiers });
+    upgrade(buildingId, commandOptions = {}) {
+      return this.submitCommand('upgrade', { buildingId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'upgrade', target: buildingId },
+      });
     }
-    veteranCampUpgrade(cityId) {
-      return this.request('POST', '/game/action', { action: 'veteranCampUpgrade', cityId });
+    assignJob(job, count, commandOptions = {}) {
+      return this.submitCommand('assign', { job, count }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'assign', target: job, count },
+      });
     }
-    advanceEra() { return this.request('POST', '/game/action', { action: 'advanceEra' }); }
-    claimTaskReward(taskId, category = 'main') { return this.request('POST', '/game/tasks/claim', { taskId, category }); }
-    claimEvent(eventId, optionId) { return this.request('POST', '/game/action', { action: 'claimEvent', eventId, optionId }); }
-    resolveCapture(decisionId, choice) { return this.request('POST', '/game/action', { action: 'resolveCapture', decisionId, choice }); }
+    applyTalentPolicy(policyId, policy = null, commandOptions = {}) {
+      return this.submitCommand('applyTalentPolicy', { policyId, policy }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'applyTalentPolicy', policyId, policy },
+      });
+    }
+    saveTalentPolicy(policy, commandOptions = {}) {
+      return this.submitCommand('saveTalentPolicy', { policy }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'saveTalentPolicy', policy },
+      });
+    }
+    deleteTalentPolicy(policyId, commandOptions = {}) {
+      return this.submitCommand('deleteTalentPolicy', { policyId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'deleteTalentPolicy', policyId },
+      });
+    }
+    research(techId, commandOptions = {}) {
+      return this.submitCommand('research', { techId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'research', techId },
+      });
+    }
+    seekFamousPerson(source = 'seek', commandOptions = {}) {
+      return this.submitCommand('seekFamousPerson', { source }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'seekFamousPerson', source },
+      });
+    }
+    acceptFamousPerson(candidateId, commandOptions = {}) {
+      return this.submitCommand('acceptFamousPerson', { candidateId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'acceptFamousPerson', candidateId },
+      });
+    }
+    dismissFamousPersonCandidate(candidateId, commandOptions = {}) {
+      return this.submitCommand('dismissFamousPersonCandidate', { candidateId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'dismissFamousPersonCandidate', candidateId },
+      });
+    }
+    assignFamousAttributePoint(personId, attribute, commandOptions = {}) {
+      return this.submitCommand('assignFamousAttributePoint', { personId, attribute }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'assignFamousAttributePoint', personId, attribute },
+      });
+    }
+    setArmyFormation(cityId, slot, memberIds = [], soldierAssignments = {}, commandOptions = {}) {
+      const payload = { cityId, slot, memberIds, soldierAssignments };
+      return this.submitCommand('setArmyFormation', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'setArmyFormation', ...payload },
+      });
+    }
+    veteranCampWithdraw(cityId, soldiers, commandOptions = {}) {
+      const payload = { cityId, soldiers };
+      return this.submitCommand('veteranCampWithdraw', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'veteranCampWithdraw', ...payload },
+      });
+    }
+    veteranCampUpgrade(cityId, commandOptions = {}) {
+      return this.submitCommand('veteranCampUpgrade', { cityId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'veteranCampUpgrade', cityId },
+      });
+    }
+    advanceEra(commandOptions = {}) {
+      return this.submitCommand('advanceEra', {}, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'advanceEra' },
+      });
+    }
+    claimTaskReward(taskId, category = 'main', commandOptions = {}) {
+      const payload = { taskId, category };
+      return this.submitCommand('claimTaskReward', payload, {
+        ...commandOptions,
+        path: '/game/tasks/claim',
+        requestBody: payload,
+      });
+    }
+    claimEvent(eventId, optionId, commandOptions = {}) {
+      const payload = { eventId, optionId };
+      return this.submitCommand('claimEvent', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'claimEvent', ...payload },
+      });
+    }
+    resolveCapture(decisionId, choice, commandOptions = {}) {
+      const payload = { decisionId, choice };
+      return this.submitCommand('resolveCapture', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'resolveCapture', ...payload },
+      });
+    }
     startWorldMarch(options = {}) {
-      const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
-      return this.request('POST', '/game/action', {
-        action: 'startWorldMarch',
-        ...options,
-        ...(clientInputIntent ? { clientInputIntent } : {}),
+      const { commandOptions = {}, clientInputIntent: rawClientInputIntent, ...marchOptions } = options;
+      const clientInputIntent = summarizeClientInputIntent(rawClientInputIntent);
+      const payload = { ...marchOptions, ...(clientInputIntent ? { clientInputIntent } : {}) };
+      return this.submitCommand('startWorldMarch', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'startWorldMarch', ...payload },
       });
     }
     returnWorldMarch(missionId, options = {}) {
       const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
-      return this.request('POST', '/game/action', {
-        action: 'returnWorldMarch',
-        missionId,
-        ...(clientInputIntent ? { clientInputIntent } : {}),
+      const payload = { missionId, ...(clientInputIntent ? { clientInputIntent } : {}) };
+      return this.submitCommand('returnWorldMarch', payload, {
+        ...(options.commandOptions || {}),
+        path: '/game/action',
+        requestBody: { action: 'returnWorldMarch', ...payload },
       });
     }
     stopWorldMarch(missionId, options = {}) {
       const clientInputIntent = summarizeClientInputIntent(options.clientInputIntent);
-      return this.request('POST', '/game/action', {
-        action: 'stopWorldMarch',
-        missionId,
-        ...(clientInputIntent ? { clientInputIntent } : {}),
+      const payload = { missionId, ...(clientInputIntent ? { clientInputIntent } : {}) };
+      return this.submitCommand('stopWorldMarch', payload, {
+        ...(options.commandOptions || {}),
+        path: '/game/action',
+        requestBody: { action: 'stopWorldMarch', ...payload },
       });
     }
     startWorldCombat(options = {}) {
-      return this.request('POST', '/game/action', {
-        action: 'startWorldCombat',
+      const payload = {
         missionId: options.missionId || '',
         formationSlot: options.formationSlot ?? options.slot ?? 1,
         cityId: options.cityId || 'capital',
         targetQ: options.targetQ ?? options.q ?? options.x,
         targetR: options.targetR ?? options.r ?? options.y,
+      };
+      return this.submitCommand('startWorldCombat', payload, {
+        ...(options.commandOptions || {}),
+        path: '/game/action',
+        requestBody: { action: 'startWorldCombat', ...payload },
       });
     }
-    resolveWorldCombat(battleId, inputStream = []) {
-      return this.request('POST', '/game/action', {
-        action: 'resolveWorldCombat',
-        battleId,
-        inputStream,
+    resolveWorldCombat(battleId, inputStream = [], commandOptions = {}) {
+      const payload = { battleId, inputStream };
+      return this.submitCommand('resolveWorldCombat', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'resolveWorldCombat', ...payload },
       });
     }
-    startConquest(territoryId, expedition = {}) { return this.request('POST', '/game/action', { action: 'startConquest', territoryId, expedition }); }
-    claimConquest(territoryId) { return this.request('POST', '/game/action', { action: 'claimConquest', territoryId }); }
-    renameCity(territoryId, name) { return this.request('POST', '/game/action', { action: 'renameCity', territoryId, name }); }
-    renamePolity(name) { return this.request('POST', '/game/action', { action: 'renamePolity', name }); }
-    switchCity(cityId) { return this.request('POST', '/game/action', { action: 'switchCity', cityId }); }
-    advanceTutorial(step) { return this.request('POST', '/game/action', { action: 'tutorialAdvance', step }); }
+    startConquest(territoryId, expedition = {}, commandOptions = {}) {
+      const payload = { territoryId, expedition };
+      return this.submitCommand('startConquest', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'startConquest', ...payload },
+      });
+    }
+    claimConquest(territoryId, commandOptions = {}) {
+      return this.submitCommand('claimConquest', { territoryId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'claimConquest', territoryId },
+      });
+    }
+    renameCity(territoryId, name, commandOptions = {}) {
+      const payload = { territoryId, name };
+      return this.submitCommand('renameCity', payload, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'renameCity', ...payload },
+      });
+    }
+    renamePolity(name, commandOptions = {}) {
+      return this.submitCommand('renamePolity', { name }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'renamePolity', name },
+      });
+    }
+    switchCity(cityId, commandOptions = {}) {
+      return this.submitCommand('switchCity', { cityId }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'switchCity', cityId },
+      });
+    }
+    advanceTutorial(step, commandOptions = {}) {
+      return this.submitCommand('tutorialAdvance', { step }, {
+        ...commandOptions,
+        path: '/game/action',
+        requestBody: { action: 'tutorialAdvance', step },
+      });
+    }
   }
 
   global.GameAPI = GameAPI;

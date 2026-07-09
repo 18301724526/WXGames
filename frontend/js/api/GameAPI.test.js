@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const GameAPI = require('./GameAPI');
+const { FRONTEND_WRITE_HELPERS } = require('../../../scripts/command-owner-step1/inventories');
 
 function createResponse(status, payload) {
   return {
@@ -156,6 +157,7 @@ test('GameAPI sends compact client input intent evidence for world march command
 test('GameAPI sends build commands with a client command envelope', async () => {
   const calls = [];
   const api = new GameAPI('/api', 'token-a', {
+    createCommandIdSeed: () => 'build-seed',
     transport: {
       async request(request) {
         calls.push({
@@ -174,12 +176,19 @@ test('GameAPI sends build commands with a client command envelope', async () => 
   assert.equal(calls[0].body.target, 'barracks');
   assert.deepEqual(calls[0].body.clientCommand, {
     schema: 'game-command-v1',
-    type: 'BuildBuilding',
-    commandId: 'cmd-api-1',
-    idempotencyKey: 'cmd-api-1',
+    type: 'build',
+    commandId: 'cmd-build-seed',
+    idempotencyKey: 'idem-build-seed',
+    payload: { buildingId: 'barracks' },
+    client: {
+      requestId: 'api-1',
+      clientSequence: 1,
+      clientInputIntent: null,
+    },
     requestId: 'api-1',
-    buildingId: 'barracks',
   });
+  assert.equal(calls[0].body.commandId, 'cmd-build-seed');
+  assert.equal(calls[0].body.idempotencyKey, 'idem-build-seed');
 });
 
 test('GameAPI sends world march heartbeat reports with POST only when present', async () => {
@@ -204,7 +213,101 @@ test('GameAPI sends world march heartbeat reports with POST only when present', 
   assert.equal(requests[0].method, 'GET');
   assert.equal(requests[0].body, undefined);
   assert.equal(requests[1].method, 'POST');
-  assert.equal(JSON.parse(requests[1].body).worldMarchClientReport.missions[0].position.q, 1.25);
+  const heartbeatBody = JSON.parse(requests[1].body);
+  assert.equal(heartbeatBody.worldMarchClientReport.missions[0].position.q, 1.25);
+  assert.equal(heartbeatBody.clientCommand.type, 'heartbeat');
+  assert.ok(heartbeatBody.commandId);
+  assert.ok(heartbeatBody.idempotencyKey);
+});
+
+test('GameAPI routes every inventoried write helper through ClientCommandSender', async () => {
+  const requests = [];
+  let seed = 0;
+  const api = new GameAPI('/api', 'token-a', {
+    createCommandIdSeed: () => `write-${++seed}`,
+    transport: {
+      async request(request) {
+        requests.push(request);
+        return createResponse(request.path.startsWith('/client-') ? 202 : 200, { success: true });
+      },
+    },
+  });
+  const report = {
+    schema: 'world-march-client-report-batch-v1',
+    missions: [{ missionId: 'march-1', position: { q: 1, r: 0 } }],
+  };
+  const cases = [
+    ['reportClientEvent', 'clientEventIngest', () => api.reportClientEvent({ type: 'frontend_asset_failure' })],
+    ['uploadClientOperationLog', 'clientOperationLogIngest', () => api.uploadClientOperationLog({ entries: [] })],
+    ['build', 'build', () => api.build('farm')],
+    ['upgrade', 'upgrade', () => api.upgrade('farm')],
+    ['assignJob', 'assign', () => api.assignJob('farmer', 1)],
+    ['applyTalentPolicy', 'applyTalentPolicy', () => api.applyTalentPolicy('policy-1', { id: 'policy-1' })],
+    ['saveTalentPolicy', 'saveTalentPolicy', () => api.saveTalentPolicy({ id: 'policy-1' })],
+    ['deleteTalentPolicy', 'deleteTalentPolicy', () => api.deleteTalentPolicy('policy-1')],
+    ['research', 'research', () => api.research('writing')],
+    ['seekFamousPerson', 'seekFamousPerson', () => api.seekFamousPerson('seek')],
+    ['acceptFamousPerson', 'acceptFamousPerson', () => api.acceptFamousPerson('candidate-1')],
+    ['dismissFamousPersonCandidate', 'dismissFamousPersonCandidate', () => api.dismissFamousPersonCandidate('candidate-1')],
+    ['assignFamousAttributePoint', 'assignFamousAttributePoint', () => api.assignFamousAttributePoint('person-1', 'wisdom')],
+    ['setArmyFormation', 'setArmyFormation', () => api.setArmyFormation('capital', 1, ['person-1'], { 'person-1': 10 })],
+    ['veteranCampWithdraw', 'veteranCampWithdraw', () => api.veteranCampWithdraw('capital', 10)],
+    ['veteranCampUpgrade', 'veteranCampUpgrade', () => api.veteranCampUpgrade('capital')],
+    ['advanceEra', 'advanceEra', () => api.advanceEra()],
+    ['claimTaskReward', 'claimTaskReward', () => api.claimTaskReward('task-1', 'main')],
+    ['claimEvent', 'claimEvent', () => api.claimEvent('event-1', 'option-1')],
+    ['resolveCapture', 'resolveCapture', () => api.resolveCapture('decision-1', 'release')],
+    ['startWorldMarch', 'startWorldMarch', () => api.startWorldMarch({ targetQ: 1, targetR: 0, formationSlot: 1 })],
+    ['returnWorldMarch', 'returnWorldMarch', () => api.returnWorldMarch('march-1')],
+    ['stopWorldMarch', 'stopWorldMarch', () => api.stopWorldMarch('march-1')],
+    ['startWorldCombat', 'startWorldCombat', () => api.startWorldCombat({ missionId: 'march-1', targetQ: 1, targetR: 0 })],
+    ['resolveWorldCombat', 'resolveWorldCombat', () => api.resolveWorldCombat('battle-1', [])],
+    ['startConquest', 'startConquest', () => api.startConquest('territory-1', {})],
+    ['claimConquest', 'claimConquest', () => api.claimConquest('territory-1')],
+    ['renameCity', 'renameCity', () => api.renameCity('territory-1', 'River')],
+    ['renamePolity', 'renamePolity', () => api.renamePolity('River League')],
+    ['switchCity', 'switchCity', () => api.switchCity('territory-1')],
+    ['advanceTutorial', 'tutorialAdvance', () => api.advanceTutorial(2)],
+    ['heartbeat', 'heartbeat', () => api.heartbeat({ worldMarchClientReport: report })],
+  ];
+
+  assert.deepEqual(
+    cases.map(([helper]) => helper).sort(),
+    FRONTEND_WRITE_HELPERS.map(({ helper }) => helper).sort(),
+  );
+  for (const [, , invoke] of cases) await invoke();
+
+  assert.equal(requests.length, cases.length);
+  requests.forEach((request, index) => {
+    const [helper, commandType] = cases[index];
+    const body = JSON.parse(request.body);
+    assert.equal(request.method, 'POST', helper);
+    assert.equal(body.clientCommand.schema, 'game-command-v1', helper);
+    assert.equal(body.clientCommand.type, commandType, helper);
+    assert.equal(body.commandId, `cmd-write-${index + 1}`, helper);
+    assert.equal(body.idempotencyKey, `idem-write-${index + 1}`, helper);
+    assert.equal(body.clientCommand.commandId, body.commandId, helper);
+    assert.equal(body.clientCommand.idempotencyKey, body.idempotencyKey, helper);
+    assert.equal(body.clientCommand.requestId, request.headers['X-Client-Request-ID'], helper);
+  });
+});
+
+test('GameAPI rejects write transport that bypasses ClientCommandSender', async () => {
+  let transportCalls = 0;
+  const api = new GameAPI('/api', 'token-a', {
+    transport: {
+      async request() {
+        transportCalls += 1;
+        return createResponse(200, { success: true });
+      },
+    },
+  });
+
+  await assert.rejects(
+    () => api.request('POST', '/game/action', { action: 'advanceEra' }),
+    (error) => error.code === 'CLIENT_COMMAND_SENDER_REQUIRED',
+  );
+  assert.equal(transportCalls, 0);
 });
 
 test('GameAPI measures the heartbeat round-trip and clears it on failure', async () => {

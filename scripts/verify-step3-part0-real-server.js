@@ -125,17 +125,17 @@ function configureEmptyFormation(dbPath, playerId) {
   }
 }
 
-function publishConfigRuntime(tempRoot) {
+function publishConfigRuntime(tempRoot, options = {}) {
   const historyPath = path.join(tempRoot, 'configReleases.json');
   const activePath = path.join(tempRoot, 'configActiveRelease.json');
   const now = new Date();
   const snapshot = ConfigPipeline.buildCurrentSnapshot({ generatedAt: now.toISOString() });
   const publish = ConfigReleaseService.publishRelease(
-    { snapshot, source: 'step3-part0-real-server' },
+    { snapshot, source: options.source || 'step3-part0-real-server' },
     {
       historyPath,
       activePath,
-      operator: 'codex-real-server-verification',
+      operator: options.operator || 'codex-real-server-verification',
       now,
     },
   );

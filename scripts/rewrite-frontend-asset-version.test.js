@@ -33,6 +33,7 @@ function makeTempFrontend() {
     'js/config/GameConfig.js',
     'js/debug/H5LoadTrace.js',
     'js/debug/ActorPickingDiagnostics.js',
+    'js/api/ClientCommandSender.js',
     'js/api/GameAPI.js',
     'js/ui/H5DebugDiagnosticsAdapter.js',
     'js/ui/H5ActorPickingDiagnosticsAdapter.js',
@@ -72,6 +73,7 @@ function writeIndex(root, overrides = {}) {
   <script src="js/config/GameConfig.js?v=${version}"></script>
   <script src="js/debug/H5LoadTrace.js?v=${version}"></script>
   <script src="js/debug/ActorPickingDiagnostics.js?v=${version}"></script>
+  <script src="js/api/ClientCommandSender.js?v=${version}"></script>
   <script src="js/api/GameAPI.js?v=${version}"></script>
   <script src="https://cdn.example.test/remote.js?v=${version}"></script>
   <script src="js/ui/H5DebugDiagnosticsAdapter.js?v=${version}"></script>
@@ -133,7 +135,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 25);
+  assert.equal(result.updated, 26);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -145,7 +147,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 24);
+  assert.equal(manifest.localScriptCount, 25);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -178,5 +180,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 26);
+  assert.equal(manifest.localScriptCount, 27);
 });
