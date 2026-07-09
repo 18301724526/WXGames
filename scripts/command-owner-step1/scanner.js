@@ -43,6 +43,7 @@ const WRITE_SIGNAL_PATTERN = /\b(?:repository\.(?:save|resetPlayerState)|withPla
 const ROUTE_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const DIRECT_SUBMIT_IGNORE = /(?:^|\/)(?:api\/GameAPI\.js|.*\.test\.js)$/;
 const SOURCE_IGNORE_DIRS = new Set(['.git', '.codegraph', 'node_modules', 'tmp']);
+const API_RECEIVER_ACCESSOR_PATTERN = /\b(?:api|getApi|getGameApi)\b/;
 
 function normalizePath(filePath) {
   return String(filePath || '').replace(/\\/g, '/');
@@ -393,7 +394,7 @@ function discoverApiAliases(text) {
   const declarationPattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g;
   let match;
   while ((match = declarationPattern.exec(text))) {
-    if (/\bapi\b|getGameApi/.test(match[2])) aliases.add(match[1]);
+    if (API_RECEIVER_ACCESSOR_PATTERN.test(match[2])) aliases.add(match[1]);
   }
   return aliases;
 }
@@ -423,6 +424,8 @@ function scanFrontendDirectSubmits(repoRoot, options = {}) {
       'this\\.api',
       'host\\.api',
       'game\\.api',
+      'this\\.getApi\\(\\)',
+      'getApi\\(\\)',
       'this\\.getGameApi\\(\\)',
       'getGameApi\\(\\)',
       ...aliases,
@@ -441,7 +444,7 @@ function scanFrontendDirectSubmits(repoRoot, options = {}) {
         evidence: [`${relativeFile}:${line}`],
         sourceLine: lineAt(text, line).trim(),
         classification: 'direct-submit-call-site',
-        submissionClassification: 'controller-direct-submit',
+        submissionClassification: inferDirectSubmitSubmissionClassification(relativeFile),
         migrationTarget: inferDirectSubmitMigrationTarget(relativeFile),
       };
       if (helper === 'assignJob') call.commandType = 'assign';
@@ -450,6 +453,13 @@ function scanFrontendDirectSubmits(repoRoot, options = {}) {
     }
   }
   return results.sort((a, b) => buildDirectSubmitCallSiteKey(a).localeCompare(buildDirectSubmitCallSiteKey(b)));
+}
+
+function inferDirectSubmitSubmissionClassification(file) {
+  if (file.includes('/platform/CanvasGameApp.js')) return 'compatibility-direct-submit';
+  if (file.includes('/platform/GameCommandService.js')) return 'compatibility-direct-submit';
+  if (file.includes('/services/')) return 'compatibility-direct-submit';
+  return 'controller-direct-submit';
 }
 
 function inferDirectSubmitMigrationTarget(file) {

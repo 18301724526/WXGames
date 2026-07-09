@@ -119,13 +119,14 @@ is complete. Independently verified (adversarial, first-hand runs), not self-rep
   findings (scanned-not-declared + declared-not-scanned). Adversarially confirmed:
   removing one `SERVER_WRITE_ENTRIES` line makes the scanner emit
   `inventory-drift-undeclared-server-write-route` for that route. Anti-evasion resolves
-  receiver aliases (`const svc = ...api; svc.x()`), not literal receivers only.
+  receiver aliases (`const svc = ...api; svc.x()`) and accessor receivers
+  (`this.getApi().x()` / `getApi().x()`), not literal receiver chains only.
 - **T2** — world-combat writes classified under `server:game-action-world-combat-bypass`
   (`encounter:{encounterId}`, owner-resolution-blocked), no longer hidden under registry.
 - **T3** — ops persistence writes (`admin:ops-login-audit` and ops maintenance/restart)
   inventoried; `/api/player/register` recorded as a documented no-write exclusion.
 - **T4** — frontend direct-submit inventory expanded from 6 aggregate rows to per-call
-  granularity (57 declared / 52 scanned), scanner-generated and drift-checked.
+  granularity (59 declared / 54 scanned), scanner-generated and drift-checked.
 - **T5** — owner-key coverage cross-checks `SHARED_OWNER_LOOKUPS`; the three
   `lookupBeforeDomainValidation=false` commands surface as owner-resolution blockers
   (17 blocker findings total).
@@ -152,6 +153,54 @@ snapshot). Architecture smoke now exits 0.
 ### Final gate state
 
 - `node scripts/run-architecture-smoke.js`: exit 0.
-- `node --test scripts/report-command-owner-step1.test.js`: 4/4 pass.
-- Step1 report: 17/17 contracts, 12 checks, inventory drift 0, anti-evasion 10.
+- `node --test scripts/report-command-owner-step1.test.js`: 6/6 pass.
+- Step1 report: 17/17 contracts, 12 checks, inventory drift 0, anti-evasion 11.
 - Step1 is ready for Step2 admission review.
+
+## Readmission Delta Progress (2026-07-10)
+
+### BLOCKER 1 - getApi accessor receiver direct-submit scanner
+
+Scope closed in report-only tooling:
+
+- `scripts/command-owner-step1/scanner.js` now recognizes `getApi()` and
+  `this.getApi()` direct-submit receivers and case-correct accessor aliases.
+- `scripts/command-owner-step1/anti-evasion.js` adds
+  `frontend-direct-submit-accessor-receiver`.
+- `scripts/command-owner-step1/inventories.js` represents the scanner-discovered
+  `GameCommandService.js:143:research` and `GameCommandService.js:173:switchCity`
+  call sites, and stops flattening `CanvasGameApp` / service bridge direct-submit
+  rows to `controller-direct-submit`.
+
+Directed verification:
+
+```text
+node --test scripts/report-command-owner-step1.test.js
+tests 6
+pass 6
+fail 0
+```
+
+Report extraction:
+
+```text
+node scripts/report-command-owner-step1.js --json
+inventoryDriftFindings: 0
+scannedFrontendDirectSubmits: 54
+frontendCommandPaths: 59
+has GameCommandService.js:143:research: true
+has GameCommandService.js:173:switchCity: true
+GameCommandService classifications: compatibility-direct-submit
+```
+
+Adversarial self-check, temporary source probe added under
+`frontend/js/platform/CommandOwnerSyntheticDriftProbe.js` and then reverted:
+
+```text
+inventoryDriftFindings: 1
+checkId: frontend-write-submission-path
+inventoryId: scanner:frontend-direct-submit:frontend/js/platform/CommandOwnerSyntheticDriftProbe.js:9:research
+classification: inventory-drift-undeclared-frontend-direct-submit-call-site
+evidence: frontend/js/platform/CommandOwnerSyntheticDriftProbe.js:9
+summary: frontend/js/platform/CommandOwnerSyntheticDriftProbe.js:9:research calls GameAPI.research directly and has no per-call-site FRONTEND_COMMAND_PATHS row
+```

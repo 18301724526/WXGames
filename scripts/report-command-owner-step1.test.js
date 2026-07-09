@@ -22,6 +22,11 @@ test('command owner Step1 report runs and emits all 12 checks', () => {
   assert.deepEqual(report.checks.map((check) => check.id), STEP1_CHECKS.map((check) => check.id));
   assert.equal(report.summary.totalChecks, 12);
   assert.equal(report.summary.inventoryDriftFindings, 0);
+  const scannedDirectSubmitKeys = new Set(
+    report.scanResults.frontendDirectSubmits.map((item) => item.callSiteKey),
+  );
+  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:143:research'));
+  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:173:switchCity'));
   assert.match(renderSummary(report), /checks defined: 12/);
 });
 
@@ -56,6 +61,11 @@ test('direct-submit anti-evasion catches an aliased GameAPI receiver', () => {
   assert.ok(actual.includes('direct-submit'));
 });
 
+test('direct-submit anti-evasion catches a getApi accessor receiver', () => {
+  const actual = classifyFixtureSample('return this.getApi().research(techId);');
+  assert.ok(actual.includes('direct-submit'));
+});
+
 test('frontend direct-submit scanner catches an aliased GameAPI receiver fixture', () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'command-owner-step1-'));
   try {
@@ -74,6 +84,32 @@ test('frontend direct-submit scanner catches an aliased GameAPI receiver fixture
     assert.equal(hits.length, 1);
     assert.equal(hits[0].helper, 'claimConquest');
     assert.equal(hits[0].file, 'frontend/js/controllers/AliasController.js');
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test('frontend direct-submit scanner catches a getApi accessor receiver fixture', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'command-owner-step1-'));
+  try {
+    const fixtureDir = path.join(tempRoot, 'frontend', 'js', 'platform');
+    fs.mkdirSync(fixtureDir, { recursive: true });
+    fs.writeFileSync(path.join(fixtureDir, 'GameCommandService.js'), [
+      "'use strict';",
+      'class GameCommandService {',
+      '  getApi() { return this.api; }',
+      '  submit(techId) {',
+      '    return this.getApi().research(techId);',
+      '  }',
+      '}',
+      'module.exports = GameCommandService;',
+      '',
+    ].join('\n'), 'utf8');
+    const hits = scanFrontendDirectSubmits(tempRoot);
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0].helper, 'research');
+    assert.equal(hits[0].file, 'frontend/js/platform/GameCommandService.js');
+    assert.equal(hits[0].submissionClassification, 'compatibility-direct-submit');
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
