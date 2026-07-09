@@ -295,7 +295,7 @@ test('CanvasAssetRenderer keeps famous portrait loads out of world tile caches',
   assert.notEqual(host.worldMapCacheState.worldTileViewCache, null);
   assert.equal(events.length, 1);
   assert.equal(events[0].assetPath, assetPath);
-  assert.equal(events[0].domain, 'panelOverlay');
+  assert.equal(events[0].assetScope, 'panelOverlay');
   assert.equal(events[0].panelKey, 'famousPersons');
   assert.equal(events[0].invalidateWorldTileCaches, false);
 });
@@ -314,7 +314,7 @@ test('CanvasAssetRenderer still invalidates world tile caches for world map asse
   assert.equal(host.worldMapCacheState.worldTileViewCache, null);
   assert.equal(events.length, 1);
   assert.equal(events[0].assetPath, assetPath);
-  assert.equal(events[0].domain, 'worldMap');
+  assert.equal(events[0].assetScope, 'worldMap');
   assert.equal(events[0].invalidateWorldTileCaches, true);
 });
 

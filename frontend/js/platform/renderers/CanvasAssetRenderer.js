@@ -124,7 +124,7 @@
         || this.isWorldTileTemplateAssetPath(path);
     }
 
-    getAssetChangeDomain(assetPath = '') {
+    getAssetChangeScope(assetPath = '') {
       const path = String(assetPath || '');
       if (!path) return 'worldMap';
       if (this.isWorldMapAssetPath(path)) return 'worldMap';
@@ -148,18 +148,17 @@
         ? assetPathOrEvent
         : { assetPath: assetPathOrEvent };
       const assetPath = String(base.assetPath || '');
-      const domain = String(base.domain || base.assetDomain || this.getAssetChangeDomain(assetPath) || 'surface');
+      const assetScope = String(base.assetScope || this.getAssetChangeScope(assetPath) || 'surface');
       const panelKey = base.panelKey || (assetPath.startsWith('assets/art/famous-person/layers/') ? 'famousPersons' : '');
       const invalidateWorldTileCaches = typeof base.invalidateWorldTileCaches === 'boolean'
         ? base.invalidateWorldTileCaches
-        : (assetPath ? domain === 'worldMap' : true);
+        : (assetPath ? assetScope === 'worldMap' : true);
       return {
         ...base,
         ...overrides,
         assetPath,
-        domain,
-        assetDomain: domain,
-        surface: base.surface || (domain === 'panelOverlay' ? 'panelOverlay' : ''),
+        assetScope,
+        surface: base.surface || (assetScope === 'panelOverlay' ? 'panelOverlay' : ''),
         panelKey,
         invalidateWorldTileCaches,
       };

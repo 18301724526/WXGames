@@ -1010,8 +1010,7 @@ test('CanvasGameShell routes famous portrait asset loads to the panel overlay on
     calls.length = 0;
     mainRenderer.assetsChangedHandler({
       assetPath: 'assets/art/famous-person/layers/fp-layer-v3-face-01.png',
-      domain: 'panelOverlay',
-      assetDomain: 'panelOverlay',
+      assetScope: 'panelOverlay',
       panelKey: 'famousPersons',
       invalidateWorldTileCaches: false,
     });
