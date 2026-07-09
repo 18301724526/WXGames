@@ -104,3 +104,14 @@ Choose one before resuming:
 3. Provide a different owner-approved architecture-smoke baseline for this repo.
 
 No Step2/Step3 work was started.
+
+---
+
+## Resolution (2026-07-09, Opus supervision)
+
+Resolved. Root cause = docs sweep `985c1111` deleted a broad doc set while leaving
+consumers; pre-existing on main, unrelated to command-owner. Fix `ffa39749`: retired two
+fully-orphaned docs-governance guards, restored four live-guard baseline docs. Architecture
+smoke now exits 0. Codex correctly stopped rather than fake a placeholder. T7/T8 completed
+afterward. See the completion section in
+`step1-command-owner-pipeline-prerequisite-staging-progress-2026-07-09.md`.
