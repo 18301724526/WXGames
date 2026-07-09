@@ -32,7 +32,17 @@ function runGit(args) {
   return result.stdout.trim();
 }
 
+function hasGitWorkTree() {
+  const result = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    shell: false,
+  });
+  return result.status === 0 && result.stdout.trim() === 'true';
+}
+
 function getChangedTrackedFiles() {
+  if (!hasGitWorkTree()) return null;
   const output = runGit(['diff', '--name-only', '--diff-filter=ACMRTUXB', 'HEAD', '--']);
   return new Set(output ? output.split(/\r?\n/).map(normalizePath) : []);
 }
@@ -132,13 +142,17 @@ function validateResponsibilityEntry(entry) {
   );
 }
 
-function checkStableReopenPolicy(manifest, stableFiles) {
-  const changedFiles = getChangedTrackedFiles();
+function checkStableReopenPolicy(manifest, stableFiles, options = {}) {
+  const changedFiles = Object.prototype.hasOwnProperty.call(options, 'changedFiles')
+    ? options.changedFiles
+    : getChangedTrackedFiles();
+  if (changedFiles === null) return;
   const changedStableFiles = [...stableFiles].filter((file) => changedFiles.has(file));
   if (!changedStableFiles.length) return;
 
-  const allowReopen = process.env[manifest.reopenPolicy?.environmentFlag || 'ALLOW_STABLE_BLOCK_REOPEN'] === '1';
-  const reason = process.env[manifest.reopenPolicy?.environmentReason || 'STABLE_BLOCK_REOPEN_REASON'] || '';
+  const env = options.env || process.env;
+  const allowReopen = env[manifest.reopenPolicy?.environmentFlag || 'ALLOW_STABLE_BLOCK_REOPEN'] === '1';
+  const reason = env[manifest.reopenPolicy?.environmentReason || 'STABLE_BLOCK_REOPEN_REASON'] || '';
   const allowedReasons = new Set(manifest.reopenPolicy?.allowedReasons || []);
   if (allowReopen && allowedReasons.has(reason)) return;
 
@@ -212,6 +226,8 @@ if (require.main === module) {
 module.exports = {
   collectResponsibilityEntries,
   collectStableIndexEntries,
+  checkStableReopenPolicy,
+  getChangedTrackedFiles,
   validateCandidatePromotionQueue,
   validateBlock,
   validatePromotionEvidence,

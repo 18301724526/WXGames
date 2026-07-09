@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  checkStableReopenPolicy,
   collectResponsibilityEntries,
   collectStableIndexEntries,
   validateCandidatePromotionQueue,
@@ -138,4 +139,40 @@ test('candidate promotion queue keeps files documented as candidate only', () =>
     }, entriesByPath, new Set()),
     /must still be candidate/,
   );
+});
+
+test('stable reopen policy skips worktree diff when git metadata is unavailable', () => {
+  const manifest = {
+    reopenPolicy: {
+      allowedReasons: ['bug'],
+    },
+  };
+
+  assert.doesNotThrow(() => checkStableReopenPolicy(
+    manifest,
+    new Set(['scripts/check-stable-blocks.js']),
+    { changedFiles: null },
+  ));
+});
+
+test('stable reopen policy still blocks stable-file edits without approved reason', () => {
+  const manifest = {
+    reopenPolicy: {
+      allowedReasons: ['bug', 'governance-update'],
+    },
+  };
+  const stableFiles = new Set(['scripts/check-stable-blocks.js']);
+  const changedFiles = new Set(['scripts/check-stable-blocks.js']);
+
+  assert.throws(
+    () => checkStableReopenPolicy(manifest, stableFiles, { changedFiles, env: {} }),
+    /Stable block internals changed without an approved reopen reason/,
+  );
+  assert.doesNotThrow(() => checkStableReopenPolicy(manifest, stableFiles, {
+    changedFiles,
+    env: {
+      ALLOW_STABLE_BLOCK_REOPEN: '1',
+      STABLE_BLOCK_REOPEN_REASON: 'governance-update',
+    },
+  }));
 });
