@@ -162,12 +162,6 @@
       .join(', ');
   }
 
-  function formatDeploymentBlocker(blocker = {}) {
-    return t(blocker.messageKey || 'world.march.deploy.blocked', {
-      name: blocker.name || blocker.participant?.name || '',
-    });
-  }
-
   function formatDeploymentWarning(warning = {}) {
     return t(warning.messageKey || 'world.march.deploy.warning', {
       name: warning.names?.[0] || warning.participants?.[0]?.name || '',
@@ -208,37 +202,6 @@
           warnings: [],
         }
       );
-    }
-
-    showWorldMarchDeploymentBlocked(eligibility = {}, action = {}) {
-      const blocker = eligibility.blockers?.[0] || {};
-      const message = formatDeploymentBlocker(blocker);
-      const game = this.core.getGameHost();
-      const uiHost = this.core.host?.openConfirmDialog ? this.core.host : game?.canvasShell || game;
-      if (typeof uiHost?.openConfirmDialog === 'function') {
-        uiHost.openConfirmDialog({
-          kind: 'worldMarchDeploymentBlocked',
-          source: 'worldMarch',
-          title: t('world.march.deploy.blockedTitle'),
-          message,
-          confirmLabel: t('common.confirm'),
-          cancelLabel: t('common.cancel'),
-          confirmAction: { type: 'closeConfirmDialog' },
-        });
-        return true;
-      }
-      openConfirmDialogSnapshot(this.core.host, {
-        visible: true,
-        kind: 'worldMarchDeploymentBlocked',
-        source: 'worldMarch',
-        title: t('world.march.deploy.blockedTitle'),
-        message,
-        confirmLabel: t('common.confirm'),
-        cancelLabel: t('common.cancel'),
-        confirmAction: { type: 'closeConfirmDialog' },
-      });
-      this.core.refreshWorldMarchLayer(action);
-      return true;
     }
 
     openWorldMarchDeploymentWarning(eligibility = {}, action = {}) {
@@ -467,9 +430,6 @@
       const target = normalizeWorldMarchTarget(action);
       if (!target) return false;
       const deploymentEligibility = this.getWorldMarchDeploymentEligibility(action);
-      if (deploymentEligibility.blocked) {
-        return this.showWorldMarchDeploymentBlocked(deploymentEligibility, action);
-      }
       if (
         !action.skipDeploymentWarnings &&
         Array.isArray(deploymentEligibility.warnings) &&

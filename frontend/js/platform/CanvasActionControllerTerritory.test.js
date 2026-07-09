@@ -242,7 +242,7 @@ test('CanvasActionController refreshes world march UI before start command resol
   assert.equal(await handled, true);
 });
 
-test('CanvasActionController blocks deployment when primary general has zero soldiers', async () => {
+test('CanvasActionController submits deployment with zero primary soldiers and returns server rejection', async () => {
   const calls = [];
   const game = makeModalHost({
     territoryUiState: {
@@ -251,7 +251,8 @@ test('CanvasActionController blocks deployment when primary general has zero sol
     state: { activeCityId: 'capital' },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
-      return Promise.resolve(true);
+      calls.push(['serverRejection', 'FORMATION_PRIMARY_NO_SOLDIERS']);
+      return Promise.resolve(false);
     },
   });
   const host = makeModalHost({
@@ -287,16 +288,17 @@ test('CanvasActionController blocks deployment when primary general has zero sol
       targetR: -2,
       formationSlot: 1,
     }),
-    true,
-  );
-
-  assert.equal(
-    calls.some((call) => call[0] === 'startWorldMarch'),
     false,
   );
-  assert.equal(host.isConfirmDialogSnapshotOpen(), true);
-  assert.equal(host.getConfirmDialogSnapshot().kind, 'worldMarchDeploymentBlocked');
-  assert.equal(host.territoryUiState.worldMarchTarget.tileId, 'tile_4_-2');
+
+  const startCall = calls.find((call) => call[0] === 'startWorldMarch');
+  assert.equal(Boolean(startCall), true);
+  assert.equal(startCall[1].formationSlot, 1);
+  assert.deepEqual(calls.find((call) => call[0] === 'serverRejection'), [
+    'serverRejection',
+    'FORMATION_PRIMARY_NO_SOLDIERS',
+  ]);
+  assert.equal(host.isConfirmDialogSnapshotOpen(), false);
 });
 
 test('CanvasActionController confirms deployment when deputies have zero soldiers', async () => {
