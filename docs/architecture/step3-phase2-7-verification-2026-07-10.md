@@ -337,7 +337,135 @@ Captured same-run facts:
 
 ## Phase 4
 
-Status: not started.
+Status: **COMPLETE.** Contracts: `COP-IDEMP-001`, `COP-ENVELOPE-001`,
+`COP-LOCK-001`, `COP-CONCURRENCY-001`, `COP-TRACE-001`, `COP-ROUTE-001`,
+`COP-HANDLER-001`.
+
+### One Cross-Process Owner Lock System
+
+- Added the SQLite lease-backed `OwnerLockRepository` with the single public entry
+  `withOwnerLocks(ownerKeys, scope, callback, options)`.
+- Owner keys are validated, deduplicated, and sorted by one deterministic UTF-16 order. All keys
+  are acquired before command execution; timeout releases partial acquisitions in reverse order,
+  and normal/exception exit releases every lock in reverse order.
+- Timeout is the structured `OWNER_LOCK_TIMEOUT` and names the contested owner key. Lease holder
+  ids are `instanceId + uuid`; expired rows are reclaimed through the same SQLite upsert path.
+- Schema migration `003-owner-locks-generalization` creates exactly
+  `owner_locks(ownerKey, holderId, scope, lockedAt, expiresAt)` plus the expiry index, copies live
+  legacy rows to `player:{playerId}`, and drops `player_state_locks` and its index.
+- `PlayerStateLockRepository.js` is deleted. `GameStateRepository.withPlayerStateLock` is a thin
+  compatibility delegate to `withOwnerLocks(['player:'+playerId], ...)`; API and world-worker use
+  the same repository and the same DB file, with no dual-write period.
+- Acceptance tests use real `better-sqlite3` files and real child processes for same-key
+  serialization, different-key concurrency, expired-holder recovery, and opposite mention-order
+  dual locks.
+
+### Persistent Idempotency Store
+
+- Schema migration `004-command-idempotency-store` creates the persistent
+  `command_idempotency` table and status/command indexes in the game DB.
+- `CommandIdempotencyStore.begin` atomically reserves a stable client key. Same key plus the same
+  payload digest returns the exact stored status/body; same key plus a different digest returns
+  HTTP 409 `IDEMPOTENCY_KEY_CONFLICT`; a live reservation returns `COMMAND_IN_FLIGHT`.
+- Server fallback ids are rejected with `IDEMPOTENCY_CLIENT_KEY_REQUIRED` and never count as
+  compliance.
+- Terminal results cannot be overwritten with a different response. Uncommitted failures can
+  explicitly abandon their reservation so a retry may execute again.
+
+### Command Execution Pipeline Skeleton
+
+- Added `CommandExecutionPipeline` with the ratified order:
+  trace → idempotency → owner resolution → `withOwnerLocks` → load → validate → execute →
+  commit → projection → response.
+- `CommandOwnerContext` uses `AsyncLocalStorage`; domain execution outside the pipeline-owned
+  context throws `OWNER_CONTEXT_REQUIRED`.
+- `CommandCommitter` is the only pipeline component that calls repository persistence and writes
+  terminal idempotency results. Projection failure after a successful commit returns and stores a
+  replayable HTTP 202 `PROJECTION_FAILED_AFTER_COMMIT` while the owner lock is still held.
+- `CommandTrace` now records owner key(s), idempotency status, owner wait, execution duration,
+  validator result, commit result, revisions, response status, and ordered phases.
+- The real server constructs the idempotency store and pipeline foundation at startup. No HTTP
+  route is marked migrated in Phase 4; route/handler lock and persistence debt remains visible for
+  Phase 5.
+
+### Blocking Guard And FIRE Probe
+
+Added `scripts/check-command-pipeline-foundation.js` to architecture smoke. It blocks a surviving
+parallel player-lock system, malformed owner-lock schema, missing migration/drop, non-canonical
+owner ordering, wrong acquisition/release shape, missing fallback-id refusal, reordered pipeline
+stages, persistence outside `CommandCommitter`, incomplete trace fields, and a server that does not
+construct the foundation.
+
+Novel temporary violation injected into actual source:
+
+```text
+OwnerLockRepository canonical Array.from(new Set(normalized)).sort() changed to .reverse()
+```
+
+The guard exited 1 with exactly:
+
+```text
+owner keys are not deduplicated and sorted by one canonical order
+```
+
+The probe was removed immediately. The production guard then reported one public method
+`withOwnerLocks`, 0 violations, and `passed`.
+
+### Honest Real-Server Verification
+
+Reproducible command:
+
+```powershell
+node scripts/verify-step3-phase4-real-server.js --output docs/architecture/evidence/step3-phase4-real-server-2026-07-10.json --quiet
+```
+
+The first invocation failed before server startup because a root-level script cannot resolve the
+backend-private `better-sqlite3` package. The script was corrected to use the existing
+`createRequire(backend/package.json)` production-loading pattern; no result from the failed run is
+used as evidence.
+
+The successful run starts the real `backend/server.js`, captures health, and uses the exact SQLite
+file initialized by that process. It then runs production repository/store modules and real child
+processes against that file, captures a second health response, and stops the server. The script
+explicitly records `routeMigrationClaimed=false`; its callback-based pipeline tests remain unit
+tests and are not represented as HTTP end-to-end evidence.
+
+Captured same-run facts:
+
+- PID `140832`, port `61629`; health before and after verification both returned HTTP 200.
+- Initial health reported git commit `566a0d333e9516a7fd7bca26eef8afd0b8c8040c` and matched config runtime.
+- `owner_locks` columns were exactly `ownerKey, holderId, scope, lockedAt, expiresAt`;
+  `player_state_locks` was absent; migrations `003` and `004` were both `applied`.
+- A real child held `player:phase4-same-owner`; the parent acquired only after `460ms`.
+- While that child was still holding its key, the parent acquired a different key in `1ms`.
+- An injected expired lease was reclaimed. Two real child processes requesting the same dual-lock
+  set in opposite mention order both exited 0 without deadlock.
+- The persistent store returned `replay` with the exact recorded response and rejected the same key
+  with a different digest as `IDEMPOTENCY_KEY_CONFLICT` / HTTP 409.
+- Server stderr was empty and the spawned server stopped with `SIGTERM`.
+- Raw health bodies, schema rows, migration rows, child PIDs/stdout/stderr/exit state, timings,
+  idempotency rows/digests, DB paths, server output, and termination state are stored in
+  `docs/architecture/evidence/step3-phase4-real-server-2026-07-10.json`.
+
+### Phase 4 Gate
+
+- Focused lock/idempotency/pipeline/repository/migration/worker/route/inventory/guard tests:
+  94/94 passed.
+- Final-tree core rerun after the verification record update: 56/56 passed.
+- `npm test`: 2340/2340 passed.
+- `npm run lint`: passed.
+- `node scripts/run-architecture-smoke.js`: exit 0, including the Phase 3 owner-entry guard and
+  new Phase 4 foundation guard.
+- `node scripts/report-command-owner-step1.js --summary`: inventory drift findings 0.
+- `node scripts/check-source-encoding.js`: violations 0.
+- Before this record update, all 22 existing changed/untracked files were LF-only; the retired
+  player lock file is an explicit deletion.
+- `git diff --check`: passed.
+- Frozen working-tree blob hashes remain exactly:
+  `c45d1ab4eb245337b22b1555a027a147ae8b5a80`,
+  `c6f92374db9189e5d48792365c48ad1d7669a36e`, and
+  `59ea0f56a18194a25dcc09a7e3df5160cb7eb52d`.
+- `resource-node` remains absent and untouched.
 
 ## Phase 5
 

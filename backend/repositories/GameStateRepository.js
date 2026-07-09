@@ -2,7 +2,7 @@ const PerformanceCapacityBudget = require('../services/PerformanceCapacityBudget
 const { SchemaMigrationService } = require('../services/SchemaMigrationService');
 const { SpawnAuthorityRepository } = require('./SpawnAuthorityRepository');
 const { WorldMapAuthorityRepository } = require('./WorldMapAuthorityRepository');
-const { PlayerStateLockRepository } = require('./PlayerStateLockRepository');
+const { OwnerLockRepository } = require('./OwnerLockRepository');
 const { FactionRepository } = require('./FactionRepository');
 const { FactionDiplomacyRepository } = require('./FactionDiplomacyRepository');
 const { WorldPeopleRepository } = require('./WorldPeopleRepository');
@@ -65,6 +65,73 @@ function createGameStateSchemaMigrations() {
         db.prepare('ALTER TABLE game_states ADD COLUMN captureDecisions TEXT').run();
       }
     },
+  }, {
+    id: '003-owner-locks-generalization',
+    description: 'Generalize player lease locks into canonical multi-owner lease locks.',
+    statements: [
+      'CREATE TABLE owner_locks (ownerKey TEXT PRIMARY KEY, holderId TEXT NOT NULL, scope TEXT, lockedAt TEXT NOT NULL, expiresAt TEXT NOT NULL)',
+      'CREATE INDEX idx_owner_locks_expires_at ON owner_locks(expiresAt)',
+      "INSERT INTO owner_locks SELECT 'player:' || playerId, ownerId, scope, lockedAt, expiresAt FROM player_state_locks",
+      'DROP TABLE player_state_locks',
+    ],
+    apply(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS owner_locks (
+          ownerKey TEXT PRIMARY KEY,
+          holderId TEXT NOT NULL,
+          scope TEXT,
+          lockedAt TEXT NOT NULL,
+          expiresAt TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_owner_locks_expires_at
+          ON owner_locks(expiresAt);
+      `);
+      const legacy = db.prepare(`
+        SELECT name FROM sqlite_master
+        WHERE type = 'table' AND name = 'player_state_locks'
+      `).get();
+      if (legacy) {
+        db.prepare(`
+          INSERT OR IGNORE INTO owner_locks (ownerKey, holderId, scope, lockedAt, expiresAt)
+          SELECT 'player:' || playerId, ownerId, scope, lockedAt, expiresAt
+          FROM player_state_locks
+        `).run();
+        db.exec(`
+          DROP INDEX IF EXISTS idx_player_state_locks_expires_at;
+          DROP TABLE player_state_locks;
+        `);
+      }
+    },
+  }, {
+    id: '004-command-idempotency-store',
+    description: 'Create the persistent command idempotency result store.',
+    statements: [
+      'CREATE TABLE command_idempotency (playerId TEXT NOT NULL, idempotencyKey TEXT NOT NULL, commandId TEXT NOT NULL, ownerKey TEXT, payloadDigest TEXT NOT NULL, status TEXT NOT NULL, responseDigest TEXT, responsePayload TEXT, statusCode INTEGER, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL, PRIMARY KEY(playerId, idempotencyKey))',
+      'CREATE INDEX idx_command_idempotency_status_updated_at ON command_idempotency(status, updatedAt)',
+      'CREATE INDEX idx_command_idempotency_command_id ON command_idempotency(commandId)',
+    ],
+    apply(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS command_idempotency (
+          playerId TEXT NOT NULL,
+          idempotencyKey TEXT NOT NULL,
+          commandId TEXT NOT NULL,
+          ownerKey TEXT,
+          payloadDigest TEXT NOT NULL,
+          status TEXT NOT NULL,
+          responseDigest TEXT,
+          responsePayload TEXT,
+          statusCode INTEGER,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL,
+          PRIMARY KEY(playerId, idempotencyKey)
+        );
+        CREATE INDEX IF NOT EXISTS idx_command_idempotency_status_updated_at
+          ON command_idempotency(status, updatedAt);
+        CREATE INDEX IF NOT EXISTS idx_command_idempotency_command_id
+          ON command_idempotency(commandId);
+      `);
+    },
   }];
 }
 
@@ -79,7 +146,7 @@ function parseJsonField(value, fallback) {
 class GameStateRepository {
   constructor(db) {
     this.db = db;
-    this.playerStateLocks = new PlayerStateLockRepository(db);
+    this.ownerLocks = new OwnerLockRepository(db);
     this.spawnAuthority = new SpawnAuthorityRepository(db);
     this.worldMapAuthority = new WorldMapAuthorityRepository(db);
     // Shared-world AI + neutral 势力 registry (docs/design/01). Player factions derive from
@@ -166,7 +233,6 @@ class GameStateRepository {
       CREATE INDEX IF NOT EXISTS idx_players_last_active_at ON players(lastActiveAt DESC);
       CREATE INDEX IF NOT EXISTS idx_shared_world_territories_owner ON shared_world_territories(ownerPlayerId);
     `);
-    this.playerStateLocks.init();
     this.spawnAuthority.init();
     this.worldMapAuthority.init();
     this.factionRepo.init();
@@ -652,7 +718,27 @@ class GameStateRepository {
   }
 
   withPlayerStateLock(playerId, callback, options = {}) {
-    return this.playerStateLocks.withLock(playerId, callback, options);
+    const normalizedPlayerId = String(playerId || '').trim();
+    if (!normalizedPlayerId) {
+      const error = new Error('Player state lock requires playerId');
+      error.code = 'OWNER_KEY_INVALID';
+      throw error;
+    }
+    try {
+      return this.withOwnerLocks(
+        [`player:${normalizedPlayerId}`],
+        options.scope || 'player-state',
+        callback,
+        options,
+      );
+    } catch (error) {
+      if (error?.code === 'OWNER_LOCK_TIMEOUT') error.playerId = normalizedPlayerId;
+      throw error;
+    }
+  }
+
+  withOwnerLocks(ownerKeys, scope, callback, options = {}) {
+    return this.ownerLocks.withOwnerLocks(ownerKeys, scope, callback, options);
   }
 }
 

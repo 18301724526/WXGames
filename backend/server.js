@@ -27,6 +27,8 @@ const { BuildingConfig, initializeRuntimeConfig, getRuntimeConfigStatus } = requ
 const SecurityConfig = require('./config/SecurityConfig');
 const VersionService = require('./services/VersionService');
 const ObservabilityService = require('./services/ObservabilityService');
+const { CommandIdempotencyStore } = require('./application/commands/CommandIdempotencyStore');
+const { CommandExecutionPipeline } = require('./application/commands/CommandExecutionPipeline');
 const OpsControlService = require('./services/OpsControlService');
 const OpsAuthService = require('./services/OpsAuthService');
 const ConfigReleaseService = require('./services/config/ConfigReleaseService');
@@ -65,6 +67,11 @@ const spawnLifecycleService = new SpawnLifecycleService({
 const adminMiddleware = createAdminMiddleware();
 const versionService = new VersionService();
 const observabilityService = new ObservabilityService();
+const commandIdempotencyStore = new CommandIdempotencyStore(db);
+const commandExecutionPipeline = new CommandExecutionPipeline({
+  repository,
+  idempotencyStore: commandIdempotencyStore,
+});
 const commandEntryReporter = (report) => observabilityService.recordCommandEntry(report);
 const opsAuthService = new OpsAuthService();
 const configReleaseService = ConfigReleaseService;
@@ -176,8 +183,15 @@ registerGameRoutes(app, {
   gameStateService,
   presenceService,
   commandEntryReporter,
+  commandExecutionPipeline,
 });
-registerBuildingRoutes(app, { authMiddleware, repository, gameStateService, commandEntryReporter });
+registerBuildingRoutes(app, {
+  authMiddleware,
+  repository,
+  gameStateService,
+  commandEntryReporter,
+  commandExecutionPipeline,
+});
 
 app.get('/api/health', (req, res) => {
   const configRuntimeStatus = configReleaseService.getRuntimeStatus();

@@ -1,0 +1,354 @@
+{
+  "schema": "step3-phase4-real-server-evidence-v1",
+  "generatedAt": "2026-07-09T23:42:36.945Z",
+  "integrity": {
+    "stubFree": true,
+    "serverEntry": "backend/server.js",
+    "serverPid": 140832,
+    "processExecPath": "D:\\Program Files\\nodejs\\node.exe",
+    "repoRoot": "F:\\AI Project\\WXGamesLocal",
+    "tempRoot": "C:\\Users\\18301\\AppData\\Local\\Temp\\wxgames-step3-phase4-real-server-I7OPyK",
+    "dbPath": "C:\\Users\\18301\\AppData\\Local\\Temp\\wxgames-step3-phase4-real-server-I7OPyK\\civilization.db",
+    "logsDbPath": "C:\\Users\\18301\\AppData\\Local\\Temp\\wxgames-step3-phase4-real-server-I7OPyK\\observability.db",
+    "port": 61629,
+    "configRuntime": {
+      "historyPath": "C:\\Users\\18301\\AppData\\Local\\Temp\\wxgames-step3-phase4-real-server-I7OPyK\\configReleases.json",
+      "activePath": "C:\\Users\\18301\\AppData\\Local\\Temp\\wxgames-step3-phase4-real-server-I7OPyK\\configActiveRelease.json",
+      "releaseId": "20260709T234235060Z-a12a8a42e80c-d5665fe6",
+      "snapshotHash": "a12a8a42e80c"
+    },
+    "routeMigrationClaimed": false,
+    "verificationScope": "real server startup plus production SQLite lock/idempotency modules"
+  },
+  "healthBefore": {
+    "request": {
+      "method": "GET",
+      "url": "http://127.0.0.1:61629/api/health",
+      "headers": {},
+      "body": ""
+    },
+    "response": {
+      "status": 200,
+      "statusText": "OK",
+      "headers": {
+        "connection": "keep-alive",
+        "content-length": "2546",
+        "content-type": "application/json; charset=utf-8",
+        "date": "Thu, 09 Jul 2026 23:42:35 GMT",
+        "etag": "W/\"9f2-83qRoiHfq3/ldUFpHZm6ZyTvr94\"",
+        "keep-alive": "timeout=5",
+        "vary": "Origin",
+        "x-powered-by": "Express"
+      },
+      "body": "{\"status\":\"ok\",\"timestamp\":\"2026-07-09T23:42:35.637Z\",\"buildingConfigVersion\":\"2.5\",\"buildingConfigPath\":\"active-release-bundle:building-config\",\"appVersion\":{\"version\":\"0.2.1\",\"deploymentId\":\"947be5ee43b7f6a6\",\"gitCommit\":\"566a0d333e9516a7fd7bca26eef8afd0b8c8040c\",\"deployedCommit\":null,\"deployedAt\":null,\"branch\":null,\"sourceHash\":\"8f0744264e9d312b\",\"checkedAt\":\"2026-07-09T23:42:35.637Z\",\"deployStatus\":null,\"etag\":\"\\\"wxgame-ea94be86d5971c8530c4f6b1\\\"\"},\"presence\":{\"schema\":\"presence-summary-v1\",\"generatedAt\":\"2026-07-09T23:42:35.942Z\",\"totalOnline\":0,\"windows\":{\"last60s\":0,\"last600s\":0,\"last900s\":0},\"recentPlayers\":[],\"minPersistIntervalMs\":60000,\"onlineWindowMs\":900000},\"observability\":{\"status\":\"ok\",\"recentRequestCount\":0,\"recentServerErrorRate\":0,\"recentP95DurationMs\":0,\"slowRequestCount\":0,\"actionFailureCount\":0,\"performanceBudgetExceededCount\":0,\"recentClientEventCount\":0,\"recentCommandEntryCount\":0,\"blockedCommandOwnerCount\":0,\"frontendLoadFailureCount\":0,\"frontendAssetFailureCount\":0,\"alerts\":[]},\"configRuntime\":{\"schema\":\"config-runtime-status-v1\",\"mode\":\"audit-only\",\"status\":\"matched\",\"matchesCurrent\":true,\"gatePolicy\":{\"mode\":\"required\",\"required\":true,\"source\":\"CONFIG_RELEASE_GATE\"},\"activeRelease\":{\"id\":\"20260709T234235060Z-a12a8a42e80c-d5665fe6\",\"action\":\"publish\",\"createdAt\":\"2026-07-09T23:42:35.060Z\",\"operator\":\"codex-real-server-verification\",\"source\":\"step3-phase4-real-server\",\"snapshotHash\":\"a12a8a42e80c\",\"registryCount\":7},\"drift\":{\"success\":true,\"changedCount\":0,\"addedCount\":0,\"removedCount\":0,\"unchangedCount\":7,\"changedRegistryIds\":[],\"addedRegistryIds\":[],\"removedRegistryIds\":[],\"matchesCurrent\":true},\"errors\":[],\"warnings\":[],\"loader\":{\"schema\":\"config-runtime-loader-status-v1\",\"status\":\"ready\",\"ready\":true,\"payloadIncluded\":true,\"registryCount\":7,\"errors\":[],\"warnings\":[]},\"gameplay\":{\"schema\":\"gameplay-config-runtime-v1\",\"source\":\"active-release-bundle\",\"bundleReady\":true,\"payloadIncluded\":true,\"release\":{\"id\":\"20260709T234235060Z-a12a8a42e80c-d5665fe6\",\"action\":\"publish\",\"createdAt\":\"2026-07-09T23:42:35.060Z\",\"operator\":\"codex-real-server-verification\",\"source\":\"step3-phase4-real-server\",\"snapshotHash\":\"a12a8a42e80c\",\"registryCount\":7},\"registryCount\":7,\"errors\":[],\"warnings\":[]},\"taskDefinitions\":{\"schema\":\"task-definitions-runtime-summary-v1\",\"success\":true,\"source\":\"active-release-bundle:20260709T234235060Z-a12a8a42e80c-d5665fe6:task-definitions\",\"version\":\"1.0.0\",\"hash\":\"c62deeb2577f\",\"taskCount\":6,\"mainTaskCount\":6,\"errors\":[],\"registryErrors\":[],\"registryWarnings\":[]}}}"
+    }
+  },
+  "healthAfter": {
+    "request": {
+      "method": "GET",
+      "url": "http://127.0.0.1:61629/api/health",
+      "headers": {},
+      "body": ""
+    },
+    "response": {
+      "status": 200,
+      "statusText": "OK",
+      "headers": {
+        "connection": "keep-alive",
+        "content-length": "2546",
+        "content-type": "application/json; charset=utf-8",
+        "date": "Thu, 09 Jul 2026 23:42:36 GMT",
+        "etag": "W/\"9f2-oTF0FREOXyAYNMSZWTtVspoH1iA\"",
+        "keep-alive": "timeout=5",
+        "vary": "Origin",
+        "x-powered-by": "Express"
+      },
+      "body": "{\"status\":\"ok\",\"timestamp\":\"2026-07-09T23:42:36.944Z\",\"buildingConfigVersion\":\"2.5\",\"buildingConfigPath\":\"active-release-bundle:building-config\",\"appVersion\":{\"version\":\"0.2.1\",\"deploymentId\":\"947be5ee43b7f6a6\",\"gitCommit\":\"566a0d333e9516a7fd7bca26eef8afd0b8c8040c\",\"deployedCommit\":null,\"deployedAt\":null,\"branch\":null,\"sourceHash\":\"8f0744264e9d312b\",\"checkedAt\":\"2026-07-09T23:42:35.637Z\",\"deployStatus\":null,\"etag\":\"\\\"wxgame-ea94be86d5971c8530c4f6b1\\\"\"},\"presence\":{\"schema\":\"presence-summary-v1\",\"generatedAt\":\"2026-07-09T23:42:36.944Z\",\"totalOnline\":0,\"windows\":{\"last60s\":0,\"last600s\":0,\"last900s\":0},\"recentPlayers\":[],\"minPersistIntervalMs\":60000,\"onlineWindowMs\":900000},\"observability\":{\"status\":\"ok\",\"recentRequestCount\":0,\"recentServerErrorRate\":0,\"recentP95DurationMs\":0,\"slowRequestCount\":0,\"actionFailureCount\":0,\"performanceBudgetExceededCount\":0,\"recentClientEventCount\":0,\"recentCommandEntryCount\":0,\"blockedCommandOwnerCount\":0,\"frontendLoadFailureCount\":0,\"frontendAssetFailureCount\":0,\"alerts\":[]},\"configRuntime\":{\"schema\":\"config-runtime-status-v1\",\"mode\":\"audit-only\",\"status\":\"matched\",\"matchesCurrent\":true,\"gatePolicy\":{\"mode\":\"required\",\"required\":true,\"source\":\"CONFIG_RELEASE_GATE\"},\"activeRelease\":{\"id\":\"20260709T234235060Z-a12a8a42e80c-d5665fe6\",\"action\":\"publish\",\"createdAt\":\"2026-07-09T23:42:35.060Z\",\"operator\":\"codex-real-server-verification\",\"source\":\"step3-phase4-real-server\",\"snapshotHash\":\"a12a8a42e80c\",\"registryCount\":7},\"drift\":{\"success\":true,\"changedCount\":0,\"addedCount\":0,\"removedCount\":0,\"unchangedCount\":7,\"changedRegistryIds\":[],\"addedRegistryIds\":[],\"removedRegistryIds\":[],\"matchesCurrent\":true},\"errors\":[],\"warnings\":[],\"loader\":{\"schema\":\"config-runtime-loader-status-v1\",\"status\":\"ready\",\"ready\":true,\"payloadIncluded\":true,\"registryCount\":7,\"errors\":[],\"warnings\":[]},\"gameplay\":{\"schema\":\"gameplay-config-runtime-v1\",\"source\":\"active-release-bundle\",\"bundleReady\":true,\"payloadIncluded\":true,\"release\":{\"id\":\"20260709T234235060Z-a12a8a42e80c-d5665fe6\",\"action\":\"publish\",\"createdAt\":\"2026-07-09T23:42:35.060Z\",\"operator\":\"codex-real-server-verification\",\"source\":\"step3-phase4-real-server\",\"snapshotHash\":\"a12a8a42e80c\",\"registryCount\":7},\"registryCount\":7,\"errors\":[],\"warnings\":[]},\"taskDefinitions\":{\"schema\":\"task-definitions-runtime-summary-v1\",\"success\":true,\"source\":\"active-release-bundle:20260709T234235060Z-a12a8a42e80c-d5665fe6:task-definitions\",\"version\":\"1.0.0\",\"hash\":\"c62deeb2577f\",\"taskCount\":6,\"mainTaskCount\":6,\"errors\":[],\"registryErrors\":[],\"registryWarnings\":[]}}}"
+    }
+  },
+  "database": {
+    "runtimeConfig": {
+      "schema": "sqlite-runtime-config-v1",
+      "journalMode": "WAL",
+      "synchronous": "NORMAL",
+      "busyTimeoutMs": 10000
+    },
+    "ownerLockColumns": [
+      {
+        "cid": 0,
+        "name": "ownerKey",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "holderId",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "scope",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "lockedAt",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "expiresAt",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "legacyPlayerLockTable": null,
+    "idempotencyColumns": [
+      {
+        "cid": 0,
+        "name": "playerId",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "idempotencyKey",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 2
+      },
+      {
+        "cid": 2,
+        "name": "commandId",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "ownerKey",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "payloadDigest",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "responseDigest",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "responsePayload",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "statusCode",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "createdAt",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "updatedAt",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "migrations": [
+      {
+        "id": "003-owner-locks-generalization",
+        "status": "applied"
+      },
+      {
+        "id": "004-command-idempotency-store",
+        "status": "applied"
+      }
+    ]
+  },
+  "ownerLocks": {
+    "sameOwner": {
+      "result": "same-key-acquired-after-child",
+      "waitMs": 460,
+      "child": {
+        "pid": 144060,
+        "stdout": "acquired:same-owner-holder\n",
+        "stderr": "",
+        "exitCode": 0,
+        "signalCode": null
+      }
+    },
+    "differentOwner": {
+      "result": "different-key-acquired",
+      "waitMs": 1
+    },
+    "expiredLease": {
+      "result": "expired-reclaimed"
+    },
+    "dualOrder": {
+      "first": {
+        "pid": 142720,
+        "stdout": "acquired:dual-order-a\n",
+        "stderr": "",
+        "exitCode": 0,
+        "signalCode": null
+      },
+      "second": {
+        "pid": 139268,
+        "stdout": "acquired:dual-order-b\n",
+        "stderr": "",
+        "exitCode": 0,
+        "signalCode": null
+      }
+    }
+  },
+  "idempotency": {
+    "started": {
+      "status": "started",
+      "record": {
+        "playerId": "phase4-evidence-player",
+        "idempotencyKey": "idem-phase4-evidence",
+        "commandId": "cmd-phase4-evidence",
+        "ownerKey": "",
+        "payloadDigest": "7e1a7173e5fe8afb94c9f4c23b64245dee7b6fe84ca3cf3764ce997cc760a3ea",
+        "status": "in_progress",
+        "responseDigest": "",
+        "responsePayload": null,
+        "statusCode": null,
+        "createdAt": "2026-07-09T23:42:36.930Z",
+        "updatedAt": "2026-07-09T23:42:36.930Z"
+      }
+    },
+    "bound": {
+      "playerId": "phase4-evidence-player",
+      "idempotencyKey": "idem-phase4-evidence",
+      "commandId": "cmd-phase4-evidence",
+      "ownerKey": "player:phase4-evidence-player",
+      "payloadDigest": "7e1a7173e5fe8afb94c9f4c23b64245dee7b6fe84ca3cf3764ce997cc760a3ea",
+      "status": "in_progress",
+      "responseDigest": "",
+      "responsePayload": null,
+      "statusCode": null,
+      "createdAt": "2026-07-09T23:42:36.930Z",
+      "updatedAt": "2026-07-09T23:42:36.930Z"
+    },
+    "stored": {
+      "playerId": "phase4-evidence-player",
+      "idempotencyKey": "idem-phase4-evidence",
+      "commandId": "cmd-phase4-evidence",
+      "ownerKey": "player:phase4-evidence-player",
+      "payloadDigest": "7e1a7173e5fe8afb94c9f4c23b64245dee7b6fe84ca3cf3764ce997cc760a3ea",
+      "status": "committed",
+      "responseDigest": "285d4928ae76e9981c2be4998600345fef10e5ccd87f310c5f0193d97e8d174a",
+      "responsePayload": {
+        "success": true,
+        "evidence": "phase4-real-db"
+      },
+      "statusCode": 200,
+      "createdAt": "2026-07-09T23:42:36.930Z",
+      "updatedAt": "2026-07-09T23:42:36.931Z"
+    },
+    "replay": {
+      "status": "replay",
+      "record": {
+        "playerId": "phase4-evidence-player",
+        "idempotencyKey": "idem-phase4-evidence",
+        "commandId": "cmd-phase4-evidence",
+        "ownerKey": "player:phase4-evidence-player",
+        "payloadDigest": "7e1a7173e5fe8afb94c9f4c23b64245dee7b6fe84ca3cf3764ce997cc760a3ea",
+        "status": "committed",
+        "responseDigest": "285d4928ae76e9981c2be4998600345fef10e5ccd87f310c5f0193d97e8d174a",
+        "responsePayload": {
+          "success": true,
+          "evidence": "phase4-real-db"
+        },
+        "statusCode": 200,
+        "createdAt": "2026-07-09T23:42:36.930Z",
+        "updatedAt": "2026-07-09T23:42:36.931Z"
+      },
+      "response": {
+        "statusCode": 200,
+        "payload": {
+          "success": true,
+          "evidence": "phase4-real-db"
+        }
+      }
+    },
+    "conflict": {
+      "name": "CommandIdempotencyError",
+      "code": "IDEMPOTENCY_KEY_CONFLICT",
+      "status": 409,
+      "idempotencyKey": "idem-phase4-evidence",
+      "existingPayloadDigest": "7e1a7173e5fe8afb94c9f4c23b64245dee7b6fe84ca3cf3764ce997cc760a3ea",
+      "payloadDigest": "c7473507199fcce1707bfbaf55be1290b4dd2c3ef308d89768b3795350b44a0b"
+    }
+  },
+  "assertion": {
+    "passed": true,
+    "sameOwnerSerialized": true,
+    "differentOwnersConcurrent": true,
+    "expiredLeaseReclaimed": true,
+    "oppositeOrderNoDeadlock": true,
+    "exactReplay": true,
+    "payloadConflictRejected": true,
+    "legacyLockTableRetired": true
+  },
+  "serverOutput": {
+    "stdout": "◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]\n[server] listening on http://localhost:61629\n",
+    "stderr": "",
+    "exitCode": null,
+    "signalCode": "SIGTERM",
+    "stopped": true
+  }
+}

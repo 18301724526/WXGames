@@ -56,18 +56,17 @@ test('GameStateRepository records schema migration ledger during init', () => {
     repository.init();
 
     const rows = db.prepare('SELECT id, status FROM schema_migrations ORDER BY id').all();
-    assert.deepEqual(rows, [{
-      id: '001-game-states-compat-columns',
-      status: 'applied',
-    }, {
-      id: '002-capture-decisions-column',
-      status: 'applied',
-    }]);
+    assert.deepEqual(rows, [
+      { id: '001-game-states-compat-columns', status: 'applied' },
+      { id: '002-capture-decisions-column', status: 'applied' },
+      { id: '003-owner-locks-generalization', status: 'applied' },
+      { id: '004-command-idempotency-store', status: 'applied' },
+    ]);
 
     const secondRepository = new GameStateRepository(db);
     secondRepository.init();
     const count = db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count;
-    assert.equal(count, 2);
+    assert.equal(count, 4);
   } finally {
     db.close();
   }
@@ -112,28 +111,67 @@ test('GameStateRepository serializes player state locks across repository instan
   secondRepository.init();
 
   try {
-    const heldLock = firstRepository.playerStateLocks.acquire('locked-player', {
-      scope: 'test-held-lock',
-      waitMs: 0,
-      ttlMs: 60000,
-    });
-    let entered = false;
-    assert.throws(
-      () => secondRepository.withPlayerStateLock('locked-player', () => {
-        entered = true;
-      }, { scope: 'test-contender', waitMs: 0 }),
-      (error) => error.code === 'PLAYER_STATE_LOCK_TIMEOUT'
-        && error.playerId === 'locked-player',
-    );
-    assert.equal(entered, false);
+    firstRepository.withPlayerStateLock('locked-player', () => {
+      let entered = false;
+      assert.throws(
+        () => secondRepository.withPlayerStateLock('locked-player', () => {
+          entered = true;
+        }, { scope: 'test-contender', waitMs: 0 }),
+        (error) => error.code === 'OWNER_LOCK_TIMEOUT'
+          && error.ownerKey === 'player:locked-player'
+          && error.playerId === 'locked-player',
+      );
+      assert.equal(entered, false);
+    }, { scope: 'test-held-lock', waitMs: 0, ttlMs: 60000 });
 
-    firstRepository.playerStateLocks.release(heldLock);
     const result = secondRepository.withPlayerStateLock(
       'locked-player',
       () => 'acquired-after-release',
       { scope: 'test-after-release', waitMs: 0 },
     );
     assert.equal(result, 'acquired-after-release');
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository migrates legacy player lock rows and retires the old table', () => {
+  const db = new Database(':memory:');
+  db.exec(`
+    CREATE TABLE player_state_locks (
+      playerId TEXT PRIMARY KEY,
+      ownerId TEXT NOT NULL,
+      scope TEXT,
+      lockedAt TEXT NOT NULL,
+      expiresAt TEXT NOT NULL
+    );
+  `);
+  db.prepare(`
+    INSERT INTO player_state_locks (playerId, ownerId, scope, lockedAt, expiresAt)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    'legacy-player',
+    'legacy-holder',
+    'legacy-scope',
+    '2026-07-10T00:00:00.000Z',
+    '2099-07-10T00:00:00.000Z',
+  );
+
+  try {
+    const repository = new GameStateRepository(db);
+    repository.init();
+    assert.deepEqual(
+      db.prepare('SELECT ownerKey, holderId, scope FROM owner_locks').get(),
+      {
+        ownerKey: 'player:legacy-player',
+        holderId: 'legacy-holder',
+        scope: 'legacy-scope',
+      },
+    );
+    assert.equal(
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'player_state_locks'").get(),
+      undefined,
+    );
   } finally {
     db.close();
   }

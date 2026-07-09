@@ -6,6 +6,9 @@ function entry(data) {
     migrationPhase: 'pipeline-pending',
     commandEnvelopePhase: 'report-only-normalized',
     ownerResolutionPhase: 'report-only-resolved',
+    ownerLockInfrastructurePhase: 'owner-lock-foundation-ready',
+    idempotencyStorePhase: 'available-route-not-migrated',
+    commandPipelinePhase: 'skeleton-ready-route-not-migrated',
     contracts: ['COP-ENTRY-001'],
     evidence: [],
     notes: '',
@@ -591,7 +594,7 @@ const HANDLER_LOCK_PERSISTENCE_DEBT = Object.freeze([
     inventoryId: 'handler:BuildBuildingCommandHandler',
     file: 'backend/application/commands/BuildBuildingCommandHandler.js',
     handler: 'BuildBuildingCommandHandler.execute',
-    lockOwner: 'repository.withPlayerStateLock',
+    lockOwner: 'repository.withPlayerStateLock -> withOwnerLocks(player key)',
     persistenceOwner: 'repository.save',
     helperMediated: false,
     classification: 'legacy-handler-lock-save-visible',
@@ -636,8 +639,8 @@ const SHARED_OWNER_LOOKUPS = Object.freeze([
 }));
 
 const SHARED_OWNER_WRITES = Object.freeze([
-  ['territory', ['startConquest', 'claimConquest'], 'territory:{territoryId}', 'currently route/player lock; needs shared owner lock', 'COP-SHARED-001'],
-  ['encounter', ['startWorldCombat', 'resolveWorldCombat'], 'encounter:{encounterId}', 'currently player lock plus encounter repository upsert; needs shared owner lock', 'COP-SHARED-001'],
+  ['territory', ['startConquest', 'claimConquest'], 'territory:{territoryId}', 'generic owner_locks exists; route still uses player-only delegate until Phase 6', 'COP-SHARED-001'],
+  ['encounter', ['startWorldCombat', 'resolveWorldCombat'], 'encounter:{encounterId}', 'generic owner_locks exists; route still uses player-only delegate plus encounter upsert until Phase 6', 'COP-SHARED-001'],
   ['world-march-handoff', ['startWorldMarch'], 'player:{playerId}|encounter:{encounterId}', 'handoff to shared encounter must be explicit before Step3', 'COP-OWNER-002'],
   ['loot', ['openChest'], 'loot:{lootId}', 'future owner abstraction represented; no current route migration', 'COP-SHARED-001'],
   ['boss', ['attackBoss'], 'boss:{bossId}', 'future owner abstraction represented; no current route migration', 'COP-SHARED-001'],

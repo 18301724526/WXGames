@@ -8,7 +8,7 @@ const CityService = require('../services/CityService');
 const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
 
 function isPlayerStateLockTimeout(error = {}) {
-  return error?.code === 'PLAYER_STATE_LOCK_TIMEOUT';
+  return error?.code === 'OWNER_LOCK_TIMEOUT';
 }
 
 function buildPlayerStateBusyPayload(error = {}) {

@@ -43,7 +43,7 @@ function registerPlayerRoutes(app, deps) {
   }
 
   function isPlayerStateLockTimeout(error = {}) {
-    return error?.code === 'PLAYER_STATE_LOCK_TIMEOUT';
+    return error?.code === 'OWNER_LOCK_TIMEOUT';
   }
 
   function buildPlayerStateBusyPayload(error = {}) {
