@@ -43,3 +43,27 @@ test('formation deployment evaluates locked snapshots with the same combat failu
 
   assert.equal(failure.error, Eligibility.COMBAT_ERROR_PRIMARY_NO_SOLDIERS);
 });
+
+test('formation deployment maps march blockers to structured Chinese domain errors', () => {
+  assert.deepEqual(
+    Eligibility.getMarchDeploymentFailure({ memberIds: [] }),
+    {
+      success: false,
+      error: 'FORMATION_EMPTY',
+      message: '编队为空，无法出征',
+      blocker: {
+        code: 'FORMATION_EMPTY',
+        messageKey: 'world.march.deploy.emptyFormation',
+        participant: null,
+        personId: '',
+        name: '',
+      },
+    },
+  );
+  const primaryFailure = Eligibility.getMarchDeploymentFailure({
+    memberIds: ['primary'],
+    soldierAssignments: { primary: 0 },
+  });
+  assert.equal(primaryFailure.error, 'FORMATION_PRIMARY_NO_SOLDIERS');
+  assert.equal(primaryFailure.message, '主将未配置士兵，无法出征');
+});

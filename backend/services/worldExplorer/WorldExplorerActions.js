@@ -164,10 +164,10 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     });
     return formationValidation;
   }
-  if (combatTarget.encounter) {
-    const deploymentFailure = FormationDeploymentEligibility.getCombatDeploymentFailure(formationValidation.formation);
-    if (deploymentFailure) return deploymentFailure;
-  }
+  const deploymentFailure = combatTarget.encounter
+    ? FormationDeploymentEligibility.getCombatDeploymentFailure(formationValidation.formation)
+    : FormationDeploymentEligibility.getMarchDeploymentFailure(formationValidation.formation);
+  if (deploymentFailure) return deploymentFailure;
   const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formationValidation.formation);
   if (busyMission) {
     traceWorldMarch('actions:startWorldMarch:busyFormation', options, {

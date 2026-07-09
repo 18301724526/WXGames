@@ -389,6 +389,18 @@ test('world march with mission id reuses the selected idle mission even when for
     formation: { cityId: 'frontier-city', slot: 2, memberIds: ['fp-tutorial-scout'] },
     stepDurationMs: WorldExplorerService.EXPLORE_STEP_DURATION_MS,
   })];
+  gameState.cities['frontier-city'] = {
+    military: {
+      formations: [
+        { slot: 1, memberIds: [], soldierAssignments: {} },
+        {
+          slot: 2,
+          memberIds: ['fp-tutorial-scout'],
+          soldierAssignments: { 'fp-tutorial-scout': 120 },
+        },
+      ],
+    },
+  };
 
   const result = WorldExplorerService.startWorldMarch(gameState, {
     missionId: 'manual-frontier',

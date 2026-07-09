@@ -810,7 +810,11 @@ test('game action route starts guided world march with planned tiles in client s
   gameState.military = {
     ...gameState.military,
     formations: {
-      capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+      capital: [{
+        slot: 1,
+        memberIds: [scoutPersonId],
+        soldierAssignments: { [scoutPersonId]: 1000 },
+      }],
     },
   };
   gameState.cities = {
@@ -824,7 +828,11 @@ test('game action route starts guided world march with planned tiles in client s
       military: {
         ...gameState.military,
         formations: {
-          capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+          capital: [{
+            slot: 1,
+            memberIds: [scoutPersonId],
+            soldierAssignments: { [scoutPersonId]: 1000 },
+          }],
         },
       },
     },
@@ -868,6 +876,118 @@ test('game action route starts guided world march with planned tiles in client s
   assert.equal((res.payload.gameState.worldExplorerState.activeMission.plannedSites || []).length, 0);
   assert.equal(savedStates.at(-1).exploreMissions[0].plannedTiles.length, 12);
   assert.equal((savedStates.at(-1).exploreMissions[0].plannedSites || []).length, 0);
+});
+
+test('game action route rejects an empty world march formation with structured 400', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-empty-world-march-test';
+  const gameState = GameStateService.createInitialGameState(playerId);
+  gameState.tutorial = {
+    ...gameState.tutorial,
+    completed: true,
+    disabled: true,
+    currentStep: TutorialService.TUTORIAL_STEPS.completed,
+  };
+  gameState.cities.capital.military.formations = [
+    { slot: 1, memberIds: [], soldierAssignments: {} },
+  ];
+  gameState.military = gameState.cities.capital.military;
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return state;
+    },
+    getClientGameState(state) {
+      return { playerId: state.playerId };
+    },
+    calculateEraProgress() {
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = {
+    playerId,
+    body: { action: 'startWorldMarch', targetQ: 1, targetR: 0, cityId: 'capital', formationSlot: 1 },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.payload.success, false);
+  assert.equal(res.payload.error, 'FORMATION_EMPTY');
+  assert.equal(res.payload.message, '编队为空，无法出征');
+  assert.equal(res.payload.blocker.code, 'FORMATION_EMPTY');
+  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates[0].exploreMissions.length, 0);
+});
+
+test('game action route accepts a world march formation with a soldiered primary', () => {
+  const { app, routes } = createAppHarness();
+  const playerId = 'route-valid-world-march-test';
+  const primaryId = 'route-valid-world-march-primary';
+  const gameState = GameStateService.createInitialGameState(playerId);
+  gameState.tutorial = {
+    ...gameState.tutorial,
+    completed: true,
+    disabled: true,
+    currentStep: TutorialService.TUTORIAL_STEPS.completed,
+  };
+  gameState.famousPeople = [{ id: primaryId, name: 'Primary' }];
+  gameState.cities.capital.military.formations = [
+    { slot: 1, memberIds: [primaryId], soldierAssignments: { [primaryId]: 25 } },
+  ];
+  gameState.military = gameState.cities.capital.military;
+  const savedStates = [];
+  const repository = {
+    findByPlayerId(id) {
+      assert.equal(id, playerId);
+      return gameState;
+    },
+    save(state) {
+      savedStates.push(JSON.parse(JSON.stringify(state)));
+    },
+  };
+  const gameStateService = {
+    applyOnlineProgress(state) {
+      return state;
+    },
+    getClientGameState(state) {
+      return { playerId: state.playerId };
+    },
+    calculateEraProgress() {
+      return { canAdvance: false, conditions: [] };
+    },
+  };
+  const authMiddleware = (req, res, next) => next();
+
+  registerGameRoutes(app, { authMiddleware, repository, gameStateService });
+  const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+  const req = {
+    playerId,
+    body: { action: 'startWorldMarch', targetQ: 1, targetR: 0, cityId: 'capital', formationSlot: 1 },
+  };
+  const res = createResponse();
+
+  route.handlers[0](req, res, () => route.handlers[1](req, res));
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.success, true);
+  assert.equal(res.payload.mission.formationSnapshot.soldiersCommitted, 25);
+  assert.equal(savedStates.length, 1);
+  assert.equal(savedStates[0].exploreMissions.length, 1);
 });
 
 test('heartbeat stores compact world march client reports without returning game state', () => {
@@ -948,7 +1068,11 @@ test('game action route uses shared world projection when planning guided first 
   gameState.military = {
     ...gameState.military,
     formations: {
-      capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+      capital: [{
+        slot: 1,
+        memberIds: [scoutPersonId],
+        soldierAssignments: { [scoutPersonId]: 1000 },
+      }],
     },
   };
   gameState.cities = {
@@ -962,7 +1086,11 @@ test('game action route uses shared world projection when planning guided first 
       military: {
         ...gameState.military,
         formations: {
-          capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+          capital: [{
+            slot: 1,
+            memberIds: [scoutPersonId],
+            soldierAssignments: { [scoutPersonId]: 1000 },
+          }],
         },
       },
     },
@@ -1085,7 +1213,11 @@ test('game action route returns stopped world march as an idle client mission', 
     soldiers: 10,
     soldierCap: 10,
     formations: {
-      capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+      capital: [{
+        slot: 1,
+        memberIds: [scoutPersonId],
+        soldierAssignments: { [scoutPersonId]: 10 },
+      }],
     },
   };
   gameState.cities = {
@@ -1099,7 +1231,11 @@ test('game action route returns stopped world march as an idle client mission', 
       military: {
         ...gameState.military,
         formations: {
-          capital: [{ slot: 1, memberIds: [scoutPersonId] }],
+          capital: [{
+            slot: 1,
+            memberIds: [scoutPersonId],
+            soldierAssignments: { [scoutPersonId]: 10 },
+          }],
         },
       },
     },

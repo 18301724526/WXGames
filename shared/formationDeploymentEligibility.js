@@ -207,6 +207,26 @@ function getCombatDeploymentFailure(source = {}) {
   };
 }
 
+function getMarchDeploymentFailure(source = {}) {
+  const eligibility = normalizeEligibility(source);
+  if (!eligibility.blocked) return null;
+  const blocker = eligibility.blockers?.[0] || {};
+  if (blocker.code === BLOCKER_PRIMARY_NO_SOLDIERS) {
+    return {
+      success: false,
+      error: BLOCKER_PRIMARY_NO_SOLDIERS,
+      message: '主将未配置士兵，无法出征',
+      blocker,
+    };
+  }
+  return {
+    success: false,
+    error: BLOCKER_EMPTY_FORMATION,
+    message: '编队为空，无法出征',
+    blocker,
+  };
+}
+
 function getCombatDeploymentFailureForSnapshot(snapshot = null) {
   return getCombatDeploymentFailure(evaluateFormationSnapshotDeployment(snapshot));
 }
@@ -222,6 +242,7 @@ const api = {
   getCombatDeploymentFailure,
   getCombatDeploymentFailureForSnapshot,
   getFormationParticipants,
+  getMarchDeploymentFailure,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
