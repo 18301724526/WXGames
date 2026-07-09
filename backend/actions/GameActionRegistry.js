@@ -194,6 +194,9 @@ function createGameActionRegistry(overrides = {}) {
     has(action) {
       return handlers.has(action);
     },
+    listActions() {
+      return Array.from(handlers.keys()).sort();
+    },
   };
 }
 
@@ -207,10 +210,15 @@ function has(action) {
   return defaultRegistry.has(action);
 }
 
+function listActions() {
+  return defaultRegistry.listActions();
+}
+
 module.exports = {
   TERRITORY_ACTIONS,
   buildTerritoryPayload,
   createGameActionRegistry,
   execute,
   has,
+  listActions,
 };

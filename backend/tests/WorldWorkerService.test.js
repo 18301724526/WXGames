@@ -3,6 +3,31 @@ const assert = require('node:assert/strict');
 
 const WorldWorkerService = require('../services/realtime/WorldWorkerService');
 
+test('WorldWorkerService reports its mixed-owner runtime batch before touching state', () => {
+  const calls = [];
+  const service = new WorldWorkerService({
+    repository: {
+      findRecentlyActive() {
+        calls.push('findRecentlyActive');
+        return [];
+      },
+    },
+    commandEntryReporter(report) {
+      calls.push('commandEntryReporter');
+      assert.equal(report.inventoryId, 'worker:world-worker-runtime-writes');
+      assert.equal(report.ownerResolution.status, 'blocked');
+      assert.equal(report.ownerResolution.error, 'OWNER_WORKER_COMMAND_SPLIT_REQUIRED');
+    },
+    now: () => new Date('2026-07-10T00:00:00.000Z'),
+  });
+
+  const summary = service.tickOnce();
+
+  assert.deepEqual(calls, ['commandEntryReporter', 'findRecentlyActive']);
+  assert.equal(summary.commandEntry.ownerResolution.error, 'OWNER_WORKER_COMMAND_SPLIT_REQUIRED');
+  assert.equal(summary.commandEntry.idempotencyClassification, 'server-fallback-id');
+});
+
 test('WorldWorkerService owns runtime advancement outside the gateway API process', () => {
   const calls = [];
   const service = new WorldWorkerService({

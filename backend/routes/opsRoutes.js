@@ -1,3 +1,5 @@
+const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
+
 function parseBoolean(value) {
   return value === true || value === 'true' || value === '1' || value === 1;
 }
@@ -9,6 +11,7 @@ function registerOpsRoutes(app, deps = {}) {
     adminMiddleware,
     opsAuthService,
     opsControlService,
+    commandEntryReporter,
   } = deps;
   if (!opsControlService) throw new Error('registerOpsRoutes requires opsControlService');
 
@@ -21,6 +24,12 @@ function registerOpsRoutes(app, deps = {}) {
   const getOperator = (req) => req.opsAdminUser || req.adminUser || req.username || req.playerId || 'admin';
 
   app.post('/api/admin/ops/login', (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'opsLoginAudit',
+      inventoryId: 'admin:ops-login-audit',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     if (!opsAuthService) {
       return res.status(503).json({
         success: false,
@@ -62,6 +71,12 @@ function registerOpsRoutes(app, deps = {}) {
   }));
 
   app.post('/api/admin/ops/maintenance', ...handlers, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'opsMaintenanceSet',
+      inventoryId: 'admin:ops-maintenance-state',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const result = opsControlService.setMaintenanceState(req.body || {}, {
       operator: getOperator(req),
     });
@@ -69,6 +84,12 @@ function registerOpsRoutes(app, deps = {}) {
   });
 
   app.post('/api/admin/ops/restart', ...handlers, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'opsRestartAccepted',
+      inventoryId: 'admin:ops-restart-audit',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const operator = getOperator(req);
     const delayMs = Math.max(250, Math.min(5000, Number(req.body?.delayMs) || 900));
     if (typeof opsControlService.appendAudit === 'function') {

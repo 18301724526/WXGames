@@ -1,4 +1,5 @@
 const { toNumber } = require('../../../shared/numberUtils');
+const { prepareCommandEntry } = require('../../application/commands/CommandEntryContext');
 
 const DEFAULT_INTERVAL_MS = 5000;
 const DEFAULT_ACTIVE_WINDOW_MS = 2 * 60 * 1000;
@@ -37,6 +38,9 @@ class WorldWorkerService {
     this.activeWindowMs = positiveInteger(options.activeWindowMs, DEFAULT_ACTIVE_WINDOW_MS);
     this.activeLimit = positiveInteger(options.activeLimit, DEFAULT_ACTIVE_LIMIT, 1000);
     this.slowTickMs = positiveInteger(options.slowTickMs, DEFAULT_SLOW_TICK_MS);
+    this.commandEntryReporter = typeof options.commandEntryReporter === 'function'
+      ? options.commandEntryReporter
+      : null;
     this.running = false;
     this.timer = null;
     this.lastSummary = null;
@@ -173,6 +177,27 @@ class WorldWorkerService {
     return this.repository.findRecentlyActive(activeSince, this.activeLimit);
   }
 
+  prepareRuntimeCommandEntry() {
+    const entry = prepareCommandEntry({
+      body: {},
+      method: 'BACKGROUND',
+      path: 'backend/world-worker.js',
+      headers: {},
+    }, {
+      type: 'worldWorkerRuntimeTick',
+      inventoryId: 'worker:world-worker-runtime-writes',
+      route: 'backend/world-worker.js',
+      method: 'BACKGROUND',
+      reporter: this.commandEntryReporter,
+    });
+    return {
+      mode: entry.report.mode,
+      inventoryId: entry.report.inventoryId,
+      idempotencyClassification: entry.report.idempotencyClassification,
+      ownerResolution: entry.report.ownerResolution,
+    };
+  }
+
   advanceState(rawState, now) {
     const projection = this.repository?.getClientProjectionForPlayer?.(rawState?.playerId) || {};
     const advanced = typeof this.gameStateService.advanceRuntimeState === 'function'
@@ -248,6 +273,7 @@ class WorldWorkerService {
     this.running = true;
     const startedAtMs = this.monotonicNow();
     const now = this.getNow();
+    const commandEntry = this.prepareRuntimeCommandEntry();
     const errors = [];
     let processedCount = 0;
     let shared = {
@@ -282,6 +308,7 @@ class WorldWorkerService {
       intervalMs: this.intervalMs,
       activeWindowMs: this.activeWindowMs,
       activeLimit: this.activeLimit,
+      commandEntry,
       processedCount,
       errorCount: errors.length,
       errors,

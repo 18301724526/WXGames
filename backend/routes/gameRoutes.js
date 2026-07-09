@@ -6,6 +6,7 @@ const WorldCombatSessionService = require('../services/worldCombat/WorldCombatSe
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
 const WorldMarchVerification = require('../services/worldExplorer/WorldMarchVerification');
 const { createBuildBuildingCommand } = require('../application/commands/CommandEnvelope');
+const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
 const { BuildBuildingCommandHandler } = require('../application/commands/BuildBuildingCommandHandler');
 const GameActionProjection = require('../application/projections/GameActionProjection');
 
@@ -386,7 +387,13 @@ function executeGameActionRequest({
 }
 
 function registerGameRoutes(app, deps) {
-  const { authMiddleware, repository, gameStateService, presenceService } = deps;
+  const {
+    authMiddleware,
+    repository,
+    gameStateService,
+    presenceService,
+    commandEntryReporter,
+  } = deps;
   const buildBuildingCommandHandler = new BuildBuildingCommandHandler({
     repository,
     gameStateService,
@@ -454,6 +461,14 @@ function registerGameRoutes(app, deps) {
   };
 
   const handleHeartbeat = (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'heartbeat',
+      inventoryId: req.method === 'POST' && req.body?.worldMarchClientReport
+        ? 'server:game-heartbeat-client-report'
+        : 'server:game-heartbeat-march-settlement',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const now = new Date();
     presenceService?.recordHeartbeat?.(req.playerId);
     let clientReport = null;
@@ -511,6 +526,12 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/tasks/claim', authMiddleware, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'claimTaskReward',
+      inventoryId: 'server:game-tasks-claim',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const runClaim = () => {
       const projection = loadProjection(repository, req.playerId);
       const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
@@ -570,8 +591,18 @@ function registerGameRoutes(app, deps) {
   });
 
   app.post('/api/game/action', authMiddleware, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: req.body?.action,
+      inventoryId: WORLD_COMBAT_ACTIONS.has(req.body?.action)
+        ? 'server:game-action-world-combat-bypass'
+        : (req.body?.action === 'build'
+          ? 'server:game-action-build-handler'
+          : 'server:game-action-registry'),
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     if (req.body?.action === 'build') {
-      const command = createBuildBuildingCommand(req);
+      const command = createBuildBuildingCommand(req, { envelope: commandEntry.envelope });
       try {
         const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 0 });
         return res.status(response.statusCode).json(response.payload);

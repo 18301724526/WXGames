@@ -53,6 +53,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/api/GameAPI.test.js',
   'scripts/check-client-command-sender-coverage.js',
   'scripts/check-client-command-sender-coverage.test.js',
+  'scripts/check-command-owner-entry-coverage.js',
+  'scripts/check-command-owner-entry-coverage.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.js',
@@ -237,6 +239,9 @@ const CHECK_FILES = Object.freeze([
   'backend/services/realtime/PresenceService.js',
   'backend/services/realtime/ServerTimelineSnapshot.js',
   'backend/services/realtime/WorldWorkerService.js',
+  'backend/application/commands/CommandEnvelope.js',
+  'backend/application/commands/CommandOwnerResolver.js',
+  'backend/application/commands/CommandEntryContext.js',
   'backend/services/realtime/AoiSyncSnapshot.js',
   'backend/services/realtime/index.js',
   'backend/services/random/ServerRandomAuthorityContract.js',
@@ -337,6 +342,8 @@ const CHECK_FILES = Object.freeze([
   'backend/tests/AuthServiceBotAccounts.test.js',
   'backend/tests/ClientEventsRoutes.test.js',
   'backend/tests/ObservabilityService.test.js',
+  'backend/tests/CommandEnvelope.test.js',
+  'backend/tests/CommandOwnerResolver.test.js',
   'backend/tests/DatabaseRuntime.test.js',
   'backend/tests/SchemaMigrationService.test.js',
   'backend/tests/PresenceService.test.js',
@@ -476,6 +483,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/api/ClientCommandSender.test.js',
   'frontend/js/api/GameAPI.test.js',
   'scripts/check-client-command-sender-coverage.test.js',
+  'scripts/check-command-owner-entry-coverage.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.test.js',
   'frontend/js/services/GameStateSync.test.js',
@@ -572,6 +580,8 @@ const TEST_FILES = Object.freeze([
   'backend/tests/OpsAgentHttpServer.test.js',
   'backend/tests/ClientEventsRoutes.test.js',
   'backend/tests/ObservabilityService.test.js',
+  'backend/tests/CommandEnvelope.test.js',
+  'backend/tests/CommandOwnerResolver.test.js',
   'backend/tests/PresenceService.test.js',
   'backend/tests/PerformanceCapacityBudget.test.js',
   'backend/tests/OpsAuthService.test.js',
@@ -723,6 +733,9 @@ function main() {
   ]);
   run('client command sender coverage blocking guard', process.execPath, [
     'scripts/check-client-command-sender-coverage.js',
+  ]);
+  run('command owner entry coverage blocking guard', process.execPath, [
+    'scripts/check-command-owner-entry-coverage.js',
   ]);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);

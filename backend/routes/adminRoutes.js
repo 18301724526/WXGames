@@ -1,11 +1,13 @@
 const TaskDefinitionService = require('../services/TaskDefinitionService');
 const ConfigReleaseService = require('../services/config/ConfigReleaseService');
 const ConfigRuntimeLoader = require('../services/config/ConfigRuntimeLoader');
+const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
 
 function registerAdminRoutes(app, deps) {
   const { authMiddleware, adminMiddleware } = deps;
   const configReleaseService = deps.configReleaseService || ConfigReleaseService;
   const configRuntimeLoader = deps.configRuntimeLoader || ConfigRuntimeLoader;
+  const commandEntryReporter = deps.commandEntryReporter;
   const requireAdmin = adminMiddleware || ((req, res, next) => next());
   const adminHandlers = [authMiddleware, requireAdmin];
   const getOperator = (req) => req.adminUser || req.username || req.playerId;
@@ -79,11 +81,23 @@ function registerAdminRoutes(app, deps) {
   });
 
   app.post('/api/admin/config-releases/publish', ...adminHandlers, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'configReleasePublish',
+      inventoryId: 'admin:config-release-publish',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const result = configReleaseService.publishRelease(req.body || {}, { operator: getOperator(req) });
     return res.status(result.success ? 200 : 400).json(result);
   });
 
   app.post('/api/admin/config-releases/rollback', ...adminHandlers, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'configReleaseRollback',
+      inventoryId: 'admin:config-release-rollback',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const result = configReleaseService.rollbackRelease(req.body?.releaseId, { operator: getOperator(req) });
     return res.status(result.success ? 200 : 404).json(result);
   });

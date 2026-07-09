@@ -180,3 +180,44 @@ test('observability service records bounded frontend client failures separately'
   assert.equal(health.recentClientEventCount, 3);
   assert.equal(health.frontendLoadFailureCount, 3);
 });
+
+test('observability service records compact report-only command owner entries', () => {
+  const service = new ObservabilityService({ maxEvents: 2 });
+
+  service.recordCommandEntry({
+    recordedAt: '2026-07-10T00:00:00.000Z',
+    mode: 'report-only',
+    inventoryId: 'server:game-action-registry',
+    idempotencyClassification: 'client-idempotent',
+    command: {
+      commandId: 'cmd-1',
+      requestId: 'api-1',
+      action: 'startConquest',
+    },
+    ownerResolution: {
+      status: 'resolved',
+      ownerKey: 'territory:territory-1',
+      ownerKeys: ['player:player-1', 'territory:territory-1'],
+    },
+  });
+  service.recordCommandEntry({
+    inventoryId: 'server:game-action-world-combat-bypass',
+    idempotencyClassification: 'server-fallback-id',
+    command: { action: 'startWorldCombat' },
+    ownerResolution: {
+      status: 'blocked',
+      error: 'OWNER_TARGET_ENCOUNTER_ID_MISSING',
+    },
+  });
+
+  const snapshot = service.getSnapshot({ eventLimit: 5 });
+  const health = service.getHealthSummary();
+
+  assert.equal(snapshot.totals.commandEntryCount, 2);
+  assert.equal(snapshot.totals.totalCommandEntries, 2);
+  assert.equal(snapshot.totals.blockedCommandOwnerCount, 1);
+  assert.equal(snapshot.recentCommandEntries[0].ownerKey, 'territory:territory-1');
+  assert.equal(snapshot.recentCommandEntries[1].error, 'OWNER_TARGET_ENCOUNTER_ID_MISSING');
+  assert.equal(health.recentCommandEntryCount, 2);
+  assert.equal(health.blockedCommandOwnerCount, 1);
+});

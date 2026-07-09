@@ -2,6 +2,7 @@ const ALLOWED_CLIENT_EVENT_TYPES = new Set([
   'frontend_load_failure',
   'frontend_asset_failure',
 ]);
+const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
 
 function readHeader(req, name) {
   const lowerName = String(name || '').toLowerCase();
@@ -27,11 +28,22 @@ function parseLimit(value, fallback = 5) {
   return Math.max(1, Math.min(20, number));
 }
 
-function registerClientEventsRoutes(app, { authMiddleware = null, logService = null, observabilityService }) {
+function registerClientEventsRoutes(app, {
+  authMiddleware = null,
+  logService = null,
+  observabilityService,
+  commandEntryReporter,
+}) {
   if (!app) throw new Error('registerClientEventsRoutes requires app');
   if (!observabilityService) throw new Error('registerClientEventsRoutes requires observabilityService');
 
   app.post('/api/client-events', (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'clientEventIngest',
+      inventoryId: 'diagnostic:client-events-ingest',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const type = String(body.type || '').trim();
     if (!ALLOWED_CLIENT_EVENT_TYPES.has(type)) {
@@ -59,6 +71,12 @@ function registerClientEventsRoutes(app, { authMiddleware = null, logService = n
 
   if (authMiddleware && logService) {
     app.post('/api/client-operation-logs', authMiddleware, (req, res) => {
+      const commandEntry = prepareCommandEntry(req, {
+        type: 'clientOperationLogIngest',
+        inventoryId: 'diagnostic:client-operation-log-ingest',
+        reporter: commandEntryReporter,
+      });
+      if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
       try {
         const snapshot = req.body && typeof req.body === 'object' ? req.body : {};
         const saved = logService.logClientOperationSnapshot(

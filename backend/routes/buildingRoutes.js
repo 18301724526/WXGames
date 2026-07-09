@@ -5,6 +5,7 @@ const TutorialService = require('../services/TutorialService');
 const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
 const CityService = require('../services/CityService');
+const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
 
 function isPlayerStateLockTimeout(error = {}) {
   return error?.code === 'PLAYER_STATE_LOCK_TIMEOUT';
@@ -31,7 +32,7 @@ function withPlayerStateLock(repository, playerId, callback) {
 }
 
 function registerBuildingRoutes(app, deps) {
-  const { authMiddleware, repository, gameStateService } = deps;
+  const { authMiddleware, repository, gameStateService, commandEntryReporter } = deps;
 
   app.get('/api/buildings', authMiddleware, (req, res) => {
     const rawState = repository.findByPlayerId(req.playerId);
@@ -58,6 +59,12 @@ function registerBuildingRoutes(app, deps) {
   });
 
   app.post('/api/buildings/build', authMiddleware, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'build',
+      inventoryId: 'server:buildings-build-legacy-route',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     try {
       const response = withPlayerStateLock(repository, req.playerId, () => {
         const rawState = repository.findByPlayerId(req.playerId);

@@ -51,6 +51,24 @@ const worldDiplomacyTickService = createWorldDiplomacyTickService({
   personalityTuning: tuningMap('personality_tuning'),
 });
 
+let lastCommandEntrySignature = '';
+function reportCommandEntry(report = {}) {
+  const owner = report.ownerResolution || {};
+  const compact = {
+    schema: report.schema,
+    mode: report.mode,
+    inventoryId: report.inventoryId,
+    idempotencyClassification: report.idempotencyClassification,
+    ownerStatus: owner.status,
+    error: owner.error || '',
+    requiredFields: owner.requiredFields || [],
+  };
+  const signature = JSON.stringify(compact);
+  if (signature === lastCommandEntrySignature) return;
+  lastCommandEntrySignature = signature;
+  console.warn('[world-worker] command entry report', compact);
+}
+
 const worker = new WorldWorkerService({
   repository,
   gameStateService,
@@ -73,6 +91,7 @@ const worker = new WorldWorkerService({
   activeWindowMs: process.env.WORLD_WORKER_ACTIVE_WINDOW_MS,
   activeLimit: process.env.WORLD_WORKER_ACTIVE_LIMIT,
   slowTickMs: process.env.WORLD_WORKER_SLOW_TICK_MS,
+  commandEntryReporter: reportCommandEntry,
 });
 
 function shutdown(signal) {

@@ -4,6 +4,8 @@ function entry(data) {
   return Object.freeze({
     idempotencyClassification: 'non-idempotent',
     migrationPhase: 'pipeline-pending',
+    commandEnvelopePhase: 'report-only-normalized',
+    ownerResolutionPhase: 'report-only-resolved',
     contracts: ['COP-ENTRY-001'],
     evidence: [],
     notes: '',
@@ -58,6 +60,7 @@ const SERVER_WRITE_ENTRIES = Object.freeze([
     currentPersistenceOwner: 'route:repository.save plus worldEncounterRepo.upsertEncounter',
     currentProjectionOwner: 'route:buildGameView',
     migrationPhase: 'owner-resolution-blocked',
+    ownerResolutionPhase: 'report-only-blocked',
     contracts: ['COP-ENTRY-001', 'COP-OWNER-002', 'COP-SHARED-001', 'COP-ROUTE-001'],
     evidence: ['backend/routes/gameRoutes.js', 'backend/services/worldCombat/WorldCombatSessionService.js'],
     notes: 'World combat bypasses GameActionRegistry and must prove encounter owner lookup before domain execution.',
@@ -287,6 +290,7 @@ const SERVER_WRITE_ENTRIES = Object.freeze([
     currentPersistenceOwner: 'repository.save and shared repositories',
     currentProjectionOwner: 'none',
     migrationPhase: 'worker-write-classified',
+    ownerResolutionPhase: 'report-only-blocked',
     contracts: ['COP-ENTRY-001', 'COP-SHARED-001', 'COP-LOCK-001'],
     evidence: ['backend/world-worker.js', 'backend/services/realtime/WorldWorkerService.js'],
   }),
@@ -337,6 +341,10 @@ const GAME_ACTIONS = Object.freeze(GAME_ACTION_ROWS.map(
     provisionalOwnerKey,
     targetIdFields,
     idempotencyClassification,
+    commandEnvelopePhase: 'report-only-normalized',
+    ownerResolutionPhase: ['startWorldCombat', 'resolveWorldCombat'].includes(action)
+      ? 'report-only-blocked'
+      : (action === 'startWorldMarch' ? 'report-only-conditional-handoff' : 'report-only-resolved'),
     migrationPhase: provisionalOwnerKey.startsWith('territory:') || provisionalOwnerKey.startsWith('encounter:')
       ? 'shared-owner-staging'
       : 'pipeline-pending',

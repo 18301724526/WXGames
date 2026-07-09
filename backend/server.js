@@ -65,6 +65,7 @@ const spawnLifecycleService = new SpawnLifecycleService({
 const adminMiddleware = createAdminMiddleware();
 const versionService = new VersionService();
 const observabilityService = new ObservabilityService();
+const commandEntryReporter = (report) => observabilityService.recordCommandEntry(report);
 const opsAuthService = new OpsAuthService();
 const configReleaseService = ConfigReleaseService;
 const configRuntimeLoader = ConfigRuntimeLoader;
@@ -106,8 +107,15 @@ app.use((req, res, next) => {
     try {
       const clientRequestId = req.get?.('X-Client-Request-ID') || req.headers?.['x-client-request-id'] || '';
       const logBody = req.body && typeof req.body === 'object'
-        ? { ...req.body, clientRequestId }
-        : { clientRequestId };
+        ? {
+          ...req.body,
+          clientRequestId,
+          ...(Array.isArray(req.commandReports) ? { commandReports: req.commandReports } : {}),
+        }
+        : {
+          clientRequestId,
+          ...(Array.isArray(req.commandReports) ? { commandReports: req.commandReports } : {}),
+        };
       logService.logApi(
         req.playerId || null,
         req.deviceId || null,
@@ -134,17 +142,42 @@ app.use((req, res, next) => {
   next();
 });
 
-registerAdminRoutes(app, { authMiddleware, adminMiddleware, configReleaseService, configRuntimeLoader });
+registerAdminRoutes(app, {
+  authMiddleware,
+  adminMiddleware,
+  configReleaseService,
+  configRuntimeLoader,
+  commandEntryReporter,
+});
 registerVersionRoutes(app, { versionService });
-registerClientEventsRoutes(app, { authMiddleware, logService, observabilityService });
+registerClientEventsRoutes(app, {
+  authMiddleware,
+  logService,
+  observabilityService,
+  commandEntryReporter,
+});
 registerMetricsRoutes(app, { authMiddleware, adminMiddleware, observabilityService });
-registerOpsRoutes(app, { opsAuthService, opsControlService });
+registerOpsRoutes(app, { opsAuthService, opsControlService, commandEntryReporter });
 
 app.use(createMaintenanceMiddleware({ opsControlService }));
 
-registerPlayerRoutes(app, { authMiddleware, authService, repository, gameStateService, logService, spawnLifecycleService });
-registerGameRoutes(app, { authMiddleware, repository, gameStateService, presenceService });
-registerBuildingRoutes(app, { authMiddleware, repository, gameStateService });
+registerPlayerRoutes(app, {
+  authMiddleware,
+  authService,
+  repository,
+  gameStateService,
+  logService,
+  spawnLifecycleService,
+  commandEntryReporter,
+});
+registerGameRoutes(app, {
+  authMiddleware,
+  repository,
+  gameStateService,
+  presenceService,
+  commandEntryReporter,
+});
+registerBuildingRoutes(app, { authMiddleware, repository, gameStateService, commandEntryReporter });
 
 app.get('/api/health', (req, res) => {
   const configRuntimeStatus = configReleaseService.getRuntimeStatus();

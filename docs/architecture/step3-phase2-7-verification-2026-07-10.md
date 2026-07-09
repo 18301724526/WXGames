@@ -218,7 +218,122 @@ Captured same-run facts:
 
 ## Phase 3
 
-Status: not started.
+Status: **COMPLETE WITH RECORDED BLOCKERS.** Contracts: `COP-ENVELOPE-001`,
+`COP-IDEMP-001`, `COP-TRACE-001`, `COP-OWNER-001`, `COP-OWNER-002`,
+`COP-SHARED-001`, `COP-ENTRY-001`.
+
+### Universal Server Envelope Normalizer
+
+- `normalizeCommandEnvelope` now normalizes every inventoried server write into
+  `game-command-v1`, including command/request/idempotency ids, canonical payload and digest,
+  player id, client evidence, route/method/inventory source, and compatibility metadata.
+- Explicit client envelopes reject unsupported schema, type mismatch, identifier mismatch, and
+  transport/client payload mismatch with structured HTTP 400 errors.
+- Missing client ids remain accepted only in report mode and are visibly classified as
+  `server-fallback-id`; strict mode rejects them with `COMMAND_ENVELOPE_REQUIRED`.
+- The existing `createBuildBuildingCommand` is now a compatibility adapter over the universal
+  envelope rather than a separate envelope implementation.
+
+### Table-Driven Owner Resolver And Entry Reports
+
+- `CommandOwnerResolver` declares all 29 current game actions plus all route-only writes.
+- Private state uses `player:{playerId}`. Territory contest uses
+  `territory:{territoryId}` and encounter combat uses `encounter:{encounterId}` as the primary
+  owner while also declaring the player key. Multi-owner keys are deduplicated and sorted.
+- Missing shared ids throw structured owner errors and never fall back to player ownership.
+- Every one of the 17 Step1 server write entries reaches `prepareCommandEntry` after auth and
+  before validation, lock, load, mutation, persistence, or projection. The 14 structural entry
+  calls cover shared route handlers without duplicating reports.
+- `ObservabilityService`, API log metadata, health summary, and `/api/metrics` expose compact
+  report-only command entry records.
+- `WorldWorkerService` records its mixed-owner blocker before reading or writing runtime state;
+  the standalone worker logs the compact blocker once per unchanged signature.
+
+### Honest Blockers
+
+The following areas are stopped and are not claimed as migrated:
+
+- `startWorldCombat`: current client request omits stable `encounterId` and reports
+  `OWNER_TARGET_ENCOUNTER_ID_MISSING`.
+- `resolveWorldCombat`: `battleId -> encounterId` currently lives inside loaded player session
+  state and reports `OWNER_TARGET_BATTLE_ENCOUNTER_UNRESOLVED` before load.
+- `worldWorkerRuntimeTick`: one batch mutates shared state and multiple players, so it reports
+  `OWNER_WORKER_COMMAND_SPLIT_REQUIRED` instead of inventing one owner.
+
+Full source evidence, stopped scope, and retirement conditions are recorded in
+`EXECUTION-BLOCKER-REPORT-step3-phase3-owner-resolution-2026-07-10.md`. These blockers must be
+resolved in Phase 6 before the affected writes can claim live shared-owner migration.
+
+### Blocking Guard And FIRE Probe
+
+Added `scripts/check-command-owner-entry-coverage.js` to architecture smoke. It reconciles all
+current actions and all 17 server write inventory ids against owner declarations and real entry
+calls, checks report-only classification and ordering, rejects missing shared-target fallback,
+and keeps the worker split blocker explicit.
+
+Novel temporary violation injected into actual source:
+
+```text
+backend/routes/playerRoutes.js inventory id server:player-reset changed to server:player-reset-shadow
+```
+
+The guard exited 1 with exactly two violations:
+
+```text
+server:player-reset does not enter prepareCommandEntry
+backend/routes/playerRoutes.js reports undeclared inventory server:player-reset-shadow
+```
+
+The probe was removed immediately. The production guard then reported 17 server write entries,
+14 entry calls, 0 violations, and `passed`.
+
+### Honest Real-Server Verification
+
+Reproducible command:
+
+```powershell
+node scripts/verify-step3-phase3-real-server.js --output docs/architecture/evidence/step3-phase3-real-server-2026-07-10.json --quiet
+```
+
+The script starts the real repository `backend/server.js`, uses a temporary matched config and
+SQLite files, logs in through the real route, sends through the actual
+`GameAPI -> ClientCommandSender -> H5GameApiTransportAdapter -> global fetch` path, reads the
+actual authenticated `/api/metrics`, captures a second health response, and stops the process.
+No mock/stub server, route, owner resolver, metrics service, or transport result is used.
+
+Captured same-run facts:
+
+- PID `56176`, port `51595`, entry `backend/server.js`; initial `/api/health` HTTP 200 reported
+  git commit `a7399c0cdb82857a8e05587985394281e07d6007` and matched required config runtime.
+- Raw real command was `startConquest` with `cmd-phase3-real-server-1`,
+  `idem-phase3-real-server-1`, and target `phase3-real-territory`.
+- The real domain result was HTTP 400 `TERRITORY_NOT_FOUND` / `地点不存在`; this was preserved
+  verbatim rather than replaced with a desired response.
+- Real `/api/metrics` reported `ownerStatus=resolved`, primary owner
+  `territory:phase3-real-territory`, canonical owner keys
+  `player:codexqa, territory:phase3-real-territory`, and
+  `idempotencyClassification=client-idempotent` for that exact command id.
+- Same-process post-command health remained HTTP 200 and reported two recent command entries.
+- Spawned process stopped with `SIGTERM`; stderr was empty.
+- Raw health, login metadata, request/response headers and bodies, metrics, PID, port, DB paths,
+  server stdout/stderr, and termination state are stored verbatim in
+  `docs/architecture/evidence/step3-phase3-real-server-2026-07-10.json`.
+
+### Phase 3 Gate
+
+- Focused envelope/owner/worker/observability/route/inventory/guard tests: 102/102 passed.
+- `npm test`: 2320/2320 passed across 290 test files.
+- `npm run lint`: passed.
+- `node scripts/run-architecture-smoke.js`: exit 0, including the new owner-entry gate.
+- `node scripts/report-command-owner-step1.js --summary`: inventory drift findings 0.
+- `node scripts/check-source-encoding.js`: violations 0.
+- Before this record update, 25 changed/untracked files were checked and all were LF-only.
+- `git diff --check`: passed.
+- Frozen working-tree and `HEAD` blob hashes both remain exactly:
+  `c45d1ab4eb245337b22b1555a027a147ae8b5a80`,
+  `c6f92374db9189e5d48792365c48ad1d7669a36e`, and
+  `59ea0f56a18194a25dcc09a7e3df5160cb7eb52d`.
+- `resource-node` remains absent and untouched.
 
 ## Phase 4
 

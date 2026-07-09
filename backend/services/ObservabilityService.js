@@ -69,9 +69,11 @@ class ObservabilityService {
     };
     this.events = [];
     this.clientEvents = [];
+    this.commandEntries = [];
     this.totalRequests = 0;
     this.totalPerformanceBudgetExceeded = 0;
     this.totalClientEvents = 0;
+    this.totalCommandEntries = 0;
     this.statusCounts = new Map();
     this.clientEventTypeCounts = new Map();
     this.pathStats = new Map();
@@ -190,6 +192,37 @@ class ObservabilityService {
     return event;
   }
 
+  recordCommandEntry(report = {}) {
+    const command = report.command && typeof report.command === 'object' ? report.command : {};
+    const owner = report.ownerResolution && typeof report.ownerResolution === 'object'
+      ? report.ownerResolution
+      : {};
+    const event = {
+      at: cleanText(report.recordedAt, 64) || new Date().toISOString(),
+      mode: cleanText(report.mode || 'report-only', 32),
+      inventoryId: cleanText(report.inventoryId, 200),
+      commandId: cleanText(command.commandId, 160),
+      requestId: cleanText(command.requestId, 160),
+      commandType: cleanText(command.action || command.type || owner.commandType, 120),
+      idempotencyClassification: cleanText(report.idempotencyClassification, 64),
+      ownerStatus: cleanText(owner.status, 32),
+      ownerKey: cleanText(owner.ownerKey, 200),
+      ownerKeys: Array.isArray(owner.ownerKeys)
+        ? owner.ownerKeys.map((key) => cleanText(key, 200)).filter(Boolean)
+        : [],
+      error: cleanText(report.error || owner.error, 120),
+    };
+    Object.keys(event).forEach((key) => {
+      if (event[key] === '') delete event[key];
+    });
+    this.totalCommandEntries += 1;
+    this.commandEntries.push(event);
+    if (this.commandEntries.length > this.maxEvents) {
+      this.commandEntries.splice(0, this.commandEntries.length - this.maxEvents);
+    }
+    return event;
+  }
+
   getAlerts(recent, totals, recentClientEvents = []) {
     const alerts = [];
     if (totals.requestCount >= this.thresholds.minRequestsForErrorRate
@@ -251,6 +284,7 @@ class ObservabilityService {
   getSnapshot(options = {}) {
     const recent = this.events.slice();
     const recentClientEvents = this.clientEvents.slice();
+    const recentCommandEntries = this.commandEntries.slice();
     const requestCount = recent.length;
     const durations = recent.map((event) => event.durationMs);
     const serverErrorCount = recent.filter((event) => event.serverError).length;
@@ -268,6 +302,9 @@ class ObservabilityService {
       totalPerformanceBudgetExceeded: this.totalPerformanceBudgetExceeded,
       clientEventCount: recentClientEvents.length,
       totalClientEvents: this.totalClientEvents,
+      commandEntryCount: recentCommandEntries.length,
+      totalCommandEntries: this.totalCommandEntries,
+      blockedCommandOwnerCount: recentCommandEntries.filter((entry) => entry.ownerStatus === 'blocked').length,
       failureCount,
       serverErrorCount,
       actionFailureCount,
@@ -301,6 +338,7 @@ class ObservabilityService {
       alerts,
       recentEvents: recent.slice(-Math.max(0, Math.floor(toNumber(options.eventLimit, 20)))),
       recentClientEvents: recentClientEvents.slice(-Math.max(0, Math.floor(toNumber(options.eventLimit, 20)))),
+      recentCommandEntries: recentCommandEntries.slice(-Math.max(0, Math.floor(toNumber(options.eventLimit, 20)))),
     };
   }
 
@@ -315,6 +353,8 @@ class ObservabilityService {
       actionFailureCount: snapshot.totals.actionFailureCount,
       performanceBudgetExceededCount: snapshot.totals.performanceBudgetExceededCount,
       recentClientEventCount: snapshot.totals.clientEventCount,
+      recentCommandEntryCount: snapshot.totals.commandEntryCount,
+      blockedCommandOwnerCount: snapshot.totals.blockedCommandOwnerCount,
       frontendLoadFailureCount: snapshot.totals.frontendLoadFailureCount,
       frontendAssetFailureCount: snapshot.totals.frontendAssetFailureCount,
       alerts: snapshot.alerts.map((alert) => alert.code),

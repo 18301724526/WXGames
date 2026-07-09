@@ -1,3 +1,5 @@
+const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
+
 function registerPlayerRoutes(app, deps) {
   const {
     authMiddleware,
@@ -6,6 +8,7 @@ function registerPlayerRoutes(app, deps) {
     gameStateService,
     logService,
     spawnLifecycleService,
+    commandEntryReporter,
   } = deps;
 
   function createInitialStateForPlayer(playerId) {
@@ -99,6 +102,12 @@ function registerPlayerRoutes(app, deps) {
   });
 
   app.post('/api/player/login', (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'playerLogin',
+      inventoryId: 'server:player-login',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     const { username, password } = req.body || {};
     if (!username || !password) {
       return res.status(400).json({ error: 'CREDENTIALS_REQUIRED', message: '用户名和密码必填' });
@@ -136,6 +145,12 @@ function registerPlayerRoutes(app, deps) {
   });
 
   app.post('/api/player/reset', authMiddleware, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'playerReset',
+      inventoryId: 'server:player-reset',
+      reporter: commandEntryReporter,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
     let result;
     try {
       result = withPlayerStateLock(
