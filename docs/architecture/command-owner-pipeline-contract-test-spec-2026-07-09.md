@@ -1,8 +1,14 @@
 # Command Owner Pipeline Contract Test Spec
 
-Status: Draft v0.5, contract test oracle for Step1-Step3
+Status: Draft v0.6, contract test oracle for Step1-Step3
 Date: 2026-07-09
 Scope: testable command-owner contracts for write-command concurrency, owner routing, idempotency, frontend/game adaptation
+
+Changelog:
+- v0.6 (2026-07-09): added the second-writer / multi-process clause to §4.4 after a
+  feasibility review found the §8 acceptance tests are single-process only while march
+  settlement runs in a separate worker process. Records an owner-ratification-required
+  decision between cross-process owner locks and a single-process deployment constraint.
 
 ## 0. Document Role
 
@@ -184,6 +190,34 @@ Behavior:
 - Lock wait time, execution time, queue length, owner key, and command id are traced.
 
 Implementation may initially reuse the existing player state lock for `player:{playerId}`. Shared owners require a separate owner-lock abstraction; feature code must not copy `withPlayerStateLock`.
+
+#### 4.4.1 Second-writer / multi-process serialization (DECISION REQUIRED — owner ratification)
+
+The §8 acceptance tests are written for a single process. This system has a **second
+writer**: march settlement runs in a separate worker process (heartbeat/worker leg,
+separate from the API request process). An in-memory `OwnerLock` living in the API
+process does **not** serialize against a concurrent write from the worker process, so
+`COP-LOCK-001`/`COP-CONCURRENCY-001` are not actually guaranteed for any owner key that
+both processes can write (notably `player:{playerId}` march state, and any shared
+`encounter:{encounterId}` the worker settles).
+
+Two acceptable resolutions; the owner must ratify one before Step3 Phase 4/6 relies on
+owner locks:
+
+- **(a) Cross-process owner locks (recommended default).** Back the owner lock/queue
+  with a shared store both processes see (e.g. a `better-sqlite3` owner-lock table with
+  the existing DB, matching current persistence). §8 must then add a cross-process
+  acceptance test: an API write and a worker write on the same owner key serialize, not
+  interleave. This keeps the pipeline correct under the existing two-process deployment.
+- **(b) Single-process deployment constraint.** Declare and enforce that all writers for
+  a given owner key run in one process (e.g. move march settlement into the API process,
+  or route all owner-locked writes through one writer). Then the in-memory lock is
+  sufficient, but the constraint must be an explicit, tested invariant — not an unstated
+  assumption.
+
+Until ratified, any Step3 lock work must cite which option it implements. An in-memory
+lock that silently assumes single-process is a `COP-LOCK-001` compliance gap, not
+compliance.
 
 ### 4.5 Idempotency
 
