@@ -2,6 +2,7 @@ const WorldMapService = require('../WorldMapService');
 const TerritoryService = require('../TerritoryService');
 const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const WorldMarchPassability = require('../../../shared/worldMarchPassability');
+const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 const WorldExplorerTrace = require('./WorldExplorerTrace');
 const {
   MAX_MANUAL_ROUTE_LENGTH,
@@ -265,8 +266,9 @@ function shouldGuaranteeTutorialEmptyCity(gameState = {}) {
   const TUTORIAL_STEPS = getTutorialSteps();
   const tutorial = gameState.tutorial || {};
   if (tutorial.completed || tutorial.disabled) return false;
-  const step = Math.floor(Number(tutorial.currentStep) || 0);
-  if (step < TUTORIAL_STEPS.scoutFormationSaved || step >= TUTORIAL_STEPS.firstCityDiscovered) return false;
+  const step = tutorial.currentStep;
+  if (!SharedTutorialFlowConfig.stepAtLeast(step, TUTORIAL_STEPS.scoutFormationSaved)) return false;
+  if (SharedTutorialFlowConfig.stepAtLeast(step, TUTORIAL_STEPS.firstCityDiscovered)) return false;
   return !tutorial.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY];
 }
 

@@ -14,6 +14,7 @@ const ClientState = require('../services/worldExplorer/WorldExplorerClientState'
   const Shared = require('../services/worldExplorer/WorldExplorerShared');
 const Actions = require('../services/worldExplorer/WorldExplorerActions');
 const Realtime = require('../services/realtime');
+const TutorialFlowShared = require('../../shared/tutorialFlowConfig');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const explorerRoot = path.join(serviceRoot, 'worldExplorer');
@@ -127,6 +128,52 @@ test('WorldExplorerMissionNormalizer derives revealed route identity from coordi
   assert.equal(mission.route[0].revealed, true);
   assert.deepEqual(mission.revealedTileIds, ['tile_1_0']);
   assert.equal(JSON.stringify(mission).includes('legacy-route'), false);
+});
+
+test('tutorial empty-city guarantee follows shared tutorial step-name ordering', () => {
+  const { TUTORIAL_STEPS } = TutorialFlowShared;
+  const base = { tutorial: { completed: false, disabled: false, grants: {} } };
+
+  assert.equal(
+    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
+      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.formationPanelOpened },
+    }),
+    false,
+  );
+  assert.equal(
+    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
+      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.scoutFormationSaved },
+    }),
+    true,
+  );
+  assert.equal(
+    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
+      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.scoutWorldPanelOpened },
+    }),
+    true,
+  );
+  assert.equal(
+    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
+      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.firstCityDiscovered },
+    }),
+    false,
+  );
+  assert.equal(
+    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
+      tutorial: { ...base.tutorial, currentStep: undefined },
+    }),
+    false,
+  );
+  assert.equal(
+    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
+      tutorial: {
+        ...base.tutorial,
+        currentStep: TUTORIAL_STEPS.scoutFormationSaved,
+        grants: { [Shared.TUTORIAL_FIRST_SITE_GRANT_KEY]: true },
+      },
+    }),
+    false,
+  );
 });
 
 // The plannedSites materialization path is deleted. World cities are authored once, then projected or
