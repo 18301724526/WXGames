@@ -866,6 +866,26 @@ test('UIStatePresenter delegates famous person view state while preserving facad
   assert.equal(UIStatePresenter.formatFamousPersonSkill({ name: 'Aptitude', effects: [{ key: 'knowledgeOutputPct', value: 0.15 }] }).includes('知识产出提高 15%'), true);
 });
 
+test('famous person skill description trusts backend text and falls back to structured effects', () => {
+  const withDescription = UIStatePresenter.formatFamousPersonSkillDetail({
+    name: '有文案技能',
+    kind: 'active',
+    slot: 'activeSkill',
+    description: '目标存活时冷却就绪即可再次释放。',
+    effects: [{ key: 'directDamage', value: 1.2 }],
+  });
+  assert.equal(withDescription.description, '目标存活时冷却就绪即可再次释放。', '后端下发文案原样展示，前端不再按文本内容丢弃');
+
+  const withoutDescription = UIStatePresenter.formatFamousPersonSkillDetail({
+    name: '无文案技能',
+    kind: 'active',
+    slot: 'activeSkill',
+    damageType: 'blade',
+    effects: [{ key: 'directDamage', value: 1.2 }],
+  });
+  assert.equal(withoutDescription.description, '发动战法攻击目标，造成一次兵刃伤害。');
+});
+
 test('UIStatePresenter delegates building view state while preserving facade contracts', () => {
   const buildingConfig = {
     categories: {
@@ -1448,6 +1468,7 @@ test('UIStatePresenter delegates battle scene view state while preserving facade
         {
           actor: 'attacker',
           action: 'skill',
+          actionLineIndex: 1,
           lines: ['霍去病列阵。', '霍去病发动战法 长驱直入。', '敌军动摇。'],
           cooldownBefore: 0,
           cooldownAfter: 2,
@@ -1496,6 +1517,11 @@ test('UIStatePresenter delegates battle scene view state while preserving facade
   assert.equal(UIStatePresenter.formatBattleStatusBadge({ key: 'poison', stacks: 2, turnsRemaining: 3 }).text, '中毒 x2 3回合');
   assert.deepEqual(UIStatePresenter.buildBattleStatusBadges([{ key: 'shield', value: 18 }, { key: 'burn' }]).map((badge) => badge.text), ['守御 18', '灼烧']);
   assert.deepEqual(UIStatePresenter.getBattleTurnLines(battle.report.turns[0], { active: true, phase: 'cutin' }), ['霍去病列阵。', '霍去病发动战法 长驱直入。']);
+  assert.deepEqual(
+    UIStatePresenter.getBattleTurnLines(battle.report.turns[1], { active: true, phase: 'cutin' }),
+    ['守将甲稳住阵脚。'],
+    'cutin 截断只看 actionLineIndex，战报文本内容不参与判定',
+  );
 });
 
 test('index.html loads focused state presenters before UIStatePresenter facade', () => {

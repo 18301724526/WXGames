@@ -51,12 +51,25 @@ test('CanvasGameAppRenderPolicy resolves preferred military view from guide stat
   }), 'world');
   assert.equal(CanvasGameAppRenderPolicy.getPreferredMilitaryView('military', {
     target: 'tab-military',
-    message: '去侦察更多土地',
+    militaryView: 'scout',
   }), 'scout');
+  assert.equal(CanvasGameAppRenderPolicy.getPreferredMilitaryView('military', {
+    militaryView: 'world',
+  }), 'world');
+  assert.equal(CanvasGameAppRenderPolicy.getPreferredMilitaryView('military', {
+    militaryView: 'army',
+  }), null);
+});
+
+test('CanvasGameAppRenderPolicy never routes military view from guide message text', () => {
+  assert.equal(CanvasGameAppRenderPolicy.getPreferredMilitaryView('military', {
+    target: 'tab-military',
+    message: '去侦察更多土地',
+  }), null);
   assert.equal(CanvasGameAppRenderPolicy.getPreferredMilitaryView('military', {
     target: 'tab-military',
     message: '打开世界领土',
-  }), 'world');
+  }), null);
 });
 
 test('CanvasGameAppRenderPolicy returns a defensive tab order copy', () => {

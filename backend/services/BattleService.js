@@ -122,11 +122,8 @@ const {
 } = battleReports;
 
 function simulateConquestBattle(gameState, mission, territory, now = new Date()) {
-  const targetTerritory = mission?.battleTarget
-    ? { ...territory, battleTarget: mission.battleTarget }
-    : territory;
-  const leader = getLeaderSnapshot(gameState, mission.expedition?.leader)
-    || getLeaderSnapshotFromMission(mission);
+  const targetTerritory = mission?.battleTarget ? { ...territory, battleTarget: mission.battleTarget } : territory;
+  const leader = getLeaderSnapshot(gameState, mission.expedition?.leader) || getLeaderSnapshotFromMission(mission);
   const fallbackLeader = leader || BattleConfig.getFallbackLeader();
   const attackerSoldiers = Math.max(MIN_BATTLE_SOLDIERS, toInteger(mission.soldiersCommitted, MIN_BATTLE_SOLDIERS));
   const attacker = makeUnit('attacker', {
@@ -138,9 +135,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
     attributes: fallbackLeader.attributes,
     skill: getBattleSkill({ leader: fallbackLeader }, 'attacker'),
   });
-  const defender = makeUnit('defender', {
-    ...getDefenderBattleProfile(targetTerritory),
-  });
+  const defender = makeUnit('defender', { ...getDefenderBattleProfile(targetTerritory) });
 
   const turns = [];
   const rounds = [];
@@ -211,6 +206,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
         soldiersBefore: { attacker: beforeAttacker, defender: beforeDefender },
         soldiersAfter: { attacker: attacker.soldiers, defender: defender.soldiers },
         statusesAfter: { attacker: sanitizeStatuses(attacker.statuses), defender: sanitizeStatuses(defender.statuses) },
+        actionLineIndex: -1,
         lines: [
           `[${actorName}] 开始行动`,
           ...statusLines,
@@ -244,6 +240,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
         soldiersAfter: turn.soldiersAfter,
         statusesBefore: turn.statusesBefore,
         statusesAfter: turn.statusesAfter,
+        actionLineIndex: turn.actionLineIndex,
         lines: turn.lines,
       });
       return turn.text;
@@ -308,9 +305,10 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       : `[${actorName}] 对 [${targetName}] 发动普通攻击`;
     const damageLine = formatDamageLine(targetName, damageType, dealt, actor.target.soldiers);
     const extraLines = extraHits.map((hit) => `[${targetName}] 受到${hit.label} ${hit.damage}（${hit.remaining}）`);
+    const preActionLines = [`[${actorName}] 开始行动`, ...statusEventsBefore.map((event) => event.text).filter(Boolean)];
+    const actionLineIndex = preActionLines.length;
     const lines = [
-      `[${actorName}] 开始行动`,
-      ...statusEventsBefore.map((event) => event.text).filter(Boolean),
+      ...preActionLines,
       actionLine,
       ...hitStatusEvents.map((event) => event.text).filter(Boolean),
       damageLine,
@@ -364,6 +362,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       soldiersBefore: { attacker: beforeAttacker, defender: beforeDefender },
       soldiersAfter: { attacker: attacker.soldiers, defender: defender.soldiers },
       statusesAfter: { attacker: sanitizeStatuses(attacker.statuses), defender: sanitizeStatuses(defender.statuses) },
+      actionLineIndex,
       lines,
       text,
       attackerSoldiersBefore: beforeAttacker,
@@ -394,6 +393,7 @@ function simulateConquestBattle(gameState, mission, territory, now = new Date())
       soldiersAfter: turn.soldiersAfter,
       statusesBefore: turn.statusesBefore,
       statusesAfter: turn.statusesAfter,
+      actionLineIndex,
       lines,
     });
     return text;

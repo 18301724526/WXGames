@@ -161,13 +161,6 @@
         .join('');
     }
 
-    static sanitizeFamousPersonSkillDescription(skill = {}) {
-      const text = String(skill.description || '').trim();
-      if (!text) return '';
-      if (/自身行动|冷却\s*\d*\s*次|冷却就绪|目标存活|直接伤害|属性修正|二段伤害|吸血|当前阶段|当前仅展示|后续接入|实际收益|实际侦查|再次释放|等自己出手|再出手|才能再放|再放前/.test(text)) return '';
-      return text;
-    }
-
     static formatFamousPersonSkillDetail(skill = {}) {
       const effectLabels = this.getFamousPersonEffectLabels();
       const effects = Array.isArray(skill.effects)
@@ -186,7 +179,7 @@
         : (skill.trigger === 'passiveStored' ? '状态：已加入名人档案' : conditions.join(' · '));
       const statusText = skill.implementationStatus === 'storedOnly' ? '暂未接入实际收益' : '';
       const meta = [cooldownText, castRateText, triggerText, statusText].filter(Boolean).join(' · ');
-      const description = this.sanitizeFamousPersonSkillDescription(skill) || this.buildFamousPersonSkillDescription(skill);
+      const description = String(skill.description || '').trim() || this.buildFamousPersonSkillDescription(skill);
       return {
         id: skill.id || skill.name || '',
         name: skill.name || '技能',

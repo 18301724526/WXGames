@@ -67,6 +67,54 @@ test('TechPresenter builds tech tree nodes, links, and selected detail', () => {
   assert.equal(view.text.knowledgeRate, '1.5/s');
 });
 
+test('TechPresenter derives effect rows from structured ids and keys, not display text', () => {
+  const view = TechPresenter.buildTechViewState({
+    techs: {
+      points: 0,
+      eras: [{
+        era: 1,
+        name: 'Era 1',
+        choicesUsed: 0,
+        choiceLimit: 1,
+        techs: [
+          {
+            id: 'agriculture',
+            name: 'Agriculture',
+            status: 'available',
+            available: true,
+            unlockedBuildings: ['farm'],
+            unlockText: '农田',
+            resourceEntrances: ['food'],
+            resourceText: '粮食',
+            parents: [],
+          },
+          {
+            id: 'ritual',
+            name: 'Ritual',
+            status: 'available',
+            available: true,
+            unlockedBuildings: [],
+            unlockText: '神庙',
+            resourceEntrances: [],
+            resourceText: '无',
+            parents: [],
+          },
+        ],
+      }],
+    },
+  });
+  const [agriculture, ritual] = view.eras[0].techs;
+  assert.deepEqual(agriculture.effectRows, [
+    { label: '解锁建筑', text: '农田' },
+    { label: '研究后', text: '农田提供稳定粮食生产。' },
+    { label: '发展方向', text: '粮食生产' },
+  ]);
+  assert.deepEqual(ritual.effectRows, [
+    { label: '解锁建筑', text: '神庙' },
+    { label: '发展方向', text: '无' },
+  ], '中文建筑名只作显示透传，效果推导只认 unlockedBuildings 的 id');
+});
+
 test('UIStatePresenter delegates tech view state to TechPresenter', () => {
   const state = createTechState();
 

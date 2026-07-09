@@ -1,9 +1,6 @@
 const {
   EFFECT_LABELS,
 } = require('./SkillGeneratorConstants');
-const {
-  sanitizeText,
-} = require('./SkillGeneratorShared');
 
 function describeEffects(effects = []) {
   return effects
@@ -82,21 +79,10 @@ function describeAbility(ability = {}) {
   return describePlayerFacingEffects(ability) || describeEffects(ability.effects) || '暂无具体效果。';
 }
 
-function sanitizeAbilityDescription(value = '') {
-  const text = sanitizeText(value);
-  if (!text) return '';
-  if (/自身行动|冷却\s*\d*\s*次|冷却就绪|目标存活|直接伤害|属性修正|二段伤害|吸血|当前阶段|当前仅展示|后续接入|实际收益|实际侦查|再次释放|等自己出手|再出手|才能再放|再放前/.test(text)) {
-    return '';
-  }
-  return text;
-}
-
 function withAbilityDescription(ability = {}) {
-  const fallback = describeAbility(ability);
-  const existing = sanitizeAbilityDescription(ability.description);
   return {
     ...ability,
-    description: existing || fallback,
+    description: describeAbility(ability),
   };
 }
 
@@ -107,6 +93,5 @@ module.exports = {
   describePlayerFacingEffects,
   formatPercent,
   getAttributeLabel,
-  sanitizeAbilityDescription,
   withAbilityDescription,
 };

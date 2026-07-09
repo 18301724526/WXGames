@@ -26,13 +26,10 @@
   function getPreferredMilitaryView(tabId, guide = {}) {
     if (tabId === 'territory') return 'world';
     if (tabId !== 'military') return null;
+    if (guide.militaryView === 'scout' || guide.militaryView === 'world') return guide.militaryView;
     const target = guide.target || '';
-    const message = String(guide.message || '');
     if (target === 'scout-action-first') return 'scout';
     if (target === 'tab-territory') return 'world';
-    if (target !== 'tab-military') return null;
-    if (/侦察|探索|渚﹀療|鎺㈢储/.test(message)) return 'scout';
-    if (/领土|疆域|世界|占领|棰嗗湡|鐤嗗煙|涓栫晫|鍗犻/.test(message)) return 'world';
     return null;
   }
 

@@ -120,8 +120,8 @@
       if (!options.active) return lines;
       const phase = options.phase || 'prepare';
       if (phase === 'cutin') {
-        const skillLineIndex = lines.findIndex((line) => /发动战法|释放技能|技能|战法/.test(String(line)));
-        if (skillLineIndex >= 0) return lines.slice(0, skillLineIndex + 1);
+        const actionLineIndex = this.toInteger(turn.actionLineIndex, -1);
+        if (actionLineIndex >= 0 && actionLineIndex < lines.length) return lines.slice(0, actionLineIndex + 1);
         return lines.slice(0, 1);
       }
       if (phase === 'prepare') return lines.slice(0, 1);

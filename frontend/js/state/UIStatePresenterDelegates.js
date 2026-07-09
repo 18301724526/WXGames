@@ -63,7 +63,6 @@
       'formatFamousPersonCastRate',
       'formatFamousPersonEffectSentence',
       'buildFamousPersonSkillDescription',
-      'sanitizeFamousPersonSkillDescription',
       'formatFamousPersonSkillDetail',
       'formatFamousPersonSkill',
       'getFamousPersonAbilities',

@@ -33,13 +33,6 @@
         metal: '铁矿利用',
         knowledge: '知识积累',
       };
-      const resourceDirectionByText = {
-        粮食: '粮食生产',
-        木材: '木材采集',
-        石料: '石料工程',
-        铁矿: '铁矿利用',
-        知识: '知识积累',
-      };
       const buildingEffectById = {
         farm: '农田提供稳定粮食生产。',
         house: '民居提升文明人口承载能力。',
@@ -52,42 +45,19 @@
         academy: '学院强化知识积累。',
         temple: '神庙服务后续文化与精神建设。',
       };
-      const buildingEffectByName = {
-        农田: buildingEffectById.farm,
-        民居: buildingEffectById.house,
-        伐木场: buildingEffectById.lumbermill,
-        兵营: buildingEffectById.barracks,
-        瞭望台: buildingEffectById.watchtower,
-        采石场: buildingEffectById.quarry,
-        矿场: buildingEffectById.mine,
-        工坊: buildingEffectById.workshop,
-        学院: buildingEffectById.academy,
-        神庙: buildingEffectById.temple,
-      };
-      const splitDisplayList = (value) => {
-        if (Array.isArray(value)) return value.filter(Boolean).map((item) => String(item));
-        return String(value || '')
-          .split(/[、/,，\s]+/)
-          .map((item) => item.trim())
-          .filter(Boolean);
-      };
       const uniqueList = (items = []) => Array.from(new Set(items.filter(Boolean)));
       const makeTechEffectRows = (tech = {}) => {
-        const buildingNames = uniqueList(splitDisplayList(tech.unlockText));
-        const buildingEffects = uniqueList([
-          ...(Array.isArray(tech.unlockedBuildings) ? tech.unlockedBuildings.map((id) => buildingEffectById[id]) : []),
-          ...buildingNames.map((name) => buildingEffectByName[name]),
-        ]);
+        const unlockedBuildings = Array.isArray(tech.unlockedBuildings) ? tech.unlockedBuildings.filter(Boolean) : [];
+        const buildingEffects = uniqueList(unlockedBuildings.map((id) => buildingEffectById[id]));
         const resourceDirections = uniqueList(
-          Array.isArray(tech.resourceEntrances) && tech.resourceEntrances.length
-            ? tech.resourceEntrances.map((key) => resourceDirectionLabels[key] || key)
-            : splitDisplayList(tech.resourceText).map((label) => resourceDirectionByText[label] || label),
+          (Array.isArray(tech.resourceEntrances) ? tech.resourceEntrances : [])
+            .map((key) => resourceDirectionLabels[key] || key),
         );
+        const unlockText = String(tech.unlockText || '').trim();
         const rows = [];
-        if (buildingNames.length) rows.push({ label: '解锁建筑', text: buildingNames.join('、') });
+        if (unlockText) rows.push({ label: '解锁建筑', text: unlockText });
         if (buildingEffects.length) rows.push({ label: '研究后', text: buildingEffects.join('；') });
-        if (resourceDirections.length) rows.push({ label: '发展方向', text: resourceDirections.join('、') });
-        if (!rows.length) rows.push({ label: '发展方向', text: tech.routeLabel || '文明路线' });
+        rows.push({ label: '发展方向', text: resourceDirections.length ? resourceDirections.join('、') : '无' });
         return rows;
       };
       const visibleEras = eras.map((era) => ({

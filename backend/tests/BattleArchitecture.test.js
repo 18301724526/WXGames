@@ -281,3 +281,30 @@ test('BattleService facade preserves exported battle API and conquest smoke beha
   assert.equal(battle.report.turns.length > 0, true);
   assert.equal(battle.report.visual.groupSize, BattleService.DEFAULT_SOLDIER_SCALE);
 });
+
+test('BattleService turns carry structured actionLineIndex pointing at the action line', () => {
+  const gameState = { famousPeople: [] };
+  const mission = { expedition: {}, soldiersCommitted: 400 };
+  const territory = {
+    id: 'camp-action-line',
+    type: 'camp',
+    owner: 'tribe',
+    naturalName: '边地营寨',
+    defense: 200,
+  };
+  const battle = BattleService.simulateConquestBattle(gameState, mission, territory, new Date('2026-06-06T00:00:00.000Z'));
+  assert.equal(battle.report.turns.length > 0, true);
+  battle.report.turns.forEach((turn) => {
+    assert.equal(Number.isInteger(turn.actionLineIndex), true);
+    if (turn.action === 'statusTick') {
+      assert.equal(turn.actionLineIndex, -1);
+      return;
+    }
+    const actionLine = String(turn.lines[turn.actionLineIndex] || '');
+    const expectedMarker = turn.action === 'skill' ? '发动战法' : '发动普通攻击';
+    assert.equal(actionLine.includes(expectedMarker), true, `turn ${turn.index} actionLineIndex 应指向动作行：${actionLine}`);
+  });
+  battle.report.detailEvents.forEach((event) => {
+    assert.equal(Number.isInteger(event.actionLineIndex), true);
+  });
+});

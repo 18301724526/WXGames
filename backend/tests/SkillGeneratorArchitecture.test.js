@@ -215,3 +215,24 @@ test('skill ability kit service completes legacy and partial stored kits', () =>
   assert.equal(partialCivil.abilities[0].id, 'stored_primary');
   assert.equal(partialCivil.budgetStatus, 'withinLimit');
 });
+
+test('ability descriptions are regenerated from structured effects, never trusted from stored text', () => {
+  const kit = KitService.normalizeAbilityKit({
+    archetype: 'vanguard',
+    quality: 'good',
+    abilities: [{
+      id: 'stored_active',
+      name: 'Stored Active',
+      slot: 'activeSkill',
+      kind: 'active',
+      type: 'battle',
+      damageType: 'blade',
+      cooldown: 3,
+      description: '存档里烘焙的旧描述，不应出现在下发数据里。',
+      effects: [{ key: 'directDamage', value: 1.2 }],
+    }],
+  }, { seed: 'stored-desc' });
+  const active = kit.abilities.find((ability) => ability.slot === 'activeSkill');
+  assert.equal(active.id, 'stored_active');
+  assert.equal(active.description, '发动战法攻击目标，造成一次兵刃伤害。');
+});

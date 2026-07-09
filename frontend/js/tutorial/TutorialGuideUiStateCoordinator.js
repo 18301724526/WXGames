@@ -14,7 +14,7 @@
     return changed;
   },
 
-  showSoftGuide(target, message) {
+  showSoftGuide(target, message, options = {}) {
     const game = this.game || {};
     game.canvasShell?.hideTutorialHighlight?.();
     const dialogue = { message, advisorName: '谋士', source: `softGuide:${target || 'tutorial'}` };
@@ -24,6 +24,9 @@
         mode: 'strong',
         target,
         message,
+        ...(options.militaryView === 'scout' || options.militaryView === 'world'
+          ? { militaryView: options.militaryView }
+          : {}),
       },
     };
     game.showAdvisor = false;
