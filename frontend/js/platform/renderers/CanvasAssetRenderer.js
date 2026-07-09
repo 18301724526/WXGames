@@ -118,6 +118,53 @@
       return this.host?.getPreloadAssetPaths?.() || [];
     }
 
+    isWorldMapAssetPath(assetPath = '') {
+      const path = String(assetPath || '');
+      return this.isWorldTilePrewarmMetricAssetPath(path)
+        || this.isWorldTileTemplateAssetPath(path);
+    }
+
+    getAssetChangeDomain(assetPath = '') {
+      const path = String(assetPath || '');
+      if (!path) return 'worldMap';
+      if (this.isWorldMapAssetPath(path)) return 'worldMap';
+      if (path.startsWith('assets/art/units/')) return 'worldActor';
+      if (path.startsWith('assets/art/famous-person/layers/')) return 'panelOverlay';
+      if (
+        path.startsWith('assets/art/ui-hud/')
+        || path.startsWith('assets/art/icon-')
+        || path.startsWith('assets/art/tech-')
+        || path.startsWith('assets/art/building-')
+        || path.startsWith('assets/art/civilization-')
+      ) {
+        return 'hud';
+      }
+      if (path.startsWith('assets/art/battle/')) return 'battle';
+      return 'surface';
+    }
+
+    createAssetChangeEvent(assetPathOrEvent = '', overrides = {}) {
+      const base = assetPathOrEvent && typeof assetPathOrEvent === 'object'
+        ? assetPathOrEvent
+        : { assetPath: assetPathOrEvent };
+      const assetPath = String(base.assetPath || '');
+      const domain = String(base.domain || base.assetDomain || this.getAssetChangeDomain(assetPath) || 'surface');
+      const panelKey = base.panelKey || (assetPath.startsWith('assets/art/famous-person/layers/') ? 'famousPersons' : '');
+      const invalidateWorldTileCaches = typeof base.invalidateWorldTileCaches === 'boolean'
+        ? base.invalidateWorldTileCaches
+        : (assetPath ? domain === 'worldMap' : true);
+      return {
+        ...base,
+        ...overrides,
+        assetPath,
+        domain,
+        assetDomain: domain,
+        surface: base.surface || (domain === 'panelOverlay' ? 'panelOverlay' : ''),
+        panelKey,
+        invalidateWorldTileCaches,
+      };
+    }
+
     createImage(assetPath = '') {
       if (typeof this.host?.createImage === 'function') return this.host.createImage(assetPath);
       if (typeof global.Image === 'function') return new global.Image();
@@ -194,7 +241,7 @@
             if (settled) return;
             settled = true;
             record.status = status;
-            if (status === 'loaded') this.handleAssetsChanged();
+            if (status === 'loaded') this.handleAssetsChanged(assetPath);
             if (typeof handler === 'function') handler.call(image, event);
             settle(assetPath, status);
           };
@@ -502,7 +549,7 @@
       this.assetCache.set(assetPath, record);
       image.onload = () => {
         record.status = 'loaded';
-        this.handleAssetsChanged();
+        this.handleAssetsChanged(assetPath);
       };
       image.onerror = () => {
         record.status = 'error';
@@ -518,9 +565,11 @@
       this.assetsChangedHandler = typeof handler === 'function' ? handler : null;
     }
 
-    handleAssetsChanged() {
-      this.invalidateWorldTileCaches();
-      if (this.assetsChangedHandler) this.assetsChangedHandler();
+    handleAssetsChanged(assetPathOrEvent = '') {
+      const event = this.createAssetChangeEvent(assetPathOrEvent);
+      if (event.invalidateWorldTileCaches) this.invalidateWorldTileCaches();
+      if (this.assetsChangedHandler) this.assetsChangedHandler(event);
+      return event;
     }
 
     invalidateWorldTileCaches() {

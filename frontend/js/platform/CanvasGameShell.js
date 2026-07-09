@@ -586,6 +586,89 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             || null;
         }
 
+    isWorldMapAssetChange(change = {}) {
+          if (!change || typeof change !== 'object') return true;
+          const domain = String(change.domain || change.assetDomain || '');
+          const hasExplicitAssetPath = Object.prototype.hasOwnProperty.call(change, 'assetPath')
+            && String(change.assetPath || '');
+          const hasExplicitInvalidation = typeof change.invalidateWorldTileCaches === 'boolean';
+          if (!domain && !hasExplicitAssetPath && !hasExplicitInvalidation) return true;
+          return change.invalidateWorldTileCaches === true || domain === 'worldMap';
+        }
+
+    isWorldActorAssetChange(change = {}) {
+          if (!change || typeof change !== 'object') return false;
+          const domain = String(change.domain || change.assetDomain || '');
+          return domain === 'worldActor';
+        }
+
+    resolvePanelKeyForAssetChange(change = {}) {
+          if (!change || typeof change !== 'object') return '';
+          if (change.panelKey) return String(change.panelKey);
+          const assetPath = String(change.assetPath || '');
+          if (assetPath.startsWith('assets/art/famous-person/layers/')) return 'famousPersons';
+          return '';
+        }
+
+    projectAssetOwnerSurface(change = {}, options = {}) {
+          const panelKey = this.resolvePanelKeyForAssetChange(change);
+          if (!panelKey) return false;
+          const manager = this.getPanelSurfaceManager?.() || null;
+          if (!manager || typeof manager.projectModalLayer !== 'function') return false;
+          if (typeof manager.isPanelOpen === 'function' && manager.isPanelOpen(panelKey, options) !== true) return false;
+          return manager.projectModalLayer({
+            requestedPanelKey: panelKey,
+            source: options.source || 'assetChanged',
+            assetPath: change.assetPath || '',
+            assetDomain: change.assetDomain || change.domain || '',
+            assetChange: change,
+          }) === true;
+        }
+
+    handleWorldMapRendererAssetsChanged(change = {}) {
+          if (this.isWorldMapAssetChange(change)) {
+            this.renderer?.invalidateWorldTileCaches?.();
+            this.renderer?.invalidateWorldTileViewCache?.();
+            return this.requestWorldMapRenderAnimationFrame({
+              type: 'assetChanged',
+              assetPath: change?.assetPath || '',
+            });
+          }
+          if (this.projectAssetOwnerSurface(change, { source: 'worldMapRenderer:assetChanged' })) return true;
+          return this.requestWorldMapRenderAnimationFrame({
+            type: 'assetChanged',
+            assetPath: change?.assetPath || '',
+            force: this.isWorldActorAssetChange(change),
+            invalidateWorldTileView: false,
+          });
+        }
+
+    handleWorldActorRendererAssetsChanged(change = {}) {
+          if (this.projectAssetOwnerSurface(change, { source: 'worldActorRenderer:assetChanged' })) return true;
+          return this.requestWorldMapRenderAnimationFrame({
+            type: 'assetChanged',
+            assetPath: change?.assetPath || '',
+            force: true,
+            invalidateWorldTileView: false,
+          });
+        }
+
+    handleMainRendererAssetsChanged(change = {}) {
+          if (this.isWorldMapAssetChange(change)) {
+            this.worldMapRenderer?.invalidateWorldTileCaches?.();
+            this.worldMapRenderer?.invalidateWorldTileViewCache?.();
+            return this.requestRenderAnimationFrame({
+              type: 'assetChanged',
+              assetPath: change?.assetPath || '',
+            });
+          }
+          if (this.projectAssetOwnerSurface(change, { source: 'mainRenderer:assetChanged' })) return true;
+          return this.requestRenderAnimationFrame({
+            type: 'assetChanged',
+            assetPath: change?.assetPath || '',
+          });
+        }
+
     createRenderer(canvas) {
           if (this.renderer || !canvas) return this.renderer;
           const RendererCtor = global.H5CanvasGameRenderer;
@@ -637,11 +720,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               showFpsOverlay: false,
             });
             if (typeof this.worldMapRenderer.setAssetsChangedHandler === 'function') {
-              this.worldMapRenderer.setAssetsChangedHandler(() => {
-                this.renderer?.invalidateWorldTileCaches?.();
-                this.renderer?.invalidateWorldTileViewCache?.();
-                this.requestWorldMapRenderAnimationFrame();
-              });
+              this.worldMapRenderer.setAssetsChangedHandler((change) => this.handleWorldMapRendererAssetsChanged(change));
             }
           }
           if (actorCanvas && this.worldMapRenderer && !this.worldActorLayerRenderer) {
@@ -672,9 +751,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             this.worldMapRenderer.worldActorOverlayCtx = this.worldActorLayerRenderer.ctx || null;
             this.worldActorLayerRenderer.worldActorOverlayCanvas = actorCanvas;
             if (typeof this.worldActorLayerRenderer.setAssetsChangedHandler === 'function') {
-              this.worldActorLayerRenderer.setAssetsChangedHandler(() => {
-                this.requestWorldMapRenderAnimationFrame({ force: true, invalidateWorldTileView: false });
-              });
+              this.worldActorLayerRenderer.setAssetsChangedHandler((change) => this.handleWorldActorRendererAssetsChanged(change));
             }
           }
           const terrainCtx = this.worldMapRenderer?.ctx || null;
@@ -748,11 +825,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             worldTileDryCompositeCache: sharedWorldTileDryCompositeCache,
           });
           if (typeof this.renderer.setAssetsChangedHandler === 'function') {
-            this.renderer.setAssetsChangedHandler(() => {
-              this.worldMapRenderer?.invalidateWorldTileCaches?.();
-              this.worldMapRenderer?.invalidateWorldTileViewCache?.();
-              this.requestRenderAnimationFrame();
-            });
+            this.renderer.setAssetsChangedHandler((change) => this.handleMainRendererAssetsChanged(change));
           }
           if (this.worldMapRenderer) this.worldMapRenderer.presenter = this.renderer.presenter;
           if (this.worldActorLayerRenderer) this.worldActorLayerRenderer.presenter = this.renderer.presenter;

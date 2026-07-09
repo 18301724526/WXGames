@@ -929,6 +929,107 @@ test('CanvasGameShell renderPanelOverlaySurface repaints only the panel overlay 
   ]);
 });
 
+test('CanvasGameShell routes famous portrait asset loads to the panel overlay only', () => {
+  const previousRenderer = global.H5CanvasGameRenderer;
+  const calls = [];
+  const instances = [];
+  class FakeRenderer {
+    constructor(options = {}) {
+      this.canvas = options.canvas || null;
+      this.ctx = this.canvas?.getContext?.('2d') || null;
+      this.width = options.width || 420;
+      this.height = options.height || 747;
+      this.viewportWidth = options.viewportWidth || this.width;
+      this.viewportHeight = options.viewportHeight || this.height;
+      this.viewportOffsetX = options.viewportOffsetX || 0;
+      this.viewportOffsetY = options.viewportOffsetY || 0;
+      instances.push(this);
+    }
+
+    setAssetsChangedHandler(handler) {
+      this.assetsChangedHandler = handler;
+    }
+
+    invalidateWorldTileCaches() {
+      calls.push(['invalidateWorldTileCaches', this.canvas?.id || '']);
+    }
+
+    invalidateWorldTileViewCache() {
+      calls.push(['invalidateWorldTileViewCache', this.canvas?.id || '']);
+    }
+  }
+  global.H5CanvasGameRenderer = FakeRenderer;
+  const runtime = {
+    width: 420,
+    height: 747,
+    pixelRatio: 1,
+    ensureLayerCanvas(name) {
+      return {
+        id: name,
+        getContext(type) {
+          return type === '2d' ? {} : null;
+        },
+      };
+    },
+    getLayerMetrics() {
+      return { width: 420, height: 747, viewportWidth: 420, viewportHeight: 747, padding: 0 };
+    },
+  };
+  const shell = new CanvasGameShell({
+    runtime,
+    presenter: {},
+  });
+  shell.getPanelSurfaceManager = () => ({
+    isPanelOpen(panelKey) {
+      calls.push(['isPanelOpen', panelKey]);
+      return panelKey === 'famousPersons';
+    },
+    projectModalLayer(options) {
+      calls.push(['projectModalLayer', options.requestedPanelKey, options.assetPath, options.source]);
+      return true;
+    },
+  });
+  shell.requestRenderAnimationFrame = (action = {}) => {
+    calls.push(['requestRenderAnimationFrame', action.type || '', action.assetPath || '']);
+    return true;
+  };
+  shell.requestWorldMapRenderAnimationFrame = (options = {}) => {
+    calls.push(['requestWorldMapRenderAnimationFrame', options.type || '', options.assetPath || '']);
+    return true;
+  };
+
+  try {
+    shell.createRenderer({
+      id: 'mainHud',
+      getContext(type) {
+        return type === '2d' ? {} : null;
+      },
+    });
+    const mainRenderer = instances[instances.length - 1];
+    assert.equal(typeof mainRenderer.assetsChangedHandler, 'function');
+    calls.length = 0;
+    mainRenderer.assetsChangedHandler({
+      assetPath: 'assets/art/famous-person/layers/fp-layer-v3-face-01.png',
+      domain: 'panelOverlay',
+      assetDomain: 'panelOverlay',
+      panelKey: 'famousPersons',
+      invalidateWorldTileCaches: false,
+    });
+  } finally {
+    global.H5CanvasGameRenderer = previousRenderer;
+  }
+
+  assert.deepEqual(calls, [
+    ['isPanelOpen', 'famousPersons'],
+    [
+      'projectModalLayer',
+      'famousPersons',
+      'assets/art/famous-person/layers/fp-layer-v3-face-01.png',
+      'mainRenderer:assetChanged',
+    ],
+  ]);
+});
+
 test('CanvasGameShell reads battleScene render options from BattleStore only', () => {
   const shell = new CanvasGameShell({
     runtime: {

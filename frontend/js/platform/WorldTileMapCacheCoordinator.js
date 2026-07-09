@@ -176,10 +176,14 @@
       if (typeof renderer?.handleAssetsChanged === 'function') {
         return renderer.handleAssetsChanged(...args);
       }
+      const event = args[0] && typeof args[0] === 'object' ? args[0] : null;
+      const shouldInvalidateWorldTileCaches = event
+        ? event.invalidateWorldTileCaches !== false
+        : true;
       // Dispatch through the host so renderer-level invalidateWorldTileCaches stays the
       // entry point (verbatim: the original body called this.invalidateWorldTileCaches).
-      this.host.invalidateWorldTileCaches();
-      if (this.assetsChangedHandler) this.assetsChangedHandler();
+      if (shouldInvalidateWorldTileCaches) this.host.invalidateWorldTileCaches();
+      if (this.assetsChangedHandler) this.assetsChangedHandler(...args);
       return undefined;
     }
 

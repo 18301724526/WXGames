@@ -134,6 +134,7 @@ function createHost(overrides = {}) {
 test('CanvasAssetRenderer preserves preload progress, cached states, and request path versioning', async () => {
   const timers = [];
   const host = createHost();
+  const tilePath = 'assets/art/tile-map/tile-terrain-plains.png';
   host.h5Runtime = {
     runtime: {
       setTimeout(callback, delayMs) {
@@ -148,12 +149,12 @@ test('CanvasAssetRenderer preserves preload progress, cached states, and request
   const renderer = new CanvasAssetRenderer({ host });
   const progress = [];
 
-  const promise = renderer.preloadAssets(['asset-a.png', 'cached-loaded.png', 'cached-error.png'], (event) => {
+  const promise = renderer.preloadAssets([tilePath, 'cached-loaded.png', 'cached-error.png'], (event) => {
     progress.push(event);
   });
 
-  const image = host.images.get('asset-a.png');
-  assert.equal(image.src, 'asset-a.png?v=test');
+  const image = host.images.get(tilePath);
+  assert.equal(image.src, `${tilePath}?v=test`);
   image.onload({ type: 'load' });
 
   const result = await promise;
@@ -278,6 +279,43 @@ test('CanvasAssetRenderer preserves getAsset lazy loading and failure fallback',
 
   const noImageRenderer = new CanvasAssetRenderer({ host: createHost({ createImage: () => null }) });
   assert.equal(noImageRenderer.getAsset('missing.png'), null);
+});
+
+test('CanvasAssetRenderer keeps famous portrait loads out of world tile caches', () => {
+  const host = createHost();
+  const renderer = new CanvasAssetRenderer({ host });
+  const events = [];
+  renderer.setAssetsChangedHandler((event) => events.push(event));
+  const assetPath = 'assets/art/famous-person/layers/fp-layer-v3-face-01.png';
+
+  assert.equal(renderer.getAsset(assetPath), null);
+  host.images.get(assetPath).onload();
+
+  assert.notEqual(host.worldMapCacheState.worldTileStaticCache, null);
+  assert.notEqual(host.worldMapCacheState.worldTileViewCache, null);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].assetPath, assetPath);
+  assert.equal(events[0].domain, 'panelOverlay');
+  assert.equal(events[0].panelKey, 'famousPersons');
+  assert.equal(events[0].invalidateWorldTileCaches, false);
+});
+
+test('CanvasAssetRenderer still invalidates world tile caches for world map assets', () => {
+  const host = createHost();
+  const renderer = new CanvasAssetRenderer({ host });
+  const events = [];
+  renderer.setAssetsChangedHandler((event) => events.push(event));
+  const assetPath = 'assets/art/tile-map/tile-terrain-plains.png';
+
+  assert.equal(renderer.getAsset(assetPath), null);
+  host.images.get(assetPath).onload();
+
+  assert.equal(host.worldMapCacheState.worldTileStaticCache, null);
+  assert.equal(host.worldMapCacheState.worldTileViewCache, null);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].assetPath, assetPath);
+  assert.equal(events[0].domain, 'worldMap');
+  assert.equal(events[0].invalidateWorldTileCaches, true);
 });
 
 test('CanvasAssetRenderer preserves cache invalidation and snapshot readiness', () => {
