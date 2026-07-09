@@ -118,6 +118,63 @@ test('CanvasPanelActionRunner vetoes before mutation and feedbacks', () => {
   ]);
 });
 
+test('CanvasPanelActionRunner ignores action-carried bypass flags', () => {
+  const calls = [];
+  const tutorial = {
+    canOpenTab() {
+      calls.push(['canOpenTab']);
+      return false;
+    },
+    onFamousPersonsOpened() {
+      calls.push(['opened']);
+    },
+  };
+  const runner = new CanvasPanelActionRunner();
+
+  assert.equal(
+    runner.run(
+      { type: 'openFamousPersons', bypassPanelOpenVeto: true, suppressAfterHooks: true },
+      createContext(calls, { tutorial }),
+    ),
+    false,
+  );
+  assert.deepEqual(calls, [
+    ['canOpenTab'],
+    ['showFloatingText', 'guide.completeCurrentStep'],
+  ]);
+});
+
+test('CanvasPanelActionRunner accepts trusted bypass and hook suppression options', () => {
+  const calls = [];
+  const tutorial = {
+    canOpenTab() {
+      calls.push(['canOpenTab']);
+      return false;
+    },
+    onFamousPersonsOpened() {
+      calls.push(['opened']);
+    },
+    refreshCurrentHighlight() {
+      calls.push(['refresh']);
+    },
+  };
+  const runner = new CanvasPanelActionRunner();
+
+  assert.equal(
+    runner.run(
+      { type: 'openFamousPersons' },
+      createContext(calls, { tutorial }),
+      { bypassOpenVeto: true, suppressAfterHooks: true },
+    ),
+    true,
+  );
+  assert.deepEqual(calls, [
+    ['openPanel', 'famousPersons'],
+    ['markDirty', 'modal', 'openFamousPersons'],
+    ['flush', 'modal'],
+  ]);
+});
+
 test('CanvasPanelActionRunner short-circuits disabled actions', () => {
   const calls = [];
   const runner = new CanvasPanelActionRunner();

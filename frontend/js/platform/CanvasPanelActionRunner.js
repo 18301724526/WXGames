@@ -157,16 +157,17 @@
       return false;
     }
 
-    run(action, context) {
+    run(action, context, options = {}) {
       if (!action) return false;
       if (action.disabled) return true;
+      const runOptions = options && typeof options === 'object' ? options : {};
       const descriptor = this.actionRegistry?.resolve?.(action);
       if (!descriptor) return false;
       const normalizedContext = this.normalizeContext(context);
       if (!normalizedContext) return false;
       const hooks = descriptor.hooks || {};
       try {
-        if (descriptor.operation === 'open' && action.bypassPanelOpenVeto !== true) {
+        if (descriptor.operation === 'open' && runOptions.bypassOpenVeto !== true) {
           const canOpen = this.runHookList(hooks.beforeOpen, normalizedContext, action, descriptor);
           if (canOpen === false) {
             this.runHookList(hooks.veto, normalizedContext, action, descriptor);
@@ -176,6 +177,7 @@
         const handled = this.executeDescriptor(descriptor, action, normalizedContext) !== false;
         if (!handled) return false;
         if (descriptor.operation !== 'outsideClick') this.flushDirty(descriptor, normalizedContext, action);
+        if (runOptions.suppressAfterHooks === true) return true;
         let hooksHandled = true;
         if (descriptor.operation === 'open') hooksHandled = this.runHookList(hooks.afterOpen, normalizedContext, action, descriptor);
         else if (descriptor.operation === 'close') hooksHandled = this.runHookList(hooks.afterClose, normalizedContext, action, descriptor);
