@@ -269,7 +269,10 @@ function buildCheckFindings(checkId, scanResults = {}) {
     }));
   }
   if (checkId === 'allowlist-debt-record') {
-    return inventories.ALLOWLIST_DEBT_RECORDS.map((item) => finding(checkId, item));
+    return [
+      ...inventories.ALLOWLIST_DEBT_RECORDS,
+      ...inventories.SERVER_WRITE_EXCLUSIONS,
+    ].map((item) => finding(checkId, item));
   }
   return [];
 }
@@ -311,6 +314,7 @@ function buildReport(options = {}) {
       totalFindings,
       antiEvasionAssertions: antiEvasion.length,
       serverWriteEntries: inventories.SERVER_WRITE_ENTRIES.length,
+      serverWriteExclusions: inventories.SERVER_WRITE_EXCLUSIONS.length,
       gameActions: inventories.GAME_ACTIONS.length,
       frontendWriteHelpers: inventories.FRONTEND_WRITE_HELPERS.length,
       frontendCommandPaths: inventories.FRONTEND_COMMAND_PATHS.length,
@@ -333,6 +337,7 @@ function renderSummary(report) {
     `contracts mapped: ${report.summary.mappedContracts}/${report.summary.totalContracts}`,
     `checks defined: ${report.summary.totalChecks}`,
     `server write entries inventoried: ${report.summary.serverWriteEntries}`,
+    `server write exclusions documented: ${report.summary.serverWriteExclusions}`,
     `game actions inventoried: ${report.summary.gameActions}`,
     `frontend write helpers inventoried: ${report.summary.frontendWriteHelpers}`,
     `frontend command paths inventoried: ${report.summary.frontendCommandPaths}`,

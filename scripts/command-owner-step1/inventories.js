@@ -157,6 +157,60 @@ const SERVER_WRITE_ENTRIES = Object.freeze([
     evidence: ['backend/routes/playerRoutes.js'],
   }),
   entry({
+    inventoryId: 'admin:ops-login-audit',
+    route: '/api/admin/ops/login',
+    method: 'POST',
+    writeEntryKind: 'ops-audit-write',
+    commandType: 'opsLoginAudit',
+    provisionalOwnerKey: 'ops:global',
+    targetIdFields: ['username', 'clientIp'],
+    currentExecutor: 'OpsAuthService.login + OpsControlService.appendAudit',
+    currentLockOwner: 'none',
+    currentPersistenceOwner: 'OpsControlService.appendAudit -> fs.appendFileSync',
+    currentProjectionOwner: 'route:ops login result',
+    idempotencyClassification: 'audit-append-only-no-client-id',
+    migrationPhase: 'classified-non-gameplay-ops-command',
+    contracts: ['COP-ENTRY-001', 'COP-ROUTE-001', 'COP-TRACE-001', 'COP-IDEMP-001'],
+    evidence: ['backend/routes/opsRoutes.js:23', 'backend/services/OpsControlService.js:237'],
+    notes: 'Login success/failure/rate-limit attempts append ops audit records outside gameplay state.',
+  }),
+  entry({
+    inventoryId: 'admin:ops-maintenance-state',
+    route: '/api/admin/ops/maintenance',
+    method: 'POST',
+    writeEntryKind: 'ops-state-write',
+    commandType: 'opsMaintenanceSet',
+    provisionalOwnerKey: 'ops:global',
+    targetIdFields: ['enabled', 'reason', 'message'],
+    currentExecutor: 'OpsControlService.setMaintenanceState',
+    currentLockOwner: 'filesystem-local',
+    currentPersistenceOwner: 'writeJsonFile -> fs.writeFileSync plus OpsControlService.appendAudit',
+    currentProjectionOwner: 'route:maintenance result',
+    idempotencyClassification: 'last-write-wins-no-client-id',
+    migrationPhase: 'classified-non-gameplay-ops-command',
+    contracts: ['COP-ENTRY-001', 'COP-ROUTE-001', 'COP-TRACE-001', 'COP-IDEMP-001'],
+    evidence: ['backend/routes/opsRoutes.js:64', 'backend/services/OpsControlService.js:64', 'backend/services/OpsControlService.js:207'],
+    notes: 'Maintenance state is persisted to an ops JSON file and also appends an audit record.',
+  }),
+  entry({
+    inventoryId: 'admin:ops-restart-audit',
+    route: '/api/admin/ops/restart',
+    method: 'POST',
+    writeEntryKind: 'ops-audit-and-process-write',
+    commandType: 'opsRestartAccepted',
+    provisionalOwnerKey: 'ops:global',
+    targetIdFields: ['delayMs'],
+    currentExecutor: 'OpsControlService.appendAudit + OpsControlService.restartService',
+    currentLockOwner: 'none',
+    currentPersistenceOwner: 'OpsControlService.appendAudit -> fs.appendFileSync and pm2 process control',
+    currentProjectionOwner: 'route:accepted restart result',
+    idempotencyClassification: 'non-idempotent',
+    migrationPhase: 'classified-non-gameplay-ops-command',
+    contracts: ['COP-ENTRY-001', 'COP-ROUTE-001', 'COP-TRACE-001', 'COP-IDEMP-001'],
+    evidence: ['backend/routes/opsRoutes.js:71', 'backend/services/OpsControlService.js:237', 'backend/services/OpsControlService.js:514'],
+    notes: 'Restart requests append accepted/failed audit records and can trigger PM2 process restart.',
+  }),
+  entry({
     inventoryId: 'diagnostic:client-events-ingest',
     route: '/api/client-events',
     method: 'POST',
@@ -292,6 +346,8 @@ const GAME_ACTIONS = Object.freeze(GAME_ACTION_ROWS.map(
 ));
 
 const FRONTEND_HELPER_ROWS = Object.freeze([
+  ['reportClientEvent', '/client-events', 'clientEventIngest', ['type', 'requestId'], 'diagnostic-non-idempotent'],
+  ['uploadClientOperationLog', '/client-operation-logs', 'clientOperationLogIngest', ['requestId', 'entries'], 'diagnostic-non-idempotent'],
   ['build', '/game/action', 'build', ['buildingId'], 'server-fallback-id'],
   ['upgrade', '/game/action', 'upgrade', ['buildingId'], 'non-idempotent'],
   ['assignJob', '/game/action', 'assign', ['job', 'count'], 'non-idempotent'],
@@ -520,6 +576,24 @@ const SHARED_OWNER_WRITES = Object.freeze([
   contracts: [contract, 'COP-OWNER-001', 'COP-LOCK-001'],
 }));
 
+const SERVER_WRITE_EXCLUSIONS = Object.freeze([
+  {
+    inventoryId: 'server-exclusion:player-register-disabled',
+    route: '/api/player/register',
+    method: 'POST',
+    file: 'backend/routes/playerRoutes.js',
+    line: 94,
+    owner: 'auth/platform',
+    reason: 'Route is an explicit 403 REGISTER_DISABLED stub and performs no repository, service, or filesystem write.',
+    retirementCondition: 'Remove this exclusion before re-enabling player registration or adding any persistence to the route.',
+    growthPreventionTest: 'Step1 route scanner must report POST /api/player/register if write signals are added.',
+    classification: 'explicit-no-write-route-exclusion',
+    contracts: ['COP-ENTRY-001', 'COP-ALLOWLIST-001'],
+    evidence: ['backend/routes/playerRoutes.js:94'],
+    notes: 'This is documentation of a verified no-write route, not a suppression for scanner drift.',
+  },
+]);
+
 const ALLOWLIST_DEBT_RECORDS = Object.freeze([]);
 
 module.exports = {
@@ -531,6 +605,7 @@ module.exports = {
   HANDLER_LOCK_PERSISTENCE_DEBT,
   ROUTE_ORCHESTRATION_DEBT,
   SERVER_WRITE_ENTRIES,
+  SERVER_WRITE_EXCLUSIONS,
   SHARED_OWNER_LOOKUPS,
   SHARED_OWNER_WRITES,
 };
