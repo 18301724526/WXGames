@@ -73,8 +73,25 @@
     return null;
   })();
 
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/ClientCommandSemantics');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function t(key = '', params = {}) {
     return global.LocaleText ? global.LocaleText.t(key, params) : key;
+  }
+
+  function isVisuallyDisabled(action = {}) {
+    return ClientCommandSemantics?.isVisuallyDisabled?.(action)
+      ?? Boolean(action?.visualDisabled ?? action?.disabled);
   }
 
   function getCommandPanelValue(host) {
@@ -568,9 +585,9 @@
     }
 
     pickManualAssignAction() {
-      const target = this.getCanvasTarget('assignJob', (action) => !action.disabled && Number(action.delta) > 0);
+      const target = this.getCanvasTarget('assignJob', (action) => !isVisuallyDisabled(action) && Number(action.delta) > 0);
       if (target) return { target, action: target.action || { type: 'assignJob' } };
-      const fallback = this.getCanvasTarget('assignJob', (action) => !action.disabled && Number(action.delta) !== 0);
+      const fallback = this.getCanvasTarget('assignJob', (action) => !isVisuallyDisabled(action) && Number(action.delta) !== 0);
       return fallback ? { target: fallback, action: fallback.action || { type: 'assignJob' } } : null;
     }
 
@@ -624,7 +641,7 @@
     showCapitalEnterHighlight(siteId = this.getCapitalCityId()) {
         return this.showHighlight(
           'enterCity',
-          (action) => !action.disabled && (!siteId || action.cityId === siteId || action.territoryId === siteId || action.siteId === siteId),
+          (action) => !isVisuallyDisabled(action) && (!siteId || action.cityId === siteId || action.territoryId === siteId || action.siteId === siteId),
           t('tutorial.guide.enterCapitalForScout'),
           { type: 'enterCity', cityId: siteId },
         );
@@ -812,7 +829,7 @@
         this.focusBuildingCard(buildingId);
         return this.showHighlight(
           'buildBuilding',
-          (action) => !action.disabled && action.buildingId === buildingId,
+          (action) => !isVisuallyDisabled(action) && action.buildingId === buildingId,
           message,
           { type: 'buildBuilding', buildingId },
         );

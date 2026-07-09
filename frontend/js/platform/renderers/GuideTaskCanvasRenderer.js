@@ -47,6 +47,18 @@
     return null;
   })();
 
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ClientCommandSemantics');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class GuideTaskCanvasRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -304,7 +316,9 @@
         });
         this.addHitTarget(
           { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight },
-          { ...buttonAction, disabled: buttonDisabled },
+          ClientCommandSemantics?.isCommandAction?.(buttonAction)
+            ? { ...buttonAction, visualDisabled: buttonDisabled }
+            : { ...buttonAction, disabled: buttonDisabled },
         );
       });
     }

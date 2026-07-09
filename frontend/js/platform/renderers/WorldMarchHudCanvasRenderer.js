@@ -652,7 +652,7 @@
             actorId: target.actorId || target.missionId,
           } : {}),
           deploymentEligibility,
-          disabled,
+          visualDisabled: disabled,
         });
       });
       const closeSize = 26;

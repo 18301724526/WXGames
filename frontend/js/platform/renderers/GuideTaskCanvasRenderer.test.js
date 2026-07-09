@@ -254,6 +254,32 @@ test('GuideTaskCanvasRenderer preserves task center claim and navigation targets
   assert.equal(host.hitTargets.some((target) => target.action.type === 'goToGuideTaskTarget' && target.action.target === 'scout-north'), true);
 });
 
+test('GuideTaskCanvasRenderer emits visualDisabled for disabled claim commands', () => {
+  const host = createHost({
+    presenter: {
+      buildTaskCenterViewState() {
+        const view = createTaskCenterView();
+        view.activeCategory.tasks = [{
+          id: 'task-complete',
+          category: 'main',
+          title: 'Complete',
+          status: 'completed',
+          claimed: false,
+          action: { type: 'claimTaskReward', taskId: 'task-complete', category: 'main' },
+        }];
+        return view;
+      },
+    },
+  });
+  const renderer = new GuideTaskCanvasRenderer({ host });
+
+  renderer.renderTaskCenterPanel({}, { activeTaskCenterTab: 'main' });
+
+  const claim = host.hitTargets.find((target) => target.action.type === 'claimTaskReward');
+  assert.equal(claim.action.visualDisabled, true);
+  assert.equal(claim.action.disabled, undefined);
+});
+
 test('GuideTaskCanvasRenderer preserves disabled quick entry contracts', () => {
   const host = createHost();
   const renderer = new GuideTaskCanvasRenderer({ host });

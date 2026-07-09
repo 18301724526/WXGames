@@ -829,6 +829,8 @@ test('UIStatePresenter delegates famous person view state while preserving facad
   assert.equal(view.people[0].id, 'hero-great');
   assert.equal(view.selectedPerson.id, 'hero-great');
   assert.equal(view.selectedPerson.skillDetails[0].kindText, '探路特质');
+  assert.equal(view.seek.action.visualDisabled, false);
+  assert.equal(view.selectedPerson.attributeActions[0].visualDisabled, false);
   assert.deepEqual(view.candidates[0].acceptAction, { type: 'acceptFamousPerson', candidateId: 'candidate-1' });
   assert.equal(UIStatePresenter.formatFamousPersonSkill({ name: 'Aptitude', effects: [{ key: 'knowledgeOutputPct', value: 0.15 }] }).includes('知识产出提高 15%'), true);
 });

@@ -45,6 +45,10 @@
     return Boolean(action?.visualDisabled ?? (isCommandAction(action) ? action?.disabled : false));
   }
 
+  function isVisuallyDisabled(action = {}) {
+    return Boolean(action?.visualDisabled ?? action?.disabled);
+  }
+
   function isCommandDisabled(action = {}) {
     return Boolean(getCommandBlockReason(action));
   }
@@ -94,6 +98,7 @@
     LOCAL_BLOCK_REASONS,
     isCommandAction,
     isVisualDisabled,
+    isVisuallyDisabled,
     isCommandDisabled,
     getCommandBlockReason,
     getCommandKey,

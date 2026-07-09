@@ -1057,7 +1057,7 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
         openCityManagement: { type: 'openCityManagement', tab: 'people' },
         switchCityManagementTab: { type: 'switchCityManagementTab', tab: 'people' },
         assignJob: [
-          { type: 'assignJob', job: 'farmer', delta: 1, disabled: true },
+          { type: 'assignJob', job: 'farmer', delta: 1, visualDisabled: true },
           { type: 'assignJob', job: 'scholar', delta: 1 },
         ],
         openFamousPersons: { type: 'openFamousPersons' },

@@ -257,16 +257,39 @@ test('WorldMapSiteOverlayRenderer registers action hit targets with stable actio
   const nextY = renderer.renderWorldSiteAction({
     kind: 'single',
     buttons: [
-      { label: 'Go', action: 'launch-expedition', territoryId: 'site-1' },
+      { label: 'Go', action: 'launch-expedition', territoryId: 'site-1', disabled: true },
       { label: 'Rename', action: 'rename-city', territoryId: 'capital', secondary: true },
       { label: 'People', action: 'labor-city', territoryId: 'capital', secondary: true },
     ],
   }, 10, 20, 300);
 
   assert.equal(nextY, 64);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'launchExpedition'), true);
+  const launch = host.hitTargets.find((target) => target.action.type === 'launchExpedition');
+  assert.equal(launch.action.visualDisabled, true);
+  assert.equal(launch.action.disabled, undefined);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'renameCity'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'enterCity' && target.action.tab === 'people'), true);
+});
+
+test('WorldMapSiteOverlayRenderer keeps ineligible expedition launch grey and submittable', () => {
+  const host = createHost();
+  const renderer = new WorldMapSiteOverlayRenderer({ host });
+
+  renderer.renderWorldExpeditionConfig({
+    siteId: 'site-1',
+    disabled: true,
+    fields: {
+      leader: { value: 'leader-1', options: [{ value: 'leader-1', label: 'Leader' }] },
+      soldiers: { value: 1 },
+    },
+    buttons: { launch: { label: 'Launch' } },
+  }, 10, 20, 300);
+
+  const launch = host.hitTargets.find((target) => target.action.type === 'launchExpedition');
+  assert.equal(launch.action.visualDisabled, true);
+  assert.equal(launch.action.disabled, undefined);
+  const launchDraw = host.calls.find((call) => call[0] === 'drawButton' && call[5] === 'Launch');
+  assert.equal(launchDraw[6].visualDisabled, true);
 });
 
 test('WorldMapSiteOverlayRenderer maps city command buttons through one action helper', () => {

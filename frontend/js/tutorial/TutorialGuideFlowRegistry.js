@@ -35,8 +35,25 @@
     return null;
   })();
 
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/ClientCommandSemantics');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function t(key, params = {}) {
     return LocaleText ? LocaleText.t(key, params) : key;
+  }
+
+  function isVisuallyDisabled(action = {}) {
+    return ClientCommandSemantics?.isVisuallyDisabled?.(action)
+      ?? Boolean(action?.visualDisabled ?? action?.disabled);
   }
 
   function getStep(host) {
@@ -103,14 +120,14 @@
     host.prepareCommandPanelGuide?.(panel);
     return host.showHighlight(
       'openCommandPanel',
-      (action) => !action.disabled && action.panel === panel,
+      (action) => !isVisuallyDisabled(action) && action.panel === panel,
       message,
       { type: 'openCommandPanel', panel },
     );
   }
 
   function renderAdvanceEra(host, message) {
-    return host.showHighlight('advanceEra', (action) => !action.disabled, message, {
+    return host.showHighlight('advanceEra', (action) => !isVisuallyDisabled(action), message, {
       type: 'advanceEra',
     });
   }
@@ -118,7 +135,7 @@
   function renderOpenTaskCenter(host, message, allowedAction = { type: 'openTaskCenter' }) {
     return host.showHighlight(
       'openTaskCenter',
-      (action) => !action.disabled && (action.tab || 'main') === 'main',
+      (action) => !isVisuallyDisabled(action) && (action.tab || 'main') === 'main',
       message,
       allowedAction,
     );
@@ -127,7 +144,7 @@
   function renderClaimTaskReward(host, taskId, message) {
     return host.showHighlight(
       'claimTaskReward',
-      (action) => !action.disabled && action.taskId === taskId,
+      (action) => !isVisuallyDisabled(action) && action.taskId === taskId,
       message,
       { type: 'claimTaskReward', taskId, category: 'main' },
     );
@@ -136,7 +153,7 @@
   function renderScoutFamousPersonOpen(host) {
     return host.showHighlight(
       'openFamousPersons',
-      (action) => !action.disabled,
+      (action) => !isVisuallyDisabled(action),
       t('tutorial.guide.openScoutFamous'),
       { type: 'openFamousPersons' },
     );
@@ -146,7 +163,7 @@
     const scoutPersonId = host.getScoutFamousPersonId?.() || '';
     return host.showHighlight(
       'openFamousPersonDetail',
-      (action) => !action.disabled && (!scoutPersonId || action.personId === scoutPersonId),
+      (action) => !isVisuallyDisabled(action) && (!scoutPersonId || action.personId === scoutPersonId),
       t('tutorial.guide.openScoutFamousDetail'),
       { type: 'openFamousPersonDetail', personId: scoutPersonId },
     );
@@ -159,7 +176,7 @@
     if (scoutPersonId && !memberIds.includes(scoutPersonId)) {
       return host.showHighlight(
         'toggleArmyFormationMember',
-        (action) => !action.disabled && action.personId === scoutPersonId,
+        (action) => !isVisuallyDisabled(action) && action.personId === scoutPersonId,
         t('tutorial.guide.pickScoutLeader'),
         { type: 'toggleArmyFormationMember', personId: scoutPersonId },
       );
@@ -175,14 +192,14 @@
     if (scoutPersonId && memberIds.includes(scoutPersonId) && scoutDraftSoldiers <= 0) {
       return host.showHighlight(
         'autoReplenishArmyFormation',
-        (action) => !action.disabled,
+        (action) => !isVisuallyDisabled(action),
         t('tutorial.highlight.replenishScoutFormation'),
         { type: 'autoReplenishArmyFormation' },
       );
     }
     return host.showHighlight(
       'saveArmyFormation',
-      (action) => !action.disabled,
+      (action) => !isVisuallyDisabled(action),
       t('tutorial.guide.saveScoutFormation'),
       { type: 'saveArmyFormation' },
     );
@@ -199,7 +216,7 @@
     if (!candidate) return false;
     return host.showHighlight(
       'chooseWorldTarget',
-      (action) => !action.disabled && String(action.targetId || '') === String(candidate.id),
+      (action) => !isVisuallyDisabled(action) && String(action.targetId || '') === String(candidate.id),
       message,
       { type: 'chooseWorldTarget', targetId: candidate.id },
     );
@@ -219,7 +236,7 @@
     return host.showHighlight(
       'conquer',
       (action) =>
-        !action.disabled && (!siteId || action.territoryId === siteId || action.cityId === siteId),
+        !isVisuallyDisabled(action) && (!siteId || action.territoryId === siteId || action.cityId === siteId),
       t('tutorial.guide.conquerEmptyCity'),
       { type: 'conquer', territoryId: siteId },
     );
@@ -232,7 +249,7 @@
       return host.showHighlight(
         'renameCity',
         (action) =>
-          !action.disabled &&
+          !isVisuallyDisabled(action) &&
           (!siteId || action.territoryId === siteId || action.cityId === siteId),
         t('tutorial.guide.renameNewCity', {
           name: site.naturalName || t('tutorial.guide.renameNewCity.fallbackName'),
@@ -243,14 +260,14 @@
     if (!host.getNamingInputValue?.()) {
       return host.showHighlight(
         'requestNamingInput',
-        (action) => !action.disabled,
+        (action) => !isVisuallyDisabled(action),
         t('tutorial.guide.focusCityNameInput'),
         { type: 'requestNamingInput' },
       );
     }
     return host.showHighlight(
       'submitNaming',
-      (action) => !action.disabled,
+      (action) => !isVisuallyDisabled(action),
       t('tutorial.guide.submitCityName'),
       { type: 'submitNaming' },
     );
@@ -267,14 +284,14 @@
     if (!host.getNamingInputValue?.()) {
       return host.showHighlight(
         'requestNamingInput',
-        (action) => !action.disabled,
+        (action) => !isVisuallyDisabled(action),
         t('tutorial.guide.focusPolityNameInput'),
         { type: 'requestNamingInput' },
       );
     }
     return host.showHighlight(
       'submitNaming',
-      (action) => !action.disabled,
+      (action) => !isVisuallyDisabled(action),
       t('tutorial.guide.submitPolityName'),
       { type: 'submitNaming' },
     );
@@ -285,7 +302,7 @@
     if (!host.isCityManagementTabOpen?.('people')) {
       return host.showHighlight(
         'switchCityManagementTab',
-        (action) => !action.disabled && action.tab === 'people',
+        (action) => !isVisuallyDisabled(action) && action.tab === 'people',
         t('tutorial.highlight.switchTalentTabAdjust'),
         { type: 'switchCityManagementTab', tab: 'people' },
       );
@@ -306,7 +323,7 @@
     }
     return host.showHighlight(
       'assignJob',
-      (action) => !action.disabled && Number(action.delta) !== 0,
+      (action) => !isVisuallyDisabled(action) && Number(action.delta) !== 0,
       t('tutorial.highlight.adjustTalentShort'),
       { type: 'assignJob' },
       host.getCityPeopleGuideHighlightOptions?.() || {},
@@ -318,7 +335,7 @@
     const shell = host.game?.canvasShell;
     const target = shell?.getCanvasTarget?.(
       'buildBuilding',
-      (action) => action.buildingId === 'house',
+      (action) => !isVisuallyDisabled(action) && action.buildingId === 'house',
     );
     if (!target) return false;
     return (
@@ -481,7 +498,7 @@
         render: (host) =>
           host.showHighlight(
             'openEvent',
-            (action) => !action.disabled && action.eventId === 'evt_settlement_forest_001',
+            (action) => !isVisuallyDisabled(action) && action.eventId === 'evt_settlement_forest_001',
             t('tutorial.guide.openForestEvent'),
             { type: 'openEvent', eventId: 'evt_settlement_forest_001' },
           ),
@@ -493,7 +510,7 @@
           host.showHighlight(
             'claimEvent',
             (action) =>
-              !action.disabled &&
+              !isVisuallyDisabled(action) &&
               action.eventId === 'evt_settlement_forest_001' &&
               action.optionId === 'opt_collect_wood',
             t('tutorial.guide.claimForestWood'),
@@ -589,7 +606,7 @@
         render: (host) =>
           host.showHighlight(
             'closeFamousPersonDetail',
-            (action) => !action.disabled,
+            (action) => !isVisuallyDisabled(action),
             t('tutorial.guide.closeScoutFamousDetail'),
             { type: 'closeFamousPersonDetail' },
           ),
@@ -600,7 +617,7 @@
         render: (host) =>
           host.showHighlight(
             'closeFamousPersons',
-            (action) => !action.disabled,
+            (action) => !isVisuallyDisabled(action),
             t('tutorial.guide.closeFamousPanel'),
             { type: 'closeFamousPersons' },
           ),
@@ -627,7 +644,7 @@
         render: (host) =>
           host.showHighlight(
             'switchCityManagementTab',
-            (action) => !action.disabled && action.tab === 'military',
+            (action) => !isVisuallyDisabled(action) && action.tab === 'military',
             t('tutorial.guide.switchCityMilitaryTab'),
             { type: 'switchCityManagementTab', tab: 'military' },
           ),
@@ -643,7 +660,7 @@
         render: (host) =>
           host.showHighlight(
             'openArmyFormation',
-            (action) => !action.disabled && Number(action.slot || 1) === 1,
+            (action) => !isVisuallyDisabled(action) && Number(action.slot || 1) === 1,
             t('tutorial.guide.openFirstFormation'),
             { type: 'openArmyFormation', cityId: host.getCapitalCityId?.(), slot: 1 },
           ),
@@ -671,7 +688,7 @@
             const steered = host.showHighlight(
               'selectWorldMarchTarget',
               (action) =>
-                !action.disabled
+                !isVisuallyDisabled(action)
                 && Number(action.targetQ ?? action.q ?? action.x) === target.q
                 && Number(action.targetR ?? action.r ?? action.y) === target.r,
               t('tutorial.guide.selectScoutTarget'),
@@ -681,7 +698,7 @@
           }
           return host.showHighlight(
             'selectWorldMarchTarget',
-            (action) => !action.disabled,
+            (action) => !isVisuallyDisabled(action),
             t('tutorial.guide.selectScoutTarget'),
             { type: 'selectWorldMarchTarget' },
           );
@@ -697,7 +714,7 @@
           host.ensureMapHomeGuideVisible?.();
           return host.showHighlight(
             'openWorldMarchFormationPicker',
-            (action) => !action.disabled,
+            (action) => !isVisuallyDisabled(action),
             t('tutorial.guide.openMarchFormationPicker'),
             { type: 'openWorldMarchFormationPicker' },
           );
@@ -711,7 +728,7 @@
         render: (host) =>
           host.showHighlight(
             'startWorldMarch',
-            (action) => !action.disabled && Number(action.formationSlot || action.slot || 1) === 1,
+            (action) => !isVisuallyDisabled(action) && Number(action.formationSlot || action.slot || 1) === 1,
             t('tutorial.guide.startScoutMarch'),
             { type: 'startWorldMarch', formationSlot: 1 },
           ),
@@ -736,7 +753,7 @@
           return host.showHighlight(
             'claimConquest',
             (action) =>
-              !action.disabled &&
+              !isVisuallyDisabled(action) &&
               (!siteId || action.territoryId === siteId || action.cityId === siteId),
             t('tutorial.guide.claimFirstCityConquest'),
             { type: 'claimConquest', territoryId: siteId },
@@ -771,7 +788,7 @@
           if (!host.isCityManagementTabOpen?.('people')) {
             return host.showHighlight(
               'switchCityManagementTab',
-              (action) => !action.disabled && action.tab === 'people',
+              (action) => !isVisuallyDisabled(action) && action.tab === 'people',
               t('tutorial.highlight.switchTalentTab'),
               { type: 'switchCityManagementTab', tab: 'people' },
             );
@@ -795,7 +812,7 @@
         render: (host) =>
           host.showHighlight(
             'openFamousPersons',
-            (action) => !action.disabled,
+            (action) => !isVisuallyDisabled(action),
             t('tutorial.highlight.openFamousSeek'),
             { type: 'openFamousPersons' },
           ),
@@ -806,7 +823,7 @@
         render: (host) =>
           host.showHighlight(
             'openFamousPersons',
-            (action) => !action.disabled,
+            (action) => !isVisuallyDisabled(action),
             t('tutorial.highlight.openFamousPanel'),
             { type: 'openFamousPersons' },
           ),
@@ -817,7 +834,7 @@
         render: (host) =>
           host.showHighlight(
             'seekFamousPerson',
-            (action) => !action.disabled,
+            (action) => !isVisuallyDisabled(action),
             t('tutorial.highlight.seekFamous'),
             { type: 'seekFamousPerson' },
           ),

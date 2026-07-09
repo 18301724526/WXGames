@@ -9,6 +9,7 @@ test('ClientCommandSemantics splits visual disabled from command disabled', () =
 
   assert.deepEqual(action, { type: 'research', techId: 'tech-1', visualDisabled: true });
   assert.equal(ClientCommandSemantics.isVisualDisabled(action), true);
+  assert.equal(ClientCommandSemantics.isVisuallyDisabled(action), true);
   assert.equal(ClientCommandSemantics.isCommandDisabled(action), false);
 });
 
@@ -17,6 +18,7 @@ test('ClientCommandSemantics leaves non-command disabled behavior unchanged', ()
 
   assert.equal(ClientCommandSemantics.normalizeAction(action), action);
   assert.equal(ClientCommandSemantics.isVisualDisabled(action), false);
+  assert.equal(ClientCommandSemantics.isVisuallyDisabled(action), true);
 });
 
 test('ClientCommandSemantics permits only the four local command block reasons', () => {

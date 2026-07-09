@@ -343,7 +343,7 @@
           type: 'assignFamousAttributePoint',
           personId: person.id || '',
           attribute: item.key,
-          disabled: false,
+          visualDisabled: false,
         }))
         : [];
       return {
@@ -411,7 +411,7 @@
             ? this.t('famous.seek.message.available', {})
             : this.t('famous.seek.message.locked', {})),
           count: this.toInteger(seek.count),
-          action: { type: 'seekFamousPerson', disabled: !seekAvailable },
+          action: { type: 'seekFamousPerson', visualDisabled: !seekAvailable },
         },
         people: sortedPeople,
         selectedPerson,

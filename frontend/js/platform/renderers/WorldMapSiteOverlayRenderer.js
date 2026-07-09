@@ -47,6 +47,18 @@
     return null;
   })();
 
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ClientCommandSemantics');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class WorldMapSiteOverlayRenderer {
     constructor(options = {}) {
       this.host = options.host || null;
@@ -293,22 +305,26 @@
           visualDisabled: Boolean(button.disabled),
           active: !button.secondary && !button.disabled && Boolean(button.action),
         });
-        this.addHitTarget({ x: buttonX, y, width: buttonWidth, height: 34 }, {
+        const targetAction = {
           type: button.action === 'conquer' ? 'conquer' :
-               button.action === 'launch-expedition' ? 'launchExpedition' :
-               button.action === 'claim' ? 'claimConquest' :
-               button.action === 'enter-battle' ? 'enterBattleScene' :
-               button.action === 'enter-city' ? 'enterCity' :
-               button.action === 'labor-city' ? 'enterCity' :
-               button.action === 'manage-city' ? 'manageCity' :
-               button.action === 'rename-city' ? 'renameCity' :
-               button.action === 'open-expedition' ? 'openExpedition' :
-               button.action === 'close-expedition' ? 'closeExpedition' : 'territoryAction',
+            button.action === 'launch-expedition' ? 'launchExpedition' :
+            button.action === 'claim' ? 'claimConquest' :
+            button.action === 'enter-battle' ? 'enterBattleScene' :
+            button.action === 'enter-city' ? 'enterCity' :
+            button.action === 'labor-city' ? 'enterCity' :
+            button.action === 'manage-city' ? 'manageCity' :
+            button.action === 'rename-city' ? 'renameCity' :
+            button.action === 'open-expedition' ? 'openExpedition' :
+            button.action === 'close-expedition' ? 'closeExpedition' : 'territoryAction',
           territoryId: button.territoryId,
           cityId: button.territoryId,
           tab: button.action === 'labor-city' ? 'people' : undefined,
-          disabled: button.disabled || !button.action,
-        });
+          visualDisabled: Boolean(button.disabled),
+        };
+        if (!ClientCommandSemantics?.isCommandAction?.(targetAction)) {
+          targetAction.disabled = button.disabled || !button.action;
+        }
+        this.addHitTarget({ x: buttonX, y, width: buttonWidth, height: 34 }, targetAction);
       });
       return y + 44;
     }
@@ -373,7 +389,7 @@
       this.addHitTarget({ x: x + width - 132, y: controlsY, width: 78, height: 28 }, {
         type: 'launchExpedition',
         territoryId: config.siteId,
-        disabled: config.disabled,
+        visualDisabled: config.disabled,
       });
       return y + 148;
     }

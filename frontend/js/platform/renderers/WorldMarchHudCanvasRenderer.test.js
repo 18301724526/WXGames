@@ -216,7 +216,8 @@ test('WorldMarchHudCanvasRenderer renders formation picker with start action', (
   assert.equal(Boolean(start), true);
   assert.equal(start.action.targetQ, 2);
   assert.equal(Object.hasOwn(start.action, 'missionId'), false);
-  assert.equal(empty.action.disabled, true);
+  assert.equal(empty.action.visualDisabled, true);
+  assert.equal(empty.action.disabled, undefined);
   assert.equal(start.rect.y >= 84, true);
   assert.equal(start.rect.y + start.rect.height <= 84 + 696, true);
 });
@@ -248,12 +249,13 @@ test('WorldMarchHudCanvasRenderer keeps zero-soldier primary formations clickabl
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
-  assert.equal(start.action.disabled, false);
+  assert.equal(start.action.visualDisabled, false);
+  assert.equal(start.action.disabled, undefined);
   assert.equal(start.action.deploymentEligibility.blocked, true);
   assert.equal(start.action.deploymentEligibility.blockers[0].code, 'FORMATION_PRIMARY_NO_SOLDIERS');
 });
 
-test('WorldMarchHudCanvasRenderer disables formation starts for blocked march target', () => {
+test('WorldMarchHudCanvasRenderer keeps blocked march targets grey without suppressing start', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });
   const previousLocale = LocaleText.getLocale();
@@ -272,7 +274,8 @@ test('WorldMarchHudCanvasRenderer disables formation starts for blocked march ta
 
     const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
     assert.equal(starts.length > 0, true);
-    assert.equal(starts.every((target) => target.action.disabled === true), true);
+    assert.equal(starts.every((target) => target.action.visualDisabled === true), true);
+    assert.equal(starts.every((target) => target.action.disabled === undefined), true);
     assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === 'Route blocked'), true);
   } finally {
     LocaleText.setLocale(previousLocale);
@@ -298,7 +301,7 @@ test('WorldMarchHudCanvasRenderer includes selected actor id in formation picker
   assert.equal(start.action.actorId, 'explore-idle');
 });
 
-test('WorldMarchHudCanvasRenderer disables busy formations in march picker', () => {
+test('WorldMarchHudCanvasRenderer keeps busy formations grey without suppressing start', () => {
   const host = createHost();
   const renderer = new WorldMarchHudCanvasRenderer({ host });
 
@@ -313,7 +316,8 @@ test('WorldMarchHudCanvasRenderer disables busy formations in march picker', () 
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
-  assert.equal(start.action.disabled, true);
+  assert.equal(start.action.visualDisabled, true);
+  assert.equal(start.action.disabled, undefined);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1][0] === '行军中'), true);
 });
 
@@ -332,7 +336,8 @@ test('WorldMarchHudCanvasRenderer allows idle formations to march again', () => 
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
-  assert.equal(start.action.disabled, false);
+  assert.equal(start.action.visualDisabled, false);
+  assert.equal(start.action.disabled, undefined);
 });
 
 test('WorldMarchHudCanvasRenderer allows expired active manual marches to reuse the formation', () => {
@@ -361,7 +366,8 @@ test('WorldMarchHudCanvasRenderer allows expired active manual marches to reuse 
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
-  assert.equal(start.action.disabled, false);
+  assert.equal(start.action.visualDisabled, false);
+  assert.equal(start.action.disabled, undefined);
 });
 
 test('WorldMarchHudCanvasRenderer does not read formations from host state when action state is incomplete', () => {
@@ -398,7 +404,8 @@ test('WorldMarchHudCanvasRenderer does not read formations from host state when 
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
   assert.equal(Boolean(start), true);
-  assert.equal(start.action.disabled, true);
+  assert.equal(start.action.visualDisabled, true);
+  assert.equal(start.action.disabled, undefined);
 });
 
 test('WorldMarchHudCanvasRenderer uses passed state as authoritative formation source', () => {
@@ -454,9 +461,10 @@ test('WorldMarchHudCanvasRenderer uses passed state as authoritative formation s
   const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
   assert.equal(starts.length, 3);
   const explicitStart = starts.find((target) => target.action.formationSlot === 1);
-  assert.equal(explicitStart.action.disabled, false);
+  assert.equal(explicitStart.action.visualDisabled, false);
+  assert.equal(explicitStart.action.disabled, undefined);
   assert.equal(explicitStart.action.cityId, 'frontier');
-  assert.equal(starts.find((target) => target.action.formationSlot === 2).action.disabled, true);
+  assert.equal(starts.find((target) => target.action.formationSlot === 2).action.visualDisabled, true);
 });
 
 test('WorldMarchHudCanvasRenderer resolves only passed military state over stale host candidates', () => {
@@ -576,7 +584,8 @@ test('WorldMarchHudCanvasRenderer does not fill activeCity-only state from host 
   }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const start = host.hitTargets.find((target) => target.action.type === 'startWorldMarch' && target.action.formationSlot === 1);
-  assert.equal(start.action.disabled, true);
+  assert.equal(start.action.visualDisabled, true);
+  assert.equal(start.action.disabled, undefined);
 });
 
 test('WorldMarchHudCanvasRenderer falls back to shared presenter when host presenter is split out', () => {
@@ -604,8 +613,8 @@ test('WorldMarchHudCanvasRenderer falls back to shared presenter when host prese
   }, [], {}, {}, { x: 0, y: 84, width: 390, height: 696 }, { pickerKind: 'worldMarchFormation', target: { q: 2, r: -1, tileId: 'tile_2_-1' } });
 
   const starts = host.hitTargets.filter((target) => target.action.type === 'startWorldMarch');
-  assert.equal(starts.find((target) => target.action.formationSlot === 1).action.disabled, false);
-  assert.equal(starts.find((target) => target.action.formationSlot === 2).action.disabled, true);
+  assert.equal(starts.find((target) => target.action.formationSlot === 1).action.visualDisabled, false);
+  assert.equal(starts.find((target) => target.action.formationSlot === 2).action.visualDisabled, true);
 });
 
 test('WorldMarchHudCanvasRenderer separates target info and march command', () => {

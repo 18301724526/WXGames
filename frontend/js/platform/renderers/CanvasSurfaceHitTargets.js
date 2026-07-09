@@ -45,11 +45,16 @@
     };
   }
 
+  function isVisuallyDisabled(action = {}) {
+    return ClientCommandSemantics?.isVisuallyDisabled?.(action)
+      ?? Boolean(action?.visualDisabled ?? action?.disabled);
+  }
+
   function isAllowedUnderTutorialShield(action = {}) {
     if (action.type === 'closeRewardReveal') return true;
     if (action.type === 'closeAdvisor' && action.source) return true;
     if (action.type === 'goToGuideTaskTarget') return true;
-    if (action.type === 'openTaskCenter') return !action.disabled;
+    if (action.type === 'openTaskCenter') return !isVisuallyDisabled(action);
     if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {
       return (action.category || 'main') === 'main';
     }
@@ -57,7 +62,7 @@
   }
 
   function matchesTutorialShieldAllowedAction(action = {}, allowed = null) {
-    if (action.disabled) return false;
+    if (isVisuallyDisabled(action)) return false;
     if (!action?.type || !allowed?.type || action.type !== allowed.type) return false;
     const getId = (item = {}) => item.cityId || item.territoryId || item.siteId || item.targetId || '';
     const allowedId = getId(allowed);

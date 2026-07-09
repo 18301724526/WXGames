@@ -1,4 +1,21 @@
 (function (global) {
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/ClientCommandSemantics');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function isVisuallyDisabled(action = {}) {
+    return ClientCommandSemantics?.isVisuallyDisabled?.(action)
+      ?? Boolean(action?.visualDisabled ?? action?.disabled);
+  }
+
   const MODAL_TARGET_PANEL_BY_ACTION_TYPE = Object.freeze({
     acceptFamousPerson: 'famousPersons',
     changeFamousPersonsPage: 'famousPersons',
@@ -121,11 +138,14 @@
 
     showHighlight(type, predicate, message, allowedAction, options = {}) {
       const shell = this.getShell();
-      let target = this.getCanvasTarget(type, predicate);
+      const selectable = (action) => (
+        !isVisuallyDisabled(action) && (typeof predicate !== 'function' || predicate(action))
+      );
+      let target = this.getCanvasTarget(type, selectable);
       if (!target && this.host && !this.host.retryingHighlightAfterRender) {
         this.host.retryingHighlightAfterRender = true;
         this.refreshTargetSurface(type, allowedAction);
-        target = this.getCanvasTarget(type, predicate);
+        target = this.getCanvasTarget(type, selectable);
         this.host.retryingHighlightAfterRender = false;
       }
       if (!target) {
@@ -183,7 +203,7 @@
       }
       const target = anchorTarget || this.getCanvasTarget(
         'openWorldSite',
-        (action) => !action.disabled && (!siteId || action.siteId === siteId || action.territoryId === siteId),
+        (action) => !isVisuallyDisabled(action) && (!siteId || action.siteId === siteId || action.territoryId === siteId),
       );
       if (!target || !this.isCanvasTargetVisible(target, options.padding)) {
         this.getShell()?.hideTutorialHighlight?.();

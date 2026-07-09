@@ -119,6 +119,38 @@ test('TutorialGuideTargetResolver hides stale highlight when target is unavailab
   assert.deepEqual(calls, ['hideTutorialHighlight']);
 });
 
+test('TutorialGuideTargetResolver rejects visualDisabled command highlight targets', () => {
+  const calls = [];
+  const action = { type: 'claimTaskReward', taskId: 'task-1', visualDisabled: true };
+  const shell = {
+    getCanvasTarget(type, predicate) {
+      calls.push(['getCanvasTarget', type]);
+      return predicate(action) ? { x: 10, y: 20, width: 100, height: 30, action } : null;
+    },
+    hideTutorialHighlight() {
+      calls.push(['hideTutorialHighlight']);
+    },
+  };
+  const resolver = new TutorialGuideTargetResolver({
+    host: {
+      game: {
+        canvasShell: shell,
+        renderCanvasSurface() {
+          calls.push(['renderCanvasSurface']);
+        },
+      },
+    },
+  });
+
+  assert.equal(resolver.showHighlight(
+    'claimTaskReward',
+    (candidate) => candidate.taskId === 'task-1',
+    'claim reward',
+    { type: 'claimTaskReward', taskId: 'task-1' },
+  ), false);
+  assert.equal(calls.some(([name]) => name === 'hideTutorialHighlight'), true);
+});
+
 test('TutorialGuideTargetResolver normalizes rects and checks viewport visibility', () => {
   const resolver = new TutorialGuideTargetResolver({
     host: {
