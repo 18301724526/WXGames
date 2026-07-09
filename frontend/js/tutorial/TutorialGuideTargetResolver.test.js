@@ -47,6 +47,57 @@ test('TutorialGuideTargetResolver retries target lookup after render and shows h
   assert.equal(host.retryingHighlightAfterRender, false);
 });
 
+test('TutorialGuideTargetResolver reprojects modal targets without rendering the base surface', () => {
+  const calls = [];
+  let modalProjected = false;
+  const shell = {
+    getCanvasTarget(type, predicate) {
+      calls.push(['getCanvasTarget', type]);
+      if (!modalProjected) return null;
+      const action = { type: 'seekFamousPerson' };
+      if (predicate && !predicate(action)) return null;
+      return { x: 280, y: 210, width: 72, height: 30, action };
+    },
+    getPanelSurfaceManager() {
+      return {
+        projectModalLayer(options) {
+          calls.push(['projectModalLayer', options.requestedPanelKey, options.source]);
+          modalProjected = true;
+          return true;
+        },
+      };
+    },
+    showTutorialHighlight(target, message, options) {
+      calls.push(['showTutorialHighlight', message, options.allowedAction.type, target.action.type]);
+      return true;
+    },
+  };
+  const host = {
+    game: {
+      state: { currentTab: 'military' },
+      canvasShell: shell,
+      renderCanvasSurface() {
+        calls.push(['renderCanvasSurface']);
+      },
+    },
+  };
+  const resolver = new TutorialGuideTargetResolver({ host });
+
+  assert.equal(resolver.showHighlight(
+    'seekFamousPerson',
+    (action) => action.type === 'seekFamousPerson',
+    'seek famous',
+    { type: 'seekFamousPerson' },
+  ), true);
+  assert.deepEqual(calls, [
+    ['getCanvasTarget', 'seekFamousPerson'],
+    ['projectModalLayer', 'famousPersons', 'tutorialTargetResolver'],
+    ['getCanvasTarget', 'seekFamousPerson'],
+    ['showTutorialHighlight', 'seek famous', 'seekFamousPerson', 'seekFamousPerson'],
+  ]);
+  assert.equal(host.retryingHighlightAfterRender, false);
+});
+
 test('TutorialGuideTargetResolver hides stale highlight when target is unavailable', () => {
   const calls = [];
   const resolver = new TutorialGuideTargetResolver({

@@ -1,4 +1,16 @@
 (function (global) {
+  const MODAL_TARGET_PANEL_BY_ACTION_TYPE = Object.freeze({
+    acceptFamousPerson: 'famousPersons',
+    changeFamousPersonsPage: 'famousPersons',
+    clearFamousSkillTooltip: 'famousPersons',
+    closeFamousPersonDetail: 'famousPersons',
+    closeFamousPersons: 'famousPersons',
+    dismissFamousPersonCandidate: 'famousPersons',
+    openFamousPersonDetail: 'famousPersons',
+    seekFamousPerson: 'famousPersons',
+    showFamousSkillTooltip: 'famousPersons',
+  });
+
   class TutorialGuideTargetResolver {
     constructor(options = {}) {
       this.host = options.host || options.controller || null;
@@ -19,6 +31,32 @@
 
     getCanvasTarget(type, predicate = null) {
       return this.getShell()?.getCanvasTarget?.(type, predicate) || null;
+    }
+
+    getTargetPanelKey(type, allowedAction = null) {
+      return MODAL_TARGET_PANEL_BY_ACTION_TYPE[type]
+        || MODAL_TARGET_PANEL_BY_ACTION_TYPE[allowedAction?.type]
+        || '';
+    }
+
+    refreshTargetSurface(type, allowedAction = null) {
+      const panelKey = this.getTargetPanelKey(type, allowedAction);
+      if (panelKey) {
+        const game = this.getGame();
+        const shell = this.getShell();
+        const manager = shell?.getPanelSurfaceManager?.()
+          || game?.getPanelSurfaceManager?.()
+          || shell?.panelSurfaceManager
+          || game?.panelSurfaceManager
+          || null;
+        return manager?.projectModalLayer?.({
+          requestedPanelKey: panelKey,
+          reason: 'tutorialHighlightTarget',
+          source: 'tutorialTargetResolver',
+        }) !== false;
+      }
+      this.getGame()?.renderCanvasSurface?.(this.getActiveRenderTab());
+      return true;
     }
 
     getState() {
@@ -87,7 +125,7 @@
       let target = this.getCanvasTarget(type, predicate);
       if (!target && this.host && !this.host.retryingHighlightAfterRender) {
         this.host.retryingHighlightAfterRender = true;
-        game?.renderCanvasSurface?.(this.getActiveRenderTab());
+        this.refreshTargetSurface(type, allowedAction);
         target = this.getCanvasTarget(type, predicate);
         this.host.retryingHighlightAfterRender = false;
       }
