@@ -1495,9 +1495,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     startWorldMarch(action = {}) {
-          return typeof this.lastGame?.startWorldMarch === 'function'
-            ? this.lastGame.startWorldMarch(action)
-            : false;
+          return this.actionController?.handle?.({ ...action, type: 'startWorldMarch' }) || false;
         }
 
     returnWorldMarch(missionId, options = {}) {

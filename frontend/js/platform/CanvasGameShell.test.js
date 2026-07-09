@@ -2618,6 +2618,71 @@ test('CanvasGameShell dispatches world march commands through the mounted game h
   ]);
 });
 
+test('CanvasGameShell live march tap shows deputy warning and confirm submits', async () => {
+  const calls = [];
+  const primaryId = 'shell-primary';
+  const deputyId = 'shell-deputy';
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return {
+          type: 'startWorldMarch',
+          targetQ: 2,
+          targetR: -1,
+          formationSlot: 1,
+        };
+      },
+      render() {},
+    },
+    actionDispatcher: new CanvasActionDispatcher(),
+  });
+  shell.lastGame = {
+    state: {
+      activeCityId: 'capital',
+      currentTab: 'military',
+      militaryView: 'world',
+      cities: {
+        capital: {
+          military: {
+            formations: [{
+              slot: 1,
+              memberIds: [primaryId, deputyId],
+              soldierAssignments: { [primaryId]: 25, [deputyId]: 0 },
+            }],
+          },
+        },
+      },
+      famousPeople: [
+        { id: primaryId, name: 'Primary' },
+        { id: deputyId, name: 'Deputy' },
+      ],
+    },
+    startWorldMarch(options) {
+      calls.push(['startWorldMarch', options]);
+      return Promise.resolve(true);
+    },
+  };
+
+  assert.equal(shell.handleTap({ x: 20, y: 20 }, {}), true);
+  assert.deepEqual(calls, []);
+  const dialog = shell.getConfirmDialogSnapshot();
+  assert.equal(dialog.kind, 'worldMarchDeploymentWarning');
+  assert.equal(dialog.confirmAction.type, 'confirmWorldMarchDeployment');
+
+  assert.equal(await shell.handleAction(dialog.confirmAction, {}), true);
+  assert.equal(shell.isConfirmDialogSnapshotOpen(), false);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0][1], {
+    mode: 'manual',
+    targetQ: 2,
+    targetR: -1,
+    formationSlot: 1,
+    cityId: 'capital',
+  });
+});
+
 test('CanvasGameShell treats world site id fields as equivalent during guided highlights', () => {
   const calls = [];
   const event = {
