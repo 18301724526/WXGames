@@ -5,6 +5,7 @@ const path = require('node:path');
 const { CONTRACT_IDS, MODE, REPORT_NAME, STEP1_CHECKS } = require('./contracts');
 const inventories = require('./inventories');
 const { assertAntiEvasionFixtures } = require('./anti-evasion');
+const { buildDirectSubmitCallSiteKey, scanRepository } = require('./scanner');
 
 function normalizePath(filePath) {
   return String(filePath || '').replace(/\\/g, '/');
@@ -40,7 +41,158 @@ function finding(checkId, item, detail = {}) {
   };
 }
 
-function buildCheckFindings(checkId) {
+function driftFinding(checkId, inventoryId, detail = {}) {
+  return {
+    checkId,
+    inventoryId,
+    classification: detail.classification || 'inventory-drift',
+    contracts: detail.contracts || ['COP-ENTRY-001', 'COP-ALLOWLIST-001'],
+    evidence: detail.evidence || [],
+    summary: detail.summary || '',
+  };
+}
+
+function splitMethod(method) {
+  return String(method || '')
+    .split('|')
+    .map((item) => item.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function buildDeclaredRouteKeys() {
+  const keys = new Set();
+  inventories.SERVER_WRITE_ENTRIES.forEach((item) => {
+    splitMethod(item.method).forEach((method) => {
+      keys.add(`${method} ${item.route}`);
+    });
+  });
+  return keys;
+}
+
+function buildServerWriteReconciliationFindings(checkId, scanResults = {}) {
+  const scannedRoutes = scanResults.serverWriteRoutes || [];
+  const declaredKeys = buildDeclaredRouteKeys();
+  const scannedKeys = new Set(scannedRoutes.map((item) => item.key));
+  const findings = [];
+  scannedRoutes.forEach((item) => {
+    if (declaredKeys.has(item.key)) return;
+    findings.push(driftFinding(checkId, `scanner:server-write-route:${item.key}`, {
+      classification: 'inventory-drift-undeclared-server-write-route',
+      contracts: ['COP-ENTRY-001', 'COP-ROUTE-001', 'COP-ALLOWLIST-001'],
+      evidence: item.evidence,
+      summary: `${item.key} is a scanned write route with no SERVER_WRITE_ENTRIES declaration`,
+    }));
+  });
+  declaredKeys.forEach((key) => {
+    if (scannedKeys.has(key)) return;
+    findings.push(driftFinding(checkId, `scanner:server-write-route-missing:${key}`, {
+      classification: 'inventory-drift-declared-server-write-route-missing',
+      contracts: ['COP-ENTRY-001', 'COP-ROUTE-001', 'COP-ALLOWLIST-001'],
+      summary: `${key} is declared in SERVER_WRITE_ENTRIES but was not found by the route scanner`,
+    }));
+  });
+  return findings;
+}
+
+function buildGameActionReconciliationFindings(checkId, scanResults = {}) {
+  const scannedActions = scanResults.gameActions || [];
+  const scannedKeys = new Map(scannedActions.map((item) => [`${item.routeEntry}:${item.action}`, item]));
+  const declaredKeys = new Map(inventories.GAME_ACTIONS.map((item) => [`${item.routeEntry}:${item.action}`, item]));
+  const findings = [];
+  scannedKeys.forEach((item, key) => {
+    if (declaredKeys.has(key)) return;
+    findings.push(driftFinding(checkId, `scanner:game-action:${key}`, {
+      classification: 'inventory-drift-undeclared-game-action',
+      contracts: ['COP-ENTRY-001', 'COP-OWNER-001', 'COP-ALLOWLIST-001'],
+      evidence: item.evidence,
+      summary: `${item.action} is scanned as ${item.routeEntry} but has no matching GAME_ACTIONS declaration`,
+    }));
+  });
+  declaredKeys.forEach((item, key) => {
+    if (scannedKeys.has(key)) return;
+    findings.push(driftFinding(checkId, `scanner:game-action-missing:${key}`, {
+      classification: 'inventory-drift-declared-game-action-missing',
+      contracts: ['COP-ENTRY-001', 'COP-OWNER-001', 'COP-ALLOWLIST-001'],
+      evidence: item.evidence,
+      summary: `${item.action} is declared as ${item.routeEntry} but was not found by the action scanner`,
+    }));
+  });
+  return findings;
+}
+
+function buildGameApiReconciliationFindings(checkId, scanResults = {}) {
+  const scannedHelpers = scanResults.gameApiWriteHelpers || [];
+  const scannedByHelper = new Map(scannedHelpers.map((item) => [item.helper, item]));
+  const declaredByHelper = new Map(inventories.FRONTEND_WRITE_HELPERS.map((item) => [item.helper, item]));
+  const findings = [];
+  scannedByHelper.forEach((item, helper) => {
+    if (declaredByHelper.has(helper)) return;
+    findings.push(driftFinding(checkId, `scanner:gameapi-helper:${helper}`, {
+      classification: 'inventory-drift-undeclared-gameapi-write-helper',
+      contracts: ['COP-ENTRY-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
+      evidence: item.evidence,
+      summary: `GameAPI.${helper} posts to ${item.endpoint} but has no FRONTEND_WRITE_HELPERS declaration`,
+    }));
+  });
+  declaredByHelper.forEach((item, helper) => {
+    if (scannedByHelper.has(helper)) return;
+    findings.push(driftFinding(checkId, `scanner:gameapi-helper-missing:${helper}`, {
+      classification: 'inventory-drift-declared-gameapi-write-helper-missing',
+      contracts: ['COP-ENTRY-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
+      evidence: item.evidence,
+      summary: `GameAPI.${helper} is declared but no POST helper was found in frontend/js/api/GameAPI.js`,
+    }));
+  });
+  return findings;
+}
+
+function buildDirectSubmitReconciliationFindings(checkId, scanResults = {}) {
+  const scannedCalls = scanResults.frontendDirectSubmits || [];
+  const scannedByKey = new Map(scannedCalls.map((item) => [buildDirectSubmitCallSiteKey(item), item]));
+  const declaredCallSiteRows = inventories.FRONTEND_COMMAND_PATHS
+    .filter((item) => item.classification === 'command-submit' && item.callSiteKey);
+  const declaredByKey = new Map(declaredCallSiteRows.map((item) => [item.callSiteKey, item]));
+  const findings = [];
+  if (scannedCalls.length > 0 && declaredCallSiteRows.length === 0) {
+    findings.push(driftFinding(checkId, 'scanner:frontend-direct-submit:aggregate-declaration', {
+      classification: 'inventory-drift-aggregate-direct-submit-declaration',
+      contracts: ['COP-ENTRY-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
+      summary: 'frontend direct submits are scanned per call site, but FRONTEND_COMMAND_PATHS still uses aggregate command-submit rows',
+    }));
+  }
+  scannedByKey.forEach((item, key) => {
+    if (declaredByKey.has(key)) return;
+    findings.push(driftFinding(checkId, `scanner:frontend-direct-submit:${key}`, {
+      classification: 'inventory-drift-undeclared-frontend-direct-submit-call-site',
+      contracts: ['COP-ENTRY-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
+      evidence: item.evidence,
+      summary: `${key} calls GameAPI.${item.helper} directly and has no per-call-site FRONTEND_COMMAND_PATHS row`,
+    }));
+  });
+  declaredByKey.forEach((item, key) => {
+    if (scannedByKey.has(key)) return;
+    findings.push(driftFinding(checkId, `scanner:frontend-direct-submit-missing:${key}`, {
+      classification: 'inventory-drift-declared-frontend-direct-submit-call-site-missing',
+      contracts: ['COP-ENTRY-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
+      evidence: item.evidence,
+      summary: `${key} is declared in FRONTEND_COMMAND_PATHS but was not found by the direct-submit scanner`,
+    }));
+  });
+  return findings;
+}
+
+function buildDisabledFlowFindings(checkId, scanResults = {}) {
+  return (scanResults.disabledCommandFlows || [])
+    .filter((flow) => flow.consumer)
+    .map((flow, index) => driftFinding(checkId, `scanner:disabled-flow:${index + 1}`, {
+      classification: flow.classification,
+      contracts: ['COP-CLIENT-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
+      evidence: flow.evidence,
+      summary: flow.summary,
+    }));
+}
+
+function buildCheckFindings(checkId, scanResults = {}) {
   if (checkId === 'write-command-inventory') {
     return [
       ...inventories.SERVER_WRITE_ENTRIES.map((item) => finding(checkId, item, {
@@ -55,12 +207,18 @@ function buildCheckFindings(checkId) {
         classification: item.submissionClassification,
         summary: `GameAPI.${item.helper} -> ${item.endpoint} ${item.commandType}`,
       })),
+      ...buildServerWriteReconciliationFindings(checkId, scanResults),
+      ...buildGameActionReconciliationFindings(checkId, scanResults),
+      ...buildGameApiReconciliationFindings(checkId, scanResults),
     ];
   }
   if (checkId === 'client-command-domain-blockers' || checkId === 'client-disabled-command-path') {
-    return inventories.CLIENT_LOCAL_BLOCKS
+    const declared = inventories.CLIENT_LOCAL_BLOCKS
       .filter((item) => item.classification === 'domain-blocker')
       .map((item) => finding(checkId, item, { summary: `${item.producer} -> ${item.consumer}: ${item.reason}` }));
+    return checkId === 'client-disabled-command-path'
+      ? [...declared, ...buildDisabledFlowFindings(checkId, scanResults)]
+      : declared;
   }
   if (checkId === 'frontend-write-submission-path') {
     return [
@@ -69,7 +227,7 @@ function buildCheckFindings(checkId) {
     ].map((item) => finding(checkId, item, {
       classification: item.submissionClassification,
       summary: item.helper ? `GameAPI.${item.helper}` : `${item.producer} -> ${item.consumer}`,
-    }));
+    })).concat(buildDirectSubmitReconciliationFindings(checkId, scanResults));
   }
   if (checkId === 'route-write-orchestration') {
     return inventories.ROUTE_ORCHESTRATION_DEBT.map((item) => finding(checkId, item, {
@@ -119,11 +277,12 @@ function buildCheckFindings(checkId) {
 function buildReport(options = {}) {
   const repoRoot = options.repoRoot || process.cwd();
   const antiEvasion = assertAntiEvasionFixtures();
+  const scanResults = options.scanResults || scanRepository(repoRoot, options.scannerOptions || {});
   const checks = STEP1_CHECKS.map((check) => ({
     ...check,
     mode: MODE,
     status: 'report-only',
-    findings: buildCheckFindings(check.id),
+    findings: buildCheckFindings(check.id, scanResults),
   }));
   const contractCoverage = buildContractCoverageIndex(checks);
   const totalFindings = checks.reduce((total, check) => total + check.findings.length, 0);
@@ -143,6 +302,7 @@ function buildReport(options = {}) {
     contractCoverage,
     checks,
     inventories,
+    scanResults,
     antiEvasion,
     summary: {
       totalContracts: contractCoverage.length,
@@ -154,6 +314,14 @@ function buildReport(options = {}) {
       gameActions: inventories.GAME_ACTIONS.length,
       frontendWriteHelpers: inventories.FRONTEND_WRITE_HELPERS.length,
       frontendCommandPaths: inventories.FRONTEND_COMMAND_PATHS.length,
+      scannedServerWriteRoutes: scanResults.serverWriteRoutes.length,
+      scannedGameActions: scanResults.gameActions.length,
+      scannedGameApiWriteHelpers: scanResults.gameApiWriteHelpers.length,
+      scannedFrontendDirectSubmits: scanResults.frontendDirectSubmits.length,
+      scannedDisabledCommandFlows: scanResults.disabledCommandFlows.length,
+      inventoryDriftFindings: checks.reduce((total, check) => (
+        total + check.findings.filter((item) => item.classification.startsWith('inventory-drift-')).length
+      ), 0),
     },
   };
 }
@@ -168,6 +336,10 @@ function renderSummary(report) {
     `game actions inventoried: ${report.summary.gameActions}`,
     `frontend write helpers inventoried: ${report.summary.frontendWriteHelpers}`,
     `frontend command paths inventoried: ${report.summary.frontendCommandPaths}`,
+    `scanned server write routes: ${report.summary.scannedServerWriteRoutes}`,
+    `scanned GameAPI write helpers: ${report.summary.scannedGameApiWriteHelpers}`,
+    `scanned frontend direct submits: ${report.summary.scannedFrontendDirectSubmits}`,
+    `inventory drift findings: ${report.summary.inventoryDriftFindings}`,
     `findings: ${report.summary.totalFindings}`,
     `anti-evasion assertions: ${report.summary.antiEvasionAssertions}`,
   ];

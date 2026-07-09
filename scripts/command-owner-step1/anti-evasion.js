@@ -38,6 +38,13 @@ const FIXTURES = Object.freeze([
     expect: ['direct-submit'],
   },
   {
+    id: 'frontend-direct-submit-aliased-receiver',
+    contracts: ['COP-CLIENT-002', 'COP-ENTRY-001'],
+    fakePassPrevented: 'renaming the GameAPI receiver before direct submit detection',
+    sample: 'const svc = this.host.api; return svc.claimConquest(action.territoryId);',
+    expect: ['direct-submit'],
+  },
+  {
     id: 'payload-shape-reclassification',
     contracts: ['COP-CLIENT-001', 'COP-AUTHORITY-001'],
     fakePassPrevented: 'domain blocker relabeled as PAYLOAD_SHAPE or UI_NOT_READY',
@@ -82,7 +89,17 @@ function classifyFixtureSample(sample) {
 
   const text = String(sample || '');
   const hits = [];
-  if (/\b(?:getGameApi\(\)|api|host\.api|this\.host\.api)\s*(?:\?\.|\.)\s*[A-Za-z_$][\w$]*\s*\(/.test(text)) {
+  const apiAliases = new Set(['api']);
+  const aliasPattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g;
+  let aliasMatch;
+  while ((aliasMatch = aliasPattern.exec(text))) {
+    if (/\bapi\b|getGameApi/.test(aliasMatch[2])) apiAliases.add(aliasMatch[1]);
+  }
+  const aliasReceivers = Array.from(apiAliases)
+    .map((alias) => alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  const directSubmitPattern = new RegExp(`\\b(?:getGameApi\\(\\)|host\\.api|this\\.host\\.api|${aliasReceivers})\\s*(?:\\?\\.|\\.)\\s*[A-Za-z_$][\\w$]*\\s*\\(`);
+  if (directSubmitPattern.test(text)) {
     hits.push('direct-submit');
   }
   if (/\bcmd-\$\{requestId\}|Date\.now\(|Math\.random\(|fallback|idempotencyKey\s*=\s*commandId/.test(text)) {
