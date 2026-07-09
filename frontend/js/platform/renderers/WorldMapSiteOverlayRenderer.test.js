@@ -278,6 +278,7 @@ test('WorldMapSiteOverlayRenderer maps city command buttons through one action h
     cityId: 'capital',
     tab: undefined,
     disabled: false,
+    visualDisabled: false,
   });
   assert.deepEqual(renderer.getWorldCityCommandButtonAction({ action: 'labor-city', territoryId: 'capital' }), {
     type: 'enterCity',
@@ -285,6 +286,7 @@ test('WorldMapSiteOverlayRenderer maps city command buttons through one action h
     cityId: 'capital',
     tab: 'people',
     disabled: false,
+    visualDisabled: false,
   });
   assert.equal(renderer.getWorldCityCommandButtonAction({ action: 'rename-city', territoryId: 'capital' }).type, 'renameCity');
 });

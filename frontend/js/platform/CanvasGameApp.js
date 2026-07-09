@@ -2811,15 +2811,6 @@
               }
 
     async advanceEra() {
-                if (!this.canAdvanceEraNow()) {
-                  this.log(this.state?.isCapitalCity === false
-                    ? t('command.era.capitalOnly', {})
-                    : this.canAdvanceEraByTutorial()
-                      ? t('command.era.requirementsNotMet', {})
-                      : t('command.era.locked', {}));
-                  this.renderMilitary();
-                  return false;
-                }
                 try {
                   const result = await this.getGameApi().advanceEra();
                   this.applyApiState(result);
@@ -3606,44 +3597,45 @@
 
     async handleTap(point) {
                 const action = this.renderer.getHitTarget(point);
+                const normalizedAction = ClientCommandSemantics?.normalizeAction?.(action) || action;
                 global.ClientOperationLog?.record?.('input:tapHit', {
                   point: global.ClientOperationLog?.summarizePoint?.(point),
-                  action: global.ClientOperationLog?.summarizeAction?.(action),
+                  action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
                   blockingOverlay: this.hasBlockingOverlayOpen?.(),
                   mapHomeActive: Boolean(this.mapHomeActive),
                   currentTab: this.state?.currentTab || this.activeTab || '',
                   militaryView: this.state?.militaryView || this.militaryView || '',
                 });
-                if (action?.type === 'blockCanvasModal') {
-                  return this.dispatchCanvasAction(action);
+                if (normalizedAction?.type === 'blockCanvasModal') {
+                  return this.dispatchCanvasAction(normalizedAction);
                 }
-                if (action?.disabled) {
+                if (normalizedAction?.disabled) {
                   global.ClientOperationLog?.record?.('input:tapDisabled', {
                     point: global.ClientOperationLog?.summarizePoint?.(point),
-                    action: global.ClientOperationLog?.summarizeAction?.(action),
+                    action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
                   }, { flush: true });
                   return true;
                 }
-                if (shouldRouteTapThroughWorldMapRuntime(action)) {
+                if (shouldRouteTapThroughWorldMapRuntime(normalizedAction)) {
                   const handled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point);
                   this.observeAsyncActionResult(handled);
                   this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
-                  global.ClientOperationLog?.record?.(action ? 'input:tapRuntime' : 'input:tapMiss', {
+                  global.ClientOperationLog?.record?.(normalizedAction ? 'input:tapRuntime' : 'input:tapMiss', {
                     point: global.ClientOperationLog?.summarizePoint?.(point),
-                    actionType: action?.type || '',
-                    action: global.ClientOperationLog?.summarizeAction?.(action),
+                    actionType: normalizedAction?.type || '',
+                    action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
                     runtimeHandled: summarizeHandledForOperationLog(handled),
                   }, { flush: true });
                   if (handled) return handled;
                   return handled;
                 }
-                const handledResult = this.dispatchCanvasAction(action);
+                const handledResult = this.dispatchCanvasAction(normalizedAction);
                 global.ClientOperationLog?.record?.('input:tapAction', {
-                  action: global.ClientOperationLog?.summarizeAction?.(action),
+                  action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
                   handled: summarizeHandledForOperationLog(handledResult),
                 }, { flush: true });
                 const handled = await handledResult;
-                this.advanceTutorialIntroAfterHandled(handled, action);
+                this.advanceTutorialIntroAfterHandled(handled, normalizedAction);
                 return handled;
               }
 

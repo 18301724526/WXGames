@@ -1672,7 +1672,8 @@
           territoryId: button.territoryId,
           cityId: button.territoryId,
           tab: undefined,
-          disabled: button.disabled || !button.action,
+          disabled: !button.action,
+          visualDisabled: Boolean(button.disabled),
         };
       }
       return this.worldMapSiteOverlayRenderer.getWorldCityCommandButtonAction(button);

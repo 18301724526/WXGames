@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../ClientCommandSemantics');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   function containsPoint(rect = {}, point = {}) {
     const x = Number(point.x);
     const y = Number(point.y);
@@ -29,7 +41,7 @@
       y: Number(rect.y) || 0,
       width: Number(rect.width) || 0,
       height: Number(rect.height) || 0,
-      action,
+      action: ClientCommandSemantics?.normalizeAction?.(action) || action,
     };
   }
 

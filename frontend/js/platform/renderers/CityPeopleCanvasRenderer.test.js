@@ -184,5 +184,5 @@ test('CityPeopleCanvasRenderer owns population assignment and policy hit targets
     && target.action.source === 'cityPeoplePolicyButton'
   )), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'assignJob' && target.action.job === 'farmer' && target.action.delta === -1), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'assignJob' && target.action.job === 'craftsman' && target.action.disabled === true), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'assignJob' && target.action.job === 'craftsman' && target.action.visualDisabled === true && target.action.disabled === undefined), true);
 });

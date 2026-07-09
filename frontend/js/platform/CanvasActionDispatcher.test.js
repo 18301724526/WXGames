@@ -59,6 +59,21 @@ test('CanvasActionDispatcher preserves render action and disabled contracts', ()
   ]);
 });
 
+test('CanvasActionDispatcher preserves visual disabled command state without suppressing submit', () => {
+  const calls = [];
+  const dispatcher = new CanvasActionDispatcher();
+  const action = { type: 'startWorldMarch', disabled: true };
+
+  assert.equal(dispatcher.handle(action, {
+    startWorldMarch(value) { calls.push(['startWorldMarch', value.visualDisabled]); return true; },
+    render(value) { calls.push(['render', value.visualDisabled, value.disabled]); },
+  }), true);
+  assert.deepEqual(calls, [
+    ['startWorldMarch', true],
+    ['render', true, undefined],
+  ]);
+});
+
 test('CanvasActionDispatcher routes famous descriptors through panel runner only', () => {
   const calls = [];
   const action = { type: 'openFamousPersons' };

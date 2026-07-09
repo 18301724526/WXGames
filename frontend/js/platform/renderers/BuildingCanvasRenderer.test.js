@@ -330,8 +330,9 @@ test('BuildingCanvasRenderer locks non-house cards during tutorial house guide',
 
   const houseTarget = host.hitTargets.find((target) => target.action.type === 'buildBuilding' && target.action.buildingId === 'house');
   const farmTarget = host.hitTargets.find((target) => target.action.type === 'buildBuilding' && target.action.buildingId === 'farm');
-  assert.equal(houseTarget.action.disabled, false);
-  assert.equal(farmTarget.action.disabled, true);
+  assert.equal(houseTarget.action.visualDisabled, false);
+  assert.equal(farmTarget.action.visualDisabled, true);
+  assert.equal(farmTarget.action.disabled, undefined);
 });
 
 test('CanvasGameRenderer renders building panel through split renderer facade without presenter method', () => {

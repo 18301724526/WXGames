@@ -1,4 +1,5 @@
 (function (global) {
+  const ClientCommandSemantics = global.ClientCommandSemantics;
   const WorldMarchSystem = (() => {
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
@@ -742,21 +743,22 @@
         hitTargetCount: this.getHitTargets().length,
         dragLayerOffset: sanitizeDragOffset(this.dragLayerOffset),
       });
-      if (!action || action.disabled) return false;
-      if (action.type === 'worldMapDrag') return false;
-      if (action.type === 'selectWorldMarchTarget' && action.background) {
-        global.ClientOperationLog?.record?.('worldMap:backgroundTargetProbe', summarizeBackgroundTargetProbe(action, context, layerPoint), { flush: true });
+      const normalizedAction = ClientCommandSemantics?.normalizeAction?.(action) || action;
+      if (!normalizedAction || normalizedAction.disabled) return false;
+      if (normalizedAction.type === 'worldMapDrag') return false;
+      if (normalizedAction.type === 'selectWorldMarchTarget' && normalizedAction.background) {
+        global.ClientOperationLog?.record?.('worldMap:backgroundTargetProbe', summarizeBackgroundTargetProbe(normalizedAction, context, layerPoint), { flush: true });
         global.ClientOperationLog?.record?.('worldMap:backgroundTarget', {
           point: global.ClientOperationLog?.summarizePoint?.(point),
-          action: global.ClientOperationLog?.summarizeAction?.(action),
+          action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
           inputIntent: global.ClientOperationLog?.summarizeInputIntent?.(inputIntent) || inputIntent,
         }, { flush: true });
-        return this.dispatchAction(action, event, actionMeta);
+        return this.dispatchAction(normalizedAction, event, actionMeta);
       }
-      if (action.type === 'resetWorldPan') {
+      if (normalizedAction.type === 'resetWorldPan') {
         this.resetCamera({ source: 'resetWorldPan', render: !this.onAction });
       }
-      return this.dispatchAction(action, event, actionMeta);
+      return this.dispatchAction(normalizedAction, event, actionMeta);
     }
 
     requestRender(options = {}) {

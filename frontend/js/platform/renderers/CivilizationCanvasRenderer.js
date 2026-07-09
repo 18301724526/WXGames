@@ -209,7 +209,7 @@
       });
       this.addHitTarget(
         { x: eraX + 12, y: buttonY, width: eraWidth - 24, height: 32 },
-        { type: 'advanceEra', disabled: view.advanceButton.disabled },
+        { type: 'advanceEra', visualDisabled: view.advanceButton.disabled },
       );
 
       if (featureHeight > 0) {

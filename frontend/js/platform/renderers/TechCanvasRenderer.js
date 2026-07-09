@@ -259,7 +259,7 @@
       this.addHitTarget({ x: buttonX, y: buttonY, width: actionWidth, height: buttonH }, {
         type: 'research',
         techId: detail.id,
-        disabled: !detail.canResearch || !detail.id,
+        visualDisabled: !detail.canResearch || !detail.id,
       });
       if (!detail.canResearch && detail.disabledReason) {
         this.drawText(this.truncateText(detail.disabledReason, actionWidth + 18, { size: 9 }), buttonX + actionWidth / 2, buttonY + buttonH + 12, {
@@ -369,7 +369,7 @@
       this.addHitTarget({ x: buttonX, y: buttonY, width: buttonW, height: buttonH }, {
         type: 'research',
         techId: detail.id,
-        disabled: !detail.canResearch || !detail.id,
+        visualDisabled: !detail.canResearch || !detail.id,
       });
     }
 

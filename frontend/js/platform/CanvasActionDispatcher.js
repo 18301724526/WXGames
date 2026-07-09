@@ -11,6 +11,18 @@
     return null;
   })();
 
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ClientCommandSemantics');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   class CanvasActionDispatcher {
     constructor(options = {}) {
       this.log = typeof options.log === 'function' ? options.log : null;
@@ -37,9 +49,10 @@
 
     handle(action, context = {}) {
       if (!this.canHandle(action, context)) return false;
-      if (action.disabled) return true;
-      return this.registry.dispatch(action, context, {
-        finishHandled: (result) => this.finishHandled(result, context, action),
+      const normalizedAction = ClientCommandSemantics?.normalizeAction?.(action) || action;
+      if (normalizedAction.disabled) return true;
+      return this.registry.dispatch(normalizedAction, context, {
+        finishHandled: (result) => this.finishHandled(result, context, normalizedAction),
         panelActionRunner: this.panelActionRunner,
       });
     }

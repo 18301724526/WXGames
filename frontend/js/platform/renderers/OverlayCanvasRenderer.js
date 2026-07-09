@@ -211,7 +211,10 @@
       this.addHitTarget({ x: cancelX, y: buttonY, width: buttonWidth, height: 36 }, { type: 'closeNaming' });
       this.addHitTarget(
         { x: submitX, y: buttonY, width: buttonWidth, height: 36 },
-        { type: 'submitNaming', disabled: isSubmitting || !inputValue.trim() },
+        {
+          type: 'submitNaming',
+          visualDisabled: isSubmitting || !inputValue.trim(),
+        },
       );
     }
 

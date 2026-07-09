@@ -181,7 +181,7 @@
           this.drawBuildingActionButton(buttonX, y + rowHeight - 36, actionWidth, 26, buttonLabel, card.cost, { disabled: isActionDisabled });
           this.addHitTarget(
             { x: buttonX, y: y + rowHeight - 36, width: actionWidth, height: 26 },
-            { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, disabled: isActionDisabled },
+            { type: card.button.action === 'upgrade' ? 'upgradeBuilding' : 'buildBuilding', buildingId: card.id, visualDisabled: isActionDisabled },
           );
         });
       };

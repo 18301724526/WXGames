@@ -1,4 +1,15 @@
 (function (global) {
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ClientCommandSemantics');
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   var TechTreeInteractionModelBase = global.TechTreeInteractionModel;
   if (typeof module !== 'undefined' && module.exports && !TechTreeInteractionModelBase) {
     TechTreeInteractionModelBase = require('./interactions/TechTreeInteractionModel');
@@ -523,13 +534,15 @@
     }
 
     handle(action, meta = {}) {
-      if (!action || action.disabled) {
+      const normalizedAction = ClientCommandSemantics?.normalizeAction?.(action) || action;
+      if (!normalizedAction || normalizedAction.disabled) {
         global.ClientOperationLog?.record?.('action:skipped', {
-          action: global.ClientOperationLog?.summarizeAction?.(action),
-          reason: action?.disabled ? 'disabled' : 'missing',
+          action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
+          reason: normalizedAction?.disabled ? 'disabled' : 'missing',
         }, { flush: true });
-        return Boolean(action?.disabled);
+        return Boolean(normalizedAction?.disabled);
       }
+      action = normalizedAction;
       const handler = this.resolveActionHandler(action);
       const tapTraceId = this.getActionTapTraceId(action, meta);
       this.rememberActionTapTraceId(action, tapTraceId);
@@ -806,7 +819,6 @@
     handle_veteranCampWithdraw(action) {
             const forwarded = this.forward(action);
             if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
-            if (action.disabled) return false;
             const game = this.getGameHost();
             const api = game?.getGameApi?.() || game?.api || this.host?.api;
             if (typeof api?.veteranCampWithdraw !== 'function') return false;
@@ -817,7 +829,6 @@
     handle_veteranCampUpgrade(action) {
             const forwarded = this.forward(action);
             if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
-            if (action.disabled) return false;
             const game = this.getGameHost();
             const api = game?.getGameApi?.() || game?.api || this.host?.api;
             if (typeof api?.veteranCampUpgrade !== 'function') return false;

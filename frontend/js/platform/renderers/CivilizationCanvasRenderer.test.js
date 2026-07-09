@@ -198,7 +198,7 @@ test('CivilizationCanvasRenderer renders overview, era and feature areas', () =>
   // 50% fill panel is exactly half of the 312px track (contentWidth 360).
   assert.equal(host.calls.some((call) => call[0] === 'drawPanel' && call[3] === 312), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawPanel' && call[3] === 156), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'advanceEra' && target.action.disabled === false), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'advanceEra' && target.action.visualDisabled === false && target.action.disabled === undefined), true);
 });
 
 test('CanvasGameRenderer exposes civilization rendering through facade', () => {
@@ -226,14 +226,15 @@ test('CanvasGameRenderer exposes civilization rendering through facade', () => {
   assert.deepEqual(result.args, [state, 120, 240, options]);
 });
 
-test('CivilizationCanvasRenderer preserves disabled advance hit target contract', () => {
+test('CivilizationCanvasRenderer preserves disabled advance visuals without suppressing command hit target', () => {
   const host = createHost({ viewOverrides: { disabled: true } });
   const renderer = new CivilizationCanvasRenderer({ host });
 
   renderer.renderCivilization({}, 100, 420, {});
 
   const advanceTarget = host.hitTargets.find((target) => target.action.type === 'advanceEra');
-  assert.equal(advanceTarget.action.disabled, true);
+  assert.equal(advanceTarget.action.visualDisabled, true);
+  assert.equal(advanceTarget.action.disabled, undefined);
   // Advance button paints through ModalPlateRenderer (disabled grey face +
   // token disabled label color); the label still lands via drawText.
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Locked'), true);

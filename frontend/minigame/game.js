@@ -3,6 +3,7 @@ require('../js/config/FeatureFlags');
 require('../js/config/LocaleTextRegistry');
 require('../js/config/UiThemeTokens');
 require('../js/debug/ClientOperationLog');
+require('../js/platform/ClientCommandSemantics');
 require('../js/debug/ActorPickingDiagnostics');
 require('../js/config/FamousPortraitLayout');
 require('../../shared/tutorialFlowConfig');

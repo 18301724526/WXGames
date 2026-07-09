@@ -230,7 +230,7 @@ test('OverlayCanvasRenderer preserves naming modal hit target contract', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'closeNaming'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'requestNamingInput'), true);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'submitNaming' && target.action.disabled === false), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'submitNaming' && target.action.visualDisabled === false && target.action.commandDisabled === undefined), true);
 });
 
 test('OverlayCanvasRenderer disables empty naming submit', () => {
@@ -243,7 +243,7 @@ test('OverlayCanvasRenderer disables empty naming submit', () => {
     view: { title: 'Name city', message: 'Pick a name.' },
   });
 
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'submitNaming' && target.action.disabled === true), true);
+  assert.equal(host.hitTargets.some((target) => target.action.type === 'submitNaming' && target.action.visualDisabled === true && target.action.commandDisabled === undefined), true);
 });
 
 test('OverlayCanvasRenderer preserves resource details modal contract', () => {

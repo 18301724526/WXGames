@@ -289,7 +289,8 @@
         this.drawButton(buttonX, y, buttonWidth, 34, button.label, {
           size: 12,
           radius: 8,
-          disabled: button.disabled || !button.action,
+          disabled: !button.action,
+          visualDisabled: Boolean(button.disabled),
           active: !button.secondary && !button.disabled && Boolean(button.action),
         });
         this.addHitTarget({ x: buttonX, y, width: buttonWidth, height: 34 }, {
@@ -353,7 +354,7 @@
       this.drawButton(x + width - 132, controlsY, 78, 28, config.buttons?.launch?.label || this.t('world.site.action.launch'), {
         size: 12,
         radius: 7,
-        disabled: config.disabled,
+        visualDisabled: config.disabled,
         active: !config.disabled,
       });
       this.addHitTarget({ x: x + 12, y: controlsY, width: 34, height: 28 }, {
@@ -723,7 +724,8 @@
         territoryId: button.territoryId,
         cityId: button.territoryId,
         tab: button.action === 'labor-city' ? 'people' : undefined,
-        disabled: button.disabled || !button.action,
+        disabled: !button.action,
+        visualDisabled: Boolean(button.disabled),
       };
     }
 

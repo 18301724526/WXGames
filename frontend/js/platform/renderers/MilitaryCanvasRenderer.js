@@ -151,7 +151,7 @@
       });
       this.addHitTarget(
         { x: textX, y: btnY, width: btnWidth, height: btnHeight },
-        { type: 'veteranCampWithdraw', cityId, disabled: !view.canWithdraw },
+        { type: 'veteranCampWithdraw', cityId, visualDisabled: !view.canWithdraw },
       );
 
       const upgradeX = x + width - pad - btnWidth;
@@ -166,7 +166,7 @@
       });
       this.addHitTarget(
         { x: upgradeX, y: btnY, width: btnWidth, height: btnHeight },
-        { type: 'veteranCampUpgrade', cityId, disabled: !view.nextLevel },
+        { type: 'veteranCampUpgrade', cityId, visualDisabled: !view.nextLevel },
       );
     }
 

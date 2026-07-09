@@ -1029,8 +1029,11 @@
           active: Boolean(item.active),
           disabled: Boolean(item.disabled),
         });
-        if (!item.disabled && item.action) {
-          this.addHitTarget({ x: cx, y: cy, width: bw, height: btnH }, item.action);
+        if (item.action) {
+          this.addHitTarget(
+            { x: cx, y: cy, width: bw, height: btnH },
+            { ...item.action, visualDisabled: Boolean(item.disabled) },
+          );
         }
         cx += bw + gap;
       });

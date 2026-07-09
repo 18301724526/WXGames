@@ -1,4 +1,5 @@
 (function (global) {
+  const ClientCommandSemantics = global.ClientCommandSemantics;
   var CanvasGameAppBase = global.CanvasGameApp;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppBase) {
     CanvasGameAppBase = require('./CanvasGameApp');
@@ -1301,11 +1302,12 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           const tapTraceId = createActorPickingTapTraceId();
           global.__actorPickingDiagActiveTapTraceId = tapTraceId;
           const action = this.renderer.getHitTarget(point);
-          const routeThroughRuntime = shouldRouteTapThroughWorldMapRuntime(action);
+          const normalizedAction = ClientCommandSemantics?.normalizeAction?.(action) || action;
+          const routeThroughRuntime = shouldRouteTapThroughWorldMapRuntime(normalizedAction);
           logActorPickingDiag('shellInput:handleTap:start', {
             tapTraceId,
             point: global.ClientOperationLog?.summarizePoint?.(point) || point,
-            rendererAction: summarizeActorPickingAction(action),
+            rendererAction: summarizeActorPickingAction(normalizedAction),
             routeThroughRuntime,
             tutorialActive: this.isTutorialInputActive(),
             blockingOverlay: Boolean(this.hasBlockingOverlayOpen?.()),
@@ -1315,18 +1317,18 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           });
           global.ClientOperationLog?.record?.('input:tapHit', {
             point: global.ClientOperationLog?.summarizePoint?.(point),
-            action: global.ClientOperationLog?.summarizeAction?.(action),
+            action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
             tutorialActive: this.isTutorialInputActive(),
             blockingOverlay: this.hasBlockingOverlayOpen?.(),
             mapHomeActive: Boolean(this.lastGame?.mapHomeActive),
             currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
             militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView || '',
           });
-          if (this.isTutorialInputActive() && !this.isTutorialActionAllowed(action)) {
+          if (this.isTutorialInputActive() && !this.isTutorialActionAllowed(normalizedAction)) {
             return this.blockTutorialCanvasInput(event);
           }
-          if (action?.type === 'blockCanvasModal') {
-            const handled = this.handleAction(action, event);
+          if (normalizedAction?.type === 'blockCanvasModal') {
+            const handled = this.handleAction(normalizedAction, event);
             if (handled) this.stopCanvasEvent(event);
             return handled;
           }
@@ -1336,17 +1338,17 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
             logActorPickingDiag('shellInput:handleTap:runtimeResult', {
               tapTraceId,
-              rendererAction: summarizeActorPickingAction(action),
+              rendererAction: summarizeActorPickingAction(normalizedAction),
               runtimeHandled: summarizeHandledForOperationLog(runtimeHandled),
             });
-            global.ClientOperationLog?.record?.(action ? 'input:tapRuntime' : 'input:tapMiss', {
+            global.ClientOperationLog?.record?.(normalizedAction ? 'input:tapRuntime' : 'input:tapMiss', {
               point: global.ClientOperationLog?.summarizePoint?.(point),
-              actionType: action?.type || '',
-              action: global.ClientOperationLog?.summarizeAction?.(action),
+              actionType: normalizedAction?.type || '',
+              action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
               runtimeHandled: summarizeHandledForOperationLog(runtimeHandled),
             }, { flush: true });
             if (runtimeHandled) return runtimeHandled;
-            if (action?.type === 'selectWorldMarchTarget' && action.background) return false;
+            if (normalizedAction?.type === 'selectWorldMarchTarget' && normalizedAction.background) return false;
             const closed = this.closeWorldSiteHud({ direct: true });
             if (closed) {
               if (event?.preventDefault) event.preventDefault();
@@ -1355,16 +1357,16 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             }
             return false;
           }
-          if (action?.disabled) {
+          if (normalizedAction?.disabled) {
             global.ClientOperationLog?.record?.('input:tapDisabled', {
               point: global.ClientOperationLog?.summarizePoint?.(point),
-              action: global.ClientOperationLog?.summarizeAction?.(action),
+              action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
             }, { flush: true });
             if (event?.preventDefault) event.preventDefault();
             if (event?.stopPropagation) event.stopPropagation();
             return true;
           }
-          if (!action) {
+          if (!normalizedAction) {
             const runtimeHandled = this.ensureWorldMapRuntimeCoordinator()?.handleTap(point, event, { tapTraceId }) || false;
             this.observeAsyncActionResult(runtimeHandled);
             this.worldMapRuntime = this.worldMapRuntimeCoordinator?.getMapRuntime?.() || this.worldMapRuntime;
@@ -1385,7 +1387,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             }
             return false;
           }
-          if (action.background && action.type !== 'closeWorldSite') {
+          if (normalizedAction.background && normalizedAction.type !== 'closeWorldSite') {
             const closed = this.closeWorldSiteHud({ direct: true });
             if (closed) {
               if (event?.preventDefault) event.preventDefault();
@@ -1393,14 +1395,14 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
               return true;
             }
           }
-          const handled = this.handleAction(action, event, { tapTraceId });
+          const handled = this.handleAction(normalizedAction, event, { tapTraceId });
           logActorPickingDiag('shellInput:handleTap:directActionResult', {
             tapTraceId,
-            action: summarizeActorPickingAction(action),
+            action: summarizeActorPickingAction(normalizedAction),
             handled: summarizeHandledForOperationLog(handled),
           });
           global.ClientOperationLog?.record?.('input:tapAction', {
-            action: global.ClientOperationLog?.summarizeAction?.(action),
+            action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
             handled: handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled),
           }, { flush: true });
           this.advanceTutorialIntroAfterHandled(handled, action);

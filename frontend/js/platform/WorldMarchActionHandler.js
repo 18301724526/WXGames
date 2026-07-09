@@ -464,7 +464,6 @@
     }
 
     startMarch(action, meta = {}) {
-      if (action?.disabled) return true;
       const target = normalizeWorldMarchTarget(action);
       if (!target) return false;
       const deploymentEligibility = this.getWorldMarchDeploymentEligibility(action);
