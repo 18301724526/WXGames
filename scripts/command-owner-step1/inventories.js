@@ -275,7 +275,11 @@ const GAME_ACTIONS = Object.freeze(GAME_ACTION_ROWS.map(
     action,
     commandType: action,
     handler,
-    routeEntry: action === 'claimTaskReward' ? 'server:game-tasks-claim' : 'server:game-action-registry',
+    routeEntry: action === 'claimTaskReward'
+      ? 'server:game-tasks-claim'
+      : (['startWorldCombat', 'resolveWorldCombat'].includes(action)
+        ? 'server:game-action-world-combat-bypass'
+        : 'server:game-action-registry'),
     provisionalOwnerKey,
     targetIdFields,
     idempotencyClassification,
