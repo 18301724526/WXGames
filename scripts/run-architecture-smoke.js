@@ -364,6 +364,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/report-frontend-ecs-mode-ownership.test.js',
   'scripts/report-frontend-ecs-bridge-shrink.js',
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
+  'scripts/report-domain-business-candidates.js',
+  'scripts/report-domain-business-candidates.test.js',
   'scripts/check-frontend-ecs-core-guard.js',
   'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-ecs-boundary-skeleton.js',
@@ -590,6 +592,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-retired-legacy-code.test.js',
   'scripts/report-frontend-ecs-mode-ownership.test.js',
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
+  'scripts/report-domain-business-candidates.test.js',
   'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/check-frontend-ecs-source-layout.test.js',
@@ -789,6 +792,10 @@ function main() {
   ]);
   run('frontend ECS bridge shrink blocking guard', process.execPath, [
     'scripts/report-frontend-ecs-bridge-shrink.js',
+    '--summary',
+  ]);
+  run('domain business candidate report-only guard', process.execPath, [
+    'scripts/report-domain-business-candidates.js',
     '--summary',
   ]);
   run('frontend ECS renderer authority report-only guard', process.execPath, [
