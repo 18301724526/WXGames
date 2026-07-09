@@ -192,6 +192,27 @@ function buildDisabledFlowFindings(checkId, scanResults = {}) {
     }));
 }
 
+function classifyOwnerKeyCoverage(item) {
+  const sharedLookup = inventories.SHARED_OWNER_LOOKUPS
+    .find((lookup) => lookup.commandType === item.action);
+  if (sharedLookup && sharedLookup.lookupBeforeDomainValidation === false) {
+    return {
+      classification: 'owner-resolution-blocker',
+      summary: `${item.action} owner=${item.provisionalOwnerKey}; lookupBeforeDomainValidation=false; missing=${sharedLookup.missingTargetError}`,
+    };
+  }
+  if (!String(item.provisionalOwnerKey || '').includes('{')) {
+    return {
+      classification: 'owner-resolution-blocker',
+      summary: `${item.action} owner=${item.provisionalOwnerKey || 'missing'}`,
+    };
+  }
+  return {
+    classification: 'provisional-owner-declared',
+    summary: `${item.action} owner=${item.provisionalOwnerKey}`,
+  };
+}
+
 function buildCheckFindings(checkId, scanResults = {}) {
   if (checkId === 'write-command-inventory') {
     return [
@@ -241,11 +262,9 @@ function buildCheckFindings(checkId, scanResults = {}) {
   }
   if (checkId === 'owner-key-coverage') {
     return inventories.GAME_ACTIONS.map((item) => finding(checkId, item, {
-      classification: item.provisionalOwnerKey.includes('{')
-        ? 'provisional-owner-declared'
-        : 'owner-resolution-blocker',
+      classification: classifyOwnerKeyCoverage(item).classification,
       contracts: ['COP-OWNER-001', 'COP-OWNER-002', 'COP-SHARED-001'],
-      summary: `${item.action} owner=${item.provisionalOwnerKey}`,
+      summary: classifyOwnerKeyCoverage(item).summary,
     }));
   }
   if (checkId === 'shared-owner-lookup-coverage') {
