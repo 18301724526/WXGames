@@ -12,7 +12,7 @@ require('../ecs/system/FogRevealModel');
 require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
-require('./CanvasActionDispatcher');
+const CanvasActionDispatcher = require('./CanvasActionDispatcher');
 const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 const BattleStore = require('../state/BattleStore');
 const ModalStore = require('../state/ModalStore');
@@ -2571,6 +2571,51 @@ test('CanvasGameShell submits non-matching commands during guided highlights', (
 
   assert.equal(shell.handleTap({ x: 20, y: 20 }, {}), true);
   assert.deepEqual(calls, [['submit', 'buildBuilding', 'farm']]);
+});
+
+test('CanvasGameShell dispatches world march commands through the mounted game host', async () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return {
+          type: 'startWorldMarch',
+          targetQ: 2,
+          targetR: -1,
+          formationSlot: 1,
+          visualDisabled: true,
+        };
+      },
+      render() {},
+    },
+    actionDispatcher: new CanvasActionDispatcher(),
+  });
+  shell.lastGame = {
+    state: { currentTab: 'military', militaryView: 'world' },
+    startWorldMarch(action) {
+      calls.push(['startWorldMarch', action.targetQ, action.targetR, action.formationSlot]);
+      return Promise.resolve(false);
+    },
+    returnWorldMarch(missionId, options) {
+      calls.push(['returnWorldMarch', missionId, options]);
+      return true;
+    },
+    stopWorldMarch(missionId, options) {
+      calls.push(['stopWorldMarch', missionId, options]);
+      return true;
+    },
+  };
+
+  assert.equal(shell.handleTap({ x: 20, y: 20 }, {}), true);
+  assert.deepEqual(calls[0], ['startWorldMarch', 2, -1, 1]);
+  assert.equal(shell.returnWorldMarch('march-1', { source: 'test' }), true);
+  assert.equal(shell.stopWorldMarch('march-2', { source: 'test' }), true);
+  assert.deepEqual(calls.slice(1), [
+    ['returnWorldMarch', 'march-1', { source: 'test' }],
+    ['stopWorldMarch', 'march-2', { source: 'test' }],
+  ]);
 });
 
 test('CanvasGameShell treats world site id fields as equivalent during guided highlights', () => {

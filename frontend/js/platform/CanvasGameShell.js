@@ -1494,6 +1494,24 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return typeof callback === 'function' ? callback() : null;
         }
 
+    startWorldMarch(action = {}) {
+          return typeof this.lastGame?.startWorldMarch === 'function'
+            ? this.lastGame.startWorldMarch(action)
+            : false;
+        }
+
+    returnWorldMarch(missionId, options = {}) {
+          return typeof this.lastGame?.returnWorldMarch === 'function'
+            ? this.lastGame.returnWorldMarch(missionId, options)
+            : false;
+        }
+
+    stopWorldMarch(missionId, options = {}) {
+          return typeof this.lastGame?.stopWorldMarch === 'function'
+            ? this.lastGame.stopWorldMarch(missionId, options)
+            : false;
+        }
+
     setPendingBuildingAction(pending = null, options = {}) {
           const nextPending = pending && pending.buildingId
             ? {
