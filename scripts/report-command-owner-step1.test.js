@@ -26,8 +26,8 @@ test('command owner Step1 report runs and emits all 12 checks', () => {
   const scannedDirectSubmitKeys = new Set(
     report.scanResults.frontendDirectSubmits.map((item) => item.callSiteKey),
   );
-  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:143:research'));
-  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:173:switchCity'));
+  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:142:research'));
+  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:172:switchCity'));
   assert.match(renderSummary(report), /checks defined: 12/);
 });
 
