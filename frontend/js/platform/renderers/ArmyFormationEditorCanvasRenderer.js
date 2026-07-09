@@ -211,7 +211,13 @@
       });
       this.addHitTarget(
         { x: autoX, y: autoY, width: 60, height: 24 },
-        selectedMembers.length <= 0 || editor.saving ? { type: 'blockCanvasModal' } : { type: 'autoReplenishArmyFormation' },
+        {
+          type: 'autoReplenishArmyFormation',
+          visualDisabled: selectedMembers.length <= 0 || editor.saving,
+          commandDisabled: editor.saving
+            ? 'IN_FLIGHT'
+            : (selectedMembers.length <= 0 ? 'UI_NOT_READY' : undefined),
+        },
       );
 
       const listTop = summaryY + 204;
@@ -289,7 +295,11 @@
         active: true,
         disabled: Boolean(editor.saving),
       });
-      this.addHitTarget({ x: saveX, y: bottomY, width: 88, height: 34 }, editor.saving ? { type: 'blockCanvasModal' } : { type: 'saveArmyFormation' });
+      this.addHitTarget({ x: saveX, y: bottomY, width: 88, height: 34 }, {
+        type: 'saveArmyFormation',
+        visualDisabled: Boolean(editor.saving),
+        commandDisabled: editor.saving ? 'IN_FLIGHT' : undefined,
+      });
     }
   }
 

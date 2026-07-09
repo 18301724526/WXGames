@@ -138,8 +138,18 @@ test('ArmyFormationEditorCanvasRenderer preserves pager and save actions', () =>
   const savingRenderer = new ArmyFormationEditorCanvasRenderer({ host: savingHost });
   savingRenderer.renderArmyFormationEditor({}, { armyFormationEditor: { open: true, slot: 1, memberIds: ['hero-1'], saving: true } });
 
-  assert.equal(savingHost.hitTargets.some((target) => target.action.type === 'saveArmyFormation'), false);
-  assert.equal(savingHost.hitTargets.some((target) => target.action.type === 'blockCanvasModal'), true);
+  const savingAction = savingHost.hitTargets.find((target) => target.action.type === 'saveArmyFormation').action;
+  assert.equal(savingAction.visualDisabled, true);
+  assert.equal(savingAction.commandDisabled, 'IN_FLIGHT');
+
+  const emptyHost = createHost();
+  const emptyRenderer = new ArmyFormationEditorCanvasRenderer({ host: emptyHost });
+  emptyRenderer.renderArmyFormationEditor({}, { armyFormationEditor: { open: true, slot: 1, memberIds: [] } });
+  const replenishAction = emptyHost.hitTargets.find(
+    (target) => target.action.type === 'autoReplenishArmyFormation',
+  ).action;
+  assert.equal(replenishAction.visualDisabled, true);
+  assert.equal(replenishAction.commandDisabled, 'UI_NOT_READY');
 });
 
 test('ArmyFormationEditorCanvasRenderer skips closed editor without drawing', () => {

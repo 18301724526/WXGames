@@ -433,6 +433,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/validate-config-pipeline.test.js',
   'scripts/build-config-tables.js',
   'scripts/build-config-tables.test.js',
+  'scripts/check-client-command-block-reasons.js',
+  'scripts/check-client-command-block-reasons.test.js',
 ]);
 
 const TEST_FILES = Object.freeze([
@@ -625,6 +627,7 @@ const TEST_FILES = Object.freeze([
   'scripts/rewrite-frontend-asset-version.test.js',
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
+  'scripts/check-client-command-block-reasons.test.js',
 ]);
 
 const CONTRACT_SEARCH_DIRS = Object.freeze([
@@ -709,6 +712,9 @@ function main() {
   ]);
 
   run('focused node tests', process.execPath, ['--test', ...testFiles]);
+  run('client command block reason guard', process.execPath, [
+    'scripts/check-client-command-block-reasons.js',
+  ]);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);
   run('frontend ECS core blocking guard', process.execPath, [
