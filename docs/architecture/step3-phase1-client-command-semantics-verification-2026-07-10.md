@@ -3,6 +3,8 @@
 Status: **RE-ADMISSION DELTA COMPLETE, 2026-07-10.** Scope remains STEP3-T01 + STEP3-T02
 plus owner-approved D1-D5 only. Phase 2 was not started and `resource-node` was not touched.
 
+Correction (2026-07-10): the previous D1 HTTP 400 record came from a stub, was invalid, and is replaced below with evidence from a real local `backend/server.js` process.
+
 ## Commits
 
 - `1fd860d5` - STEP3-T01: split visual disabled state from command-submit state.
@@ -19,7 +21,8 @@ plus owner-approved D1-D5 only. Phase 2 was not started and `resource-node` was 
 ## D1-D5 Closure
 
 - D1: `WorldMarchActionHandler` no longer treats deployment eligibility as a terminal client
-  rejection. Empty formations reach `GameAPI.startWorldMarch`; the server rejection is shown.
+  rejection. Empty formations reach `GameAPI.startWorldMarch`; Part 0 now adds the missing real
+  server formation validation and the honest real-process record below.
 - D2: `CanvasSurfaceRenderer.drawButton` consumes `visualDisabled` as a disabled-style hint.
   The world-site launch button remains grey, keeps its hit target, submits, and handles HTTP 400.
 - D3: compliance option (a) was implemented. Tutorial state may still constrain non-command
@@ -38,41 +41,43 @@ plus owner-approved D1-D5 only. Phase 2 was not started and `resource-node` was 
 - Direct frozen test run: 6/6 passed, including disabled short-circuit and hook behavior.
 - No retired compatibility path or repair layer was reintroduced.
 
-## Real UI Before / After
+## P0-2 Honest D1 Real-Server Re-verification
 
-Method: headless Playwright against a temporary full static + API verification server. The
-in-app browser was not opened. The after run used a 430x932 viewport and clicked real Canvas
-hit targets.
+Reproducible command:
 
-### D1 - Empty Formation March
+```powershell
+node scripts/verify-step3-part0-real-server.js --output docs/architecture/evidence/step3-part0-real-server-2026-07-10.json
+```
 
-Before at the failed Phase 1 review head:
+The checked-in script starts `backend/server.js` on an OS-assigned free port with temporary
+SQLite game/observability databases and a temporary config release published through the real
+`ConfigPipeline` and `ConfigReleaseService`. It then performs a real login, prepares the player
+state through the real `GameStateRepository`, sends the real HTTP command, asserts the response,
+and stops the spawned process. No mock or stub server is involved.
 
-- `getWorldMarchDeploymentEligibility().blocked` opened a terminal modal.
-- The only modal action closed the dialog; `POST /api/game/action` count remained **0**.
+Same-run identity and health evidence:
 
-After D1:
+- Spawned server PID: `144888`; entry: `backend/server.js`; stopped with `SIGTERM` after capture.
+- `GET http://127.0.0.1:51766/api/health` returned HTTP `200`.
+- The raw health body identifies git commit
+  `4711ef009f0d6bce53134a96b327f11eb16362ab`, config status `matched`, and gate mode `required`.
+- The exact health request, headers, status, headers, and unmodified response body are stored under
+  `health` in
+  `docs/architecture/evidence/step3-part0-real-server-2026-07-10.json`.
 
-- Rendered action retained `visualDisabled: true` and `FORMATION_EMPTY` eligibility evidence.
-- Clicking the real Canvas target submitted exactly **1** `startWorldMarch` request.
-- Response: HTTP **400**, `error: FORMATION_EMPTY`, message `编队为空，无法出征`.
-- Promise path resolved to `false`; `pageErrors` remained empty.
+Empty-formation command evidence:
 
-### D2 - Domain-Ineligible World-Site Button
+- Exact body: `{"action":"startWorldMarch","targetQ":1,"targetR":0,"cityId":"capital","formationSlot":1}`.
+- The exact request, including the local-only bearer token, and the unmodified raw response are
+  stored under `startWorldMarch` in the same evidence JSON.
+- Actual response: HTTP `400`; `error: FORMATION_EMPTY`; message `编队为空，无法出征`.
+- The evidence assertion records `passed: true`; the spawned PID was confirmed absent after the run.
 
-Before at the failed Phase 1 review head:
+## Historical D2 UI Evidence Scope
 
-- `visualDisabled` was passed into the draw chain but had no consumer.
-- The launch button lost its greyed visual state.
-
-After D2:
-
-- Action: `{ type: "launchExpedition", territoryId: "site-1", visualDisabled: true }`.
-- Grey launch-button pixel: `[46, 41, 36, 255]`; adjacent enabled control pixel:
-  `[47, 33, 21, 255]`.
-- Clicking the real grey Canvas target submitted exactly **1** `startConquest` request.
-- Response: HTTP **400**, `error: INSUFFICIENT_SOLDIERS`, message `士兵不足，无法发起远征`.
-- The rejection was surfaced through the territory controller; `pageErrors` remained empty.
+The earlier temporary static/API harness is retained only as historical pixel and client-routing
+evidence for D2. It is not used as server-response or end-to-end proof under the current integrity
+clause. Server truth claims must use the real-process evidence format above.
 
 ### D4 - Adversarial Guard Self-Check
 
