@@ -366,6 +366,13 @@ const CHECK_FILES = Object.freeze([
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
   'scripts/report-domain-business-candidates.js',
   'scripts/report-domain-business-candidates.test.js',
+  'scripts/report-command-owner-step1.js',
+  'scripts/report-command-owner-step1.test.js',
+  'scripts/command-owner-step1/contracts.js',
+  'scripts/command-owner-step1/index.js',
+  'scripts/command-owner-step1/inventories.js',
+  'scripts/command-owner-step1/anti-evasion.js',
+  'scripts/command-owner-step1/scanner.js',
   'scripts/check-frontend-ecs-core-guard.js',
   'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-ecs-boundary-skeleton.js',
@@ -593,6 +600,7 @@ const TEST_FILES = Object.freeze([
   'scripts/report-frontend-ecs-mode-ownership.test.js',
   'scripts/report-frontend-ecs-bridge-shrink.test.js',
   'scripts/report-domain-business-candidates.test.js',
+  'scripts/report-command-owner-step1.test.js',
   'scripts/check-frontend-ecs-core-guard.test.js',
   'scripts/check-frontend-ecs-boundary-skeleton.test.js',
   'scripts/check-frontend-ecs-source-layout.test.js',
@@ -796,6 +804,10 @@ function main() {
   ]);
   run('domain business candidate report-only guard', process.execPath, [
     'scripts/report-domain-business-candidates.js',
+    '--summary',
+  ]);
+  run('command owner Step1 report-only guard', process.execPath, [
+    'scripts/report-command-owner-step1.js',
     '--summary',
   ]);
   run('frontend ECS renderer authority report-only guard', process.execPath, [
