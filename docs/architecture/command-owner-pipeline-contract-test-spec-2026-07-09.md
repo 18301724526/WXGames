@@ -1,10 +1,18 @@
 # Command Owner Pipeline Contract Test Spec
 
-Status: Draft v0.6, contract test oracle for Step1-Step3
+Status: Draft v0.7, contract test oracle for Step1-Step3
 Date: 2026-07-09
 Scope: testable command-owner contracts for write-command concurrency, owner routing, idempotency, frontend/game adaptation
 
 Changelog:
+- v0.7 (2026-07-10): §4.4.1 decision RATIFIED (owner delegated the architecture call to
+  the supervising reviewer with a zero-debt mandate): **option (a) cross-process owner
+  locks**, implemented by GENERALIZING the already-proven SQLite lease-lock pattern —
+  `player_state_locks(playerId)` becomes `owner_locks(ownerKey)` behind one
+  `withOwnerLocks(ownerKeys[], ...)` entry (canonical lexicographic multi-lock order,
+  all-or-nothing acquisition, TTL lease reclaim). `withPlayerStateLock` becomes a thin
+  delegate; no parallel lock systems remain. Cross-process acceptance tests required.
+  Full design contract in `step3-phase2-7-overnight-order-2026-07-10.md`.
 - v0.6 (2026-07-09): added the second-writer / multi-process clause to §4.4 after a
   feasibility review found the §8 acceptance tests are single-process only while march
   settlement runs in a separate worker process. Records an owner-ratification-required
