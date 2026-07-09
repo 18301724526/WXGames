@@ -57,6 +57,38 @@ test('building action delegates to building controller and always clears pending
   ]);
 });
 
+test('building action keeps tutorial hint but still submits the command', async () => {
+  const calls = [];
+  const game = {
+    tutorialController: {
+      onBuildingAction() {
+        return false;
+      },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    buildBuilding(buildingId) {
+      calls.push(['buildBuilding', buildingId]);
+      return true;
+    },
+  };
+  const controller = new HostController({ host: { lastGame: game }, awaitAsync: true });
+
+  assert.equal(
+    await controller.handle_buildBuilding({ type: 'buildBuilding', buildingId: 'farm' }),
+    true,
+  );
+  assert.equal(calls.some(([name]) => name === 'showFloatingText'), true);
+  assert.deepEqual(calls.filter(([name]) => name === 'refreshCurrentHighlight'), [
+    ['refreshCurrentHighlight'],
+  ]);
+  assert.deepEqual(calls.find(([name]) => name === 'buildBuilding'), ['buildBuilding', 'farm']);
+});
+
 test('event claim closes event state, syncs tutorial, and exposes reward reveal fallback', async () => {
   const calls = [];
   const game = {

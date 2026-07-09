@@ -134,7 +134,8 @@
   }
 
   function isAllowedByTutorialShield(action = {}, allowedActions = [], intro = null) {
-    return isAllowedUnderTutorialShield(action)
+    return ClientCommandSemantics?.isCommandAction?.(action)
+      || isAllowedUnderTutorialShield(action)
       || allowedActions.some((allowed) => matchesTutorialShieldAllowedAction(action, allowed))
       || matchesCurrentTutorialIntroAction(action, intro);
   }

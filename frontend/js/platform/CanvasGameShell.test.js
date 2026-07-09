@@ -2543,6 +2543,36 @@ test('CanvasGameShell blocks non-matching actions during guided highlights', () 
   ]);
 });
 
+test('CanvasGameShell submits non-matching commands during guided highlights', () => {
+  const calls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    inputEnabled: true,
+    renderer: {
+      getHitTarget() {
+        return { type: 'buildBuilding', buildingId: 'farm' };
+      },
+    },
+    actionDispatcher: {
+      canHandle() {
+        return true;
+      },
+      handle(action) {
+        calls.push(['submit', action.type, action.buildingId]);
+        return true;
+      },
+    },
+  });
+  shell.showTutorialHighlight(
+    { x: 100, y: 100, width: 100, height: 80 },
+    'build house',
+    { allowedAction: { type: 'buildBuilding', buildingId: 'house' } },
+  );
+
+  assert.equal(shell.handleTap({ x: 20, y: 20 }, {}), true);
+  assert.deepEqual(calls, [['submit', 'buildBuilding', 'farm']]);
+});
+
 test('CanvasGameShell treats world site id fields as equivalent during guided highlights', () => {
   const calls = [];
   const event = {

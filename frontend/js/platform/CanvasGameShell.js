@@ -1,5 +1,15 @@
 (function (global) {
-  const ClientCommandSemantics = global.ClientCommandSemantics;
+  const ClientCommandSemantics = (() => {
+    if (global.ClientCommandSemantics) return global.ClientCommandSemantics;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ClientCommandSemantics');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
   var CanvasGameAppBase = global.CanvasGameApp;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppBase) {
     CanvasGameAppBase = require('./CanvasGameApp');
@@ -1324,7 +1334,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
             militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView || '',
           });
-          if (this.isTutorialInputActive() && !this.isTutorialActionAllowed(normalizedAction)) {
+          if (
+            this.isTutorialInputActive()
+            && !this.isTutorialActionAllowed(normalizedAction)
+            && !ClientCommandSemantics?.isCommandAction?.(normalizedAction)
+          ) {
             return this.blockTutorialCanvasInput(event);
           }
           if (normalizedAction?.type === 'blockCanvasModal') {

@@ -91,7 +91,7 @@ test('GameCommandService research applies API state and keeps selected tech UI s
   assert.deepEqual(calls.find(([name]) => name === 'showFloatingText'), ['showFloatingText', 'researched writing']);
 });
 
-test('GameCommandService blocks non-house building during tutorial house guide', async () => {
+test('GameCommandService keeps tutorial hint but submits non-house building', async () => {
   const apiCalls = [];
   const api = {
     async build(buildingId) {
@@ -110,9 +110,10 @@ test('GameCommandService blocks non-house building during tutorial house guide',
   };
   const service = new GameCommandService({ host });
 
-  assert.equal(await service.buildBuilding('farm'), false);
-  assert.deepEqual(apiCalls, []);
+  assert.equal(await service.buildBuilding('farm'), true);
+  assert.deepEqual(apiCalls, ['farm']);
   assert.deepEqual(calls.filter(([name]) => name === 'refreshCurrentHighlight'), [['refreshCurrentHighlight']]);
+  assert.equal(calls.some(([name]) => name === 'showFloatingText'), true);
 });
 
 test('GameCommandService propagates BuildingController build failures', async () => {

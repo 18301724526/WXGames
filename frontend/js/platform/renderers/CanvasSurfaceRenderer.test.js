@@ -334,6 +334,13 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'closeAdvisor', source: 'houseBuilt' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'blockCanvasModal' }),
   ], { x: 20, y: 20 }), { type: 'closeAdvisor', source: 'houseBuilt' });
+  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'buildBuilding', buildingId: 'farm' }),
+    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
+      type: 'blockCanvasModal',
+      allowedAction: { type: 'buildBuilding', buildingId: 'house' },
+    }),
+  ], { x: 20, y: 20 }), { type: 'buildBuilding', buildingId: 'farm' });
   const picker = CanvasSurfaceHitTargets.resolveHitTarget([
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),

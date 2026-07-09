@@ -1303,7 +1303,6 @@
             if (game?.tutorialController?.onBuildingAction?.(action.buildingId, buildingAction) === false) {
               game.showFloatingText?.(t('guide.buildFirstHouseFirst'));
               game.tutorialController?.refreshCurrentHighlight?.();
-              return false;
             }
             if (buildingAction === 'upgrade' && typeof game?.upgradeBuilding === 'function') {
               return game.upgradeBuilding(action.buildingId);

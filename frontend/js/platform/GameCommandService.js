@@ -108,7 +108,6 @@
       if (host.tutorialController?.onBuildingAction?.(buildingId, action) === false) {
         host.showFloatingText?.(t('guide.buildFirstHouseFirst'));
         host.tutorialController?.refreshCurrentHighlight?.();
-        return false;
       }
       if (host.pendingBuildingAction?.buildingId) return false;
       const normalizedAction = action === 'upgrade' ? 'upgrade' : 'build';
