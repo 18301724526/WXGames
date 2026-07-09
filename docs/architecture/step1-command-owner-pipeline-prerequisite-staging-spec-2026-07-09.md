@@ -136,7 +136,17 @@ being hidden as non-gameplay noise. Example:
 
 ### 4.2 Game Action Inventory
 
-Every existing `GameActionRegistry` action must be declared:
+Every existing write command reachable through `/api/game/action` (whether it is a
+registered `GameActionRegistry` action or a route-level bypass) must be declared. The
+list below is the full write-command set, not the registry set alone; three entries are
+explicitly NOT `GameActionRegistry` actions and must stay visible as such:
+
+- `claimTaskReward` is a `/api/game/tasks/claim` route write, not a registry action.
+- `startWorldCombat` and `resolveWorldCombat` are route-level bypasses that skip
+  `GameActionRegistry` (see `server:game-action-world-combat-bypass` inventory entry).
+
+Do not shrink this list to the 26 true registry actions; the non-registry writes must
+remain inventoried so they cannot hide.
 
 - `build`
 - `upgrade`
@@ -144,7 +154,7 @@ Every existing `GameActionRegistry` action must be declared:
 - `claimEvent`
 - `assign`
 - `tutorialAdvance`
-- `claimTaskReward`
+- `claimTaskReward` (route write, NOT a registry action)
 - `applyTalentPolicy`
 - `saveTalentPolicy`
 - `deleteTalentPolicy`
@@ -165,8 +175,8 @@ Every existing `GameActionRegistry` action must be declared:
 - `startWorldMarch`
 - `returnWorldMarch`
 - `stopWorldMarch`
-- `startWorldCombat`
-- `resolveWorldCombat`
+- `startWorldCombat` (route-level registry bypass, NOT a registry action)
+- `resolveWorldCombat` (route-level registry bypass, NOT a registry action)
 - any territory, world march, or world combat action that currently bypasses
   the registry
 
