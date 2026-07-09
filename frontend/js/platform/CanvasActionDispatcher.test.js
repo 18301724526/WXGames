@@ -74,6 +74,26 @@ test('CanvasActionDispatcher preserves visual disabled command state without sup
   ]);
 });
 
+test('CanvasActionDispatcher logs allowed local blocks and ignores domain block reasons', () => {
+  const calls = [];
+  const logs = [];
+  const dispatcher = new CanvasActionDispatcher();
+  const context = {
+    clientOperationLog: { record(event, detail) { logs.push([event, detail]); } },
+    startWorldMarch(action) { calls.push(action.type); return true; },
+  };
+
+  assert.equal(dispatcher.handle({ type: 'startWorldMarch', missionId: 'm-1', commandDisabled: 'IN_FLIGHT' }, context), true);
+  assert.deepEqual(calls, []);
+  assert.deepEqual(logs, [[
+    'command:localBlock',
+    { commandType: 'startWorldMarch', commandKey: 'startWorldMarch:m-1', reason: 'IN_FLIGHT' },
+  ]]);
+
+  assert.equal(dispatcher.handle({ type: 'startWorldMarch', missionId: 'm-2', commandDisabled: 'MARCH' }, context), true);
+  assert.deepEqual(calls, ['startWorldMarch']);
+});
+
 test('CanvasActionDispatcher routes famous descriptors through panel runner only', () => {
   const calls = [];
   const action = { type: 'openFamousPersons' };

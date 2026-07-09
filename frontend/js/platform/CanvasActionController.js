@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./ClientCommandSemantics');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -543,6 +543,15 @@
         return Boolean(normalizedAction?.disabled);
       }
       action = normalizedAction;
+      const commandBlockReason = ClientCommandSemantics?.getCommandBlockReason?.(action) || '';
+      if (commandBlockReason) {
+        global.ClientOperationLog?.record?.('command:localBlock', {
+          commandType: action.type || '',
+          commandKey: ClientCommandSemantics?.getCommandKey?.(action) || action.type || '',
+          reason: commandBlockReason,
+        }, { flush: true });
+        return true;
+      }
       const handler = this.resolveActionHandler(action);
       const tapTraceId = this.getActionTapTraceId(action, meta);
       this.rememberActionTapTraceId(action, tapTraceId);

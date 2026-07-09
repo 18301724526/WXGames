@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./CanvasActionDispatchRegistry');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -16,7 +16,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('./ClientCommandSemantics');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -51,6 +51,16 @@
       if (!this.canHandle(action, context)) return false;
       const normalizedAction = ClientCommandSemantics?.normalizeAction?.(action) || action;
       if (normalizedAction.disabled) return true;
+      const commandBlockReason = ClientCommandSemantics?.getCommandBlockReason?.(normalizedAction) || '';
+      if (commandBlockReason) {
+        const logger = context?.clientOperationLog || global.ClientOperationLog;
+        logger?.record?.('command:localBlock', {
+          commandType: normalizedAction.type || '',
+          commandKey: ClientCommandSemantics?.getCommandKey?.(normalizedAction) || normalizedAction.type || '',
+          reason: commandBlockReason,
+        }, { flush: true });
+        return true;
+      }
       return this.registry.dispatch(normalizedAction, context, {
         finishHandled: (result) => this.finishHandled(result, context, normalizedAction),
         panelActionRunner: this.panelActionRunner,

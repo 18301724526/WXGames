@@ -214,6 +214,7 @@
         {
           type: 'submitNaming',
           visualDisabled: isSubmitting || !inputValue.trim(),
+          commandDisabled: isSubmitting ? 'IN_FLIGHT' : (!inputValue.trim() ? 'PAYLOAD_SHAPE' : false),
         },
       );
     }

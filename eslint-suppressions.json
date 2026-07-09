@@ -72,11 +72,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/CanvasActionDispatcher.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/platform/CanvasGameRendererCompositionFactory.js": {
     "no-unused-vars": {
       "count": 3
@@ -133,11 +128,6 @@
   "frontend/js/platform/renderers/CanvasPreloadAssetManifest.js": {
     "no-unused-vars": {
       "count": 2
-    }
-  },
-  "frontend/js/platform/renderers/CanvasSurfaceHitTargets.js": {
-    "no-unused-vars": {
-      "count": 1
     }
   },
   "frontend/js/platform/renderers/CityCanvasRenderer.js": {

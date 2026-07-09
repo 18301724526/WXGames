@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../../ecs/input/WorldMapSelectionResolver');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -16,7 +16,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../ClientCommandSemantics');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
