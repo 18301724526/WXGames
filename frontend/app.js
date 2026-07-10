@@ -56,7 +56,6 @@ class H5GameHost extends CanvasGameAppBase {
       getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
     });
     Object.assign(this, shell);
-    if (!this.isTutorialEnabled()) this.disableTutorialRuntime();
 
     this.apiBase = this.config?.API_BASE || this.apiBase;
     this.token = this.authStorage?.getToken?.() || null;
@@ -169,7 +168,6 @@ class H5GameHost extends CanvasGameAppBase {
       previewEnabled: true,
       inputEnabled: true,
     });
-    if (!this.isTutorialEnabled()) this.disableTutorialRuntime();
     const onCanvasShellReady = this.onCanvasShellReady;
     this.onCanvasShellReady = null;
     if (typeof onCanvasShellReady === 'function') onCanvasShellReady();
@@ -180,38 +178,6 @@ class H5GameHost extends CanvasGameAppBase {
     const parser = window.FeatureFlags?.parseFlagValue || window.FeatureFlagCore?.parseFeatureFlagValue;
     if (typeof parser !== 'function') return this.state?.tutorialEnabled !== false;
     return parser(this.state?.tutorialEnabled, true);
-  }
-
-  getDisabledTutorialState(raw = this.tutorial || {}) {
-    return {
-      ...(raw || {}),
-      completed: true,
-      currentStep: 'completed',
-      phaseCompleted: {
-        newbie: true,
-        era2: true,
-        scoutFormation: true,
-      },
-      disabled: true,
-    };
-  }
-
-  disableTutorialRuntime() {
-    const disabledTutorial = this.getDisabledTutorialState();
-    this.tutorial = disabledTutorial;
-    if (this.state && typeof this.state === 'object') this.state.tutorial = disabledTutorial;
-    this.tutorialController = null;
-    this.tutorialIntro = null;
-    this.tutorialAdvisorDialogue = null;
-    this.tutorialHighlight = null;
-    this.tutorialIntroOverlay?.finish?.({ markSeen: true, completed: true });
-    if (this.canvasShell) {
-      this.canvasShell.tutorialIntro = null;
-      this.canvasShell.tutorialAdvisorDialogue = null;
-      this.canvasShell.tutorialHighlight = null;
-      this.canvasShell.hideTutorialHighlight?.();
-    }
-    return disabledTutorial;
   }
 
   ensureTutorialIntroOverlay() {
@@ -233,10 +199,7 @@ class H5GameHost extends CanvasGameAppBase {
 
   applyApiState(data = {}, options = {}) {
     super.applyApiState(data, options);
-    if (!this.isTutorialEnabled()) {
-      this.disableTutorialRuntime();
-      return false;
-    }
+    if (!this.isTutorialEnabled()) return false;
     this.tutorialController?.sync?.(this.tutorial);
     this.maybeStartTutorialIntro();
     return true;
@@ -244,10 +207,7 @@ class H5GameHost extends CanvasGameAppBase {
 
   applyState(payload = {}, options = {}) {
     super.applyState(payload, options);
-    if (!this.isTutorialEnabled()) {
-      this.disableTutorialRuntime();
-      return false;
-    }
+    if (!this.isTutorialEnabled()) return false;
     this.tutorialController?.sync?.(this.tutorial);
     this.maybeStartTutorialIntro();
     return true;

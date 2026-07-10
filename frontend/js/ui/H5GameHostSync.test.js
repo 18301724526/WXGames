@@ -186,7 +186,7 @@ test('H5 game host wires authority state refreshes after replacing the construct
   }
 });
 
-test('H5 game host disables tutorial runtime from server tutorialEnabled projection', () => {
+test('H5 game host gates tutorial runtime from server tutorialEnabled projection', () => {
   const previousWindow = global.window;
   const previousDocument = global.document;
   const appPath = path.resolve(__dirname, '../../app.js');
@@ -302,9 +302,11 @@ test('H5 game host disables tutorial runtime from server tutorialEnabled project
     });
 
     assert.equal(calls.some((call) => call[0] === 'TutorialGuideController'), true);
-    assert.equal(mountedGame.tutorialController, null);
-    assert.equal(mountedGame.tutorial.completed, true);
-    assert.equal(mountedGame.tutorial.disabled, true);
+    assert.notEqual(mountedGame.tutorialController, null);
+    assert.equal(mountedGame.tutorial.completed, false);
+    assert.equal(mountedGame.tutorial.currentStep, 'cityEntered');
+    assert.equal(mountedGame.tutorial.disabled, undefined);
+    assert.equal(calls.filter((call) => call[0] === 'tutorialSync').length, 1);
     assert.equal(mountedGame.maybeStartTutorialIntro(), false);
   } finally {
     delete require.cache[appPath];

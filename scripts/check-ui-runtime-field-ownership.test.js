@@ -39,6 +39,12 @@ function createFixture(overrides = {}) {
       fields: ['worldPanX'],
       approvedCompatibilityFiles: [],
     },
+    {
+      store: 'TutorialRuntimeStore',
+      path: 'frontend/js/state/TutorialRuntimeStore.js',
+      fields: ['tutorialHighlight'],
+      approvedCompatibilityFiles: [],
+    },
   ];
   stores.forEach((store) => {
     const exportedFields = overrides.exportedFields?.[store.store] || store.fields;
@@ -134,6 +140,7 @@ test('ui runtime field ownership FIRE: bypass scan covers the existing store fam
       'frontend/js/platform/ModalBypass.js': 'module.exports = function read(host) { return host.showLogs; };\n',
       'frontend/js/platform/BattleBypass.js': 'module.exports = function read(game) { return game.entityBattle; };\n',
       'frontend/js/platform/TerritoryBypass.js': 'module.exports = function read(owner) { return owner.worldPanX; };\n',
+      'frontend/js/platform/TutorialBypass.js': 'module.exports = function read(shell) { return shell.tutorialHighlight; };\n',
     },
   });
   const report = inspectUiRuntimeOwnership({ repoRoot: root });
@@ -153,6 +160,12 @@ test('ui runtime field ownership FIRE: bypass scan covers the existing store fam
   assert.equal(
     report.violations.some((violation) =>
       violation.includes('TerritoryBypass.js') && violation.includes('outside TerritoryUiStateStore'),
+    ),
+    true,
+  );
+  assert.equal(
+    report.violations.some((violation) =>
+      violation.includes('TutorialBypass.js') && violation.includes('outside TutorialRuntimeStore'),
     ),
     true,
   );

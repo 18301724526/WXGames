@@ -90,6 +90,25 @@
         "frontend/js/platform/CanvasGameShell.js",
         "frontend/js/platform/CanvasActionController.js"
       ]
+    },
+    {
+      "store": "TutorialRuntimeStore",
+      "path": "frontend/js/state/TutorialRuntimeStore.js",
+      "fields": [
+        "TUTORIAL_ENABLED",
+        "tutorialIntro",
+        "tutorialAdvisorDialogue",
+        "tutorialHighlight"
+      ],
+      "approvedCompatibilityFiles": [
+        "frontend/js/platform/CanvasGameApp.js",
+        "frontend/js/platform/CanvasGameShell.js",
+        "frontend/js/platform/CanvasActionController.js",
+        "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+        "frontend/js/tutorial/TutorialGuideController.js",
+        "frontend/js/tutorial/TutorialGuideEventRegistry.js",
+        "frontend/js/tutorial/TutorialIntroOverlay.js"
+      ]
     }
   ]
 }

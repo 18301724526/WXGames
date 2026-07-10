@@ -8,6 +8,7 @@ const BYPASS_SCAN_STORES = new Set([
   'ModalStore',
   'BattleStore',
   'TerritoryUiStateStore',
+  'TutorialRuntimeStore',
 ]);
 const HOST_RECEIVERS = ['this', 'host', 'game', 'shell', 'owner', 'lastGame', 'canvasShell'];
 const ECS_SIMULATION_FIELD_PATTERN = /(?:world|fog|frame|mode|ecs|bitecs|component|eid|entity|simulation|velocity|position)/i;
