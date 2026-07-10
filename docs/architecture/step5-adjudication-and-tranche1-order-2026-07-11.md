@@ -86,3 +86,7 @@ clean) → real-server evidence honest → commit per task, push per phase. Veri
 doc: `step5-tranche1-verification-2026-07-11.md` with per-phase records. Anything
 unachievable → EXECUTION-BLOCKER-REPORT and stop that area. Final summary must state
 honestly what was and was not done.
+
+---
+## 修正案(2026-07-11,监督者):教程字段两轨划界
+教程镜像字段(app/game.state/canvasShell 三宿主)的收敛与删除归教程北极星路线图(tutorial-engine-northstar-roadmap-2026-07-11.md)S3/S9c;step5 各 Phase 执行中遇 tutorial 字段违规**只登记不修**,防两轨双做。check-ui-runtime-field-ownership.js 与 UiRuntimeFieldOwnershipManifest.json 为两轨共享工件,改动 commit message 须标注轨道归属。
