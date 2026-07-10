@@ -8,6 +8,7 @@ const TerritoryService = require('../services/TerritoryService');
 const WorldMapService = require('../services/WorldMapService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
+const TaskRewardGrantLedger = require('../services/taskCenter/TaskRewardGrantLedger');
 const {
   publishCurrentConfigRuntime,
   resetConfigRuntime,
@@ -775,7 +776,10 @@ test('game routes walk the barracks, first-army, and scout-officer chain into fo
   assert.equal(savedStates.at(-1).famousPeople[0].quality, 'great');
   // Random combat archetype (military role) — never a civil officer, so the player can deploy it.
   assert.ok(savedStates.at(-1).famousPeople[0].roles.includes('military'));
-  const personId = savedStates.at(-1).tutorial.grants.scoutFamousPerson.personId;
+  const personId = TaskRewardGrantLedger.getFamousPersonGrant(
+    savedStates.at(-1),
+    TaskRewardGrantLedger.SCOUT_FAMOUS_GRANT_KEY,
+  ).personId;
   assert.equal(savedStates.at(-1).famousPeople[0].id, personId);
   // The first-army reserve is still floored while the formation guide runs.
   assert.equal(savedStates.at(-1).cities.capital.military.soldiers, 1000);

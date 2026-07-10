@@ -15,6 +15,7 @@ const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateMigrationPipeline = require('./GameStateMigrationPipeline');
 const WorldCombatEncounterService = require('./worldCombat/WorldCombatEncounterService');
+const TaskRewardGrantLedger = require('./taskCenter/TaskRewardGrantLedger');
 
 function sanitizeWorldMapVisionHistory(gameState = {}) {
   const worldMap = gameState.worldMap;
@@ -70,6 +71,7 @@ function createInitialGameState(playerId, options = {}) {
     talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
     famousPeople: [],
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
+    taskRewardGrants: TaskRewardGrantLedger.createInitialTaskRewardGrants(),
     taskProgress: { claimed: {} },
     scoutedCoordinates: [],
     scoutState: { emptyStreak: 0, areas: [] },
@@ -141,6 +143,7 @@ function normalizeStateStructure(rawState) {
   state.famousPeople = FamousPersonService.normalizeFamousPeople(state.famousPeople);
   state.famousPersonState = FamousPersonService.normalizeFamousPersonState(state.famousPersonState);
   FamousPersonService.ensureFamousPersonState(state);
+  state.taskRewardGrants = TaskRewardGrantLedger.normalizeTaskRewardGrants(state.taskRewardGrants);
   state.taskProgress = state.taskProgress && typeof state.taskProgress === 'object' ? state.taskProgress : { claimed: {} };
   state.taskProgress.claimed = state.taskProgress.claimed && typeof state.taskProgress.claimed === 'object'
     ? state.taskProgress.claimed

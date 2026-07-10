@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const CityService = require('../services/CityService');
 const TaskCenterService = require('../services/TaskCenterService');
 const TutorialService = require('../services/TutorialService');
+const TaskRewardGrantLedger = require('../services/taskCenter/TaskRewardGrantLedger');
 const {
   publishCurrentConfigRuntime,
   resetConfigRuntime,
@@ -141,7 +142,12 @@ test('claiming the scout-officer task grants the tutorial scout famous person on
   assert.equal(gameState.famousPeople.length, 1);
   assert.ok(gameState.famousPeople[0].roles.includes('military')); // random combat archetype (deployable)
   assert.equal(gameState.famousPeople[0].quality, 'great');
-  assert.equal(gameState.tutorial.grants.scoutFamousPerson.personId, gameState.famousPeople[0].id);
+  const grant = TaskRewardGrantLedger.getFamousPersonGrant(
+    gameState,
+    TaskRewardGrantLedger.SCOUT_FAMOUS_GRANT_KEY,
+  );
+  assert.equal(grant.personId, gameState.famousPeople[0].id);
+  assert.equal(gameState.tutorial.grants.scoutFamousPerson, undefined);
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
 
   // Double-claim attempts are rejected before the grant core runs.

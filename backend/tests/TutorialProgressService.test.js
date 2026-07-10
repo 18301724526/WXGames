@@ -2,11 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialService = require('../services/TutorialService');
-const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
 const EventService = require('../services/EventService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
 const GameStateService = require('../services/GameStateService');
+const TaskRewardClaimer = require('../services/taskCenter/TaskRewardClaimer');
+const TaskRewardGrantLedger = require('../services/taskCenter/TaskRewardGrantLedger');
 
 test('initial tutorial state starts active instead of completed', () => {
   const tutorial = TutorialService.createInitialTutorialState();
@@ -344,7 +345,7 @@ test('settlement forest event grants enough starter resources for lumbermill gui
   assert.equal(TutorialService.validateAction(eventClaimed, 'build', { target: 'lumbermill' }, gameState).allowed, true);
 });
 
-test('scout famous person grant core creates one purple scout with grant bookkeeping', () => {
+test('scout famous person task reward creates one purple scout with task grant bookkeeping', () => {
   const tutorial = TutorialService.manualAdvance(
     TutorialService.createInitialTutorialState(),
     TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
@@ -355,22 +356,32 @@ test('scout famous person grant core creates one purple scout with grant bookkee
     famousPeople: [],
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
     tutorial,
+    activeCityId: 'capital',
+    cities: { capital: { id: 'capital', resources: {}, buildings: {}, military: {} } },
   };
 
-  const grant = TutorialGrantService.grantScoutFamousPerson(gameState);
-  assert.equal(Boolean(grant?.person), true);
+  const reward = TaskRewardClaimer.applyTaskReward(gameState, { famousPerson: 'scout' });
+  assert.equal(reward.success, true);
   assert.equal(gameState.famousPeople.length, 1);
   assert.equal(gameState.famousPeople[0].quality, 'great');
   assert.ok(gameState.famousPeople[0].roles.includes('military')); // random combat archetype (deployable)
-  assert.equal(gameState.tutorial.grants.scoutFamousPerson.personId, gameState.famousPeople[0].id);
+  const grant = TaskRewardGrantLedger.getFamousPersonGrant(
+    gameState,
+    TaskRewardGrantLedger.SCOUT_FAMOUS_GRANT_KEY,
+  );
+  assert.equal(grant.personId, gameState.famousPeople[0].id);
+  assert.equal(gameState.tutorial.grants.scoutFamousPerson, undefined);
   // The step advance is claim-driven (TASK_CLAIM_STEPS), not part of the grant core.
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
 
-  // Idempotent: a second grant returns the existing person without duplicating.
-  const again = TutorialGrantService.grantScoutFamousPerson(gameState);
-  assert.equal(again.person.id, grant.person.id);
-  assert.equal(again.created, false);
+  // Idempotent: a second reward pass returns the existing person without duplicating.
+  const again = TaskRewardClaimer.applyTaskReward(gameState, { famousPerson: 'scout' });
+  assert.equal(again.success, true);
   assert.equal(gameState.famousPeople.length, 1);
+  assert.equal(
+    TaskRewardGrantLedger.getFamousPersonGrant(gameState, TaskRewardGrantLedger.SCOUT_FAMOUS_GRANT_KEY).personId,
+    grant.personId,
+  );
 });
 
 test('tutorial advances after saving a formation with the granted scout', () => {
@@ -390,8 +401,12 @@ test('tutorial advances after saving a formation with the granted scout', () => 
       TutorialService.TUTORIAL_STEPS.formationPanelOpened,
     ),
   };
-  TutorialGrantService.grantScoutFamousPerson(gameState);
-  const personId = gameState.tutorial.grants.scoutFamousPerson.personId;
+  const reward = TaskRewardClaimer.applyTaskReward(gameState, { famousPerson: 'scout' });
+  assert.equal(reward.success, true);
+  const personId = TaskRewardGrantLedger.getFamousPersonGrant(
+    gameState,
+    TaskRewardGrantLedger.SCOUT_FAMOUS_GRANT_KEY,
+  ).personId;
 
   const saved = MilitaryService.setArmyFormation(gameState, {
     cityId: 'capital',
@@ -410,13 +425,15 @@ test('tutorial blocks scout formation save without the granted scout', () => {
       TutorialService.createInitialTutorialState(),
       TutorialService.TUTORIAL_STEPS.formationPanelOpened,
     ),
-    grants: {
-      scoutFamousPerson: { personId: 'fp-required-scout' },
-    },
   };
   const gameState = {
     currentEra: 3,
     tutorial,
+    taskRewardGrants: {
+      famousPersons: {
+        scoutFamousPerson: { personId: 'fp-required-scout', grantedAt: '2026-07-11T00:00:00.000Z' },
+      },
+    },
   };
 
   assert.equal(
@@ -436,13 +453,15 @@ test('tutorial blocks guided world march until the granted scout formation is sa
       TutorialService.createInitialTutorialState(),
       TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
     ),
-    grants: {
-      scoutFamousPerson: { personId: scoutPersonId },
-    },
   };
   const gameState = {
     activeCityId: 'capital',
     tutorial,
+    taskRewardGrants: {
+      famousPersons: {
+        scoutFamousPerson: { personId: scoutPersonId, grantedAt: '2026-07-11T00:00:00.000Z' },
+      },
+    },
     military: {
       formations: [{ slot: 1, memberIds: [] }],
     },

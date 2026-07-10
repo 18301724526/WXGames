@@ -1,10 +1,10 @@
-const FamousPersonService = require('../FamousPersonService');
 const WorldMapService = require('../WorldMapService');
+const TaskRewardGrantLedger = require('../taskCenter/TaskRewardGrantLedger');
 const { normalizeTutorialState, nowIso } = require('./TutorialState');
 const {
   SCOUT_FAMOUS_GRANT_KEY,
   FIRST_ARMY_GRANT_KEY,
-} = require('./TutorialSelectors');
+} = TaskRewardGrantLedger;
 
 // Grant cores for claimable tutorial task rewards (TaskRewardClaimer). The old
 // idempotent ensure-* hooks (normalize-time grants) are retired: every grant is
@@ -52,30 +52,15 @@ function grantTutorialFirstCity(gameState) {
   return nextTutorial;
 }
 
-// Grants the tutorial scout famous person and records the tutorial grant
-// bookkeeping. Idempotent: an existing tutorial scout person is returned
-// without creating a duplicate, and the grant record is only written once.
+// Compatibility shell only. The task reward pipeline owns the actual famous
+// person payout and the taskRewardGrants ledger.
 function grantScoutFamousPerson(gameState) {
   if (!gameState || typeof gameState !== 'object') return null;
-  const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState);
-  if (!grant?.person) return null;
-  const tutorial = normalizeTutorialState(gameState.tutorial);
-  if (!tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]) {
-    gameState.tutorial = {
-      ...tutorial,
-      grants: {
-        ...(tutorial.grants || {}),
-        [SCOUT_FAMOUS_GRANT_KEY]: {
-          personId: grant.person.id,
-          grantedAt: grant.grantedAt,
-        },
-      },
-      updatedAt: nowIso(),
-    };
-  }
-  // Pin the guide to the companion city that was created with the player's spawn.
-  grantTutorialFirstCity(gameState);
-  return grant;
+  const grant = TaskRewardGrantLedger.getFamousPersonGrant(gameState, SCOUT_FAMOUS_GRANT_KEY);
+  if (!grant?.personId) return null;
+  const person = (Array.isArray(gameState.famousPeople) ? gameState.famousPeople : [])
+    .find((item) => String(item?.id || '') === grant.personId);
+  return person ? { person: { ...person }, grantedAt: grant.grantedAt, created: false } : null;
 }
 
 // Records the first-army grant BEFORE the soldier write so the reserve floor in

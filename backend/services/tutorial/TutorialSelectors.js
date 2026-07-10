@@ -1,9 +1,12 @@
 const { TUTORIAL_STEPS, stepBefore } = require('../../../shared/tutorialFlowConfig');
 const { normalizeTutorialState } = require('./TutorialState');
+const TaskRewardGrantLedger = require('../taskCenter/TaskRewardGrantLedger');
 const buildingConfig = require('../../../shared/buildingConfig.json');
 
-const SCOUT_FAMOUS_GRANT_KEY = 'scoutFamousPerson';
-const FIRST_ARMY_GRANT_KEY = 'firstArmy';
+const {
+  SCOUT_FAMOUS_GRANT_KEY,
+  FIRST_ARMY_GRANT_KEY,
+} = TaskRewardGrantLedger;
 const LUMBERMILL_BUILD_COST = buildingConfig?.buildings?.lumbermill?.buildCost || {
   food: 50,
   wood: 15,
@@ -43,10 +46,8 @@ function canAffordLumbermill(gameState) {
 }
 
 function getTutorialScoutPersonId(gameState = {}) {
-  const tutorial = normalizeTutorialState(gameState.tutorial);
-  return tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]?.personId
-    ? String(tutorial.grants[SCOUT_FAMOUS_GRANT_KEY].personId)
-    : '';
+  const grant = TaskRewardGrantLedger.getFamousPersonGrant(gameState, SCOUT_FAMOUS_GRANT_KEY);
+  return grant?.personId ? String(grant.personId) : '';
 }
 
 function getFormationSnapshot(gameState = {}, payload = {}) {

@@ -8,9 +8,9 @@ const {
 } = require('../../../shared/tutorialFlowConfig');
 const { normalizeTutorialState } = require('./TutorialState');
 const {
-  SCOUT_FAMOUS_GRANT_KEY,
   hasBuiltHouse,
   canAffordLumbermill,
+  getTutorialScoutPersonId,
   hasTutorialScoutFormation,
   getTutorialFirstEmptyCityId,
   getTerritoryById,
@@ -124,8 +124,7 @@ function validateScoutFormationAction(step, action, payload, gameState) {
     if (stepBefore(step, TUTORIAL_STEPS.formationPanelOpened)) {
       return blocked('请先按照引导打开编队并配置先驱名人。');
     }
-    const tutorial = normalizeTutorialState(gameState.tutorial);
-    const scoutPersonId = tutorial.grants?.[SCOUT_FAMOUS_GRANT_KEY]?.personId;
+    const scoutPersonId = getTutorialScoutPersonId(gameState);
     const memberIds = Array.isArray(payload?.memberIds) ? payload.memberIds.map(String) : [];
     if (!scoutPersonId || !memberIds.includes(String(scoutPersonId))) {
       return blocked('请把教程赠送的先驱名人加入编队。');
