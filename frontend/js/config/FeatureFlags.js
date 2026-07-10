@@ -27,7 +27,9 @@
     return Object.fromEntries(
       Object.entries(raw).map(([key, value]) => [
         key,
-        FeatureFlagCore.parseFeatureFlagValue(value, DEFAULTS[key] ?? false),
+        Object.prototype.hasOwnProperty.call(DEFAULTS, key)
+          ? FeatureFlagCore.parseFeatureFlagValue(value, DEFAULTS[key])
+          : value,
       ]),
     );
   }

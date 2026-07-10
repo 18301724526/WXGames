@@ -30,3 +30,13 @@ test('FeatureFlags supports runtime overrides without mutating config', () => {
   assert.equal(resolved.DEBUG_OVERLAYS_ENABLED, false);
   assert.equal(config.FEATURES.FOG_OF_WAR_ENABLED, false);
 });
+
+test('FeatureFlags preserves unknown flags for compatibility', () => {
+  const resolved = FeatureFlags.resolve(
+    { FEATURES: { CUSTOM_FLAG: 'raw-value' } },
+    { EXPERIMENTAL_FLAG: 1 },
+  );
+
+  assert.equal(resolved.CUSTOM_FLAG, 'raw-value');
+  assert.equal(resolved.EXPERIMENTAL_FLAG, 1);
+});

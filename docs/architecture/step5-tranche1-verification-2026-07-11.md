@@ -632,3 +632,73 @@ git diff --check
 结果:exit 0。
 
 未做/未达标:未重构既有 tutorial runtime 兼容访问；已通过 `TutorialRuntimeStore.approvedCompatibilityFiles` 登记为过渡期兼容面，后续 S3/S9c 按路线图收敛或删除。
+
+## 17. B4 还原被迁就测试 + 全量验证
+
+更正范围:
+
+- `backend/tests/GameStateServiceSplit.test.js` 还原为默认教程开启语义，不再改名、注入 `tutorialEnabled: 1` 或绕到 `getClientGameStateFromNormalized`。
+- `backend/tests/CommandRouteMigration.test.js` 删除被迁就的 `currentEra = 1`。
+- `backend/tests/GameRoutesTutorial.test.js` 与 `scripts/command-owner-step1/inventories.js` 的未提交 WIP 已还原，未进入 B4 提交。
+- `FeatureFlags.resolve` 未知键契约选择恢复透传兼容；仅已知 `DEFAULTS` 键走共享布尔解析。
+- `scripts/rewrite-frontend-asset-version.test.js` 的 fixture 补齐 `shared/featureFlags.js`，使架构 smoke 的 manifest guard 覆盖新必需共享脚本。
+
+自验命令:
+
+```text
+git diff 92a81298 -- backend/tests/CommandRouteMigration.test.js backend/tests/GameStateServiceSplit.test.js
+```
+
+结果:无输出，两个点名测试文件相对 `92a81298` diff 归零。
+
+```text
+git diff -- backend/tests/CommandRouteMigration.test.js backend/tests/GameRoutesTutorial.test.js backend/tests/GameStateServiceSplit.test.js scripts/command-owner-step1/inventories.js
+```
+
+结果:无输出。
+
+```text
+node --check frontend/js/config/FeatureFlags.js
+```
+
+结果:exit 0。
+
+```text
+node --test frontend/js/config/FeatureFlags.test.js
+```
+
+结果:4 tests, 4 pass。
+
+```text
+node --test backend/tests/GameStateServiceSplit.test.js backend/tests/CommandRouteMigration.test.js backend/tests/GameRoutesTutorial.test.js
+```
+
+结果:35 tests, 35 pass。
+
+```text
+node --test scripts/rewrite-frontend-asset-version.test.js
+```
+
+结果:5 tests, 5 pass。
+
+```text
+git diff --check
+```
+
+结果:exit 0。
+
+全量验证:
+
+```text
+npm test
+```
+
+结果:297 all test files, 2387 tests, 2387 pass, exit 0。
+
+```text
+node scripts/run-architecture-smoke.js
+```
+
+结果:exit 0，`[architecture-smoke] passed`。
+
+未做/未达标:无。
