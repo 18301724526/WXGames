@@ -19,6 +19,7 @@ const DEFAULT_WRITE_HELPER_NAMES = Object.freeze([
   'veteranCampWithdraw',
   'veteranCampUpgrade',
   'advanceEra',
+  'resetPlayer',
   'claimTaskReward',
   'claimEvent',
   'resolveCapture',
@@ -38,7 +39,7 @@ const DEFAULT_WRITE_HELPER_NAMES = Object.freeze([
   'uploadClientOperationLog',
 ]);
 
-const WRITE_SIGNAL_PATTERN = /\b(?:repository\.(?:save|resetPlayerState)|withPlayerStateLock|authService\.(?:loginPlayer|resetPlayer)|opsControlService\.(?:setMaintenanceState|appendAudit|restartService)|configReleaseService\.(?:publishRelease|rollbackRelease)|observabilityService\.recordClientEvent|logService\.logClientOperationSnapshot|buildBuildingCommandHandler\.execute|TaskCenterService\.claimTask|executeGameActionRequest|recordWorldMarchClientReport|WorldCombatSessionService\.(?:openSession|resolveSession)|fs\.(?:writeFileSync|appendFileSync)|(?:writeFileSync|appendFileSync)\s*\()/;
+const WRITE_SIGNAL_PATTERN = /\b(?:repository\.(?:save|resetPlayerState)|withPlayerStateLock|authService\.loginPlayer|opsControlService\.(?:setMaintenanceState|appendAudit|restartService)|configReleaseService\.(?:publishRelease|rollbackRelease)|observabilityService\.recordClientEvent|logService\.logClientOperationSnapshot|commandExecutionPipeline\.execute|TaskCenterService\.claimTask|executeDeferredGameActionRequest|WorldCombatSessionService\.(?:openSession|resolveSession)|fs\.(?:writeFileSync|appendFileSync)|(?:writeFileSync|appendFileSync)\s*\()/;
 
 const ROUTE_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const DIRECT_SUBMIT_IGNORE = /(?:^|\/)(?:api\/GameAPI\.js|.*\.test\.js)$/;
@@ -281,7 +282,9 @@ function scanGameActions(repoRoot) {
       const action = match[1];
       actions.push({
         action,
-        routeEntry: 'server:game-action-registry',
+        routeEntry: action === 'build'
+          ? 'server:game-action-build-handler'
+          : 'server:game-action-registry',
         sourceKind: 'registry-action',
         file: relativeFile,
         line: lineNumberAt(text, match.index),
@@ -411,7 +414,10 @@ function scanFrontendDirectSubmits(repoRoot, options = {}) {
   const helperPattern = helperNames.map((helper) => helper.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   if (!helperPattern) return [];
   const results = [];
-  for (const filePath of collectJsFiles(frontendRoot)) {
+  const sourceFiles = collectJsFiles(frontendRoot);
+  const authPath = path.join(repoRoot, 'frontend', 'auth.js');
+  if (fileExists(authPath)) sourceFiles.push(authPath);
+  for (const filePath of sourceFiles) {
     const relativeFile = toPosixRelative(repoRoot, filePath);
     if (DIRECT_SUBMIT_IGNORE.test(relativeFile)) continue;
     const text = readText(filePath);

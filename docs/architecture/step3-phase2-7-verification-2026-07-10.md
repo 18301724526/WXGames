@@ -466,10 +466,105 @@ Captured same-run facts:
   `c6f92374db9189e5d48792365c48ad1d7669a36e`, and
   `59ea0f56a18194a25dcc09a7e3df5160cb7eb52d`.
 - `resource-node` remains absent and untouched.
+- Phase 4 commit `44edd39ee10bab6953711e009c462dee4c98e23c` was pushed to both
+  `origin/main` and `private/main`. The private deployment finished with
+  `succeeded / complete / exitCode=0`; its health endpoint returned HTTP 200 with
+  `deployedCommit=44edd39e`.
 
 ## Phase 5
 
-Status: not started.
+Status: **COMPLETE.** Contracts: `COP-ENTRY-001`, `COP-ENVELOPE-001`,
+`COP-IDEMP-001`, `COP-LOCK-001`, `COP-OWNER-001`, `COP-ROUTE-001`,
+`COP-HANDLER-001`, `COP-TRACE-001`.
+
+### 路由与处理器迁移
+
+- `build`、除四个共享 owner 延期动作外的全部 registry actions、
+  `/api/game/tasks/claim`、POST `/api/game/heartbeat`、`/api/buildings/build` 和
+  `/api/player/reset` 已进入同一条 `CommandExecutionPipeline`。
+- 明确延期到 Phase 6 的动作仅有 `startConquest`、`claimConquest`、
+  `startWorldCombat`、`resolveWorldCombat`。`login` 继续按清单归类为认证写入，未伪装成
+  已迁移玩法命令。
+- `GameAPI.heartbeat` 在无报告时使用只读 GET；有行军报告时通过
+  `ClientCommandSender` 发送 POST。GET 不创建幂等记录，也不保存玩家状态。
+- 新增 `GameAPI.resetPlayer`；`frontend/auth.js` 不再直接 POST；退役
+  `CanvasGameApp.apiPost` 和 `AuthService.resetPlayer`。
+- `BuildBuildingCommandHandler` 只保留领域校验与变更，不再持有锁、保存、投影或自有 trace。
+- `CommandCommitter` 统一拥有 `save`、`save-if-changed`、`reset-player-state`、`none`
+  四种保存策略；revision 冲突的一次重试由管线统一执行。
+- 首次提交响应会从 SQLite 幂等记录中回读规范化结果，保证含可省略字段的复杂响应与回放
+  响应逐字一致。
+
+### 阻断守卫与 FIRE 探针
+
+新增 `scripts/check-command-route-migration.js` 并接入架构烟测。它阻断迁移路由缺少严格信封、
+owner 或幂等要求，阻断路由继续持有编排，阻断 handler 自持锁/保存，阻断已迁移动作退回
+Phase 6 延期分支，并核对 Step1 清单状态。
+
+本相独立临时探针把真实源码中 heartbeat POST 的：
+
+```text
+mode: 'blocking'
+```
+
+改为：
+
+```text
+mode: 'report-only'
+```
+
+守卫按预期退出 1，并精确报告：
+
+```text
+heartbeat POST route is missing mode: 'blocking'
+```
+
+反向补丁已立即恢复该行；生产守卫随后报告 25 个 Phase 5 已迁移动作、4 个 Phase 6 延期
+动作、0 violation、`passed`。
+
+### 真实本地服务器验证
+
+可复现命令：
+
+```powershell
+node scripts/verify-step3-phase5-real-server.js --output docs/architecture/evidence/step3-phase5-real-server-2026-07-10.json --quiet
+```
+
+脚本同轮启动真实 `backend/server.js`，使用临时真实 SQLite 和匹配的配置发布，通过真实登录
+取得 token，并让所有玩法写入经过实际
+`GameAPI -> ClientCommandSender -> H5GameApiTransportAdapter -> global fetch`。fetch 包装器只对
+真实请求和 `Response.clone()` 做原样记录，不替换服务、路由、处理器或响应。
+
+同轮捕获事实：
+
+- PID `136584`，端口 `61042`；前后 `/api/health` 都返回 HTTP 200，配置运行时为
+  `matched`，进程最终以 `SIGTERM` 结束，stderr 为空。
+- build 同键发出两次真实 HTTP 请求：房屋等级 `0 -> 1 -> 1`，revision
+  `3 -> 4 -> 4`；两次原始响应 body 逐字一致，幂等行在回放后不变。
+- heartbeat GET 前后 revision 为 `4 -> 4`，`updatedAt` 不变。
+- heartbeat POST 报告同键发出两次真实 HTTP 请求：revision `4 -> 5 -> 5`，真实保存
+  `phase5-real-march-1`；两次原始响应 body 逐字一致，幂等行在回放后不变。
+- reset 同键发出两次真实 HTTP 请求：revision `5 -> 1 -> 1`，房屋等级恢复为 0；两次
+  原始响应 body 逐字一致，玩家状态与幂等行在回放后均不变。
+- 原始 health、登录元数据、请求 headers/body、响应 headers/body、revision 快照、幂等行、
+  PID、端口、数据库路径、stdout/stderr 和终止状态全部保存在
+  `docs/architecture/evidence/step3-phase5-real-server-2026-07-10.json`。
+
+### Phase 5 Gate
+
+- 焦点路由、管线、投影、API、认证和守卫测试：69/69 通过。
+- `npm test`：294 个测试文件，2346/2346 通过。
+- `npm run lint`：通过。
+- `node scripts/run-architecture-smoke.js`：退出 0，包含新 Phase 5 路由迁移阻断门禁。
+- `node scripts/report-command-owner-step1.js --summary`：17 个服务端写入口、33 个前端写
+  helper、60 条前端命令路径，inventory drift findings 0。
+- `node scripts/check-source-encoding.js`：violations 0。
+- 34 个变更/新增文件均为 LF；`git diff --check` 通过。
+- 冻结工作树与 `HEAD` blob 均保持：
+  `c45d1ab4eb245337b22b1555a027a147ae8b5a80`、
+  `c6f92374db9189e5d48792365c48ad1d7669a36e`、
+  `59ea0f56a18194a25dcc09a7e3df5160cb7eb52d`。
+- `resource-node` 仍不存在且未触碰。
 
 ## Phase 6
 

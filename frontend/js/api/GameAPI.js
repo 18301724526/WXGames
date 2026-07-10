@@ -660,6 +660,13 @@
       }
     }
     getTasks() { return this.request('GET', '/game/tasks'); }
+    resetPlayer(commandOptions = {}) {
+      return this.submitCommand('playerReset', {}, {
+        ...commandOptions,
+        path: '/player/reset',
+        requestBody: {},
+      });
+    }
     getVersion() { return this.request('GET', '/version'); }
     async getDeployStatus() {
       if (!this.deployStatusPath) return null;

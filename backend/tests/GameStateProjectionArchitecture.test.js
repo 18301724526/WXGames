@@ -1,8 +1,8 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
-const registerGameRoutes = require('../routes/gameRoutes');
-const registerPlayerRoutes = require('../routes/playerRoutes');
+const registerGameRoutesImpl = require('../routes/gameRoutes');
+const registerPlayerRoutesImpl = require('../routes/playerRoutes');
 const GameStateService = require('../services/GameStateService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const TerritoryService = require('../services/TerritoryService');
@@ -13,12 +13,19 @@ const {
   publishCurrentConfigRuntime,
   resetConfigRuntime,
 } = require('./helpers/configRuntimeTestHarness');
+const {
+  attachClientCommand,
+  createCommandPipelineTestDependencies,
+} = require('./helpers/commandPipelineTestHarness');
+
+const pipelineHarnesses = [];
 
 before(() => {
   publishCurrentConfigRuntime();
 });
 
 after(() => {
+  pipelineHarnesses.splice(0).forEach((harness) => harness.close());
   resetConfigRuntime();
 });
 
@@ -33,7 +40,13 @@ function createAppHarness() {
       routes.push({ method: 'GET', path, handlers });
     },
     post(path, ...handlers) {
-      routes.push({ method: 'POST', path, handlers });
+      const route = { method: 'POST', path, handlers };
+      const firstHandler = handlers[0];
+      route.handlers[0] = (req, res, next) => {
+        attachClientCommand(route, req);
+        return firstHandler(req, res, next);
+      };
+      routes.push(route);
     },
   };
   return { app, routes };
@@ -52,6 +65,23 @@ function createResponse() {
       return this;
     },
   };
+}
+
+function pipelineDeps(deps) {
+  const pipeline = createCommandPipelineTestDependencies(
+    deps.repository,
+    deps.gameStateService,
+  );
+  pipelineHarnesses.push(pipeline);
+  return { ...deps, ...pipeline };
+}
+
+function registerGameRoutes(app, deps) {
+  return registerGameRoutesImpl(app, pipelineDeps(deps));
+}
+
+function registerPlayerRoutes(app, deps) {
+  return registerPlayerRoutesImpl(app, pipelineDeps(deps));
 }
 
 function invokeRoute(route, req, res = createResponse()) {
@@ -592,14 +622,7 @@ test('reset route returns the newly created state without reloading or re-normal
   const { app, routes } = createAppHarness();
   const resetState = createNormalizedRouteState('projection-reset-test');
   const calls = [];
-  const authService = {
-    resetPlayer(playerId, getDefaultGameState, saveGameState) {
-      calls.push(`reset:${playerId}`);
-      const gameState = getDefaultGameState(playerId);
-      saveGameState(gameState);
-      return { success: true, message: 'reset', gameState };
-    },
-  };
+  const authService = {};
   const repository = {
     findByPlayerId() {
       throw new Error('reset response must not re-read after committing the destructive write');
@@ -651,7 +674,6 @@ test('reset route returns the newly created state without reloading or re-normal
   assert.equal(res.payload.success, true);
   assert.equal(res.payload.gameState.playerId, 'projection-reset-test');
   assert.deepEqual(calls, [
-    'reset:projection-reset-test',
     'createInitialGameState:projection-reset-test',
     'save:projection-reset-test',
     'projection:projection-reset-test',
@@ -666,14 +688,7 @@ test('reset route uses spawn lifecycle service when creating the new state', () 
   resetState.territories = [{ id: 'capital', x: 18, y: -4, type: 'capital', owner: 'player', status: 'occupied' }];
   resetState.worldMap = { ...resetState.worldMap, origin: { q: 18, r: -4 } };
   const calls = [];
-  const authService = {
-    resetPlayer(playerId, getDefaultGameState, _saveGameState, resetGameState) {
-      calls.push(`reset:${playerId}`);
-      const gameState = getDefaultGameState(playerId);
-      resetGameState(playerId, gameState);
-      return { success: true, message: 'reset', gameState };
-    },
-  };
+  const authService = {};
   const repository = {
     resetPlayerState(playerId, gameState) {
       calls.push(`resetPlayerState:${playerId}:${gameState.worldMap.origin.q},${gameState.worldMap.origin.r}`);
@@ -726,7 +741,6 @@ test('reset route uses spawn lifecycle service when creating the new state', () 
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.payload.gameState.origin, { q: 18, r: -4 });
   assert.deepEqual(calls, [
-    'reset:projection-reset-spawn-test',
     'spawnReset:projection-reset-spawn-test',
     'resetPlayerState:projection-reset-spawn-test:18,-4',
     'projection:projection-reset-spawn-test',

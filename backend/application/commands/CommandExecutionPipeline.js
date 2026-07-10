@@ -37,6 +37,25 @@ function errorResponse(error, fallbackCode = 'COMMAND_PIPELINE_FAILED', fallback
   };
 }
 
+function logCommandFailure(error, trace, options = {}) {
+  try {
+    console.error('[CommandExecutionPipeline] failed', {
+      command: trace.toPayload({
+        phase: options.phase || trace.phase,
+        committed: options.committed ?? trace.committed,
+      }),
+      error: {
+        name: error?.name || 'Error',
+        code: error?.code || '',
+        message: error?.message || '',
+        stack: error?.stack || '',
+      },
+    });
+  } catch (_) {
+    return undefined;
+  }
+}
+
 class CommandExecutionPipeline {
   constructor(options = {}) {
     if (!options.repository?.withOwnerLocks) {
@@ -69,6 +88,11 @@ class CommandExecutionPipeline {
         command: commandTrace,
         commandId: commandTrace.commandId,
         requestId: commandTrace.requestId,
+        phase: commandTrace.phase,
+        committed: commandTrace.committed,
+        revisionBefore: commandTrace.revisionBefore,
+        revisionAfter: commandTrace.revisionAfter,
+        resyncRequired: payload.resyncRequired === true,
       },
     };
   }
@@ -79,8 +103,15 @@ class CommandExecutionPipeline {
     trace.setResponseStatus(response.statusCode);
     trace.mark('responding');
     const tracedResponse = this._attachTrace(response, trace);
-    this.committer.recordResult(idempotencyRecord, tracedResponse, { status: terminalStatus });
-    return tracedResponse;
+    const stored = this.committer.recordResult(
+      idempotencyRecord,
+      tracedResponse,
+      { status: terminalStatus },
+    );
+    return {
+      statusCode: stored.statusCode,
+      payload: stored.responsePayload,
+    };
   }
 
   _normalizeInput(input, options = {}) {
@@ -252,6 +283,7 @@ class CommandExecutionPipeline {
               ));
               return this._recordTerminal(idempotencyRecord, normalizeResponse(builtResponse), trace);
             } catch (error) {
+              logCommandFailure(error, trace, { phase: 'projecting', committed: true });
               trace.mark('projection_failed', { code: error?.code || '' });
               trace.setExecutionDurationMs(Math.max(
                 0,
@@ -296,7 +328,16 @@ class CommandExecutionPipeline {
       }
       if (error?.code === 'OWNER_LOCK_TIMEOUT') {
         if (idempotencyRecord) this.committer.abandon(idempotencyRecord);
-        const response = errorResponse(error, 'OWNER_LOCK_TIMEOUT', 409);
+        const playerOwned = String(error.ownerKey || '').startsWith('player:');
+        const response = errorResponse(
+          error,
+          playerOwned ? 'PLAYER_STATE_BUSY' : 'OWNER_BUSY',
+          409,
+        );
+        response.payload.error = playerOwned ? 'PLAYER_STATE_BUSY' : 'OWNER_BUSY';
+        response.payload.message = playerOwned
+          ? '上一条操作仍在处理，请稍后重试'
+          : '目标正在处理其他操作，请稍后重试';
         response.payload.retryable = true;
         response.payload.ownerKey = error.ownerKey || '';
         trace.setIdempotencyStatus('abandoned');
@@ -326,12 +367,25 @@ class CommandExecutionPipeline {
       }
       if (idempotencyRecord) this.committer.abandon(idempotencyRecord);
       const isRevisionConflict = error?.code === 'GAME_STATE_REVISION_CONFLICT';
+      const retryAttempt = Math.max(0, Number(options.retryAttempt) || 0);
+      const maxRevisionRetries = Math.max(0, Number(options.maxRevisionRetries ?? 1) || 0);
+      if (isRevisionConflict && retryAttempt < maxRevisionRetries) {
+        return this.execute(input, definition, {
+          ...options,
+          retryAttempt: retryAttempt + 1,
+          maxRevisionRetries,
+        });
+      }
       const response = errorResponse(
         error,
         isRevisionConflict ? 'GAME_STATE_REVISION_CONFLICT' : 'COMMAND_PIPELINE_FAILED',
         isRevisionConflict ? 409 : 500,
       );
       response.payload.retryable = isRevisionConflict;
+      if (isRevisionConflict) {
+        response.payload.expectedRevision = error.expectedRevision ?? null;
+        response.payload.actualRevision = error.actualRevision ?? null;
+      }
       trace.setIdempotencyStatus('abandoned');
       trace.setResponseStatus(response.statusCode);
       trace.mark('failed', { code: error?.code || '' });
@@ -343,5 +397,6 @@ class CommandExecutionPipeline {
 module.exports = {
   CommandExecutionPipeline,
   errorResponse,
+  logCommandFailure,
   normalizeResponse,
 };

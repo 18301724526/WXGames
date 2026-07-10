@@ -27,15 +27,15 @@ const ENTRY_FILES = Object.freeze([
 ]);
 
 const ORDER_REQUIREMENTS = Object.freeze([
-  ['server:game-action-build-handler', 'backend/routes/gameRoutes.js', "if (req.body?.action === 'build')"],
-  ['server:game-action-registry', 'backend/routes/gameRoutes.js', "if (req.body?.action === 'build')"],
-  ['server:game-action-world-combat-bypass', 'backend/routes/gameRoutes.js', "if (req.body?.action === 'build')"],
-  ['server:game-tasks-claim', 'backend/routes/gameRoutes.js', 'const runClaim = () =>'],
+  ['server:game-action-build-handler', 'backend/routes/gameRoutes.js', 'const traceEnabled = shouldTraceWorldMarch'],
+  ['server:game-action-registry', 'backend/routes/gameRoutes.js', 'const traceEnabled = shouldTraceWorldMarch'],
+  ['server:game-action-world-combat-bypass', 'backend/routes/gameRoutes.js', 'const traceEnabled = shouldTraceWorldMarch'],
+  ['server:game-tasks-claim', 'backend/routes/gameRoutes.js', 'const response = commandExecutionPipeline.execute'],
   ['server:game-heartbeat-march-settlement', 'backend/routes/gameRoutes.js', 'presenceService?.recordHeartbeat?.'],
   ['server:game-heartbeat-client-report', 'backend/routes/gameRoutes.js', 'presenceService?.recordHeartbeat?.'],
-  ['server:buildings-build-legacy-route', 'backend/routes/buildingRoutes.js', 'const response = withPlayerStateLock'],
+  ['server:buildings-build-legacy-route', 'backend/routes/buildingRoutes.js', 'const response = commandExecutionPipeline.execute'],
   ['server:player-login', 'backend/routes/playerRoutes.js', 'const { username, password }'],
-  ['server:player-reset', 'backend/routes/playerRoutes.js', 'let result;'],
+  ['server:player-reset', 'backend/routes/playerRoutes.js', 'const response = commandExecutionPipeline.execute'],
   ['admin:ops-login-audit', 'backend/routes/opsRoutes.js', 'if (!opsAuthService)'],
   ['admin:ops-maintenance-state', 'backend/routes/opsRoutes.js', 'opsControlService.setMaintenanceState'],
   ['admin:ops-restart-audit', 'backend/routes/opsRoutes.js', 'const operator = getOperator(req);'],
@@ -135,11 +135,29 @@ function inspectCoverage(options = {}) {
       || call.body.includes(`"${entry.inventoryId}"`));
     if (matching.length === 0) violations.push(`${entry.inventoryId} does not enter prepareCommandEntry`);
     if (matching.length > 1) violations.push(`${entry.inventoryId} enters prepareCommandEntry more than once`);
-    if (entry.commandEnvelopePhase !== 'report-only-normalized') {
-      violations.push(`${entry.inventoryId} lacks report-only envelope classification`);
-    }
-    if (!String(entry.ownerResolutionPhase || '').startsWith('report-only-')) {
-      violations.push(`${entry.inventoryId} lacks report-only owner classification`);
+    const envelopePhase = String(entry.commandEnvelopePhase || '');
+    const ownerPhase = String(entry.ownerResolutionPhase || '');
+    if (entry.migrationPhase === 'pipeline-migrated-phase5') {
+      if (!envelopePhase.startsWith('blocking-')) {
+        violations.push(`${entry.inventoryId} lacks blocking envelope classification`);
+      }
+      if (!ownerPhase.startsWith('blocking-')) {
+        violations.push(`${entry.inventoryId} lacks blocking owner classification`);
+      }
+    } else if (entry.inventoryId === 'server:game-action-registry') {
+      if (!envelopePhase.includes('blocking-') || !envelopePhase.includes('report-only-')) {
+        violations.push(`${entry.inventoryId} lacks mixed Phase 5/6 envelope classification`);
+      }
+      if (!ownerPhase.includes('blocking-') || !ownerPhase.includes('report-only-')) {
+        violations.push(`${entry.inventoryId} lacks mixed Phase 5/6 owner classification`);
+      }
+    } else {
+      if (!envelopePhase.startsWith('report-only-')) {
+        violations.push(`${entry.inventoryId} lacks report-only envelope classification`);
+      }
+      if (!ownerPhase.startsWith('report-only-')) {
+        violations.push(`${entry.inventoryId} lacks report-only owner classification`);
+      }
     }
   });
 

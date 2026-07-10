@@ -9,6 +9,8 @@ function registerPlayerRoutes(app, deps) {
     logService,
     spawnLifecycleService,
     commandEntryReporter,
+    commandExecutionPipeline,
+    commandDefinitionFactory,
   } = deps;
 
   function createInitialStateForPlayer(playerId) {
@@ -149,38 +151,19 @@ function registerPlayerRoutes(app, deps) {
       type: 'playerReset',
       inventoryId: 'server:player-reset',
       reporter: commandEntryReporter,
+      mode: 'blocking',
+      requireClientIds: true,
+      requireOwner: true,
     });
     if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
-    let result;
-    try {
-      result = withPlayerStateLock(
-        req.playerId,
-        () => authService.resetPlayer(
-          req.playerId,
-          createResetStateForPlayer,
-          (gameState) => repository.save(gameState),
-          (playerId, gameState) => repository.resetPlayerState(playerId, gameState),
-        ),
-        'player-reset',
-      );
-    } catch (error) {
-      if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
-      throw error;
-    }
-    const gameState = result.gameState;
-    const projection = loadProjection(req.playerId);
-    const clientState = gameStateService.getClientGameStateFromNormalized
-      ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
-      : gameStateService.getClientGameState(gameState, projection);
-    const eraProgress = gameStateService.calculateEraProgressFromNormalized
-      ? gameStateService.calculateEraProgressFromNormalized(gameState)
-      : gameStateService.calculateEraProgress(gameState);
-    return res.json({
-      ...result,
-      gameState: clientState,
-      tutorial: gameState.tutorial,
-      eraProgress,
-    });
+    const response = commandExecutionPipeline.execute(
+      commandEntry.envelope,
+      commandDefinitionFactory.createPlayerResetDefinition({
+        createResetStateForPlayer,
+      }),
+      { scope: 'player-reset', maxRevisionRetries: 0 },
+    );
+    return res.status(response.statusCode).json(response.payload);
   });
 
   app.get('/api/player/whitelist', (req, res) => {

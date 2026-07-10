@@ -28,9 +28,13 @@ test('resetGame closes the reset confirmation before showing success feedback', 
           calls.push('shellResetLocalViewToResources');
         },
       },
-      apiPost(pathname) {
-        calls.push(`apiPost:${pathname}`);
-        return Promise.resolve({ success: true, message: 'reset ok', gameState: {} });
+      getGameApi() {
+        return {
+          resetPlayer() {
+            calls.push('resetPlayer');
+            return Promise.resolve({ success: true, message: 'reset ok', gameState: {} });
+          },
+        };
       },
       applyApiState() {
         calls.push('applyApiState');

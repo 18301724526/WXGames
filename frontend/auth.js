@@ -205,7 +205,7 @@ window.mountAuthMethods = function(game, deps = {}) {
       return this.canvasShell.openResetConfirm({ source: options.source || 'resetGame' }) !== false;
     }
     try {
-      const result = await this.apiPost('/player/reset', {});
+      const result = await this.getGameApi().resetPlayer();
       if (!result.success) {
         authRuntime?.alertMessage?.(result.message || '重置失败');
         return false;

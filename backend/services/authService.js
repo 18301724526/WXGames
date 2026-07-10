@@ -224,21 +224,6 @@ class AuthService {
     return { playerId: player.playerId, username, token: player.token, gameState, offlineIncome };
   }
 
-  resetPlayer(playerId, getDefaultGameState, saveGameState, resetGameState) {
-    const gameState = getDefaultGameState(playerId);
-    if (typeof resetGameState === 'function') {
-      resetGameState(playerId, gameState);
-    } else {
-      this.db.transaction(() => {
-        this.db.prepare('DELETE FROM game_states WHERE playerId = ?').run(playerId);
-        this.db.prepare('DELETE FROM shared_world_territories WHERE ownerPlayerId = ?').run(playerId);
-        saveGameState(gameState);
-      })();
-    }
-    console.log(`[Reset] Player ${playerId} progress reset`);
-    return { success: true, message: '游戏进度已重置', gameState };
-  }
-
   getAllowedUsernames() {
     const staticAccounts = Object.keys(ACCOUNT_WHITELIST);
     if (!this.botAccountCount) return staticAccounts;

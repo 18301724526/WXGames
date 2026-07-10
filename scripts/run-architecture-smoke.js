@@ -57,6 +57,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-command-owner-entry-coverage.test.js',
   'scripts/check-command-pipeline-foundation.js',
   'scripts/check-command-pipeline-foundation.test.js',
+  'scripts/check-command-route-migration.js',
+  'scripts/check-command-route-migration.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.js',
@@ -249,6 +251,14 @@ const CHECK_FILES = Object.freeze([
   'backend/application/commands/CommandCommitter.js',
   'backend/application/commands/CommandExecutionPipeline.js',
   'backend/application/commands/CommandTrace.js',
+  'backend/application/commands/GameCommandStateSupport.js',
+  'backend/application/commands/BuildBuildingCommandHandler.js',
+  'backend/application/commands/GameActionCommandHandler.js',
+  'backend/application/commands/TaskClaimCommandHandler.js',
+  'backend/application/commands/HeartbeatCommandHandler.js',
+  'backend/application/commands/PlayerResetCommandHandler.js',
+  'backend/application/commands/GameCommandDefinitionFactory.js',
+  'backend/services/authService.js',
   'backend/repositories/OwnerLockRepository.js',
   'backend/services/realtime/AoiSyncSnapshot.js',
   'backend/services/realtime/index.js',
@@ -354,8 +364,10 @@ const CHECK_FILES = Object.freeze([
   'backend/tests/CommandOwnerResolver.test.js',
   'backend/tests/CommandIdempotencyStore.test.js',
   'backend/tests/CommandExecutionPipeline.test.js',
+  'backend/tests/CommandRouteMigration.test.js',
   'backend/tests/OwnerLockRepository.test.js',
   'backend/tests/fixtures/owner-lock-child.js',
+  'backend/tests/helpers/commandPipelineTestHarness.js',
   'backend/tests/DatabaseRuntime.test.js',
   'backend/tests/SchemaMigrationService.test.js',
   'backend/tests/PresenceService.test.js',
@@ -497,6 +509,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-client-command-sender-coverage.test.js',
   'scripts/check-command-owner-entry-coverage.test.js',
   'scripts/check-command-pipeline-foundation.test.js',
+  'scripts/check-command-route-migration.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.test.js',
   'frontend/js/services/GameStateSync.test.js',
@@ -597,6 +610,7 @@ const TEST_FILES = Object.freeze([
   'backend/tests/CommandOwnerResolver.test.js',
   'backend/tests/CommandIdempotencyStore.test.js',
   'backend/tests/CommandExecutionPipeline.test.js',
+  'backend/tests/CommandRouteMigration.test.js',
   'backend/tests/OwnerLockRepository.test.js',
   'backend/tests/PresenceService.test.js',
   'backend/tests/PerformanceCapacityBudget.test.js',
@@ -755,6 +769,9 @@ function main() {
   ]);
   run('command pipeline foundation blocking guard', process.execPath, [
     'scripts/check-command-pipeline-foundation.js',
+  ]);
+  run('command route migration blocking guard', process.execPath, [
+    'scripts/check-command-route-migration.js',
   ]);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);

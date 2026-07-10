@@ -2667,19 +2667,6 @@
                 }
               }
 
-    async apiPost(path, body) {
-                const api = this.getGameApi();
-                const startedAt = Date.now();
-                try {
-                  const data = await api.request('POST', path, body);
-                  this.cacheRequestLog?.(path, 'POST', body, 200, data, Date.now() - startedAt);
-                  return data;
-                } catch (error) {
-                  this.cacheRequestLog?.(path, 'POST', body, error.payload?.statusCode || 500, error.payload || { message: error.message }, Date.now() - startedAt);
-                  throw error;
-                }
-              }
-
     async handleBuildingSuccess(result, action, buildingId) {
                 if (this.commandService?.handleBuildingSuccess) {
                   this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';

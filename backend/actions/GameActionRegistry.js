@@ -87,10 +87,10 @@ function createGameActionRegistry(overrides = {}) {
   }
 
   register('build', ({ action, gameState, tutorial, body }) => (
-    deps.BuildBuildingAction.execute(action, gameState, tutorial, body.target)
+    deps.BuildBuildingAction.execute(action, gameState, tutorial, body.buildingId || body.target)
   ));
   register('upgrade', ({ action, gameState, tutorial, body }) => (
-    deps.BuildBuildingAction.execute(action, gameState, tutorial, body.target)
+    deps.BuildBuildingAction.execute(action, gameState, tutorial, body.buildingId || body.target)
   ));
   register('advanceEra', ({ gameState, tutorial }) => (
     deps.AdvanceEraAction.execute(gameState, tutorial)
@@ -99,7 +99,10 @@ function createGameActionRegistry(overrides = {}) {
     deps.ClaimEventAction.execute(gameState, tutorial, { eventId: body.eventId, optionId: body.optionId })
   ));
   register('assign', ({ gameState, tutorial, body }) => (
-    deps.AssignPopulationAction.execute(gameState, tutorial, { target: body.target, count: body.count })
+    deps.AssignPopulationAction.execute(gameState, tutorial, {
+      target: body.job || body.target,
+      count: body.count,
+    })
   ));
   register('tutorialAdvance', ({ tutorial, body }) => ({
     ...deps.TutorialService.advanceClientStep(tutorial, body.step),

@@ -4,16 +4,19 @@ const EventService = require('../services/EventService');
 const GameActionRegistry = require('../actions/GameActionRegistry');
 const WorldCombatSessionService = require('../services/worldCombat/WorldCombatSessionService');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
-const WorldMarchVerification = require('../services/worldExplorer/WorldMarchVerification');
-const { createBuildBuildingCommand } = require('../application/commands/CommandEnvelope');
 const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
-const { BuildBuildingCommandHandler } = require('../application/commands/BuildBuildingCommandHandler');
 const GameActionProjection = require('../application/projections/GameActionProjection');
 
 // Interactive world-combat actions are resolved directly here (not via the
 // territory/registry pipeline) so the deterministic battle session lives on the
 // persisted worldCombat column and flows back through the normal game view.
 const WORLD_COMBAT_ACTIONS = new Set(['startWorldCombat', 'resolveWorldCombat']);
+const PHASE6_DEFERRED_ACTIONS = new Set([
+  'startConquest',
+  'claimConquest',
+  'startWorldCombat',
+  'resolveWorldCombat',
+]);
 
 function executeWorldCombatAction(action, gameState, body = {}, context = {}) {
   if (action === 'startWorldCombat') {
@@ -66,18 +69,6 @@ function loadReadOnlyGameState(repository, gameStateService, playerId) {
   return gameStateService.normalizeState
     ? gameStateService.normalizeState(rawState)
     : rawState;
-}
-
-function recordWorldMarchClientReport(repository, gameStateService, playerId, reportPayload = null, now = new Date()) {
-  if (!reportPayload || typeof reportPayload !== 'object') return null;
-  const batch = WorldMarchVerification.sanitizeReportBatch(reportPayload, now);
-  if (!Object.keys(batch.missions || {}).length) return null;
-  const gameState = loadReadOnlyGameState(repository, gameStateService, playerId);
-  if (!gameState) return null;
-  gameState.worldMarchClientReports = batch;
-  gameState.updatedAt = now.toISOString();
-  repository.save?.(gameState);
-  return batch;
 }
 
 function shouldTraceWorldMarch(body = {}) {
@@ -215,20 +206,19 @@ const ACTION_PLAYER_STATE_LOCK = Object.freeze({
   pollMs: 50,
 });
 
-const HEARTBEAT_PLAYER_STATE_LOCK = Object.freeze({
-  scope: 'heartbeat',
-  waitMs: 0,
-  ttlMs: 15000,
-  timeoutResult: null,
-});
-
-function executeGameActionRequest({
+function executeDeferredGameActionRequest({
   req,
   repository,
   gameStateService,
   traceEnabled,
   retryAttempt = 0,
 }) {
+  const deferredAction = req.body?.action || '';
+  if (!PHASE6_DEFERRED_ACTIONS.has(deferredAction)) {
+    const error = new Error(`Phase 5 attempted legacy execution for ${deferredAction}`);
+    error.code = 'LEGACY_COMMAND_EXECUTION_FORBIDDEN';
+    throw error;
+  }
   const planningProjection = loadProjection(repository, req.playerId);
   const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
     planningContext: planningProjection,
@@ -393,11 +383,9 @@ function registerGameRoutes(app, deps) {
     gameStateService,
     presenceService,
     commandEntryReporter,
+    commandExecutionPipeline,
+    commandDefinitionFactory,
   } = deps;
-  const buildBuildingCommandHandler = new BuildBuildingCommandHandler({
-    repository,
-    gameStateService,
-  });
 
   app.get('/api/game/state', authMiddleware, (req, res) => {
     const traceEnabled = shouldTraceWorldMarchRequest(req);
@@ -433,68 +421,15 @@ function registerGameRoutes(app, deps) {
     });
   });
 
-  // March settlement (reveal persistence, arrival, tutorial advance) must not depend on
-  // the world worker alone: a session that only watches a march performs no action
-  // writes, and its player can drop out of the worker's active window. The heartbeat is
-  // the one write-path signal a live session is guaranteed to keep sending, so it
-  // settles due missions itself; the worker covers closed sessions.
-  const settleDueMarchesOnHeartbeat = (playerId, now) => {
-    const rawState = repository.findByPlayerId?.(playerId);
-    if (!rawState) return false;
-    const nowMs = now.getTime();
-    const hasDueMission = (Array.isArray(rawState.exploreMissions) ? rawState.exploreMissions : [])
-      .some((mission) => {
-        if (!mission || mission.status !== 'active') return false;
-        const nextStepAtMs = Date.parse(mission.nextStepAt || '');
-        return Number.isFinite(nextStepAtMs) && nextStepAtMs <= nowMs;
-      });
-    if (!hasDueMission) return false;
-    const projection = loadProjection(repository, playerId);
-    const advanced = gameStateService.advanceRuntimeState(rawState, now, {
-      planningContext: projection,
-      worldEncounterRepo: repository.worldEncounterRepo,
-      sharedWorldEncounters: projection.sharedWorldEncounters,
-    });
-    advanced.updatedAt = now.toISOString();
-    repository.save(advanced);
-    return true;
-  };
-
-  const handleHeartbeat = (req, res) => {
-    const commandEntry = prepareCommandEntry(req, {
-      type: 'heartbeat',
-      inventoryId: req.method === 'POST' && req.body?.worldMarchClientReport
-        ? 'server:game-heartbeat-client-report'
-        : 'server:game-heartbeat-march-settlement',
-      reporter: commandEntryReporter,
-    });
-    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
+  const readHeartbeat = (req, res) => {
     const now = new Date();
     presenceService?.recordHeartbeat?.(req.playerId);
-    let clientReport = null;
-    try {
-      const heartbeatWrites = withPlayerStateLock(repository, req.playerId, () => {
-        settleDueMarchesOnHeartbeat(req.playerId, now);
-        return recordWorldMarchClientReport(
-          repository,
-          gameStateService,
-          req.playerId,
-          req.body?.worldMarchClientReport,
-          now,
-        );
-      }, HEARTBEAT_PLAYER_STATE_LOCK);
-      clientReport = heartbeatWrites || null;
-    } catch (error) {
-      // A lost revision race here is harmless: the next heartbeat or worker tick retries.
-      if (error?.code !== 'GAME_STATE_REVISION_CONFLICT' && !isPlayerStateLockTimeout(error)) throw error;
-    }
     const verificationState = repository.findByPlayerId?.(req.playerId)?.worldMarchVerification || null;
     if (shouldTraceWorldMarchRequest(req)) {
-      traceWorldMarch('route:heartbeat', {
+      traceWorldMarch('route:heartbeat:read', {
         playerId: req.playerId,
         serverTime: now.toISOString(),
         returnsGameState: false,
-        clientReportMissionCount: Object.keys(clientReport?.missions || {}).length,
       });
     }
     return res.json({
@@ -504,8 +439,29 @@ function registerGameRoutes(app, deps) {
       worldMarchVerification: verificationState,
     });
   };
-  app.get('/api/game/heartbeat', authMiddleware, handleHeartbeat);
-  app.post('/api/game/heartbeat', authMiddleware, handleHeartbeat);
+  app.get('/api/game/heartbeat', authMiddleware, readHeartbeat);
+  app.post('/api/game/heartbeat', authMiddleware, (req, res) => {
+    const commandEntry = prepareCommandEntry(req, {
+      type: 'heartbeat',
+      inventoryId: req.body?.worldMarchClientReport
+        ? 'server:game-heartbeat-client-report'
+        : 'server:game-heartbeat-march-settlement',
+      reporter: commandEntryReporter,
+      mode: 'blocking',
+      requireClientIds: true,
+      requireOwner: true,
+    });
+    if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
+    presenceService?.recordHeartbeat?.(req.playerId);
+    const response = commandExecutionPipeline.execute(
+      commandEntry.envelope,
+      commandDefinitionFactory.createHeartbeatDefinition({
+        traceEnabled: shouldTraceWorldMarchRequest(req),
+      }),
+      { scope: 'heartbeat' },
+    );
+    return res.status(response.statusCode).json(response.payload);
+  });
 
   app.get('/api/game/tasks', authMiddleware, (req, res) => {
     const gameState = loadReadOnlyGameState(repository, gameStateService, req.playerId);
@@ -530,135 +486,88 @@ function registerGameRoutes(app, deps) {
       type: 'claimTaskReward',
       inventoryId: 'server:game-tasks-claim',
       reporter: commandEntryReporter,
+      mode: 'blocking',
+      requireClientIds: true,
+      requireOwner: true,
     });
     if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
-    const runClaim = () => {
-      const projection = loadProjection(repository, req.playerId);
-      const gameState = loadProgressedGameState(repository, gameStateService, req.playerId, {
-        planningContext: projection,
-      });
-      if (!gameState) {
-        return { statusCode: 404, payload: { error: 'GAME_STATE_NOT_FOUND', message: '游戏状态不存在' } };
-      }
-
-      const tutorial = syncEra2Tutorial(gameState, gameStateService);
-      EventService.maybeGenerateRegularEvent(gameState);
-      EventService.maybeGenerateThreatEvent(gameState);
-
-      const { taskId, category } = req.body || {};
-      const result = TaskCenterService.claimTask(gameState, taskId, category);
-      const nextTutorial = result.tutorial
-        ? TutorialService.normalizeTutorialState(result.tutorial)
-        : TutorialService.normalizeTutorialState(gameState.tutorial || tutorial);
-      gameState.tutorial = nextTutorial;
-      const syncedTutorial = syncEra2Tutorial(gameState, gameStateService);
-      EventService.maybeGenerateRegularEvent(gameState);
-      EventService.maybeGenerateThreatEvent(gameState);
-      repository.save(gameState);
-
-      return {
-        statusCode: result.success ? 200 : 400,
-        payload: { ...result, ...buildGameView(gameState, syncedTutorial, gameStateService, projection) },
-      };
-    };
-
-    // Mirror the /api/game/action contract: a concurrent save can raise a game-state revision
-    // conflict, which previously escaped this route as an unhandled 500. Retry once, then fall
-    // back to a clean 409 instead of crashing the request.
-    try {
-      const response = withPlayerStateLock(repository, req.playerId, runClaim, {
-        ...ACTION_PLAYER_STATE_LOCK,
-        scope: 'task-claim',
-      });
-      return res.status(response.statusCode).json(response.payload);
-    } catch (error) {
-      if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
-      if (isTaskDefinitionRuntimeError(error)) return res.status(503).json(buildTaskDefinitionRuntimePayload(error));
-      if (!isGameStateRevisionConflict(error)) throw error;
-      try {
-        const response = withPlayerStateLock(repository, req.playerId, runClaim, {
-          ...ACTION_PLAYER_STATE_LOCK,
-          scope: 'task-claim',
-        });
-        return res.status(response.statusCode).json(response.payload);
-      } catch (retryError) {
-        if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
-        if (isTaskDefinitionRuntimeError(retryError)) return res.status(503).json(buildTaskDefinitionRuntimePayload(retryError));
-        if (!isGameStateRevisionConflict(retryError)) throw retryError;
-        return res.status(409).json(buildRevisionConflictPayload(retryError));
-      }
-    }
+    const response = commandExecutionPipeline.execute(
+      commandEntry.envelope,
+      commandDefinitionFactory.createTaskClaimDefinition(),
+      { scope: 'task-claim' },
+    );
+    return res.status(response.statusCode).json(response.payload);
   });
 
   app.post('/api/game/action', authMiddleware, (req, res) => {
+    const action = req.body?.action || '';
+    const deferredToPhase6 = PHASE6_DEFERRED_ACTIONS.has(action);
     const commandEntry = prepareCommandEntry(req, {
-      type: req.body?.action,
-      inventoryId: WORLD_COMBAT_ACTIONS.has(req.body?.action)
+      type: action,
+      inventoryId: WORLD_COMBAT_ACTIONS.has(action)
         ? 'server:game-action-world-combat-bypass'
-        : (req.body?.action === 'build'
+        : (action === 'build'
           ? 'server:game-action-build-handler'
           : 'server:game-action-registry'),
       reporter: commandEntryReporter,
+      mode: deferredToPhase6 ? 'report-only' : 'blocking',
+      requireClientIds: !deferredToPhase6,
+      requireOwner: !deferredToPhase6,
     });
     if (!commandEntry.ok) return sendCommandEntryError(res, commandEntry);
-    if (req.body?.action === 'build') {
-      const command = createBuildBuildingCommand(req, { envelope: commandEntry.envelope });
-      try {
-        const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 0 });
-        return res.status(response.statusCode).json(response.payload);
-      } catch (error) {
-        if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
-        if (!isGameStateRevisionConflict(error)) throw error;
-        try {
-          const response = buildBuildingCommandHandler.execute(command, { retryAttempt: 1 });
-          return res.status(response.statusCode).json(response.payload);
-        } catch (retryError) {
-          if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
-          if (!isGameStateRevisionConflict(retryError)) throw retryError;
-          return res.status(409).json(buildRevisionConflictPayload(retryError));
-        }
-      }
-    }
 
     const traceEnabled = shouldTraceWorldMarch(req.body);
+    if (!deferredToPhase6) {
+      const response = commandExecutionPipeline.execute(
+        commandEntry.envelope,
+        commandDefinitionFactory.createGameActionDefinition(action, { traceEnabled }),
+        { scope: `game-action:${action || 'unknown'}` },
+      );
+      return res.status(response.statusCode).json(response.payload);
+    }
+
     return WorldExplorerTrace.run(traceEnabled, () => {
       try {
-        const response = withPlayerStateLock(repository, req.playerId, () => executeGameActionRequest({
-            req,
-            repository,
-            gameStateService,
-            traceEnabled,
-            retryAttempt: 0,
-          }), {
+        const response = withPlayerStateLock(repository, req.playerId, () => executeDeferredGameActionRequest({
+          req,
+          repository,
+          gameStateService,
+          traceEnabled,
+          retryAttempt: 0,
+        }), {
           ...ACTION_PLAYER_STATE_LOCK,
-          scope: `game-action:${req.body?.action || 'unknown'}`,
+          scope: `phase6-deferred:${action || 'unknown'}`,
         });
         return res.status(response.statusCode).json(response.payload);
       } catch (error) {
-        if (isPlayerStateLockTimeout(error)) return res.status(409).json(buildPlayerStateBusyPayload(error));
+        if (isPlayerStateLockTimeout(error)) {
+          return res.status(409).json(buildPlayerStateBusyPayload(error));
+        }
         if (!isGameStateRevisionConflict(error)) throw error;
         if (traceEnabled) {
-          traceWorldMarch('route:revisionConflictRetry', {
+          traceWorldMarch('route:phase6DeferredRevisionConflictRetry', {
             playerId: req.playerId,
-            action: req.body?.action || '',
+            action,
             expectedRevision: error.expectedRevision ?? null,
             actualRevision: error.actualRevision ?? null,
           });
         }
         try {
-          const response = withPlayerStateLock(repository, req.playerId, () => executeGameActionRequest({
-              req,
-              repository,
-              gameStateService,
-              traceEnabled,
-              retryAttempt: 1,
-            }), {
+          const response = withPlayerStateLock(repository, req.playerId, () => executeDeferredGameActionRequest({
+            req,
+            repository,
+            gameStateService,
+            traceEnabled,
+            retryAttempt: 1,
+          }), {
             ...ACTION_PLAYER_STATE_LOCK,
-            scope: `game-action:${req.body?.action || 'unknown'}`,
+            scope: `phase6-deferred:${action || 'unknown'}`,
           });
           return res.status(response.statusCode).json(response.payload);
         } catch (retryError) {
-          if (isPlayerStateLockTimeout(retryError)) return res.status(409).json(buildPlayerStateBusyPayload(retryError));
+          if (isPlayerStateLockTimeout(retryError)) {
+            return res.status(409).json(buildPlayerStateBusyPayload(retryError));
+          }
           if (!isGameStateRevisionConflict(retryError)) throw retryError;
           return res.status(409).json(buildRevisionConflictPayload(retryError));
         }

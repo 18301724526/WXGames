@@ -1,7 +1,8 @@
 'use strict';
 
-const BuildingActionService = require('../../services/BuildingActionService');
+const GameActionRegistry = require('../../actions/GameActionRegistry');
 const TutorialService = require('../../services/TutorialService');
+const WorldExplorerTrace = require('../../services/worldExplorer/WorldExplorerTrace');
 const { requireOwnerContext } = require('./CommandOwnerContext');
 const {
   generateCommandEvents,
@@ -9,7 +10,14 @@ const {
   syncEra2Tutorial,
 } = require('./GameCommandStateSupport');
 
-class BuildBuildingCommandHandler {
+function buildTutorialPayload(payload = {}) {
+  return {
+    ...payload,
+    target: payload.target ?? payload.buildingId ?? payload.job,
+  };
+}
+
+class GameActionCommandHandler {
   constructor(options = {}) {
     this.gameStateService = options.gameStateService;
   }
@@ -19,13 +27,23 @@ class BuildBuildingCommandHandler {
       ownerKey: context.ownerResolution?.ownerKey,
       ownerKeys: context.ownerResolution?.ownerKeys,
     });
+    const action = context.envelope?.type || '';
+    if (!GameActionRegistry.has(action)) {
+      return {
+        success: false,
+        statusCode: 400,
+        error: 'UNKNOWN_ACTION',
+        message: '未知操作',
+      };
+    }
     const tutorial = syncEra2Tutorial(context.state, this.gameStateService);
     context.application.tutorial = tutorial;
-    const payload = context.envelope?.payload || {};
-    const result = TutorialService.validateAction(tutorial, 'build', {
-      target: payload.buildingId,
-      cityId: payload.cityId,
-    }, context.state);
+    const result = TutorialService.validateAction(
+      tutorial,
+      action,
+      buildTutorialPayload(context.envelope?.payload || {}),
+      context.state,
+    );
     if (result.allowed) return { success: true };
     return {
       success: false,
@@ -42,12 +60,18 @@ class BuildBuildingCommandHandler {
     });
     generateCommandEvents(context.state);
     const payload = context.envelope?.payload || {};
-    const result = BuildingActionService.build(
-      context.state,
-      context.application.tutorial,
-      payload.buildingId,
+    const result = WorldExplorerTrace.run(
+      Boolean(context.application.traceEnabled),
+      () => GameActionRegistry.execute({
+        action: context.envelope.type,
+        body: payload,
+        gameState: context.state,
+        tutorial: context.application.tutorial,
+        planningContext: context.application.projection,
+        worldEncounterRepo: context.application.worldEncounterRepo,
+        sharedWorldEncounters: context.application.projection?.sharedWorldEncounters,
+      }),
     );
-    if (!result.success) return result;
     context.state.tutorial = normalizeResultTutorial(
       result,
       context.application.tutorial,
@@ -59,5 +83,6 @@ class BuildBuildingCommandHandler {
 }
 
 module.exports = {
-  BuildBuildingCommandHandler,
+  GameActionCommandHandler,
+  buildTutorialPayload,
 };

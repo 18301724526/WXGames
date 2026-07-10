@@ -1,7 +1,7 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
-const registerGameRoutes = require('../routes/gameRoutes');
+const registerGameRoutesImpl = require('../routes/gameRoutes');
 const TutorialService = require('../services/TutorialService');
 const GameStateService = require('../services/GameStateService');
 const TerritoryService = require('../services/TerritoryService');
@@ -12,12 +12,19 @@ const {
   publishCurrentConfigRuntime,
   resetConfigRuntime,
 } = require('./helpers/configRuntimeTestHarness');
+const {
+  attachClientCommand,
+  createCommandPipelineTestDependencies,
+} = require('./helpers/commandPipelineTestHarness');
+
+const pipelineHarnesses = [];
 
 before(() => {
   publishCurrentConfigRuntime();
 });
 
 after(() => {
+  pipelineHarnesses.splice(0).forEach((harness) => harness.close());
   resetConfigRuntime();
 });
 
@@ -28,7 +35,13 @@ function createAppHarness() {
       routes.push({ method: 'GET', path, handlers });
     },
     post(path, ...handlers) {
-      routes.push({ method: 'POST', path, handlers });
+      const route = { method: 'POST', path, handlers };
+      const authHandler = handlers[0];
+      route.handlers[0] = (req, res, next) => {
+        attachClientCommand(route, req);
+        return authHandler(req, res, next);
+      };
+      routes.push(route);
     },
   };
   return { app, routes };
@@ -47,6 +60,15 @@ function createResponse() {
       return this;
     },
   };
+}
+
+function registerGameRoutes(app, deps) {
+  const pipeline = createCommandPipelineTestDependencies(
+    deps.repository,
+    deps.gameStateService,
+  );
+  pipelineHarnesses.push(pipeline);
+  return registerGameRoutesImpl(app, { ...deps, ...pipeline });
 }
 
 test('game action route persists tutorial returned by action handlers', () => {
@@ -169,7 +191,7 @@ test('game action route builds the tutorial house before era one', () => {
   assert.equal(savedStates[0].cities.capital.resources.food, 0);
   assert.equal(savedStates[0].tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
   assert.equal(res.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
-  assert.equal(res.payload.command.type, 'BuildBuilding');
+  assert.equal(res.payload.command.type, 'build');
   assert.equal(res.payload.command.target, 'house');
   assert.equal(res.payload.command.phase, 'responding');
   assert.equal(res.payload.command.committed, true);
@@ -243,9 +265,10 @@ test('game action route reports committed build commands when projection fails a
   assert.equal(savedStates[0].cities.capital.buildings.house.level, 1);
   assert.equal(res.payload.success, true);
   assert.equal(res.payload.error, 'PROJECTION_FAILED_AFTER_COMMIT');
-  assert.equal(res.payload.command.type, 'BuildBuilding');
+  assert.equal(res.payload.command.type, 'build');
   assert.equal(res.payload.command.requestId, 'api-build-projection-1');
-  assert.equal(res.payload.command.phase, 'projecting');
+  assert.equal(res.payload.command.phase, 'responding');
+  assert.ok(res.payload.command.phases.some((phase) => phase.phase === 'projection_failed'));
   assert.equal(res.payload.command.committed, true);
   assert.equal(res.payload.command.revisionBefore, 7);
   assert.equal(res.payload.command.revisionAfter, 8);
@@ -1178,7 +1201,7 @@ test('game action route rejects unknown world exploration report actions without
     const res = createResponse();
     route.handlers[0](req, res, () => route.handlers[1](req, res));
     assert.equal(res.statusCode, 400);
-    assert.equal(res.payload.error, 'UNKNOWN_ACTION');
+    assert.equal(res.payload.error, 'OWNER_DECLARATION_MISSING');
   }
 
   assert.equal(savedStates.length, 0);

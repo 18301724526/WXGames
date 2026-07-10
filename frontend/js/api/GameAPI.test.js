@@ -191,7 +191,7 @@ test('GameAPI sends build commands with a client command envelope', async () => 
   assert.equal(calls[0].body.idempotencyKey, 'idem-build-seed');
 });
 
-test('GameAPI sends world march heartbeat reports with POST only when present', async () => {
+test('GameAPI keeps empty heartbeat read-only and sends reports through ClientCommandSender', async () => {
   const requests = [];
   const api = new GameAPI('/api', 'token-a', {
     transport: {
@@ -254,6 +254,7 @@ test('GameAPI routes every inventoried write helper through ClientCommandSender'
     ['veteranCampWithdraw', 'veteranCampWithdraw', () => api.veteranCampWithdraw('capital', 10)],
     ['veteranCampUpgrade', 'veteranCampUpgrade', () => api.veteranCampUpgrade('capital')],
     ['advanceEra', 'advanceEra', () => api.advanceEra()],
+    ['resetPlayer', 'playerReset', () => api.resetPlayer()],
     ['claimTaskReward', 'claimTaskReward', () => api.claimTaskReward('task-1', 'main')],
     ['claimEvent', 'claimEvent', () => api.claimEvent('event-1', 'option-1')],
     ['resolveCapture', 'resolveCapture', () => api.resolveCapture('decision-1', 'release')],

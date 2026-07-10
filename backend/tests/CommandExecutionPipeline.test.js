@@ -220,3 +220,57 @@ test('CommandExecutionPipeline stores projection failure after a successful comm
     fixture.db.close();
   }
 });
+
+test('CommandExecutionPipeline retries one revision conflict inside the pipeline', () => {
+  const db = new Database(':memory:');
+  const backingRepository = new GameStateRepository(db);
+  backingRepository.init();
+  let persisted = { playerId: 'player-1', revision: 1, value: 0 };
+  let saveAttempts = 0;
+  const repository = {
+    withOwnerLocks: backingRepository.withOwnerLocks.bind(backingRepository),
+    findByPlayerId() {
+      return JSON.parse(JSON.stringify(persisted));
+    },
+    save(state) {
+      saveAttempts += 1;
+      requireOwnerContext({ ownerKey: 'player:player-1' });
+      if (saveAttempts === 1) {
+        persisted = { ...persisted, revision: 2 };
+        const error = new Error('Game state revision conflict');
+        error.code = 'GAME_STATE_REVISION_CONFLICT';
+        error.expectedRevision = state.revision;
+        error.actualRevision = 2;
+        throw error;
+      }
+      persisted = { ...state, revision: 3 };
+      return persisted;
+    },
+  };
+  const pipeline = new CommandExecutionPipeline({
+    repository,
+    idempotencyStore: new CommandIdempotencyStore(db),
+  });
+  try {
+    const result = pipeline.execute(command({
+      commandId: 'cmd-revision-retry',
+      idempotencyKey: 'idem-revision-retry',
+    }), {
+      validate: () => ({ success: true }),
+      execute(context) {
+        context.state.value += 1;
+        return { success: true };
+      },
+      project: (context) => ({ value: context.state.value }),
+      respond: (context) => ({ statusCode: 200, payload: context.projection }),
+    });
+
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.payload.value, 1);
+    assert.equal(result.trace.retryAttempt, 1);
+    assert.equal(saveAttempts, 2);
+    assert.deepEqual(persisted, { playerId: 'player-1', revision: 3, value: 1 });
+  } finally {
+    db.close();
+  }
+});
