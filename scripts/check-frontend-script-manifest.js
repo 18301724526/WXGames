@@ -5,6 +5,7 @@ const DEFAULT_REPO_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_FRONTEND_DIR = path.resolve(__dirname, '..', 'frontend');
 const REQUIRED_SCRIPTS = [
   'js/config/GameConfig.js',
+  'shared/featureFlags.js',
   'js/debug/H5LoadTrace.js',
   'js/debug/ActorPickingDiagnostics.js',
   'js/api/ClientCommandSender.js',
@@ -43,6 +44,7 @@ const REQUIRED_ORDER_PAIRS = [
   ['js/state/TerritoryUiStateStore.js', 'js/platform/CanvasActionController.js'],
   ['js/state/TerritoryUiStateStore.js', 'js/platform/CanvasGameShell.js'],
   ['js/state/UIStatePresenterDelegates.js', 'js/state/UIStatePresenter.js'],
+  ['shared/featureFlags.js', 'js/config/FeatureFlags.js'],
   ['shared/formationDeploymentEligibility.js', 'js/shared/FormationDeploymentEligibilityAdapter.js'],
   // The shared tutorial step table must load before every consumer that binds
   // it at module-eval (step policy, presenters, ECS GameState projection).

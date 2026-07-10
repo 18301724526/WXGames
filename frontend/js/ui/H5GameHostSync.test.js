@@ -185,3 +185,130 @@ test('H5 game host wires authority state refreshes after replacing the construct
     global.document = previousDocument;
   }
 });
+
+test('H5 game host disables tutorial runtime from server tutorialEnabled projection', () => {
+  const previousWindow = global.window;
+  const previousDocument = global.document;
+  const appPath = path.resolve(__dirname, '../../app.js');
+  const calls = [];
+  let mountedGame = null;
+
+  class FakeCanvasGameApp {
+    constructor(options = {}) {
+      this.state = options.initialState || {};
+      this.tutorial = { completed: false, currentStep: 0 };
+      this.hasServerState = false;
+    }
+
+    applyApiState(data = {}) {
+      calls.push(['applyApiState']);
+      this.state = {
+        ...this.state,
+        ...(data.gameState || {}),
+      };
+      this.tutorial = data.tutorial || this.tutorial;
+    }
+
+    render() {}
+
+    startScoutCountdownTimer() {}
+  }
+
+  class FakeGameAPI {
+    constructor() {}
+    setToken() {}
+  }
+
+  class FakeGameStateSync {
+    setStateProvider(provider) {
+      this.provider = provider;
+    }
+  }
+
+  class FakeUpdateChecker {
+    start() {}
+  }
+
+  class FakeNoopController {}
+
+  class FakeTerritoryController {
+    bind() {}
+  }
+
+  class FakeTutorialGuideController {
+    constructor() {
+      calls.push(['TutorialGuideController']);
+    }
+
+    sync() {
+      calls.push(['tutorialSync']);
+    }
+  }
+
+  global.document = { readyState: 'complete' };
+  global.window = {
+    CanvasGameApp: FakeCanvasGameApp,
+    H5ShellAdapter: {
+      fromRuntime() {
+        return {
+          config: {
+            API_BASE: '/api',
+            HEARTBEAT_INTERVAL_MS: 1000,
+            UPDATE_CHECK_INTERVAL_MS: 5000,
+          },
+          presenter: { formatEventReward: () => '' },
+          buildingState: {},
+          scheduler: {},
+          authStorage: { getToken: () => null },
+          gameModules: { mount() {} },
+          runtimeConstructors: {
+            GameAPI: FakeGameAPI,
+            GameStateSync: FakeGameStateSync,
+            UpdateChecker: FakeUpdateChecker,
+            GameStateManager: FakeNoopController,
+            EventController: FakeNoopController,
+            BuildingController: FakeNoopController,
+            TerritoryController: FakeTerritoryController,
+          },
+        };
+      },
+    },
+    FeatureFlags: require('../config/FeatureFlags'),
+    TutorialGuideController: FakeTutorialGuideController,
+    CanvasGameShell: {
+      mount() {
+        return {
+          hideTutorialHighlight() {
+            calls.push(['hideTutorialHighlight']);
+          },
+        };
+      },
+    },
+    H5GameBootstrap: {
+      mount(game) {
+        mountedGame = game;
+        return true;
+      },
+    },
+  };
+
+  try {
+    delete require.cache[appPath];
+    require(appPath);
+    mountedGame.init();
+    mountedGame.applyApiState({
+      gameState: { tutorialEnabled: false },
+      tutorial: { completed: false, currentStep: 'cityEntered' },
+    });
+
+    assert.equal(calls.some((call) => call[0] === 'TutorialGuideController'), true);
+    assert.equal(mountedGame.tutorialController, null);
+    assert.equal(mountedGame.tutorial.completed, true);
+    assert.equal(mountedGame.tutorial.disabled, true);
+    assert.equal(mountedGame.maybeStartTutorialIntro(), false);
+  } finally {
+    delete require.cache[appPath];
+    global.window = previousWindow;
+    global.document = previousDocument;
+  }
+});

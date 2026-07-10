@@ -69,6 +69,7 @@
       guideTasks: (apiResponse && apiResponse.guideTasks) ||
         gameState.guideTasks || { visible: false, tasks: [] },
       taskCenter: (apiResponse && apiResponse.taskCenter) || gameState.taskCenter || null,
+      tutorialEnabled: gameState.tutorialEnabled !== false,
       talentPolicies: gameState.talentPolicies || {},
       famousPersons: gameState.famousPersons || {},
       guidebook: gameState.guidebook || {},

@@ -1055,13 +1055,25 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return action.type === 'blockCanvasModal' ? { ...action, tutorialBlocked: true } : action;
         }
 
+    isTutorialEnabled() {
+          const parser = FeatureFlagsBase?.parseFlagValue || global.FeatureFlagCore?.parseFeatureFlagValue;
+          const value = this.lastGame?.state?.tutorialEnabled
+            ?? this.lastGame?.tutorialEnabled
+            ?? this.state?.tutorialEnabled
+            ?? this.tutorialEnabled;
+          if (typeof parser !== 'function') return value !== false;
+          return parser(value, true);
+        }
+
     isTutorialInputActive() {
+          if (!this.isTutorialEnabled()) return false;
           const intro = this.lastGame?.tutorialIntro || this.tutorialIntro || null;
           const highlight = this.tutorialHighlight || null;
           return Boolean(intro?.active || highlight);
         }
 
     getActiveTutorialIntro() {
+          if (!this.isTutorialEnabled()) return null;
           const intro = this.lastGame?.tutorialIntro || this.tutorialIntro || null;
           return intro?.active ? intro : null;
         }
@@ -1923,6 +1935,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     showTutorialHighlight(target, message, options = {}) {
+          if (!this.isTutorialEnabled()) return false;
           return this.getTutorialGuideUiController().show(this, target, message, options);
         }
 
@@ -2932,9 +2945,9 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             network: this.networkState,
             confirmDialog: snapshotConfirmDialog,
             floatingTexts: this.getFloatingTextView(),
-            tutorialIntro: this.lastGame?.tutorialIntro || this.tutorialIntro || null,
-            tutorialAdvisorDialogue: this.lastGame?.tutorialAdvisorDialogue || this.tutorialAdvisorDialogue || null,
-            tutorialHighlight: this.tutorialHighlight,
+            tutorialIntro: this.isTutorialEnabled() ? (this.lastGame?.tutorialIntro || this.tutorialIntro || null) : null,
+            tutorialAdvisorDialogue: this.isTutorialEnabled() ? (this.lastGame?.tutorialAdvisorDialogue || this.tutorialAdvisorDialogue || null) : null,
+            tutorialHighlight: this.isTutorialEnabled() ? this.tutorialHighlight : null,
             rewardReveal: snapshotRewardReveal,
           };
         }

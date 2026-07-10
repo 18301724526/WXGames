@@ -14,6 +14,7 @@ const CityPlanningService = require('./CityPlanningService');
 const TechTreeService = require('./TechTreeService');
 const FamousPersonService = require('./FamousPersonService');
 const GameStateNormalizer = require('./GameStateNormalizer');
+const { parseFeatureFlagValue } = require('../../shared/featureFlags');
 
 function getBuildingCosts(buildings) {
   const costs = {};
@@ -117,6 +118,7 @@ function getClientGameStateFromNormalized(normalized, projection = {}) {
     territoryState: TerritoryService.getClientTerritoryState(normalized, new Date(), projection),
     worldExplorerState: WorldExplorerService.getClientState(normalized, new Date(), projection),
     totalBuildings,
+    tutorialEnabled: parseFeatureFlagValue(GameConfig.features?.tutorialEnabled, true),
   };
 }
 

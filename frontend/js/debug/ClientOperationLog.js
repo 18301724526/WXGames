@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const FeatureFlagCore = (() => {
+    if (global.FeatureFlagCore) return global.FeatureFlagCore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/featureFlags');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   const STORAGE_KEY = 'clientOperationLog';
   const URL_KEYS = ['clientOperationLog', 'operationLog', 'opLog'];
@@ -48,7 +59,7 @@
         }
       },
       readStoredFlag(key = '', options = {}) {
-        return parseFlagValue(this.readStoredValue(key), options.fallback ?? null);
+        return FeatureFlagCore?.parseFeatureFlagValue?.(this.readStoredValue(key), options.fallback ?? null) ?? null;
       },
       writeStoredValue(key = '', value = '') {
         runtime?.[storageKey]?.setItem?.(key, value);
@@ -65,7 +76,7 @@
           const params = new URLSearchParams(search);
           for (const name of names) {
             if (!params.has(name)) continue;
-            return parseFlagValue(params.get(name) || '1', true);
+            return FeatureFlagCore?.parseFeatureFlagValue?.(params.get(name) || '1', true) ?? true;
           }
         } catch (_) {}
         return null;
@@ -88,11 +99,6 @@
     };
   }
 
-  function parseFlagValue(value, fallback = null) {
-    if (value === null || value === undefined || value === '') return fallback;
-    return !['0', 'false', 'off', 'no'].includes(String(value).toLowerCase());
-  }
-
   function getPageInfo(environment = null) {
     const page = environment?.getPageInfo?.() || {};
     return {
@@ -111,7 +117,7 @@
   function readStoredFlag(environment = null, fallback = true) {
     const value = environment?.readStoredFlag?.(STORAGE_KEY, { fallback });
     if (typeof value === 'boolean') return value;
-    return parseFlagValue(environment?.readStoredValue?.(STORAGE_KEY), fallback);
+    return FeatureFlagCore?.parseFeatureFlagValue?.(environment?.readStoredValue?.(STORAGE_KEY), fallback) ?? fallback;
   }
 
   function writeStoredFlag(environment = null, value = true) {

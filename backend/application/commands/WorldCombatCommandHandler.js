@@ -5,6 +5,7 @@ const WorldCombatSessionService = require('../../services/worldCombat/WorldComba
 const { requireOwnerContext } = require('./CommandOwnerContext');
 const {
   generateCommandEvents,
+  isTutorialRuntimeEnabled,
   normalizeResultTutorial,
   syncEra2Tutorial,
 } = require('./GameCommandStateSupport');
@@ -48,8 +49,11 @@ class WorldCombatCommandHandler {
         message: '敌军标识与命令 owner 不一致',
       };
     }
-    const tutorial = syncEra2Tutorial(context.state, this.gameStateService);
+    const tutorialEnabled = isTutorialRuntimeEnabled();
+    context.application.tutorialEnabled = tutorialEnabled;
+    const tutorial = syncEra2Tutorial(context.state, this.gameStateService, { tutorialEnabled });
     context.application.tutorial = tutorial;
+    if (!tutorialEnabled) return { success: true };
     const tutorialResult = TutorialService.validateAction(tutorial, action, payload, context.state);
     if (tutorialResult.allowed) return { success: true };
     return {
@@ -81,8 +85,12 @@ class WorldCombatCommandHandler {
     const result = action === 'startWorldCombat'
       ? WorldCombatSessionService.openSession(context.state, payload, now, worldOptions)
       : WorldCombatSessionService.resolveSession(context.state, payload, now, worldOptions);
-    context.state.tutorial = normalizeResultTutorial(result, context.application.tutorial);
-    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService);
+    context.state.tutorial = normalizeResultTutorial(result, context.application.tutorial, {
+      tutorialEnabled: context.application.tutorialEnabled,
+    });
+    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService, {
+      tutorialEnabled: context.application.tutorialEnabled,
+    });
     generateCommandEvents(context.state);
     return result;
   }

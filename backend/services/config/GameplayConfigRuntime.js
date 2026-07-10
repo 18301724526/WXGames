@@ -206,6 +206,9 @@ const GameConfig = {
   get population() {
     return getGamePayload().population || {};
   },
+  get features() {
+    return getGamePayload().features || FallbackGameConfig.features || {};
+  },
   raw() {
     return clone(getGamePayload());
   },

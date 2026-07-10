@@ -334,6 +334,79 @@ rg -n "42 -> 33|67 -> 65|23 -> 11|137 收敛到 135|12552|441 收敛到 439|auth
 
 未做/未达标:无。
 
+## 15. B2 引导开关单源 + 单解析器
+
+更正范围:
+
+- 后端唯一权威源登记在 `backend/config/GameConfig.js` 的 `features.tutorialEnabled: 1`。
+- `backend/services/ClientGameStateAssembler.js` 将 `tutorialEnabled` 投影进客户端快照。
+- 前端删除 `FEATURES.TUTORIAL_ENABLED` 配置源，只读服务端下发的 `state.tutorialEnabled`。
+- 开关解析收敛到 `shared/featureFlags.js` 的 `parseFeatureFlagValue`；前端 `FeatureFlags.parseFlagValue` 仅保留为共享函数导出别名。
+- 后端命令教程校验/推进走运行时门，关闭时不拦截、不推进、不把动作结果里的 tutorial 写回为推进态。
+
+自验命令:
+
+```text
+node --check shared/featureFlags.js
+node --check frontend/js/config/FeatureFlags.js
+node --check frontend/js/debug/ClientOperationLog.js
+node --check frontend/js/debug/WorldMarchTrace.js
+node --check backend/application/commands/GameCommandStateSupport.js
+node --check backend/services/ClientGameStateAssembler.js
+```
+
+结果:全部 exit 0。
+
+```text
+node --test frontend/js/config/FeatureFlags.test.js backend/tests/TutorialFeatureFlagProjection.test.js frontend/js/ui/H5GameHostSync.test.js
+```
+
+结果:6 tests, 6 pass。
+
+```text
+node scripts/check-frontend-script-manifest.js
+```
+
+结果:`[frontend-script-manifest] passed: 233 local scripts, 1 stylesheets`。
+
+```text
+node --test scripts/check-frontend-script-manifest.test.js
+```
+
+结果:4 tests, 4 pass。
+
+```text
+rg -n "function parseFeatureFlagValue|function parseFlagValue|const parseFlagValue|parseFlagValue\s*=" backend frontend shared scripts --glob "*.js"
+```
+
+结果:仅 `shared/featureFlags.js:4` 命中解析函数定义。
+
+```text
+rg -n "tutorialEnabled: 1|features\s*=|TUTORIAL_ENABLED" backend/config/GameConfig.js frontend/js/config/GameConfig.js frontend/js/config/FeatureFlags.js frontend/app.js frontend/js/platform/CanvasGameShell.js backend/services/ClientGameStateAssembler.js backend/application/commands/GameCommandStateSupport.js
+```
+
+结果:仅 `backend/config/GameConfig.js:28-29` 命中权威配置点。
+
+```text
+rg -n "TUTORIAL_ENABLED|FEATURES\.TUTORIAL_ENABLED|this\.config\?\.FEATURES\?\.TUTORIAL_ENABLED|config\?\.FEATURES\?\.TUTORIAL_ENABLED" frontend backend shared scripts --glob "*.js"
+```
+
+结果:无命中。
+
+```text
+rg -n "tutorialEnabled: parseFeatureFlagValue|GameConfig\.features\?\.tutorialEnabled|state\?\.tutorialEnabled|state\.tutorialEnabled" backend/services/ClientGameStateAssembler.js backend/application/commands/GameCommandStateSupport.js frontend/app.js frontend/js/platform/CanvasGameShell.js frontend/js/ecs/projection/GameState.js
+```
+
+结果:命中客户端投影、后端运行时门和前端投影消费点。
+
+```text
+git diff --check
+```
+
+结果:exit 0。
+
+未做/未达标:无。
+
 ## 12. A2 R-D1 边界与 StateWriter 修正
 
 更正范围:

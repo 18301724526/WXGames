@@ -6,6 +6,7 @@ const WorldExplorerTrace = require('../../services/worldExplorer/WorldExplorerTr
 const { requireOwnerContext } = require('./CommandOwnerContext');
 const {
   generateCommandEvents,
+  isTutorialRuntimeEnabled,
   normalizeResultTutorial,
   syncEra2Tutorial,
 } = require('./GameCommandStateSupport');
@@ -50,8 +51,11 @@ class GameActionCommandHandler {
         };
       }
     }
-    const tutorial = syncEra2Tutorial(context.state, this.gameStateService);
+    const tutorialEnabled = isTutorialRuntimeEnabled();
+    context.application.tutorialEnabled = tutorialEnabled;
+    const tutorial = syncEra2Tutorial(context.state, this.gameStateService, { tutorialEnabled });
     context.application.tutorial = tutorial;
+    if (!tutorialEnabled) return { success: true };
     const result = TutorialService.validateAction(
       tutorial,
       action,
@@ -94,8 +98,11 @@ class GameActionCommandHandler {
     context.state.tutorial = normalizeResultTutorial(
       result,
       context.application.tutorial,
+      { tutorialEnabled: context.application.tutorialEnabled },
     );
-    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService);
+    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService, {
+      tutorialEnabled: context.application.tutorialEnabled,
+    });
     generateCommandEvents(context.state);
     return result;
   }

@@ -12,11 +12,14 @@ test('FeatureFlags resolves default feature state', () => {
   assert.equal(FeatureFlags.isEnabled(null, 'DEBUG_OVERLAYS_ENABLED'), false);
 });
 
-test('FeatureFlags enables explicit true flags only', () => {
+test('FeatureFlags accepts boolean and 1/0 flag values', () => {
   assert.equal(FeatureFlags.isEnabled({ FEATURES: { FOG_OF_WAR_ENABLED: true } }, 'FOG_OF_WAR_ENABLED'), true);
   assert.equal(FeatureFlags.isEnabled({ FEATURES: { DEBUG_OVERLAYS_ENABLED: true } }, 'DEBUG_OVERLAYS_ENABLED'), true);
-  assert.equal(FeatureFlags.isEnabled({ FEATURES: { FOG_OF_WAR_ENABLED: 'true' } }, 'FOG_OF_WAR_ENABLED'), false);
-  assert.equal(FeatureFlags.isEnabled({ FEATURES: { FOG_OF_WAR_ENABLED: 1 } }, 'FOG_OF_WAR_ENABLED'), false);
+  assert.equal(FeatureFlags.isEnabled({ FEATURES: { FOG_OF_WAR_ENABLED: 'true' } }, 'FOG_OF_WAR_ENABLED'), true);
+  assert.equal(FeatureFlags.isEnabled({ FEATURES: { FOG_OF_WAR_ENABLED: 1 } }, 'FOG_OF_WAR_ENABLED'), true);
+  assert.equal(FeatureFlags.parseFlagValue('false', true), false);
+  assert.equal(FeatureFlags.parseFlagValue(0, true), false);
+  assert.equal(FeatureFlags.parseFlagValue('1', false), true);
 });
 
 test('FeatureFlags supports runtime overrides without mutating config', () => {

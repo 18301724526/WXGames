@@ -4,6 +4,17 @@
   const MAX_DEDUP_ENTRIES = 300;
   const deduped = new Map();
   let environmentProvider = null;
+  const FeatureFlagCore = (() => {
+    if (global.FeatureFlagCore) return global.FeatureFlagCore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../../../shared/featureFlags');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function getEnvironment() {
     return environmentProvider || global.CanvasDebugEnvironment || null;
@@ -12,11 +23,6 @@
   function setEnvironmentProvider(provider = null) {
     environmentProvider = provider && typeof provider === 'object' ? provider : null;
     return environmentProvider;
-  }
-
-  function parseFlagValue(value, fallback = false) {
-    if (value === null || value === undefined) return fallback;
-    return !['0', 'false', 'off', 'no', ''].includes(String(value).toLowerCase());
   }
 
   function readUrlFlag() {
@@ -28,7 +34,7 @@
     const environment = getEnvironment();
     const value = environment?.readStoredFlag?.(STORAGE_KEY, { fallback: false });
     if (typeof value === 'boolean') return value;
-    return parseFlagValue(environment?.readStoredValue?.(STORAGE_KEY), false);
+    return FeatureFlagCore?.parseFeatureFlagValue?.(environment?.readStoredValue?.(STORAGE_KEY), false) ?? false;
   }
 
   function writeStorageFlag(value) {

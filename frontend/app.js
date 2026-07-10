@@ -29,6 +29,7 @@ const DEFAULT_STATE = {
   softGuide: null,
   guideTasks: { visible: false, tasks: [] },
   taskCenter: null,
+  tutorialEnabled: true,
 };
 
 class H5GameHost extends CanvasGameAppBase {
@@ -55,6 +56,7 @@ class H5GameHost extends CanvasGameAppBase {
       getTerritoryUiState: () => this.territoryController?.getUiState?.() || {},
     });
     Object.assign(this, shell);
+    if (!this.isTutorialEnabled()) this.disableTutorialRuntime();
 
     this.apiBase = this.config?.API_BASE || this.apiBase;
     this.token = this.authStorage?.getToken?.() || null;
@@ -134,7 +136,7 @@ class H5GameHost extends CanvasGameAppBase {
       onBattleSceneRequested: (report) => this.startBattleScene(report),
     });
     window.TerritoryUiStateStore?.ensure?.(this);
-    if (!this.tutorialController && window.TutorialGuideController) {
+    if (this.isTutorialEnabled() && !this.tutorialController && window.TutorialGuideController) {
       this.tutorialController = new window.TutorialGuideController({
         game: this,
         api: this.gameAPI,
@@ -167,13 +169,53 @@ class H5GameHost extends CanvasGameAppBase {
       previewEnabled: true,
       inputEnabled: true,
     });
+    if (!this.isTutorialEnabled()) this.disableTutorialRuntime();
     const onCanvasShellReady = this.onCanvasShellReady;
     this.onCanvasShellReady = null;
     if (typeof onCanvasShellReady === 'function') onCanvasShellReady();
     if (!this.token || this.hasServerState) this.render();
   }
 
+  isTutorialEnabled() {
+    const parser = window.FeatureFlags?.parseFlagValue || window.FeatureFlagCore?.parseFeatureFlagValue;
+    if (typeof parser !== 'function') return this.state?.tutorialEnabled !== false;
+    return parser(this.state?.tutorialEnabled, true);
+  }
+
+  getDisabledTutorialState(raw = this.tutorial || {}) {
+    return {
+      ...(raw || {}),
+      completed: true,
+      currentStep: 'completed',
+      phaseCompleted: {
+        newbie: true,
+        era2: true,
+        scoutFormation: true,
+      },
+      disabled: true,
+    };
+  }
+
+  disableTutorialRuntime() {
+    const disabledTutorial = this.getDisabledTutorialState();
+    this.tutorial = disabledTutorial;
+    if (this.state && typeof this.state === 'object') this.state.tutorial = disabledTutorial;
+    this.tutorialController = null;
+    this.tutorialIntro = null;
+    this.tutorialAdvisorDialogue = null;
+    this.tutorialHighlight = null;
+    this.tutorialIntroOverlay?.finish?.({ markSeen: true, completed: true });
+    if (this.canvasShell) {
+      this.canvasShell.tutorialIntro = null;
+      this.canvasShell.tutorialAdvisorDialogue = null;
+      this.canvasShell.tutorialHighlight = null;
+      this.canvasShell.hideTutorialHighlight?.();
+    }
+    return disabledTutorial;
+  }
+
   ensureTutorialIntroOverlay() {
+    if (!this.isTutorialEnabled()) return null;
     if (this.tutorialIntroOverlay) return this.tutorialIntroOverlay;
     if (!window.TutorialIntroOverlay) return null;
     this.tutorialIntroOverlay = new window.TutorialIntroOverlay({
@@ -185,19 +227,30 @@ class H5GameHost extends CanvasGameAppBase {
   }
 
   maybeStartTutorialIntro() {
+    if (!this.isTutorialEnabled()) return false;
     return this.ensureTutorialIntroOverlay()?.start(this.state) || false;
   }
 
-  applyApiState(data = {}) {
-    super.applyApiState(data);
+  applyApiState(data = {}, options = {}) {
+    super.applyApiState(data, options);
+    if (!this.isTutorialEnabled()) {
+      this.disableTutorialRuntime();
+      return false;
+    }
     this.tutorialController?.sync?.(this.tutorial);
     this.maybeStartTutorialIntro();
+    return true;
   }
 
-  applyState(payload = {}) {
-    super.applyState(payload);
+  applyState(payload = {}, options = {}) {
+    super.applyState(payload, options);
+    if (!this.isTutorialEnabled()) {
+      this.disableTutorialRuntime();
+      return false;
+    }
     this.tutorialController?.sync?.(this.tutorial);
     this.maybeStartTutorialIntro();
+    return true;
   }
 }
 

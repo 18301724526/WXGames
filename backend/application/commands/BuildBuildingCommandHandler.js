@@ -5,6 +5,7 @@ const TutorialService = require('../../services/TutorialService');
 const { requireOwnerContext } = require('./CommandOwnerContext');
 const {
   generateCommandEvents,
+  isTutorialRuntimeEnabled,
   normalizeResultTutorial,
   syncEra2Tutorial,
 } = require('./GameCommandStateSupport');
@@ -19,8 +20,11 @@ class BuildBuildingCommandHandler {
       ownerKey: context.ownerResolution?.ownerKey,
       ownerKeys: context.ownerResolution?.ownerKeys,
     });
-    const tutorial = syncEra2Tutorial(context.state, this.gameStateService);
+    const tutorialEnabled = isTutorialRuntimeEnabled();
+    context.application.tutorialEnabled = tutorialEnabled;
+    const tutorial = syncEra2Tutorial(context.state, this.gameStateService, { tutorialEnabled });
     context.application.tutorial = tutorial;
+    if (!tutorialEnabled) return { success: true };
     const payload = context.envelope?.payload || {};
     const result = TutorialService.validateAction(tutorial, 'build', {
       target: payload.buildingId,
@@ -51,8 +55,11 @@ class BuildBuildingCommandHandler {
     context.state.tutorial = normalizeResultTutorial(
       result,
       context.application.tutorial,
+      { tutorialEnabled: context.application.tutorialEnabled },
     );
-    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService);
+    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService, {
+      tutorialEnabled: context.application.tutorialEnabled,
+    });
     generateCommandEvents(context.state);
     return result;
   }

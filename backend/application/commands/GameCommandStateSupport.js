@@ -2,6 +2,8 @@
 
 const EventService = require('../../services/EventService');
 const TutorialService = require('../../services/TutorialService');
+const { GameConfig } = require('../../services/config/GameplayConfigRuntime');
+const { parseFeatureFlagValue } = require('../../../shared/featureFlags');
 const GameActionProjection = require('../projections/GameActionProjection');
 
 function loadProjection(repository, playerId) {
@@ -27,9 +29,17 @@ function loadProgressedGameState(
     : gameStateService.normalizeState(rawState);
 }
 
-function syncEra2Tutorial(gameState, gameStateService) {
+function isTutorialRuntimeEnabled() {
+  return parseFeatureFlagValue(GameConfig.features?.tutorialEnabled, true);
+}
+
+function syncEra2Tutorial(gameState, gameStateService, options = {}) {
   const tutorial = TutorialService.normalizeTutorialState(gameState?.tutorial);
   if (!gameState) return tutorial;
+  if (options.tutorialEnabled === false || !isTutorialRuntimeEnabled()) {
+    gameState.tutorial = tutorial;
+    return tutorial;
+  }
   const eraProgress = gameStateService.calculateEraProgressFromNormalized
     ? gameStateService.calculateEraProgressFromNormalized(gameState)
     : gameStateService.calculateEraProgress(gameState);
@@ -47,7 +57,10 @@ function generateCommandEvents(gameState) {
   EventService.maybeGenerateThreatEvent(gameState);
 }
 
-function normalizeResultTutorial(result = {}, fallback = {}) {
+function normalizeResultTutorial(result = {}, fallback = {}, options = {}) {
+  if (options.tutorialEnabled === false || !isTutorialRuntimeEnabled()) {
+    return TutorialService.normalizeTutorialState(fallback);
+  }
   return result.tutorial
     ? TutorialService.normalizeTutorialState(result.tutorial)
     : TutorialService.normalizeTutorialState(fallback);
@@ -65,6 +78,7 @@ function buildGameView(gameState, tutorial, gameStateService, projection = {}) {
 module.exports = {
   buildGameView,
   generateCommandEvents,
+  isTutorialRuntimeEnabled,
   loadProgressedGameState,
   loadProjection,
   normalizeResultTutorial,

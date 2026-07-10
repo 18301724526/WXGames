@@ -1,4 +1,5 @@
 require('../js/config/GameConfig');
+require('../../shared/featureFlags');
 require('../js/config/FeatureFlags');
 require('../js/config/LocaleTextRegistry');
 require('../js/config/UiThemeTokens');
