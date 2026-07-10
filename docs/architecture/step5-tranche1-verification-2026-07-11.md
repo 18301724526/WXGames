@@ -387,3 +387,64 @@ git diff --check -- docs/architecture/step5-runtime-decoupling-and-bug-traceabil
 结果:exit 0。
 
 未做/未达标:无。
+
+## 13. A3 R-D2 绕行扫描覆盖全清单
+
+更正范围:
+
+- `BYPASS_SCAN_STORES` 已覆盖 `UiRuntimeStateStore`、`ModalStore`、`BattleStore`、`TerritoryUiStateStore`。
+- 未扩展 `fieldAccessPattern` 或其它扫描正则形态；动态键写法仍留给后续 S3。
+- `scripts/check-ui-runtime-field-ownership.test.js` 已加入 Modal/Battle/Territory 三类 store 的合成绕行 FIRE 测试。
+
+存量白名单债(declared):
+
+- 扩展扫描后首次实跑发现 ModalStore 存量违规 23 条，集中在 4 个文件:`frontend/js/config/LocaleTextRegistry.js`、`frontend/js/controllers/EventController.js`、`frontend/js/platform/renderers/OverlayCanvasRenderer.js`、`frontend/js/state/presenters/ShellPresenter.js`。
+- A3 不做跨模块重构；上述 4 个文件已加入 `ModalStore.approvedCompatibilityFiles`。烧毁计划:后续 ModalStore/事件面收敛时逐文件移除兼容访问，删除对应白名单。
+
+自验命令:
+
+```text
+node --test scripts/check-ui-runtime-field-ownership.test.js
+```
+
+结果:6 tests, 6 pass。
+
+```text
+node scripts/check-ui-runtime-field-ownership.js
+```
+
+结果:stores 4, fields 32, bypass scan stores `UiRuntimeStateStore, ModalStore, BattleStore, TerritoryUiStateStore`, violations 0, warnings 0, passed。
+
+合成探针 FIRE:
+
+```text
+node scripts/check-ui-runtime-field-ownership.js
+```
+
+临时探针存在时结果:violations 3, FAILED。
+
+- `frontend/js/platform/A3ModalBypassProbe.js:2` reads/writes `showLogs` outside `ModalStore`: `return host.showLogs;`
+- `frontend/js/platform/A3BattleBypassProbe.js:2` reads/writes `entityBattle` outside `BattleStore`: `return game.entityBattle;`
+- `frontend/js/platform/A3TerritoryBypassProbe.js:2` reads/writes `worldPanX` outside `TerritoryUiStateStore`: `return owner.worldPanX;`
+
+探针还原后:
+
+```text
+git status --short -- frontend/js/platform/A3ModalBypassProbe.js frontend/js/platform/A3BattleBypassProbe.js frontend/js/platform/A3TerritoryBypassProbe.js
+```
+
+结果:无输出。
+
+```text
+node scripts/check-ui-runtime-field-ownership.js
+```
+
+结果:violations 0, warnings 0, passed。
+
+```text
+git diff --check -- scripts/check-ui-runtime-field-ownership.js scripts/check-ui-runtime-field-ownership.test.js frontend/js/state/UiRuntimeFieldOwnershipManifest.json
+```
+
+结果:exit 0。
+
+未做/未达标:未重构 4 个 ModalStore 白名单文件；已按 A3 判据 declared 为存量债并写明烧毁计划。

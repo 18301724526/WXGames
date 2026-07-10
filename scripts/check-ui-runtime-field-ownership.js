@@ -3,7 +3,12 @@ const path = require('node:path');
 
 const DEFAULT_MANIFEST = 'frontend/js/state/UiRuntimeFieldOwnershipManifest.json';
 const FRONTEND_ROOT = 'frontend/js';
-const BYPASS_SCAN_STORES = new Set(['UiRuntimeStateStore']);
+const BYPASS_SCAN_STORES = new Set([
+  'UiRuntimeStateStore',
+  'ModalStore',
+  'BattleStore',
+  'TerritoryUiStateStore',
+]);
 const HOST_RECEIVERS = ['this', 'host', 'game', 'shell', 'owner', 'lastGame', 'canvasShell'];
 const ECS_SIMULATION_FIELD_PATTERN = /(?:world|fog|frame|mode|ecs|bitecs|component|eid|entity|simulation|velocity|position)/i;
 const EXCLUDED_FILE_PATTERNS = [

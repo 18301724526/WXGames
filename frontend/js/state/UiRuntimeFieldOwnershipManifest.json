@@ -48,7 +48,11 @@
         "frontend/js/platform/CanvasModeOwnershipRuntime.js",
         "frontend/js/platform/CanvasActionController.js",
         "frontend/js/platform/CanvasGameApp.js",
-        "frontend/js/platform/CanvasGameShell.js"
+        "frontend/js/platform/CanvasGameShell.js",
+        "frontend/js/config/LocaleTextRegistry.js",
+        "frontend/js/controllers/EventController.js",
+        "frontend/js/platform/renderers/OverlayCanvasRenderer.js",
+        "frontend/js/state/presenters/ShellPresenter.js"
       ]
     },
     {
