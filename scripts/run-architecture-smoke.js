@@ -87,6 +87,7 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-step4-final-audit.js',
   'scripts/check-step4-final-audit.test.js',
   'scripts/verify-step4-phase3-real-server.js',
+  'scripts/verify-step4-phase3-real-server.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.js',
@@ -712,6 +713,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-projection-write-boundary.test.js',
   'scripts/check-step4-blocking-map.test.js',
   'scripts/check-step4-final-audit.test.js',
+  'scripts/verify-step4-phase3-real-server.test.js',
 ]);
 
 const CONTRACT_SEARCH_DIRS = Object.freeze([

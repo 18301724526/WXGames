@@ -1,11 +1,11 @@
 {
   "schema": "step4-phase3-real-server-evidence-v1",
-  "generatedAt": "2026-07-10T10:29:40.750Z",
+  "generatedAt": "2026-07-10T18:10:43.606Z",
   "sourceScript": "scripts/verify-step3-phase6-real-server.js",
   "sourceSchema": "step3-phase6-real-server-evidence-v1",
   "integrity": {
     "stubFree": true,
-    "productionServer": false,
+    "productionServer": true,
     "productionWorker": true,
     "productionRepositories": true,
     "clientPath": "GameAPI -> ClientCommandSender -> H5GameApiTransportAdapter -> global fetch"
@@ -21,16 +21,16 @@
       "encounterId": "phase6-real-worker-force-settle-encounter",
       "process": {
         "entry": "backend/world-worker.js",
-        "pid": 40272,
-        "startedAt": "2026-07-10T10:29:37.211Z",
-        "stoppedAt": "2026-07-10T10:29:40.569Z",
+        "pid": 112992,
+        "startedAt": "2026-07-10T18:10:39.945Z",
+        "stoppedAt": "2026-07-10T18:10:43.332Z",
         "intervalMs": 3000,
         "activeWindowMs": 3600000,
         "activeLimit": 1,
         "exitCode": null,
         "signalCode": "SIGTERM",
         "stopped": true,
-        "stdout": "◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }\n[world-worker] started {\n  schema: 'world-worker-status-v1',\n  running: false,\n  intervalMs: 3000,\n  activeWindowMs: 3600000,\n  activeLimit: 1,\n  lastSummary: null\n}\n",
+        "stdout": "◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }\n[world-worker] started {\n  schema: 'world-worker-status-v1',\n  running: false,\n  intervalMs: 3000,\n  activeWindowMs: 3600000,\n  activeLimit: 1,\n  lastSummary: null\n}\n",
         "stderr": "[world-worker] command entry report {\n  schema: 'command-entry-report-v1',\n  mode: 'blocking',\n  inventoryId: 'worker:world-worker-runtime-writes',\n  idempotencyClassification: 'internal-idempotent',\n  ownerStatus: 'resolved',\n  error: '',\n  requiredFields: []\n}\n"
       },
       "before": {
@@ -47,8 +47,8 @@
             "tileId": "tile_-5_-26",
             "terrain": "waste",
             "unitKey": "hostile_squad_default",
-            "createdAt": "2026-07-10T10:27:52.204Z",
-            "updatedAt": "2026-07-10T10:27:52.204Z",
+            "createdAt": "2026-07-10T18:08:54.937Z",
+            "updatedAt": "2026-07-10T18:08:54.937Z",
             "defender": {
               "id": "hostile_force_capital_ridge_defender",
               "owner": "hostile",
@@ -87,14 +87,14 @@
                   "military"
                 ],
                 "attributes": {
-                  "command": 54,
+                  "command": 55,
                   "force": 73,
-                  "intelligence": 45,
-                  "politics": 35,
-                  "charisma": 47,
+                  "intelligence": 44,
+                  "politics": 30,
+                  "charisma": 53,
                   "speed": 59,
-                  "strategy": 45,
-                  "governance": 35
+                  "strategy": 44,
+                  "governance": 30
                 },
                 "traits": [
                   "部落",
@@ -278,16 +278,16 @@
                   "seed": "defender:phase6-real-worker-force-settle-encounter:tribe:1:1",
                   "palette": "enemy_red",
                   "layers": {
-                    "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-06.png",
+                    "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-07.png",
                     "face": "assets/art/famous-person/layers/fp-layer-v3-face-08.png",
-                    "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-06.png"
+                    "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-05.png"
                   }
                 },
                 "status": {
                   "assigned": "defender",
                   "loyalty": 0
                 },
-                "createdAt": "2026-07-10T10:27:52.204Z",
+                "createdAt": "2026-07-10T18:08:54.937Z",
                 "generatorVersion": "defender-leader-v1"
               },
               "baseSoldiers": 1
@@ -300,11 +300,11 @@
             "respawnCooldownMs": 0,
             "respawnAt": null
           },
-          "activeAt": "2026-07-10T10:29:37.211Z",
+          "activeAt": "2026-07-10T18:10:39.944Z",
           "state": {
             "playerId": "codexqa",
             "revision": 6,
-            "updatedAt": "2026-07-10T10:29:37.210Z",
+            "updatedAt": "2026-07-10T18:10:39.943Z",
             "territory": null,
             "missions": [
               {
@@ -324,9 +324,9 @@
           "rawPlayerRow": {
             "playerId": "codexqa",
             "revision": 6,
-            "exploreMissions": "[{\"id\":\"phase6-real-worker-engaged-mission\",\"status\":\"idle\",\"position\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"target\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"homeOrigin\":{\"q\":-8,\"r\":-25,\"tileId\":\"tile_-8_-25\"},\"origin\":{\"q\":-8,\"r\":-25,\"tileId\":\"tile_-8_-25\"},\"formation\":{\"cityId\":\"capital\",\"slot\":1,\"memberIds\":[\"phase6-real-worker-hero\"]},\"formationSnapshot\":{\"schema\":\"formation-snapshot-v1\",\"cityId\":\"capital\",\"slot\":1,\"soldiersCommitted\":500,\"soldiersRemaining\":500,\"members\":[{\"personId\":\"phase6-real-worker-hero\",\"soldiersCommitted\":500,\"soldiersRemaining\":500}]},\"combat\":{\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"status\":\"engaged\",\"engagedAt\":\"2026-07-10T10:27:52.204Z\"}}]",
-            "worldCombat": "{\"schema\":\"world-combat-encounters-v1\",\"recentReports\":[],\"encounterIntel\":{\"byEncounterId\":{\"phase6-real-resolve-storm-encounter\":{\"encounterId\":\"phase6-real-resolve-storm-encounter\",\"foughtAt\":\"2026-07-10T10:29:36.935Z\",\"battleReportId\":\"world_combat_phase6-real-resolve-storm-encounter_1783679376935\"}}},\"session\":null,\"updatedAt\":\"2026-07-10T10:29:36.935Z\"}",
-            "updatedAt": "2026-07-10T10:29:37.210Z",
+            "exploreMissions": "[{\"id\":\"phase6-real-worker-engaged-mission\",\"status\":\"idle\",\"position\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"target\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"homeOrigin\":{\"q\":-8,\"r\":-25,\"tileId\":\"tile_-8_-25\"},\"origin\":{\"q\":-8,\"r\":-25,\"tileId\":\"tile_-8_-25\"},\"formation\":{\"cityId\":\"capital\",\"slot\":1,\"memberIds\":[\"phase6-real-worker-hero\"]},\"formationSnapshot\":{\"schema\":\"formation-snapshot-v1\",\"cityId\":\"capital\",\"slot\":1,\"soldiersCommitted\":500,\"soldiersRemaining\":500,\"members\":[{\"personId\":\"phase6-real-worker-hero\",\"soldiersCommitted\":500,\"soldiersRemaining\":500}]},\"combat\":{\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"status\":\"engaged\",\"engagedAt\":\"2026-07-10T18:08:54.937Z\"}}]",
+            "worldCombat": "{\"schema\":\"world-combat-encounters-v1\",\"recentReports\":[],\"encounterIntel\":{\"byEncounterId\":{\"phase6-real-resolve-storm-encounter\":{\"encounterId\":\"phase6-real-resolve-storm-encounter\",\"foughtAt\":\"2026-07-10T18:10:39.672Z\",\"battleReportId\":\"world_combat_phase6-real-resolve-storm-encounter_1783707039672\"}}},\"session\":null,\"updatedAt\":\"2026-07-10T18:10:39.672Z\"}",
+            "updatedAt": "2026-07-10T18:10:39.943Z",
             "exploreMissionsJson": [
               {
                 "id": "phase6-real-worker-engaged-mission",
@@ -375,7 +375,7 @@
                 "combat": {
                   "encounterId": "phase6-real-worker-force-settle-encounter",
                   "status": "engaged",
-                  "engagedAt": "2026-07-10T10:27:52.204Z"
+                  "engagedAt": "2026-07-10T18:08:54.937Z"
                 }
               }
             ],
@@ -386,21 +386,21 @@
                 "byEncounterId": {
                   "phase6-real-resolve-storm-encounter": {
                     "encounterId": "phase6-real-resolve-storm-encounter",
-                    "foughtAt": "2026-07-10T10:29:36.935Z",
-                    "battleReportId": "world_combat_phase6-real-resolve-storm-encounter_1783679376935"
+                    "foughtAt": "2026-07-10T18:10:39.672Z",
+                    "battleReportId": "world_combat_phase6-real-resolve-storm-encounter_1783707039672"
                   }
                 }
               },
               "session": null,
-              "updatedAt": "2026-07-10T10:29:36.935Z"
+              "updatedAt": "2026-07-10T18:10:39.672Z"
             }
           },
           "rawEncounterRow": {
             "id": "phase6-real-worker-force-settle-encounter",
             "worldId": "default",
             "tileId": "tile_-5_-26",
-            "encounter": "{\"id\":\"phase6-real-worker-force-settle-encounter\",\"kind\":\"hostileForce\",\"status\":\"active\",\"name\":\"Frontier Patrol\",\"nameKey\":\"world.combat.encounter.frontierPatrol\",\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\",\"terrain\":\"waste\",\"unitKey\":\"hostile_squad_default\",\"createdAt\":\"2026-07-10T10:27:52.204Z\",\"updatedAt\":\"2026-07-10T10:27:52.204Z\",\"defender\":{\"id\":\"hostile_force_capital_ridge_defender\",\"owner\":\"hostile\",\"soldiers\":1,\"quality\":\"common\",\"threat\":1,\"scale\":1,\"leader\":{\"id\":\"df_185bln5\",\"name\":\"戎峻\",\"title\":\"营帐战首\",\"source\":{\"type\":\"defender\",\"label\":\"守军\",\"territoryId\":\"phase6-real-worker-force-settle-encounter\",\"territoryName\":\"Frontier Patrol\",\"owner\":\"tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"defenderLeader\",\"action\":\"leaderGeneration\",\"subjectId\":\"leader:phase6-real-worker-force-settle-encounter:tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"}},\"archetype\":\"vanguard\",\"archetypeLabel\":\"部落\",\"abilityArchetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"level\":3,\"roles\":[\"defender\",\"military\"],\"attributes\":{\"command\":54,\"force\":73,\"intelligence\":45,\"politics\":35,\"charisma\":47,\"speed\":59,\"strategy\":45,\"governance\":35},\"traits\":[\"部落\",\"一般\"],\"abilityKit\":{\"archetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"category\":\"battle\",\"battlePolicy\":\"useBattleSkill\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"generatorInput\":{\"quality\":\"common\",\"archetype\":\"vanguard\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"skillGenerator\",\"action\":\"abilityKitGeneration\",\"subjectId\":\"abilityKit:defender:vanguard:common\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"},\"abilities\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"},{\"id\":\"trait_vanguard_battle_pace\",\"name\":\"疾斗\",\"slot\":\"passiveTrait\",\"kind\":\"passive\",\"trigger\":\"preBattle\",\"effects\":[{\"key\":\"attributeBonus\",\"attribute\":\"speed\",\"value\":6}],\"budget\":{\"tier\":\"common\",\"cost\":35,\"limit\":40},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"战斗开始前，自己的速度提高 6 点。\"}],\"budget\":{\"active\":100,\"passive\":40,\"scoutActive\":85,\"scoutTrait\":45,\"civilPrimary\":60,\"civilSecondary\":35},\"budgetChecks\":[{\"slot\":\"activeSkill\",\"id\":\"skill_vanguard_rending_charge\",\"cost\":100,\"limit\":100,\"withinLimit\":true},{\"slot\":\"passiveTrait\",\"id\":\"trait_vanguard_battle_pace\",\"cost\":35,\"limit\":40,\"withinLimit\":true}],\"budgetStatus\":\"withinLimit\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"skills\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"}],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-06.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-06.png\"}},\"status\":{\"assigned\":\"defender\",\"loyalty\":0},\"createdAt\":\"2026-07-10T10:27:52.204Z\",\"generatorVersion\":\"defender-leader-v1\"},\"baseSoldiers\":1},\"resolvedAt\":null,\"campArchetypeKey\":null,\"lootTable\":null,\"respawnCooldownMs\":0,\"respawnAt\":null}",
-            "updatedAt": "2026-07-10T10:27:52.204Z",
+            "encounter": "{\"id\":\"phase6-real-worker-force-settle-encounter\",\"kind\":\"hostileForce\",\"status\":\"active\",\"name\":\"Frontier Patrol\",\"nameKey\":\"world.combat.encounter.frontierPatrol\",\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\",\"terrain\":\"waste\",\"unitKey\":\"hostile_squad_default\",\"createdAt\":\"2026-07-10T18:08:54.937Z\",\"updatedAt\":\"2026-07-10T18:08:54.937Z\",\"defender\":{\"id\":\"hostile_force_capital_ridge_defender\",\"owner\":\"hostile\",\"soldiers\":1,\"quality\":\"common\",\"threat\":1,\"scale\":1,\"leader\":{\"id\":\"df_185bln5\",\"name\":\"戎峻\",\"title\":\"营帐战首\",\"source\":{\"type\":\"defender\",\"label\":\"守军\",\"territoryId\":\"phase6-real-worker-force-settle-encounter\",\"territoryName\":\"Frontier Patrol\",\"owner\":\"tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"defenderLeader\",\"action\":\"leaderGeneration\",\"subjectId\":\"leader:phase6-real-worker-force-settle-encounter:tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"}},\"archetype\":\"vanguard\",\"archetypeLabel\":\"部落\",\"abilityArchetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"level\":3,\"roles\":[\"defender\",\"military\"],\"attributes\":{\"command\":55,\"force\":73,\"intelligence\":44,\"politics\":30,\"charisma\":53,\"speed\":59,\"strategy\":44,\"governance\":30},\"traits\":[\"部落\",\"一般\"],\"abilityKit\":{\"archetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"category\":\"battle\",\"battlePolicy\":\"useBattleSkill\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"generatorInput\":{\"quality\":\"common\",\"archetype\":\"vanguard\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"skillGenerator\",\"action\":\"abilityKitGeneration\",\"subjectId\":\"abilityKit:defender:vanguard:common\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"},\"abilities\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"},{\"id\":\"trait_vanguard_battle_pace\",\"name\":\"疾斗\",\"slot\":\"passiveTrait\",\"kind\":\"passive\",\"trigger\":\"preBattle\",\"effects\":[{\"key\":\"attributeBonus\",\"attribute\":\"speed\",\"value\":6}],\"budget\":{\"tier\":\"common\",\"cost\":35,\"limit\":40},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"战斗开始前，自己的速度提高 6 点。\"}],\"budget\":{\"active\":100,\"passive\":40,\"scoutActive\":85,\"scoutTrait\":45,\"civilPrimary\":60,\"civilSecondary\":35},\"budgetChecks\":[{\"slot\":\"activeSkill\",\"id\":\"skill_vanguard_rending_charge\",\"cost\":100,\"limit\":100,\"withinLimit\":true},{\"slot\":\"passiveTrait\",\"id\":\"trait_vanguard_battle_pace\",\"cost\":35,\"limit\":40,\"withinLimit\":true}],\"budgetStatus\":\"withinLimit\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"skills\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"}],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-07.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-05.png\"}},\"status\":{\"assigned\":\"defender\",\"loyalty\":0},\"createdAt\":\"2026-07-10T18:08:54.937Z\",\"generatorVersion\":\"defender-leader-v1\"},\"baseSoldiers\":1},\"resolvedAt\":null,\"campArchetypeKey\":null,\"lootTable\":null,\"respawnCooldownMs\":0,\"respawnAt\":null}",
+            "updatedAt": "2026-07-10T18:08:54.937Z",
             "encounterJson": {
               "id": "phase6-real-worker-force-settle-encounter",
               "kind": "hostileForce",
@@ -412,8 +412,8 @@
               "tileId": "tile_-5_-26",
               "terrain": "waste",
               "unitKey": "hostile_squad_default",
-              "createdAt": "2026-07-10T10:27:52.204Z",
-              "updatedAt": "2026-07-10T10:27:52.204Z",
+              "createdAt": "2026-07-10T18:08:54.937Z",
+              "updatedAt": "2026-07-10T18:08:54.937Z",
               "defender": {
                 "id": "hostile_force_capital_ridge_defender",
                 "owner": "hostile",
@@ -452,14 +452,14 @@
                     "military"
                   ],
                   "attributes": {
-                    "command": 54,
+                    "command": 55,
                     "force": 73,
-                    "intelligence": 45,
-                    "politics": 35,
-                    "charisma": 47,
+                    "intelligence": 44,
+                    "politics": 30,
+                    "charisma": 53,
                     "speed": 59,
-                    "strategy": 45,
-                    "governance": 35
+                    "strategy": 44,
+                    "governance": 30
                   },
                   "traits": [
                     "部落",
@@ -643,16 +643,16 @@
                     "seed": "defender:phase6-real-worker-force-settle-encounter:tribe:1:1",
                     "palette": "enemy_red",
                     "layers": {
-                      "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-06.png",
+                      "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-07.png",
                       "face": "assets/art/famous-person/layers/fp-layer-v3-face-08.png",
-                      "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-06.png"
+                      "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-05.png"
                     }
                   },
                   "status": {
                     "assigned": "defender",
                     "loyalty": 0
                   },
-                  "createdAt": "2026-07-10T10:27:52.204Z",
+                  "createdAt": "2026-07-10T18:08:54.937Z",
                   "generatorVersion": "defender-leader-v1"
                 },
                 "baseSoldiers": 1
@@ -670,21 +670,21 @@
       "observedBeforeStop": {
         "idempotency": {
           "playerId": "codexqa",
-          "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-          "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
+          "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+          "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
           "ownerKey": "player:codexqa",
-          "payloadDigest": "a636cd5fc3d96aba54c5e3c34bb801262eec6cd4a0a5801a1b06aab5567ae2be",
+          "payloadDigest": "95865679a7deba59b5a67b2571487d0589e71032bbbb17dd7fc346e3d254f618",
           "status": "committed",
-          "responseDigest": "922635a1b9872fac9fda945722a2add4eb562dc0011b7f993fe91fcdc7d6c95b",
+          "responseDigest": "1fcfed2f0b471815868e60b1f50b468ae21b1d36eb7efa22ecc84a69072b557e",
           "statusCode": 200,
-          "createdAt": "2026-07-10T10:29:40.316Z",
-          "updatedAt": "2026-07-10T10:29:40.550Z",
-          "responsePayloadSha256": "8cdbdd00b412bf7c27d669c416af43704729047e8b05c5c0c4da79ce77ba8091",
+          "createdAt": "2026-07-10T18:10:43.079Z",
+          "updatedAt": "2026-07-10T18:10:43.318Z",
+          "responsePayloadSha256": "c6400d3cc1a5a32584f2887a2327a358d8c06135c294bf84f04abb56d8e493e5",
           "responseTrace": {
             "schema": "game-command-summary-v1",
-            "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-            "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-            "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
+            "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+            "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+            "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
             "idempotencyClassification": "internal-idempotent",
             "type": "worldWorkerPlayerTick",
             "action": "worldWorkerPlayerTick",
@@ -696,7 +696,7 @@
             ],
             "target": "",
             "cityId": "",
-            "payloadDigest": "a636cd5fc3d96aba54c5e3c34bb801262eec6cd4a0a5801a1b06aab5567ae2be",
+            "payloadDigest": "95865679a7deba59b5a67b2571487d0589e71032bbbb17dd7fc346e3d254f618",
             "clientStateRevision": null,
             "retryAttempt": 0,
             "phase": "responding",
@@ -704,8 +704,8 @@
             "revisionBefore": 6,
             "revisionAfter": 7,
             "idempotencyStatus": "committed",
-            "ownerQueueWaitMs": 0,
-            "executionDurationMs": 232,
+            "ownerQueueWaitMs": 1,
+            "executionDurationMs": 238,
             "validatorResult": {
               "success": true,
               "error": ""
@@ -719,32 +719,32 @@
             "phases": [
               {
                 "phase": "received",
-                "at": "2026-07-10T10:29:40.316Z",
+                "at": "2026-07-10T18:10:43.079Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "idempotency_checking",
-                "at": "2026-07-10T10:29:40.316Z",
-                "durationMs": 1,
+                "at": "2026-07-10T18:10:43.079Z",
+                "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "owner_resolving",
-                "at": "2026-07-10T10:29:40.317Z",
+                "at": "2026-07-10T18:10:43.079Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "owner_lock_waiting",
-                "at": "2026-07-10T10:29:40.317Z",
-                "durationMs": 0,
+                "at": "2026-07-10T18:10:43.079Z",
+                "durationMs": 1,
                 "status": "completed"
               },
               {
                 "phase": "owner_locked",
-                "at": "2026-07-10T10:29:40.317Z",
-                "durationMs": 1,
+                "at": "2026-07-10T18:10:43.080Z",
+                "durationMs": 0,
                 "status": "completed",
                 "ownerKeys": [
                   "encounter:phase6-real-worker-force-settle-encounter",
@@ -753,43 +753,43 @@
               },
               {
                 "phase": "state_loading",
-                "at": "2026-07-10T10:29:40.318Z",
-                "durationMs": 134,
+                "at": "2026-07-10T18:10:43.080Z",
+                "durationMs": 140,
                 "status": "completed"
               },
               {
                 "phase": "validating",
-                "at": "2026-07-10T10:29:40.452Z",
+                "at": "2026-07-10T18:10:43.220Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "domain_executing",
-                "at": "2026-07-10T10:29:40.452Z",
-                "durationMs": 94,
+                "at": "2026-07-10T18:10:43.220Z",
+                "durationMs": 95,
                 "status": "completed"
               },
               {
                 "phase": "committing",
-                "at": "2026-07-10T10:29:40.546Z",
-                "durationMs": 4,
+                "at": "2026-07-10T18:10:43.315Z",
+                "durationMs": 3,
                 "status": "completed"
               },
               {
                 "phase": "projecting",
-                "at": "2026-07-10T10:29:40.550Z",
+                "at": "2026-07-10T18:10:43.318Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "response_building",
-                "at": "2026-07-10T10:29:40.550Z",
+                "at": "2026-07-10T18:10:43.318Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "responding",
-                "at": "2026-07-10T10:29:40.550Z",
+                "at": "2026-07-10T18:10:43.318Z",
                 "durationMs": 0,
                 "status": "started"
               }
@@ -800,8 +800,8 @@
           "id": "phase6-real-worker-force-settle-encounter",
           "worldId": "default",
           "tileId": "tile_-5_-26",
-          "encounter": "{\"id\":\"phase6-real-worker-force-settle-encounter\",\"kind\":\"hostileForce\",\"status\":\"resolved\",\"name\":\"Frontier Patrol\",\"nameKey\":\"world.combat.encounter.frontierPatrol\",\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\",\"terrain\":\"waste\",\"unitKey\":\"hostile_squad_default\",\"createdAt\":\"2026-07-10T10:27:52.204Z\",\"updatedAt\":\"2026-07-10T10:29:40.311Z\",\"defender\":{\"id\":\"hostile_force_capital_ridge_defender\",\"owner\":\"hostile\",\"soldiers\":0,\"quality\":\"common\",\"threat\":1,\"scale\":1,\"leader\":{\"id\":\"df_185bln5\",\"name\":\"戎峻\",\"title\":\"营帐战首\",\"source\":{\"type\":\"defender\",\"label\":\"守军\",\"territoryId\":\"phase6-real-worker-force-settle-encounter\",\"territoryName\":\"Frontier Patrol\",\"owner\":\"tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"defenderLeader\",\"action\":\"leaderGeneration\",\"subjectId\":\"leader:phase6-real-worker-force-settle-encounter:tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"}},\"archetype\":\"vanguard\",\"archetypeLabel\":\"部落\",\"abilityArchetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"level\":3,\"roles\":[\"defender\",\"military\"],\"attributes\":{\"command\":54,\"force\":73,\"intelligence\":45,\"politics\":35,\"charisma\":47,\"speed\":59,\"strategy\":45,\"governance\":35},\"traits\":[\"部落\",\"一般\"],\"abilityKit\":{\"archetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"category\":\"battle\",\"battlePolicy\":\"useBattleSkill\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"generatorInput\":{\"quality\":\"common\",\"archetype\":\"vanguard\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"skillGenerator\",\"action\":\"abilityKitGeneration\",\"subjectId\":\"abilityKit:defender:vanguard:common\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"},\"abilities\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"},{\"id\":\"trait_vanguard_battle_pace\",\"name\":\"疾斗\",\"slot\":\"passiveTrait\",\"kind\":\"passive\",\"trigger\":\"preBattle\",\"effects\":[{\"key\":\"attributeBonus\",\"attribute\":\"speed\",\"value\":6}],\"budget\":{\"tier\":\"common\",\"cost\":35,\"limit\":40},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"战斗开始前，自己的速度提高 6 点。\"}],\"budget\":{\"active\":100,\"passive\":40,\"scoutActive\":85,\"scoutTrait\":45,\"civilPrimary\":60,\"civilSecondary\":35},\"budgetChecks\":[{\"slot\":\"activeSkill\",\"id\":\"skill_vanguard_rending_charge\",\"cost\":100,\"limit\":100,\"withinLimit\":true},{\"slot\":\"passiveTrait\",\"id\":\"trait_vanguard_battle_pace\",\"cost\":35,\"limit\":40,\"withinLimit\":true}],\"budgetStatus\":\"withinLimit\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"skills\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"}],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-06.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-06.png\"}},\"status\":{\"assigned\":\"defender\",\"loyalty\":0},\"createdAt\":\"2026-07-10T10:27:52.204Z\",\"generatorVersion\":\"defender-leader-v1\"},\"baseSoldiers\":1},\"resolvedAt\":\"2026-07-10T10:29:40.311Z\",\"campArchetypeKey\":null,\"lootTable\":null,\"respawnCooldownMs\":0,\"respawnAt\":null}",
-          "updatedAt": "2026-07-10T10:29:40.311Z",
+          "encounter": "{\"id\":\"phase6-real-worker-force-settle-encounter\",\"kind\":\"hostileForce\",\"status\":\"resolved\",\"name\":\"Frontier Patrol\",\"nameKey\":\"world.combat.encounter.frontierPatrol\",\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\",\"terrain\":\"waste\",\"unitKey\":\"hostile_squad_default\",\"createdAt\":\"2026-07-10T18:08:54.937Z\",\"updatedAt\":\"2026-07-10T18:10:43.074Z\",\"defender\":{\"id\":\"hostile_force_capital_ridge_defender\",\"owner\":\"hostile\",\"soldiers\":0,\"quality\":\"common\",\"threat\":1,\"scale\":1,\"leader\":{\"id\":\"df_185bln5\",\"name\":\"戎峻\",\"title\":\"营帐战首\",\"source\":{\"type\":\"defender\",\"label\":\"守军\",\"territoryId\":\"phase6-real-worker-force-settle-encounter\",\"territoryName\":\"Frontier Patrol\",\"owner\":\"tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"defenderLeader\",\"action\":\"leaderGeneration\",\"subjectId\":\"leader:phase6-real-worker-force-settle-encounter:tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"}},\"archetype\":\"vanguard\",\"archetypeLabel\":\"部落\",\"abilityArchetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"level\":3,\"roles\":[\"defender\",\"military\"],\"attributes\":{\"command\":55,\"force\":73,\"intelligence\":44,\"politics\":30,\"charisma\":53,\"speed\":59,\"strategy\":44,\"governance\":30},\"traits\":[\"部落\",\"一般\"],\"abilityKit\":{\"archetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"category\":\"battle\",\"battlePolicy\":\"useBattleSkill\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"generatorInput\":{\"quality\":\"common\",\"archetype\":\"vanguard\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"skillGenerator\",\"action\":\"abilityKitGeneration\",\"subjectId\":\"abilityKit:defender:vanguard:common\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"},\"abilities\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"},{\"id\":\"trait_vanguard_battle_pace\",\"name\":\"疾斗\",\"slot\":\"passiveTrait\",\"kind\":\"passive\",\"trigger\":\"preBattle\",\"effects\":[{\"key\":\"attributeBonus\",\"attribute\":\"speed\",\"value\":6}],\"budget\":{\"tier\":\"common\",\"cost\":35,\"limit\":40},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"战斗开始前，自己的速度提高 6 点。\"}],\"budget\":{\"active\":100,\"passive\":40,\"scoutActive\":85,\"scoutTrait\":45,\"civilPrimary\":60,\"civilSecondary\":35},\"budgetChecks\":[{\"slot\":\"activeSkill\",\"id\":\"skill_vanguard_rending_charge\",\"cost\":100,\"limit\":100,\"withinLimit\":true},{\"slot\":\"passiveTrait\",\"id\":\"trait_vanguard_battle_pace\",\"cost\":35,\"limit\":40,\"withinLimit\":true}],\"budgetStatus\":\"withinLimit\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"skills\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"}],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-07.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-05.png\"}},\"status\":{\"assigned\":\"defender\",\"loyalty\":0},\"createdAt\":\"2026-07-10T18:08:54.937Z\",\"generatorVersion\":\"defender-leader-v1\"},\"baseSoldiers\":1},\"resolvedAt\":\"2026-07-10T18:10:43.074Z\",\"campArchetypeKey\":null,\"lootTable\":null,\"respawnCooldownMs\":0,\"respawnAt\":null}",
+          "updatedAt": "2026-07-10T18:10:43.074Z",
           "encounterJson": {
             "id": "phase6-real-worker-force-settle-encounter",
             "kind": "hostileForce",
@@ -813,8 +813,8 @@
             "tileId": "tile_-5_-26",
             "terrain": "waste",
             "unitKey": "hostile_squad_default",
-            "createdAt": "2026-07-10T10:27:52.204Z",
-            "updatedAt": "2026-07-10T10:29:40.311Z",
+            "createdAt": "2026-07-10T18:08:54.937Z",
+            "updatedAt": "2026-07-10T18:10:43.074Z",
             "defender": {
               "id": "hostile_force_capital_ridge_defender",
               "owner": "hostile",
@@ -853,14 +853,14 @@
                   "military"
                 ],
                 "attributes": {
-                  "command": 54,
+                  "command": 55,
                   "force": 73,
-                  "intelligence": 45,
-                  "politics": 35,
-                  "charisma": 47,
+                  "intelligence": 44,
+                  "politics": 30,
+                  "charisma": 53,
                   "speed": 59,
-                  "strategy": 45,
-                  "governance": 35
+                  "strategy": 44,
+                  "governance": 30
                 },
                 "traits": [
                   "部落",
@@ -1044,21 +1044,21 @@
                   "seed": "defender:phase6-real-worker-force-settle-encounter:tribe:1:1",
                   "palette": "enemy_red",
                   "layers": {
-                    "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-06.png",
+                    "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-07.png",
                     "face": "assets/art/famous-person/layers/fp-layer-v3-face-08.png",
-                    "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-06.png"
+                    "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-05.png"
                   }
                 },
                 "status": {
                   "assigned": "defender",
                   "loyalty": 0
                 },
-                "createdAt": "2026-07-10T10:27:52.204Z",
+                "createdAt": "2026-07-10T18:08:54.937Z",
                 "generatorVersion": "defender-leader-v1"
               },
               "baseSoldiers": 1
             },
-            "resolvedAt": "2026-07-10T10:29:40.311Z",
+            "resolvedAt": "2026-07-10T18:10:43.074Z",
             "campArchetypeKey": null,
             "lootTable": null,
             "respawnCooldownMs": 0,
@@ -1068,7 +1068,7 @@
         "state": {
           "playerId": "codexqa",
           "revision": 7,
-          "updatedAt": "2026-07-10T10:29:40.547Z",
+          "updatedAt": "2026-07-10T18:10:43.316Z",
           "territory": null,
           "missions": [
             {
@@ -1078,13 +1078,13 @@
                 "encounterId": "phase6-real-worker-force-settle-encounter",
                 "status": "resolved",
                 "battleId": "",
-                "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783679380311"
+                "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783707043074"
               }
             }
           ],
           "session": null,
           "recentReportIds": [
-            "world_combat_phase6-real-worker-force-settle-encounter_1783679380311"
+            "world_combat_phase6-real-worker-force-settle-encounter_1783707043074"
           ]
         }
       },
@@ -1092,7 +1092,7 @@
         "state": {
           "playerId": "codexqa",
           "revision": 7,
-          "updatedAt": "2026-07-10T10:29:40.547Z",
+          "updatedAt": "2026-07-10T18:10:43.316Z",
           "territory": null,
           "missions": [
             {
@@ -1102,21 +1102,21 @@
                 "encounterId": "phase6-real-worker-force-settle-encounter",
                 "status": "resolved",
                 "battleId": "",
-                "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783679380311"
+                "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783707043074"
               }
             }
           ],
           "session": null,
           "recentReportIds": [
-            "world_combat_phase6-real-worker-force-settle-encounter_1783679380311"
+            "world_combat_phase6-real-worker-force-settle-encounter_1783707043074"
           ]
         },
         "rawPlayerRow": {
           "playerId": "codexqa",
           "revision": 7,
-          "exploreMissions": "[{\"id\":\"phase6-real-worker-engaged-mission\",\"kind\":\"worldExplore\",\"mode\":\"random\",\"status\":\"idle\",\"origin\":{\"q\":-8,\"r\":-25,\"cityId\":\"capital\",\"territoryId\":\"capital\",\"name\":\"\",\"tileId\":\"tile_-8_-25\"},\"homeOrigin\":{\"q\":-8,\"r\":-25,\"cityId\":\"capital\",\"territoryId\":\"capital\",\"name\":\"\",\"tileId\":\"tile_-8_-25\"},\"target\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"position\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"route\":[],\"plannedTiles\":[],\"plannedSites\":[],\"revealedTileIds\":[],\"stepDurationMs\":5000,\"formation\":{\"cityId\":\"capital\",\"slot\":1,\"memberIds\":[\"phase6-real-worker-hero\"]},\"formationSnapshot\":{\"schema\":\"formation-snapshot-v1\",\"sourceCityId\":\"capital\",\"slot\":1,\"members\":[{\"personId\":\"phase6-real-worker-hero\",\"soldiersCommitted\":500,\"soldiersRemaining\":495}],\"soldiersCommitted\":500,\"soldiersRemaining\":495,\"lockedAt\":\"2026-07-10T10:29:40.481Z\",\"settledAt\":null},\"combat\":{\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"status\":\"resolved\",\"startedAt\":\"2026-07-10T10:29:40.481Z\",\"engagedAt\":\"2026-07-10T10:27:52.204Z\",\"battleId\":null,\"resolvedAt\":\"2026-07-10T10:29:40.311Z\",\"battleReportId\":\"world_combat_phase6-real-worker-force-settle-encounter_1783679380311\"},\"startedAt\":\"2026-07-10T10:29:40.481Z\",\"nextStepAt\":null,\"completesAt\":\"2026-07-10T10:29:40.481Z\",\"completedAt\":null,\"claimedAt\":null}]",
-          "worldCombat": "{\"schema\":\"world-combat-encounters-v1\",\"recentReports\":[{\"id\":\"world_combat_phase6-real-worker-force-settle-encounter_1783679380311\",\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"missionId\":\"phase6-real-worker-engaged-mission\",\"resolvedAt\":\"2026-07-10T10:29:40.311Z\",\"report\":{\"id\":\"world_combat_phase6-real-worker-force-settle-encounter_1783679380311\",\"mode\":\"entity-battle\",\"result\":\"victory\",\"summary\":\"Phase 6 phas defeated Frontier Patrol.\",\"rounds\":[],\"turns\":[],\"attacker\":{\"leaderId\":\"unavailable\",\"leaderName\":\"Phase 6 phas\",\"soldiersStart\":500,\"soldiersEnd\":495,\"groupsStart\":[{\"index\":1,\"soldiers\":100,\"capacity\":100},{\"index\":2,\"soldiers\":100,\"capacity\":100},{\"index\":3,\"soldiers\":100,\"capacity\":100},{\"index\":4,\"soldiers\":100,\"capacity\":100},{\"index\":5,\"soldiers\":100,\"capacity\":100}],\"groupsEnd\":[{\"index\":1,\"soldiers\":100,\"capacity\":100},{\"index\":2,\"soldiers\":100,\"capacity\":100},{\"index\":3,\"soldiers\":100,\"capacity\":100},{\"index\":4,\"soldiers\":100,\"capacity\":100},{\"index\":5,\"soldiers\":95,\"capacity\":100}]},\"defender\":{\"name\":\"戎峻\",\"soldiersStart\":1,\"soldiersEnd\":0,\"leaderId\":\"df_185bln5\",\"leaderName\":\"戎峻\",\"leaderTitle\":\"营帐战首\",\"groupsStart\":[{\"index\":1,\"soldiers\":1,\"capacity\":100}],\"groupsEnd\":[],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-06.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-06.png\"}}},\"visual\":{\"groupSize\":100,\"map\":{\"id\":\"frontier-field\",\"name\":\"边境战场\",\"palette\":[\"#2f3d30\",\"#667245\",\"#9a7848\"],\"background\":\"assets/art/battle/battlefield-forest-camp.png\",\"soldierSprites\":{\"attacker\":\"assets/art/battle/units/player\",\"defender\":\"assets/art/battle/units/enemy\"}}},\"battleTarget\":{\"source\":\"world-combat\",\"tile\":{\"id\":\"tile_-5_-26\",\"q\":-5,\"r\":-26,\"terrain\":\"waste\"},\"site\":{\"id\":\"phase6-real-worker-force-settle-encounter\",\"type\":\"hostileForce\",\"owner\":\"hostile\",\"status\":\"active\",\"name\":\"Frontier Patrol\",\"scale\":0,\"threat\":0,\"mapTerrain\":\"waste\",\"terrain\":\"waste\"},\"defender\":null,\"intelSnapshot\":{\"knownTerrain\":true,\"knownSite\":true,\"knownOwner\":true,\"knownGarrison\":false,\"knownLeader\":false,\"knownSkill\":false}},\"simulation\":{\"schema\":\"battle-sim-core-v1\",\"winner\":\"attacker\",\"ticks\":122,\"onField\":[496,0],\"survivorsByGid\":{\"phase6-real-worker-hero\":495,\"df_185bln5\":0}},\"replay\":{\"setup\":{\"seed\":1783679380352,\"arena\":{\"w\":720,\"h\":1280},\"config\":{},\"sides\":[{\"side\":\"attacker\",\"generals\":[{\"gid\":\"phase6-real-worker-hero\",\"stats\":{\"hp\":600,\"atk\":80,\"def\":40,\"range\":16,\"moveSpeed\":80,\"atkSpeed\":10},\"troop\":{\"count\":500,\"template\":{\"hp\":20,\"atk\":6,\"def\":2,\"range\":12,\"moveSpeed\":70,\"atkSpeed\":12}}}]},{\"side\":\"defender\",\"generals\":[{\"gid\":\"df_185bln5\",\"stats\":{\"hp\":492,\"atk\":64,\"def\":22,\"range\":16,\"moveSpeed\":80,\"atkSpeed\":13},\"troop\":{\"count\":1,\"template\":{\"hp\":20,\"atk\":6,\"def\":2,\"range\":12,\"moveSpeed\":70,\"atkSpeed\":12}}}]}]},\"inputStream\":[{\"tick\":0,\"type\":\"order\",\"side\":0,\"order\":\"allOut\"},{\"tick\":0,\"type\":\"order\",\"side\":1,\"order\":\"allOut\"}]},\"loot\":{}}}],\"encounterIntel\":{\"byEncounterId\":{\"phase6-real-resolve-storm-encounter\":{\"encounterId\":\"phase6-real-resolve-storm-encounter\",\"foughtAt\":\"2026-07-10T10:29:36.935Z\",\"battleReportId\":\"world_combat_phase6-real-resolve-storm-encounter_1783679376935\"},\"phase6-real-worker-force-settle-encounter\":{\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"foughtAt\":\"2026-07-10T10:29:40.311Z\",\"battleReportId\":\"world_combat_phase6-real-worker-force-settle-encounter_1783679380311\"}}},\"session\":null,\"updatedAt\":\"2026-07-10T10:29:40.311Z\"}",
-          "updatedAt": "2026-07-10T10:29:40.547Z",
+          "exploreMissions": "[{\"id\":\"phase6-real-worker-engaged-mission\",\"kind\":\"worldExplore\",\"mode\":\"random\",\"status\":\"idle\",\"origin\":{\"q\":-8,\"r\":-25,\"cityId\":\"capital\",\"territoryId\":\"capital\",\"name\":\"\",\"tileId\":\"tile_-8_-25\"},\"homeOrigin\":{\"q\":-8,\"r\":-25,\"cityId\":\"capital\",\"territoryId\":\"capital\",\"name\":\"\",\"tileId\":\"tile_-8_-25\"},\"target\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"position\":{\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\"},\"route\":[],\"plannedTiles\":[],\"plannedSites\":[],\"revealedTileIds\":[],\"stepDurationMs\":5000,\"formation\":{\"cityId\":\"capital\",\"slot\":1,\"memberIds\":[\"phase6-real-worker-hero\"]},\"formationSnapshot\":{\"schema\":\"formation-snapshot-v1\",\"sourceCityId\":\"capital\",\"slot\":1,\"members\":[{\"personId\":\"phase6-real-worker-hero\",\"soldiersCommitted\":500,\"soldiersRemaining\":494}],\"soldiersCommitted\":500,\"soldiersRemaining\":494,\"lockedAt\":\"2026-07-10T18:10:43.249Z\",\"settledAt\":null},\"combat\":{\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"status\":\"resolved\",\"startedAt\":\"2026-07-10T18:10:43.249Z\",\"engagedAt\":\"2026-07-10T18:08:54.937Z\",\"battleId\":null,\"resolvedAt\":\"2026-07-10T18:10:43.074Z\",\"battleReportId\":\"world_combat_phase6-real-worker-force-settle-encounter_1783707043074\"},\"startedAt\":\"2026-07-10T18:10:43.249Z\",\"nextStepAt\":null,\"completesAt\":\"2026-07-10T18:10:43.249Z\",\"completedAt\":null,\"claimedAt\":null}]",
+          "worldCombat": "{\"schema\":\"world-combat-encounters-v1\",\"recentReports\":[{\"id\":\"world_combat_phase6-real-worker-force-settle-encounter_1783707043074\",\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"missionId\":\"phase6-real-worker-engaged-mission\",\"resolvedAt\":\"2026-07-10T18:10:43.074Z\",\"report\":{\"id\":\"world_combat_phase6-real-worker-force-settle-encounter_1783707043074\",\"mode\":\"entity-battle\",\"result\":\"victory\",\"summary\":\"Phase 6 phas defeated Frontier Patrol.\",\"rounds\":[],\"turns\":[],\"attacker\":{\"leaderId\":\"unavailable\",\"leaderName\":\"Phase 6 phas\",\"soldiersStart\":500,\"soldiersEnd\":494,\"groupsStart\":[{\"index\":1,\"soldiers\":100,\"capacity\":100},{\"index\":2,\"soldiers\":100,\"capacity\":100},{\"index\":3,\"soldiers\":100,\"capacity\":100},{\"index\":4,\"soldiers\":100,\"capacity\":100},{\"index\":5,\"soldiers\":100,\"capacity\":100}],\"groupsEnd\":[{\"index\":1,\"soldiers\":100,\"capacity\":100},{\"index\":2,\"soldiers\":100,\"capacity\":100},{\"index\":3,\"soldiers\":100,\"capacity\":100},{\"index\":4,\"soldiers\":100,\"capacity\":100},{\"index\":5,\"soldiers\":94,\"capacity\":100}]},\"defender\":{\"name\":\"戎峻\",\"soldiersStart\":1,\"soldiersEnd\":0,\"leaderId\":\"df_185bln5\",\"leaderName\":\"戎峻\",\"leaderTitle\":\"营帐战首\",\"groupsStart\":[{\"index\":1,\"soldiers\":1,\"capacity\":100}],\"groupsEnd\":[],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-07.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-05.png\"}}},\"visual\":{\"groupSize\":100,\"map\":{\"id\":\"frontier-field\",\"name\":\"边境战场\",\"palette\":[\"#2f3d30\",\"#667245\",\"#9a7848\"],\"background\":\"assets/art/battle/battlefield-forest-camp.png\",\"soldierSprites\":{\"attacker\":\"assets/art/battle/units/player\",\"defender\":\"assets/art/battle/units/enemy\"}}},\"battleTarget\":{\"source\":\"world-combat\",\"tile\":{\"id\":\"tile_-5_-26\",\"q\":-5,\"r\":-26,\"terrain\":\"waste\"},\"site\":{\"id\":\"phase6-real-worker-force-settle-encounter\",\"type\":\"hostileForce\",\"owner\":\"hostile\",\"status\":\"active\",\"name\":\"Frontier Patrol\",\"scale\":0,\"threat\":0,\"mapTerrain\":\"waste\",\"terrain\":\"waste\"},\"defender\":null,\"intelSnapshot\":{\"knownTerrain\":true,\"knownSite\":true,\"knownOwner\":true,\"knownGarrison\":false,\"knownLeader\":false,\"knownSkill\":false}},\"simulation\":{\"schema\":\"battle-sim-core-v1\",\"winner\":\"attacker\",\"ticks\":144,\"onField\":[495,0],\"survivorsByGid\":{\"phase6-real-worker-hero\":494,\"df_185bln5\":0}},\"replay\":{\"setup\":{\"seed\":1783707043115,\"arena\":{\"w\":720,\"h\":1280},\"config\":{},\"sides\":[{\"side\":\"attacker\",\"generals\":[{\"gid\":\"phase6-real-worker-hero\",\"stats\":{\"hp\":600,\"atk\":80,\"def\":40,\"range\":16,\"moveSpeed\":80,\"atkSpeed\":10},\"troop\":{\"count\":500,\"template\":{\"hp\":20,\"atk\":6,\"def\":2,\"range\":12,\"moveSpeed\":70,\"atkSpeed\":12}}}]},{\"side\":\"defender\",\"generals\":[{\"gid\":\"df_185bln5\",\"stats\":{\"hp\":492,\"atk\":64,\"def\":22,\"range\":16,\"moveSpeed\":80,\"atkSpeed\":13},\"troop\":{\"count\":1,\"template\":{\"hp\":20,\"atk\":6,\"def\":2,\"range\":12,\"moveSpeed\":70,\"atkSpeed\":12}}}]}]},\"inputStream\":[{\"tick\":0,\"type\":\"order\",\"side\":0,\"order\":\"allOut\"},{\"tick\":0,\"type\":\"order\",\"side\":1,\"order\":\"allOut\"}]},\"loot\":{}}}],\"encounterIntel\":{\"byEncounterId\":{\"phase6-real-resolve-storm-encounter\":{\"encounterId\":\"phase6-real-resolve-storm-encounter\",\"foughtAt\":\"2026-07-10T18:10:39.672Z\",\"battleReportId\":\"world_combat_phase6-real-resolve-storm-encounter_1783707039672\"},\"phase6-real-worker-force-settle-encounter\":{\"encounterId\":\"phase6-real-worker-force-settle-encounter\",\"foughtAt\":\"2026-07-10T18:10:43.074Z\",\"battleReportId\":\"world_combat_phase6-real-worker-force-settle-encounter_1783707043074\"}}},\"session\":null,\"updatedAt\":\"2026-07-10T18:10:43.074Z\"}",
+          "updatedAt": "2026-07-10T18:10:43.316Z",
           "exploreMissionsJson": [
             {
               "id": "phase6-real-worker-engaged-mission",
@@ -1169,26 +1169,26 @@
                   {
                     "personId": "phase6-real-worker-hero",
                     "soldiersCommitted": 500,
-                    "soldiersRemaining": 495
+                    "soldiersRemaining": 494
                   }
                 ],
                 "soldiersCommitted": 500,
-                "soldiersRemaining": 495,
-                "lockedAt": "2026-07-10T10:29:40.481Z",
+                "soldiersRemaining": 494,
+                "lockedAt": "2026-07-10T18:10:43.249Z",
                 "settledAt": null
               },
               "combat": {
                 "encounterId": "phase6-real-worker-force-settle-encounter",
                 "status": "resolved",
-                "startedAt": "2026-07-10T10:29:40.481Z",
-                "engagedAt": "2026-07-10T10:27:52.204Z",
+                "startedAt": "2026-07-10T18:10:43.249Z",
+                "engagedAt": "2026-07-10T18:08:54.937Z",
                 "battleId": null,
-                "resolvedAt": "2026-07-10T10:29:40.311Z",
-                "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783679380311"
+                "resolvedAt": "2026-07-10T18:10:43.074Z",
+                "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783707043074"
               },
-              "startedAt": "2026-07-10T10:29:40.481Z",
+              "startedAt": "2026-07-10T18:10:43.249Z",
               "nextStepAt": null,
-              "completesAt": "2026-07-10T10:29:40.481Z",
+              "completesAt": "2026-07-10T18:10:43.249Z",
               "completedAt": null,
               "claimedAt": null
             }
@@ -1197,12 +1197,12 @@
             "schema": "world-combat-encounters-v1",
             "recentReports": [
               {
-                "id": "world_combat_phase6-real-worker-force-settle-encounter_1783679380311",
+                "id": "world_combat_phase6-real-worker-force-settle-encounter_1783707043074",
                 "encounterId": "phase6-real-worker-force-settle-encounter",
                 "missionId": "phase6-real-worker-engaged-mission",
-                "resolvedAt": "2026-07-10T10:29:40.311Z",
+                "resolvedAt": "2026-07-10T18:10:43.074Z",
                 "report": {
-                  "id": "world_combat_phase6-real-worker-force-settle-encounter_1783679380311",
+                  "id": "world_combat_phase6-real-worker-force-settle-encounter_1783707043074",
                   "mode": "entity-battle",
                   "result": "victory",
                   "summary": "Phase 6 phas defeated Frontier Patrol.",
@@ -1212,7 +1212,7 @@
                     "leaderId": "unavailable",
                     "leaderName": "Phase 6 phas",
                     "soldiersStart": 500,
-                    "soldiersEnd": 495,
+                    "soldiersEnd": 494,
                     "groupsStart": [
                       {
                         "index": 1,
@@ -1263,7 +1263,7 @@
                       },
                       {
                         "index": 5,
-                        "soldiers": 95,
+                        "soldiers": 94,
                         "capacity": 100
                       }
                     ]
@@ -1288,9 +1288,9 @@
                       "seed": "defender:phase6-real-worker-force-settle-encounter:tribe:1:1",
                       "palette": "enemy_red",
                       "layers": {
-                        "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-06.png",
+                        "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-07.png",
                         "face": "assets/art/famous-person/layers/fp-layer-v3-face-08.png",
-                        "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-06.png"
+                        "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-05.png"
                       }
                     }
                   },
@@ -1343,19 +1343,19 @@
                   "simulation": {
                     "schema": "battle-sim-core-v1",
                     "winner": "attacker",
-                    "ticks": 122,
+                    "ticks": 144,
                     "onField": [
-                      496,
+                      495,
                       0
                     ],
                     "survivorsByGid": {
-                      "phase6-real-worker-hero": 495,
+                      "phase6-real-worker-hero": 494,
                       "df_185bln5": 0
                     }
                   },
                   "replay": {
                     "setup": {
-                      "seed": 1783679380352,
+                      "seed": 1783707043115,
                       "arena": {
                         "w": 720,
                         "h": 1280
@@ -1441,26 +1441,26 @@
               "byEncounterId": {
                 "phase6-real-resolve-storm-encounter": {
                   "encounterId": "phase6-real-resolve-storm-encounter",
-                  "foughtAt": "2026-07-10T10:29:36.935Z",
-                  "battleReportId": "world_combat_phase6-real-resolve-storm-encounter_1783679376935"
+                  "foughtAt": "2026-07-10T18:10:39.672Z",
+                  "battleReportId": "world_combat_phase6-real-resolve-storm-encounter_1783707039672"
                 },
                 "phase6-real-worker-force-settle-encounter": {
                   "encounterId": "phase6-real-worker-force-settle-encounter",
-                  "foughtAt": "2026-07-10T10:29:40.311Z",
-                  "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783679380311"
+                  "foughtAt": "2026-07-10T18:10:43.074Z",
+                  "battleReportId": "world_combat_phase6-real-worker-force-settle-encounter_1783707043074"
                 }
               }
             },
             "session": null,
-            "updatedAt": "2026-07-10T10:29:40.311Z"
+            "updatedAt": "2026-07-10T18:10:43.074Z"
           }
         },
         "rawEncounterRow": {
           "id": "phase6-real-worker-force-settle-encounter",
           "worldId": "default",
           "tileId": "tile_-5_-26",
-          "encounter": "{\"id\":\"phase6-real-worker-force-settle-encounter\",\"kind\":\"hostileForce\",\"status\":\"resolved\",\"name\":\"Frontier Patrol\",\"nameKey\":\"world.combat.encounter.frontierPatrol\",\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\",\"terrain\":\"waste\",\"unitKey\":\"hostile_squad_default\",\"createdAt\":\"2026-07-10T10:27:52.204Z\",\"updatedAt\":\"2026-07-10T10:29:40.311Z\",\"defender\":{\"id\":\"hostile_force_capital_ridge_defender\",\"owner\":\"hostile\",\"soldiers\":0,\"quality\":\"common\",\"threat\":1,\"scale\":1,\"leader\":{\"id\":\"df_185bln5\",\"name\":\"戎峻\",\"title\":\"营帐战首\",\"source\":{\"type\":\"defender\",\"label\":\"守军\",\"territoryId\":\"phase6-real-worker-force-settle-encounter\",\"territoryName\":\"Frontier Patrol\",\"owner\":\"tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"defenderLeader\",\"action\":\"leaderGeneration\",\"subjectId\":\"leader:phase6-real-worker-force-settle-encounter:tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"}},\"archetype\":\"vanguard\",\"archetypeLabel\":\"部落\",\"abilityArchetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"level\":3,\"roles\":[\"defender\",\"military\"],\"attributes\":{\"command\":54,\"force\":73,\"intelligence\":45,\"politics\":35,\"charisma\":47,\"speed\":59,\"strategy\":45,\"governance\":35},\"traits\":[\"部落\",\"一般\"],\"abilityKit\":{\"archetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"category\":\"battle\",\"battlePolicy\":\"useBattleSkill\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"generatorInput\":{\"quality\":\"common\",\"archetype\":\"vanguard\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"skillGenerator\",\"action\":\"abilityKitGeneration\",\"subjectId\":\"abilityKit:defender:vanguard:common\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"},\"abilities\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"},{\"id\":\"trait_vanguard_battle_pace\",\"name\":\"疾斗\",\"slot\":\"passiveTrait\",\"kind\":\"passive\",\"trigger\":\"preBattle\",\"effects\":[{\"key\":\"attributeBonus\",\"attribute\":\"speed\",\"value\":6}],\"budget\":{\"tier\":\"common\",\"cost\":35,\"limit\":40},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"战斗开始前，自己的速度提高 6 点。\"}],\"budget\":{\"active\":100,\"passive\":40,\"scoutActive\":85,\"scoutTrait\":45,\"civilPrimary\":60,\"civilSecondary\":35},\"budgetChecks\":[{\"slot\":\"activeSkill\",\"id\":\"skill_vanguard_rending_charge\",\"cost\":100,\"limit\":100,\"withinLimit\":true},{\"slot\":\"passiveTrait\",\"id\":\"trait_vanguard_battle_pace\",\"cost\":35,\"limit\":40,\"withinLimit\":true}],\"budgetStatus\":\"withinLimit\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"skills\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"}],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-06.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-06.png\"}},\"status\":{\"assigned\":\"defender\",\"loyalty\":0},\"createdAt\":\"2026-07-10T10:27:52.204Z\",\"generatorVersion\":\"defender-leader-v1\"},\"baseSoldiers\":1},\"resolvedAt\":\"2026-07-10T10:29:40.311Z\",\"campArchetypeKey\":null,\"lootTable\":null,\"respawnCooldownMs\":0,\"respawnAt\":null}",
-          "updatedAt": "2026-07-10T10:29:40.311Z",
+          "encounter": "{\"id\":\"phase6-real-worker-force-settle-encounter\",\"kind\":\"hostileForce\",\"status\":\"resolved\",\"name\":\"Frontier Patrol\",\"nameKey\":\"world.combat.encounter.frontierPatrol\",\"q\":-5,\"r\":-26,\"tileId\":\"tile_-5_-26\",\"terrain\":\"waste\",\"unitKey\":\"hostile_squad_default\",\"createdAt\":\"2026-07-10T18:08:54.937Z\",\"updatedAt\":\"2026-07-10T18:10:43.074Z\",\"defender\":{\"id\":\"hostile_force_capital_ridge_defender\",\"owner\":\"hostile\",\"soldiers\":0,\"quality\":\"common\",\"threat\":1,\"scale\":1,\"leader\":{\"id\":\"df_185bln5\",\"name\":\"戎峻\",\"title\":\"营帐战首\",\"source\":{\"type\":\"defender\",\"label\":\"守军\",\"territoryId\":\"phase6-real-worker-force-settle-encounter\",\"territoryName\":\"Frontier Patrol\",\"owner\":\"tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"defenderLeader\",\"action\":\"leaderGeneration\",\"subjectId\":\"leader:phase6-real-worker-force-settle-encounter:tribe\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"}},\"archetype\":\"vanguard\",\"archetypeLabel\":\"部落\",\"abilityArchetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"level\":3,\"roles\":[\"defender\",\"military\"],\"attributes\":{\"command\":55,\"force\":73,\"intelligence\":44,\"politics\":30,\"charisma\":53,\"speed\":59,\"strategy\":44,\"governance\":30},\"traits\":[\"部落\",\"一般\"],\"abilityKit\":{\"archetype\":\"vanguard\",\"quality\":\"common\",\"qualityLabel\":\"一般\",\"category\":\"battle\",\"battlePolicy\":\"useBattleSkill\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"generatorInput\":{\"quality\":\"common\",\"archetype\":\"vanguard\",\"source\":\"defender\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"randomAuthority\":{\"schema\":\"server-random-authority-v1\",\"authority\":\"server\",\"scope\":\"skillGenerator\",\"action\":\"abilityKitGeneration\",\"subjectId\":\"abilityKit:defender:vanguard:common\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\"},\"abilities\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"},{\"id\":\"trait_vanguard_battle_pace\",\"name\":\"疾斗\",\"slot\":\"passiveTrait\",\"kind\":\"passive\",\"trigger\":\"preBattle\",\"effects\":[{\"key\":\"attributeBonus\",\"attribute\":\"speed\",\"value\":6}],\"budget\":{\"tier\":\"common\",\"cost\":35,\"limit\":40},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"战斗开始前，自己的速度提高 6 点。\"}],\"budget\":{\"active\":100,\"passive\":40,\"scoutActive\":85,\"scoutTrait\":45,\"civilPrimary\":60,\"civilSecondary\":35},\"budgetChecks\":[{\"slot\":\"activeSkill\",\"id\":\"skill_vanguard_rending_charge\",\"cost\":100,\"limit\":100,\"withinLimit\":true},{\"slot\":\"passiveTrait\",\"id\":\"trait_vanguard_battle_pace\",\"cost\":35,\"limit\":40,\"withinLimit\":true}],\"budgetStatus\":\"withinLimit\",\"availableEffectPool\":[\"directDamage\",\"secondHit\",\"firstStrike\",\"shield\",\"armorBreak\",\"burn\",\"poison\",\"attributeBonus\"],\"generatorVersion\":\"skill-gen-v1\"},\"skills\":[{\"id\":\"skill_vanguard_rending_charge\",\"name\":\"裂甲猛冲\",\"slot\":\"activeSkill\",\"kind\":\"active\",\"type\":\"battle\",\"category\":\"blade\",\"damageType\":\"blade\",\"multiplier\":1.16,\"cooldown\":3,\"castPolicy\":\"conditional\",\"castConditions\":[{\"type\":\"cooldownReady\"},{\"type\":\"targetAlive\"}],\"effects\":[{\"key\":\"directDamage\",\"value\":1.16},{\"key\":\"armorBreak\",\"value\":0.12,\"turns\":2,\"maxStacks\":3}],\"budget\":{\"tier\":\"common\",\"cost\":100,\"limit\":100},\"generatorVersion\":\"skill-gen-v1\",\"description\":\"发动战法攻击目标，造成一次兵刃伤害。对目标施加破甲（破甲：目标后续受到的兵刃伤害提高）。\"}],\"appearance\":{\"version\":\"famous-portrait-v3.0\",\"seed\":\"defender:phase6-real-worker-force-settle-encounter:tribe:1:1\",\"palette\":\"enemy_red\",\"layers\":{\"outfit\":\"assets/art/famous-person/layers/fp-layer-v3-outfit-07.png\",\"face\":\"assets/art/famous-person/layers/fp-layer-v3-face-08.png\",\"hair\":\"assets/art/famous-person/layers/fp-layer-v3-hair-05.png\"}},\"status\":{\"assigned\":\"defender\",\"loyalty\":0},\"createdAt\":\"2026-07-10T18:08:54.937Z\",\"generatorVersion\":\"defender-leader-v1\"},\"baseSoldiers\":1},\"resolvedAt\":\"2026-07-10T18:10:43.074Z\",\"campArchetypeKey\":null,\"lootTable\":null,\"respawnCooldownMs\":0,\"respawnAt\":null}",
+          "updatedAt": "2026-07-10T18:10:43.074Z",
           "encounterJson": {
             "id": "phase6-real-worker-force-settle-encounter",
             "kind": "hostileForce",
@@ -1472,8 +1472,8 @@
             "tileId": "tile_-5_-26",
             "terrain": "waste",
             "unitKey": "hostile_squad_default",
-            "createdAt": "2026-07-10T10:27:52.204Z",
-            "updatedAt": "2026-07-10T10:29:40.311Z",
+            "createdAt": "2026-07-10T18:08:54.937Z",
+            "updatedAt": "2026-07-10T18:10:43.074Z",
             "defender": {
               "id": "hostile_force_capital_ridge_defender",
               "owner": "hostile",
@@ -1512,14 +1512,14 @@
                   "military"
                 ],
                 "attributes": {
-                  "command": 54,
+                  "command": 55,
                   "force": 73,
-                  "intelligence": 45,
-                  "politics": 35,
-                  "charisma": 47,
+                  "intelligence": 44,
+                  "politics": 30,
+                  "charisma": 53,
                   "speed": 59,
-                  "strategy": 45,
-                  "governance": 35
+                  "strategy": 44,
+                  "governance": 30
                 },
                 "traits": [
                   "部落",
@@ -1703,21 +1703,21 @@
                   "seed": "defender:phase6-real-worker-force-settle-encounter:tribe:1:1",
                   "palette": "enemy_red",
                   "layers": {
-                    "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-06.png",
+                    "outfit": "assets/art/famous-person/layers/fp-layer-v3-outfit-07.png",
                     "face": "assets/art/famous-person/layers/fp-layer-v3-face-08.png",
-                    "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-06.png"
+                    "hair": "assets/art/famous-person/layers/fp-layer-v3-hair-05.png"
                   }
                 },
                 "status": {
                   "assigned": "defender",
                   "loyalty": 0
                 },
-                "createdAt": "2026-07-10T10:27:52.204Z",
+                "createdAt": "2026-07-10T18:08:54.937Z",
                 "generatorVersion": "defender-leader-v1"
               },
               "baseSoldiers": 1
             },
-            "resolvedAt": "2026-07-10T10:29:40.311Z",
+            "resolvedAt": "2026-07-10T18:10:43.074Z",
             "campArchetypeKey": null,
             "lootTable": null,
             "respawnCooldownMs": 0,
@@ -1728,21 +1728,21 @@
       },
       "idempotency": {
         "playerId": "codexqa",
-        "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-        "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
+        "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+        "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
         "ownerKey": "player:codexqa",
-        "payloadDigest": "a636cd5fc3d96aba54c5e3c34bb801262eec6cd4a0a5801a1b06aab5567ae2be",
+        "payloadDigest": "95865679a7deba59b5a67b2571487d0589e71032bbbb17dd7fc346e3d254f618",
         "status": "committed",
-        "responseDigest": "922635a1b9872fac9fda945722a2add4eb562dc0011b7f993fe91fcdc7d6c95b",
+        "responseDigest": "1fcfed2f0b471815868e60b1f50b468ae21b1d36eb7efa22ecc84a69072b557e",
         "statusCode": 200,
-        "createdAt": "2026-07-10T10:29:40.316Z",
-        "updatedAt": "2026-07-10T10:29:40.550Z",
-        "responsePayloadSha256": "8cdbdd00b412bf7c27d669c416af43704729047e8b05c5c0c4da79ce77ba8091",
+        "createdAt": "2026-07-10T18:10:43.079Z",
+        "updatedAt": "2026-07-10T18:10:43.318Z",
+        "responsePayloadSha256": "c6400d3cc1a5a32584f2887a2327a358d8c06135c294bf84f04abb56d8e493e5",
         "responseTrace": {
           "schema": "game-command-summary-v1",
-          "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-          "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-          "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
+          "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+          "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+          "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
           "idempotencyClassification": "internal-idempotent",
           "type": "worldWorkerPlayerTick",
           "action": "worldWorkerPlayerTick",
@@ -1754,7 +1754,7 @@
           ],
           "target": "",
           "cityId": "",
-          "payloadDigest": "a636cd5fc3d96aba54c5e3c34bb801262eec6cd4a0a5801a1b06aab5567ae2be",
+          "payloadDigest": "95865679a7deba59b5a67b2571487d0589e71032bbbb17dd7fc346e3d254f618",
           "clientStateRevision": null,
           "retryAttempt": 0,
           "phase": "responding",
@@ -1762,8 +1762,8 @@
           "revisionBefore": 6,
           "revisionAfter": 7,
           "idempotencyStatus": "committed",
-          "ownerQueueWaitMs": 0,
-          "executionDurationMs": 232,
+          "ownerQueueWaitMs": 1,
+          "executionDurationMs": 238,
           "validatorResult": {
             "success": true,
             "error": ""
@@ -1777,32 +1777,32 @@
           "phases": [
             {
               "phase": "received",
-              "at": "2026-07-10T10:29:40.316Z",
+              "at": "2026-07-10T18:10:43.079Z",
               "durationMs": 0,
               "status": "completed"
             },
             {
               "phase": "idempotency_checking",
-              "at": "2026-07-10T10:29:40.316Z",
-              "durationMs": 1,
+              "at": "2026-07-10T18:10:43.079Z",
+              "durationMs": 0,
               "status": "completed"
             },
             {
               "phase": "owner_resolving",
-              "at": "2026-07-10T10:29:40.317Z",
+              "at": "2026-07-10T18:10:43.079Z",
               "durationMs": 0,
               "status": "completed"
             },
             {
               "phase": "owner_lock_waiting",
-              "at": "2026-07-10T10:29:40.317Z",
-              "durationMs": 0,
+              "at": "2026-07-10T18:10:43.079Z",
+              "durationMs": 1,
               "status": "completed"
             },
             {
               "phase": "owner_locked",
-              "at": "2026-07-10T10:29:40.317Z",
-              "durationMs": 1,
+              "at": "2026-07-10T18:10:43.080Z",
+              "durationMs": 0,
               "status": "completed",
               "ownerKeys": [
                 "encounter:phase6-real-worker-force-settle-encounter",
@@ -1811,43 +1811,43 @@
             },
             {
               "phase": "state_loading",
-              "at": "2026-07-10T10:29:40.318Z",
-              "durationMs": 134,
+              "at": "2026-07-10T18:10:43.080Z",
+              "durationMs": 140,
               "status": "completed"
             },
             {
               "phase": "validating",
-              "at": "2026-07-10T10:29:40.452Z",
+              "at": "2026-07-10T18:10:43.220Z",
               "durationMs": 0,
               "status": "completed"
             },
             {
               "phase": "domain_executing",
-              "at": "2026-07-10T10:29:40.452Z",
-              "durationMs": 94,
+              "at": "2026-07-10T18:10:43.220Z",
+              "durationMs": 95,
               "status": "completed"
             },
             {
               "phase": "committing",
-              "at": "2026-07-10T10:29:40.546Z",
-              "durationMs": 4,
+              "at": "2026-07-10T18:10:43.315Z",
+              "durationMs": 3,
               "status": "completed"
             },
             {
               "phase": "projecting",
-              "at": "2026-07-10T10:29:40.550Z",
+              "at": "2026-07-10T18:10:43.318Z",
               "durationMs": 0,
               "status": "completed"
             },
             {
               "phase": "response_building",
-              "at": "2026-07-10T10:29:40.550Z",
+              "at": "2026-07-10T18:10:43.318Z",
               "durationMs": 0,
               "status": "completed"
             },
             {
               "phase": "responding",
-              "at": "2026-07-10T10:29:40.550Z",
+              "at": "2026-07-10T18:10:43.318Z",
               "durationMs": 0,
               "status": "started"
             }
@@ -1859,9 +1859,9 @@
           "playerId": "codexqa",
           "command": {
             "schema": "game-command-summary-v1",
-            "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-            "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-            "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
+            "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+            "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+            "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
             "idempotencyClassification": "internal-idempotent",
             "type": "worldWorkerPlayerTick",
             "action": "worldWorkerPlayerTick",
@@ -1873,7 +1873,7 @@
             ],
             "target": "",
             "cityId": "",
-            "payloadDigest": "a636cd5fc3d96aba54c5e3c34bb801262eec6cd4a0a5801a1b06aab5567ae2be",
+            "payloadDigest": "95865679a7deba59b5a67b2571487d0589e71032bbbb17dd7fc346e3d254f618",
             "clientStateRevision": null,
             "retryAttempt": 0,
             "phase": "responding",
@@ -1881,8 +1881,8 @@
             "revisionBefore": 6,
             "revisionAfter": 7,
             "idempotencyStatus": "committed",
-            "ownerQueueWaitMs": 0,
-            "executionDurationMs": 232,
+            "ownerQueueWaitMs": 1,
+            "executionDurationMs": 238,
             "validatorResult": {
               "success": true,
               "error": ""
@@ -1896,32 +1896,32 @@
             "phases": [
               {
                 "phase": "received",
-                "at": "2026-07-10T10:29:40.316Z",
+                "at": "2026-07-10T18:10:43.079Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "idempotency_checking",
-                "at": "2026-07-10T10:29:40.316Z",
-                "durationMs": 1,
+                "at": "2026-07-10T18:10:43.079Z",
+                "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "owner_resolving",
-                "at": "2026-07-10T10:29:40.317Z",
+                "at": "2026-07-10T18:10:43.079Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "owner_lock_waiting",
-                "at": "2026-07-10T10:29:40.317Z",
-                "durationMs": 0,
+                "at": "2026-07-10T18:10:43.079Z",
+                "durationMs": 1,
                 "status": "completed"
               },
               {
                 "phase": "owner_locked",
-                "at": "2026-07-10T10:29:40.317Z",
-                "durationMs": 1,
+                "at": "2026-07-10T18:10:43.080Z",
+                "durationMs": 0,
                 "status": "completed",
                 "ownerKeys": [
                   "encounter:phase6-real-worker-force-settle-encounter",
@@ -1930,63 +1930,63 @@
               },
               {
                 "phase": "state_loading",
-                "at": "2026-07-10T10:29:40.318Z",
-                "durationMs": 134,
+                "at": "2026-07-10T18:10:43.080Z",
+                "durationMs": 140,
                 "status": "completed"
               },
               {
                 "phase": "validating",
-                "at": "2026-07-10T10:29:40.452Z",
+                "at": "2026-07-10T18:10:43.220Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "domain_executing",
-                "at": "2026-07-10T10:29:40.452Z",
-                "durationMs": 94,
+                "at": "2026-07-10T18:10:43.220Z",
+                "durationMs": 95,
                 "status": "completed"
               },
               {
                 "phase": "committing",
-                "at": "2026-07-10T10:29:40.546Z",
-                "durationMs": 4,
+                "at": "2026-07-10T18:10:43.315Z",
+                "durationMs": 3,
                 "status": "completed"
               },
               {
                 "phase": "projecting",
-                "at": "2026-07-10T10:29:40.550Z",
+                "at": "2026-07-10T18:10:43.318Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "response_building",
-                "at": "2026-07-10T10:29:40.550Z",
+                "at": "2026-07-10T18:10:43.318Z",
                 "durationMs": 0,
                 "status": "completed"
               },
               {
                 "phase": "responding",
-                "at": "2026-07-10T10:29:40.550Z",
+                "at": "2026-07-10T18:10:43.318Z",
                 "durationMs": 0,
                 "status": "started"
               }
             ]
           },
-          "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-          "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
+          "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+          "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
           "phase": "responding",
           "committed": true,
           "revisionBefore": 6,
           "revisionAfter": 7,
           "resyncRequired": false
         },
-        "responsePayloadRaw": "{\"success\":true,\"changed\":true,\"playerId\":\"codexqa\",\"command\":{\"schema\":\"game-command-summary-v1\",\"commandId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311\",\"requestId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311\",\"idempotencyKey\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311\",\"idempotencyClassification\":\"internal-idempotent\",\"type\":\"worldWorkerPlayerTick\",\"action\":\"worldWorkerPlayerTick\",\"playerId\":\"codexqa\",\"ownerKey\":\"player:codexqa\",\"ownerKeys\":[\"encounter:phase6-real-worker-force-settle-encounter\",\"player:codexqa\"],\"target\":\"\",\"cityId\":\"\",\"payloadDigest\":\"a636cd5fc3d96aba54c5e3c34bb801262eec6cd4a0a5801a1b06aab5567ae2be\",\"clientStateRevision\":null,\"retryAttempt\":0,\"phase\":\"responding\",\"committed\":true,\"revisionBefore\":6,\"revisionAfter\":7,\"idempotencyStatus\":\"committed\",\"ownerQueueWaitMs\":0,\"executionDurationMs\":232,\"validatorResult\":{\"success\":true,\"error\":\"\"},\"commitResult\":{\"status\":\"committed\",\"revisionBefore\":6,\"revisionAfter\":7},\"responseStatus\":200,\"phases\":[{\"phase\":\"received\",\"at\":\"2026-07-10T10:29:40.316Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"idempotency_checking\",\"at\":\"2026-07-10T10:29:40.316Z\",\"durationMs\":1,\"status\":\"completed\"},{\"phase\":\"owner_resolving\",\"at\":\"2026-07-10T10:29:40.317Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"owner_lock_waiting\",\"at\":\"2026-07-10T10:29:40.317Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"owner_locked\",\"at\":\"2026-07-10T10:29:40.317Z\",\"durationMs\":1,\"status\":\"completed\",\"ownerKeys\":[\"encounter:phase6-real-worker-force-settle-encounter\",\"player:codexqa\"]},{\"phase\":\"state_loading\",\"at\":\"2026-07-10T10:29:40.318Z\",\"durationMs\":134,\"status\":\"completed\"},{\"phase\":\"validating\",\"at\":\"2026-07-10T10:29:40.452Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"domain_executing\",\"at\":\"2026-07-10T10:29:40.452Z\",\"durationMs\":94,\"status\":\"completed\"},{\"phase\":\"committing\",\"at\":\"2026-07-10T10:29:40.546Z\",\"durationMs\":4,\"status\":\"completed\"},{\"phase\":\"projecting\",\"at\":\"2026-07-10T10:29:40.550Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"response_building\",\"at\":\"2026-07-10T10:29:40.550Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"responding\",\"at\":\"2026-07-10T10:29:40.550Z\",\"durationMs\":0,\"status\":\"started\"}]},\"commandId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311\",\"requestId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311\",\"phase\":\"responding\",\"committed\":true,\"revisionBefore\":6,\"revisionAfter\":7,\"resyncRequired\":false}"
+        "responsePayloadRaw": "{\"success\":true,\"changed\":true,\"playerId\":\"codexqa\",\"command\":{\"schema\":\"game-command-summary-v1\",\"commandId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074\",\"requestId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074\",\"idempotencyKey\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074\",\"idempotencyClassification\":\"internal-idempotent\",\"type\":\"worldWorkerPlayerTick\",\"action\":\"worldWorkerPlayerTick\",\"playerId\":\"codexqa\",\"ownerKey\":\"player:codexqa\",\"ownerKeys\":[\"encounter:phase6-real-worker-force-settle-encounter\",\"player:codexqa\"],\"target\":\"\",\"cityId\":\"\",\"payloadDigest\":\"95865679a7deba59b5a67b2571487d0589e71032bbbb17dd7fc346e3d254f618\",\"clientStateRevision\":null,\"retryAttempt\":0,\"phase\":\"responding\",\"committed\":true,\"revisionBefore\":6,\"revisionAfter\":7,\"idempotencyStatus\":\"committed\",\"ownerQueueWaitMs\":1,\"executionDurationMs\":238,\"validatorResult\":{\"success\":true,\"error\":\"\"},\"commitResult\":{\"status\":\"committed\",\"revisionBefore\":6,\"revisionAfter\":7},\"responseStatus\":200,\"phases\":[{\"phase\":\"received\",\"at\":\"2026-07-10T18:10:43.079Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"idempotency_checking\",\"at\":\"2026-07-10T18:10:43.079Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"owner_resolving\",\"at\":\"2026-07-10T18:10:43.079Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"owner_lock_waiting\",\"at\":\"2026-07-10T18:10:43.079Z\",\"durationMs\":1,\"status\":\"completed\"},{\"phase\":\"owner_locked\",\"at\":\"2026-07-10T18:10:43.080Z\",\"durationMs\":0,\"status\":\"completed\",\"ownerKeys\":[\"encounter:phase6-real-worker-force-settle-encounter\",\"player:codexqa\"]},{\"phase\":\"state_loading\",\"at\":\"2026-07-10T18:10:43.080Z\",\"durationMs\":140,\"status\":\"completed\"},{\"phase\":\"validating\",\"at\":\"2026-07-10T18:10:43.220Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"domain_executing\",\"at\":\"2026-07-10T18:10:43.220Z\",\"durationMs\":95,\"status\":\"completed\"},{\"phase\":\"committing\",\"at\":\"2026-07-10T18:10:43.315Z\",\"durationMs\":3,\"status\":\"completed\"},{\"phase\":\"projecting\",\"at\":\"2026-07-10T18:10:43.318Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"response_building\",\"at\":\"2026-07-10T18:10:43.318Z\",\"durationMs\":0,\"status\":\"completed\"},{\"phase\":\"responding\",\"at\":\"2026-07-10T18:10:43.318Z\",\"durationMs\":0,\"status\":\"started\"}]},\"commandId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074\",\"requestId\":\"cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074\",\"phase\":\"responding\",\"committed\":true,\"revisionBefore\":6,\"revisionAfter\":7,\"resyncRequired\":false}"
       },
       "responseTrace": {
         "schema": "game-command-summary-v1",
-        "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-        "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
-        "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783679380311",
+        "commandId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+        "requestId": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
+        "idempotencyKey": "cmd-world-worker-worldWorkerPlayerTick-codexqa-1783707043074",
         "idempotencyClassification": "internal-idempotent",
         "type": "worldWorkerPlayerTick",
         "action": "worldWorkerPlayerTick",
@@ -1998,7 +1998,7 @@
         ],
         "target": "",
         "cityId": "",
-        "payloadDigest": "a636cd5fc3d96aba54c5e3c34bb801262eec6cd4a0a5801a1b06aab5567ae2be",
+        "payloadDigest": "95865679a7deba59b5a67b2571487d0589e71032bbbb17dd7fc346e3d254f618",
         "clientStateRevision": null,
         "retryAttempt": 0,
         "phase": "responding",
@@ -2006,8 +2006,8 @@
         "revisionBefore": 6,
         "revisionAfter": 7,
         "idempotencyStatus": "committed",
-        "ownerQueueWaitMs": 0,
-        "executionDurationMs": 232,
+        "ownerQueueWaitMs": 1,
+        "executionDurationMs": 238,
         "validatorResult": {
           "success": true,
           "error": ""
@@ -2021,32 +2021,32 @@
         "phases": [
           {
             "phase": "received",
-            "at": "2026-07-10T10:29:40.316Z",
+            "at": "2026-07-10T18:10:43.079Z",
             "durationMs": 0,
             "status": "completed"
           },
           {
             "phase": "idempotency_checking",
-            "at": "2026-07-10T10:29:40.316Z",
-            "durationMs": 1,
+            "at": "2026-07-10T18:10:43.079Z",
+            "durationMs": 0,
             "status": "completed"
           },
           {
             "phase": "owner_resolving",
-            "at": "2026-07-10T10:29:40.317Z",
+            "at": "2026-07-10T18:10:43.079Z",
             "durationMs": 0,
             "status": "completed"
           },
           {
             "phase": "owner_lock_waiting",
-            "at": "2026-07-10T10:29:40.317Z",
-            "durationMs": 0,
+            "at": "2026-07-10T18:10:43.079Z",
+            "durationMs": 1,
             "status": "completed"
           },
           {
             "phase": "owner_locked",
-            "at": "2026-07-10T10:29:40.317Z",
-            "durationMs": 1,
+            "at": "2026-07-10T18:10:43.080Z",
+            "durationMs": 0,
             "status": "completed",
             "ownerKeys": [
               "encounter:phase6-real-worker-force-settle-encounter",
@@ -2055,43 +2055,43 @@
           },
           {
             "phase": "state_loading",
-            "at": "2026-07-10T10:29:40.318Z",
-            "durationMs": 134,
+            "at": "2026-07-10T18:10:43.080Z",
+            "durationMs": 140,
             "status": "completed"
           },
           {
             "phase": "validating",
-            "at": "2026-07-10T10:29:40.452Z",
+            "at": "2026-07-10T18:10:43.220Z",
             "durationMs": 0,
             "status": "completed"
           },
           {
             "phase": "domain_executing",
-            "at": "2026-07-10T10:29:40.452Z",
-            "durationMs": 94,
+            "at": "2026-07-10T18:10:43.220Z",
+            "durationMs": 95,
             "status": "completed"
           },
           {
             "phase": "committing",
-            "at": "2026-07-10T10:29:40.546Z",
-            "durationMs": 4,
+            "at": "2026-07-10T18:10:43.315Z",
+            "durationMs": 3,
             "status": "completed"
           },
           {
             "phase": "projecting",
-            "at": "2026-07-10T10:29:40.550Z",
+            "at": "2026-07-10T18:10:43.318Z",
             "durationMs": 0,
             "status": "completed"
           },
           {
             "phase": "response_building",
-            "at": "2026-07-10T10:29:40.550Z",
+            "at": "2026-07-10T18:10:43.318Z",
             "durationMs": 0,
             "status": "completed"
           },
           {
             "phase": "responding",
-            "at": "2026-07-10T10:29:40.550Z",
+            "at": "2026-07-10T18:10:43.318Z",
             "durationMs": 0,
             "status": "started"
           }
@@ -2129,11 +2129,234 @@
     "worldWorkerForceSettleClosed": true,
     "sameServerHealthBeforeAndAfter": true
   },
+  "assertionSources": {
+    "stubFree": [
+      {
+        "path": "source.integrity.stubFree",
+        "exists": true,
+        "value": true
+      },
+      {
+        "path": "source.assertion.stubFree",
+        "exists": true,
+        "value": true
+      }
+    ],
+    "productionServer": [
+      {
+        "path": "source.integrity.serverEntry",
+        "exists": true,
+        "value": "backend/server.js"
+      },
+      {
+        "path": "source.integrity.serverPid",
+        "exists": true,
+        "value": 134512
+      },
+      {
+        "path": "source.healthBefore.response.status",
+        "exists": true,
+        "value": 200
+      },
+      {
+        "path": "source.healthAfter.response.status",
+        "exists": true,
+        "value": 200
+      },
+      {
+        "path": "source.assertion.sameServerHealthBeforeAndAfter",
+        "exists": true,
+        "value": true
+      }
+    ],
+    "productionWorker": [
+      {
+        "path": "source.integrity.workerEntry",
+        "exists": true,
+        "value": "backend/world-worker.js"
+      },
+      {
+        "path": "source.integrity.workerPid",
+        "exists": true,
+        "value": 112992
+      },
+      {
+        "path": "source.worldWorkerForceSettle.process.entry",
+        "exists": true,
+        "value": "backend/world-worker.js"
+      },
+      {
+        "path": "source.worldWorkerForceSettle.process.pid",
+        "exists": true,
+        "value": 112992
+      },
+      {
+        "path": "source.worldWorkerForceSettle.process.stopped",
+        "exists": true,
+        "value": true
+      }
+    ],
+    "productionRepositories": [
+      {
+        "path": "source.integrity.setupMode",
+        "exists": true,
+        "value": "production repositories and domain services against the same temporary SQLite database"
+      },
+      {
+        "path": "source.integrity.fixtureSetup",
+        "exists": true,
+        "value": "direct deterministic repository setup before requests; no route, handler, pipeline, server, worker, or transport replacement"
+      }
+    ],
+    "workerForceSettleClosed": [
+      {
+        "path": "source.assertion.worldWorkerForceSettleClosed",
+        "exists": true,
+        "value": true
+      },
+      {
+        "path": "source.worldWorkerForceSettle.assertion.sharedEncounterStatus",
+        "exists": true,
+        "value": "resolved"
+      },
+      {
+        "path": "source.worldWorkerForceSettle.assertion.reportCount",
+        "exists": true,
+        "value": 1
+      },
+      {
+        "path": "source.worldWorkerForceSettle.assertion.playerRevisionDelta",
+        "exists": true,
+        "value": 1
+      }
+    ],
+    "usesCommandExecutionPipeline": [
+      {
+        "path": "source.worldWorkerForceSettle.responseTrace.schema",
+        "exists": true,
+        "value": "game-command-summary-v1"
+      },
+      {
+        "path": "source.worldWorkerForceSettle.responseTrace.type",
+        "exists": true,
+        "value": "worldWorkerPlayerTick"
+      },
+      {
+        "path": "source.worldWorkerForceSettle.responseTrace.committed",
+        "exists": true,
+        "value": true
+      },
+      {
+        "path": "source.worldWorkerForceSettle.idempotency.status",
+        "exists": true,
+        "value": "committed"
+      },
+      {
+        "path": "source.worldWorkerForceSettle.responseTrace.phases",
+        "exists": true,
+        "value": [
+          {
+            "phase": "received",
+            "at": "2026-07-10T18:10:43.079Z",
+            "durationMs": 0,
+            "status": "completed"
+          },
+          {
+            "phase": "idempotency_checking",
+            "at": "2026-07-10T18:10:43.079Z",
+            "durationMs": 0,
+            "status": "completed"
+          },
+          {
+            "phase": "owner_resolving",
+            "at": "2026-07-10T18:10:43.079Z",
+            "durationMs": 0,
+            "status": "completed"
+          },
+          {
+            "phase": "owner_lock_waiting",
+            "at": "2026-07-10T18:10:43.079Z",
+            "durationMs": 1,
+            "status": "completed"
+          },
+          {
+            "phase": "owner_locked",
+            "at": "2026-07-10T18:10:43.080Z",
+            "durationMs": 0,
+            "status": "completed",
+            "ownerKeys": [
+              "encounter:phase6-real-worker-force-settle-encounter",
+              "player:codexqa"
+            ]
+          },
+          {
+            "phase": "state_loading",
+            "at": "2026-07-10T18:10:43.080Z",
+            "durationMs": 140,
+            "status": "completed"
+          },
+          {
+            "phase": "validating",
+            "at": "2026-07-10T18:10:43.220Z",
+            "durationMs": 0,
+            "status": "completed"
+          },
+          {
+            "phase": "domain_executing",
+            "at": "2026-07-10T18:10:43.220Z",
+            "durationMs": 95,
+            "status": "completed"
+          },
+          {
+            "phase": "committing",
+            "at": "2026-07-10T18:10:43.315Z",
+            "durationMs": 3,
+            "status": "completed"
+          },
+          {
+            "phase": "projecting",
+            "at": "2026-07-10T18:10:43.318Z",
+            "durationMs": 0,
+            "status": "completed"
+          },
+          {
+            "phase": "response_building",
+            "at": "2026-07-10T18:10:43.318Z",
+            "durationMs": 0,
+            "status": "completed"
+          },
+          {
+            "phase": "responding",
+            "at": "2026-07-10T18:10:43.318Z",
+            "durationMs": 0,
+            "status": "started"
+          }
+        ]
+      }
+    ],
+    "ownerLocksVerifiedBySourceEvidence": [
+      {
+        "path": "source.worldWorkerForceSettle.assertion.ownerResolvedBeforeLock",
+        "exists": true,
+        "value": true
+      },
+      {
+        "path": "source.worldWorkerForceSettle.assertion.ownerLocksReleased",
+        "exists": true,
+        "value": true
+      },
+      {
+        "path": "source.worldWorkerForceSettle.after.ownerLocks",
+        "exists": true,
+        "value": []
+      }
+    ]
+  },
   "assertion": {
-    "passed": true,
     "realServer": true,
     "realWorker": true,
     "noMocksOrStubs": true,
-    "workerWritesThroughPipeline": true
+    "workerWritesThroughPipeline": true,
+    "passed": true
   }
 }
