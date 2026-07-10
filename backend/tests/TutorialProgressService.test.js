@@ -6,6 +6,7 @@ const TutorialGrantService = require('../services/tutorial/TutorialGrantService'
 const EventService = require('../services/EventService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
+const GameStateService = require('../services/GameStateService');
 
 test('initial tutorial state starts active instead of completed', () => {
   const tutorial = TutorialService.createInitialTutorialState();
@@ -13,6 +14,47 @@ test('initial tutorial state starts active instead of completed', () => {
   assert.equal(tutorial.completed, false);
   assert.equal(tutorial.currentStep, TutorialService.TUTORIAL_STEPS.initial);
   assert.deepEqual(tutorial.phaseCompleted, { newbie: false, era2: false, scoutFormation: false });
+});
+
+test('tutorial feature flag off/on round trip preserves persisted tutorial progress', () => {
+  const initial = GameStateService.createInitialGameState('tutorial-flag-roundtrip-test');
+  initial.tutorial = {
+    ...TutorialService.manualAdvance(
+      initial.tutorial,
+      TutorialService.TUTORIAL_STEPS.cityEntered,
+    ),
+    grants: {
+      scoutFamousPerson: { personId: 'fp_roundtrip_scout' },
+    },
+  };
+  const before = JSON.stringify({
+    currentStep: initial.tutorial.currentStep,
+    phaseCompleted: initial.tutorial.phaseCompleted,
+    grants: initial.tutorial.grants,
+  });
+
+  const offNormalized = GameStateService.normalizeState(
+    JSON.parse(JSON.stringify(initial)),
+    { tutorialEnabled: 0 },
+  );
+  const onNormalized = GameStateService.normalizeState(
+    JSON.parse(JSON.stringify(offNormalized)),
+    { tutorialEnabled: 1 },
+  );
+  const after = JSON.stringify({
+    currentStep: onNormalized.tutorial.currentStep,
+    phaseCompleted: onNormalized.tutorial.phaseCompleted,
+    grants: onNormalized.tutorial.grants,
+  });
+  const continued = TutorialService.manualAdvance(
+    onNormalized.tutorial,
+    TutorialService.TUTORIAL_STEPS.houseBuilt,
+  );
+
+  assert.equal(offNormalized.tutorial.completed, false);
+  assert.equal(offNormalized.tutorial.disabled === true, false);
+  assert.equal(before, after);
+  assert.equal(continued.currentStep, TutorialService.TUTORIAL_STEPS.houseBuilt);
 });
 
 test('disabled legacy tutorial states stay completed and pass validation', () => {

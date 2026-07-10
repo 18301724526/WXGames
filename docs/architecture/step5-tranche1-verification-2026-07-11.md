@@ -448,3 +448,39 @@ git diff --check -- scripts/check-ui-runtime-field-ownership.js scripts/check-ui
 结果:exit 0。
 
 未做/未达标:未重构 4 个 ModalStore 白名单文件；已按 A3 判据 declared 为存量债并写明烧毁计划。
+
+## 14. B1 引导开关可逆语义
+
+更正范围:
+
+- `TutorialState.createInitialTutorialState` 不再因 `{ enabled: 0 }` 创建 completed/disabled 存档。
+- `TutorialState.normalizeTutorialState` 不再因 `{ enabled: 0 }` 把活动教程存档改写成 completed/disabled。
+- `TutorialProgressService.test.js` 加入 off/on 往返测试:中途以 `tutorialEnabled: 0` normalize，再以 `tutorialEnabled: 1` normalize，`currentStep`、`phaseCompleted`、`grants` 逐字节一致，并可继续 `manualAdvance`。
+
+自验命令:
+
+```text
+node --check backend/services/tutorial/TutorialState.js
+```
+
+结果:exit 0。
+
+```text
+node --test backend/tests/TutorialProgressService.test.js
+```
+
+结果:23 tests, 23 pass。
+
+```text
+rg -n "createCompletedTutorialState\(\{.*disabled: true|isTutorialEnabled\(options\).*false|enabled: 0|force-disable|disabled by feature flag" backend/services/tutorial/TutorialState.js backend/tests/TutorialProgressService.test.js
+```
+
+结果:无命中。
+
+```text
+git diff --check -- backend/services/tutorial/TutorialState.js backend/tests/TutorialProgressService.test.js
+```
+
+结果:exit 0。
+
+未做/未达标:无。
