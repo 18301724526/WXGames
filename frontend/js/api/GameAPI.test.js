@@ -169,7 +169,16 @@ test('GameAPI sends build commands with a client command envelope', async () => 
     },
   });
 
-  await api.build('barracks');
+  await api.build('barracks', {
+    trace: {
+      clientActionTraceId: 'cat-build-barracks',
+      sourceSurface: 'canvas',
+      hitTargetId: 'barracks',
+      actionType: 'buildBuilding',
+      actionDescriptorId: 'building.build',
+      visualDisabled: true,
+    },
+  });
 
   assert.equal(calls[0].requestId, 'api-1');
   assert.equal(calls[0].body.action, 'build');
@@ -180,6 +189,15 @@ test('GameAPI sends build commands with a client command envelope', async () => 
     commandId: 'cmd-build-seed',
     idempotencyKey: 'idem-build-seed',
     payload: { buildingId: 'barracks' },
+    trace: {
+      schema: 'client-action-trace-v1',
+      clientActionTraceId: 'cat-build-barracks',
+      sourceSurface: 'canvas',
+      hitTargetId: 'barracks',
+      actionType: 'buildBuilding',
+      actionDescriptorId: 'building.build',
+      visualDisabled: true,
+    },
     client: {
       requestId: 'api-1',
       clientSequence: 1,
@@ -189,6 +207,37 @@ test('GameAPI sends build commands with a client command envelope', async () => 
   });
   assert.equal(calls[0].body.commandId, 'cmd-build-seed');
   assert.equal(calls[0].body.idempotencyKey, 'idem-build-seed');
+  assert.equal(calls[0].body.clientCommand.payload.trace, undefined);
+});
+
+test('GameAPI forwards client action trace through clientCommand only', async () => {
+  const calls = [];
+  const api = new GameAPI('/api', 'token-a', {
+    createCommandIdSeed: () => 'trace-seed',
+    transport: {
+      async request(request) {
+        calls.push(JSON.parse(request.body));
+        return createResponse(200, { success: true });
+      },
+    },
+  });
+
+  await api.build('farm', {
+    trace: {
+      clientActionTraceId: 'cat-build-farm',
+      sourceSurface: 'canvas',
+      hitTargetId: 'farm',
+      actionType: 'buildBuilding',
+      actionDescriptorId: 'building.build',
+      visualDisabled: false,
+    },
+  });
+
+  assert.equal(calls[0].clientCommand.trace.clientActionTraceId, 'cat-build-farm');
+  assert.equal(calls[0].clientCommand.trace.actionType, 'buildBuilding');
+  assert.deepEqual(calls[0].clientCommand.payload, { buildingId: 'farm' });
+  assert.equal(calls[0].trace, undefined);
+  assert.equal(calls[0].clientActionTrace, undefined);
 });
 
 test('GameAPI keeps empty heartbeat read-only and sends reports through ClientCommandSender', async () => {

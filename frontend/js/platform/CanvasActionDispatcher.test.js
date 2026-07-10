@@ -83,15 +83,77 @@ test('CanvasActionDispatcher logs allowed local blocks and ignores domain block 
     startWorldMarch(action) { calls.push(action.type); return true; },
   };
 
-  assert.equal(dispatcher.handle({ type: 'startWorldMarch', missionId: 'm-1', commandDisabled: 'IN_FLIGHT' }, context), true);
+  assert.equal(dispatcher.handle({
+    type: 'startWorldMarch',
+    missionId: 'm-1',
+    commandDisabled: 'IN_FLIGHT',
+    clientActionTraceId: 'cat-startWorldMarch',
+  }, context), true);
   assert.deepEqual(calls, []);
-  assert.deepEqual(logs, [[
-    'command:localBlock',
-    { commandType: 'startWorldMarch', commandKey: 'startWorldMarch:m-1', reason: 'IN_FLIGHT' },
-  ]]);
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0][0], 'command:localBlock');
+  assert.equal(logs[0][1].commandType, 'startWorldMarch');
+  assert.equal(logs[0][1].commandKey, 'startWorldMarch:m-1');
+  assert.equal(logs[0][1].reason, 'IN_FLIGHT');
+  assert.equal(logs[0][1].schema, 'client-action-trace-v1');
+  assert.equal(logs[0][1].clientActionTraceId, 'cat-startWorldMarch');
+  assert.equal(logs[0][1].actionType, 'startWorldMarch');
+  assert.equal(logs[0][1].hitTargetId, 'm-1');
 
   assert.equal(dispatcher.handle({ type: 'startWorldMarch', missionId: 'm-2', commandDisabled: 'MARCH' }, context), true);
   assert.deepEqual(calls, ['startWorldMarch']);
+});
+
+test('CanvasActionDispatcher records UI-local actions without command submission', () => {
+  const calls = [];
+  const logs = [];
+  const dispatcher = new CanvasActionDispatcher();
+
+  assert.equal(dispatcher.handle({
+    type: 'openLogs',
+    clientActionTraceId: 'cat-open-logs',
+    sourceSurface: 'toolbar',
+  }, {
+    clientOperationLog: { record(event, detail) { logs.push([event, detail]); } },
+    openLogs(action) { calls.push(['openLogs', action.clientActionTrace.clientActionTraceId]); return true; },
+    render(action) { calls.push(['render', action.type]); },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['openLogs', 'cat-open-logs'],
+    ['render', 'openLogs'],
+  ]);
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0][0], 'action:uiLocal');
+  assert.equal(logs[0][1].schema, 'client-action-trace-v1');
+  assert.equal(logs[0][1].clientActionTraceId, 'cat-open-logs');
+  assert.equal(logs[0][1].sourceSurface, 'toolbar');
+  assert.equal(logs[0][1].uiOwner, 'CanvasActionDispatchRegistry');
+  assert.equal(logs[0][1].triggersRender, true);
+});
+
+test('CanvasActionDispatcher passes client action trace to command handlers', () => {
+  const calls = [];
+  const logs = [];
+  const dispatcher = new CanvasActionDispatcher();
+
+  assert.equal(dispatcher.handle({
+    type: 'startWorldMarch',
+    missionId: 'march-1',
+    clientActionTraceId: 'cat-march-1',
+    sourceSurface: 'world-map',
+  }, {
+    clientOperationLog: { record(event, detail) { logs.push([event, detail]); } },
+    startWorldMarch(action) { calls.push(action.clientActionTrace); return true; },
+  }), true);
+
+  assert.equal(logs.length, 0);
+  assert.equal(calls[0].schema, 'client-action-trace-v1');
+  assert.equal(calls[0].clientActionTraceId, 'cat-march-1');
+  assert.equal(calls[0].sourceSurface, 'world-map');
+  assert.equal(calls[0].hitTargetId, 'march-1');
+  assert.equal(calls[0].actionType, 'startWorldMarch');
+  assert.equal(calls[0].actionDescriptorId, 'startWorldMarch');
 });
 
 test('CanvasActionDispatcher routes famous descriptors through panel runner only', () => {

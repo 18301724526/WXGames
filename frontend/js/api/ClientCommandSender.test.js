@@ -29,6 +29,8 @@ test('ClientCommandSender creates stable envelope identifiers and canonical comm
   assert.equal(calls[0][0].type, 'research');
   assert.equal(calls[0][0].commandId, 'cmd-seed-1');
   assert.equal(calls[0][0].idempotencyKey, 'idem-seed-1');
+  assert.equal(calls[0][0].trace.schema, 'client-action-trace-v1');
+  assert.equal(calls[0][0].trace.actionType, 'research');
   assert.equal(calls[0][0].client.clientSequence, 1);
   assert.equal(
     sender.buildCommandKey('research', { nested: { a: 1, b: 2 }, techId: 'writing' }),
@@ -38,6 +40,45 @@ test('ClientCommandSender creates stable envelope identifiers and canonical comm
     sender.buildCommandKey('research', { techId: 'writing', clientInputIntent: { inputId: 'tap-1' } }),
     sender.buildCommandKey('research', { techId: 'writing', clientInputIntent: { inputId: 'tap-2' } }),
   );
+});
+
+test('ClientCommandSender keeps trace metadata out of canonical command keys', async () => {
+  const calls = [];
+  const sender = new ClientCommandSender({
+    createIdSeed: ({ sequence }) => `trace-seed-${sequence}`,
+    transport: async (envelope, options) => {
+      calls.push({ envelope, commandKey: options.commandKey });
+      return { success: true };
+    },
+  });
+
+  await sender.submit('build', { buildingId: 'farm' }, {
+    trace: {
+      clientActionTraceId: 'cat-build-a',
+      sourceSurface: 'canvas',
+      hitTargetId: 'farm',
+      actionType: 'buildBuilding',
+      actionDescriptorId: 'building.build',
+      visualDisabled: true,
+    },
+  });
+  await sender.submit('build', { buildingId: 'farm' }, {
+    trace: {
+      clientActionTraceId: 'cat-build-b',
+      sourceSurface: 'sidebar',
+      hitTargetId: 'farm',
+      actionType: 'buildBuilding',
+      actionDescriptorId: 'building.build',
+      visualDisabled: false,
+    },
+  });
+
+  assert.equal(calls[0].commandKey, calls[1].commandKey);
+  assert.notEqual(calls[0].envelope.trace.clientActionTraceId, calls[1].envelope.trace.clientActionTraceId);
+  assert.deepEqual(calls.map(({ envelope }) => envelope.payload), [
+    { buildingId: 'farm' },
+    { buildingId: 'farm' },
+  ]);
 });
 
 test('ClientCommandSender blocks duplicate transport only while a command key is in flight', async () => {

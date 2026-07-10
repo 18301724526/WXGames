@@ -12,8 +12,19 @@ const ENVELOPE_FIELDS = new Set([
   'commandId',
   'idempotencyKey',
   'requestId',
+  'trace',
 ]);
-const TRACE_ONLY_FIELDS = new Set(['debugTrace', 'worldMarchTrace']);
+const TRACE_ONLY_FIELDS = new Set([
+  'debugTrace',
+  'worldMarchTrace',
+  'clientActionTrace',
+  'clientActionTraceId',
+  'sourceSurface',
+  'hitTargetId',
+  'actionType',
+  'actionDescriptorId',
+  'visualDisabled',
+]);
 const TYPE_ALIASES = Object.freeze({
   BuildBuilding: 'build',
 });
@@ -106,6 +117,35 @@ function buildCommandPayload(type, body = {}, options = {}) {
   }
 }
 
+function normalizeTraceSection(body = {}, clientCommand = {}) {
+  const source = clientCommand.trace && typeof clientCommand.trace === 'object'
+    ? clientCommand.trace
+    : (body.clientActionTrace && typeof body.clientActionTrace === 'object'
+      ? body.clientActionTrace
+      : body);
+  const clientActionTraceId = cleanText(source.clientActionTraceId || source.tapTraceId, '', 160);
+  const sourceSurface = cleanText(source.sourceSurface, '', 120);
+  const hitTargetId = cleanText(source.hitTargetId, '', 160);
+  const actionType = cleanText(source.actionType, '', 120);
+  const actionDescriptorId = cleanText(source.actionDescriptorId, '', 160);
+  const hasTrace = clientActionTraceId
+    || sourceSurface
+    || hitTargetId
+    || actionType
+    || actionDescriptorId
+    || source.visualDisabled !== undefined;
+  if (!hasTrace) return null;
+  return {
+    schema: 'client-action-trace-v1',
+    clientActionTraceId,
+    sourceSurface,
+    hitTargetId,
+    actionType,
+    actionDescriptorId,
+    visualDisabled: Boolean(source.visualDisabled),
+  };
+}
+
 function readConsistentIdentifier(body = {}, nested = {}, field) {
   const topLevel = cleanText(body[field], '');
   const nestedValue = cleanText(nested[field], '');
@@ -168,6 +208,7 @@ function normalizeCommandEnvelope(req = {}, options = {}) {
   const commandId = explicitCommandId || `cmd-${requestId}`;
   const idempotencyKey = explicitIdempotencyKey || commandId;
   const payload = buildCommandPayload(requestedType, body, options);
+  const trace = normalizeTraceSection(body, clientCommand);
   const clientPayload = clientCommand.payload && typeof clientCommand.payload === 'object'
     ? removeUndefined(clientCommand.payload)
     : null;
@@ -197,6 +238,7 @@ function normalizeCommandEnvelope(req = {}, options = {}) {
     clientStateRevision: body.clientStateRevision ?? body.stateRevision ?? null,
     payload,
     payloadDigest,
+    trace,
     client: {
       requestId,
       clientSequence: clientCommand.client?.clientSequence
@@ -303,6 +345,7 @@ function summarizeCommand(command = {}) {
     cityId: command.payload?.cityId || '',
     payloadDigest: command.payloadDigest || '',
     clientStateRevision: command.clientStateRevision ?? null,
+    clientActionTrace: command.trace ? { ...command.trace } : null,
   };
 }
 

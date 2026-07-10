@@ -35,6 +35,7 @@ function envelope(options = {}) {
         commandId: options.commandId || 'cmd-1',
         idempotencyKey: options.idempotencyKey || 'idem-1',
         payload,
+        trace: options.trace,
       },
     },
   });
@@ -102,6 +103,41 @@ test('CommandIdempotencyStore rejects the same key with a different payload dige
       (error) => error.code === 'IDEMPOTENCY_KEY_CONFLICT'
         && error.idempotencyKey === 'idem-1',
     );
+  } finally {
+    db.close();
+  }
+});
+
+test('CommandIdempotencyStore replays the same payload with different client action trace', () => {
+  const { db, store } = createStore();
+  try {
+    const firstCommand = envelope({
+      trace: {
+        clientActionTraceId: 'cat-research-a',
+        sourceSurface: 'tech-tree',
+        hitTargetId: 'writing',
+        actionType: 'research',
+        actionDescriptorId: 'tech.research',
+        visualDisabled: true,
+      },
+    });
+    const started = store.begin(firstCommand);
+    const response = { statusCode: 200, payload: { success: true, researched: 'writing' } };
+    store.recordResult(started.record, response);
+
+    const replay = store.begin(envelope({
+      trace: {
+        clientActionTraceId: 'cat-research-b',
+        sourceSurface: 'shortcut',
+        hitTargetId: 'writing',
+        actionType: 'research',
+        actionDescriptorId: 'tech.research',
+        visualDisabled: false,
+      },
+    }));
+
+    assert.equal(replay.status, 'replay');
+    assert.deepEqual(replay.response, response);
   } finally {
     db.close();
   }

@@ -30,6 +30,7 @@ function command(options = {}) {
         commandId: options.commandId || 'cmd-pipeline-1',
         idempotencyKey: options.idempotencyKey || 'idem-pipeline-1',
         payload,
+        trace: options.trace,
       },
     },
   });
@@ -120,6 +121,28 @@ test('CommandExecutionPipeline runs the complete ordered pipeline inside owner c
       'response_building',
       'responding',
     ]);
+  } finally {
+    fixture.db.close();
+  }
+});
+
+test('CommandExecutionPipeline includes client action trace in response trace', () => {
+  const fixture = createPipeline();
+  try {
+    const result = fixture.pipeline.execute(command({
+      trace: {
+        clientActionTraceId: 'cat-pipeline-build',
+        sourceSurface: 'canvas',
+        hitTargetId: 'farm',
+        actionType: 'buildBuilding',
+        actionDescriptorId: 'building.build',
+        visualDisabled: false,
+      },
+    }), successfulDefinition(fixture.calls));
+
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.trace.clientActionTrace.clientActionTraceId, 'cat-pipeline-build');
+    assert.equal(result.trace.clientActionTrace.actionDescriptorId, 'building.build');
   } finally {
     fixture.db.close();
   }

@@ -1,7 +1,9 @@
 (function (global) {
   const COMMAND_SCHEMA = 'game-command-v1';
+  const TRACE_SCHEMA = 'client-action-trace-v1';
   const LOCAL_BLOCK_EVENT = 'command:localBlock';
   let fallbackIdSequence = 0;
+  let fallbackTraceSequence = 0;
 
   function cleanIdentifier(value, maxLength = 160) {
     return String(value ?? '')
@@ -51,6 +53,32 @@
     if (randomId) return randomId;
     fallbackIdSequence += 1;
     return `${Date.now().toString(36)}-${fallbackIdSequence.toString(36)}`;
+  }
+
+  function createDefaultTraceId(type = '', sequence = 0) {
+    fallbackTraceSequence += 1;
+    return cleanIdentifier(
+      `cat-${type || 'command'}-${Date.now().toString(36)}-${sequence || fallbackTraceSequence}`,
+    );
+  }
+
+  function normalizeTrace(value = {}, fallback = {}) {
+    const source = value && typeof value === 'object' ? value : {};
+    const clientActionTraceId = cleanIdentifier(
+      source.clientActionTraceId
+        || source.tapTraceId
+        || fallback.clientActionTraceId
+        || createDefaultTraceId(fallback.type, fallback.sequence),
+    );
+    return {
+      schema: TRACE_SCHEMA,
+      clientActionTraceId,
+      sourceSurface: cleanIdentifier(source.sourceSurface || fallback.sourceSurface || ''),
+      hitTargetId: cleanIdentifier(source.hitTargetId || fallback.hitTargetId || ''),
+      actionType: cleanIdentifier(source.actionType || fallback.type || ''),
+      actionDescriptorId: cleanIdentifier(source.actionDescriptorId || fallback.actionDescriptorId || fallback.type || ''),
+      visualDisabled: Boolean(source.visualDisabled ?? fallback.visualDisabled ?? false),
+    };
   }
 
   function createLocalBlockError(reason, detail = {}) {
@@ -113,6 +141,7 @@
         commandId,
         idempotencyKey,
         payload,
+        trace: normalizeTrace(options.trace, { type, sequence }),
         client: {
           requestId: '',
           clientSequence: sequence,
@@ -185,6 +214,7 @@
   }
 
   ClientCommandSender.COMMAND_SCHEMA = COMMAND_SCHEMA;
+  ClientCommandSender.TRACE_SCHEMA = TRACE_SCHEMA;
   ClientCommandSender.stableStringify = stableStringify;
   ClientCommandSender.hashText = hashText;
   global.ClientCommandSender = ClientCommandSender;

@@ -6,8 +6,10 @@ const {
   createBuildBuildingCommand,
   createInternalCommandEnvelope,
   normalizeCommandEnvelope,
+  summarizeCommand,
 } = require('../application/commands/CommandEnvelope');
 const { prepareCommandEntry } = require('../application/commands/CommandEntryContext');
+const CommandTrace = require('../application/commands/CommandTrace');
 
 function createRequest(body = {}, options = {}) {
   return {
@@ -50,6 +52,60 @@ test('CommandEnvelope normalizes an explicit client command envelope', () => {
   assert.equal(envelope.compatibility.idempotencyClassification, 'client-idempotent');
   assert.equal(envelope.compatibility.serverFallbackId, false);
   assert.equal(envelope.compatibility.clientPayloadMatches, true);
+});
+
+test('CommandEnvelope records client action trace without changing payload digest', () => {
+  const baseBody = {
+    action: 'build',
+    target: 'farm',
+    commandId: 'cmd-trace-1',
+    idempotencyKey: 'idem-trace-1',
+    clientCommand: {
+      schema: 'game-command-v1',
+      type: 'build',
+      commandId: 'cmd-trace-1',
+      idempotencyKey: 'idem-trace-1',
+      payload: { buildingId: 'farm' },
+    },
+  };
+  const first = normalizeCommandEnvelope(createRequest({
+    ...baseBody,
+    clientCommand: {
+      ...baseBody.clientCommand,
+      trace: {
+        schema: 'client-action-trace-v1',
+        clientActionTraceId: 'cat-build-a',
+        sourceSurface: 'canvas',
+        hitTargetId: 'farm',
+        actionType: 'buildBuilding',
+        actionDescriptorId: 'building.build',
+        visualDisabled: true,
+      },
+    },
+  }));
+  const second = normalizeCommandEnvelope(createRequest({
+    ...baseBody,
+    clientCommand: {
+      ...baseBody.clientCommand,
+      trace: {
+        schema: 'client-action-trace-v1',
+        clientActionTraceId: 'cat-build-b',
+        sourceSurface: 'sidebar',
+        hitTargetId: 'farm',
+        actionType: 'buildBuilding',
+        actionDescriptorId: 'building.build',
+        visualDisabled: false,
+      },
+    },
+  }));
+
+  assert.deepEqual(first.payload, { buildingId: 'farm' });
+  assert.equal(first.payload.trace, undefined);
+  assert.equal(first.payloadDigest, second.payloadDigest);
+  assert.equal(first.trace.clientActionTraceId, 'cat-build-a');
+  assert.equal(second.trace.clientActionTraceId, 'cat-build-b');
+  assert.deepEqual(summarizeCommand(first).clientActionTrace, first.trace);
+  assert.deepEqual(new CommandTrace(first).toPayload().clientActionTrace, first.trace);
 });
 
 test('CommandEnvelope creates explicit internal-idempotent worker envelopes', () => {

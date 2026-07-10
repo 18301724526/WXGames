@@ -177,7 +177,7 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-CLIENT-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionDispatcher.js', 50, 65, 'CanvasActionDispatcher.handle calls ClientCommandSemantics.normalizeAction before disabled check and dispatch', 'frontend:canvas-action-dispatcher-disabled-drop'),
+      sourceRef('frontend/js/platform/CanvasActionDispatcher.js', 105, 129, 'CanvasActionDispatcher.handle calls ClientCommandSemantics.normalizeAction before disabled check and dispatch', 'frontend:canvas-action-dispatcher-disabled-drop'),
       sourceRef('scripts/command-owner-step1/inventories.js', 573, 590, 'FRONTEND_COMMAND_PATHS retired-step4 entry', 'frontend:canvas-action-dispatcher-disabled-drop'),
       sourceRef('scripts/command-owner-step1/inventories.js', 644, 659, 'CLIENT_LOCAL_BLOCKS retired-step4 entry', 'frontend:canvas-action-dispatcher-disabled-drop'),
     ],
@@ -190,7 +190,7 @@ const DEBT_ITEMS = Object.freeze([
       'STEP4-T11',
       'scripts/check-frontend-command-semantics.js',
       'Remove normalizeAction or reintroduce command disabled early-return -> exit 1',
-      [sourceRef('frontend/js/platform/CanvasActionDispatcher.js', 50, 65, 'normalizeAction before disabled gate', 'frontend:canvas-action-dispatcher-disabled-drop')],
+      [sourceRef('frontend/js/platform/CanvasActionDispatcher.js', 105, 129, 'normalizeAction before disabled gate', 'frontend:canvas-action-dispatcher-disabled-drop')],
       ['COP-CLIENT-001', 'COP-CLIENT-002'],
     ),
   },
