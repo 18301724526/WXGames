@@ -150,6 +150,53 @@ test('CanvasGameApp falls back to controller for unsupported actions', () => {
   ]);
 });
 
+test('CanvasGameApp advanceEra always reaches GameAPI before local era eligibility', async () => {
+  const calls = [];
+  const app = makeAppHost({
+    state: { currentEraName: 'Bronze Age' },
+    tutorial: {},
+    tutorialController: {
+      sync(value) { calls.push(['tutorial.sync', value]); },
+      onEraAdvanced(result) { calls.push(['tutorial.onEraAdvanced', result.message]); },
+    },
+    canAdvanceEraNow() {
+      calls.push(['canAdvanceEraNow']);
+      return false;
+    },
+    getGameApi() {
+      return {
+        async advanceEra() {
+          calls.push(['api.advanceEra']);
+          return { message: 'advanced', gameState: { currentEraName: 'Iron Age' } };
+        },
+      };
+    },
+    applyApiState(result) {
+      calls.push(['applyApiState', result.message]);
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+    },
+    renderMilitary() {
+      calls.push(['renderMilitary']);
+    },
+  });
+
+  assert.equal(await app.advanceEra(), true);
+  assert.deepEqual(calls.map((entry) => entry[0]), [
+    'api.advanceEra',
+    'applyApiState',
+    'tutorial.sync',
+    'tutorial.onEraAdvanced',
+    'log',
+    'showFloatingText',
+    'renderMilitary',
+  ]);
+});
+
 test('seekFamousPerson syncs the single API state source and redraws only the panel surface', async () => {
   const calls = [];
   const result = {

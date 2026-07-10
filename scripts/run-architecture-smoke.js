@@ -61,6 +61,32 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-command-pipeline-foundation.test.js',
   'scripts/check-command-route-migration.js',
   'scripts/check-command-route-migration.test.js',
+  'scripts/step4-debt-catalog/boundary-utils.js',
+  'scripts/step4-debt-catalog/decisions.js',
+  'scripts/step4-debt-catalog/debt-items.js',
+  'scripts/step4-debt-catalog/index.js',
+  'scripts/step4-debt-catalog/permanent-exceptions.js',
+  'scripts/step4-debt-catalog/retirement-evidence.js',
+  'scripts/step4-debt-catalog/source-utils.js',
+  'scripts/check-step4-debt-catalog.js',
+  'scripts/check-step4-debt-catalog.test.js',
+  'scripts/check-permanent-exceptions.js',
+  'scripts/check-permanent-exceptions.test.js',
+  'scripts/check-route-owned-persistence.js',
+  'scripts/check-route-owned-persistence.test.js',
+  'scripts/check-handler-boundary.js',
+  'scripts/check-handler-boundary.test.js',
+  'scripts/check-worker-write-ownership.js',
+  'scripts/check-worker-write-ownership.test.js',
+  'scripts/check-frontend-command-semantics.js',
+  'scripts/check-frontend-command-semantics.test.js',
+  'scripts/check-projection-write-boundary.js',
+  'scripts/check-projection-write-boundary.test.js',
+  'scripts/check-step4-blocking-map.js',
+  'scripts/check-step4-blocking-map.test.js',
+  'scripts/check-step4-final-audit.js',
+  'scripts/check-step4-final-audit.test.js',
+  'scripts/verify-step4-phase3-real-server.js',
   'frontend/js/ui/H5AuthStorageAdapter.js',
   'frontend/js/ui/H5AuthStorageAdapter.test.js',
   'frontend/js/ui/H5ActorPickingDiagnosticsAdapter.js',
@@ -677,6 +703,15 @@ const TEST_FILES = Object.freeze([
   'scripts/check-shell-scripts.test.js',
   'scripts/validate-config-pipeline.test.js',
   'scripts/check-client-command-block-reasons.test.js',
+  'scripts/check-step4-debt-catalog.test.js',
+  'scripts/check-permanent-exceptions.test.js',
+  'scripts/check-route-owned-persistence.test.js',
+  'scripts/check-handler-boundary.test.js',
+  'scripts/check-worker-write-ownership.test.js',
+  'scripts/check-frontend-command-semantics.test.js',
+  'scripts/check-projection-write-boundary.test.js',
+  'scripts/check-step4-blocking-map.test.js',
+  'scripts/check-step4-final-audit.test.js',
 ]);
 
 const CONTRACT_SEARCH_DIRS = Object.freeze([
@@ -778,6 +813,33 @@ function main() {
   ]);
   run('command route migration blocking guard', process.execPath, [
     'scripts/check-command-route-migration.js',
+  ]);
+  run('Step4 debt catalog blocking guard', process.execPath, [
+    'scripts/check-step4-debt-catalog.js',
+  ]);
+  run('Step4 permanent exceptions blocking guard', process.execPath, [
+    'scripts/check-permanent-exceptions.js',
+  ]);
+  run('Step4 route-owned persistence blocking guard', process.execPath, [
+    'scripts/check-route-owned-persistence.js',
+  ]);
+  run('Step4 handler boundary blocking guard', process.execPath, [
+    'scripts/check-handler-boundary.js',
+  ]);
+  run('Step4 worker write ownership blocking guard', process.execPath, [
+    'scripts/check-worker-write-ownership.js',
+  ]);
+  run('Step4 frontend command semantics blocking guard', process.execPath, [
+    'scripts/check-frontend-command-semantics.js',
+  ]);
+  run('Step4 projection/write boundary blocking guard', process.execPath, [
+    'scripts/check-projection-write-boundary.js',
+  ]);
+  run('Step4 retired debt blocking map guard', process.execPath, [
+    'scripts/check-step4-blocking-map.js',
+  ]);
+  run('Step4 final self-audit blocking guard', process.execPath, [
+    'scripts/check-step4-final-audit.js',
   ]);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);

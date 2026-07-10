@@ -18,15 +18,30 @@ class CommandTrace {
     this.commitResult = null;
     this.responseStatus = null;
     this.phases = [];
+    this.phaseStartedAtMs = null;
     this.mark('received');
   }
 
   mark(phase, detail = {}) {
     const now = this.now();
+    const at = now instanceof Date ? now : new Date(now);
+    const atMs = at.getTime();
+    const previous = this.phases[this.phases.length - 1];
+    if (previous && previous.durationMs == null) {
+      previous.durationMs = Number.isFinite(atMs) && Number.isFinite(this.phaseStartedAtMs)
+        ? Math.max(0, atMs - this.phaseStartedAtMs)
+        : 0;
+      previous.status = previous.status && previous.status !== 'started'
+        ? previous.status
+        : 'completed';
+    }
+    this.phaseStartedAtMs = Number.isFinite(atMs) ? atMs : null;
     this.phase = phase;
     this.phases.push({
       phase,
-      at: (now instanceof Date ? now : new Date(now)).toISOString(),
+      at: at.toISOString(),
+      durationMs: detail.durationMs ?? null,
+      status: detail.status || 'started',
       ...detail,
     });
   }
@@ -93,7 +108,11 @@ class CommandTrace {
       validatorResult: this.validatorResult ? { ...this.validatorResult } : null,
       commitResult: this.commitResult ? { ...this.commitResult } : null,
       responseStatus: this.responseStatus,
-      phases: this.phases.map((item) => ({ ...item })),
+      phases: this.phases.map((item) => ({
+        ...item,
+        durationMs: item.durationMs == null ? 0 : item.durationMs,
+        status: item.status || 'completed',
+      })),
       ...extra,
     };
   }
