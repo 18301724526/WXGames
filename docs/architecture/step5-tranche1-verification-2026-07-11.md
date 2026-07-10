@@ -333,3 +333,57 @@ rg -n "42 -> 33|67 -> 65|23 -> 11|137 收敛到 135|12552|441 收敛到 439|auth
 结果:命中 spec 第 264/417/418/419/485/486/575/576/577/578/579 行及既有 baseline 命令区。
 
 未做/未达标:无。
+
+## 12. A2 R-D1 边界与 StateWriter 修正
+
+更正范围:
+
+- `step5-runtime-decoupling-and-bug-traceability-spec-2026-07-10.md` 的 Phase 2 节已写入 R-D1 边界原文。
+- `UiRuntimeStateStore.syncOwnerState` 不再直接赋值 `owner.state.currentTab` / `owner.state.militaryView`，改为仅在值变化时经 `StateWriter.commit` 投影。
+- `UiRuntimeStateStore` 文件头已声明 WeakMap 是 store 私有槽，`owner.state` 导航字段只是单向兼容投影，不是第二权威。
+
+自验命令:
+
+```text
+rg -n "Boundary, to be stated verbatim in the spec and enforced|the ECS layer \(world/fog/|REAL bitecs only|StateWriter-committed stores|Any ECS-simulation field found" docs/architecture/step5-runtime-decoupling-and-bug-traceability-spec-2026-07-10.md
+```
+
+结果:命中 spec 第 397/398/402 行。
+
+```text
+node --check frontend/js/state/UiRuntimeStateStore.js
+```
+
+结果:exit 0。
+
+```text
+node --test frontend/js/state/UiRuntimeStateStore.test.js frontend/js/state/StateWriter.test.js
+```
+
+结果:15 tests, 15 pass。
+
+```text
+node scripts/check-ui-runtime-field-ownership.js
+```
+
+结果:stores 4, fields 32, violations 0, warnings 0, passed。
+
+```text
+node scripts/check-frontend-single-source-redline.js
+```
+
+结果:files scanned 881, production files scanned 240, violations 0, passed。
+
+```text
+rg -n "owner\.state\.(currentTab|militaryView)\s*=" frontend scripts --glob '!frontend/js/state/StateWriter.js'
+```
+
+结果:matches 0。
+
+```text
+git diff --check -- docs/architecture/step5-runtime-decoupling-and-bug-traceability-spec-2026-07-10.md frontend/js/state/UiRuntimeStateStore.js frontend/js/state/UiRuntimeStateStore.test.js
+```
+
+结果:exit 0。
+
+未做/未达标:无。

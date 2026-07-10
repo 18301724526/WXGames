@@ -7,7 +7,9 @@
   // navigation and editor state only; ECS simulation facts remain in the real
   // bitecs ECS layer. Existing host.activeTab / host.militaryView /
   // host.armyFormationEditor call sites are compatibility accessors backed by this
-  // store, not independent facts.
+  // store, not independent facts. The WeakMap is this store's private slot; any
+  // owner.state currentTab/militaryView value is a one-way compatibility projection
+  // written through StateWriter, never a second authority.
 
   const OWNED_UI_RUNTIME_FIELDS = Object.freeze([
     'activeTab',
@@ -38,6 +40,18 @@
     return host && host.lastGame && host.lastGame !== host && typeof host.lastGame === 'object'
       ? host.lastGame
       : host;
+  }
+
+  function getStateWriter() {
+    if (global.StateWriter) return global.StateWriter;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./StateWriter');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
   }
 
   function readOwnDataField(target, field) {
@@ -89,12 +103,22 @@
 
   function syncOwnerState(owner, runtimeState, options = {}) {
     if (!isObject(owner) || !isObject(owner.state) || !runtimeState) return;
+    const nextState = { ...owner.state };
+    let changed = false;
     if (options.force || Object.prototype.hasOwnProperty.call(owner.state, 'currentTab')) {
-      owner.state.currentTab = runtimeState.activeTab;
+      if (owner.state.currentTab !== runtimeState.activeTab) {
+        nextState.currentTab = runtimeState.activeTab;
+        changed = true;
+      }
     }
     if (options.force || Object.prototype.hasOwnProperty.call(owner.state, 'militaryView')) {
-      owner.state.militaryView = runtimeState.militaryView;
+      if (owner.state.militaryView !== runtimeState.militaryView) {
+        nextState.militaryView = runtimeState.militaryView;
+        changed = true;
+      }
     }
+    if (!changed) return;
+    getStateWriter()?.commit?.(owner, nextState, { source: 'UiRuntimeStateStore.syncOwnerState' });
   }
 
   function createInitialState(host = null, overrides = {}) {

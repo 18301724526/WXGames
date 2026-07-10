@@ -391,6 +391,18 @@ npm run test:architecture
 
 ### Phase 2: UI runtime state store
 
+R-D1 boundary text:
+
+```text
+Boundary, to be stated verbatim in the spec and enforced: the ECS layer (world/fog/
+frame/mode simulation state) is REAL bitecs only; UI runtime state (militaryView,
+activeTab, armyFormationEditor, and the other §2 fields) belongs to the established
+store family (ModalStore / BattleStore / TerritoryUiStateStore precedent). The new
+`UiRuntimeStateStore` must follow that family's exact pattern (same subscription/commit
+conventions as StateWriter-committed stores). Any ECS-simulation field found in the UI
+store is a gate violation.
+```
+
 目标:
 - 把 UI-only 状态从 `game.state` / `canvasShell` / renderer 零散字段中剥离。
 

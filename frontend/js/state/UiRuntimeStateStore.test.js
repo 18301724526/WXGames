@@ -64,6 +64,34 @@ test('UiRuntimeStateStore syncs StateWriter currentTab and militaryView commits'
   });
 });
 
+test('UiRuntimeStateStore projects owner.state navigation only through StateWriter', () => {
+  const originalStateWriter = global.StateWriter;
+  const commits = [];
+  global.StateWriter = {
+    commit(host, patcher, meta) {
+      commits.push({ host, patcher, meta });
+      return host.state;
+    },
+  };
+
+  try {
+    const host = {
+      state: { currentTab: 'resources', militaryView: 'army' },
+    };
+
+    UiRuntimeStateStore.ensure(host);
+    UiRuntimeStateStore.setField(host, 'activeTab', 'tech');
+
+    assert.equal(host.state.currentTab, 'resources');
+    assert.equal(commits.length, 1);
+    assert.equal(commits[0].host, host);
+    assert.deepEqual(commits[0].patcher, { currentTab: 'tech', militaryView: 'army' });
+    assert.deepEqual(commits[0].meta, { source: 'UiRuntimeStateStore.syncOwnerState' });
+  } finally {
+    global.StateWriter = originalStateWriter;
+  }
+});
+
 test('UiRuntimeStateStore normalizes and closes armyFormationEditor', () => {
   const host = {};
 
