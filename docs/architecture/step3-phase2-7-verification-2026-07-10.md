@@ -1,6 +1,6 @@
 # Step3 Part 0 + Phases 2-7 Verification
 
-Status: **IN PROGRESS, 2026-07-10.** This record is updated only from executed commands.
+Status: **COMPLETE (working-tree validation), 2026-07-10.** This record is updated only from executed commands.
 End-to-end claims require a real local server process and same-run health evidence.
 
 ## Baseline
@@ -568,12 +568,240 @@ node scripts/verify-step3-phase5-real-server.js --output docs/architecture/evide
 
 ## Phase 6
 
-Status: not started.
+Status: **COMPLETE (working-tree implementation and validation).** Contracts:
+`COP-SHARED-001`, `COP-OWNER-001`, `COP-OWNER-002`, `COP-LOCK-001`,
+`COP-HANDLER-001`, `COP-ROUTE-001`.
+
+### Shared Owner 与 worker 迁移
+
+- `startConquest`、`claimConquest`、`renameCity` 使用
+  `territory:{territoryId}` primary owner，并按 canonical order 同时锁 actor player、actor
+  `territory-owner:{playerId}`、持久化旧 owner collection 和目标 territory。repository 在 scoped
+  写入前再次校验旧、新 collection locks，缺锁时在任何 player/shared row 落库前失败。
+- `startWorldCombat`、`resolveWorldCombat` 使用 `encounter:{encounterId}` 与 player 双 owner。
+  `WorldCombatCommandHandler` 只 stage encounter mutation；player state 和 shared encounter 由
+  `CommandCommitter.commitCommandState` 在同一 SQLite transaction 中提交。
+- `startWorldMarch` 可在 owner lock 前通过只读坐标 lookup 解析 encounter handoff；命令 trace
+  明确记录 owner resolution 先于 owner lock，且领域执行收到同一个 encounter id。
+- world worker 拆为 `worldWorkerPlayerTick`、`worldWorkerPersonUpdate`、
+  `worldWorkerDiplomacyTick` 三个 internal-idempotent 命令。player tick 锁 player 与全部可能 mutation
+  的 encounters；social batch 锁 `world-social:global`、全部 player 与 person owners，并在锁内重读；
+  diplomacy tick 使用 `diplomacy:{pairId}`。三类写入均通过同一
+  `CommandExecutionPipeline`/`CommandCommitter`。
+- `FactionDiplomacyService.planAdvanceEdge` 只计算双向 edge mutations；legacy `advanceEdge` 继续复用
+  同一 plan。等价测试确认两条路径的最终持久化结果一致。
+
+### Self-review 闭环
+
+- `CommandCommitter` 在 repository 调用前统一校验 shared mutation owners：encounter、person、
+  diplomacy edge 和 shared player state 缺少对应 owner 时抛
+  `COMMAND_SHARED_MUTATION_OWNER_NOT_LOCKED`。`shared-only` 在 `state=null` 时有正式回归测试。
+- encounter 普通读取与 respawn 均为 clone projection；`refreshRespawns:true` 明确拒绝。API 与 worker
+  启动只初始化表，不再在 pipeline 建立前 materialize encounter seeds；规划结果只在真实命令 mutation
+  提交时落库。
+- `playerReset` 同时锁 `player:{id}` 与 `territory-owner:{id}`。reset state factory 延迟到
+  `CommandCommitter -> GameStateRepository.resetPlayerState` 的 transaction 内执行，因此旧 spawn release、
+  新 spawn reservation、companion city、player row、shared territory 和 visibility 失败时整体回滚。
+- 只读自审确认 `WorldCombatCommandHandler` 与 `WorldWorkerService` 均无直接
+  `save`/`upsert`/feature-owned lock，worker 对未预声明 encounter mutation fail closed。
+
+### Blocking guards 与 synthetic FIRE
+
+- `scripts/check-command-route-migration.js` live gate：29 个 Phase 6 migrated actions，0 deferred，
+  0 violations。synthetic tests 8/8，通过内存 source mutation 分别证明 handler persistence、延期分支、
+  world-combat persistence、side-effecting encounter read、startup encounter seed、reset pre-commit
+  persistence 和 shared-owner validation 等违规会 FIRE。
+- `scripts/check-command-owner-entry-coverage.js` live gate：17 个 server write entries、13 个 entry
+  calls、0 violations。synthetic tests 5/5，覆盖 inventory drift、shared combat player fallback、worker
+  direct persistence 和 social computation before lock。
+- `scripts/check-command-pipeline-foundation.test.js` 4/4；新增 probe 证明 reset state factory 脱离
+  committer 时 foundation gate 会 FIRE。
+- `scripts/report-command-owner-step1.test.js` 7/7；live summary 为 17/17 contracts、17 个 server write
+  entries、29 个 actions、33 个 frontend helpers、60 条 frontend command paths，inventory drift 0。
+
+### 真实本地 server/worker evidence
+
+可复现命令：
+
+```powershell
+node scripts/verify-step3-phase6-real-server.js --output docs/architecture/evidence/step3-phase6-real-server-2026-07-10.json --quiet
+```
+
+同轮启动真实 `backend/server.js` 与真实 `backend/world-worker.js`，使用同一个临时 SQLite、真实登录、
+真实 `GameAPI -> ClientCommandSender -> H5GameApiTransportAdapter -> fetch` HTTP 路径。fixture 只在请求前
+通过 production repository/domain service 做确定性准备，没有替换 route、handler、pipeline、server、worker
+或 transport。raw evidence 位于
+`docs/architecture/evidence/step3-phase6-real-server-2026-07-10.json`（7,497,041 bytes）。
+
+- 2026-07-10T06:21:46.043Z 复验：server PID `3416`、worker PID `10992`、端口 `11127`；
+  同一 server 的 health before/after 均为 HTTP 200。server stderr 为空；server/worker 均由验证脚本
+  以 `SIGTERM` 正常收尾。worker stderr 的
+  263 bytes 是预期的 blocking `command-entry-report-v1`，`ownerStatus=resolved`、`error=''`。
+- territory contest：test1 返回 HTTP 200，ownerKeys 为 player + actor territory collection + target；
+  test2 返回 HTTP 409 `TERRITORY_ALREADY_OCCUPIED`，ownerKeys 同时包含 test1 旧 owner collection、
+  test2 actor collection 与 target。shared row 最终只属于 test1，test2 canonical state 保持 contested。
+- march handoff：真实 request 未携带 encounter id，只携带坐标；trace 在 lock 前解析为
+  `encounter:phase6-real-march-handoff-encounter` + `player:test3`，领域 mission 使用同一 encounter id。
+- encounter storm：首次真实 resolve 后再发 49 个相同 command/idempotency replay，共保存 50 条 raw
+  HTTP；status 全部 200、raw response body 完全一致、player revision delta 1、recent report 1、shared
+  encounter 最终 `resolved`。
+- worker force-settle：真实 worker 以 active limit 1 处理 codexqa，trace ownerKeys 为
+  `player:codexqa` + `encounter:phase6-real-worker-force-settle-encounter`，owner resolution 先于 lock；
+  player revision delta 1、report 1、shared encounter `resolved`，停止后 owner lock rows 为 0。
+
+### Phase 6 Gate
+
+- P6 focused backend batch：159/159 通过；route synthetic 8/8、owner-entry synthetic 5/5、foundation
+  synthetic 4/4、Step1 report tests 7/7。
+- `npm test`：295 个测试文件，2369/2369 通过。
+- `npm run lint`：通过。
+- `npm run test:architecture`：退出 0，包含 route migration、owner entry、pipeline foundation、source
+  encoding、Step1 drift 与 `git diff --check` gates。
+- `node scripts/check-source-encoding.js`：violations 0；全部修改/新增文件 worktree EOL 为 LF；
+  `git diff --check` 通过。
+- frozen HEAD/working-tree blobs 均保持：
+  `c45d1ab4eb245337b22b1555a027a147ae8b5a80`、
+  `c6f92374db9189e5d48792365c48ad1d7669a36e`、
+  `59ea0f56a18194a25dcc09a7e3df5160cb7eb52d`。
+- P6 implementation、self-review gate 与真实流程 evidence 无剩余 blocker。Phase 7 仅新增 blocking
+  gate/map 与验证文档，没有开始新的业务迁移。
 
 ## Phase 7
 
-Status: not started.
+Status: **COMPLETE (working-tree implementation and validation).** Contracts:
+`COP-ALLOWLIST-001`, `COP-CLIENT-001`, `COP-CLIENT-002`, `COP-ENVELOPE-001`,
+`COP-HANDLER-001`, `COP-IDEMP-001`, `COP-OWNER-001`, `COP-OWNER-002`,
+`COP-ROUTE-001`, `COP-SHARED-001`.
+
+### Migrated inventory blocking map
+
+- 新增 `scripts/check-command-owner-blocking-map.js` 与
+  `scripts/check-command-owner-blocking-map.test.js`，并接入
+  `scripts/run-architecture-smoke.js` 的 `CHECK_FILES`、`TEST_FILES` 和 blocking guard 阶段。
+- Gate 为已迁移范围生成 per-inventory blocking map：127 个 migrated ids，包含 9 个
+  server/background write entries、29 个 game actions、33 个 frontend write helpers、56 个 frontend
+  command paths。
+- Gate 阻断：
+  - migrated server/action id 缺少 `blocking-*` envelope/owner、`live` idempotency store 或 `live`
+    command pipeline；
+  - migrated frontend helper/path 绕过 `ClientCommandSender`，或仍允许 domain display state 抑制命令提交；
+  - Step1 inventory drift 非 0 或 allowlist metadata 缺失；
+  - map 中引用的 blocking gate 未接入 architecture smoke；
+  - migrated id 未进入 map，或 map 中出现 stale/duplicate id。
+- Step1 report package 仍保持 report-only 审计语义；Phase 7 通过新增 blocking map gate 将已迁移 id 的
+  report-only debt 转成 architecture smoke 的 blocking enforcement。
+
+### Synthetic FIRE 与 focused checks
+
+已执行：
+
+```powershell
+node --test scripts/check-command-route-migration.test.js scripts/check-command-owner-entry-coverage.test.js scripts/check-command-pipeline-foundation.test.js scripts/check-command-owner-blocking-map.test.js scripts/report-command-owner-step1.test.js scripts/run-architecture-smoke.test.js
+node scripts/check-command-route-migration.js
+node scripts/check-command-owner-entry-coverage.js
+node scripts/check-command-pipeline-foundation.js
+node scripts/check-command-owner-blocking-map.js
+node scripts/report-command-owner-step1.js --summary
+```
+
+结果：
+
+- Focused script tests：33/33 通过。新增 blocking map synthetic 5/5，分别覆盖 missing map entry、
+  migrated id 退回 report-only、gate 从 architecture smoke 消失、frontend helper 恢复 domain block。
+- `scripts/check-command-route-migration.js`：29 个 Phase 6 migrated actions，0 deferred，0 violations。
+- `scripts/check-command-owner-entry-coverage.js`：17 个 server write entries、13 个 entry calls，
+  0 violations。
+- `scripts/check-command-pipeline-foundation.js`：`OwnerLockRepository` public methods 仅
+  `withOwnerLocks`，0 violations。
+- `scripts/check-command-owner-blocking-map.js`：127/127 migrated ids mapped，0 violations；分布为
+  server writes 9、game actions 29、frontend write helpers 33、frontend command paths 56。
+- `scripts/report-command-owner-step1.js --summary`：17/17 contracts、12 checks、17 server write
+  entries、29 game actions、33 frontend helpers、60 frontend command paths，inventory drift 0。
+
+### Phase 7 full gate
+
+已执行：
+
+```powershell
+npm test
+npm run lint
+npm run test:architecture
+node scripts/check-source-encoding.js
+git diff --check
+node scripts/verify-step3-phase6-real-server.js --output docs/architecture/evidence/step3-phase6-real-server-2026-07-10.json --quiet
+```
+
+结果：
+
+- `npm test`：295 个 all-test files，2369/2369 通过。
+- `npm run lint`：通过。
+- `npm run test:architecture`：通过；包含新增 `command owner migrated blocking map guard`、新 test
+  文件的 `node --check` 和 focused node tests、source encoding 与 `git diff --check`。
+- `node scripts/check-source-encoding.js`：violations 0。
+- `git diff --check`：通过。
+- 真实 server/worker evidence 复验：`assertion.passed=true`，stub-free、territory contest、
+  march encounter handoff、encounter resolve storm、world worker force-settle、same-server health
+  before/after 全部为 true。server PID `3416`、worker PID `10992`、端口 `11127`；health before/after
+  均 HTTP 200；server stderr 为空，worker stderr 263 bytes 为预期 command-entry report。
+- Frozen frontend blobs 与 HEAD 一致：
+  `CanvasPanelActionRunner.js` =
+  `c45d1ab4eb245337b22b1555a027a147ae8b5a80`，
+  `CanvasPanelActionRunner.test.js` =
+  `c6f92374db9189e5d48792365c48ad1d7669a36e`，
+  `CanvasPanelCompatibilityRetirement.test.js` =
+  `59ea0f56a18194a25dcc09a7e3df5160cb7eb52d`。
 
 ## Final Self-Audit
 
-Status: not started. No completion claim is made while any phase above remains incomplete.
+Status: **COMPLETE (working-tree validation).** No `EXECUTION-BLOCKER-REPORT` was required.
+Per user instruction, no commit, push, reset, checkout, or branch switch was performed.
+
+### Completion criteria audit
+
+- Criteria 1-9 are covered by Phases 2-6 implementation and revalidated by `npm test`,
+  route/owner/pipeline guards, shared-owner tests, and the real server/worker evidence.
+- Criteria 10-11 are covered by Phase 7 `check-command-owner-blocking-map.js`:
+  127 migrated ids have blocking gate mappings, and architecture smoke blocks fake compliance patterns.
+- Criterion 12 is covered by focused checks, `npm test`, `npm run lint`, `npm run test:architecture`,
+  source encoding, and `git diff --check`.
+- Criterion 13 is covered by the handoff table below.
+
+### Final implementation handoff
+
+| Contract | Implementation evidence | Blocking gate / test evidence | Remaining debt |
+| --- | --- | --- | --- |
+| `COP-ENTRY-001` | `prepareCommandEntry`, Step1 inventories, command owner blocking map | owner-entry gate, blocking-map gate, Step1 drift 0 | Classified non-gameplay/admin/diagnostic/config entries remain inventoried but not claimed migrated. |
+| `COP-ENVELOPE-001` | `ClientCommandSender`, `normalizeCommandEnvelope`, migrated route `requireClientIds` | client sender coverage, route migration, blocking-map gate | None for migrated ids. |
+| `COP-IDEMP-001` | `CommandIdempotencyStore`, pipeline replay/conflict, duplicate storm tests | pipeline tests, route migration, blocking-map gate | Ops/config/diagnostic classified writes remain report-only inventory, not migrated claims. |
+| `COP-OWNER-001` | `CommandOwnerResolver`, repository owner resolver, worker split commands | owner resolver tests, owner-entry gate, blocking-map gate | None for migrated ids. |
+| `COP-OWNER-002` | Shared owner missing-target rejection, march coordinate handoff lookup | owner resolver tests, P6 real march handoff, owner-entry gate | `resolveCapture` remains private player-owned unless future scope makes capture decisions shared. |
+| `COP-SHARED-001` | Territory, encounter, worker, person, diplomacy shared owners | P6 real evidence, route/owner gates, blocking-map gate | Future loot/boss owners are represented only as future abstractions until routes exist. |
+| `COP-LOCK-001` | `OwnerLockRepository.withOwnerLocks`, player delegate, shared mutation owner checks | foundation gate, lock tests, P6 worker evidence | None for migrated ids. |
+| `COP-CONCURRENCY-001` | SQLite owner locks shared by server and worker | `OwnerLockRepository` tests, foundation gate | None for migrated ids. |
+| `COP-HANDLER-001` | handlers run inside owner context and stage mutations only | route migration guard, handler tests, blocking-map gate | None for migrated handlers. |
+| `COP-ROUTE-001` | migrated routes enter `CommandExecutionPipeline` | route migration guard, route integration tests | `playerLogin`, ops, config routes remain classified non-gameplay/non-migrated. |
+| `COP-CLIENT-001` | `ClientCommandSender` local blocks limited to transport/payload/UI readiness | client block reason guard, client sender tests, blocking-map gate | Step1 still reports display-domain signals as visible future frontend debt; command-submit gates pass. |
+| `COP-CLIENT-002` | GameAPI helpers and inventoried direct call sites route through sender facades | client sender coverage, Step1 direct-submit scanner, blocking-map gate | Renderer/panel architectural report-only findings remain outside migrated command-submit enforcement. |
+| `COP-TIME-001` | server time/revision authority in heartbeat/march pipeline | heartbeat tests, route migration, real evidence | Frontend display timing reports remain report-only. |
+| `COP-AUTHORITY-001` | server validators remain final authority; client local blockers do not suppress submit paths | client block reason guard, route integration tests | Display eligibility calculations remain documented as report-only frontend debt. |
+| `COP-PROJECTION-001` | read projections are separated from command commit; GET heartbeat/read routes stay read-only | projection architecture tests, route migration guard | Domain business candidate reports remain report-only architecture backlog. |
+| `COP-TRACE-001` | command entry reports, command trace phases, real evidence trace assertions | command envelope/trace tests, owner-entry gate, real evidence | None for migrated ids. |
+| `COP-ALLOWLIST-001` | Step1 inventory drift and allowlist metadata checked by blocking-map gate | blocking-map gate, Step1 tests | Three no-write POST exclusions remain documented with owner, reason, retirement condition, and growth-prevention test. |
+
+### Remaining non-blocking debt records
+
+- `server:player-login` stays classified as auth/player write, not a migrated gameplay command. Owner:
+  auth/platform. Retirement condition: if login becomes a gameplay command or shared-state mutation, add it to the
+  command pipeline and blocking map in the same change.
+- `admin:ops-login-audit`, `admin:ops-maintenance-state`, `admin:ops-restart-audit` stay classified ops writes.
+  Owner: ops/platform. Retirement condition: if they mutate gameplay state or claim command migration, add owner,
+  idempotency, pipeline, tests, and blocking-map entries.
+- `admin:config-release-publish` and `admin:config-release-rollback` stay classified config writes. Owner:
+  admin/config. Retirement condition: if config release operations become gameplay command traffic, migrate them
+  through the command pipeline and blocking map.
+- `diagnostic:client-events-ingest` and `diagnostic:client-operation-log-ingest` stay classified diagnostic writes.
+  Owner: observability. Retirement condition: if diagnostic ingestion affects gameplay state, add command ownership
+  and blocking migration.
+- Existing report-only frontend/domain architecture findings remain visible in their report guards. They are not
+  migrated command-submit blockers because `client-command-block-reasons`, `client-command-sender-coverage`, and
+  the new blocking-map gate all pass.

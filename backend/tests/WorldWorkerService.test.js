@@ -1,11 +1,97 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const Database = require('better-sqlite3');
 
 const WorldWorkerService = require('../services/realtime/WorldWorkerService');
+const { CommandExecutionPipeline } = require('../application/commands/CommandExecutionPipeline');
+const { CommandIdempotencyStore } = require('../application/commands/CommandIdempotencyStore');
+const { getOwnerContext } = require('../application/commands/CommandOwnerContext');
+const GameStateRepository = require('../repositories/GameStateRepository');
+const GameStateService = require('../services/GameStateService');
+const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
+const WorldMapService = require('../services/WorldMapService');
 
-test('WorldWorkerService reports its mixed-owner runtime batch before touching state', () => {
+function createService(options = {}) {
+  const repository = options.repository || {};
+  const db = new Database(':memory:');
+  const schemaRepository = new GameStateRepository(db);
+  schemaRepository.init();
+  const idempotencyStore = new CommandIdempotencyStore(db);
+  const pipelineRepository = {
+    worldEncounterRepo: repository.worldEncounterRepo || null,
+    withOwnerLocks(ownerKeys, scope, callback, lockOptions = {}) {
+      if (typeof repository.withOwnerLocks === 'function') {
+        return repository.withOwnerLocks(ownerKeys, scope, callback, lockOptions);
+      }
+      const playerKey = ownerKeys.find((ownerKey) => ownerKey.startsWith('player:'));
+      if (playerKey && typeof repository.withPlayerStateLock === 'function') {
+        const timeoutResult = Symbol('owner-lock-timeout');
+        const result = repository.withPlayerStateLock(
+          playerKey.slice('player:'.length),
+          () => callback({ schema: 'owner-lock-context-v1', ownerKeys, scope }),
+          { ...lockOptions, scope, timeoutResult },
+        );
+        if (result === timeoutResult) {
+          const error = new Error(`Owner lock is already held for ${playerKey}`);
+          error.code = 'OWNER_LOCK_TIMEOUT';
+          error.ownerKey = playerKey;
+          throw error;
+        }
+        return result;
+      }
+      return callback({ schema: 'owner-lock-context-v1', ownerKeys, scope });
+    },
+    findByPlayerId(...args) {
+      return repository.findByPlayerId?.(...args) || null;
+    },
+    save(state, saveOptions = {}) {
+      return repository.save?.(state, saveOptions) || state;
+    },
+    commitCommandState(state, mutations = {}, commitOptions = {}) {
+      options.onCommitCommandState?.({ state, mutations, commitOptions });
+      if (typeof repository.commitCommandState === 'function') {
+        return repository.commitCommandState(state, mutations, commitOptions);
+      }
+      const savedState = commitOptions.persistState === false
+        ? state
+        : (repository.save?.(state, commitOptions) || state);
+      for (const mutation of (mutations.playerStates || [])) {
+        const playerState = mutation.state || mutation;
+        repository.save?.(playerState, {
+          ...commitOptions,
+          expectedRevision: mutation.expectedRevision ?? playerState?.revision,
+        });
+      }
+      for (const mutation of (mutations.encounters || [])) {
+        repository.worldEncounterRepo?.upsertEncounter?.(
+          mutation.encounter || mutation,
+          mutation.now,
+        );
+      }
+      for (const mutation of (mutations.people || [])) {
+        options.worldPeopleRepo?.upsertPerson?.(mutation.person || mutation, mutation.now);
+      }
+      for (const mutation of (mutations.diplomacyEdges || [])) {
+        repository.factionDiplomacyRepo?.upsertEdge?.(
+          mutation.fromFactionId,
+          mutation.toFactionId,
+          mutation.edge,
+          mutation.now,
+        );
+      }
+      return { savedState, shared: {} };
+    },
+  };
+  const commandExecutionPipeline = new CommandExecutionPipeline({
+    repository: pipelineRepository,
+    idempotencyStore,
+  });
+  return new WorldWorkerService({ ...options, repository, commandExecutionPipeline });
+}
+
+test('WorldWorkerService reports an explicit split command batch before touching state', () => {
   const calls = [];
-  const service = new WorldWorkerService({
+  const service = createService({
     repository: {
       findRecentlyActive() {
         calls.push('findRecentlyActive');
@@ -15,22 +101,25 @@ test('WorldWorkerService reports its mixed-owner runtime batch before touching s
     commandEntryReporter(report) {
       calls.push('commandEntryReporter');
       assert.equal(report.inventoryId, 'worker:world-worker-runtime-writes');
-      assert.equal(report.ownerResolution.status, 'blocked');
-      assert.equal(report.ownerResolution.error, 'OWNER_WORKER_COMMAND_SPLIT_REQUIRED');
     },
     now: () => new Date('2026-07-10T00:00:00.000Z'),
   });
 
   const summary = service.tickOnce();
 
-  assert.deepEqual(calls, ['commandEntryReporter', 'findRecentlyActive']);
-  assert.equal(summary.commandEntry.ownerResolution.error, 'OWNER_WORKER_COMMAND_SPLIT_REQUIRED');
-  assert.equal(summary.commandEntry.idempotencyClassification, 'server-fallback-id');
+  assert.deepEqual(calls, ['findRecentlyActive']);
+  assert.equal(summary.commandEntry.ownerResolution.status, 'split');
+  assert.equal(summary.commandEntry.idempotencyClassification, 'internal-idempotent');
+  assert.deepEqual(summary.commandEntry.commandTypes, [
+    'worldWorkerPlayerTick',
+    'worldWorkerPersonUpdate',
+    'worldWorkerDiplomacyTick',
+  ]);
 });
 
 test('WorldWorkerService owns runtime advancement outside the gateway API process', () => {
   const calls = [];
-  const service = new WorldWorkerService({
+  const service = createService({
     repository: {
       findRecentlyActive(activeSinceIso, limit) {
         calls.push(['findRecentlyActive', activeSinceIso, limit]);
@@ -100,7 +189,7 @@ test('WorldWorkerService owns runtime advancement outside the gateway API proces
 test('WorldWorkerService advances player runtime without background AI world expansion', () => {
   const calls = [];
   const worldEncounterRepo = { getAllEncounters: () => [] };
-  const service = new WorldWorkerService({
+  const service = createService({
     repository: {
       worldEncounterRepo,
       findRecentlyActive() {
@@ -151,6 +240,8 @@ test('WorldWorkerService advances player runtime without background AI world exp
   const summary = service.tickOnce();
 
   assert.equal(summary.processedCount, 1);
+  assert.equal(typeof calls[1][2].stageEncounter, 'function');
+  delete calls[1][2].stageEncounter;
   assert.deepEqual(calls, [
     ['getClientProjectionForPlayer', 'test1'],
     ['advanceRuntimeState', 'test1', {
@@ -169,6 +260,8 @@ test('WorldWorkerService advances player runtime without background AI world exp
 
 test('WorldWorkerService advances shared social and diplomacy ticks once per batch', () => {
   const calls = [];
+  const reports = [];
+  const commitCalls = [];
   const saved = new Map();
   const statesByPlayer = {
     p1: { playerId: 'p1', famousPeople: [{ id: 'p1-ruler', name: 'P1', relationships: [] }] },
@@ -179,8 +272,16 @@ test('WorldWorkerService advances shared social and diplomacy ticks once per bat
     personality: { axes: { boldness: 0, sociability: 0, integrity: 0 }, nature: 'calm' },
     relationships: person.relationships || [],
   });
-  const service = new WorldWorkerService({
+  const sharedPeopleById = new Map([
+    ['ai-ruler', makePerson({ id: 'ai-ruler', name: 'AI', factionId: 'ai_wei' })],
+  ]);
+  const service = createService({
     repository: {
+      factionDiplomacyRepo: {
+        upsertEdge(fromFactionId, toFactionId) {
+          calls.push(['upsertEdge', fromFactionId, toFactionId]);
+        },
+      },
       findRecentlyActive() {
         return [statesByPlayer.p1, statesByPlayer.p2];
       },
@@ -188,15 +289,25 @@ test('WorldWorkerService advances shared social and diplomacy ticks once per bat
         return { ...statesByPlayer[playerId], famousPeople: statesByPlayer[playerId].famousPeople.map((p) => ({ ...p })) };
       },
       save(state) {
+        statesByPlayer[state.playerId] = {
+          ...state,
+          famousPeople: state.famousPeople.map((person) => ({ ...person })),
+        };
         saved.set(state.playerId, state);
+        return state;
       },
     },
     gameStateService: { advanceRuntimeState: (state) => state },
     worldPeopleRepo: {
       getAllPeople() {
-        return [makePerson({ id: 'ai-ruler', name: 'AI', factionId: 'ai_wei' })];
+        return [...sharedPeopleById.values()].map((person) => ({ ...person }));
+      },
+      getPerson(personId) {
+        const person = sharedPeopleById.get(personId);
+        return person ? { ...person } : null;
       },
       upsertPerson(person) {
+        sharedPeopleById.set(person.id, { ...person });
         calls.push(['upsertPerson', person.id, person.relationships.length]);
       },
     },
@@ -207,6 +318,14 @@ test('WorldWorkerService advances shared social and diplomacy ticks once per bat
     },
     worldSocialTickService: {
       advanceRelationships(people, opts) {
+        const ownerContext = getOwnerContext();
+        assert.equal(ownerContext.ownerKey, 'world-social:global');
+        assert.deepEqual(ownerContext.ownerKeys, [
+          'person:ai-ruler',
+          'player:p1',
+          'player:p2',
+          'world-social:global',
+        ]);
         calls.push(['advanceRelationships', people.map((p) => p.id).sort().join(','), opts.meetPairs]);
         return {
           people: people.map((person) => ({
@@ -234,12 +353,32 @@ test('WorldWorkerService advances shared social and diplomacy ticks once per bat
       },
     },
     worldDiplomacyTickService: {
-      advanceAll(opts) {
-        calls.push(['advanceAll', opts.factionIds.sort().join(','), Boolean(opts.rulerOf('ai_wei'))]);
-        return 3;
+      driftContext(fromFactionId, toFactionId, opts) {
+        calls.push([
+          'driftContext',
+          [fromFactionId, toFactionId].sort().join(','),
+          Boolean(opts.rulerOf('ai_wei')),
+        ]);
+        return { sharedEnemies: 0, bordering: false, rulerCompat: 0 };
+      },
+    },
+    factionDiplomacyService: {
+      planAdvanceEdge(fromFactionId, toFactionId, _forward, _reverse, now) {
+        calls.push(['planAdvanceEdge', fromFactionId, toFactionId]);
+        return {
+          forward: { fromFactionId, toFactionId, edge: {}, now },
+          reverse: {
+            fromFactionId: toFactionId,
+            toFactionId: fromFactionId,
+            edge: {},
+            now,
+          },
+        };
       },
     },
     getSocialTickOptions: () => ({ meetPairs: 7 }),
+    commandEntryReporter: (report) => reports.push(report),
+    onCommitCommandState: (commit) => commitCalls.push(commit),
     now: () => new Date('2026-07-07T00:00:00.000Z'),
   });
 
@@ -252,11 +391,50 @@ test('WorldWorkerService advances shared social and diplomacy ticks once per bat
     socialCrossings: 0,
     diplomacyPairs: 3,
   });
-  assert.deepEqual(calls, [
+  assert.deepEqual(calls.slice(0, 2), [
     ['advanceRelationships', 'ai-ruler,p1-ruler,p2-ruler', 7],
     ['upsertPerson', 'ai-ruler', 1],
-    ['advanceAll', 'ai_wei,player_p1,player_p2', true],
   ]);
+  assert.equal(calls.filter((call) => call[0] === 'driftContext').length, 3);
+  assert.equal(calls.filter((call) => call[0] === 'planAdvanceEdge').length, 3);
+  assert.equal(calls.filter((call) => call[0] === 'upsertEdge').length, 6);
+  const socialReport = reports.find(
+    (report) => report.envelope?.type === 'worldWorkerPersonUpdate',
+  );
+  assert.equal(socialReport.ownerResolution.ownerKey, 'world-social:global');
+  assert.deepEqual(socialReport.ownerResolution.ownerKeys, [
+    'person:ai-ruler',
+    'player:p1',
+    'player:p2',
+    'world-social:global',
+  ]);
+  assert.deepEqual(socialReport.envelope.payload, {
+    playerIds: ['p1', 'p2'],
+    personIds: ['ai-ruler'],
+    now: '2026-07-07T00:00:00.000Z',
+  });
+  assert.equal(Object.hasOwn(socialReport.envelope.payload, 'person'), false);
+  assert.equal(Object.hasOwn(socialReport.envelope.payload, 'personId'), false);
+  const socialCommits = commitCalls.filter(
+    (commit) => Array.isArray(commit.mutations.playerStates),
+  );
+  assert.equal(socialCommits.length, 1);
+  assert.equal(socialCommits[0].commitOptions.persistState, false);
+  assert.deepEqual(
+    socialCommits[0].mutations.playerStates.map((mutation) => mutation.state.playerId).sort(),
+    ['p1', 'p2'],
+  );
+  assert.deepEqual(
+    socialCommits[0].mutations.people.map((mutation) => mutation.person.id),
+    ['ai-ruler'],
+  );
+  assert.equal(
+    socialCommits[0].mutations.playerStates
+      .find((mutation) => mutation.state.playerId === 'p1')
+      .state.famousPeople[0].relationships.length,
+    1,
+  );
+  assert.equal(socialCommits[0].mutations.people[0].person.relationships.length, 1);
   assert.equal(saved.get('p1').famousPeople[0].relationships.length, 1);
   assert.equal(saved.get('p2').famousPeople[0].relationships.length, 0);
 });
@@ -264,7 +442,7 @@ test('WorldWorkerService advances shared social and diplomacy ticks once per bat
 test('WorldWorkerService prevents overlapping ticks and records slow batches', () => {
   const nowMs = Date.parse('2026-06-12T00:00:00.000Z');
   let monotonicNow = 1000;
-  const service = new WorldWorkerService({
+  const service = createService({
     repository: {
       findRecentlyActive() {
         return [];
@@ -307,7 +485,7 @@ test('WorldWorkerService keeps its interval referenced for standalone PM2 worker
   };
   global.clearInterval = () => {};
   try {
-    const service = new WorldWorkerService({
+    const service = createService({
       repository: { findRecentlyActive: () => [] },
       intervalMs: 5000,
     });
@@ -324,7 +502,7 @@ test('WorldWorkerService re-reads the latest revision and retries on conflict', 
   // starve them: on GAME_STATE_REVISION_CONFLICT it re-reads the fresh state and retries.
   let saves = 0;
   let reads = 0;
-  const service = new WorldWorkerService({
+  const service = createService({
     repository: {
       findRecentlyActive() {
         return [{ playerId: 'hot-player', revision: 1 }];
@@ -356,7 +534,7 @@ test('WorldWorkerService re-reads the latest revision and retries on conflict', 
 
 test('WorldWorkerService yields to foreground player-state writers', () => {
   const calls = [];
-  const service = new WorldWorkerService({
+  const service = createService({
     repository: {
       findRecentlyActive() {
         calls.push(['findRecentlyActive']);
@@ -384,12 +562,12 @@ test('WorldWorkerService yields to foreground player-state writers', () => {
   assert.equal(summary.errorCount, 0);
   assert.deepEqual(calls, [
     ['findRecentlyActive'],
-    ['withPlayerStateLock', 'foreground-player', 'world-worker', 0],
+    ['withPlayerStateLock', 'foreground-player', 'world-worker:worldWorkerPlayerTick', 0],
   ]);
 });
 
 test('WorldWorkerService gives up after bounded conflict retries without erroring', () => {
-  const service = new WorldWorkerService({
+  const service = createService({
     repository: {
       findRecentlyActive() {
         return [{ playerId: 'hottest-player' }];
@@ -413,4 +591,73 @@ test('WorldWorkerService gives up after bounded conflict retries without errorin
   // and never a crash-loop error entry.
   assert.equal(summary.processedCount, 0);
   assert.equal(summary.errorCount, 1);
+});
+
+test('WorldWorkerService locks player and encounter while force-settling combat', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+  const startedAt = new Date('2026-07-10T00:00:00.000Z');
+  const timeoutAt = new Date(
+    startedAt.getTime() + WorldCombatEncounterService.AUTO_ENGAGE_FALLBACK_MS + 1,
+  );
+  const playerId = 'worker-encounter-owner';
+  const state = GameStateService.createInitialGameState(playerId, { now: startedAt });
+  const encounter = WorldCombatEncounterService.createEncounter(state, startedAt);
+  encounter.id = 'worker-shared-encounter';
+  encounter.tileId = WorldMapService.getTileId(encounter.q, encounter.r);
+  encounter.defender.soldiers = 1;
+  repository.worldEncounterRepo.upsertEncounter(encounter, startedAt);
+  state.famousPeople = [{ id: 'worker-hero', name: 'Worker Hero', attributes: { force: 100 } }];
+  state.exploreMissions = [{
+    id: 'worker-engaged-mission',
+    status: 'idle',
+    position: { q: encounter.q, r: encounter.r, tileId: encounter.tileId },
+    target: { q: encounter.q, r: encounter.r, tileId: encounter.tileId },
+    formationSnapshot: {
+      slot: 1,
+      soldiersCommitted: 500,
+      soldiersRemaining: 500,
+      members: [{
+        personId: 'worker-hero',
+        soldiersCommitted: 500,
+        soldiersRemaining: 500,
+      }],
+    },
+    combat: {
+      encounterId: encounter.id,
+      status: 'engaged',
+      engagedAt: startedAt.toISOString(),
+    },
+  }];
+  repository.save(state);
+  const reports = [];
+  const service = createService({
+    repository,
+    gameStateService: GameStateService,
+    commandEntryReporter: (report) => reports.push(report),
+    now: () => timeoutAt,
+  });
+
+  const result = service.advancePlayerWithRetry(
+    playerId,
+    timeoutAt,
+    3,
+    repository.findByPlayerId(playerId),
+  );
+
+  assert.equal(result.advanced, true);
+  const playerTickReport = reports.find(
+    (report) => report.envelope?.type === 'worldWorkerPlayerTick',
+  );
+  assert.deepEqual(playerTickReport.ownerResolution.ownerKeys, [
+    `encounter:${encounter.id}`,
+    `player:${playerId}`,
+  ]);
+  assert.equal(
+    repository.worldEncounterRepo.getEncounter(encounter.id, { refreshRespawns: false }).status,
+    'resolved',
+  );
+  assert.equal(repository.findByPlayerId(playerId).worldCombat.recentReports.length, 1);
+  db.close();
 });

@@ -182,7 +182,11 @@ test('CommandEntryContext records envelope and owner resolution without claiming
   assert.equal(entry.ok, true);
   assert.equal(entry.report.mode, 'report-only');
   assert.equal(entry.ownerResolution.ownerKey, 'territory:territory-1');
-  assert.deepEqual(entry.ownerResolution.ownerKeys, ['player:player-1', 'territory:territory-1']);
+  assert.deepEqual(entry.ownerResolution.ownerKeys, [
+    'player:player-1',
+    'territory-owner:player-1',
+    'territory:territory-1',
+  ]);
   assert.equal(req.commandReports.length, 1);
   assert.equal(reports.length, 1);
 });

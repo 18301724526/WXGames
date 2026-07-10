@@ -17,8 +17,12 @@ const CORE_FILES = Object.freeze([
   'backend/application/commands/TaskClaimCommandHandler.js',
   'backend/application/commands/HeartbeatCommandHandler.js',
   'backend/application/commands/PlayerResetCommandHandler.js',
+  'backend/application/commands/WorldCombatCommandHandler.js',
   'backend/application/commands/GameCommandDefinitionFactory.js',
   'backend/application/commands/CommandCommitter.js',
+  'backend/repositories/GameStateRepository.js',
+  'backend/repositories/WorldEncounterRepository.js',
+  'backend/services/worldCombat/WorldCombatEncounterService.js',
   'backend/routes/gameRoutes.js',
   'backend/routes/buildingRoutes.js',
   'backend/routes/playerRoutes.js',
@@ -38,12 +42,7 @@ const FULLY_MIGRATED_ENTRIES = Object.freeze([
   'server:player-reset',
 ]);
 
-const PHASE6_DEFERRED_ACTIONS = Object.freeze([
-  'claimConquest',
-  'resolveWorldCombat',
-  'startConquest',
-  'startWorldCombat',
-]);
+const PHASE6_DEFERRED_ACTIONS = Object.freeze([]);
 
 function readSources(overrides = {}) {
   return Object.fromEntries(CORE_FILES.map((file) => [
@@ -100,8 +99,13 @@ function inspectRouteMigration(options = {}) {
   const playerRoutes = sources['backend/routes/playerRoutes.js'];
   const authService = sources['backend/services/authService.js'];
   const buildHandler = sources['backend/application/commands/BuildBuildingCommandHandler.js'];
+  const playerResetHandler = sources['backend/application/commands/PlayerResetCommandHandler.js'];
+  const worldCombatHandler = sources['backend/application/commands/WorldCombatCommandHandler.js'];
   const definitionFactory = sources['backend/application/commands/GameCommandDefinitionFactory.js'];
   const committer = sources['backend/application/commands/CommandCommitter.js'];
+  const gameStateRepository = sources['backend/repositories/GameStateRepository.js'];
+  const worldEncounterRepository = sources['backend/repositories/WorldEncounterRepository.js'];
+  const worldCombatEncounterService = sources['backend/services/worldCombat/WorldCombatEncounterService.js'];
   const server = sources['backend/server.js'];
   const gameApi = sources['frontend/js/api/GameAPI.js'];
   const auth = sources['frontend/auth.js'];
@@ -115,14 +119,16 @@ function inspectRouteMigration(options = {}) {
     violations.push(`Phase 6 deferred actions changed: ${deferredActions.join(', ')}`);
   }
   requireTokens(violations, gameRoutes, 'game action route', [
-    'if (!deferredToPhase6)',
+    "mode: 'blocking'",
+    'requireClientIds: true',
+    'requireOwner: true',
     'commandExecutionPipeline.execute(',
     'commandDefinitionFactory.createGameActionDefinition(',
-    'requireClientIds: !deferredToPhase6',
-    'requireOwner: !deferredToPhase6',
-    'executeDeferredGameActionRequest',
-    "error.code = 'LEGACY_COMMAND_EXECUTION_FORBIDDEN'",
+    'commandDefinitionFactory.createWorldCombatDefinition(',
   ]);
+  if (/PHASE6_DEFERRED_ACTIONS|deferredToPhase6|executeDeferredGameActionRequest/.test(gameRoutes)) {
+    violations.push('game action route retains a Phase 6 deferred branch');
+  }
 
   const taskRoute = extractRouteCall(gameRoutes, 'post', '/api/game/tasks/claim');
   requireTokens(violations, taskRoute, 'task claim route', [
@@ -174,14 +180,64 @@ function inspectRouteMigration(options = {}) {
   if (/repository|withPlayerStateLock|\.save\(|CommandTrace|GameActionProjection/.test(buildHandler)) {
     violations.push('BuildBuildingCommandHandler still owns repository, lock, trace, save, or projection work');
   }
+  if (/createResetStateForPlayer\s*\(/.test(playerResetHandler)) {
+    violations.push('PlayerResetCommandHandler invokes reset persistence before CommandCommitter');
+  }
+  requireTokens(violations, worldCombatHandler, 'WorldCombatCommandHandler', [
+    'context.sharedMutations.encounters',
+    'stageEncounter:',
+  ]);
+  if (/\.upsertEncounter\(|repository\.save\(|withOwnerLocks/.test(worldCombatHandler)) {
+    violations.push('WorldCombatCommandHandler persists or locks outside the command pipeline');
+  }
+  const encounterReadOptions = worldCombatEncounterService.match(
+    /function getReadOnlyEncounterOptions\(now\) \{([\s\S]*?)\n\}/,
+  )?.[1] || '';
+  requireTokens(violations, encounterReadOptions, 'WorldCombatEncounterService read options', [
+    'refreshRespawns: false',
+    'projectRespawns: true',
+  ]);
+  if (/refreshRespawns:\s*true/.test(encounterReadOptions)) {
+    violations.push('WorldCombatEncounterService read options can persist respawns');
+  }
+  requireTokens(violations, worldEncounterRepository, 'WorldEncounterRepository pure reads', [
+    'options.refreshRespawns === true',
+    'WORLD_ENCOUNTER_WRITE_REQUIRES_COMMAND_PIPELINE',
+    'options.projectRespawns === true',
+    'planSeeded(options = {})',
+  ]);
+  if (/\n\s+refreshRespawns\(now\s*=/.test(worldEncounterRepository)
+      || /\n\s+ensureSeeded\(options\s*=/.test(worldEncounterRepository)) {
+    violations.push('WorldEncounterRepository exposes direct respawn or seed persistence');
+  }
+  if (/options\.refreshRespawns\s*!==\s*false/.test(worldEncounterRepository)) {
+    violations.push('WorldEncounterRepository still refreshes respawns by default');
+  }
+  requireTokens(violations, gameStateRepository, 'GameStateRepository command persistence', [
+    'const sharedWorldEncounters = this.planWorldEncounters();',
+    'this.saveSharedWorldTerritories(savedState, options);',
+    'if (scopedOwnerKeys && authorizedTerritoryIds.size === 0) return;',
+  ]);
+  const clientProjection = gameStateRepository.match(
+    /getClientProjectionForPlayer\(playerId\) \{([\s\S]*?)\n  \}/,
+  )?.[1] || '';
+  if (clientProjection.includes('ensureWorldEncountersSeeded')) {
+    violations.push('GameStateRepository client projection persists encounter planning');
+  }
+  if (/ensureWorldEncountersSeeded\s*\(/.test(gameStateRepository)) {
+    violations.push('GameStateRepository startup can persist encounter planning outside the command pipeline');
+  }
   if (/repository\.(?:save|resetPlayerState)\(/.test(definitionFactory)) {
     violations.push('GameCommandDefinitionFactory persists outside CommandCommitter');
   }
   requireTokens(violations, committer, 'CommandCommitter', [
-    'this.repository.save(context.state)',
+    'this.repository.save(context.state, { ownerKeys })',
     'this.repository.resetPlayerState(',
+    'assertSharedMutationOwners(context, sharedMutations);',
+    "'playerStates'",
     "strategy === 'save-if-changed'",
     "strategy === 'reset-player-state'",
+    'createState: persistence.createState',
   ]);
 
   requireTokens(violations, gameApi, 'GameAPI heartbeat/reset facade', [
@@ -204,6 +260,7 @@ function inspectRouteMigration(options = {}) {
   requireTokens(violations, server, 'real server Phase 5 wiring', [
     'new GameCommandDefinitionFactory({',
     'commandDefinitionFactory,',
+    'createRepositoryOwnerResolver(repository)',
   ]);
 
   FULLY_MIGRATED_ENTRIES.forEach((inventoryId) => {
@@ -216,7 +273,7 @@ function inspectRouteMigration(options = {}) {
   });
   const migratedActions = GAME_ACTIONS.filter((action) => !PHASE6_DEFERRED_ACTIONS.includes(action.action));
   if (migratedActions.some((action) => action.commandPipelinePhase !== 'live')) {
-    violations.push('one or more Phase 5 game actions are not recorded as live');
+    violations.push('one or more Phase 6 game actions are not recorded as live');
   }
   const deferredInventory = GAME_ACTIONS
     .filter((action) => PHASE6_DEFERRED_ACTIONS.includes(action.action))
@@ -229,8 +286,6 @@ function inspectRouteMigration(options = {}) {
     violations.push('retired build handler lock/save debt is still reported');
   }
   const allowedRouteDebt = new Set([
-    'server:game-action-registry',
-    'server:game-action-world-combat-bypass',
     'server:player-login',
     'admin:config-release-publish',
     'admin:config-release-rollback',
@@ -252,7 +307,7 @@ function inspectRouteMigration(options = {}) {
 function main() {
   const result = inspectRouteMigration();
   console.log('[command-route-migration] blocking gate');
-  console.log(`Phase 5 migrated actions: ${result.migratedActionCount}`);
+  console.log(`Phase 6 migrated actions: ${result.migratedActionCount}`);
   console.log(`Phase 6 deferred actions: ${result.deferredActions.join(', ')}`);
   console.log(`violations: ${result.violations.length}`);
   result.violations.forEach((violation) => console.error(`- ${violation}`));

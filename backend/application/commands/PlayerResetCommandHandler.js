@@ -3,10 +3,6 @@
 const { requireOwnerContext } = require('./CommandOwnerContext');
 
 class PlayerResetCommandHandler {
-  constructor(options = {}) {
-    this.createResetStateForPlayer = options.createResetStateForPlayer;
-  }
-
   validate(context = {}) {
     requireOwnerContext({
       ownerKey: context.ownerResolution?.ownerKey,
@@ -20,8 +16,6 @@ class PlayerResetCommandHandler {
       ownerKey: context.ownerResolution?.ownerKey,
       ownerKeys: context.ownerResolution?.ownerKeys,
     });
-    const gameState = this.createResetStateForPlayer(context.envelope.playerId);
-    context.state = gameState;
     return {
       success: true,
       message: '游戏进度已重置',

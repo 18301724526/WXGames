@@ -160,6 +160,110 @@ test('SpawnLifecycleService reset releases old spawn and avoids the previous coo
   assert.equal(repository.getSpawnForPlayer('spawn-reset-a').spawnKey, '36,0');
 });
 
+test('player reset rolls spawn and companion-city writes back when the command commit fails', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const playerId = 'spawn-reset-atomic';
+    const candidates = [{ q: 60, r: 0 }, { q: 72, r: 0 }];
+    const lifecycle = new SpawnLifecycleService({
+      repository,
+      gameStateService: GameStateService,
+      now: () => new Date('2026-07-10T00:00:00.000Z'),
+      allocator(options = {}) {
+        const occupiedKeys = new Set(
+          (options.occupiedCoordinates || []).map((coord) => coord.spawnKey || `${coord.q},${coord.r}`),
+        );
+        const selected = candidates.find((candidate) => !occupiedKeys.has(`${candidate.q},${candidate.r}`));
+        return selected ? {
+          success: true,
+          selected: {
+            ...selected,
+            valid: true,
+            terrain: 'plains',
+            score: 100,
+            nearestCapitalDistance: 30,
+            tutorialTarget: { q: selected.q + 1, r: selected.r, terrain: 'plains' },
+          },
+          scoredCandidates: candidates,
+        } : { success: false, selected: null, scoredCandidates: candidates };
+      },
+    });
+    const initialState = lifecycle.createInitialStateForPlayer(playerId);
+    initialState.territories = [...initialState.territories, {
+      id: 'spawn-reset-atomic-owned-territory',
+      x: 90,
+      y: 0,
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: playerId,
+      status: 'occupied',
+    }];
+    repository.save(initialState);
+    const originalSpawn = repository.getSpawnForPlayer(playerId);
+    const originalState = repository.findByPlayerId(playerId);
+    const worldCityIdsBefore = repository.worldCityRepo.getAllCities().map((city) => city.id).sort();
+    const sharedTerritoriesBefore = db.prepare(`
+      SELECT *
+      FROM shared_world_territories
+      WHERE ownerPlayerId = ?
+      ORDER BY id
+    `).all(playerId);
+    const visibilityBefore = db.prepare(`
+      SELECT *
+      FROM player_world_visibility
+      WHERE playerId = ?
+      ORDER BY canonicalId
+    `).all(playerId);
+    const companionId = initialState.territories.find((territory) => territory.id !== 'capital')?.id;
+    assert.equal(originalSpawn.spawnKey, '60,0');
+    assert.ok(companionId);
+    assert.ok(repository.worldCityRepo.getCity(companionId));
+
+    const originalWriteGameStateRow = repository.writeGameStateRow.bind(repository);
+    repository.writeGameStateRow = (...args) => {
+      originalWriteGameStateRow(...args);
+      throw new Error('forced reset commit failure');
+    };
+
+    assert.throws(
+      () => repository.resetPlayerState(playerId, null, {
+        ownerKeys: [`player:${playerId}`, `territory-owner:${playerId}`],
+        createState: () => lifecycle.resetInitialStateForPlayer(playerId),
+      }),
+      /forced reset commit failure/,
+    );
+    assert.equal(repository.getSpawnForPlayer(playerId).spawnKey, originalSpawn.spawnKey);
+    assert.equal(repository.findByPlayerId(playerId).revision, originalState.revision);
+    assert.deepEqual(
+      repository.worldCityRepo.getAllCities().map((city) => city.id).sort(),
+      worldCityIdsBefore,
+    );
+    assert.deepEqual(
+      db.prepare(`
+        SELECT *
+        FROM shared_world_territories
+        WHERE ownerPlayerId = ?
+        ORDER BY id
+      `).all(playerId),
+      sharedTerritoriesBefore,
+    );
+    assert.deepEqual(
+      db.prepare(`
+        SELECT *
+        FROM player_world_visibility
+        WHERE playerId = ?
+        ORDER BY canonicalId
+      `).all(playerId),
+      visibilityBefore,
+    );
+  } finally {
+    db.close();
+  }
+});
+
 test('SpawnLifecycleService reset avoids current player occupied city coordinates before releasing them', () => {
   const repository = createRepositoryStub();
   repository.reservations.set('spawn-reset-owned-city', {

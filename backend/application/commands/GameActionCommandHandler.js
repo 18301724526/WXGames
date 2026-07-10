@@ -37,7 +37,7 @@ class GameActionCommandHandler {
         message: '未知操作',
       };
     }
-    if (action === 'startConquest' || action === 'claimConquest') {
+    if (action === 'startConquest' || action === 'claimConquest' || action === 'renameCity') {
       const territoryId = String(context.envelope?.payload?.territoryId || '').trim();
       const sharedTerritory = this.repository?.getSharedWorldTerritory?.(territoryId);
       if (sharedTerritory?.ownerPlayerId

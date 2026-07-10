@@ -110,7 +110,13 @@ function createSharedCombatContext(gameState, now = new Date('2026-06-22T00:00:0
     db,
     repo,
     encounter: stored,
-    worldContext: { worldEncounterRepo: repo },
+    worldContext: {
+      worldEncounterRepo: repo,
+      stageEncounter: (nextEncounter, mutationNow) => repo.upsertEncounter(
+        nextEncounter,
+        mutationNow,
+      ),
+    },
   };
 }
 

@@ -690,8 +690,12 @@ test('reset route uses spawn lifecycle service when creating the new state', () 
   const calls = [];
   const authService = {};
   const repository = {
-    resetPlayerState(playerId, gameState) {
-      calls.push(`resetPlayerState:${playerId}:${gameState.worldMap.origin.q},${gameState.worldMap.origin.r}`);
+    resetPlayerState(playerId, gameState, options = {}) {
+      const resetStateForCommit = typeof options.createState === 'function'
+        ? options.createState(playerId)
+        : gameState;
+      calls.push(`resetPlayerState:${playerId}:${resetStateForCommit.worldMap.origin.q},${resetStateForCommit.worldMap.origin.r}`);
+      return resetStateForCommit;
     },
     getClientProjectionForPlayer(playerId) {
       calls.push(`projection:${playerId}`);

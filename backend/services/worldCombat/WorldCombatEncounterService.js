@@ -325,20 +325,46 @@ function reapStaleSession(session, gameState = {}, now = new Date()) {
 
 function normalizeSharedEncounterList(gameState = {}, encounters = [], now = new Date()) {
   return (Array.isArray(encounters) ? encounters : [])
-    .map((encounter) => normalizeEncounter(encounter, gameState, now))
+    .map((encounter) => {
+      const normalized = normalizeEncounter(encounter, gameState, now);
+      respawnCampIfReady(normalized, now);
+      return normalized;
+    })
     .filter((encounter) => encounter && encounter.id);
 }
 
-function getSharedEncounters(gameState = {}, now = new Date(), options = {}) {
-  const repo = options.worldEncounterRepo || null;
-  if (repo && typeof repo.getAllEncounters === 'function') {
-    return normalizeSharedEncounterList(gameState, repo.getAllEncounters({ now }), now);
-  }
+function getReadOnlyEncounterOptions(now) {
+  return {
+    now,
+    refreshRespawns: false,
+    projectRespawns: true,
+  };
+}
+
+function getFallbackSharedEncounters(gameState = {}, now = new Date(), options = {}) {
   return normalizeSharedEncounterList(
     gameState,
     options.sharedWorldEncounters || gameState.sharedWorldEncounters || [],
     now,
   );
+}
+
+function getSharedEncounters(gameState = {}, now = new Date(), options = {}) {
+  const fallback = getFallbackSharedEncounters(gameState, now, options);
+  const repo = options.worldEncounterRepo || null;
+  if (repo && typeof repo.getAllEncounters === 'function') {
+    const stored = normalizeSharedEncounterList(
+      gameState,
+      repo.getAllEncounters(getReadOnlyEncounterOptions(now)),
+      now,
+    );
+    const storedIds = new Set(stored.map((encounter) => encounter.id));
+    return [
+      ...stored,
+      ...fallback.filter((encounter) => !storedIds.has(encounter.id)),
+    ];
+  }
+  return fallback;
 }
 
 function persistSharedEncounter(encounter = {}, options = {}, now = new Date()) {
@@ -351,9 +377,13 @@ function getActiveEncounter(gameState = {}, encounterId = '', now = new Date(), 
   const id = String(encounterId || '');
   if (!id) return null;
   const repo = options.worldEncounterRepo || null;
-  const encounter = repo && typeof repo.getActiveEncounter === 'function'
-    ? repo.getActiveEncounter(id, { now })
-    : getSharedEncounters(gameState, now, options).find((item) => item.id === id && item.status === 'active');
+  let encounter = repo && typeof repo.getActiveEncounter === 'function'
+    ? repo.getActiveEncounter(id, getReadOnlyEncounterOptions(now))
+    : null;
+  if (!encounter) {
+    encounter = getFallbackSharedEncounters(gameState, now, options)
+      .find((item) => item.id === id && item.status === 'active') || null;
+  }
   return encounter ? normalizeEncounter(encounter, gameState, now) : null;
 }
 
@@ -364,11 +394,14 @@ function getActiveEncounterAt(gameState = {}, coord = {}, now = new Date(), opti
     toInteger(coord.r ?? coord.y, 0),
   );
   const repo = options.worldEncounterRepo || null;
-  const encounter = repo && typeof repo.getActiveEncounterAt === 'function'
-    ? repo.getActiveEncounterAt(coord, { now })
-    : getSharedEncounters(gameState, now, options).find(
+  let encounter = repo && typeof repo.getActiveEncounterAt === 'function'
+    ? repo.getActiveEncounterAt(coord, getReadOnlyEncounterOptions(now))
+    : null;
+  if (!encounter) {
+    encounter = getFallbackSharedEncounters(gameState, now, options).find(
       (item) => item.status === 'active' && item.tileId === tileId,
-    );
+    ) || null;
+  }
   return encounter ? normalizeEncounter(encounter, gameState, now) : null;
 }
 

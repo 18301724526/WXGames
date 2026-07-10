@@ -6,6 +6,7 @@ const { buildCommandPayload } = require('../../application/commands/CommandEnvel
 const { GameCommandDefinitionFactory } = require('../../application/commands/GameCommandDefinitionFactory');
 const { CommandExecutionPipeline } = require('../../application/commands/CommandExecutionPipeline');
 const { CommandIdempotencyStore } = require('../../application/commands/CommandIdempotencyStore');
+const { createRepositoryOwnerResolver } = require('../../application/commands/CommandOwnerResolver');
 const GameStateRepository = require('../../repositories/GameStateRepository');
 
 let commandSequence = 0;
@@ -22,6 +23,7 @@ function createLockContext(ownerKeys, scope) {
 
 function createPipelineRepository(repository) {
   return {
+    worldEncounterRepo: repository.worldEncounterRepo || null,
     withOwnerLocks(ownerKeys, scope, callback, options = {}) {
       if (typeof repository.withOwnerLocks === 'function') {
         return repository.withOwnerLocks(ownerKeys, scope, callback, options);
@@ -42,14 +44,40 @@ function createPipelineRepository(repository) {
     findByPlayerId(...args) {
       return repository.findByPlayerId?.(...args);
     },
+    getClientProjectionForPlayer(...args) {
+      return repository.getClientProjectionForPlayer?.(...args) || {};
+    },
+    getSharedWorldTerritory(...args) {
+      return repository.getSharedWorldTerritory?.(...args) || null;
+    },
     save(...args) {
       return repository.save(...args);
+    },
+    commitCommandState(...args) {
+      if (typeof repository.commitCommandState === 'function') {
+        return repository.commitCommandState(...args);
+      }
+      const [state, mutations = {}, options = {}] = args;
+      const savedState = options.persistState === false
+        ? state
+        : (repository.save(state) || state);
+      (mutations.encounters || []).forEach((mutation) => {
+        repository.worldEncounterRepo?.upsertEncounter?.(
+          mutation.encounter || mutation,
+          mutation.now,
+        );
+      });
+      return { savedState, shared: null };
     },
     resetPlayerState(...args) {
       if (typeof repository.resetPlayerState === 'function') {
         return repository.resetPlayerState(...args);
       }
-      return repository.save(args[1]);
+      const [playerId, state, options = {}] = args;
+      const resetState = typeof options.createState === 'function'
+        ? options.createState(playerId)
+        : state;
+      return repository.save(resetState) || resetState;
     },
   };
 }
@@ -63,6 +91,7 @@ function createCommandPipelineTestDependencies(repository, gameStateService, opt
   const commandExecutionPipeline = new CommandExecutionPipeline({
     repository: pipelineRepository,
     idempotencyStore,
+    ownerResolver: createRepositoryOwnerResolver(repository),
   });
   const commandDefinitionFactory = new GameCommandDefinitionFactory({
     repository,

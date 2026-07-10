@@ -10,6 +10,7 @@ const { WorldCityRepository } = require('./WorldCityRepository');
 const { WorldEncounterRepository } = require('./WorldEncounterRepository');
 const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
 const WorldExplorerVision = require('../services/worldExplorer/WorldExplorerVision');
+const WorldMapService = require('../services/WorldMapService');
 
 const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
   ['revision', 'revision INTEGER DEFAULT 0'],
@@ -243,7 +244,6 @@ class GameStateRepository {
     new SchemaMigrationService(this.db, createGameStateSchemaMigrations()).migrate();
     this.worldMapAuthority.migrateLegacyPlayerWorldMaps();
     this.ensureWorldCitiesSeeded();
-    this.ensureWorldEncountersSeeded();
   }
 
   // Idempotent one-time lay-down of the shared PRE-PLACED NEUTRAL city layer (docs/design/10 §3.2,
@@ -265,7 +265,7 @@ class GameStateRepository {
     return this.worldCityRepo.ensureSeeded({ occupiedTileIds });
   }
 
-  ensureWorldEncountersSeeded() {
+  getWorldEncounterPlanOptions() {
     const occupiedTileIds = new Set();
     for (const coordinate of this.getOccupiedSpawnCoordinates()) {
       const q = Number(coordinate?.q);
@@ -274,10 +274,31 @@ class GameStateRepository {
         occupiedTileIds.add(`tile_${Math.floor(q)}_${Math.floor(r)}`);
       }
     }
-    return this.worldEncounterRepo.ensureSeeded({
+    return {
       occupiedTileIds,
       activitySources: this.getWorldEncounterActivitySources(),
+    };
+  }
+
+  planWorldEncounters() {
+    const options = this.getWorldEncounterPlanOptions();
+    if (typeof this.worldEncounterRepo.planSeeded === 'function') {
+      return this.worldEncounterRepo.planSeeded(options);
+    }
+    return this.worldEncounterRepo.getAllEncounters({
+      ...options,
+      refreshRespawns: false,
+      projectRespawns: true,
     });
+  }
+
+  getProjectedActiveWorldEncounterAt(coord = {}) {
+    const q = Math.floor(Number(coord.q ?? coord.x) || 0);
+    const r = Math.floor(Number(coord.r ?? coord.y) || 0);
+    const tileId = WorldMapService.getTileId(q, r);
+    return this.planWorldEncounters().find((encounter) => (
+      encounter?.status === 'active' && encounter.tileId === tileId
+    )) || null;
   }
 
   readWorldEncounterActivityStates() {
@@ -410,7 +431,7 @@ class GameStateRepository {
     // player has not revealed is dropped there; a spawn companion city is visible because spawn
     // materialization binds its tile in that player's world map.
     const neutralCities = this.worldCityRepo.getAllCities();
-    const sharedWorldEncounters = this.ensureWorldEncountersSeeded();
+    const sharedWorldEncounters = this.planWorldEncounters();
     return {
       sharedWorldTerritories: [...ownedShared, ...neutralCities],
       sharedWorldEncounters,
@@ -623,7 +644,7 @@ class GameStateRepository {
       revision,
       updatedAt,
     };
-    this.saveSharedWorldTerritories(savedState);
+    this.saveSharedWorldTerritories(savedState, options);
     return savedState;
   }
 
@@ -639,12 +660,20 @@ class GameStateRepository {
     return this.saveAtomic(gameState, options);
   }
 
-  applySharedMutationsWithinTransaction(mutations = {}) {
+  applySharedMutationsWithinTransaction(mutations = {}, options = {}) {
     const encounters = Array.isArray(mutations.encounters) ? mutations.encounters : [];
     const people = Array.isArray(mutations.people) ? mutations.people : [];
     const diplomacyEdges = Array.isArray(mutations.diplomacyEdges)
       ? mutations.diplomacyEdges
       : [];
+    const playerStates = Array.isArray(mutations.playerStates) ? mutations.playerStates : [];
+    playerStates.forEach((mutation) => {
+      const state = mutation?.state || mutation;
+      this.saveWithinTransaction(state, {
+        ...options,
+        expectedRevision: mutation?.expectedRevision ?? state?.revision,
+      });
+    });
     encounters.forEach((mutation) => {
       const encounter = mutation?.encounter || mutation;
       this.worldEncounterRepo.upsertEncounter(encounter, mutation?.now || null);
@@ -665,6 +694,7 @@ class GameStateRepository {
       encounterCount: encounters.length,
       peopleCount: people.length,
       diplomacyEdgeCount: diplomacyEdges.length,
+      playerStateCount: playerStates.length,
     };
   }
 
@@ -674,7 +704,7 @@ class GameStateRepository {
       const savedState = persistState
         ? this.saveWithinTransaction(state, commitOptions)
         : state;
-      const shared = this.applySharedMutationsWithinTransaction(sharedMutations);
+      const shared = this.applySharedMutationsWithinTransaction(sharedMutations, commitOptions);
       return { savedState, shared };
     });
     const result = transaction(gameState, mutations, options);
@@ -685,14 +715,40 @@ class GameStateRepository {
     return result;
   }
 
-  resetPlayerState(playerId, gameState) {
-    const transaction = this.db.transaction((id, state) => {
+  resetPlayerState(playerId, gameState, options = {}) {
+    if (Array.isArray(options.ownerKeys)) {
+      const requiredOwnerKeys = [
+        `player:${playerId}`,
+        `territory-owner:${playerId}`,
+      ];
+      const missingOwnerKeys = requiredOwnerKeys.filter((ownerKey) => (
+        !options.ownerKeys.includes(ownerKey)
+      ));
+      if (missingOwnerKeys.length) {
+        const error = new Error(`Player reset did not lock ${missingOwnerKeys.join(', ')}`);
+        error.code = 'COMMAND_SHARED_MUTATION_OWNER_NOT_LOCKED';
+        error.missingOwnerKeys = missingOwnerKeys;
+        throw error;
+      }
+    }
+    const transaction = this.db.transaction((id, state, opts) => {
+      const resetState = typeof opts.createState === 'function'
+        ? opts.createState(id)
+        : state;
+      if (!resetState || typeof resetState !== 'object') {
+        const error = new Error('Player reset state is required');
+        error.code = 'COMMAND_RESET_STATE_MISSING';
+        throw error;
+      }
       this.db.prepare('DELETE FROM game_states WHERE playerId = ?').run(id);
       this.db.prepare('DELETE FROM shared_world_territories WHERE ownerPlayerId = ?').run(id);
       this.worldMapAuthority.clearPlayerVisibility(id);
-      return this.saveWithinTransaction({ ...(state || {}), playerId: id }, { expectedRevision: null });
+      return this.saveWithinTransaction({ ...resetState, playerId: id }, {
+        expectedRevision: null,
+        ownerKeys: opts.ownerKeys,
+      });
     });
-    const savedState = transaction(playerId, gameState);
+    const savedState = transaction(playerId, gameState, options);
     if (gameState && typeof gameState === 'object') {
       gameState.playerId = savedState.playerId;
       gameState.revision = savedState.revision;
@@ -750,21 +806,49 @@ class GameStateRepository {
     return '';
   }
 
-  saveSharedWorldTerritories(gameState) {
+  saveSharedWorldTerritories(gameState, options = {}) {
     const now = new Date().toISOString();
     const territories = Array.isArray(gameState?.territories) ? gameState.territories : [];
+    const scopedOwnerKeys = Array.isArray(options.ownerKeys);
+    const authorizedTerritoryIds = new Set(
+      (options.ownerKeys || [])
+        .filter((ownerKey) => String(ownerKey).startsWith('territory:'))
+        .map((ownerKey) => String(ownerKey).slice('territory:'.length)),
+    );
+    if (scopedOwnerKeys && authorizedTerritoryIds.size === 0) return;
     const ownedIds = [];
     const upsert = this.db.prepare(`
       INSERT OR REPLACE INTO shared_world_territories (id, territory, ownerPlayerId, updatedAt)
       VALUES (?, ?, ?, ?)
     `);
+    const readCurrentOwner = this.db.prepare(`
+      SELECT ownerPlayerId
+      FROM shared_world_territories
+      WHERE id = ?
+    `);
     for (const territory of territories) {
+      const id = territory.id || `site_${territory.x ?? territory.q}_${territory.y ?? territory.r}`;
+      if (scopedOwnerKeys && !authorizedTerritoryIds.has(String(id))) continue;
       const ownerPlayerId = this.getSharedTerritoryOwner(gameState, territory);
       if (!ownerPlayerId) continue;
-      const id = territory.id || `site_${territory.x ?? territory.q}_${territory.y ?? territory.r}`;
+      const currentOwnerPlayerId = String(readCurrentOwner.get(id)?.ownerPlayerId || '');
+      const requiredOwnerKeys = Array.from(new Set([
+        currentOwnerPlayerId ? `territory-owner:${currentOwnerPlayerId}` : '',
+        `territory-owner:${ownerPlayerId}`,
+      ].filter(Boolean)));
+      const missingOwnerKeys = scopedOwnerKeys
+        ? requiredOwnerKeys.filter((ownerKey) => !options.ownerKeys.includes(ownerKey))
+        : [];
+      if (missingOwnerKeys.length) {
+        const error = new Error(`Territory command did not lock ${missingOwnerKeys.join(', ')}`);
+        error.code = 'COMMAND_SHARED_MUTATION_OWNER_NOT_LOCKED';
+        error.missingOwnerKeys = missingOwnerKeys;
+        throw error;
+      }
       if (ownerPlayerId === gameState.playerId) ownedIds.push(id);
       upsert.run(id, JSON.stringify({ ...territory, id, ownerPlayerId }), ownerPlayerId, now);
     }
+    if (scopedOwnerKeys) return;
     const playerId = gameState?.playerId || '';
     if (!playerId) return;
     if (!ownedIds.length) {

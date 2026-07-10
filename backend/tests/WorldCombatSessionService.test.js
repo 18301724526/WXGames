@@ -9,6 +9,15 @@ const { WorldEncounterRepository } = require('../repositories/WorldEncounterRepo
 
 const SEED = 'combat-session-seed';
 
+function createWorldOptions(repo) {
+  return {
+    worldEncounterRepo: repo,
+    stageEncounter(encounter, now) {
+      repo.upsertEncounter(encounter, now);
+    },
+  };
+}
+
 function createSharedCamp(overrides = {}, now = new Date('2026-07-05T00:00:00.000Z')) {
   const spec = WorldCampSpawner.planCamps(SEED, { q: 0, r: 0 }, {
     minSpacing: 1,
@@ -30,13 +39,17 @@ function createGameState({
   attackerSoldiers = 500,
   defenderSoldiers = null,
   attackerForce = 60,
+  campOverrides = {},
 } = {}) {
   const db = new Database(':memory:');
   const repo = new WorldEncounterRepository(db, { worldSeed: SEED });
   repo.init();
   const now = new Date('2026-07-05T00:00:00.000Z');
   const camp = repo.upsertEncounter(createSharedCamp({
-    ...(defenderSoldiers != null ? { defender: { soldiers: defenderSoldiers } } : {}),
+    ...campOverrides,
+    ...(defenderSoldiers != null
+      ? { defender: { ...(campOverrides.defender || {}), soldiers: defenderSoldiers } }
+      : {}),
   }, now), now);
   const gameState = {
     playerId: 'session-player',
@@ -90,11 +103,12 @@ test('openSession refuses to attack a camp from afar (must march there first)', 
   const { db, repo, gameState, camp } = createGameState({ missionAtCamp: false });
   try {
     const result = WorldCombatSessionService.openSession(gameState, {
+      encounterId: camp.id,
       formationSlot: 1,
       cityId: 'capital',
       targetQ: camp.q,
       targetR: camp.r,
-    }, new Date(), { worldEncounterRepo: repo });
+    }, new Date(), createWorldOptions(repo));
     assert.equal(result.success, false);
     assert.equal(result.error, 'WORLD_COMBAT_NOT_IN_RANGE');
     assert.equal(gameState.worldCombat.session, null);
@@ -107,12 +121,13 @@ test('openSession allows the attack when the formation is standing on the shared
   const { db, repo, gameState, camp } = createGameState({ missionAtCamp: true });
   try {
     const result = WorldCombatSessionService.openSession(gameState, {
+      encounterId: camp.id,
       missionId: 'mission-attacker',
       formationSlot: 1,
       cityId: 'capital',
       targetQ: camp.q,
       targetR: camp.r,
-    }, new Date(), { worldEncounterRepo: repo });
+    }, new Date(), createWorldOptions(repo));
     assert.equal(result.success, true);
     assert.equal(typeof result.battleId, 'string');
     assert.ok(gameState.worldCombat.session);
@@ -125,22 +140,24 @@ test('resolving an interactive camp victory updates shared status and player-onl
   const { db, repo, gameState, camp } = createGameState({ missionAtCamp: true, defenderSoldiers: 1 });
   try {
     const opened = WorldCombatSessionService.openSession(gameState, {
+      encounterId: camp.id,
       missionId: 'mission-attacker',
       formationSlot: 1,
       cityId: 'capital',
       targetQ: camp.q,
       targetR: camp.r,
-    }, new Date(), { worldEncounterRepo: repo });
+    }, new Date(), createWorldOptions(repo));
     assert.equal(opened.success, true);
     const foodBefore = gameState.resources.food;
 
     const resolved = WorldCombatSessionService.resolveSession(gameState, {
       battleId: opened.battleId,
+      encounterId: camp.id,
       inputStream: [
         { tick: 0, type: 'order', side: 0, order: 'allOut' },
         { tick: 0, type: 'order', side: 1, order: 'allOut' },
       ],
-    }, new Date(), { worldEncounterRepo: repo });
+    }, new Date(), createWorldOptions(repo));
 
     assert.equal(resolved.success, true);
     assert.equal(resolved.report.result, 'victory');
@@ -158,23 +175,69 @@ test('resolving an interactive camp victory updates shared status and player-onl
   }
 });
 
-test('a victory does NOT send the formation home: the squad idles on the cleared tile', () => {
-  const { db, repo, gameState, camp } = createGameState({ missionAtCamp: true, defenderSoldiers: 1 });
+test('a due resolved camp is projected active and can complete an interactive battle', () => {
+  const baseNow = new Date('2026-07-05T00:00:00.000Z');
+  const combatNow = new Date(baseNow.getTime() + 2000);
+  const { db, repo, gameState, camp } = createGameState({
+    missionAtCamp: true,
+    campOverrides: {
+      status: 'resolved',
+      defender: { soldiers: 0, baseSoldiers: 1 },
+      resolvedAt: baseNow.toISOString(),
+      respawnAt: new Date(baseNow.getTime() + 1000).toISOString(),
+    },
+  });
   try {
     const opened = WorldCombatSessionService.openSession(gameState, {
+      encounterId: camp.id,
       missionId: 'mission-attacker',
       formationSlot: 1,
       cityId: 'capital',
       targetQ: camp.q,
       targetR: camp.r,
-    }, new Date(), { worldEncounterRepo: repo });
+    }, combatNow, createWorldOptions(repo));
+
+    assert.equal(opened.success, true);
+    assert.equal(repo.getEncounter(camp.id).status, 'resolved');
+
     const resolved = WorldCombatSessionService.resolveSession(gameState, {
       battleId: opened.battleId,
+      encounterId: camp.id,
       inputStream: [
         { tick: 0, type: 'order', side: 0, order: 'allOut' },
         { tick: 0, type: 'order', side: 1, order: 'allOut' },
       ],
-    }, new Date(), { worldEncounterRepo: repo });
+    }, combatNow, createWorldOptions(repo));
+
+    assert.equal(resolved.success, true);
+    assert.equal(resolved.winner, 'attacker');
+    const stored = repo.getEncounter(camp.id);
+    assert.equal(stored.status, 'resolved');
+    assert.equal(Date.parse(stored.respawnAt) > combatNow.getTime(), true);
+  } finally {
+    db.close();
+  }
+});
+
+test('a victory does NOT send the formation home: the squad idles on the cleared tile', () => {
+  const { db, repo, gameState, camp } = createGameState({ missionAtCamp: true, defenderSoldiers: 1 });
+  try {
+    const opened = WorldCombatSessionService.openSession(gameState, {
+      encounterId: camp.id,
+      missionId: 'mission-attacker',
+      formationSlot: 1,
+      cityId: 'capital',
+      targetQ: camp.q,
+      targetR: camp.r,
+    }, new Date(), createWorldOptions(repo));
+    const resolved = WorldCombatSessionService.resolveSession(gameState, {
+      battleId: opened.battleId,
+      encounterId: camp.id,
+      inputStream: [
+        { tick: 0, type: 'order', side: 0, order: 'allOut' },
+        { tick: 0, type: 'order', side: 1, order: 'allOut' },
+      ],
+    }, new Date(), createWorldOptions(repo));
     assert.equal(resolved.winner, 'attacker');
     const mission = gameState.exploreMissions[0];
     assert.equal(mission.status, 'idle');
@@ -194,16 +257,18 @@ test('a non-victory with survivors sends the formation home and leaves the share
   });
   try {
     const opened = WorldCombatSessionService.openSession(gameState, {
+      encounterId: camp.id,
       missionId: 'mission-attacker',
       formationSlot: 1,
       cityId: 'capital',
       targetQ: camp.q,
       targetR: camp.r,
-    }, new Date(), { worldEncounterRepo: repo });
+    }, new Date(), createWorldOptions(repo));
     const resolved = WorldCombatSessionService.resolveSession(gameState, {
       battleId: opened.battleId,
+      encounterId: camp.id,
       inputStream: [],
-    }, new Date(), { worldEncounterRepo: repo });
+    }, new Date(), createWorldOptions(repo));
     assert.notEqual(resolved.winner, 'attacker');
     assert.ok(resolved.attackerSnapshot.soldiersRemaining > 0, 'expected surviving soldiers');
     const mission = gameState.exploreMissions[0];

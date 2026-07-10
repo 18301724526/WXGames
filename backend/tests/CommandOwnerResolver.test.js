@@ -32,7 +32,9 @@ function envelope(type, payload = {}, playerId = 'player-1') {
 }
 
 function payloadFor(type) {
-  if (type === 'startConquest' || type === 'claimConquest') return { territoryId: 'territory-1' };
+  if (type === 'startConquest' || type === 'claimConquest' || type === 'renameCity') {
+    return { territoryId: 'territory-1' };
+  }
   if (type === 'startWorldCombat' || type === 'resolveWorldCombat') return { encounterId: 'encounter-1' };
   return {};
 }
@@ -47,7 +49,9 @@ test('CommandOwnerResolver declarations exhaust every current game action', () =
 });
 
 test('CommandOwnerResolver declarations cover every route-only Step1 command type', () => {
-  const inventoriedTypes = new Set(SERVER_WRITE_ENTRIES.map(({ commandType }) => commandType));
+  const inventoriedTypes = new Set(SERVER_WRITE_ENTRIES.flatMap(({ commandType }) => (
+    String(commandType || '').split('|').filter(Boolean)
+  )));
   [
     'heartbeatMarchSettlement',
     'worldMarchClientReportIngest',
@@ -60,7 +64,9 @@ test('CommandOwnerResolver declarations cover every route-only Step1 command typ
     'clientOperationLogIngest',
     'configReleasePublish',
     'configReleaseRollback',
-    'worldWorkerRuntimeTick',
+    'worldWorkerPlayerTick',
+    'worldWorkerPersonUpdate',
+    'worldWorkerDiplomacyTick',
   ].forEach((type) => assert.ok(inventoriedTypes.has(type), type));
   ROUTE_ONLY_COMMAND_TYPES.forEach((type) => assert.ok(COMMAND_OWNER_RULES[type], type));
   assert.deepEqual(listDeclaredCommandTypes(), Object.keys(COMMAND_OWNER_RULES).sort());
@@ -83,7 +89,11 @@ test('CommandOwnerResolver uses canonical sorted multi-owner keys for contested 
       status: 'resolved',
       commandType: 'startConquest',
       ownerKey: 'territory:territory-1',
-      ownerKeys: ['player:player-1', 'territory:territory-1'],
+      ownerKeys: [
+        'player:player-1',
+        'territory-owner:player-1',
+        'territory:territory-1',
+      ],
       targetField: 'territoryId',
       ruleKind: 'shared',
     },
@@ -98,6 +108,32 @@ test('CommandOwnerResolver uses canonical sorted multi-owner keys for contested 
     'z-player',
   ));
   assert.deepEqual(canonical.ownerKeys, ['encounter:A-encounter', 'player:z-player']);
+
+  const reset = resolveCommandOwners(envelope('playerReset'));
+  assert.equal(reset.ownerKey, 'player:player-1');
+  assert.deepEqual(reset.ownerKeys, ['player:player-1', 'territory-owner:player-1']);
+});
+
+test('CommandOwnerResolver includes the canonical territory owner collection from repository lookup', () => {
+  const resolver = createRepositoryOwnerResolver({
+    getSharedWorldTerritory(territoryId) {
+      assert.equal(territoryId, 'territory-owned');
+      return { id: territoryId, ownerPlayerId: 'current-owner' };
+    },
+  });
+  const result = resolver(envelope(
+    'claimConquest',
+    { territoryId: 'territory-owned' },
+    'contender',
+  ));
+
+  assert.equal(result.ownerKey, 'territory:territory-owned');
+  assert.deepEqual(result.ownerKeys, [
+    'player:contender',
+    'territory-owner:contender',
+    'territory-owner:current-owner',
+    'territory:territory-owned',
+  ]);
 });
 
 test('CommandOwnerResolver rejects missing shared ids without falling back to player ownership', () => {
@@ -147,7 +183,7 @@ test('CommandOwnerResolver resolves march encounter ids from a read-only reposit
   assert.equal(result.lookupPerformed, true);
   assert.deepEqual(calls, [{
     coord: { q: 4, r: -2 },
-    options: { refreshRespawns: false },
+    options: { refreshRespawns: false, projectRespawns: true },
   }]);
 });
 
@@ -164,11 +200,20 @@ test('CommandOwnerResolver resolves split worker commands to explicit owners', (
 
   const person = resolveCommandOwners(envelope(
     'worldWorkerPersonUpdate',
-    { personId: 'person-1' },
+    {
+      playerIds: ['player-b', 'player-a'],
+      personIds: ['person-b', 'person-a'],
+    },
     'system:world-worker',
   ));
-  assert.equal(person.ownerKey, 'person:person-1');
-  assert.deepEqual(person.ownerKeys, ['person:person-1']);
+  assert.equal(person.ownerKey, 'world-social:global');
+  assert.deepEqual(person.ownerKeys, [
+    'person:person-a',
+    'person:person-b',
+    'player:player-a',
+    'player:player-b',
+    'world-social:global',
+  ]);
 
   const diplomacy = resolveCommandOwners(envelope(
     'worldWorkerDiplomacyTick',

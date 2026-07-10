@@ -15,7 +15,6 @@ const PLAYER_COMMAND_TYPES = Object.freeze([
   'dismissFamousPersonCandidate',
   'heartbeat',
   'heartbeatMarchSettlement',
-  'renameCity',
   'renamePolity',
   'research',
   'resolveCapture',
@@ -49,13 +48,14 @@ function playerRule() {
 const COMMAND_OWNER_RULES = {
   ...Object.fromEntries(PLAYER_COMMAND_TYPES.map((type) => [type, playerRule()])),
   playerLogin: Object.freeze({ kind: 'player-identity', fields: ['username'] }),
-  playerReset: playerRule(),
+  playerReset: Object.freeze({ kind: 'player-territory-owner' }),
   startConquest: Object.freeze({
     kind: 'shared',
     prefix: 'territory',
     fields: ['territoryId'],
     missingTargetError: 'OWNER_TARGET_MISSING_TERRITORY_ID',
     includePlayer: true,
+    includePlayerTerritoryOwner: true,
   }),
   claimConquest: Object.freeze({
     kind: 'shared',
@@ -63,6 +63,15 @@ const COMMAND_OWNER_RULES = {
     fields: ['territoryId'],
     missingTargetError: 'OWNER_TARGET_MISSING_TERRITORY_ID',
     includePlayer: true,
+    includePlayerTerritoryOwner: true,
+  }),
+  renameCity: Object.freeze({
+    kind: 'shared',
+    prefix: 'territory',
+    fields: ['territoryId'],
+    missingTargetError: 'OWNER_TARGET_MISSING_TERRITORY_ID',
+    includePlayer: true,
+    includePlayerTerritoryOwner: true,
   }),
   startWorldMarch: Object.freeze({
     kind: 'player-encounter-handoff',
@@ -94,10 +103,11 @@ const COMMAND_OWNER_RULES = {
     fields: ['encounterIds'],
   }),
   worldWorkerPersonUpdate: Object.freeze({
-    kind: 'shared',
-    prefix: 'person',
-    fields: ['personId'],
-    missingTargetError: 'OWNER_TARGET_PERSON_ID_MISSING',
+    kind: 'world-social-batch',
+    ownerKey: 'world-social:global',
+    playerFields: ['playerIds'],
+    personFields: ['personIds'],
+    missingTargetError: 'OWNER_TARGET_SOCIAL_BATCH_EMPTY',
   }),
   worldWorkerDiplomacyTick: Object.freeze({
     kind: 'shared',
@@ -194,9 +204,23 @@ function resolveCommandOwners(envelope = {}, options = {}) {
     targetField = target.field;
     targetId = target.value;
     ownerKey = `${rule.prefix}:${target.value}`;
+    const playerKey = rule.includePlayer ? requirePlayerId(envelope, type) : '';
+    const playerId = playerKey.startsWith('player:') ? playerKey.slice('player:'.length) : '';
+    const currentTerritoryOwnerId = rule.includePlayerTerritoryOwner
+      && typeof options.lookupTerritoryOwner === 'function'
+      ? cleanOwnerPart(options.lookupTerritoryOwner(target.value))
+      : '';
     ownerKeys = uniqueSorted([
-      rule.includePlayer ? requirePlayerId(envelope, type) : '',
+      playerKey,
+      rule.includePlayerTerritoryOwner && playerId ? `territory-owner:${playerId}` : '',
+      currentTerritoryOwnerId ? `territory-owner:${currentTerritoryOwnerId}` : '',
       ownerKey,
+    ]);
+  } else if (rule.kind === 'player-territory-owner') {
+    ownerKey = requirePlayerId(envelope, type);
+    ownerKeys = uniqueSorted([
+      ownerKey,
+      `territory-owner:${ownerKey.slice('player:'.length)}`,
     ]);
   } else if (rule.kind === 'player-encounter-handoff') {
     const playerKey = requirePlayerId(envelope, type);
@@ -214,6 +238,22 @@ function resolveCommandOwners(envelope = {}, options = {}) {
     ownerKeys = uniqueSorted([
       ownerKey,
       ...encounterIds.map((encounterId) => `encounter:${encounterId}`),
+    ]);
+  } else if (rule.kind === 'world-social-batch') {
+    const playerIds = Array.isArray(payload.playerIds)
+      ? payload.playerIds.map(cleanOwnerPart).filter(Boolean)
+      : [];
+    const personIds = Array.isArray(payload.personIds)
+      ? payload.personIds.map(cleanOwnerPart).filter(Boolean)
+      : [];
+    if (!playerIds.length && !personIds.length) {
+      missing(rule.missingTargetError, type, [...rule.playerFields, ...rule.personFields]);
+    }
+    ownerKey = rule.ownerKey;
+    ownerKeys = uniqueSorted([
+      ownerKey,
+      ...playerIds.map((playerId) => `player:${playerId}`),
+      ...personIds.map((personId) => `person:${personId}`),
     ]);
   } else if (rule.kind === 'diagnostic-player') {
     const playerId = cleanOwnerPart(envelope.playerId);
@@ -259,8 +299,15 @@ function inspectCommandOwners(envelope = {}, resolver = resolveCommandOwners) {
 
 function createRepositoryOwnerResolver(repository = {}) {
   return (envelope = {}) => resolveCommandOwners(envelope, {
+    lookupTerritoryOwner: (territoryId) => (
+      repository.getSharedWorldTerritory?.(territoryId)?.ownerPlayerId || ''
+    ),
     lookupEncounterByCoordinate: (coord) => (
-      repository.worldEncounterRepo?.getActiveEncounterAt?.(coord, { refreshRespawns: false })
+      repository.getProjectedActiveWorldEncounterAt?.(coord)
+      || repository.worldEncounterRepo?.getActiveEncounterAt?.(coord, {
+        refreshRespawns: false,
+        projectRespawns: true,
+      })
       || null
     ),
   });

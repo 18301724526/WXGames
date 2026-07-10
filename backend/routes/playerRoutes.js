@@ -76,7 +76,9 @@ function registerPlayerRoutes(app, deps) {
         password,
         (playerId) => repository.findByPlayerId(playerId),
         (gameState, offlineSeconds) => gameStateService.calculateOfflineIncome(gameState, offlineSeconds),
-        (gameState) => repository.save(gameState),
+        (gameState) => repository.save(gameState, {
+          ownerKeys: [`player:${gameState.playerId}`],
+        }),
         createInitialStateForPlayer,
       ),
       'player-login',

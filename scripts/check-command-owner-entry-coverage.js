@@ -58,6 +58,9 @@ const ROUTE_ONLY_TYPES = Object.freeze([
   'playerLogin',
   'playerReset',
   'worldMarchClientReportIngest',
+  'worldWorkerPlayerTick',
+  'worldWorkerPersonUpdate',
+  'worldWorkerDiplomacyTick',
   'worldWorkerRuntimeTick',
 ]);
 
@@ -117,10 +120,18 @@ function extractEntryCalls(source = '', file = '') {
 }
 
 function payloadFor(type) {
-  if (type === 'startConquest' || type === 'claimConquest') return { territoryId: 'territory-1' };
+  if (type === 'startConquest' || type === 'claimConquest' || type === 'renameCity') {
+    return { territoryId: 'territory-1' };
+  }
   if (type === 'startWorldCombat' || type === 'resolveWorldCombat') return { encounterId: 'encounter-1' };
   if (type === 'playerLogin' || type === 'opsLoginAudit') return { username: 'player-1' };
   return {};
+}
+
+function requireTokens(violations, source, label, tokens) {
+  tokens.forEach((token) => {
+    if (!source.includes(token)) violations.push(`${label} is missing ${token}`);
+  });
 }
 
 function inspectCoverage(options = {}) {
@@ -131,25 +142,20 @@ function inspectCoverage(options = {}) {
   const declaredInventoryIds = new Set(SERVER_WRITE_ENTRIES.map((entry) => entry.inventoryId));
 
   SERVER_WRITE_ENTRIES.forEach((entry) => {
+    if (entry.inventoryId === 'worker:world-worker-runtime-writes') return;
     const matching = calls.filter((call) => call.body.includes(`'${entry.inventoryId}'`)
       || call.body.includes(`"${entry.inventoryId}"`));
     if (matching.length === 0) violations.push(`${entry.inventoryId} does not enter prepareCommandEntry`);
     if (matching.length > 1) violations.push(`${entry.inventoryId} enters prepareCommandEntry more than once`);
     const envelopePhase = String(entry.commandEnvelopePhase || '');
     const ownerPhase = String(entry.ownerResolutionPhase || '');
-    if (entry.migrationPhase === 'pipeline-migrated-phase5') {
+    if (entry.migrationPhase === 'pipeline-migrated-phase5'
+        || entry.migrationPhase === 'pipeline-migrated-phase6') {
       if (!envelopePhase.startsWith('blocking-')) {
         violations.push(`${entry.inventoryId} lacks blocking envelope classification`);
       }
       if (!ownerPhase.startsWith('blocking-')) {
         violations.push(`${entry.inventoryId} lacks blocking owner classification`);
-      }
-    } else if (entry.inventoryId === 'server:game-action-registry') {
-      if (!envelopePhase.includes('blocking-') || !envelopePhase.includes('report-only-')) {
-        violations.push(`${entry.inventoryId} lacks mixed Phase 5/6 envelope classification`);
-      }
-      if (!ownerPhase.includes('blocking-') || !ownerPhase.includes('report-only-')) {
-        violations.push(`${entry.inventoryId} lacks mixed Phase 5/6 owner classification`);
       }
     } else {
       if (!envelopePhase.startsWith('report-only-')) {
@@ -181,10 +187,37 @@ function inspectCoverage(options = {}) {
   });
 
   const workerSource = sources['backend/services/realtime/WorldWorkerService.js'] || '';
-  const workerEntryIndex = workerSource.indexOf('const commandEntry = this.prepareRuntimeCommandEntry();');
+  const workerEnvelopeIndex = workerSource.indexOf('const envelope = createInternalCommandEnvelope({');
+  const workerReportIndex = workerSource.indexOf('this.reportCommandEntry(envelope);');
+  const workerPipelineIndex = workerSource.indexOf('this.commandExecutionPipeline.execute(envelope');
   const workerWriteIndex = workerSource.indexOf('const gameStates = this.getRecentlyActive(now);');
-  if (workerEntryIndex < 0 || workerWriteIndex < 0 || workerEntryIndex > workerWriteIndex) {
-    violations.push('world worker command entry is not prepared before runtime writes');
+  if (workerEnvelopeIndex < 0 || workerReportIndex < workerEnvelopeIndex
+      || workerPipelineIndex < workerReportIndex || workerWriteIndex < 0) {
+    violations.push('world worker split commands do not enter the pipeline before runtime writes');
+  }
+  for (const type of [
+    'worldWorkerPlayerTick',
+    'worldWorkerPersonUpdate',
+    'worldWorkerDiplomacyTick',
+  ]) {
+    if (!workerSource.includes(`'${type}'`)) {
+      violations.push(`world worker is missing split command ${type}`);
+    }
+  }
+  requireTokens(violations, workerSource, 'world worker social batch', [
+    'createSocialTickDefinition()',
+    "'world-social:global'",
+    'context.sharedMutations.playerStates',
+    'context.sharedMutations.people',
+  ]);
+  const sharedAdvance = workerSource.match(
+    /advanceSharedWorldState\(gameStates, now\) \{([\s\S]*?)\n  getNow\(\)/,
+  )?.[1] || '';
+  if (/\.advanceRelationships\s*\(/.test(sharedAdvance)) {
+    violations.push('world worker computes shared social mutations before owner locking');
+  }
+  if (/repository\?*\.save\(|worldPeopleRepo\.upsertPerson|worldDiplomacyTickService\.advanceAll|withPlayerStateLock/.test(workerSource)) {
+    violations.push('world worker retains direct persistence or player-only lock orchestration');
   }
 
   const currentActions = [...GameActionRegistry.listActions(), 'claimTaskReward', 'startWorldCombat', 'resolveWorldCombat']
@@ -249,6 +282,35 @@ function inspectCoverage(options = {}) {
   const worker = inspectCommandOwners({ type: 'worldWorkerRuntimeTick', payload: {} });
   if (worker.status !== 'blocked' || worker.error !== 'OWNER_WORKER_COMMAND_SPLIT_REQUIRED') {
     violations.push('worldWorkerRuntimeTick is not recorded as an explicit split blocker');
+  }
+  const playerTick = resolveCommandOwners({
+    type: 'worldWorkerPlayerTick',
+    playerId: 'player-1',
+    payload: { encounterIds: ['encounter-1'] },
+  });
+  if (JSON.stringify(playerTick.ownerKeys) !== JSON.stringify([
+    'encounter:encounter-1',
+    'player:player-1',
+  ])) {
+    violations.push('worldWorkerPlayerTick does not lock player plus encounter owners');
+  }
+  const socialTick = resolveCommandOwners({
+    type: 'worldWorkerPersonUpdate',
+    payload: { playerIds: ['player-1'], personIds: ['person-1'] },
+  });
+  if (socialTick.ownerKey !== 'world-social:global'
+      || JSON.stringify(socialTick.ownerKeys) !== JSON.stringify([
+        'person:person-1',
+        'player:player-1',
+        'world-social:global',
+      ])) {
+    violations.push('worldWorkerPersonUpdate does not lock the social batch owners');
+  }
+  if (resolveCommandOwners({
+    type: 'worldWorkerDiplomacyTick',
+    payload: { pairId: 'faction-a--faction-b' },
+  }).ownerKey !== 'diplomacy:faction-a--faction-b') {
+    violations.push('worldWorkerDiplomacyTick does not resolve a diplomacy owner');
   }
 
   return { calls, violations };

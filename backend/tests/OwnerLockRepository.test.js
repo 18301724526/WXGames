@@ -206,6 +206,41 @@ test('OwnerLockRepository keeps different cross-process owner keys concurrent', 
   assert.ok(elapsedMs < 150, `different key was unexpectedly serialized for ${elapsedMs}ms`);
 });
 
+test('OwnerLockRepository serializes one shared territory key while another stays concurrent', async (t) => {
+  const fixture = createFileRepository();
+  const child = spawnLockChild(fixture.dbPath, ['territory:shared-a'], 350, 'shared-key');
+  t.after(() => {
+    if (child.exitCode === null) child.kill('SIGKILL');
+    fixture.db.close();
+    fs.rmSync(fixture.tempRoot, { recursive: true, force: true });
+  });
+
+  await waitForOutput(child, 'acquired:shared-key');
+  const differentStartedAt = Date.now();
+  const different = fixture.repository.withOwnerLocks(
+    ['territory:shared-b'],
+    'parent-shared-different',
+    () => 'different-owner-concurrent',
+    { waitMs: 0 },
+  );
+  const differentElapsedMs = Date.now() - differentStartedAt;
+
+  const sameStartedAt = Date.now();
+  const same = fixture.repository.withOwnerLocks(
+    ['territory:shared-a'],
+    'parent-shared-same',
+    () => 'same-owner-serialized',
+    { waitMs: 3000, ttlMs: 10000, pollMs: 10 },
+  );
+  const sameElapsedMs = Date.now() - sameStartedAt;
+  await waitForExit(child);
+
+  assert.equal(different, 'different-owner-concurrent');
+  assert.ok(differentElapsedMs < 150, `different shared key waited ${differentElapsedMs}ms`);
+  assert.equal(same, 'same-owner-serialized');
+  assert.ok(sameElapsedMs >= 150, `same shared key waited only ${sameElapsedMs}ms`);
+});
+
 test('OwnerLockRepository avoids deadlock for opposite dual-lock mention order', async (t) => {
   const fixture = createFileRepository();
   const first = spawnLockChild(

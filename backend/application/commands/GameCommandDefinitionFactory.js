@@ -144,9 +144,7 @@ class GameCommandDefinitionFactory {
   }
 
   createPlayerResetDefinition(options = {}) {
-    const handler = new PlayerResetCommandHandler({
-      createResetStateForPlayer: options.createResetStateForPlayer,
-    });
+    const handler = new PlayerResetCommandHandler();
     return {
       allowMissingState: true,
       load: (context) => {
@@ -155,7 +153,10 @@ class GameCommandDefinitionFactory {
       },
       validate: (context) => handler.validate(context),
       execute: (context) => handler.execute(context),
-      persistence: { strategy: 'reset-player-state' },
+      persistence: {
+        strategy: 'reset-player-state',
+        createState: options.createResetStateForPlayer,
+      },
       project: (context) => {
         const projection = loadProjection(this.repository, context.envelope.playerId);
         const clientState = this.gameStateService.getClientGameStateFromNormalized
