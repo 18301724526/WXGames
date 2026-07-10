@@ -1,0 +1,568 @@
+{
+  "schema": "step5-tranche1-phase0-baseline-v1",
+  "generatedAt": "2026-07-10T18:18:40.549Z",
+  "sourceCommit": "6979828dbdb60c3d57cfbed479ca87d62696f1ac",
+  "commands": [
+    {
+      "command": "codegraph sync .",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/report-domain-business-candidates.js --summary",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/report-frontend-ecs-mode-ownership.js --summary",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/report-frontend-ecs-renderer-authority.js --summary",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/report-frontend-ecs-input-branch.js --summary",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/report-frontend-ecs-literal-duplicate.js --summary",
+      "exitCode": 0
+    },
+    {
+      "command": "npm run test:architecture",
+      "exitCode": 0,
+      "note": "last run after Part 0 commit at commit 6979828d before this baseline file was added"
+    }
+  ],
+  "summaries": {
+    "domainBusiness": {
+      "totalFindings": 544,
+      "byLayer": {
+        "backend-route": 3,
+        "frontend-ecs": 57,
+        "frontend-platform": 96,
+        "frontend-renderer": 117,
+        "frontend-state": 192,
+        "shared": 36,
+        "unclassified": 43
+      },
+      "bySeverity": {
+        "high": 17,
+        "low": 503,
+        "medium": 24
+      },
+      "bySignal": {
+        "authority-state-mutation": 46,
+        "gameplay-result-verb": 380,
+        "gameplay-rule-branch": 83,
+        "hardcoded-gameplay-number": 14,
+        "resource-or-stat-delta": 45
+      }
+    },
+    "modeOwnership": {
+      "totalFindings": 242,
+      "symbolCount": 15,
+      "bySymbol": [
+        {
+          "symbol": "activeEventId",
+          "findings": 8,
+          "roles": {
+            "unknown": 3,
+            "consumer": 4,
+            "adapter": 1
+          },
+          "access": {
+            "write": 3,
+            "read": 5
+          }
+        },
+        {
+          "symbol": "activeTab",
+          "findings": 42,
+          "roles": {
+            "adapter": 26,
+            "source-of-truth": 9,
+            "unknown": 1,
+            "mirror": 1,
+            "consumer": 5
+          },
+          "access": {
+            "read": 31,
+            "read-write": 10,
+            "write": 1
+          }
+        },
+        {
+          "symbol": "armyFormationEditor",
+          "findings": 23,
+          "roles": {
+            "unknown": 3,
+            "adapter": 6,
+            "source-of-truth": 2,
+            "mirror": 3,
+            "consumer": 9
+          },
+          "access": {
+            "write": 8,
+            "read": 15
+          }
+        },
+        {
+          "symbol": "entityBattle",
+          "findings": 15,
+          "roles": {
+            "adapter": 15
+          },
+          "access": {
+            "read": 13,
+            "write": 2
+          }
+        },
+        {
+          "symbol": "militaryView",
+          "findings": 67,
+          "roles": {
+            "consumer": 10,
+            "adapter": 39,
+            "source-of-truth": 12,
+            "unknown": 5,
+            "mirror": 1
+          },
+          "access": {
+            "read": 49,
+            "read-write": 10,
+            "write": 8
+          }
+        },
+        {
+          "symbol": "showAdvisor",
+          "findings": 9,
+          "roles": {
+            "consumer": 8,
+            "adapter": 1
+          },
+          "access": {
+            "read": 9
+          }
+        },
+        {
+          "symbol": "showCityManagement",
+          "findings": 8,
+          "roles": {
+            "consumer": 5,
+            "adapter": 3
+          },
+          "access": {
+            "read": 8
+          }
+        },
+        {
+          "symbol": "showCitySwitcher",
+          "findings": 10,
+          "roles": {
+            "consumer": 7,
+            "adapter": 3
+          },
+          "access": {
+            "read": 10
+          }
+        },
+        {
+          "symbol": "showFamousPersons",
+          "findings": 8,
+          "roles": {
+            "consumer": 5,
+            "adapter": 3
+          },
+          "access": {
+            "read": 8
+          }
+        },
+        {
+          "symbol": "showGuidebook",
+          "findings": 10,
+          "roles": {
+            "consumer": 7,
+            "adapter": 3
+          },
+          "access": {
+            "read": 10
+          }
+        },
+        {
+          "symbol": "showLogs",
+          "findings": 6,
+          "roles": {
+            "consumer": 5,
+            "adapter": 1
+          },
+          "access": {
+            "read": 6
+          }
+        },
+        {
+          "symbol": "showResourceDetails",
+          "findings": 10,
+          "roles": {
+            "consumer": 7,
+            "adapter": 3
+          },
+          "access": {
+            "read": 10
+          }
+        },
+        {
+          "symbol": "showSettings",
+          "findings": 7,
+          "roles": {
+            "consumer": 6,
+            "adapter": 1
+          },
+          "access": {
+            "read": 7
+          }
+        },
+        {
+          "symbol": "showSubcityList",
+          "findings": 9,
+          "roles": {
+            "consumer": 6,
+            "adapter": 3
+          },
+          "access": {
+            "read": 9
+          }
+        },
+        {
+          "symbol": "showTaskCenter",
+          "findings": 10,
+          "roles": {
+            "consumer": 7,
+            "adapter": 3
+          },
+          "access": {
+            "read": 10
+          }
+        }
+      ],
+      "byRole": {
+        "adapter": 111,
+        "consumer": 91,
+        "mirror": 5,
+        "source-of-truth": 23,
+        "unknown": 12
+      },
+      "byAccess": {
+        "read": 200,
+        "read-write": 20,
+        "write": 22
+      }
+    },
+    "rendererAuthority": {
+      "totalFindings": 174,
+      "bySurface": {
+        "render-runtime": 4,
+        "renderer": 123,
+        "world-map-runtime": 47
+      },
+      "byTarget": {
+        "self-cache": 174
+      },
+      "byRole": {
+        "authority-write": 2,
+        "cache": 172
+      }
+    },
+    "inputBranch": {
+      "totalFindings": 161,
+      "bySurface": {
+        "action-dispatch": 10,
+        "command-handler": 137,
+        "input-branch": 14
+      },
+      "byBranchKind": {
+        "action": 139,
+        "mode": 2,
+        "panel": 11,
+        "runtime-route": 9
+      }
+    },
+    "literalDuplicate": {
+      "totalFindings": 12552,
+      "byKind": {
+        "action-string": 441,
+        "api-path": 1,
+        "asset-path": 422,
+        "color": 490,
+        "condition": 2591,
+        "helper": 3456,
+        "numeric": 5151
+      },
+      "byRole": {
+        "duplicate-candidate": 5889,
+        "registry-owned": 813,
+        "runtime-candidate": 5850
+      },
+      "byOwnerCandidate": {
+        "action/input owner": 441,
+        "asset manifest owner": 422,
+        "config owner": 1105,
+        "input/action owner": 566,
+        "network/api owner": 1,
+        "owner candidate": 2927,
+        "render owner": 7090
+      }
+    }
+  },
+  "selectedRetirementSubset": {
+    "uiRuntimeStateFields": [
+      {
+        "field": "activeTab",
+        "baseline": {
+          "symbol": "activeTab",
+          "findings": 42,
+          "roles": {
+            "adapter": 26,
+            "source-of-truth": 9,
+            "unknown": 1,
+            "mirror": 1,
+            "consumer": 5
+          },
+          "access": {
+            "read": 31,
+            "read-write": 10,
+            "write": 1
+          }
+        },
+        "tranche1Target": "own with UiRuntimeStateStore and manifest gate"
+      },
+      {
+        "field": "militaryView",
+        "baseline": {
+          "symbol": "militaryView",
+          "findings": 67,
+          "roles": {
+            "consumer": 10,
+            "adapter": 39,
+            "source-of-truth": 12,
+            "unknown": 5,
+            "mirror": 1
+          },
+          "access": {
+            "read": 49,
+            "read-write": 10,
+            "write": 8
+          }
+        },
+        "tranche1Target": "own with UiRuntimeStateStore and manifest gate"
+      },
+      {
+        "field": "armyFormationEditor",
+        "baseline": {
+          "symbol": "armyFormationEditor",
+          "findings": 23,
+          "roles": {
+            "unknown": 3,
+            "adapter": 6,
+            "source-of-truth": 2,
+            "mirror": 3,
+            "consumer": 9
+          },
+          "access": {
+            "write": 8,
+            "read": 15
+          }
+        },
+        "tranche1Target": "retire app/shell mirror writes through UiRuntimeStateStore"
+      }
+    ],
+    "phase4VerticalSlice": {
+      "family": "building build/upgrade",
+      "actionTypes": [
+        "buildBuilding"
+      ],
+      "commandTypes": [
+        "build",
+        "upgrade"
+      ],
+      "rationale": "single command-submit family with existing focused tests and stable API facade; proves descriptor registry path without entering unauthorized renderer-rule retirement",
+      "inputBranchBaselineCommandHandler": 137,
+      "actionStringBaseline": 441
+    },
+    "rendererAuthority": {
+      "authorityWriteBaseline": 2,
+      "tranche1Disposition": "baseline only; Phase 3 renderer authority retirement is not authorized in Tranche 1"
+    },
+    "highDomainFindings": [
+      {
+        "file": "frontend/js/platform/CanvasActionController.js",
+        "line": 1924,
+        "layer": "frontend-platform",
+        "signals": [
+          "authority-state-mutation"
+        ],
+        "evidence": "game.tutorialAdvisorDialogue = null;",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/CanvasActionController.js",
+        "line": 1925,
+        "layer": "frontend-platform",
+        "signals": [
+          "authority-state-mutation"
+        ],
+        "evidence": "if (game.canvasShell) game.canvasShell.tutorialAdvisorDialogue = null;",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+        "line": 283,
+        "layer": "frontend-platform",
+        "signals": [
+          "authority-state-mutation"
+        ],
+        "evidence": "if (game && typeof game === 'object') game.armyFormationEditor = { ...closed };",
+        "tranche1Disposition": "retire-in-phase-2-ui-runtime-store"
+      },
+      {
+        "file": "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+        "line": 285,
+        "layer": "frontend-platform",
+        "signals": [
+          "authority-state-mutation"
+        ],
+        "evidence": "game.canvasShell.armyFormationEditor = { ...closed };",
+        "tranche1Disposition": "retire-in-phase-2-ui-runtime-store"
+      },
+      {
+        "file": "frontend/js/platform/EntityBattleController.js",
+        "line": 268,
+        "layer": "frontend-platform",
+        "signals": [
+          "authority-state-mutation"
+        ],
+        "evidence": "eb.battle.auto = eb.auto;",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/ScoutCountdownTimer.js",
+        "line": 28,
+        "layer": "frontend-platform",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if ((state.currentEra || 0) < 5) return;",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/WorldMapRuntimeCoordinator.js",
+        "line": 121,
+        "layer": "frontend-platform",
+        "signals": [
+          "authority-state-mutation"
+        ],
+        "evidence": "territory.uiState.worldPanX = x;",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/WorldMapRuntimeCoordinator.js",
+        "line": 122,
+        "layer": "frontend-platform",
+        "signals": [
+          "authority-state-mutation"
+        ],
+        "evidence": "territory.uiState.worldPanY = y;",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/BattleCanvasModel.js",
+        "line": 217,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (Number.isFinite(explicitDamage) && explicitDamage > 0) return Math.floor(explicitDamage);",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/BattleCanvasModel.js",
+        "line": 226,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (damage <= 0) return '';",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/BuildingCanvasRenderer.js",
+        "line": 420,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (cost?.isMax || !knowledge.present || knowledge.value <= 0) {",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/BuildingCanvasRenderer.js",
+        "line": 482,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (cost?.isMax) {",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/GuideTaskCanvasRenderer.js",
+        "line": 101,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (SharedRewardText) return SharedRewardText.formatResources(task.reward?.resources);",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/TechCanvasRenderer.js",
+        "line": 264,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (!detail.canResearch && detail.disabledReason) {",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/TechCanvasRenderer.js",
+        "line": 348,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (!detail.canResearch && detail.disabledReason) {",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/WorldMapStaticEntryRenderer.js",
+        "line": 379,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (level > 0) {",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      },
+      {
+        "file": "frontend/js/platform/renderers/WorldMapStaticEntryRenderer.js",
+        "line": 384,
+        "layer": "frontend-renderer",
+        "signals": [
+          "gameplay-rule-branch"
+        ],
+        "evidence": "if (level > 0) {",
+        "tranche1Disposition": "classified-for-later-tranche-not-authorized"
+      }
+    ]
+  }
+}
